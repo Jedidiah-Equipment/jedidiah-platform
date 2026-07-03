@@ -261,10 +261,23 @@ export const QuoteCreateInput = z.object({
   selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
 });
 
+export type QuoteUpdateOfferingInput = z.infer<typeof QuoteUpdateOfferingInput>;
+export const QuoteUpdateOfferingInput = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('product'),
+  }),
+  z.object({
+    kind: z.literal('custom'),
+    workTitle: QuoteWorkTitle,
+    basePrice: z.coerce.number().pipe(Price),
+  }),
+]);
+
 export type QuoteUpdateInput = z.infer<typeof QuoteUpdateInput>;
 export const QuoteUpdateInput = z
   .object({
     id: UUID,
+    offering: QuoteUpdateOfferingInput,
     salesPersonId: AuthId,
     status: QuoteStatus,
     discountPercent: z.coerce.number().pipe(QuoteDiscountPercent).default(0),
@@ -276,10 +289,8 @@ export const QuoteUpdateInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
     documentNotes: QuoteDocumentNotesInput,
-    workTitle: QuoteWorkTitle.optional(),
-    basePrice: z.coerce.number().pipe(Price).optional(),
     lineItems: z.array(QuoteLineItemInput).optional(),
-    selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
+    selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
   })
   .strict();
 

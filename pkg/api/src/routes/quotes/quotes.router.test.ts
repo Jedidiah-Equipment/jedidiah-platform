@@ -1703,6 +1703,10 @@ function productOffering(productId: string) {
 function toUpdateInput(quote: QuoteDetail) {
   return {
     id: quote.id,
+    offering:
+      quote.kind === 'custom'
+        ? { kind: 'custom' as const, basePrice: quote.quotedBasePrice, workTitle: quote.workTitle }
+        : { kind: 'product' as const },
     depositPercent: quote.depositPercent,
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,

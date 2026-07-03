@@ -30,7 +30,12 @@ import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useCan } from '@/hooks/use-access.js';
 
 import { quoteStatusLabels } from '../QuoteStatusBadge.js';
-import { QuoteFormValues, resolveSelectedAssemblySnapshots, toQuoteFormValues, toQuoteUpdateInput } from '../types.js';
+import {
+  getQuoteFormValuesValidator,
+  resolveSelectedAssemblySnapshots,
+  toQuoteFormValues,
+  toQuoteUpdateInput,
+} from '../types.js';
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
 import { QuoteDocumentsSection } from './QuoteDocumentsSection.js';
 import { QuoteFormSection } from './QuoteFormSection.js';
@@ -74,8 +79,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
     defaultValues: toQuoteFormValues(quote),
     failureMessage: 'Unable to update quote.',
     save: onSave,
-    toInput: (value) => toQuoteUpdateInput({ id: quote.id, value }),
-    validator: QuoteFormValues,
+    toInput: (value) => toQuoteUpdateInput({ id: quote.id, kind: quote.kind, value }),
+    validator: getQuoteFormValuesValidator(quote.kind),
   });
 
   return (

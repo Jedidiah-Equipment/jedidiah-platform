@@ -75,6 +75,18 @@ export const QuoteFormValues = z
   })
   .strict();
 
+export function getQuoteFormValuesValidator(kind: QuoteKind) {
+  return QuoteFormValues.superRefine((value, context) => {
+    if (kind === 'custom' && !QuoteWorkTitle.safeParse(value.workTitle).success) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Work title is required',
+        path: ['workTitle'],
+      });
+    }
+  });
+}
+
 export const emptyQuoteFormValues: QuoteFormValues = {
   depositPercent: 0,
   deliveryIncluded: true,
@@ -153,10 +165,21 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
   });
 }
 
-export function toQuoteUpdateInput({ id, value }: { id: UUID; value: QuoteFormValues }): QuoteUpdateInput {
+export function toQuoteUpdateInput({
+  id,
+  kind,
+  value,
+}: {
+  id: UUID;
+  kind: QuoteKind;
+  value: QuoteFormValues;
+}): QuoteUpdateInput {
   return QuoteUpdateInput.parse({
     id,
-    basePrice: value.basePrice,
+    offering:
+      kind === 'product'
+        ? { kind: 'product' }
+        : { kind: 'custom', basePrice: value.basePrice, workTitle: value.workTitle },
     deliveryIncluded: value.deliveryIncluded,
     deliveryPrice: value.deliveryIncluded ? value.deliveryPrice : 0,
     depositPercent: value.depositPercent,
@@ -170,7 +193,6 @@ export function toQuoteUpdateInput({ id, value }: { id: UUID; value: QuoteFormVa
     selectedAssemblies: value.selectedAssemblies,
     status: value.status,
     validUntil: value.validUntil || null,
-    workTitle: value.workTitle || undefined,
   });
 }
 

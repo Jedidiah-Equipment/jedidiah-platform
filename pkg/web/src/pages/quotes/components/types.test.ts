@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getDefaultQuoteDocumentLeadTime,
   getDefaultQuoteDocumentLeadTimeFromAvailability,
+  getQuoteFormValuesValidator,
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
   type QuoteFormValues,
@@ -316,13 +317,14 @@ describe('toQuoteUpdateInput', () => {
   it('omits customer and product identity from edit submissions', () => {
     const input = toQuoteUpdateInput({
       id: QUOTE_ID,
+      kind: 'product',
       value: buildFormValues({ lineItems: [{ name: 'Transport crate', quantity: 1, unitPrice: 300 }] }),
     });
 
     expect(input).toMatchObject({
       id: QUOTE_ID,
       depositPercent: 30,
-      basePrice: 1000,
+      offering: { kind: 'product' },
       lineItems: [{ name: 'Transport crate', quantity: 1, unitPrice: 300 }],
       salesPersonId: 'auth-user-1',
       status: 'sent',
@@ -336,6 +338,7 @@ describe('toQuoteUpdateInput', () => {
   it('coalesces empty edit dates to null and gates delivery price', () => {
     const input = toQuoteUpdateInput({
       id: QUOTE_ID,
+      kind: 'product',
       value: buildFormValues({
         deliveryIncluded: false,
         deliveryPrice: 99,
@@ -353,21 +356,50 @@ describe('toQuoteUpdateInput', () => {
   });
 
   it('preserves cancelled status in edit submissions', () => {
-    const input = toQuoteUpdateInput({ id: QUOTE_ID, value: buildFormValues({ status: 'cancelled' }) });
+    const input = toQuoteUpdateInput({
+      id: QUOTE_ID,
+      kind: 'product',
+      value: buildFormValues({ status: 'cancelled' }),
+    });
 
     expect(input.status).toBe('cancelled');
+  });
+
+  it('emits custom quote offering facts without conflating blank work titles with omission', () => {
+    const input = toQuoteUpdateInput({
+      id: QUOTE_ID,
+      kind: 'custom',
+      value: buildFormValues({ basePrice: 2500, workTitle: 'Hydraulic repair' }),
+    });
+
+    expect(input.offering).toEqual({ kind: 'custom', basePrice: 2500, workTitle: 'Hydraulic repair' });
+    expect(() =>
+      toQuoteUpdateInput({
+        id: QUOTE_ID,
+        kind: 'custom',
+        value: buildFormValues({ basePrice: 2500, workTitle: '' }),
+      }),
+    ).toThrow();
+  });
+
+  it('validates custom work titles at the form boundary only when kind is custom', () => {
+    expect(getQuoteFormValuesValidator('product').safeParse(buildFormValues({ workTitle: '' })).success).toBe(true);
+    expect(getQuoteFormValuesValidator('custom').safeParse(buildFormValues({ workTitle: '' })).success).toBe(false);
+    expect(
+      getQuoteFormValuesValidator('custom').safeParse(buildFormValues({ workTitle: 'Hydraulic repair' })).success,
+    ).toBe(true);
   });
 
   it('rejects customer and product keys at the schema boundary', () => {
     expect(() =>
       QuoteUpdateInput.parse({
-        ...toQuoteUpdateInput({ id: QUOTE_ID, value: buildFormValues() }),
+        ...toQuoteUpdateInput({ id: QUOTE_ID, kind: 'product', value: buildFormValues() }),
         customer: { type: 'existing', customerId: CUSTOMER_ID },
       }),
     ).toThrow();
     expect(() =>
       QuoteUpdateInput.parse({
-        ...toQuoteUpdateInput({ id: QUOTE_ID, value: buildFormValues() }),
+        ...toQuoteUpdateInput({ id: QUOTE_ID, kind: 'product', value: buildFormValues() }),
         productId: PRODUCT_ID,
       }),
     ).toThrow();

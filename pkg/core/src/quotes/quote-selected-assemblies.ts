@@ -1,5 +1,5 @@
 import { type DatabaseTransaction, type Db, productAssemblies, quoteSelectedAssemblies } from '@pkg/db';
-import { type QuoteCreateInput, QuoteSelectedAssembly, type QuoteUpdateInput, type UUID } from '@pkg/schema';
+import { QuoteSelectedAssembly, type QuoteSelectedAssemblyInput, type UUID } from '@pkg/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 
 import { QuoteInvalidReferenceError } from './quote-errors.js';
@@ -67,21 +67,21 @@ export async function listQuoteSelectedAssemblies({
 
 export async function resolveQuoteSelectedAssemblies({
   currentRows = [],
-  input,
   productId,
   quoteId,
+  selectedAssemblies,
   tx,
 }: {
   currentRows?: QuoteSelectedAssemblyRow[];
-  input: Pick<QuoteCreateInput | QuoteUpdateInput, 'selectedAssemblies'>;
   productId: UUID;
   quoteId: UUID;
+  selectedAssemblies: readonly QuoteSelectedAssemblyInput[];
   tx: DatabaseTransaction;
 }): Promise<ResolvedQuoteSelectedAssemblies> {
-  const existingIds = input.selectedAssemblies
+  const existingIds = selectedAssemblies
     .filter((selection) => selection.type === 'existing')
     .map((selection) => selection.id);
-  const catalogIds = input.selectedAssemblies
+  const catalogIds = selectedAssemblies
     .filter((selection) => selection.type === 'catalog')
     .map((selection) => selection.productAssemblyId);
   const keptRows = getKeptSelectedAssemblyRows({ currentRows, existingIds, quoteId });

@@ -110,9 +110,47 @@ describe('QuoteLineItemInput', () => {
 });
 
 describe('QuoteUpdateInput', () => {
-  it('preserves omitted line items instead of defaulting them to an empty replacement', () => {
+  it('parses a product offering update', () => {
+    expect(QuoteUpdateInput.parse(baseUpdateInput())).toMatchObject({
+      offering: { kind: 'product' },
+    });
+  });
+
+  it('parses a custom offering update with a trimmed work title and entered base price', () => {
+    expect(
+      QuoteUpdateInput.parse({
+        ...baseUpdateInput(),
+        offering: {
+          kind: 'custom',
+          workTitle: '  Hydraulic repair  ',
+          basePrice: '2500.50',
+        },
+      }),
+    ).toMatchObject({
+      offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500.5 },
+    });
+  });
+
+  it('rejects a blank custom work title', () => {
+    expect(() =>
+      QuoteUpdateInput.parse({
+        ...baseUpdateInput(),
+        offering: {
+          kind: 'custom',
+          workTitle: ' ',
+          basePrice: 2500,
+        },
+      }),
+    ).toThrow();
+  });
+
+  it('preserves omitted child collections instead of defaulting them to empty replacements', () => {
     expect(QuoteUpdateInput.parse(baseUpdateInput())).not.toHaveProperty('lineItems');
+    expect(QuoteUpdateInput.parse(baseUpdateInput())).not.toHaveProperty('selectedAssemblies');
     expect(QuoteUpdateInput.parse({ ...baseUpdateInput(), lineItems: [] })).toMatchObject({ lineItems: [] });
+    expect(QuoteUpdateInput.parse({ ...baseUpdateInput(), selectedAssemblies: [] })).toMatchObject({
+      selectedAssemblies: [],
+    });
   });
 });
 
@@ -269,7 +307,7 @@ function baseUpdateInput() {
     plannedDeliveryDate: null,
     notes: null,
     documentNotes: null,
-    selectedAssemblies: [],
+    offering: { kind: 'product' as const },
   };
 }
 

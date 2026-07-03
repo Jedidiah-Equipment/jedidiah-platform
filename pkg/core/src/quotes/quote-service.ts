@@ -1,6 +1,14 @@
 import { customers, type DatabaseTransaction, type Db, jobs, products, quotes, user } from '@pkg/db';
 import { assertQuoteEditable, validateDiscount } from '@pkg/domain';
-import type { AuthId, QuoteCreateInput, QuoteDetail, QuoteKind, QuoteUpdateInput, UUID } from '@pkg/schema';
+import type {
+  AuthId,
+  QuoteCreateInput,
+  QuoteDetail,
+  QuoteKind,
+  QuoteLineItemInput,
+  QuoteUpdateInput,
+  UUID,
+} from '@pkg/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
@@ -13,7 +21,7 @@ import {
   QuoteLockedError,
   QuoteNotFoundError,
 } from './quote-errors.js';
-import { listQuoteLineItems, persistQuoteLineItems } from './quote-line-items.js';
+import { listQuoteLineItems, persistQuoteLineItems, type QuoteLineItemRow } from './quote-line-items.js';
 import { narrowQuoteOffering } from './quote-offering.js';
 import { getQuote } from './quote-read-service.js';
 import {
@@ -78,15 +86,15 @@ export async function createQuote({
         ? await persistQuoteSelectedAssemblies({
             quoteId: row.id,
             resolved: await resolveQuoteSelectedAssemblies({
-              input,
               productId: persistedOffering.productId,
               quoteId: row.id,
+              selectedAssemblies: input.selectedAssemblies,
               tx,
             }),
             tx,
           })
         : [];
-    const lineItems = await persistQuoteLineItems({ input, quoteId: row.id, tx });
+    const lineItems = await persistQuoteLineItems({ lineItems: input.lineItems, quoteId: row.id, tx });
 
     await recordAuditCreate({
       db: tx,
@@ -117,8 +125,13 @@ export async function updateQuote({
 
     const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId: before.id, tx });
     const beforeLineItems = await listQuoteLineItems({ quoteId: before.id, tx });
+    const beforeOffering = narrowQuoteOffering(before);
 
-    if (before.kind === 'custom') {
+    if (input.offering.kind !== beforeOffering.kind) {
+      throw new QuoteInvalidReferenceError('Quote offering kind cannot be changed.');
+    }
+
+    if (beforeOffering.kind === 'custom') {
       assertNoCustomSelectedAssemblies(input);
     }
 
@@ -138,23 +151,22 @@ export async function updateQuote({
       plannedDeliveryDate: input.plannedDeliveryDate,
       preferredDeliveryDate: input.preferredDeliveryDate,
       productId: before.productId,
-      quotedBasePrice: before.kind === 'custom' ? (input.basePrice ?? before.quotedBasePrice) : before.quotedBasePrice,
+      quotedBasePrice: input.offering.kind === 'custom' ? input.offering.basePrice : before.quotedBasePrice,
       quotedCurrencyCode: before.quotedCurrencyCode,
       salesPersonId: input.salesPersonId,
       status: input.status,
       validUntil: input.validUntil,
-      workTitle: before.kind === 'custom' ? (input.workTitle ?? before.workTitle) : before.workTitle,
+      workTitle: input.offering.kind === 'custom' ? input.offering.workTitle : before.workTitle,
     };
     const after = { ...before, ...patch };
     const nextLineItems = input.lineItems ?? beforeLineItems;
-    const beforeOffering = narrowQuoteOffering(before);
     const resolved =
-      beforeOffering.kind === 'product'
+      beforeOffering.kind === 'product' && input.selectedAssemblies !== undefined
         ? await resolveQuoteSelectedAssemblies({
             currentRows: beforeSelectedAssemblies,
-            input,
             productId: beforeOffering.productId,
             quoteId: before.id,
+            selectedAssemblies: input.selectedAssemblies,
             tx,
           })
         : { newRows: [], removeIds: [], rows: beforeSelectedAssemblies };
@@ -163,13 +175,24 @@ export async function updateQuote({
       { row: before, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
       { row: after, lineItems: nextLineItems, selectedAssemblies: resolved.rows },
     );
+    const lineItemsChanged = haveQuoteLineItemsChanged({ before: beforeLineItems, next: input.lineItems });
+    const selectedAssembliesChanged = resolved.newRows.length > 0 || resolved.removeIds.length > 0;
+    const changedFields = new Set(Object.keys(changes ?? {}));
 
-    if (!changes) {
+    if (lineItemsChanged) {
+      changedFields.add('lineItems');
+    }
+
+    if (selectedAssembliesChanged) {
+      changedFields.add('selectedAssemblies');
+    }
+
+    if (changedFields.size === 0) {
       return getQuote({ db: tx, id: before.id });
     }
 
     const editable = assertQuoteEditable({
-      changedFields: Object.keys(changes),
+      changedFields,
       hasJob: await quoteHasJob({ quoteId: before.id, tx }),
       kind: before.kind,
       status: before.status,
@@ -194,21 +217,53 @@ export async function updateQuote({
     }
 
     const selectedAssemblies =
-      before.kind === 'product'
+      before.kind === 'product' && input.selectedAssemblies !== undefined
         ? await persistQuoteSelectedAssemblies({ quoteId: row.id, resolved, tx })
         : resolved.rows;
     const lineItems =
-      input.lineItems === undefined ? beforeLineItems : await persistQuoteLineItems({ input, quoteId: row.id, tx });
+      input.lineItems === undefined
+        ? beforeLineItems
+        : await persistQuoteLineItems({ lineItems: input.lineItems, quoteId: row.id, tx });
 
-    await recordAuditUpdate({
-      db: tx,
-      descriptor: quoteAuditDescriptor,
-      actorUserId,
-      after: { row, lineItems, selectedAssemblies },
-      changes,
-    });
+    if (changes) {
+      await recordAuditUpdate({
+        db: tx,
+        descriptor: quoteAuditDescriptor,
+        actorUserId,
+        after: { row, lineItems, selectedAssemblies },
+        changes,
+      });
+    }
 
     return getQuote({ db: tx, id: row.id });
+  });
+}
+
+function haveQuoteLineItemsChanged({
+  before,
+  next,
+}: {
+  before: readonly QuoteLineItemRow[];
+  next: readonly QuoteLineItemInput[] | undefined;
+}): boolean {
+  if (next === undefined) {
+    return false;
+  }
+
+  if (before.length !== next.length) {
+    return true;
+  }
+
+  return next.some((item, position) => {
+    const current = before[position];
+
+    return (
+      !current ||
+      current.position !== position ||
+      current.name !== item.name ||
+      current.quantity !== item.quantity ||
+      current.unitPrice !== item.unitPrice
+    );
   });
 }
 
@@ -288,7 +343,7 @@ async function resolveQuoteOffering({
 function assertNoCustomSelectedAssemblies(
   input: Pick<QuoteCreateInput | QuoteUpdateInput, 'selectedAssemblies'>,
 ): void {
-  if (input.selectedAssemblies.length > 0) {
+  if ((input.selectedAssemblies?.length ?? 0) > 0) {
     throw new QuoteCustomSelectedAssembliesError('Custom Quotes cannot have Selected Assemblies.');
   }
 }

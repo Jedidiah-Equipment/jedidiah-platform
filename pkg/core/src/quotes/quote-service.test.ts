@@ -206,6 +206,48 @@ describe('quote line items', () => {
     expect(rows[0]?.id).not.toBe(created.lineItems[0]?.id);
   });
 
+  test('persists reorder-only line item updates even when the audit projection is unchanged', async ({ context }) => {
+    const created = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        lineItems: [
+          { name: 'Hydraulic hose', quantity: 2, unitPrice: 125 },
+          { name: 'Transport crate', quantity: 1, unitPrice: 300 },
+        ],
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    const updated = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(created, {
+        lineItems: [
+          { name: 'Transport crate', quantity: 1, unitPrice: 300 },
+          { name: 'Hydraulic hose', quantity: 2, unitPrice: 125 },
+        ],
+      }),
+    });
+    const rows = await context.db
+      .select()
+      .from(quoteLineItems)
+      .where(eq(quoteLineItems.quoteId, created.id))
+      .orderBy(asc(quoteLineItems.position));
+
+    expect(updated.lineItems).toMatchObject([
+      { name: 'Transport crate', quantity: 1, unitPrice: 300 },
+      { name: 'Hydraulic hose', quantity: 2, unitPrice: 125 },
+    ]);
+    expect(rows).toMatchObject([
+      { name: 'Transport crate', position: 0 },
+      { name: 'Hydraulic hose', position: 1 },
+    ]);
+  });
+
   test('preserves existing line items when update input omits the field', async ({ context }) => {
     const quote = await createQuoteService({
       actorUserId: context.salesPerson.id,
@@ -405,10 +447,9 @@ describe('custom quotes', () => {
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: buildQuoteUpdateInput(customQuote, {
-        basePrice: 1750,
         discountPercent: 5,
+        offering: { kind: 'custom', basePrice: 1750, workTitle: 'Draft repair revised' },
         lineItems: [{ name: 'Travel', quantity: 1, unitPrice: 200 }],
-        workTitle: 'Draft repair revised',
       }),
     });
 
@@ -418,6 +459,48 @@ describe('custom quotes', () => {
       workTitle: 'Draft repair revised',
     });
     expect(updated.lineItems).toMatchObject([{ name: 'Travel', quantity: 1, unitPrice: 200 }]);
+  });
+
+  test('rejects clearing a custom quote work title at the update input boundary', async ({ context }) => {
+    const customQuote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Repair work', basePrice: 1500 },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    expect(() =>
+      buildQuoteUpdateInput(customQuote, {
+        offering: { kind: 'custom', basePrice: 1500, workTitle: '' },
+      }),
+    ).toThrow();
+  });
+
+  test('rejects update offering kind changes', async ({ context }) => {
+    const productQuote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(productQuote, {
+          offering: { kind: 'custom', basePrice: 1500, workTitle: 'Repair work' },
+        }),
+      }),
+    ).rejects.toThrow('Quote offering kind cannot be changed.');
   });
 
   test('locks custom commercial fields after acceptance but still allows post-lock notes', async ({ context }) => {
@@ -436,7 +519,9 @@ describe('custom quotes', () => {
       updateQuote({
         actorUserId: context.salesPerson.id,
         db: context.db,
-        input: buildQuoteUpdateInput(customQuote, { basePrice: 2300 }),
+        input: buildQuoteUpdateInput(customQuote, {
+          offering: { kind: 'custom', basePrice: 2300, workTitle: 'Accepted repair' },
+        }),
       }),
     ).rejects.toThrow('Quote is locked because it has been accepted; quotedBasePrice cannot be changed.');
 
@@ -550,7 +635,9 @@ describe('custom quotes', () => {
     await updateQuote({
       actorUserId: context.salesPerson.id,
       db: context.db,
-      input: buildQuoteUpdateInput(customQuote, { basePrice: 2100, workTitle: 'Audit repair revised' }),
+      input: buildQuoteUpdateInput(customQuote, {
+        offering: { kind: 'custom', basePrice: 2100, workTitle: 'Audit repair revised' },
+      }),
     });
 
     const events = await context.db
@@ -818,6 +905,10 @@ function buildQuoteUpdateInput(quote: QuoteDetail, overrides: Partial<QuoteUpdat
     discountPercent: quote.discountPercent,
     documentNotes: quote.documentNotes,
     id: quote.id,
+    offering:
+      quote.kind === 'custom'
+        ? { kind: 'custom', basePrice: quote.quotedBasePrice, workTitle: quote.workTitle }
+        : { kind: 'product' },
     lineItems: quote.lineItems.map((item) => ({
       name: item.name,
       quantity: item.quantity,

@@ -6,8 +6,8 @@
 
 ## Workflows
 
-- Schema changes: run `pnpm db:generate`, review and commit generated SQL in `pkg/db/migrations`, then run `pnpm db:migrate`.
-- Run `pnpm db:up:template` after schema or seed changes, or when DB-backed tests fail with stale-schema errors.
+- Schema changes: run `pnpm db:generate`, review and commit generated SQL in `pkg/db/migrations`, then run `pnpm db:migrate` and `pnpm db:migrate:test`.
+- Run `pnpm db:up:template` after schema or seed changes, or when DB-backed tests fail with stale template-schema errors.
 - `pnpm db:up` drops Docker volumes and rebuilds the local database.
 - `pnpm db:seed` loads `pkg/seed/data/staging-snapshot`; every seeded user logs in with the shared password `test123` (see `pkg/seed/AGENTS.md`). Regenerate the snapshot from staging with `pnpm --filter @pkg/seed seed:read`, which reads staging DB + doc-store creds from `pkg/seed/.env.dev` and also downloads referenced images; `seed:write` uploads them to the local store using `pkg/seed/.env`.
 - Use `pnpm dev:kill` to stop `pnpm dev` services for the current checkout; use `pnpm dev:kill:all` for best-effort cleanup across known parallel slot ports.

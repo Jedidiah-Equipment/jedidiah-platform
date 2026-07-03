@@ -42,7 +42,7 @@ export const JobEditPage: React.FC<JobEditPageProps> = ({ jobId }) => {
         <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
         {job ? (
           <>
-            <JobEditForm job={job} onSave={(value) => updateJobMutation.mutateAsync(value)} />
+            <JobEditForm key={job.id} job={job} onSave={(value) => updateJobMutation.mutateAsync(value)} />
             <JobFeedbackCard job={job} />
           </>
         ) : null}

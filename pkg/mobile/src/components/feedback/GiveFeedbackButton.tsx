@@ -2,7 +2,7 @@ import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain';
 import { DEPARTMENTS, type FeedbackKind } from '@pkg/schema';
 import { IconEye, IconLock, IconMessagePlus, IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -55,6 +55,7 @@ export function GiveFeedbackButton({ jobCode, jobId }: { jobCode: string; jobId:
 
 function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: string; onClose: () => void }) {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const showToast = useAppToast();
   const { resolved } = useColorMode();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -73,6 +74,8 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
       }
       onClose();
       showToast('success', 'Feedback submitted');
+      // Refresh the Job's public feedback list so a just-submitted general item appears.
+      await queryClient.invalidateQueries({ queryKey: trpc.feedback.pathKey() });
     },
   });
 

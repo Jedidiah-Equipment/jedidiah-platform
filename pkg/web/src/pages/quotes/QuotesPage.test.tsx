@@ -12,6 +12,8 @@ import {
   createQuoteTableColumns,
   createQuoteTableRow,
   getQuoteTableRowClassName,
+  quoteTablePinnedLeftColumns,
+  quoteTablePinnedRightColumns,
   type QuoteTableRow,
 } from './components/QuoteTableColumns.js';
 
@@ -61,12 +63,13 @@ describe('Quote table priority rows', () => {
     expect(html.match(/>QUO-00001</g)).toHaveLength(2);
   });
 
-  it('renders status and job as right-pinned columns', () => {
+  it('renders quote code left-pinned and status/job right-pinned', () => {
     const html = renderQuoteTableRows([
       createPriorityQuoteTableRow(buildPriorityQuote({ job: null })),
       createQuoteTableRow(buildPriorityQuote({ job: null })),
     ]);
 
+    expect(html).toContain('left:0px');
     expect(html).toContain('right:144px');
     expect(html).toContain('right:0px');
     expect(html).toContain('[--table-row-bg:var(--warning-surface)]');
@@ -95,7 +98,8 @@ function TestQuoteTable({ rows }: { rows: QuoteTableRow[] }) {
     getCoreRowModel: getCoreRowModel(),
     initialState: {
       columnPinning: {
-        right: ['status', 'job'],
+        left: quoteTablePinnedLeftColumns,
+        right: quoteTablePinnedRightColumns,
       },
     },
   });

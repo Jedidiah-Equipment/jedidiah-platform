@@ -41,6 +41,9 @@ export const quoteKindFilterOptions = QuoteKind.options.map((kind) => ({
   value: kind,
 }));
 
+export const quoteTablePinnedLeftColumns = ['code'];
+export const quoteTablePinnedRightColumns = ['status', 'job'];
+
 export function createQuoteTableRow(quote: QuoteSummary): QuoteTableRow {
   return {
     kind: 'normal',

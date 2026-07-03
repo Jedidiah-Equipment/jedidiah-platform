@@ -38,8 +38,9 @@ export function createJobListColumns({
       header: 'Job',
       id: 'code',
       meta: {
-        headerClassName: 'min-w-32',
+        headerClassName: 'min-w-28',
       },
+      size: 112,
     },
     {
       accessorFn: (job) => job.customerCompanyName,
@@ -143,8 +144,9 @@ export function createJobListColumns({
             header: '',
             id: 'actions',
             meta: {
-              cellClassName: 'w-20',
+              cellClassName: 'w-[88px]',
             },
+            size: 88,
           } satisfies ColumnDef<JobSummary>,
         ]
       : []),

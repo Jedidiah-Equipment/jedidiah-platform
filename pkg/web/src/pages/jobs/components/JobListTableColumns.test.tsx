@@ -13,6 +13,8 @@ describe('Job List table columns', () => {
 
     expect(html).toContain('left:0px');
     expect(html).toContain('right:0px');
+    expect(html).toContain('width:112px');
+    expect(html).toContain('width:88px');
     expect(html).toContain('bg-inherit');
     expect(html.match(/sticky/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
   });

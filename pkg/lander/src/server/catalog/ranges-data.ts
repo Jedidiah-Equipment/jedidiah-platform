@@ -1,5 +1,6 @@
-import { listProductRanges } from '@pkg/core';
+import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
+import { isLanderReady } from '@pkg/domain';
 
 import { imageUrl, toRangeLabel, toRangeSlug } from './products-data.js';
 
@@ -18,16 +19,19 @@ export type HomeRange = {
 // description rather than fabricated copy. Every card points at the public Range image route, which streams
 // the real image or falls back to the neutral placeholder, so the view model needs no image presence flag.
 export async function loadHomeRanges(db: Db): Promise<HomeRange[]> {
-  const { ranges } = await listProductRanges({ db });
+  const [{ ranges }, allProducts] = await Promise.all([listProductRanges({ db }), listAllProducts({ db })]);
+  const visibleRangeIds = new Set(allProducts.filter(isLanderReady).map((product) => product.rangeId));
 
-  return ranges.map((range) => ({
-    id: range.id,
-    name: range.name,
-    description: range.description ?? '',
-    href: '/products',
-    slug: toRangeSlug(range.name),
-    imageUrl: imageUrl(`/images/ranges/${range.id}`, range.image?.updatedAt),
-  }));
+  return ranges
+    .filter((range) => visibleRangeIds.has(range.id))
+    .map((range) => ({
+      id: range.id,
+      name: range.name,
+      description: range.description ?? '',
+      href: '/products',
+      slug: toRangeSlug(range.name),
+      imageUrl: imageUrl(`/images/ranges/${range.id}`, range.image?.updatedAt),
+    }));
 }
 
 // Footer "Ranges" links. The slug feeds the Products page `?range=` filter (same helpers as the chip bar),

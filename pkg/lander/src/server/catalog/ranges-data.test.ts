@@ -1,10 +1,47 @@
 import { listProductRanges } from '@pkg/core';
-import { productRanges } from '@pkg/db';
+import { productAssemblies, productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
 
 import { test } from '../../test/tester.js';
 import { toRangeLabel, toRangeSlug } from './products-data.js';
 import { loadFooterRanges, loadHomeRanges, loadProductRangeCount } from './ranges-data.js';
+
+type Db = Parameters<typeof loadHomeRanges>[0];
+
+function imageRef(slot: string) {
+  return {
+    byteSize: 1024,
+    contentType: 'image/png',
+    storageKey: `products/${slot}-${crypto.randomUUID()}.png`,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+async function insertReadyProduct(db: Db, rangeId: string, suffix = crypto.randomUUID()) {
+  const [product] = await db
+    .insert(products)
+    .values({
+      basePrice: 1000,
+      buildTimeDays: 5,
+      rangeId,
+      landerEnabled: true,
+      category: 'Default category',
+      keyFeatures: ['Default feature'],
+      technicalDetails: [{ label: 'Working Width', value: '7 m' }],
+      description: 'Default description.',
+      images: { primary: imageRef('primary'), secondary1: imageRef('secondary1'), secondary2: imageRef('secondary2') },
+      name: `Visible product ${suffix}`,
+      modelCode: `VR-${suffix}`,
+    })
+    .returning();
+  if (!product) throw new Error('product insert did not return a row');
+
+  await db
+    .insert(productAssemblies)
+    .values({ productId: product.id, kind: 'standard', name: 'Frame', displayOrder: 0 });
+
+  return product;
+}
 
 test('loadHomeRanges returns Range name, blurb, and Products href from the database', async ({ db }) => {
   const [withBlurb] = await db
@@ -16,6 +53,7 @@ test('loadHomeRanges returns Range name, blurb, and Products href from the datab
     })
     .returning();
   if (!withBlurb) throw new Error('insert did not return a row');
+  await insertReadyProduct(db, withBlurb.id);
 
   const ranges = await loadHomeRanges(db);
   const found = ranges.find((range) => range.id === withBlurb.id);
@@ -36,11 +74,44 @@ test('loadHomeRanges renders a missing blurb as empty rather than fabricating co
     .values({ name: `Lander Blank Range ${crypto.randomUUID()}`, description: null, displayOrder: 0 })
     .returning();
   if (!withoutBlurb) throw new Error('insert did not return a row');
+  await insertReadyProduct(db, withoutBlurb.id);
 
   const ranges = await loadHomeRanges(db);
   const found = ranges.find((range) => range.id === withoutBlurb.id);
 
   expect(found?.description).toBe('');
+});
+
+test('loadHomeRanges omits Ranges without lander-ready Products', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const [emptyRange] = await db
+    .insert(productRanges)
+    .values({ name: `Home Empty Range ${suffix}`, description: 'No visible models.', displayOrder: 0 })
+    .returning();
+  const [hiddenRange] = await db
+    .insert(productRanges)
+    .values({ name: `Home Hidden Range ${suffix}`, description: 'Hidden models only.', displayOrder: 0 })
+    .returning();
+  if (!emptyRange || !hiddenRange) throw new Error('range insert did not return a row');
+
+  await db.insert(products).values({
+    basePrice: 1000,
+    buildTimeDays: 5,
+    rangeId: hiddenRange.id,
+    landerEnabled: false,
+    category: 'Default category',
+    keyFeatures: ['Default feature'],
+    technicalDetails: [{ label: 'Working Width', value: '7 m' }],
+    description: 'Default description.',
+    images: { primary: imageRef('primary'), secondary1: imageRef('secondary1'), secondary2: imageRef('secondary2') },
+    name: `Hidden product ${suffix}`,
+    modelCode: `HR-${suffix}`,
+  });
+
+  const ranges = await loadHomeRanges(db);
+
+  expect(ranges.some((range) => range.id === emptyRange.id)).toBe(false);
+  expect(ranges.some((range) => range.id === hiddenRange.id)).toBe(false);
 });
 
 test('loadFooterRanges returns the top four Ranges as chip-matching label/slug links', async ({ db }) => {

@@ -24,7 +24,7 @@ export function RangeCard({ range }: { range: HomeRange }) {
           <h3 className="m-0 mb-3 font-display text-[23px] font-bold uppercase leading-[1.05] tracking-[0.5px] text-ink">
             {range.name}
           </h3>
-          <p className="m-0 mb-5 flex-1 font-body text-[15px] leading-[1.55] text-[#666]">{range.description}</p>
+          <p className="m-0 mb-3 font-body text-[15px] leading-[1.55] text-[#666]">{range.description}</p>
           <IconArrowRight
             className="text-gold transition-transform duration-300 ease-out group-hover:translate-x-2"
             size={24}

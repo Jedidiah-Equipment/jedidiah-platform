@@ -435,6 +435,13 @@
       "when": 1782918339895,
       "tag": "0061_fearless_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1783057486384,
+      "tag": "0062_left_morph",
+      "breakpoints": true
     }
   ]
 }

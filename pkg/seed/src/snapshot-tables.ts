@@ -16,6 +16,7 @@ import {
   productRanges,
   productSerialSequences,
   products,
+  quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
   supplier,
@@ -207,6 +208,12 @@ export const snapshotTables = [
     tableName: 'quote',
     timestampColumns: ['createdAt', 'statusChangedAt', 'updatedAt'],
     resetSequence: { sequenceName: 'quote_code_seq', columnName: 'code' },
+  },
+  {
+    fileName: 'quote_line_items.json',
+    table: quoteLineItems,
+    tableName: 'quote_line_items',
+    timestampColumns: standardTimestampColumns,
   },
   {
     fileName: 'quote_selected_assemblies.json',

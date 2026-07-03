@@ -4,6 +4,7 @@ import {
   PriorityQuote,
   QuoteCreateInput,
   QuoteDetail,
+  QuoteLineItemInput,
   QuoteProductBayAvailabilityInput,
   QuoteProductBayAvailabilityResult,
   QuoteSummary,
@@ -27,6 +28,7 @@ describe('QuoteCreateInput', () => {
     expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({
       depositPercent: 0,
       discountPercent: 0,
+      lineItems: [],
     });
   });
 
@@ -55,6 +57,22 @@ describe('QuoteCreateInput', () => {
         discountPercent: 101,
       }),
     ).toThrow();
+  });
+});
+
+describe('QuoteLineItemInput', () => {
+  it('trims names, coerces numbers, and defaults quantity to one', () => {
+    expect(QuoteLineItemInput.parse({ name: '  Hydraulic hose  ', unitPrice: '125.50' })).toEqual({
+      name: 'Hydraulic hose',
+      quantity: 1,
+      unitPrice: 125.5,
+    });
+  });
+
+  it('rejects blank names, zero quantity, and negative unit prices', () => {
+    expect(() => QuoteLineItemInput.parse({ name: ' ', quantity: 1, unitPrice: 10 })).toThrow();
+    expect(() => QuoteLineItemInput.parse({ name: 'Hydraulic hose', quantity: 0, unitPrice: 10 })).toThrow();
+    expect(() => QuoteLineItemInput.parse({ name: 'Hydraulic hose', quantity: 1, unitPrice: -1 })).toThrow();
   });
 });
 
@@ -87,6 +105,7 @@ describe('QuoteDetail', () => {
       salesPersonId: 'auth-user-1',
       salesPersonName: null,
       salesPersonThumbnailDataUrl: null,
+      lineItems: [],
       selectedAssemblies: [],
       status: 'accepted',
       statusChangedAt: '2026-01-01T00:00:00.000Z',
@@ -175,6 +194,7 @@ describe('QuoteDetail', () => {
         salesPersonId: 'auth-user-1',
         salesPersonName: null,
         salesPersonThumbnailDataUrl: null,
+        lineItems: [],
         selectedAssemblies: [],
         status: 'accepted',
         statusChangedAt: '2026-01-01T00:00:00.000Z',
@@ -248,6 +268,7 @@ describe('PriorityQuote', () => {
       salesPersonId: 'auth-user-1',
       salesPersonName: null,
       salesPersonThumbnailDataUrl: null,
+      lineItems: [],
       selectedAssemblies: [],
       status: 'accepted',
       statusChangedAt: '2026-01-01T00:00:00.000Z',
@@ -299,6 +320,7 @@ describe('UpcomingDeliveryQuotesResult', () => {
       salesPersonId: 'auth-user-1',
       salesPersonName: null,
       salesPersonThumbnailDataUrl: null,
+      lineItems: [],
       selectedAssemblies: [],
       status: 'accepted',
       statusChangedAt: '2026-01-01T00:00:00.000Z',

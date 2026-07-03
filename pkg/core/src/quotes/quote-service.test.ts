@@ -1,4 +1,5 @@
 import {
+  auditEvents,
   customers,
   type Db,
   jobBayCalendarExceptions,
@@ -7,17 +8,26 @@ import {
   jobs,
   productBays,
   products,
+  quoteLineItems,
   quotes,
   user,
   workingCalendarOffDays,
 } from '@pkg/db';
 import { addDateOnlyDays, addJobSlotDuration, getPlantDateNow } from '@pkg/domain';
-import { formatJobCode, type QuoteStatus } from '@pkg/schema';
+import { formatJobCode, QuoteCreateInput, type QuoteDetail, type QuoteStatus, QuoteUpdateInput } from '@pkg/schema';
+import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
-import { getQuote, getQuoteProductBayAvailability, listPriorityQuotes, listQuoteSalespeople } from './quote-service.js';
+import {
+  createQuote as createQuoteService,
+  getQuote,
+  getQuoteProductBayAvailability,
+  listPriorityQuotes,
+  listQuoteSalespeople,
+  updateQuote,
+} from './quote-service.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -150,6 +160,114 @@ describe('getQuote', () => {
 
     await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
       job: { jobCode: formatJobCode(job.code), jobId: job.id },
+    });
+  });
+});
+
+describe('quote line items', () => {
+  test('creates line items and full-replaces them on update', async ({ context }) => {
+    const created = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        lineItems: [
+          { name: 'Hydraulic hose', quantity: 2, unitPrice: 125 },
+          { name: 'Transport crate', quantity: 1, unitPrice: 300 },
+        ],
+        productId: context.product.id,
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    expect(created.lineItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }),
+        expect.objectContaining({ name: 'Transport crate', quantity: 1, unitPrice: 300 }),
+      ]),
+    );
+
+    const updated = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(created, {
+        lineItems: [{ name: 'Calibration', quantity: 3, unitPrice: 75 }],
+        status: 'sent',
+      }),
+    });
+    const rows = await context.db.select().from(quoteLineItems).where(eq(quoteLineItems.quoteId, created.id));
+
+    expect(updated.lineItems).toMatchObject([{ name: 'Calibration', quantity: 3, unitPrice: 75 }]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ name: 'Calibration', quantity: 3, unitPrice: 75 });
+    expect(rows[0]?.id).not.toBe(created.lineItems[0]?.id);
+  });
+
+  test('rejects line item changes on a locked quote', async ({ context }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        lineItems: [{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }],
+        productId: context.product.id,
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+    await context.db.insert(jobs).values({
+      productId: quote.productId ?? context.product.id,
+      productSerialNumber: `${context.product.modelCode}-26-099`,
+      productSerialPrefix: context.product.modelCode,
+      productSerialSequence: 99,
+      productSerialYear: 26,
+      quoteId: quote.id,
+    });
+
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(quote, {
+          lineItems: [{ name: 'Changed hose', quantity: 2, unitPrice: 125 }],
+        }),
+      }),
+    ).rejects.toThrow('Quote is locked because it already has a Job; lineItems cannot be changed.');
+  });
+
+  test('records line item changes in quote audit events', async ({ context }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        lineItems: [{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }],
+        productId: context.product.id,
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(quote, {
+        lineItems: [{ name: 'Hydraulic hose', quantity: 3, unitPrice: 125 }],
+      }),
+    });
+
+    const events = await context.db
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.entityType, 'quote'), eq(auditEvents.entityId, quote.id)));
+    const updateEvent = events.find((event) => event.action === 'updated');
+
+    expect(updateEvent?.changes).toMatchObject({
+      lineItems: {
+        from: JSON.stringify([{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }]),
+        to: JSON.stringify([{ name: 'Hydraulic hose', quantity: 3, unitPrice: 125 }]),
+      },
     });
   });
 });
@@ -391,6 +509,30 @@ async function createBay(
   }
 
   return bay;
+}
+
+function buildQuoteUpdateInput(quote: QuoteDetail, overrides: Partial<QuoteUpdateInput> = {}): QuoteUpdateInput {
+  return QuoteUpdateInput.parse({
+    deliveryIncluded: quote.deliveryIncluded,
+    deliveryPrice: quote.deliveryPrice,
+    depositPercent: quote.depositPercent,
+    discountPercent: quote.discountPercent,
+    documentNotes: quote.documentNotes,
+    id: quote.id,
+    lineItems: quote.lineItems.map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    })),
+    notes: quote.notes,
+    plannedDeliveryDate: quote.plannedDeliveryDate,
+    preferredDeliveryDate: quote.preferredDeliveryDate,
+    salesPersonId: quote.salesPersonId,
+    selectedAssemblies: quote.selectedAssemblies.map((item) => ({ type: 'existing' as const, id: item.id })),
+    status: quote.status,
+    validUntil: quote.validUntil,
+    ...overrides,
+  });
 }
 
 describe('listQuoteSalespeople', () => {

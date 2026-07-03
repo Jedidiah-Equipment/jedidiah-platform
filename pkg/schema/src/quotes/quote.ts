@@ -98,6 +98,30 @@ export const QuoteSelectedAssemblyInput = z.discriminatedUnion('type', [
   }),
 ]);
 
+export type QuoteLineItemName = z.infer<typeof QuoteLineItemName>;
+export const QuoteLineItemName = requiredTrimmedText('Line item name is required');
+
+export type QuoteLineItemQuantity = z.infer<typeof QuoteLineItemQuantity>;
+export const QuoteLineItemQuantity = z.number().int().min(1, 'Must be 1 or greater');
+
+export type QuoteLineItem = z.infer<typeof QuoteLineItem>;
+export const QuoteLineItem = z.object({
+  id: UUID,
+  quoteId: UUID,
+  name: QuoteLineItemName,
+  quantity: QuoteLineItemQuantity,
+  unitPrice: Price,
+  createdAt: DateIso,
+  updatedAt: DateIso,
+});
+
+export type QuoteLineItemInput = z.infer<typeof QuoteLineItemInput>;
+export const QuoteLineItemInput = z.object({
+  name: QuoteLineItemName,
+  quantity: z.coerce.number().pipe(QuoteLineItemQuantity).default(1),
+  unitPrice: z.coerce.number().pipe(Price),
+});
+
 export type QuoteSummary = z.infer<typeof QuoteSummary>;
 export const QuoteSummary = Quote.extend({
   customerCompanyName: z.string().trim().min(1),
@@ -110,6 +134,7 @@ export const QuoteSummary = Quote.extend({
   salesPersonEmail: z.email().nullable(),
   salesPersonName: z.string().trim().min(1).nullable(),
   salesPersonThumbnailDataUrl: NullableThumbnailDataUrl,
+  lineItems: z.array(QuoteLineItem),
   selectedAssemblies: z.array(QuoteSelectedAssembly),
 });
 
@@ -171,6 +196,7 @@ export const QuoteCreateInput = z.object({
   plannedDeliveryDate: DateOnlyIso.nullable().default(null),
   notes: QuoteNotesInput,
   documentNotes: QuoteDocumentNotesInput,
+  lineItems: z.array(QuoteLineItemInput).default([]),
   selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
 });
 
@@ -189,6 +215,7 @@ export const QuoteUpdateInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
     documentNotes: QuoteDocumentNotesInput,
+    lineItems: z.array(QuoteLineItemInput).default([]),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
   .strict();

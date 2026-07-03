@@ -5,6 +5,7 @@ import {
   jobs,
   productAssemblies,
   products,
+  quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
   user,
@@ -138,6 +139,12 @@ const test = createTester(async ({ db }) => {
       quotedPrice: 125,
     },
   ]);
+  await db.insert(quoteLineItems).values({
+    name: 'Hydraulic hose',
+    quantity: 2,
+    quoteId: quote.id,
+    unitPrice: 150,
+  });
 
   return {
     customerId: customer.id,
@@ -482,6 +489,7 @@ describe('generateQuoteDocument', () => {
     const quoteCode = formatQuoteCode(context.quoteCode);
     const baseItem = rendered.document.lineItems.find((item) => item.kind === 'base');
     const optionalItem = rendered.document.lineItems.find((item) => item.kind === 'optional');
+    const lineItem = rendered.document.lineItems.find((item) => item.kind === 'lineItem');
 
     expect(document).toMatchObject({
       contentType: 'application/pdf',
@@ -522,14 +530,21 @@ describe('generateQuoteDocument', () => {
       kind: 'optional',
       quantity: 1,
     });
+    expect(lineItem).toMatchObject({
+      amount: 300,
+      descriptionLines: ['2 x Hydraulic hose'],
+      kind: 'lineItem',
+      quantity: 2,
+      unitPrice: 150,
+    });
     expect(rendered.document.staleSelectionNotes).toEqual(['Deleted Light Bar unavailable']);
     expect(rendered.document.notes).toEqual(['Confirm customer details before order processing.']);
     expect(rendered.document.paymentTerms).toBe('0% deposit');
     expect(rendered.document.transport).toBe('Included');
     expect(rendered.document.leadTime).toBe('14 working days');
-    expect(rendered.document.subtotal).toBe(1_250);
-    expect(rendered.document.vatAmount).toBe(187.5);
-    expect(rendered.document.total).toBe(1_437.5);
+    expect(rendered.document.subtotal).toBe(1_550);
+    expect(rendered.document.vatAmount).toBe(232.5);
+    expect(rendered.document.total).toBe(1_782.5);
 
     const events = await context.db.select().from(auditEvents);
     expect(events.slice(beforeEvents.length).map((event) => event.entityType)).toEqual(['document']);

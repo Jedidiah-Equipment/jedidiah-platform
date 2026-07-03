@@ -2088,6 +2088,91 @@ describe('jobs.moveSlot', () => {
   });
 });
 
+describe('jobs.update', () => {
+  test('updates description and VIN, blanking to null, and records one audit event per change', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+
+    await expect(
+      caller.jobs.update({
+        id: job.id,
+        description: 'Fit the extended tank before paint.',
+        vinNumber: 'VIN-123',
+      }),
+    ).resolves.toMatchObject({
+      job: {
+        id: job.id,
+        description: 'Fit the extended tank before paint.',
+        vinNumber: 'VIN-123',
+      },
+    });
+
+    await expect(
+      caller.jobs.update({
+        id: job.id,
+        description: '',
+        vinNumber: 'VIN-123',
+      }),
+    ).resolves.toMatchObject({
+      job: {
+        id: job.id,
+        description: null,
+        vinNumber: 'VIN-123',
+      },
+    });
+
+    const events = await context.db
+      .select()
+      .from(auditEvents)
+      .where(sql`${auditEvents.entityType} = 'job' AND ${auditEvents.action} = 'updated'`);
+    expect(events).toHaveLength(2);
+  });
+
+  test('skips the audit event when nothing changed', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+
+    await caller.jobs.update({ id: job.id, description: '', vinNumber: '' });
+
+    const events = await context.db
+      .select()
+      .from(auditEvents)
+      .where(sql`${auditEvents.entityType} = 'job' AND ${auditEvents.action} = 'updated'`);
+    expect(events).toHaveLength(0);
+  });
+
+  test('rejects callers without job update permission', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const job = await adminCaller.jobs.create({
+      quoteId: context.quote.id,
+    });
+
+    await expect(
+      context.createCaller(mockSession('job-viewer')).jobs.update({
+        id: job.id,
+        description: 'Job viewers cannot edit.',
+        vinNumber: '',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('rejects updates to a job that does not exist', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+
+    await expect(
+      caller.jobs.update({
+        id: '00000000-0000-4000-8000-000000000999',
+        description: 'Missing job.',
+        vinNumber: '',
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
 describe('jobs.removeSlot', () => {
   test('removes an authorized slot', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));

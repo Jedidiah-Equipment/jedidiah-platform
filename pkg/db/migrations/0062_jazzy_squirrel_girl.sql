@@ -1,0 +1,2 @@
+ALTER TABLE "job" ADD COLUMN "description" text;--> statement-breakpoint
+ALTER TABLE "job" ADD CONSTRAINT "job_description_nonempty" CHECK ("job"."description" IS NULL OR length(trim("job"."description")) > 0);

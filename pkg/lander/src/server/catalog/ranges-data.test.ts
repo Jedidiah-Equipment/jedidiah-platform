@@ -4,7 +4,7 @@ import { expect } from 'vitest';
 
 import { test } from '../../test/tester.js';
 import { toRangeLabel, toRangeSlug } from './products-data.js';
-import { loadFooterRanges, loadHomeRanges } from './ranges-data.js';
+import { loadFooterRanges, loadHomeRanges, loadProductRangeCount } from './ranges-data.js';
 
 test('loadHomeRanges returns Range name, blurb, and Products href from the database', async ({ db }) => {
   const [withBlurb] = await db
@@ -53,4 +53,10 @@ test('loadFooterRanges returns the top four Ranges as chip-matching label/slug l
   expect(footer).toEqual(
     ranges.slice(0, 4).map((range) => ({ label: toRangeLabel(range.name), slug: toRangeSlug(range.name) })),
   );
+});
+
+test('loadProductRangeCount returns the current number of Product Ranges', async ({ db }) => {
+  const { ranges } = await listProductRanges({ db });
+
+  expect(await loadProductRangeCount(db)).toBe(ranges.length);
 });

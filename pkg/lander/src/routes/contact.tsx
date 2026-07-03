@@ -302,7 +302,7 @@ function MapStrip() {
   return (
     <section className="relative h-[340px] overflow-hidden bg-[#cfcdc6]">
       <img
-        src="/range-ripper.jpg"
+        src="/hero-silage-harvest.jpg"
         alt=""
         aria-hidden="true"
         className="h-full w-full object-cover brightness-[0.7] grayscale-[0.6]"

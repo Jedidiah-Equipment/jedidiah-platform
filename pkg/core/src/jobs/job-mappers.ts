@@ -16,5 +16,6 @@ export function mapJob(row: JobRow): Job {
     quoteId: row.quoteId,
     updatedAt: row.updatedAt.toISOString(),
     vinNumber: row.vinNumber,
+    description: row.description,
   });
 }

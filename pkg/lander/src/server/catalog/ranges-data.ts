@@ -44,6 +44,12 @@ export async function loadFooterRanges(db: Db): Promise<FooterRange[]> {
   }));
 }
 
+export async function loadProductRangeCount(db: Db): Promise<number> {
+  const { ranges } = await listProductRanges({ db });
+
+  return ranges.length;
+}
+
 // Every Range label, in display order — the "Equipment of interest" options on the Contact form. Uses the
 // same chip-bar label helper so the names read consistently across the site.
 export async function loadRangeOptions(db: Db): Promise<string[]> {

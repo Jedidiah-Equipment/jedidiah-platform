@@ -382,6 +382,9 @@ export const ProductSerialNumber = ProductSerialNumberString;
 export type JobVinNumber = z.infer<typeof JobVinNumber>;
 export const JobVinNumber = nullableTrimmedText();
 
+export type JobDescription = z.infer<typeof JobDescription>;
+export const JobDescription = nullableTrimmedText();
+
 export function formatProductSerialNumber({
   prefix,
   sequence,
@@ -420,6 +423,7 @@ export const Job = z.object({
   productSerialYear: ProductSerialYear,
   quoteId: UUID,
   vinNumber: JobVinNumber,
+  description: JobDescription,
   createdAt: DateIso,
   updatedAt: DateIso,
 });
@@ -621,6 +625,20 @@ export const JobCreateInput = z
     quoteId: UUID,
   })
   .strict();
+
+export type JobUpdateInput = z.infer<typeof JobUpdateInput>;
+export const JobUpdateInput = z
+  .object({
+    id: UUID,
+    description: nullableTrimmedTextInput(),
+    vinNumber: nullableTrimmedTextInput(),
+  })
+  .strict();
+
+export type JobUpdateResult = z.infer<typeof JobUpdateResult>;
+export const JobUpdateResult = z.object({
+  job: Job,
+});
 
 export type JobListInput = z.infer<typeof JobListInput>;
 export const JobListInput = createSearchedSortedPagedQueryInput({

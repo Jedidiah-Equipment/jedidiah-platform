@@ -11,9 +11,10 @@ import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { JobAssemblies } from '@/components/bays/JobAssemblies';
 import { JobDocuments } from '@/components/bays/JobDocuments';
-import { JobFactsCard } from '@/components/bays/job-facts';
+import { FactCard, JobFactsCard } from '@/components/bays/job-facts';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
 import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
+import { JobFeedbackList } from '@/components/feedback/JobFeedbackList';
 import { ScheduleHeader } from '@/components/ScheduleHeader';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -301,6 +302,12 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
         </Text>
       </View>
 
+      {state.description ? (
+        <FactCard title="Description">
+          <Text className="text-sm leading-5 text-surface-foreground">{state.description}</Text>
+        </FactCard>
+      ) : null}
+
       <JobDocuments jobId={jobId} />
 
       <JobAssemblies jobId={jobId} />
@@ -312,6 +319,8 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
         productSerialNumber={state.productSerialNumber}
         quoteCode={state.quoteCode}
       />
+
+      <JobFeedbackList jobId={jobId} />
 
       <GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} />
     </View>

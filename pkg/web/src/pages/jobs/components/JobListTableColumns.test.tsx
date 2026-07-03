@@ -68,7 +68,7 @@ function renderJobListRows(rows: JobSummary[]) {
 
 function TestJobListTable({ rows }: { rows: JobSummary[] }) {
   const table = useReactTable({
-    columns: createJobListColumns({ canOpenJobs: false }),
+    columns: createJobListColumns({ canEditJobs: false, canOpenJobs: false }),
     data: rows,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -97,6 +97,7 @@ function buildJob(overrides: Partial<Record<keyof JobSummary, unknown>> = {}): J
     scheduleState: null,
     updatedAt: '2026-06-01T10:00:00.000Z',
     vinNumber: null,
+    description: null,
     ...overrides,
   });
 }

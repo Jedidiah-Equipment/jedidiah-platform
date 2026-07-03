@@ -40,6 +40,7 @@ export type JobDetailState =
       productSerialNumber: string;
       productThumbnailDataUrl: string | null;
       customerCompanyName: string | null;
+      description: string | null;
       /** The Job's Bays in department-pipeline order, each with its state, dates, and progress. */
       route: JobRouteStopCard[];
       /** Shared days-left + overall-progress projection; `null` once the Job has no unfinished Slot. */
@@ -111,6 +112,7 @@ export function useJobDetail(jobId: string): JobDetailState {
       productSerialNumber: job.productSerialNumber,
       productThumbnailDataUrl: job.productThumbnailDataUrl,
       customerCompanyName: job.customerCompanyName,
+      description: job.description,
       route,
       progress: deriveJobProgress({ slots: entries, today }),
       doneCount: route.filter((stop) => stop.state === 'done').length,

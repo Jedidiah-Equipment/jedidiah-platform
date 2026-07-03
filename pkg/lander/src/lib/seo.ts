@@ -9,7 +9,7 @@ export const SITE_URL = (import.meta.env.VITE_SITE_URL ?? 'https://jedidiahequip
 
 // Open Graph fallback for every page without its own image (Home, Products, About, Contact). The hero photo
 // ships in public/ and reads well as a representative brand card; product pages override it with their hero.
-export const DEFAULT_OG_IMAGE = '/hero-trailer.jpg';
+export const DEFAULT_OG_IMAGE = '/hero-silage-harvest.jpg';
 
 // Qualifies a root-relative path against the origin of the host serving this response. Open Graph and
 // Twitter Card scrapers (Slack, WhatsApp, X, LinkedIn, ...) do not resolve relative URLs in meta tags, so

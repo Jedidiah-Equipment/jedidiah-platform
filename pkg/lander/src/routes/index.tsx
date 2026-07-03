@@ -27,8 +27,8 @@ function Hero() {
     <section className="relative overflow-hidden bg-ink">
       <div className="absolute inset-0">
         <img
-          src="/hero-trailer.jpg"
-          alt="Jedidiah tipping trailer working in a field"
+          src="/hero-silage-harvest.jpg"
+          alt="Forage harvester filling a yellow Jedidiah trailer in a maize field"
           className="h-full w-full object-cover object-center"
         />
       </div>

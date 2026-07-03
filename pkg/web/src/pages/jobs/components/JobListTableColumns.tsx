@@ -1,9 +1,11 @@
 import { formatDate, isJobScheduleComplete } from '@pkg/domain';
 import type { JobSummary } from '@pkg/schema';
-import { IconCheck } from '@tabler/icons-react';
+import { IconCheck, IconPencil, IconTimeline } from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { Button } from '@/components/ui/button.js';
 
 import { JobCodeDisplay } from './JobCodeDisplay.js';
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
@@ -15,7 +17,13 @@ import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
  * display-only for now (no server sort/filter) and are derived from that same `scheduleState`
  * projection: the earliest Slot start, the latest Slot end, and whether every Slot is done.
  */
-export function createJobListColumns({ canOpenJobs }: { canOpenJobs: boolean }): ColumnDef<JobSummary>[] {
+export function createJobListColumns({
+  canEditJobs,
+  canOpenJobs,
+}: {
+  canEditJobs: boolean;
+  canOpenJobs: boolean;
+}): ColumnDef<JobSummary>[] {
   return [
     {
       accessorFn: (job) => job.code,
@@ -116,7 +124,48 @@ export function createJobListColumns({ canOpenJobs }: { canOpenJobs: boolean }):
         headerClassName: 'min-w-24',
       },
     },
+    ...(canOpenJobs
+      ? [
+          {
+            cell: ({ row }: { row: { original: JobSummary } }) => (
+              <JobActionsCell canEditJobs={canEditJobs} job={row.original} />
+            ),
+            enableColumnFilter: false,
+            enableSorting: false,
+            header: '',
+            id: 'actions',
+            meta: {
+              cellClassName: 'w-20',
+            },
+          } satisfies ColumnDef<JobSummary>,
+        ]
+      : []),
   ];
+}
+
+function JobActionsCell({ canEditJobs, job }: { canEditJobs: boolean; job: JobSummary }) {
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <Button
+        aria-label={`Open ${job.code} on the Gantt`}
+        render={<Link search={{ job: job.id }} to="/jobs" onClick={(event) => event.stopPropagation()} />}
+        size="icon"
+        variant="ghost"
+      >
+        <IconTimeline />
+      </Button>
+      {canEditJobs ? (
+        <Button
+          aria-label={`Edit ${job.code}`}
+          render={<Link params={{ id: job.id }} to="/jobs/$id/edit" onClick={(event) => event.stopPropagation()} />}
+          size="icon"
+          variant="ghost"
+        >
+          <IconPencil />
+        </Button>
+      ) : null}
+    </div>
+  );
 }
 
 function CompleteCell({ job }: { job: JobSummary }) {

@@ -146,10 +146,12 @@ export const jobs = pgTable(
     productSerialSequence: integer('product_serial_sequence').notNull(),
     productSerialNumber: text('product_serial_number').notNull(),
     vinNumber: text('vin_number'),
+    description: text('description'),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    check('job_description_nonempty', sql`${table.description} IS NULL OR length(trim(${table.description})) > 0`),
     check('job_product_serial_prefix_nonempty', sql`length(trim(${table.productSerialPrefix})) > 0`),
     check('job_product_serial_year_range', sql`${table.productSerialYear} >= 0 AND ${table.productSerialYear} <= 99`),
     check('job_product_serial_sequence_positive', sql`${table.productSerialSequence} > 0`),

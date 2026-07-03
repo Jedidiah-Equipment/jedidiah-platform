@@ -435,6 +435,13 @@
       "when": 1782918339895,
       "tag": "0061_fearless_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1783057538641,
+      "tag": "0062_jazzy_squirrel_girl",
+      "breakpoints": true
     }
   ]
 }

@@ -76,6 +76,7 @@ describe('Job', () => {
         productSerialSequence: 9,
         productSerialYear: 26,
         quoteId: '00000000-0000-4000-8000-000000000003',
+        description: null,
         updatedAt: '2026-06-01T00:00:00.000Z',
         vinNumber: null,
       }),

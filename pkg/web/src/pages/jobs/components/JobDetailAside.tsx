@@ -1,15 +1,18 @@
 import { departmentLabels, formatDate, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import type { JobDetail, JobDocument, UUID } from '@pkg/schema';
-import { IconX } from '@tabler/icons-react';
+import { IconPencil, IconX } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import type React from 'react';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
 import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton.js';
+import { JobFeedbackList } from '@/components/feedback/JobFeedbackList.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { useCan } from '@/hooks/use-access.js';
 import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { findJobScheduleSummary, type JobScheduleSummary } from './board-summary.js';
@@ -57,15 +60,15 @@ export const JobDetailAside: React.FC<JobDetailAsideProps> = ({ bayId, jobId, on
       <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
 
       {job ? (
-        <GiveFeedbackButton
-          className="self-start"
-          subject={{ subjectType: 'job', jobId: job.id }}
-          subjectLabel={job.code}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <GiveFeedbackButton subject={{ subjectType: 'job', jobId: job.id }} subjectLabel={job.code} />
+          <JobEditLink jobId={job.id} />
+        </div>
       ) : null}
 
       {schedule ? <SlotSection schedule={schedule} /> : null}
       {job ? <JobSection job={job} /> : null}
+      {job ? <JobFeedbackSection jobId={job.id} /> : null}
       {job ? <JobScheduleSection job={job} /> : null}
       {job ? <JobDocuments documents={job.documents} jobId={job.id} /> : null}
 
@@ -106,6 +109,21 @@ const OperatorValue: React.FC<{ operator: NonNullable<JobScheduleSummary['curren
   </span>
 );
 
+const JobEditLink: React.FC<{ jobId: UUID }> = ({ jobId }) => {
+  const canEditJobs = useCan('job:update').can;
+
+  if (!canEditJobs) {
+    return null;
+  }
+
+  return (
+    <Button render={<Link params={{ id: jobId }} to="/jobs/$id/edit" />} size="sm" variant="outline">
+      <IconPencil data-icon="inline-start" />
+      Edit Job
+    </Button>
+  );
+};
+
 const JobSection: React.FC<{ job: JobDetail }> = ({ job }) => (
   <Section title="Job">
     <InfoList>
@@ -114,7 +132,15 @@ const JobSection: React.FC<{ job: JobDetail }> = ({ job }) => (
       <InfoRow label="Product serial" value={job.productSerialNumber} />
       <InfoRow label="Customer" value={job.customerCompanyName ?? 'Customer unavailable'} />
       <InfoRow label="Product" value={job.productName} />
+      {job.vinNumber ? <InfoRow label="VIN number" value={job.vinNumber} /> : null}
     </InfoList>
+    {job.description ? <p className="whitespace-pre-wrap text-sm leading-6">{job.description}</p> : null}
+  </Section>
+);
+
+const JobFeedbackSection: React.FC<{ jobId: UUID }> = ({ jobId }) => (
+  <Section title="Feedback">
+    <JobFeedbackList jobId={jobId} />
   </Section>
 );
 

@@ -25,7 +25,7 @@ function PageHeader() {
   return (
     <section className="relative overflow-hidden bg-ink">
       <img
-        src="/hero-trailer.jpg"
+        src="/hero-silage-harvest.jpg"
         alt=""
         aria-hidden="true"
         className="absolute top-0 right-0 h-full w-[48%] object-cover opacity-35 max-nav:w-full max-nav:opacity-20"

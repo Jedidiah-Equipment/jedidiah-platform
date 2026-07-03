@@ -1,4 +1,4 @@
-import { departmentLabels } from '@pkg/domain';
+import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain';
 import {
   AuthId,
   DEPARTMENTS,
@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { FeedbackVisibilityBanner } from '@/components/feedback/FeedbackVisibilityBanner.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -121,7 +122,7 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
         }}
         onOpenChange={setOpen}
         open={open}
-        submitLabel="Submit feedback"
+        submitLabel={(values) => getFeedbackVisibilityNotice(values.kind, subject.subjectType).submitLabel}
         title="Send feedback"
         validator={FeedbackFormValues}
       >
@@ -130,6 +131,9 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
             <form.AppField name="kind">
               {(field) => <field.SelectField label="Kind" options={FEEDBACK_KIND_OPTIONS} />}
             </form.AppField>
+            <form.Subscribe selector={(state) => state.values.kind}>
+              {(kind) => <FeedbackVisibilityBanner kind={kind} subjectType={subject.subjectType} />}
+            </form.Subscribe>
             <form.Subscribe selector={(state) => state.values.kind}>
               {(kind) =>
                 kind === 'corrective-feedback-department' ? (

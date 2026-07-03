@@ -1,6 +1,7 @@
 import { hasPermission } from '@pkg/domain';
 import { type JobListInput, JobSortBy } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
@@ -49,8 +50,10 @@ export const JobListPage: React.FC = () => (
 
 const JobListTable: React.FC = () => {
   const trpc = useTRPC();
+  const navigate = useNavigate();
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
+  const canEditJobs = hasPermission(accessQuery.data, 'job:update');
   const [unscheduledOnly, setUnscheduledOnly] = useState(false);
 
   const getListInputExtras = useCallback(
@@ -83,7 +86,7 @@ const JobListTable: React.FC = () => {
     total,
   });
 
-  const columns = useMemo(() => createJobListColumns({ canOpenJobs }), [canOpenJobs]);
+  const columns = useMemo(() => createJobListColumns({ canEditJobs, canOpenJobs }), [canEditJobs, canOpenJobs]);
 
   const table = useReactTable({
     columns,
@@ -116,6 +119,7 @@ const JobListTable: React.FC = () => {
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
       isLoading={isLoading}
+      onRowClick={canOpenJobs ? (job) => void navigate({ search: { job: job.id }, to: '/jobs' }) : undefined}
       rightSection={
         <label
           className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"

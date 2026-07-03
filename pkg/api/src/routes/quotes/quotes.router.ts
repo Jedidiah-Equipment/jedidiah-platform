@@ -170,6 +170,7 @@ function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreErr
         code: 'BAD_REQUEST',
         message: 'Quote includes an invalid customer, product, or salesperson.',
       };
+    case 'quote.offering_invariant':
     case 'quote.custom_selected_assemblies':
     case 'quote.locked':
     case 'quote.document_generation_not_allowed':

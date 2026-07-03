@@ -27,6 +27,17 @@ export class QuoteInvalidReferenceError extends Error {
   }
 }
 
+// Raised when a persisted Quote row violates the product/custom offering shape the DB constraint
+// guarantees (e.g. a custom Quote missing its Work Title). A true invariant, not user-facing input.
+export class QuoteOfferingInvariantError extends Error {
+  readonly code = 'quote.offering_invariant';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteOfferingInvariantError';
+  }
+}
+
 export class QuoteCustomSelectedAssembliesError extends Error {
   readonly code = 'quote.custom_selected_assemblies';
 
@@ -69,6 +80,7 @@ export type QuoteCoreError =
   | QuoteDraftEmailRecipientMissingError
   | QuoteDiscountInvalidError
   | QuoteInvalidReferenceError
+  | QuoteOfferingInvariantError
   | QuoteLockedError
   | QuoteNotFoundError;
 
@@ -79,6 +91,7 @@ export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
     error instanceof QuoteCustomSelectedAssembliesError ||
     error instanceof QuoteDiscountInvalidError ||
     error instanceof QuoteInvalidReferenceError ||
+    error instanceof QuoteOfferingInvariantError ||
     error instanceof QuoteLockedError ||
     error instanceof QuoteNotFoundError
   );

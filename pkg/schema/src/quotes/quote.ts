@@ -51,14 +51,12 @@ export const QuoteDepositPercent = z.number().min(0, 'Must be zero or greater').
 export type QuoteDiscountPercent = z.infer<typeof QuoteDiscountPercent>;
 export const QuoteDiscountPercent = z.number().min(0, 'Must be zero or greater').max(100, 'Must be 100 or less');
 
-export type Quote = z.infer<typeof Quote>;
-export const Quote = z.object({
+// The product/custom discriminator is a single wire-flat model: `kind`, `productId`, and `workTitle`
+// stay top-level columns, but each `kind` pins the other two so consumers narrow instead of re-guarding.
+const quoteBaseShape = {
   id: UUID,
   code: QuoteCode,
   customerId: UUID,
-  kind: QuoteKind,
-  workTitle: QuoteWorkTitle.nullable(),
-  productId: UUID.nullable(),
   salesPersonId: AuthId,
   status: QuoteStatus,
   statusChangedAt: DateIso,
@@ -75,7 +73,31 @@ export const Quote = z.object({
   quotedCurrencyCode: ProductCurrencyCode,
   createdAt: DateIso,
   updatedAt: DateIso,
-});
+};
+
+const quoteProductOfferingShape = {
+  kind: z.literal('product'),
+  productId: UUID,
+  workTitle: z.null(),
+};
+
+const quoteCustomOfferingShape = {
+  kind: z.literal('custom'),
+  productId: z.null(),
+  workTitle: QuoteWorkTitle,
+};
+
+export type QuoteOffering = z.infer<typeof QuoteOffering>;
+export const QuoteOffering = z.discriminatedUnion('kind', [
+  z.object(quoteProductOfferingShape),
+  z.object(quoteCustomOfferingShape),
+]);
+
+export type Quote = z.infer<typeof Quote>;
+export const Quote = z.discriminatedUnion('kind', [
+  z.object({ ...quoteBaseShape, ...quoteProductOfferingShape }),
+  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape }),
+]);
 
 export type QuoteLinkedJob = z.infer<typeof QuoteLinkedJob>;
 export const QuoteLinkedJob = z.object({
@@ -130,8 +152,7 @@ export const QuoteLineItemInput = z.object({
   unitPrice: z.coerce.number().pipe(Price),
 });
 
-export type QuoteSummary = z.infer<typeof QuoteSummary>;
-export const QuoteSummary = Quote.extend({
+const quoteSummaryShape = {
   customerCompanyName: z.string().trim().min(1),
   customerThumbnailDataUrl: NullableThumbnailDataUrl,
   job: QuoteLinkedJob.nullable(),
@@ -144,17 +165,30 @@ export const QuoteSummary = Quote.extend({
   salesPersonThumbnailDataUrl: NullableThumbnailDataUrl,
   lineItems: z.array(QuoteLineItem),
   selectedAssemblies: z.array(QuoteSelectedAssembly),
-});
+};
+
+export type QuoteSummary = z.infer<typeof QuoteSummary>;
+export const QuoteSummary = z.discriminatedUnion('kind', [
+  z.object({ ...quoteBaseShape, ...quoteProductOfferingShape, ...quoteSummaryShape }),
+  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteSummaryShape }),
+]);
 
 export type PriorityQuote = z.infer<typeof PriorityQuote>;
-export const PriorityQuote = QuoteSummary.extend({
-  earliestDeliveryDate: DateOnlyIso,
-});
+export const PriorityQuote = z.discriminatedUnion('kind', [
+  z.object({
+    ...quoteBaseShape,
+    ...quoteProductOfferingShape,
+    ...quoteSummaryShape,
+    earliestDeliveryDate: DateOnlyIso,
+  }),
+  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteSummaryShape, earliestDeliveryDate: DateOnlyIso }),
+]);
 
 export type UpcomingDeliveryQuote = z.infer<typeof UpcomingDeliveryQuote>;
-export const UpcomingDeliveryQuote = QuoteSummary.extend({
-  plannedDeliveryDate: DateOnlyIso,
-});
+export const UpcomingDeliveryQuote = z.discriminatedUnion('kind', [
+  z.object({ ...quoteBaseShape, ...quoteProductOfferingShape, ...quoteSummaryShape, plannedDeliveryDate: DateOnlyIso }),
+  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteSummaryShape, plannedDeliveryDate: DateOnlyIso }),
+]);
 
 export type UpcomingDeliveryQuotesResult = z.infer<typeof UpcomingDeliveryQuotesResult>;
 export const UpcomingDeliveryQuotesResult = z.object({
@@ -163,8 +197,8 @@ export const UpcomingDeliveryQuotesResult = z.object({
   windowEndDate: DateOnlyIso,
 });
 
-export type QuoteDetail = z.infer<typeof QuoteDetail>;
-export const QuoteDetail = QuoteSummary.extend({
+const quoteDetailShape = {
+  ...quoteSummaryShape,
   customerAddress: CustomerOptionalText,
   customerContactPerson: CustomerOptionalText,
   customerEmail: CustomerEmail.nullable(),
@@ -175,7 +209,13 @@ export const QuoteDetail = QuoteSummary.extend({
   productDescription: ProductDescription.nullable(),
   productRequiresVinNumber: ProductRequiresVinNumber.nullable(),
   productThumbnailDataUrl: NullableThumbnailDataUrl,
-});
+};
+
+export type QuoteDetail = z.infer<typeof QuoteDetail>;
+export const QuoteDetail = z.discriminatedUnion('kind', [
+  z.object({ ...quoteBaseShape, ...quoteProductOfferingShape, ...quoteDetailShape }),
+  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteDetailShape }),
+]);
 
 export type QuoteCustomerInput = z.infer<typeof QuoteCustomerInput>;
 export const QuoteCustomerInput = z.discriminatedUnion('type', [

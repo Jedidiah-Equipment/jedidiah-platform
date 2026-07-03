@@ -7,6 +7,7 @@ import {
   createJobBay,
   getJob,
   isJobCoreError,
+  isQuoteCoreError,
   type JobCoreError,
   listBayOperatorAssignmentHistory,
   listBayOperators,
@@ -15,6 +16,7 @@ import {
   listJobs,
   moveJobSlot,
   previewBoard,
+  type QuoteCoreError,
   removeBayCalendarException,
   removeJobSlot,
   renameJobBay,
@@ -117,7 +119,7 @@ export const jobsRouter = router({
   create: authorizedProcedure('job:create')
     .input(JobCreateInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
+      mapCreateJobErrors(() =>
         createJob({
           actorUserId: ctx.session.user.id,
           brochureRenderer: renderBrochurePdf,
@@ -167,6 +169,27 @@ export const jobsRouter = router({
 
 async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapKnownCoreError(action, isJobCoreError, mapJobCoreError);
+}
+
+// Job creation reads a Quote, so a Quote offering invariant can surface here; map it alongside job errors.
+async function mapCreateJobErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapJobErrors(() => mapKnownCoreError(action, isQuoteCoreError, mapJobQuoteCoreError));
+}
+
+function mapJobQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreError['code']> {
+  if (error.code === 'quote.not_found') {
+    return {
+      appCode: error.code,
+      code: 'NOT_FOUND',
+      message: 'Quote not found.',
+    };
+  }
+
+  return {
+    appCode: error.code,
+    code: 'BAD_REQUEST',
+    message: error.message,
+  };
 }
 
 function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['code']> {

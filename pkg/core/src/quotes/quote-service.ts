@@ -41,7 +41,7 @@ import {
   type QuoteSortBy,
   type QuoteSummary,
   type QuoteUpdateInput,
-  type UpcomingDeliveryQuote,
+  UpcomingDeliveryQuote,
   UpcomingDeliveryQuotesResult,
   type UserListResult,
   UserSummary,
@@ -73,6 +73,7 @@ import {
   persistQuoteLineItems,
   type QuoteLineItemRow,
 } from './quote-line-items.js';
+import { narrowQuoteOffering } from './quote-offering.js';
 import {
   getSelectedAssembliesByQuoteId,
   listQuoteSelectedAssemblies,
@@ -190,12 +191,10 @@ export function mapQuote(row: QuoteRow): Quote {
     deliveryPrice: row.deliveryPrice,
     discountPercent: row.discountPercent,
     id: row.id,
-    kind: row.kind,
     notes: row.notes,
     documentNotes: row.documentNotes,
     plannedDeliveryDate: row.plannedDeliveryDate,
     preferredDeliveryDate: row.preferredDeliveryDate,
-    productId: row.productId,
     quotedBasePrice: row.quotedBasePrice,
     quotedCurrencyCode: row.quotedCurrencyCode,
     salesPersonId: row.salesPersonId,
@@ -203,7 +202,7 @@ export function mapQuote(row: QuoteRow): Quote {
     statusChangedAt: row.statusChangedAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     validUntil: row.validUntil,
-    workTitle: row.workTitle,
+    ...narrowQuoteOffering(row),
   });
 }
 
@@ -249,13 +248,14 @@ export async function createQuote({
       throw new Error('Quote insert did not return a row');
     }
 
+    const persistedOffering = narrowQuoteOffering(row);
     const selectedAssemblies =
-      row.kind === 'product' && row.productId
+      persistedOffering.kind === 'product'
         ? await persistQuoteSelectedAssemblies({
             quoteId: row.id,
             resolved: await resolveQuoteSelectedAssemblies({
               input,
-              productId: row.productId,
+              productId: persistedOffering.productId,
               quoteId: row.id,
               tx,
             }),
@@ -507,9 +507,10 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
     throw new QuoteNotFoundError(id);
   }
 
+  const offering = narrowQuoteOffering(row);
   const [assemblies, productBaysForQuote] = await Promise.all([
-    row.product && row.productId ? listAssemblies({ tx: db, productId: row.productId }) : Promise.resolve([]),
-    row.product && row.productId ? listProductBays({ db, productId: row.productId }) : Promise.resolve([]),
+    offering.kind === 'product' ? listAssemblies({ tx: db, productId: offering.productId }) : Promise.resolve([]),
+    offering.kind === 'product' ? listProductBays({ db, productId: offering.productId }) : Promise.resolve([]),
   ]);
 
   return mapQuoteDetail(row, assemblies, productBaysForQuote);
@@ -643,12 +644,13 @@ export async function updateQuote({
     };
     const after = { ...before, ...patch };
     const nextLineItems = input.lineItems ?? beforeLineItems;
+    const beforeOffering = narrowQuoteOffering(before);
     const resolved =
-      before.kind === 'product' && before.productId
+      beforeOffering.kind === 'product'
         ? await resolveQuoteSelectedAssemblies({
             currentRows: beforeSelectedAssemblies,
             input,
-            productId: before.productId,
+            productId: beforeOffering.productId,
             quoteId: before.id,
             tx,
           })
@@ -750,10 +752,12 @@ function mapUpcomingDeliveryQuote(
 ): UpcomingDeliveryQuote {
   const summary = mapQuoteSummary(row, job, lineItems, selectedAssemblies);
 
-  return {
+  // Spread narrows `plannedDeliveryDate` from nullable to required, which the discriminated-union
+  // return type only correlates through a parse.
+  return UpcomingDeliveryQuote.parse({
     ...summary,
     plannedDeliveryDate: DateOnlyIso.parse(row.quote.plannedDeliveryDate),
-  };
+  });
 }
 
 function mapQuoteDetail(

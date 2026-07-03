@@ -31,6 +31,7 @@ import {
   ProductSerialPrefix,
   ProductSerialSequence,
   ProductSerialYear,
+  type QuoteOffering,
   type RemoveJobSlotInput,
   RemoveJobSlotResult,
   type ResizeJobSlotInput,
@@ -50,15 +51,26 @@ import { documentBaseSelect } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { snapshotJobBrochureDocument } from '../products/product-brochure-document.js';
+import { narrowQuoteOffering } from '../quotes/quote-offering.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
 import { JobCreateFromQuoteDeniedError, JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 
-type ProductQuoteForJobCreate = typeof quotes.$inferSelect & { kind: 'product'; productId: UUID };
-type CustomQuoteForJobCreate = typeof quotes.$inferSelect & { kind: 'custom'; productId: null };
-type QuoteForJobCreate = ProductQuoteForJobCreate | CustomQuoteForJobCreate;
+type QuoteRow = typeof quotes.$inferSelect;
+
+// A Job's inputs resolved once at the quote boundary. `kind` alone drives every downstream branch: the
+// product variant carries the serial + CFO facts a custom Job never has, so no site re-checks `productId`.
+type JobBlueprint =
+  | {
+      kind: 'product';
+      quote: QuoteRow;
+      productId: UUID;
+      serial: Awaited<ReturnType<typeof createProductSerial>>;
+      cfo: Awaited<ReturnType<typeof buildJobCfoForQuote>>;
+    }
+  | { kind: 'custom'; quote: QuoteRow };
 
 export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityType: 'job',
@@ -100,29 +112,15 @@ export async function createJob({
   storage: StorageAdapter;
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
-    const quote = await validateJobQuoteForCreate({ quoteId: input.quoteId, tx });
     const plantToday = getPlantDateNow();
-    const productJobFacts =
-      quote.kind === 'product'
-        ? {
-            cfo: await buildJobCfoForQuote({ productId: quote.productId, quoteId: quote.id, tx }),
-            productSerial: await createProductSerial({
-              productId: quote.productId,
-              tx,
-              plantToday,
-            }),
-          }
-        : null;
+    const blueprint = await resolveJobBlueprint({ plantToday, quoteId: input.quoteId, tx });
 
     const [job] = await tx
       .insert(jobs)
       .values({
-        productId: quote.productId,
-        productSerialNumber: productJobFacts?.productSerial.number ?? null,
-        productSerialPrefix: productJobFacts?.productSerial.prefix ?? null,
-        productSerialSequence: productJobFacts?.productSerial.sequence ?? null,
-        productSerialYear: productJobFacts?.productSerial.year ?? null,
-        quoteId: quote.id,
+        productId: blueprint.kind === 'product' ? blueprint.productId : null,
+        ...serialColumns(blueprint),
+        quoteId: blueprint.quote.id,
       })
       .returning();
 
@@ -130,8 +128,8 @@ export async function createJob({
       throw new Error('Job insert did not return a row');
     }
 
-    if (productJobFacts) {
-      await insertJobCfo({ cfo: productJobFacts.cfo, jobId: job.id, tx });
+    if (blueprint.kind === 'product') {
+      await insertJobCfo({ cfo: blueprint.cfo, jobId: job.id, tx });
     }
 
     // Canonical lock order: concurrent creates seeding the same Bays must not deadlock.
@@ -143,7 +141,7 @@ export async function createJob({
       await queue.book({ durationDays: seed.durationDays, jobId: job.id, kind: 'work' }, { startDate: seed.startDate });
     }
 
-    if (quote.kind === 'product') {
+    if (blueprint.kind === 'product') {
       // Snapshot documents only after the abort-prone bay seeding succeeds: generating the Brochure
       // writes a PDF to (non-transactional) storage, so a later rollback would orphan that object.
       await snapshotJobDocuments({
@@ -151,7 +149,7 @@ export async function createJob({
         brochureRenderer,
         db,
         jobId: job.id,
-        productId: quote.productId,
+        productId: blueprint.productId,
         storage,
         tx,
       });
@@ -161,6 +159,45 @@ export async function createJob({
 
     return getJob({ db: tx, id: job.id });
   });
+}
+
+async function resolveJobBlueprint({
+  plantToday,
+  quoteId,
+  tx,
+}: {
+  plantToday: DateOnlyIso;
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<JobBlueprint> {
+  const { offering, quote } = await validateJobQuoteForCreate({ quoteId, tx });
+
+  if (offering.kind === 'custom') {
+    return { kind: 'custom', quote };
+  }
+
+  const cfo = await buildJobCfoForQuote({ productId: offering.productId, quoteId: quote.id, tx });
+  const serial = await createProductSerial({ plantToday, productId: offering.productId, tx });
+
+  return { kind: 'product', quote, productId: offering.productId, serial, cfo };
+}
+
+function serialColumns(blueprint: JobBlueprint) {
+  if (blueprint.kind === 'product') {
+    return {
+      productSerialNumber: blueprint.serial.number,
+      productSerialPrefix: blueprint.serial.prefix,
+      productSerialSequence: blueprint.serial.sequence,
+      productSerialYear: blueprint.serial.year,
+    };
+  }
+
+  return {
+    productSerialNumber: null,
+    productSerialPrefix: null,
+    productSerialSequence: null,
+    productSerialYear: null,
+  };
 }
 
 export async function updateJob({
@@ -379,28 +416,26 @@ async function validateJobQuoteForCreate({
 }: {
   quoteId: UUID;
   tx: DatabaseTransaction;
-}): Promise<QuoteForJobCreate> {
+}): Promise<{ offering: QuoteOffering; quote: QuoteRow }> {
   const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
   if (!quote) {
     throw new JobCreateFromQuoteDeniedError('Quote not found.');
   }
 
+  const offering = narrowQuoteOffering(quote);
+
   const allowed =
-    quote.kind === 'product'
+    offering.kind === 'product'
       ? quote.status === 'accepted'
       : quote.status === 'draft' || quote.status === 'sent' || quote.status === 'accepted';
 
   if (!allowed) {
     throw new JobCreateFromQuoteDeniedError(
-      quote.kind === 'product'
+      offering.kind === 'product'
         ? 'Only accepted quotes can start a Job.'
         : 'Rejected or cancelled quotes cannot start a Job.',
     );
-  }
-
-  if (quote.kind === 'product' && !quote.productId) {
-    throw new JobCreateFromQuoteDeniedError('Product not found.');
   }
 
   const [existingJob] = await tx
@@ -415,7 +450,7 @@ async function validateJobQuoteForCreate({
     throw new JobCreateFromQuoteDeniedError('Quote already has a Job.');
   }
 
-  return quote as QuoteForJobCreate;
+  return { offering, quote };
 }
 
 async function buildJobCfoForQuote({

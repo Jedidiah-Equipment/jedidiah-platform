@@ -11,6 +11,7 @@ import {
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
+import { SandWatermarkSection } from '../components/sand-watermark-section.js';
 import { captureEvent } from '../lib/analytics.js';
 import { seoHead } from '../lib/seo.js';
 import { getRangeOptions } from '../server/catalog/ranges.js';
@@ -305,7 +306,7 @@ function MapStrip() {
         src="/hero-silage-harvest.jpg"
         alt=""
         aria-hidden="true"
-        className="h-full w-full object-cover brightness-[0.7] grayscale-[0.6]"
+        className="h-full w-full scale-[1.01] object-cover brightness-[0.7] grayscale-[0.6] blur-[1.5px]"
       />
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="bg-ink px-9 py-[26px] text-center">
@@ -326,12 +327,14 @@ function ContactPage() {
   return (
     <main className="bg-sand">
       <Header />
-      <section className="mx-auto grid max-w-[1320px] grid-cols-[1.25fr_1fr] items-start gap-14 px-12 pt-18 pb-22 max-nav:grid-cols-1 max-nav:gap-7 max-nav:px-5 max-nav:py-11">
-        <div className="border border-line bg-white px-11 pt-11 pb-12 shadow-[0_1px_3px_rgba(0,0,0,0.06)] max-nav:px-[22px] max-nav:pt-7 max-nav:pb-8">
-          <EnquiryForm equipmentOptions={equipmentOptions} />
+      <SandWatermarkSection variant="contact" className="pt-18 pb-22 max-nav:py-11">
+        <div className="mx-auto grid max-w-[1320px] grid-cols-[1.25fr_1fr] items-start gap-14 px-12 max-nav:grid-cols-1 max-nav:gap-7 max-nav:px-5">
+          <div className="border border-line bg-white px-11 pt-11 pb-12 shadow-[0_1px_3px_rgba(0,0,0,0.06)] max-nav:px-[22px] max-nav:pt-7 max-nav:pb-8">
+            <EnquiryForm equipmentOptions={equipmentOptions} />
+          </div>
+          <ContactInfo />
         </div>
-        <ContactInfo />
-      </section>
+      </SandWatermarkSection>
       <MapStrip />
     </main>
   );

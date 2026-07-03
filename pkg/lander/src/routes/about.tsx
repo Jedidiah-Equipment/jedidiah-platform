@@ -2,6 +2,7 @@ import { IconArrowRight } from '@tabler/icons-react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 
 import { PageHero } from '../components/page-hero.js';
+import { SandWatermarkSection } from '../components/sand-watermark-section.js';
 import { seoHead } from '../lib/seo.js';
 import { getProductRangeCount } from '../server/catalog/ranges.js';
 
@@ -73,40 +74,42 @@ function Header() {
 
 function Story() {
   return (
-    <section className="mx-auto max-w-[1320px] px-12 py-22 max-nav:px-5 max-nav:py-14">
-      <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-14 max-nav:grid-cols-1 max-nav:gap-7">
-        <div>
-          <Eyebrow label="Our Story" color="text-[#8a7a2a]" />
-          <h2 className="m-0 font-display text-[46px] font-extrabold uppercase leading-[0.98] tracking-[0.5px] text-ink max-nav:text-[34px]">
-            Born on the farm, proven in the field
-          </h2>
+    <SandWatermarkSection variant="about-story" className="py-22 max-nav:py-14">
+      <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
+        <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-14 max-nav:grid-cols-1 max-nav:gap-7">
+          <div>
+            <Eyebrow label="Our Story" color="text-[#8a7a2a]" />
+            <h2 className="m-0 font-display text-[46px] font-extrabold uppercase leading-[0.98] tracking-[0.5px] text-ink max-nav:text-[34px]">
+              Born on the farm, proven in the field
+            </h2>
+          </div>
+          <div>
+            <p className="m-0 mb-[18px] font-body text-[17px] leading-[1.75] text-[#555]">
+              Jedidiah began in 2008 with a single bulldozer and a willingness to take on the work others wouldn't.
+              Earthworks led to land preparation, slurry spreading, silage harvesting and planting — and with every
+              season came a deeper understanding of what farm equipment actually needs to survive.
+            </p>
+            <p className="m-0 mb-[18px] font-body text-[17px] leading-[1.75] text-[#555]">
+              When the implements on the market couldn't keep up, we started building our own. What began as repairs and
+              modifications grew into purpose-built machines designed around the realities of South African farming.
+            </p>
+            <p className="m-0 font-body text-[17px] leading-[1.75] text-[#555]">
+              Today we design and manufacture a complete range of trailers, tanks, tillage and planting equipment —
+              engineered for strength, durability and long-term performance, and backed by people who farm.
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="m-0 mb-[18px] font-body text-[17px] leading-[1.75] text-[#555]">
-            Jedidiah began in 2008 with a single bulldozer and a willingness to take on the work others wouldn't.
-            Earthworks led to land preparation, slurry spreading, silage harvesting and planting — and with every season
-            came a deeper understanding of what farm equipment actually needs to survive.
-          </p>
-          <p className="m-0 mb-[18px] font-body text-[17px] leading-[1.75] text-[#555]">
-            When the implements on the market couldn't keep up, we started building our own. What began as repairs and
-            modifications grew into purpose-built machines designed around the realities of South African farming.
-          </p>
-          <p className="m-0 font-body text-[17px] leading-[1.75] text-[#555]">
-            Today we design and manufacture a complete range of trailers, tanks, tillage and planting equipment —
-            engineered for strength, durability and long-term performance, and backed by people who farm.
-          </p>
-        </div>
+        <figure className="mt-14 max-nav:mt-9">
+          <div className="aspect-[2048/946] overflow-hidden border border-line bg-[#dcdcd6]">
+            <img
+              src="/about-staff.webp"
+              alt="Jedidiah Equipment team standing outside the workshop"
+              className="h-full w-full object-cover"
+            />
+          </div>
+        </figure>
       </div>
-      <figure className="mt-14 max-nav:mt-9">
-        <div className="aspect-[2048/946] overflow-hidden border border-line bg-[#dcdcd6]">
-          <img
-            src="/about-staff.webp"
-            alt="Jedidiah Equipment team standing outside the workshop"
-            className="h-full w-full object-cover"
-          />
-        </div>
-      </figure>
-    </section>
+    </SandWatermarkSection>
   );
 }
 
@@ -136,25 +139,27 @@ function StatsBand({ productRangeCount }: { productRangeCount: number }) {
 
 function Values() {
   return (
-    <section className="mx-auto max-w-[1320px] px-12 py-22 max-nav:px-5 max-nav:py-14">
-      <Eyebrow label="What sets us apart" color="text-[#8a7a2a]" />
-      <h2 className="m-0 mb-11 font-display text-[46px] font-extrabold uppercase leading-[0.98] tracking-[0.5px] text-ink max-nav:text-[34px]">
-        Built different on purpose
-      </h2>
-      <div className="grid grid-cols-3 gap-6 max-nav:grid-cols-1">
-        {VALUES.map((value) => (
-          <div key={value.num} className="border border-line bg-white px-[30px] py-[34px]">
-            <div className="mb-[22px] flex h-14 w-14 items-center justify-center bg-ink">
-              <span className="font-display text-[26px] font-extrabold text-yellow">{value.num}</span>
+    <SandWatermarkSection variant="about-values" className="py-22 max-nav:py-14">
+      <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
+        <Eyebrow label="What sets us apart" color="text-[#8a7a2a]" />
+        <h2 className="m-0 mb-11 font-display text-[46px] font-extrabold uppercase leading-[0.98] tracking-[0.5px] text-ink max-nav:text-[34px]">
+          Built different on purpose
+        </h2>
+        <div className="grid grid-cols-3 gap-6 max-nav:grid-cols-1">
+          {VALUES.map((value) => (
+            <div key={value.num} className="border border-line bg-white px-[30px] py-[34px]">
+              <div className="mb-[22px] flex h-14 w-14 items-center justify-center bg-ink">
+                <span className="font-display text-[26px] font-extrabold text-yellow">{value.num}</span>
+              </div>
+              <h3 className="m-0 mb-3 font-display text-[24px] font-bold uppercase tracking-[0.5px] text-ink">
+                {value.title}
+              </h3>
+              <p className="m-0 font-body text-[15.5px] leading-[1.65] text-[#666]">{value.body}</p>
             </div>
-            <h3 className="m-0 mb-3 font-display text-[24px] font-bold uppercase tracking-[0.5px] text-ink">
-              {value.title}
-            </h3>
-            <p className="m-0 font-body text-[15.5px] leading-[1.65] text-[#666]">{value.body}</p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </section>
+    </SandWatermarkSection>
   );
 }
 

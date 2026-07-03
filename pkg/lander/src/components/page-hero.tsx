@@ -13,10 +13,10 @@ export function PageHero({ children, eyebrow, title }: PageHeroProps) {
         src="/hero-silage-harvest.jpg"
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-cover object-[58%_52%]"
+        className="absolute inset-0 h-full w-full scale-[1.01] object-cover object-[58%_52%] blur-[1.5px]"
       />
-      <div className="absolute inset-0 bg-ink/40" />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,15,15,0.82)_0%,rgba(15,15,15,0.64)_34%,rgba(15,15,15,0.28)_68%,rgba(15,15,15,0.48)_100%)] max-nav:bg-[linear-gradient(180deg,rgba(15,15,15,0.84)_0%,rgba(15,15,15,0.64)_100%)]" />
+      <div className="absolute inset-0 bg-ink/55" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,15,15,0.92)_0%,rgba(15,15,15,0.76)_34%,rgba(15,15,15,0.48)_68%,rgba(15,15,15,0.62)_100%)] max-nav:bg-[linear-gradient(180deg,rgba(15,15,15,0.92)_0%,rgba(15,15,15,0.76)_100%)]" />
       <div className="relative mx-auto flex min-h-[430px] max-w-[1320px] items-center px-12 py-18 max-nav:min-h-[360px] max-nav:px-5 max-nav:py-13">
         <div>
           <div className="mb-4 flex items-center gap-3.5">

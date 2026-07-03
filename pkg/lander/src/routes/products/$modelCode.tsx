@@ -11,6 +11,7 @@ import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
 import { ProductCard } from '../../components/product-card.js';
+import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
 import { captureEvent } from '../../lib/analytics.js';
 import { seoHead, truncateDescription } from '../../lib/seo.js';
 import { getProductDetail } from '../../server/catalog/product-detail.js';
@@ -304,43 +305,45 @@ export function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
   const hasAssemblyRow = standardAssemblies.length > 0 || optionalAssemblies.length > 0;
 
   return (
-    <section className="mx-auto flex max-w-[1320px] flex-col gap-16 px-12 py-[72px] max-nav:gap-11 max-nav:px-5 max-nav:py-12">
-      {hasTopRow ? (
-        <div className="grid grid-cols-[1.15fr_1fr] items-start gap-16 max-nav:grid-cols-1 max-nav:gap-11">
-          {keyFeatures.length > 0 ? (
-            <div>
-              <SectionHeading>Key Features</SectionHeading>
-              <div className="flex flex-col gap-4">
-                {keyFeatures.map((feature) => (
-                  <div key={feature} className="flex items-start gap-3.5">
-                    <FeatureIcon />
-                    <span className="font-body text-[16px] leading-[1.5] text-[#444]">{feature}</span>
-                  </div>
-                ))}
+    <SandWatermarkSection variant="product-detail" className="py-[72px] max-nav:py-12">
+      <div className="mx-auto flex max-w-[1320px] flex-col gap-16 px-12 max-nav:gap-11 max-nav:px-5">
+        {hasTopRow ? (
+          <div className="grid grid-cols-[1.15fr_1fr] items-start gap-16 max-nav:grid-cols-1 max-nav:gap-11">
+            {keyFeatures.length > 0 ? (
+              <div>
+                <SectionHeading>Key Features</SectionHeading>
+                <div className="flex flex-col gap-4">
+                  {keyFeatures.map((feature) => (
+                    <div key={feature} className="flex items-start gap-3.5">
+                      <FeatureIcon />
+                      <span className="font-body text-[16px] leading-[1.5] text-[#444]">{feature}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : null}
-          {detail.brochureHref ? <Downloads brochureHref={detail.brochureHref} modelCode={detail.modelCode} /> : null}
-        </div>
-      ) : null}
+            ) : null}
+            {detail.brochureHref ? <Downloads brochureHref={detail.brochureHref} modelCode={detail.modelCode} /> : null}
+          </div>
+        ) : null}
 
-      {hasAssemblyRow ? (
-        <div className="grid grid-cols-[1.15fr_1fr] items-start gap-16 max-nav:grid-cols-1 max-nav:gap-11">
-          {standardAssemblies.length > 0 ? (
-            <div>
-              <SectionHeading>Standard Assemblies</SectionHeading>
-              <ItemList items={standardAssemblies} icon={StandardIcon} />
-            </div>
-          ) : null}
-          {optionalAssemblies.length > 0 ? (
-            <div>
-              <SectionHeading>Optional Assemblies</SectionHeading>
-              <ItemList items={optionalAssemblies} icon={OptionalIcon} />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </section>
+        {hasAssemblyRow ? (
+          <div className="grid grid-cols-[1.15fr_1fr] items-start gap-16 max-nav:grid-cols-1 max-nav:gap-11">
+            {standardAssemblies.length > 0 ? (
+              <div>
+                <SectionHeading>Standard Assemblies</SectionHeading>
+                <ItemList items={standardAssemblies} icon={StandardIcon} />
+              </div>
+            ) : null}
+            {optionalAssemblies.length > 0 ? (
+              <div>
+                <SectionHeading>Optional Assemblies</SectionHeading>
+                <ItemList items={optionalAssemblies} icon={OptionalIcon} />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </SandWatermarkSection>
   );
 }
 
@@ -385,23 +388,25 @@ function ProductDetailPage() {
 function ProductNotFound() {
   return (
     <main className="bg-sand">
-      <section className="mx-auto max-w-[1320px] px-12 py-32 text-center max-nav:px-5 max-nav:py-20">
-        <span className="font-display text-[15px] font-semibold uppercase tracking-[3px] text-[#8a7a2a]">
-          Not found
-        </span>
-        <h1 className="mt-3.5 mb-4 font-display text-[56px] font-extrabold uppercase leading-[0.94] tracking-[0.5px] text-ink max-nav:text-[40px]">
-          Product not found
-        </h1>
-        <p className="m-0 mb-8 font-body text-[19px] leading-[1.6] text-[#555]">
-          We couldn't find that model. Browse the full range to find what you need.
-        </p>
-        <Link
-          to="/products"
-          className="inline-flex items-center gap-3 bg-ink px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:bg-black"
-        >
-          View All Products
-        </Link>
-      </section>
+      <SandWatermarkSection variant="product-not-found" className="py-32 text-center max-nav:py-20">
+        <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
+          <span className="font-display text-[15px] font-semibold uppercase tracking-[3px] text-[#8a7a2a]">
+            Not found
+          </span>
+          <h1 className="mt-3.5 mb-4 font-display text-[56px] font-extrabold uppercase leading-[0.94] tracking-[0.5px] text-ink max-nav:text-[40px]">
+            Product not found
+          </h1>
+          <p className="m-0 mb-8 font-body text-[19px] leading-[1.6] text-[#555]">
+            We couldn't find that model. Browse the full range to find what you need.
+          </p>
+          <Link
+            to="/products"
+            className="inline-flex items-center gap-3 bg-ink px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:bg-black"
+          >
+            View All Products
+          </Link>
+        </div>
+      </SandWatermarkSection>
     </main>
   );
 }

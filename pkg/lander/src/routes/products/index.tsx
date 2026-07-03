@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 
 import { PageHero } from '../../components/page-hero.js';
 import { ProductCard } from '../../components/product-card.js';
+import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
 import { seoHead } from '../../lib/seo.js';
 import { getProductsCatalog } from '../../server/catalog/products.js';
 import type { CatalogGroup } from '../../server/catalog/products-data.js';
@@ -102,11 +103,13 @@ function ProductsPage() {
     <main className="bg-sand">
       <PageHeader />
       <FilterBar activeSlug={activeSlug} groups={groups} />
-      <section className="mx-auto max-w-[1320px] px-12 pt-16 pb-24 max-nav:px-5 max-nav:pt-12 max-nav:pb-18">
-        {visibleGroups.map((group) => (
-          <ProductGroup key={group.id} group={group} />
-        ))}
-      </section>
+      <SandWatermarkSection variant="products-catalog" className="pt-16 pb-24 max-nav:pt-12 max-nav:pb-18">
+        <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
+          {visibleGroups.map((group) => (
+            <ProductGroup key={group.id} group={group} />
+          ))}
+        </div>
+      </SandWatermarkSection>
     </main>
   );
 }

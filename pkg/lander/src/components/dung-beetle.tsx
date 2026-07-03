@@ -21,6 +21,7 @@ const ACTIVE_POOL: Mood[] = ['push', 'push', 'push', 'push', 'struggle', 'strugg
 const SVG_HEIGHT = 40;
 const SVG_WIDTH = 92;
 const BALL_RADIUS_PX = 19 * (SVG_HEIGHT / 52);
+const START_X = -SVG_WIDTH + 24;
 
 function randBetween(min: number, max: number) {
   return min + Math.random() * (max - min);
@@ -54,7 +55,7 @@ export function DungBeetle() {
       return;
     }
 
-    let x = -SVG_WIDTH - 30;
+    let x = START_X;
     let speed = 0;
     let phase = 0;
     let ballRot = 0;
@@ -86,7 +87,7 @@ export function DungBeetle() {
       ballRot += (dx / BALL_RADIUS_PX) * (180 / Math.PI);
 
       if (x > strip.clientWidth + 30) {
-        x = -SVG_WIDTH - 30;
+        x = START_X;
       }
 
       walker.style.transform = `translateX(${x}px)`;

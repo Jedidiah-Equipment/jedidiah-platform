@@ -3,6 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 
 import { FeatureBar } from '../components/feature-bar.js';
 import { RangeCard } from '../components/range-card.js';
+import { SandWatermarkSection } from '../components/sand-watermark-section.js';
 import { seoHead } from '../lib/seo.js';
 import { getHomeRanges } from '../server/catalog/ranges.js';
 
@@ -72,7 +73,7 @@ function Hero() {
 
 function EquipmentRanges({ ranges }: { ranges: Awaited<ReturnType<typeof getHomeRanges>> }) {
   return (
-    <section className="bg-sand py-24 pb-26 max-nav:py-14">
+    <SandWatermarkSection variant="home-ranges" className="py-24 pb-26 max-nav:py-14">
       <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
         <div className="mb-12 flex flex-wrap items-end justify-between gap-6">
           <div>
@@ -102,7 +103,7 @@ function EquipmentRanges({ ranges }: { ranges: Awaited<ReturnType<typeof getHome
           </div>
         ) : null}
       </div>
-    </section>
+    </SandWatermarkSection>
   );
 }
 

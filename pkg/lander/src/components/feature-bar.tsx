@@ -1,24 +1,22 @@
-import { IconHome, IconShieldCheck, IconTruck, type Icon as TablerIcon } from '@tabler/icons-react';
-
 type Feature = {
-  Icon: TablerIcon;
+  iconSrc: string;
   title: string;
   body: string;
 };
 
 const FEATURES: Feature[] = [
   {
-    Icon: IconHome,
+    iconSrc: '/feature-icons/sa-built.png',
     title: 'South African Built',
     body: 'Proudly designed and manufactured in South Africa.',
   },
   {
-    Icon: IconShieldCheck,
+    iconSrc: '/feature-icons/heavy-duty.png',
     title: 'Heavy-Duty Equipment',
     body: 'Engineered for strength, durability and long-term performance.',
   },
   {
-    Icon: IconTruck,
+    iconSrc: '/feature-icons/trailer.png',
     title: 'Trailer · Tillage · Tanker',
     body: 'A complete range of equipment for modern farming operations.',
   },
@@ -34,7 +32,7 @@ export function FeatureBar() {
             index < FEATURES.length - 1 ? 'border-r border-white/[0.12] max-nav:border-r-0 max-nav:border-b' : ''
           }`}
         >
-          <feature.Icon className="flex-none text-yellow" size={38} stroke={1.6} aria-hidden="true" />
+          <img src={feature.iconSrc} alt="" className="h-14 w-14 flex-none object-contain" aria-hidden="true" />
           <div>
             <h4 className="m-0 mb-1.5 font-display text-[20px] font-bold uppercase tracking-[1px] text-white">
               {feature.title}

@@ -18,7 +18,7 @@ import { useBayCalendars } from './use-bay-calendars';
 export type JobListCard = {
   jobId: string;
   jobCode: string;
-  productName: string;
+  jobDisplayName: string;
   productThumbnailDataUrl: string | null;
   customerCompanyName: string | null;
   /** Operator on the Job's current Bay (the one running today, or the next to start). */
@@ -94,7 +94,7 @@ export function useJobList(): JobListResult {
       cards.push({
         jobId,
         jobCode: job.code,
-        productName: getJobDisplayName(job),
+        jobDisplayName: getJobDisplayName(job),
         productThumbnailDataUrl: job.productThumbnailDataUrl,
         customerCompanyName: job.customerCompanyName,
         operator: operatorByBayId.get(progress.currentBayId) ?? null,

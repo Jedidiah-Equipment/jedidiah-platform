@@ -18,7 +18,7 @@ import { useBayCalendars } from './use-bay-calendars';
 /** A Bay card's active Job, joined from `jobs.listBays` detail and projected for days-left. */
 export type BayListActiveJob = ActiveJobProgress & {
   jobCode: string;
-  productName: string;
+  jobDisplayName: string;
   productThumbnailDataUrl: string | null;
   customerCompanyName: string | null;
 };
@@ -88,7 +88,7 @@ export function useBayList(): UseBayListResult {
             ? {
                 ...deriveActiveJobProgress({ slot, today, workingCalendar }),
                 jobCode: slot.jobCode,
-                productName: getJobDisplayName(job),
+                jobDisplayName: getJobDisplayName(job),
                 productThumbnailDataUrl: job.productThumbnailDataUrl,
                 customerCompanyName: job.customerCompanyName,
               }

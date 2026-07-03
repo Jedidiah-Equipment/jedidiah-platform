@@ -17,7 +17,7 @@ import { useBayCalendars } from './use-bay-calendars';
 export type BayQueueActiveJob = ActiveJobProgress & {
   slotId: string;
   jobCode: string;
-  productName: string;
+  jobDisplayName: string;
   productThumbnailDataUrl: string | null;
   productSerialNumber: string | null;
   customerCompanyName: string | null;
@@ -34,7 +34,7 @@ export type BaySlotDetail = {
   jobId: string;
   jobCode: string;
   quoteCode: string;
-  productName: string;
+  jobDisplayName: string;
   productThumbnailDataUrl: string | null;
   productSerialNumber: string | null;
   customerCompanyName: string | null;
@@ -55,7 +55,7 @@ export type BaySlotDetail = {
 export type BayQueueUpcomingSlot = {
   slotId: string;
   jobCode: string;
-  productName: string;
+  jobDisplayName: string;
   productThumbnailDataUrl: string | null;
   startDate: DateOnlyIso;
   /** The last booked working day (the day before the half-open `endDate`). */
@@ -109,7 +109,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
             ...deriveActiveJobProgress({ slot: activeSlot, today, workingCalendar }),
             slotId: activeSlot.id,
             jobCode: activeSlot.jobCode,
-            productName: getJobDisplayName(activeJob),
+            jobDisplayName: getJobDisplayName(activeJob),
             productThumbnailDataUrl: activeJob.productThumbnailDataUrl,
             productSerialNumber: activeJob.productSerialNumber,
             customerCompanyName: activeJob.customerCompanyName,
@@ -135,7 +135,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
         jobId: slot.jobId,
         jobCode: slot.jobCode,
         quoteCode: job?.quoteCode ?? '—',
-        productName: job ? getJobDisplayName(job) : slot.jobCode,
+        jobDisplayName: job ? getJobDisplayName(job) : slot.jobCode,
         productThumbnailDataUrl: job?.productThumbnailDataUrl ?? null,
         productSerialNumber: job?.productSerialNumber ?? null,
         customerCompanyName: job?.customerCompanyName ?? null,
@@ -161,7 +161,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
       return {
         slotId: slot.id,
         jobCode: detail.jobCode,
-        productName: detail.productName,
+        jobDisplayName: detail.jobDisplayName,
         productThumbnailDataUrl: detail.productThumbnailDataUrl,
         startDate: detail.startDate,
         lastWorkDay: detail.lastWorkDay,

@@ -8,7 +8,7 @@ function card(jobCode: string, daysLeft: number): JobListCard {
   return {
     jobId: jobCode,
     jobCode,
-    productName: jobCode,
+    jobDisplayName: jobCode,
     productThumbnailDataUrl: null,
     customerCompanyName: null,
     operator: null,

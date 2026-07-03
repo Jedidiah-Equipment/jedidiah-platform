@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DocumentViewer } from '@/components/documents/DocumentViewer';
 import { Text } from '@/components/ui/text';
+import { getJobDisplayName } from '@/lib/job-display';
 import { useTRPC } from '@/lib/trpc';
 
 /**
@@ -35,7 +36,7 @@ export default function DocumentViewerRoute() {
         <Message onBack={handleBack} text="This document is no longer available." />
       ) : (
         <DocumentViewer
-          context={`${query.data.code} · ${query.data.productName}`}
+          context={`${query.data.code} · ${getJobDisplayName(query.data)}`}
           document={document}
           jobId={jobId}
           onBack={handleBack}

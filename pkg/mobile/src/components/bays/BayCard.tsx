@@ -90,13 +90,13 @@ function BayPrimaryRow({ bay }: { bay: BayListCard }) {
 function ActiveJobRow({ active }: { active: NonNullable<BayListCard['active']> }) {
   return (
     <View className="flex-row items-center gap-3">
-      <Avatar className="h-9 w-9 rounded-lg" name={active.productName} uri={active.productThumbnailDataUrl} />
+      <Avatar className="h-9 w-9 rounded-lg" name={active.jobDisplayName} uri={active.productThumbnailDataUrl} />
       <View className="min-w-0 flex-1">
         <Text className="text-sm leading-4 text-surface-foreground" mono numberOfLines={1} weight="bold">
           {active.jobCode}
         </Text>
         <Text className="mt-0.5 text-[10px] leading-3 text-muted-foreground" numberOfLines={1}>
-          {active.productName}
+          {active.jobDisplayName}
         </Text>
       </View>
     </View>

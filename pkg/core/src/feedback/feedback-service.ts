@@ -10,6 +10,10 @@ import type {
   FeedbackSubmitResult,
   FeedbackTargetUser as FeedbackTargetUserType,
   FeedbackUpdateInput,
+  JobFeedbackListInput,
+  JobFeedbackListResult,
+  JobFeedbackUpdateInput,
+  JobFeedbackUpdateResult,
 } from '@pkg/schema';
 import {
   FeedbackDetail,
@@ -18,9 +22,10 @@ import {
   FeedbackTargetUser,
   FeedbackTargetUserList,
   JobCode,
+  JobFeedbackItem,
   QuoteCode,
 } from '@pkg/schema';
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 
 import { FeedbackNotFoundError, FeedbackSubjectNotFoundError } from './feedback-errors.js';
 
@@ -166,6 +171,59 @@ export async function updateFeedback({
   return detail;
 }
 
+// General feedback on a Job is public to `job:read` holders (ADR 0010). This read returns only
+// `kind: 'general'` rows for every caller — super-admins included — so the payload never varies by
+// role; corrective feedback stays on the inbox reads above. Ordered oldest-first.
+export async function listJobFeedback({
+  db,
+  input,
+}: {
+  db: Db;
+  input: JobFeedbackListInput;
+}): Promise<JobFeedbackListResult> {
+  const rows = await db.query.feedback.findMany({
+    orderBy: [asc(feedback.createdAt), asc(feedback.id)],
+    where: and(eq(feedback.jobId, input.jobId), eq(feedback.kind, 'general')),
+    with: { submitter: feedbackReadRelations.submitter },
+  });
+
+  return {
+    items: rows.map((row) => mapJobFeedbackItem(row)),
+  };
+}
+
+// Status-only update for a Job's general feedback, open to `job:update` holders (ADR 0010). Scoped
+// to `kind: 'general'` + job subjects so corrective (or quote) feedback reads as not-found here;
+// internal notes are never touched through this path.
+export async function updateJobFeedback({
+  db,
+  input,
+}: {
+  db: Db;
+  input: JobFeedbackUpdateInput;
+}): Promise<JobFeedbackUpdateResult> {
+  const [updated] = await db
+    .update(feedback)
+    .set({ status: input.status, updatedAt: new Date() })
+    .where(and(eq(feedback.id, input.id), eq(feedback.kind, 'general'), eq(feedback.subjectType, 'job')))
+    .returning({ id: feedback.id });
+
+  if (!updated) {
+    throw new FeedbackNotFoundError(input.id);
+  }
+
+  const row = await db.query.feedback.findFirst({
+    where: eq(feedback.id, input.id),
+    with: { submitter: feedbackReadRelations.submitter },
+  });
+
+  if (!row) {
+    throw new FeedbackNotFoundError(input.id);
+  }
+
+  return { item: mapJobFeedbackItem(row) };
+}
+
 // Any signed-in submitter may read this minimal user list to choose corrective-user targets; it is
 // intentionally lighter than the admin-only `user:list` payload.
 export async function listFeedbackTargetUsers({ db }: { db: Db }): Promise<FeedbackTargetUserList> {
@@ -248,6 +306,16 @@ function mapFeedbackDetail(row: FeedbackReadRow): FeedbackDetail {
   return FeedbackDetail.parse({
     ...mapFeedbackListItem(row),
     internalNotes: row.internalNotes,
+    text: row.text,
+  });
+}
+
+function mapJobFeedbackItem(row: FeedbackRow & { submitter: FeedbackReadRow['submitter'] }): JobFeedbackItem {
+  return JobFeedbackItem.parse({
+    createdAt: row.createdAt.toISOString(),
+    id: row.id,
+    status: row.status,
+    submitter: mapFeedbackSubmitter(row.submitter),
     text: row.text,
   });
 }

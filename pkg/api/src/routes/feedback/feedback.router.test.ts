@@ -401,6 +401,140 @@ describe('feedback.update', () => {
   });
 });
 
+describe('feedback.listJobFeedback', () => {
+  test("returns a job's general feedback oldest-first to job readers, without internal notes", async ({ context }) => {
+    const submitterCaller = context.createCaller(mockSession('sales'));
+    const first = await submitterCaller.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'job', jobId: context.job.id },
+      text: 'First observation.',
+    });
+    const second = await submitterCaller.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'job', jobId: context.job.id },
+      text: 'Second observation.',
+    });
+    await context.db
+      .update(feedback)
+      .set({ internalNotes: 'Super-admin-only notes.', status: 'resolved' })
+      .where(eq(feedback.id, first.id));
+
+    const result = await context.createCaller(mockSession('job-viewer')).feedback.listJobFeedback({
+      jobId: context.job.id,
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual([first.id, second.id]);
+    expect(result.items[0]).toMatchObject({
+      status: 'resolved',
+      submitter: { email: 'test@example.com', name: 'Test User' },
+      text: 'First observation.',
+    });
+    expect(result.items[0]).not.toHaveProperty('internalNotes');
+  });
+
+  test('excludes corrective feedback for every caller, super-admin included', async ({ context }) => {
+    const targetUser = await createTargetUser(context.db, 'job-feedback-target-id');
+    const submitterCaller = context.createCaller(mockSession('sales'));
+    await submitterCaller.feedback.submit({
+      kind: 'corrective-feedback-user',
+      subject: { subjectType: 'job', jobId: context.job.id },
+      text: 'Corrective feedback stays private.',
+      userIds: [targetUser.id],
+    });
+    const generalFeedback = await submitterCaller.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'job', jobId: context.job.id },
+      text: 'General feedback is public.',
+    });
+
+    const result = await context.createCaller(mockSession('super-admin')).feedback.listJobFeedback({
+      jobId: context.job.id,
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual([generalFeedback.id]);
+  });
+
+  test('excludes feedback on other jobs and quote-subject feedback', async ({ context }) => {
+    const submitterCaller = context.createCaller(mockSession('sales'));
+    await submitterCaller.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'quote', quoteId: context.quote.id },
+      text: 'Quote feedback should not appear.',
+    });
+
+    const result = await context.createCaller(mockSession('job-viewer')).feedback.listJobFeedback({
+      jobId: context.job.id,
+    });
+
+    expect(result.items).toEqual([]);
+  });
+
+  test('denies callers without job read access', async ({ context }) => {
+    await expect(
+      context.createCaller(mockSession('sales')).feedback.listJobFeedback({ jobId: context.job.id }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+});
+
+describe('feedback.updateJobFeedback', () => {
+  test('lets job writers move general job feedback between statuses, including reopening', async ({ context }) => {
+    const submitted = await createGeneralJobFeedback(context);
+    const caller = context.createCaller(mockSession('admin'));
+
+    await expect(caller.feedback.updateJobFeedback({ id: submitted.id, status: 'resolved' })).resolves.toMatchObject({
+      item: { id: submitted.id, status: 'resolved' },
+    });
+    await expect(caller.feedback.updateJobFeedback({ id: submitted.id, status: 'open' })).resolves.toMatchObject({
+      item: { id: submitted.id, status: 'open' },
+    });
+
+    await expect(context.db.select().from(feedback).where(eq(feedback.id, submitted.id))).resolves.toMatchObject([
+      { internalNotes: null, status: 'open' },
+    ]);
+  });
+
+  test('treats corrective job feedback as not found', async ({ context }) => {
+    const targetUser = await createTargetUser(context.db, 'job-update-target-id');
+    const submitted = await context.createCaller(mockSession('sales')).feedback.submit({
+      kind: 'corrective-feedback-user',
+      subject: { subjectType: 'job', jobId: context.job.id },
+      text: 'Not updatable through the job path.',
+      userIds: [targetUser.id],
+    });
+
+    await expect(
+      context.createCaller(mockSession('admin')).feedback.updateJobFeedback({ id: submitted.id, status: 'resolved' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  test('treats quote-subject general feedback as not found', async ({ context }) => {
+    const submitted = await createGeneralFeedback(context);
+
+    await expect(
+      context.createCaller(mockSession('admin')).feedback.updateJobFeedback({ id: submitted.id, status: 'resolved' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  test('denies job readers without job update access', async ({ context }) => {
+    const submitted = await createGeneralJobFeedback(context);
+
+    await expect(
+      context.createCaller(mockSession('job-viewer')).feedback.updateJobFeedback({
+        id: submitted.id,
+        status: 'resolved',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+});
+
+async function createGeneralJobFeedback(context: TesterContext & { job: { id: string } }) {
+  return context.createCaller(mockSession('sales')).feedback.submit({
+    kind: 'general',
+    subject: { subjectType: 'job', jobId: context.job.id },
+    text: 'Job feedback awaiting action.',
+  });
+}
+
 async function createGeneralFeedback(context: TesterContext & { quote: Awaited<ReturnType<typeof createQuote>> }) {
   return context.createCaller(mockSession('sales')).feedback.submit({
     kind: 'general',

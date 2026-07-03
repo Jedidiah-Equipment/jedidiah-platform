@@ -43,6 +43,7 @@ import { Route as AuthedQuotesIdStartJobRouteImport } from './../routes/_authed.
 import { Route as AuthedQuotesIdEditRouteImport } from './../routes/_authed.quotes.$id_.edit'
 import { Route as AuthedProductsIdEditRouteImport } from './../routes/_authed.products.$id.edit'
 import { Route as AuthedProductRangesIdEditRouteImport } from './../routes/_authed.product-ranges.$id.edit'
+import { Route as AuthedJobsIdEditRouteImport } from './../routes/_authed.jobs.$id_.edit'
 import { Route as AuthedCustomersIdEditRouteImport } from './../routes/_authed.customers.$id.edit'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
@@ -216,6 +217,11 @@ const AuthedProductRangesIdEditRoute =
     path: '/$id/edit',
     getParentRoute: () => AuthedProductRangesRoute,
   } as any)
+const AuthedJobsIdEditRoute = AuthedJobsIdEditRouteImport.update({
+  id: '/$id_/edit',
+  path: '/$id/edit',
+  getParentRoute: () => AuthedJobsRoute,
+} as any)
 const AuthedCustomersIdEditRoute = AuthedCustomersIdEditRouteImport.update({
   id: '/$id/edit',
   path: '/$id/edit',
@@ -252,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/quotes/': typeof AuthedQuotesIndexRoute
   '/suppliers/': typeof AuthedSuppliersIndexRoute
   '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
+  '/jobs/$id/edit': typeof AuthedJobsIdEditRoute
   '/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
   '/quotes/$id/edit': typeof AuthedQuotesIdEditRoute
@@ -282,6 +289,7 @@ export interface FileRoutesByTo {
   '/quotes': typeof AuthedQuotesIndexRoute
   '/suppliers': typeof AuthedSuppliersIndexRoute
   '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
+  '/jobs/$id/edit': typeof AuthedJobsIdEditRoute
   '/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
   '/quotes/$id/edit': typeof AuthedQuotesIdEditRoute
@@ -320,6 +328,7 @@ export interface FileRoutesById {
   '/_authed/quotes/': typeof AuthedQuotesIndexRoute
   '/_authed/suppliers/': typeof AuthedSuppliersIndexRoute
   '/_authed/customers/$id/edit': typeof AuthedCustomersIdEditRoute
+  '/_authed/jobs/$id_/edit': typeof AuthedJobsIdEditRoute
   '/_authed/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/_authed/products/$id/edit': typeof AuthedProductsIdEditRoute
   '/_authed/quotes/$id_/edit': typeof AuthedQuotesIdEditRoute
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/quotes/'
     | '/suppliers/'
     | '/customers/$id/edit'
+    | '/jobs/$id/edit'
     | '/product-ranges/$id/edit'
     | '/products/$id/edit'
     | '/quotes/$id/edit'
@@ -388,6 +398,7 @@ export interface FileRouteTypes {
     | '/quotes'
     | '/suppliers'
     | '/customers/$id/edit'
+    | '/jobs/$id/edit'
     | '/product-ranges/$id/edit'
     | '/products/$id/edit'
     | '/quotes/$id/edit'
@@ -425,6 +436,7 @@ export interface FileRouteTypes {
     | '/_authed/quotes/'
     | '/_authed/suppliers/'
     | '/_authed/customers/$id/edit'
+    | '/_authed/jobs/$id_/edit'
     | '/_authed/product-ranges/$id/edit'
     | '/_authed/products/$id/edit'
     | '/_authed/quotes/$id_/edit'
@@ -683,6 +695,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProductRangesIdEditRouteImport
       parentRoute: typeof AuthedProductRangesRoute
     }
+    '/_authed/jobs/$id_/edit': {
+      id: '/_authed/jobs/$id_/edit'
+      path: '/$id/edit'
+      fullPath: '/jobs/$id/edit'
+      preLoaderRoute: typeof AuthedJobsIdEditRouteImport
+      parentRoute: typeof AuthedJobsRoute
+    }
     '/_authed/customers/$id/edit': {
       id: '/_authed/customers/$id/edit'
       path: '/$id/edit'
@@ -712,6 +731,7 @@ interface AuthedJobsRouteChildren {
   AuthedJobsCalendarRoute: typeof AuthedJobsCalendarRoute
   AuthedJobsListRoute: typeof AuthedJobsListRoute
   AuthedJobsIndexRoute: typeof AuthedJobsIndexRoute
+  AuthedJobsIdEditRoute: typeof AuthedJobsIdEditRoute
 }
 
 const AuthedJobsRouteChildren: AuthedJobsRouteChildren = {
@@ -719,6 +739,7 @@ const AuthedJobsRouteChildren: AuthedJobsRouteChildren = {
   AuthedJobsCalendarRoute: AuthedJobsCalendarRoute,
   AuthedJobsListRoute: AuthedJobsListRoute,
   AuthedJobsIndexRoute: AuthedJobsIndexRoute,
+  AuthedJobsIdEditRoute: AuthedJobsIdEditRoute,
 }
 
 const AuthedJobsRouteWithChildren = AuthedJobsRoute._addFileChildren(

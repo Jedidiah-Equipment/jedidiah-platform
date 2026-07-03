@@ -136,3 +136,39 @@ export type FeedbackTargetUserList = z.infer<typeof FeedbackTargetUserList>;
 export const FeedbackTargetUserList = z.object({
   users: z.array(FeedbackTargetUser),
 });
+
+// Subject-scoped read of a Job's `general` (public) feedback for `job:read` holders. Deliberately
+// narrower than FeedbackDetail: no kind (always general), no targets, and no internal notes.
+export type JobFeedbackListInput = z.infer<typeof JobFeedbackListInput>;
+export const JobFeedbackListInput = z
+  .object({
+    jobId: UUID,
+  })
+  .strict();
+
+export type JobFeedbackItem = z.infer<typeof JobFeedbackItem>;
+export const JobFeedbackItem = z.object({
+  id: UUID,
+  createdAt: DateIso,
+  status: FeedbackStatus,
+  submitter: FeedbackSubmitter,
+  text: FeedbackText,
+});
+
+export type JobFeedbackListResult = z.infer<typeof JobFeedbackListResult>;
+export const JobFeedbackListResult = z.object({
+  items: z.array(JobFeedbackItem),
+});
+
+export type JobFeedbackUpdateInput = z.infer<typeof JobFeedbackUpdateInput>;
+export const JobFeedbackUpdateInput = z
+  .object({
+    id: UUID,
+    status: FeedbackStatus,
+  })
+  .strict();
+
+export type JobFeedbackUpdateResult = z.infer<typeof JobFeedbackUpdateResult>;
+export const JobFeedbackUpdateResult = z.object({
+  item: JobFeedbackItem,
+});

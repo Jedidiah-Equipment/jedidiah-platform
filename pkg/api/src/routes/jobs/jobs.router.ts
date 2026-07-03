@@ -22,6 +22,7 @@ import {
   setJobBayDisabled,
   toggleOffDay,
   unassignJobBayOperator,
+  updateJob,
 } from '@pkg/core';
 import { renderBrochurePdf } from '@pkg/pdf';
 import {
@@ -39,6 +40,7 @@ import {
   JobBayUnassignOperatorInput,
   JobCreateInput,
   JobListInput,
+  JobUpdateInput,
   MoveJobSlotInput,
   RemoveBayCalendarExceptionInput,
   RemoveJobSlotInput,
@@ -124,6 +126,12 @@ export const jobsRouter = router({
           storage: ctx.storage,
         }),
       ),
+    ),
+
+  update: authorizedProcedure('job:update')
+    .input(JobUpdateInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => updateJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
   bookSlot: authorizedProcedure('job:schedule')

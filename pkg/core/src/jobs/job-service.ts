@@ -24,6 +24,8 @@ import {
   JobCode,
   type JobCreateInput,
   type JobDetail,
+  type JobUpdateInput,
+  type JobUpdateResult,
   type MoveJobSlotInput,
   MoveJobSlotResult,
   ProductSerialPrefix,
@@ -37,7 +39,13 @@ import {
 } from '@pkg/schema';
 import { asc, eq, sql } from 'drizzle-orm';
 
-import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../audit/audit-service.js';
+import {
+  defineAuditDescriptor,
+  diffAuditUpdate,
+  recordAuditCreate,
+  recordAuditEvent,
+  recordAuditUpdate,
+} from '../audit/audit-service.js';
 import { documentBaseSelect } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
@@ -45,7 +53,7 @@ import { snapshotJobBrochureDocument } from '../products/product-brochure-docume
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
 import { JobCreateFromQuoteDeniedError, JobNotFoundError } from './job-errors.js';
-import type { JobRow } from './job-mappers.js';
+import { type JobRow, mapJob } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 
 export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
@@ -56,9 +64,11 @@ export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityId: (row) => row.id,
   label: (row) => row.code,
   toRecord: (row) => ({
+    description: row.description,
     productId: row.productId,
     productSerialNumber: row.productSerialNumber,
     quoteId: row.quoteId,
+    vinNumber: row.vinNumber,
   }),
 });
 
@@ -136,6 +146,49 @@ export async function createJob({
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
 
     return getJob({ db: tx, id: job.id });
+  });
+}
+
+export async function updateJob({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: JobUpdateInput;
+}): Promise<JobUpdateResult> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(jobs).where(eq(jobs.id, input.id)).for('update');
+
+    if (!before) {
+      throw new JobNotFoundError(input.id);
+    }
+
+    const patch = {
+      description: input.description,
+      vinNumber: input.vinNumber,
+    };
+    const after = { ...before, ...patch };
+    const changes = diffAuditUpdate(jobAuditDescriptor, before, after);
+
+    if (!changes) {
+      return { job: mapJob(before) };
+    }
+
+    const [row] = await tx
+      .update(jobs)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(jobs.id, input.id))
+      .returning();
+
+    if (!row) {
+      throw new JobNotFoundError(input.id);
+    }
+
+    await recordAuditUpdate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, after: row, changes });
+
+    return { job: mapJob(row) };
   });
 }
 

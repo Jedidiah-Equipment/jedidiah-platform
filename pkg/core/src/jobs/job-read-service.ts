@@ -134,6 +134,7 @@ async function listJobSummariesByIds({
         quoteId: true,
         updatedAt: true,
         vinNumber: true,
+        description: true,
       },
       where: inArray(jobs.id, batch),
       with: {
@@ -246,6 +247,7 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
       quoteId: true,
       updatedAt: true,
       vinNumber: true,
+      description: true,
     },
     where,
     orderBy: [orderBy, asc(jobs.id)],
@@ -366,6 +368,7 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
       quoteId: true,
       updatedAt: true,
       vinNumber: true,
+      description: true,
     },
     where: eq(jobs.id, id),
     with: {

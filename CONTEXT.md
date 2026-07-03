@@ -4,7 +4,7 @@ Compact domain map for implementation and planning. Search this file first for n
 
 ## Core Model
 
-**Job** is one physical product instance created from exactly one accepted **Quote**. Do not call it an Order, Work Order, Build, or Ticket. A Job has a `JOB-xxxxx` code for app use and a **Product Serial Number** for the physical unit.
+**Job** is one physical product instance created from exactly one accepted **Quote**. Do not call it an Order, Work Order, Build, or Ticket. A Job has a `JOB-xxxxx` code for app use and a **Product Serial Number** for the physical unit. A Job also carries a freeform **Description** and a **VIN Number**, both editable after creation by Job writers.
 
 **Quote** is a sales offer for one **Customer** and one **Product**, owned by one salesperson. A Quote can source at most one Job. Once it does, it becomes a **Locked Quote**: commercial facts stay frozen, while post-sale logistics and notes can still change where the UI allows.
 
@@ -66,8 +66,8 @@ Slot dates are derived, never stored on Slots. Projection walks a Bay Queue from
 
 App Role owns authorization. Department Membership is descriptive only and must not be used to scope permissions.
 
-- **super-admin**: everything admin can do, plus the exclusive ability to review Feedback (read, set Internal Notes, change Status). The only role that can see Feedback — admins cannot. Only a super-admin may grant or remove the super-admin role; admins manage every other role but cannot mint a super-admin (which would otherwise be an escalation path to Feedback).
-- **admin**: full operational access; owns Bay scheduling, calendar updates, Job creation, admin Bay configuration, and Suppliers. Cannot see Feedback.
+- **super-admin**: everything admin can do, plus the exclusive ability to review Corrective Feedback and Internal Notes through the Feedback inbox. The only role that can see Corrective Feedback — admins cannot. Only a super-admin may grant or remove the super-admin role; admins manage every other role but cannot mint a super-admin (which would otherwise be an escalation path to Corrective Feedback).
+- **admin**: full operational access; owns Bay scheduling, calendar updates, Job creation and updates, admin Bay configuration, and Suppliers. Sees General Feedback on subjects it can read, like any subject reader; cannot see Corrective Feedback.
 - **procurement-manager**: Customers, Products, Parts, Suppliers, and Job reads; no scheduling mutation.
 - **job-viewer**: Job and Bay schedule reads only.
 - **sales**: Quote create/read/update.
@@ -77,13 +77,15 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 ## Feedback
 
-**Feedback** is an internal report a signed-in user submits about one subject — currently a Quote or a Job. It always has a submitter (the author) and exactly one subject, attached polymorphically the way a Document is (`subjectType ∈ {quote, job}`). Avoid Complaint, Comment, Review, Ticket, or Issue for the domain object. Feedback is fire-and-forget for the submitter: once submitted, only super-admins can read it — there is no submitter-facing read path. Submission requires only an authenticated session: there is no `feedback:create` permission and no subject-read gate, so any signed-in user can submit feedback about any Quote or Job.
+**Feedback** is an internal report a signed-in user submits about one subject — currently a Quote or a Job. It always has a submitter (the author) and exactly one subject, attached polymorphically the way a Document is (`subjectType ∈ {quote, job}`). Avoid Complaint, Comment, Review, Ticket, or Issue for the domain object. Visibility splits by Kind: Job General Feedback is public within the workspace (readable by anyone who can read the Job), while Quote General Feedback stays private until quote-scoped read paths exist; Corrective Feedback is readable only by super-admins. Submission requires only an authenticated session: there is no `feedback:create` permission and no subject-read gate, so any signed-in user can submit feedback about any Quote or Job. See ADR 0010.
 
-**Feedback Kind** is exactly one of `general`, `corrective-feedback-department`, or `corrective-feedback-user`. It selects which targets the Feedback carries.
+**Feedback Kind** is exactly one of `general`, `corrective-feedback-department`, or `corrective-feedback-user`. It selects which targets the Feedback carries and who may see it.
 
-**Corrective Feedback** is Feedback that attributes a problem to one or more **Departments** (`corrective-feedback-department`) or one or more **Users** (`corrective-feedback-user`). Both targets are multi-select. Avoid Blame. Department targets reference the fixed Department enum; User targets reference Users.
+**General Feedback** (`general`) is public only when a subject-scoped read/update surface exists. Today that is Job Feedback: anyone who can read the Job can read it with attribution (submitter, date, text, Status), and anyone who can update the Job can change its Status. Quote General Feedback remains private until the quote surface gets matching endpoints. General Feedback carries no targets and never exposes Internal Notes.
 
-**Feedback Status** is the review lifecycle: `open` (initial), `resolved` (acted on), or `closed` (dismissed). A super-admin moves freely between all three, including reopening. There is an open-Feedback nav indicator (a warning dot on the Feedback menu item) shown when any Feedback is `open`.
+**Corrective Feedback** is Private Feedback that attributes a problem to one or more **Departments** (`corrective-feedback-department`) or one or more **Users** (`corrective-feedback-user`). Both targets are multi-select. Avoid Blame. Department targets reference the fixed Department enum; User targets reference Users. Only super-admins can read or act on it, through the Feedback inbox; the submission form marks it PRIVATE.
+
+**Feedback Status** is the review lifecycle: `open` (initial), `resolved` (acted on), or `closed` (dismissed). A super-admin moves freely between all three, including reopening; subject writers move General Feedback just as freely. There is an open-Feedback nav indicator (a warning dot on the Feedback menu item) shown when any Feedback is `open`.
 
 **Internal Notes** is a single mutable free-text field on a Feedback that only super-admins can read or edit.
 

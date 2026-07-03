@@ -1,8 +1,8 @@
-import { departmentLabels } from '@pkg/domain';
+import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain';
 import { DEPARTMENTS, type FeedbackKind } from '@pkg/schema';
-import { IconMessagePlus, IconX } from '@tabler/icons-react-native';
+import { IconEye, IconLock, IconMessagePlus, IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -55,6 +55,7 @@ export function GiveFeedbackButton({ jobCode, jobId }: { jobCode: string; jobId:
 
 function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: string; onClose: () => void }) {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const showToast = useAppToast();
   const { resolved } = useColorMode();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -73,6 +74,8 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
       }
       onClose();
       showToast('success', 'Feedback submitted');
+      // Refresh the Job's public feedback list so a just-submitted general item appears.
+      await queryClient.invalidateQueries({ queryKey: trpc.feedback.pathKey() });
     },
   });
 
@@ -124,6 +127,10 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
                 </form.AppField>
 
                 <form.Subscribe selector={(state) => state.values.kind}>
+                  {(kind) => <FeedbackVisibilityBanner kind={kind} />}
+                </form.Subscribe>
+
+                <form.Subscribe selector={(state) => state.values.kind}>
                   {(kind) =>
                     kind === 'corrective-feedback-department' ? (
                       <form.AppField name="departments">
@@ -151,8 +158,13 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
               </ScrollView>
 
               <View className="border-t border-border px-4 py-3">
-                <form.Subscribe selector={(state) => state.isSubmitting}>
-                  {(isSubmitting) => (
+                <form.Subscribe
+                  selector={(state) => ({
+                    isSubmitting: state.isSubmitting,
+                    label: getFeedbackVisibilityNotice(state.values.kind, 'job').submitLabel,
+                  })}
+                >
+                  {({ isSubmitting, label }) => (
                     <Pressable
                       accessibilityRole="button"
                       accessibilityState={{ disabled: isSubmitting }}
@@ -162,7 +174,7 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
                     >
                       {isSubmitting ? <ActivityIndicator color="#0a0a0a" size="small" /> : null}
                       <Text className="text-sm text-primary-foreground" weight="semibold">
-                        Submit feedback
+                        {label}
                       </Text>
                     </Pressable>
                   )}
@@ -173,6 +185,27 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
         </View>
       </SafeAreaProvider>
     </Modal>
+  );
+}
+
+/** Mobile mirror of web's FeedbackVisibilityBanner; this form is always Job-scoped. */
+function FeedbackVisibilityBanner({ kind }: { kind: FeedbackKind }) {
+  const notice = getFeedbackVisibilityNotice(kind, 'job');
+  const isPublic = notice.visibility === 'public';
+  const chrome = isPublic
+    ? { container: 'border-sky-500/50 bg-sky-500/10', text: 'text-sky-800 dark:text-sky-200' }
+    : { container: 'border-amber-500/50 bg-amber-500/10', text: 'text-amber-800 dark:text-amber-200' };
+
+  return (
+    <View className={`flex-row items-start gap-2.5 rounded-xl border px-3 py-2.5 ${chrome.container}`}>
+      <Icon className={`mt-0.5 ${chrome.text}`} icon={isPublic ? IconEye : IconLock} size={18} />
+      <View className="min-w-0 flex-1">
+        <Text className={`text-sm tracking-wide ${chrome.text}`} weight="bold">
+          {notice.title}
+        </Text>
+        <Text className={`mt-0.5 text-xs ${chrome.text}`}>{notice.description}</Text>
+      </View>
+    </View>
   );
 }
 

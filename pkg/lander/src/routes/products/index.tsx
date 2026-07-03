@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 
+import { PageHero } from '../../components/page-hero.js';
 import { ProductCard } from '../../components/product-card.js';
 import { seoHead } from '../../lib/seo.js';
 import { getProductsCatalog } from '../../server/catalog/products.js';
@@ -23,30 +24,12 @@ export const Route = createFileRoute('/products/')({
 
 function PageHeader() {
   return (
-    <section className="relative overflow-hidden bg-ink">
-      <img
-        src="/hero-trailer.jpg"
-        alt=""
-        aria-hidden="true"
-        className="absolute top-0 right-0 h-full w-[48%] object-cover opacity-35 max-nav:w-full max-nav:opacity-20"
-      />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,#161616_40%,rgba(22,22,22,0.4)_100%)]" />
-      <div className="relative mx-auto max-w-[1320px] px-12 pt-16 pb-14 max-nav:px-5 max-nav:pt-12 max-nav:pb-10">
-        <div className="mb-4 flex items-center gap-3.5">
-          <span className="h-1 w-[42px] bg-yellow" />
-          <span className="font-display text-[15px] font-semibold uppercase tracking-[3px] text-yellow">
-            The full range
-          </span>
-        </div>
-        <h1 className="m-0 mb-3.5 font-display text-[68px] font-extrabold uppercase leading-[0.95] tracking-[0.5px] text-white max-nav:text-[46px] max-xs:text-[40px]">
-          Our Products
-        </h1>
-        <p className="m-0 max-w-[560px] font-body text-[19px] leading-[1.55] text-[#bdbdbd]">
-          Trailers, tanks, tillage and planting equipment — engineered and built in South Africa for the toughest
-          conditions.
-        </p>
-      </div>
-    </section>
+    <PageHero eyebrow="The full range" title="Our Products">
+      <p className="m-0">
+        Trailers, tanks, tillage and planting equipment — engineered and built in South Africa for the toughest
+        conditions.
+      </p>
+    </PageHero>
   );
 }
 

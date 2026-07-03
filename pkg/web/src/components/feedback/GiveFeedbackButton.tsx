@@ -1,4 +1,4 @@
-import { departmentLabels } from '@pkg/domain';
+import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain';
 import {
   AuthId,
   DEPARTMENTS,
@@ -16,9 +16,11 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { FeedbackVisibilityBanner } from '@/components/feedback/FeedbackVisibilityBanner.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 type FeedbackSubject = FeedbackSubmitInput['subject'];
@@ -91,6 +93,7 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
 }) => {
   const trpc = useTRPC();
   const [open, setOpen] = useState(false);
+  const { invalidateFeedback } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
 
   const targetUsersQuery = useQuery(trpc.feedback.listTargetUsers.queryOptions(undefined, { enabled: open }));
@@ -115,13 +118,14 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
         description={`Share feedback about ${subjectLabel}. Once submitted it goes to the review queue.`}
         key={open ? 'open' : 'closed'}
         onCreate={(values) => submitFeedbackMutation.mutateAsync(toSubmitInput(values, subject))}
-        onCreated={() => {
+        onCreated={async () => {
           setOpen(false);
           toast.success('Feedback submitted');
+          await invalidateFeedback();
         }}
         onOpenChange={setOpen}
         open={open}
-        submitLabel="Submit feedback"
+        submitLabel={(values) => getFeedbackVisibilityNotice(values.kind, subject.subjectType).submitLabel}
         title="Send feedback"
         validator={FeedbackFormValues}
       >
@@ -130,6 +134,9 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
             <form.AppField name="kind">
               {(field) => <field.SelectField label="Kind" options={FEEDBACK_KIND_OPTIONS} />}
             </form.AppField>
+            <form.Subscribe selector={(state) => state.values.kind}>
+              {(kind) => <FeedbackVisibilityBanner kind={kind} subjectType={subject.subjectType} />}
+            </form.Subscribe>
             <form.Subscribe selector={(state) => state.values.kind}>
               {(kind) =>
                 kind === 'corrective-feedback-department' ? (

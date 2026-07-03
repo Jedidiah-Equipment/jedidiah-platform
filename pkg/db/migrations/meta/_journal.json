@@ -449,6 +449,13 @@
       "when": 1783059149540,
       "tag": "0063_wandering_adam_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1783064914058,
+      "tag": "0064_tan_redwing",
+      "breakpoints": true
     }
   ]
 }

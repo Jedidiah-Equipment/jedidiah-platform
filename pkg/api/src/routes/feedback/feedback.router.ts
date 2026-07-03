@@ -5,10 +5,19 @@ import {
   isFeedbackCoreError,
   listFeedback,
   listFeedbackTargetUsers,
+  listJobFeedback,
   submitFeedback,
   updateFeedback,
+  updateJobFeedback,
 } from '@pkg/core';
-import { FeedbackDetailInput, FeedbackListInput, FeedbackSubmitInput, FeedbackUpdateInput } from '@pkg/schema';
+import {
+  FeedbackDetailInput,
+  FeedbackListInput,
+  FeedbackSubmitInput,
+  FeedbackUpdateInput,
+  JobFeedbackListInput,
+  JobFeedbackUpdateInput,
+} from '@pkg/schema';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, protectedProcedure, router } from '../../trpc/init.js';
@@ -32,6 +41,14 @@ export const feedbackRouter = router({
   update: authorizedProcedure('feedback:update')
     .input(FeedbackUpdateInput)
     .mutation(({ ctx, input }) => mapFeedbackErrors(() => updateFeedback({ db: ctx.db, input }))),
+  // A Job's `general` feedback is public to job readers, and job writers may move its status;
+  // corrective feedback and internal notes stay behind `feedback:read`/`feedback:update` (ADR 0010).
+  listJobFeedback: authorizedProcedure('job:read')
+    .input(JobFeedbackListInput)
+    .query(({ ctx, input }) => listJobFeedback({ db: ctx.db, input })),
+  updateJobFeedback: authorizedProcedure('job:update')
+    .input(JobFeedbackUpdateInput)
+    .mutation(({ ctx, input }) => mapFeedbackErrors(() => updateJobFeedback({ db: ctx.db, input }))),
 });
 
 async function mapFeedbackErrors<T>(action: () => Promise<T>): Promise<T> {

@@ -3,7 +3,6 @@ import {
   type FeedbackDetail,
   type FeedbackKind,
   type FeedbackListItem,
-  type FeedbackStatus,
   FeedbackStatus as FeedbackStatusSchema,
   type FeedbackUpdateInput,
   type UUID,
@@ -26,41 +25,25 @@ import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import {
+  FeedbackStatusBadge,
+  FeedbackStatusSelect,
+  feedbackStatusLabels,
+} from '@/components/feedback/FeedbackStatusBadge.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { cn } from '@/lib/utils.js';
 import { feedbackPageDescription } from '@/utils/page-descriptions.js';
-
-const feedbackStatusLabels = {
-  closed: 'Closed',
-  open: 'Open',
-  resolved: 'Resolved',
-} as const satisfies Record<FeedbackStatus, string>;
 
 const feedbackKindLabels = {
   general: 'General',
   'corrective-feedback-department': 'Corrective department',
   'corrective-feedback-user': 'Corrective user',
 } as const satisfies Record<FeedbackKind, string>;
-
-const detailHeaderBadgeClassName = 'h-6 px-2 text-xs';
-const statusOptions = Object.entries(feedbackStatusLabels).map(([value, label]) => ({
-  label,
-  value: value as FeedbackStatus,
-}));
-
-const feedbackStatusBadgeClassNames = {
-  closed: 'border-gray-400/50 bg-gray-500/10 text-gray-700 dark:text-gray-200',
-  open: 'border-amber-500/50 bg-amber-500/15 text-amber-800 dark:text-amber-200',
-  resolved: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200',
-} as const satisfies Record<FeedbackStatus, string>;
 
 type FeedbackTriageFormValues = z.infer<typeof FeedbackTriageFormValues>;
 const FeedbackTriageFormValues = z.object({
@@ -340,35 +323,14 @@ function FeedbackDetailForm({ detail }: { detail: FeedbackDetail }) {
             <CardTitle className="truncate">Feedback: {feedbackKindLabels[detail.kind]}</CardTitle>
             <form.AppField name="status">
               {(field) => (
-                <Select
+                <FeedbackStatusSelect
                   disabled={autosave.state.status === 'saving'}
                   value={field.state.value}
                   onValueChange={(status) => {
-                    field.handleChange(status as FeedbackStatus);
+                    field.handleChange(status);
                     autosave.commit();
                   }}
-                >
-                  <SelectTrigger
-                    aria-label="Feedback status"
-                    className={cn(
-                      detailHeaderBadgeClassName,
-                      'min-w-24 justify-center gap-2 [&_svg]:text-current',
-                      feedbackStatusBadgeClassNames[field.state.value],
-                    )}
-                    size="sm"
-                  >
-                    <SelectValue>{feedbackStatusLabels[field.state.value]}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {statusOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                />
               )}
             </form.AppField>
           </CardHeader>
@@ -462,7 +424,7 @@ function UserLabel({ name, thumbnailDataUrl }: { name: string; thumbnailDataUrl:
 }
 
 function SubjectLink({ item }: { item: FeedbackListItem }) {
-  const to = item.subject.subjectType === 'quote' ? '/quotes/$id/edit' : '/jobs/$id';
+  const to = item.subject.subjectType === 'quote' ? '/quotes/$id/edit' : '/jobs/$id/edit';
 
   return (
     <Link
@@ -473,13 +435,5 @@ function SubjectLink({ item }: { item: FeedbackListItem }) {
     >
       {item.subject.label}
     </Link>
-  );
-}
-
-function FeedbackStatusBadge({ status }: { status: FeedbackStatus }) {
-  return (
-    <Badge className={feedbackStatusBadgeClassNames[status]} variant="outline">
-      {feedbackStatusLabels[status]}
-    </Badge>
   );
 }

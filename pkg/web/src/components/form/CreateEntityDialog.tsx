@@ -22,7 +22,8 @@ type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> =
   onCreate: (values: TValues) => Promise<TResult>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
-  submitLabel?: string;
+  /** Static label, or derive it from the live form values (e.g. a kind-dependent verb). */
+  submitLabel?: string | ((values: TValues) => string);
   title: React.ReactNode;
   validator: z.ZodType<TValues, TValues>;
 };
@@ -83,15 +84,20 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
           }}
         >
           {children(form)}
-          <form.Subscribe selector={(state) => state.isSubmitting}>
-            {(isSubmitting) => (
+          <form.Subscribe
+            selector={(state) => ({
+              isSubmitting: state.isSubmitting,
+              label: typeof submitLabel === 'function' ? submitLabel(state.values as TValues) : submitLabel,
+            })}
+          >
+            {({ isSubmitting, label }) => (
               <DialogFooter>
                 <DialogClose render={<Button disabled={isSubmitting} type="button" variant="outline" />}>
                   Cancel
                 </DialogClose>
                 <Button disabled={isSubmitting} type="submit">
                   {isSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
-                  {submitLabel}
+                  {label}
                 </Button>
               </DialogFooter>
             )}

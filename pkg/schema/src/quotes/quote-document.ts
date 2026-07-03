@@ -6,7 +6,7 @@ export type QuoteDocumentLineItem = {
   descriptionLines: string[];
   kind: 'base' | 'charge' | 'discount' | 'lineItem' | 'optional';
   quantity: number;
-  unitPrice?: number;
+  unitPrice: number;
 };
 
 export type QuoteDocumentCustomer = {

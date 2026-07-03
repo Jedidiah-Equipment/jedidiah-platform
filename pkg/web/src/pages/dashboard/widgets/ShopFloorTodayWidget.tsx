@@ -3,6 +3,7 @@ import {
   departmentLabels,
   formatDate,
   getBayTodayOccupancy,
+  getJobDisplayName,
   getOffDayLabel,
   JOB_DEPARTMENT_PIPELINE,
   type WorkingCalendar,
@@ -17,7 +18,6 @@ import { Badge } from '@/components/ui/badge.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 
 import { getSlotLabel } from '../../jobs/components/board-summary.js';
-import { getJobDisplayName } from '../../jobs/components/job-display.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
@@ -119,7 +119,7 @@ function ShopFloorOccupancyCell({
       <span className="flex min-w-0 items-center gap-2">
         {job ? (
           <EntityThumbnail
-            label={job.customerCompanyName ?? jobDisplayName ?? occupancy.slot.jobCode}
+            label={job.customerCompanyName ?? getJobDisplayName(job)}
             size="sm"
             thumbnailDataUrl={job.customerThumbnailDataUrl}
           />

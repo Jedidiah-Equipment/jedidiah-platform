@@ -2,6 +2,7 @@ import { formatCurrency } from '@pkg/domain';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 
+import { createStableRowKeys } from '@/components/form/create-stable-row-keys.js';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi } from '@/components/form/types.js';
 import { Button } from '@/components/ui/button.js';
@@ -23,8 +24,7 @@ const DEFAULT_LINE_ITEM: QuoteLineItemFormInput = {
   unitPrice: 0,
 };
 
-const lineItemKeys = new WeakMap<QuoteLineItemFormInput, string>();
-let nextLineItemKey = 0;
+const getLineItemKey = createStableRowKeys<QuoteLineItemFormInput>('quote-line-item');
 
 function useQuoteForm() {
   return useTypedAppFormContext({
@@ -116,17 +116,4 @@ function getLineItemTotal(lineItem: QuoteLineItemFormInput): number {
   return Number.isFinite(lineItem.quantity) && Number.isFinite(lineItem.unitPrice)
     ? lineItem.quantity * lineItem.unitPrice
     : 0;
-}
-
-function getLineItemKey(lineItem: QuoteLineItemFormInput): string {
-  const existing = lineItemKeys.get(lineItem);
-  if (existing) {
-    return existing;
-  }
-
-  const key = `quote-line-item-${nextLineItemKey}`;
-  nextLineItemKey += 1;
-  lineItemKeys.set(lineItem, key);
-
-  return key;
 }

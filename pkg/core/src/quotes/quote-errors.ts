@@ -27,6 +27,17 @@ export class QuoteInvalidReferenceError extends Error {
   }
 }
 
+// Raised when a persisted Quote row violates the product/custom offering shape the DB constraint
+// guarantees (e.g. a custom Quote missing its Work Title). A true invariant, not user-facing input.
+export class QuoteOfferingInvariantError extends Error {
+  readonly code = 'quote.offering_invariant';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteOfferingInvariantError';
+  }
+}
+
 export class QuoteCustomSelectedAssembliesError extends Error {
   readonly code = 'quote.custom_selected_assemblies';
 
@@ -54,6 +65,15 @@ export class QuoteDocumentGenerationNotAllowedError extends Error {
   }
 }
 
+export class QuoteProductBayAvailabilityNotApplicableError extends Error {
+  readonly code = 'quote.product_bay_availability_not_applicable';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteProductBayAvailabilityNotApplicableError';
+  }
+}
+
 export class QuoteDraftEmailRecipientMissingError extends Error {
   readonly code = 'quote.draft_email_recipient_missing';
 
@@ -67,8 +87,10 @@ export type QuoteCoreError =
   | QuoteCustomSelectedAssembliesError
   | QuoteDocumentGenerationNotAllowedError
   | QuoteDraftEmailRecipientMissingError
+  | QuoteProductBayAvailabilityNotApplicableError
   | QuoteDiscountInvalidError
   | QuoteInvalidReferenceError
+  | QuoteOfferingInvariantError
   | QuoteLockedError
   | QuoteNotFoundError;
 
@@ -76,9 +98,11 @@ export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
   return (
     error instanceof QuoteDocumentGenerationNotAllowedError ||
     error instanceof QuoteDraftEmailRecipientMissingError ||
+    error instanceof QuoteProductBayAvailabilityNotApplicableError ||
     error instanceof QuoteCustomSelectedAssembliesError ||
     error instanceof QuoteDiscountInvalidError ||
     error instanceof QuoteInvalidReferenceError ||
+    error instanceof QuoteOfferingInvariantError ||
     error instanceof QuoteLockedError ||
     error instanceof QuoteNotFoundError
   );

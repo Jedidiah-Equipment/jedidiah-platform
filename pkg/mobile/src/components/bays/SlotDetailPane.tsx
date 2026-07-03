@@ -1,13 +1,12 @@
 import { formatDate, statusDaysLeftColor } from '@pkg/domain';
 import { View } from 'react-native';
 
-import { Avatar } from '@/components/Avatar';
 import { JobAssemblies } from '@/components/bays/JobAssemblies';
 import { JobDocuments } from '@/components/bays/JobDocuments';
+import { JobWorkCard } from '@/components/bays/JobWorkCard';
 import { FactCard, FactField, FactRow, JobFactsCard } from '@/components/bays/job-facts';
 import { DaysLeftChip, StatusChip } from '@/components/bays/status-chip';
 import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
-import { Text } from '@/components/ui/text';
 import type { BaySlotDetail } from '@/lib/use-bay-schedule';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -39,29 +38,12 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
         ) : null}
       </View>
 
-      {/* Work card. */}
-      <View className="flex-row items-center gap-3.5 rounded-2xl border border-border bg-surface p-3.5">
-        <Avatar
-          className="h-[52px] w-[52px] rounded-xl"
-          name={slot.jobDisplayName}
-          uri={slot.productThumbnailDataUrl}
-        />
-        <View className="min-w-0 flex-1">
-          <Text className="text-base text-surface-foreground" weight="bold" numberOfLines={1}>
-            {slot.jobDisplayName}
-          </Text>
-          {slot.productSerialNumber ? (
-            <Text className="mt-0.5 text-xs text-muted-foreground" mono>
-              {slot.productSerialNumber}
-            </Text>
-          ) : null}
-          {slot.customerCompanyName ? (
-            <Text className="mt-1 text-sm text-surface-foreground" numberOfLines={1}>
-              {slot.customerCompanyName}
-            </Text>
-          ) : null}
-        </View>
-      </View>
+      <JobWorkCard
+        customerCompanyName={slot.customerCompanyName}
+        jobDisplayName={slot.jobDisplayName}
+        productSerialNumber={slot.productSerialNumber}
+        productThumbnailDataUrl={slot.productThumbnailDataUrl}
+      />
 
       {/* DOCUMENTS — opens the in-app viewer (#521); read-only here. */}
       <JobDocuments jobId={slot.jobId} />

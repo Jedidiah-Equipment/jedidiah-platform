@@ -110,9 +110,47 @@ describe('QuoteLineItemInput', () => {
 });
 
 describe('QuoteUpdateInput', () => {
-  it('preserves omitted line items instead of defaulting them to an empty replacement', () => {
+  it('parses a product offering update', () => {
+    expect(QuoteUpdateInput.parse(baseUpdateInput())).toMatchObject({
+      offering: { kind: 'product' },
+    });
+  });
+
+  it('parses a custom offering update with a trimmed work title and entered base price', () => {
+    expect(
+      QuoteUpdateInput.parse({
+        ...baseUpdateInput(),
+        offering: {
+          kind: 'custom',
+          workTitle: '  Hydraulic repair  ',
+          basePrice: '2500.50',
+        },
+      }),
+    ).toMatchObject({
+      offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500.5 },
+    });
+  });
+
+  it('rejects a blank custom work title', () => {
+    expect(() =>
+      QuoteUpdateInput.parse({
+        ...baseUpdateInput(),
+        offering: {
+          kind: 'custom',
+          workTitle: ' ',
+          basePrice: 2500,
+        },
+      }),
+    ).toThrow();
+  });
+
+  it('preserves omitted child collections instead of defaulting them to empty replacements', () => {
     expect(QuoteUpdateInput.parse(baseUpdateInput())).not.toHaveProperty('lineItems');
+    expect(QuoteUpdateInput.parse(baseUpdateInput())).not.toHaveProperty('selectedAssemblies');
     expect(QuoteUpdateInput.parse({ ...baseUpdateInput(), lineItems: [] })).toMatchObject({ lineItems: [] });
+    expect(QuoteUpdateInput.parse({ ...baseUpdateInput(), selectedAssemblies: [] })).toMatchObject({
+      selectedAssemblies: [],
+    });
   });
 });
 
@@ -135,11 +173,8 @@ describe('QuoteDetail', () => {
       notes: null,
       plannedDeliveryDate: null,
       preferredDeliveryDate: null,
-      productBuildTimeDays: null,
-      productCurrencyCode: null,
       productId: null,
-      productModelCode: null,
-      productName: null,
+      product: null,
       quotedBasePrice: 1000,
       quotedCurrencyCode: 'ZAR',
       salesPersonEmail: null,
@@ -156,9 +191,8 @@ describe('QuoteDetail', () => {
     };
 
     expect(QuoteSummary.parse(quoteSummary)).toMatchObject({
-      productBuildTimeDays: null,
       productId: null,
-      productName: null,
+      product: null,
     });
     expect(
       QuoteDetail.parse({
@@ -168,17 +202,9 @@ describe('QuoteDetail', () => {
         customerEmail: null,
         customerPhone: null,
         customerVatNumber: null,
-        productAssemblies: [],
-        productBays: [],
-        productDescription: null,
-        productRequiresVinNumber: null,
-        productThumbnailDataUrl: null,
       }),
     ).toMatchObject({
-      productAssemblies: [],
-      productBays: [],
-      productDescription: null,
-      productRequiresVinNumber: null,
+      product: null,
     });
   });
 
@@ -206,31 +232,33 @@ describe('QuoteDetail', () => {
         notes: null,
         plannedDeliveryDate: null,
         preferredDeliveryDate: null,
-        productAssemblies: [],
-        productBays: [
-          {
-            bay: {
-              createdAt: '2026-01-01T00:00:00.000Z',
-              department: 'fabrication',
-              disabledAt: null,
-              id: '550e8400-e29b-41d4-a716-446655440020',
-              name: 'Fabrication Bay',
-              scheduleOrigin: '2026-01-01',
-              updatedAt: '2026-01-01T00:00:00.000Z',
-            },
-            bayId: '550e8400-e29b-41d4-a716-446655440020',
-            defaultWorkingDays: 4,
-            productId: '550e8400-e29b-41d4-a716-446655440000',
-          },
-        ],
-        productBuildTimeDays: 14,
-        productCurrencyCode: 'ZAR',
-        productDescription: null,
         productId: '550e8400-e29b-41d4-a716-446655440000',
-        productModelCode: 'WL-100',
-        productName: 'Wheel Loader',
-        productRequiresVinNumber: false,
-        productThumbnailDataUrl: null,
+        product: {
+          assemblies: [],
+          bays: [
+            {
+              bay: {
+                createdAt: '2026-01-01T00:00:00.000Z',
+                department: 'fabrication',
+                disabledAt: null,
+                id: '550e8400-e29b-41d4-a716-446655440020',
+                name: 'Fabrication Bay',
+                scheduleOrigin: '2026-01-01',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+              },
+              bayId: '550e8400-e29b-41d4-a716-446655440020',
+              defaultWorkingDays: 4,
+              productId: '550e8400-e29b-41d4-a716-446655440000',
+            },
+          ],
+          buildTimeDays: 14,
+          currencyCode: 'ZAR',
+          description: null,
+          modelCode: 'WL-100',
+          name: 'Wheel Loader',
+          requiresVinNumber: false,
+          thumbnailDataUrl: null,
+        },
         quotedBasePrice: 1000,
         quotedCurrencyCode: 'ZAR',
         salesPersonEmail: null,
@@ -244,7 +272,7 @@ describe('QuoteDetail', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
         validUntil: null,
         workTitle: null,
-      }).productBays,
+      }).product?.bays,
     ).toEqual([
       expect.objectContaining({
         bay: expect.objectContaining({ disabledAt: null, name: 'Fabrication Bay' }),
@@ -269,7 +297,7 @@ function baseUpdateInput() {
     plannedDeliveryDate: null,
     notes: null,
     documentNotes: null,
-    selectedAssemblies: [],
+    offering: { kind: 'product' as const },
   };
 }
 
@@ -320,11 +348,13 @@ describe('PriorityQuote', () => {
       notes: null,
       plannedDeliveryDate: '2026-08-01',
       preferredDeliveryDate: '2026-07-15',
-      productBuildTimeDays: 14,
-      productCurrencyCode: 'ZAR',
       productId: '550e8400-e29b-41d4-a716-446655440000',
-      productModelCode: 'WL-100',
-      productName: 'Wheel Loader',
+      product: {
+        buildTimeDays: 14,
+        currencyCode: 'ZAR',
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+      },
       quotedBasePrice: 1000,
       quotedCurrencyCode: 'ZAR',
       salesPersonEmail: null,
@@ -374,11 +404,13 @@ describe('UpcomingDeliveryQuotesResult', () => {
       notes: null,
       plannedDeliveryDate: '2026-06-20',
       preferredDeliveryDate: null,
-      productBuildTimeDays: 14,
-      productCurrencyCode: 'ZAR',
       productId: '550e8400-e29b-41d4-a716-446655440000',
-      productModelCode: 'WL-100',
-      productName: 'Wheel Loader',
+      product: {
+        buildTimeDays: 14,
+        currencyCode: 'ZAR',
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+      },
       quotedBasePrice: 1000,
       quotedCurrencyCode: 'ZAR',
       salesPersonEmail: null,

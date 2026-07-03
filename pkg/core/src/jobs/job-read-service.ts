@@ -12,7 +12,7 @@ import {
   jobs,
   parts,
   products,
-  type quotes,
+  quotes,
   user,
 } from '@pkg/db';
 import {
@@ -324,6 +324,11 @@ function jobWorkSlotsSubquery(alias: 'sort_slot' | 'filter_slot', projection: SQ
   return sql`select ${projection} from ${jobSlots} ${slot} where ${slot}."job_id" = ${jobs.id} and ${slot}."kind" = 'work'`;
 }
 
+function jobQuoteWorkTitleSubquery(alias: 'search_quote', projection: SQL): SQL {
+  const quote = sql.raw(`"${alias}"`);
+  return sql`select ${projection} from ${quotes} ${quote} where ${quote}."id" = ${jobs.quoteId}`;
+}
+
 function buildJobListWhere(input: JobListInput): SQL | undefined {
   const conditions: SQL[] = [];
 
@@ -348,7 +353,7 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
       createEscapedContainsSearchCondition(sql`${jobs.code}::text`, input.search),
       createEscapedContainsSearchCondition(sql`${jobs.productSerialNumber}`, input.search),
       createEscapedContainsSearchCondition(
-        sql`(select "quote"."work_title" from "quote" where "quote"."id" = ${jobs.quoteId})`,
+        jobQuoteWorkTitleSubquery('search_quote', sql`"search_quote"."work_title"`),
         input.search,
       ),
       codeSearch === undefined ? undefined : eq(jobs.code, codeSearch),

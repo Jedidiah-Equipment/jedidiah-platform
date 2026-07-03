@@ -1,3 +1,4 @@
+import { getQuoteOfferingName } from '@pkg/domain';
 import type { PriorityQuote, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -33,7 +34,7 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
   return (
     <PageLayout
       actions={quote ? <QuoteStatusBadge size="lg" status={quote.status} /> : undefined}
-      description={quote?.kind === 'custom' ? (quote.workTitle ?? 'Custom Quote') : 'Edit Quote'}
+      description={quote ? getQuoteOfferingName(quote) : 'Edit Quote'}
       size="lg"
       title={quote?.code ?? 'Loading quote...'}
     >

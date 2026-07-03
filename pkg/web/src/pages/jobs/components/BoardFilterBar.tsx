@@ -1,3 +1,4 @@
+import { getJobOptionHint } from '@pkg/domain';
 import type { Bay, JobSummary, UUID } from '@pkg/schema';
 import { IconFilterOff } from '@tabler/icons-react';
 import type React from 'react';
@@ -14,7 +15,6 @@ import {
   ComboboxList,
 } from '@/components/ui/combobox.js';
 import { type BoardFilter, emptyBoardFilter, hasActiveBoardFilter } from './board-filter.js';
-import { getJobOptionHint } from './job-display.js';
 
 type FilterOption<TId extends string> = {
   id: TId;

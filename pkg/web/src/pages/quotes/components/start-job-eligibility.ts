@@ -1,29 +1,32 @@
+import { canStartJobFromQuote as getStartJobEligibility } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 
 type StartableQuote = Pick<QuoteDetail, 'job' | 'kind' | 'status'>;
 
 export function canStartJobFromQuote(quote: StartableQuote): boolean {
-  if (quote.job !== null) {
-    return false;
-  }
-
-  return quote.kind === 'product'
-    ? quote.status === 'accepted'
-    : quote.status === 'draft' || quote.status === 'sent' || quote.status === 'accepted';
+  return resolveStartJobEligibility(quote).allowed;
 }
 
 export function getStartJobUnavailableMessage(quote: StartableQuote, canCreateJob: boolean): string {
   if (quote.job !== null) {
-    return 'A Job has already been created from this quote.';
+    const result = resolveStartJobEligibility(quote);
+
+    return result.allowed ? 'Quote already has a Job.' : result.reason;
   }
 
   if (!canCreateJob) {
     return 'You do not have permission to create Jobs.';
   }
 
-  if (quote.kind === 'product') {
-    return 'Only accepted product quotes can start a Job.';
-  }
+  const result = resolveStartJobEligibility(quote);
 
-  return 'Rejected or cancelled custom quotes cannot start a Job.';
+  return result.allowed ? 'Unable to start a Job from this quote.' : result.reason;
+}
+
+function resolveStartJobEligibility(quote: StartableQuote) {
+  return getStartJobEligibility({
+    hasJob: quote.job !== null,
+    kind: quote.kind,
+    status: quote.status,
+  });
 }

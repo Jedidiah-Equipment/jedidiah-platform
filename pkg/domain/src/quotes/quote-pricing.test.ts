@@ -4,8 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { resolveEffectiveBom } from './effective-bom.js';
 import {
   computeQuoteDiscountAmount,
+  computeQuoteLineItemAmount,
   computeQuoteLineItemsTotal,
   computeQuoteTotal,
+  computeQuoteTotalIncludingVat,
+  computeQuoteVatAmount,
   priceQuote,
   priceQuoteFromLiveSelections,
   validateDiscount,
@@ -63,6 +66,10 @@ describe('computeQuoteDiscountAmount', () => {
 });
 
 describe('computeQuoteLineItemsTotal', () => {
+  it('computes one line amount from quantity times unit price', () => {
+    expect(computeQuoteLineItemAmount({ quantity: 3, unitPrice: 125 })).toBe(375);
+  });
+
   it('totals quantity times unit price for every line item', () => {
     expect(
       computeQuoteLineItemsTotal([
@@ -70,6 +77,16 @@ describe('computeQuoteLineItemsTotal', () => {
         { quantity: 3, unitPrice: 10 },
       ]),
     ).toBe(280);
+  });
+});
+
+describe('quote document VAT helpers', () => {
+  it('computes VAT from a quote document subtotal', () => {
+    expect(computeQuoteVatAmount(2000)).toBe(300);
+  });
+
+  it('adds VAT to a quote document subtotal', () => {
+    expect(computeQuoteTotalIncludingVat(2000)).toBe(2300);
   });
 });
 

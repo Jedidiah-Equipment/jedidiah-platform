@@ -1,3 +1,4 @@
+import { getJobDisplayName } from '@pkg/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
@@ -5,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DocumentViewer } from '@/components/documents/DocumentViewer';
 import { Text } from '@/components/ui/text';
-import { getJobDisplayName } from '@/lib/job-display';
 import { useTRPC } from '@/lib/trpc';
 
 /**

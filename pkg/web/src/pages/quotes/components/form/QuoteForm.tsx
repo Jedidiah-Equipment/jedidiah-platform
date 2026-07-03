@@ -1,4 +1,4 @@
-import { formatDate, priceQuoteFromLiveSelections, resolveEffectiveBom } from '@pkg/domain';
+import { formatDate, isQuoteLocked } from '@pkg/domain';
 import {
   type PriorityQuote,
   type QuoteDetail,
@@ -30,12 +30,12 @@ import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useCan } from '@/hooks/use-access.js';
 
 import { quoteStatusLabels } from '../QuoteStatusBadge.js';
-import { QuoteFormValues, resolveSelectedAssemblySnapshots, toQuoteFormValues, toQuoteUpdateInput } from '../types.js';
+import { computeQuoteSummary, getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput } from '../types.js';
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
 import { QuoteDocumentsSection } from './QuoteDocumentsSection.js';
 import { QuoteFormSection } from './QuoteFormSection.js';
 import { QuoteLineItemsEditor } from './QuoteLineItemsEditor.js';
-import { type QuoteComputedSummary, QuoteRightPanel } from './QuoteRightPanel.js';
+import { QuoteRightPanel } from './QuoteRightPanel.js';
 
 type QuoteFormProps = {
   onSave: (value: QuoteUpdateInput) => Promise<unknown>;
@@ -45,20 +45,9 @@ type QuoteFormProps = {
 
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
   const isCustom = quote.kind === 'custom';
-  const isLocked = quote.kind === 'product' ? quote.job !== null : quote.status === 'accepted';
-  const quoteCurrencyCode = quote.productCurrencyCode ?? quote.quotedCurrencyCode;
-
-  const selectedProduct = useMemo(
-    () => ({
-      assemblies: quote.productAssemblies,
-      basePrice: quote.quotedBasePrice,
-      currencyCode: quoteCurrencyCode,
-      id: quote.productId,
-      modelCode: quote.productModelCode ?? '—',
-      name: quote.productName ?? '—',
-    }),
-    [quote, quoteCurrencyCode],
-  );
+  const isLocked = isQuoteLocked({ hasJob: quote.job !== null, kind: quote.kind, status: quote.status });
+  const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
+  const catalogAssemblies = quote.product?.assemblies ?? [];
   const salespeopleOptions = useSalesPersonOptions();
   const auditAccess = useCan('audit:read');
   const [generationWarnings, setGenerationWarnings] = useState<QuoteDocumentGenerationWarning[]>([]);
@@ -74,8 +63,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
     defaultValues: toQuoteFormValues(quote),
     failureMessage: 'Unable to update quote.',
     save: onSave,
-    toInput: (value) => toQuoteUpdateInput({ id: quote.id, value }),
-    validator: QuoteFormValues,
+    toInput: (value) => toQuoteUpdateInput({ id: quote.id, kind: quote.kind, value }),
+    validator: getQuoteFormValuesValidator(quote.kind),
   });
 
   return (
@@ -188,7 +177,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                             <form.AppField name="deliveryPrice">
                               {(field) => (
                                 <field.CurrencyField
-                                  currencyCode={selectedProduct.currencyCode}
+                                  currencyCode={quoteCurrencyCode}
                                   disabled={isLocked}
                                   label="Delivery price"
                                 />
@@ -247,7 +236,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                     <form.Field name="lineItems" mode="array">
                       {(lineItemsField) => (
                         <QuoteLineItemsEditor
-                          currencyCode={selectedProduct.currencyCode}
+                          currencyCode={quoteCurrencyCode}
                           lineItemsField={lineItemsField}
                           onRemoveLineItem={autosave.commit}
                           readOnly={isLocked}
@@ -269,8 +258,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                       <form.Field name="selectedAssemblies">
                         {(field) => (
                           <QuoteAssembliesSelector
-                            catalogAssemblies={selectedProduct.assemblies}
-                            currencyCode={selectedProduct.currencyCode}
+                            catalogAssemblies={catalogAssemblies}
+                            currencyCode={quoteCurrencyCode}
                             initialSelections={quote.selectedAssemblies}
                             onChange={(value) => {
                               field.handleChange(value);
@@ -316,48 +305,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                 </TabsContent>
               ) : null}
             </Tabs>
-            <form.Subscribe
-              selector={(state): QuoteComputedSummary => {
-                const discountPercent = state.values.discountPercent;
-                const deliveryIncluded = state.values.deliveryIncluded;
-                const deliveryPrice = deliveryIncluded ? state.values.deliveryPrice : 0;
-                const lineItems = state.values.lineItems;
-                const quotedBasePrice = isCustom ? state.values.basePrice : quote.quotedBasePrice;
-                const selectedSnapshots = isCustom
-                  ? []
-                  : resolveSelectedAssemblySnapshots({
-                      catalogAssemblies: selectedProduct.assemblies,
-                      formSelections: state.values.selectedAssemblies,
-                      initialSelections: quote.selectedAssemblies,
-                    });
-                // Stale selections (reference gone from the freshly loaded catalog) are excluded from
-                // the on-screen Quote Pricing so the figure reflects only assemblies still producible.
-                const { staleSelections } = resolveEffectiveBom({
-                  catalogAssemblies: selectedProduct.assemblies,
-                  selectedAssemblies: selectedSnapshots,
-                });
-                const staleSnapshots = new Set(staleSelections);
-                const selectedAssemblies = selectedSnapshots.filter((snapshot) => !staleSnapshots.has(snapshot));
-                const pricing = priceQuoteFromLiveSelections(
-                  { deliveryIncluded, deliveryPrice, discountPercent, lineItems, quotedBasePrice },
-                  selectedAssemblies,
-                );
-
-                return {
-                  deliveryIncluded,
-                  deliveryPrice,
-                  discountAmount: pricing.discountAmount,
-                  discountPercent,
-                  basePrice: quotedBasePrice,
-                  currencyCode: selectedProduct.currencyCode,
-                  lineItems,
-                  lineItemTotal: pricing.lineItemTotal,
-                  selectedAssemblies,
-                  selectedAssemblyTotal: pricing.selectedAssemblyTotal,
-                  total: pricing.total,
-                };
-              }}
-            >
+            <form.Subscribe selector={(state) => computeQuoteSummary({ quote, values: state.values })}>
               {(summary) => <QuoteRightPanel flushAutosave={autosave.flush} quote={quote} summary={summary} />}
             </form.Subscribe>
           </div>
@@ -383,9 +331,8 @@ const QuotePriorityAlert: React.FC<{
     );
   }
 
-  const buildDuration =
-    priorityQuote.productBuildTimeDays === null ? '—' : formatWorkingDays(priorityQuote.productBuildTimeDays);
-  const productName = priorityQuote.productName ?? '—';
+  const buildDuration = priorityQuote.product ? formatWorkingDays(priorityQuote.product.buildTimeDays) : '—';
+  const productName = priorityQuote.product?.name ?? '—';
 
   return (
     <Alert className="border-warning/45 bg-warning/10 text-warning-foreground">

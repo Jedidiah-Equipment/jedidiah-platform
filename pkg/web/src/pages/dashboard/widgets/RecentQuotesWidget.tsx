@@ -1,4 +1,4 @@
-import { formatCurrency, hasPermission, priceQuote } from '@pkg/domain';
+import { formatCurrency, getQuoteOfferingName, hasPermission, priceQuote } from '@pkg/domain';
 import type { QuoteListInput, QuoteSummary } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -70,7 +70,7 @@ function RecentQuoteRow({ canUpdateQuote, quote }: { canUpdateQuote: boolean; qu
 }
 
 function RecentQuoteRowContent({ canUpdateQuote, quote }: { canUpdateQuote: boolean; quote: QuoteSummary }) {
-  const quoteName = quote.kind === 'custom' ? (quote.workTitle ?? 'Custom work') : (quote.productName ?? '—');
+  const quoteName = getQuoteOfferingName(quote);
 
   return (
     <>

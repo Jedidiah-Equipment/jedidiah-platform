@@ -1,9 +1,8 @@
-import type { SlotCalendarDaySegment, SlotCalendarDays } from '@pkg/domain';
+import { getJobDisplayName, type SlotCalendarDaySegment, type SlotCalendarDays } from '@pkg/domain';
 import type { DateOnlyIso, JobSummary } from '@pkg/schema';
 import type React from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
-import { getJobDisplayName } from './job-display.js';
 import { getJobGanttOffsetDistance, getJobGanttWidth } from './job-gantt-geometry.js';
 
 type BaySlotJobCardProps = {

@@ -1,3 +1,4 @@
+import { getJobDisplayNameWithModel, getJobWorkLabel } from '@pkg/domain';
 import type { JobCode, JobListInput, JobSummary, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -10,7 +11,6 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
-import { getJobDisplayName } from './job-display.js';
 
 type JobCodeDisplayProps = {
   canOpenJob: boolean;
@@ -106,15 +106,13 @@ const JobCodeHoverCard: React.FC<{
 };
 
 const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => {
-  const displayName = job.productModelCode
-    ? `${getJobDisplayName(job)} (${job.productModelCode})`
-    : getJobDisplayName(job);
+  const displayName = getJobDisplayNameWithModel(job);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2 text-sm">
         <JobPreviewFact label="Customer" value={job.customerCompanyName ?? 'Standalone'} />
-        <JobPreviewFact label={job.quoteKind === 'custom' ? 'Work' : 'Product'} value={displayName} />
+        <JobPreviewFact label={getJobWorkLabel(job)} value={displayName} />
         <JobPreviewFact label="Quote" value={job.quoteCode} />
         {job.productSerialNumber ? <JobPreviewFact label="Serial" value={job.productSerialNumber} /> : null}
       </div>

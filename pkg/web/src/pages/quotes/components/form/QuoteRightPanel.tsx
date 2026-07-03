@@ -1,4 +1,4 @@
-import { formatCurrency, formatPercent } from '@pkg/domain';
+import { formatCurrency, formatPercent, getQuoteOfferingName } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { IconClock, IconMail, IconMapPin, IconPackage, IconPhone, IconReceipt2 } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
@@ -6,6 +6,7 @@ import type React from 'react';
 import { toast } from 'sonner';
 
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
+import { createStableRowKeys } from '@/components/form/create-stable-row-keys.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -14,27 +15,11 @@ import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
 import { openQuoteEmailAssistant } from '../quote-email-assistant.js';
 import { StartJobLink } from '../StartJobLink.js';
-import type { QuoteFormValues, SelectedAssemblySnapshot } from '../types.js';
+import type { QuoteComputedSummary, QuoteFormValues } from '../types.js';
 import { DraftQuoteEmailDialog } from './DraftQuoteEmailDialog.js';
 
 type QuoteLineItemFormInput = QuoteFormValues['lineItems'][number];
-
-const lineItemSummaryKeys = new WeakMap<QuoteLineItemFormInput, string>();
-let nextLineItemSummaryKey = 0;
-
-export type QuoteComputedSummary = {
-  currencyCode: string;
-  deliveryIncluded: boolean;
-  deliveryPrice: number;
-  discountAmount: number;
-  discountPercent: number;
-  lineItems: QuoteFormValues['lineItems'];
-  lineItemTotal: number;
-  basePrice: number;
-  selectedAssemblies: SelectedAssemblySnapshot[];
-  selectedAssemblyTotal: number;
-  total: number;
-};
+const getSummaryLineItemKey = createStableRowKeys<QuoteLineItemFormInput>('quote-summary-line-item');
 
 export function QuoteRightPanel({
   flushAutosave,
@@ -121,12 +106,13 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
     return <QuoteCustomWorkCard quote={quote} />;
   }
 
-  const standardCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'standard').length;
-  const optionalCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'optional').length;
-  const productName = quote.productName ?? '—';
-  const productModelCode = quote.productModelCode ?? '—';
-  const productCurrencyCode = quote.productCurrencyCode ?? quote.quotedCurrencyCode;
-  const productBuildTimeDays = quote.productBuildTimeDays === null ? '—' : `${quote.productBuildTimeDays} days`;
+  const assemblies = quote.product?.assemblies ?? [];
+  const standardCount = assemblies.filter((assembly) => assembly.kind === 'standard').length;
+  const optionalCount = assemblies.filter((assembly) => assembly.kind === 'optional').length;
+  const productName = quote.product?.name ?? '—';
+  const productModelCode = quote.product?.modelCode ?? '—';
+  const productCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
+  const productBuildTimeDays = quote.product ? `${quote.product.buildTimeDays} days` : '—';
 
   return (
     <Card size="sm">
@@ -143,7 +129,7 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
             className="size-10"
             label={productName}
             size="lg"
-            thumbnailDataUrl={quote.productThumbnailDataUrl}
+            thumbnailDataUrl={quote.product?.thumbnailDataUrl ?? null}
           />
         </CardAction>
       </CardHeader>
@@ -159,8 +145,10 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
           <QuoteMiniMetric label="Optional Assemblies" value={String(optionalCount)} />
         </div>
         <Separator />
-        <p className={cn('max-h-20 overflow-hidden text-sm', quote.productDescription ? '' : 'text-muted-foreground')}>
-          {quote.productDescription ?? 'No product description captured.'}
+        <p
+          className={cn('max-h-20 overflow-hidden text-sm', quote.product?.description ? '' : 'text-muted-foreground')}
+        >
+          {quote.product?.description ?? 'No product description captured.'}
         </p>
       </CardContent>
     </Card>
@@ -168,7 +156,7 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
 }
 
 function QuoteCustomWorkCard({ quote }: { quote: QuoteDetail }) {
-  const workTitle = quote.workTitle ?? 'Custom work';
+  const workTitle = getQuoteOfferingName(quote);
 
   return (
     <Card size="sm">
@@ -191,9 +179,7 @@ function QuoteCustomWorkCard({ quote }: { quote: QuoteDetail }) {
             label="Base price"
             value={formatCurrency(quote.quotedBasePrice, quote.quotedCurrencyCode)}
           />
-          <QuoteMiniMetric icon={<IconPackage />} label="Kind" value="Custom" />
-          <QuoteMiniMetric icon={<IconPackage />} label="Product" value="None" />
-          <QuoteMiniMetric icon={<IconPackage />} label="Assemblies" value="N/A" />
+          <QuoteMiniMetric icon={<IconPackage />} label="Line items" value={String(quote.lineItems.length)} />
         </div>
       </CardContent>
     </Card>
@@ -248,7 +234,7 @@ function QuoteTotalCard({
               {summary.lineItems.map((item) => (
                 <QuoteSummaryRow
                   className="text-xs"
-                  key={getLineItemSummaryKey(item)}
+                  key={getSummaryLineItemKey(item)}
                   label={formatLineItemLabel(item)}
                   value={formatCurrency(item.quantity * item.unitPrice, summary.currencyCode)}
                   valueClassName="text-muted-foreground"
@@ -292,19 +278,6 @@ function QuoteTotalCard({
       </CardContent>
     </Card>
   );
-}
-
-function getLineItemSummaryKey(item: QuoteLineItemFormInput): string {
-  const existing = lineItemSummaryKeys.get(item);
-  if (existing) {
-    return existing;
-  }
-
-  const key = `quote-line-item-summary-${nextLineItemSummaryKey}`;
-  nextLineItemSummaryKey += 1;
-  lineItemSummaryKeys.set(item, key);
-
-  return key;
 }
 
 function formatLineItemLabel(item: QuoteLineItemFormInput): string {

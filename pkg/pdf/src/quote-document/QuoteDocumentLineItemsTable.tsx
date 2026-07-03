@@ -8,6 +8,21 @@ type QuoteDocumentLineItemsTableProps = {
   document: QuoteDocumentModel;
 };
 
+const getLineItemKey = (() => {
+  const keys = new WeakMap<QuoteDocumentLineItem, string>();
+  let nextKey = 0;
+
+  return (item: QuoteDocumentLineItem) => {
+    let key = keys.get(item);
+    if (key === undefined) {
+      key = `quote-document-line-item-${nextKey}`;
+      nextKey += 1;
+      keys.set(item, key);
+    }
+    return key;
+  };
+})();
+
 const layout = {
   priceColumnWidth: 96,
   quantityColumnWidth: 42,
@@ -74,7 +89,7 @@ export function QuoteDocumentLineItemsTable({ document }: QuoteDocumentLineItems
         <>
           <SectionRow label="Optional Extras" />
           {optionalItems.map((item) => (
-            <LineItemRow item={item} key={item.descriptionLines.join('|')} />
+            <LineItemRow item={item} key={getLineItemKey(item)} />
           ))}
         </>
       ) : null}
@@ -82,12 +97,12 @@ export function QuoteDocumentLineItemsTable({ document }: QuoteDocumentLineItems
         <>
           <SectionRow label="Line Items" />
           {lineItems.map((item) => (
-            <LineItemRow item={item} key={item.descriptionLines.join('|')} />
+            <LineItemRow item={item} key={getLineItemKey(item)} />
           ))}
         </>
       ) : null}
       {adjustmentItems.map((item) => (
-        <LineItemRow item={item} key={item.descriptionLines.join('|')} />
+        <LineItemRow item={item} key={getLineItemKey(item)} />
       ))}
       {document.staleSelectionNotes.length > 0 ? (
         <View style={styles.noticeRow}>
@@ -187,7 +202,7 @@ function SectionRow({ label }: { label: string }) {
 }
 
 function LineItemRow({ item, product = false }: { item: QuoteDocumentLineItem; product?: boolean }) {
-  const unitPrice = formatCurrency(item.unitPrice ?? item.amount);
+  const unitPrice = formatCurrency(item.unitPrice);
   const subtotal = formatCurrency(item.amount);
 
   return (

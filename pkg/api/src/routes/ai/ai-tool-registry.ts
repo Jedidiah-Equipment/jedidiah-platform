@@ -1,6 +1,13 @@
 import type { AiToolBase } from '@pkg/schema';
 
 import type { AiContext } from './ai-context.js';
+import {
+  CREATE_QUOTE_RESULT_IDENTIFIERS,
+  GET_JOB_RESULT_IDENTIFIERS,
+  GET_QUOTE_RESULT_IDENTIFIERS,
+  LIST_JOB_RESULT_IDENTIFIERS,
+  LIST_QUOTE_RESULT_IDENTIFIERS,
+} from './ai-kind-facts.js';
 import { type AiLink, type AiLinkMetadata, aiLinkMetadata, createAiLink } from './ai-link-metadata.js';
 import { createCustomerTool } from './tools/create-customer.js';
 import { createQuoteTool } from './tools/create-quote.js';
@@ -184,16 +191,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Custom Job Work Title',
         'numeric Job Code',
       ],
-      resultIdentifiers: [
-        'Job Code',
-        'Quote Kind',
-        'Product serial number (null for Custom Jobs)',
-        'Customer company name',
-        'Product name and Product model code (null for Custom Jobs)',
-        'Work Title display fallback for Custom Jobs',
-        'scheduled Bay slots',
-        'Quote Code',
-      ],
+      resultIdentifiers: LIST_JOB_RESULT_IDENTIFIERS,
       linkTarget: aiLinkMetadata.Job,
     },
     projectResult: (result) => projectPagedItems(result, projectJob),
@@ -211,18 +209,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Searching by Job Code, Product Job serial number, Custom Job Work Title, numeric code, or partial id; use listJobs first.',
       ],
       searchableIdentifiers: ['Job UUID'],
-      resultIdentifiers: [
-        'Job Code',
-        'Quote Kind',
-        'Product serial number (null for Custom Jobs)',
-        'Quote Code',
-        'Customer company name',
-        'Product name and Product model code (null for Custom Jobs)',
-        'Work Title display fallback for Custom Jobs',
-        'scheduled Department and Bay slots',
-        'Product Job CFO Part quantities with unitOfMeasure (empty for Custom Jobs)',
-        'Job Documents (Custom Jobs start without Product Document Snapshots or generated Brochures)',
-      ],
+      resultIdentifiers: GET_JOB_RESULT_IDENTIFIERS,
       linkTarget: aiLinkMetadata.Job,
     },
     projectResult: projectJob,
@@ -247,23 +234,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'linked Job Codes',
         'Quote Status',
       ],
-      resultIdentifiers: [
-        'Quote Code',
-        'Quote Kind',
-        'Quote Status',
-        'Document Notes',
-        'Preferred delivery date',
-        'Planned delivery date',
-        'Product UUID, productName, and productModelCode when this is a Product Quote; null for Custom Quotes',
-        'Work Title display fallback when this is a Custom Quote',
-        'salesPersonId User ID',
-        'quotedBasePrice and quotedCurrencyCode: latched from Product for Product Quotes; entered base price in ZAR for Custom Quotes',
-        'Quote Line Items quantity x unit price contribution',
-        'Selected Assemblies for Product Quotes; empty for Custom Quotes',
-        'Customer company name',
-        'linked Job Codes',
-        'linked Job UUIDs',
-      ],
+      resultIdentifiers: LIST_QUOTE_RESULT_IDENTIFIERS,
       linkTarget: aiLinkMetadata.Quote,
     },
     projectResult: (result) => projectPagedItems(result, projectQuote),
@@ -278,22 +249,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Searching by Quote Code, Customer, Product, Custom Work Title, linked Job Codes, or partial id; use listQuotes first.',
       ],
       searchableIdentifiers: ['Quote UUID'],
-      resultIdentifiers: [
-        'Quote Code',
-        'Quote Kind',
-        'Quote Status',
-        'Document Notes',
-        'Preferred delivery date',
-        'Planned delivery date',
-        'Product UUID, productName, and productModelCode when this is a Product Quote; null for Custom Quotes',
-        'Work Title display fallback when this is a Custom Quote',
-        'salesPersonId User ID',
-        'quotedBasePrice and quotedCurrencyCode: latched from Product for Product Quotes; entered base price in ZAR for Custom Quotes',
-        'Quote Line Items quantity x unit price contribution',
-        'Selected Assemblies for Product Quotes; empty for Custom Quotes',
-        'Customer company name',
-        'linked Job Codes',
-      ],
+      resultIdentifiers: GET_QUOTE_RESULT_IDENTIFIERS,
       linkTarget: aiLinkMetadata.Quote,
     },
     projectResult: projectQuote,
@@ -317,17 +273,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Custom Work Title for Custom Quotes',
         'salesPersonId User ID',
       ],
-      resultIdentifiers: [
-        'Quote Code',
-        'Customer company name',
-        'Quote Kind',
-        'Custom Work Title',
-        'Product name (null for Custom Quotes)',
-        'quotedBasePrice: latched from Product for Product Quotes; entered base price for Custom Quotes',
-        'quotedCurrencyCode',
-        'Quote Line Items quantity x unit price contribution',
-        'Selected Assemblies for Product Quotes; empty for Custom Quotes',
-      ],
+      resultIdentifiers: CREATE_QUOTE_RESULT_IDENTIFIERS,
       linkTarget: aiLinkMetadata.Quote,
     },
     projectResult: projectQuote,
@@ -563,10 +509,12 @@ function projectQuote(value: unknown): unknown {
 
   const { sentAt: _sentAt, ...projectedValue } = value;
   const label = typeof value.code === 'string' ? value.code : null;
+  const product = isObjectRecord(value.product) ? value.product : null;
+  const productLabel = typeof product?.name === 'string' ? product.name : null;
   return addLinks(projectedValue, [
     label ? createAiLink('Quote', label, value.id) : null,
     createLink('Customer', value.customerCompanyName, value.customerId),
-    createLink('Product', value.productName, value.productId),
+    createLink('Product', productLabel, value.productId),
     createJobLink(value.job),
   ]);
 }

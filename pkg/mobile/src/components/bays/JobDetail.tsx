@@ -11,6 +11,7 @@ import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { JobAssemblies } from '@/components/bays/JobAssemblies';
 import { JobDocuments } from '@/components/bays/JobDocuments';
+import { JobWorkCard } from '@/components/bays/JobWorkCard';
 import { FactCard, JobFactsCard } from '@/components/bays/job-facts';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
 import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
@@ -268,28 +269,12 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
         {progress ? <DaysLeftChip color={accent} daysLeft={progress.daysLeft} /> : null}
       </View>
 
-      <View className="flex-row items-center gap-3.5 rounded-2xl border border-border bg-surface p-3.5">
-        <Avatar
-          className="h-[52px] w-[52px] rounded-xl"
-          name={state.jobDisplayName}
-          uri={state.productThumbnailDataUrl}
-        />
-        <View className="min-w-0 flex-1">
-          <Text className="text-base text-surface-foreground" numberOfLines={1} weight="bold">
-            {state.jobDisplayName}
-          </Text>
-          {state.productSerialNumber ? (
-            <Text className="mt-0.5 text-xs text-muted-foreground" mono>
-              {state.productSerialNumber}
-            </Text>
-          ) : null}
-          {state.customerCompanyName ? (
-            <Text className="mt-1 text-sm text-surface-foreground" numberOfLines={1}>
-              {state.customerCompanyName}
-            </Text>
-          ) : null}
-        </View>
-      </View>
+      <JobWorkCard
+        customerCompanyName={state.customerCompanyName}
+        jobDisplayName={state.jobDisplayName}
+        productSerialNumber={state.productSerialNumber}
+        productThumbnailDataUrl={state.productThumbnailDataUrl}
+      />
 
       <View className="rounded-2xl border border-border bg-surface p-4">
         <View className="mb-2.5 flex-row items-center justify-between">

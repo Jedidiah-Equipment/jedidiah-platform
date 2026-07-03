@@ -2,8 +2,10 @@ import { type Assembly, QuoteDetail, type QuoteSelectedAssembly, QuoteUpdateInpu
 import { describe, expect, it } from 'vitest';
 
 import {
+  computeQuoteSummary,
   getDefaultQuoteDocumentLeadTime,
   getDefaultQuoteDocumentLeadTimeFromAvailability,
+  getQuoteFormValuesValidator,
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
   type QuoteFormValues,
@@ -55,13 +57,32 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     customerThumbnailDataUrl: null,
     customerVatNumber: 'VAT-123',
     job: null,
-    productCurrencyCode: 'ZAR',
-    productBuildTimeDays: 14,
-    productDescription: 'Useful widget',
-    productModelCode: 'MOD-1',
-    productName: 'Widget',
-    productRequiresVinNumber: false,
-    productThumbnailDataUrl: null,
+    product: {
+      assemblies: [],
+      bays: [
+        {
+          bay: {
+            createdAt: '2026-01-01T00:00:00.000Z',
+            department: 'fabrication',
+            disabledAt: null,
+            id: BAY_ID,
+            name: 'Fabrication Bay',
+            scheduleOrigin: '2026-01-01',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+          bayId: BAY_ID,
+          defaultWorkingDays: 5,
+          productId: PRODUCT_ID,
+        },
+      ],
+      buildTimeDays: 14,
+      currencyCode: 'ZAR',
+      description: 'Useful widget',
+      modelCode: 'MOD-1',
+      name: 'Widget',
+      requiresVinNumber: false,
+      thumbnailDataUrl: null,
+    },
     salesPersonEmail: 'sales@example.com',
     salesPersonName: 'Sales Person',
     salesPersonThumbnailDataUrl: null,
@@ -85,23 +106,6 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
         quotedPrice: 250,
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
-      },
-    ],
-    productAssemblies: [],
-    productBays: [
-      {
-        bay: {
-          createdAt: '2026-01-01T00:00:00.000Z',
-          department: 'fabrication',
-          disabledAt: null,
-          id: BAY_ID,
-          name: 'Fabrication Bay',
-          scheduleOrigin: '2026-01-01',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-        bayId: BAY_ID,
-        defaultWorkingDays: 5,
-        productId: PRODUCT_ID,
       },
     ],
     ...overrides,
@@ -232,11 +236,18 @@ describe('QuoteCreateFormValues', () => {
 
 describe('getDefaultQuoteDocumentLeadTime', () => {
   it('defaults from the Product build time on the saved Quote detail', () => {
-    expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ productBuildTimeDays: 21 }))).toBe('21 working days');
+    const quote = buildQuoteDetail();
+
+    expect(
+      getDefaultQuoteDocumentLeadTime({
+        ...quote,
+        product: quote.product ? { ...quote.product, buildTimeDays: 21 } : null,
+      }),
+    ).toBe('21 working days');
   });
 
   it('leaves productless quote document lead time for the user to enter', () => {
-    expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ productBuildTimeDays: null }))).toBe('');
+    expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ product: null }))).toBe('');
   });
 
   it('defaults from Product build time plus the max bay wait when availability is loaded', () => {
@@ -260,6 +271,88 @@ describe('getDefaultQuoteDocumentLeadTime', () => {
         leadTime: '21 working days',
       }),
     ).toBe('34 working days');
+  });
+});
+
+describe('computeQuoteSummary', () => {
+  const optionalAssembly: Assembly = {
+    id: PRODUCT_ASSEMBLY_ID,
+    productId: PRODUCT_ID,
+    kind: 'optional',
+    name: 'Optional A',
+    price: 250,
+    parts: [],
+    overrideStandardAssemblyIds: [],
+  } as Assembly;
+
+  it('computes product quote pricing from live form values and catalog selections', () => {
+    const productQuote = buildQuoteDetail();
+    if (productQuote.product === null) {
+      throw new Error('Expected product quote fixture to include product facts');
+    }
+
+    const quote = buildQuoteDetail({
+      product: {
+        ...productQuote.product,
+        assemblies: [optionalAssembly],
+      },
+    });
+    const summary = computeQuoteSummary({
+      quote,
+      values: buildFormValues({
+        basePrice: 9999,
+        deliveryIncluded: true,
+        deliveryPrice: 50,
+        discountPercent: 10,
+        lineItems: [{ name: 'Install kit', quantity: 2, unitPrice: 100 }],
+        selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
+      }),
+    });
+
+    expect(summary.basePrice).toBe(1000);
+    expect(summary.currencyCode).toBe('ZAR');
+    expect(summary.lineItemTotal).toBe(200);
+    expect(summary.selectedAssemblyTotal).toBe(250);
+    expect(summary.discountAmount).toBe(145);
+    expect(summary.total).toBe(1355);
+    expect(summary.selectedAssemblies).toEqual([
+      { id: PRODUCT_ASSEMBLY_ID, productAssemblyId: PRODUCT_ASSEMBLY_ID, quotedName: 'Optional A', quotedPrice: 250 },
+    ]);
+  });
+
+  it('excludes stale catalog selections from product quote pricing', () => {
+    const summary = computeQuoteSummary({
+      quote: buildQuoteDetail(),
+      values: buildFormValues({
+        discountPercent: 0,
+        selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
+      }),
+    });
+
+    expect(summary.selectedAssemblies).toEqual([]);
+    expect(summary.selectedAssemblyTotal).toBe(0);
+    expect(summary.total).toBe(1050);
+  });
+
+  it('uses entered base price and no assemblies for custom quotes', () => {
+    const quote = buildQuoteDetail({ kind: 'custom', product: null, productId: null, workTitle: 'Hydraulic repair' });
+    const summary = computeQuoteSummary({
+      quote,
+      values: buildFormValues({
+        basePrice: 2500,
+        deliveryIncluded: false,
+        deliveryPrice: 500,
+        discountPercent: 5,
+        lineItems: [{ name: 'Travel', quantity: 2, unitPrice: 150 }],
+        selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
+      }),
+    });
+
+    expect(summary.basePrice).toBe(2500);
+    expect(summary.deliveryPrice).toBe(0);
+    expect(summary.lineItemTotal).toBe(300);
+    expect(summary.selectedAssemblies).toEqual([]);
+    expect(summary.total).toBe(2660);
   });
 });
 
@@ -316,13 +409,14 @@ describe('toQuoteUpdateInput', () => {
   it('omits customer and product identity from edit submissions', () => {
     const input = toQuoteUpdateInput({
       id: QUOTE_ID,
+      kind: 'product',
       value: buildFormValues({ lineItems: [{ name: 'Transport crate', quantity: 1, unitPrice: 300 }] }),
     });
 
     expect(input).toMatchObject({
       id: QUOTE_ID,
       depositPercent: 30,
-      basePrice: 1000,
+      offering: { kind: 'product' },
       lineItems: [{ name: 'Transport crate', quantity: 1, unitPrice: 300 }],
       salesPersonId: 'auth-user-1',
       status: 'sent',
@@ -336,6 +430,7 @@ describe('toQuoteUpdateInput', () => {
   it('coalesces empty edit dates to null and gates delivery price', () => {
     const input = toQuoteUpdateInput({
       id: QUOTE_ID,
+      kind: 'product',
       value: buildFormValues({
         deliveryIncluded: false,
         deliveryPrice: 99,
@@ -353,21 +448,50 @@ describe('toQuoteUpdateInput', () => {
   });
 
   it('preserves cancelled status in edit submissions', () => {
-    const input = toQuoteUpdateInput({ id: QUOTE_ID, value: buildFormValues({ status: 'cancelled' }) });
+    const input = toQuoteUpdateInput({
+      id: QUOTE_ID,
+      kind: 'product',
+      value: buildFormValues({ status: 'cancelled' }),
+    });
 
     expect(input.status).toBe('cancelled');
+  });
+
+  it('emits custom quote offering facts without conflating blank work titles with omission', () => {
+    const input = toQuoteUpdateInput({
+      id: QUOTE_ID,
+      kind: 'custom',
+      value: buildFormValues({ basePrice: 2500, workTitle: 'Hydraulic repair' }),
+    });
+
+    expect(input.offering).toEqual({ kind: 'custom', basePrice: 2500, workTitle: 'Hydraulic repair' });
+    expect(() =>
+      toQuoteUpdateInput({
+        id: QUOTE_ID,
+        kind: 'custom',
+        value: buildFormValues({ basePrice: 2500, workTitle: '' }),
+      }),
+    ).toThrow();
+  });
+
+  it('validates custom work titles at the form boundary only when kind is custom', () => {
+    expect(getQuoteFormValuesValidator('product').safeParse(buildFormValues({ workTitle: '' })).success).toBe(true);
+    expect(getQuoteFormValuesValidator('custom').safeParse(buildFormValues({ workTitle: '' })).success).toBe(false);
+    expect(
+      getQuoteFormValuesValidator('custom').safeParse(buildFormValues({ workTitle: 'Hydraulic repair' })).success,
+    ).toBe(true);
   });
 
   it('rejects customer and product keys at the schema boundary', () => {
     expect(() =>
       QuoteUpdateInput.parse({
-        ...toQuoteUpdateInput({ id: QUOTE_ID, value: buildFormValues() }),
+        ...toQuoteUpdateInput({ id: QUOTE_ID, kind: 'product', value: buildFormValues() }),
         customer: { type: 'existing', customerId: CUSTOMER_ID },
       }),
     ).toThrow();
     expect(() =>
       QuoteUpdateInput.parse({
-        ...toQuoteUpdateInput({ id: QUOTE_ID, value: buildFormValues() }),
+        ...toQuoteUpdateInput({ id: QUOTE_ID, kind: 'product', value: buildFormValues() }),
         productId: PRODUCT_ID,
       }),
     ).toThrow();

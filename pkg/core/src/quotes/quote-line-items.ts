@@ -1,5 +1,5 @@
 import { type DatabaseTransaction, type Db, quoteLineItems } from '@pkg/db';
-import { type QuoteCreateInput, QuoteLineItem, type QuoteUpdateInput, type UUID } from '@pkg/schema';
+import { QuoteLineItem, type QuoteLineItemInput, type UUID } from '@pkg/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 
 export type QuoteLineItemRow = typeof quoteLineItems.$inferSelect;
@@ -58,17 +58,15 @@ export async function listQuoteLineItems({
 }
 
 export async function persistQuoteLineItems({
-  input,
+  lineItems,
   quoteId,
   tx,
 }: {
-  input: Pick<QuoteCreateInput | QuoteUpdateInput, 'lineItems'>;
+  lineItems: readonly QuoteLineItemInput[];
   quoteId: UUID;
   tx: DatabaseTransaction;
 }): Promise<QuoteLineItemRow[]> {
   await tx.delete(quoteLineItems).where(eq(quoteLineItems.quoteId, quoteId));
-
-  const lineItems = input.lineItems ?? [];
 
   if (lineItems.length > 0) {
     await tx.insert(quoteLineItems).values(

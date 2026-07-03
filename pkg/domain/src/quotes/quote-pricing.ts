@@ -42,7 +42,22 @@ export function computeQuoteDiscountAmount({
 }
 
 export function computeQuoteLineItemsTotal(lineItems: readonly { quantity: number; unitPrice: number }[]): number {
-  return lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  return lineItems.reduce((sum, item) => sum + computeQuoteLineItemAmount(item), 0);
+}
+
+export function computeQuoteLineItemAmount(item: { quantity: number; unitPrice: number }): number {
+  return item.quantity * item.unitPrice;
+}
+
+export function computeQuoteVatAmount(subtotal: number, vatPercent: number = QUOTE_DOCUMENT_VAT_PERCENT): number {
+  return (subtotal * vatPercent) / 100;
+}
+
+export function computeQuoteTotalIncludingVat(
+  subtotal: number,
+  vatPercent: number = QUOTE_DOCUMENT_VAT_PERCENT,
+): number {
+  return subtotal + computeQuoteVatAmount(subtotal, vatPercent);
 }
 
 export function computeQuoteTotal({

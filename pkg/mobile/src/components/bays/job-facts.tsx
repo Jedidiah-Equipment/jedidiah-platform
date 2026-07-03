@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
-import { getJobWorkFactFields } from '@/lib/job-fact-fields';
 
 /** A titled detail card, matching the Bay slot and Job detail panes. */
 export function FactCard({ title, children }: { title: string; children: ReactNode }) {
@@ -46,8 +45,6 @@ export type JobFacts = {
  * pane (#520) and Job Detail (#615), so the two surfaces show the Job's reference details identically.
  */
 export function JobFactsCard(facts: JobFacts) {
-  const workFields = getJobWorkFactFields(facts);
-
   return (
     <FactCard title="Job">
       <View className="gap-4">
@@ -56,9 +53,10 @@ export function JobFactsCard(facts: JobFacts) {
           <FactField label="QUOTE CODE" mono value={facts.quoteCode} />
         </FactRow>
         <FactRow>
-          {workFields.map((field) => (
-            <FactField key={field.label} {...field} />
-          ))}
+          <FactField label="WORK" value={facts.workName} />
+          {facts.productSerialNumber ? (
+            <FactField label="PRODUCT SERIAL" mono value={facts.productSerialNumber} />
+          ) : null}
         </FactRow>
         <FactField label="CUSTOMER" value={facts.customerCompanyName ?? '—'} />
       </View>

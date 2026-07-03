@@ -289,17 +289,19 @@ describe('quotes.create', () => {
     });
 
     expect(created).toMatchObject({
-      productAssemblies: expect.arrayContaining([
-        expect.objectContaining({
-          id: standardAssembly.id,
-          kind: 'standard',
-        }),
-        expect.objectContaining({
-          id: optionalAssembly.id,
-          kind: 'optional',
-          price: 325,
-        }),
-      ]),
+      product: {
+        assemblies: expect.arrayContaining([
+          expect.objectContaining({
+            id: standardAssembly.id,
+            kind: 'standard',
+          }),
+          expect.objectContaining({
+            id: optionalAssembly.id,
+            kind: 'optional',
+            price: 325,
+          }),
+        ]),
+      },
       selectedAssemblies: [],
     });
 
@@ -382,21 +384,23 @@ describe('quotes.create', () => {
     });
 
     await expect(caller.quotes.get({ id: created.id })).resolves.toMatchObject({
-      productBays: [
-        {
-          bay: expect.objectContaining({ disabledAt: null, name: 'A Quote Enabled Product Bay' }),
-          bayId: enabledBay.id,
-          defaultWorkingDays: 4,
-        },
-        {
-          bay: expect.objectContaining({
-            disabledAt: '2026-06-01T00:00:00.000Z',
-            name: 'Z Quote Disabled Product Bay',
-          }),
-          bayId: disabledBay.id,
-          defaultWorkingDays: 6,
-        },
-      ],
+      product: {
+        bays: [
+          {
+            bay: expect.objectContaining({ disabledAt: null, name: 'A Quote Enabled Product Bay' }),
+            bayId: enabledBay.id,
+            defaultWorkingDays: 4,
+          },
+          {
+            bay: expect.objectContaining({
+              disabledAt: '2026-06-01T00:00:00.000Z',
+              name: 'Z Quote Disabled Product Bay',
+            }),
+            bayId: disabledBay.id,
+            defaultWorkingDays: 6,
+          },
+        ],
+      },
     });
   });
 });
@@ -733,7 +737,7 @@ describe('quotes.list', () => {
         {
           code: draftQuote.code,
           depositPercent: 25,
-          productName: 'Crusher Bucket',
+          product: expect.objectContaining({ name: 'Crusher Bucket' }),
         },
       ],
     });
@@ -800,7 +804,7 @@ describe('quotes.list', () => {
       items: [
         {
           code: draftQuote.code,
-          productName: 'Crusher Bucket',
+          product: expect.objectContaining({ name: 'Crusher Bucket' }),
           salesPersonName: 'Another Sales',
         },
       ],
@@ -1101,7 +1105,7 @@ describe('quotes.upcomingDeliveries', () => {
             jobId: job.id,
           },
           plannedDeliveryDate: '2026-06-20',
-          productName: context.product.name,
+          product: expect.objectContaining({ name: context.product.name }),
         }),
         expect.objectContaining({
           customerCompanyName: 'Boundary Delivery',
@@ -1703,6 +1707,10 @@ function productOffering(productId: string) {
 function toUpdateInput(quote: QuoteDetail) {
   return {
     id: quote.id,
+    offering:
+      quote.kind === 'custom'
+        ? { kind: 'custom' as const, basePrice: quote.quotedBasePrice, workTitle: quote.workTitle }
+        : { kind: 'product' as const },
     depositPercent: quote.depositPercent,
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,

@@ -6,6 +6,7 @@ import { type AssemblyInput, AssemblyName, type Part, Price, UUID } from '@pkg/s
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
+import { createStableRowKeys } from '@/components/form/create-stable-row-keys.js';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
 import { CreatableComboboxField, CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
@@ -51,7 +52,7 @@ import { emptyProductFormValues, getEligibleAssemblyNames } from './types.js';
 
 const ALL_CATEGORIES = '__all__';
 const AssemblyPartSelection = requiredSelection(UUID, 'Select a part');
-const assemblyPartKeys = new WeakMap<AssemblyInput['parts'][number], string>();
+const getAssemblyPartKey = createStableRowKeys<AssemblyInput['parts'][number]>('assembly-part');
 
 const ASSEMBLY_NAME_FIELD_VALIDATORS = validateStructuralFieldOnMount(AssemblyName);
 const ASSEMBLY_PRICE_FIELD_VALIDATORS = validateStructuralFieldOnMount(Price);
@@ -985,16 +986,4 @@ function toggleOverrideSelection(selectedIds: string[], id: string, checked: boo
   }
 
   return selectedIds.filter((selectedId) => selectedId !== id);
-}
-
-function getAssemblyPartKey(part: AssemblyInput['parts'][number]): string {
-  const existingKey = assemblyPartKeys.get(part);
-
-  if (existingKey) {
-    return existingKey;
-  }
-
-  const key = crypto.randomUUID();
-  assemblyPartKeys.set(part, key);
-  return key;
 }

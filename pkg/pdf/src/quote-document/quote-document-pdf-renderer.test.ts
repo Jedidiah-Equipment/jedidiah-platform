@@ -59,18 +59,21 @@ function testQuoteDocument(): QuoteDocumentModel {
         descriptionLines: ['SG1836 Silage Grain 18 36'],
         kind: 'base',
         quantity: 1,
+        unitPrice: 595_000,
       },
       {
         amount: 5_000,
         descriptionLines: ['2 Side Working Lights'],
         kind: 'optional',
         quantity: 1,
+        unitPrice: 5_000,
       },
       {
         amount: 15_000,
         descriptionLines: ['BKT Tyres'],
         kind: 'optional',
         quantity: 1,
+        unitPrice: 15_000,
       },
       {
         amount: 300,

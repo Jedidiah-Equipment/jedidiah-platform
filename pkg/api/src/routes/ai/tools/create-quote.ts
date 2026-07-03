@@ -4,41 +4,35 @@ import {
   AuthId,
   DateIsoString,
   DateOnlyIsoString,
-  Price,
   type QuoteCreateInput,
   QuoteCreateInput as QuoteCreateInputSchema,
-  QuoteCustomerInput,
-  QuoteDepositPercent,
   type QuoteDetail,
-  QuoteDiscountPercent,
-  QuoteLineItemInput,
-  QuoteOfferingInput,
-  QuoteSelectedAssemblyInput,
-  QuoteStatus,
 } from '@pkg/schema';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import type { AiContext } from '../ai-context.js';
 import { requireActorSession } from './actor.js';
 import { toAiToolJsonSchema } from './json-schema.js';
 
-const CreateQuoteInput = z.strictObject({
-  customer: QuoteCustomerInput,
-  deliveryIncluded: z.boolean().default(true),
-  deliveryPrice: Price.default(0),
-  depositPercent: QuoteDepositPercent.default(0),
-  discountPercent: QuoteDiscountPercent.default(0),
-  documentNotes: z.string().nullable().optional(),
-  lineItems: z.array(QuoteLineItemInput).default([]),
-  notes: z.string().nullable().optional(),
-  offering: QuoteOfferingInput,
-  plannedDeliveryDate: DateOnlyIsoString.nullable().default(null),
-  preferredDeliveryDate: DateOnlyIsoString.nullable().default(null),
-  salesPersonId: AuthId.optional(),
-  selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
-  status: QuoteStatus.default('draft'),
-  validUntil: DateIsoString.nullable().default(null),
-});
+const CreateQuoteInput = QuoteCreateInputSchema.omit({
+  documentNotes: true,
+  notes: true,
+  plannedDeliveryDate: true,
+  preferredDeliveryDate: true,
+  salesPersonId: true,
+  status: true,
+  validUntil: true,
+})
+  .extend({
+    documentNotes: QuoteCreateInputSchema.shape.documentNotes.optional(),
+    notes: QuoteCreateInputSchema.shape.notes.optional(),
+    plannedDeliveryDate: DateOnlyIsoString.nullable().default(null),
+    preferredDeliveryDate: DateOnlyIsoString.nullable().default(null),
+    salesPersonId: AuthId.optional(),
+    status: QuoteCreateInputSchema.shape.status.default('draft'),
+    validUntil: DateIsoString.nullable().default(null),
+  })
+  .strict();
 
 type CreateQuoteInput = z.infer<typeof CreateQuoteInput>;
 
@@ -47,7 +41,7 @@ export type CreateQuoteTool = AiToolBase<'createQuote', QuoteDetail, CreateQuote
 export const createQuoteTool: CreateQuoteTool = {
   name: 'createQuote',
   inputSchema: CreateQuoteInput,
-  jsonSchema: toAiToolJsonSchema(CreateQuoteInput),
+  jsonSchema: toAiToolJsonSchema(CreateQuoteInput, { io: 'input' }),
   requiredPermission: 'quote:create',
   async handler(args: unknown, ctx: AiContext) {
     const parsedInput = CreateQuoteInput.parse(args);

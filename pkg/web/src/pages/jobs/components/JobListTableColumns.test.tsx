@@ -109,7 +109,7 @@ function TestJobListTable({
     columns: createJobListColumns(permissions),
     data: rows,
     getCoreRowModel: getCoreRowModel(),
-    initialState: {
+    state: {
       columnPinning: {
         left: jobTablePinnedLeftColumns,
         right: permissions.canOpenJobs ? jobTablePinnedRightColumns : [],

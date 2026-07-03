@@ -91,18 +91,19 @@ const JobListTable: React.FC = () => {
   });
 
   const columns = useMemo(() => createJobListColumns({ canEditJobs, canOpenJobs }), [canEditJobs, canOpenJobs]);
+  const columnPinning = useMemo(
+    () => ({
+      left: jobTablePinnedLeftColumns,
+      right: canOpenJobs ? jobTablePinnedRightColumns : [],
+    }),
+    [canOpenJobs],
+  );
 
   const table = useReactTable({
     columns,
     data: jobs,
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
-    initialState: {
-      columnPinning: {
-        left: jobTablePinnedLeftColumns,
-        right: canOpenJobs ? jobTablePinnedRightColumns : [],
-      },
-    },
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
@@ -113,6 +114,7 @@ const JobListTable: React.FC = () => {
     rowCount: total,
     state: {
       globalFilter: tableController.globalFilter,
+      columnPinning,
       pagination: tableState.pagination,
       sorting: tableState.sorting,
     },

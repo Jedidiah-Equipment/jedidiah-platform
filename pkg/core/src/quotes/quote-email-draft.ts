@@ -10,7 +10,7 @@ import type {
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { persistQuoteDocumentRevision, renderQuoteDocumentRevision } from './quote-document-generation.js';
 import { QuoteDraftEmailRecipientMissingError } from './quote-errors.js';
-import { getQuote } from './quote-service.js';
+import { getQuote } from './quote-read-service.js';
 
 export type QuoteDraftEmailAttachment = {
   content: Uint8Array;

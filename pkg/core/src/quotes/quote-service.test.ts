@@ -21,14 +21,13 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
-  createQuote as createQuoteService,
   getQuote,
   getQuoteProductBayAvailability,
   listPriorityQuotes,
   listQuoteSalespeople,
   listQuotes,
-  updateQuote,
-} from './quote-service.js';
+} from './quote-read-service.js';
+import { createQuote as createQuoteService, updateQuote } from './quote-service.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();

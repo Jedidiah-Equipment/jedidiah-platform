@@ -18,8 +18,7 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 
-import { getLineItemsByQuoteId } from './quote-line-items.js';
-import { getSelectedAssembliesByQuoteId } from './quote-selected-assemblies.js';
+import { loadQuoteAssociations } from './quote-read-service.js';
 
 // Aggregate Quote reads for the dashboard: counts, sums, and week buckets that project to their own
 // summary shapes. QuoteSummary-shaped list reads (including upcoming deliveries) stay in
@@ -130,11 +129,10 @@ export async function summarizeQuotePipeline({
       .where(and(inArray(quotes.status, ['accepted', 'rejected']), gte(quotes.statusChangedAt, decisionWindowStart)))
       .groupBy(quotes.status),
   ]);
-  const quoteIds = sentRows.map((row) => row.id);
-  const [lineItemsByQuoteId, selectedAssembliesByQuoteId] = await Promise.all([
-    getLineItemsByQuoteId({ db, quoteIds }),
-    getSelectedAssembliesByQuoteId({ db, quoteIds }),
-  ]);
+  const { lineItemsByQuoteId, selectedAssembliesByQuoteId } = await loadQuoteAssociations({
+    db,
+    quoteIds: sentRows.map((row) => row.id),
+  });
   const totalsByQuoteId = new Map(
     sentRows.map((row) => [
       row.id,
@@ -186,11 +184,10 @@ export async function listStaleSentQuotes({
     .where(eq(quotes.status, 'sent'))
     .orderBy(asc(quotes.statusChangedAt), asc(quotes.id))
     .limit(limit);
-  const quoteIds = rows.map((row) => row.id);
-  const [lineItemsByQuoteId, selectedAssembliesByQuoteId] = await Promise.all([
-    getLineItemsByQuoteId({ db, quoteIds }),
-    getSelectedAssembliesByQuoteId({ db, quoteIds }),
-  ]);
+  const { lineItemsByQuoteId, selectedAssembliesByQuoteId } = await loadQuoteAssociations({
+    db,
+    quoteIds: rows.map((row) => row.id),
+  });
   const today = toPlantDateOnly(clock());
 
   return StaleSentQuoteList.parse({

@@ -28,9 +28,7 @@ export function assertQuoteEditable({
   kind: QuoteKind;
   status: QuoteStatus;
 }): QuoteEditableResult {
-  const locked = kind === 'product' ? hasJob : status === 'accepted';
-
-  if (!locked) {
+  if (!isQuoteLocked({ hasJob, kind, status })) {
     return { allowed: true };
   }
 
@@ -46,4 +44,8 @@ export function assertQuoteEditable({
   }
 
   return { allowed: true };
+}
+
+export function isQuoteLocked({ hasJob, kind, status }: { hasJob: boolean; kind: QuoteKind; status: QuoteStatus }) {
+  return kind === 'product' ? hasJob : status === 'accepted';
 }

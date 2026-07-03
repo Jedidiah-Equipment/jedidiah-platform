@@ -1,4 +1,4 @@
-import { formatDate, priceQuoteFromLiveSelections, resolveEffectiveBom } from '@pkg/domain';
+import { formatDate, isQuoteLocked, priceQuoteFromLiveSelections, resolveEffectiveBom } from '@pkg/domain';
 import {
   type PriorityQuote,
   type QuoteDetail,
@@ -45,7 +45,7 @@ type QuoteFormProps = {
 
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
   const isCustom = quote.kind === 'custom';
-  const isLocked = quote.kind === 'product' ? quote.job !== null : quote.status === 'accepted';
+  const isLocked = isQuoteLocked({ hasJob: quote.job !== null, kind: quote.kind, status: quote.status });
   const quoteCurrencyCode = quote.productCurrencyCode ?? quote.quotedCurrencyCode;
 
   const selectedProduct = useMemo(

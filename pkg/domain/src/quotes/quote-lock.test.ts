@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertQuoteEditable } from './quote-lock.js';
+import { assertQuoteEditable, isQuoteLocked } from './quote-lock.js';
 
 const editableLockedQuoteFields = [
   'notes',
@@ -109,5 +109,17 @@ describe('assertQuoteEditable', () => {
         status: 'accepted',
       }),
     ).toEqual({ allowed: true });
+  });
+});
+
+describe('isQuoteLocked', () => {
+  it('locks product quotes only after a job exists', () => {
+    expect(isQuoteLocked({ hasJob: false, kind: 'product', status: 'accepted' })).toBe(false);
+    expect(isQuoteLocked({ hasJob: true, kind: 'product', status: 'sent' })).toBe(true);
+  });
+
+  it('locks custom quotes only after acceptance', () => {
+    expect(isQuoteLocked({ hasJob: true, kind: 'custom', status: 'sent' })).toBe(false);
+    expect(isQuoteLocked({ hasJob: false, kind: 'custom', status: 'accepted' })).toBe(true);
   });
 });

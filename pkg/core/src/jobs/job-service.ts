@@ -10,7 +10,7 @@ import {
   quoteSelectedAssemblies,
   quotes,
 } from '@pkg/db';
-import { buildCfo, type CfoEntry, getPlantDateNow } from '@pkg/domain';
+import { buildCfo, type CfoEntry, canStartJobFromQuote, getPlantDateNow } from '@pkg/domain';
 import {
   type AddIdleJobSlotInput,
   AddIdleJobSlotResult,
@@ -425,19 +425,6 @@ async function validateJobQuoteForCreate({
 
   const offering = narrowQuoteOffering(quote);
 
-  const allowed =
-    offering.kind === 'product'
-      ? quote.status === 'accepted'
-      : quote.status === 'draft' || quote.status === 'sent' || quote.status === 'accepted';
-
-  if (!allowed) {
-    throw new JobCreateFromQuoteDeniedError(
-      offering.kind === 'product'
-        ? 'Only accepted quotes can start a Job.'
-        : 'Rejected or cancelled quotes cannot start a Job.',
-    );
-  }
-
   const [existingJob] = await tx
     .select({
       id: jobs.id,
@@ -445,9 +432,14 @@ async function validateJobQuoteForCreate({
     .from(jobs)
     .where(eq(jobs.quoteId, quoteId))
     .limit(1);
+  const eligibility = canStartJobFromQuote({
+    hasJob: Boolean(existingJob),
+    kind: offering.kind,
+    status: quote.status,
+  });
 
-  if (existingJob) {
-    throw new JobCreateFromQuoteDeniedError('Quote already has a Job.');
+  if (!eligibility.allowed) {
+    throw new JobCreateFromQuoteDeniedError(eligibility.reason);
   }
 
   return { offering, quote };

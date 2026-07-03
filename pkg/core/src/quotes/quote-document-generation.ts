@@ -1,4 +1,12 @@
-import { type customers, type Db, type products, quoteSelectedAssemblies, quotes, type user } from '@pkg/db';
+import {
+  type customers,
+  type Db,
+  type products,
+  quoteLineItems,
+  quoteSelectedAssemblies,
+  quotes,
+  type user,
+} from '@pkg/db';
 import {
   formatCurrency,
   formatPercent,
@@ -27,6 +35,7 @@ import { listAssemblies } from '../products/product-assembly-service.js';
 import { generateProductBrochureIfComplete } from '../products/product-brochure-document.js';
 import { createQuoteDocument, getQuoteDocuments } from './quote-document.js';
 import { QuoteDocumentGenerationNotAllowedError, QuoteNotFoundError } from './quote-errors.js';
+import type { QuoteLineItemRow } from './quote-line-items.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
 
 export type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
@@ -36,6 +45,7 @@ export type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
   >;
   product: Pick<typeof products.$inferSelect, 'buildTimeDays' | 'currencyCode' | 'modelCode' | 'name'>;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name' | 'phoneNumber'> | null;
+  lineItems: QuoteLineItemRow[];
   selectedAssemblies: QuoteSelectedAssemblyRow[];
 };
 
@@ -187,9 +197,16 @@ export async function getQuoteDocumentModel({
     amount: selection.quotedPrice,
     label: selection.quotedName,
   }));
-  // Line items and the money both come from the catalog-resolved live set, so a selection that goes
-  // stale by any rule (null FK, deleted Assembly, or an Assembly flipped to Standard) drops from the
-  // line items and the subtotal together — the PDF total always matches its line items.
+  const freeformLineItems = quote.lineItems.map((item) => ({
+    amount: item.quantity * item.unitPrice,
+    descriptionLines: [formatQuoteDocumentLineItemDescription(item)],
+    kind: 'lineItem' as const,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+  }));
+  // Optional rows and their money both come from the catalog-resolved live set, so a selection that
+  // goes stale by any rule drops from the PDF rows and the subtotal together. Freeform line items
+  // never have catalog staleness, so they always remain in the discountable subtotal.
   const pricing = priceQuoteFromLiveSelections(quote, liveSelections);
   const discountAmount = pricing.discountAmount;
   const lineItems: QuoteDocumentLineItem[] = [
@@ -205,6 +222,7 @@ export async function getQuoteDocumentModel({
       kind: 'optional' as const,
       quantity: 1,
     })),
+    ...freeformLineItems,
     ...(discountAmount > 0
       ? [
           {
@@ -290,6 +308,9 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
       selectedAssemblies: {
         orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
       },
+      lineItems: {
+        orderBy: [asc(quoteLineItems.position), asc(quoteLineItems.createdAt), asc(quoteLineItems.id)],
+      },
     },
   });
 
@@ -298,6 +319,10 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
   }
 
   return row satisfies QuoteDocumentGenerationRow;
+}
+
+function formatQuoteDocumentLineItemDescription(item: Pick<QuoteLineItemRow, 'name' | 'quantity'>): string {
+  return item.quantity === 1 ? item.name : `${item.quantity} x ${item.name}`;
 }
 
 function assertQuoteDocumentGenerationAllowed(quote: Pick<QuoteRow, 'status'>): void {

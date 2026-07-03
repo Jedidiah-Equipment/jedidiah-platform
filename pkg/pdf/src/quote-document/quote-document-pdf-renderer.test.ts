@@ -72,6 +72,13 @@ function testQuoteDocument(): QuoteDocumentModel {
         kind: 'optional',
         quantity: 1,
       },
+      {
+        amount: 300,
+        descriptionLines: ['2 x Hydraulic hose'],
+        kind: 'lineItem',
+        quantity: 2,
+        unitPrice: 150,
+      },
     ],
     notes: ['Please confirm customer details before order processing.'],
     paymentTerms: '20% deposit',
@@ -82,9 +89,9 @@ function testQuoteDocument(): QuoteDocumentModel {
       phoneNumber: '+27821234567',
     },
     staleSelectionNotes: [],
-    subtotal: 615_000,
-    total: 707_250,
+    subtotal: 615_300,
+    total: 707_595,
     transport: 'Excluded',
-    vatAmount: 92_250,
+    vatAmount: 92_295,
   };
 }

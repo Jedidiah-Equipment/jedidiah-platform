@@ -26,35 +26,53 @@ export function validateDiscount({ discountPercent }: { discountPercent: number 
 
 export function computeQuoteDiscountAmount({
   discountPercent,
+  lineItems = [],
   quotedBasePrice,
   selectedAssemblyPrices = [],
 }: {
   discountPercent: number;
+  lineItems?: readonly { quantity: number; unitPrice: number }[];
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
+  const lineItemTotal = computeQuoteLineItemsTotal(lineItems);
 
-  return roundCurrency((quotedBasePrice + selectedAssemblyTotal) * (discountPercent / 100));
+  return roundCurrency((quotedBasePrice + selectedAssemblyTotal + lineItemTotal) * (discountPercent / 100));
+}
+
+export function computeQuoteLineItemsTotal(lineItems: readonly { quantity: number; unitPrice: number }[]): number {
+  return lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 }
 
 export function computeQuoteTotal({
   deliveryIncluded = false,
   deliveryPrice = 0,
   discountPercent,
+  lineItems = [],
   quotedBasePrice,
   selectedAssemblyPrices = [],
 }: {
   deliveryIncluded?: boolean;
   deliveryPrice?: number;
   discountPercent: number;
+  lineItems?: readonly { quantity: number; unitPrice: number }[];
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
-  const discountAmount = computeQuoteDiscountAmount({ discountPercent, quotedBasePrice, selectedAssemblyPrices });
+  const lineItemTotal = computeQuoteLineItemsTotal(lineItems);
+  const discountAmount = computeQuoteDiscountAmount({
+    discountPercent,
+    lineItems,
+    quotedBasePrice,
+    selectedAssemblyPrices,
+  });
 
-  return Math.max(0, quotedBasePrice + selectedAssemblyTotal - discountAmount) + (deliveryIncluded ? deliveryPrice : 0);
+  return (
+    Math.max(0, quotedBasePrice + selectedAssemblyTotal + lineItemTotal - discountAmount) +
+    (deliveryIncluded ? deliveryPrice : 0)
+  );
 }
 
 /** A Quote's stored pricing facts, excluding its selected assemblies. */
@@ -62,6 +80,7 @@ export type QuotePricingFacts = {
   deliveryIncluded?: boolean;
   deliveryPrice?: number;
   discountPercent: number;
+  lineItems?: readonly { quantity: number; unitPrice: number }[];
   quotedBasePrice: number;
 };
 
@@ -73,6 +92,7 @@ export type QuotePricingFacts = {
  */
 export type QuotePricing<TSelection> = {
   discountAmount: number;
+  lineItemTotal: number;
   liveSelections: readonly TSelection[];
   selectedAssemblyTotal: number;
   total: number;
@@ -88,9 +108,11 @@ export function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: n
 ): QuotePricing<TSelection> {
   const selectedAssemblyPrices = liveSelections.map((selection) => selection.quotedPrice);
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
+  const lineItemTotal = computeQuoteLineItemsTotal(facts.lineItems ?? []);
 
   return {
     discountAmount: computeQuoteDiscountAmount({ ...facts, selectedAssemblyPrices }),
+    lineItemTotal,
     liveSelections,
     selectedAssemblyTotal,
     total: computeQuoteTotal({ ...facts, selectedAssemblyPrices }),

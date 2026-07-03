@@ -9,6 +9,7 @@ import {
 import {
   IconAlertTriangle,
   IconComponents,
+  IconListDetails,
   IconNotes,
   IconReceipt2,
   IconSettings,
@@ -33,6 +34,7 @@ import { QuoteFormValues, resolveSelectedAssemblySnapshots, toQuoteFormValues, t
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
 import { QuoteDocumentsSection } from './QuoteDocumentsSection.js';
 import { QuoteFormSection } from './QuoteFormSection.js';
+import { QuoteLineItemsEditor } from './QuoteLineItemsEditor.js';
 import { type QuoteComputedSummary, QuoteRightPanel } from './QuoteRightPanel.js';
 
 type QuoteFormProps = {
@@ -76,252 +78,270 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
   });
 
   return (
-    <form {...formProps} className="grid gap-4">
-      <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
-      <FieldGroup className="gap-6">
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <Tabs className="min-w-0" defaultValue="details" size="sm">
-            <div className="flex items-center justify-between gap-2">
-              <TabsList variant="default">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
-                {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
-              </TabsList>
-              <GiveFeedbackButton subject={{ subjectType: 'quote', quoteId: quote.id }} subjectLabel={quote.code} />
-            </div>
-            <TabsContent className="pt-4" value="details">
-              <div className="grid gap-6">
-                {priorityQuote ? <QuotePriorityAlert priorityQuote={priorityQuote} /> : null}
-                <QuoteFormSection icon={IconSettings} title="Quote setup">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <form.AppField name="salesPersonId">
-                      {(field) => (
-                        <field.SelectField
-                          label="Salesperson"
-                          disabled={isLocked}
-                          onValueCommit={autosave.commit}
-                          options={salespeopleOptions.selectOptions}
-                          placeholder="Select salesperson"
-                        />
-                      )}
-                    </form.AppField>
-                    <form.AppField name="status">
-                      {(field) => (
-                        <field.SelectField
-                          label="Status"
-                          disabled={isLocked}
-                          onValueCommit={autosave.commit}
-                          options={QuoteStatus.options.map((status) => ({
-                            label: quoteStatusLabels[status],
-                            value: status,
-                          }))}
-                        />
-                      )}
-                    </form.AppField>
-                  </div>
-                </QuoteFormSection>
+    <form.AppForm>
+      <form {...formProps} className="grid gap-4">
+        <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
+        <FieldGroup className="gap-6">
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <Tabs className="min-w-0" defaultValue="details" size="sm">
+              <div className="flex items-center justify-between gap-2">
+                <TabsList variant="default">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="documents">Documents</TabsTrigger>
+                  {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
+                </TabsList>
+                <GiveFeedbackButton subject={{ subjectType: 'quote', quoteId: quote.id }} subjectLabel={quote.code} />
+              </div>
+              <TabsContent className="pt-4" value="details">
+                <div className="grid gap-6">
+                  {priorityQuote ? <QuotePriorityAlert priorityQuote={priorityQuote} /> : null}
+                  <QuoteFormSection icon={IconSettings} title="Quote setup">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <form.AppField name="salesPersonId">
+                        {(field) => (
+                          <field.SelectField
+                            label="Salesperson"
+                            disabled={isLocked}
+                            onValueCommit={autosave.commit}
+                            options={salespeopleOptions.selectOptions}
+                            placeholder="Select salesperson"
+                          />
+                        )}
+                      </form.AppField>
+                      <form.AppField name="status">
+                        {(field) => (
+                          <field.SelectField
+                            label="Status"
+                            disabled={isLocked}
+                            onValueCommit={autosave.commit}
+                            options={QuoteStatus.options.map((status) => ({
+                              label: quoteStatusLabels[status],
+                              value: status,
+                            }))}
+                          />
+                        )}
+                      </form.AppField>
+                    </div>
+                  </QuoteFormSection>
 
-                <QuoteFormSection icon={IconTruckDelivery} title="Dates and delivery">
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <form.AppField name="preferredDeliveryDate">
-                      {(field) => (
-                        <field.DatePickerField label="Preferred delivery date" onValueCommit={autosave.commit} />
-                      )}
-                    </form.AppField>
-                    <form.AppField name="plannedDeliveryDate">
-                      {(field) => (
-                        <field.DatePickerField label="Planned delivery date" onValueCommit={autosave.commit} />
-                      )}
-                    </form.AppField>
-                    <form.AppField name="validUntil">
-                      {(field) => <field.DatePickerField label="Valid until" onValueCommit={autosave.commit} />}
-                    </form.AppField>
-                    <form.Field name="deliveryIncluded">
-                      {(field) => {
-                        const fieldErrors = getFieldErrors(field.state.meta.errors);
-                        const isInvalid = fieldErrors.length > 0;
+                  <QuoteFormSection icon={IconTruckDelivery} title="Dates and delivery">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <form.AppField name="preferredDeliveryDate">
+                        {(field) => (
+                          <field.DatePickerField label="Preferred delivery date" onValueCommit={autosave.commit} />
+                        )}
+                      </form.AppField>
+                      <form.AppField name="plannedDeliveryDate">
+                        {(field) => (
+                          <field.DatePickerField label="Planned delivery date" onValueCommit={autosave.commit} />
+                        )}
+                      </form.AppField>
+                      <form.AppField name="validUntil">
+                        {(field) => <field.DatePickerField label="Valid until" onValueCommit={autosave.commit} />}
+                      </form.AppField>
+                      <form.Field name="deliveryIncluded">
+                        {(field) => {
+                          const fieldErrors = getFieldErrors(field.state.meta.errors);
+                          const isInvalid = fieldErrors.length > 0;
 
-                        return (
-                          <Field className="justify-end" data-invalid={isInvalid}>
-                            <FieldLabel aria-hidden className="invisible">
-                              Delivery
-                            </FieldLabel>
-                            <div className="flex min-h-9 items-center gap-2">
-                              <Checkbox
-                                aria-invalid={isInvalid}
-                                checked={field.state.value}
-                                disabled={isLocked}
-                                id={field.name}
-                                name={field.name}
-                                onBlur={field.handleBlur}
-                                onCheckedChange={(checked) => {
-                                  const isChecked = checked === true;
+                          return (
+                            <Field className="justify-end" data-invalid={isInvalid}>
+                              <FieldLabel aria-hidden className="invisible">
+                                Delivery
+                              </FieldLabel>
+                              <div className="flex min-h-9 items-center gap-2">
+                                <Checkbox
+                                  aria-invalid={isInvalid}
+                                  checked={field.state.value}
+                                  disabled={isLocked}
+                                  id={field.name}
+                                  name={field.name}
+                                  onBlur={field.handleBlur}
+                                  onCheckedChange={(checked) => {
+                                    const isChecked = checked === true;
 
-                                  field.handleChange(isChecked);
+                                    field.handleChange(isChecked);
 
-                                  if (!isChecked) {
-                                    form.setFieldValue('deliveryPrice', 0);
-                                  }
+                                    if (!isChecked) {
+                                      form.setFieldValue('deliveryPrice', 0);
+                                    }
 
-                                  autosave.commit();
-                                }}
-                              />
-                              <FieldLabel htmlFor={field.name}>Delivery included</FieldLabel>
-                            </div>
-                            <FieldError errors={fieldErrors} />
-                          </Field>
-                        );
-                      }}
-                    </form.Field>
-                    <form.Subscribe selector={(state) => state.values.deliveryIncluded}>
-                      {(deliveryIncluded) =>
-                        deliveryIncluded ? (
-                          <form.AppField name="deliveryPrice">
-                            {(field) => (
-                              <field.CurrencyField
-                                currencyCode={selectedProduct.currencyCode}
-                                disabled={isLocked}
-                                label="Delivery price"
-                              />
-                            )}
-                          </form.AppField>
-                        ) : null
-                      }
-                    </form.Subscribe>
-                  </div>
-                </QuoteFormSection>
-
-                <QuoteFormSection icon={IconReceipt2} title="Pricing">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <form.AppField name="discountPercent">
-                      {(field) => (
-                        <field.NumberField
-                          decimals={2}
-                          disabled={isLocked}
-                          emptyValue={0}
-                          label="Discount percent"
-                          max={100}
-                          min={0}
-                          step="0.01"
-                        />
-                      )}
-                    </form.AppField>
-                    <form.AppField name="depositPercent">
-                      {(field) => (
-                        <field.NumberField
-                          decimals={2}
-                          disabled={isLocked}
-                          emptyValue={0}
-                          label="Deposit percent"
-                          max={100}
-                          min={0}
-                          step="0.01"
-                        />
-                      )}
-                    </form.AppField>
-                  </div>
-                </QuoteFormSection>
-
-                <QuoteFormSection icon={IconNotes} title="Internal notes">
-                  <form.AppField name="notes">{(field) => <field.TextareaField rows={4} />}</form.AppField>
-                </QuoteFormSection>
-
-                <QuoteFormSection
-                  description="Standard assemblies are included. Optional assemblies add to the quote."
-                  icon={IconComponents}
-                  title="Assemblies"
-                >
-                  <form.Field name="selectedAssemblies">
-                    {(field) => (
-                      <QuoteAssembliesSelector
-                        catalogAssemblies={selectedProduct.assemblies}
-                        currencyCode={selectedProduct.currencyCode}
-                        initialSelections={quote.selectedAssemblies}
-                        onChange={(value) => {
-                          field.handleChange(value);
-                          autosave.commit();
+                                    autosave.commit();
+                                  }}
+                                />
+                                <FieldLabel htmlFor={field.name}>Delivery included</FieldLabel>
+                              </div>
+                              <FieldError errors={fieldErrors} />
+                            </Field>
+                          );
                         }}
-                        readOnly={isLocked}
-                        value={field.state.value}
+                      </form.Field>
+                      <form.Subscribe selector={(state) => state.values.deliveryIncluded}>
+                        {(deliveryIncluded) =>
+                          deliveryIncluded ? (
+                            <form.AppField name="deliveryPrice">
+                              {(field) => (
+                                <field.CurrencyField
+                                  currencyCode={selectedProduct.currencyCode}
+                                  disabled={isLocked}
+                                  label="Delivery price"
+                                />
+                              )}
+                            </form.AppField>
+                          ) : null
+                        }
+                      </form.Subscribe>
+                    </div>
+                  </QuoteFormSection>
+
+                  <QuoteFormSection icon={IconReceipt2} title="Pricing">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <form.AppField name="discountPercent">
+                        {(field) => (
+                          <field.NumberField
+                            decimals={2}
+                            disabled={isLocked}
+                            emptyValue={0}
+                            label="Discount percent"
+                            max={100}
+                            min={0}
+                            step="0.01"
+                          />
+                        )}
+                      </form.AppField>
+                      <form.AppField name="depositPercent">
+                        {(field) => (
+                          <field.NumberField
+                            decimals={2}
+                            disabled={isLocked}
+                            emptyValue={0}
+                            label="Deposit percent"
+                            max={100}
+                            min={0}
+                            step="0.01"
+                          />
+                        )}
+                      </form.AppField>
+                    </div>
+                  </QuoteFormSection>
+
+                  <QuoteFormSection icon={IconListDetails} title="Line items">
+                    <form.Field name="lineItems" mode="array">
+                      {(lineItemsField) => (
+                        <QuoteLineItemsEditor
+                          currencyCode={selectedProduct.currencyCode}
+                          lineItemsField={lineItemsField}
+                          onRemoveLineItem={autosave.commit}
+                          readOnly={isLocked}
+                        />
+                      )}
+                    </form.Field>
+                  </QuoteFormSection>
+
+                  <QuoteFormSection icon={IconNotes} title="Internal notes">
+                    <form.AppField name="notes">{(field) => <field.TextareaField rows={4} />}</form.AppField>
+                  </QuoteFormSection>
+
+                  <QuoteFormSection
+                    description="Standard assemblies are included. Optional assemblies add to the quote."
+                    icon={IconComponents}
+                    title="Assemblies"
+                  >
+                    <form.Field name="selectedAssemblies">
+                      {(field) => (
+                        <QuoteAssembliesSelector
+                          catalogAssemblies={selectedProduct.assemblies}
+                          currencyCode={selectedProduct.currencyCode}
+                          initialSelections={quote.selectedAssemblies}
+                          onChange={(value) => {
+                            field.handleChange(value);
+                            autosave.commit();
+                          }}
+                          readOnly={isLocked}
+                          value={field.state.value}
+                        />
+                      )}
+                    </form.Field>
+                  </QuoteFormSection>
+                </div>
+              </TabsContent>
+              <TabsContent className="pt-4" value="documents">
+                <QuoteFormSection icon={IconNotes} title="Quote Notes">
+                  <form.AppField name="documentNotes">
+                    {(field) => (
+                      <field.TextareaField
+                        rows={4}
+                        placeholder="Notes entered here will be included in the quote document."
                       />
                     )}
-                  </form.Field>
+                  </form.AppField>
                 </QuoteFormSection>
-              </div>
-            </TabsContent>
-            <TabsContent className="pt-4" value="documents">
-              <QuoteFormSection icon={IconNotes} title="Quote Notes">
-                <form.AppField name="documentNotes">
-                  {(field) => (
-                    <field.TextareaField
-                      rows={4}
-                      placeholder="Notes entered here will be included in the quote document."
-                    />
-                  )}
-                </form.AppField>
-              </QuoteFormSection>
-              <div className="mt-6 grid gap-6">
-                <QuoteDocumentsSection
-                  flushAutosave={autosave.flush}
-                  generationWarnings={generationWarnings}
-                  onGenerated={(warnings) => setGenerationWarnings(warnings)}
-                  quote={quote}
-                />
-              </div>
-            </TabsContent>
-            {auditAccess.can ? (
-              <TabsContent className="pt-4" value="audit">
-                <AuditTable
-                  emptyMessage="No audit events found for this quote."
-                  fixedFilters={quoteAuditFilters}
-                  showEntityTypeFilter={false}
-                  store={useQuoteAuditTableStore}
-                />
+                <div className="mt-6 grid gap-6">
+                  <QuoteDocumentsSection
+                    flushAutosave={autosave.flush}
+                    generationWarnings={generationWarnings}
+                    onGenerated={(warnings) => setGenerationWarnings(warnings)}
+                    quote={quote}
+                  />
+                </div>
               </TabsContent>
-            ) : null}
-          </Tabs>
-          <form.Subscribe
-            selector={(state): QuoteComputedSummary => {
-              const discountPercent = state.values.discountPercent;
-              const deliveryIncluded = state.values.deliveryIncluded;
-              const deliveryPrice = deliveryIncluded ? state.values.deliveryPrice : 0;
-              const quotedBasePrice = quote.quotedBasePrice;
-              const selectedSnapshots = resolveSelectedAssemblySnapshots({
-                catalogAssemblies: selectedProduct.assemblies,
-                formSelections: state.values.selectedAssemblies,
-                initialSelections: quote.selectedAssemblies,
-              });
-              // Stale selections (reference gone from the freshly loaded catalog) are excluded from
-              // the on-screen Quote Pricing so the figure reflects only assemblies still producible.
-              const { staleSelections } = resolveEffectiveBom({
-                catalogAssemblies: selectedProduct.assemblies,
-                selectedAssemblies: selectedSnapshots,
-              });
-              const staleSnapshots = new Set(staleSelections);
-              const selectedAssemblies = selectedSnapshots.filter((snapshot) => !staleSnapshots.has(snapshot));
-              const pricing = priceQuoteFromLiveSelections(
-                { deliveryIncluded, deliveryPrice, discountPercent, quotedBasePrice },
-                selectedAssemblies,
-              );
+              {auditAccess.can ? (
+                <TabsContent className="pt-4" value="audit">
+                  <AuditTable
+                    emptyMessage="No audit events found for this quote."
+                    fixedFilters={quoteAuditFilters}
+                    showEntityTypeFilter={false}
+                    store={useQuoteAuditTableStore}
+                  />
+                </TabsContent>
+              ) : null}
+            </Tabs>
+            <form.Subscribe
+              selector={(state): QuoteComputedSummary => {
+                const discountPercent = state.values.discountPercent;
+                const deliveryIncluded = state.values.deliveryIncluded;
+                const deliveryPrice = deliveryIncluded ? state.values.deliveryPrice : 0;
+                const lineItems = state.values.lineItems;
+                const quotedBasePrice = quote.quotedBasePrice;
+                const selectedSnapshots = resolveSelectedAssemblySnapshots({
+                  catalogAssemblies: selectedProduct.assemblies,
+                  formSelections: state.values.selectedAssemblies,
+                  initialSelections: quote.selectedAssemblies,
+                });
+                // Stale selections (reference gone from the freshly loaded catalog) are excluded from
+                // the on-screen Quote Pricing so the figure reflects only assemblies still producible.
+                const { staleSelections } = resolveEffectiveBom({
+                  catalogAssemblies: selectedProduct.assemblies,
+                  selectedAssemblies: selectedSnapshots,
+                });
+                const staleSnapshots = new Set(staleSelections);
+                const selectedAssemblies = selectedSnapshots.filter((snapshot) => !staleSnapshots.has(snapshot));
+                const pricing = priceQuoteFromLiveSelections(
+                  { deliveryIncluded, deliveryPrice, discountPercent, lineItems, quotedBasePrice },
+                  selectedAssemblies,
+                );
 
-              return {
-                deliveryIncluded,
-                deliveryPrice,
-                discountAmount: pricing.discountAmount,
-                discountPercent,
-                productPrice: quotedBasePrice,
-                currencyCode: selectedProduct.currencyCode,
-                selectedAssemblies,
-                selectedAssemblyTotal: pricing.selectedAssemblyTotal,
-                total: pricing.total,
-              };
-            }}
-          >
-            {(summary) => <QuoteRightPanel flushAutosave={autosave.flush} quote={quote} summary={summary} />}
-          </form.Subscribe>
-        </div>
-      </FieldGroup>
-    </form>
+                return {
+                  deliveryIncluded,
+                  deliveryPrice,
+                  discountAmount: pricing.discountAmount,
+                  discountPercent,
+                  productPrice: quotedBasePrice,
+                  currencyCode: selectedProduct.currencyCode,
+                  lineItems,
+                  lineItemTotal: pricing.lineItemTotal,
+                  selectedAssemblies,
+                  selectedAssemblyTotal: pricing.selectedAssemblyTotal,
+                  total: pricing.total,
+                };
+              }}
+            >
+              {(summary) => <QuoteRightPanel flushAutosave={autosave.flush} quote={quote} summary={summary} />}
+            </form.Subscribe>
+          </div>
+        </FieldGroup>
+      </form>
+    </form.AppForm>
   );
 };
 

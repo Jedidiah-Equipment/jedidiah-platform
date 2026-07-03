@@ -4,9 +4,11 @@ import {
   PriorityQuote,
   QuoteCreateInput,
   QuoteDetail,
+  QuoteLineItemInput,
   QuoteProductBayAvailabilityInput,
   QuoteProductBayAvailabilityResult,
   QuoteSummary,
+  QuoteUpdateInput,
   UpcomingDeliveryQuotesResult,
 } from './quote.js';
 
@@ -27,6 +29,7 @@ describe('QuoteCreateInput', () => {
     expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({
       depositPercent: 0,
       discountPercent: 0,
+      lineItems: [],
     });
   });
 
@@ -55,6 +58,29 @@ describe('QuoteCreateInput', () => {
         discountPercent: 101,
       }),
     ).toThrow();
+  });
+});
+
+describe('QuoteLineItemInput', () => {
+  it('trims names, coerces numbers, and defaults quantity to one', () => {
+    expect(QuoteLineItemInput.parse({ name: '  Hydraulic hose  ', unitPrice: '125.50' })).toEqual({
+      name: 'Hydraulic hose',
+      quantity: 1,
+      unitPrice: 125.5,
+    });
+  });
+
+  it('rejects blank names, zero quantity, and negative unit prices', () => {
+    expect(() => QuoteLineItemInput.parse({ name: ' ', quantity: 1, unitPrice: 10 })).toThrow();
+    expect(() => QuoteLineItemInput.parse({ name: 'Hydraulic hose', quantity: 0, unitPrice: 10 })).toThrow();
+    expect(() => QuoteLineItemInput.parse({ name: 'Hydraulic hose', quantity: 1, unitPrice: -1 })).toThrow();
+  });
+});
+
+describe('QuoteUpdateInput', () => {
+  it('preserves omitted line items instead of defaulting them to an empty replacement', () => {
+    expect(QuoteUpdateInput.parse(baseUpdateInput())).not.toHaveProperty('lineItems');
+    expect(QuoteUpdateInput.parse({ ...baseUpdateInput(), lineItems: [] })).toMatchObject({ lineItems: [] });
   });
 });
 
@@ -87,6 +113,7 @@ describe('QuoteDetail', () => {
       salesPersonId: 'auth-user-1',
       salesPersonName: null,
       salesPersonThumbnailDataUrl: null,
+      lineItems: [],
       selectedAssemblies: [],
       status: 'accepted',
       statusChangedAt: '2026-01-01T00:00:00.000Z',
@@ -175,6 +202,7 @@ describe('QuoteDetail', () => {
         salesPersonId: 'auth-user-1',
         salesPersonName: null,
         salesPersonThumbnailDataUrl: null,
+        lineItems: [],
         selectedAssemblies: [],
         status: 'accepted',
         statusChangedAt: '2026-01-01T00:00:00.000Z',
@@ -190,6 +218,24 @@ describe('QuoteDetail', () => {
     ]);
   });
 });
+
+function baseUpdateInput() {
+  return {
+    id: '550e8400-e29b-41d4-a716-446655440010',
+    salesPersonId: 'auth-user-1',
+    status: 'draft' as const,
+    discountPercent: 0,
+    depositPercent: 0,
+    deliveryIncluded: true,
+    deliveryPrice: 0,
+    validUntil: null,
+    preferredDeliveryDate: null,
+    plannedDeliveryDate: null,
+    notes: null,
+    documentNotes: null,
+    selectedAssemblies: [],
+  };
+}
 
 describe('QuoteProductBayAvailability', () => {
   it('parses the quote-scoped Product Bay availability contract', () => {
@@ -248,6 +294,7 @@ describe('PriorityQuote', () => {
       salesPersonId: 'auth-user-1',
       salesPersonName: null,
       salesPersonThumbnailDataUrl: null,
+      lineItems: [],
       selectedAssemblies: [],
       status: 'accepted',
       statusChangedAt: '2026-01-01T00:00:00.000Z',
@@ -299,6 +346,7 @@ describe('UpcomingDeliveryQuotesResult', () => {
       salesPersonId: 'auth-user-1',
       salesPersonName: null,
       salesPersonThumbnailDataUrl: null,
+      lineItems: [],
       selectedAssemblies: [],
       status: 'accepted',
       statusChangedAt: '2026-01-01T00:00:00.000Z',

@@ -1,0 +1,2 @@
+ALTER TABLE "quote_line_items" ADD COLUMN "position" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "quote_line_items" ADD CONSTRAINT "quote_line_items_position_nonnegative" CHECK ("quote_line_items"."position" >= 0);

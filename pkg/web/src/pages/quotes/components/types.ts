@@ -10,6 +10,9 @@ import {
   type QuoteDetail,
   QuoteDiscountPercent,
   QuoteDocumentNotes,
+  type QuoteLineItem,
+  QuoteLineItemName,
+  QuoteLineItemQuantity,
   QuoteNotes,
   type QuoteProductBayAvailabilityResult,
   type QuoteSelectedAssembly,
@@ -23,6 +26,12 @@ import { z } from 'zod';
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 export const CustomerMode = z.enum(['existing', 'inline']);
+
+const QuoteLineItemFormInput = z.object({
+  name: QuoteLineItemName,
+  quantity: QuoteLineItemQuantity,
+  unitPrice: Price,
+});
 
 export type QuoteCreateFormValues = z.infer<typeof QuoteCreateFormValues>;
 export const QuoteCreateFormValues = z
@@ -46,6 +55,7 @@ export const QuoteFormValues = z
     discountPercent: QuoteDiscountPercent,
     notes: emptyStringOr(QuoteNotes),
     documentNotes: emptyStringOr(QuoteDocumentNotes),
+    lineItems: z.array(QuoteLineItemFormInput),
     plannedDeliveryDate: emptyStringOr(DateOnlyIsoString),
     preferredDeliveryDate: emptyStringOr(DateOnlyIsoString),
     salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
@@ -54,6 +64,22 @@ export const QuoteFormValues = z
     validUntil: emptyStringOr(DateIsoString),
   })
   .strict();
+
+export const emptyQuoteFormValues: QuoteFormValues = {
+  depositPercent: 0,
+  deliveryIncluded: true,
+  deliveryPrice: 0,
+  discountPercent: 0,
+  notes: '',
+  documentNotes: '',
+  lineItems: [],
+  plannedDeliveryDate: '',
+  preferredDeliveryDate: '',
+  salesPersonId: '',
+  selectedAssemblies: [],
+  status: 'draft',
+  validUntil: '',
+};
 
 export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   customerId: '',
@@ -77,6 +103,7 @@ export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
     discountPercent: initialQuote.discountPercent,
     notes: initialQuote.notes ?? '',
     documentNotes: initialQuote.documentNotes ?? '',
+    lineItems: initialQuote.lineItems.map(toQuoteLineItemInput),
     plannedDeliveryDate: initialQuote.plannedDeliveryDate ?? '',
     preferredDeliveryDate: initialQuote.preferredDeliveryDate ?? '',
     salesPersonId: initialQuote.salesPersonId,
@@ -115,6 +142,7 @@ export function toQuoteUpdateInput({ id, value }: { id: UUID; value: QuoteFormVa
     discountPercent: value.discountPercent,
     notes: value.notes,
     documentNotes: value.documentNotes,
+    lineItems: value.lineItems,
     plannedDeliveryDate: value.plannedDeliveryDate || null,
     preferredDeliveryDate: value.preferredDeliveryDate || null,
     salesPersonId: value.salesPersonId,
@@ -122,6 +150,14 @@ export function toQuoteUpdateInput({ id, value }: { id: UUID; value: QuoteFormVa
     status: value.status,
     validUntil: value.validUntil || null,
   });
+}
+
+function toQuoteLineItemInput(lineItem: QuoteLineItem): z.infer<typeof QuoteLineItemFormInput> {
+  return {
+    name: lineItem.name,
+    quantity: lineItem.quantity,
+    unitPrice: lineItem.unitPrice,
+  };
 }
 
 function refineQuoteCustomerSelection(

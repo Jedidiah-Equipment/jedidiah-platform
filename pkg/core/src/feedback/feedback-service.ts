@@ -32,7 +32,12 @@ import { FeedbackNotFoundError, FeedbackSubjectNotFoundError } from './feedback-
 type FeedbackRow = typeof feedback.$inferSelect;
 type FeedbackReadRow = FeedbackRow & {
   departments: { department: Department }[];
-  job: { code: number; id: string; productSerialNumber: string } | null;
+  job: {
+    code: number;
+    id: string;
+    productSerialNumber: string | null;
+    quote: { kind: 'product' | 'custom'; workTitle: string | null };
+  } | null;
   quote: { code: number; customer: { companyName: string }; id: string } | null;
   submitter: { email: string; id: string; image: string | null; name: string };
   users: { user: { id: string; image: string | null; name: string } | null; userId: string }[];
@@ -248,6 +253,14 @@ const feedbackReadRelations = {
       id: true,
       productSerialNumber: true,
     },
+    with: {
+      quote: {
+        columns: {
+          kind: true,
+          workTitle: true,
+        },
+      },
+    },
   },
   quote: {
     columns: {
@@ -347,9 +360,11 @@ function mapFeedbackSubject(row: FeedbackReadRow): FeedbackListItem['subject'] {
   }
 
   if (row.subjectType === 'job' && row.job) {
+    const jobLabel = row.job.productSerialNumber ?? row.job.quote.workTitle ?? 'Custom Job';
+
     return {
       id: row.job.id,
-      label: `${JobCode.parse(row.job.code)} · ${row.job.productSerialNumber}`,
+      label: `${JobCode.parse(row.job.code)} · ${jobLabel}`,
       subjectType: 'job',
     };
   }

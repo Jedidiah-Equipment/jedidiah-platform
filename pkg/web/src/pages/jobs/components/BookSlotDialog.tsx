@@ -24,6 +24,7 @@ import {
   describeInsertAtDatePlacement,
   getInsertAtDatePickerBounds,
 } from './book-slot-insert-at-date.js';
+import { getJobOptionHint } from './job-display.js';
 
 export const BookSlotDialog: React.FC = () => {
   const trpc = useTRPC();
@@ -221,7 +222,7 @@ export const BookSlotDialog: React.FC = () => {
                       {selectedJob ? (
                         <>
                           <span className="truncate">{selectedJob.code}</span>
-                          <span className="shrink-0 text-muted-foreground">{selectedJob.productSerialNumber}</span>
+                          <span className="shrink-0 text-muted-foreground">{getJobOptionHint(selectedJob)}</span>
                         </>
                       ) : null}
                     </SelectValue>
@@ -231,7 +232,7 @@ export const BookSlotDialog: React.FC = () => {
                       {jobs.map((job) => (
                         <SelectItem key={job.id} value={job.id}>
                           {job.code}
-                          <span className="text-muted-foreground">{job.productSerialNumber}</span>
+                          <span className="text-muted-foreground">{getJobOptionHint(job)}</span>
                         </SelectItem>
                       ))}
                     </SelectGroup>

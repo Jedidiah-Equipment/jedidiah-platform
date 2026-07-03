@@ -1083,10 +1083,15 @@ describe('jobs.create', () => {
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
     });
+    const serialNumber = job.productSerialNumber;
+
+    if (!serialNumber) {
+      throw new Error('Product quote job did not mint a product serial number');
+    }
 
     await expect(caller.jobs.get({ id: job.id })).resolves.toMatchObject({
       id: job.id,
-      productSerialNumber: job.productSerialNumber,
+      productSerialNumber: serialNumber,
       vinNumber: null,
     });
 
@@ -1094,7 +1099,7 @@ describe('jobs.create', () => {
       filters: {},
       page: 1,
       pageSize: 10,
-      search: job.productSerialNumber,
+      search: serialNumber,
       sortBy: 'createdAt',
       sortDirection: 'asc',
     });
@@ -1102,7 +1107,7 @@ describe('jobs.create', () => {
     expect(result.items).toEqual([
       expect.objectContaining({
         id: job.id,
-        productSerialNumber: job.productSerialNumber,
+        productSerialNumber: serialNumber,
         vinNumber: null,
       }),
     ]);

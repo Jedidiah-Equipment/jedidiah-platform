@@ -89,6 +89,29 @@ describe('Job', () => {
       vinNumber: null,
     });
   });
+
+  it('accepts productless custom job facts', () => {
+    expect(
+      Job.parse({
+        code: 2,
+        createdAt: '2026-06-01T00:00:00.000Z',
+        id: '00000000-0000-4000-8000-000000000001',
+        productId: null,
+        productSerialNumber: null,
+        productSerialPrefix: null,
+        productSerialSequence: null,
+        productSerialYear: null,
+        quoteId: '00000000-0000-4000-8000-000000000003',
+        description: null,
+        updatedAt: '2026-06-01T00:00:00.000Z',
+        vinNumber: null,
+      }),
+    ).toMatchObject({
+      code: 'JOB-00002',
+      productId: null,
+      productSerialNumber: null,
+    });
+  });
 });
 
 describe('Working Calendar schemas', () => {

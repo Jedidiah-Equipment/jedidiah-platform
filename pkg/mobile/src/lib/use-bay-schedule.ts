@@ -9,6 +9,7 @@ import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+import { getJobDisplayName } from './job-display';
 import { useTRPC } from './trpc';
 import { useBayCalendars } from './use-bay-calendars';
 
@@ -18,7 +19,7 @@ export type BayQueueActiveJob = ActiveJobProgress & {
   jobCode: string;
   productName: string;
   productThumbnailDataUrl: string | null;
-  productSerialNumber: string;
+  productSerialNumber: string | null;
   customerCompanyName: string | null;
   /** Slot start, for the progress bar's start-month caption. */
   startDate: DateOnlyIso;
@@ -35,7 +36,7 @@ export type BaySlotDetail = {
   quoteCode: string;
   productName: string;
   productThumbnailDataUrl: string | null;
-  productSerialNumber: string;
+  productSerialNumber: string | null;
   customerCompanyName: string | null;
   bayName: string;
   /** 'in-progress' for the Slot running today, else 'scheduled'. */
@@ -108,7 +109,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
             ...deriveActiveJobProgress({ slot: activeSlot, today, workingCalendar }),
             slotId: activeSlot.id,
             jobCode: activeSlot.jobCode,
-            productName: activeJob.productName,
+            productName: getJobDisplayName(activeJob),
             productThumbnailDataUrl: activeJob.productThumbnailDataUrl,
             productSerialNumber: activeJob.productSerialNumber,
             customerCompanyName: activeJob.customerCompanyName,
@@ -134,9 +135,9 @@ export function useBaySchedule(bayId: string): BayQueueState {
         jobId: slot.jobId,
         jobCode: slot.jobCode,
         quoteCode: job?.quoteCode ?? '—',
-        productName: job?.productName ?? slot.jobCode,
+        productName: job ? getJobDisplayName(job) : slot.jobCode,
         productThumbnailDataUrl: job?.productThumbnailDataUrl ?? null,
-        productSerialNumber: job?.productSerialNumber ?? '—',
+        productSerialNumber: job?.productSerialNumber ?? null,
         customerCompanyName: job?.customerCompanyName ?? null,
         bayName: bay.name,
         status,

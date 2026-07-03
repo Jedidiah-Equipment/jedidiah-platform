@@ -34,7 +34,8 @@ export const aiLinkMetadata = {
     href: '/quotes/{id}',
     guidance: [
       'Product Quote Status is editable until the Quote sources a Job; only accepted Product Quotes can create a Job.',
-      'Custom Quotes do not create Jobs yet and their commercial fields lock once the Quote is accepted.',
+      'Draft, sent, and accepted Custom Quotes can create Custom Jobs; rejected and cancelled Custom Quotes cannot.',
+      'Custom Quote commercial fields stay editable with a running Custom Job until the Quote is accepted.',
       'Quote offerings are either kind=product with productId, or kind=custom with workTitle and entered basePrice.',
       'Quote Salesperson is required at creation; salesPersonId is non-nullable.',
       'Product Quote price snapshot fields are latched from Product at creation; Custom Quote base price is entered directly.',

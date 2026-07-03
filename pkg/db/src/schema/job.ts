@@ -135,16 +135,14 @@ export const jobs = pgTable(
   {
     id: uuid('id').defaultRandom().primaryKey(),
     code: integer('code').notNull().default(sql`nextval('job_code_seq'::regclass)`),
-    productId: uuid('product_id')
-      .notNull()
-      .references(() => products.id, { onDelete: 'restrict' }),
+    productId: uuid('product_id').references(() => products.id, { onDelete: 'restrict' }),
     quoteId: uuid('quote_id')
       .notNull()
       .references(() => quotes.id, { onDelete: 'restrict' }),
-    productSerialPrefix: text('product_serial_prefix').notNull(),
-    productSerialYear: integer('product_serial_year').notNull(),
-    productSerialSequence: integer('product_serial_sequence').notNull(),
-    productSerialNumber: text('product_serial_number').notNull(),
+    productSerialPrefix: text('product_serial_prefix'),
+    productSerialYear: integer('product_serial_year'),
+    productSerialSequence: integer('product_serial_sequence'),
+    productSerialNumber: text('product_serial_number'),
     vinNumber: text('vin_number'),
     description: text('description'),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
@@ -156,6 +154,19 @@ export const jobs = pgTable(
     check('job_product_serial_year_range', sql`${table.productSerialYear} >= 0 AND ${table.productSerialYear} <= 99`),
     check('job_product_serial_sequence_positive', sql`${table.productSerialSequence} > 0`),
     check('job_product_serial_number_nonempty', sql`length(trim(${table.productSerialNumber})) > 0`),
+    check(
+      'job_product_serial_shape',
+      sql`(${table.productId} is not null
+            and ${table.productSerialNumber} is not null
+            and ${table.productSerialPrefix} is not null
+            and ${table.productSerialYear} is not null
+            and ${table.productSerialSequence} is not null)
+        or (${table.productId} is null
+            and ${table.productSerialNumber} is null
+            and ${table.productSerialPrefix} is null
+            and ${table.productSerialYear} is null
+            and ${table.productSerialSequence} is null)`,
+    ),
     uniqueIndex('job_code_unique').on(table.code),
     uniqueIndex('job_product_serial_number_unique').on(table.productSerialNumber),
     uniqueIndex('job_quote_id_unique').on(table.quoteId),

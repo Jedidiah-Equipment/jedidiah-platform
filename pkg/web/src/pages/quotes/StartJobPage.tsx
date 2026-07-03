@@ -44,6 +44,7 @@ import {
   toJobCreateFormValues,
   toJobCreateInput,
 } from './components/generate-job-from-quote-form.js';
+import { canStartJobFromQuote, getStartJobUnavailableMessage } from './components/start-job-eligibility.js';
 
 type StartJobPageProps = {
   quoteId: UUID;
@@ -56,7 +57,7 @@ export const StartJobPage: React.FC<StartJobPageProps> = ({ quoteId }) => {
 
   return (
     <PageLayout
-      description="Generate CFO and start Job; the quote is locked once the Job is created. Schedule edits save immediately; this Job's slots are created on submit. Cancel discards only the uncreated Job."
+      description="Start a Job from this Quote and optionally seed its Bay schedule. Schedule edits save immediately; this Job's slots are created on submit. Cancel discards only the uncreated Job."
       size="full"
       title={quote ? `Start Job from ${quote.code}` : 'Loading quote...'}
     >
@@ -104,26 +105,13 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
     }),
   );
 
-  if (
-    !canCreateJob ||
-    quote.kind !== 'product' ||
-    quote.status !== 'accepted' ||
-    (quote.job !== null && !createJobMutation.isSuccess)
-  ) {
+  if ((!canCreateJob || !canStartJobFromQuote(quote)) && !createJobMutation.isSuccess) {
     return (
       <Empty>
         <EmptyHeader>
           <EmptyIcon />
           <EmptyTitle>This quote cannot start a Job.</EmptyTitle>
-          <EmptyDescription>
-            {quote.job !== null
-              ? 'A Job has already been created from this quote.'
-              : quote.kind !== 'product'
-                ? 'Custom Quote Job creation is not available yet.'
-                : quote.status !== 'accepted'
-                  ? 'Only accepted quotes can start a Job.'
-                  : 'You do not have permission to create Jobs.'}
-          </EmptyDescription>
+          <EmptyDescription>{getStartJobUnavailableMessage(quote, canCreateJob)}</EmptyDescription>
         </EmptyHeader>
         <Button render={<Link params={{ id: quote.id }} to="/quotes/$id/edit" />} variant="outline">
           Back to quote
@@ -377,7 +365,7 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
             </Button>
             <Button disabled={isPending || isFormSubmitting || !canSubmit} type="submit">
               {isPending || isFormSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
-              Generate CFO & Start Job
+              Start Job
             </Button>
           </div>
         )}

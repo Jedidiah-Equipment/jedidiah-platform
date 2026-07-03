@@ -31,6 +31,7 @@ import {
   type JobDetail,
   type PartUnitOfMeasure,
   type ProductDocumentType,
+  type QuoteStatus,
   QuoteUpdateInput,
   ToggleOffDayInput,
 } from '@pkg/schema';
@@ -213,6 +214,136 @@ describe('createJob', () => {
 
     expect(job.schedule.every((department) => department.bays.length === 0)).toBe(true);
     await expect(context.db.select().from(jobSlots)).resolves.toHaveLength(0);
+  });
+
+  test('creates a custom job from a draft custom quote without product side effects and books Bays', async ({
+    context,
+  }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const quote = await createCustomQuote(context.db, {
+      status: 'draft',
+      workTitle: 'Pump skid rebuild',
+    });
+    await context.db.insert(productSerialSequences).values({
+      lastSequence: 8,
+      productId: context.catalog.product.id,
+    });
+    const storage = new InMemoryStorageAdapter();
+    let rendererCalls = 0;
+    const renderer: BrochurePdfRenderer = async () => {
+      rendererCalls += 1;
+
+      return BROCHURE_PDF_BYTES;
+    };
+
+    const job = await createJob({
+      actorUserId,
+      brochureRenderer: renderer,
+      db: context.db,
+      input: { baySeeds: [{ bayId: bay.id, durationDays: 2 }], quoteId: quote.id },
+      storage,
+    });
+
+    const [jobRows, cfoAssemblyRows, cfoPartRows, documentRows, serialRows, slotRows] = await Promise.all([
+      context.db.select().from(jobs),
+      context.db.select().from(jobCfoAssemblies),
+      context.db.select().from(jobCfoParts),
+      context.db.select().from(documents).where(eq(documents.jobId, job.id)),
+      context.db.select().from(productSerialSequences),
+      context.db.select().from(jobSlots),
+    ]);
+
+    expect(job).toMatchObject({
+      productId: null,
+      productSerialNumber: null,
+      productSerialPrefix: null,
+      productSerialSequence: null,
+      productSerialYear: null,
+      quoteId: quote.id,
+      quoteKind: 'custom',
+      workTitle: 'Pump skid rebuild',
+    });
+    expect(job.cfo).toEqual([]);
+    expect(job.documents).toEqual([]);
+    expect(jobRows).toMatchObject([
+      {
+        productId: null,
+        productSerialNumber: null,
+        quoteId: quote.id,
+      },
+    ]);
+    expect(cfoAssemblyRows).toHaveLength(0);
+    expect(cfoPartRows).toHaveLength(0);
+    expect(documentRows).toHaveLength(0);
+    expect(rendererCalls).toBe(0);
+    expect(storage.objects.size).toBe(0);
+    expect(serialRows).toMatchObject([{ lastSequence: 8, productId: context.catalog.product.id }]);
+    expect(slotRows).toMatchObject([{ durationDays: 2, jobId: job.id, kind: 'work' }]);
+
+    await expect(
+      createJob({
+        actorUserId,
+        db: context.db,
+        input: { baySeeds: [], quoteId: quote.id },
+      }),
+    ).rejects.toThrow('Quote already has a Job.');
+  });
+
+  test('enforces the quote kind and status matrix for job creation', async ({ context }) => {
+    const cases: {
+      allowed: boolean;
+      kind: 'product' | 'custom';
+      message?: string;
+      status: QuoteStatus;
+    }[] = [
+      { allowed: false, kind: 'product', message: 'Only accepted quotes can start a Job.', status: 'draft' },
+      { allowed: false, kind: 'product', message: 'Only accepted quotes can start a Job.', status: 'sent' },
+      { allowed: true, kind: 'product', status: 'accepted' },
+      { allowed: false, kind: 'product', message: 'Only accepted quotes can start a Job.', status: 'rejected' },
+      { allowed: false, kind: 'product', message: 'Only accepted quotes can start a Job.', status: 'cancelled' },
+      { allowed: true, kind: 'custom', status: 'draft' },
+      { allowed: true, kind: 'custom', status: 'sent' },
+      { allowed: true, kind: 'custom', status: 'accepted' },
+      {
+        allowed: false,
+        kind: 'custom',
+        message: 'Rejected or cancelled quotes cannot start a Job.',
+        status: 'rejected',
+      },
+      {
+        allowed: false,
+        kind: 'custom',
+        message: 'Rejected or cancelled quotes cannot start a Job.',
+        status: 'cancelled',
+      },
+    ];
+
+    for (const [index, testCase] of cases.entries()) {
+      const quote =
+        testCase.kind === 'product'
+          ? await createQuote(context.db, {
+              productId: context.catalog.product.id,
+              status: testCase.status,
+            })
+          : await createCustomQuote(context.db, {
+              status: testCase.status,
+              workTitle: `Custom status matrix ${index}`,
+            });
+      const attempt = createJob({
+        actorUserId,
+        db: context.db,
+        input: { baySeeds: [], quoteId: quote.id },
+      });
+
+      if (testCase.allowed) {
+        await expect(attempt).resolves.toMatchObject({
+          quoteId: quote.id,
+          quoteKind: testCase.kind,
+        });
+      } else {
+        await expect(attempt).rejects.toThrow(testCase.message);
+      }
+    }
   });
 
   test('seeds work slots across Bays in input order, including duplicate Bay rows', async ({ context }) => {
@@ -2425,7 +2556,7 @@ async function createQuote(
   }: {
     productId: string;
     selectedAssemblyId?: string;
-    status: 'accepted' | 'sent';
+    status: QuoteStatus;
   },
 ) {
   const [customer] = await db
@@ -2458,6 +2589,43 @@ async function createQuote(
       quotedPrice: 250,
     });
   }
+
+  return quote;
+}
+
+async function createCustomQuote(
+  db: Db,
+  {
+    status,
+    workTitle,
+  }: {
+    status: QuoteStatus;
+    workTitle: string;
+  },
+) {
+  const [customer] = await db
+    .insert(customers)
+    .values({
+      companyName: 'Custom Job Customer',
+      email: null,
+    })
+    .returning();
+  if (!customer) throw new Error('Customer insert did not return a row');
+
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId: customer.id,
+      kind: 'custom',
+      productId: null,
+      quotedBasePrice: 2_500,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: actorUserId,
+      status,
+      workTitle,
+    })
+    .returning();
+  if (!quote) throw new Error('Quote insert did not return a row');
 
   return quote;
 }

@@ -12,6 +12,7 @@ import type { BayOperator, DateOnlyIso, Department, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+import { getJobDisplayName } from './job-display';
 import { useTRPC } from './trpc';
 import { useAccess } from './use-access';
 import { useBayCalendars } from './use-bay-calendars';
@@ -37,7 +38,7 @@ export type JobDetailState =
       jobCode: string;
       quoteCode: string;
       productName: string;
-      productSerialNumber: string;
+      productSerialNumber: string | null;
       productThumbnailDataUrl: string | null;
       customerCompanyName: string | null;
       description: string | null;
@@ -108,7 +109,7 @@ export function useJobDetail(jobId: string): JobDetailState {
       status: 'ready',
       jobCode: job.code,
       quoteCode: job.quoteCode,
-      productName: job.productName,
+      productName: getJobDisplayName(job),
       productSerialNumber: job.productSerialNumber,
       productThumbnailDataUrl: job.productThumbnailDataUrl,
       customerCompanyName: job.customerCompanyName,

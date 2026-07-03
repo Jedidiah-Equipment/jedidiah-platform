@@ -78,7 +78,9 @@ const JobEditForm: React.FC<{
             {(field) => <field.TextareaField label="Description" placeholder="Describe this job build..." rows={6} />}
           </form.AppField>
         </EditFormFullWidth>
-        <form.AppField name="vinNumber">{(field) => <field.TextField label="VIN number" />}</form.AppField>
+        {job.quoteKind === 'product' ? (
+          <form.AppField name="vinNumber">{(field) => <field.TextField label="VIN number" />}</form.AppField>
+        ) : null}
       </EditFormGrid>
     </form>
   );

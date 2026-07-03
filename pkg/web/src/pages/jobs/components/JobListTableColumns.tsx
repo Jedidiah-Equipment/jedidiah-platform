@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button.js';
 
 import { JobCodeDisplay } from './JobCodeDisplay.js';
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
+import { getJobDisplayName, getJobDisplaySubtitle } from './job-display.js';
 
 /**
  * Job List columns. Only Job code (`code`) and Schedule (`scheduledSlots`) map to a server sort key
@@ -51,11 +52,11 @@ export function createJobListColumns({
       },
     },
     {
-      accessorFn: (job) => job.productName,
+      accessorFn: (job) => getJobDisplayName(job),
       cell: ({ row }) => <ProductCell job={row.original} />,
       enableColumnFilter: false,
       enableSorting: false,
-      header: 'Product',
+      header: 'Product / Work',
       id: 'product',
       meta: {
         headerClassName: 'min-w-56',
@@ -63,7 +64,12 @@ export function createJobListColumns({
     },
     {
       accessorFn: (job) => job.productSerialNumber,
-      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.productSerialNumber}</span>,
+      cell: ({ row }) =>
+        row.original.productSerialNumber ? (
+          <span className="font-mono text-sm tabular-nums">{row.original.productSerialNumber}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
       enableColumnFilter: false,
       enableSorting: false,
       header: 'Serial',
@@ -195,14 +201,19 @@ function CustomerCell({ job }: { job: JobSummary }) {
 }
 
 function ProductCell({ job }: { job: JobSummary }) {
+  const displayName = getJobDisplayName(job);
+  const subtitle = getJobDisplaySubtitle(job);
+
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <EntityThumbnail label={job.productName} size="sm" thumbnailDataUrl={job.productThumbnailDataUrl} />
+      <EntityThumbnail label={displayName} size="sm" thumbnailDataUrl={job.productThumbnailDataUrl} />
       <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate font-medium">{job.productName}</span>
-        <span className="truncate text-xs text-muted-foreground">
-          <span className="font-mono">{job.productModelCode}</span>
-        </span>
+        <span className="truncate font-medium">{displayName}</span>
+        {subtitle ? (
+          <span className="truncate text-xs text-muted-foreground">
+            {job.productModelCode ? <span className="font-mono">{subtitle}</span> : subtitle}
+          </span>
+        ) : null}
       </div>
     </div>
   );

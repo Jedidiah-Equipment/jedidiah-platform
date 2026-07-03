@@ -3,6 +3,7 @@ import type { DateOnlyIso, JobSummary } from '@pkg/schema';
 import type React from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { getJobDisplayName } from './job-display.js';
 import { getJobGanttOffsetDistance, getJobGanttWidth } from './job-gantt-geometry.js';
 
 type BaySlotJobCardProps = {
@@ -15,22 +16,22 @@ type BaySlotJobCardProps = {
 // text led by the all-important job code, and a calendar-day count. The slot bar clips
 // this card to the slot's duration width, so the job code leads and the rest clips gracefully.
 export const BaySlotJobCard: React.FC<BaySlotJobCardProps> = ({ dayBreakdown, job, jobCode }) => {
-  const productName = job?.productName ?? '';
+  const displayName = job ? getJobDisplayName(job) : '';
 
   return (
     <div className="@container flex h-full min-w-0 items-center gap-2.5">
       <EntityThumbnail
         className="shrink-0"
-        label={productName || jobCode}
+        label={displayName || jobCode}
         size="lg"
         thumbnailDataUrl={job?.productThumbnailDataUrl}
       />
       <div className="flex min-w-0 flex-1 flex-col justify-center leading-tight">
         <span className="truncate font-mono font-semibold text-sm">{jobCode}</span>
-        {job ? (
+        {job?.productSerialNumber ? (
           <span className="truncate font-mono text-muted-foreground text-xs">{job.productSerialNumber}</span>
         ) : null}
-        {productName ? <span className="truncate text-muted-foreground text-xs">{productName}</span> : null}
+        {displayName ? <span className="truncate text-muted-foreground text-xs">{displayName}</span> : null}
       </div>
       {/* Job code wins tight slots: the day count only shows once the slot is wide enough. */}
       <span className="ml-auto hidden shrink-0 pl-2 text-right font-medium text-muted-foreground text-sm tabular-nums @[14rem]:inline">

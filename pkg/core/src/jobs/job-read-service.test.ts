@@ -11,6 +11,32 @@ describe('mapJobSummary', () => {
 
     expect(summary.productSerialNumber).toBe('MODEL-001260001');
   });
+
+  it('maps custom jobs with nullable product and serial facts', () => {
+    const base = jobRow();
+    const summary = mapJobSummary({
+      ...base,
+      product: null,
+      productId: null,
+      productSerialNumber: null,
+      productSerialPrefix: null,
+      productSerialSequence: null,
+      productSerialYear: null,
+      quote: {
+        ...base.quote,
+        kind: 'custom',
+        workTitle: 'Pump skid rebuild',
+      },
+    });
+
+    expect(summary).toMatchObject({
+      productId: null,
+      productName: null,
+      productSerialNumber: null,
+      quoteKind: 'custom',
+      workTitle: 'Pump skid rebuild',
+    });
+  });
 });
 
 describe('listBays', () => {
@@ -61,7 +87,7 @@ describe('listBays', () => {
   });
 });
 
-function jobRow() {
+function jobRow(): Parameters<typeof mapJobSummary>[0] {
   const now = new Date('2026-05-01T00:00:00.000Z');
 
   return {
@@ -80,6 +106,8 @@ function jobRow() {
     productSerialYear: 26,
     quote: {
       code: 1,
+      kind: 'product',
+      workTitle: null,
       customer: {
         companyName: 'Test Customer',
         id: '00000000-0000-4000-8000-000000000004',

@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
+import { getJobDisplayName } from './job-display.js';
 
 type JobCodeDisplayProps = {
   canOpenJob: boolean;
@@ -104,22 +105,28 @@ const JobCodeHoverCard: React.FC<{
   );
 };
 
-const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => (
-  <div className="flex flex-col gap-3">
-    <div className="grid grid-cols-2 gap-2 text-sm">
-      <JobPreviewFact label="Customer" value={job.customerCompanyName ?? 'Standalone'} />
-      <JobPreviewFact label="Product" value={`${job.productName} (${job.productModelCode})`} />
-      <JobPreviewFact label="Quote" value={job.quoteCode} />
-      <JobPreviewFact label="Serial" value={job.productSerialNumber} />
-    </div>
-    <div className="rounded-md border p-2">
-      <div className="text-xs font-medium text-muted-foreground">Schedule</div>
-      <div className="mt-1 flex flex-wrap gap-1.5">
-        <JobScheduleStateBadges scheduleState={job.scheduleState} />
+const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => {
+  const displayName = job.productModelCode
+    ? `${getJobDisplayName(job)} (${job.productModelCode})`
+    : getJobDisplayName(job);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <JobPreviewFact label="Customer" value={job.customerCompanyName ?? 'Standalone'} />
+        <JobPreviewFact label={job.quoteKind === 'custom' ? 'Work' : 'Product'} value={displayName} />
+        <JobPreviewFact label="Quote" value={job.quoteCode} />
+        {job.productSerialNumber ? <JobPreviewFact label="Serial" value={job.productSerialNumber} /> : null}
+      </div>
+      <div className="rounded-md border p-2">
+        <div className="text-xs font-medium text-muted-foreground">Schedule</div>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          <JobScheduleStateBadges scheduleState={job.scheduleState} />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const JobPreviewFact: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="min-w-0 rounded-md border p-2">

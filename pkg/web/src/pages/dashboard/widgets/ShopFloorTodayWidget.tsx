@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 
 import { getSlotLabel } from '../../jobs/components/board-summary.js';
+import { getJobDisplayName } from '../../jobs/components/job-display.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
@@ -112,12 +113,13 @@ function ShopFloorOccupancyCell({
 }) {
   if (occupancy.kind === 'work') {
     const job = jobsById.get(occupancy.slot.jobId) ?? null;
+    const jobDisplayName = job ? getJobDisplayName(job) : null;
 
     return (
       <span className="flex min-w-0 items-center gap-2">
         {job ? (
           <EntityThumbnail
-            label={job.customerCompanyName ?? job.productName}
+            label={job.customerCompanyName ?? jobDisplayName ?? occupancy.slot.jobCode}
             size="sm"
             thumbnailDataUrl={job.customerThumbnailDataUrl}
           />
@@ -130,7 +132,9 @@ function ShopFloorOccupancyCell({
           >
             {occupancy.slot.jobCode}
           </Link>
-          {job ? <span className="block truncate text-xs text-muted-foreground">{job.productName}</span> : null}
+          {jobDisplayName ? (
+            <span className="block truncate text-xs text-muted-foreground">{jobDisplayName}</span>
+          ) : null}
         </span>
       </span>
     );

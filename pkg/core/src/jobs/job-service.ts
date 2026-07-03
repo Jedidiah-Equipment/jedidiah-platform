@@ -57,6 +57,8 @@ import { type JobRow, mapJob } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 
 type ProductQuoteForJobCreate = typeof quotes.$inferSelect & { kind: 'product'; productId: UUID };
+type CustomQuoteForJobCreate = typeof quotes.$inferSelect & { kind: 'custom'; productId: null };
+type QuoteForJobCreate = ProductQuoteForJobCreate | CustomQuoteForJobCreate;
 
 export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityType: 'job',
@@ -99,22 +101,27 @@ export async function createJob({
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
     const quote = await validateJobQuoteForCreate({ quoteId: input.quoteId, tx });
-    const cfo = await buildJobCfoForQuote({ productId: quote.productId, quoteId: quote.id, tx });
     const plantToday = getPlantDateNow();
-    const productSerial = await createProductSerial({
-      productId: quote.productId,
-      tx,
-      plantToday,
-    });
+    const productJobFacts =
+      quote.kind === 'product'
+        ? {
+            cfo: await buildJobCfoForQuote({ productId: quote.productId, quoteId: quote.id, tx }),
+            productSerial: await createProductSerial({
+              productId: quote.productId,
+              tx,
+              plantToday,
+            }),
+          }
+        : null;
 
     const [job] = await tx
       .insert(jobs)
       .values({
         productId: quote.productId,
-        productSerialNumber: productSerial.number,
-        productSerialPrefix: productSerial.prefix,
-        productSerialSequence: productSerial.sequence,
-        productSerialYear: productSerial.year,
+        productSerialNumber: productJobFacts?.productSerial.number ?? null,
+        productSerialPrefix: productJobFacts?.productSerial.prefix ?? null,
+        productSerialSequence: productJobFacts?.productSerial.sequence ?? null,
+        productSerialYear: productJobFacts?.productSerial.year ?? null,
         quoteId: quote.id,
       })
       .returning();
@@ -123,7 +130,10 @@ export async function createJob({
       throw new Error('Job insert did not return a row');
     }
 
-    await insertJobCfo({ cfo, jobId: job.id, tx });
+    if (productJobFacts) {
+      await insertJobCfo({ cfo: productJobFacts.cfo, jobId: job.id, tx });
+    }
+
     // Canonical lock order: concurrent creates seeding the same Bays must not deadlock.
     const seeds = [...input.baySeeds].sort((left, right) => left.bayId.localeCompare(right.bayId));
 
@@ -133,17 +143,19 @@ export async function createJob({
       await queue.book({ durationDays: seed.durationDays, jobId: job.id, kind: 'work' }, { startDate: seed.startDate });
     }
 
-    // Snapshot documents only after the abort-prone bay seeding succeeds: generating the Brochure
-    // writes a PDF to (non-transactional) storage, so a later rollback would orphan that object.
-    await snapshotJobDocuments({
-      actorUserId,
-      brochureRenderer,
-      db,
-      jobId: job.id,
-      productId: quote.productId,
-      storage,
-      tx,
-    });
+    if (quote.kind === 'product') {
+      // Snapshot documents only after the abort-prone bay seeding succeeds: generating the Brochure
+      // writes a PDF to (non-transactional) storage, so a later rollback would orphan that object.
+      await snapshotJobDocuments({
+        actorUserId,
+        brochureRenderer,
+        db,
+        jobId: job.id,
+        productId: quote.productId,
+        storage,
+        tx,
+      });
+    }
 
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
 
@@ -367,19 +379,28 @@ async function validateJobQuoteForCreate({
 }: {
   quoteId: UUID;
   tx: DatabaseTransaction;
-}): Promise<ProductQuoteForJobCreate> {
+}): Promise<QuoteForJobCreate> {
   const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
   if (!quote) {
     throw new JobCreateFromQuoteDeniedError('Quote not found.');
   }
 
-  if (quote.status !== 'accepted') {
-    throw new JobCreateFromQuoteDeniedError('Only accepted quotes can start a Job.');
+  const allowed =
+    quote.kind === 'product'
+      ? quote.status === 'accepted'
+      : quote.status === 'draft' || quote.status === 'sent' || quote.status === 'accepted';
+
+  if (!allowed) {
+    throw new JobCreateFromQuoteDeniedError(
+      quote.kind === 'product'
+        ? 'Only accepted quotes can start a Job.'
+        : 'Rejected or cancelled quotes cannot start a Job.',
+    );
   }
 
-  if (quote.kind !== 'product' || !quote.productId) {
-    throw new JobCreateFromQuoteDeniedError('Custom Quote Job creation is not available yet.');
+  if (quote.kind === 'product' && !quote.productId) {
+    throw new JobCreateFromQuoteDeniedError('Product not found.');
   }
 
   const [existingJob] = await tx
@@ -394,7 +415,7 @@ async function validateJobQuoteForCreate({
     throw new JobCreateFromQuoteDeniedError('Quote already has a Job.');
   }
 
-  return quote as ProductQuoteForJobCreate;
+  return quote as QuoteForJobCreate;
 }
 
 async function buildJobCfoForQuote({

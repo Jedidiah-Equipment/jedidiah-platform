@@ -58,12 +58,12 @@ import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
-type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'> & {
+type QuoteRow = Pick<typeof quotes.$inferSelect, 'code' | 'kind' | 'workTitle'> & {
   customer: CustomerRow;
 };
 
 type JobWithProductRow = JobRow & {
-  product: ProductRow;
+  product: ProductRow | null;
   quote: QuoteRow;
 };
 
@@ -148,6 +148,8 @@ async function listJobSummariesByIds({
         quote: {
           columns: {
             code: true,
+            kind: true,
+            workTitle: true,
           },
           with: {
             customer: {
@@ -263,6 +265,8 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
       quote: {
         columns: {
           code: true,
+          kind: true,
+          workTitle: true,
         },
         with: {
           customer: {
@@ -343,6 +347,10 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
       createEscapedContainsSearchCondition(sql`${jobs.id}::text`, input.search),
       createEscapedContainsSearchCondition(sql`${jobs.code}::text`, input.search),
       createEscapedContainsSearchCondition(sql`${jobs.productSerialNumber}`, input.search),
+      createEscapedContainsSearchCondition(
+        sql`(select "quote"."work_title" from "quote" where "quote"."id" = ${jobs.quoteId})`,
+        input.search,
+      ),
       codeSearch === undefined ? undefined : eq(jobs.code, codeSearch),
     );
 
@@ -382,6 +390,8 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
       quote: {
         columns: {
           code: true,
+          kind: true,
+          workTitle: true,
         },
         with: {
           customer: {
@@ -604,10 +614,12 @@ export function mapJobSummary(row: JobWithProductRow, scheduleState: JobSchedule
     customerCompanyName: row.quote.customer.companyName,
     customerId: UUID.parse(row.quote.customer.id),
     customerThumbnailDataUrl: row.quote.customer.thumbnailDataUrl,
-    productModelCode: row.product.modelCode,
-    productName: row.product.name,
-    productThumbnailDataUrl: row.product.thumbnailDataUrl,
+    productModelCode: row.product?.modelCode ?? null,
+    productName: row.product?.name ?? null,
+    productThumbnailDataUrl: row.product?.thumbnailDataUrl ?? null,
     quoteCode: QuoteCode.parse(row.quote.code),
+    quoteKind: row.quote.kind,
     scheduleState,
+    workTitle: row.quote.workTitle,
   };
 }

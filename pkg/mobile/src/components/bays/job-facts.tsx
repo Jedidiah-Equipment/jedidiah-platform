@@ -36,7 +36,7 @@ export type JobFacts = {
   jobCode: string;
   quoteCode: string;
   productName: string;
-  productSerialNumber: string;
+  productSerialNumber: string | null;
   customerCompanyName: string | null;
 };
 
@@ -53,8 +53,10 @@ export function JobFactsCard(facts: JobFacts) {
           <FactField label="QUOTE CODE" mono value={facts.quoteCode} />
         </FactRow>
         <FactRow>
-          <FactField label="PRODUCT" value={facts.productName} />
-          <FactField label="PRODUCT SERIAL" mono value={facts.productSerialNumber} />
+          <FactField label="WORK" value={facts.productName} />
+          {facts.productSerialNumber ? (
+            <FactField label="PRODUCT SERIAL" mono value={facts.productSerialNumber} />
+          ) : null}
         </FactRow>
         <FactField label="CUSTOMER" value={facts.customerCompanyName ?? '—'} />
       </View>

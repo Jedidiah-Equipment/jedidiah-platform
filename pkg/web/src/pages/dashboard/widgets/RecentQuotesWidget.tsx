@@ -70,7 +70,7 @@ function RecentQuoteRow({ canUpdateQuote, quote }: { canUpdateQuote: boolean; qu
 }
 
 function RecentQuoteRowContent({ canUpdateQuote, quote }: { canUpdateQuote: boolean; quote: QuoteSummary }) {
-  const productName = quote.productName ?? '—';
+  const quoteName = quote.kind === 'custom' ? (quote.workTitle ?? 'Custom work') : (quote.productName ?? '—');
 
   return (
     <>
@@ -79,7 +79,7 @@ function RecentQuoteRowContent({ canUpdateQuote, quote }: { canUpdateQuote: bool
           {quote.code}
         </span>
         <span className="block truncate text-muted-foreground">
-          {quote.customerCompanyName} / {productName}
+          {quote.customerCompanyName} / {quoteName}
         </span>
       </span>
       <span className="text-right">

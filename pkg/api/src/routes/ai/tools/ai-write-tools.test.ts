@@ -91,9 +91,12 @@ describe('AI write tools', () => {
           discountPercent: 10,
           documentNotes: ' 30% deposit ',
           notes: undefined,
+          offering: {
+            kind: 'product',
+            productId: '00000000-0000-4000-8000-000000000201',
+          },
           plannedDeliveryDate: '2026-07-15',
           preferredDeliveryDate: '2026-07-10',
-          productId: '00000000-0000-4000-8000-000000000201',
           selectedAssemblies: [
             {
               productAssemblyId: '00000000-0000-4000-8000-000000000401',
@@ -119,7 +122,10 @@ describe('AI write tools', () => {
         notes: null,
         plannedDeliveryDate: '2026-07-15',
         preferredDeliveryDate: '2026-07-10',
-        productId: '00000000-0000-4000-8000-000000000201',
+        offering: {
+          kind: 'product',
+          productId: '00000000-0000-4000-8000-000000000201',
+        },
         salesPersonId: 'test-user-id',
         selectedAssemblies: [
           {
@@ -209,7 +215,10 @@ describe('AI write tools', () => {
           customer: { type: 'inline', companyName: 'Acme Mining' },
           documentNotes: null,
           notes: null,
-          productId: '00000000-0000-4000-8000-000000000201',
+          offering: {
+            kind: 'product',
+            productId: '00000000-0000-4000-8000-000000000201',
+          },
         },
         createAiContext(),
       ),
@@ -240,6 +249,7 @@ function createQuoteDetail(): QuoteDetail {
     documentNotes: null,
     id: '00000000-0000-4000-8000-000000000301',
     job: null,
+    kind: 'product',
     lineItems: [],
     notes: null,
     plannedDeliveryDate: null,
@@ -265,5 +275,6 @@ function createQuoteDetail(): QuoteDetail {
     statusChangedAt: '2026-06-17T08:00:00.000Z',
     updatedAt: '2026-06-17T08:00:00.000Z',
     validUntil: null,
+    workTitle: null,
   });
 }

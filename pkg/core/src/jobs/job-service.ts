@@ -56,6 +56,8 @@ import { JobCreateFromQuoteDeniedError, JobNotFoundError } from './job-errors.js
 import { type JobRow, mapJob } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 
+type ProductQuoteForJobCreate = typeof quotes.$inferSelect & { kind: 'product'; productId: UUID };
+
 export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityType: 'job',
   noun: 'job',
@@ -365,7 +367,7 @@ async function validateJobQuoteForCreate({
 }: {
   quoteId: UUID;
   tx: DatabaseTransaction;
-}): Promise<typeof quotes.$inferSelect> {
+}): Promise<ProductQuoteForJobCreate> {
   const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
   if (!quote) {
@@ -374,6 +376,10 @@ async function validateJobQuoteForCreate({
 
   if (quote.status !== 'accepted') {
     throw new JobCreateFromQuoteDeniedError('Only accepted quotes can start a Job.');
+  }
+
+  if (quote.kind !== 'product' || !quote.productId) {
+    throw new JobCreateFromQuoteDeniedError('Custom Quote Job creation is not available yet.');
   }
 
   const [existingJob] = await tx
@@ -388,7 +394,7 @@ async function validateJobQuoteForCreate({
     throw new JobCreateFromQuoteDeniedError('Quote already has a Job.');
   }
 
-  return quote;
+  return quote as ProductQuoteForJobCreate;
 }
 
 async function buildJobCfoForQuote({

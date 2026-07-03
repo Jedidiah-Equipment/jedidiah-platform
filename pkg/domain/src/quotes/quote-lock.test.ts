@@ -21,6 +21,7 @@ const frozenLockedQuoteFields = [
   'salesPersonId',
   'selectedAssemblies',
   'status',
+  'workTitle',
 ];
 
 describe('assertQuoteEditable', () => {
@@ -29,6 +30,8 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: [field],
         hasJob: false,
+        kind: 'product',
+        status: 'accepted',
       }),
     ).toEqual({ allowed: true });
   });
@@ -38,6 +41,8 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: [field],
         hasJob: true,
+        kind: 'product',
+        status: 'accepted',
       }),
     ).toEqual({
       allowed: false,
@@ -50,6 +55,8 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: [field],
         hasJob: true,
+        kind: 'product',
+        status: 'accepted',
       }),
     ).toEqual({ allowed: true });
   });
@@ -59,10 +66,48 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: ['futureCommercialField'],
         hasJob: true,
+        kind: 'product',
+        status: 'accepted',
       }),
     ).toEqual({
       allowed: false,
       reason: 'Quote is locked because it already has a Job; futureCommercialField cannot be changed.',
     });
+  });
+
+  it.each(frozenLockedQuoteFields)('allows custom quote %s changes before acceptance even with a job', (field) => {
+    expect(
+      assertQuoteEditable({
+        changedFields: [field],
+        hasJob: true,
+        kind: 'custom',
+        status: 'sent',
+      }),
+    ).toEqual({ allowed: true });
+  });
+
+  it.each(frozenLockedQuoteFields)('rejects custom quote %s changes after acceptance', (field) => {
+    expect(
+      assertQuoteEditable({
+        changedFields: [field],
+        hasJob: false,
+        kind: 'custom',
+        status: 'accepted',
+      }),
+    ).toEqual({
+      allowed: false,
+      reason: `Quote is locked because it has been accepted; ${field} cannot be changed.`,
+    });
+  });
+
+  it.each(editableLockedQuoteFields)('allows custom quote %s changes after acceptance', (field) => {
+    expect(
+      assertQuoteEditable({
+        changedFields: [field],
+        hasJob: false,
+        kind: 'custom',
+        status: 'accepted',
+      }),
+    ).toEqual({ allowed: true });
   });
 });

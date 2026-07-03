@@ -1,5 +1,5 @@
 import { type DatabaseTransaction, type Db, productAssemblies, quoteSelectedAssemblies } from '@pkg/db';
-import { type QuoteCreateInput, QuoteSelectedAssembly, type UUID } from '@pkg/schema';
+import { type QuoteCreateInput, QuoteSelectedAssembly, type QuoteUpdateInput, type UUID } from '@pkg/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 
 import { QuoteInvalidReferenceError } from './quote-errors.js';
@@ -73,7 +73,7 @@ export async function resolveQuoteSelectedAssemblies({
   tx,
 }: {
   currentRows?: QuoteSelectedAssemblyRow[];
-  input: Pick<QuoteCreateInput, 'selectedAssemblies'>;
+  input: Pick<QuoteCreateInput | QuoteUpdateInput, 'selectedAssemblies'>;
   productId: UUID;
   quoteId: UUID;
   tx: DatabaseTransaction;

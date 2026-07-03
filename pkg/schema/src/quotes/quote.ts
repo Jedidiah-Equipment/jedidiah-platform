@@ -22,6 +22,9 @@ import {
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
 
+export type QuoteKind = z.infer<typeof QuoteKind>;
+export const QuoteKind = z.enum(['product', 'custom']);
+
 export { formatQuoteCode, QuoteCode } from '../common/public-code.js';
 
 export type QuoteNotes = z.infer<typeof QuoteNotes>;
@@ -39,6 +42,9 @@ export const QuoteDocumentNotesInput = nullableTrimmedTextInput();
 export type QuoteDocumentLeadTime = z.infer<typeof QuoteDocumentLeadTime>;
 export const QuoteDocumentLeadTime = requiredTrimmedText('Lead time is required');
 
+export type QuoteWorkTitle = z.infer<typeof QuoteWorkTitle>;
+export const QuoteWorkTitle = requiredTrimmedText('Work title is required');
+
 export type QuoteDepositPercent = z.infer<typeof QuoteDepositPercent>;
 export const QuoteDepositPercent = z.number().min(0, 'Must be zero or greater').max(100, 'Must be 100 or less');
 
@@ -50,6 +56,8 @@ export const Quote = z.object({
   id: UUID,
   code: QuoteCode,
   customerId: UUID,
+  kind: QuoteKind,
+  workTitle: QuoteWorkTitle.nullable(),
   productId: UUID.nullable(),
   salesPersonId: AuthId,
   status: QuoteStatus,
@@ -181,10 +189,23 @@ export const QuoteCustomerInput = z.discriminatedUnion('type', [
   }),
 ]);
 
+export type QuoteOfferingInput = z.infer<typeof QuoteOfferingInput>;
+export const QuoteOfferingInput = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('product'),
+    productId: UUID,
+  }),
+  z.object({
+    kind: z.literal('custom'),
+    workTitle: QuoteWorkTitle,
+    basePrice: z.coerce.number().pipe(Price),
+  }),
+]);
+
 export type QuoteCreateInput = z.infer<typeof QuoteCreateInput>;
 export const QuoteCreateInput = z.object({
   customer: QuoteCustomerInput,
-  productId: UUID,
+  offering: QuoteOfferingInput,
   salesPersonId: AuthId,
   status: QuoteStatus,
   discountPercent: z.coerce.number().pipe(QuoteDiscountPercent).default(0),
@@ -215,6 +236,8 @@ export const QuoteUpdateInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
     documentNotes: QuoteDocumentNotesInput,
+    workTitle: QuoteWorkTitle.optional(),
+    basePrice: z.coerce.number().pipe(Price).optional(),
     lineItems: z.array(QuoteLineItemInput).optional(),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
@@ -271,6 +294,7 @@ export type QuoteListFilters = z.infer<typeof QuoteListFilters>;
 export const QuoteListFilters = z
   .object({
     customerId: UUID.optional(),
+    kind: QuoteKind.optional(),
     productId: UUID.optional(),
     salesPersonId: AuthId.optional(),
     statuses: z.array(QuoteStatus),

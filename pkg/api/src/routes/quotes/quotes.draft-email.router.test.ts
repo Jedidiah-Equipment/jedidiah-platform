@@ -53,7 +53,7 @@ describe('quotes.draftEmail', () => {
         customer: { type: 'inline', companyName: 'Acme Mining' },
         documentNotes: '30% deposit, balance on delivery',
         notes: null,
-        productId: context.product.id,
+        offering: { kind: 'product', productId: context.product.id },
         salesPersonId: 'test-user-id',
         status: 'draft',
       });

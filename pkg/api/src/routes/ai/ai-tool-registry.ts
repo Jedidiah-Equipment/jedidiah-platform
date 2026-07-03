@@ -224,7 +224,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     descriptor: {
       purpose: 'List Quotes visible to Quote readers.',
       useWhen: [
-        'Searching by Quote Code, Customer company name, Product name, Product model code, linked Job Codes, UUID, or Quote Status.',
+        'Searching by Quote Code, Customer company name, Product name, Custom Work Title, Product model code, linked Job Codes, UUID, Quote Kind, or Quote Status.',
         'Traversing from Customer to Job through Quotes.',
       ],
       doNotUseWhen: ['The user needs full details for one Quote; call getQuote after identifying the Quote id.'],
@@ -232,6 +232,8 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Quote UUID',
         'Quote Code such as QUO-00001',
         'Customer company name',
+        'Custom Work Title',
+        'Quote Kind',
         'Product name',
         'linked Job Codes',
         'Quote Status',
@@ -242,7 +244,8 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Document Notes',
         'Preferred delivery date',
         'Planned delivery date',
-        'Product UUID',
+        'Product UUID when this is a Product Quote',
+        'Custom Work Title when this is a Custom Quote',
         'salesPersonId User ID',
         'quotedBasePrice',
         'quotedCurrencyCode',
@@ -261,7 +264,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
       purpose: 'Get one Quote by UUID.',
       useWhen: ['A Quote id is already known and the user needs Quote commercial details or linked Job details.'],
       doNotUseWhen: [
-        'Searching by Quote Code, Customer, Product, linked Job Codes, or partial id; use listQuotes first.',
+        'Searching by Quote Code, Customer, Product, Custom Work Title, linked Job Codes, or partial id; use listQuotes first.',
       ],
       searchableIdentifiers: ['Quote UUID'],
       resultIdentifiers: [
@@ -270,7 +273,8 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Document Notes',
         'Preferred delivery date',
         'Planned delivery date',
-        'Product UUID',
+        'Product UUID when this is a Product Quote',
+        'Custom Work Title when this is a Custom Quote',
         'salesPersonId User ID',
         'quotedBasePrice',
         'quotedCurrencyCode',
@@ -285,18 +289,26 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     kind: 'write',
     tool: createQuoteTool,
     descriptor: {
-      purpose: 'Create one Quote and snapshot its Product price/currency and selected Optional Assemblies.',
+      purpose: 'Create one Product Quote or Custom Quote.',
       useWhen: [
-        'The user explicitly asks to create a Quote for an existing Customer or for a new inline Customer company name.',
+        'The user explicitly asks to create a Product Quote for a Product, or a Custom Quote with a Work Title and entered base price.',
       ],
       doNotUseWhen: [
         'The user only needs to search or inspect Quotes; use listQuotes or getQuote.',
         'The user asks for standalone Customer creation; use createCustomer only when customer:create is available.',
       ],
-      searchableIdentifiers: ['Customer UUID or inline companyName', 'Product UUID', 'salesPersonId User ID'],
+      searchableIdentifiers: [
+        'Customer UUID or inline companyName',
+        'offering.kind product or custom',
+        'Product UUID for Product Quotes',
+        'Custom Work Title for Custom Quotes',
+        'salesPersonId User ID',
+      ],
       resultIdentifiers: [
         'Quote Code',
         'Customer company name',
+        'Quote Kind',
+        'Custom Work Title',
         'Product name',
         'quotedBasePrice',
         'quotedCurrencyCode',

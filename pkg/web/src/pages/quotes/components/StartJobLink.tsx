@@ -9,7 +9,7 @@ import { useAccess } from '@/hooks/use-access.js';
 
 type StartJobLinkProps = {
   className?: string;
-  quote: Pick<QuoteDetail, 'code' | 'id' | 'job' | 'status'>;
+  quote: Pick<QuoteDetail, 'code' | 'id' | 'job' | 'kind' | 'status'>;
   size?: 'default' | 'icon-sm';
 };
 
@@ -17,7 +17,7 @@ type StartJobLinkProps = {
 export const StartJobLink: React.FC<StartJobLinkProps> = ({ className, quote, size = 'default' }) => {
   const accessQuery = useAccess();
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
-  const canGenerate = quote.status === 'accepted' && quote.job === null;
+  const canGenerate = quote.kind === 'product' && quote.status === 'accepted' && quote.job === null;
 
   if (!canCreateJob || !canGenerate) {
     return null;

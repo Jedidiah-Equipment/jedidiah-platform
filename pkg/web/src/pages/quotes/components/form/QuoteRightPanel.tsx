@@ -30,7 +30,7 @@ export type QuoteComputedSummary = {
   discountPercent: number;
   lineItems: QuoteFormValues['lineItems'];
   lineItemTotal: number;
-  productPrice: number;
+  basePrice: number;
   selectedAssemblies: SelectedAssemblySnapshot[];
   selectedAssemblyTotal: number;
   total: number;
@@ -117,6 +117,10 @@ function QuoteCustomerCard({ quote }: { quote: QuoteDetail }) {
 }
 
 function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
+  if (quote.kind === 'custom') {
+    return <QuoteCustomWorkCard quote={quote} />;
+  }
+
   const standardCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'standard').length;
   const optionalCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'optional').length;
   const productName = quote.productName ?? '—';
@@ -163,6 +167,39 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
   );
 }
 
+function QuoteCustomWorkCard({ quote }: { quote: QuoteDetail }) {
+  const workTitle = quote.workTitle ?? 'Custom work';
+
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardDescription>Custom work</CardDescription>
+        <CardTitle className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="block truncate">{workTitle}</span>
+            <Badge variant="outline">Custom</Badge>
+          </div>
+        </CardTitle>
+        <CardAction>
+          <EntityThumbnail className="size-10" label={workTitle} size="lg" thumbnailDataUrl={null} />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <div className="grid grid-cols-2 gap-2">
+          <QuoteMiniMetric
+            icon={<IconReceipt2 />}
+            label="Base price"
+            value={formatCurrency(quote.quotedBasePrice, quote.quotedCurrencyCode)}
+          />
+          <QuoteMiniMetric icon={<IconPackage />} label="Kind" value="Custom" />
+          <QuoteMiniMetric icon={<IconPackage />} label="Product" value="None" />
+          <QuoteMiniMetric icon={<IconPackage />} label="Assemblies" value="N/A" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function QuoteTotalCard({
   flushAutosave,
   quote,
@@ -181,7 +218,10 @@ function QuoteTotalCard({
         <CardTitle className="text-2xl tabular-nums">{formatCurrency(summary.total, summary.currencyCode)}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-2">
-        <QuoteSummaryRow label="Product price" value={formatCurrency(summary.productPrice, summary.currencyCode)} />
+        <QuoteSummaryRow
+          label={quote.kind === 'custom' ? 'Base price' : 'Product price'}
+          value={formatCurrency(summary.basePrice, summary.currencyCode)}
+        />
         {summary.selectedAssemblyTotal > 0 ? (
           <div className="grid gap-1">
             <QuoteSummaryRow

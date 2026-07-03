@@ -163,13 +163,9 @@ async function getQuoteDocumentSummaryRow({
 }
 
 async function assertQuoteExists({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<void> {
-  await getQuoteProductId({ db, quoteId });
-}
-
-async function getQuoteProductId({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<UUID> {
   const [quote] = await db
     .select({
-      productId: quotes.productId,
+      id: quotes.id,
     })
     .from(quotes)
     .where(eq(quotes.id, quoteId))
@@ -178,8 +174,6 @@ async function getQuoteProductId({ db, quoteId }: { db: Db; quoteId: UUID }): Pr
   if (!quote) {
     throw new QuoteNotFoundError(quoteId);
   }
-
-  return quote.productId;
 }
 
 function createQuoteDocumentStorageKey(input: { filename: string; quoteId: UUID }): string {

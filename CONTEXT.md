@@ -4,21 +4,21 @@ Compact domain map for implementation and planning. Search this file first for n
 
 ## Core Model
 
-**Job** is one physical product instance created from exactly one accepted **Quote**. Do not call it an Order, Work Order, Build, or Ticket. A Job has a `JOB-xxxxx` code for app use and a **Product Serial Number** for the physical unit. A Job also carries a freeform **Description** and a **VIN Number**, both editable after creation by Job writers.
+**Job** is one physical product instance created from exactly one accepted **Product Quote**. Do not call it an Order, Work Order, Build, or Ticket. A Job has a `JOB-xxxxx` code for app use and a **Product Serial Number** for the physical unit. A Job also carries a freeform **Description** and a **VIN Number**, both editable after creation by Job writers.
 
-**Quote** is a sales offer for one **Customer** and one **Product**, owned by one salesperson. A Quote can source at most one Job. Once it does, it becomes a **Locked Quote**: commercial facts stay frozen, while post-sale logistics and notes can still change where the UI allows.
+**Quote** is a sales offer for one **Customer**, owned by one salesperson. A **Product Quote** references one Product and can source at most one Job. A **Custom Quote** has no Product; it uses a Work Title and entered base price, cannot source a Job yet, and locks commercial facts once accepted. A Product Quote becomes a **Locked Quote** once it sources a Job: commercial facts stay frozen, while post-sale logistics and notes can still change where the UI allows.
 
 **Customer** means the company buying or receiving the product. Avoid Client or Buyer in code and docs.
 
 **Product Range** is an admin-managed catalog grouping intended for Product marketing and selection. Every Product belongs to exactly one Range. A Range carries a name and an optional presentation image for customer-facing documents. Avoid Category, Line, or Family. Range management (create, update, and the management list) is admin-only; Product forms load Range options through Product access.
 
-**Supplier** is currently a standalone procurement directory record. **Part** is the reusable purchasable item layer. **Assembly** is a Product-owned grouping of Parts, either Standard or Optional. Optional Assemblies carry an upgrade-delta price, may replace whole Standard Assemblies, and are selected on Quotes.
+**Supplier** is currently a standalone procurement directory record. **Part** is the reusable purchasable item layer. **Assembly** is a Product-owned grouping of Parts, either Standard or Optional. Optional Assemblies carry an upgrade-delta price, may replace whole Standard Assemblies, and are selected on Product Quotes.
 
 **Quote Line Item** is a freeform Quote charge with a name, positive whole-number quantity, and non-negative unit price. It has no catalog semantics and always contributes quantity × unit price to Quote Pricing.
 
-**Quote Pricing** is the computed breakdown — total, discount amount, live selected Optional Assemblies, and Quote Line Items — projected from a Quote's stored pricing facts. A selection is excluded when stale: a `null` reference on a persisted Quote (`on delete set null`), or unresolved against the loaded catalog while editing. Quote Line Items never go stale. Deposit (a payment term) and VAT (Quote Document only) are not inputs.
+**Quote Pricing** is the computed breakdown — total, discount amount, Product Quote live selected Optional Assemblies, and Quote Line Items — projected from a Quote's stored pricing facts. Product Quotes latch base price/currency from Product at creation; Custom Quotes store an entered base price and use `ZAR`. A selection is excluded when stale: a `null` reference on a persisted Product Quote (`on delete set null`), or unresolved against the loaded catalog while editing. Quote Line Items never go stale. Deposit (a payment term) and VAT (Quote Document only) are not inputs.
 
-**CFO** means Customer Fabrication Order: the Job's frozen bill of materials, snapshotted from the Quote's effective BOM at Job creation.
+**CFO** means Customer Fabrication Order: the Job's frozen bill of materials, snapshotted from the Product Quote's effective BOM at Job creation.
 
 ## Manufacturing
 
@@ -56,7 +56,7 @@ Slot dates are derived, never stored on Slots. Projection walks a Bay Queue from
 
 **Job Document Snapshot** copies the Product's current uploaded Documents onto the Job at Job creation, pointing to the same immutable stored files and freezing metadata. The Brochure is not copied but generated fresh and saved as its own Job Document. Product display names may still read live.
 
-**Quote Document** is a generated customer-facing PDF packet owned by a Quote. The newest created Quote Document is treated as the latest. The Product's Brochure is merged into the packet at generation time.
+**Quote Document** is a generated customer-facing PDF packet owned by a Quote. The newest created Quote Document is treated as the latest. Product Quote packets merge the Product's Brochure at generation time; Custom Quote packets do not include a Product Brochure.
 
 **Brochure** is a generated customer-facing product marketing PDF produced from a Product's Brochure Config, not an uploaded file. It is generated from live config every time: streamed unsaved when viewed from the Product screen, merged into the Quote Document packet at Quote generation, and saved as a standalone Job Document at Job creation. A saved Brochure is immutable and reflects the config as it was at generation time.
 
@@ -95,4 +95,4 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Dashboard** is the single signed-in landing surface. Widgets are permission-gated registry entries, and Dashboard Metrics are computed live rather than stored in reporting tables.
 
-**Job Start Alert** is a visibility signal for an accepted Quote with no Job whose earliest set Preferred/Planned Delivery Date is within two calendar months from the current Johannesburg date.
+**Job Start Alert** is a visibility signal for an accepted Quote with no Job whose earliest set Preferred/Planned Delivery Date is within two calendar months from the current Johannesburg date. It includes Custom Quotes until Custom Job creation exists, even though they cannot start Jobs yet.

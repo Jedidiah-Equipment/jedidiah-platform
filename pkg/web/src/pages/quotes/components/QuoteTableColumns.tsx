@@ -1,10 +1,11 @@
 import { formatCurrency, formatPercent, priceQuote } from '@pkg/domain';
-import { type PriorityQuote, QuoteStatus, type QuoteSummary } from '@pkg/schema';
+import { type PriorityQuote, QuoteKind, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { Badge } from '@/components/ui/badge.js';
 import { cn } from '@/lib/utils.js';
 
 import { QuoteLinkedJob } from './QuoteLinkedJob.js';
@@ -28,6 +29,16 @@ export type QuoteTableRow =
 export const quoteStatusFilterOptions = QuoteStatus.options.map((status) => ({
   label: quoteStatusLabels[status],
   value: status,
+}));
+
+export const quoteKindLabels = {
+  custom: 'Custom',
+  product: 'Product',
+} as const satisfies Record<QuoteSummary['kind'], string>;
+
+export const quoteKindFilterOptions = QuoteKind.options.map((kind) => ({
+  label: quoteKindLabels[kind],
+  value: kind,
 }));
 
 export function createQuoteTableRow(quote: QuoteSummary): QuoteTableRow {
@@ -74,6 +85,20 @@ export function createQuoteTableColumns({
       },
     },
     {
+      accessorFn: (row) => row.quote.kind,
+      cell: ({ row }) => <QuoteKindBadge kind={row.original.quote.kind} />,
+      enableColumnFilter: true,
+      enableSorting: false,
+      header: 'Kind',
+      id: 'kind',
+      meta: {
+        filterOptions: quoteKindFilterOptions,
+        filterVariant: 'select',
+        headerClassName: 'min-w-28',
+      },
+      size: 112,
+    },
+    {
       accessorFn: (row) => row.quote.customerCompanyName,
       cell: ({ row }) => <CustomerCell quote={row.original.quote} />,
       enableColumnFilter: true,
@@ -102,7 +127,7 @@ export function createQuoteTableColumns({
       },
     },
     {
-      accessorFn: (row) => row.quote.productName ?? '',
+      accessorFn: (row) => (row.quote.kind === 'custom' ? (row.quote.workTitle ?? '') : (row.quote.productName ?? '')),
       cell: ({ row }) => <ProductCell isPriority={row.original.kind === 'priority'} quote={row.original.quote} />,
       enableColumnFilter: true,
       enableSorting: true,
@@ -234,6 +259,20 @@ function SalesPersonCell({ isPriority, quote }: { isPriority: boolean; quote: Qu
 }
 
 function ProductCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {
+  if (quote.kind === 'custom') {
+    return (
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-medium">{quote.workTitle ?? 'Custom work'}</span>
+          <QuoteKindBadge className="shrink-0" kind={quote.kind} />
+        </span>
+        <span className={cn('truncate text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
+          Custom work
+        </span>
+      </div>
+    );
+  }
+
   const selectedAssemblyCount = getLiveSelectedAssemblyCount(quote);
   const productName = quote.productName ?? '—';
   const productModelCode = quote.productModelCode ?? '—';
@@ -247,6 +286,14 @@ function ProductCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteS
         {selectedAssemblyCount > 0 ? ` / ${selectedAssemblyCount} option${selectedAssemblyCount === 1 ? '' : 's'}` : ''}
       </span>
     </div>
+  );
+}
+
+function QuoteKindBadge({ className, kind }: { className?: string; kind: QuoteSummary['kind'] }) {
+  return (
+    <Badge className={className} variant="outline">
+      {quoteKindLabels[kind]}
+    </Badge>
   );
 }
 

@@ -1,8 +1,8 @@
 # Commercial and Build Records
 
-A Job is created only from an accepted Quote, and each Quote can source at most one Job. Job creation assigns the Product Serial Number, snapshots build facts, and turns the Quote into a Locked Quote. Locked Quote commercial facts stay frozen; post-sale logistics and allowed notes remain editable where the application exposes them.
+A Job is created only from an accepted Product Quote, and each Product Quote can source at most one Job. Custom Quotes are productless sales offers with a Work Title and entered base price; they cannot source Jobs yet and lock commercial facts once accepted. Product Quote Job creation assigns the Product Serial Number, snapshots build facts, and turns the Quote into a Locked Quote. Locked Quote commercial facts stay frozen; post-sale logistics and allowed notes remain editable where the application exposes them.
 
-Products define Standard and Optional Assemblies. Standard Assemblies are included in the base Product. Optional Assemblies carry upgrade-delta prices, may replace whole Standard Assemblies, and are selected on Quotes. Quote totals project from the stored pricing facts: Product base price, selected Optional snapshot prices, discount, delivery fields, and deposit fields. Deposit percent is a payment term, not a discount or total modifier.
+Products define Standard and Optional Assemblies. Standard Assemblies are included in the base Product. Optional Assemblies carry upgrade-delta prices, may replace whole Standard Assemblies, and are selected on Product Quotes. Quote totals project from the stored pricing facts: Product base price or Custom Quote base price, selected Optional snapshot prices for Product Quotes, line items, discount, delivery fields, and deposit fields. Deposit percent is a payment term, not a discount or total modifier.
 
 The CFO is the Job's frozen bill of materials. It snapshots the Quote's effective BOM at Job creation and remains the shop-floor build instruction for that physical unit. Part identity remains relational so current Part code/name reads can still resolve through the Part table.
 

@@ -27,6 +27,15 @@ export class QuoteInvalidReferenceError extends Error {
   }
 }
 
+export class QuoteCustomSelectedAssembliesError extends Error {
+  readonly code = 'quote.custom_selected_assemblies';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteCustomSelectedAssembliesError';
+  }
+}
+
 export class QuoteLockedError extends Error {
   readonly code = 'quote.locked';
 
@@ -55,6 +64,7 @@ export class QuoteDraftEmailRecipientMissingError extends Error {
 }
 
 export type QuoteCoreError =
+  | QuoteCustomSelectedAssembliesError
   | QuoteDocumentGenerationNotAllowedError
   | QuoteDraftEmailRecipientMissingError
   | QuoteDiscountInvalidError
@@ -66,6 +76,7 @@ export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
   return (
     error instanceof QuoteDocumentGenerationNotAllowedError ||
     error instanceof QuoteDraftEmailRecipientMissingError ||
+    error instanceof QuoteCustomSelectedAssembliesError ||
     error instanceof QuoteDiscountInvalidError ||
     error instanceof QuoteInvalidReferenceError ||
     error instanceof QuoteLockedError ||

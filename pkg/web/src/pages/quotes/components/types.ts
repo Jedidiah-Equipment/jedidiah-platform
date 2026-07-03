@@ -10,6 +10,7 @@ import {
   type QuoteDetail,
   QuoteDiscountPercent,
   QuoteDocumentNotes,
+  QuoteKind,
   type QuoteLineItem,
   QuoteLineItemName,
   QuoteLineItemQuantity,
@@ -19,6 +20,7 @@ import {
   QuoteSelectedAssemblyInput,
   QuoteStatus,
   QuoteUpdateInput,
+  QuoteWorkTitle,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
@@ -33,18 +35,24 @@ const QuoteLineItemFormInput = z.object({
   unitPrice: Price,
 });
 
+const QuoteCreateBasePrice = z.union([Price, z.nan()]);
+
+const QuoteCreateFormValuesShape = z.object({
+  customerId: z.string(),
+  customerMode: CustomerMode,
+  basePrice: QuoteCreateBasePrice,
+  inlineCompanyName: z.string(),
+  kind: QuoteKind,
+  productId: z.string(),
+  rangeId: emptyStringOr(UUID),
+  salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
+  status: QuoteStatus,
+  workTitle: z.string(),
+});
+type QuoteCreateFormSelectionValues = z.infer<typeof QuoteCreateFormValuesShape>;
+export const QuoteCreateFormValues =
+  QuoteCreateFormValuesShape.superRefine(refineQuoteCustomerSelection).superRefine(refineQuoteOfferingSelection);
 export type QuoteCreateFormValues = z.infer<typeof QuoteCreateFormValues>;
-export const QuoteCreateFormValues = z
-  .object({
-    customerId: z.string(),
-    customerMode: CustomerMode,
-    inlineCompanyName: z.string(),
-    productId: requiredSelection(UUID, 'Select a product'),
-    rangeId: emptyStringOr(UUID),
-    salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
-    status: QuoteStatus,
-  })
-  .superRefine(refineQuoteCustomerSelection);
 
 export type QuoteFormValues = z.infer<typeof QuoteFormValues>;
 export const QuoteFormValues = z
@@ -53,6 +61,7 @@ export const QuoteFormValues = z
     deliveryIncluded: z.boolean(),
     deliveryPrice: Price,
     discountPercent: QuoteDiscountPercent,
+    basePrice: Price,
     notes: emptyStringOr(QuoteNotes),
     documentNotes: emptyStringOr(QuoteDocumentNotes),
     lineItems: z.array(QuoteLineItemFormInput),
@@ -62,6 +71,7 @@ export const QuoteFormValues = z
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput),
     status: QuoteStatus,
     validUntil: emptyStringOr(DateIsoString),
+    workTitle: z.string(),
   })
   .strict();
 
@@ -70,6 +80,7 @@ export const emptyQuoteFormValues: QuoteFormValues = {
   deliveryIncluded: true,
   deliveryPrice: 0,
   discountPercent: 0,
+  basePrice: 0,
   notes: '',
   documentNotes: '',
   lineItems: [],
@@ -79,16 +90,20 @@ export const emptyQuoteFormValues: QuoteFormValues = {
   selectedAssemblies: [],
   status: 'draft',
   validUntil: '',
+  workTitle: '',
 };
 
 export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
+  basePrice: 0,
   customerId: '',
   customerMode: 'existing',
   inlineCompanyName: '',
+  kind: 'product',
   productId: '',
   rangeId: '',
   salesPersonId: '',
   status: 'draft',
+  workTitle: '',
 };
 
 /**
@@ -97,6 +112,7 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
  */
 export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
   return {
+    basePrice: initialQuote.quotedBasePrice,
     depositPercent: initialQuote.depositPercent,
     deliveryIncluded: initialQuote.deliveryIncluded,
     deliveryPrice: initialQuote.deliveryPrice,
@@ -112,6 +128,7 @@ export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
     ),
     status: initialQuote.status,
     validUntil: initialQuote.validUntil ?? '',
+    workTitle: initialQuote.workTitle ?? '',
   };
 }
 
@@ -127,7 +144,10 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
       value.customerMode === 'existing'
         ? { type: 'existing', customerId: value.customerId }
         : { type: 'inline', companyName: value.inlineCompanyName },
-    productId: value.productId,
+    offering:
+      value.kind === 'product'
+        ? { kind: 'product', productId: value.productId }
+        : { kind: 'custom', basePrice: value.basePrice, workTitle: value.workTitle },
     salesPersonId: value.salesPersonId,
     status: value.status,
   });
@@ -136,6 +156,7 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
 export function toQuoteUpdateInput({ id, value }: { id: UUID; value: QuoteFormValues }): QuoteUpdateInput {
   return QuoteUpdateInput.parse({
     id,
+    basePrice: value.basePrice,
     deliveryIncluded: value.deliveryIncluded,
     deliveryPrice: value.deliveryIncluded ? value.deliveryPrice : 0,
     depositPercent: value.depositPercent,
@@ -149,6 +170,7 @@ export function toQuoteUpdateInput({ id, value }: { id: UUID; value: QuoteFormVa
     selectedAssemblies: value.selectedAssemblies,
     status: value.status,
     validUntil: value.validUntil || null,
+    workTitle: value.workTitle || undefined,
   });
 }
 
@@ -161,7 +183,7 @@ function toQuoteLineItemInput(lineItem: QuoteLineItem): z.infer<typeof QuoteLine
 }
 
 function refineQuoteCustomerSelection(
-  value: Pick<QuoteCreateFormValues, 'customerId' | 'customerMode' | 'inlineCompanyName'>,
+  value: Pick<QuoteCreateFormSelectionValues, 'customerId' | 'customerMode' | 'inlineCompanyName'>,
   context: z.RefinementCtx,
 ) {
   if (value.customerMode === 'existing' && !UUID.safeParse(value.customerId).success) {
@@ -177,6 +199,35 @@ function refineQuoteCustomerSelection(
       code: 'custom',
       message: 'Company name is required',
       path: ['inlineCompanyName'],
+    });
+  }
+}
+
+function refineQuoteOfferingSelection(
+  value: Pick<QuoteCreateFormSelectionValues, 'basePrice' | 'kind' | 'productId' | 'workTitle'>,
+  context: z.RefinementCtx,
+) {
+  if (value.kind === 'product' && !UUID.safeParse(value.productId).success) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Select a product',
+      path: ['productId'],
+    });
+  }
+
+  if (value.kind === 'custom' && !QuoteWorkTitle.safeParse(value.workTitle).success) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Work title is required',
+      path: ['workTitle'],
+    });
+  }
+
+  if (value.kind === 'custom' && !Price.safeParse(value.basePrice).success) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Base price is required',
+      path: ['basePrice'],
     });
   }
 }

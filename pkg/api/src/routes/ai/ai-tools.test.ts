@@ -83,6 +83,12 @@ describe('aiTools', () => {
       'Product UUID, productName, and productModelCode when this is a Product Quote; null for Custom Quotes',
     );
     expect(quoteDescriptions).toContain('Work Title display fallback when this is a Custom Quote');
+    expect(quoteDescriptions).toContain(
+      'quotedBasePrice and quotedCurrencyCode: latched from Product for Product Quotes; entered base price in ZAR for Custom Quotes',
+    );
+    expect(quoteDescriptions).toContain(
+      'quotedBasePrice: latched from Product for Product Quotes; entered base price for Custom Quotes',
+    );
     expect(quoteDescriptions).toContain('Quote Line Items quantity x unit price contribution');
     expect(quoteDescriptions).toContain('Selected Assemblies for Product Quotes; empty for Custom Quotes');
   });

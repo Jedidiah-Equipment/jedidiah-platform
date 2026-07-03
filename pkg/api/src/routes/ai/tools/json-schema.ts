@@ -23,6 +23,11 @@ function closeJsonSchemaObjects(schema: unknown): unknown {
     closedSchema.additionalProperties = false;
   }
 
+  // OpenAI's tool-schema validator rejects regex lookaround even though JSON Schema allows it.
+  if (typeof closedSchema.pattern === 'string' && hasRegexLookaround(closedSchema.pattern)) {
+    delete closedSchema.pattern;
+  }
+
   for (const key of ['$defs', 'properties'] as const) {
     if (isJsonSchemaObject(closedSchema[key])) {
       closedSchema[key] = Object.fromEntries(
@@ -45,4 +50,8 @@ function closeJsonSchemaObjects(schema: unknown): unknown {
 
 function isJsonSchemaObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasRegexLookaround(pattern: string) {
+  return /\(\?(?:[=!]|<[=!])/.test(pattern);
 }

@@ -12,11 +12,13 @@ import {
   createQuoteTableColumns,
   createQuoteTableRow,
   getQuoteTableRowClassName,
+  quoteTablePinnedLeftColumns,
+  quoteTablePinnedRightColumns,
   type QuoteTableRow,
 } from './components/QuoteTableColumns.js';
 
 describe('Quote table priority rows', () => {
-  it('renders warning copy, both delivery dates, and emphasizes the earliest date', () => {
+  it('renders the warning indicator, both delivery dates, and emphasizes the earliest date', () => {
     // Use future dates so the delivery lines always render as absolute dates;
     // a date that lands on "today" renders relatively (e.g. "Today at 00:00").
     const preferred = toDateOnly(addDays(new Date(), 30));
@@ -32,7 +34,7 @@ describe('Quote table priority rows', () => {
       ),
     ]);
 
-    expect(html).toContain('Needs job');
+    expect(html).toContain('aria-label="Needs job"');
     expect(html).toContain('No job');
     expect(html).toContain('Preferred');
     expect(html).toContain(formatDate(preferred, 'short'));
@@ -61,12 +63,13 @@ describe('Quote table priority rows', () => {
     expect(html.match(/>QUO-00001</g)).toHaveLength(2);
   });
 
-  it('renders status and job as right-pinned columns', () => {
+  it('renders quote code left-pinned and status/job right-pinned', () => {
     const html = renderQuoteTableRows([
       createPriorityQuoteTableRow(buildPriorityQuote({ job: null })),
       createQuoteTableRow(buildPriorityQuote({ job: null })),
     ]);
 
+    expect(html).toContain('left:0px');
     expect(html).toContain('right:144px');
     expect(html).toContain('right:0px');
     expect(html).toContain('[--table-row-bg:var(--warning-surface)]');
@@ -95,7 +98,8 @@ function TestQuoteTable({ rows }: { rows: QuoteTableRow[] }) {
     getCoreRowModel: getCoreRowModel(),
     initialState: {
       columnPinning: {
-        right: ['status', 'job'],
+        left: quoteTablePinnedLeftColumns,
+        right: quoteTablePinnedRightColumns,
       },
     },
   });

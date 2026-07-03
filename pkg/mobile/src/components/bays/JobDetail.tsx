@@ -9,13 +9,9 @@ import type { ReactNode } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { JobAssemblies } from '@/components/bays/JobAssemblies';
-import { JobDocuments } from '@/components/bays/JobDocuments';
+import { JobDetailSections } from '@/components/bays/JobDetailSections';
 import { JobWorkCard } from '@/components/bays/JobWorkCard';
-import { FactCard, JobFactsCard } from '@/components/bays/job-facts';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
-import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
-import { JobFeedbackList } from '@/components/feedback/JobFeedbackList';
 import { ScheduleHeader } from '@/components/ScheduleHeader';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -250,7 +246,7 @@ function routeDaysLabel(stop: JobRouteStopCard): string {
   return `Starts ${formatDate(stop.startDate, 'd MMM')}`;
 }
 
-/** Right pane: status chips, work card, overall progress, documents, and the Job facts grid. */
+/** Right pane: status chips, work card, progress, facts, feedback, documents, and assemblies. */
 function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   const { progress } = state;
   const { resolved } = useColorMode();
@@ -293,27 +289,15 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
         </Text>
       </View>
 
-      {state.description ? (
-        <FactCard title="Description">
-          <Text className="text-sm leading-5 text-surface-foreground">{state.description}</Text>
-        </FactCard>
-      ) : null}
-
-      <JobDocuments jobId={jobId} />
-
-      <JobAssemblies jobId={jobId} />
-
-      <JobFactsCard
+      <JobDetailSections
         customerCompanyName={state.customerCompanyName}
+        description={state.description}
         jobCode={state.jobCode}
+        jobId={jobId}
         workName={state.jobDisplayName}
         productSerialNumber={state.productSerialNumber}
         quoteCode={state.quoteCode}
       />
-
-      <JobFeedbackList jobId={jobId} />
-
-      <GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} />
     </View>
   );
 }

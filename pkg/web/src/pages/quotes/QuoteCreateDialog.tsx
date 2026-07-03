@@ -194,7 +194,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
                   }}
                 </form.Field>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4">
                   <form.AppField name="workTitle">
                     {(field) => <field.TextField autoComplete="off" label="Work title" />}
                   </form.AppField>

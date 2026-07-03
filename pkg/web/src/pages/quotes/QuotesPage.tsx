@@ -24,6 +24,8 @@ import {
   createQuoteTableColumns,
   createQuoteTableRow,
   getQuoteTableRowClassName,
+  quoteTablePinnedLeftColumns,
+  quoteTablePinnedRightColumns,
   type QuoteTableRow,
 } from './components/QuoteTableColumns.js';
 import { QuoteCreateDialog } from './QuoteCreateDialog.js';
@@ -48,8 +50,6 @@ const quoteSortOptions: SortOptions<QuoteListInput> = {
     id: 'createdAt',
   },
 };
-
-const quoteTablePinnedRightColumns = ['status', 'job'];
 
 export const QuotesPage: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -128,6 +128,7 @@ const QuoteTable: React.FC = () => {
     getCoreRowModel: getCoreRowModel(),
     initialState: {
       columnPinning: {
+        left: quoteTablePinnedLeftColumns,
         right: quoteTablePinnedRightColumns,
       },
     },

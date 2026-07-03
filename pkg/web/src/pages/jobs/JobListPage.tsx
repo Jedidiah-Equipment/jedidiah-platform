@@ -19,7 +19,11 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { jobListPageDescription } from '@/utils/page-descriptions.js';
 
-import { createJobListColumns } from './components/JobListTableColumns.js';
+import {
+  createJobListColumns,
+  jobTablePinnedLeftColumns,
+  jobTablePinnedRightColumns,
+} from './components/JobListTableColumns.js';
 
 export const useJobListTableStore = createPersistedDataTableStore({
   initialState: {
@@ -87,6 +91,13 @@ const JobListTable: React.FC = () => {
   });
 
   const columns = useMemo(() => createJobListColumns({ canEditJobs, canOpenJobs }), [canEditJobs, canOpenJobs]);
+  const columnPinning = useMemo(
+    () => ({
+      left: jobTablePinnedLeftColumns,
+      right: canOpenJobs ? jobTablePinnedRightColumns : [],
+    }),
+    [canOpenJobs],
+  );
 
   const table = useReactTable({
     columns,
@@ -103,6 +114,7 @@ const JobListTable: React.FC = () => {
     rowCount: total,
     state: {
       globalFilter: tableController.globalFilter,
+      columnPinning,
       pagination: tableState.pagination,
       sorting: tableState.sorting,
     },

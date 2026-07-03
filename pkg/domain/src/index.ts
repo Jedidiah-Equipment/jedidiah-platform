@@ -12,6 +12,7 @@ export * from './formatting/date.js';
 export * from './formatting/date-only.js';
 export * from './formatting/number.js';
 export * from './formatting/phone-number.js';
+export * from './formatting/text.js';
 export * from './jobs/bay-active-job.js';
 export * from './jobs/bay-working-calendars.js';
 export * from './jobs/board-derivations.js';

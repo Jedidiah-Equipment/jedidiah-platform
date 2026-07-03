@@ -324,9 +324,15 @@ function jobWorkSlotsSubquery(alias: 'sort_slot' | 'filter_slot', projection: SQ
   return sql`select ${projection} from ${jobSlots} ${slot} where ${slot}."job_id" = ${jobs.id} and ${slot}."kind" = 'work'`;
 }
 
-function jobQuoteWorkTitleSubquery(alias: 'search_quote', projection: SQL): SQL {
+function jobQuoteWorkTitleSearchCondition(alias: 'search_quote', search: string): SQL {
   const quote = sql.raw(`"${alias}"`);
-  return sql`select ${projection} from ${quotes} ${quote} where ${quote}."id" = ${jobs.quoteId}`;
+
+  return sql`exists (
+    select 1
+    from ${quotes} ${quote}
+    where ${quote}."id" = ${jobs.quoteId}
+      and ${createEscapedContainsSearchCondition(sql`${quote}."work_title"`, search)}
+  )`;
 }
 
 function buildJobListWhere(input: JobListInput): SQL | undefined {
@@ -352,10 +358,7 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
       createEscapedContainsSearchCondition(sql`${jobs.id}::text`, input.search),
       createEscapedContainsSearchCondition(sql`${jobs.code}::text`, input.search),
       createEscapedContainsSearchCondition(sql`${jobs.productSerialNumber}`, input.search),
-      createEscapedContainsSearchCondition(
-        jobQuoteWorkTitleSubquery('search_quote', sql`"search_quote"."work_title"`),
-        input.search,
-      ),
+      jobQuoteWorkTitleSearchCondition('search_quote', input.search),
       codeSearch === undefined ? undefined : eq(jobs.code, codeSearch),
     );
 

@@ -5,9 +5,20 @@ import { describe, expect, it } from 'vitest';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
 
-import { createJobListColumns } from './JobListTableColumns.js';
+import { createJobListColumns, jobTablePinnedLeftColumns, jobTablePinnedRightColumns } from './JobListTableColumns.js';
 
 describe('Job List table columns', () => {
+  it('pins job code left and actions right', () => {
+    const html = renderJobListRows([], { canEditJobs: true, canOpenJobs: true });
+
+    expect(html).toContain('left:0px');
+    expect(html).toContain('right:0px');
+    expect(html).toContain('width:112px');
+    expect(html).toContain('width:88px');
+    expect(html).toContain('bg-inherit');
+    expect(html.match(/sticky/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+  });
+
   it('renders the code, customer, product, serial, and schedule window for a scheduled Job', () => {
     const html = renderJobListRows([
       buildJob({
@@ -82,15 +93,30 @@ describe('Job List table columns', () => {
   });
 });
 
-function renderJobListRows(rows: JobSummary[]) {
-  return renderToStaticMarkup(<TestJobListTable rows={rows} />);
+function renderJobListRows(
+  rows: JobSummary[],
+  permissions: { canEditJobs: boolean; canOpenJobs: boolean } = { canEditJobs: false, canOpenJobs: false },
+) {
+  return renderToStaticMarkup(<TestJobListTable permissions={permissions} rows={rows} />);
 }
 
-function TestJobListTable({ rows }: { rows: JobSummary[] }) {
+function TestJobListTable({
+  permissions,
+  rows,
+}: {
+  permissions: { canEditJobs: boolean; canOpenJobs: boolean };
+  rows: JobSummary[];
+}) {
   const table = useReactTable({
-    columns: createJobListColumns({ canEditJobs: false, canOpenJobs: false }),
+    columns: createJobListColumns(permissions),
     data: rows,
     getCoreRowModel: getCoreRowModel(),
+    state: {
+      columnPinning: {
+        left: jobTablePinnedLeftColumns,
+        right: permissions.canOpenJobs ? jobTablePinnedRightColumns : [],
+      },
+    },
   });
 
   return <DataTable emptyMessage="No jobs found." hideGlobalFilter table={table} total={rows.length} />;

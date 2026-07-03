@@ -41,6 +41,9 @@ export const quoteKindFilterOptions = QuoteKind.options.map((kind) => ({
   value: kind,
 }));
 
+export const quoteTablePinnedLeftColumns = ['code'];
+export const quoteTablePinnedRightColumns = ['status', 'job'];
+
 export function createQuoteTableRow(quote: QuoteSummary): QuoteTableRow {
   return {
     kind: 'normal',
@@ -212,9 +215,12 @@ function QuoteCodeCell({ row }: { row: QuoteTableRow }) {
       <div className="flex min-w-0 flex-col gap-0.5">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="font-mono font-semibold tabular-nums">{row.quote.code}</span>
-          <span className="inline-flex w-fit shrink-0 items-center gap-1 rounded border border-warning/45 bg-warning/15 px-1.5 text-[11px] font-semibold uppercase leading-4 tracking-normal text-warning-foreground">
+          <span
+            aria-label="Needs job"
+            className="inline-flex size-5 shrink-0 items-center justify-center rounded border border-warning/45 bg-warning/15 text-warning-foreground"
+            title="Needs job"
+          >
             <IconAlertTriangle aria-hidden className="size-3.5 shrink-0" />
-            Needs job
           </span>
         </div>
         <span className="text-xs text-warning-foreground/75">

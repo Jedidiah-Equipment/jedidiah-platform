@@ -1,4 +1,4 @@
-import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain';
+import { departmentLabels, getFeedbackVisibilityNotice, toSentenceCase } from '@pkg/domain';
 import { DEPARTMENTS, type FeedbackKind } from '@pkg/schema';
 import { IconEye, IconLock, IconMessagePlus, IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
@@ -27,23 +27,46 @@ const DEPARTMENT_OPTIONS = DEPARTMENTS.map((department) => ({
   value: department,
 }));
 
+const LIGHT_PRIMARY_ACTION = '#806700';
+
+const FEEDBACK_BUTTON_CHROME = {
+  light: {
+    button: 'bg-primary/10 active:bg-primary/15',
+  },
+  dark: {
+    button: 'border-primary/60 bg-primary/10 active:bg-primary/15',
+    text: 'text-primary',
+  },
+} as const;
+
 /**
- * Mirror of web's `GiveFeedbackButton`, scoped to a Job: a footer trigger that
- * opens a full-screen form to submit feedback about this Job. Shown on both
- * single-Job surfaces (the Job detail pane and the Bay slot detail pane).
+ * Mirror of web's `GiveFeedbackButton`, scoped to a Job: a trigger that opens a
+ * full-screen form to submit feedback about this Job.
  */
 export function GiveFeedbackButton({ jobCode, jobId }: { jobCode: string; jobId: string }) {
   const [open, setOpen] = useState(false);
+  const { resolved } = useColorMode();
+  const chrome = FEEDBACK_BUTTON_CHROME[resolved];
+  const lightAccentStyle = resolved === 'light' ? { color: LIGHT_PRIMARY_ACTION } : undefined;
 
   return (
     <>
       <Pressable
         accessibilityRole="button"
-        className="flex-row items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 active:bg-muted"
+        className={`flex-row items-center justify-center gap-2 rounded-xl border px-4 py-3.5 ${chrome.button}`}
         onPress={() => setOpen(true)}
+        style={resolved === 'light' ? { borderColor: LIGHT_PRIMARY_ACTION } : undefined}
       >
-        <Icon className="text-foreground" icon={IconMessagePlus} size={18} />
-        <Text className="text-sm text-foreground" weight="semibold">
+        {resolved === 'light' ? (
+          <IconMessagePlus color={LIGHT_PRIMARY_ACTION} size={18} />
+        ) : (
+          <Icon className={FEEDBACK_BUTTON_CHROME.dark.text} icon={IconMessagePlus} size={18} />
+        )}
+        <Text
+          className={`text-sm ${resolved === 'dark' ? FEEDBACK_BUTTON_CHROME.dark.text : ''}`}
+          style={lightAccentStyle}
+          weight="semibold"
+        >
           Send Feedback
         </Text>
       </Pressable>
@@ -197,13 +220,15 @@ function FeedbackVisibilityBanner({ kind }: { kind: FeedbackKind }) {
     : { container: 'border-amber-500/50 bg-amber-500/10', text: 'text-amber-800 dark:text-amber-200' };
 
   return (
-    <View className={`flex-row items-start gap-2.5 rounded-xl border px-3 py-2.5 ${chrome.container}`}>
-      <Icon className={`mt-0.5 ${chrome.text}`} icon={isPublic ? IconEye : IconLock} size={18} />
+    <View className={`flex-row items-center gap-2.5 rounded-xl border px-3 py-2.5 ${chrome.container}`}>
+      <Icon className={chrome.text} icon={isPublic ? IconEye : IconLock} size={18} />
       <View className="min-w-0 flex-1">
-        <Text className={`text-sm tracking-wide ${chrome.text}`} weight="bold">
-          {notice.title}
+        <Text className={`text-xs ${chrome.text}`}>
+          <Text className={chrome.text} weight="bold">
+            {toSentenceCase(notice.title)}:{' '}
+          </Text>
+          {notice.description}
         </Text>
-        <Text className={`mt-0.5 text-xs ${chrome.text}`}>{notice.description}</Text>
       </View>
     </View>
   );

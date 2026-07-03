@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button.js';
 import { JobCodeDisplay } from './JobCodeDisplay.js';
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
 
+export const jobTablePinnedLeftColumns = ['code'];
+export const jobTablePinnedRightColumns = ['actions'];
+
 /**
  * Job List columns. Only Job code (`code`) and Schedule (`scheduledSlots`) map to a server sort key
  * in `JobSortBy`; Customer, Product, and Serial are display-only. Schedule renders the shared Slice 2
@@ -35,8 +38,9 @@ export function createJobListColumns({
       header: 'Job',
       id: 'code',
       meta: {
-        headerClassName: 'min-w-32',
+        headerClassName: 'min-w-28',
       },
+      size: 112,
     },
     {
       accessorFn: (job) => job.customerCompanyName,
@@ -140,8 +144,9 @@ export function createJobListColumns({
             header: '',
             id: 'actions',
             meta: {
-              cellClassName: 'w-20',
+              cellClassName: 'w-[88px]',
             },
+            size: 88,
           } satisfies ColumnDef<JobSummary>,
         ]
       : []),

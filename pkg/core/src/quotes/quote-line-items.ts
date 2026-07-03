@@ -1,5 +1,5 @@
 import { type DatabaseTransaction, type Db, quoteLineItems } from '@pkg/db';
-import { type QuoteCreateInput, QuoteLineItem, type UUID } from '@pkg/schema';
+import { type QuoteCreateInput, QuoteLineItem, type QuoteUpdateInput, type UUID } from '@pkg/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 
 export type QuoteLineItemRow = typeof quoteLineItems.$inferSelect;
@@ -31,7 +31,7 @@ export async function getLineItemsByQuoteId({
     .select()
     .from(quoteLineItems)
     .where(inArray(quoteLineItems.quoteId, quoteIds))
-    .orderBy(asc(quoteLineItems.createdAt), asc(quoteLineItems.id));
+    .orderBy(asc(quoteLineItems.position), asc(quoteLineItems.createdAt), asc(quoteLineItems.id));
   const byQuoteId = new Map<UUID, QuoteLineItemRow[]>();
 
   for (const row of rows) {
@@ -54,7 +54,7 @@ export async function listQuoteLineItems({
     .select()
     .from(quoteLineItems)
     .where(eq(quoteLineItems.quoteId, quoteId))
-    .orderBy(asc(quoteLineItems.createdAt), asc(quoteLineItems.id));
+    .orderBy(asc(quoteLineItems.position), asc(quoteLineItems.createdAt), asc(quoteLineItems.id));
 }
 
 export async function persistQuoteLineItems({
@@ -62,16 +62,19 @@ export async function persistQuoteLineItems({
   quoteId,
   tx,
 }: {
-  input: Pick<QuoteCreateInput, 'lineItems'>;
+  input: Pick<QuoteCreateInput | QuoteUpdateInput, 'lineItems'>;
   quoteId: UUID;
   tx: DatabaseTransaction;
 }): Promise<QuoteLineItemRow[]> {
   await tx.delete(quoteLineItems).where(eq(quoteLineItems.quoteId, quoteId));
 
-  if (input.lineItems.length > 0) {
+  const lineItems = input.lineItems ?? [];
+
+  if (lineItems.length > 0) {
     await tx.insert(quoteLineItems).values(
-      input.lineItems.map((item) => ({
+      lineItems.map((item, position) => ({
         name: item.name,
+        position,
         quantity: item.quantity,
         quoteId,
         unitPrice: item.unitPrice,

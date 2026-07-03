@@ -89,6 +89,7 @@ export const quoteLineItems = pgTable(
       .notNull()
       .references(() => quotes.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    position: integer('position').notNull().default(0),
     quantity: integer('quantity').notNull().default(1),
     unitPrice: numeric('unit_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
@@ -96,6 +97,7 @@ export const quoteLineItems = pgTable(
   },
   (table) => [
     check('quote_line_items_name_nonempty', sql`length(trim(${table.name})) > 0`),
+    check('quote_line_items_position_nonnegative', sql`${table.position} >= 0`),
     check('quote_line_items_quantity_positive', sql`${table.quantity} >= 1`),
     check('quote_line_items_unit_price_nonnegative', sql`${table.unitPrice} >= 0`),
   ],

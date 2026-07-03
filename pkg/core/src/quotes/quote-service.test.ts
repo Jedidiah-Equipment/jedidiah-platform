@@ -15,7 +15,7 @@ import {
 } from '@pkg/db';
 import { addDateOnlyDays, addJobSlotDuration, getPlantDateNow } from '@pkg/domain';
 import { formatJobCode, QuoteCreateInput, type QuoteDetail, type QuoteStatus, QuoteUpdateInput } from '@pkg/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
@@ -181,12 +181,10 @@ describe('quote line items', () => {
       }),
     });
 
-    expect(created.lineItems).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }),
-        expect.objectContaining({ name: 'Transport crate', quantity: 1, unitPrice: 300 }),
-      ]),
-    );
+    expect(created.lineItems).toMatchObject([
+      { name: 'Hydraulic hose', quantity: 2, unitPrice: 125 },
+      { name: 'Transport crate', quantity: 1, unitPrice: 300 },
+    ]);
 
     const updated = await updateQuote({
       actorUserId: context.salesPerson.id,
@@ -196,12 +194,55 @@ describe('quote line items', () => {
         status: 'sent',
       }),
     });
-    const rows = await context.db.select().from(quoteLineItems).where(eq(quoteLineItems.quoteId, created.id));
+    const rows = await context.db
+      .select()
+      .from(quoteLineItems)
+      .where(eq(quoteLineItems.quoteId, created.id))
+      .orderBy(asc(quoteLineItems.position));
 
     expect(updated.lineItems).toMatchObject([{ name: 'Calibration', quantity: 3, unitPrice: 75 }]);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ name: 'Calibration', quantity: 3, unitPrice: 75 });
+    expect(rows[0]).toMatchObject({ name: 'Calibration', position: 0, quantity: 3, unitPrice: 75 });
     expect(rows[0]?.id).not.toBe(created.lineItems[0]?.id);
+  });
+
+  test('preserves existing line items when update input omits the field', async ({ context }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        lineItems: [
+          { name: 'Hydraulic hose', quantity: 2, unitPrice: 125 },
+          { name: 'Transport crate', quantity: 1, unitPrice: 300 },
+        ],
+        productId: context.product.id,
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+    await context.db.insert(jobs).values({
+      productId: quote.productId ?? context.product.id,
+      productSerialNumber: `${context.product.modelCode}-26-100`,
+      productSerialPrefix: context.product.modelCode,
+      productSerialSequence: 100,
+      productSerialYear: 26,
+      quoteId: quote.id,
+    });
+    const input = buildQuoteUpdateInput(quote, { notes: 'Locked quote follow-up note' });
+    delete input.lineItems;
+
+    const updated = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input,
+    });
+
+    expect(updated.notes).toBe('Locked quote follow-up note');
+    expect(updated.lineItems).toMatchObject([
+      { name: 'Hydraulic hose', quantity: 2, unitPrice: 125 },
+      { name: 'Transport crate', quantity: 1, unitPrice: 300 },
+    ]);
   });
 
   test('rejects line item changes on a locked quote', async ({ context }) => {

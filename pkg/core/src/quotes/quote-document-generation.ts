@@ -309,7 +309,7 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
         orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
       },
       lineItems: {
-        orderBy: [asc(quoteLineItems.createdAt), asc(quoteLineItems.id)],
+        orderBy: [asc(quoteLineItems.position), asc(quoteLineItems.createdAt), asc(quoteLineItems.id)],
       },
     },
   });

@@ -474,7 +474,7 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
         },
       },
       lineItems: {
-        orderBy: [asc(quoteLineItems.createdAt), asc(quoteLineItems.id)],
+        orderBy: [asc(quoteLineItems.position), asc(quoteLineItems.createdAt), asc(quoteLineItems.id)],
       },
       selectedAssemblies: {
         orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
@@ -606,6 +606,7 @@ export async function updateQuote({
       validUntil: input.validUntil,
     };
     const after = { ...before, ...patch };
+    const nextLineItems = input.lineItems ?? beforeLineItems;
     const resolved = await resolveQuoteSelectedAssemblies({
       currentRows: beforeSelectedAssemblies,
       input,
@@ -616,7 +617,7 @@ export async function updateQuote({
     const changes = diffAuditUpdate(
       quoteAuditDescriptor,
       { row: before, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
-      { row: after, lineItems: input.lineItems, selectedAssemblies: resolved.rows },
+      { row: after, lineItems: nextLineItems, selectedAssemblies: resolved.rows },
     );
 
     if (!changes) {
@@ -647,7 +648,8 @@ export async function updateQuote({
     }
 
     const selectedAssemblies = await persistQuoteSelectedAssemblies({ quoteId: row.id, resolved, tx });
-    const lineItems = await persistQuoteLineItems({ input, quoteId: row.id, tx });
+    const lineItems =
+      input.lineItems === undefined ? beforeLineItems : await persistQuoteLineItems({ input, quoteId: row.id, tx });
 
     await recordAuditUpdate({
       db: tx,

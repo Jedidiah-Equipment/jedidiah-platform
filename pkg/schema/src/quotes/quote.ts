@@ -215,7 +215,7 @@ export const QuoteUpdateInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
     documentNotes: QuoteDocumentNotesInput,
-    lineItems: z.array(QuoteLineItemInput).default([]),
+    lineItems: z.array(QuoteLineItemInput).optional(),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
   .strict();

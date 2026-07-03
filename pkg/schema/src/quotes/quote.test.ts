@@ -8,6 +8,7 @@ import {
   QuoteProductBayAvailabilityInput,
   QuoteProductBayAvailabilityResult,
   QuoteSummary,
+  QuoteUpdateInput,
   UpcomingDeliveryQuotesResult,
 } from './quote.js';
 
@@ -73,6 +74,13 @@ describe('QuoteLineItemInput', () => {
     expect(() => QuoteLineItemInput.parse({ name: ' ', quantity: 1, unitPrice: 10 })).toThrow();
     expect(() => QuoteLineItemInput.parse({ name: 'Hydraulic hose', quantity: 0, unitPrice: 10 })).toThrow();
     expect(() => QuoteLineItemInput.parse({ name: 'Hydraulic hose', quantity: 1, unitPrice: -1 })).toThrow();
+  });
+});
+
+describe('QuoteUpdateInput', () => {
+  it('preserves omitted line items instead of defaulting them to an empty replacement', () => {
+    expect(QuoteUpdateInput.parse(baseUpdateInput())).not.toHaveProperty('lineItems');
+    expect(QuoteUpdateInput.parse({ ...baseUpdateInput(), lineItems: [] })).toMatchObject({ lineItems: [] });
   });
 });
 
@@ -210,6 +218,24 @@ describe('QuoteDetail', () => {
     ]);
   });
 });
+
+function baseUpdateInput() {
+  return {
+    id: '550e8400-e29b-41d4-a716-446655440010',
+    salesPersonId: 'auth-user-1',
+    status: 'draft' as const,
+    discountPercent: 0,
+    depositPercent: 0,
+    deliveryIncluded: true,
+    deliveryPrice: 0,
+    validUntil: null,
+    preferredDeliveryDate: null,
+    plannedDeliveryDate: null,
+    notes: null,
+    documentNotes: null,
+    selectedAssemblies: [],
+  };
+}
 
 describe('QuoteProductBayAvailability', () => {
   it('parses the quote-scoped Product Bay availability contract', () => {

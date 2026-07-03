@@ -1,6 +1,7 @@
 import { IconArrowRight } from '@tabler/icons-react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 
+import { PageHero } from '../components/page-hero.js';
 import { seoHead } from '../lib/seo.js';
 import { getProductRangeCount } from '../server/catalog/ranges.js';
 
@@ -61,25 +62,12 @@ function Eyebrow({ label, color }: { label: string; color: string }) {
 
 function Header() {
   return (
-    <section className="relative overflow-hidden bg-ink">
-      <img
-        src="/hero-silage-harvest.jpg"
-        alt=""
-        aria-hidden="true"
-        className="absolute top-0 right-0 h-full w-[55%] object-cover opacity-40 max-nav:w-full max-nav:opacity-20"
-      />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,#161616_38%,rgba(22,22,22,0.3)_100%)]" />
-      <div className="relative mx-auto max-w-[1320px] px-12 pt-18 pb-16 max-nav:px-5 max-nav:pt-12 max-nav:pb-13">
-        <Eyebrow label="Who we are" color="text-yellow" />
-        <h1 className="m-0 mb-4 max-w-[760px] font-display text-[72px] font-extrabold uppercase leading-[0.94] tracking-[0.5px] text-white max-nav:text-[44px]">
-          Farmers Building for Farmers
-        </h1>
-        <p className="m-0 max-w-[600px] font-body text-[20px] leading-[1.55] text-[#cfcfcf]">
-          From a single bulldozer to a full range of farm-built equipment — Jedidiah Equipment is rooted in real
-          agricultural experience.
-        </p>
-      </div>
-    </section>
+    <PageHero eyebrow="Who we are" title="Farmers Building for Farmers">
+      <p className="m-0">
+        From a single bulldozer to a full range of farm-built equipment — Jedidiah Equipment is rooted in real
+        agricultural experience.
+      </p>
+    </PageHero>
   );
 }
 

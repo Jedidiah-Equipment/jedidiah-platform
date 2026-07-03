@@ -24,6 +24,7 @@ type DataTableProps<TData> = {
   filterDebounceMs?: number;
   getRowAriaLabel?: ((item: TData) => string) | undefined;
   getRowClassName?: ((item: TData) => string | undefined) | undefined;
+  getRowState?: ((item: TData) => 'selected' | undefined) | undefined;
   globalFilterPlaceholder?: string;
   hideGlobalFilter?: boolean;
   isLoading?: boolean;
@@ -43,6 +44,7 @@ export function DataTable<TData>({
   filterDebounceMs = 250,
   getRowAriaLabel,
   getRowClassName,
+  getRowState,
   globalFilterPlaceholder = 'Search...',
   hideGlobalFilter = false,
   isLoading = false,
@@ -130,6 +132,7 @@ export function DataTable<TData>({
                       <DataTableRow
                         getRowAriaLabel={getRowAriaLabel}
                         getRowClassName={getRowClassName}
+                        getRowState={getRowState}
                         key={row.id}
                         onRowClick={onRowClick}
                         row={row}
@@ -150,11 +153,13 @@ export function DataTable<TData>({
 function DataTableRow<TData>({
   getRowAriaLabel,
   getRowClassName,
+  getRowState,
   onRowClick,
   row,
 }: {
   getRowAriaLabel?: ((item: TData) => string) | undefined;
   getRowClassName?: ((item: TData) => string | undefined) | undefined;
+  getRowState?: ((item: TData) => 'selected' | undefined) | undefined;
   onRowClick?: ((item: TData) => void) | undefined;
   row: Row<TData>;
 }) {
@@ -162,6 +167,7 @@ function DataTableRow<TData>({
     <TableRow
       aria-label={getRowAriaLabel?.(row.original)}
       className={cn(getRowClassName?.(row.original), onRowClick ? 'cursor-pointer' : undefined)}
+      data-state={getRowState?.(row.original)}
       onClick={(event) => {
         if (!onRowClick || shouldIgnoreRowEvent(event.currentTarget, event.target)) {
           return;

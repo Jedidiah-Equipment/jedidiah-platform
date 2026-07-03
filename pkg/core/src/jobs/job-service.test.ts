@@ -2639,6 +2639,10 @@ function quoteUpdateInput(quote: typeof quotes.$inferSelect) {
     id: quote.id,
     notes: quote.notes,
     documentNotes: quote.documentNotes,
+    offering:
+      quote.kind === 'custom'
+        ? { kind: quote.kind, basePrice: quote.quotedBasePrice, workTitle: quote.workTitle ?? '' }
+        : { kind: quote.kind },
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,
     salesPersonId: quote.salesPersonId,

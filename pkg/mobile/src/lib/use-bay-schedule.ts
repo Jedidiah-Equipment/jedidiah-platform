@@ -38,6 +38,7 @@ export type BaySlotDetail = {
   productThumbnailDataUrl: string | null;
   productSerialNumber: string | null;
   customerCompanyName: string | null;
+  description: string | null;
   bayName: string;
   /** 'in-progress' for the Slot running today, else 'scheduled'. */
   status: 'in-progress' | 'scheduled';
@@ -139,6 +140,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
         productThumbnailDataUrl: job?.productThumbnailDataUrl ?? null,
         productSerialNumber: job?.productSerialNumber ?? null,
         customerCompanyName: job?.customerCompanyName ?? null,
+        description: job?.description ?? null,
         bayName: bay.name,
         status,
         isNext,

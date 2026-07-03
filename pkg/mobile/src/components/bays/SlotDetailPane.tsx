@@ -1,20 +1,17 @@
 import { formatDate, statusDaysLeftColor } from '@pkg/domain';
 import { View } from 'react-native';
 
-import { JobAssemblies } from '@/components/bays/JobAssemblies';
-import { JobDocuments } from '@/components/bays/JobDocuments';
+import { JobDetailSections } from '@/components/bays/JobDetailSections';
 import { JobWorkCard } from '@/components/bays/JobWorkCard';
-import { FactCard, FactField, FactRow, JobFactsCard } from '@/components/bays/job-facts';
+import { FactCard, FactField, FactRow } from '@/components/bays/job-facts';
 import { DaysLeftChip, StatusChip } from '@/components/bays/status-chip';
-import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
 import type { BaySlotDetail } from '@/lib/use-bay-schedule';
 import { useColorMode } from '@/theme/use-color-mode';
 
 /**
- * The read-only Job Slot detail pane (#520): status chip(s), a product card, the
- * DOCUMENTS list (the viewer it opens lands in #521), and the SLOT and JOB field
- * grids. Slot + Job fields ride the Board join via {@link BaySlotDetail};
- * documents are fetched here with `jobs.get`, with their own loading/error state.
+ * The read-only Job Slot detail pane (#520): status chip(s), a product card, the Slot facts,
+ * and the shared Job detail sections. Slot + Job fields ride the Board join via
+ * {@link BaySlotDetail}; documents/assemblies fetch their own `jobs.get` detail.
  */
 export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
   const isActive = slot.status === 'in-progress';
@@ -45,12 +42,6 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
         productThumbnailDataUrl={slot.productThumbnailDataUrl}
       />
 
-      {/* DOCUMENTS — opens the in-app viewer (#521); read-only here. */}
-      <JobDocuments jobId={slot.jobId} />
-
-      {/* ASSEMBLIES — standard + the optional assemblies selected for this job. */}
-      <JobAssemblies jobId={slot.jobId} />
-
       {/* SLOT grid. */}
       <FactCard title="SLOT">
         <View className="gap-4">
@@ -65,16 +56,15 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
         </View>
       </FactCard>
 
-      {/* JOB grid. */}
-      <JobFactsCard
+      <JobDetailSections
         customerCompanyName={slot.customerCompanyName}
+        description={slot.description}
         jobCode={slot.jobCode}
+        jobId={slot.jobId}
         workName={slot.jobDisplayName}
         productSerialNumber={slot.productSerialNumber}
         quoteCode={slot.quoteCode}
       />
-
-      <GiveFeedbackButton jobCode={slot.jobCode} jobId={slot.jobId} />
     </View>
   );
 }

@@ -45,6 +45,8 @@ const feedbackKindLabels = {
   'corrective-feedback-user': 'Corrective user',
 } as const satisfies Record<FeedbackKind, string>;
 
+export const feedbackTablePinnedRightColumns = ['status'];
+
 type FeedbackTriageFormValues = z.infer<typeof FeedbackTriageFormValues>;
 const FeedbackTriageFormValues = z.object({
   internalNotes: z.string(),
@@ -107,78 +109,7 @@ function FeedbackInboxList({
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [sorting, setSorting] = useState<SortingState>([{ desc: true, id: 'createdAt' }]);
 
-  const columns = useMemo<ColumnDef<FeedbackListItem>[]>(
-    () => [
-      {
-        accessorFn: (item) => `${item.submitter.name} ${item.submitter.email}`,
-        cell: ({ row }) => (
-          <UserLabel name={row.original.submitter.name} thumbnailDataUrl={row.original.submitter.thumbnailDataUrl} />
-        ),
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Submitter',
-        id: 'submitter',
-      },
-      {
-        accessorFn: (item) => item.subject.label,
-        cell: ({ row }) => <span className="block truncate font-medium">{row.original.subject.label}</span>,
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Linked to',
-        id: 'subject',
-        meta: {
-          cellClassName: 'max-w-72',
-        },
-      },
-      {
-        accessorFn: (item) => feedbackKindLabels[item.kind],
-        cell: ({ row }) => feedbackKindLabels[row.original.kind],
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Kind',
-        id: 'kind',
-      },
-      {
-        accessorFn: (item) => feedbackTargetLabels(item).join(', '),
-        cell: ({ row }) => {
-          const labels = feedbackTargetLabels(row.original);
-
-          return labels.length > 0 ? (
-            <span className="block truncate">{labels.join(', ')}</span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          );
-        },
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Target',
-        id: 'target',
-        meta: {
-          cellClassName: 'max-w-48',
-        },
-      },
-      {
-        accessorKey: 'status',
-        cell: ({ row }) => <FeedbackStatusBadge status={row.original.status} />,
-        enableColumnFilter: true,
-        enableSorting: true,
-        filterFn: feedbackStatusFilter,
-        header: 'Status',
-        meta: {
-          filterOptions: Object.entries(feedbackStatusLabels).map(([value, label]) => ({ label, value })),
-          filterVariant: 'select',
-        },
-      },
-      {
-        accessorKey: 'createdAt',
-        cell: ({ row }) => <DateDisplay date={row.original.createdAt} />,
-        enableColumnFilter: false,
-        enableSorting: true,
-        header: 'Submitted',
-      },
-    ],
-    [],
-  );
+  const columns = useMemo<ColumnDef<FeedbackListItem>[]>(() => createFeedbackInboxColumns(), []);
 
   const table = useReactTable({
     columns,
@@ -189,6 +120,11 @@ function FeedbackInboxList({
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     globalFilterFn: feedbackGlobalFilter,
+    initialState: {
+      columnPinning: {
+        right: feedbackTablePinnedRightColumns,
+      },
+    },
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
@@ -220,7 +156,7 @@ function FeedbackInboxList({
         emptyMessage="No feedback found."
         errorMessage={errorMessage}
         getRowAriaLabel={(item) => `Review ${item.subject.label}`}
-        getRowClassName={(item) => (item.id === selectedFeedbackId ? 'bg-muted/70 hover:bg-muted/70' : undefined)}
+        getRowState={(item) => (item.id === selectedFeedbackId ? 'selected' : undefined)}
         globalFilterPlaceholder="Search feedback..."
         isLoading={isLoading}
         onRowClick={(item) => onSelectFeedback(item.id)}
@@ -230,6 +166,78 @@ function FeedbackInboxList({
       />
     </section>
   );
+}
+
+export function createFeedbackInboxColumns(): ColumnDef<FeedbackListItem>[] {
+  return [
+    {
+      accessorFn: (item) => `${item.submitter.name} ${item.submitter.email}`,
+      cell: ({ row }) => (
+        <UserLabel name={row.original.submitter.name} thumbnailDataUrl={row.original.submitter.thumbnailDataUrl} />
+      ),
+      enableColumnFilter: true,
+      enableSorting: true,
+      header: 'Submitter',
+      id: 'submitter',
+    },
+    {
+      accessorFn: (item) => item.subject.label,
+      cell: ({ row }) => <span className="block truncate font-medium">{row.original.subject.label}</span>,
+      enableColumnFilter: true,
+      enableSorting: true,
+      header: 'Linked to',
+      id: 'subject',
+      meta: {
+        cellClassName: 'max-w-72',
+      },
+    },
+    {
+      accessorFn: (item) => feedbackKindLabels[item.kind],
+      cell: ({ row }) => feedbackKindLabels[row.original.kind],
+      enableColumnFilter: true,
+      enableSorting: true,
+      header: 'Kind',
+      id: 'kind',
+    },
+    {
+      accessorFn: (item) => feedbackTargetLabels(item).join(', '),
+      cell: ({ row }) => {
+        const labels = feedbackTargetLabels(row.original);
+
+        return labels.length > 0 ? (
+          <span className="block truncate">{labels.join(', ')}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      },
+      enableColumnFilter: true,
+      enableSorting: true,
+      header: 'Target',
+      id: 'target',
+      meta: {
+        cellClassName: 'max-w-48',
+      },
+    },
+    {
+      accessorKey: 'createdAt',
+      cell: ({ row }) => <DateDisplay date={row.original.createdAt} />,
+      enableColumnFilter: false,
+      enableSorting: true,
+      header: 'Submitted',
+    },
+    {
+      accessorKey: 'status',
+      cell: ({ row }) => <FeedbackStatusBadge status={row.original.status} />,
+      enableColumnFilter: true,
+      enableSorting: true,
+      filterFn: feedbackStatusFilter,
+      header: 'Status',
+      meta: {
+        filterOptions: Object.entries(feedbackStatusLabels).map(([value, label]) => ({ label, value })),
+        filterVariant: 'select',
+      },
+    },
+  ];
 }
 
 function feedbackGlobalFilter(row: { original: FeedbackListItem }, _columnId: string, filterValue: unknown) {

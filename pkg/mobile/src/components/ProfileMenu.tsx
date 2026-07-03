@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { signOut } from '@/lib/auth';
 import type { ColorModePreference } from '@/theme/ColorModeProvider';
+import { gluestackConfig } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
 const THEME_OPTIONS: { label: string; value: ColorModePreference }[] = [
@@ -27,10 +28,16 @@ type ProfileUser = {
  */
 export function ProfileMenu({ user, onClose }: { user: ProfileUser; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const { resolved } = useColorMode();
 
   return (
     <Modal animationType="fade" onRequestClose={onClose} transparent visible>
-      <Pressable accessibilityLabel="Dismiss menu" className="flex-1" onPress={onClose}>
+      <Pressable
+        accessibilityLabel="Dismiss menu"
+        className="flex-1"
+        onPress={onClose}
+        style={gluestackConfig[resolved]}
+      >
         <View
           // Anchor below the header's overflow button, clear of the status bar.
           className="absolute right-4 w-60 overflow-hidden rounded-2xl border border-border bg-surface shadow-lg"

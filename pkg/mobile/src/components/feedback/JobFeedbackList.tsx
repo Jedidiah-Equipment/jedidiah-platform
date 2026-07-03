@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { FactCard } from '@/components/bays/job-facts';
 import { FeedbackStatusBadge } from '@/components/feedback/FeedbackStatusBadge';
+import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import { useTRPC } from '@/lib/trpc';
@@ -13,7 +14,7 @@ import { useTRPC } from '@/lib/trpc';
  * A Job's public (general) feedback, oldest first, read-only. Mirrors web's `JobFeedbackList`;
  * corrective feedback never appears here (`feedback.listJobFeedback` is general-only, ADR 0010).
  */
-export function JobFeedbackList({ jobId }: { jobId: string }) {
+export function JobFeedbackList({ jobCode, jobId }: { jobCode: string; jobId: string }) {
   const trpc = useTRPC();
   const feedbackQuery = useQuery(trpc.feedback.listJobFeedback.queryOptions({ jobId }));
   const items = feedbackQuery.data?.items ?? [];
@@ -27,7 +28,7 @@ export function JobFeedbackList({ jobId }: { jobId: string }) {
           <Text className="text-sm text-muted-foreground">No feedback submitted for this Job.</Text>
         ) : null}
         {items.map((item) => (
-          <View className="gap-2 rounded-xl border border-border bg-background p-3" key={item.id}>
+          <View className="gap-2 rounded-xl border border-border bg-muted p-3" key={item.id}>
             <View className="flex-row items-center gap-2">
               <Avatar className="h-6 w-6 rounded-md" name={item.submitter.name} uri={item.submitter.thumbnailDataUrl} />
               <Text className="min-w-0 flex-1 text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
@@ -41,6 +42,7 @@ export function JobFeedbackList({ jobId }: { jobId: string }) {
             <Text className="text-sm leading-5 text-surface-foreground">{item.text}</Text>
           </View>
         ))}
+        <GiveFeedbackButton jobCode={jobCode} jobId={jobId} />
       </View>
     </FactCard>
   );

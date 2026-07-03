@@ -118,6 +118,13 @@ describe('aiTools', () => {
     }
   });
 
+  test('keeps registered parameters within the OpenAI tool schema subset', () => {
+    for (const name of AI_TOOL_NAMES) {
+      expect(collectJsonSchemaPaths(aiTools[name].jsonSchema, name, 'oneOf')).toEqual([]);
+      expect(collectUnsupportedRegexPatternPaths(aiTools[name].jsonSchema, name)).toEqual([]);
+    }
+  });
+
   test('declares a required permission for each tool', () => {
     expect(aiTools.getCustomer.requiredPermission).toBe('customer:read');
     expect(aiTools.getJob.requiredPermission).toBe('job:read');
@@ -282,3 +289,41 @@ describe('aiTools', () => {
     });
   });
 });
+
+function collectJsonSchemaPaths(schema: unknown, path: string, key: string): string[] {
+  if (Array.isArray(schema)) {
+    return schema.flatMap((item, index) => collectJsonSchemaPaths(item, `${path}[${index}]`, key));
+  }
+
+  if (!schema || typeof schema !== 'object') {
+    return [];
+  }
+
+  return [
+    ...(key in schema ? [path] : []),
+    ...Object.entries(schema).flatMap(([childKey, value]) => collectJsonSchemaPaths(value, `${path}.${childKey}`, key)),
+  ];
+}
+
+function collectUnsupportedRegexPatternPaths(schema: unknown, path: string): string[] {
+  if (Array.isArray(schema)) {
+    return schema.flatMap((item, index) => collectUnsupportedRegexPatternPaths(item, `${path}[${index}]`));
+  }
+
+  if (!schema || typeof schema !== 'object') {
+    return [];
+  }
+
+  const pattern = 'pattern' in schema ? schema.pattern : undefined;
+
+  return [
+    ...(typeof pattern === 'string' && hasRegexLookaround(pattern) ? [`${path}.pattern`] : []),
+    ...Object.entries(schema).flatMap(([childKey, value]) =>
+      collectUnsupportedRegexPatternPaths(value, `${path}.${childKey}`),
+    ),
+  ];
+}
+
+function hasRegexLookaround(pattern: string) {
+  return /\(\?(?:[=!]|<[=!])/.test(pattern);
+}

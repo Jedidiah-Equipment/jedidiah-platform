@@ -8,6 +8,8 @@ import {
   ProductCurrencyCode,
   Quote,
   type QuoteDetail,
+  type QuoteProductDetailFacts,
+  type QuoteProductSummaryFacts,
   type QuoteSummary,
   UpcomingDeliveryQuote,
 } from '@pkg/schema';
@@ -92,10 +94,7 @@ export function mapQuoteSummary(
     customerCompanyName: row.customerCompanyName,
     customerThumbnailDataUrl: row.customerThumbnailDataUrl,
     job: job ? mapQuoteLinkedJob(job) : null,
-    productBuildTimeDays: row.productBuildTimeDays,
-    productCurrencyCode: row.productCurrencyCode === null ? null : ProductCurrencyCode.parse(row.productCurrencyCode),
-    productModelCode: row.productModelCode,
-    productName: row.productName,
+    product: mapQuoteSummaryProduct(row),
     salesPersonEmail: row.salesPersonEmail,
     salesPersonName: row.salesPersonName,
     salesPersonThumbnailDataUrl: row.salesPersonThumbnailDataUrl,
@@ -147,20 +146,52 @@ export function mapQuoteDetail(
     customerThumbnailDataUrl: row.customer.thumbnailDataUrl,
     customerVatNumber: row.customer.vatNumber,
     job: row.jobs[0] ? mapQuoteLinkedJob({ jobCode: row.jobs[0].code, jobId: row.jobs[0].id }) : null,
-    productCurrencyCode: row.product ? ProductCurrencyCode.parse(row.product.currencyCode) : null,
-    productBuildTimeDays: row.product?.buildTimeDays ?? null,
-    productDescription: row.product?.description ?? null,
-    productModelCode: row.product?.modelCode ?? null,
-    productName: row.product?.name ?? null,
-    productAssemblies: productAssembliesForQuote,
-    productBays: productBaysForQuote,
-    productRequiresVinNumber: row.product?.requiresVinNumber ?? null,
-    productThumbnailDataUrl: row.product?.thumbnailDataUrl ?? null,
+    product: mapQuoteDetailProduct(row, productAssembliesForQuote, productBaysForQuote),
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
     salesPersonThumbnailDataUrl: row.salesPerson?.image ?? null,
     lineItems: row.lineItems.map(mapQuoteLineItem),
     selectedAssemblies: row.selectedAssemblies.map(mapQuoteSelectedAssembly),
+  };
+}
+
+function mapQuoteSummaryProduct(row: QuoteListRow): QuoteProductSummaryFacts | null {
+  if (
+    row.productBuildTimeDays === null ||
+    row.productCurrencyCode === null ||
+    row.productModelCode === null ||
+    row.productName === null
+  ) {
+    return null;
+  }
+
+  return {
+    buildTimeDays: row.productBuildTimeDays,
+    currencyCode: ProductCurrencyCode.parse(row.productCurrencyCode),
+    modelCode: row.productModelCode,
+    name: row.productName,
+  };
+}
+
+function mapQuoteDetailProduct(
+  row: QuoteDetailRow,
+  assemblies: Assembly[],
+  bays: ProductBay[],
+): QuoteProductDetailFacts | null {
+  if (!row.product) {
+    return null;
+  }
+
+  return {
+    assemblies,
+    bays,
+    buildTimeDays: row.product.buildTimeDays,
+    currencyCode: ProductCurrencyCode.parse(row.product.currencyCode),
+    description: row.product.description,
+    modelCode: row.product.modelCode,
+    name: row.product.name,
+    requiresVinNumber: row.product.requiresVinNumber,
+    thumbnailDataUrl: row.product.thumbnailDataUrl,
   };
 }
 

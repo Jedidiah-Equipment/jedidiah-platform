@@ -254,7 +254,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Document Notes',
         'Preferred delivery date',
         'Planned delivery date',
-        'Product UUID, productName, and productModelCode when this is a Product Quote; null for Custom Quotes',
+        'Product UUID and nested product facts (name, modelCode, buildTimeDays, currencyCode) when this is a Product Quote; product is null for Custom Quotes or unresolved Product projections',
         'Work Title display fallback when this is a Custom Quote',
         'salesPersonId User ID',
         'quotedBasePrice and quotedCurrencyCode: latched from Product for Product Quotes; entered base price in ZAR for Custom Quotes',
@@ -285,7 +285,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Document Notes',
         'Preferred delivery date',
         'Planned delivery date',
-        'Product UUID, productName, and productModelCode when this is a Product Quote; null for Custom Quotes',
+        'Product UUID and nested product facts (name, modelCode, buildTimeDays, currencyCode) when this is a Product Quote; product is null for Custom Quotes or unresolved Product projections',
         'Work Title display fallback when this is a Custom Quote',
         'salesPersonId User ID',
         'quotedBasePrice and quotedCurrencyCode: latched from Product for Product Quotes; entered base price in ZAR for Custom Quotes',
@@ -563,10 +563,12 @@ function projectQuote(value: unknown): unknown {
 
   const { sentAt: _sentAt, ...projectedValue } = value;
   const label = typeof value.code === 'string' ? value.code : null;
+  const product = isObjectRecord(value.product) ? value.product : null;
+  const productLabel = typeof product?.name === 'string' ? product.name : null;
   return addLinks(projectedValue, [
     label ? createAiLink('Quote', label, value.id) : null,
     createLink('Customer', value.customerCompanyName, value.customerId),
-    createLink('Product', value.productName, value.productId),
+    createLink('Product', productLabel, value.productId),
     createJobLink(value.job),
   ]);
 }

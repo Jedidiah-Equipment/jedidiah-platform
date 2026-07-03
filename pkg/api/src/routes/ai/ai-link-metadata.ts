@@ -45,7 +45,7 @@ export const aiLinkMetadata = {
       'Quote Salesperson is required at creation; salesPersonId is non-nullable.',
       'Product Quote price snapshot fields are latched from Product at creation; Custom Quote base price is entered directly in ZAR.',
       'Quote Line Items are freeform charges on both Quote kinds and always add quantity x unit price to Quote Pricing.',
-      'Custom Quotes have no Product, productName, or productModelCode, and have zero Selected Assemblies; use Work Title as the display name fallback.',
+      'Custom Quotes have no Product and expose product as null, have zero Selected Assemblies, and use Work Title as the display name fallback.',
       'Quote commercial fields include Document Notes, Preferred Delivery Date, and Planned Delivery Date.',
     ],
     label: 'code',

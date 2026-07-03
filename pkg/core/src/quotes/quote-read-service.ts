@@ -302,7 +302,7 @@ export async function getQuoteProductBayAvailability({
     });
   }
 
-  if (!quote.productId || quote.productBuildTimeDays === null) {
+  if (!quote.productId || quote.product === null) {
     throw new QuoteInvalidReferenceError('Quote product was not found.');
   }
 
@@ -337,8 +337,8 @@ export async function getQuoteProductBayAvailability({
 
   return QuoteProductBayAvailabilityResult.parse({
     bays,
-    buildTimeDays: quote.productBuildTimeDays,
-    defaultLeadTimeWorkingDays: quote.productBuildTimeDays + maxBayWaitWorkingDays,
+    buildTimeDays: quote.product.buildTimeDays,
+    defaultLeadTimeWorkingDays: quote.product.buildTimeDays + maxBayWaitWorkingDays,
     maxBayWaitWorkingDays,
   });
 }

@@ -8,7 +8,6 @@ import {
   type OffDay,
   type ProductBay,
   type ProjectedBayQueue,
-  type QuoteDetail,
   SlotDurationDays,
   UUID,
 } from '@pkg/schema';
@@ -101,7 +100,7 @@ export function toJobCreateFormValues({
   productBays,
   scheduling,
 }: {
-  productBays: QuoteDetail['productBays'];
+  productBays: ProductBay[];
   scheduling: BaySeedScheduling | null;
 }): JobCreateFormValues {
   return {

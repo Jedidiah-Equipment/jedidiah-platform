@@ -14,8 +14,11 @@ import {
   Assembly,
   ProductBay,
   ProductBayDefaultWorkingDays,
+  ProductBuildTimeDays,
   ProductCurrencyCode,
   ProductDescription,
+  ProductModelCode,
+  ProductName,
   ProductRequiresVinNumber,
 } from '../products/product.js';
 
@@ -152,14 +155,28 @@ export const QuoteLineItemInput = z.object({
   unitPrice: z.coerce.number().pipe(Price),
 });
 
+export type QuoteProductSummaryFacts = z.infer<typeof QuoteProductSummaryFacts>;
+export const QuoteProductSummaryFacts = z.object({
+  buildTimeDays: ProductBuildTimeDays,
+  currencyCode: ProductCurrencyCode,
+  modelCode: ProductModelCode,
+  name: ProductName,
+});
+
+export type QuoteProductDetailFacts = z.infer<typeof QuoteProductDetailFacts>;
+export const QuoteProductDetailFacts = QuoteProductSummaryFacts.extend({
+  assemblies: z.array(Assembly),
+  bays: z.array(ProductBay),
+  description: ProductDescription,
+  requiresVinNumber: ProductRequiresVinNumber,
+  thumbnailDataUrl: NullableThumbnailDataUrl,
+});
+
 const quoteSummaryShape = {
   customerCompanyName: z.string().trim().min(1),
   customerThumbnailDataUrl: NullableThumbnailDataUrl,
   job: QuoteLinkedJob.nullable(),
-  productCurrencyCode: ProductCurrencyCode.nullable(),
-  productModelCode: z.string().trim().min(1).nullable(),
-  productName: z.string().trim().min(1).nullable(),
-  productBuildTimeDays: z.number().int().min(0).nullable(),
+  product: QuoteProductSummaryFacts.nullable(),
   salesPersonEmail: z.email().nullable(),
   salesPersonName: z.string().trim().min(1).nullable(),
   salesPersonThumbnailDataUrl: NullableThumbnailDataUrl,
@@ -204,11 +221,7 @@ const quoteDetailShape = {
   customerEmail: CustomerEmail.nullable(),
   customerPhone: CustomerOptionalText,
   customerVatNumber: CustomerVatNumber,
-  productAssemblies: z.array(Assembly),
-  productBays: z.array(ProductBay),
-  productDescription: ProductDescription.nullable(),
-  productRequiresVinNumber: ProductRequiresVinNumber.nullable(),
-  productThumbnailDataUrl: NullableThumbnailDataUrl,
+  product: QuoteProductDetailFacts.nullable(),
 };
 
 export type QuoteDetail = z.infer<typeof QuoteDetail>;

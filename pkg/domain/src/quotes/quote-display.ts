@@ -1,8 +1,10 @@
 export type QuoteOfferingDisplaySource = {
   kind: 'product' | 'custom';
-  productBuildTimeDays: number | null;
-  productModelCode: string | null;
-  productName: string | null;
+  product: {
+    buildTimeDays: number;
+    modelCode: string;
+    name: string;
+  } | null;
   workTitle: string | null;
 };
 
@@ -12,7 +14,7 @@ export type QuoteOfferingSubtitle = {
 };
 
 export function getQuoteOfferingName(quote: QuoteOfferingDisplaySource): string {
-  return quote.kind === 'custom' ? (quote.workTitle ?? 'Custom work') : (quote.productName ?? '—');
+  return quote.kind === 'custom' ? (quote.workTitle ?? 'Custom work') : (quote.product?.name ?? '—');
 }
 
 export function getQuoteOfferingSubtitle(quote: QuoteOfferingDisplaySource): QuoteOfferingSubtitle | null {
@@ -20,8 +22,8 @@ export function getQuoteOfferingSubtitle(quote: QuoteOfferingDisplaySource): Quo
     return { mono: false, text: 'Custom work' };
   }
 
-  const modelCode = quote.productModelCode ?? '—';
-  const buildTime = quote.productBuildTimeDays === null ? '—' : `${quote.productBuildTimeDays}d build`;
+  const modelCode = quote.product?.modelCode ?? '—';
+  const buildTime = quote.product ? `${quote.product.buildTimeDays}d build` : '—';
 
   return { mono: false, text: `${modelCode} / ${buildTime}` };
 }

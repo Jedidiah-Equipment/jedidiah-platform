@@ -121,12 +121,13 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
     return <QuoteCustomWorkCard quote={quote} />;
   }
 
-  const standardCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'standard').length;
-  const optionalCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'optional').length;
-  const productName = quote.productName ?? '—';
-  const productModelCode = quote.productModelCode ?? '—';
-  const productCurrencyCode = quote.productCurrencyCode ?? quote.quotedCurrencyCode;
-  const productBuildTimeDays = quote.productBuildTimeDays === null ? '—' : `${quote.productBuildTimeDays} days`;
+  const assemblies = quote.product?.assemblies ?? [];
+  const standardCount = assemblies.filter((assembly) => assembly.kind === 'standard').length;
+  const optionalCount = assemblies.filter((assembly) => assembly.kind === 'optional').length;
+  const productName = quote.product?.name ?? '—';
+  const productModelCode = quote.product?.modelCode ?? '—';
+  const productCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
+  const productBuildTimeDays = quote.product ? `${quote.product.buildTimeDays} days` : '—';
 
   return (
     <Card size="sm">
@@ -143,7 +144,7 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
             className="size-10"
             label={productName}
             size="lg"
-            thumbnailDataUrl={quote.productThumbnailDataUrl}
+            thumbnailDataUrl={quote.product?.thumbnailDataUrl ?? null}
           />
         </CardAction>
       </CardHeader>
@@ -159,8 +160,10 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
           <QuoteMiniMetric label="Optional Assemblies" value={String(optionalCount)} />
         </div>
         <Separator />
-        <p className={cn('max-h-20 overflow-hidden text-sm', quote.productDescription ? '' : 'text-muted-foreground')}>
-          {quote.productDescription ?? 'No product description captured.'}
+        <p
+          className={cn('max-h-20 overflow-hidden text-sm', quote.product?.description ? '' : 'text-muted-foreground')}
+        >
+          {quote.product?.description ?? 'No product description captured.'}
         </p>
       </CardContent>
     </Card>

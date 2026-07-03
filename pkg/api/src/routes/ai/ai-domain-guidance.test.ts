@@ -33,7 +33,7 @@ describe('AI domain guidance', () => {
     expect(prompt).toContain('Custom Quote commercial fields stay editable with a running Custom Job');
     expect(prompt).toContain('Product Quote price snapshot fields are latched from Product');
     expect(prompt).toContain('Quote Line Items are freeform charges on both Quote kinds');
-    expect(prompt).toContain('Custom Quotes have no Product, productName, or productModelCode');
+    expect(prompt).toContain('Custom Quotes have no Product and expose product as null');
     expect(prompt).toContain('Custom Job productName, productModelCode, and productSerialNumber are null');
     expect(prompt).toContain('Document Notes, Preferred Delivery Date, and Planned Delivery Date');
     expect(prompt).toContain('Intent customer_job_progress');

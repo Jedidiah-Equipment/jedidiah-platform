@@ -56,13 +56,32 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     customerThumbnailDataUrl: null,
     customerVatNumber: 'VAT-123',
     job: null,
-    productCurrencyCode: 'ZAR',
-    productBuildTimeDays: 14,
-    productDescription: 'Useful widget',
-    productModelCode: 'MOD-1',
-    productName: 'Widget',
-    productRequiresVinNumber: false,
-    productThumbnailDataUrl: null,
+    product: {
+      assemblies: [],
+      bays: [
+        {
+          bay: {
+            createdAt: '2026-01-01T00:00:00.000Z',
+            department: 'fabrication',
+            disabledAt: null,
+            id: BAY_ID,
+            name: 'Fabrication Bay',
+            scheduleOrigin: '2026-01-01',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+          bayId: BAY_ID,
+          defaultWorkingDays: 5,
+          productId: PRODUCT_ID,
+        },
+      ],
+      buildTimeDays: 14,
+      currencyCode: 'ZAR',
+      description: 'Useful widget',
+      modelCode: 'MOD-1',
+      name: 'Widget',
+      requiresVinNumber: false,
+      thumbnailDataUrl: null,
+    },
     salesPersonEmail: 'sales@example.com',
     salesPersonName: 'Sales Person',
     salesPersonThumbnailDataUrl: null,
@@ -86,23 +105,6 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
         quotedPrice: 250,
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
-      },
-    ],
-    productAssemblies: [],
-    productBays: [
-      {
-        bay: {
-          createdAt: '2026-01-01T00:00:00.000Z',
-          department: 'fabrication',
-          disabledAt: null,
-          id: BAY_ID,
-          name: 'Fabrication Bay',
-          scheduleOrigin: '2026-01-01',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-        bayId: BAY_ID,
-        defaultWorkingDays: 5,
-        productId: PRODUCT_ID,
       },
     ],
     ...overrides,
@@ -233,11 +235,18 @@ describe('QuoteCreateFormValues', () => {
 
 describe('getDefaultQuoteDocumentLeadTime', () => {
   it('defaults from the Product build time on the saved Quote detail', () => {
-    expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ productBuildTimeDays: 21 }))).toBe('21 working days');
+    const quote = buildQuoteDetail();
+
+    expect(
+      getDefaultQuoteDocumentLeadTime({
+        ...quote,
+        product: quote.product ? { ...quote.product, buildTimeDays: 21 } : null,
+      }),
+    ).toBe('21 working days');
   });
 
   it('leaves productless quote document lead time for the user to enter', () => {
-    expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ productBuildTimeDays: null }))).toBe('');
+    expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ product: null }))).toBe('');
   });
 
   it('defaults from Product build time plus the max bay wait when availability is loaded', () => {

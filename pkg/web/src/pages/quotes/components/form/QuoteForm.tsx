@@ -51,16 +51,16 @@ type QuoteFormProps = {
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
   const isCustom = quote.kind === 'custom';
   const isLocked = isQuoteLocked({ hasJob: quote.job !== null, kind: quote.kind, status: quote.status });
-  const quoteCurrencyCode = quote.productCurrencyCode ?? quote.quotedCurrencyCode;
+  const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
 
   const selectedProduct = useMemo(
     () => ({
-      assemblies: quote.productAssemblies,
+      assemblies: quote.product?.assemblies ?? [],
       basePrice: quote.quotedBasePrice,
       currencyCode: quoteCurrencyCode,
       id: quote.productId,
-      modelCode: quote.productModelCode ?? '—',
-      name: quote.productName ?? '—',
+      modelCode: quote.product?.modelCode ?? '—',
+      name: quote.product?.name ?? '—',
     }),
     [quote, quoteCurrencyCode],
   );
@@ -388,9 +388,8 @@ const QuotePriorityAlert: React.FC<{
     );
   }
 
-  const buildDuration =
-    priorityQuote.productBuildTimeDays === null ? '—' : formatWorkingDays(priorityQuote.productBuildTimeDays);
-  const productName = priorityQuote.productName ?? '—';
+  const buildDuration = priorityQuote.product ? formatWorkingDays(priorityQuote.product.buildTimeDays) : '—';
+  const productName = priorityQuote.product?.name ?? '—';
 
   return (
     <Alert className="border-warning/45 bg-warning/10 text-warning-foreground">

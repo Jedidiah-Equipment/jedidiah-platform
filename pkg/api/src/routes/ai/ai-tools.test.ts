@@ -80,7 +80,7 @@ describe('aiTools', () => {
     ].join('\n');
 
     expect(quoteDescriptions).toContain(
-      'Product UUID, productName, and productModelCode when this is a Product Quote; null for Custom Quotes',
+      'Product UUID and nested product facts (name, modelCode, buildTimeDays, currencyCode) when this is a Product Quote; product is null for Custom Quotes or unresolved Product projections',
     );
     expect(quoteDescriptions).toContain('Work Title display fallback when this is a Custom Quote');
     expect(quoteDescriptions).toContain(

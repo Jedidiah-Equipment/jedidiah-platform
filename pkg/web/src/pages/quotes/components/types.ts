@@ -254,8 +254,8 @@ function refineQuoteOfferingSelection(
   }
 }
 
-export function getDefaultQuoteDocumentLeadTime(quote: Pick<QuoteDetail, 'productBuildTimeDays'>): string {
-  return quote.productBuildTimeDays === null ? '' : formatQuoteDocumentLeadTime(quote.productBuildTimeDays);
+export function getDefaultQuoteDocumentLeadTime(quote: Pick<QuoteDetail, 'product'>): string {
+  return quote.product === null ? '' : formatQuoteDocumentLeadTime(quote.product.buildTimeDays);
 }
 
 export function formatQuoteDocumentLeadTime(days: number): string {

@@ -7,18 +7,14 @@ describe('quote display helpers', () => {
     expect(
       getQuoteOfferingName({
         kind: 'product',
-        productBuildTimeDays: 12,
-        productModelCode: 'EX-100',
-        productName: 'Excavator',
+        product: { buildTimeDays: 12, modelCode: 'EX-100', name: 'Excavator' },
         workTitle: null,
       }),
     ).toBe('Excavator');
     expect(
       getQuoteOfferingName({
         kind: 'product',
-        productBuildTimeDays: null,
-        productModelCode: null,
-        productName: null,
+        product: null,
         workTitle: null,
       }),
     ).toBe('—');
@@ -28,9 +24,7 @@ describe('quote display helpers', () => {
     expect(
       getQuoteOfferingName({
         kind: 'custom',
-        productBuildTimeDays: null,
-        productModelCode: null,
-        productName: null,
+        product: null,
         workTitle: 'Hydraulic repair',
       }),
     ).toBe('Hydraulic repair');
@@ -40,18 +34,14 @@ describe('quote display helpers', () => {
     expect(
       getQuoteOfferingSubtitle({
         kind: 'product',
-        productBuildTimeDays: 12,
-        productModelCode: 'EX-100',
-        productName: 'Excavator',
+        product: { buildTimeDays: 12, modelCode: 'EX-100', name: 'Excavator' },
         workTitle: null,
       }),
     ).toEqual({ mono: false, text: 'EX-100 / 12d build' });
     expect(
       getQuoteOfferingSubtitle({
         kind: 'custom',
-        productBuildTimeDays: null,
-        productModelCode: null,
-        productName: null,
+        product: null,
         workTitle: 'Hydraulic repair',
       }),
     ).toEqual({ mono: false, text: 'Custom work' });

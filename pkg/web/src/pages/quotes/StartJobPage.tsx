@@ -79,10 +79,8 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const bayCalendars = useBayCalendars();
   const enabledBays = enabledBaysQuery.data?.items ?? [];
-  const baysById = useMemo(
-    () => getBaySeedBayMap({ enabledBays, productBays: quote.productBays }),
-    [enabledBays, quote.productBays],
-  );
+  const productBays = quote.product?.bays ?? [];
+  const baysById = useMemo(() => getBaySeedBayMap({ enabledBays, productBays }), [enabledBays, productBays]);
   // Schedule data is enrichment: when it fails the form still works, seeds just append.
   const scheduling = useMemo(
     () =>
@@ -143,7 +141,7 @@ type StartJobFormProps = {
   enabledBays: Bay[];
   isPending: boolean;
   onSubmit: (input: JobCreateInput) => void;
-  quote: Pick<QuoteDetail, 'code' | 'id' | 'productBays'>;
+  quote: Pick<QuoteDetail, 'code' | 'id' | 'product'>;
   scheduling: BaySeedScheduling | null;
 };
 
@@ -229,8 +227,8 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
   scheduling,
 }) => {
   const initialFormValues = useMemo(
-    () => toJobCreateFormValues({ productBays: quote.productBays, scheduling }),
-    [quote.productBays, scheduling],
+    () => toJobCreateFormValues({ productBays: quote.product?.bays ?? [], scheduling }),
+    [quote.product, scheduling],
   );
   const form = useAppForm({
     defaultValues: initialFormValues,

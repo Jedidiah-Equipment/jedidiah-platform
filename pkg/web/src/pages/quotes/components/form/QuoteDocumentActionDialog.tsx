@@ -75,11 +75,7 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
   const canRunStatus = quote.status === 'draft' || quote.status === 'sent' || quote.status === 'accepted';
   const isCustomQuote = quote.kind === 'custom';
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
-  const hasResolvedProductDocumentFacts =
-    quote.productId !== null &&
-    quote.productBuildTimeDays !== null &&
-    quote.productModelCode !== null &&
-    quote.productName !== null;
+  const hasResolvedProductDocumentFacts = quote.product !== null;
   const canRun = canUpdateQuote && canRunStatus && (isCustomQuote || hasResolvedProductDocumentFacts);
   const trimmedLeadTime = leadTime.trim();
   const availabilityQuery = useQuery({
@@ -87,7 +83,7 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
     enabled: isOpen && !isCustomQuote && hasResolvedProductDocumentFacts,
   });
   const availability = availabilityQuery.data;
-  const buildTimeDays = isCustomQuote ? null : (availability?.buildTimeDays ?? quote.productBuildTimeDays);
+  const buildTimeDays = isCustomQuote ? null : (availability?.buildTimeDays ?? quote.product?.buildTimeDays ?? null);
 
   useEffect(() => {
     if (isOpen) {

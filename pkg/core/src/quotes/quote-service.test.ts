@@ -100,18 +100,20 @@ describe('getQuote', () => {
     }
 
     await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
-      productBays: [
-        {
-          bay: expect.objectContaining({ disabledAt: null, name: 'A Enabled Product Bay' }),
-          bayId: enabledBay.id,
-          defaultWorkingDays: 3,
-        },
-        {
-          bay: expect.objectContaining({ disabledAt: '2026-06-01T00:00:00.000Z', name: 'Z Disabled Product Bay' }),
-          bayId: disabledBay.id,
-          defaultWorkingDays: 5,
-        },
-      ],
+      product: {
+        bays: [
+          {
+            bay: expect.objectContaining({ disabledAt: null, name: 'A Enabled Product Bay' }),
+            bayId: enabledBay.id,
+            defaultWorkingDays: 3,
+          },
+          {
+            bay: expect.objectContaining({ disabledAt: '2026-06-01T00:00:00.000Z', name: 'Z Disabled Product Bay' }),
+            bayId: disabledBay.id,
+            defaultWorkingDays: 5,
+          },
+        ],
+      },
     });
   });
 
@@ -132,7 +134,7 @@ describe('getQuote', () => {
       throw new Error('Quote insert did not return a row');
     }
 
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({ productBays: [] });
+    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({ product: { bays: [] } });
   });
 
   test('returns the single linked Job through the quote compatibility array', async ({ context }) => {
@@ -373,11 +375,8 @@ describe('custom quotes', () => {
 
     expect(created).toMatchObject({
       kind: 'custom',
-      productAssemblies: [],
-      productBays: [],
-      productBuildTimeDays: null,
       productId: null,
-      productName: null,
+      product: null,
       quotedBasePrice: 2500,
       quotedCurrencyCode: 'ZAR',
       selectedAssemblies: [],

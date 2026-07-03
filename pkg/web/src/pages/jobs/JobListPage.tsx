@@ -19,7 +19,11 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { jobListPageDescription } from '@/utils/page-descriptions.js';
 
-import { createJobListColumns } from './components/JobListTableColumns.js';
+import {
+  createJobListColumns,
+  jobTablePinnedLeftColumns,
+  jobTablePinnedRightColumns,
+} from './components/JobListTableColumns.js';
 
 export const useJobListTableStore = createPersistedDataTableStore({
   initialState: {
@@ -93,6 +97,12 @@ const JobListTable: React.FC = () => {
     data: jobs,
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
+    initialState: {
+      columnPinning: {
+        left: jobTablePinnedLeftColumns,
+        right: canOpenJobs ? jobTablePinnedRightColumns : [],
+      },
+    },
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,

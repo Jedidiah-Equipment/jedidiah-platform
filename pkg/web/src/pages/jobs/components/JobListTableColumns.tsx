@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button.js';
 import { JobCodeDisplay } from './JobCodeDisplay.js';
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
 
+export const jobTablePinnedLeftColumns = ['code'];
+export const jobTablePinnedRightColumns = ['actions'];
+
 /**
  * Job List columns. Only Job code (`code`) and Schedule (`scheduledSlots`) map to a server sort key
  * in `JobSortBy`; Customer, Product, and Serial are display-only. Schedule renders the shared Slice 2

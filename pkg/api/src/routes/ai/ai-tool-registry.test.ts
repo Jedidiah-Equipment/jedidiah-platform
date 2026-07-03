@@ -39,6 +39,53 @@ describe('AI result projections', () => {
     expect(job).not.toHaveProperty('links');
   });
 
+  test('preserves Custom Job null product fields and Work Title fallback', () => {
+    const result = {
+      items: [
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+          code: 'JOB-00001',
+          customerCompanyName: 'Apex Quarry Services',
+          customerId: '00000000-0000-4000-8000-000000000005',
+          productModelCode: null,
+          productName: null,
+          productSerialNumber: null,
+          quoteCode: 'QUO-00002',
+          quoteId: '00000000-0000-4000-8000-000000000002',
+          quoteKind: 'custom',
+          workTitle: 'Hydraulic repair',
+        },
+      ],
+      total: 1,
+    };
+
+    expect(projectAiToolResult('listJobs', result)).toEqual({
+      ...result,
+      items: [
+        {
+          ...result.items[0],
+          links: [
+            {
+              entity: 'Job',
+              href: '/jobs/00000000-0000-4000-8000-000000000001',
+              label: 'JOB-00001',
+            },
+            {
+              entity: 'Quote',
+              href: '/quotes/00000000-0000-4000-8000-000000000002',
+              label: 'QUO-00002',
+            },
+            {
+              entity: 'Customer',
+              href: '/customers/00000000-0000-4000-8000-000000000005/edit',
+              label: 'Apex Quarry Services',
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   test('uses the shared route metadata for projected links', () => {
     expect(aiLinkMetadata.Job.href).toBe('/jobs/{id}');
     expect(projectAiToolResult('getJob', { code: 'JOB-00001', id: 'job-id' })).toMatchObject({
@@ -167,6 +214,63 @@ describe('AI result projections', () => {
           entity: 'Product',
           href: '/products/00000000-0000-4000-8000-000000000006/edit',
           label: 'Vertex Skid Steer 003',
+        },
+      ],
+    });
+  });
+
+  test('preserves Custom Quote null product fields and skips Product link', () => {
+    const quote = {
+      customerCompanyName: 'Apex Quarry Services',
+      customerId: '00000000-0000-4000-8000-000000000005',
+      id: '00000000-0000-4000-8000-000000000003',
+      code: 'QUO-00003',
+      documentNotes: '30% deposit, balance on delivery',
+      job: null,
+      kind: 'custom',
+      lineItems: [{ name: 'Travel', quantity: 2, unitPrice: 150 }],
+      plannedDeliveryDate: '2026-07-15',
+      productId: null,
+      productModelCode: null,
+      productName: null,
+      preferredDeliveryDate: '2026-07-10',
+      quotedBasePrice: 2500,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      selectedAssemblies: [],
+      sentAt: '2026-07-01T00:00:00.000Z',
+      workTitle: 'Hydraulic repair',
+    };
+
+    expect(projectAiToolResult('getQuote', quote)).toEqual({
+      customerCompanyName: 'Apex Quarry Services',
+      customerId: '00000000-0000-4000-8000-000000000005',
+      id: '00000000-0000-4000-8000-000000000003',
+      code: 'QUO-00003',
+      documentNotes: '30% deposit, balance on delivery',
+      job: null,
+      kind: 'custom',
+      lineItems: [{ name: 'Travel', quantity: 2, unitPrice: 150 }],
+      plannedDeliveryDate: '2026-07-15',
+      productId: null,
+      productModelCode: null,
+      productName: null,
+      preferredDeliveryDate: '2026-07-10',
+      quotedBasePrice: 2500,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      selectedAssemblies: [],
+      workTitle: 'Hydraulic repair',
+      links: [
+        {
+          entity: 'Quote',
+          href: '/quotes/00000000-0000-4000-8000-000000000003',
+          label: 'QUO-00003',
+        },
+        {
+          entity: 'Customer',
+          href: '/customers/00000000-0000-4000-8000-000000000005/edit',
+          label: 'Apex Quarry Services',
         },
       ],
     });

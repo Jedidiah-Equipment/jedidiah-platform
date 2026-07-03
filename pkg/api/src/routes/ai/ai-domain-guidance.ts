@@ -30,7 +30,8 @@ export const AI_DOMAIN_RELATIONSHIPS = [
   {
     from: 'Quote',
     to: 'Job',
-    meaning: 'A Quote sources at most one Job; every Job is created from exactly one accepted Quote.',
+    meaning:
+      'A Quote sources at most one Job, and every Job is created from exactly one Quote. Product Jobs require an accepted Product Quote; Custom Jobs can come from draft, sent, or accepted Custom Quotes.',
   },
   {
     from: 'Job',
@@ -65,7 +66,7 @@ export const AI_RETRIEVAL_PLAYBOOKS = [
       {
         tool: 'listQuotes',
         instruction:
-          'Find Quotes for the matched Customer; prefer Quotes with linked Jobs when the user asks about production.',
+          'Find Quotes for the matched Customer; for Custom Quotes there is no Product hop, so use Work Title and linked Jobs directly. Prefer Quotes with linked Jobs when the user asks about production.',
       },
       {
         tool: 'getJob',
@@ -116,7 +117,7 @@ export function createDomainGuidancePrompt(toolNames: readonly AiToolName[]): st
     ),
     '',
     'Link rules:',
-    '- Use public labels in prose: Job Code, Quote Code, Customer company name, Product name, or User name/email.',
+    '- Use public labels in prose: Job Code, Quote Code, Customer company name, Product name, Work Title, or User name/email.',
     '- Do not show UUIDs in prose unless the user explicitly asks for storage identifiers.',
     '- Render Markdown links only from link metadata returned by tools or code-owned route metadata.',
   ];

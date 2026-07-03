@@ -63,10 +63,28 @@ describe('aiTools', () => {
 
     expect(jobDescriptions).toContain('Bay schedule detail');
     expect(jobDescriptions).toContain('CFO Part quantities with unitOfMeasure');
+    expect(jobDescriptions).toContain('Product serial number (null for Custom Jobs)');
+    expect(jobDescriptions).toContain('Work Title display fallback for Custom Jobs');
+    expect(jobDescriptions).toContain('Custom Jobs start without Product Document Snapshots or generated Brochures');
     expect(jobDescriptions).not.toContain('Stage');
     expect(jobDescriptions).not.toContain('Job Status');
     expect(jobDescriptions).not.toContain('Due Date');
     expect(jobDescriptions).not.toContain('Workflow events');
+  });
+
+  test('keeps Quote tool descriptions aligned to Product and Custom Quote pricing', () => {
+    const quoteDescriptions = [
+      aiTools.listQuotes.description,
+      aiTools.getQuote.description,
+      aiTools.createQuote.description,
+    ].join('\n');
+
+    expect(quoteDescriptions).toContain(
+      'Product UUID, productName, and productModelCode when this is a Product Quote; null for Custom Quotes',
+    );
+    expect(quoteDescriptions).toContain('Work Title display fallback when this is a Custom Quote');
+    expect(quoteDescriptions).toContain('Quote Line Items quantity x unit price contribution');
+    expect(quoteDescriptions).toContain('Selected Assemblies for Product Quotes; empty for Custom Quotes');
   });
 
   test('creates strict Agents tools with closed object parameter schemas', () => {

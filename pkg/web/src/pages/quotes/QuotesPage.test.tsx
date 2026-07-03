@@ -18,7 +18,7 @@ import {
 } from './components/QuoteTableColumns.js';
 
 describe('Quote table priority rows', () => {
-  it('renders warning copy, both delivery dates, and emphasizes the earliest date', () => {
+  it('renders the warning indicator, both delivery dates, and emphasizes the earliest date', () => {
     // Use future dates so the delivery lines always render as absolute dates;
     // a date that lands on "today" renders relatively (e.g. "Today at 00:00").
     const preferred = toDateOnly(addDays(new Date(), 30));
@@ -34,7 +34,7 @@ describe('Quote table priority rows', () => {
       ),
     ]);
 
-    expect(html).toContain('Needs job');
+    expect(html).toContain('aria-label="Needs job"');
     expect(html).toContain('No job');
     expect(html).toContain('Preferred');
     expect(html).toContain(formatDate(preferred, 'short'));

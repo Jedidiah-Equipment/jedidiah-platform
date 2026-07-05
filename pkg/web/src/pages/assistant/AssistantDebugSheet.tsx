@@ -28,7 +28,7 @@ export function AssistantDebugSheet() {
 
   return (
     <Sheet onOpenChange={setOpen} open={open}>
-      <SheetContent className="flex w-full flex-col gap-0 data-[side=right]:sm:max-w-5xl" side="right">
+      <SheetContent className="flex w-full flex-col gap-0 sm:max-w-5xl" side="right">
         <SheetHeader>
           <SheetTitle>Assistant debug</SheetTitle>
           <SheetDescription>

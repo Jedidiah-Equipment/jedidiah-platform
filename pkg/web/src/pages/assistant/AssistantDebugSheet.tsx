@@ -55,9 +55,19 @@ export function AssistantDebugSheet() {
 export function AssistantDebugContent({ info }: { info: AiDebugInfo }) {
   return (
     <>
-      <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
-        <span className="text-sm font-medium">Estimated input tokens</span>
-        <span className="font-mono text-sm tabular-nums">≈ {formatNumber(info.estimatedInputTokens)}</span>
+      <div className="flex flex-col gap-1 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+        <div className="flex items-center justify-between font-medium">
+          <span>Estimated input tokens</span>
+          <span className="font-mono tabular-nums">≈ {formatNumber(info.estimatedInputTokens.total)}</span>
+        </div>
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span>System prompt</span>
+          <span className="font-mono tabular-nums">{formatNumber(info.estimatedInputTokens.systemPrompt)}</span>
+        </div>
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span>Tools</span>
+          <span className="font-mono tabular-nums">{formatNumber(info.estimatedInputTokens.tools)}</span>
+        </div>
       </div>
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">

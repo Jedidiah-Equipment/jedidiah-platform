@@ -1,6 +1,6 @@
 import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 
-import { estimateContextTokens } from './context-size.js';
+import { type ContextTokenEstimate, estimateContextTokens } from './context-size.js';
 import type { AiLinkMetadata } from './link-metadata.js';
 import { createSystemPrompt } from './prompts.js';
 import type { AiToolKind } from './tool-definition.js';
@@ -22,7 +22,7 @@ export type AiToolDebugInfo = {
 };
 
 export type AiDebugInfo = {
-  estimatedInputTokens: number;
+  estimatedInputTokens: ContextTokenEstimate;
   systemPrompt: string;
   tools: AiToolDebugInfo[];
 };

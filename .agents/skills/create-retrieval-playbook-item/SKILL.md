@@ -28,9 +28,9 @@ Add one retrieval playbook item to Jedidiah's AI guidance without redesigning th
    - Avoid names based only on phrasing, such as `how_is_company_job_going`.
 
 2. Inspect the existing AI guidance and tools.
-   - Check the AI prompt/domain guidance module if it exists.
-   - Check `pkg/ai/src/ai-tools.ts` for the registered tool names.
-   - Check relevant tool descriptions and input schemas under `pkg/ai/src/tools/`.
+   - Check the AI prompt/domain guidance modules if they exist.
+   - Check `pkg/ai/src/tools.ts` and `pkg/ai/src/tool-registry.ts` for the registered tool names.
+   - Check relevant tool descriptions and input schemas in the owning `pkg/ai/src/tools/<entity>/<tool>.ts` files.
    - Check schema-owned list/get inputs only to verify what each tool can actually search or filter.
 
 3. Define the playbook as structured metadata.

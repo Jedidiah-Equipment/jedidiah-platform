@@ -1,12 +1,11 @@
 import { Agent, type AgentInputItem } from '@openai/agents';
 import { buildQuoteEmailPrompt } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
-
-import type { AiAgentRunner } from '../ai-openai.js';
-import { createSystemPrompt } from '../ai-prompts.js';
-import { createAgentTools, getAuthorizedToolNames, getAuthorizedTools } from '../ai-tools.js';
 import type { AiReasoningEffort } from '../chat-stream.js';
 import type { AiContext } from '../context.js';
+import type { AiAgentRunner } from '../openai.js';
+import { createSystemPrompt } from '../prompts.js';
+import { createAgentTools, getAuthorizedToolNames, getAuthorizedTools } from '../tools.js';
 
 // A getQuote tool call plus the email turn; small ceiling keeps a stray loop from running away.
 const MAX_AGENT_TURNS = 4;

@@ -22,12 +22,12 @@ Read these first:
 
 Then derive current AI truth from source files, not from this skill:
 
-- Find prompt builders with `rg -n "createSystemPrompt|system prompt|Domain Context|Retrieval playbooks" pkg/api/src`.
-- Find registered tools from `AI_TOOL_REGISTRY` / `AI_TOOL_NAMES` in `pkg/ai/src/ai-tool-registry.ts`.
-- Find tool contracts from `pkg/ai/src/tools/*.ts`.
-- Find structured descriptors from `pkg/ai/src/ai-tool-registry.ts`; `pkg/ai/src/ai-tool-descriptors.ts` may only re-export registry-owned descriptors.
-- Find playbooks and relationships from `pkg/ai/src/ai-domain-guidance.ts`.
-- Find assistant-facing projections from `projectAiToolResult` and the registry `projectResult` entries in `pkg/ai/src/ai-tool-registry.ts`.
+- Find prompt builders with `rg -n "createSystemPrompt|system prompt|Domain Context|Retrieval playbooks" pkg/ai/src`.
+- Find registered tools from `AI_TOOL_REGISTRY` / `AI_TOOL_NAMES` in `pkg/ai/src/tool-registry.ts`.
+- Find tool contracts, structured descriptors, and per-tool projections from `pkg/ai/src/tools/**/*.ts`.
+- Find shared projection helpers from `pkg/ai/src/tools/projections.ts`.
+- Find playbooks and relationships from `pkg/ai/src/domain-guidance.ts`.
+- Find assistant-facing projection dispatch from `projectAiToolResult` and the tool definition `projectResult` entries.
 - Find public contracts from relevant `pkg/schema/src/**` files imported by the AI tools.
 - Find behavior and query capabilities from relevant `pkg/core/src/**` services called by the AI tools.
 - Find domain terminology and policies from relevant `pkg/domain/src/**` files.
@@ -97,7 +97,7 @@ When asked to fix drift:
 After fixes, run focused checks first:
 
 ```bash
-pnpm --filter @pkg/ai exec vitest run src/ai-tools.test.ts src/ai-domain-guidance.test.ts src/ai-prompts.test.ts src/ai-tool-registry.test.ts
+pnpm --filter @pkg/ai exec vitest run src/tools.test.ts src/domain-guidance.test.ts src/prompts.test.ts src/tool-registry.test.ts
 pnpm typecheck
 pnpm lint
 ```

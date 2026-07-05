@@ -1,10 +1,9 @@
 import { Agent, type AgentInputItem } from '@openai/agents';
 import type { ChatEvent, ChatStreamInput, ChatStreamMessage } from '@pkg/schema';
-
-import type { AiAgentRunner } from './ai-openai.js';
-import { createSystemPrompt } from './ai-prompts.js';
-import { createAgentTools, getAuthorizedToolNames, getAuthorizedTools } from './ai-tools.js';
 import type { AiContext } from './context.js';
+import type { AiAgentRunner } from './openai.js';
+import { createSystemPrompt } from './prompts.js';
+import { createAgentTools, getAuthorizedToolNames, getAuthorizedTools } from './tools.js';
 
 const MAX_AGENT_TURNS = 10;
 

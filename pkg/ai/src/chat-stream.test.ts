@@ -5,10 +5,9 @@ import type { ChatEvent } from '@pkg/schema';
 import { Product } from '@pkg/schema';
 import pino from 'pino';
 import { describe, expect, test, vi } from 'vitest';
-
-import type { AiAgentRunInput, AiAgentRunner } from './ai-openai.js';
 import { runChatStream } from './chat-stream.js';
 import type { AiContext } from './context.js';
+import type { AiAgentRunInput, AiAgentRunner } from './openai.js';
 import { mockSession } from './test/test-utils.js';
 
 function createAiContext({

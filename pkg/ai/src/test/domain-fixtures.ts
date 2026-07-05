@@ -23,10 +23,9 @@ import {
   type Supplier,
   type SupplierCreateInput,
 } from '@pkg/schema';
-
-import { createEmail, createModelCode } from './ai-tools.js';
 import { MemoryStorage } from './create-tester.js';
 import { createProductRangeFixture } from './product-range-fixtures.js';
+import { createEmail, createModelCode } from './tools.js';
 
 const actorUserId = 'test-user-id';
 

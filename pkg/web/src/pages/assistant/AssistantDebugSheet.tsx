@@ -86,8 +86,21 @@ function AssistantDebugToolRow({ tool }: { tool: AiToolDebugInfo }) {
       >
         <IconChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open/collapsible:rotate-180" />
         <span className="font-mono text-xs font-medium">{tool.name}</span>
-        <Badge variant={tool.kind === 'write' ? 'destructive' : 'outline'}>{tool.kind}</Badge>
-        <Badge variant="secondary">{tool.requiredPermission}</Badge>
+        <Badge
+          className={cn(
+            tool.kind === 'read' &&
+              'border-transparent bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+          )}
+          variant={tool.kind === 'write' ? 'destructive' : 'outline'}
+        >
+          {tool.kind}
+        </Badge>
+        <Badge
+          className="border-transparent bg-purple-500/10 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400"
+          variant="secondary"
+        >
+          {tool.requiredPermission}
+        </Badge>
         {!tool.authorized && (
           <Badge className="ml-auto" variant="outline">
             No access

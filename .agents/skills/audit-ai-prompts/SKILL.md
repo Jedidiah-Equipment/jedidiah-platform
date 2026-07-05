@@ -1,6 +1,6 @@
 ---
 name: audit-ai-prompts
-description: Audit and maintain Jedidiah Platform AI prompt and tool guidance for drift. Use when asked to review or validate assistant prompts, AI tool descriptions, retrieval playbooks, AI result projections, or prompt alignment with pkg/core, pkg/schema, pkg/domain, and CONTEXT.md; especially before or after changes under pkg/api/src/routes/ai.
+description: Audit and maintain Jedidiah Platform AI prompt and tool guidance for drift. Use when asked to review or validate assistant prompts, AI tool descriptions, retrieval playbooks, AI result projections, or prompt alignment with pkg/core, pkg/schema, pkg/domain, and CONTEXT.md; especially before or after changes under pkg/ai.
 ---
 
 # Audit AI Prompts
@@ -23,11 +23,11 @@ Read these first:
 Then derive current AI truth from source files, not from this skill:
 
 - Find prompt builders with `rg -n "createSystemPrompt|system prompt|Domain Context|Retrieval playbooks" pkg/api/src`.
-- Find registered tools from `AI_TOOL_REGISTRY` / `AI_TOOL_NAMES` in `pkg/api/src/routes/ai/ai-tool-registry.ts`.
-- Find tool contracts from `pkg/api/src/routes/ai/tools/*.ts`.
-- Find structured descriptors from `pkg/api/src/routes/ai/ai-tool-registry.ts`; `pkg/api/src/routes/ai/ai-tool-descriptors.ts` may only re-export registry-owned descriptors.
-- Find playbooks and relationships from `pkg/api/src/routes/ai/ai-domain-guidance.ts`.
-- Find assistant-facing projections from `projectAiToolResult` and the registry `projectResult` entries in `pkg/api/src/routes/ai/ai-tool-registry.ts`.
+- Find registered tools from `AI_TOOL_REGISTRY` / `AI_TOOL_NAMES` in `pkg/ai/src/ai-tool-registry.ts`.
+- Find tool contracts from `pkg/ai/src/tools/*.ts`.
+- Find structured descriptors from `pkg/ai/src/ai-tool-registry.ts`; `pkg/ai/src/ai-tool-descriptors.ts` may only re-export registry-owned descriptors.
+- Find playbooks and relationships from `pkg/ai/src/ai-domain-guidance.ts`.
+- Find assistant-facing projections from `projectAiToolResult` and the registry `projectResult` entries in `pkg/ai/src/ai-tool-registry.ts`.
 - Find public contracts from relevant `pkg/schema/src/**` files imported by the AI tools.
 - Find behavior and query capabilities from relevant `pkg/core/src/**` services called by the AI tools.
 - Find domain terminology and policies from relevant `pkg/domain/src/**` files.
@@ -37,7 +37,7 @@ Then derive current AI truth from source files, not from this skill:
 1. Build the current AI inventory.
    - List every registered tool in `AI_TOOL_NAMES`.
    - List every AI tool file and its `name`, `inputSchema`, `requiredPermission`, handler service call, and description source.
-   - List every prompt-bearing file under `pkg/api/src/routes/ai`.
+   - List every prompt-bearing file under `pkg/ai/src`.
    - List every playbook and the tool names it references.
    - List every projection case and which tool results it handles.
 
@@ -86,7 +86,7 @@ If there are no findings, say so and mention what surfaces were checked.
 
 When asked to fix drift:
 
-- Keep Jedidiah-specific AI guidance in `pkg/api/src/routes/ai`.
+- Keep Jedidiah-specific AI guidance in `pkg/ai/src`.
 - Keep shared schemas lightweight and framework-independent.
 - Do not scrape `CONTEXT.md` into runtime prompts.
 - Do not create aggregate tools unless existing resource-oriented composition is demonstrably insufficient.
@@ -97,7 +97,7 @@ When asked to fix drift:
 After fixes, run focused checks first:
 
 ```bash
-pnpm --filter @pkg/api exec vitest run src/routes/ai/ai-tools.test.ts src/routes/ai/ai-domain-guidance.test.ts src/routes/ai/ai-prompts.test.ts src/routes/ai/ai-tool-registry.test.ts
+pnpm --filter @pkg/ai exec vitest run src/ai-tools.test.ts src/ai-domain-guidance.test.ts src/ai-prompts.test.ts src/ai-tool-registry.test.ts
 pnpm typecheck
 pnpm lint
 ```

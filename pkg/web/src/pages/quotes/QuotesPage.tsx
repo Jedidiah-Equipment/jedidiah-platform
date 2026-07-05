@@ -24,9 +24,9 @@ import {
   createQuoteTableColumns,
   createQuoteTableRow,
   getQuoteTableRowClassName,
+  type QuoteTableRow,
   quoteTablePinnedLeftColumns,
   quoteTablePinnedRightColumns,
-  type QuoteTableRow,
 } from './components/QuoteTableColumns.js';
 import { QuoteCreateDialog } from './QuoteCreateDialog.js';
 

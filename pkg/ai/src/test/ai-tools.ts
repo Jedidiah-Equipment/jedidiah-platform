@@ -1,18 +1,21 @@
-import type { AiContext } from '@pkg/ai';
+import type { StorageAdapter } from '@pkg/core';
 import { type Db, user } from '@pkg/db';
 import type { AppRole, UserAccessSummary } from '@pkg/schema';
 import pino from 'pino';
+import { vi } from 'vitest';
 
-import { mockSession } from '@/test/test-utils.js';
+import type { AiContext } from '../context.js';
+import { MemoryStorage } from './create-tester.js';
+import { mockSession } from './test-utils.js';
 
-export function createAiContext(db: Db, access: UserAccessSummary): AiContext {
+export function createAiContext(db: Db, access: UserAccessSummary | null): AiContext {
   return {
     access,
     db,
-    deliverQuoteDraftEmail: async () => ({ recipientEmail: 'test@example.com', warnings: [] }),
+    deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
     log: pino({ level: 'silent' }),
-    session: mockSession(access.role),
-    storage: {} as AiContext['storage'],
+    session: mockSession(access?.role ?? 'admin'),
+    storage: new MemoryStorage() as StorageAdapter,
   };
 }
 

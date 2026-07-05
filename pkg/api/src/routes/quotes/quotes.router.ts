@@ -1,3 +1,4 @@
+import { createAiAgentRunner, generateQuoteEmailBody } from '@pkg/ai';
 import {
   createQuote,
   generateQuoteDocument,
@@ -32,11 +33,11 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
+import { getApiConfig } from '@/env.js';
 import { log } from '@/logger.js';
 import type { Context } from '@/trpc/context.js';
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
-import { generateQuoteEmailBody } from '../ai/actions/quote-email-body.js';
 import { deliverQuoteDraftEmail } from './quote-draft-email.js';
 
 export const quotesRouter = router({
@@ -138,9 +139,13 @@ async function draftQuoteEmailWithGeneratedBody({
   storage: Context['storage'];
 }) {
   const quote = await getQuote({ db, id: input.quoteId });
+  const config = getApiConfig();
   const emailBody = await generateQuoteEmailBody({
-    aiContext: { access, db, session, storage },
+    aiContext: { access, db, deliverQuoteDraftEmail, log: log.ai, session, storage },
+    model: config.OPENAI_MODEL,
     quote,
+    reasoningEffort: config.OPENAI_REASONING_EFFORT,
+    runner: createAiAgentRunner({ apiKey: config.OPENAI_API_KEY }),
   });
 
   return deliverQuoteDraftEmail({ actorUserId, db, emailBody, input, recipientEmail, storage });

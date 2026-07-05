@@ -37,7 +37,7 @@ async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumen
       banner: await imageFromEnv('BROCHURE_SECONDARY_IMAGE', 'cover'),
       technicalDrawing: await imageFromEnv('BROCHURE_TECHNICAL_IMAGE', 'contain'),
     },
-    keyFeatures: ['Pay load : 18 tons', 'Volume standard : 25 cubes', 'Volume with extensions: 36 cubes'],
+    keyFeatures: ['Pay load: 18 tons', 'Volume standard: 25 cubic meters', 'Volume with extensions: 36 cubic meters'],
     modelCode: 'SG1836',
     rangeLogo: await imageFromEnv('BROCHURE_RANGE_LOGO_IMAGE', 'contain'),
     optionalAssemblies: [
@@ -80,7 +80,7 @@ async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumen
     return {
       ...document,
       bodyCopy: ['Built for high productivity and reliability in demanding field conditions.'],
-      keyFeatures: ['Pay load : 18 tons'],
+      keyFeatures: ['Pay load: 18 tons'],
       optionalAssemblies: ['BKT tyres'],
       standardAssemblies: ['Walking beam suspension'],
     };

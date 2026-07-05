@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
 
 export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
   const hasColumns = document.standardAssemblies.length > 0 || document.optionalAssemblies.length > 0;
-  const coverLayout = getCoverLayout(document.keyFeatures.length);
+  const coverLayout = getCoverLayout(document.keyFeatures);
   const detailLayout = getDetailLayout(document);
 
   return (
@@ -464,7 +464,7 @@ function TitleText({ title, highlight }: { title: string; highlight: string | nu
   );
 }
 
-type CoverLayout = {
+export type CoverLayout = {
   featureFontSize: number;
   featureLineHeight: number;
   featureListWidth: number;
@@ -492,12 +492,16 @@ type DescriptionLayout = {
   paragraphMarginBottom: number;
 };
 
-function getCoverLayout(featureCount: number): CoverLayout {
+export function getCoverLayout(keyFeatures: string[]): CoverLayout {
+  const featureCount = keyFeatures.length;
+  const measuredFeatureListWidth = (baseWidth: number, fontSize: number) =>
+    measureKeyFeatureListWidth(keyFeatures, baseWidth, fontSize);
+
   if (featureCount <= 3) {
     return {
       featureFontSize: 12.5,
       featureLineHeight: 1.15,
-      featureListWidth: 260,
+      featureListWidth: measuredFeatureListWidth(260, 12.5),
       headingFontSize: 24,
       headingMarginBottom: 34,
       heroHeight: layout.heroHeight,
@@ -510,7 +514,7 @@ function getCoverLayout(featureCount: number): CoverLayout {
     return {
       featureFontSize: 10.5,
       featureLineHeight: 1.1,
-      featureListWidth: 310,
+      featureListWidth: measuredFeatureListWidth(310, 10.5),
       headingFontSize: 21,
       headingMarginBottom: 22,
       heroHeight: 360,
@@ -522,7 +526,7 @@ function getCoverLayout(featureCount: number): CoverLayout {
   return {
     featureFontSize: 8,
     featureLineHeight: 1.05,
-    featureListWidth: 340,
+    featureListWidth: measuredFeatureListWidth(340, 8),
     headingFontSize: 18,
     headingMarginBottom: 8,
     heroHeight: 318,
@@ -540,8 +544,22 @@ const DESCRIPTION_CHAR_WIDTH_FACTOR = 0.52;
 // Horizontal space a bullet square plus its gutter steals from each assembly line.
 const ASSEMBLY_BULLET_GUTTER = 14;
 const DESCRIPTION_PADDING_X = 20;
+const KEY_FEATURE_CHAR_WIDTH_FACTOR = 0.62;
+// Mirrors the 13pt star plus its 10pt right margin in the key-feature row.
+const KEY_FEATURE_ICON_AND_GAP = 23;
+const KEY_FEATURE_WIDTH_BUFFER = 8;
+const KEY_FEATURE_MAX_WIDTH = 430;
 
 const clampNumber = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
+function measureKeyFeatureListWidth(keyFeatures: string[], baseWidth: number, fontSize: number): number {
+  const longestLabelLength = Math.max(...keyFeatures.map((feature) => feature.trim().toUpperCase().length), 0);
+  const measuredWidth = Math.ceil(
+    longestLabelLength * fontSize * KEY_FEATURE_CHAR_WIDTH_FACTOR + KEY_FEATURE_ICON_AND_GAP + KEY_FEATURE_WIDTH_BUFFER,
+  );
+
+  return clampNumber(measuredWidth, baseWidth, KEY_FEATURE_MAX_WIDTH);
+}
 
 function getDetailLayout(document: BrochureDocumentModel): DetailLayout {
   return {

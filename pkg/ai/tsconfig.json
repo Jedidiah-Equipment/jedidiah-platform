@@ -5,7 +5,15 @@
     "outDir": "dist",
     "composite": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@pkg/api": ["../api/src/index.ts"],
+      "@pkg/ai": ["./src/index.ts"],
+      "@pkg/core": ["../core/src/index.ts"],
+      "@pkg/db": ["../db/src/index.ts"],
+      "@pkg/domain": ["../domain/src/index.ts"],
+      "@pkg/pdf": ["../pdf/src/index.ts"],
+      "@pkg/schema": ["../schema/src/index.ts"],
+      "@pkg/seed": ["../seed/src/index.ts"]
     },
     "types": ["node", "vitest"]
   },

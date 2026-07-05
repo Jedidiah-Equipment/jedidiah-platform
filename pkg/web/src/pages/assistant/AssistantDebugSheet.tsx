@@ -103,15 +103,11 @@ function AssistantDebugToolRow({ tool }: { tool: AiToolDebugInfo }) {
         <span className="font-mono text-xs font-medium">{tool.name}</span>
         <Badge
           className={cn(
-            tool.kind === 'read' &&
-              'border-transparent bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+            'border-transparent',
+            tool.kind === 'write'
+              ? 'bg-red-500/10 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+              : 'bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400',
           )}
-          variant={tool.kind === 'write' ? 'destructive' : 'outline'}
-        >
-          {tool.kind}
-        </Badge>
-        <Badge
-          className="border-transparent bg-purple-500/10 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400"
           variant="secondary"
         >
           {tool.requiredPermission}

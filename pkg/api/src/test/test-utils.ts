@@ -1,4 +1,5 @@
-import type { AppRole } from '@pkg/schema';
+import type { AppRole, Logger } from '@pkg/schema';
+import pino from 'pino';
 import { expect } from 'vitest';
 import { z } from 'zod';
 
@@ -31,4 +32,15 @@ export function mockSession(role: AppRole = 'admin'): NonNullable<Context['sessi
 
 export function expectIsoDatetime(value: unknown): asserts value is string {
   expect(z.iso.datetime().safeParse(value).success).toBe(true);
+}
+
+export function createSilentLogger(): Logger {
+  const silent = pino({ level: 'silent' });
+
+  return {
+    ai: silent,
+    http: silent,
+    root: silent,
+    service: silent,
+  };
 }

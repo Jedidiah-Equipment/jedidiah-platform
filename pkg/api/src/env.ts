@@ -1,5 +1,5 @@
 import { isRemoteAppEnv } from '@pkg/domain';
-import { AppEnv, EnvBoolean, NodeEnv } from '@pkg/schema';
+import { AI_REASONING_EFFORTS, AppEnv, EnvBoolean, NodeEnv } from '@pkg/schema';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
@@ -52,7 +52,7 @@ export const ApiConfig = z
     DOCUMENT_STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_MODEL: z.string().min(1).default('gpt-5.5'),
-    OPENAI_REASONING_EFFORT: z.enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh']).default('low'),
+    OPENAI_REASONING_EFFORT: z.enum(AI_REASONING_EFFORTS).default('low'),
     PORT: z.coerce.number().int().positive().default(7002),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
     LOG_DOMAINS_DISABLED: z.string().optional(),

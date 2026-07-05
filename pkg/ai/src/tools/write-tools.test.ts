@@ -4,8 +4,9 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
 import { generateQuoteEmailBody } from '../actions/quote-email-body.js';
 import type { AiContext } from '../context.js';
-import { mockSession } from '../test/test-utils.js';
-import { aiTools, dispatchToolCall } from '../tools.js';
+import { createSilentLogger, mockSession } from '../test/test-utils.js';
+import { aiTools } from '../tool-registry.js';
+import { dispatchToolCall } from '../tools.js';
 import { createCustomerTool } from './customers/create-customer.js';
 import { createQuoteTool } from './quotes/create-quote.js';
 import { sendDraftQuoteEmailTool } from './quotes/send-draft-quote-email.js';
@@ -21,7 +22,7 @@ function createAiContext(access: UserAccessSummary | null = null): AiContext {
     access,
     db: {} as AiContext['db'],
     deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
-    log: { debug: vi.fn(), info: vi.fn(), trace: vi.fn() } as unknown as AiContext['log'],
+    log: createSilentLogger(),
     session: mockSession(access?.role ?? 'sales'),
     storage: {} as AiContext['storage'],
   };

@@ -1,6 +1,6 @@
 import { AI_QUOTE_TO_JOB_RELATIONSHIP } from './kind-facts.js';
 import { type AiLinkMetadata, aiLinkMetadata } from './link-metadata.js';
-import { AI_TOOL_NAMES, type AiToolName } from './tools.js';
+import { AI_TOOL_NAMES, type AiToolName } from './tool-registry.js';
 
 type AiDomainRelationship = {
   from: string;

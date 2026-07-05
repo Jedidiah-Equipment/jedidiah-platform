@@ -7,9 +7,6 @@ import type { AiContext } from './context.js';
 import type { AiToolName, RegisteredAiTool } from './tool-registry.js';
 import { AI_TOOL_NAMES, aiTools, projectAiToolResult } from './tool-registry.js';
 
-export type { AiToolName } from './tool-registry.js';
-export { AI_TOOL_NAMES, aiTools } from './tool-registry.js';
-
 export type AuthorizedAiTools = Partial<Record<AiToolName, RegisteredAiTool>>;
 export type GetAuthorizedToolsOptions = {
   includeWriteTools?: boolean;
@@ -106,7 +103,7 @@ export function createAgentTools(
         }
 
         const id = randomUUID();
-        ctx.log.debug({ name, args }, 'tool call');
+        ctx.log.ai.debug({ name, args }, 'tool call');
         onToolCall({
           id,
           name,
@@ -115,7 +112,7 @@ export function createAgentTools(
         });
         const result = await dispatchToolCall(tools, name, args, ctx);
         const payload = result.ok ? result.result : { error: result.error };
-        ctx.log.debug({ name: result.name, ok: result.ok }, 'tool result');
+        ctx.log.ai.debug({ name: result.name, ok: result.ok }, 'tool result');
         onToolResult({
           id,
           result: payload,

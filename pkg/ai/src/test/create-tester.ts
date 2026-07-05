@@ -6,11 +6,10 @@ import {
   dropTestDatabase,
   getTestTemplateDatabaseUrl,
 } from '@pkg/db';
-import pino from 'pino';
 import { type TestAPI, type TestContext, test as testBase, vi } from 'vitest';
 
 import type { AiContext } from '../context.js';
-import { mockSession } from './test-utils.js';
+import { createSilentLogger, mockSession } from './test-utils.js';
 
 type Cleanup = () => Promise<void> | void;
 
@@ -38,12 +37,11 @@ export function createTester<T extends object = Record<string, never>>(
 
       try {
         try {
-          const testLog = pino({ level: 'silent' });
           const createAiContext = (overrides: Partial<AiContext> = {}): AiContext => ({
             access: null,
             db: databaseClient.db,
             deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
-            log: testLog,
+            log: createSilentLogger(),
             session: mockSession(),
             storage: new MemoryStorage(),
             ...overrides,

@@ -1,8 +1,8 @@
 import { formatCurrency } from '@pkg/domain';
 import { createDomainGuidancePrompt } from './domain-guidance.js';
 import { AI_QUOTE_KIND_PROMPT_LINES } from './kind-facts.js';
+import type { AiToolName } from './tool-registry.js';
 import { AI_WRITE_TOOL_NAMES } from './tool-registry.js';
-import type { AiToolName } from './tools.js';
 
 const ASSISTANT_ROLE_PROMPT = [
   'You are the JedidiahOps assistant.',

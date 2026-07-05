@@ -3,12 +3,11 @@ import * as productsCore from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { ChatEvent } from '@pkg/schema';
 import { Product } from '@pkg/schema';
-import pino from 'pino';
 import { describe, expect, test, vi } from 'vitest';
 import { runChatStream } from './chat-stream.js';
 import type { AiContext } from './context.js';
 import type { AiAgentRunInput, AiAgentRunner } from './openai.js';
-import { mockSession } from './test/test-utils.js';
+import { createSilentLogger, mockSession } from './test/test-utils.js';
 
 function createAiContext({
   access = null,
@@ -23,7 +22,7 @@ function createAiContext({
     access,
     db,
     deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
-    log: pino({ level: 'silent' }),
+    log: createSilentLogger(),
     session,
     storage: {} as AiContext['storage'],
   };

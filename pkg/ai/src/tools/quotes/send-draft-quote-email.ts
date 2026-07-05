@@ -1,9 +1,10 @@
 import { type AiToolBase, QuoteDraftEmailInput, type QuoteDraftEmailResult } from '@pkg/schema';
 import { z } from 'zod';
+import type { AiContext } from '@/context.js';
+import type { AiToolDefinition } from '@/tool-definition.js';
 import { requireActorSession } from '../actor.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
 import { identityProjection } from '../projections.js';
-import type { AiContext, AiToolDefinition } from '../tool-support.js';
 
 export type SendDraftQuoteEmailInput = z.infer<typeof SendDraftQuoteEmailInput>;
 export const SendDraftQuoteEmailInput = QuoteDraftEmailInput.extend({

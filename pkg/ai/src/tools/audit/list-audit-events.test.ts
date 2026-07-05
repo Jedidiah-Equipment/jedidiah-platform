@@ -4,7 +4,8 @@ import { createUserAccessSummary } from '@pkg/domain';
 import type { AuditListInput } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
-import { createAiContext, createTester } from '../test-support.js';
+import { createTester } from '@/test/create-tester.js';
+import { createAiContext } from '@/test/tools.js';
 import { listAuditEventsDefinition, listAuditEventsTool } from './list-audit-events.js';
 
 const test = createTester(({ db }) => ({ db }));

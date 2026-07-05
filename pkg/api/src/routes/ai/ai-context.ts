@@ -1,4 +1,4 @@
-import type { AiContext } from '@pkg/ai';
+import type { AiContext, AiSession } from '@pkg/ai';
 import type { StorageAdapter } from '@pkg/core';
 import { db } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
@@ -13,6 +13,26 @@ export type AiContextDependencies = {
   storage: StorageAdapter;
 };
 
+export type CreateAiContextInput = {
+  access: UserAccessSummary | null;
+  db: AiContext['db'];
+  session: AiSession | null;
+  storage: StorageAdapter;
+};
+
+// The one place API-owned dependencies are injected into @pkg/ai; route every AiContext
+// construction through here so call sites cannot drift.
+export function createAiContext({ access, db, session, storage }: CreateAiContextInput): AiContext {
+  return {
+    access,
+    db,
+    deliverQuoteDraftEmail,
+    log,
+    session,
+    storage,
+  };
+}
+
 export async function buildAiContext(req: FastifyRequest, dependencies: AiContextDependencies): Promise<AiContext> {
   const session = await getSessionFromHeaders(req.headers);
   const access: UserAccessSummary | null = session
@@ -22,12 +42,5 @@ export async function buildAiContext(req: FastifyRequest, dependencies: AiContex
       })
     : null;
 
-  return {
-    access,
-    db,
-    deliverQuoteDraftEmail,
-    log: log.ai,
-    session,
-    storage: dependencies.storage,
-  };
+  return createAiContext({ access, db, session, storage: dependencies.storage });
 }

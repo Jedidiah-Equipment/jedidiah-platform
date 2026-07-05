@@ -2,7 +2,9 @@ import * as core from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
 import { describe, expect } from 'vitest';
 import { z } from 'zod';
-import { createActorUser, createAiContext, createPartFixture, createTester } from '../test-support.js';
+import { createTester } from '@/test/create-tester.js';
+import { createPartFixture } from '@/test/domain-fixtures.js';
+import { createActorUser, createAiContext } from '@/test/tools.js';
 import { getPartDefinition, getPartTool } from './get-part.js';
 
 const test = createTester(async ({ db }) => {

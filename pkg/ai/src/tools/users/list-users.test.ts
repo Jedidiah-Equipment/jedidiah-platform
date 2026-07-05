@@ -4,7 +4,8 @@ import { createUserAccessSummary } from '@pkg/domain';
 import type { AppRole } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
-import { createAiContext, createTester } from '../test-support.js';
+import { createTester } from '@/test/create-tester.js';
+import { createAiContext } from '@/test/tools.js';
 import { listUsersDefinition, listUsersTool } from './list-users.js';
 
 const test = createTester(({ db }) => ({ db }));

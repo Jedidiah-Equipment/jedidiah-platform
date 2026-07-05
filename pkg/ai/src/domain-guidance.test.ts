@@ -5,7 +5,7 @@ import {
   assertPlaybooksReferenceRegisteredTools,
   createDomainGuidancePrompt,
 } from './domain-guidance.js';
-import type { AiToolName } from './tools.js';
+import type { AiToolName } from './tool-registry.js';
 
 describe('AI domain guidance', () => {
   test('playbooks reference registered tools', () => {

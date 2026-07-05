@@ -1,7 +1,12 @@
 import type { StorageAdapter } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import type { AiContext as AiContextSchema, AuthId, QuoteDraftEmailInput, QuoteDraftEmailResult } from '@pkg/schema';
-import type { Logger } from 'pino';
+import type {
+  AiContext as AiContextSchema,
+  AuthId,
+  Logger,
+  QuoteDraftEmailInput,
+  QuoteDraftEmailResult,
+} from '@pkg/schema';
 
 export type AiSession = {
   user: {

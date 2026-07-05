@@ -4,11 +4,10 @@ import http from 'node:http';
 import fastifyCors from '@fastify/cors';
 import type { AiAgentRunner, AiContext } from '@pkg/ai';
 import Fastify from 'fastify';
-import pino from 'pino';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { registerAiStreamRoute } from '@/routes/ai/ai-stream.route.js';
-import { mockSession } from '@/test/test-utils.js';
+import { createSilentLogger, mockSession } from '@/test/test-utils.js';
 
 type AiAgentRunInput = Parameters<AiAgentRunner['run']>[0];
 
@@ -25,7 +24,7 @@ function createAiContext({
     access,
     db,
     deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
-    log: pino({ level: 'silent' }),
+    log: createSilentLogger(),
     session,
     storage: {} as AiContext['storage'],
   };

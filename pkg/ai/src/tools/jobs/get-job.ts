@@ -1,10 +1,11 @@
 import * as core from '@pkg/core';
 import { type AiToolBase, type JobDetail, UUID } from '@pkg/schema';
 import { z } from 'zod';
+import type { AiContext } from '@/context.js';
+import { aiLinkMetadata } from '@/link-metadata.js';
+import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
 import { projectJob } from '../projections.js';
-import type { AiContext, AiToolDefinition } from '../tool-support.js';
-import { aiLinkMetadata } from '../tool-support.js';
 
 const GetJobInput = z.object({
   id: UUID,

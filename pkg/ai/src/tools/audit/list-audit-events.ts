@@ -1,8 +1,9 @@
 import * as core from '@pkg/core';
 import { type AiToolBase, AuditListInput, type AuditListResult } from '@pkg/schema';
+import type { AiContext } from '@/context.js';
+import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
 import { identityProjection } from '../projections.js';
-import type { AiContext, AiToolDefinition } from '../tool-support.js';
 
 export type ListAuditEventsTool = AiToolBase<'listAuditEvents', AuditListResult, AuditListInput, AiContext>;
 

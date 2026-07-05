@@ -2,15 +2,10 @@ import * as core from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
 import { describe, expect } from 'vitest';
 import { z } from 'zod';
-import {
-  createActorUser,
-  createAiContext,
-  createJobFixture,
-  createProductWithRangeFixture,
-  createQuoteFixture,
-  createTester,
-} from '../test-support.js';
-import { aiLinkMetadata } from '../tool-support.js';
+import { aiLinkMetadata } from '@/link-metadata.js';
+import { createTester } from '@/test/create-tester.js';
+import { createJobFixture, createProductWithRangeFixture, createQuoteFixture } from '@/test/domain-fixtures.js';
+import { createActorUser, createAiContext } from '@/test/tools.js';
 import { getJobDefinition, getJobTool } from './get-job.js';
 
 const test = createTester(async ({ db }) => {

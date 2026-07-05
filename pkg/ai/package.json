@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && tsc-alias -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
@@ -20,11 +20,12 @@
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "pino": "^10.3.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "dotenv": "^17.4.2",
+    "pino": "^10.3.1",
+    "tsc-alias": "^1.8.17",
     "vitest": "^4.1.9"
   }
 }

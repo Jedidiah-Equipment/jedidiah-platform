@@ -3,7 +3,9 @@ import { createUserAccessSummary } from '@pkg/domain';
 import type { CustomerListInput } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
-import { createActorUser, createAiContext, createCustomerFixture, createTester } from '../test-support.js';
+import { createTester } from '@/test/create-tester.js';
+import { createCustomerFixture } from '@/test/domain-fixtures.js';
+import { createActorUser, createAiContext } from '@/test/tools.js';
 import { listQuoteCustomersTool } from './list-quote-customers.js';
 
 const test = createTester(async ({ db }) => {

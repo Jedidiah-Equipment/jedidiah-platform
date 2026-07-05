@@ -29,6 +29,15 @@ describe('AssistantDebugContent', () => {
     expect(html).toContain('Tools (2)');
   });
 
+  it('renders the estimated input token breakdown', () => {
+    const html = renderToStaticMarkup(<AssistantDebugContent info={buildDebugInfo()} />);
+
+    expect(html).toContain('Estimated input tokens');
+    expect(html).toContain('1 234');
+    expect(html).toContain('800');
+    expect(html).toContain('434');
+  });
+
   it('flags an unauthorized tool without hiding it', () => {
     const html = renderToStaticMarkup(<AssistantDebugContent info={buildDebugInfo()} />);
 
@@ -41,6 +50,7 @@ describe('AssistantDebugContent', () => {
 
 function buildDebugInfo(): AiDebugInfo {
   return {
+    estimatedInputTokens: { systemPrompt: 800, tools: 434, total: 1234 },
     systemPrompt: '## Role\n- You are the JedidiahOps assistant.',
     tools: [
       buildTool({

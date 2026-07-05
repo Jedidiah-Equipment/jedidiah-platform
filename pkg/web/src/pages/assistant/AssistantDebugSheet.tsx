@@ -1,4 +1,5 @@
 import type { AiDebugInfo, AiToolDebugInfo } from '@pkg/api';
+import { formatNumber } from '@pkg/domain';
 import { IconChevronDown } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
@@ -28,7 +29,7 @@ export function AssistantDebugSheet() {
 
   return (
     <Sheet onOpenChange={setOpen} open={open}>
-      <SheetContent className="flex w-full flex-col gap-0 sm:max-w-5xl" side="right">
+      <SheetContent className="flex w-full flex-col gap-0 data-[side=right]:sm:max-w-5xl" side="right">
         <SheetHeader>
           <SheetTitle>Assistant debug</SheetTitle>
           <SheetDescription>
@@ -54,6 +55,20 @@ export function AssistantDebugSheet() {
 export function AssistantDebugContent({ info }: { info: AiDebugInfo }) {
   return (
     <>
+      <div className="flex flex-col gap-1 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+        <div className="flex items-center justify-between font-medium">
+          <span>Estimated input tokens</span>
+          <span className="font-mono tabular-nums">≈ {formatNumber(info.estimatedInputTokens.total)}</span>
+        </div>
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span>System prompt</span>
+          <span className="font-mono tabular-nums">{formatNumber(info.estimatedInputTokens.systemPrompt)}</span>
+        </div>
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span>Tools</span>
+          <span className="font-mono tabular-nums">{formatNumber(info.estimatedInputTokens.tools)}</span>
+        </div>
+      </div>
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h3 className="font-heading text-sm font-medium">System prompt</h3>
@@ -86,8 +101,17 @@ function AssistantDebugToolRow({ tool }: { tool: AiToolDebugInfo }) {
       >
         <IconChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open/collapsible:rotate-180" />
         <span className="font-mono text-xs font-medium">{tool.name}</span>
-        <Badge variant={tool.kind === 'write' ? 'destructive' : 'outline'}>{tool.kind}</Badge>
-        <Badge variant="secondary">{tool.requiredPermission}</Badge>
+        <Badge
+          className={cn(
+            'border-transparent',
+            tool.kind === 'write'
+              ? 'bg-red-500/10 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+              : 'bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+          )}
+          variant="secondary"
+        >
+          {tool.requiredPermission}
+        </Badge>
         {!tool.authorized && (
           <Badge className="ml-auto" variant="outline">
             No access

@@ -7,7 +7,10 @@ import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 // The route generates the email body via OpenAI; stub it so the test stays offline and deterministic.
-vi.mock('../ai/actions/quote-email-body.js', () => ({
+vi.mock('@pkg/ai', () => ({
+  createAiAgentRunner: vi.fn(() => ({
+    run: vi.fn(),
+  })),
   generateQuoteEmailBody: vi.fn(async () => 'Drafted quote email body.'),
 }));
 

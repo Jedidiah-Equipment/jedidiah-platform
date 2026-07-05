@@ -23,6 +23,7 @@
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^10.0.0",
     "@openai/agents": "^0.11.8",
+    "@pkg/ai": "workspace:*",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",

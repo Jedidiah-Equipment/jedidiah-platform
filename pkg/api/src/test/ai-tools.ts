@@ -1,13 +1,16 @@
+import type { AiContext } from '@pkg/ai';
 import { type Db, user } from '@pkg/db';
 import type { AppRole, UserAccessSummary } from '@pkg/schema';
+import pino from 'pino';
 
-import type { AiContext } from '@/routes/ai/ai-context.js';
 import { mockSession } from '@/test/test-utils.js';
 
 export function createAiContext(db: Db, access: UserAccessSummary): AiContext {
   return {
     access,
     db,
+    deliverQuoteDraftEmail: async () => ({ recipientEmail: 'test@example.com', warnings: [] }),
+    log: pino({ level: 'silent' }),
     session: mockSession(access.role),
     storage: {} as AiContext['storage'],
   };

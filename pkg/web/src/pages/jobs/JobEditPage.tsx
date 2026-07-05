@@ -78,7 +78,9 @@ const JobEditForm: React.FC<{
           <Card>
             <CardContent className="grid gap-5">
               <form.AppField name="description">
-                {(field) => <field.TextareaField label="Description" placeholder="Describe this job build..." rows={6} />}
+                {(field) => (
+                  <field.TextareaField label="Description" placeholder="Describe this job build..." rows={6} />
+                )}
               </form.AppField>
               {job.quoteKind === 'product' ? (
                 <form.AppField name="vinNumber">{(field) => <field.TextField label="VIN number" />}</form.AppField>

@@ -218,6 +218,7 @@ function QuoteCodeCell({ row }: { row: QuoteTableRow }) {
           <span
             aria-label="Needs job"
             className="inline-flex size-5 shrink-0 items-center justify-center rounded border border-warning/45 bg-warning/15 text-warning-foreground"
+            role="img"
             title="Needs job"
           >
             <IconAlertTriangle aria-hidden className="size-3.5 shrink-0" />

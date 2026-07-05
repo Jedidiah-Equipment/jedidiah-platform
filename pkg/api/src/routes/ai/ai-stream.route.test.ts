@@ -2,17 +2,15 @@ import type { Server } from 'node:http';
 import http from 'node:http';
 
 import fastifyCors from '@fastify/cors';
-import { RunContext, type Tool } from '@openai/agents';
-import * as productsCore from '@pkg/core';
-import { createUserAccessSummary } from '@pkg/domain';
-import { Product } from '@pkg/schema';
+import type { AiAgentRunner, AiContext } from '@pkg/ai';
 import Fastify from 'fastify';
-import { describe, expect, test, vi } from 'vitest';
+import pino from 'pino';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import type { AiContext } from '@/routes/ai/ai-context.js';
-import type { AiAgentRunInput, AiAgentRunner } from '@/routes/ai/ai-openai.js';
 import { registerAiStreamRoute } from '@/routes/ai/ai-stream.route.js';
 import { mockSession } from '@/test/test-utils.js';
+
+type AiAgentRunInput = Parameters<AiAgentRunner['run']>[0];
 
 function createAiContext({
   access = null,
@@ -26,6 +24,8 @@ function createAiContext({
   return {
     access,
     db,
+    deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
+    log: pino({ level: 'silent' }),
     session,
     storage: {} as AiContext['storage'],
   };
@@ -103,17 +103,9 @@ function textDeltas(...deltas: (string | Uint8Array)[]): AsyncIterable<string | 
   };
 }
 
-function getFunctionTool(input: AiAgentRunInput, name: string): Extract<Tool<AiContext>, { type: 'function' }> {
-  const functionTool = input.agent.tools.find((tool): tool is Extract<Tool<AiContext>, { type: 'function' }> => {
-    return tool.type === 'function' && tool.name === name;
-  });
-
-  if (!functionTool) {
-    throw new Error(`Expected function tool ${name} to be exposed`);
-  }
-
-  return functionTool;
-}
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('POST /ai/chat-stream', () => {
   test('returns 401 without constructing the agent runner when there is no session', async () => {
@@ -166,33 +158,6 @@ describe('POST /ai/chat-stream', () => {
     ]);
   });
 
-  test('decodes split multi-byte token deltas before writing SSE frames', async () => {
-    const app = Fastify();
-    const bytes = new TextEncoder().encode('A💛B');
-    const stream = new StubAgentTextStream(() => textDeltas(bytes.slice(0, 2), bytes.slice(2, 4), bytes.slice(4)));
-
-    await registerAiStreamRoute(app, {
-      buildContext: async () => createAiContext(),
-      createAgentRunner: () => createRunner(stream),
-      model: 'test-model',
-    });
-
-    const response = await app.inject({
-      method: 'POST',
-      url: '/ai/chat-stream',
-      payload: {
-        messages: [{ role: 'user', content: 'Show me loaders' }],
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(readSseDataLines(response.body).map((line) => JSON.parse(line))).toEqual([
-      { type: 'token', delta: 'A' },
-      { type: 'token', delta: '💛B' },
-      { type: 'done' },
-    ]);
-  });
-
   test('preserves CORS headers on streamed responses', async () => {
     const app = Fastify();
     const stream = new StubAgentTextStream(() => textDeltas('Compact'));
@@ -223,188 +188,6 @@ describe('POST /ai/chat-stream', () => {
     expect(response.headers['access-control-allow-credentials']).toBe('true');
   });
 
-  test('streams a final assistant answer after a tool call', async () => {
-    const app = Fastify();
-    const product = Product.parse({
-      basePrice: 332_500,
-      createdAt: '2026-05-13T10:13:20.631Z',
-      currencyCode: 'ZAR' as const,
-      description: 'Apex forklift',
-      id: '00000000-0000-4000-8000-000000000001',
-      buildTimeDays: 14,
-      modelCode: 'AF-25',
-      name: 'Apex Forklift',
-      options: [],
-      rangeId: '00000000-0000-4000-8000-000000000301',
-      requiresVinNumber: false,
-      thumbnailDataUrl: null,
-      updatedAt: '2026-05-13T10:13:20.631Z',
-    });
-    const listProductsSpy = vi.spyOn(productsCore, 'listProducts').mockResolvedValue({
-      items: [product],
-      sortBy: 'name',
-      sortDirection: 'asc',
-      total: 1,
-    });
-
-    // The Agents runner owns the model/tool loop; simulate it calling the tool
-    // then streaming the follow-up response in one pass.
-    const stream = new StubAgentTextStream(async function* (input) {
-      const listProductsTool = getFunctionTool(input, 'listProducts');
-      await listProductsTool.invoke(new RunContext(input.context), 'null');
-      yield 'You have Apex Forklift (AF-25) at ZAR 332,500.00.';
-    });
-
-    try {
-      await registerAiStreamRoute(app, {
-        buildContext: async () =>
-          createAiContext({
-            access: createUserAccessSummary({
-              role: 'procurement-manager',
-              userId: 'test-user-id',
-            }),
-          }),
-        createAgentRunner: () => createRunner(stream),
-        model: 'test-model',
-      });
-
-      const response = await app.inject({
-        method: 'POST',
-        payload: {
-          messages: [{ role: 'user', content: 'What products do we have?' }],
-        },
-        url: '/ai/chat-stream',
-      });
-      const events = readSseDataLines(response.body).map((line) => JSON.parse(line) as unknown);
-
-      expect(response.statusCode).toBe(200);
-      expect(events).toHaveLength(4);
-      expect(events[0]).toMatchObject({
-        args: null,
-        name: 'listProducts',
-        type: 'tool_call',
-      });
-      expect(events[0]).toHaveProperty('id', expect.any(String));
-      expect(events[1]).toEqual({
-        id: (events[0] as { id: string }).id,
-        result: {
-          items: [
-            {
-              ...product,
-              links: [
-                {
-                  entity: 'Product',
-                  href: '/products/00000000-0000-4000-8000-000000000001/edit',
-                  label: 'Apex Forklift',
-                },
-              ],
-            },
-          ],
-          sortBy: 'name',
-          sortDirection: 'asc',
-          total: 1,
-        },
-        type: 'tool_result',
-      });
-      expect(events.slice(2)).toEqual([
-        {
-          delta: 'You have Apex Forklift (AF-25) at ZAR 332,500.00.',
-          type: 'token',
-        },
-        {
-          type: 'done',
-        },
-      ]);
-    } finally {
-      listProductsSpy.mockRestore();
-    }
-  });
-
-  test('does not expose tools without the required permission', async () => {
-    const app = Fastify();
-    let exposedToolNames: string[] | null = null;
-    let reasoningEffort: unknown = null;
-    let systemPrompt: string | null = null;
-    const stream = new StubAgentTextStream((input) => {
-      exposedToolNames = input.agent.tools.map((tool) => tool.name);
-      reasoningEffort = input.agent.modelSettings.reasoning?.effort;
-      systemPrompt = typeof input.agent.instructions === 'string' ? input.agent.instructions : null;
-      return textDeltas();
-    });
-
-    await registerAiStreamRoute(app, {
-      buildContext: async () =>
-        createAiContext({
-          access: {
-            permissions: [],
-            role: 'sales',
-            userId: 'test-user-id',
-          },
-        }),
-      createAgentRunner: () => createRunner(stream),
-      model: 'test-model',
-      reasoningEffort: 'minimal',
-    });
-
-    const response = await app.inject({
-      method: 'POST',
-      payload: {
-        messages: [{ role: 'user', content: 'What products do we have?' }],
-      },
-      url: '/ai/chat-stream',
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(exposedToolNames).toEqual([]);
-    expect(reasoningEffort).toBe('minimal');
-    expect(systemPrompt).not.toContain('listProducts');
-  });
-
-  test('exposes quote write tools but not standalone Customer create for sales users', async () => {
-    const app = Fastify();
-    let exposedToolNames: string[] | null = null;
-    let systemPrompt: string | null = null;
-    const stream = new StubAgentTextStream((input) => {
-      exposedToolNames = input.agent.tools.map((tool) => tool.name);
-      systemPrompt = typeof input.agent.instructions === 'string' ? input.agent.instructions : null;
-      return textDeltas();
-    });
-
-    await registerAiStreamRoute(app, {
-      buildContext: async () =>
-        createAiContext({
-          access: createUserAccessSummary({
-            role: 'sales',
-            userId: 'test-user-id',
-          }),
-        }),
-      createAgentRunner: () => createRunner(stream),
-      model: 'test-model',
-    });
-
-    const response = await app.inject({
-      method: 'POST',
-      payload: {
-        messages: [{ role: 'user', content: 'Create a quote for Acme Mining' }],
-      },
-      url: '/ai/chat-stream',
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(exposedToolNames).toEqual([
-      'listQuotes',
-      'getQuote',
-      'createQuote',
-      'sendDraftQuoteEmail',
-      'listQuoteCustomers',
-      'listQuoteProducts',
-      'listQuoteSalespeople',
-    ]);
-    expect(systemPrompt).toContain('Write tools mutate records immediately');
-    expect(systemPrompt).toContain('createQuote');
-    expect(systemPrompt).not.toContain('createCustomer');
-  });
-
   test('returns 400 for oversized authenticated payloads', async () => {
     const app = Fastify();
     const createAgentRunner = vi.fn(() => createRunner(new StubAgentTextStream(() => textDeltas())));
@@ -427,6 +210,36 @@ describe('POST /ai/chat-stream', () => {
 
     expect(response.statusCode).toBe(400);
     expect(createAgentRunner).not.toHaveBeenCalled();
+  });
+
+  test('writes one timeout error frame and closes a stalled stream', async () => {
+    vi.useFakeTimers();
+    const app = Fastify();
+    let stream: StubAgentTextStream;
+    stream = new StubAgentTextStream(() => stream.pending());
+
+    await registerAiStreamRoute(app, {
+      buildContext: async () => createAiContext(),
+      createAgentRunner: () => createRunner(stream),
+      model: 'test-model',
+    });
+
+    const responsePromise = app.inject({
+      method: 'POST',
+      url: '/ai/chat-stream',
+      payload: {
+        messages: [{ role: 'user', content: 'Show me loaders' }],
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    const response = await responsePromise;
+
+    expect(response.statusCode).toBe(200);
+    expect(readSseDataLines(response.body)).toEqual([
+      JSON.stringify({ type: 'error', message: 'AI stream timed out' }),
+    ]);
+    expect(stream.abort).toHaveBeenCalledOnce();
   });
 
   test('aborts the upstream stream when the client disconnects mid-stream', async () => {

@@ -35,7 +35,6 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 
   return next({
     ctx: {
-      ...ctx,
       session: ctx.session,
     },
   });
@@ -55,7 +54,6 @@ export function authorizedProcedure(permission: AppPermission | readonly AppPerm
 
     return next({
       ctx: {
-        ...ctx,
         access: ctx.access,
       },
     });

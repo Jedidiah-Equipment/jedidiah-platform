@@ -21,6 +21,7 @@ $ROOT/pkg/web/.env.dev
 $ROOT/pkg/api/.env.dev
 $ROOT/pkg/lander/.env.dev
 $ROOT/pkg/db/.env.dev
+$ROOT/pkg/ai/.env.test
 $ROOT/pkg/api/.env.test
 $ROOT/pkg/core/.env.test
 $ROOT/pkg/db/.env.test
@@ -227,7 +228,7 @@ DOCUMENT_STORAGE_ENDPOINT=http://localhost:${minio_api_port}"
   write_managed_block "$ROOT/pkg/db/.env.dev" "$slot" "DATABASE_URL=${db_host}/${DB}
 TEST_DATABASE_URL=${db_host}/${TEMPLATE}"
 
-  for pkg in api core db lander; do
+  for pkg in ai api core db lander; do
     write_managed_block "$ROOT/pkg/$pkg/.env.test" "$slot" "TEST_DATABASE_URL=${db_host}/${TEMPLATE}"
   done
 

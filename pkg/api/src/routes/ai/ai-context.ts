@@ -1,12 +1,13 @@
+import type { AiContext } from '@pkg/ai';
 import type { StorageAdapter } from '@pkg/core';
 import { db } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { AiContext as AiContextSchema, UserAccessSummary } from '@pkg/schema';
+import type { UserAccessSummary } from '@pkg/schema';
 import type { FastifyRequest } from 'fastify';
 
-import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '@/auth/session.js';
-
-export type AiContext = AiContextSchema<typeof db, AppSession, StorageAdapter>;
+import { getSessionFromHeaders, parseBetterAuthRole } from '@/auth/session.js';
+import { log } from '@/logger.js';
+import { deliverQuoteDraftEmail } from '@/routes/quotes/quote-draft-email.js';
 
 export type AiContextDependencies = {
   storage: StorageAdapter;
@@ -24,6 +25,8 @@ export async function buildAiContext(req: FastifyRequest, dependencies: AiContex
   return {
     access,
     db,
+    deliverQuoteDraftEmail,
+    log: log.ai,
     session,
     storage: dependencies.storage,
   };

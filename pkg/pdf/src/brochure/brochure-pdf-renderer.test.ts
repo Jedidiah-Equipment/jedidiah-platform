@@ -2,6 +2,7 @@ import { type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../bytes/pdf-bytes.js';
+import { getCoverLayout } from './BrochureDocumentPdf.js';
 import { renderBrochurePdf } from './brochure-pdf-renderer.js';
 
 // A tiny 4x4 PNG so the renderer exercises its real image path without bundling a large fixture.
@@ -97,6 +98,22 @@ describe('renderBrochurePdf', () => {
       optionalAssemblies: denseAssemblies('Optional', 20),
       standardAssemblies: denseAssemblies('Standard', 18),
     });
+  });
+});
+
+describe('getCoverLayout', () => {
+  test('widens the key feature list for cubic-meter labels', () => {
+    expect(
+      getCoverLayout([
+        'Pay load: 18 tons',
+        'Volume standard: 25 cubic meters',
+        'Volume with extensions: 36 cubic meters',
+      ]).featureListWidth,
+    ).toBe(334);
+  });
+
+  test('caps very long key feature labels', () => {
+    expect(getCoverLayout(['Extended operating feature '.repeat(20)]).featureListWidth).toBe(430);
   });
 });
 

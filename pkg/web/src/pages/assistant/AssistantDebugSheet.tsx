@@ -1,4 +1,5 @@
 import type { AiDebugInfo, AiToolDebugInfo } from '@pkg/api';
+import { formatNumber } from '@pkg/domain';
 import { IconChevronDown } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
@@ -54,6 +55,10 @@ export function AssistantDebugSheet() {
 export function AssistantDebugContent({ info }: { info: AiDebugInfo }) {
   return (
     <>
+      <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
+        <span className="text-sm font-medium">Estimated input tokens</span>
+        <span className="font-mono text-sm tabular-nums">≈ {formatNumber(info.estimatedInputTokens)}</span>
+      </div>
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h3 className="font-heading text-sm font-medium">System prompt</h3>

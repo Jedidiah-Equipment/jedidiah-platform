@@ -1,15 +1,12 @@
 import * as core from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { Logger, ProductListInput } from '@pkg/schema';
+import type { ProductListInput } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
-import {
-  createActorUser,
-  createAiContext,
-  createProductFixture,
-  createProductRangeFixture,
-  createTester,
-} from '../test-support.js';
+import { createTester } from '@/test/create-tester.js';
+import { createProductFixture } from '@/test/domain-fixtures.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
+import { createActorUser, createAiContext } from '@/test/tools.js';
 import { listQuoteProductsTool } from './list-quote-products.js';
 
 const test = createTester(async ({ db }) => {
@@ -44,7 +41,7 @@ describe('listQuoteProductsTool', () => {
       core.listProducts({
         db: context.db,
         input,
-        log: createCoreLogger(createAiContext(context.db, access).log),
+        log: createAiContext(context.db, access).log,
       }),
     ]);
 
@@ -97,12 +94,3 @@ describe('listQuoteProductsTool', () => {
     ).rejects.toBeInstanceOf(z.ZodError);
   });
 });
-
-function createCoreLogger(log: ReturnType<typeof createAiContext>['log']): Logger {
-  return {
-    ai: log,
-    http: log,
-    root: log,
-    service: log,
-  } as unknown as Logger;
-}

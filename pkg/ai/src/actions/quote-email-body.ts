@@ -1,11 +1,10 @@
-import { Agent, type AgentInputItem } from '@openai/agents';
+import type { AgentInputItem } from '@openai/agents';
 import { buildQuoteEmailPrompt } from '@pkg/domain';
-import type { QuoteDetail } from '@pkg/schema';
-import type { AiReasoningEffort } from '../chat-stream.js';
+import type { AiReasoningEffort, QuoteDetail } from '@pkg/schema';
+import { createAssistantAgent } from '../agent.js';
 import type { AiContext } from '../context.js';
 import type { AiAgentRunner } from '../openai.js';
-import { createSystemPrompt } from '../prompts.js';
-import { createAgentTools, getAuthorizedToolNames, getAuthorizedTools } from '../tools.js';
+import { getAuthorizedTools } from '../tools.js';
 
 // A getQuote tool call plus the email turn; small ceiling keeps a stray loop from running away.
 const MAX_AGENT_TURNS = 4;
@@ -32,14 +31,12 @@ export async function generateQuoteEmailBody({
   runner: AiAgentRunner;
 }): Promise<string> {
   const authorizedTools = getAuthorizedTools(aiContext.access, { includeWriteTools: false });
-  const authorizedToolNames = getAuthorizedToolNames(authorizedTools);
-
-  const agent = new Agent<AiContext>({
-    instructions: createSystemPrompt(authorizedToolNames),
+  const agent = createAssistantAgent({
+    authorizedTools,
     model,
-    modelSettings: { reasoning: { effort: reasoningEffort } },
-    name: 'JedidiahOps assistant',
-    tools: createAgentTools(authorizedTools, noop, noop),
+    onToolCall: noop,
+    onToolResult: noop,
+    reasoningEffort,
   });
 
   const input: AgentInputItem[] = [
@@ -49,7 +46,7 @@ export async function generateQuoteEmailBody({
     },
   ];
 
-  aiContext.log.info({ model, quoteCode: quote.code }, 'drafting quote email body');
+  aiContext.log.ai.info({ model, quoteCode: quote.code }, 'drafting quote email body');
 
   const stream = await runner.run({
     agent,

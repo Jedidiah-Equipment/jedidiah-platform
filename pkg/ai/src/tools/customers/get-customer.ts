@@ -1,10 +1,11 @@
 import * as core from '@pkg/core';
 import { type AiToolBase, type Customer, UUID } from '@pkg/schema';
 import { z } from 'zod';
+import type { AiContext } from '@/context.js';
+import { aiLinkMetadata } from '@/link-metadata.js';
+import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
 import { projectCustomer } from '../projections.js';
-import type { AiContext, AiToolDefinition } from '../tool-support.js';
-import { aiLinkMetadata } from '../tool-support.js';
 
 const GetCustomerInput = z.object({
   id: UUID,

@@ -3,7 +3,9 @@ import { createUserAccessSummary } from '@pkg/domain';
 import type { PartListInput } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
-import { createActorUser, createAiContext, createPartFixture, createTester } from '../test-support.js';
+import { createTester } from '@/test/create-tester.js';
+import { createPartFixture } from '@/test/domain-fixtures.js';
+import { createActorUser, createAiContext } from '@/test/tools.js';
 import { listPartsDefinition, listPartsTool } from './list-parts.js';
 
 const test = createTester(async ({ db }) => {

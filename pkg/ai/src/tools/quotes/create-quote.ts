@@ -13,11 +13,12 @@ import {
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
+import type { AiContext } from '@/context.js';
+import { aiLinkMetadata } from '@/link-metadata.js';
+import type { AiToolDefinition } from '@/tool-definition.js';
 import { requireActorSession } from '../actor.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
 import { projectQuote } from '../projections.js';
-import type { AiContext, AiToolDefinition } from '../tool-support.js';
-import { aiLinkMetadata } from '../tool-support.js';
 
 const CreateQuoteCustomerInput = z
   .object({

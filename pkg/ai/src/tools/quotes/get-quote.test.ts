@@ -2,13 +2,9 @@ import * as core from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
 import { describe, expect } from 'vitest';
 import { z } from 'zod';
-import {
-  createActorUser,
-  createAiContext,
-  createProductWithRangeFixture,
-  createQuoteFixture,
-  createTester,
-} from '../test-support.js';
+import { createTester } from '@/test/create-tester.js';
+import { createProductWithRangeFixture, createQuoteFixture } from '@/test/domain-fixtures.js';
+import { createActorUser, createAiContext } from '@/test/tools.js';
 import { getQuoteDefinition, getQuoteTool } from './get-quote.js';
 
 const test = createTester(async ({ db }) => {

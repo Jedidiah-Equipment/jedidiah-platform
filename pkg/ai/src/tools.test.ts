@@ -1,13 +1,10 @@
 import { createUserAccessSummary } from '@pkg/domain';
 import type { UserAccessSummary } from '@pkg/schema';
-import pino from 'pino';
 import { describe, expect, test } from 'vitest';
 import type { AiContext } from './context.js';
-import { mockSession } from './test/test-utils.js';
-import { AI_TOOL_REGISTRY, aiToolDescriptors, createToolDescription } from './tool-registry.js';
+import { createSilentLogger, mockSession } from './test/test-utils.js';
+import { AI_TOOL_NAMES, AI_TOOL_REGISTRY, aiToolDescriptors, aiTools, createToolDescription } from './tool-registry.js';
 import {
-  AI_TOOL_NAMES,
-  aiTools,
   createAgentTools,
   dispatchToolCall,
   getAuthorizedToolNames,
@@ -20,7 +17,7 @@ function createAiContext(access: UserAccessSummary | null = null): AiContext {
     access,
     db: {} as AiContext['db'],
     deliverQuoteDraftEmail: async () => ({ recipientEmail: 'test@example.com', warnings: [] }),
-    log: pino({ level: 'silent' }),
+    log: createSilentLogger(),
     session: mockSession(access?.role ?? 'sales'),
     storage: {} as AiContext['storage'],
   };

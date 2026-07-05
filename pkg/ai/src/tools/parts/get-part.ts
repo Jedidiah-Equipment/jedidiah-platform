@@ -1,9 +1,10 @@
 import * as core from '@pkg/core';
 import { type AiToolBase, type Part, UUID } from '@pkg/schema';
 import { z } from 'zod';
+import type { AiContext } from '@/context.js';
+import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
 import { identityProjection } from '../projections.js';
-import type { AiContext, AiToolDefinition } from '../tool-support.js';
 
 const GetPartInput = z.object({
   id: UUID,

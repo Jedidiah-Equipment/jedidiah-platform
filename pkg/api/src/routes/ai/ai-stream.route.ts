@@ -1,18 +1,13 @@
 import type { OutgoingHttpHeaders } from 'node:http';
 
-import {
-  type AiAgentRunner,
-  type AiContext,
-  type AiReasoningEffort,
-  createAiAgentRunner,
-  runChatStream,
-} from '@pkg/ai';
+import { type AiAgentRunner, type AiContext, runChatStream } from '@pkg/ai';
 import type { StorageAdapter } from '@pkg/core';
-import { ChatStreamInput } from '@pkg/schema';
+import { type AiReasoningEffort, ChatStreamInput } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { type ApiConfig, getApiConfig } from '@/env.js';
 import { buildAiContext } from './ai-context.js';
+import { getAiRunConfig } from './ai-run-config.js';
 import { closeStream, SSE_HEADERS, writeError, writeEvent } from './ai-sse.js';
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
@@ -31,8 +26,7 @@ export async function registerAiStreamRoute(
   options: RegisterAiStreamRouteOptions = {},
 ): Promise<void> {
   const config = getAiStreamRouteConfig(options);
-  const createRunner =
-    options.createAgentRunner ?? (() => createAiAgentRunner({ apiKey: getApiConfig().OPENAI_API_KEY }));
+  const createRunner = options.createAgentRunner ?? (() => getAiRunConfig().runner);
   const model = config.model;
   const reasoningEffort = config.reasoningEffort;
   const createContext = options.buildContext ?? ((req) => buildAiContext(req, { storage: getAiStorage(options) }));

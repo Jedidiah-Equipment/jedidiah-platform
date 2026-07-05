@@ -1,13 +1,11 @@
-import { Agent, type AgentInputItem } from '@openai/agents';
-import type { ChatEvent, ChatStreamInput, ChatStreamMessage } from '@pkg/schema';
+import type { AgentInputItem } from '@openai/agents';
+import type { AiReasoningEffort, ChatEvent, ChatStreamInput, ChatStreamMessage } from '@pkg/schema';
+import { createAssistantAgent } from './agent.js';
 import type { AiContext } from './context.js';
 import type { AiAgentRunner } from './openai.js';
-import { createSystemPrompt } from './prompts.js';
-import { createAgentTools, getAuthorizedToolNames, getAuthorizedTools } from './tools.js';
+import { getAuthorizedToolNames, getAuthorizedTools } from './tools.js';
 
 const MAX_AGENT_TURNS = 10;
-
-export type AiReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
 
 export type RunChatStreamOptions = {
   ctx: AiContext;
@@ -33,20 +31,15 @@ export async function runChatStream({
     const authorizedTools = getAuthorizedTools(ctx.access);
     const authorizedToolNames = getAuthorizedToolNames(authorizedTools);
     const agentInput = createAgentInput(input.messages);
-    const tools = createAgentTools(authorizedTools, emit, emit);
-    const agent = new Agent<AiContext>({
-      instructions: createSystemPrompt(authorizedToolNames),
+    const agent = createAssistantAgent({
+      authorizedTools,
       model,
-      modelSettings: {
-        reasoning: {
-          effort: reasoningEffort,
-        },
-      },
-      name: 'JedidiahOps assistant',
-      tools,
+      onToolCall: emit,
+      onToolResult: emit,
+      reasoningEffort,
     });
 
-    ctx.log.info({ input: agentInput, model, reasoningEffort, toolNames: authorizedToolNames }, 'starting chat');
+    ctx.log.ai.info({ input: agentInput, model, reasoningEffort, toolNames: authorizedToolNames }, 'starting chat');
 
     const stream = await runner.run({
       agent,
@@ -61,7 +54,7 @@ export async function runChatStream({
     for await (const delta of stream) {
       const textDelta = decodeTextDelta(delta, textDecoder);
 
-      ctx.log.trace({ delta: textDelta }, 'content delta');
+      ctx.log.ai.trace({ delta: textDelta }, 'content delta');
 
       if (textDelta) {
         emit({
@@ -80,7 +73,7 @@ export async function runChatStream({
       });
     }
 
-    ctx.log.info('stream done');
+    ctx.log.ai.info({}, 'stream done');
     emit({
       type: 'done',
     });

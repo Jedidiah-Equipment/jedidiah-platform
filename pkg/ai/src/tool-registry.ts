@@ -22,10 +22,6 @@ import { listUsersDefinition } from './tools/users/list-users.js';
 export type { AiToolKind } from './tool-definition.js';
 export { createToolDescription } from './tool-description.js';
 
-type AiToolNames<TRegistry extends readonly AiToolDefinition[]> = {
-  readonly [Index in keyof TRegistry]: TRegistry[Index] extends AiToolDefinition<infer TTool> ? TTool['name'] : never;
-};
-
 // biome-ignore format: keep the stable-order list compact; order is asserted in tool-registry.test.ts.
 export const AI_TOOL_REGISTRY = [
   listProductsDefinition, getProductDefinition, listPartsDefinition, getPartDefinition,
@@ -47,9 +43,7 @@ export type AiToolMap = {
   [Name in AiToolName]: RegisteredAiTool<Extract<AiTool, { name: Name }>>;
 };
 
-export const AI_TOOL_NAMES = AI_TOOL_REGISTRY.map((record) => record.tool.name) as unknown as AiToolNames<
-  typeof AI_TOOL_REGISTRY
->;
+export const AI_TOOL_NAMES: readonly AiToolName[] = AI_TOOL_REGISTRY.map((record) => record.tool.name);
 export const AI_WRITE_TOOL_NAMES: ReadonlySet<AiToolName> = new Set(
   AI_TOOL_REGISTRY.filter((record) => record.kind === 'write').map((record) => record.tool.name as AiToolName),
 );

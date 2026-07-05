@@ -3,14 +3,9 @@ import { createUserAccessSummary } from '@pkg/domain';
 import type { JobListInput } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
-import {
-  createActorUser,
-  createAiContext,
-  createJobFixture,
-  createProductWithRangeFixture,
-  createQuoteFixture,
-  createTester,
-} from '../test-support.js';
+import { createTester } from '@/test/create-tester.js';
+import { createJobFixture, createProductWithRangeFixture, createQuoteFixture } from '@/test/domain-fixtures.js';
+import { createActorUser, createAiContext } from '@/test/tools.js';
 import { listJobsDefinition, listJobsTool } from './list-jobs.js';
 
 const test = createTester(async ({ db }) => {

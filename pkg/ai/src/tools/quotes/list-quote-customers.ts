@@ -1,9 +1,10 @@
 import * as core from '@pkg/core';
 import { type AiToolBase, CustomerListInput, type CustomerListResult } from '@pkg/schema';
+import type { AiContext } from '@/context.js';
+import { aiLinkMetadata } from '@/link-metadata.js';
+import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
 import { projectCustomer, projectPagedItems } from '../projections.js';
-import type { AiContext, AiToolDefinition } from '../tool-support.js';
-import { aiLinkMetadata } from '../tool-support.js';
 
 export type ListQuoteCustomersTool = AiToolBase<'listQuoteCustomers', CustomerListResult, CustomerListInput, AiContext>;
 

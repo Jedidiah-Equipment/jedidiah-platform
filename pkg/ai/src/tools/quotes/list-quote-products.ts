@@ -1,9 +1,10 @@
 import * as core from '@pkg/core';
-import { type AiToolBase, type Logger, ProductListInput, type ProductListResult } from '@pkg/schema';
+import { type AiToolBase, ProductListInput, type ProductListResult } from '@pkg/schema';
+import type { AiContext } from '@/context.js';
+import { aiLinkMetadata } from '@/link-metadata.js';
+import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
 import { projectPagedItems, projectProduct } from '../projections.js';
-import type { AiContext, AiToolDefinition } from '../tool-support.js';
-import { aiLinkMetadata } from '../tool-support.js';
 
 export type ListQuoteProductsTool = AiToolBase<'listQuoteProducts', ProductListResult, ProductListInput, AiContext>;
 
@@ -14,18 +15,9 @@ export const listQuoteProductsTool: ListQuoteProductsTool = {
   requiredPermission: 'quote:read',
   async handler(args: unknown, ctx: AiContext) {
     const input = ProductListInput.parse(args ?? {});
-    return core.listProducts({ db: ctx.db, input, log: createCoreLogger(ctx.log) });
+    return core.listProducts({ db: ctx.db, input, log: ctx.log });
   },
 };
-
-function createCoreLogger(log: AiContext['log']): Logger {
-  return {
-    ai: log,
-    http: log,
-    root: log,
-    service: log,
-  } as unknown as Logger;
-}
 
 export const listQuoteProductsDefinition: AiToolDefinition<ListQuoteProductsTool> = {
   kind: 'read',

@@ -2,7 +2,8 @@ import * as core from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
-import { createActorUser, createAiContext, createTester } from '../test-support.js';
+import { createTester } from '@/test/create-tester.js';
+import { createActorUser, createAiContext } from '@/test/tools.js';
 import { listQuoteSalespeopleDefinition, listQuoteSalespeopleTool } from './list-quote-salespeople.js';
 
 const test = createTester(async ({ db }) => {

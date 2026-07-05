@@ -3,13 +3,9 @@ import { createUserAccessSummary } from '@pkg/domain';
 import type { QuoteListInput } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
-import {
-  createActorUser,
-  createAiContext,
-  createProductWithRangeFixture,
-  createQuoteFixture,
-  createTester,
-} from '../test-support.js';
+import { createTester } from '@/test/create-tester.js';
+import { createProductWithRangeFixture, createQuoteFixture } from '@/test/domain-fixtures.js';
+import { createActorUser, createAiContext } from '@/test/tools.js';
 import { listQuotesDefinition, listQuotesTool } from './list-quotes.js';
 
 const test = createTester(async ({ db }) => {

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';
 
+import { AssistantDebugSheet } from './AssistantDebugSheet.js';
 import {
   createAssistantChatHistoryAdapter,
   getSortedAssistantChats,
@@ -86,15 +87,18 @@ export function AssistantPanel({ newChat = false, prompt }: AssistantPanelProps)
   const activeDraftPrompt = pendingDraftPrompt?.chatId === activeChatId ? pendingDraftPrompt.prompt : undefined;
 
   return (
-    <AssistantRuntimeSession
-      key={activeChatId}
-      activeChatId={activeChatId}
-      composerSlot={
-        activeDraftPrompt ? (
-          <AssistantDraftPrompt prompt={activeDraftPrompt} onConsumed={handleDraftPromptConsumed} />
-        ) : null
-      }
-    />
+    <>
+      <AssistantDebugSheet />
+      <AssistantRuntimeSession
+        key={activeChatId}
+        activeChatId={activeChatId}
+        composerSlot={
+          activeDraftPrompt ? (
+            <AssistantDraftPrompt prompt={activeDraftPrompt} onConsumed={handleDraftPromptConsumed} />
+          ) : null
+        }
+      />
+    </>
   );
 }
 

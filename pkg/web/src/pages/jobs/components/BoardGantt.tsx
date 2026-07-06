@@ -152,6 +152,8 @@ export const BoardGantt: React.FC<{
       ghostPreviewRequest ? { ...ghostPreviewRequest.input, from: historyFloor } : { seeds: [] },
       {
         enabled: Boolean(ghostPreviewRequest && ghostPreviewRequest.input.seeds.length > 0),
+        // Live drag preview: don't keep a stale ghost projection when seeds change.
+        placeholderData: () => undefined,
       },
     ),
   );

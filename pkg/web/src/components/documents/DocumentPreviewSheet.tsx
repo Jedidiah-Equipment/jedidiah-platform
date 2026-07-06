@@ -37,6 +37,8 @@ export function DocumentPreviewSheet({ document, onOpenChange, open, owner }: Do
 
       return fetchDocumentPreviewBlob({ document, owner, signal });
     },
+    // Show the loading state on document change rather than the previous doc's blob.
+    placeholderData: () => undefined,
     queryKey: ['document-preview', owner.type, owner.id, document?.id],
     staleTime: Infinity,
   });

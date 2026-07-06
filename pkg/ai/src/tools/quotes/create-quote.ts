@@ -64,7 +64,9 @@ const CreateQuoteInput = QuoteCreateInputSchema.omit({
     offering: CreateQuoteOfferingInput,
     plannedDeliveryDate: DateOnlyIsoString.nullable().default(null),
     preferredDeliveryDate: DateOnlyIsoString.nullable().default(null),
-    salesPersonId: AuthId.optional(),
+    salesPersonId: AuthId.optional().describe(
+      'Salesperson User ID. Optional: when omitted the Quote is assigned to the acting user (the person making this request). Only set this when the user explicitly asks to assign the Quote to a different salesperson; do not pick one from the roster otherwise.',
+    ),
     selectedAssemblies: z.array(CreateQuoteSelectedAssemblyInput).default([]),
     status: QuoteCreateInputSchema.shape.status.default('draft'),
     validUntil: DateIsoString.nullable().default(null),
@@ -111,7 +113,7 @@ export const createQuoteDefinition: AiToolDefinition<CreateQuoteTool> = {
       'offering.kind product or custom',
       'Product UUID for Product Quotes',
       'Custom Work Title for Custom Quotes',
-      'salesPersonId User ID',
+      'salesPersonId User ID (optional; defaults to the acting user, set only to assign a different salesperson)',
     ],
     resultIdentifiers: [
       'Quote Code',

@@ -34,7 +34,7 @@ export const aiLinkMetadata = {
   },
   Quote: {
     entity: 'Quote',
-    href: '/quotes/{id}',
+    href: '/quotes/{id}/edit',
     guidance: AI_QUOTE_KIND_GUIDANCE,
     label: 'code',
   },

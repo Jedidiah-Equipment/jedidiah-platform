@@ -19,7 +19,7 @@ export const AI_QUOTE_KIND_GUIDANCE = [
   'Draft, sent, and accepted Custom Quotes can create Custom Jobs; rejected and cancelled Custom Quotes cannot.',
   'Custom Quote commercial fields stay editable with a running Custom Job until the Quote is accepted, then lock on acceptance.',
   'Quote offerings are either kind=product with productId, or kind=custom with Work Title and entered base price.',
-  'Quote Salesperson is required at creation; salesPersonId is non-nullable.',
+  'Quote Salesperson defaults to the acting user when salesPersonId is omitted at creation; only set salesPersonId to assign the Quote to a different salesperson.',
   'Product Quote price snapshot fields are latched from Product at creation; Custom Quote base price is entered directly in ZAR.',
   'Quote Line Items are freeform charges on both Quote kinds and always add quantity x unit price to Quote Pricing.',
   'Custom Quotes have no Product and expose product as null, have zero Selected Assemblies, and use Work Title as the display name fallback.',

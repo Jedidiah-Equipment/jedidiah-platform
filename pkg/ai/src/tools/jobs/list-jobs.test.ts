@@ -116,7 +116,7 @@ describe('listJobsTool', () => {
             },
             {
               entity: 'Quote',
-              href: '/quotes/00000000-0000-4000-8000-000000000002',
+              href: '/quotes/00000000-0000-4000-8000-000000000002/edit',
               label: 'QUO-00002',
             },
             {

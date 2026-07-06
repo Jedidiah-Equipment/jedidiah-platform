@@ -71,6 +71,8 @@ export const BookSlotDialog: React.FC = () => {
   const placementPreviewQuery = useQuery(
     trpc.jobs.previewSchedule.queryOptions(placementPreviewRequest?.input ?? { seeds: [] }, {
       enabled: Boolean(placementPreviewRequest && placementPreviewRequest.input.seeds.length === 1),
+      // Placement feedback must track the current form inputs, not a stale request.
+      placeholderData: () => undefined,
     }),
   );
   const placementFeedback = useMemo(() => {

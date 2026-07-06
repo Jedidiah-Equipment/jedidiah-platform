@@ -104,6 +104,10 @@ describe('snapshot table registry', () => {
     });
   });
 
+  it('revives nullable supplier soft-delete timestamps', () => {
+    expect(configFor('supplier').timestampColumns).toContain('deletedAt');
+  });
+
   it('extracts product image storage files, ignoring the inline thumbnail data URL', () => {
     const rows = [
       {

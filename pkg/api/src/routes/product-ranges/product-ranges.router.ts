@@ -1,5 +1,6 @@
 import {
   createProductRange,
+  deleteProductRange,
   getProductRange,
   isProductRangeCoreError,
   listProductRanges,
@@ -28,6 +29,10 @@ export const productRangesRouter = router({
     .input(ProductRangeUpdateInput)
     .mutation(({ ctx, input }) => mapProductRangeErrors(() => updateProductRange({ db: ctx.db, input }))),
 
+  delete: authorizedProcedure('product_range:update')
+    .input(z.object({ id: UUID }))
+    .mutation(({ ctx, input }) => mapProductRangeErrors(() => deleteProductRange({ db: ctx.db, id: input.id }))),
+
   reorder: authorizedProcedure('product_range:update')
     .input(ProductRangeReorderInput)
     .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRanges({ db: ctx.db, input }))),
@@ -51,6 +56,11 @@ const productRangeErrorMappings = {
     appCode: 'product_range.not_found',
     code: 'NOT_FOUND',
     message: 'Product Range not found.',
+  },
+  'product_range.has_products': {
+    appCode: 'product_range.has_products',
+    code: 'CONFLICT',
+    message: 'Product Range has linked products and cannot be deleted.',
   },
 } satisfies {
   [TCode in ProductRangeCoreError['code']]: CoreErrorMapping<TCode>;

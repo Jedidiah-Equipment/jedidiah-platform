@@ -1,4 +1,4 @@
-import { type Db, getUniqueViolationConstraint, productRanges } from '@pkg/db';
+import { type Db, getForeignKeyViolationConstraint, getUniqueViolationConstraint, productRanges } from '@pkg/db';
 import type {
   ProductRange,
   ProductRangeCreateInput,
@@ -12,10 +12,16 @@ import type {
 import { ProductRangeOption as ProductRangeOptionSchema, ProductRange as ProductRangeSchema } from '@pkg/schema';
 import { asc, eq, max } from 'drizzle-orm';
 
-import { DuplicateProductRangeNameError, ProductRangeNotFoundError } from './product-range-errors.js';
+import {
+  DuplicateProductRangeNameError,
+  ProductRangeHasProductsError,
+  ProductRangeNotFoundError,
+} from './product-range-errors.js';
 
 type ProductRangeRow = typeof productRanges.$inferSelect;
 type ProductRangeOptionRow = Pick<ProductRangeRow, 'id' | 'name'>;
+
+const PRODUCTS_RANGE_FOREIGN_KEY = 'products_range_id_product_ranges_id_fk';
 
 export function mapProductRange(row: ProductRangeRow): ProductRange {
   return ProductRangeSchema.parse({
@@ -173,11 +179,36 @@ export async function getProductRange({ db, id }: { db: Db; id: UUID }): Promise
   return mapProductRange(row);
 }
 
+export async function deleteProductRange({ db, id }: { db: Db; id: UUID }): Promise<void> {
+  try {
+    const [deleted] = await db
+      .delete(productRanges)
+      .where(eq(productRanges.id, id))
+      .returning({ id: productRanges.id });
+
+    if (!deleted) {
+      throw new ProductRangeNotFoundError(id);
+    }
+  } catch (error) {
+    throw mapProductRangeDeleteViolation(error, id);
+  }
+}
+
 function mapProductRangeUniqueViolation(error: unknown, input: Pick<ProductRangeCreateInput, 'name'>): Error {
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint !== null) {
     return new DuplicateProductRangeNameError(input.name);
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function mapProductRangeDeleteViolation(error: unknown, id: UUID): Error {
+  const foreignKey = getForeignKeyViolationConstraint(error);
+
+  if (foreignKey?.includes(PRODUCTS_RANGE_FOREIGN_KEY) || foreignKey?.includes('range_id')) {
+    return new ProductRangeHasProductsError(id);
   }
 
   return error instanceof Error ? error : new Error(String(error));

@@ -20,8 +20,26 @@ export class ProductRangeNotFoundError extends Error {
   }
 }
 
-export type ProductRangeCoreError = DuplicateProductRangeNameError | ProductRangeNotFoundError;
+export class ProductRangeHasProductsError extends Error {
+  readonly code = 'product_range.has_products';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super(`Product Range has linked products: ${id}`);
+    this.name = 'ProductRangeHasProductsError';
+    this.metadata = { id };
+  }
+}
+
+export type ProductRangeCoreError =
+  | DuplicateProductRangeNameError
+  | ProductRangeHasProductsError
+  | ProductRangeNotFoundError;
 
 export function isProductRangeCoreError(error: unknown): error is ProductRangeCoreError {
-  return error instanceof DuplicateProductRangeNameError || error instanceof ProductRangeNotFoundError;
+  return (
+    error instanceof DuplicateProductRangeNameError ||
+    error instanceof ProductRangeHasProductsError ||
+    error instanceof ProductRangeNotFoundError
+  );
 }

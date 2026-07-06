@@ -1,10 +1,11 @@
+import { type Db, products } from '@pkg/db';
 import type { ProductRange } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
 import { expectIsoDatetime, mockSession } from '@/test/test-utils.js';
 
-const test = createTester();
+const test = createTester(({ db }) => ({ db }));
 
 async function createRange(
   caller: AppRouterCaller,
@@ -14,6 +15,16 @@ async function createRange(
   return caller.productRanges.create({
     name,
     ...overrides,
+  });
+}
+
+async function createProductForRange(db: Db, rangeId: string): Promise<void> {
+  await db.insert(products).values({
+    basePrice: 1_000,
+    buildTimeDays: 14,
+    modelCode: `RANGE-DELETE-${crypto.randomUUID()}`,
+    name: `Range Delete Product ${crypto.randomUUID()}`,
+    rangeId,
   });
 }
 
@@ -131,12 +142,60 @@ describe('productRanges.reorder', () => {
   });
 });
 
+describe('productRanges.delete', () => {
+  test('deletes an unlinked Product Range and hides it from lists', async ({ context }) => {
+    const caller = context.createCaller();
+    const kept = await createRange(caller, 'Kept Range');
+    const deleted = await createRange(caller, 'Deleted Range');
+
+    await expect(caller.productRanges.delete({ id: deleted.id })).resolves.toBeUndefined();
+
+    await expect(caller.productRanges.get({ id: deleted.id })).rejects.toMatchObject({
+      appCode: 'product_range.not_found',
+      code: 'NOT_FOUND',
+    });
+    await expect(caller.productRanges.list()).resolves.toMatchObject({
+      ranges: [{ id: kept.id, name: 'Kept Range' }],
+    });
+  });
+
+  test('returns not found for a missing or already deleted Product Range', async ({ context }) => {
+    const caller = context.createCaller();
+    const deleted = await createRange(caller, 'Already Deleted Range');
+
+    await caller.productRanges.delete({ id: deleted.id });
+
+    await expect(caller.productRanges.delete({ id: deleted.id })).rejects.toMatchObject({
+      appCode: 'product_range.not_found',
+      code: 'NOT_FOUND',
+    });
+    await expect(caller.productRanges.delete({ id: '00000000-0000-4000-8000-0000000000ff' })).rejects.toMatchObject({
+      appCode: 'product_range.not_found',
+      code: 'NOT_FOUND',
+    });
+  });
+
+  test('rejects deleting a Product Range with linked products', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(caller, 'Linked Product Range');
+    await createProductForRange(context.db, range.id);
+
+    await expect(caller.productRanges.delete({ id: range.id })).rejects.toMatchObject({
+      appCode: 'product_range.has_products',
+      code: 'CONFLICT',
+    });
+  });
+});
+
 describe('productRanges permissions', () => {
   test('requires authentication', async ({ context }) => {
     await expect(context.createAnonCaller().productRanges.list()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+    await expect(
+      context.createAnonCaller().productRanges.delete({ id: '00000000-0000-4000-8000-000000000001' }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
   });
 
-  test('denies sales, procurement-manager, and job-viewer on read/create/update', async ({ context }) => {
+  test('denies sales, procurement-manager, and job-viewer on read/create/update/delete', async ({ context }) => {
     const adminCaller = context.createCaller();
     const range = await createRange(adminCaller, 'Permission Range');
 
@@ -153,6 +212,7 @@ describe('productRanges permissions', () => {
           name: `Denied ${role}`,
         }),
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(caller.productRanges.delete({ id: range.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
     }
   });
 });

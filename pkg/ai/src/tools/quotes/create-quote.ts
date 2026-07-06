@@ -2,6 +2,7 @@ import * as core from '@pkg/core';
 import {
   type AiToolBase,
   AuthId,
+  CustomerEmailInput,
   DateIsoString,
   DateOnlyIsoString,
   Price,
@@ -26,7 +27,7 @@ const CreateQuoteCustomerInput = z
     companyName: requiredTrimmedText('Company name is required').optional(),
     contactPerson: z.string().nullable().optional(),
     customerId: UUID.optional(),
-    email: z.email().nullable().optional(),
+    email: CustomerEmailInput.optional(),
     phone: z.string().nullable().optional(),
     type: z.enum(['existing', 'inline']),
   })

@@ -154,6 +154,39 @@ describe('AI write tools', () => {
     });
   });
 
+  test('createQuote normalizes a blank inline customer email to null', async () => {
+    const quote = createQuoteDetail();
+    const createQuoteSpy = vi.spyOn(core, 'createQuote').mockResolvedValue(quote);
+
+    await expect(
+      createQuoteTool.handler(
+        {
+          customer: { type: 'inline', companyName: 'Acme Mining', email: '' },
+          offering: {
+            kind: 'product',
+            productId: '00000000-0000-4000-8000-000000000201',
+          },
+        },
+        createAiContext(),
+      ),
+    ).resolves.toEqual(quote);
+
+    expect(createQuoteSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          customer: {
+            type: 'inline',
+            address: null,
+            companyName: 'Acme Mining',
+            contactPerson: null,
+            email: null,
+            phone: null,
+          },
+        }),
+      }),
+    );
+  });
+
   test('sendDraftQuoteEmail delegates to the existing actor-recipient draft flow', async () => {
     const deliverQuoteDraftEmail = vi.fn(async () => ({
       recipientEmail: 'sales@example.com',

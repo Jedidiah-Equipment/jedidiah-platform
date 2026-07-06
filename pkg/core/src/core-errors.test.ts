@@ -17,6 +17,7 @@ import {
 import {
   DuplicateProductRangeNameError,
   isProductRangeCoreError,
+  ProductRangeHasProductsError,
   ProductRangeNotFoundError,
 } from './product-ranges/product-range-errors.js';
 import {
@@ -46,7 +47,9 @@ describe('core error codes and guards', () => {
 
   it('identifies product range core errors', () => {
     expect(new DuplicateProductRangeNameError('Example Range').code).toBe('product_range.duplicate_name');
+    expect(new ProductRangeHasProductsError('range-id').code).toBe('product_range.has_products');
     expect(new ProductRangeNotFoundError('range-id').code).toBe('product_range.not_found');
+    expect(isProductRangeCoreError(new ProductRangeHasProductsError('range-id'))).toBe(true);
     expect(isProductRangeCoreError(new ProductRangeNotFoundError('range-id'))).toBe(true);
     expect(isProductRangeCoreError(new Error('product_range.not_found'))).toBe(false);
   });

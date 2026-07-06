@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { type Db, products } from '@pkg/db';
+import { type Db, notRemoved, products } from '@pkg/db';
 import { PRODUCT_IMAGE_POLICY } from '@pkg/domain';
 import type { AuthId, Product, ProductImageSlot, UUID } from '@pkg/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../audit/audit-service.js';
 import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
@@ -42,7 +42,11 @@ export async function replaceProductImage({
       buildStorageKey: ({ contentType }) =>
         `product-images/product/${input.productId}/${input.slot}/${randomUUID()}.${fileExtensionFor(contentType)}`,
       apply: async ({ nextRef, tx }) => {
-        const [before] = await tx.select().from(products).where(eq(products.id, input.productId)).for('update');
+        const [before] = await tx
+          .select()
+          .from(products)
+          .where(and(eq(products.id, input.productId), notRemoved(products)))
+          .for('update');
 
         if (!before) {
           throw new ProductNotFoundError(input.productId);
@@ -89,7 +93,11 @@ export async function readProductImage({
   slot: ProductImageSlot;
   storage: StorageAdapter;
 }): Promise<StoredObject> {
-  const [row] = await db.select({ images: products.images }).from(products).where(eq(products.id, productId)).limit(1);
+  const [row] = await db
+    .select({ images: products.images })
+    .from(products)
+    .where(and(eq(products.id, productId), notRemoved(products)))
+    .limit(1);
 
   if (!row) {
     throw new ProductNotFoundError(productId);

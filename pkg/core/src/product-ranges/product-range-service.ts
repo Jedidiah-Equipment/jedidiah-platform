@@ -1,4 +1,4 @@
-import { type Db, getUniqueViolationConstraint, productRanges } from '@pkg/db';
+import { type Db, getUniqueViolationConstraint, notRemoved, productRanges, products } from '@pkg/db';
 import type {
   ProductRange,
   ProductRangeCreateInput,
@@ -10,9 +10,13 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { ProductRangeOption as ProductRangeOptionSchema, ProductRange as ProductRangeSchema } from '@pkg/schema';
-import { asc, eq, max } from 'drizzle-orm';
+import { and, asc, count, eq, max } from 'drizzle-orm';
 
-import { DuplicateProductRangeNameError, ProductRangeNotFoundError } from './product-range-errors.js';
+import {
+  DuplicateProductRangeNameError,
+  ProductRangeHasProductsError,
+  ProductRangeNotFoundError,
+} from './product-range-errors.js';
 
 type ProductRangeRow = typeof productRanges.$inferSelect;
 type ProductRangeOptionRow = Pick<ProductRangeRow, 'id' | 'name'>;
@@ -45,6 +49,7 @@ export function mapProductRangeOption(row: ProductRangeOptionRow): ProductRangeO
 
 export async function listProductRanges({ db }: { db: Db }): Promise<ProductRangeListResult> {
   const rows = await db.query.productRanges.findMany({
+    where: notRemoved(productRanges),
     orderBy: [asc(productRanges.displayOrder), asc(productRanges.id)],
   });
 
@@ -60,6 +65,7 @@ export async function listProductRangeOptions({ db }: { db: Db }): Promise<Produ
       name: productRanges.name,
     })
     .from(productRanges)
+    .where(notRemoved(productRanges))
     .orderBy(asc(productRanges.displayOrder), asc(productRanges.id));
 
   return {
@@ -79,7 +85,8 @@ export async function createProductRange({
     // table starts at 0.
     const [{ value: currentMax } = { value: null }] = await db
       .select({ value: max(productRanges.displayOrder) })
-      .from(productRanges);
+      .from(productRanges)
+      .where(notRemoved(productRanges));
     const displayOrder = currentMax === null ? 0 : currentMax + 1;
 
     const [row] = await db
@@ -108,7 +115,7 @@ export async function reorderProductRanges({
   input: ProductRangeReorderInput;
 }): Promise<ProductRangeListResult> {
   await db.transaction(async (tx) => {
-    const rows = await tx.select({ id: productRanges.id }).from(productRanges);
+    const rows = await tx.select({ id: productRanges.id }).from(productRanges).where(notRemoved(productRanges));
     const existingIds = new Set(rows.map((row) => row.id));
     const orderedIds = input.orderedIds;
 
@@ -148,7 +155,7 @@ export async function updateProductRange({
         description: input.description,
         updatedAt: new Date(),
       })
-      .where(eq(productRanges.id, input.id))
+      .where(and(eq(productRanges.id, input.id), notRemoved(productRanges)))
       .returning();
 
     if (!row) {
@@ -163,7 +170,7 @@ export async function updateProductRange({
 
 export async function getProductRange({ db, id }: { db: Db; id: UUID }): Promise<ProductRange> {
   const row = await db.query.productRanges.findFirst({
-    where: eq(productRanges.id, id),
+    where: and(eq(productRanges.id, id), notRemoved(productRanges)),
   });
 
   if (!row) {
@@ -171,6 +178,32 @@ export async function getProductRange({ db, id }: { db: Db; id: UUID }): Promise
   }
 
   return mapProductRange(row);
+}
+
+export async function removeProductRange({ db, id }: { db: Db; id: UUID }): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(productRanges)
+      .where(and(eq(productRanges.id, id), notRemoved(productRanges)))
+      .for('update');
+
+    if (!before) {
+      throw new ProductRangeNotFoundError(id);
+    }
+
+    const [{ value: activeProductCount } = { value: 0 }] = await tx
+      .select({ value: count() })
+      .from(products)
+      .where(and(eq(products.rangeId, id), notRemoved(products)));
+
+    if (activeProductCount > 0) {
+      throw new ProductRangeHasProductsError(id);
+    }
+
+    const now = new Date();
+    await tx.update(productRanges).set({ deletedAt: now, updatedAt: now }).where(eq(productRanges.id, id));
+  });
 }
 
 function mapProductRangeUniqueViolation(error: unknown, input: Pick<ProductRangeCreateInput, 'name'>): Error {

@@ -1,5 +1,5 @@
 import type { PagedQueryInput, SortDirection } from '@pkg/schema';
-import { asc, desc, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
+import { asc, desc, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import type { PgSelect } from 'drizzle-orm/pg-core';
 
 export const LIKE_SEARCH_ESCAPE = '!';
@@ -37,6 +37,10 @@ export function getPaginationQueryOptions(pagination: PagedQueryInput): { limit?
 
 export function getSortOrder(expression: SQLWrapper, sortDirection: SortDirection): SQL {
   return sortDirection === 'desc' ? desc(expression) : asc(expression);
+}
+
+export function notRemoved(table: { deletedAt: SQLWrapper }): SQL {
+  return isNull(table.deletedAt);
 }
 
 export function withPagination<TQuery extends PgSelect>(query: TQuery, pagination: PagedQueryInput): TQuery {

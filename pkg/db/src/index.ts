@@ -1,4 +1,4 @@
-export { eq, sql } from 'drizzle-orm';
+export { and, eq, isNull, sql } from 'drizzle-orm';
 export { closeDatabaseConnection, db, queryClient } from './client.js';
 export { createDatabaseClient, type DatabaseClient, type Db } from './database-client.js';
 export { getDatabaseConfig, getDatabaseUrl } from './env.js';
@@ -13,6 +13,7 @@ export {
   getUniqueViolationConstraint,
   isUniqueViolation,
   LIKE_SEARCH_ESCAPE,
+  notRemoved,
   withPagination,
 } from './query-utils.js';
 export * from './schema.js';

@@ -4,6 +4,7 @@ import {
   generateQuoteDocument,
   getQuote,
   getQuoteProductBayAvailability,
+  getQuoteProductOption,
   isQuoteCoreError,
   listCustomers,
   listPriorityQuotes,
@@ -13,6 +14,7 @@ import {
   listQuotes,
   listStaleSentQuotes,
   listUpcomingDeliveryQuotes,
+  ProductNotFoundError,
   type QuoteCoreError,
   summarizeQuotePipeline,
   summarizeQuotesByStatus,
@@ -71,6 +73,20 @@ export const quotesRouter = router({
   products: authorizedProcedure('quote:read')
     .input(ProductListInput)
     .query(({ ctx, input }) => listProducts({ db: ctx.db, input, log })),
+
+  productOption: authorizedProcedure('quote:read')
+    .input(z.object({ id: UUID }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await getQuoteProductOption({ db: ctx.db, id: input.id });
+      } catch (error) {
+        if (error instanceof ProductNotFoundError) {
+          return null;
+        }
+
+        throw error;
+      }
+    }),
 
   rangeOptions: authorizedProcedure('quote:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),
 

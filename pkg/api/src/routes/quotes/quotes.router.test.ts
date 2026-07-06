@@ -622,9 +622,102 @@ describe('quotes.products', () => {
     });
     await expect(productEditorCaller.quotes.rangeOptions()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
+
+  test('keeps removed Products out of active options but resolves them for selected quote filters', async ({
+    context,
+  }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${products.id} = ${context.product.id}`);
+
+    await expect(
+      caller.quotes.products({
+        columnFilters: { id: context.product.id },
+        page: 1,
+        pageSize: 1,
+        search: '',
+        sortBy: 'name',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 0,
+      items: [],
+    });
+    await expect(caller.quotes.productOption({ id: context.product.id })).resolves.toMatchObject({
+      id: context.product.id,
+      name: context.product.name,
+    });
+  });
 });
 
 describe('quotes.list', () => {
+  test('keeps product facts on historical quotes after the product is removed', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const created = await createNamedQuote(caller, {
+      customerCompanyName: 'Historical Product Quote',
+      discountPercent: 0,
+      productId: context.product.id,
+    });
+
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${products.id} = ${context.product.id}`);
+
+    await expect(caller.quotes.get({ id: created.id })).resolves.toMatchObject({
+      id: created.id,
+      product: expect.objectContaining({
+        modelCode: context.product.modelCode,
+        name: context.product.name,
+      }),
+    });
+    await expect(
+      caller.quotes.list({
+        filters: { statuses: [] },
+        page: 1,
+        pageSize: 10,
+        search: 'Historical Product Quote',
+        sortBy: 'createdAt',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          id: created.id,
+          product: expect.objectContaining({
+            modelCode: context.product.modelCode,
+            name: context.product.name,
+          }),
+        }),
+      ],
+    });
+    await expect(
+      caller.quotes.list({
+        filters: { productId: context.product.id, statuses: [] },
+        page: 1,
+        pageSize: 10,
+        search: '',
+        sortBy: 'createdAt',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          id: created.id,
+          product: expect.objectContaining({
+            modelCode: context.product.modelCode,
+            name: context.product.name,
+          }),
+        }),
+      ],
+    });
+  });
+
   test('searches joined quote fields and keeps totals aligned with filtered rows', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const adminCaller = context.createCaller(mockSession('admin'));

@@ -25,6 +25,7 @@ describe('mapProduct', () => {
         technicalDetails: [{ label: 'Working Width', value: '7 m' }],
         createdAt,
         currencyCode: 'ZAR',
+        deletedAt: null,
         description: 'Earthmoving equipment',
         id: '00000000-0000-4000-8000-000000000001',
         buildTimeDays: 14,

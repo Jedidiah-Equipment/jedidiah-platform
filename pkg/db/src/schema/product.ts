@@ -28,6 +28,7 @@ export const products = pgTable(
     category: text('category'),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     currencyCode: text('currency_code').notNull().default('ZAR'),
+    deletedAt: timestamp('deleted_at', { mode: 'date', withTimezone: true }),
     description: text('description'),
     // Inline structural type (rather than the ProductImageStore alias) so the inferred Drizzle row type
     // stays portable into @pkg/api's emitted declarations (avoids TS2883 on the tRPC procedure types).
@@ -56,8 +57,8 @@ export const products = pgTable(
   (table) => [
     check('products_base_price_nonnegative', sql`${table.basePrice} >= 0`),
     check('products_build_time_days_nonnegative', sql`${table.buildTimeDays} >= 0`),
-    uniqueIndex('products_model_code_unique').on(table.modelCode),
-    uniqueIndex('products_name_unique').on(table.name),
+    uniqueIndex('products_model_code_unique').on(table.modelCode).where(sql`${table.deletedAt} is null`),
+    uniqueIndex('products_name_unique').on(table.name).where(sql`${table.deletedAt} is null`),
   ],
 );
 

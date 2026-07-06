@@ -29,6 +29,22 @@ test('resolveRangeImageRef returns null for a Range with no image', async ({ db 
   expect(await resolveRangeImageRef(db, range.id)).toBeNull();
 });
 
+test('resolveRangeImageRef returns null for a soft-removed Range', async ({ db }) => {
+  const storageKey = `range-images/product-range/${crypto.randomUUID()}/removed.png`;
+  const [range] = await db
+    .insert(productRanges)
+    .values({
+      name: `Lander Removed Image Range ${crypto.randomUUID()}`,
+      displayOrder: 0,
+      deletedAt: new Date(),
+      image: { byteSize: 3, contentType: 'image/png', storageKey, updatedAt: new Date().toISOString() },
+    })
+    .returning();
+  if (!range) throw new Error('insert did not return a row');
+
+  expect(await resolveRangeImageRef(db, range.id)).toBeNull();
+});
+
 test('resolveRangeImageRef returns null for an unknown Range id', async ({ db }) => {
   expect(await resolveRangeImageRef(db, crypto.randomUUID())).toBeNull();
 });
@@ -100,6 +116,34 @@ test('resolveProductImageRef falls back to primary when the requested slot is mi
 
   expect((await resolveProductImageRef(db, product.id))?.storageKey).toBe(primaryKey);
   expect((await resolveProductImageRef(db, product.id, 'not-a-slot'))?.storageKey).toBe(primaryKey);
+});
+
+test('resolveProductImageRef returns null for a soft-removed Product', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const primaryKey = `product-images/product/${suffix}/primary/removed.png`;
+  const [range] = await db
+    .insert(productRanges)
+    .values({ name: `Lander Removed Product Image Range ${suffix}`, displayOrder: 0 })
+    .returning();
+  if (!range) throw new Error('range insert did not return a row');
+
+  const [product] = await db
+    .insert(products)
+    .values({
+      basePrice: 1000,
+      buildTimeDays: 5,
+      deletedAt: new Date(),
+      images: {
+        primary: { byteSize: 1, contentType: 'image/png', storageKey: primaryKey, updatedAt: new Date().toISOString() },
+      },
+      modelCode: `IMG-REMOVED-${suffix}`,
+      name: `Lander Product Removed ${suffix}`,
+      rangeId: range.id,
+    })
+    .returning();
+  if (!product) throw new Error('product insert did not return a row');
+
+  expect(await resolveProductImageRef(db, product.id)).toBeNull();
 });
 
 test('resolveProductImageRef returns null for an unknown Product id', async ({ db }) => {

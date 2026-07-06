@@ -599,6 +599,40 @@ describe('generateQuoteDocument', () => {
     ]);
   });
 
+  test('generates the Product brochure for a historical quote after the Product is removed', async ({ context }) => {
+    await seedCompleteBrochureConfig(context, context.productId);
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(products.id, context.productId));
+
+    const result = await generateQuoteDocument({
+      actorUserId: ACTOR_USER_ID,
+      brochureRenderer: async () => realPdfBytes([[420, 420]]),
+      db: context.db,
+      input: {
+        leadTime: '14 working days',
+        quoteId: context.quoteId,
+      },
+      pdfRenderer: async () => realPdfBytes([[200, 300]]),
+      storage: context.storage,
+    });
+
+    const read = await readQuoteDocument({
+      db: context.db,
+      documentId: result.document.id,
+      quoteId: context.quoteId,
+      storage: context.storage,
+    });
+    const pageSizes = await getPdfPageSizes(await readAll(read.object.body));
+
+    expect(result.warnings).toEqual([]);
+    expect(pageSizes).toEqual([
+      { height: 300, width: 200 },
+      { height: 420, width: 420 },
+    ]);
+  });
+
   test('generates a quote-only PDF with a warning when the brochure config is incomplete', async ({ context }) => {
     const result = await generateQuoteDocument({
       actorUserId: ACTOR_USER_ID,
@@ -899,6 +933,23 @@ describe('getProductDocuments and readProductDocument', () => {
 
     expect(read.document.contentType).toBe('application/pdf');
     expect(read.object.contentType).toBe('application/octet-stream');
+  });
+
+  test('treats soft-removed Product document reads as Product not found', async ({ context }) => {
+    const document = await uploadPdf(context, { filename: 'Removed.pdf', productId: context.productId });
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(products.id, context.productId));
+
+    await expect(
+      readProductDocument({
+        db: context.db,
+        documentId: document.id,
+        productId: context.productId,
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(ProductNotFoundError);
   });
 
   test('reads job-owned snapshot document bytes', async ({ context }) => {

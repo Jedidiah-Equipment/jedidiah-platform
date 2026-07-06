@@ -156,14 +156,18 @@ export const snapshotTables = [
     fileName: 'product_ranges.json',
     table: productRanges,
     tableName: 'product_ranges',
-    timestampColumns: standardTimestampColumns,
+    timestampColumns: ['createdAt', 'updatedAt', 'deletedAt'],
+    omitReadColumns: ['deletedAt'],
+    seedRowDefaults: () => ({ deletedAt: null }),
     storageFiles: (row) => [row.image, row.logo].map(toStorageFile).filter(isStorageFile),
   },
   {
     fileName: 'products.json',
     table: products,
     tableName: 'products',
-    timestampColumns: standardTimestampColumns,
+    timestampColumns: ['createdAt', 'updatedAt', 'deletedAt'],
+    omitReadColumns: ['deletedAt'],
+    seedRowDefaults: () => ({ deletedAt: null }),
     storageFiles: (row) =>
       Object.values((row.images ?? {}) as Record<string, unknown>)
         .map(toStorageFile)

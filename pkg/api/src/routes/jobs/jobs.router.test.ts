@@ -890,6 +890,19 @@ describe('jobs.create', () => {
     expect(job.schedule.every((item) => item.bays.length === 0)).toBe(true);
   });
 
+  test('creates a job from an accepted quote after the Product is removed', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${products.id} = ${context.product.id}`);
+
+    await expect(caller.jobs.create({ quoteId: context.quote.id })).resolves.toMatchObject({
+      productId: context.product.id,
+      quoteId: context.quote.id,
+    });
+  });
+
   test('creates a job with seeded Bay slots in the returned schedule', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
 
@@ -1262,6 +1275,10 @@ describe('jobs.bookSlot', () => {
       durationDays: 2,
       jobId: scheduledJob.id,
     });
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${products.id} = ${context.product.id}`);
 
     const schedule = await caller.jobs.listBays();
 

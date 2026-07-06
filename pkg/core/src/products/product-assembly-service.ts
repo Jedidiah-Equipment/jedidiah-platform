@@ -3,8 +3,10 @@ import {
   assemblyParts,
   type DatabaseTransaction,
   type Db,
+  notRemoved,
   type parts,
   productAssemblies,
+  products,
 } from '@pkg/db';
 import type { Assembly, AssemblyInput, AssemblyNameListResult, UUID } from '@pkg/schema';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
@@ -114,6 +116,8 @@ export async function listAssemblyNames({ db }: { db: Db }): Promise<AssemblyNam
   const rows = await db
     .selectDistinctOn([lowerName], { name: productAssemblies.name })
     .from(productAssemblies)
+    .innerJoin(products, eq(productAssemblies.productId, products.id))
+    .where(notRemoved(products))
     .orderBy(lowerName, asc(productAssemblies.name));
 
   return {

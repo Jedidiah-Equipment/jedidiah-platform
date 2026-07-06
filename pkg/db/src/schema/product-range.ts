@@ -18,10 +18,11 @@ export const productRanges = pgTable(
     // create and rewritten by the reorder mutation.
     displayOrder: integer('display_order').notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    deletedAt: timestamp('deleted_at', { mode: 'date', withTimezone: true }),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     check('product_ranges_name_nonempty', sql`length(trim(${table.name})) > 0`),
-    uniqueIndex('product_ranges_name_ci_unique').on(sql`lower(${table.name})`),
+    uniqueIndex('product_ranges_name_ci_unique').on(sql`lower(${table.name})`).where(sql`${table.deletedAt} is null`),
   ],
 );

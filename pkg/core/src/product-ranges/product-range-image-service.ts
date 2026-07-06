@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { type Db, productRanges } from '@pkg/db';
+import { type Db, notRemoved, productRanges } from '@pkg/db';
 import { RANGE_IMAGE_POLICY, RANGE_LOGO_POLICY } from '@pkg/domain';
 import type { ProductRange, UUID } from '@pkg/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
 import { FileNotFoundError } from '../files/file-errors.js';
@@ -38,7 +38,11 @@ export async function replaceProductRangeImage({
       buildStorageKey: ({ contentType }) =>
         `range-images/product-range/${input.rangeId}/${randomUUID()}.${fileExtensionFor(contentType)}`,
       apply: async ({ nextRef, tx }) => {
-        const [before] = await tx.select().from(productRanges).where(eq(productRanges.id, input.rangeId)).for('update');
+        const [before] = await tx
+          .select()
+          .from(productRanges)
+          .where(and(eq(productRanges.id, input.rangeId), notRemoved(productRanges)))
+          .for('update');
 
         if (!before) {
           throw new ProductRangeNotFoundError(input.rangeId);
@@ -69,7 +73,7 @@ export async function readProductRangeImage({
   const [row] = await db
     .select({ image: productRanges.image })
     .from(productRanges)
-    .where(eq(productRanges.id, rangeId))
+    .where(and(eq(productRanges.id, rangeId), notRemoved(productRanges)))
     .limit(1);
 
   if (!row) {
@@ -109,7 +113,11 @@ export async function replaceProductRangeLogo({
       buildStorageKey: ({ contentType }) =>
         `range-logos/product-range/${input.rangeId}/${randomUUID()}.${fileExtensionFor(contentType)}`,
       apply: async ({ nextRef, tx }) => {
-        const [before] = await tx.select().from(productRanges).where(eq(productRanges.id, input.rangeId)).for('update');
+        const [before] = await tx
+          .select()
+          .from(productRanges)
+          .where(and(eq(productRanges.id, input.rangeId), notRemoved(productRanges)))
+          .for('update');
 
         if (!before) {
           throw new ProductRangeNotFoundError(input.rangeId);
@@ -140,7 +148,7 @@ export async function readProductRangeLogo({
   const [row] = await db
     .select({ logo: productRanges.logo })
     .from(productRanges)
-    .where(eq(productRanges.id, rangeId))
+    .where(and(eq(productRanges.id, rangeId), notRemoved(productRanges)))
     .limit(1);
 
   if (!row) {

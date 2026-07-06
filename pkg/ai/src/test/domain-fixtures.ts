@@ -136,7 +136,11 @@ export async function createQuoteFixture(
     db,
     input: {
       customer: {
+        address: null,
         companyName: 'Ready Customer',
+        contactPerson: null,
+        email: null,
+        phone: null,
         type: 'inline',
       },
       deliveryIncluded: true,

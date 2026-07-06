@@ -87,7 +87,13 @@ describe('AI write tools', () => {
     await expect(
       createQuoteTool.handler(
         {
-          customer: { type: 'inline', companyName: 'Acme Mining' },
+          customer: {
+            type: 'inline',
+            companyName: 'Acme Mining',
+            contactPerson: ' Jane Buyer ',
+            email: 'jane@acme.example',
+            phone: '',
+          },
           deliveryIncluded: false,
           deliveryPrice: 500,
           discountPercent: 10,
@@ -114,7 +120,14 @@ describe('AI write tools', () => {
       actorUserId: 'test-user-id',
       db: expect.any(Object),
       input: {
-        customer: { type: 'inline', companyName: 'Acme Mining' },
+        customer: {
+          type: 'inline',
+          address: null,
+          companyName: 'Acme Mining',
+          contactPerson: 'Jane Buyer',
+          email: 'jane@acme.example',
+          phone: null,
+        },
         deliveryIncluded: false,
         deliveryPrice: 500,
         depositPercent: 0,

@@ -166,6 +166,67 @@ describe('getQuote', () => {
   });
 });
 
+describe('inline quote customer', () => {
+  test('persists contact details on the inline-created Customer and surfaces them on the quote detail', async ({
+    context,
+  }) => {
+    const created = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: {
+          type: 'inline',
+          companyName: 'Brookside Farm',
+          contactPerson: '  Tony Jones  ',
+          email: 'Tony@Brookside.example',
+          phone: '082 000 0000',
+          address: '12 Farm Road',
+        },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    const [customer] = await context.db.select().from(customers).where(eq(customers.id, created.customerId));
+
+    expect(customer).toMatchObject({
+      address: '12 Farm Road',
+      companyName: 'Brookside Farm',
+      contactPerson: 'Tony Jones',
+      email: 'tony@brookside.example',
+      phone: '082 000 0000',
+    });
+    expect(created).toMatchObject({
+      customerContactPerson: 'Tony Jones',
+      customerEmail: 'tony@brookside.example',
+    });
+  });
+
+  test('defaults inline Customer contact details to null when omitted', async ({ context }) => {
+    const created = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'inline', companyName: 'Sparse Farm' },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    const [customer] = await context.db.select().from(customers).where(eq(customers.id, created.customerId));
+
+    expect(customer).toMatchObject({
+      address: null,
+      companyName: 'Sparse Farm',
+      contactPerson: null,
+      email: null,
+      phone: null,
+    });
+  });
+});
+
 describe('quote line items', () => {
   test('creates line items and full-replaces them on update', async ({ context }) => {
     const created = await createQuoteService({

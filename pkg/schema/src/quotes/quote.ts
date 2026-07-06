@@ -8,7 +8,13 @@ import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
-import { CustomerEmail, CustomerOptionalText, CustomerVatNumber } from '../customers/customer.js';
+import {
+  CustomerEmail,
+  CustomerEmailInput,
+  CustomerOptionalText,
+  CustomerOptionalTextInput,
+  CustomerVatNumber,
+} from '../customers/customer.js';
 import { Bay } from '../jobs/job.js';
 import {
   Assembly,
@@ -235,6 +241,10 @@ export const QuoteCustomerInput = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('inline'),
     companyName: requiredTrimmedText('Company name is required'),
+    contactPerson: CustomerOptionalTextInput,
+    email: CustomerEmailInput,
+    phone: CustomerOptionalTextInput,
+    address: CustomerOptionalTextInput,
   }),
 ]);
 

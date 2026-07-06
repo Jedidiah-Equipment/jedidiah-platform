@@ -285,8 +285,11 @@ async function resolveQuoteCustomer({
   const [customer] = await tx
     .insert(customers)
     .values({
+      address: input.customer.address,
       companyName: input.customer.companyName,
-      email: null,
+      contactPerson: input.customer.contactPerson,
+      email: input.customer.email,
+      phone: input.customer.phone,
     })
     .returning();
 

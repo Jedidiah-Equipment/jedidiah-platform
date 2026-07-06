@@ -1,6 +1,6 @@
 import { bayWorkingCalendars, type WorkingCalendar } from '@pkg/domain';
 import type { BoardListInput, BoardListResult } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useTRPC } from '@/lib/trpc.js';
@@ -24,7 +24,14 @@ export function useBayCalendars(
   options: { enabled?: boolean } = {},
 ): BayCalendars | null {
   const trpc = useTRPC();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(input, { enabled: options.enabled ?? true }));
+  const baysQuery = useQuery(
+    trpc.jobs.listBays.queryOptions(input, {
+      enabled: options.enabled ?? true,
+      // Keep the prior window's calendars during a history-floor refetch so the schedule board
+      // does not unmount (plantToday going null) and reset the Gantt scroll back to today.
+      placeholderData: keepPreviousData,
+    }),
+  );
 
   return useMemo(() => (baysQuery.data ? selectBayCalendars(baysQuery.data) : null), [baysQuery.data]);
 }

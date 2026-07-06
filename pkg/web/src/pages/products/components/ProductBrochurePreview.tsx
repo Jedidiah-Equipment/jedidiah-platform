@@ -82,8 +82,6 @@ const BrochurePreviewSheet: React.FC<BrochurePreviewSheetProps> = ({
   const previewQuery = useQuery({
     enabled: open && previewRequest > 0,
     queryFn: ({ signal }) => fetchProductBrochurePreviewBlob({ productId, signal }),
-    // Show the loading state on re-generate rather than the previously rendered PDF.
-    placeholderData: () => undefined,
     queryKey: ['product-brochure-preview', productId, previewRequest],
     staleTime: 0,
   });

@@ -12,6 +12,7 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -29,6 +30,7 @@ export const useProductTableStore = createPersistedDataTableStore({
     ],
   },
   persistName: 'products-table',
+  persistVersion: 2,
 });
 
 const productSortOptions: SortOptions<ProductListInput> = {
@@ -40,6 +42,7 @@ const productSortOptions: SortOptions<ProductListInput> = {
 
 export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => {
   const trpc = useTRPC();
+  const productRangeOptions = useProductRangeOptions();
 
   const tableController = useServerSideTableController({
     store: useProductTableStore,
@@ -80,6 +83,19 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Name',
+      },
+      {
+        accessorFn: (product) => product.range.name,
+        cell: ({ row }) => <span>{row.original.range.name}</span>,
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Range',
+        id: 'rangeName',
+        meta: {
+          filterOptions: productRangeOptions.selectOptions,
+          filterVariant: 'select',
+          headerClassName: 'min-w-36',
+        },
       },
       {
         accessorKey: 'modelCode',
@@ -123,7 +139,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     ];
 
     return tableColumns;
-  }, []);
+  }, [productRangeOptions.selectOptions]);
 
   const table = useReactTable({
     columns,
@@ -167,11 +183,15 @@ function getProductListInputExtras(columnFilters: ColumnFiltersState) {
     columnFilters: {
       modelCode: getColumnFilterValue(columnFilters, 'modelCode'),
       name: getColumnFilterValue(columnFilters, 'name'),
+      rangeId: getColumnFilterValue(columnFilters, 'rangeName'),
     },
   } satisfies Pick<ProductListInput, 'columnFilters'>;
 }
 
-function getColumnFilterValue(columnFilters: ColumnFiltersState, id: 'modelCode' | 'name'): string | undefined {
+function getColumnFilterValue(
+  columnFilters: ColumnFiltersState,
+  id: 'modelCode' | 'name' | 'rangeName',
+): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;

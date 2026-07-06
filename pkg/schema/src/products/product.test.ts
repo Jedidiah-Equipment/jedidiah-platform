@@ -283,13 +283,14 @@ describe('ProductListInput', () => {
           rangeId: RANGE_ID,
         },
         pageSize: 20,
+        sortBy: 'rangeName',
       }),
     ).toMatchObject({
       columnFilters: {
         rangeId: RANGE_ID,
       },
       pageSize: 20,
-      sortBy: 'name',
+      sortBy: 'rangeName',
       sortDirection: 'asc',
     });
   });

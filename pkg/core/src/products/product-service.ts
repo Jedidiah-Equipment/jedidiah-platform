@@ -7,6 +7,7 @@ import {
   type Db,
   documents,
   getForeignKeyViolationConstraint,
+  getPaginationOffset,
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
@@ -31,6 +32,7 @@ import type {
   ProductImageSlot,
   ProductListInput,
   ProductListResult,
+  ProductRangeOption,
   ProductUpdateInput,
   UUID,
 } from '@pkg/schema';
@@ -41,6 +43,7 @@ import {
   ProductDocumentMetadata,
   ProductDocument as ProductDocumentSchema,
   ProductImages,
+  ProductRangeOption as ProductRangeOptionSchema,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
@@ -88,7 +91,9 @@ import {
 const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
 const PRODUCT_RANGE_FOREIGN_KEY = 'products_range_id_product_ranges_id_fk';
 
-type ProductRow = typeof products.$inferSelect;
+type ProductRow = typeof products.$inferSelect & {
+  range: ProductRangeOption;
+};
 type ProductListRow = ProductRow & { assemblies: AssemblyListRow[] };
 
 // Shared relational read shape for full Product reads — the paged list and the unpaged catalog read. The
@@ -134,8 +139,14 @@ const productListWith = {
       optionalOverrides: true,
     },
   },
+  range: {
+    columns: {
+      id: true,
+      name: true,
+    },
+  },
 } as const;
-type ProductAuditInput = ProductRow & {
+type ProductAuditInput = typeof products.$inferSelect & {
   assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']>;
   productBays: ProductBay[] | ProductBayInput[];
 };
@@ -201,6 +212,7 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
     name: row.name,
     nameHighlight: row.nameHighlight,
     productBays: row.productBays ?? [],
+    range: row.range,
     rangeId: row.rangeId,
     requiresVinNumber: row.requiresVinNumber,
     brochureEnabled: row.brochureEnabled,
@@ -240,9 +252,38 @@ export async function listProducts({
   input: ProductListInput;
   log: Logger;
 }): Promise<ProductListResult> {
+  const where = buildProductListWhere(input);
+  const [rows, total] =
+    input.sortBy === 'rangeName'
+      ? await listProductsSortedByRangeName({ db, input, where })
+      : await listProductsSortedByProductColumn({ db, input, log, where });
+
+  const productBaysByProductId = await listProductBaysByProductIds({
+    db,
+    productIds: rows.map((row) => row.id),
+  });
+
+  return {
+    items: rows.map((row) => mapProductListRow(row, productBaysByProductId.get(row.id) ?? [])),
+    total,
+    sortBy: input.sortBy,
+    sortDirection: input.sortDirection,
+  };
+}
+
+async function listProductsSortedByProductColumn({
+  db,
+  input,
+  log,
+  where,
+}: {
+  db: Db;
+  input: ProductListInput;
+  log: Logger;
+  where: SQL;
+}): Promise<[ProductListRow[], number]> {
   const sortColumn = getProductSortColumn(input.sortBy);
   const orderBy = getSortOrder(sortColumn, input.sortDirection);
-  const where = buildProductListWhere(input);
   const productsQuery = db.query.products.findMany({
     columns: productListColumns,
     where,
@@ -261,18 +302,49 @@ export async function listProducts({
     })}`,
   );
 
-  const [rows, total] = await Promise.all([productsQuery, db.$count(products, where)]);
-  const productBaysByProductId = await listProductBaysByProductIds({
-    db,
-    productIds: rows.map((row) => row.id),
+  return Promise.all([productsQuery, db.$count(products, where)]);
+}
+
+// Range-name sorting needs the Range join for order, while Product mapping still depends on the
+// relational read shape above. Page ordered ids first, then hydrate those Products normally.
+async function listProductsSortedByRangeName({
+  db,
+  input,
+  where,
+}: {
+  db: Db;
+  input: ProductListInput;
+  where: SQL;
+}): Promise<[ProductListRow[], number]> {
+  let idQuery = db
+    .select({ id: products.id })
+    .from(products)
+    .innerJoin(productRanges, eq(products.rangeId, productRanges.id))
+    .where(where)
+    .orderBy(getSortOrder(productRanges.name, input.sortDirection), asc(products.name), asc(products.id))
+    .$dynamic();
+
+  if (input.pageSize !== 0) {
+    idQuery = idQuery.limit(input.pageSize).offset(getPaginationOffset(input));
+  }
+
+  const [idRows, total] = await Promise.all([idQuery, db.$count(products, where)]);
+  const productIds = idRows.map((row) => row.id);
+
+  if (productIds.length === 0) {
+    return [[], total];
+  }
+
+  const orderByProductId = new Map(productIds.map((id, index) => [id, index]));
+  const rows = await db.query.products.findMany({
+    columns: productListColumns,
+    where: inArray(products.id, productIds),
+    with: productListWith,
   });
 
-  return {
-    items: rows.map((row) => mapProductListRow(row, productBaysByProductId.get(row.id) ?? [])),
-    total,
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
-  };
+  rows.sort((left, right) => (orderByProductId.get(left.id) ?? 0) - (orderByProductId.get(right.id) ?? 0));
+
+  return [rows, total];
 }
 
 // Loads every Product fully mapped, with no pagination, search, or sort — for the public Lander catalog
@@ -437,7 +509,7 @@ async function loadProductDetailRow({
         },
         // The brochure's top-right logo is the owning Range's logo; load it here so the brochure source
         // resolves it from the same read. Other callers (getProduct) ignore it.
-        range: { columns: { logo: true } },
+        range: { columns: { id: true, logo: true, name: true } },
       },
     }),
     listProductBays({ db, productId: id }),
@@ -623,7 +695,7 @@ export async function createProduct({
   try {
     return await db.transaction(async (tx) => {
       const { assemblies: desiredAssemblies, productBays: desiredProductBays, ...productInput } = input;
-      await assertActiveProductRange({ rangeId: productInput.rangeId, tx });
+      const range = await assertActiveProductRange({ rangeId: productInput.rangeId, tx });
 
       const [row] = await tx.insert(products).values(productInput).returning();
 
@@ -641,7 +713,7 @@ export async function createProduct({
         productId: row.id,
         desired: desiredProductBays,
       });
-      const after = { ...row, assemblies, productBays: syncedProductBays };
+      const after = { ...row, assemblies, productBays: syncedProductBays, range };
 
       await recordAuditCreate({ db: tx, descriptor: productAuditDescriptor, actorUserId, input: after });
 
@@ -673,7 +745,7 @@ export async function updateProduct({
         throw new ProductNotFoundError(input.id);
       }
 
-      await assertActiveProductRange({ rangeId: input.rangeId, tx });
+      const range = await assertActiveProductRange({ rangeId: input.rangeId, tx });
 
       const beforeAssemblies = await listAssemblies({ tx, productId: input.id });
       const beforeProductBays = await listProductBays({ db: tx, productId: input.id });
@@ -705,7 +777,7 @@ export async function updateProduct({
       );
 
       if (!changes) {
-        return mapProduct({ ...before, assemblies: beforeAssemblies, productBays: beforeProductBays });
+        return mapProduct({ ...before, assemblies: beforeAssemblies, productBays: beforeProductBays, range });
       }
 
       const [row] = await tx
@@ -733,7 +805,7 @@ export async function updateProduct({
               productId: row.id,
               desired: input.productBays,
             });
-      const afterWithChildren = { ...row, assemblies, productBays: syncedProductBays };
+      const afterWithChildren = { ...row, assemblies, productBays: syncedProductBays, range };
 
       await recordAuditUpdate({
         db: tx,
@@ -947,9 +1019,15 @@ async function assertProductExists({ db, productId }: { db: Db; productId: UUID 
   }
 }
 
-async function assertActiveProductRange({ rangeId, tx }: { rangeId: UUID; tx: DatabaseTransaction }): Promise<void> {
+async function assertActiveProductRange({
+  rangeId,
+  tx,
+}: {
+  rangeId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<ProductRangeOption> {
   const [range] = await tx
-    .select({ id: productRanges.id })
+    .select({ id: productRanges.id, name: productRanges.name })
     .from(productRanges)
     .where(and(eq(productRanges.id, rangeId), notRemoved(productRanges)))
     .for('update');
@@ -957,6 +1035,8 @@ async function assertActiveProductRange({ rangeId, tx }: { rangeId: UUID; tx: Da
   if (!range) {
     throw new ProductRangeReferenceNotFoundError(rangeId);
   }
+
+  return ProductRangeOptionSchema.parse(range);
 }
 
 function toAuditAssemblies(

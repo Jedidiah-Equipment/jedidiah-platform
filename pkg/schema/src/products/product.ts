@@ -12,6 +12,7 @@ import {
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { Bay } from '../jobs/job.js';
+import { ProductRangeOption } from './product-range.js';
 
 export type ProductName = z.infer<typeof ProductName>;
 export const ProductName = requiredTrimmedText('Product name is required');
@@ -449,6 +450,7 @@ export const Product = z.object({
   nameHighlight: ProductNameHighlight.default(null),
   description: ProductDescription,
   modelCode: ProductModelCode,
+  range: ProductRangeOption,
   basePrice: ProductBasePrice,
   buildTimeDays: ProductBuildTimeDays,
   currencyCode: ProductCurrencyCode,
@@ -470,7 +472,7 @@ export const Product = z.object({
 });
 
 export type ProductSortBy = z.infer<typeof ProductSortBy>;
-export const ProductSortBy = z.enum(['basePrice', 'createdAt', 'id', 'modelCode', 'name']);
+export const ProductSortBy = z.enum(['basePrice', 'createdAt', 'id', 'modelCode', 'name', 'rangeName']);
 
 export type ProductColumnFilters = z.infer<typeof ProductColumnFilters>;
 export const ProductColumnFilters = z

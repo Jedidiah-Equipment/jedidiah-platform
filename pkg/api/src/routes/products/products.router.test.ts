@@ -305,6 +305,40 @@ describe('products.read', () => {
     );
   });
 
+  test('returns ranges and supports filtering and sorting products by Range', async ({ context }) => {
+    const caller = context.createCaller();
+    const alphaRange = await createRange(context.db, {
+      id: '00000000-0000-4000-8000-000000000507',
+      name: 'Alpha Range',
+    });
+    const zebraRange = await createRange(context.db, {
+      id: '00000000-0000-4000-8000-000000000508',
+      name: 'Zebra Range',
+    });
+    const alphaProduct = await createProduct(caller, 'Range Sort Alpha Product', alphaRange.id);
+    const zebraProduct = await createProduct(caller, 'Range Sort Zebra Product', zebraRange.id);
+
+    await expect(caller.products.get({ id: alphaProduct.id })).resolves.toMatchObject({
+      id: alphaProduct.id,
+      range: { id: alphaRange.id, name: 'Alpha Range' },
+      rangeId: alphaRange.id,
+    });
+
+    await expect(caller.products.list({ columnFilters: { rangeId: zebraRange.id } })).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: zebraProduct.id, range: { id: zebraRange.id, name: 'Zebra Range' } })],
+      total: 1,
+    });
+
+    const sorted = await caller.products.list({
+      pageSize: 10,
+      sortBy: 'rangeName',
+      sortDirection: 'desc',
+    });
+
+    expect(sorted.items.map((product) => product.id)).toEqual([zebraProduct.id, alphaProduct.id]);
+    expect(sorted.sortBy).toBe('rangeName');
+  });
+
   test('returns assemblies on get and list', async ({ context }) => {
     const caller = context.createCaller();
     const partIds = await createParts(context.db);

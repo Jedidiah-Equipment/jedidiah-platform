@@ -142,6 +142,7 @@ describe('runChatStream', () => {
       modelCode: 'AF-25',
       name: 'Apex Forklift',
       options: [],
+      range: { id: '00000000-0000-4000-8000-000000000301', name: 'Forklifts' },
       rangeId: '00000000-0000-4000-8000-000000000301',
       requiresVinNumber: false,
       thumbnailDataUrl: null,

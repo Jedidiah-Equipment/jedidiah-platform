@@ -1,4 +1,4 @@
-import { type Db, productRanges, products, sql } from '@pkg/db';
+import { and, type Db, eq, notRemoved, productRanges, products } from '@pkg/db';
 import { ProductImageSlot, type ProductImageSlot as ProductImageSlotName, UUID } from '@pkg/schema';
 
 const DEFAULT_PRODUCT_IMAGE_SLOT: ProductImageSlotName = 'primary';
@@ -20,7 +20,7 @@ export async function resolveRangeImageRef(db: Db, rangeId: string): Promise<Res
   const [row] = await db
     .select({ image: productRanges.image })
     .from(productRanges)
-    .where(sql`${productRanges.id} = ${parsed.data} and ${productRanges.deletedAt} is null`)
+    .where(and(eq(productRanges.id, parsed.data), notRemoved(productRanges)))
     .limit(1);
 
   return toRef(row?.image);
@@ -43,7 +43,7 @@ export async function resolveProductImageRef(
   const [row] = await db
     .select({ images: products.images })
     .from(products)
-    .where(sql`${products.id} = ${parsed.data} and ${products.deletedAt} is null`)
+    .where(and(eq(products.id, parsed.data), notRemoved(products)))
     .limit(1);
 
   return toRef(row?.images?.[slot]);

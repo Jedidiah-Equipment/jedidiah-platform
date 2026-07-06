@@ -1,4 +1,4 @@
-import { customers, type DatabaseTransaction, type Db, jobs, products, quotes, user } from '@pkg/db';
+import { customers, type DatabaseTransaction, type Db, jobs, notRemoved, products, quotes, user } from '@pkg/db';
 import { assertQuoteEditable, validateDiscount } from '@pkg/domain';
 import {
   type AuthId,
@@ -10,7 +10,7 @@ import {
   type QuoteUpdateInput,
   type UUID,
 } from '@pkg/schema';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
@@ -328,7 +328,8 @@ async function resolveQuoteOffering({
       id: products.id,
     })
     .from(products)
-    .where(and(eq(products.id, input.offering.productId), isNull(products.deletedAt)))
+    .where(and(eq(products.id, input.offering.productId), notRemoved(products)))
+    .for('update')
     .limit(1);
 
   if (!product) {

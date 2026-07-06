@@ -622,6 +622,35 @@ describe('quotes.products', () => {
     });
     await expect(productEditorCaller.quotes.rangeOptions()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
+
+  test('keeps removed Products out of active options but resolves them for selected quote filters', async ({
+    context,
+  }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${products.id} = ${context.product.id}`);
+
+    await expect(
+      caller.quotes.products({
+        columnFilters: { id: context.product.id },
+        page: 1,
+        pageSize: 1,
+        search: '',
+        sortBy: 'name',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 0,
+      items: [],
+    });
+    await expect(caller.quotes.productOption({ id: context.product.id })).resolves.toMatchObject({
+      id: context.product.id,
+      name: context.product.name,
+    });
+  });
 });
 
 describe('quotes.list', () => {
@@ -651,6 +680,27 @@ describe('quotes.list', () => {
         page: 1,
         pageSize: 10,
         search: 'Historical Product Quote',
+        sortBy: 'createdAt',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          id: created.id,
+          product: expect.objectContaining({
+            modelCode: context.product.modelCode,
+            name: context.product.name,
+          }),
+        }),
+      ],
+    });
+    await expect(
+      caller.quotes.list({
+        filters: { productId: context.product.id, statuses: [] },
+        page: 1,
+        pageSize: 10,
+        search: '',
         sortBy: 'createdAt',
         sortDirection: 'asc',
       }),

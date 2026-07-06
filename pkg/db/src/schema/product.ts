@@ -57,8 +57,8 @@ export const products = pgTable(
   (table) => [
     check('products_base_price_nonnegative', sql`${table.basePrice} >= 0`),
     check('products_build_time_days_nonnegative', sql`${table.buildTimeDays} >= 0`),
-    uniqueIndex('products_model_code_unique').on(table.modelCode),
-    uniqueIndex('products_name_unique').on(table.name),
+    uniqueIndex('products_model_code_unique').on(table.modelCode).where(sql`${table.deletedAt} is null`),
+    uniqueIndex('products_name_unique').on(table.name).where(sql`${table.deletedAt} is null`),
   ],
 );
 

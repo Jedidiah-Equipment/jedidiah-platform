@@ -34,7 +34,7 @@ import { asc, eq } from 'drizzle-orm';
 
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
-import { generateProductBrochureIfComplete } from '../products/product-brochure-document.js';
+import { generateHistoricalProductBrochureIfComplete } from '../products/product-brochure-document.js';
 import { createQuoteDocument, getQuoteDocuments } from './quote-document.js';
 import {
   QuoteDocumentGenerationNotAllowedError,
@@ -116,9 +116,8 @@ export async function renderQuoteDocumentRevision({
   const renderedQuoteBytes = await pdfRenderer({ document, filename });
   const brochure =
     source.kind === 'product'
-      ? await generateProductBrochureIfComplete({
+      ? await generateHistoricalProductBrochureIfComplete({
           db,
-          includeRemoved: true,
           pdfRenderer: brochureRenderer,
           productId: source.productId,
           storage,

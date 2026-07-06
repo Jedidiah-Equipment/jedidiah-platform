@@ -11,6 +11,7 @@ import {
   getSortOrder,
   getUniqueViolationConstraint,
   jobBays,
+  notRemoved,
   type ProductImageStore,
   productBays,
   productRanges,
@@ -41,7 +42,7 @@ import {
   ProductDocument as ProductDocumentSchema,
   ProductImages,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import {
@@ -281,7 +282,7 @@ export async function listProducts({
 export async function listAllProducts({ db }: { db: Db }): Promise<Product[]> {
   const rows = await db.query.products.findMany({
     columns: productListColumns,
-    where: isNull(products.deletedAt),
+    where: notRemoved(products),
     with: productListWith,
   });
   const productBaysByProductId = await listProductBaysByProductIds({
@@ -301,7 +302,7 @@ function mapProductListRow(row: ProductListRow, productBaysForRow: ProductBay[] 
 }
 
 function buildProductListWhere(listInput: ProductListInput): SQL {
-  const conditions: SQL[] = [isNull(products.deletedAt)];
+  const conditions: SQL[] = [notRemoved(products)];
 
   if (listInput.search) {
     const globalSearchWhere = createGlobalSearchCondition(listInput.search, [
@@ -338,7 +339,13 @@ function buildProductListWhere(listInput: ProductListInput): SQL {
 }
 
 export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Product> {
-  const { row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id });
+  const { row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id, includeRemoved: false });
+
+  return mapProductListRow(row, productBaysForProduct);
+}
+
+export async function getQuoteProductOption({ db, id }: { db: Db; id: UUID }): Promise<Product> {
+  const { row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id, includeRemoved: true });
 
   return mapProductListRow(row, productBaysForProduct);
 }
@@ -349,12 +356,31 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
 export async function getProductBrochureSource({
   db,
   id,
-  includeRemoved = false,
 }: {
   db: Db;
   id: UUID;
-  // Only immutable quote/job document generation should opt into removed Products.
-  includeRemoved?: boolean;
+}): Promise<{ images: ProductImageStore; product: Product; rangeLogo: StoredFile | null }> {
+  return getProductBrochureSourceByVisibility({ db, id, includeRemoved: false });
+}
+
+export async function getHistoricalProductBrochureSource({
+  db,
+  id,
+}: {
+  db: Db;
+  id: UUID;
+}): Promise<{ images: ProductImageStore; product: Product; rangeLogo: StoredFile | null }> {
+  return getProductBrochureSourceByVisibility({ db, id, includeRemoved: true });
+}
+
+async function getProductBrochureSourceByVisibility({
+  db,
+  id,
+  includeRemoved,
+}: {
+  db: Db;
+  id: UUID;
+  includeRemoved: boolean;
 }): Promise<{ images: ProductImageStore; product: Product; rangeLogo: StoredFile | null }> {
   const {
     rangeLogo,
@@ -376,17 +402,17 @@ export async function getProductBrochureSource({
 async function loadProductDetailRow({
   db,
   id,
-  includeRemoved = false,
+  includeRemoved,
 }: {
   db: Db;
   id: UUID;
-  includeRemoved?: boolean;
+  includeRemoved: boolean;
 }): Promise<{
   productBays: ProductBay[];
   rangeLogo: StoredFile | null;
   row: ProductListRow;
 }> {
-  const productWhere = includeRemoved ? eq(products.id, id) : and(eq(products.id, id), isNull(products.deletedAt));
+  const productWhere = includeRemoved ? eq(products.id, id) : and(eq(products.id, id), notRemoved(products));
   // The Product's Bays key off the same id as the main read, so load both in parallel rather than
   // waiting on the Product row before fetching its Bays.
   const [row, productBays] = await Promise.all([
@@ -640,7 +666,7 @@ export async function updateProduct({
       const [before] = await tx
         .select()
         .from(products)
-        .where(and(eq(products.id, input.id), isNull(products.deletedAt)))
+        .where(and(eq(products.id, input.id), notRemoved(products)))
         .for('update');
 
       if (!before) {
@@ -729,7 +755,7 @@ export async function removeProduct({ db, id, actorUserId }: { db: Db; id: UUID;
     const [before] = await tx
       .select()
       .from(products)
-      .where(and(eq(products.id, id), isNull(products.deletedAt)))
+      .where(and(eq(products.id, id), notRemoved(products)))
       .for('update');
 
     if (!before) {
@@ -913,7 +939,7 @@ async function assertProductExists({ db, productId }: { db: Db; productId: UUID 
       id: products.id,
     })
     .from(products)
-    .where(and(eq(products.id, productId), isNull(products.deletedAt)))
+    .where(and(eq(products.id, productId), notRemoved(products)))
     .limit(1);
 
   if (!product) {
@@ -925,7 +951,7 @@ async function assertActiveProductRange({ rangeId, tx }: { rangeId: UUID; tx: Da
   const [range] = await tx
     .select({ id: productRanges.id })
     .from(productRanges)
-    .where(and(eq(productRanges.id, rangeId), isNull(productRanges.deletedAt)))
+    .where(and(eq(productRanges.id, rangeId), notRemoved(productRanges)))
     .for('update');
 
   if (!range) {

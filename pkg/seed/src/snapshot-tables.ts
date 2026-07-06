@@ -157,6 +157,8 @@ export const snapshotTables = [
     table: productRanges,
     tableName: 'product_ranges',
     timestampColumns: ['createdAt', 'updatedAt', 'deletedAt'],
+    omitReadColumns: ['deletedAt'],
+    seedRowDefaults: () => ({ deletedAt: null }),
     storageFiles: (row) => [row.image, row.logo].map(toStorageFile).filter(isStorageFile),
   },
   {
@@ -164,6 +166,8 @@ export const snapshotTables = [
     table: products,
     tableName: 'products',
     timestampColumns: ['createdAt', 'updatedAt', 'deletedAt'],
+    omitReadColumns: ['deletedAt'],
+    seedRowDefaults: () => ({ deletedAt: null }),
     storageFiles: (row) =>
       Object.values((row.images ?? {}) as Record<string, unknown>)
         .map(toStorageFile)

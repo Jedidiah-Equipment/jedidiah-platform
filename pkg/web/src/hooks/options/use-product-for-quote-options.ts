@@ -6,6 +6,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { mergeSelectedOption, toSelectOptions } from './helpers.js';
 
 type UseProductForQuoteOptionsOptions = {
+  includeHistoricalSelected?: boolean;
   pageSize?: number;
   rangeId?: UUID | '';
   search?: string;
@@ -21,6 +22,7 @@ const defaultProductListInput = {
 } as const satisfies Omit<ProductListInput, 'pageSize'>;
 
 export function useProductForQuoteOptions({
+  includeHistoricalSelected = false,
   pageSize = 20,
   rangeId = '',
   search = '',
@@ -35,15 +37,22 @@ export function useProductForQuoteOptions({
     search,
   };
   const productsQuery = useQuery(trpc.quotes.products.queryOptions(input));
-  const selectedProductQuery = useQuery({
+  const selectedActiveProductQuery = useQuery({
     ...trpc.quotes.products.queryOptions({
       ...defaultProductListInput,
       columnFilters: { id: value, ...rangeColumnFilter },
       pageSize: 1,
     }),
-    enabled: Boolean(value),
+    enabled: Boolean(value) && !includeHistoricalSelected,
   });
-  const selectedItem = selectedProductQuery.data?.items.find((product) => product.id === value) ?? null;
+  const selectedHistoricalProductQuery = useQuery({
+    ...trpc.quotes.productOption.queryOptions({ id: value as UUID }),
+    enabled: Boolean(value) && includeHistoricalSelected,
+  });
+  const selectedItem =
+    (includeHistoricalSelected
+      ? selectedHistoricalProductQuery.data
+      : selectedActiveProductQuery.data?.items.find((product) => product.id === value)) ?? null;
   const items = productsQuery.data?.items ?? [];
   const itemsWithSelected = useMemo(() => mergeSelectedOption(items, selectedItem), [items, selectedItem]);
   const selectOptions = useMemo(
@@ -57,9 +66,14 @@ export function useProductForQuoteOptions({
     query: productsQuery,
     selectedItem,
     selectOptions,
-    isFetching: productsQuery.isFetching || selectedProductQuery.isFetching,
-    isLoading: productsQuery.isLoading || selectedProductQuery.isLoading,
-    isPending: productsQuery.isPending || selectedProductQuery.isPending,
-    isResolvingSelected: Boolean(value) && selectedProductQuery.isPending,
+    isFetching:
+      productsQuery.isFetching || selectedActiveProductQuery.isFetching || selectedHistoricalProductQuery.isFetching,
+    isLoading:
+      productsQuery.isLoading || selectedActiveProductQuery.isLoading || selectedHistoricalProductQuery.isLoading,
+    isPending:
+      productsQuery.isPending || selectedActiveProductQuery.isPending || selectedHistoricalProductQuery.isPending,
+    isResolvingSelected:
+      Boolean(value) &&
+      (includeHistoricalSelected ? selectedHistoricalProductQuery.isPending : selectedActiveProductQuery.isPending),
   };
 }

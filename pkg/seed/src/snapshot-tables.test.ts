@@ -113,6 +113,13 @@ describe('snapshot table registry', () => {
     expect(configFor('products').timestampColumns).toContain('deletedAt');
   });
 
+  it('defaults catalog soft-delete timestamps while staging snapshots predate the column', () => {
+    expect(configFor('product_ranges').omitReadColumns).toContain('deletedAt');
+    expect(configFor('product_ranges').seedRowDefaults?.({}, 0)).toEqual({ deletedAt: null });
+    expect(configFor('products').omitReadColumns).toContain('deletedAt');
+    expect(configFor('products').seedRowDefaults?.({}, 0)).toEqual({ deletedAt: null });
+  });
+
   it('extracts product image storage files, ignoring the inline thumbnail data URL', () => {
     const rows = [
       {

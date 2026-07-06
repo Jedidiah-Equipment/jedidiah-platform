@@ -1,4 +1,4 @@
-import { type Db, getUniqueViolationConstraint, productRanges, products } from '@pkg/db';
+import { type Db, getUniqueViolationConstraint, notRemoved, productRanges, products } from '@pkg/db';
 import type {
   ProductRange,
   ProductRangeCreateInput,
@@ -10,7 +10,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { ProductRangeOption as ProductRangeOptionSchema, ProductRange as ProductRangeSchema } from '@pkg/schema';
-import { and, asc, count, eq, isNull, max } from 'drizzle-orm';
+import { and, asc, count, eq, max } from 'drizzle-orm';
 
 import {
   DuplicateProductRangeNameError,
@@ -49,7 +49,7 @@ export function mapProductRangeOption(row: ProductRangeOptionRow): ProductRangeO
 
 export async function listProductRanges({ db }: { db: Db }): Promise<ProductRangeListResult> {
   const rows = await db.query.productRanges.findMany({
-    where: isNull(productRanges.deletedAt),
+    where: notRemoved(productRanges),
     orderBy: [asc(productRanges.displayOrder), asc(productRanges.id)],
   });
 
@@ -65,7 +65,7 @@ export async function listProductRangeOptions({ db }: { db: Db }): Promise<Produ
       name: productRanges.name,
     })
     .from(productRanges)
-    .where(isNull(productRanges.deletedAt))
+    .where(notRemoved(productRanges))
     .orderBy(asc(productRanges.displayOrder), asc(productRanges.id));
 
   return {
@@ -86,7 +86,7 @@ export async function createProductRange({
     const [{ value: currentMax } = { value: null }] = await db
       .select({ value: max(productRanges.displayOrder) })
       .from(productRanges)
-      .where(isNull(productRanges.deletedAt));
+      .where(notRemoved(productRanges));
     const displayOrder = currentMax === null ? 0 : currentMax + 1;
 
     const [row] = await db
@@ -115,7 +115,7 @@ export async function reorderProductRanges({
   input: ProductRangeReorderInput;
 }): Promise<ProductRangeListResult> {
   await db.transaction(async (tx) => {
-    const rows = await tx.select({ id: productRanges.id }).from(productRanges).where(isNull(productRanges.deletedAt));
+    const rows = await tx.select({ id: productRanges.id }).from(productRanges).where(notRemoved(productRanges));
     const existingIds = new Set(rows.map((row) => row.id));
     const orderedIds = input.orderedIds;
 
@@ -155,7 +155,7 @@ export async function updateProductRange({
         description: input.description,
         updatedAt: new Date(),
       })
-      .where(and(eq(productRanges.id, input.id), isNull(productRanges.deletedAt)))
+      .where(and(eq(productRanges.id, input.id), notRemoved(productRanges)))
       .returning();
 
     if (!row) {
@@ -170,7 +170,7 @@ export async function updateProductRange({
 
 export async function getProductRange({ db, id }: { db: Db; id: UUID }): Promise<ProductRange> {
   const row = await db.query.productRanges.findFirst({
-    where: and(eq(productRanges.id, id), isNull(productRanges.deletedAt)),
+    where: and(eq(productRanges.id, id), notRemoved(productRanges)),
   });
 
   if (!row) {
@@ -185,7 +185,7 @@ export async function removeProductRange({ db, id }: { db: Db; id: UUID }): Prom
     const [before] = await tx
       .select()
       .from(productRanges)
-      .where(and(eq(productRanges.id, id), isNull(productRanges.deletedAt)))
+      .where(and(eq(productRanges.id, id), notRemoved(productRanges)))
       .for('update');
 
     if (!before) {
@@ -195,7 +195,7 @@ export async function removeProductRange({ db, id }: { db: Db; id: UUID }): Prom
     const [{ value: activeProductCount } = { value: 0 }] = await tx
       .select({ value: count() })
       .from(products)
-      .where(and(eq(products.rangeId, id), isNull(products.deletedAt)));
+      .where(and(eq(products.rangeId, id), notRemoved(products)));
 
     if (activeProductCount > 0) {
       throw new ProductRangeHasProductsError(id);

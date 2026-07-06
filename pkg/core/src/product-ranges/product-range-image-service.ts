@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { type Db, productRanges } from '@pkg/db';
+import { type Db, notRemoved, productRanges } from '@pkg/db';
 import { RANGE_IMAGE_POLICY, RANGE_LOGO_POLICY } from '@pkg/domain';
 import type { ProductRange, UUID } from '@pkg/schema';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
 import { FileNotFoundError } from '../files/file-errors.js';
@@ -41,7 +41,7 @@ export async function replaceProductRangeImage({
         const [before] = await tx
           .select()
           .from(productRanges)
-          .where(and(eq(productRanges.id, input.rangeId), isNull(productRanges.deletedAt)))
+          .where(and(eq(productRanges.id, input.rangeId), notRemoved(productRanges)))
           .for('update');
 
         if (!before) {
@@ -73,7 +73,7 @@ export async function readProductRangeImage({
   const [row] = await db
     .select({ image: productRanges.image })
     .from(productRanges)
-    .where(and(eq(productRanges.id, rangeId), isNull(productRanges.deletedAt)))
+    .where(and(eq(productRanges.id, rangeId), notRemoved(productRanges)))
     .limit(1);
 
   if (!row) {
@@ -116,7 +116,7 @@ export async function replaceProductRangeLogo({
         const [before] = await tx
           .select()
           .from(productRanges)
-          .where(and(eq(productRanges.id, input.rangeId), isNull(productRanges.deletedAt)))
+          .where(and(eq(productRanges.id, input.rangeId), notRemoved(productRanges)))
           .for('update');
 
         if (!before) {
@@ -148,7 +148,7 @@ export async function readProductRangeLogo({
   const [row] = await db
     .select({ logo: productRanges.logo })
     .from(productRanges)
-    .where(and(eq(productRanges.id, rangeId), isNull(productRanges.deletedAt)))
+    .where(and(eq(productRanges.id, rangeId), notRemoved(productRanges)))
     .limit(1);
 
   if (!row) {

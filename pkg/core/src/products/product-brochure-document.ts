@@ -21,7 +21,7 @@ import {
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { ProductBrochureIncompleteError } from './product-errors.js';
-import { getProductBrochureSource } from './product-service.js';
+import { getHistoricalProductBrochureSource, getProductBrochureSource } from './product-service.js';
 
 export type BrochurePreviewResult = {
   bytes: Uint8Array;
@@ -63,18 +63,40 @@ export async function renderProductBrochurePreview({
  */
 export async function generateProductBrochureIfComplete({
   db,
-  includeRemoved = false,
   pdfRenderer,
   productId,
   storage,
 }: {
   db: Db;
-  includeRemoved?: boolean;
   pdfRenderer: BrochurePdfRenderer;
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult | null> {
-  const { images, product, rangeLogo } = await getProductBrochureSource({ db, id: productId, includeRemoved });
+  const { images, product, rangeLogo } = await getProductBrochureSource({ db, id: productId });
+
+  if (!evaluateProductBrochureCompleteness(product).complete) {
+    return null;
+  }
+
+  return renderBrochureForProduct({ images, pdfRenderer, product, rangeLogo, storage });
+}
+
+/**
+ * Generates a brochure for immutable Quote/Job document packets from the referenced Product row, even
+ * after that Product has been removed from active catalog flows.
+ */
+export async function generateHistoricalProductBrochureIfComplete({
+  db,
+  pdfRenderer,
+  productId,
+  storage,
+}: {
+  db: Db;
+  pdfRenderer: BrochurePdfRenderer;
+  productId: UUID;
+  storage: StorageAdapter;
+}): Promise<BrochurePreviewResult | null> {
+  const { images, product, rangeLogo } = await getHistoricalProductBrochureSource({ db, id: productId });
 
   if (!evaluateProductBrochureCompleteness(product).complete) {
     return null;
@@ -110,9 +132,8 @@ export async function snapshotJobBrochureDocument({
   storage: StorageAdapter;
   tx: DatabaseTransaction;
 }): Promise<void> {
-  const brochure = await generateProductBrochureIfComplete({
+  const brochure = await generateHistoricalProductBrochureIfComplete({
     db,
-    includeRemoved: true,
     pdfRenderer,
     productId,
     storage,

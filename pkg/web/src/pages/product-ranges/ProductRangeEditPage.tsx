@@ -1,24 +1,12 @@
 import type { ProductRange, UUID } from '@pkg/schema';
-import { IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
-import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { Button } from '@/components/ui/button.js';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -71,7 +59,6 @@ const RemoveProductRangeButton: React.FC<{ range: ProductRange }> = ({ range }) 
   const navigate = useNavigate();
   const { invalidateProductRanges, invalidateProducts, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const [isOpen, setIsOpen] = useState(false);
 
   const removeMutation = useMutation(
     trpc.productRanges.remove.mutationOptions({
@@ -87,33 +74,14 @@ const RemoveProductRangeButton: React.FC<{ range: ProductRange }> = ({ range }) 
   );
 
   return (
-    <Dialog onOpenChange={setIsOpen} open={isOpen}>
-      <DialogTrigger render={<Button type="button" variant="destructive" />}>
-        <IconTrash data-icon="inline-start" />
-        Remove range
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Remove Product Range</DialogTitle>
-          <DialogDescription>
-            Remove {range.name} from active Product Ranges. Historical product references will keep their Range.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <DialogClose render={<Button disabled={removeMutation.isPending} type="button" variant="outline" />}>
-            Cancel
-          </DialogClose>
-          <Button
-            disabled={removeMutation.isPending}
-            onClick={() => removeMutation.mutate({ id: range.id })}
-            type="button"
-            variant="destructive"
-          >
-            {removeMutation.isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
-            Remove
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <RemoveEntityButton
+      description={
+        <>Remove {range.name} from active Product Ranges. Historical product references will keep their Range.</>
+      }
+      isPending={removeMutation.isPending}
+      onConfirm={() => removeMutation.mutate({ id: range.id })}
+      title="Remove Product Range"
+      triggerLabel="Remove range"
+    />
   );
 };

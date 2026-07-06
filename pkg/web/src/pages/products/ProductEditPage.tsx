@@ -1,5 +1,4 @@
 import type { Product, UUID } from '@pkg/schema';
-import { IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
@@ -7,18 +6,8 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AuditTable, useProductAuditTableStore } from '@/components/audit/AuditTable.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { Button } from '@/components/ui/button.js';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -150,7 +139,6 @@ const RemoveProductButton: React.FC<{ product: Product }> = ({ product }) => {
   const navigate = useNavigate();
   const { invalidateProducts, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const [isOpen, setIsOpen] = useState(false);
 
   const removeProductMutation = useMutation(
     trpc.products.remove.mutationOptions({
@@ -166,34 +154,15 @@ const RemoveProductButton: React.FC<{ product: Product }> = ({ product }) => {
   );
 
   return (
-    <Dialog onOpenChange={setIsOpen} open={isOpen}>
-      <DialogTrigger render={<Button type="button" variant="destructive" />}>
-        <IconTrash data-icon="inline-start" />
-        Remove product
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Remove Product</DialogTitle>
-          <DialogDescription>
-            Remove {product.name} from active Products. Historical quotes and jobs will keep their Product details.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <DialogClose render={<Button disabled={removeProductMutation.isPending} type="button" variant="outline" />}>
-            Cancel
-          </DialogClose>
-          <Button
-            disabled={removeProductMutation.isPending}
-            onClick={() => removeProductMutation.mutate({ id: product.id })}
-            type="button"
-            variant="destructive"
-          >
-            {removeProductMutation.isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
-            Remove
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <RemoveEntityButton
+      description={
+        <>Remove {product.name} from active Products. Historical quotes and jobs will keep their Product details.</>
+      }
+      isPending={removeProductMutation.isPending}
+      onConfirm={() => removeProductMutation.mutate({ id: product.id })}
+      title="Remove Product"
+      triggerLabel="Remove product"
+    />
   );
 };
 

@@ -23,6 +23,6 @@ export const productRanges = pgTable(
   },
   (table) => [
     check('product_ranges_name_nonempty', sql`length(trim(${table.name})) > 0`),
-    uniqueIndex('product_ranges_name_ci_unique').on(sql`lower(${table.name})`),
+    uniqueIndex('product_ranges_name_ci_unique').on(sql`lower(${table.name})`).where(sql`${table.deletedAt} is null`),
   ],
 );

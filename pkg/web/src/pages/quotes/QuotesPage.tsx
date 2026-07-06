@@ -81,13 +81,18 @@ const QuoteTable: React.FC = () => {
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const customerOptions = useCustomerForQuoteOptions({ pageSize: 0 });
-  const productOptions = useProductForQuoteOptions({ pageSize: 0 });
   const salespersonOptions = useSalesPersonOptions();
 
   const tableController = useServerSideTableController({
     store: useQuoteTableStore,
     sortOptions: quoteSortOptions,
     getListInputExtras: getQuoteListInputExtras,
+  });
+  const productFilterValue = getIdFilterValue(tableController.columnFilters, 'productName');
+  const productOptions = useProductForQuoteOptions({
+    includeHistoricalSelected: true,
+    pageSize: 0,
+    value: productFilterValue ?? '',
   });
 
   const quotesQuery = useQuery(

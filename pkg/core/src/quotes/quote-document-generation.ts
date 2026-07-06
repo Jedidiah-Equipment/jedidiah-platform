@@ -118,6 +118,7 @@ export async function renderQuoteDocumentRevision({
     source.kind === 'product'
       ? await generateProductBrochureIfComplete({
           db,
+          includeRemoved: true,
           pdfRenderer: brochureRenderer,
           productId: source.productId,
           storage,

@@ -63,16 +63,18 @@ export async function renderProductBrochurePreview({
  */
 export async function generateProductBrochureIfComplete({
   db,
+  includeRemoved = false,
   pdfRenderer,
   productId,
   storage,
 }: {
   db: Db;
+  includeRemoved?: boolean;
   pdfRenderer: BrochurePdfRenderer;
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult | null> {
-  const { images, product, rangeLogo } = await getProductBrochureSource({ db, id: productId });
+  const { images, product, rangeLogo } = await getProductBrochureSource({ db, id: productId, includeRemoved });
 
   if (!evaluateProductBrochureCompleteness(product).complete) {
     return null;
@@ -108,7 +110,13 @@ export async function snapshotJobBrochureDocument({
   storage: StorageAdapter;
   tx: DatabaseTransaction;
 }): Promise<void> {
-  const brochure = await generateProductBrochureIfComplete({ db, pdfRenderer, productId, storage });
+  const brochure = await generateProductBrochureIfComplete({
+    db,
+    includeRemoved: true,
+    pdfRenderer,
+    productId,
+    storage,
+  });
 
   if (!brochure) {
     return;

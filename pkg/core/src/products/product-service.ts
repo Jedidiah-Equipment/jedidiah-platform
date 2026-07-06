@@ -349,11 +349,22 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
 export async function getProductBrochureSource({
   db,
   id,
+  includeRemoved = false,
 }: {
   db: Db;
   id: UUID;
+  // Only immutable quote/job document generation should opt into removed Products.
+  includeRemoved?: boolean;
 }): Promise<{ images: ProductImageStore; product: Product; rangeLogo: StoredFile | null }> {
-  const { rangeLogo, row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id });
+  const {
+    rangeLogo,
+    row,
+    productBays: productBaysForProduct,
+  } = await loadProductDetailRow({
+    db,
+    id,
+    includeRemoved,
+  });
 
   return {
     images: row.images,
@@ -362,16 +373,25 @@ export async function getProductBrochureSource({
   };
 }
 
-async function loadProductDetailRow({ db, id }: { db: Db; id: UUID }): Promise<{
+async function loadProductDetailRow({
+  db,
+  id,
+  includeRemoved = false,
+}: {
+  db: Db;
+  id: UUID;
+  includeRemoved?: boolean;
+}): Promise<{
   productBays: ProductBay[];
   rangeLogo: StoredFile | null;
   row: ProductListRow;
 }> {
+  const productWhere = includeRemoved ? eq(products.id, id) : and(eq(products.id, id), isNull(products.deletedAt));
   // The Product's Bays key off the same id as the main read, so load both in parallel rather than
   // waiting on the Product row before fetching its Bays.
   const [row, productBays] = await Promise.all([
     db.query.products.findFirst({
-      where: and(eq(products.id, id), isNull(products.deletedAt)),
+      where: productWhere,
       with: {
         assemblies: {
           orderBy: productAssemblyOrderBy,

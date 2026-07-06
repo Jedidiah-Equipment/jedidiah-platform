@@ -37,6 +37,41 @@ describe('QuoteCreateInput', () => {
     });
   });
 
+  it('defaults inline customer contact fields to null and trims provided values', () => {
+    expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({
+      customer: {
+        type: 'inline',
+        companyName: 'Acme Mining',
+        contactPerson: null,
+        email: null,
+        phone: null,
+        address: null,
+      },
+    });
+
+    expect(
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        customer: {
+          type: 'inline' as const,
+          companyName: 'Acme Mining',
+          contactPerson: '  Tony Jones  ',
+          email: 'Tony@Acme.example',
+          phone: '',
+          address: null,
+        },
+      }),
+    ).toMatchObject({
+      customer: {
+        type: 'inline',
+        contactPerson: 'Tony Jones',
+        email: 'tony@acme.example',
+        phone: null,
+        address: null,
+      },
+    });
+  });
+
   it('parses a custom offering with a trimmed work title and entered base price', () => {
     expect(
       QuoteCreateInput.parse({

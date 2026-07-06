@@ -380,7 +380,14 @@ describe('toQuoteCreateInput', () => {
       buildCreateFormValues({ customerMode: 'inline', customerId: '', inlineCompanyName: 'New Co' }),
     );
 
-    expect(input.customer).toEqual({ type: 'inline', companyName: 'New Co' });
+    expect(input.customer).toEqual({
+      type: 'inline',
+      companyName: 'New Co',
+      contactPerson: null,
+      email: null,
+      phone: null,
+      address: null,
+    });
   });
 
   it('preserves cancelled status in create submissions', () => {

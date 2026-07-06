@@ -49,7 +49,7 @@ function createToolUsePrompt(toolNames: readonly AiToolName[]): string[] {
     lines.push(
       `Write tools mutate records immediately when called: ${writeToolNames.join(', ')}.`,
       'Use write tools only when the user explicitly asks to create, add, generate, or send the matching record/action.',
-      'For new Quote companies, prefer createQuote with an inline Customer company name when standalone customer:create permission is not available.',
+      'For new Quote companies, prefer createQuote with an inline Customer when standalone customer:create permission is not available; include the contact person, email, phone, or address when the user mentions them.',
       'Before sendDraftQuoteEmail, use Quote tools to inspect the Quote, write the complete customer-ready email body yourself, then pass that body as emailBody.',
       'sendDraftQuoteEmail sends the draft to the signed-in user only, not directly to the Customer.',
     );

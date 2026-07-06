@@ -2,6 +2,7 @@ import * as core from '@pkg/core';
 import {
   type AiToolBase,
   AuthId,
+  CustomerEmailInput,
   DateIsoString,
   DateOnlyIsoString,
   Price,
@@ -22,11 +23,18 @@ import { projectQuote } from '../projections.js';
 
 const CreateQuoteCustomerInput = z
   .object({
+    address: z.string().nullable().optional(),
     companyName: requiredTrimmedText('Company name is required').optional(),
+    contactPerson: z.string().nullable().optional(),
     customerId: UUID.optional(),
+    email: CustomerEmailInput.optional(),
+    phone: z.string().nullable().optional(),
     type: z.enum(['existing', 'inline']),
   })
-  .strict();
+  .strict()
+  .describe(
+    'Quote Customer: existing requires customerId; inline creates a new Customer from companyName plus any contactPerson, email, phone, or address the user mentioned.',
+  );
 
 const CreateQuoteOfferingInput = z
   .object({
@@ -109,7 +117,7 @@ export const createQuoteDefinition: AiToolDefinition<CreateQuoteTool> = {
       'The user asks for standalone Customer creation; use createCustomer only when customer:create is available.',
     ],
     searchableIdentifiers: [
-      'Customer UUID or inline companyName',
+      'Customer UUID or inline companyName with optional contactPerson, email, phone, address',
       'offering.kind product or custom',
       'Product UUID for Product Quotes',
       'Custom Work Title for Custom Quotes',

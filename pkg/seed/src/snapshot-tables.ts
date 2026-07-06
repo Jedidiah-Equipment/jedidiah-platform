@@ -144,7 +144,7 @@ export const snapshotTables = [
     fileName: 'supplier.json',
     table: supplier,
     tableName: 'supplier',
-    timestampColumns: standardTimestampColumns,
+    timestampColumns: ['createdAt', 'updatedAt', 'deletedAt'],
   },
   {
     fileName: 'parts.json',

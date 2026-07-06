@@ -194,6 +194,24 @@ describe('replaceProductImage', () => {
     ).rejects.toBeInstanceOf(ProductNotFoundError);
     expect(storage.objects.size).toBe(0);
   });
+
+  test('throws when the product is soft-removed and cleans up the uploaded object', async ({ context }) => {
+    const storage = new InMemoryStorageAdapter();
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(products.id, context.product.id));
+
+    await expect(
+      replaceProductImage({
+        actorUserId: ACTOR_USER_ID,
+        db: context.db,
+        input: { bytes: pngBytes(), productId: context.product.id, slot: 'primary' },
+        storage,
+      }),
+    ).rejects.toBeInstanceOf(ProductNotFoundError);
+    expect(storage.objects.size).toBe(0);
+  });
 });
 
 describe('readProductImage', () => {
@@ -230,6 +248,18 @@ describe('readProductImage', () => {
 
     await expect(
       readProductImage({ db: context.db, productId: UNKNOWN_ID, slot: 'primary', storage }),
+    ).rejects.toBeInstanceOf(ProductNotFoundError);
+  });
+
+  test('throws when the product is soft-removed', async ({ context }) => {
+    const storage = new InMemoryStorageAdapter();
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(products.id, context.product.id));
+
+    await expect(
+      readProductImage({ db: context.db, productId: context.product.id, slot: 'primary', storage }),
     ).rejects.toBeInstanceOf(ProductNotFoundError);
   });
 });

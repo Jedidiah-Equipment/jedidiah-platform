@@ -13,11 +13,12 @@ import { ProductTechnicalDetailsEditor } from './ProductTechnicalDetailsEditor.j
 import { ProductFormValues, toProductFormValues, toProductUpdateInput } from './types.js';
 
 type ProductFormProps = {
+  detailsFooter?: React.ReactNode;
   onSave: (value: ProductUpdateInput) => Promise<unknown>;
   product: Product;
 };
 
-export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => {
+export const ProductForm: React.FC<ProductFormProps> = ({ detailsFooter, onSave, product }) => {
   const defaultValues = toProductFormValues(product);
   const productRangeOptions = useProductRangeOptions();
 
@@ -182,6 +183,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                 />
               )}
             </form.Field>
+            {detailsFooter}
           </div>
         </TabsContent>
         <TabsContent className="pt-4" value="bays">

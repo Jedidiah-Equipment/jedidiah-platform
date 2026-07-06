@@ -901,6 +901,23 @@ describe('getProductDocuments and readProductDocument', () => {
     expect(read.object.contentType).toBe('application/octet-stream');
   });
 
+  test('treats soft-removed Product document reads as Product not found', async ({ context }) => {
+    const document = await uploadPdf(context, { filename: 'Removed.pdf', productId: context.productId });
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(products.id, context.productId));
+
+    await expect(
+      readProductDocument({
+        db: context.db,
+        documentId: document.id,
+        productId: context.productId,
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(ProductNotFoundError);
+  });
+
   test('reads job-owned snapshot document bytes', async ({ context }) => {
     const job = await createJobOwner(context.db, context.productId);
     await context.storage.put({

@@ -28,6 +28,7 @@ export const products = pgTable(
     category: text('category'),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     currencyCode: text('currency_code').notNull().default('ZAR'),
+    deletedAt: timestamp('deleted_at', { mode: 'date', withTimezone: true }),
     description: text('description'),
     // Inline structural type (rather than the ProductImageStore alias) so the inferred Drizzle row type
     // stays portable into @pkg/api's emitted declarations (avoids TS2883 on the tRPC procedure types).

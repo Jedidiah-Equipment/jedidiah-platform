@@ -108,6 +108,11 @@ describe('snapshot table registry', () => {
     expect(configFor('supplier').timestampColumns).toContain('deletedAt');
   });
 
+  it('revives nullable catalog soft-delete timestamps', () => {
+    expect(configFor('product_ranges').timestampColumns).toContain('deletedAt');
+    expect(configFor('products').timestampColumns).toContain('deletedAt');
+  });
+
   it('extracts product image storage files, ignoring the inline thumbnail data URL', () => {
     const rows = [
       {

@@ -10,7 +10,7 @@ import {
   type QuoteUpdateInput,
   type UUID,
 } from '@pkg/schema';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
@@ -328,7 +328,7 @@ async function resolveQuoteOffering({
       id: products.id,
     })
     .from(products)
-    .where(eq(products.id, input.offering.productId))
+    .where(and(eq(products.id, input.offering.productId), isNull(products.deletedAt)))
     .limit(1);
 
   if (!product) {

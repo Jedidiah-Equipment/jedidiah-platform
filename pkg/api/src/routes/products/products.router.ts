@@ -6,6 +6,7 @@ import {
   listProductRangeOptions,
   listProducts,
   type ProductCoreError,
+  removeProduct,
   updateProduct,
 } from '@pkg/core';
 import { ProductCreateInput, ProductListInput, ProductUpdateInput, UUID } from '@pkg/schema';
@@ -39,6 +40,12 @@ export const productsRouter = router({
     .input(ProductUpdateInput)
     .mutation(({ ctx, input }) =>
       mapProductErrors(() => updateProduct({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+    ),
+
+  remove: authorizedProcedure('product:update')
+    .input(z.object({ id: UUID }))
+    .mutation(({ ctx, input }) =>
+      mapProductErrors(() => removeProduct({ db: ctx.db, id: input.id, actorUserId: ctx.session.user.id })),
     ),
 });
 

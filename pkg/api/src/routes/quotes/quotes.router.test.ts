@@ -625,6 +625,49 @@ describe('quotes.products', () => {
 });
 
 describe('quotes.list', () => {
+  test('keeps product facts on historical quotes after the product is removed', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const created = await createNamedQuote(caller, {
+      customerCompanyName: 'Historical Product Quote',
+      discountPercent: 0,
+      productId: context.product.id,
+    });
+
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${products.id} = ${context.product.id}`);
+
+    await expect(caller.quotes.get({ id: created.id })).resolves.toMatchObject({
+      id: created.id,
+      product: expect.objectContaining({
+        modelCode: context.product.modelCode,
+        name: context.product.name,
+      }),
+    });
+    await expect(
+      caller.quotes.list({
+        filters: { statuses: [] },
+        page: 1,
+        pageSize: 10,
+        search: 'Historical Product Quote',
+        sortBy: 'createdAt',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          id: created.id,
+          product: expect.objectContaining({
+            modelCode: context.product.modelCode,
+            name: context.product.name,
+          }),
+        }),
+      ],
+    });
+  });
+
   test('searches joined quote fields and keeps totals aligned with filtered rows', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const adminCaller = context.createCaller(mockSession('admin'));

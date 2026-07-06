@@ -18,6 +18,7 @@ export const productRanges = pgTable(
     // create and rewritten by the reorder mutation.
     displayOrder: integer('display_order').notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    deletedAt: timestamp('deleted_at', { mode: 'date', withTimezone: true }),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

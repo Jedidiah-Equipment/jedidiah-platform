@@ -69,19 +69,19 @@ export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ rang
 const RemoveProductRangeButton: React.FC<{ range: ProductRange }> = ({ range }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const { invalidateProductRanges } = useQueryInvalidation();
+  const { invalidateProductRanges, invalidateProducts, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
 
   const removeMutation = useMutation(
-    trpc.productRanges.delete.mutationOptions({
+    trpc.productRanges.remove.mutationOptions({
       onSuccess: async () => {
-        await invalidateProductRanges();
-        toast.success('Product Range deleted');
+        await Promise.all([invalidateProductRanges(), invalidateProducts(), invalidateQuotes()]);
+        toast.success('Product Range removed');
         await navigate({ to: '/product-ranges' });
       },
       onError: (error) => {
-        showMutationError(error, 'Unable to delete Product Range.');
+        showMutationError(error, 'Unable to remove Product Range.');
       },
     }),
   );
@@ -96,7 +96,7 @@ const RemoveProductRangeButton: React.FC<{ range: ProductRange }> = ({ range }) 
         <DialogHeader>
           <DialogTitle>Remove Product Range</DialogTitle>
           <DialogDescription>
-            Remove {range.name} from Product Ranges. This only works when no products are linked to it.
+            Remove {range.name} from active Product Ranges. Historical product references will keep their Range.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

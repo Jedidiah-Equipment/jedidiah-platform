@@ -1,13 +1,28 @@
 import type { Product, UUID } from '@pkg/schema';
+import { IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { AuditTable, useProductAuditTableStore } from '@/components/audit/AuditTable.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { Button } from '@/components/ui/button.js';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useCan } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -66,6 +81,7 @@ type ProductEditTabsProps = {
 
 const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, product }) => {
   const auditAccess = useCan('audit:read');
+  const canRemoveProduct = useCan('product:update').can;
   const productAuditFilters = useMemo(
     () => ({
       entityIds: [product.id],
@@ -91,7 +107,18 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, produc
           <ProductDocumentsTabTrigger productId={product.id} />
           {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
         </TabsList>
-        <ProductForm key={product.id} onSave={onProductSave} product={product} />
+        <ProductForm
+          detailsFooter={
+            canRemoveProduct ? (
+              <div className="mt-4 flex justify-end border-t pt-4">
+                <RemoveProductButton product={product} />
+              </div>
+            ) : null
+          }
+          key={product.id}
+          onSave={onProductSave}
+          product={product}
+        />
         <TabsContent className="pt-4" value="images">
           <ProductImagesSection product={product} />
         </TabsContent>
@@ -115,6 +142,58 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, produc
         </aside>
       ) : null}
     </div>
+  );
+};
+
+const RemoveProductButton: React.FC<{ product: Product }> = ({ product }) => {
+  const trpc = useTRPC();
+  const navigate = useNavigate();
+  const { invalidateProducts, invalidateQuotes } = useQueryInvalidation();
+  const showMutationError = useApiMutationErrorToast();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const removeProductMutation = useMutation(
+    trpc.products.remove.mutationOptions({
+      onSuccess: async () => {
+        await Promise.all([invalidateProducts(), invalidateQuotes()]);
+        toast.success('Product removed');
+        await navigate({ to: '/products' });
+      },
+      onError: (error) => {
+        showMutationError(error, 'Unable to remove Product.');
+      },
+    }),
+  );
+
+  return (
+    <Dialog onOpenChange={setIsOpen} open={isOpen}>
+      <DialogTrigger render={<Button type="button" variant="destructive" />}>
+        <IconTrash data-icon="inline-start" />
+        Remove product
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove Product</DialogTitle>
+          <DialogDescription>
+            Remove {product.name} from active Products. Historical quotes and jobs will keep their Product details.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose render={<Button disabled={removeProductMutation.isPending} type="button" variant="outline" />}>
+            Cancel
+          </DialogClose>
+          <Button
+            disabled={removeProductMutation.isPending}
+            onClick={() => removeProductMutation.mutate({ id: product.id })}
+            type="button"
+            variant="destructive"
+          >
+            {removeProductMutation.isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
+            Remove
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

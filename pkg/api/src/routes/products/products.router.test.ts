@@ -1,4 +1,5 @@
-import { auditEvents, type Db, jobBays, parts, productRanges, sql, supplier, user } from '@pkg/db';
+import { listAllProducts } from '@pkg/core';
+import { auditEvents, type Db, jobBays, parts, productRanges, products, sql, supplier, user } from '@pkg/db';
 import { EMPTY_PRODUCT_IMAGES, type Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -88,6 +89,23 @@ describe('products.create', () => {
       rangeId: range.id,
     });
     await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({ rangeId: range.id });
+  });
+
+  test('rejects creating products in a removed Range', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(context.db, {
+      id: '00000000-0000-4000-8000-000000000504',
+      name: 'Removed Range',
+    });
+    await context.db
+      .update(productRanges)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${productRanges.id} = ${range.id}`);
+
+    await expect(createProduct(caller, 'Wheel Loader Removed Range', range.id)).rejects.toMatchObject({
+      appCode: 'product.range.not_found',
+      code: 'NOT_FOUND',
+    });
   });
 
   test('rejects negative build time days', async ({ context }) => {
@@ -215,15 +233,24 @@ describe('products.create', () => {
 
 describe('products.read', () => {
   test('lists Range options through Product read access', async ({ context }) => {
-    await createRange(context.db, {
+    const visibleRange = await createRange(context.db, {
       id: '00000000-0000-4000-8000-000000000502',
       name: 'Earthmoving',
     });
+    const removedRange = await createRange(context.db, {
+      id: '00000000-0000-4000-8000-000000000506',
+      name: 'Removed Options Range',
+    });
+    await context.db
+      .update(productRanges)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${productRanges.id} = ${removedRange.id}`);
     const caller = context.createCaller(mockSession('procurement-manager'));
 
     const result = await caller.products.rangeOptions();
 
-    expect(result.ranges).toContainEqual({ id: '00000000-0000-4000-8000-000000000502', name: 'Earthmoving' });
+    expect(result.ranges).toContainEqual({ id: visibleRange.id, name: 'Earthmoving' });
+    expect(result.ranges).not.toContainEqual({ id: removedRange.id, name: removedRange.name });
     expect(result.ranges.every((range) => Object.keys(range).sort().join(',') === 'id,name')).toBe(true);
   });
 
@@ -235,17 +262,18 @@ describe('products.read', () => {
         { kind: 'optional', name: 'Canopy', overrideStandardAssemblyIds: [], parts: [], price: 100 },
       ],
     });
-    await createProduct(caller, 'Assembly Names B', context.rangeId, {
+    const removed = await createProduct(caller, 'Assembly Names B', context.rangeId, {
       assemblies: [
         { kind: 'standard', name: 'hydraulics', parts: [] },
         { kind: 'standard', name: 'Bucket', parts: [] },
       ],
     });
+    await caller.products.remove({ id: removed.id });
 
     const result = await caller.products.assemblyNames();
 
-    expect(result.names).toHaveLength(3);
-    expect(result.names.map((name) => name.toLowerCase())).toEqual(['bucket', 'canopy', 'hydraulics']);
+    expect(result.names).toHaveLength(2);
+    expect(result.names.map((name) => name.toLowerCase())).toEqual(['canopy', 'hydraulics']);
   });
 
   test('rejects unauthorized assembly name reads', async ({ context }) => {
@@ -363,6 +391,95 @@ describe('products.read', () => {
   });
 });
 
+describe('products.remove', () => {
+  test('soft-removes a product and hides it from active product reads', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Wheel Loader Remove Hidden', context.rangeId);
+
+    await expect(caller.products.remove({ id: created.id })).resolves.toBeUndefined();
+
+    await expect(caller.products.get({ id: created.id })).rejects.toMatchObject({
+      appCode: 'product.not_found',
+      code: 'NOT_FOUND',
+    });
+    await expect(caller.products.list({ search: 'Wheel Loader Remove Hidden' })).resolves.toMatchObject({
+      items: [],
+      total: 0,
+    });
+    await expect(caller.quotes.products({ search: 'Wheel Loader Remove Hidden' })).resolves.toMatchObject({
+      items: [],
+      total: 0,
+    });
+    expect((await listAllProducts({ db: context.db })).map((product) => product.id)).not.toContain(created.id);
+
+    const [row] = await context.db
+      .select({ deletedAt: products.deletedAt })
+      .from(products)
+      .where(sql`${products.id} = ${created.id}`);
+    expect(row?.deletedAt).toBeInstanceOf(Date);
+    expect(await context.db.select().from(auditEvents)).toContainEqual(
+      expect.objectContaining({
+        action: 'deleted',
+        entityId: created.id,
+        entityType: 'product',
+      }),
+    );
+  });
+
+  test('returns not found for a missing or already removed product', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Wheel Loader Already Removed', context.rangeId);
+
+    await caller.products.remove({ id: created.id });
+
+    await expect(caller.products.remove({ id: created.id })).rejects.toMatchObject({
+      appCode: 'product.not_found',
+      code: 'NOT_FOUND',
+    });
+    await expect(caller.products.remove({ id: '00000000-0000-4000-8000-0000000000ff' })).rejects.toMatchObject({
+      appCode: 'product.not_found',
+      code: 'NOT_FOUND',
+    });
+  });
+
+  test('rejects creating a quote for a removed product', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Wheel Loader Removed Quote', context.rangeId);
+
+    await caller.products.remove({ id: created.id });
+
+    await expect(
+      caller.quotes.create({
+        customer: {
+          type: 'inline',
+          companyName: 'Removed Product Customer',
+        },
+        notes: null,
+        documentNotes: null,
+        offering: { kind: 'product', productId: created.id },
+        salesPersonId: 'test-user-id',
+        status: 'draft',
+        validUntil: null,
+      }),
+    ).rejects.toMatchObject({
+      appCode: 'quote.invalid_reference',
+      code: 'BAD_REQUEST',
+    });
+  });
+
+  test('requires product update access', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Wheel Loader Remove Permissions', context.rangeId);
+
+    await expect(context.createAnonCaller().products.remove({ id: created.id })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+    await expect(context.createCaller(mockSession('sales')).products.remove({ id: created.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+});
+
 describe('products.update', () => {
   test('updates product catalog fields', async ({ context }) => {
     const caller = context.createCaller();
@@ -433,6 +550,38 @@ describe('products.update', () => {
 
     expect(updated.rangeId).toBe(range.id);
     await expect(adminCaller.products.get({ id: created.id })).resolves.toMatchObject({ rangeId: range.id });
+  });
+
+  test('rejects updating a product into a removed Range', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(context.db, {
+      id: '00000000-0000-4000-8000-000000000505',
+      name: 'Removed Update Range',
+    });
+    const created = await createProduct(caller, 'Wheel Loader Removed Range Update', context.rangeId);
+    await context.db
+      .update(productRanges)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${productRanges.id} = ${range.id}`);
+
+    await expect(
+      caller.products.update({
+        id: created.id,
+        basePrice: created.basePrice,
+        currencyCode: created.currencyCode,
+        description: created.description,
+        buildTimeDays: created.buildTimeDays,
+        modelCode: created.modelCode,
+        name: created.name,
+        rangeId: range.id,
+        requiresVinNumber: created.requiresVinNumber,
+        brochureEnabled: created.brochureEnabled,
+        landerEnabled: created.landerEnabled,
+      }),
+    ).rejects.toMatchObject({
+      appCode: 'product.range.not_found',
+      code: 'NOT_FOUND',
+    });
   });
 
   test('updates and removes product thumbnails with audit changes', async ({ context }) => {

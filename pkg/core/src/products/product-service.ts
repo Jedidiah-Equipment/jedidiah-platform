@@ -13,6 +13,7 @@ import {
   jobBays,
   type ProductImageStore,
   productBays,
+  productRanges,
   products,
   type StoredFile,
   user,
@@ -40,13 +41,14 @@ import {
   ProductDocument as ProductDocumentSchema,
   ProductImages,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import {
   defineAuditDescriptor,
   diffAuditUpdate,
   recordAuditCreate,
+  recordAuditDelete,
   recordAuditUpdate,
 } from '../audit/audit-service.js';
 import {
@@ -96,6 +98,7 @@ const productListColumns = {
   category: true,
   createdAt: true,
   currencyCode: true,
+  deletedAt: true,
   description: true,
   id: true,
   images: true,
@@ -278,6 +281,7 @@ export async function listProducts({
 export async function listAllProducts({ db }: { db: Db }): Promise<Product[]> {
   const rows = await db.query.products.findMany({
     columns: productListColumns,
+    where: isNull(products.deletedAt),
     with: productListWith,
   });
   const productBaysByProductId = await listProductBaysByProductIds({
@@ -296,8 +300,8 @@ function mapProductListRow(row: ProductListRow, productBaysForRow: ProductBay[] 
   });
 }
 
-function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
-  const conditions: SQL[] = [];
+function buildProductListWhere(listInput: ProductListInput): SQL {
+  const conditions: SQL[] = [isNull(products.deletedAt)];
 
   if (listInput.search) {
     const globalSearchWhere = createGlobalSearchCondition(listInput.search, [
@@ -330,7 +334,7 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
     conditions.push(eq(products.rangeId, listInput.columnFilters.rangeId));
   }
 
-  return conditions.length > 0 ? and(...conditions) : undefined;
+  return and(...conditions) as SQL;
 }
 
 export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Product> {
@@ -367,7 +371,7 @@ async function loadProductDetailRow({ db, id }: { db: Db; id: UUID }): Promise<{
   // waiting on the Product row before fetching its Bays.
   const [row, productBays] = await Promise.all([
     db.query.products.findFirst({
-      where: eq(products.id, id),
+      where: and(eq(products.id, id), isNull(products.deletedAt)),
       with: {
         assemblies: {
           orderBy: productAssemblyOrderBy,
@@ -469,12 +473,10 @@ export async function readProductDocument({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<ReadDocumentResult> {
-  // Finding the document proves the Product exists (the document is scoped to its productId), so only
-  // fall back to the existence check on a miss to distinguish a missing Product from a missing document.
+  await assertProductExists({ db, productId });
   const document = await findProductDocumentSummaryRow({ db, documentId, productId });
 
   if (!document) {
-    await assertProductExists({ db, productId });
     throw new DocumentNotFoundError(documentId);
   }
 
@@ -575,6 +577,8 @@ export async function createProduct({
   try {
     return await db.transaction(async (tx) => {
       const { assemblies: desiredAssemblies, productBays: desiredProductBays, ...productInput } = input;
+      await assertActiveProductRange({ rangeId: productInput.rangeId, tx });
+
       const [row] = await tx.insert(products).values(productInput).returning();
 
       if (!row) {
@@ -613,11 +617,17 @@ export async function updateProduct({
 }): Promise<Product> {
   try {
     return await db.transaction(async (tx) => {
-      const [before] = await tx.select().from(products).where(eq(products.id, input.id)).for('update');
+      const [before] = await tx
+        .select()
+        .from(products)
+        .where(and(eq(products.id, input.id), isNull(products.deletedAt)))
+        .for('update');
 
       if (!before) {
         throw new ProductNotFoundError(input.id);
       }
+
+      await assertActiveProductRange({ rangeId: input.rangeId, tx });
 
       const beforeAssemblies = await listAssemblies({ tx, productId: input.id });
       const beforeProductBays = await listProductBays({ db: tx, productId: input.id });
@@ -692,6 +702,34 @@ export async function updateProduct({
   } catch (error) {
     throw mapProductConstraintViolation(error, input);
   }
+}
+
+export async function removeProduct({ db, id, actorUserId }: { db: Db; id: UUID; actorUserId: AuthId }): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(products)
+      .where(and(eq(products.id, id), isNull(products.deletedAt)))
+      .for('update');
+
+    if (!before) {
+      throw new ProductNotFoundError(id);
+    }
+
+    const [assemblies, productBaysForProduct] = await Promise.all([
+      listAssemblies({ tx, productId: id }),
+      listProductBays({ db: tx, productId: id }),
+    ]);
+    const now = new Date();
+
+    await tx.update(products).set({ deletedAt: now, updatedAt: now }).where(eq(products.id, id));
+    await recordAuditDelete({
+      db: tx,
+      descriptor: productAuditDescriptor,
+      actorUserId,
+      input: { ...before, assemblies, productBays: productBaysForProduct },
+    });
+  });
 }
 
 async function syncProductBays({
@@ -855,11 +893,23 @@ async function assertProductExists({ db, productId }: { db: Db; productId: UUID 
       id: products.id,
     })
     .from(products)
-    .where(eq(products.id, productId))
+    .where(and(eq(products.id, productId), isNull(products.deletedAt)))
     .limit(1);
 
   if (!product) {
     throw new ProductNotFoundError(productId);
+  }
+}
+
+async function assertActiveProductRange({ rangeId, tx }: { rangeId: UUID; tx: DatabaseTransaction }): Promise<void> {
+  const [range] = await tx
+    .select({ id: productRanges.id })
+    .from(productRanges)
+    .where(and(eq(productRanges.id, rangeId), isNull(productRanges.deletedAt)))
+    .for('update');
+
+  if (!range) {
+    throw new ProductRangeReferenceNotFoundError(rangeId);
   }
 }
 

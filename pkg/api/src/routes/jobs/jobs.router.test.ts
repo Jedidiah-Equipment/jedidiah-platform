@@ -1262,6 +1262,10 @@ describe('jobs.bookSlot', () => {
       durationDays: 2,
       jobId: scheduledJob.id,
     });
+    await context.db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${products.id} = ${context.product.id}`);
 
     const schedule = await caller.jobs.listBays();
 

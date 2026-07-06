@@ -5,9 +5,10 @@ import {
   type Db,
   type parts,
   productAssemblies,
+  products,
 } from '@pkg/db';
 import type { Assembly, AssemblyInput, AssemblyNameListResult, UUID } from '@pkg/schema';
-import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import {
   AssemblyOverrideTargetNotFoundError,
@@ -114,6 +115,8 @@ export async function listAssemblyNames({ db }: { db: Db }): Promise<AssemblyNam
   const rows = await db
     .selectDistinctOn([lowerName], { name: productAssemblies.name })
     .from(productAssemblies)
+    .innerJoin(products, eq(productAssemblies.productId, products.id))
+    .where(isNull(products.deletedAt))
     .orderBy(lowerName, asc(productAssemblies.name));
 
   return {

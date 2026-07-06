@@ -1,4 +1,4 @@
-import { productAssemblies, productRanges, products } from '@pkg/db';
+import { productAssemblies, productRanges, products, sql } from '@pkg/db';
 import { expect } from 'vitest';
 import { test } from '../../test/tester.js';
 import { transformSignature } from '../media/image-transform.js';
@@ -114,6 +114,22 @@ test('loadProductsCatalog omits Products that are not lander-ready', async ({ db
   expect(group?.products.some((card) => card.id === hidden.id)).toBe(false);
 });
 
+test('loadProductsCatalog omits soft-removed Products', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, `Removed Product Range ${suffix}`, null);
+  const ready = await insertProduct(db, range.id, { name: `Visible ${suffix}`, modelCode: `VIS-${suffix}` });
+  const removed = await insertProduct(db, range.id, { name: `Removed ${suffix}`, modelCode: `REM-${suffix}` });
+  await db
+    .update(products)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(sql`${products.id} = ${removed.id}`);
+
+  const { groups } = await loadProductsCatalog(db);
+  const group = groups.find((candidate) => candidate.id === range.id);
+
+  expect(group?.products.map((card) => card.id)).toEqual([ready.id]);
+});
+
 test('loadProductsCatalog omits Ranges whose only Products are not lander-ready', async ({ db }) => {
   const emptyRange = await insertRange(db, `Empty Range ${crypto.randomUUID()}`, 'No models yet.');
   const unreadyRange = await insertRange(db, `Unready Range ${crypto.randomUUID()}`, 'Drafts only.');
@@ -127,4 +143,18 @@ test('loadProductsCatalog omits Ranges whose only Products are not lander-ready'
 
   expect(groups.some((group) => group.id === emptyRange.id)).toBe(false);
   expect(groups.some((group) => group.id === unreadyRange.id)).toBe(false);
+});
+
+test('loadProductsCatalog omits soft-removed Ranges', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, `Removed Catalog Range ${suffix}`, 'Hidden from catalog.');
+  await insertProduct(db, range.id, { name: `Hidden Range Product ${suffix}`, modelCode: `HRP-${suffix}` });
+  await db
+    .update(productRanges)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(sql`${productRanges.id} = ${range.id}`);
+
+  const { groups } = await loadProductsCatalog(db);
+
+  expect(groups.some((group) => group.id === range.id)).toBe(false);
 });

@@ -18,13 +18,33 @@ async function createRange(
   });
 }
 
-async function createProductForRange(db: Db, rangeId: string): Promise<void> {
+async function createProductForRange(db: Db, rangeId: string): Promise<string> {
+  const [product] = await db
+    .insert(products)
+    .values({
+      basePrice: 1_000,
+      buildTimeDays: 14,
+      modelCode: `RANGE-REMOVE-${crypto.randomUUID()}`,
+      name: `Range Remove Product ${crypto.randomUUID()}`,
+      rangeId,
+    })
+    .returning({ id: products.id });
+
+  if (!product) {
+    throw new Error('Product insert did not return a row');
+  }
+
+  return product.id;
+}
+
+async function createLegacyProductForRange(db: Db, rangeId: string): Promise<void> {
   await db.insert(products).values({
     basePrice: 1_000,
     buildTimeDays: 14,
-    modelCode: `RANGE-DELETE-${crypto.randomUUID()}`,
-    name: `Range Delete Product ${crypto.randomUUID()}`,
+    modelCode: `RANGE-LEGACY-${crypto.randomUUID()}`,
+    name: `Range Legacy Product ${crypto.randomUUID()}`,
     rangeId,
+    deletedAt: new Date(),
   });
 }
 
@@ -140,17 +160,33 @@ describe('productRanges.reorder', () => {
       caller.productRanges.reorder({ orderedIds: [earthmoving.id, '00000000-0000-4000-8000-0000000000ff'] }),
     ).rejects.toMatchObject({ appCode: 'product_range.not_found' });
   });
+
+  test('reorders active Ranges only and rejects removed Range ids', async ({ context }) => {
+    const caller = context.createCaller();
+    const first = await createRange(caller, 'Active First');
+    const removed = await createRange(caller, 'Removed From Order');
+    const second = await createRange(caller, 'Active Second');
+
+    await caller.productRanges.remove({ id: removed.id });
+
+    const result = await caller.productRanges.reorder({ orderedIds: [second.id, first.id] });
+    expect(result.ranges.map((range) => range.id)).toEqual([second.id, first.id]);
+
+    await expect(caller.productRanges.reorder({ orderedIds: [second.id, removed.id, first.id] })).rejects.toMatchObject(
+      { appCode: 'product_range.not_found' },
+    );
+  });
 });
 
-describe('productRanges.delete', () => {
-  test('deletes an unlinked Product Range and hides it from lists', async ({ context }) => {
+describe('productRanges.remove', () => {
+  test('soft-removes an unlinked Product Range and hides it from active reads', async ({ context }) => {
     const caller = context.createCaller();
     const kept = await createRange(caller, 'Kept Range');
-    const deleted = await createRange(caller, 'Deleted Range');
+    const removed = await createRange(caller, 'Removed Range');
 
-    await expect(caller.productRanges.delete({ id: deleted.id })).resolves.toBeUndefined();
+    await expect(caller.productRanges.remove({ id: removed.id })).resolves.toBeUndefined();
 
-    await expect(caller.productRanges.get({ id: deleted.id })).rejects.toMatchObject({
+    await expect(caller.productRanges.get({ id: removed.id })).rejects.toMatchObject({
       appCode: 'product_range.not_found',
       code: 'NOT_FOUND',
     });
@@ -161,29 +197,37 @@ describe('productRanges.delete', () => {
 
   test('returns not found for a missing or already deleted Product Range', async ({ context }) => {
     const caller = context.createCaller();
-    const deleted = await createRange(caller, 'Already Deleted Range');
+    const removed = await createRange(caller, 'Already Removed Range');
 
-    await caller.productRanges.delete({ id: deleted.id });
+    await caller.productRanges.remove({ id: removed.id });
 
-    await expect(caller.productRanges.delete({ id: deleted.id })).rejects.toMatchObject({
+    await expect(caller.productRanges.remove({ id: removed.id })).rejects.toMatchObject({
       appCode: 'product_range.not_found',
       code: 'NOT_FOUND',
     });
-    await expect(caller.productRanges.delete({ id: '00000000-0000-4000-8000-0000000000ff' })).rejects.toMatchObject({
+    await expect(caller.productRanges.remove({ id: '00000000-0000-4000-8000-0000000000ff' })).rejects.toMatchObject({
       appCode: 'product_range.not_found',
       code: 'NOT_FOUND',
     });
   });
 
-  test('rejects deleting a Product Range with linked products', async ({ context }) => {
+  test('rejects removing a Product Range with active linked products', async ({ context }) => {
     const caller = context.createCaller();
     const range = await createRange(caller, 'Linked Product Range');
     await createProductForRange(context.db, range.id);
 
-    await expect(caller.productRanges.delete({ id: range.id })).rejects.toMatchObject({
+    await expect(caller.productRanges.remove({ id: range.id })).rejects.toMatchObject({
       appCode: 'product_range.has_products',
       code: 'CONFLICT',
     });
+  });
+
+  test('allows removing a Product Range when only soft-removed products link to it', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(caller, 'Legacy Product Range');
+    await createLegacyProductForRange(context.db, range.id);
+
+    await expect(caller.productRanges.remove({ id: range.id })).resolves.toBeUndefined();
   });
 });
 
@@ -191,11 +235,11 @@ describe('productRanges permissions', () => {
   test('requires authentication', async ({ context }) => {
     await expect(context.createAnonCaller().productRanges.list()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
     await expect(
-      context.createAnonCaller().productRanges.delete({ id: '00000000-0000-4000-8000-000000000001' }),
+      context.createAnonCaller().productRanges.remove({ id: '00000000-0000-4000-8000-000000000001' }),
     ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
   });
 
-  test('denies sales, procurement-manager, and job-viewer on read/create/update/delete', async ({ context }) => {
+  test('denies sales, procurement-manager, and job-viewer on read/create/update/remove', async ({ context }) => {
     const adminCaller = context.createCaller();
     const range = await createRange(adminCaller, 'Permission Range');
 
@@ -212,7 +256,7 @@ describe('productRanges permissions', () => {
           name: `Denied ${role}`,
         }),
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-      await expect(caller.productRanges.delete({ id: range.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(caller.productRanges.remove({ id: range.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
     }
   });
 });

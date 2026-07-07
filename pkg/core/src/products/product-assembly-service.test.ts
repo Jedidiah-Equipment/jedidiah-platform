@@ -5,8 +5,8 @@ import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
-import { listAssemblyNames } from './product-assembly-service.js';
-import { createProduct, getProduct, updateProduct } from './product-service.js';
+import { exportProductAssemblies, listAssemblyNames } from './product-assembly-service.js';
+import { createProduct, getProduct, removeProduct, updateProduct } from './product-service.js';
 
 const actorUserId = 'test-user-id';
 
@@ -202,6 +202,82 @@ describe('listAssemblyNames', () => {
     const result = await listAssemblyNames({ db: context.db });
 
     expect(result.names).toEqual([]);
+  });
+});
+
+describe('exportProductAssemblies', () => {
+  test('returns the full active catalog as one ordered row per assembly', async ({ context }) => {
+    await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [optional('Extended Hopper', 12_500), standard('Main Frame')], {
+        modelCode: 'AL6',
+        name: 'Auger Loader 6',
+      }),
+    });
+    await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [standard('Base Assembly'), optional('Dust Extraction Kit', 8_750)], {
+        modelCode: 'B2',
+        name: 'Bagger 2',
+      }),
+    });
+    const removed = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [standard('Removed Frame')], {
+        modelCode: 'REM',
+        name: 'Removed Product',
+      }),
+    });
+    await removeProduct({ actorUserId, db: context.db, id: removed.id });
+
+    const rows = await exportProductAssemblies({ db: context.db });
+
+    expect(rows).toEqual([
+      {
+        assemblyName: 'Main Frame',
+        assemblyPrice: null,
+        assemblyType: 'standard',
+        productModelCode: 'AL6',
+        productName: 'Auger Loader 6',
+      },
+      {
+        assemblyName: 'Extended Hopper',
+        assemblyPrice: '12500.00',
+        assemblyType: 'optional',
+        productModelCode: 'AL6',
+        productName: 'Auger Loader 6',
+      },
+      {
+        assemblyName: 'Base Assembly',
+        assemblyPrice: null,
+        assemblyType: 'standard',
+        productModelCode: 'B2',
+        productName: 'Bagger 2',
+      },
+      {
+        assemblyName: 'Dust Extraction Kit',
+        assemblyPrice: '8750.00',
+        assemblyType: 'optional',
+        productModelCode: 'B2',
+        productName: 'Bagger 2',
+      },
+    ]);
+  });
+
+  test('returns no rows when products have no assemblies', async ({ context }) => {
+    await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [], {
+        modelCode: 'EMPTY',
+        name: 'Empty Product',
+      }),
+    });
+
+    await expect(exportProductAssemblies({ db: context.db })).resolves.toEqual([]);
   });
 });
 

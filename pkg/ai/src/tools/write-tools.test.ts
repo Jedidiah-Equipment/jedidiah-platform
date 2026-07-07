@@ -7,8 +7,8 @@ import type { AiContext } from '../context.js';
 import { createSilentLogger, mockSession } from '../test/test-utils.js';
 import { aiTools } from '../tool-registry.js';
 import { dispatchToolCall } from '../tools.js';
-import { createCustomerTool } from './customers/create-customer.js';
-import { createQuoteTool } from './quotes/create-quote.js';
+import { createCustomerDefinition, createCustomerTool } from './customers/create-customer.js';
+import { createQuoteDefinition, createQuoteTool } from './quotes/create-quote.js';
 import { sendDraftQuoteEmailTool } from './quotes/send-draft-quote-email.js';
 
 vi.mock('../actions/quote-email-body.js', () => ({
@@ -249,6 +249,95 @@ describe('AI write tools', () => {
         createAiContext(),
       ),
     ).rejects.toBeInstanceOf(z.ZodError);
+  });
+
+  test('createCustomer results use the Customer detail projection', () => {
+    const project = createCustomerDefinition.projectResult as (value: unknown) => unknown;
+
+    expect(
+      project({
+        address: '1 Quarry Road',
+        companyName: 'Acme Mining',
+        contactPerson: 'Jane Buyer',
+        createdAt: '2026-06-17T08:00:00.000Z',
+        email: 'jane@acme.example',
+        id: '00000000-0000-4000-8000-000000000101',
+        notes: 'Needs follow-up',
+        phone: '+27123456789',
+        thumbnailDataUrl: 'data:image/webp;base64,aaaa',
+        updatedAt: '2026-06-17T08:00:00.000Z',
+        vatNumber: 'VAT-123',
+      }),
+    ).toEqual({
+      address: '1 Quarry Road',
+      companyName: 'Acme Mining',
+      contactPerson: 'Jane Buyer',
+      email: 'jane@acme.example',
+      id: '00000000-0000-4000-8000-000000000101',
+      links: [
+        {
+          entity: 'Customer',
+          href: '/customers/00000000-0000-4000-8000-000000000101/edit',
+          label: 'Acme Mining',
+        },
+      ],
+      notes: 'Needs follow-up',
+      phone: '+27123456789',
+      vatNumber: 'VAT-123',
+    });
+  });
+
+  test('createQuote results use the Quote detail projection', () => {
+    const project = createQuoteDefinition.projectResult as (value: unknown) => unknown;
+
+    expect(
+      project({
+        code: 'QUO-00001',
+        createdAt: '2026-06-17T08:00:00.000Z',
+        customerCompanyName: 'Acme Mining',
+        customerEmail: 'jane@acme.example',
+        customerId: '00000000-0000-4000-8000-000000000101',
+        id: '00000000-0000-4000-8000-000000000301',
+        lineItems: [
+          {
+            createdAt: '2026-06-17T08:00:00.000Z',
+            id: '00000000-0000-4000-8000-000000000401',
+            name: 'Freight',
+            quantity: 1,
+            quoteId: '00000000-0000-4000-8000-000000000301',
+            unitPrice: 1000,
+            updatedAt: '2026-06-17T08:00:00.000Z',
+          },
+        ],
+        selectedAssemblies: [
+          {
+            createdAt: '2026-06-17T08:00:00.000Z',
+            id: '00000000-0000-4000-8000-000000000501',
+            productAssemblyId: '00000000-0000-4000-8000-000000000601',
+            quoteId: '00000000-0000-4000-8000-000000000301',
+            quotedName: 'Hydraulics',
+            quotedPrice: 5000,
+            updatedAt: '2026-06-17T08:00:00.000Z',
+          },
+        ],
+        updatedAt: '2026-06-17T08:00:00.000Z',
+      }),
+    ).toMatchObject({
+      createdAt: '2026-06-17T08:00:00.000Z',
+      customerEmail: 'jane@acme.example',
+      lineItems: [{ id: '00000000-0000-4000-8000-000000000401', name: 'Freight', quantity: 1, unitPrice: 1000 }],
+      selectedAssemblies: [
+        {
+          id: '00000000-0000-4000-8000-000000000501',
+          productAssemblyId: '00000000-0000-4000-8000-000000000601',
+          quotedName: 'Hydraulics',
+          quotedPrice: 5000,
+        },
+      ],
+    });
+    expect(
+      JSON.stringify(project({ id: 'quote-id', lineItems: [], selectedAssemblies: [], updatedAt: 'x' })),
+    ).not.toContain('updatedAt');
   });
 
   test('dispatch projects write tool failures as tool errors', async () => {

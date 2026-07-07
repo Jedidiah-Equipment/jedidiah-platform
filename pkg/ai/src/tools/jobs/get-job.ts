@@ -5,7 +5,7 @@ import type { AiContext } from '@/context.js';
 import { aiLinkMetadata } from '@/link-metadata.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectJob } from '../projections.js';
+import { projectJobDetail } from '../projections.js';
 
 const GetJobInput = z.object({
   id: UUID,
@@ -57,5 +57,5 @@ export const getJobDefinition: AiToolDefinition<GetJobTool> = {
     ],
     linkTarget: aiLinkMetadata.Job,
   },
-  projectResult: projectJob,
+  projectResult: projectJobDetail,
 };

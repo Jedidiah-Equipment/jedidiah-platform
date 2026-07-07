@@ -4,7 +4,7 @@ import type { AiContext } from '@/context.js';
 import { aiLinkMetadata } from '@/link-metadata.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectJob, projectPagedItems } from '../projections.js';
+import { projectJobListItem, projectPagedItems } from '../projections.js';
 
 export type ListJobsTool = AiToolBase<'listJobs', JobListResult, JobListInput, AiContext>;
 
@@ -47,10 +47,10 @@ export const listJobsDefinition: AiToolDefinition<ListJobsTool> = {
       'Customer company name',
       'Product name and Product model code (null for Custom Jobs)',
       'Work Title display fallback for Custom Jobs',
-      'scheduled Bay slots',
+      'schedule summary when requested',
       'Quote Code',
     ],
     linkTarget: aiLinkMetadata.Job,
   },
-  projectResult: (result) => projectPagedItems(result, projectJob),
+  projectResult: (result) => projectPagedItems(result, projectJobListItem),
 };

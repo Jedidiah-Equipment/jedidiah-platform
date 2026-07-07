@@ -5,7 +5,7 @@ import type { AiContext } from '@/context.js';
 import { aiLinkMetadata } from '@/link-metadata.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectProduct } from '../projections.js';
+import { projectProductDetail } from '../projections.js';
 
 const GetProductInput = z.object({
   id: UUID,
@@ -39,5 +39,5 @@ export const getProductDefinition: AiToolDefinition<GetProductTool> = {
     resultIdentifiers: ['Product name', 'Product model code'],
     linkTarget: aiLinkMetadata.Product,
   },
-  projectResult: projectProduct,
+  projectResult: projectProductDetail,
 };

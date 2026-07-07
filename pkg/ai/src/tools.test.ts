@@ -89,6 +89,10 @@ describe('aiTools', () => {
     );
     expect(quoteDescriptions).toContain('Quote Line Items quantity x unit price contribution');
     expect(quoteDescriptions).toContain('Selected Assemblies for Product Quotes; empty for Custom Quotes');
+    expect(aiTools.listQuotes.description).not.toContain('Quote Line Items quantity x unit price contribution');
+    expect(aiTools.listQuotes.description).not.toContain(
+      'Selected Assemblies for Product Quotes; empty for Custom Quotes',
+    );
   });
 
   test('creates strict Agents tools with closed object parameter schemas', () => {

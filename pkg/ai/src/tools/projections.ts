@@ -28,65 +28,216 @@ export function projectPagedItems(result: unknown, projectItem: (item: unknown) 
   }
 
   return {
-    ...result,
     items: result.items.map(projectItem),
+    ...(typeof result.total === 'number' ? { total: result.total } : {}),
   };
 }
 
-export function projectCustomer(value: unknown): unknown {
+export function projectCustomerListItem(value: unknown): unknown {
   if (!isRecord(value)) {
     return value;
   }
 
-  const { thumbnailDataUrl: _thumbnailDataUrl, ...projectedValue } = value;
+  const projectedValue = pickDefined(value, ['id', 'companyName', 'contactPerson', 'email', 'phone', 'vatNumber']);
   const label = typeof value.companyName === 'string' ? value.companyName : null;
-  return addLinks(projectedValue, [label ? createAiLink('Customer', label, value.id) : null]);
+  return addLinks({ id: value.id, ...projectedValue }, [label ? createAiLink('Customer', label, value.id) : null]);
 }
 
-export function projectJob(value: unknown): unknown {
+export function projectCustomerDetail(value: unknown): unknown {
   if (!isRecord(value)) {
     return value;
   }
 
-  const {
-    customerThumbnailDataUrl: _customerThumbnailDataUrl,
-    productThumbnailDataUrl: _productThumbnailDataUrl,
-    ...jobWithoutThumbnails
-  } = value;
-  const projectedValue = slimJobSchedule(jobWithoutThumbnails, value.id) as LinkableRecord;
+  const projectedValue = pickDefined(value, [
+    'id',
+    'companyName',
+    'email',
+    'vatNumber',
+    'address',
+    'contactPerson',
+    'phone',
+    'notes',
+  ]);
+  const label = typeof value.companyName === 'string' ? value.companyName : null;
+  return addLinks({ id: value.id, ...projectedValue }, [label ? createAiLink('Customer', label, value.id) : null]);
+}
+
+export function projectJobListItem(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  const projectedValue = pickDefined(value, [
+    'id',
+    'code',
+    'productId',
+    'productSerialNumber',
+    'quoteId',
+    'vinNumber',
+    'description',
+    'customerCompanyName',
+    'customerId',
+    'productModelCode',
+    'productName',
+    'quoteCode',
+    'quoteKind',
+    'scheduleState',
+    'workTitle',
+  ]);
   const label = typeof value.code === 'string' ? value.code : null;
-  return addLinks(projectedValue, [
+  return addLinks({ id: value.id, ...projectedValue }, [
     label ? createAiLink('Job', label, value.id) : null,
     createLink('Quote', value.quoteCode, value.quoteId),
     createLink('Customer', value.customerCompanyName, value.customerId),
   ]);
 }
 
-export function projectProduct(value: unknown): unknown {
+export function projectJobDetail(value: unknown): unknown {
   if (!isRecord(value)) {
     return value;
   }
 
-  const { thumbnailDataUrl: _thumbnailDataUrl, ...projectedValue } = value;
-  const label = typeof value.name === 'string' ? value.name : null;
-  return addLinks(projectedValue, [label ? createAiLink('Product', label, value.id) : null]);
+  const projectedValue = {
+    ...pickDefined(value, [
+      'id',
+      'code',
+      'productId',
+      'productSerialNumber',
+      'quoteId',
+      'vinNumber',
+      'description',
+      'customerCompanyName',
+      'customerId',
+      'productModelCode',
+      'productName',
+      'quoteCode',
+      'quoteKind',
+      'scheduleState',
+      'workTitle',
+    ]),
+    ...(Array.isArray(value.cfo) ? { cfo: value.cfo } : {}),
+    ...(Array.isArray(value.documents) ? { documents: value.documents.map(projectJobDocument) } : {}),
+    ...(Array.isArray(value.schedule) ? { schedule: slimJobScheduleDepartments(value.schedule, value.id) } : {}),
+  };
+  const label = typeof value.code === 'string' ? value.code : null;
+  return addLinks({ id: value.id, ...projectedValue }, [
+    label ? createAiLink('Job', label, value.id) : null,
+    createLink('Quote', value.quoteCode, value.quoteId),
+    createLink('Customer', value.customerCompanyName, value.customerId),
+  ]);
 }
 
-export function projectQuote(value: unknown): unknown {
+export function projectProductListItem(value: unknown): unknown {
   if (!isRecord(value)) {
     return value;
   }
 
-  const {
-    customerThumbnailDataUrl: _customerThumbnailDataUrl,
-    salesPersonThumbnailDataUrl: _salesPersonThumbnailDataUrl,
-    sentAt: _sentAt,
-    ...quoteWithoutThumbnails
-  } = value;
+  const projectedValue = projectProductBase(value);
+  const label = typeof value.name === 'string' ? value.name : null;
+  return addLinks({ id: value.id, ...projectedValue }, [label ? createAiLink('Product', label, value.id) : null]);
+}
+
+export function projectProductDetail(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  const projectedValue = projectProductBase(value);
+  const label = typeof value.name === 'string' ? value.name : null;
+  return addLinks({ id: value.id, ...projectedValue }, [label ? createAiLink('Product', label, value.id) : null]);
+}
+
+export function projectQuoteListItem(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value;
+  }
+
   const projectedValue = {
-    ...quoteWithoutThumbnails,
-    ...(isObjectRecord(value.product) ? { product: projectQuoteProduct(value.product) } : {}),
+    ...pickDefined(value, [
+      'id',
+      'code',
+      'customerId',
+      'salesPersonId',
+      'status',
+      'statusChangedAt',
+      'discountPercent',
+      'depositPercent',
+      'deliveryIncluded',
+      'deliveryPrice',
+      'validUntil',
+      'preferredDeliveryDate',
+      'plannedDeliveryDate',
+      'documentNotes',
+      'quotedBasePrice',
+      'quotedCurrencyCode',
+      'createdAt',
+      'kind',
+      'productId',
+      'workTitle',
+      'customerCompanyName',
+      'job',
+      'salesPersonEmail',
+      'salesPersonName',
+    ]),
+    ...(isObjectRecord(value.product) || value.product === null
+      ? { product: projectQuoteProductSummary(value.product) }
+      : {}),
   };
+  return addQuoteLinks(value, { id: value.id, ...projectedValue });
+}
+
+export function projectQuoteDetail(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  const projectedValue = {
+    ...pickDefined(value, [
+      'id',
+      'code',
+      'customerId',
+      'salesPersonId',
+      'status',
+      'statusChangedAt',
+      'discountPercent',
+      'depositPercent',
+      'deliveryIncluded',
+      'deliveryPrice',
+      'validUntil',
+      'preferredDeliveryDate',
+      'plannedDeliveryDate',
+      'notes',
+      'documentNotes',
+      'quotedBasePrice',
+      'quotedCurrencyCode',
+      'createdAt',
+      'kind',
+      'productId',
+      'workTitle',
+      'customerCompanyName',
+      'job',
+      'salesPersonEmail',
+      'salesPersonName',
+      'customerAddress',
+      'customerContactPerson',
+      'customerEmail',
+      'customerPhone',
+      'customerVatNumber',
+    ]),
+    ...(isObjectRecord(value.product) || value.product === null
+      ? { product: projectQuoteProductDetail(value.product) }
+      : {}),
+    ...(Array.isArray(value.lineItems) ? { lineItems: value.lineItems.map(projectQuoteLineItem) } : {}),
+    ...(Array.isArray(value.selectedAssemblies)
+      ? { selectedAssemblies: value.selectedAssemblies.map(projectQuoteSelectedAssembly) }
+      : {}),
+  };
+  return addQuoteLinks(value, { id: value.id, ...projectedValue });
+}
+
+export const projectQuoteCreateResult = projectQuoteDetail;
+
+function addQuoteLinks(value: LinkableRecord, projectedValue: LinkableRecord): unknown {
   const label = typeof value.code === 'string' ? value.code : null;
   const product = isObjectRecord(value.product) ? value.product : null;
   const productLabel = typeof product?.name === 'string' ? product.name : null;
@@ -105,19 +256,17 @@ export function projectUserList(value: unknown): unknown {
 
   return {
     ...value,
-    users: value.users.map(projectUserSummary),
+    users: value.users.map(projectAdminUserSummary),
   };
 }
 
 export function projectQuoteSalespeople(value: unknown): unknown {
-  // Keep quote-salesperson projection distinct from the admin user-list tool; the shapes match today but can diverge by workflow.
   if (!isObjectRecord(value) || !Array.isArray(value.users)) {
     return value;
   }
 
   return {
-    ...value,
-    users: value.users.map(projectUserSummary),
+    users: value.users.map(projectQuoteSalespersonSummary),
   };
 }
 
@@ -138,8 +287,8 @@ export function projectPartList(value: unknown): unknown {
   }
 
   return {
-    ...value,
     items: value.items.map(projectPart),
+    ...(typeof value.total === 'number' ? { total: value.total } : {}),
   };
 }
 
@@ -149,8 +298,8 @@ export function projectAuditEventList(value: unknown): unknown {
   }
 
   return {
-    ...value,
     items: value.items.map(projectAuditEvent),
+    ...(typeof value.total === 'number' ? { total: value.total } : {}),
   };
 }
 
@@ -209,36 +358,85 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function slimJobSchedule(value: unknown, jobId: string): unknown {
-  if (!isObjectRecord(value) || !Array.isArray(value.schedule)) {
+function pickDefined(value: Record<string, unknown>, keys: readonly string[]): Record<string, unknown> {
+  const entries = keys.filter((key) => Object.hasOwn(value, key)).map((key) => [key, value[key]] as const);
+
+  return Object.fromEntries(entries);
+}
+
+function projectProductBase(value: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...pickDefined(value, [
+      'name',
+      'nameHighlight',
+      'description',
+      'modelCode',
+      'range',
+      'basePrice',
+      'buildTimeDays',
+      'currencyCode',
+      'requiresVinNumber',
+      'category',
+      'keyFeatures',
+      'technicalDetails',
+    ]),
+    ...(Array.isArray(value.assemblies) ? { assemblies: value.assemblies.map(projectProductAssembly) } : {}),
+    ...(Array.isArray(value.productBays) ? { productBays: value.productBays.map(projectProductBay) } : {}),
+  };
+}
+
+function projectProductAssembly(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
     return value;
   }
 
   return {
-    ...value,
-    schedule: value.schedule.map((department) => {
-      if (!isObjectRecord(department) || !Array.isArray(department.bays)) {
-        return department;
-      }
-
-      return {
-        ...department,
-        bays: department.bays
-          .map((bay) => {
-            if (!isObjectRecord(bay) || !Array.isArray(bay.slots)) {
-              return bay;
-            }
-
-            return {
-              ...bay,
-              currentOperator: projectBayOperator(bay.currentOperator),
-              slots: bay.slots.filter((slot) => isObjectRecord(slot) && slot.kind === 'work' && slot.jobId === jobId),
-            };
-          })
-          .filter((bay) => !isObjectRecord(bay) || !Array.isArray(bay.slots) || bay.slots.length > 0),
-      };
-    }),
+    ...pickDefined(value, ['id', 'kind', 'name', 'price', 'parts', 'overrideStandardAssemblyIds']),
   };
+}
+
+function projectProductBay(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return {
+    ...pickDefined(value, ['defaultWorkingDays']),
+    ...(isObjectRecord(value.bay) ? { bay: projectBaySummary(value.bay) } : {}),
+  };
+}
+
+function projectBaySummary(value: Record<string, unknown>): Record<string, unknown> {
+  return pickDefined(value, ['id', 'department', 'name']);
+}
+
+function slimJobScheduleDepartments(schedule: unknown[], jobId: string): unknown[] {
+  return schedule.map((department) => {
+    if (!isObjectRecord(department) || !Array.isArray(department.bays)) {
+      return department;
+    }
+
+    return {
+      ...pickDefined(department, ['department']),
+      bays: department.bays
+        .map((bay) => {
+          if (!isObjectRecord(bay) || !Array.isArray(bay.slots)) {
+            return bay;
+          }
+
+          const slots = bay.slots
+            .filter((slot) => isObjectRecord(slot) && slot.kind === 'work' && slot.jobId === jobId)
+            .map(projectJobScheduleSlot);
+
+          return {
+            ...projectBaySummary(bay),
+            currentOperator: projectBayOperator(bay.currentOperator),
+            slots,
+          };
+        })
+        .filter((bay) => !isObjectRecord(bay) || !Array.isArray(bay.slots) || bay.slots.length > 0),
+    };
+  });
 }
 
 function projectBayOperator(value: unknown): unknown {
@@ -246,25 +444,93 @@ function projectBayOperator(value: unknown): unknown {
     return value;
   }
 
-  const { thumbnailDataUrl: _thumbnailDataUrl, ...operator } = value;
-
-  return operator;
+  return pickDefined(value, ['id', 'name', 'email']);
 }
 
-function projectQuoteProduct(value: Record<string, unknown>): Record<string, unknown> {
-  const { thumbnailDataUrl: _thumbnailDataUrl, ...product } = value;
-
-  return product;
-}
-
-function projectUserSummary(value: unknown): unknown {
+function projectJobScheduleSlot(value: unknown): unknown {
   if (!isObjectRecord(value)) {
     return value;
   }
 
-  const { thumbnailDataUrl: _thumbnailDataUrl, ...user } = value;
+  return pickDefined(value, [
+    'id',
+    'kind',
+    'durationDays',
+    'startDate',
+    'endDate',
+    'state',
+    'jobCode',
+    'jobId',
+    'jobUnfinished',
+  ]);
+}
 
-  return user;
+function projectJobDocument(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return pickDefined(value, ['id', 'filename', 'metadata', 'sourceProductName', 'uploaderName', 'uploaderEmail']);
+}
+
+function projectQuoteProductSummary(value: unknown): unknown {
+  if (value === null) {
+    return null;
+  }
+
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return pickDefined(value, ['buildTimeDays', 'currencyCode', 'modelCode', 'name']);
+}
+
+function projectQuoteProductDetail(value: unknown): unknown {
+  if (value === null) {
+    return null;
+  }
+
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return {
+    ...pickDefined(value, ['buildTimeDays', 'currencyCode', 'modelCode', 'name', 'description', 'requiresVinNumber']),
+    ...(Array.isArray(value.assemblies) ? { assemblies: value.assemblies.map(projectProductAssembly) } : {}),
+    ...(Array.isArray(value.bays) ? { bays: value.bays.map(projectProductBay) } : {}),
+  };
+}
+
+function projectQuoteLineItem(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return pickDefined(value, ['id', 'name', 'quantity', 'unitPrice']);
+}
+
+function projectQuoteSelectedAssembly(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return pickDefined(value, ['id', 'productAssemblyId', 'quotedName', 'quotedPrice']);
+}
+
+function projectAdminUserSummary(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return pickDefined(value, ['id', 'name', 'email', 'role', 'phoneNumber', 'departments']);
+}
+
+function projectQuoteSalespersonSummary(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return pickDefined(value, ['id', 'name', 'email', 'role']);
 }
 
 function projectPartSupplier(value: Record<string, unknown>): Record<string, unknown> {
@@ -279,10 +545,59 @@ function projectAuditEvent(value: unknown): unknown {
   }
 
   return {
-    ...value,
-    ...(isObjectRecord(value.actor) ? { actor: projectUserSummary(value.actor) } : {}),
-    ...(isObjectRecord(value.changes) ? { changes: stripThumbnailDataUrls(value.changes).value } : {}),
+    ...pickDefined(value, [
+      'id',
+      'occurredAt',
+      'actorUserId',
+      'actorName',
+      'actorEmail',
+      'entityType',
+      'entityId',
+      'action',
+      'summary',
+    ]),
+    ...(isObjectRecord(value.actor) ? { actor: projectAdminUserSummary(value.actor) } : {}),
+    ...(isObjectRecord(value.changes) ? { changes: projectAuditChangePreviews(value.changes) } : {}),
   };
+}
+
+function projectAuditChangePreviews(changes: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(changes).map(([field, change]) => {
+      if (!isObjectRecord(change)) {
+        return [field, previewAuditValue(change)];
+      }
+
+      return [
+        field,
+        {
+          from: previewAuditValue(change.from),
+          to: previewAuditValue(change.to),
+        },
+      ];
+    }),
+  );
+}
+
+function previewAuditValue(value: unknown): unknown {
+  if (value === null || typeof value === 'boolean' || typeof value === 'number') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    return value.length <= 80 ? value : `${value.slice(0, 77)}...`;
+  }
+
+  if (Array.isArray(value)) {
+    return `[array:${value.length}]`;
+  }
+
+  if (isObjectRecord(value)) {
+    const keys = Object.keys(value);
+    return `[object:${keys.slice(0, 5).join(',')}${keys.length > 5 ? ',...' : ''}]`;
+  }
+
+  return value === undefined ? null : String(value);
 }
 
 function stripThumbnailDataUrls(value: unknown): { value: unknown; removed: number } {

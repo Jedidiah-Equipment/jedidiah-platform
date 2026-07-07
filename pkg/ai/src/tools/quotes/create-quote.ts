@@ -19,7 +19,7 @@ import { aiLinkMetadata } from '@/link-metadata.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { requireActorSession } from '../actor.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectQuote } from '../projections.js';
+import { projectQuoteCreateResult } from '../projections.js';
 
 const CreateQuoteCustomerInput = z
   .object({
@@ -136,5 +136,5 @@ export const createQuoteDefinition: AiToolDefinition<CreateQuoteTool> = {
     ],
     linkTarget: aiLinkMetadata.Quote,
   },
-  projectResult: projectQuote,
+  projectResult: projectQuoteCreateResult,
 };

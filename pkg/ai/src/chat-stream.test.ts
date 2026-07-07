@@ -178,13 +178,19 @@ describe('runChatStream', () => {
         type: 'tool_call',
       });
       expect(events[0]).toHaveProperty('id', expect.any(String));
-      const { thumbnailDataUrl: _thumbnailDataUrl, ...productWithoutThumbnail } = product;
       expect(events[1]).toEqual({
         id: (events[0] as { id: string }).id,
         result: {
           items: [
             {
-              ...productWithoutThumbnail,
+              assemblies: [],
+              basePrice: 332_500,
+              buildTimeDays: 14,
+              category: null,
+              currencyCode: 'ZAR',
+              description: 'Apex forklift',
+              id: '00000000-0000-4000-8000-000000000001',
+              keyFeatures: [],
               links: [
                 {
                   entity: 'Product',
@@ -192,10 +198,15 @@ describe('runChatStream', () => {
                   label: 'Apex Forklift',
                 },
               ],
+              modelCode: 'AF-25',
+              name: 'Apex Forklift',
+              nameHighlight: null,
+              productBays: [],
+              range: { id: '00000000-0000-4000-8000-000000000301', name: 'Forklifts' },
+              requiresVinNumber: false,
+              technicalDetails: [],
             },
           ],
-          sortBy: 'name',
-          sortDirection: 'asc',
           total: 1,
         },
         size: {

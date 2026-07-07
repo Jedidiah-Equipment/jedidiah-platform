@@ -12,7 +12,7 @@ import { aiLinkMetadata } from '@/link-metadata.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { requireActorSession } from '../actor.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectCustomer } from '../projections.js';
+import { projectCustomerDetail } from '../projections.js';
 
 const CreateCustomerInput = z.strictObject({
   address: z.string().nullable().optional(),
@@ -65,5 +65,5 @@ export const createCustomerDefinition: AiToolDefinition<CreateCustomerTool> = {
     resultIdentifiers: ['Customer company name', 'Customer UUID', 'VAT number'],
     linkTarget: aiLinkMetadata.Customer,
   },
-  projectResult: projectCustomer,
+  projectResult: projectCustomerDetail,
 };

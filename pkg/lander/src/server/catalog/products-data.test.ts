@@ -1,4 +1,4 @@
-import { productAssemblies, productRanges, products, sql } from '@pkg/db';
+import { productAssemblies, productRanges, productRangeVariants, products, sql } from '@pkg/db';
 import { expect } from 'vitest';
 import { test } from '../../test/tester.js';
 import { transformSignature } from '../media/image-transform.js';
@@ -26,12 +26,25 @@ async function insertRange(db: Db, name: string, description: string | null) {
   return range;
 }
 
+async function insertVariant(db: Db, rangeId: string, name: string, displayOrder: number) {
+  const [variant] = await db.insert(productRangeVariants).values({ displayOrder, name, rangeId }).returning();
+  if (!variant) throw new Error('variant insert did not return a row');
+
+  return variant;
+}
+
 // Inserts a fully lander-ready Product (publish toggle on, gallery images, category, key feature, description,
 // and one standard assembly) so it surfaces in the catalog. Tests override values to make it not ready.
 async function insertProduct(
   db: Db,
   rangeId: string,
-  values: { name: string; modelCode: string; description?: string | null; landerEnabled?: boolean },
+  values: {
+    name: string;
+    modelCode: string;
+    description?: string | null;
+    landerEnabled?: boolean;
+    variantId?: string | null;
+  },
 ) {
   const [product] = await db
     .insert(products)
@@ -39,6 +52,7 @@ async function insertProduct(
       basePrice: 1000,
       buildTimeDays: 5,
       rangeId,
+      variantId: values.variantId,
       landerEnabled: true,
       category: 'Default category',
       keyFeatures: ['Default feature'],
@@ -87,12 +101,49 @@ test('loadProductsCatalog groups Products under their Range with a model count',
     name: product.name,
     modelCode: product.modelCode,
     description: 'Flagship 14-ton tipping trailer.',
+    variantId: null,
     href: `/products/${encodeURIComponent(product.modelCode)}`,
     // The card image URL carries the primary image's `updatedAt` plus the transform signature as a `?v=`
     // cache-busting token so a replaced photo (or a transform change) appears immediately on the public
     // site (issue #647).
     imageUrl: `/images/products/${product.id}?v=${Date.parse(product.images.primary?.updatedAt ?? '')}-${transformSignature('webp')}`,
   });
+});
+
+test('loadProductsCatalog exposes Range Variants in display order with range-scoped slug data', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, `Variant Catalog Range ${suffix}`, 'Models with variants.');
+  const wide = await insertVariant(db, range.id, `Wide Body ${suffix}`, 20);
+  const narrow = await insertVariant(db, range.id, `Narrow Body ${suffix}`, 10);
+  await insertProduct(db, range.id, {
+    name: `Narrow Model ${suffix}`,
+    modelCode: `NAR-${suffix}`,
+    variantId: narrow.id,
+  });
+  await insertProduct(db, range.id, {
+    name: `Wide Model ${suffix}`,
+    modelCode: `WID-${suffix}`,
+    variantId: wide.id,
+  });
+  const unassigned = await insertProduct(db, range.id, {
+    name: `Base Model ${suffix}`,
+    modelCode: `BAS-${suffix}`,
+  });
+
+  const { groups } = await loadProductsCatalog(db);
+  const group = groups.find((candidate) => candidate.id === range.id);
+
+  expect(group?.variants).toEqual([
+    { id: narrow.id, name: narrow.name, slug: toRangeSlug(narrow.name) },
+    { id: wide.id, name: wide.name, slug: toRangeSlug(wide.name) },
+  ]);
+  expect(group?.products).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: unassigned.id, variantId: null }),
+      expect.objectContaining({ variantId: narrow.id }),
+      expect.objectContaining({ variantId: wide.id }),
+    ]),
+  );
 });
 
 test('loadProductsCatalog omits Products that are not lander-ready', async ({ db }) => {

@@ -181,6 +181,7 @@ test('loadProductDetail lists other Products in the same Range as related cards'
       name: sibling.name,
       modelCode: sibling.modelCode,
       description: 'Compact field bowser.',
+      variantId: null,
       href: `/products/${encodeURIComponent(sibling.modelCode)}`,
       imageUrl: `/images/products/${sibling.id}?v=${Date.parse(sibling.images.primary?.updatedAt ?? '')}-${transformSignature('webp')}`,
     },

@@ -3,7 +3,9 @@ import { ProductDocumentMetadata, QuoteDocumentMetadata } from '@pkg/schema';
 import type { ZodType } from 'zod';
 
 export const PRODUCT_DOCUMENT_TYPE_LABELS = {
+  bom: 'BOM',
   brochure: 'Brochure',
+  general: 'General',
   part_book: 'Part Book',
   sop: 'SOP',
 } as const satisfies Record<JobDocumentType, string>;

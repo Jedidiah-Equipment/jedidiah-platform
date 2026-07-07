@@ -521,7 +521,7 @@ async function insertJobCfo({
 }
 
 /**
- * Freezes a Job's documents at creation time. The uploaded Product Documents (sop/part_book) are
+ * Freezes a Job's documents at creation time. The uploaded Product Documents are
  * snapshot-copied as immutable job-owned rows that point at the same stored object, while the Brochure
  * is generated fresh from the Product's live config (via the injected {@link BrochurePdfRenderer}) and
  * saved as a standalone immutable Job Document. A later edit to the Product's brochure config never

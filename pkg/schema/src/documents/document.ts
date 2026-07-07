@@ -17,10 +17,12 @@ export const DocumentContentType = requiredTrimmedText('Content type is required
 export type DocumentByteSize = z.infer<typeof DocumentByteSize>;
 export const DocumentByteSize = z.int().min(0);
 
+const PRODUCT_DOCUMENT_TYPES = ['sop', 'part_book', 'bom', 'general'] as const;
+
 // Uploadable Product document types. The Brochure is generated, never uploaded, so it lives in
 // JobDocumentType instead.
 export type ProductDocumentType = z.infer<typeof ProductDocumentType>;
-export const ProductDocumentType = z.enum(['sop', 'part_book']);
+export const ProductDocumentType = z.enum(PRODUCT_DOCUMENT_TYPES);
 
 export type ProductDocumentMetadata = z.infer<typeof ProductDocumentMetadata>;
 export const ProductDocumentMetadata = z.object({
@@ -28,7 +30,7 @@ export const ProductDocumentMetadata = z.object({
 });
 
 export type JobDocumentType = z.infer<typeof JobDocumentType>;
-export const JobDocumentType = z.enum(['sop', 'part_book', 'brochure']);
+export const JobDocumentType = z.enum([...PRODUCT_DOCUMENT_TYPES, 'brochure']);
 
 export type JobDocumentMetadata = z.infer<typeof JobDocumentMetadata>;
 export const JobDocumentMetadata = z.object({

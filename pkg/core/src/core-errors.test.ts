@@ -16,9 +16,12 @@ import {
 } from './parts/part-errors.js';
 import {
   DuplicateProductRangeNameError,
+  DuplicateProductRangeVariantNameError,
   isProductRangeCoreError,
   ProductRangeHasProductsError,
   ProductRangeNotFoundError,
+  ProductRangeVariantHasProductsError,
+  ProductRangeVariantNotFoundError,
 } from './product-ranges/product-range-errors.js';
 import {
   DuplicateProductModelCodeError,
@@ -49,8 +52,17 @@ describe('core error codes and guards', () => {
     expect(new DuplicateProductRangeNameError('Example Range').code).toBe('product_range.duplicate_name');
     expect(new ProductRangeHasProductsError('range-id').code).toBe('product_range.has_products');
     expect(new ProductRangeNotFoundError('range-id').code).toBe('product_range.not_found');
+    // Variant blocking carries its own code so callers can distinguish it from a Range with linked products.
+    expect(new DuplicateProductRangeVariantNameError('range-id', 'Compact').code).toBe(
+      'product_range.variant_duplicate_name',
+    );
+    expect(new ProductRangeVariantHasProductsError('range-id', 'variant-id').code).toBe(
+      'product_range.variant_has_products',
+    );
+    expect(new ProductRangeVariantNotFoundError('range-id', 'variant-id').code).toBe('product_range.variant_not_found');
     expect(isProductRangeCoreError(new ProductRangeHasProductsError('range-id'))).toBe(true);
     expect(isProductRangeCoreError(new ProductRangeNotFoundError('range-id'))).toBe(true);
+    expect(isProductRangeCoreError(new ProductRangeVariantHasProductsError('range-id', 'variant-id'))).toBe(true);
     expect(isProductRangeCoreError(new Error('product_range.not_found'))).toBe(false);
   });
 

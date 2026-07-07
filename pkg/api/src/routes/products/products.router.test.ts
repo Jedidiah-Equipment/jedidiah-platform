@@ -276,8 +276,47 @@ describe('products.read', () => {
     expect(result.names.map((name) => name.toLowerCase())).toEqual(['canopy', 'hydraulics']);
   });
 
+  test('exports product assemblies through Product read access', async ({ context }) => {
+    const caller = context.createCaller();
+    await createProduct(caller, 'Assembly Export A', context.rangeId, {
+      assemblies: [
+        { kind: 'optional', name: 'Canopy', overrideStandardAssemblyIds: [], parts: [], price: 100 },
+        { kind: 'standard', name: 'Hydraulics', parts: [] },
+      ],
+      modelCode: 'AE-A',
+    });
+    const removed = await createProduct(caller, 'Assembly Export Removed', context.rangeId, {
+      assemblies: [{ kind: 'standard', name: 'Removed Hydraulics', parts: [] }],
+      modelCode: 'AE-R',
+    });
+    await caller.products.remove({ id: removed.id });
+
+    await expect(caller.products.assemblyExport()).resolves.toEqual([
+      {
+        assemblyName: 'Hydraulics',
+        assemblyPrice: null,
+        assemblyType: 'standard',
+        productModelCode: 'AE-A',
+        productName: 'Assembly Export A',
+      },
+      {
+        assemblyName: 'Canopy',
+        assemblyPrice: '100.00',
+        assemblyType: 'optional',
+        productModelCode: 'AE-A',
+        productName: 'Assembly Export A',
+      },
+    ]);
+  });
+
   test('rejects unauthorized assembly name reads', async ({ context }) => {
     await expect(context.createCaller(mockSession('sales')).products.assemblyNames()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('rejects unauthorized assembly export reads', async ({ context }) => {
+    await expect(context.createCaller(mockSession('sales')).products.assemblyExport()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });

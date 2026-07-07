@@ -8,7 +8,7 @@ import {
   productAssemblies,
   products,
 } from '@pkg/db';
-import type { Assembly, AssemblyInput, AssemblyNameListResult, UUID } from '@pkg/schema';
+import type { Assembly, AssemblyInput, AssemblyKind, AssemblyNameListResult, UUID } from '@pkg/schema';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
@@ -27,6 +27,13 @@ export type AssemblyListRow = AssemblyRow & {
     part: Pick<typeof parts.$inferSelect, 'category' | 'code'>;
   })[];
   optionalOverrides: (typeof assemblyOverrides.$inferSelect)[];
+};
+export type AssemblyExportRow = {
+  productModelCode: string;
+  productName: string;
+  assemblyType: AssemblyKind;
+  assemblyName: string;
+  assemblyPrice: string | null;
 };
 
 export async function syncAssemblies({
@@ -123,6 +130,21 @@ export async function listAssemblyNames({ db }: { db: Db }): Promise<AssemblyNam
   return {
     names: rows.map((row) => row.name),
   };
+}
+
+export async function exportProductAssemblies({ db }: { db: Db }): Promise<AssemblyExportRow[]> {
+  return db
+    .select({
+      assemblyName: productAssemblies.name,
+      assemblyPrice: sql<string | null>`${productAssemblies.price}::text`,
+      assemblyType: productAssemblies.kind,
+      productModelCode: products.modelCode,
+      productName: products.name,
+    })
+    .from(productAssemblies)
+    .innerJoin(products, eq(productAssemblies.productId, products.id))
+    .where(notRemoved(products))
+    .orderBy(asc(products.modelCode), ...productAssemblyOrderBy);
 }
 
 export const productAssemblyOrderBy = [

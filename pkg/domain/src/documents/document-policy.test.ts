@@ -87,7 +87,7 @@ describe('validateDocumentPolicy', () => {
 
 describe('validateDocumentMetadata', () => {
   it('accepts each valid product document type', () => {
-    for (const type of ['sop', 'part_book'] as const) {
+    for (const type of ['sop', 'part_book', 'bom', 'general'] as const) {
       expect(validateDocumentMetadata({ metadata: { type }, ownerType: 'product' })).toEqual({ ok: true });
     }
   });

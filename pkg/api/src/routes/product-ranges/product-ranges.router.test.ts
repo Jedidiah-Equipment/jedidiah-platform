@@ -100,6 +100,25 @@ describe('productRanges.update', () => {
     });
   });
 
+  test('preserves Variants in the Product Range update response', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createRange(caller, 'Variant Update Range');
+    const variant = await caller.productRanges.createVariant({ rangeId: created.id, name: 'Heavy Duty' });
+
+    const updated = await caller.productRanges.update({
+      id: created.id,
+      name: 'Variant Update Range Pro',
+    });
+
+    expect(updated.variants).toEqual([
+      expect.objectContaining({
+        id: variant.id,
+        name: 'Heavy Duty',
+        rangeId: created.id,
+      }),
+    ]);
+  });
+
   test('rejects case-insensitive duplicate renames', async ({ context }) => {
     const caller = context.createCaller();
     await createRange(caller, 'Lowbed');

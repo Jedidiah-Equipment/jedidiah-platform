@@ -190,7 +190,7 @@ export async function updateProductRange({
       throw new ProductRangeNotFoundError(input.id);
     }
 
-    return mapProductRange(row);
+    return getProductRange({ db, id: row.id });
   } catch (error) {
     throw mapProductRangeUniqueViolation(error, input);
   }

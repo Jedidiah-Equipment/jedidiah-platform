@@ -20,6 +20,7 @@ describe('getAiDebugInfo', () => {
   test('lists every registry tool in registry order, authorized for a full-access user', () => {
     const info = getAiDebugInfo(adminAccess);
 
+    expect(info.toolResultMaxSerializedBytes).toBe(24 * 1024);
     expect(info.tools.map((tool) => tool.name)).toEqual(AI_TOOL_REGISTRY.map((definition) => definition.tool.name));
     expect(info.tools.every((tool) => tool.authorized)).toBe(true);
 

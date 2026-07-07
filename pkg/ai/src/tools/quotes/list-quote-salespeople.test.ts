@@ -59,11 +59,20 @@ describe('listQuoteSalespeopleTool', () => {
     ).rejects.toBeInstanceOf(z.ZodError);
   });
 
-  test('keeps salesperson list results as explicit identity projections', () => {
+  test('removes salesperson thumbnails from projected results', () => {
     const result = {
-      users: [{ email: 'planner@example.com', id: 'user-id', name: 'Planner User' }],
+      users: [
+        {
+          email: 'planner@example.com',
+          id: 'user-id',
+          name: 'Planner User',
+          thumbnailDataUrl: 'data:image/webp;base64,aaaa',
+        },
+      ],
     };
 
-    expect((listQuoteSalespeopleDefinition.projectResult as (value: unknown) => unknown)(result)).toBe(result);
+    expect((listQuoteSalespeopleDefinition.projectResult as (value: unknown) => unknown)(result)).toEqual({
+      users: [{ email: 'planner@example.com', id: 'user-id', name: 'Planner User' }],
+    });
   });
 });

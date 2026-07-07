@@ -98,7 +98,7 @@ describe('listPartsTool', () => {
     ).rejects.toBeInstanceOf(z.ZodError);
   });
 
-  test('keeps Part list results as explicit identity projections', () => {
+  test('removes nested thumbnails from projected Part list results', () => {
     const result = {
       items: [
         {
@@ -106,12 +106,30 @@ describe('listPartsTool', () => {
           id: 'part-id',
           isInternallyFabricated: true,
           name: 'Hydraulic hose',
+          supplier: {
+            companyName: 'Apex Supplier',
+            thumbnailDataUrl: 'data:image/webp;base64,aaaa',
+          },
           unitOfMeasure: 'mm',
         },
       ],
       total: 1,
     };
 
-    expect((listPartsDefinition.projectResult as (value: unknown) => unknown)(result)).toBe(result);
+    expect((listPartsDefinition.projectResult as (value: unknown) => unknown)(result)).toEqual({
+      items: [
+        {
+          code: 'HOSE-001',
+          id: 'part-id',
+          isInternallyFabricated: true,
+          name: 'Hydraulic hose',
+          supplier: {
+            companyName: 'Apex Supplier',
+          },
+          unitOfMeasure: 'mm',
+        },
+      ],
+      total: 1,
+    });
   });
 });

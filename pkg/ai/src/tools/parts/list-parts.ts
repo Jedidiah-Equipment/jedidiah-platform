@@ -3,7 +3,7 @@ import { type AiToolBase, PartListInput, type PartListResult } from '@pkg/schema
 import type { AiContext } from '@/context.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { identityProjection } from '../projections.js';
+import { projectPartList } from '../projections.js';
 
 export type ListPartsTool = AiToolBase<'listParts', PartListResult, PartListInput, AiContext>;
 
@@ -39,5 +39,5 @@ export const listPartsDefinition: AiToolDefinition<ListPartsTool> = {
     ],
     resultIdentifiers: ['Part code', 'Part name', 'Supplier company name', 'unitOfMeasure', 'isInternallyFabricated'],
   },
-  projectResult: identityProjection,
+  projectResult: projectPartList,
 };

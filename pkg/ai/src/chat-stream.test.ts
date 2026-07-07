@@ -178,12 +178,13 @@ describe('runChatStream', () => {
         type: 'tool_call',
       });
       expect(events[0]).toHaveProperty('id', expect.any(String));
+      const { thumbnailDataUrl: _thumbnailDataUrl, ...productWithoutThumbnail } = product;
       expect(events[1]).toEqual({
         id: (events[0] as { id: string }).id,
         result: {
           items: [
             {
-              ...product,
+              ...productWithoutThumbnail,
               links: [
                 {
                   entity: 'Product',
@@ -196,6 +197,12 @@ describe('runChatStream', () => {
           sortBy: 'name',
           sortDirection: 'asc',
           total: 1,
+        },
+        size: {
+          maxSerializedBytes: 24 * 1024,
+          removedThumbnailFieldsByFallback: 0,
+          serializedBytes: expect.any(Number),
+          truncated: false,
         },
         type: 'tool_result',
       });

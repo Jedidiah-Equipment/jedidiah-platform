@@ -68,6 +68,10 @@ export function AssistantDebugContent({ info }: { info: AiDebugInfo }) {
           <span>Tools</span>
           <span className="font-mono tabular-nums">{formatNumber(info.estimatedInputTokens.tools)}</span>
         </div>
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span>Tool result budget</span>
+          <span className="font-mono tabular-nums">{formatNumber(info.toolResultMaxSerializedBytes)} bytes</span>
+        </div>
       </div>
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">

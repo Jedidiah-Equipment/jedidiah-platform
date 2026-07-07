@@ -98,13 +98,33 @@ describe('listAuditEventsTool', () => {
     ).rejects.toBeInstanceOf(z.ZodError);
   });
 
-  test('keeps Audit Event list results as explicit identity projections', () => {
+  test('removes actor thumbnails from projected Audit Event results', () => {
     const result = {
-      items: [{ id: 'event-id', summary: 'Created Product' }],
+      items: [
+        {
+          actor: {
+            name: 'Planner User',
+            thumbnailDataUrl: 'data:image/webp;base64,aaaa',
+          },
+          id: 'event-id',
+          summary: 'Created Product',
+        },
+      ],
       total: 1,
     };
 
-    expect((listAuditEventsDefinition.projectResult as (value: unknown) => unknown)(result)).toBe(result);
+    expect((listAuditEventsDefinition.projectResult as (value: unknown) => unknown)(result)).toEqual({
+      items: [
+        {
+          actor: {
+            name: 'Planner User',
+          },
+          id: 'event-id',
+          summary: 'Created Product',
+        },
+      ],
+      total: 1,
+    });
   });
 });
 

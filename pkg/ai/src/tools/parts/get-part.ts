@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { AiContext } from '@/context.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { identityProjection } from '../projections.js';
+import { projectPart } from '../projections.js';
 
 const GetPartInput = z.object({
   id: UUID,
@@ -37,5 +37,5 @@ export const getPartDefinition: AiToolDefinition<GetPartTool> = {
     searchableIdentifiers: ['Part UUID'],
     resultIdentifiers: ['Part code', 'Part name', 'Supplier company name', 'unitOfMeasure', 'isInternallyFabricated'],
   },
-  projectResult: identityProjection,
+  projectResult: projectPart,
 };

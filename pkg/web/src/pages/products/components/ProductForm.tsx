@@ -1,10 +1,12 @@
 import type { Product, ProductUpdateInput } from '@pkg/schema';
 import type React from 'react';
+import { useEffect, useState } from 'react';
 import { BROCHURE_USAGE, FieldUsageLabel, LANDER_USAGE, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { TabsContent } from '@/components/ui/tabs.js';
+import { useProductRangeVariantOptions } from '@/hooks/options/index.js';
 import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 import { ProductBaysEditor } from './ProductBaysEditor.js';
@@ -20,7 +22,13 @@ type ProductFormProps = {
 
 export const ProductForm: React.FC<ProductFormProps> = ({ detailsFooter, onSave, product }) => {
   const defaultValues = toProductFormValues(product);
+  const [selectedRangeId, setSelectedRangeId] = useState(defaultValues.rangeId);
   const productRangeOptions = useProductRangeOptions();
+  const productRangeVariantOptions = useProductRangeVariantOptions(selectedRangeId);
+
+  useEffect(() => {
+    setSelectedRangeId(defaultValues.rangeId);
+  }, [defaultValues.rangeId]);
 
   const { autosave, form, formProps } = useAutosaveForm({
     defaultValues,
@@ -90,12 +98,31 @@ export const ProductForm: React.FC<ProductFormProps> = ({ detailsFooter, onSave,
                       <field.SelectField
                         disabled={productRangeOptions.isPending}
                         label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.rangeId}>Range</FieldUsageLabel>}
-                        onValueCommit={saveCommittedField}
+                        onValueCommit={(rangeId) => {
+                          setSelectedRangeId(rangeId);
+                          form.setFieldValue('variantId', '');
+                          saveCommittedField();
+                        }}
                         options={productRangeOptions.selectOptions}
                         placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'Select range'}
                       />
                     )}
                   </form.AppField>
+                  {selectedRangeId &&
+                  (productRangeVariantOptions.isPending || productRangeVariantOptions.selectOptions.length > 0) ? (
+                    <form.AppField name="variantId">
+                      {(field) => (
+                        <field.SelectField
+                          disabled={productRangeVariantOptions.isPending}
+                          emptyLabel="No Variant"
+                          label="Variant"
+                          onValueCommit={saveCommittedField}
+                          options={productRangeVariantOptions.selectOptions}
+                          placeholder={productRangeVariantOptions.isPending ? 'Loading variants...' : 'Select variant'}
+                        />
+                      )}
+                    </form.AppField>
+                  ) : null}
                   <form.AppField name="category">
                     {(field) => (
                       <field.TextField

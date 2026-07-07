@@ -31,6 +31,17 @@ export class ProductRangeHasProductsError extends Error {
   }
 }
 
+export class ProductRangeVariantHasProductsError extends Error {
+  readonly code = 'product_range.has_products';
+  readonly metadata: { id: string; rangeId: string };
+
+  constructor(rangeId: string, id: string) {
+    super(`Product Range Variant has linked products: ${id}`);
+    this.name = 'ProductRangeVariantHasProductsError';
+    this.metadata = { rangeId, id };
+  }
+}
+
 export class DuplicateProductRangeVariantNameError extends Error {
   readonly code = 'product_range.variant_duplicate_name';
   readonly metadata: { rangeId: string; name: string };
@@ -58,6 +69,7 @@ export type ProductRangeCoreError =
   | DuplicateProductRangeVariantNameError
   | ProductRangeHasProductsError
   | ProductRangeNotFoundError
+  | ProductRangeVariantHasProductsError
   | ProductRangeVariantNotFoundError;
 
 export function isProductRangeCoreError(error: unknown): error is ProductRangeCoreError {
@@ -66,6 +78,7 @@ export function isProductRangeCoreError(error: unknown): error is ProductRangeCo
     error instanceof DuplicateProductRangeVariantNameError ||
     error instanceof ProductRangeHasProductsError ||
     error instanceof ProductRangeNotFoundError ||
+    error instanceof ProductRangeVariantHasProductsError ||
     error instanceof ProductRangeVariantNotFoundError
   );
 }

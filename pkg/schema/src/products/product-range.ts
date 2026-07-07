@@ -60,6 +60,13 @@ export const ProductRangeOption = ProductRange.pick({
   name: true,
 });
 
+export type ProductRangeVariantOption = z.infer<typeof ProductRangeVariantOption>;
+export const ProductRangeVariantOption = ProductRangeVariant.pick({
+  id: true,
+  rangeId: true,
+  name: true,
+});
+
 export type ProductRangeCreateInput = z.infer<typeof ProductRangeCreateInput>;
 export const ProductRangeCreateInput = z
   .object({
@@ -119,6 +126,11 @@ export const ProductRangeListResult = z.object({
 export type ProductRangeOptionsResult = z.infer<typeof ProductRangeOptionsResult>;
 export const ProductRangeOptionsResult = z.object({
   ranges: z.array(ProductRangeOption),
+});
+
+export type ProductRangeVariantOptionsResult = z.infer<typeof ProductRangeVariantOptionsResult>;
+export const ProductRangeVariantOptionsResult = z.object({
+  variants: z.array(ProductRangeVariantOption),
 });
 
 // Route params for the Range image upload/download endpoints, parsed by the entity-image route config.

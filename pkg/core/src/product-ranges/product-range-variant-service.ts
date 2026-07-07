@@ -5,6 +5,7 @@ import {
   notRemoved,
   productRanges,
   productRangeVariants,
+  products,
 } from '@pkg/db';
 import type {
   ProductRangeVariant,
@@ -19,6 +20,7 @@ import { and, asc, eq, max } from 'drizzle-orm';
 import {
   DuplicateProductRangeVariantNameError,
   ProductRangeNotFoundError,
+  ProductRangeVariantHasProductsError,
   ProductRangeVariantNotFoundError,
 } from './product-range-errors.js';
 
@@ -115,6 +117,7 @@ export async function removeProductRangeVariant({
 }): Promise<void> {
   await db.transaction(async (tx) => {
     await assertActiveProductRange({ tx, rangeId });
+    await assertVariantHasNoActiveProducts({ tx, rangeId, id });
 
     const [row] = await tx
       .update(productRangeVariants)
@@ -132,6 +135,26 @@ export async function removeProductRangeVariant({
       throw new ProductRangeVariantNotFoundError(rangeId, id);
     }
   });
+}
+
+async function assertVariantHasNoActiveProducts({
+  tx,
+  rangeId,
+  id,
+}: {
+  tx: DatabaseTransaction;
+  rangeId: UUID;
+  id: UUID;
+}): Promise<void> {
+  const [product] = await tx
+    .select({ id: products.id })
+    .from(products)
+    .where(and(eq(products.rangeId, rangeId), eq(products.variantId, id), notRemoved(products)))
+    .limit(1);
+
+  if (product) {
+    throw new ProductRangeVariantHasProductsError(rangeId, id);
+  }
 }
 
 export async function reorderProductRangeVariants({

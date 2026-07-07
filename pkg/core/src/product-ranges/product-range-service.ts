@@ -14,11 +14,14 @@ import type {
   ProductRangeOptionsResult,
   ProductRangeReorderInput,
   ProductRangeUpdateInput,
+  ProductRangeVariantOption,
+  ProductRangeVariantOptionsResult,
   UUID,
 } from '@pkg/schema';
 import {
   ProductRangeOption as ProductRangeOptionSchema,
   ProductRange as ProductRangeSchema,
+  ProductRangeVariantOption as ProductRangeVariantOptionSchema,
   ProductRangeVariant as ProductRangeVariantSchema,
 } from '@pkg/schema';
 import { and, asc, count, eq, max } from 'drizzle-orm';
@@ -32,6 +35,7 @@ import {
 type ProductRangeRow = typeof productRanges.$inferSelect;
 type ProductRangeVariantRow = typeof productRangeVariants.$inferSelect;
 type ProductRangeOptionRow = Pick<ProductRangeRow, 'id' | 'name'>;
+type ProductRangeVariantOptionRow = Pick<ProductRangeVariantRow, 'id' | 'rangeId' | 'name'>;
 
 export function mapProductRange(row: ProductRangeRow & { variants?: ProductRangeVariantRow[] }): ProductRange {
   return ProductRangeSchema.parse({
@@ -69,6 +73,14 @@ export function mapProductRangeOption(row: ProductRangeOptionRow): ProductRangeO
   });
 }
 
+export function mapProductRangeVariantOption(row: ProductRangeVariantOptionRow): ProductRangeVariantOption {
+  return ProductRangeVariantOptionSchema.parse({
+    id: row.id,
+    rangeId: row.rangeId,
+    name: row.name,
+  });
+}
+
 export async function listProductRanges({ db }: { db: Db }): Promise<ProductRangeListResult> {
   const rows = await db.query.productRanges.findMany({
     where: notRemoved(productRanges),
@@ -98,6 +110,29 @@ export async function listProductRangeOptions({ db }: { db: Db }): Promise<Produ
 
   return {
     ranges: rows.map(mapProductRangeOption),
+  };
+}
+
+export async function listProductRangeVariantOptions({
+  db,
+  rangeId,
+}: {
+  db: Db;
+  rangeId: UUID;
+}): Promise<ProductRangeVariantOptionsResult> {
+  const rows = await db
+    .select({
+      id: productRangeVariants.id,
+      rangeId: productRangeVariants.rangeId,
+      name: productRangeVariants.name,
+    })
+    .from(productRangeVariants)
+    .innerJoin(productRanges, eq(productRangeVariants.rangeId, productRanges.id))
+    .where(and(eq(productRangeVariants.rangeId, rangeId), notRemoved(productRangeVariants), notRemoved(productRanges)))
+    .orderBy(asc(productRangeVariants.displayOrder), asc(productRangeVariants.id));
+
+  return {
+    variants: rows.map(mapProductRangeVariantOption),
   };
 }
 

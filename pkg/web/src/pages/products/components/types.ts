@@ -70,6 +70,7 @@ const ProductFormFields = z.object({
   // `nameHighlight` holds `''` for "no value" like other nullable text inputs.
   nameHighlight: emptyStringOr(ProductNameHighlight),
   rangeId: requiredSelection(UUID, 'Select a range'),
+  variantId: emptyStringOr(UUID),
   requiresVinNumber: ProductRequiresVinNumber,
   brochureEnabled: ProductBrochureEnabled,
   landerEnabled: ProductLanderEnabled,
@@ -109,6 +110,7 @@ export const emptyProductFormValues: ProductFormValues = {
   nameHighlight: '',
   productBays: [],
   rangeId: '',
+  variantId: '',
   requiresVinNumber: false,
   brochureEnabled: false,
   landerEnabled: false,
@@ -131,6 +133,7 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
     nameHighlight: initialProduct?.nameHighlight ?? '',
     productBays: toProductBayInputs(initialProduct),
     rangeId: initialProduct?.rangeId ?? '',
+    variantId: initialProduct?.variantId ?? '',
     requiresVinNumber: initialProduct?.requiresVinNumber ?? false,
     brochureEnabled: initialProduct?.brochureEnabled ?? false,
     landerEnabled: initialProduct?.landerEnabled ?? false,
@@ -167,7 +170,7 @@ export function toProductBayInputs(initialProduct?: Product): ProductBayFormInpu
 }
 
 export function toProductCreateInput(value: ProductFormValues): ProductCreateInput {
-  return ProductCreateInput.parse(value);
+  return ProductCreateInput.parse(toProductApiInput(value));
 }
 
 export function toProductMinimalCreateInput(value: ProductCreateFormValues): ProductCreateInput {
@@ -176,9 +179,16 @@ export function toProductMinimalCreateInput(value: ProductCreateFormValues): Pro
 
 export function toProductUpdateInput(id: UUIDType, value: ProductFormValues): ProductUpdateInput {
   return ProductUpdateInput.parse({
-    ...toProductCreateInput(value),
+    ...toProductApiInput(value),
     id,
   });
+}
+
+function toProductApiInput(value: ProductFormValues) {
+  return {
+    ...value,
+    variantId: value.variantId || null,
+  };
 }
 
 /**

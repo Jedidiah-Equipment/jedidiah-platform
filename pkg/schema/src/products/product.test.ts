@@ -21,6 +21,7 @@ import {
 
 const BAY_ID = '00000000-0000-4000-8000-000000000201';
 const RANGE_ID = '00000000-0000-4000-8000-000000000301';
+const VARIANT_ID = '00000000-0000-4000-8000-000000000302';
 
 describe('ProductCreateInput', () => {
   it('normalizes product catalog fields', () => {
@@ -47,6 +48,7 @@ describe('ProductCreateInput', () => {
       nameHighlight: null,
       productBays: [],
       rangeId: RANGE_ID,
+      variantId: null,
       requiresVinNumber: false,
       brochureEnabled: false,
       landerEnabled: false,
@@ -101,6 +103,19 @@ describe('ProductCreateInput', () => {
         rangeId: RANGE_ID,
       }),
     ).toMatchObject({ assemblies: [], productBays: [] });
+  });
+
+  it('accepts an optional Range Variant reference', () => {
+    expect(
+      ProductCreateInput.parse({
+        basePrice: 120_000,
+        buildTimeDays: 14,
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+        rangeId: RANGE_ID,
+        variantId: VARIANT_ID,
+      }).variantId,
+    ).toBe(VARIANT_ID);
   });
 
   it('requires a model code and nonnegative price', () => {

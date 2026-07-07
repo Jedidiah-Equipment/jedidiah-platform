@@ -5,6 +5,7 @@ import {
   isProductCoreError,
   listAssemblyNames,
   listProductRangeOptions,
+  listProductRangeVariantOptions,
   listProducts,
   type ProductCoreError,
   removeProduct,
@@ -28,6 +29,10 @@ export const productsRouter = router({
     .query(({ ctx, input }) => mapProductErrors(() => getProduct({ db: ctx.db, id: input.id }))),
 
   rangeOptions: authorizedProcedure('product:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),
+
+  variantOptions: authorizedProcedure('product:read')
+    .input(z.object({ rangeId: UUID }))
+    .query(({ ctx, input }) => listProductRangeVariantOptions({ db: ctx.db, rangeId: input.rangeId })),
 
   assemblyNames: authorizedProcedure('product:read').query(({ ctx }) => listAssemblyNames({ db: ctx.db })),
 
@@ -131,6 +136,12 @@ function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductC
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Product Range not found.',
+      };
+    case 'product.variant.not_found':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'Product Range Variant not found for this Product Range.',
       };
     default:
       return assertNever(error);

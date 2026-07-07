@@ -44,6 +44,7 @@ function productInput(
     nameHighlight: null,
     productBays: [],
     rangeId,
+    variantId: null,
     requiresVinNumber: false,
     brochureEnabled: false,
     landerEnabled: false,

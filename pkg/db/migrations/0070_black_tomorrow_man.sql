@@ -1,0 +1,2 @@
+ALTER TABLE "products" ADD COLUMN "variant_id" uuid;--> statement-breakpoint
+ALTER TABLE "products" ADD CONSTRAINT "products_variant_range_fk" FOREIGN KEY ("variant_id","range_id") REFERENCES "public"."product_range_variants"("id","range_id") ON DELETE restrict ON UPDATE no action;

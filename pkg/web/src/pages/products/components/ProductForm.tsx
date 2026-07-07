@@ -85,14 +85,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ detailsFooter, onSave,
                       />
                     )}
                   </form.AppField>
-                  <form.AppField name="modelCode">
-                    {(field) => (
-                      <field.TextField
-                        autoComplete="off"
-                        label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.modelCode}>Model code</FieldUsageLabel>}
-                      />
-                    )}
-                  </form.AppField>
                   <form.AppField name="rangeId">
                     {(field) => (
                       <field.SelectField
@@ -115,7 +107,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ detailsFooter, onSave,
                         <field.SelectField
                           disabled={productRangeVariantOptions.isPending}
                           emptyLabel="No Variant"
-                          label="Variant"
+                          label="Range Variant"
                           onValueCommit={saveCommittedField}
                           options={productRangeVariantOptions.selectOptions}
                           placeholder={productRangeVariantOptions.isPending ? 'Loading variants...' : 'Select variant'}
@@ -123,6 +115,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({ detailsFooter, onSave,
                       )}
                     </form.AppField>
                   ) : null}
+                  <form.AppField name="modelCode">
+                    {(field) => (
+                      <field.TextField
+                        autoComplete="off"
+                        label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.modelCode}>Model code</FieldUsageLabel>}
+                      />
+                    )}
+                  </form.AppField>
                   <form.AppField name="category">
                     {(field) => (
                       <field.TextField

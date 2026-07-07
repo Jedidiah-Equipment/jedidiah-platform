@@ -1,4 +1,4 @@
-import { type Db, products } from '@pkg/db';
+import { type Db, eq, productRangeVariants, products } from '@pkg/db';
 import type { ProductRange } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -127,6 +127,33 @@ describe('productRanges.list', () => {
       ranges: [{ name: 'Earthmoving' }, { name: 'Balers' }],
     });
   });
+
+  test('includes active Variants in displayOrder', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(caller, 'Variant Range');
+    const first = await caller.productRanges.createVariant({ rangeId: range.id, name: 'First' });
+    const second = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Second' });
+
+    await caller.productRanges.reorderVariants({ rangeId: range.id, orderedIds: [second.id, first.id] });
+
+    await expect(caller.productRanges.get({ id: range.id })).resolves.toMatchObject({
+      variants: [
+        { id: second.id, name: 'Second', displayOrder: 0 },
+        { id: first.id, name: 'First', displayOrder: 1 },
+      ],
+    });
+    await expect(caller.productRanges.list()).resolves.toMatchObject({
+      ranges: [
+        {
+          id: range.id,
+          variants: [
+            { id: second.id, name: 'Second', displayOrder: 0 },
+            { id: first.id, name: 'First', displayOrder: 1 },
+          ],
+        },
+      ],
+    });
+  });
 });
 
 describe('productRanges.reorder', () => {
@@ -231,6 +258,144 @@ describe('productRanges.remove', () => {
   });
 });
 
+describe('productRanges Variants', () => {
+  test('creates Variants at the end of the Range order', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(caller, 'Variant Create Range');
+
+    const first = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Heavy Duty' });
+    const second = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Compact' });
+
+    expect(first).toMatchObject({ rangeId: range.id, name: 'Heavy Duty', displayOrder: 0 });
+    expect(second).toMatchObject({ rangeId: range.id, name: 'Compact', displayOrder: 1 });
+  });
+
+  test('rejects empty and duplicate Variant names only within the same active Range', async ({ context }) => {
+    const caller = context.createCaller();
+    const firstRange = await createRange(caller, 'First Variant Range');
+    const secondRange = await createRange(caller, 'Second Variant Range');
+
+    await expect(caller.productRanges.createVariant({ rangeId: firstRange.id, name: '   ' })).rejects.toBeDefined();
+    await caller.productRanges.createVariant({ rangeId: firstRange.id, name: 'Heavy Duty' });
+
+    await expect(
+      caller.productRanges.createVariant({ rangeId: firstRange.id, name: '  heavy duty  ' }),
+    ).rejects.toMatchObject({
+      appCode: 'product_range.variant_duplicate_name',
+      code: 'CONFLICT',
+    });
+
+    await expect(
+      caller.productRanges.createVariant({ rangeId: secondRange.id, name: 'heavy duty' }),
+    ).resolves.toMatchObject({
+      rangeId: secondRange.id,
+      name: 'heavy duty',
+    });
+  });
+
+  test('renames a Variant with the same uniqueness rules', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(caller, 'Variant Rename Range');
+    const first = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Heavy Duty' });
+    const second = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Compact' });
+
+    await expect(
+      caller.productRanges.updateVariant({ id: second.id, rangeId: range.id, name: 'heavy duty' }),
+    ).rejects.toMatchObject({
+      appCode: 'product_range.variant_duplicate_name',
+      code: 'CONFLICT',
+    });
+
+    await expect(
+      caller.productRanges.updateVariant({ id: first.id, rangeId: range.id, name: 'Wide Body' }),
+    ).resolves.toMatchObject({
+      id: first.id,
+      name: 'Wide Body',
+    });
+  });
+
+  test('soft-deletes a Variant and allows reusing its name', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(caller, 'Variant Remove Range');
+    const kept = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Kept' });
+    const removed = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Removed' });
+
+    await expect(caller.productRanges.removeVariant({ id: removed.id, rangeId: range.id })).resolves.toBeUndefined();
+    await expect(caller.productRanges.get({ id: range.id })).resolves.toMatchObject({
+      variants: [{ id: kept.id, name: 'Kept' }],
+    });
+    await expect(caller.productRanges.createVariant({ rangeId: range.id, name: 'removed' })).resolves.toMatchObject({
+      name: 'removed',
+    });
+  });
+
+  test('rewrites Variant displayOrder within one Range', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(caller, 'Variant Reorder Range');
+    const otherRange = await createRange(caller, 'Other Variant Reorder Range');
+    const first = await caller.productRanges.createVariant({ rangeId: range.id, name: 'First' });
+    const second = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Second' });
+    const third = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Third' });
+    const other = await caller.productRanges.createVariant({ rangeId: otherRange.id, name: 'Other' });
+
+    const result = await caller.productRanges.reorderVariants({
+      rangeId: range.id,
+      orderedIds: [third.id, first.id, second.id],
+    });
+
+    expect(result.variants.map((variant) => variant.name)).toEqual(['Third', 'First', 'Second']);
+    expect(result.variants.map((variant) => variant.displayOrder)).toEqual([0, 1, 2]);
+
+    await expect(
+      caller.productRanges.reorderVariants({
+        rangeId: range.id,
+        orderedIds: [third.id, other.id, first.id, second.id],
+      }),
+    ).rejects.toMatchObject({
+      appCode: 'product_range.variant_not_found',
+    });
+  });
+
+  test('requires an active Range for Variant creation and reorder', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(caller, 'Removed Variant Parent Range');
+    const variant = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Before Removal' });
+
+    await caller.productRanges.remove({ id: range.id });
+
+    await expect(caller.productRanges.createVariant({ rangeId: range.id, name: 'Late Variant' })).rejects.toMatchObject(
+      {
+        appCode: 'product_range.not_found',
+      },
+    );
+    await expect(caller.productRanges.reorderVariants({ rangeId: range.id, orderedIds: [] })).rejects.toMatchObject({
+      appCode: 'product_range.not_found',
+    });
+    await expect(
+      caller.productRanges.updateVariant({ id: variant.id, rangeId: range.id, name: 'After Removal' }),
+    ).rejects.toMatchObject({
+      appCode: 'product_range.not_found',
+    });
+    await expect(caller.productRanges.removeVariant({ id: variant.id, rangeId: range.id })).rejects.toMatchObject({
+      appCode: 'product_range.not_found',
+    });
+  });
+
+  test('persists soft deletion instead of deleting the row', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(caller, 'Variant Soft Delete Range');
+    const variant = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Soft Deleted' });
+
+    await caller.productRanges.removeVariant({ id: variant.id, rangeId: range.id });
+
+    const [row] = await context.db
+      .select({ deletedAt: productRangeVariants.deletedAt })
+      .from(productRangeVariants)
+      .where(eq(productRangeVariants.id, variant.id));
+    expect(row?.deletedAt).toBeInstanceOf(Date);
+  });
+});
+
 describe('productRanges permissions', () => {
   test('requires authentication', async ({ context }) => {
     await expect(context.createAnonCaller().productRanges.list()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
@@ -257,6 +422,14 @@ describe('productRanges permissions', () => {
         }),
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });
       await expect(caller.productRanges.remove({ id: range.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(
+        caller.productRanges.createVariant({ rangeId: range.id, name: `Denied ${role}` }),
+      ).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+      });
+      await expect(caller.productRanges.reorderVariants({ rangeId: range.id, orderedIds: [] })).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+      });
     }
   });
 });

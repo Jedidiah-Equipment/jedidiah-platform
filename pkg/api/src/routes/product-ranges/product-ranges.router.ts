@@ -1,14 +1,26 @@
 import {
   createProductRange,
+  createProductRangeVariant,
   getProductRange,
   isProductRangeCoreError,
   listProductRanges,
   type ProductRangeCoreError,
   removeProductRange,
+  removeProductRangeVariant,
   reorderProductRanges,
+  reorderProductRangeVariants,
   updateProductRange,
+  updateProductRangeVariant,
 } from '@pkg/core';
-import { ProductRangeCreateInput, ProductRangeReorderInput, ProductRangeUpdateInput, UUID } from '@pkg/schema';
+import {
+  ProductRangeCreateInput,
+  ProductRangeReorderInput,
+  ProductRangeUpdateInput,
+  ProductRangeVariantCreateInput,
+  ProductRangeVariantReorderInput,
+  ProductRangeVariantUpdateInput,
+  UUID,
+} from '@pkg/schema';
 import { z } from 'zod';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
@@ -36,6 +48,24 @@ export const productRangesRouter = router({
   reorder: authorizedProcedure('product_range:update')
     .input(ProductRangeReorderInput)
     .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRanges({ db: ctx.db, input }))),
+
+  createVariant: authorizedProcedure('product_range:update')
+    .input(ProductRangeVariantCreateInput)
+    .mutation(({ ctx, input }) => mapProductRangeErrors(() => createProductRangeVariant({ db: ctx.db, input }))),
+
+  updateVariant: authorizedProcedure('product_range:update')
+    .input(ProductRangeVariantUpdateInput)
+    .mutation(({ ctx, input }) => mapProductRangeErrors(() => updateProductRangeVariant({ db: ctx.db, input }))),
+
+  removeVariant: authorizedProcedure('product_range:update')
+    .input(z.object({ id: UUID, rangeId: UUID }))
+    .mutation(({ ctx, input }) =>
+      mapProductRangeErrors(() => removeProductRangeVariant({ db: ctx.db, id: input.id, rangeId: input.rangeId })),
+    ),
+
+  reorderVariants: authorizedProcedure('product_range:update')
+    .input(ProductRangeVariantReorderInput)
+    .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRangeVariants({ db: ctx.db, input }))),
 });
 
 async function mapProductRangeErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -61,6 +91,16 @@ const productRangeErrorMappings = {
     appCode: 'product_range.has_products',
     code: 'CONFLICT',
     message: 'Product Range has active linked products and cannot be removed.',
+  },
+  'product_range.variant_duplicate_name': {
+    appCode: 'product_range.variant_duplicate_name',
+    code: 'CONFLICT',
+    message: 'A Variant with this name already exists for this Product Range.',
+  },
+  'product_range.variant_not_found': {
+    appCode: 'product_range.variant_not_found',
+    code: 'NOT_FOUND',
+    message: 'Product Range Variant not found.',
   },
 } satisfies {
   [TCode in ProductRangeCoreError['code']]: CoreErrorMapping<TCode>;

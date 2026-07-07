@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { check, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 export const productRanges = pgTable(
@@ -26,3 +26,36 @@ export const productRanges = pgTable(
     uniqueIndex('product_ranges_name_ci_unique').on(sql`lower(${table.name})`).where(sql`${table.deletedAt} is null`),
   ],
 );
+
+export const productRangeVariants = pgTable(
+  'product_range_variants',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    rangeId: uuid('range_id')
+      .notNull()
+      .references(() => productRanges.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    displayOrder: integer('display_order').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    deletedAt: timestamp('deleted_at', { mode: 'date', withTimezone: true }),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check('product_range_variants_name_nonempty', sql`length(trim(${table.name})) > 0`),
+    uniqueIndex('product_range_variants_range_name_ci_unique')
+      .on(table.rangeId, sql`lower(${table.name})`)
+      .where(sql`${table.deletedAt} is null`),
+    uniqueIndex('product_range_variants_id_range_id_unique').on(table.id, table.rangeId),
+  ],
+);
+
+export const productRangesRelations = relations(productRanges, ({ many }) => ({
+  variants: many(productRangeVariants),
+}));
+
+export const productRangeVariantsRelations = relations(productRangeVariants, ({ one }) => ({
+  range: one(productRanges, {
+    fields: [productRangeVariants.rangeId],
+    references: [productRanges.id],
+  }),
+}));

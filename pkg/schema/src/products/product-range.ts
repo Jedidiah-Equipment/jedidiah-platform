@@ -16,11 +16,24 @@ export const RANGE_LOGO_MAX_BYTES = 10 * 1024 * 1024;
 export type ProductRangeName = z.infer<typeof ProductRangeName>;
 export const ProductRangeName = requiredTrimmedText('Range name is required');
 
+export type ProductRangeVariantName = z.infer<typeof ProductRangeVariantName>;
+export const ProductRangeVariantName = requiredTrimmedText('Variant name is required');
+
 export type ProductRangeDescription = z.infer<typeof ProductRangeDescription>;
 export const ProductRangeDescription = nullableTrimmedText();
 
 export type ProductRangeDescriptionInput = z.infer<typeof ProductRangeDescriptionInput>;
 export const ProductRangeDescriptionInput = nullableTrimmedTextInput();
+
+export type ProductRangeVariant = z.infer<typeof ProductRangeVariant>;
+export const ProductRangeVariant = z.object({
+  id: UUID,
+  rangeId: UUID,
+  name: ProductRangeVariantName,
+  displayOrder: z.number().int(),
+  createdAt: DateIso,
+  updatedAt: DateIso,
+});
 
 export type ProductRange = z.infer<typeof ProductRange>;
 export const ProductRange = z.object({
@@ -36,6 +49,7 @@ export const ProductRange = z.object({
   // Admin-controlled position in the Range list. Auto-assigned on create, rewritten via the reorder
   // mutation; never carried on the create/update payload.
   displayOrder: z.number().int(),
+  variants: z.array(ProductRangeVariant),
   createdAt: DateIso,
   updatedAt: DateIso,
 });
@@ -69,6 +83,31 @@ export type ProductRangeReorderInput = z.infer<typeof ProductRangeReorderInput>;
 export const ProductRangeReorderInput = z
   .object({
     orderedIds: z.array(UUID).min(1),
+  })
+  .strict();
+
+export type ProductRangeVariantCreateInput = z.infer<typeof ProductRangeVariantCreateInput>;
+export const ProductRangeVariantCreateInput = z
+  .object({
+    rangeId: UUID,
+    name: ProductRangeVariantName,
+  })
+  .strict();
+
+export type ProductRangeVariantUpdateInput = z.infer<typeof ProductRangeVariantUpdateInput>;
+export const ProductRangeVariantUpdateInput = z
+  .object({
+    id: UUID,
+    rangeId: UUID,
+    name: ProductRangeVariantName,
+  })
+  .strict();
+
+export type ProductRangeVariantReorderInput = z.infer<typeof ProductRangeVariantReorderInput>;
+export const ProductRangeVariantReorderInput = z
+  .object({
+    rangeId: UUID,
+    orderedIds: z.array(UUID),
   })
   .strict();
 

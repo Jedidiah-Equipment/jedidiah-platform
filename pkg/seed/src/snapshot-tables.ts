@@ -14,6 +14,7 @@ import {
   productAssemblies,
   productBays,
   productRanges,
+  productRangeVariants,
   productSerialSequences,
   products,
   quoteLineItems,
@@ -160,6 +161,14 @@ export const snapshotTables = [
     omitReadColumns: ['deletedAt'],
     seedRowDefaults: () => ({ deletedAt: null }),
     storageFiles: (row) => [row.image, row.logo].map(toStorageFile).filter(isStorageFile),
+  },
+  {
+    fileName: 'product_range_variants.json',
+    table: productRangeVariants,
+    tableName: 'product_range_variants',
+    timestampColumns: ['createdAt', 'updatedAt', 'deletedAt'],
+    omitReadColumns: ['deletedAt'],
+    seedRowDefaults: () => ({ deletedAt: null }),
   },
   {
     fileName: 'products.json',

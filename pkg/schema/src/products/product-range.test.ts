@@ -5,9 +5,13 @@ import {
   ProductRangeCreateInput,
   ProductRangeReorderInput,
   ProductRangeUpdateInput,
+  ProductRangeVariantCreateInput,
+  ProductRangeVariantReorderInput,
+  ProductRangeVariantUpdateInput,
 } from './product-range.js';
 
 const RANGE_ID = '00000000-0000-4000-8000-000000000001';
+const VARIANT_ID = '00000000-0000-4000-8000-000000000011';
 const IMAGE = {
   byteSize: 1024,
   contentType: 'image/png',
@@ -21,6 +25,7 @@ describe('ProductRange', () => {
       name: 'Example Range',
       description: null,
       displayOrder: 0,
+      variants: [],
       createdAt: '2026-05-27T10:35:03.013Z',
       updatedAt: '2026-05-27T10:35:03.013Z',
     };
@@ -36,6 +41,7 @@ describe('ProductRange', () => {
       name: 'Example Range',
       image: null,
       logo: null,
+      variants: [],
       displayOrder: 3,
       createdAt: '2026-05-27T10:35:03.013Z',
       updatedAt: '2026-05-27T10:35:03.013Z',
@@ -46,6 +52,28 @@ describe('ProductRange', () => {
     );
     expect(ProductRange.parse({ ...base, description: null }).description).toBeNull();
     expect(ProductRange.parse({ ...base, description: null }).displayOrder).toBe(3);
+  });
+});
+
+describe('ProductRangeVariant inputs', () => {
+  it('trims required variant names on create and update', () => {
+    expect(ProductRangeVariantCreateInput.parse({ rangeId: RANGE_ID, name: '  Heavy Duty  ' })).toEqual({
+      rangeId: RANGE_ID,
+      name: 'Heavy Duty',
+    });
+    expect(ProductRangeVariantUpdateInput.parse({ id: VARIANT_ID, rangeId: RANGE_ID, name: '  Compact  ' })).toEqual({
+      id: VARIANT_ID,
+      rangeId: RANGE_ID,
+      name: 'Compact',
+    });
+  });
+
+  it('rejects blank variant names and accepts scoped reorder payloads', () => {
+    expect(() => ProductRangeVariantCreateInput.parse({ rangeId: RANGE_ID, name: '   ' })).toThrow();
+    expect(ProductRangeVariantReorderInput.parse({ rangeId: RANGE_ID, orderedIds: [VARIANT_ID] })).toEqual({
+      rangeId: RANGE_ID,
+      orderedIds: [VARIANT_ID],
+    });
   });
 });
 

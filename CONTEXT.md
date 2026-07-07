@@ -12,6 +12,8 @@ Compact domain map for implementation and planning. Search this file first for n
 
 **Product Range** is an admin-managed catalog grouping intended for Product marketing and selection. Every Product belongs to exactly one Range. A Range carries a name and an optional presentation image for customer-facing documents. Avoid Category, Line, or Family. Range management (create, update, and the management list) is admin-only; Product forms load Range options through Product access.
 
+**Product Range Variant** is an admin-managed, ordered sub-grouping within one Range, carrying only a name. A Product optionally belongs to exactly one Variant, which must be a Variant of its Range; changing a Product's Range clears its Variant. A Range may have no Variants. Variant names are unique within their Range, not globally. A Variant cannot be removed while any Product references it. Variants exist for marketing and selection refinement. Avoid Model, Trim, Sub-range, or Option (Option already means Optional Assembly selection on Quotes). Variant management lives with Range management and is admin-only; Product forms load Variant options through Product access.
+
 **Supplier** is currently a standalone procurement directory record. **Part** is the reusable purchasable item layer. **Assembly** is a Product-owned grouping of Parts, either Standard or Optional. Optional Assemblies carry an upgrade-delta price, may replace whole Standard Assemblies, and are selected on Product Quotes.
 
 **Quote Line Item** is a freeform Quote charge with a name, positive whole-number quantity, and non-negative unit price. It has no catalog semantics and always contributes quantity × unit price to Quote Pricing.

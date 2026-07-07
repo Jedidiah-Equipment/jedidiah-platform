@@ -347,7 +347,7 @@ export const LANDER_IMAGE_SLOTS = [
 ] as const satisfies readonly ProductImageSlot[];
 
 // Per-image size cap for Product image slots. Allowed formats come from the shared {@link IMAGE_CONTENT_TYPES}.
-export const PRODUCT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+export const PRODUCT_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 
 // Recommended source dimensions and render fit per slot, shown on the form as upload guidance.
 // `cover` photos fill their slot; the `contain` technical drawing preserves the whole image.

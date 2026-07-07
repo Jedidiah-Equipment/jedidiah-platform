@@ -5,6 +5,7 @@ import type { AiLinkMetadata } from './link-metadata.js';
 import { createSystemPrompt } from './prompts.js';
 import type { AiToolKind } from './tool-definition.js';
 import { AI_TOOL_REGISTRY } from './tool-registry.js';
+import { AI_TOOL_RESULT_MAX_SERIALIZED_BYTES } from './tools/projections.js';
 import { getAuthorizedToolNames, getAuthorizedTools } from './tools.js';
 
 export type AiToolDebugInfo = {
@@ -24,6 +25,7 @@ export type AiToolDebugInfo = {
 export type AiDebugInfo = {
   estimatedInputTokens: ContextTokenEstimate;
   systemPrompt: string;
+  toolResultMaxSerializedBytes: number;
   tools: AiToolDebugInfo[];
 };
 
@@ -36,6 +38,7 @@ export function getAiDebugInfo(access: UserAccessSummary | null): AiDebugInfo {
   return {
     estimatedInputTokens: estimateContextTokens(systemPrompt, authorizedTools),
     systemPrompt,
+    toolResultMaxSerializedBytes: AI_TOOL_RESULT_MAX_SERIALIZED_BYTES,
     tools: AI_TOOL_REGISTRY.map((definition) => ({
       authorized: authorizedToolNameSet.has(definition.tool.name),
       doNotUseWhen: definition.descriptor.doNotUseWhen,

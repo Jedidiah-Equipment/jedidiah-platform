@@ -61,12 +61,21 @@ describe('listUsersTool', () => {
     );
   });
 
-  test('keeps User list results as explicit identity projections', () => {
+  test('removes User thumbnails from projected results', () => {
     const result = {
-      users: [{ email: 'planner@example.com', id: 'user-id', name: 'Planner User' }],
+      users: [
+        {
+          email: 'planner@example.com',
+          id: 'user-id',
+          name: 'Planner User',
+          thumbnailDataUrl: 'data:image/webp;base64,aaaa',
+        },
+      ],
     };
 
-    expect((listUsersDefinition.projectResult as (value: unknown) => unknown)(result)).toBe(result);
+    expect((listUsersDefinition.projectResult as (value: unknown) => unknown)(result)).toEqual({
+      users: [{ email: 'planner@example.com', id: 'user-id', name: 'Planner User' }],
+    });
   });
 });
 

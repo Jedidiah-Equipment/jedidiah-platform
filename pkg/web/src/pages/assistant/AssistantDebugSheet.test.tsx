@@ -36,6 +36,8 @@ describe('AssistantDebugContent', () => {
     expect(html).toContain('1 234');
     expect(html).toContain('800');
     expect(html).toContain('434');
+    expect(html).toContain('Tool result budget');
+    expect(html).toContain('24 576 bytes');
   });
 
   it('flags an unauthorized tool without hiding it', () => {
@@ -52,6 +54,7 @@ function buildDebugInfo(): AiDebugInfo {
   return {
     estimatedInputTokens: { systemPrompt: 800, tools: 434, total: 1234 },
     systemPrompt: '## Role\n- You are the JedidiahOps assistant.',
+    toolResultMaxSerializedBytes: 24 * 1024,
     tools: [
       buildTool({
         authorized: true,

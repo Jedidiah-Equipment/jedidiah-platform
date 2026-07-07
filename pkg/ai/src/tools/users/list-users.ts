@@ -3,7 +3,7 @@ import { type AiToolBase, UserListInput, type UserListResult } from '@pkg/schema
 import type { AiContext } from '@/context.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { identityProjection } from '../projections.js';
+import { projectUserList } from '../projections.js';
 
 export type ListUsersTool = AiToolBase<'listUsers', UserListResult, UserListInput, AiContext>;
 
@@ -28,5 +28,5 @@ export const listUsersDefinition: AiToolDefinition<ListUsersTool> = {
     searchableIdentifiers: ['none'],
     resultIdentifiers: ['User name', 'User email', 'User UUID', 'App Role'],
   },
-  projectResult: identityProjection,
+  projectResult: projectUserList,
 };

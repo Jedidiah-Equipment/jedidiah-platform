@@ -6,6 +6,7 @@ import type { ChatEvent, UserAccessSummary } from '@pkg/schema';
 import type { AiContext } from './context.js';
 import type { AiToolName, RegisteredAiTool } from './tool-registry.js';
 import { AI_TOOL_NAMES, aiTools, projectAiToolResult } from './tool-registry.js';
+import { prepareAiToolResultForModel } from './tools/projections.js';
 
 export type AuthorizedAiTools = Partial<Record<AiToolName, RegisteredAiTool>>;
 export type GetAuthorizedToolsOptions = {
@@ -19,6 +20,12 @@ type InternalToolResult =
       name: AiToolName;
       ok: true;
       result: unknown;
+      size: {
+        maxSerializedBytes: number;
+        removedThumbnailFields: number;
+        serializedBytes: number;
+        truncated: boolean;
+      };
     }
   | {
       name: AiToolName;
@@ -69,11 +76,13 @@ export async function dispatchToolCall(
 
   try {
     const result = await tool.handler(args, ctx);
+    const projected = prepareAiToolResultForModel(projectAiToolResult(name, result));
 
     return {
       name,
       ok: true,
-      result: projectAiToolResult(name, result),
+      result: projected.result,
+      size: projected.size,
     };
   } catch (error) {
     return {
@@ -117,6 +126,7 @@ export function createAgentTools(
           id,
           result: payload,
           type: 'tool_result',
+          ...(result.ok ? { size: result.size } : {}),
         });
         return payload;
       },

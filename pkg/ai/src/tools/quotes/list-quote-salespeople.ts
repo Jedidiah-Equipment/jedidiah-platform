@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { AiContext } from '@/context.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { identityProjection } from '../projections.js';
+import { projectQuoteSalespeople } from '../projections.js';
 
 const ListQuoteSalespeopleInput = z.strictObject({});
 
@@ -41,5 +41,5 @@ export const listQuoteSalespeopleDefinition: AiToolDefinition<ListQuoteSalespeop
     searchableIdentifiers: ['none'],
     resultIdentifiers: ['User name', 'User email', 'User UUID'],
   },
-  projectResult: identityProjection,
+  projectResult: projectQuoteSalespeople,
 };

@@ -61,15 +61,28 @@ describe('getPartTool', () => {
     );
   });
 
-  test('keeps Part detail results as explicit identity projections', () => {
+  test('removes nested thumbnails from projected Part detail results', () => {
     const part = {
       code: 'HOSE-001',
       id: 'part-id',
       isInternallyFabricated: true,
       name: 'Hydraulic hose',
+      supplier: {
+        companyName: 'Apex Supplier',
+        thumbnailDataUrl: 'data:image/webp;base64,aaaa',
+      },
       unitOfMeasure: 'mm',
     };
 
-    expect((getPartDefinition.projectResult as (value: unknown) => unknown)(part)).toBe(part);
+    expect((getPartDefinition.projectResult as (value: unknown) => unknown)(part)).toEqual({
+      code: 'HOSE-001',
+      id: 'part-id',
+      isInternallyFabricated: true,
+      name: 'Hydraulic hose',
+      supplier: {
+        companyName: 'Apex Supplier',
+      },
+      unitOfMeasure: 'mm',
+    });
   });
 });

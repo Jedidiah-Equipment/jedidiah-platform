@@ -3,7 +3,7 @@ import { type AiToolBase, AuditListInput, type AuditListResult } from '@pkg/sche
 import type { AiContext } from '@/context.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { identityProjection } from '../projections.js';
+import { projectAuditEventList } from '../projections.js';
 
 export type ListAuditEventsTool = AiToolBase<'listAuditEvents', AuditListResult, AuditListInput, AiContext>;
 
@@ -31,5 +31,5 @@ export const listAuditEventsDefinition: AiToolDefinition<ListAuditEventsTool> = 
     searchableIdentifiers: ['entityIds', 'entityTypes', 'actorUserIds', 'occurredAtStart', 'occurredAtEnd'],
     resultIdentifiers: ['Audit Event summary', 'entity type', 'entity id', 'actor', 'occurred time'],
   },
-  projectResult: identityProjection,
+  projectResult: projectAuditEventList,
 };

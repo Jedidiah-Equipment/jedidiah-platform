@@ -19,15 +19,24 @@ describe('product assembly export', () => {
         productModelCode: 'AL6',
         productName: 'Auger Loader 6',
       },
+      {
+        assemblyName: '=HYPERLINK("https://example.com")',
+        assemblyPrice: '10.00',
+        assemblyType: 'optional',
+        productModelCode: '@FORMULA',
+        productName: '+Formula Product',
+      },
     ]);
 
-    expect(csv).toBe(
-      [
-        'product_modelcode,product_name,assembly_type,assembly_name,assembly_price',
-        'AL6,Auger Loader 6,standard,Main Frame,',
-        'AL6,Auger Loader 6,optional,Extended Hopper,12500.00',
-      ].join('\r\n'),
-    );
+    const expectedRows = [
+      'product_modelcode,product_name,assembly_type,assembly_name,assembly_price',
+      'AL6,Auger Loader 6,standard,Main Frame,',
+      'AL6,Auger Loader 6,optional,Extended Hopper,12500.00',
+      ['"\'@FORMULA"', '"\'+Formula Product"', 'optional', '"\'=HYPERLINK(""https://example.com"")"', '10.00'].join(
+        ',',
+      ),
+    ];
+    expect(csv).toBe(expectedRows.join('\r\n'));
   });
 
   it('uses a date-stamped filename', () => {

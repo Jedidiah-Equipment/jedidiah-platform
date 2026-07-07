@@ -21,16 +21,19 @@ export const PRODUCT_ASSEMBLY_EXPORT_COLUMNS = [
 ] as const;
 
 export function buildProductAssemblyExportCsv(rows: ProductAssemblyExportRow[]): string {
-  return Papa.unparse({
-    fields: [...PRODUCT_ASSEMBLY_EXPORT_COLUMNS],
-    data: rows.map((row) => [
-      row.productModelCode,
-      row.productName,
-      row.assemblyType,
-      row.assemblyName,
-      row.assemblyPrice ?? '',
-    ]),
-  });
+  return Papa.unparse(
+    {
+      fields: [...PRODUCT_ASSEMBLY_EXPORT_COLUMNS],
+      data: rows.map((row) => [
+        row.productModelCode,
+        row.productName,
+        row.assemblyType,
+        row.assemblyName,
+        row.assemblyPrice ?? '',
+      ]),
+    },
+    { escapeFormulae: true },
+  );
 }
 
 export function createProductAssemblyExportFilename(date: Date): string {

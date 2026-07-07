@@ -160,8 +160,8 @@ export const ProductRangeVariantsEditor: React.FC<ProductRangeVariantsEditorProp
                     key={variant.id}
                     onRemove={() => removeMutation.mutate({ id: variant.id, rangeId: range.id })}
                     onRename={(name) => updateMutation.mutateAsync({ id: variant.id, rangeId: range.id, name })}
-                    removePending={removeMutation.isPending}
-                    renamePending={updateMutation.isPending}
+                    removePending={removeMutation.isPending && removeMutation.variables?.id === variant.id}
+                    renamePending={updateMutation.isPending && updateMutation.variables?.id === variant.id}
                     variant={variant}
                   />
                 ))}

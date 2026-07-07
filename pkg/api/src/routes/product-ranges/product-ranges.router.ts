@@ -97,6 +97,11 @@ const productRangeErrorMappings = {
     code: 'CONFLICT',
     message: 'A Variant with this name already exists for this Product Range.',
   },
+  'product_range.variant_has_products': {
+    appCode: 'product_range.variant_has_products',
+    code: 'CONFLICT',
+    message: 'Product Range Variant has active linked products and cannot be removed.',
+  },
   'product_range.variant_not_found': {
     appCode: 'product_range.variant_not_found',
     code: 'NOT_FOUND',

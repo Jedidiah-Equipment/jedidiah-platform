@@ -32,7 +32,7 @@ export class ProductRangeHasProductsError extends Error {
 }
 
 export class ProductRangeVariantHasProductsError extends Error {
-  readonly code = 'product_range.has_products';
+  readonly code = 'product_range.variant_has_products';
   readonly metadata: { id: string; rangeId: string };
 
   constructor(rangeId: string, id: string) {

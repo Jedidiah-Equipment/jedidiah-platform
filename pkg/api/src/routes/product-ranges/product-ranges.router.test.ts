@@ -356,7 +356,7 @@ describe('productRanges Variants', () => {
     const productId = await createProductForRange(context.db, range.id, variant.id);
 
     await expect(caller.productRanges.removeVariant({ id: variant.id, rangeId: range.id })).rejects.toMatchObject({
-      appCode: 'product_range.has_products',
+      appCode: 'product_range.variant_has_products',
       code: 'CONFLICT',
     });
 

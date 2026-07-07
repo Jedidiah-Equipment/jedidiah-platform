@@ -273,7 +273,9 @@ export async function listProducts({
   const [rows, total] =
     input.sortBy === 'rangeName'
       ? await listProductsSortedByRangeName({ db, input, where })
-      : await listProductsSortedByProductColumn({ db, input, log, where });
+      : input.sortBy === 'variantName'
+        ? await listProductsSortedByVariantName({ db, input, where })
+        : await listProductsSortedByProductColumn({ db, input, log, where });
 
   const productBaysByProductId = await listProductBaysByProductIds({
     db,
@@ -364,6 +366,53 @@ async function listProductsSortedByRangeName({
   return [rows, total];
 }
 
+// Variant sorting mirrors Range-name sorting but keeps a left join so Products with no Variant stay in
+// the result set; the null-marker order term keeps those rows last in both ascending and descending order.
+async function listProductsSortedByVariantName({
+  db,
+  input,
+  where,
+}: {
+  db: Db;
+  input: ProductListInput;
+  where: SQL;
+}): Promise<[ProductListRow[], number]> {
+  let idQuery = db
+    .select({ id: products.id })
+    .from(products)
+    .leftJoin(productRangeVariants, eq(products.variantId, productRangeVariants.id))
+    .where(where)
+    .orderBy(
+      sql`${productRangeVariants.name} IS NULL`,
+      getSortOrder(productRangeVariants.name, input.sortDirection),
+      asc(products.name),
+      asc(products.id),
+    )
+    .$dynamic();
+
+  if (input.pageSize !== 0) {
+    idQuery = idQuery.limit(input.pageSize).offset(getPaginationOffset(input));
+  }
+
+  const [idRows, total] = await Promise.all([idQuery, db.$count(products, where)]);
+  const productIds = idRows.map((row) => row.id);
+
+  if (productIds.length === 0) {
+    return [[], total];
+  }
+
+  const orderByProductId = new Map(productIds.map((id, index) => [id, index]));
+  const rows = await db.query.products.findMany({
+    columns: productListColumns,
+    where: inArray(products.id, productIds),
+    with: productListWith,
+  });
+
+  rows.sort((left, right) => (orderByProductId.get(left.id) ?? 0) - (orderByProductId.get(right.id) ?? 0));
+
+  return [rows, total];
+}
+
 // Loads every Product fully mapped, with no pagination, search, or sort — for the public Lander catalog
 // and related strip, which gate on lander readiness and so need each Product's images, category, key
 // features, and standard assemblies. Callers order in memory. The catalog is small, so the single
@@ -422,6 +471,10 @@ function buildProductListWhere(listInput: ProductListInput): SQL {
 
   if (listInput.columnFilters.rangeId) {
     conditions.push(eq(products.rangeId, listInput.columnFilters.rangeId));
+  }
+
+  if (listInput.columnFilters.variantId) {
+    conditions.push(eq(products.variantId, listInput.columnFilters.variantId));
   }
 
   return and(...conditions) as SQL;

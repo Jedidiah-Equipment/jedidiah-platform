@@ -474,7 +474,7 @@ export const Product = z.object({
 });
 
 export type ProductSortBy = z.infer<typeof ProductSortBy>;
-export const ProductSortBy = z.enum(['basePrice', 'createdAt', 'id', 'modelCode', 'name', 'rangeName']);
+export const ProductSortBy = z.enum(['basePrice', 'createdAt', 'id', 'modelCode', 'name', 'rangeName', 'variantName']);
 
 export type ProductColumnFilters = z.infer<typeof ProductColumnFilters>;
 export const ProductColumnFilters = z
@@ -483,6 +483,7 @@ export const ProductColumnFilters = z
     modelCode: z.string().trim().optional(),
     name: z.string().trim().optional(),
     rangeId: UUID.optional(),
+    variantId: UUID.optional(),
   })
   .default({});
 

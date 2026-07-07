@@ -291,21 +291,23 @@ describe('ProductUpdateInput', () => {
 });
 
 describe('ProductListInput', () => {
-  it('accepts an optional Range filter', () => {
+  it('accepts optional Range and Variant filters', () => {
     expect(
       ProductListInput.parse({
         columnFilters: {
           rangeId: RANGE_ID,
+          variantId: '00000000-0000-4000-8000-000000000103',
         },
         pageSize: 20,
-        sortBy: 'rangeName',
+        sortBy: 'variantName',
       }),
     ).toMatchObject({
       columnFilters: {
         rangeId: RANGE_ID,
+        variantId: '00000000-0000-4000-8000-000000000103',
       },
       pageSize: 20,
-      sortBy: 'rangeName',
+      sortBy: 'variantName',
       sortDirection: 'asc',
     });
   });

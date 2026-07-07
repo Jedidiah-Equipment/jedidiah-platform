@@ -1,9 +1,16 @@
 import { formatCurrency } from '@pkg/domain';
-import { type Product, type ProductListInput, ProductSortBy } from '@pkg/schema';
+import { type Product, type ProductListInput, ProductSortBy, type UUID } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  functionalUpdate,
+  getCoreRowModel,
+  type Updater,
+  useReactTable,
+} from '@tanstack/react-table';
 import type React from 'react';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
@@ -12,6 +19,7 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { useProductRangeVariantOptions } from '@/hooks/options/index.js';
 import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -49,6 +57,25 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     sortOptions: productSortOptions,
     getListInputExtras: getProductListInputExtras,
   });
+  const selectedRangeId = getColumnFilterValue(tableController.columnFilters, 'rangeName') ?? '';
+  const productRangeVariantOptions = useProductRangeVariantOptions(selectedRangeId as UUID | '');
+
+  useEffect(() => {
+    if (selectedRangeId || !getColumnFilterValue(tableController.columnFilters, 'variantName')) {
+      return;
+    }
+
+    tableController.setColumnFilters((currentFilters) => normalizeProductColumnFilters(currentFilters, currentFilters));
+  }, [selectedRangeId, tableController.columnFilters, tableController.setColumnFilters]);
+
+  const setProductColumnFilters = useCallback(
+    (updater: Updater<ColumnFiltersState>) => {
+      tableController.setColumnFilters((currentFilters) =>
+        normalizeProductColumnFilters(functionalUpdate(updater, currentFilters), currentFilters),
+      );
+    },
+    [tableController.setColumnFilters],
+  );
 
   const productsQuery = useQuery(
     trpc.products.list.queryOptions(tableController.listInput, {
@@ -98,6 +125,19 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
         },
       },
       {
+        accessorFn: (product) => product.variant?.name ?? '',
+        cell: ({ row }) => <span>{row.original.variant?.name ?? ''}</span>,
+        enableColumnFilter: Boolean(selectedRangeId),
+        enableSorting: true,
+        header: 'Variant',
+        id: 'variantName',
+        meta: {
+          filterOptions: productRangeVariantOptions.selectOptions,
+          filterVariant: 'select',
+          headerClassName: 'min-w-36',
+        },
+      },
+      {
         accessorKey: 'modelCode',
         cell: ({ row }) => <span className="font-mono">{row.original.modelCode}</span>,
         enableColumnFilter: true,
@@ -139,7 +179,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     ];
 
     return tableColumns;
-  }, [productRangeOptions.selectOptions]);
+  }, [productRangeOptions.selectOptions, productRangeVariantOptions.selectOptions, selectedRangeId]);
 
   const table = useReactTable({
     columns,
@@ -149,7 +189,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
-    onColumnFiltersChange: tableController.setColumnFilters,
+    onColumnFiltersChange: setProductColumnFilters,
     onGlobalFilterChange: tableController.setGlobalFilter,
     onPaginationChange: tableController.setPagination,
     onSortingChange: tableController.setSorting,
@@ -179,20 +219,39 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
 };
 
 function getProductListInputExtras(columnFilters: ColumnFiltersState) {
+  const rangeId = getColumnFilterValue(columnFilters, 'rangeName');
+
   return {
     columnFilters: {
       modelCode: getColumnFilterValue(columnFilters, 'modelCode'),
       name: getColumnFilterValue(columnFilters, 'name'),
-      rangeId: getColumnFilterValue(columnFilters, 'rangeName'),
+      rangeId,
+      variantId: rangeId ? getColumnFilterValue(columnFilters, 'variantName') : undefined,
     },
   } satisfies Pick<ProductListInput, 'columnFilters'>;
 }
 
 function getColumnFilterValue(
   columnFilters: ColumnFiltersState,
-  id: 'modelCode' | 'name' | 'rangeName',
+  id: 'modelCode' | 'name' | 'rangeName' | 'variantName',
 ): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;
+}
+
+function normalizeProductColumnFilters(
+  nextFilters: ColumnFiltersState,
+  previousFilters: ColumnFiltersState,
+): ColumnFiltersState {
+  const previousRangeId = getColumnFilterValue(previousFilters, 'rangeName');
+  const nextRangeId = getColumnFilterValue(nextFilters, 'rangeName');
+
+  // Variant filters are scoped by Range; clearing them here prevents persisted or in-flight table state
+  // from expressing an impossible Range/Variant pair.
+  if (!nextRangeId || previousRangeId !== nextRangeId) {
+    return nextFilters.filter((filter) => filter.id !== 'variantName');
+  }
+
+  return nextFilters;
 }

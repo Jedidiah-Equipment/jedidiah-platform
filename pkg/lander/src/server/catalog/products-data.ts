@@ -49,6 +49,30 @@ export function toRangeLabel(name: string): string {
   return name.replace(/\s+Range$/i, '');
 }
 
+function toCatalogVariants(
+  variants: { id: string; name: string }[],
+  groupProducts: readonly CatalogProduct[],
+): CatalogVariant[] {
+  const visibleVariantIds = new Set(groupProducts.flatMap((product) => (product.variantId ? [product.variantId] : [])));
+  const visibleVariants = variants.filter((variant) => visibleVariantIds.has(variant.id));
+  const slugCounts = new Map<string, number>();
+
+  for (const variant of visibleVariants) {
+    const slug = toRangeSlug(variant.name);
+    slugCounts.set(slug, (slugCounts.get(slug) ?? 0) + 1);
+  }
+
+  return visibleVariants.map((variant) => {
+    const baseSlug = toRangeSlug(variant.name);
+
+    return {
+      id: variant.id,
+      slug: slugCounts.get(baseSlug) === 1 ? baseSlug : `${baseSlug}-${variant.id}`,
+      name: variant.name,
+    };
+  });
+}
+
 // The public image routes are keyed by entity id, so a replaced image reuses its URL. Without a token a
 // browser or CDN keeps serving the superseded bytes, so a new upload does not show on the site (issue #647).
 // The `?v=` token identifies the exact bytes served at a URL, which depend on BOTH the stored file's
@@ -130,11 +154,7 @@ export async function loadProductsCatalog(db: Db): Promise<ProductsCatalog> {
       label: toRangeLabel(range.name),
       description: range.description ?? '',
       count: groupProducts.length,
-      variants: range.variants.map((variant) => ({
-        id: variant.id,
-        slug: toRangeSlug(variant.name),
-        name: variant.name,
-      })),
+      variants: toCatalogVariants(range.variants, groupProducts),
       products: groupProducts,
     });
   }

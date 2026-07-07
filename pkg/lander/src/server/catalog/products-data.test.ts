@@ -115,6 +115,8 @@ test('loadProductsCatalog exposes Range Variants in display order with range-sco
   const range = await insertRange(db, `Variant Catalog Range ${suffix}`, 'Models with variants.');
   const wide = await insertVariant(db, range.id, `Wide Body ${suffix}`, 20);
   const narrow = await insertVariant(db, range.id, `Narrow Body ${suffix}`, 10);
+  const dashedWide = await insertVariant(db, range.id, `Wide-Body ${suffix}`, 30);
+  await insertVariant(db, range.id, `No Public Product ${suffix}`, 40);
   await insertProduct(db, range.id, {
     name: `Narrow Model ${suffix}`,
     modelCode: `NAR-${suffix}`,
@@ -124,6 +126,11 @@ test('loadProductsCatalog exposes Range Variants in display order with range-sco
     name: `Wide Model ${suffix}`,
     modelCode: `WID-${suffix}`,
     variantId: wide.id,
+  });
+  await insertProduct(db, range.id, {
+    name: `Dashed Wide Model ${suffix}`,
+    modelCode: `DWI-${suffix}`,
+    variantId: dashedWide.id,
   });
   const unassigned = await insertProduct(db, range.id, {
     name: `Base Model ${suffix}`,
@@ -135,13 +142,15 @@ test('loadProductsCatalog exposes Range Variants in display order with range-sco
 
   expect(group?.variants).toEqual([
     { id: narrow.id, name: narrow.name, slug: toRangeSlug(narrow.name) },
-    { id: wide.id, name: wide.name, slug: toRangeSlug(wide.name) },
+    { id: wide.id, name: wide.name, slug: `${toRangeSlug(wide.name)}-${wide.id}` },
+    { id: dashedWide.id, name: dashedWide.name, slug: `${toRangeSlug(dashedWide.name)}-${dashedWide.id}` },
   ]);
   expect(group?.products).toEqual(
     expect.arrayContaining([
       expect.objectContaining({ id: unassigned.id, variantId: null }),
       expect.objectContaining({ variantId: narrow.id }),
       expect.objectContaining({ variantId: wide.id }),
+      expect.objectContaining({ variantId: dashedWide.id }),
     ]),
   );
 });

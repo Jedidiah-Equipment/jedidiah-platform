@@ -19,13 +19,13 @@ describe('resolveProductsCatalogView', () => {
   test('shows the full Range when the Variant slug is unknown or absent', () => {
     expect(
       resolveProductsCatalogView(groups, { range: 'trailers' }).visibleGroups[0]?.products.map(({ id }) => id),
-    ).toEqual(['base-model', 'wide-model', 'narrow-model']);
+    ).toEqual(['base-model', 'wide-model', 'wide-dashed-model', 'narrow-model']);
     expect(
       resolveProductsCatalogView(groups, {
         range: 'trailers',
         variant: 'stale-variant',
       }).visibleGroups[0]?.products.map(({ id }) => id),
-    ).toEqual(['base-model', 'wide-model', 'narrow-model']);
+    ).toEqual(['base-model', 'wide-model', 'wide-dashed-model', 'narrow-model']);
   });
 
   test('ignores a Variant slug when there is no valid selected Range', () => {
@@ -45,6 +45,16 @@ describe('resolveProductsCatalogView', () => {
     expect(activeVariant?.id).toBe('tank-wide');
     expect(visibleGroups[0]?.products.map((product) => product.id)).toEqual(['tank-wide-model']);
   });
+
+  test('resolves same-Range collision-safe Variant slugs independently', () => {
+    const { activeVariant, visibleGroups } = resolveProductsCatalogView(groups, {
+      range: 'trailers',
+      variant: 'wide-body-12345678',
+    });
+
+    expect(activeVariant?.id).toBe('variant-wide-dashed');
+    expect(visibleGroups[0]?.products.map((product) => product.id)).toEqual(['wide-dashed-model']);
+  });
 });
 
 const groups: CatalogGroup[] = [
@@ -54,14 +64,16 @@ const groups: CatalogGroup[] = [
     name: 'Trailers',
     label: 'Trailers',
     description: '',
-    count: 3,
+    count: 4,
     variants: [
       { id: 'variant-wide', name: 'Wide Body', slug: 'wide-body' },
+      { id: 'variant-wide-dashed', name: 'Wide-Body', slug: 'wide-body-12345678' },
       { id: 'variant-narrow', name: 'Narrow Body', slug: 'narrow-body' },
     ],
     products: [
       product({ id: 'base-model', variantId: null }),
       product({ id: 'wide-model', variantId: 'variant-wide' }),
+      product({ id: 'wide-dashed-model', variantId: 'variant-wide-dashed' }),
       product({ id: 'narrow-model', variantId: 'variant-narrow' }),
     ],
   },

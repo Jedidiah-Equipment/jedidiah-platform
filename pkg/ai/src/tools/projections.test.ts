@@ -125,4 +125,39 @@ describe('tool result projections', () => {
     expect(result.size.serializedBytes).toBeLessThanOrEqual(700);
     expect(JSON.stringify(result.result)).toContain('__aiToolResultTruncatedItems');
   });
+
+  test('preserves fixed schedule departments when nested slot arrays can be truncated', () => {
+    const departments = ['Cutting', 'Welding', 'Paint', 'Assembly', 'Dispatch'];
+    const result = prepareAiToolResultForModel(
+      {
+        schedule: departments.map((department) => ({
+          bays: [
+            {
+              id: `${department.toLowerCase()}-bay`,
+              slots: Array.from({ length: 12 }, (_, index) => ({
+                id: `${department.toLowerCase()}-slot-${index}`,
+                jobCode: `JOB-${index.toString().padStart(5, '0')}`,
+                note: `slot progress detail ${index} ${'x'.repeat(80)}`,
+              })),
+            },
+          ],
+          department,
+        })),
+      },
+      { maxSerializedBytes: 1_900 },
+    );
+
+    expect(result.size.truncated).toBe(true);
+    expect(result.size.serializedBytes).toBeLessThanOrEqual(1_900);
+
+    const projected = result.result as {
+      schedule: Array<{ bays: Array<{ slots: unknown[] }>; department?: string }>;
+    };
+    expect(projected.schedule).toHaveLength(departments.length);
+    expect(projected.schedule.map((department) => department.department)).toEqual(departments);
+    const hasNestedSlotTruncation = projected.schedule.some((department) =>
+      JSON.stringify(department.bays[0]?.slots).includes('__aiToolResultTruncatedItems'),
+    );
+    expect(hasNestedSlotTruncation).toBe(true);
+  });
 });

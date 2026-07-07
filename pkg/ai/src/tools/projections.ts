@@ -375,25 +375,36 @@ function collectReducibleArrayPaths(
   value: unknown,
   path: Array<string | number>,
   arrays: Array<{ bytes: number; path: Array<string | number> }>,
-): void {
+): boolean {
   if (Array.isArray(value)) {
-    if (getTruncatableArrayItems(value).length > 0) {
+    let hasReducibleDescendantArray = false;
+
+    for (const [index, item] of value.entries()) {
+      hasReducibleDescendantArray =
+        collectReducibleArrayPaths(item, [...path, index], arrays) || hasReducibleDescendantArray;
+    }
+
+    const isReducible = getTruncatableArrayItems(value).length > 0;
+
+    if (isReducible && !hasReducibleDescendantArray) {
       arrays.push({ bytes: getSerializedBytes(value), path });
     }
 
-    for (const [index, item] of value.entries()) {
-      collectReducibleArrayPaths(item, [...path, index], arrays);
-    }
-    return;
+    return isReducible || hasReducibleDescendantArray;
   }
 
   if (!isObjectRecord(value)) {
-    return;
+    return false;
   }
 
+  let hasReducibleDescendantArray = false;
+
   for (const [key, item] of Object.entries(value)) {
-    collectReducibleArrayPaths(item, [...path, key], arrays);
+    hasReducibleDescendantArray =
+      collectReducibleArrayPaths(item, [...path, key], arrays) || hasReducibleDescendantArray;
   }
+
+  return hasReducibleDescendantArray;
 }
 
 function truncateArrayAtPath(value: unknown, path: readonly (string | number)[]): unknown {

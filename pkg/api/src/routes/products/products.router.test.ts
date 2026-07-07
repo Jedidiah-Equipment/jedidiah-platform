@@ -451,6 +451,53 @@ describe('products.read', () => {
     expect(sorted.sortBy).toBe('rangeName');
   });
 
+  test('supports filtering and sorting products by Variant with nulls last', async ({ context }) => {
+    const caller = context.createCaller();
+    const alphaVariant = await caller.productRanges.createVariant({ rangeId: context.rangeId, name: 'Alpha Variant' });
+    const zebraVariant = await caller.productRanges.createVariant({ rangeId: context.rangeId, name: 'Zebra Variant' });
+    const alphaProduct = await createProduct(caller, 'Variant Sort Alpha Product', context.rangeId, {
+      variantId: alphaVariant.id,
+    });
+    const zebraProduct = await createProduct(caller, 'Variant Sort Zebra Product', context.rangeId, {
+      variantId: zebraVariant.id,
+    });
+    const noVariantProduct = await createProduct(caller, 'Variant Sort No Variant Product', context.rangeId);
+
+    await expect(caller.products.list({ columnFilters: { variantId: zebraVariant.id } })).resolves.toMatchObject({
+      items: [
+        expect.objectContaining({
+          id: zebraProduct.id,
+          variant: { id: zebraVariant.id, name: 'Zebra Variant', rangeId: context.rangeId },
+          variantId: zebraVariant.id,
+        }),
+      ],
+      total: 1,
+    });
+
+    const sortedAsc = await caller.products.list({
+      pageSize: 10,
+      sortBy: 'variantName',
+      sortDirection: 'asc',
+    });
+    expect(sortedAsc.items.map((product) => product.id)).toEqual([
+      alphaProduct.id,
+      zebraProduct.id,
+      noVariantProduct.id,
+    ]);
+
+    const sortedDesc = await caller.products.list({
+      pageSize: 10,
+      sortBy: 'variantName',
+      sortDirection: 'desc',
+    });
+    expect(sortedDesc.items.map((product) => product.id)).toEqual([
+      zebraProduct.id,
+      alphaProduct.id,
+      noVariantProduct.id,
+    ]);
+    expect(sortedDesc.sortBy).toBe('variantName');
+  });
+
   test('returns assemblies on get and list', async ({ context }) => {
     const caller = context.createCaller();
     const partIds = await createParts(context.db);

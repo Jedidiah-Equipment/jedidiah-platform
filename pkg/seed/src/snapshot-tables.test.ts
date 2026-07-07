@@ -33,6 +33,7 @@ describe('snapshot table registry', () => {
       'supplier',
       'parts',
       'product_ranges',
+      'product_range_variants',
       'products',
       'product_bay',
       'product_serial_sequence',
@@ -66,6 +67,7 @@ describe('snapshot table registry', () => {
       'supplier.json',
       'parts.json',
       'product_ranges.json',
+      'product_range_variants.json',
       'products.json',
       'product_bay.json',
       'product_serial_sequence.json',
@@ -110,12 +112,15 @@ describe('snapshot table registry', () => {
 
   it('revives nullable catalog soft-delete timestamps', () => {
     expect(configFor('product_ranges').timestampColumns).toContain('deletedAt');
+    expect(configFor('product_range_variants').timestampColumns).toContain('deletedAt');
     expect(configFor('products').timestampColumns).toContain('deletedAt');
   });
 
   it('defaults catalog soft-delete timestamps while staging snapshots predate the column', () => {
     expect(configFor('product_ranges').omitReadColumns).toContain('deletedAt');
     expect(configFor('product_ranges').seedRowDefaults?.({}, 0)).toEqual({ deletedAt: null });
+    expect(configFor('product_range_variants').omitReadColumns).toContain('deletedAt');
+    expect(configFor('product_range_variants').seedRowDefaults?.({}, 0)).toEqual({ deletedAt: null });
     expect(configFor('products').omitReadColumns).toContain('deletedAt');
     expect(configFor('products').seedRowDefaults?.({}, 0)).toEqual({ deletedAt: null });
   });

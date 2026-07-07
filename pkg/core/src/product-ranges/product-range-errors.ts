@@ -31,15 +31,41 @@ export class ProductRangeHasProductsError extends Error {
   }
 }
 
+export class DuplicateProductRangeVariantNameError extends Error {
+  readonly code = 'product_range.variant_duplicate_name';
+  readonly metadata: { rangeId: string; name: string };
+
+  constructor(rangeId: string, name: string) {
+    super(`Product Range Variant name already exists in Range ${rangeId}: ${name}`);
+    this.name = 'DuplicateProductRangeVariantNameError';
+    this.metadata = { rangeId, name };
+  }
+}
+
+export class ProductRangeVariantNotFoundError extends Error {
+  readonly code = 'product_range.variant_not_found';
+  readonly metadata: { id: string; rangeId: string };
+
+  constructor(rangeId: string, id: string) {
+    super(`Product Range Variant not found in Range ${rangeId}: ${id}`);
+    this.name = 'ProductRangeVariantNotFoundError';
+    this.metadata = { rangeId, id };
+  }
+}
+
 export type ProductRangeCoreError =
   | DuplicateProductRangeNameError
+  | DuplicateProductRangeVariantNameError
   | ProductRangeHasProductsError
-  | ProductRangeNotFoundError;
+  | ProductRangeNotFoundError
+  | ProductRangeVariantNotFoundError;
 
 export function isProductRangeCoreError(error: unknown): error is ProductRangeCoreError {
   return (
     error instanceof DuplicateProductRangeNameError ||
+    error instanceof DuplicateProductRangeVariantNameError ||
     error instanceof ProductRangeHasProductsError ||
-    error instanceof ProductRangeNotFoundError
+    error instanceof ProductRangeNotFoundError ||
+    error instanceof ProductRangeVariantNotFoundError
   );
 }

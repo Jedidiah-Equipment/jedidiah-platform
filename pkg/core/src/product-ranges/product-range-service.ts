@@ -1,4 +1,11 @@
-import { type Db, getUniqueViolationConstraint, notRemoved, productRanges, products } from '@pkg/db';
+import {
+  type Db,
+  getUniqueViolationConstraint,
+  notRemoved,
+  productRanges,
+  productRangeVariants,
+  products,
+} from '@pkg/db';
 import type {
   ProductRange,
   ProductRangeCreateInput,
@@ -9,7 +16,11 @@ import type {
   ProductRangeUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { ProductRangeOption as ProductRangeOptionSchema, ProductRange as ProductRangeSchema } from '@pkg/schema';
+import {
+  ProductRangeOption as ProductRangeOptionSchema,
+  ProductRange as ProductRangeSchema,
+  ProductRangeVariant as ProductRangeVariantSchema,
+} from '@pkg/schema';
 import { and, asc, count, eq, max } from 'drizzle-orm';
 
 import {
@@ -19,9 +30,10 @@ import {
 } from './product-range-errors.js';
 
 type ProductRangeRow = typeof productRanges.$inferSelect;
+type ProductRangeVariantRow = typeof productRangeVariants.$inferSelect;
 type ProductRangeOptionRow = Pick<ProductRangeRow, 'id' | 'name'>;
 
-export function mapProductRange(row: ProductRangeRow): ProductRange {
+export function mapProductRange(row: ProductRangeRow & { variants?: ProductRangeVariantRow[] }): ProductRange {
   return ProductRangeSchema.parse({
     createdAt: row.createdAt.toISOString(),
     description: row.description,
@@ -37,6 +49,16 @@ export function mapProductRange(row: ProductRangeRow): ProductRange {
     displayOrder: row.displayOrder,
     name: row.name,
     updatedAt: row.updatedAt.toISOString(),
+    variants: (row.variants ?? []).map((variant) =>
+      ProductRangeVariantSchema.parse({
+        createdAt: variant.createdAt.toISOString(),
+        displayOrder: variant.displayOrder,
+        id: variant.id,
+        name: variant.name,
+        rangeId: variant.rangeId,
+        updatedAt: variant.updatedAt.toISOString(),
+      }),
+    ),
   });
 }
 
@@ -51,6 +73,12 @@ export async function listProductRanges({ db }: { db: Db }): Promise<ProductRang
   const rows = await db.query.productRanges.findMany({
     where: notRemoved(productRanges),
     orderBy: [asc(productRanges.displayOrder), asc(productRanges.id)],
+    with: {
+      variants: {
+        where: notRemoved(productRangeVariants),
+        orderBy: [asc(productRangeVariants.displayOrder), asc(productRangeVariants.id)],
+      },
+    },
   });
 
   return {
@@ -162,7 +190,7 @@ export async function updateProductRange({
       throw new ProductRangeNotFoundError(input.id);
     }
 
-    return mapProductRange(row);
+    return getProductRange({ db, id: row.id });
   } catch (error) {
     throw mapProductRangeUniqueViolation(error, input);
   }
@@ -171,6 +199,12 @@ export async function updateProductRange({
 export async function getProductRange({ db, id }: { db: Db; id: UUID }): Promise<ProductRange> {
   const row = await db.query.productRanges.findFirst({
     where: and(eq(productRanges.id, id), notRemoved(productRanges)),
+    with: {
+      variants: {
+        where: notRemoved(productRangeVariants),
+        orderBy: [asc(productRangeVariants.displayOrder), asc(productRangeVariants.id)],
+      },
+    },
   });
 
   if (!row) {

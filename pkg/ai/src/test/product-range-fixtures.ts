@@ -1,4 +1,4 @@
-import { type Db, productRanges, type StoredFile } from '@pkg/db';
+import { type Db, eq, productRanges, productRangeVariants, type StoredFile } from '@pkg/db';
 
 export async function createProductRangeFixture(
   db: Db,
@@ -19,4 +19,27 @@ export async function createProductRangeFixture(
   }
 
   return range.id;
+}
+
+export async function createProductRangeVariantFixture(
+  db: Db,
+  rangeId: string,
+  name = `Test Variant ${crypto.randomUUID()}`,
+): Promise<string> {
+  const existing = await db
+    .select({ id: productRangeVariants.id })
+    .from(productRangeVariants)
+    .where(eq(productRangeVariants.rangeId, rangeId));
+  const displayOrder = existing.length;
+
+  const [variant] = await db
+    .insert(productRangeVariants)
+    .values({ displayOrder, name, rangeId })
+    .returning({ id: productRangeVariants.id });
+
+  if (!variant) {
+    throw new Error('Product Range Variant insert did not return a row');
+  }
+
+  return variant.id;
 }

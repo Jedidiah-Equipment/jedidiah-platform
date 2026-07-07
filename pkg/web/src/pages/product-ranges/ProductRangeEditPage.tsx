@@ -13,6 +13,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductRangeForm } from './components/ProductRangeForm.js';
+import { ProductRangeVariantsEditor } from './components/ProductRangeVariantsEditor.js';
 
 type ProductRangeEditPageProps = {
   rangeId: UUID;
@@ -43,6 +44,9 @@ export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ rang
             onSave={(value) => updateMutation.mutateAsync(value)}
             range={rangeQuery.data}
           />
+          <div className="mt-4">
+            <ProductRangeVariantsEditor canEdit={canEdit} range={rangeQuery.data} />
+          </div>
           {canEdit ? (
             <div className="mt-8 flex justify-end border-t pt-4">
               <RemoveProductRangeButton range={rangeQuery.data} />

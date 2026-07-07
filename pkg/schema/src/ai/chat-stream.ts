@@ -13,7 +13,7 @@ export type ChatEvent =
 
 export type ChatToolResultSizeInfo = {
   maxSerializedBytes: number;
-  removedThumbnailFields: number;
+  removedThumbnailFieldsByFallback: number;
   serializedBytes: number;
   truncated: boolean;
 };

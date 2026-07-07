@@ -1,3 +1,5 @@
+import type { ChatToolResultSizeInfo } from '@pkg/schema';
+
 import { type AiLink, createAiLink } from '../link-metadata.js';
 
 type LinkableRecord = Record<string, unknown> & {
@@ -6,12 +8,7 @@ type LinkableRecord = Record<string, unknown> & {
 
 export const AI_TOOL_RESULT_MAX_SERIALIZED_BYTES = 24 * 1024;
 
-export type AiToolResultSizeInfo = {
-  maxSerializedBytes: number;
-  removedThumbnailFields: number;
-  serializedBytes: number;
-  truncated: boolean;
-};
+export type AiToolResultSizeInfo = ChatToolResultSizeInfo;
 
 export type ProjectedAiToolResult = {
   result: unknown;
@@ -113,6 +110,7 @@ export function projectUserList(value: unknown): unknown {
 }
 
 export function projectQuoteSalespeople(value: unknown): unknown {
+  // Keep quote-salesperson projection distinct from the admin user-list tool; the shapes match today but can diverge by workflow.
   if (!isObjectRecord(value) || !Array.isArray(value.users)) {
     return value;
   }
@@ -167,7 +165,7 @@ export function prepareAiToolResultForModel(
     result: budgeted.value,
     size: {
       maxSerializedBytes,
-      removedThumbnailFields: stripped.removed,
+      removedThumbnailFieldsByFallback: stripped.removed,
       serializedBytes: budgeted.serializedBytes,
       truncated: budgeted.truncated,
     },
@@ -363,10 +361,10 @@ function enforceSerializedResultBudget(
 }
 
 function findLargestReducibleArrayPath(value: unknown): Array<string | number> | null {
-  const arrays: Array<{ bytes: number; path: Array<string | number> }> = [];
+  const arrays: Array<{ path: Array<string | number>; savedBytes: number }> = [];
 
   collectReducibleArrayPaths(value, [], arrays);
-  arrays.sort((a, b) => b.bytes - a.bytes);
+  arrays.sort((a, b) => b.savedBytes - a.savedBytes);
 
   return arrays[0]?.path ?? null;
 }
@@ -374,7 +372,7 @@ function findLargestReducibleArrayPath(value: unknown): Array<string | number> |
 function collectReducibleArrayPaths(
   value: unknown,
   path: Array<string | number>,
-  arrays: Array<{ bytes: number; path: Array<string | number> }>,
+  arrays: Array<{ path: Array<string | number>; savedBytes: number }>,
 ): boolean {
   if (Array.isArray(value)) {
     let hasReducibleDescendantArray = false;
@@ -385,12 +383,14 @@ function collectReducibleArrayPaths(
     }
 
     const isReducible = getTruncatableArrayItems(value).length > 0;
+    const savedBytes = isReducible ? getSerializedBytes(value) - getSerializedBytes(truncateArray(value)) : 0;
+    const isUsefulReduction = savedBytes > 0;
 
-    if (isReducible && !hasReducibleDescendantArray) {
-      arrays.push({ bytes: getSerializedBytes(value), path });
+    if (isUsefulReduction && !hasReducibleDescendantArray) {
+      arrays.push({ path, savedBytes });
     }
 
-    return isReducible || hasReducibleDescendantArray;
+    return isUsefulReduction || hasReducibleDescendantArray;
   }
 
   if (!isObjectRecord(value)) {
@@ -462,5 +462,5 @@ function getArrayTruncationMarker(value: unknown): { omittedItems: number } | nu
 }
 
 function getSerializedBytes(value: unknown): number {
-  return Buffer.byteLength(JSON.stringify(value), 'utf8');
+  return Buffer.byteLength(JSON.stringify(value) ?? 'null', 'utf8');
 }

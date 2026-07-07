@@ -32,7 +32,7 @@ describe('tool result projections', () => {
       ],
     });
     expect(result.size).toMatchObject({
-      removedThumbnailFields: 3,
+      removedThumbnailFieldsByFallback: 3,
       truncated: false,
     });
   });
@@ -159,5 +159,31 @@ describe('tool result projections', () => {
       JSON.stringify(department.bays[0]?.slots).includes('__aiToolResultTruncatedItems'),
     );
     expect(hasNestedSlotTruncation).toBe(true);
+  });
+
+  test('truncates oversized list items instead of tiny per-item links arrays', () => {
+    const result = prepareAiToolResultForModel({
+      items: Array.from({ length: 120 }, (_, index) => ({
+        id: `00000000-0000-4000-8000-${index.toString().padStart(12, '0')}`,
+        links: [
+          {
+            entity: 'Product',
+            id: `00000000-0000-4000-8000-${index.toString().padStart(12, '0')}`,
+            label: `Product ${index}`,
+          },
+        ],
+        name: `Product ${index} ${'x'.repeat(150)}`,
+      })),
+      total: 120,
+    });
+
+    expect(result.size.truncated).toBe(true);
+    expect(result.size.serializedBytes).toBeLessThanOrEqual(24 * 1024);
+    expect(result.result).not.toHaveProperty('__aiToolResultTruncated');
+
+    const projected = result.result as { items: unknown[] };
+    expect(projected.items).toHaveLength(61);
+    expect(JSON.stringify(projected.items.at(-1))).toContain('__aiToolResultTruncatedItems');
+    expect(JSON.stringify(projected.items[0])).toContain('"links"');
   });
 });

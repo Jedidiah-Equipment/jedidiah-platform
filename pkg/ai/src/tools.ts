@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { tool as createAgentTool, type Tool, type ToolInputParameters } from '@openai/agents';
 import { hasPermission } from '@pkg/domain';
-import type { ChatEvent, UserAccessSummary } from '@pkg/schema';
+import type { ChatEvent, ChatToolResultSizeInfo, UserAccessSummary } from '@pkg/schema';
 import type { AiContext } from './context.js';
 import type { AiToolName, RegisteredAiTool } from './tool-registry.js';
 import { AI_TOOL_NAMES, aiTools, projectAiToolResult } from './tool-registry.js';
@@ -20,12 +20,7 @@ type InternalToolResult =
       name: AiToolName;
       ok: true;
       result: unknown;
-      size: {
-        maxSerializedBytes: number;
-        removedThumbnailFields: number;
-        serializedBytes: number;
-        truncated: boolean;
-      };
+      size: ChatToolResultSizeInfo;
     }
   | {
       name: AiToolName;

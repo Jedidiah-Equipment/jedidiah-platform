@@ -200,7 +200,7 @@ describe('runChatStream', () => {
         },
         size: {
           maxSerializedBytes: 24 * 1024,
-          removedThumbnailFields: 0,
+          removedThumbnailFieldsByFallback: 0,
           serializedBytes: expect.any(Number),
           truncated: false,
         },

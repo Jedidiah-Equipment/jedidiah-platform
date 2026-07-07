@@ -9,8 +9,15 @@ export type CatalogProduct = {
   name: string;
   modelCode: string;
   description: string;
+  variantId: string | null;
   href: string;
   imageUrl: string;
+};
+
+export type CatalogVariant = {
+  id: string;
+  slug: string;
+  name: string;
 };
 
 export type CatalogGroup = {
@@ -20,6 +27,7 @@ export type CatalogGroup = {
   label: string;
   description: string;
   count: number;
+  variants: CatalogVariant[];
   products: CatalogProduct[];
 };
 
@@ -27,8 +35,8 @@ export type ProductsCatalog = {
   groups: CatalogGroup[];
 };
 
-// Range names map to URL-safe filter slugs ("Silage & Grain Range" -> "silage-grain-range"). The chip bar
-// and the `?range=` param both speak slugs; an unknown slug falls back to the full catalog.
+// Catalog filter names map to URL-safe slugs ("Silage & Grain Range" -> "silage-grain-range"). Range and
+// Variant chips both speak slugs; the route resolves Variant slugs only inside the selected Range.
 export function toRangeSlug(name: string): string {
   return name
     .toLowerCase()
@@ -39,6 +47,30 @@ export function toRangeSlug(name: string): string {
 // Chip labels drop a trailing " Range" so the bar reads "Crosshaul", "Recharge", ... like the prototype.
 export function toRangeLabel(name: string): string {
   return name.replace(/\s+Range$/i, '');
+}
+
+function toCatalogVariants(
+  variants: { id: string; name: string }[],
+  groupProducts: readonly CatalogProduct[],
+): CatalogVariant[] {
+  const visibleVariantIds = new Set(groupProducts.flatMap((product) => (product.variantId ? [product.variantId] : [])));
+  const visibleVariants = variants.filter((variant) => visibleVariantIds.has(variant.id));
+  const slugCounts = new Map<string, number>();
+
+  for (const variant of visibleVariants) {
+    const slug = toRangeSlug(variant.name);
+    slugCounts.set(slug, (slugCounts.get(slug) ?? 0) + 1);
+  }
+
+  return visibleVariants.map((variant) => {
+    const baseSlug = toRangeSlug(variant.name);
+
+    return {
+      id: variant.id,
+      slug: slugCounts.get(baseSlug) === 1 ? baseSlug : `${baseSlug}-${variant.id}`,
+      name: variant.name,
+    };
+  });
 }
 
 // The public image routes are keyed by entity id, so a replaced image reuses its URL. Without a token a
@@ -71,6 +103,7 @@ export function toCatalogProduct(row: {
   name: string;
   modelCode: string;
   description: string | null;
+  variantId?: string | null;
   images?: { primary: { updatedAt: string } | null };
 }): CatalogProduct {
   return {
@@ -78,6 +111,7 @@ export function toCatalogProduct(row: {
     name: row.name,
     modelCode: row.modelCode,
     description: row.description ?? '',
+    variantId: row.variantId ?? null,
     href: `/products/${encodeURIComponent(row.modelCode)}`,
     imageUrl: imageUrl(`/images/products/${row.id}`, row.images?.primary?.updatedAt),
   };
@@ -120,6 +154,7 @@ export async function loadProductsCatalog(db: Db): Promise<ProductsCatalog> {
       label: toRangeLabel(range.name),
       description: range.description ?? '',
       count: groupProducts.length,
+      variants: toCatalogVariants(range.variants, groupProducts),
       products: groupProducts,
     });
   }

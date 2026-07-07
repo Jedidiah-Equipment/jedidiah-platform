@@ -5,9 +5,15 @@ import { ProductCard } from '../../components/product-card.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
 import { seoHead } from '../../lib/seo.js';
 import { getProductsCatalog } from '../../server/catalog/products.js';
-import type { CatalogGroup } from '../../server/catalog/products-data.js';
+import type { CatalogGroup, CatalogVariant } from '../../server/catalog/products-data.js';
 
-type ProductsSearch = { range?: string };
+type ProductsSearch = { range?: string; variant?: string };
+type ProductsCatalogView = {
+  activeGroup: CatalogGroup | undefined;
+  activeSlug: string | undefined;
+  activeVariant: CatalogVariant | undefined;
+  visibleGroups: CatalogGroup[];
+};
 
 export const Route = createFileRoute('/products/')({
   head: () =>
@@ -17,11 +23,41 @@ export const Route = createFileRoute('/products/')({
         'Trailers, tanks, tillage and planting equipment — engineered and built in South Africa for the toughest conditions.',
       path: '/products',
     }),
-  validateSearch: (search: Record<string, unknown>): ProductsSearch =>
-    typeof search.range === 'string' ? { range: search.range } : {},
+  validateSearch: (search: Record<string, unknown>): ProductsSearch => ({
+    ...(typeof search.range === 'string' ? { range: search.range } : {}),
+    ...(typeof search.variant === 'string' ? { variant: search.variant } : {}),
+  }),
   loader: async () => ({ catalog: await getProductsCatalog() }),
   component: ProductsPage,
 });
+
+export function resolveProductsCatalogView(groups: CatalogGroup[], search: ProductsSearch): ProductsCatalogView {
+  const activeGroup = groups.find((group) => group.slug === search.range);
+
+  if (!activeGroup) {
+    return { activeGroup: undefined, activeSlug: undefined, activeVariant: undefined, visibleGroups: groups };
+  }
+
+  // Variant slugs are only unique inside their Range, so a bare or stale `variant=` never filters anything.
+  const activeVariant = activeGroup.variants.find((variant) => variant.slug === search.variant);
+  const filteredProducts = activeVariant
+    ? activeGroup.products.filter((product) => product.variantId === activeVariant.id)
+    : undefined;
+  const visibleGroup = filteredProducts
+    ? {
+        ...activeGroup,
+        count: filteredProducts.length,
+        products: filteredProducts,
+      }
+    : activeGroup;
+
+  return {
+    activeGroup,
+    activeSlug: activeGroup.slug,
+    activeVariant,
+    visibleGroups: [visibleGroup],
+  };
+}
 
 function PageHeader() {
   return (
@@ -48,7 +84,52 @@ function FilterChip({ active, label, search }: { active: boolean; label: string;
   );
 }
 
-function FilterBar({ activeSlug, groups }: { activeSlug: string | undefined; groups: CatalogGroup[] }) {
+function VariantFilterBar({
+  activeGroup,
+  activeVariant,
+}: {
+  activeGroup: CatalogGroup | undefined;
+  activeVariant: CatalogVariant | undefined;
+}) {
+  if (!activeGroup || activeGroup.variants.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="border-t border-line/70">
+      <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-3.5 max-nav:px-5 max-nav:py-3">
+        <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999]">
+          Filter by variant
+        </span>
+        <FilterChip
+          active={activeVariant === undefined}
+          label={`All ${activeGroup.label}`}
+          search={{ range: activeGroup.slug }}
+        />
+        {activeGroup.variants.map((variant) => (
+          <FilterChip
+            key={variant.id}
+            active={activeVariant?.id === variant.id}
+            label={variant.name}
+            search={{ range: activeGroup.slug, variant: variant.slug }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FilterBar({
+  activeGroup,
+  activeSlug,
+  activeVariant,
+  groups,
+}: {
+  activeGroup: CatalogGroup | undefined;
+  activeSlug: string | undefined;
+  activeVariant: CatalogVariant | undefined;
+  groups: CatalogGroup[];
+}) {
   return (
     <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-nav:top-16">
       <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
@@ -65,6 +146,7 @@ function FilterBar({ activeSlug, groups }: { activeSlug: string | undefined; gro
           />
         ))}
       </div>
+      <VariantFilterBar activeGroup={activeGroup} activeVariant={activeVariant} />
     </div>
   );
 }
@@ -92,17 +174,15 @@ function ProductGroup({ group }: { group: CatalogGroup }) {
 
 function ProductsPage() {
   const { catalog } = Route.useLoaderData();
-  const { range } = Route.useSearch();
+  const search = Route.useSearch();
 
   const groups = catalog.groups;
-  // An unknown or absent slug shows the full catalog rather than an empty page.
-  const activeSlug = groups.some((group) => group.slug === range) ? range : undefined;
-  const visibleGroups = activeSlug ? groups.filter((group) => group.slug === activeSlug) : groups;
+  const { activeGroup, activeSlug, activeVariant, visibleGroups } = resolveProductsCatalogView(groups, search);
 
   return (
     <main className="bg-sand">
       <PageHeader />
-      <FilterBar activeSlug={activeSlug} groups={groups} />
+      <FilterBar activeGroup={activeGroup} activeSlug={activeSlug} activeVariant={activeVariant} groups={groups} />
       <SandWatermarkSection variant="products-catalog" className="pt-16 pb-24 max-nav:pt-12 max-nav:pb-18">
         <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
           {visibleGroups.map((group) => (

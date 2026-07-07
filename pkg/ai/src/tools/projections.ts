@@ -1,4 +1,25 @@
-import type { ChatToolResultSizeInfo } from '@pkg/schema';
+import type {
+  Assembly,
+  AuditEvent,
+  Bay,
+  BayOperator,
+  ChatToolResultSizeInfo,
+  Customer,
+  JobDepartmentSchedule,
+  JobDetail,
+  JobDocument,
+  JobSummary,
+  Product,
+  ProductBay,
+  ProjectedWorkJobSlot,
+  QuoteDetail,
+  QuoteLineItem,
+  QuoteProductDetailFacts,
+  QuoteProductSummaryFacts,
+  QuoteSelectedAssembly,
+  QuoteSummary,
+  UserSummary,
+} from '@pkg/schema';
 
 import { type AiLink, createAiLink } from '../link-metadata.js';
 
@@ -17,6 +38,230 @@ export type ProjectedAiToolResult = {
 
 const ARRAY_TRUNCATION_MARKER_KEY = '__aiToolResultTruncatedItems';
 const RESULT_TRUNCATION_MARKER_KEY = '__aiToolResultTruncated';
+
+type ProjectionKeys<T> = readonly Extract<keyof T, string>[];
+type ProductAssemblyKey =
+  | Extract<keyof Assembly, string>
+  | Extract<keyof Extract<Assembly, { kind: 'optional' }>, string>;
+
+const CUSTOMER_LIST_KEYS = [
+  'id',
+  'companyName',
+  'contactPerson',
+  'email',
+  'phone',
+  'vatNumber',
+  'createdAt',
+] as const satisfies ProjectionKeys<Customer>;
+
+const CUSTOMER_DETAIL_KEYS = [
+  'id',
+  'companyName',
+  'email',
+  'vatNumber',
+  'address',
+  'contactPerson',
+  'phone',
+  'notes',
+] as const satisfies ProjectionKeys<Customer>;
+
+const JOB_LIST_KEYS = [
+  'id',
+  'code',
+  'productId',
+  'productSerialNumber',
+  'quoteId',
+  'vinNumber',
+  'description',
+  'customerCompanyName',
+  'customerId',
+  'productModelCode',
+  'productName',
+  'quoteCode',
+  'quoteKind',
+  'scheduleState',
+  'workTitle',
+  'createdAt',
+] as const satisfies ProjectionKeys<JobSummary>;
+
+const JOB_DETAIL_KEYS = [
+  'id',
+  'code',
+  'productId',
+  'productSerialNumber',
+  'quoteId',
+  'vinNumber',
+  'description',
+  'customerCompanyName',
+  'customerId',
+  'productModelCode',
+  'productName',
+  'quoteCode',
+  'quoteKind',
+  'scheduleState',
+  'workTitle',
+] as const satisfies ProjectionKeys<JobDetail>;
+
+const PRODUCT_DETAIL_KEYS = [
+  'name',
+  'nameHighlight',
+  'description',
+  'modelCode',
+  'range',
+  'basePrice',
+  'buildTimeDays',
+  'currencyCode',
+  'requiresVinNumber',
+  'category',
+  'keyFeatures',
+  'technicalDetails',
+] as const satisfies ProjectionKeys<Product>;
+
+const PRODUCT_LIST_KEYS = [...PRODUCT_DETAIL_KEYS, 'createdAt'] as const satisfies ProjectionKeys<Product>;
+
+const QUOTE_LIST_KEYS = [
+  'id',
+  'code',
+  'customerId',
+  'salesPersonId',
+  'status',
+  'statusChangedAt',
+  'discountPercent',
+  'depositPercent',
+  'deliveryIncluded',
+  'deliveryPrice',
+  'validUntil',
+  'preferredDeliveryDate',
+  'plannedDeliveryDate',
+  'documentNotes',
+  'quotedBasePrice',
+  'quotedCurrencyCode',
+  'createdAt',
+  'kind',
+  'productId',
+  'workTitle',
+  'customerCompanyName',
+  'job',
+  'salesPersonEmail',
+  'salesPersonName',
+] as const satisfies ProjectionKeys<QuoteSummary>;
+
+const QUOTE_DETAIL_KEYS = [
+  'id',
+  'code',
+  'customerId',
+  'salesPersonId',
+  'status',
+  'statusChangedAt',
+  'discountPercent',
+  'depositPercent',
+  'deliveryIncluded',
+  'deliveryPrice',
+  'validUntil',
+  'preferredDeliveryDate',
+  'plannedDeliveryDate',
+  'notes',
+  'documentNotes',
+  'quotedBasePrice',
+  'quotedCurrencyCode',
+  'createdAt',
+  'kind',
+  'productId',
+  'workTitle',
+  'customerCompanyName',
+  'job',
+  'salesPersonEmail',
+  'salesPersonName',
+  'customerAddress',
+  'customerContactPerson',
+  'customerEmail',
+  'customerPhone',
+  'customerVatNumber',
+] as const satisfies ProjectionKeys<QuoteDetail>;
+
+const PRODUCT_ASSEMBLY_KEYS = [
+  'id',
+  'kind',
+  'name',
+  'price',
+  'parts',
+  'overrideStandardAssemblyIds',
+] as const satisfies readonly ProductAssemblyKey[];
+
+const PRODUCT_BAY_KEYS = ['defaultWorkingDays'] as const satisfies ProjectionKeys<ProductBay>;
+const BAY_SUMMARY_KEYS = ['id', 'department', 'name'] as const satisfies ProjectionKeys<Bay>;
+const JOB_SCHEDULE_DEPARTMENT_KEYS = ['department'] as const satisfies ProjectionKeys<JobDepartmentSchedule>;
+const BAY_OPERATOR_KEYS = ['id', 'name', 'email'] as const satisfies ProjectionKeys<BayOperator>;
+
+const JOB_SCHEDULE_SLOT_KEYS = [
+  'id',
+  'kind',
+  'durationDays',
+  'startDate',
+  'endDate',
+  'state',
+  'jobCode',
+  'jobId',
+  'jobUnfinished',
+] as const satisfies ProjectionKeys<ProjectedWorkJobSlot>;
+
+const JOB_DOCUMENT_KEYS = [
+  'id',
+  'filename',
+  'metadata',
+  'sourceProductName',
+  'uploaderName',
+  'uploaderEmail',
+  'createdAt',
+] as const satisfies ProjectionKeys<JobDocument>;
+
+const QUOTE_PRODUCT_SUMMARY_KEYS = [
+  'buildTimeDays',
+  'currencyCode',
+  'modelCode',
+  'name',
+] as const satisfies ProjectionKeys<QuoteProductSummaryFacts>;
+
+const QUOTE_PRODUCT_DETAIL_KEYS = [
+  'buildTimeDays',
+  'currencyCode',
+  'modelCode',
+  'name',
+  'description',
+  'requiresVinNumber',
+] as const satisfies ProjectionKeys<QuoteProductDetailFacts>;
+
+const QUOTE_LINE_ITEM_KEYS = ['id', 'name', 'quantity', 'unitPrice'] as const satisfies ProjectionKeys<QuoteLineItem>;
+
+const QUOTE_SELECTED_ASSEMBLY_KEYS = [
+  'id',
+  'productAssemblyId',
+  'quotedName',
+  'quotedPrice',
+] as const satisfies ProjectionKeys<QuoteSelectedAssembly>;
+
+const ADMIN_USER_SUMMARY_KEYS = [
+  'id',
+  'name',
+  'email',
+  'role',
+  'phoneNumber',
+  'departments',
+] as const satisfies ProjectionKeys<UserSummary>;
+
+const QUOTE_SALESPERSON_SUMMARY_KEYS = ['id', 'name', 'email', 'role'] as const satisfies ProjectionKeys<UserSummary>;
+
+const AUDIT_EVENT_KEYS = [
+  'id',
+  'occurredAt',
+  'actorUserId',
+  'actorName',
+  'actorEmail',
+  'entityType',
+  'entityId',
+  'action',
+  'summary',
+] as const satisfies ProjectionKeys<AuditEvent>;
 
 export function identityProjection(result: unknown): unknown {
   return result;
@@ -38,7 +283,7 @@ export function projectCustomerListItem(value: unknown): unknown {
     return value;
   }
 
-  const projectedValue = pickDefined(value, ['id', 'companyName', 'contactPerson', 'email', 'phone', 'vatNumber']);
+  const projectedValue = pickDefined(value, CUSTOMER_LIST_KEYS);
   const label = typeof value.companyName === 'string' ? value.companyName : null;
   return addLinks({ id: value.id, ...projectedValue }, [label ? createAiLink('Customer', label, value.id) : null]);
 }
@@ -48,16 +293,7 @@ export function projectCustomerDetail(value: unknown): unknown {
     return value;
   }
 
-  const projectedValue = pickDefined(value, [
-    'id',
-    'companyName',
-    'email',
-    'vatNumber',
-    'address',
-    'contactPerson',
-    'phone',
-    'notes',
-  ]);
+  const projectedValue = pickDefined(value, CUSTOMER_DETAIL_KEYS);
   const label = typeof value.companyName === 'string' ? value.companyName : null;
   return addLinks({ id: value.id, ...projectedValue }, [label ? createAiLink('Customer', label, value.id) : null]);
 }
@@ -67,23 +303,7 @@ export function projectJobListItem(value: unknown): unknown {
     return value;
   }
 
-  const projectedValue = pickDefined(value, [
-    'id',
-    'code',
-    'productId',
-    'productSerialNumber',
-    'quoteId',
-    'vinNumber',
-    'description',
-    'customerCompanyName',
-    'customerId',
-    'productModelCode',
-    'productName',
-    'quoteCode',
-    'quoteKind',
-    'scheduleState',
-    'workTitle',
-  ]);
+  const projectedValue = pickDefined(value, JOB_LIST_KEYS);
   const label = typeof value.code === 'string' ? value.code : null;
   return addLinks({ id: value.id, ...projectedValue }, [
     label ? createAiLink('Job', label, value.id) : null,
@@ -98,23 +318,7 @@ export function projectJobDetail(value: unknown): unknown {
   }
 
   const projectedValue = {
-    ...pickDefined(value, [
-      'id',
-      'code',
-      'productId',
-      'productSerialNumber',
-      'quoteId',
-      'vinNumber',
-      'description',
-      'customerCompanyName',
-      'customerId',
-      'productModelCode',
-      'productName',
-      'quoteCode',
-      'quoteKind',
-      'scheduleState',
-      'workTitle',
-    ]),
+    ...pickDefined(value, JOB_DETAIL_KEYS),
     ...(Array.isArray(value.cfo) ? { cfo: value.cfo } : {}),
     ...(Array.isArray(value.documents) ? { documents: value.documents.map(projectJobDocument) } : {}),
     ...(Array.isArray(value.schedule) ? { schedule: slimJobScheduleDepartments(value.schedule, value.id) } : {}),
@@ -132,7 +336,7 @@ export function projectProductListItem(value: unknown): unknown {
     return value;
   }
 
-  const projectedValue = projectProductBase(value);
+  const projectedValue = projectProductBase(value, PRODUCT_LIST_KEYS);
   const label = typeof value.name === 'string' ? value.name : null;
   return addLinks({ id: value.id, ...projectedValue }, [label ? createAiLink('Product', label, value.id) : null]);
 }
@@ -142,7 +346,7 @@ export function projectProductDetail(value: unknown): unknown {
     return value;
   }
 
-  const projectedValue = projectProductBase(value);
+  const projectedValue = projectProductBase(value, PRODUCT_DETAIL_KEYS);
   const label = typeof value.name === 'string' ? value.name : null;
   return addLinks({ id: value.id, ...projectedValue }, [label ? createAiLink('Product', label, value.id) : null]);
 }
@@ -153,32 +357,7 @@ export function projectQuoteListItem(value: unknown): unknown {
   }
 
   const projectedValue = {
-    ...pickDefined(value, [
-      'id',
-      'code',
-      'customerId',
-      'salesPersonId',
-      'status',
-      'statusChangedAt',
-      'discountPercent',
-      'depositPercent',
-      'deliveryIncluded',
-      'deliveryPrice',
-      'validUntil',
-      'preferredDeliveryDate',
-      'plannedDeliveryDate',
-      'documentNotes',
-      'quotedBasePrice',
-      'quotedCurrencyCode',
-      'createdAt',
-      'kind',
-      'productId',
-      'workTitle',
-      'customerCompanyName',
-      'job',
-      'salesPersonEmail',
-      'salesPersonName',
-    ]),
+    ...pickDefined(value, QUOTE_LIST_KEYS),
     ...(isObjectRecord(value.product) || value.product === null
       ? { product: projectQuoteProductSummary(value.product) }
       : {}),
@@ -192,38 +371,7 @@ export function projectQuoteDetail(value: unknown): unknown {
   }
 
   const projectedValue = {
-    ...pickDefined(value, [
-      'id',
-      'code',
-      'customerId',
-      'salesPersonId',
-      'status',
-      'statusChangedAt',
-      'discountPercent',
-      'depositPercent',
-      'deliveryIncluded',
-      'deliveryPrice',
-      'validUntil',
-      'preferredDeliveryDate',
-      'plannedDeliveryDate',
-      'notes',
-      'documentNotes',
-      'quotedBasePrice',
-      'quotedCurrencyCode',
-      'createdAt',
-      'kind',
-      'productId',
-      'workTitle',
-      'customerCompanyName',
-      'job',
-      'salesPersonEmail',
-      'salesPersonName',
-      'customerAddress',
-      'customerContactPerson',
-      'customerEmail',
-      'customerPhone',
-      'customerVatNumber',
-    ]),
+    ...pickDefined(value, QUOTE_DETAIL_KEYS),
     ...(isObjectRecord(value.product) || value.product === null
       ? { product: projectQuoteProductDetail(value.product) }
       : {}),
@@ -255,7 +403,6 @@ export function projectUserList(value: unknown): unknown {
   }
 
   return {
-    ...value,
     users: value.users.map(projectAdminUserSummary),
   };
 }
@@ -364,22 +511,9 @@ function pickDefined(value: Record<string, unknown>, keys: readonly string[]): R
   return Object.fromEntries(entries);
 }
 
-function projectProductBase(value: Record<string, unknown>): Record<string, unknown> {
+function projectProductBase(value: Record<string, unknown>, keys: ProjectionKeys<Product>): Record<string, unknown> {
   return {
-    ...pickDefined(value, [
-      'name',
-      'nameHighlight',
-      'description',
-      'modelCode',
-      'range',
-      'basePrice',
-      'buildTimeDays',
-      'currencyCode',
-      'requiresVinNumber',
-      'category',
-      'keyFeatures',
-      'technicalDetails',
-    ]),
+    ...pickDefined(value, keys),
     ...(Array.isArray(value.assemblies) ? { assemblies: value.assemblies.map(projectProductAssembly) } : {}),
     ...(Array.isArray(value.productBays) ? { productBays: value.productBays.map(projectProductBay) } : {}),
   };
@@ -391,7 +525,7 @@ function projectProductAssembly(value: unknown): unknown {
   }
 
   return {
-    ...pickDefined(value, ['id', 'kind', 'name', 'price', 'parts', 'overrideStandardAssemblyIds']),
+    ...pickDefined(value, PRODUCT_ASSEMBLY_KEYS),
   };
 }
 
@@ -401,13 +535,13 @@ function projectProductBay(value: unknown): unknown {
   }
 
   return {
-    ...pickDefined(value, ['defaultWorkingDays']),
+    ...pickDefined(value, PRODUCT_BAY_KEYS),
     ...(isObjectRecord(value.bay) ? { bay: projectBaySummary(value.bay) } : {}),
   };
 }
 
 function projectBaySummary(value: Record<string, unknown>): Record<string, unknown> {
-  return pickDefined(value, ['id', 'department', 'name']);
+  return pickDefined(value, BAY_SUMMARY_KEYS);
 }
 
 function slimJobScheduleDepartments(schedule: unknown[], jobId: string): unknown[] {
@@ -417,7 +551,7 @@ function slimJobScheduleDepartments(schedule: unknown[], jobId: string): unknown
     }
 
     return {
-      ...pickDefined(department, ['department']),
+      ...pickDefined(department, JOB_SCHEDULE_DEPARTMENT_KEYS),
       bays: department.bays
         .map((bay) => {
           if (!isObjectRecord(bay) || !Array.isArray(bay.slots)) {
@@ -444,7 +578,7 @@ function projectBayOperator(value: unknown): unknown {
     return value;
   }
 
-  return pickDefined(value, ['id', 'name', 'email']);
+  return pickDefined(value, BAY_OPERATOR_KEYS);
 }
 
 function projectJobScheduleSlot(value: unknown): unknown {
@@ -452,17 +586,7 @@ function projectJobScheduleSlot(value: unknown): unknown {
     return value;
   }
 
-  return pickDefined(value, [
-    'id',
-    'kind',
-    'durationDays',
-    'startDate',
-    'endDate',
-    'state',
-    'jobCode',
-    'jobId',
-    'jobUnfinished',
-  ]);
+  return pickDefined(value, JOB_SCHEDULE_SLOT_KEYS);
 }
 
 function projectJobDocument(value: unknown): unknown {
@@ -470,7 +594,7 @@ function projectJobDocument(value: unknown): unknown {
     return value;
   }
 
-  return pickDefined(value, ['id', 'filename', 'metadata', 'sourceProductName', 'uploaderName', 'uploaderEmail']);
+  return pickDefined(value, JOB_DOCUMENT_KEYS);
 }
 
 function projectQuoteProductSummary(value: unknown): unknown {
@@ -482,7 +606,7 @@ function projectQuoteProductSummary(value: unknown): unknown {
     return value;
   }
 
-  return pickDefined(value, ['buildTimeDays', 'currencyCode', 'modelCode', 'name']);
+  return pickDefined(value, QUOTE_PRODUCT_SUMMARY_KEYS);
 }
 
 function projectQuoteProductDetail(value: unknown): unknown {
@@ -495,7 +619,7 @@ function projectQuoteProductDetail(value: unknown): unknown {
   }
 
   return {
-    ...pickDefined(value, ['buildTimeDays', 'currencyCode', 'modelCode', 'name', 'description', 'requiresVinNumber']),
+    ...pickDefined(value, QUOTE_PRODUCT_DETAIL_KEYS),
     ...(Array.isArray(value.assemblies) ? { assemblies: value.assemblies.map(projectProductAssembly) } : {}),
     ...(Array.isArray(value.bays) ? { bays: value.bays.map(projectProductBay) } : {}),
   };
@@ -506,7 +630,7 @@ function projectQuoteLineItem(value: unknown): unknown {
     return value;
   }
 
-  return pickDefined(value, ['id', 'name', 'quantity', 'unitPrice']);
+  return pickDefined(value, QUOTE_LINE_ITEM_KEYS);
 }
 
 function projectQuoteSelectedAssembly(value: unknown): unknown {
@@ -514,7 +638,7 @@ function projectQuoteSelectedAssembly(value: unknown): unknown {
     return value;
   }
 
-  return pickDefined(value, ['id', 'productAssemblyId', 'quotedName', 'quotedPrice']);
+  return pickDefined(value, QUOTE_SELECTED_ASSEMBLY_KEYS);
 }
 
 function projectAdminUserSummary(value: unknown): unknown {
@@ -522,7 +646,7 @@ function projectAdminUserSummary(value: unknown): unknown {
     return value;
   }
 
-  return pickDefined(value, ['id', 'name', 'email', 'role', 'phoneNumber', 'departments']);
+  return pickDefined(value, ADMIN_USER_SUMMARY_KEYS);
 }
 
 function projectQuoteSalespersonSummary(value: unknown): unknown {
@@ -530,7 +654,7 @@ function projectQuoteSalespersonSummary(value: unknown): unknown {
     return value;
   }
 
-  return pickDefined(value, ['id', 'name', 'email', 'role']);
+  return pickDefined(value, QUOTE_SALESPERSON_SUMMARY_KEYS);
 }
 
 function projectPartSupplier(value: Record<string, unknown>): Record<string, unknown> {
@@ -545,17 +669,7 @@ function projectAuditEvent(value: unknown): unknown {
   }
 
   return {
-    ...pickDefined(value, [
-      'id',
-      'occurredAt',
-      'actorUserId',
-      'actorName',
-      'actorEmail',
-      'entityType',
-      'entityId',
-      'action',
-      'summary',
-    ]),
+    ...pickDefined(value, AUDIT_EVENT_KEYS),
     ...(isObjectRecord(value.actor) ? { actor: projectAdminUserSummary(value.actor) } : {}),
     ...(isObjectRecord(value.changes) ? { changes: projectAuditChangePreviews(value.changes) } : {}),
   };

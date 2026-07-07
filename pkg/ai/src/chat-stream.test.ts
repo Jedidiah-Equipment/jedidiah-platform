@@ -187,6 +187,7 @@ describe('runChatStream', () => {
               basePrice: 332_500,
               buildTimeDays: 14,
               category: null,
+              createdAt: '2026-05-13T10:13:20.631Z',
               currencyCode: 'ZAR',
               description: 'Apex forklift',
               id: '00000000-0000-4000-8000-000000000001',

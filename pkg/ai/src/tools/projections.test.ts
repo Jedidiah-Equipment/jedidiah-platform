@@ -122,7 +122,7 @@ describe('tool result projections', () => {
     expect(JSON.stringify(projected)).not.toContain('thumbnailDataUrl');
   });
 
-  test('removes sort echoes from paged list projections while keeping items and total', () => {
+  test('removes sort echoes from paged list projections while keeping sortable timestamps', () => {
     const customerResult = projectPagedItems(
       {
         items: [
@@ -170,7 +170,7 @@ describe('tool result projections', () => {
     expect(customerResult).not.toHaveProperty('sortBy');
     expect(customerResult).not.toHaveProperty('sortDirection');
     expect(JSON.stringify(customerResult)).not.toContain('Hidden list address');
-    expect(JSON.stringify(customerResult)).not.toContain('createdAt');
+    expect(JSON.stringify(customerResult)).toContain('createdAt');
     expect(quoteResult).toMatchObject({ items: [expect.any(Object)], total: 1 });
     expect(quoteResult).not.toHaveProperty('sortBy');
     expect(quoteResult).not.toHaveProperty('sortDirection');
@@ -238,6 +238,7 @@ describe('tool result projections', () => {
       basePrice: 100000,
       buildTimeDays: 14,
       currencyCode: 'ZAR',
+      createdAt: '2026-07-01T00:00:00.000Z',
       id: '00000000-0000-4000-8000-000000000001',
       modelCode: 'CL-100',
       name: 'Compact Loader',
@@ -255,7 +256,7 @@ describe('tool result projections', () => {
     expect(JSON.stringify(projected)).not.toContain('thumbnailDataUrl');
     expect(JSON.stringify(projected)).not.toContain('images');
     expect(JSON.stringify(projected)).not.toContain('productId');
-    expect(JSON.stringify(projected)).not.toContain('createdAt');
+    expect(JSON.stringify(projected)).not.toContain('updatedAt');
   });
 
   test('keeps Quote detail commercial inputs that Quote lists omit', () => {
@@ -367,11 +368,15 @@ describe('tool result projections', () => {
       id: '00000000-0000-4000-8000-000000000201',
     });
 
-    expect(listProjection).toMatchObject({ code: 'JOB-00001', productSerialNumber: 'CL260001' });
-    expect(JSON.stringify(listProjection)).not.toContain('createdAt');
+    expect(listProjection).toMatchObject({
+      code: 'JOB-00001',
+      createdAt: '2026-07-01T00:00:00.000Z',
+      productSerialNumber: 'CL260001',
+    });
     expect(detailProjection).toMatchObject({
       documents: [
         {
+          createdAt: '2026-07-01T00:00:00.000Z',
           filename: 'brochure.pdf',
           id: '00000000-0000-4000-8000-000000000401',
           metadata: { type: 'brochure' },
@@ -384,6 +389,7 @@ describe('tool result projections', () => {
     expect(JSON.stringify(detailProjection)).not.toContain('byteSize');
     expect(JSON.stringify(detailProjection)).not.toContain('ownerType');
     expect(JSON.stringify(detailProjection)).not.toContain('uploaderUserId');
+    expect(JSON.stringify(detailProjection)).not.toContain('jobId');
   });
 
   test('narrows User and Quote salesperson result shapes independently', () => {
@@ -398,7 +404,7 @@ describe('tool result projections', () => {
       thumbnailDataUrl: 'data:image/webp;base64,aaaa',
     };
 
-    expect(projectUserList({ users: [user] })).toEqual({
+    expect(projectUserList({ sortBy: 'name', users: [user] })).toEqual({
       users: [
         {
           departments: ['fabrication'],
@@ -453,7 +459,7 @@ describe('tool result projections', () => {
             },
             name: {
               from: 'Short',
-              to: expect.stringMatching(/...$/),
+              to: expect.stringMatching(/\.\.\.$/),
             },
           },
           entityId: 'entity-id',

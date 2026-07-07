@@ -4,7 +4,7 @@ import type { AiContext } from '@/context.js';
 import { aiLinkMetadata } from '@/link-metadata.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectCustomer, projectPagedItems } from '../projections.js';
+import { projectCustomerListItem, projectPagedItems } from '../projections.js';
 
 export type ListCustomersTool = AiToolBase<'listCustomers', CustomerListResult, CustomerListInput, AiContext>;
 
@@ -30,5 +30,5 @@ export const listCustomersDefinition: AiToolDefinition<ListCustomersTool> = {
     resultIdentifiers: ['Customer company name', 'Customer UUID', 'VAT number'],
     linkTarget: aiLinkMetadata.Customer,
   },
-  projectResult: (result) => projectPagedItems(result, projectCustomer),
+  projectResult: (result) => projectPagedItems(result, projectCustomerListItem),
 };

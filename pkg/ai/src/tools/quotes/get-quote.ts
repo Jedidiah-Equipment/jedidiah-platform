@@ -5,7 +5,7 @@ import type { AiContext } from '@/context.js';
 import { aiLinkMetadata } from '@/link-metadata.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectQuote } from '../projections.js';
+import { projectQuoteDetail } from '../projections.js';
 
 const GetQuoteInput = z.object({
   id: UUID,
@@ -54,5 +54,5 @@ export const getQuoteDefinition: AiToolDefinition<GetQuoteTool> = {
     ],
     linkTarget: aiLinkMetadata.Quote,
   },
-  projectResult: projectQuote,
+  projectResult: projectQuoteDetail,
 };

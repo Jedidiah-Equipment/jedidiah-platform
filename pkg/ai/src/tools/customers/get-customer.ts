@@ -5,7 +5,7 @@ import type { AiContext } from '@/context.js';
 import { aiLinkMetadata } from '@/link-metadata.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectCustomer } from '../projections.js';
+import { projectCustomerDetail } from '../projections.js';
 
 const GetCustomerInput = z.object({
   id: UUID,
@@ -37,5 +37,5 @@ export const getCustomerDefinition: AiToolDefinition<GetCustomerTool> = {
     resultIdentifiers: ['Customer company name', 'Customer UUID', 'VAT number'],
     linkTarget: aiLinkMetadata.Customer,
   },
-  projectResult: projectCustomer,
+  projectResult: projectCustomerDetail,
 };

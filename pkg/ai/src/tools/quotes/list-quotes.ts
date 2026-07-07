@@ -4,7 +4,7 @@ import type { AiContext } from '@/context.js';
 import { aiLinkMetadata } from '@/link-metadata.js';
 import type { AiToolDefinition } from '@/tool-definition.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectPagedItems, projectQuote } from '../projections.js';
+import { projectPagedItems, projectQuoteListItem } from '../projections.js';
 
 export type ListQuotesTool = AiToolBase<'listQuotes', QuoteListResult, QuoteListInput, AiContext>;
 
@@ -50,13 +50,11 @@ export const listQuotesDefinition: AiToolDefinition<ListQuotesTool> = {
       'Work Title display fallback when this is a Custom Quote',
       'salesPersonId User ID',
       'quotedBasePrice and quotedCurrencyCode: latched from Product for Product Quotes; entered base price in ZAR for Custom Quotes',
-      'Quote Line Items quantity x unit price contribution',
-      'Selected Assemblies for Product Quotes; empty for Custom Quotes',
       'Customer company name',
       'linked Job Codes',
       'linked Job UUIDs',
     ],
     linkTarget: aiLinkMetadata.Quote,
   },
-  projectResult: (result) => projectPagedItems(result, projectQuote),
+  projectResult: (result) => projectPagedItems(result, projectQuoteListItem),
 };

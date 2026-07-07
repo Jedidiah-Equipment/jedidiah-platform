@@ -144,6 +144,8 @@ describe('runChatStream', () => {
       options: [],
       range: { id: '00000000-0000-4000-8000-000000000301', name: 'Forklifts' },
       rangeId: '00000000-0000-4000-8000-000000000301',
+      variant: null,
+      variantId: null,
       requiresVinNumber: false,
       thumbnailDataUrl: null,
       updatedAt: '2026-05-13T10:13:20.631Z',

@@ -16,6 +16,7 @@ import {
   type ProductImageStore,
   productBays,
   productRanges,
+  productRangeVariants,
   products,
   type StoredFile,
   user,
@@ -33,6 +34,7 @@ import type {
   ProductListInput,
   ProductListResult,
   ProductRangeOption,
+  ProductRangeVariantOption,
   ProductUpdateInput,
   UUID,
 } from '@pkg/schema';
@@ -44,6 +46,7 @@ import {
   ProductDocument as ProductDocumentSchema,
   ProductImages,
   ProductRangeOption as ProductRangeOptionSchema,
+  ProductRangeVariantOption as ProductRangeVariantOptionSchema,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
@@ -86,13 +89,16 @@ import {
   ProductBayNotFoundError,
   ProductNotFoundError,
   ProductRangeReferenceNotFoundError,
+  ProductRangeVariantReferenceNotFoundError,
 } from './product-errors.js';
 
 const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
 const PRODUCT_RANGE_FOREIGN_KEY = 'products_range_id_product_ranges_id_fk';
+const PRODUCT_VARIANT_RANGE_FOREIGN_KEY = 'products_variant_range_fk';
 
 type ProductRow = typeof products.$inferSelect & {
   range: ProductRangeOption;
+  variant: ProductRangeVariantOption | null;
 };
 type ProductListRow = ProductRow & { assemblies: AssemblyListRow[] };
 
@@ -115,6 +121,7 @@ const productListColumns = {
   name: true,
   nameHighlight: true,
   rangeId: true,
+  variantId: true,
   requiresVinNumber: true,
   brochureEnabled: true,
   landerEnabled: true,
@@ -142,6 +149,13 @@ const productListWith = {
   range: {
     columns: {
       id: true,
+      name: true,
+    },
+  },
+  variant: {
+    columns: {
+      id: true,
+      rangeId: true,
       name: true,
     },
   },
@@ -181,6 +195,7 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
     nameHighlight: input.nameHighlight,
     productBays: JSON.stringify(toAuditProductBays(input.productBays)),
     rangeId: input.rangeId,
+    variantId: input.variantId,
     requiresVinNumber: input.requiresVinNumber,
     brochureEnabled: input.brochureEnabled,
     landerEnabled: input.landerEnabled,
@@ -214,6 +229,8 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
     productBays: row.productBays ?? [],
     range: row.range,
     rangeId: row.rangeId,
+    variant: row.variant,
+    variantId: row.variantId,
     requiresVinNumber: row.requiresVinNumber,
     brochureEnabled: row.brochureEnabled,
     landerEnabled: row.landerEnabled,
@@ -510,6 +527,7 @@ async function loadProductDetailRow({
         // The brochure's top-right logo is the owning Range's logo; load it here so the brochure source
         // resolves it from the same read. Other callers (getProduct) ignore it.
         range: { columns: { id: true, logo: true, name: true } },
+        variant: { columns: { id: true, rangeId: true, name: true } },
       },
     }),
     listProductBays({ db, productId: id }),
@@ -713,7 +731,12 @@ export async function createProduct({
         productId: row.id,
         desired: desiredProductBays,
       });
-      const after = { ...row, assemblies, productBays: syncedProductBays, range };
+      const variant = await assertActiveProductRangeVariant({
+        rangeId: row.rangeId,
+        tx,
+        variantId: row.variantId,
+      });
+      const after = { ...row, assemblies, productBays: syncedProductBays, range, variant };
 
       await recordAuditCreate({ db: tx, descriptor: productAuditDescriptor, actorUserId, input: after });
 
@@ -746,6 +769,11 @@ export async function updateProduct({
       }
 
       const range = await assertActiveProductRange({ rangeId: input.rangeId, tx });
+      const beforeVariant = await assertActiveProductRangeVariant({
+        rangeId: before.rangeId,
+        tx,
+        variantId: before.variantId,
+      });
 
       const beforeAssemblies = await listAssemblies({ tx, productId: input.id });
       const beforeProductBays = await listProductBays({ db: tx, productId: input.id });
@@ -764,6 +792,14 @@ export async function updateProduct({
         name: input.name,
         nameHighlight: input.nameHighlight === undefined ? before.nameHighlight : input.nameHighlight,
         rangeId: input.rangeId,
+        // A Variant is only valid inside its owning Range. Range changes deliberately clear it even if a
+        // stale client sends the old Variant id with the new Range.
+        variantId:
+          input.rangeId === before.rangeId
+            ? input.variantId === undefined
+              ? before.variantId
+              : input.variantId
+            : null,
         requiresVinNumber: input.requiresVinNumber,
         brochureEnabled: input.brochureEnabled,
         landerEnabled: input.landerEnabled,
@@ -777,7 +813,13 @@ export async function updateProduct({
       );
 
       if (!changes) {
-        return mapProduct({ ...before, assemblies: beforeAssemblies, productBays: beforeProductBays, range });
+        return mapProduct({
+          ...before,
+          assemblies: beforeAssemblies,
+          productBays: beforeProductBays,
+          range,
+          variant: beforeVariant,
+        });
       }
 
       const [row] = await tx
@@ -805,7 +847,12 @@ export async function updateProduct({
               productId: row.id,
               desired: input.productBays,
             });
-      const afterWithChildren = { ...row, assemblies, productBays: syncedProductBays, range };
+      const variant = await assertActiveProductRangeVariant({
+        rangeId: row.rangeId,
+        tx,
+        variantId: row.variantId,
+      });
+      const afterWithChildren = { ...row, assemblies, productBays: syncedProductBays, range, variant };
 
       await recordAuditUpdate({
         db: tx,
@@ -1039,6 +1086,38 @@ async function assertActiveProductRange({
   return ProductRangeOptionSchema.parse(range);
 }
 
+async function assertActiveProductRangeVariant({
+  rangeId,
+  tx,
+  variantId,
+}: {
+  rangeId: UUID;
+  tx: DatabaseTransaction;
+  variantId: UUID | null;
+}): Promise<ProductRangeVariantOption | null> {
+  if (!variantId) {
+    return null;
+  }
+
+  const [variant] = await tx
+    .select({ id: productRangeVariants.id, rangeId: productRangeVariants.rangeId, name: productRangeVariants.name })
+    .from(productRangeVariants)
+    .where(
+      and(
+        eq(productRangeVariants.id, variantId),
+        eq(productRangeVariants.rangeId, rangeId),
+        notRemoved(productRangeVariants),
+      ),
+    )
+    .for('update');
+
+  if (!variant) {
+    throw new ProductRangeVariantReferenceNotFoundError(rangeId, variantId);
+  }
+
+  return ProductRangeVariantOptionSchema.parse(variant);
+}
+
 function toAuditAssemblies(
   assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']>,
 ): NonNullable<ProductUpdateInput['assemblies']> {
@@ -1098,7 +1177,7 @@ function getProductSortColumn(sortBy: ProductListInput['sortBy']) {
 
 function mapProductConstraintViolation(
   error: unknown,
-  input: Pick<ProductCreateInput, 'modelCode' | 'name' | 'rangeId'>,
+  input: { modelCode: string; name: string; rangeId: UUID; variantId?: UUID | null | undefined },
 ): Error {
   // The `range_id` FK (NOT NULL, ON DELETE RESTRICT) is the source of truth for the Product → Range
   // relationship; a bad reference surfaces as a constraint violation we translate into a domain error.
@@ -1106,6 +1185,10 @@ function mapProductConstraintViolation(
 
   if (foreignKey?.includes(PRODUCT_RANGE_FOREIGN_KEY) || foreignKey?.includes('range_id')) {
     return new ProductRangeReferenceNotFoundError(input.rangeId);
+  }
+
+  if (input.variantId && foreignKey?.includes(PRODUCT_VARIANT_RANGE_FOREIGN_KEY)) {
+    return new ProductRangeVariantReferenceNotFoundError(input.rangeId, input.variantId);
   }
 
   const constraint = getUniqueViolationConstraint(error);

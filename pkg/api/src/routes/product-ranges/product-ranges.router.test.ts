@@ -18,7 +18,7 @@ async function createRange(
   });
 }
 
-async function createProductForRange(db: Db, rangeId: string): Promise<string> {
+async function createProductForRange(db: Db, rangeId: string, variantId?: string): Promise<string> {
   const [product] = await db
     .insert(products)
     .values({
@@ -27,6 +27,7 @@ async function createProductForRange(db: Db, rangeId: string): Promise<string> {
       modelCode: `RANGE-REMOVE-${crypto.randomUUID()}`,
       name: `Range Remove Product ${crypto.randomUUID()}`,
       rangeId,
+      variantId,
     })
     .returning({ id: products.id });
 
@@ -346,6 +347,22 @@ describe('productRanges Variants', () => {
     await expect(caller.productRanges.createVariant({ rangeId: range.id, name: 'removed' })).resolves.toMatchObject({
       name: 'removed',
     });
+  });
+
+  test('blocks removing a Variant referenced by active Products and allows it after unlinking', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(caller, 'Variant Has Products Range');
+    const variant = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Linked' });
+    const productId = await createProductForRange(context.db, range.id, variant.id);
+
+    await expect(caller.productRanges.removeVariant({ id: variant.id, rangeId: range.id })).rejects.toMatchObject({
+      appCode: 'product_range.has_products',
+      code: 'CONFLICT',
+    });
+
+    await context.db.update(products).set({ deletedAt: new Date() }).where(eq(products.id, productId));
+
+    await expect(caller.productRanges.removeVariant({ id: variant.id, rangeId: range.id })).resolves.toBeUndefined();
   });
 
   test('rewrites Variant displayOrder within one Range', async ({ context }) => {

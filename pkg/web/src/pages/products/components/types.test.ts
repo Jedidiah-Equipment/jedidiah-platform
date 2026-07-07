@@ -16,6 +16,7 @@ const STANDARD_ID = '550e8400-e29b-41d4-a716-446655440001';
 const OPTIONAL_ID = '550e8400-e29b-41d4-a716-446655440002';
 const BAY_ID = '550e8400-e29b-41d4-a716-446655440003';
 const RANGE_ID = '550e8400-e29b-41d4-a716-446655440004';
+const VARIANT_ID = '550e8400-e29b-41d4-a716-446655440005';
 
 function buildProduct(overrides: Record<string, unknown> = {}): Product {
   return {
@@ -27,6 +28,8 @@ function buildProduct(overrides: Record<string, unknown> = {}): Product {
     buildTimeDays: 14,
     currencyCode: 'ZAR',
     rangeId: RANGE_ID,
+    variant: null,
+    variantId: null,
     requiresVinNumber: false,
     brochureEnabled: false,
     landerEnabled: false,
@@ -73,6 +76,7 @@ describe('toProductFormValues', () => {
     expect(values.description).toBe('');
     expect(values.currencyCode).toBe('ZAR');
     expect(values.rangeId).toBe('');
+    expect(values.variantId).toBe('');
     expect(values.requiresVinNumber).toBe(false);
     expect(values.assemblies).toEqual([]);
     expect(values.productBays).toEqual([]);
@@ -87,6 +91,7 @@ describe('toProductFormValues', () => {
     expect(values.basePrice).toBe(1000);
     expect(values.buildTimeDays).toBe(14);
     expect(values.rangeId).toBe(RANGE_ID);
+    expect(values.variantId).toBe('');
     expect(values.requiresVinNumber).toBe(false);
     expect(values.assemblies).toHaveLength(2);
     expect(values.productBays).toEqual([{ bayId: BAY_ID, defaultWorkingDays: 5 }]);
@@ -98,6 +103,10 @@ describe('toProductFormValues', () => {
 
   it('collapses a null description to an empty string', () => {
     expect(toProductFormValues(buildProduct({ description: null })).description).toBe('');
+  });
+
+  it('maps an existing product Variant into form state', () => {
+    expect(toProductFormValues(buildProduct({ variantId: VARIANT_ID })).variantId).toBe(VARIANT_ID);
   });
 });
 
@@ -186,6 +195,7 @@ describe('toProductCreateInput', () => {
       nameHighlight: null,
       productBays: [{ bayId: BAY_ID, defaultWorkingDays: 5 }],
       rangeId: RANGE_ID,
+      variantId: null,
       requiresVinNumber: false,
       brochureEnabled: false,
       landerEnabled: false,
@@ -218,6 +228,7 @@ describe('toProductMinimalCreateInput', () => {
       nameHighlight: null,
       productBays: [],
       rangeId: RANGE_ID,
+      variantId: null,
       requiresVinNumber: false,
       brochureEnabled: false,
       landerEnabled: false,
@@ -268,6 +279,17 @@ describe('toProductUpdateInput', () => {
       name: 'Widget',
       productBays: [{ bayId: BAY_ID, defaultWorkingDays: 5 }],
       rangeId: RANGE_ID,
+      variantId: null,
+    });
+  });
+
+  it('maps a selected Variant into the full update payload', () => {
+    expect(
+      toProductUpdateInput(PRODUCT_ID, toProductFormValues(buildProduct({ variantId: VARIANT_ID }))),
+    ).toMatchObject({
+      id: PRODUCT_ID,
+      rangeId: RANGE_ID,
+      variantId: VARIANT_ID,
     });
   });
 });

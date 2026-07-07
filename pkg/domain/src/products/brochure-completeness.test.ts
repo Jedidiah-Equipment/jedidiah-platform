@@ -116,6 +116,8 @@ function completeProduct(overrides: Partial<Product> = {}): Product {
     currencyCode: 'ZAR',
     range: { id: '22222222-2222-4222-8222-222222222222', name: 'Feed Mixers' },
     rangeId: '22222222-2222-4222-8222-222222222222',
+    variant: null,
+    variantId: null,
     requiresVinNumber: false,
     assemblies: [
       { id: '33333333-3333-4333-8333-333333333333', productId: PRODUCT_ID, kind: 'standard', name: 'Frame', parts: [] },

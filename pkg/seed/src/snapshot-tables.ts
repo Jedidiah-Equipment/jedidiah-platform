@@ -175,8 +175,8 @@ export const snapshotTables = [
     table: products,
     tableName: 'products',
     timestampColumns: ['createdAt', 'updatedAt', 'deletedAt'],
-    omitReadColumns: ['deletedAt'],
-    seedRowDefaults: () => ({ deletedAt: null }),
+    omitReadColumns: ['deletedAt', 'variantId'],
+    seedRowDefaults: () => ({ deletedAt: null, variantId: null }),
     storageFiles: (row) =>
       Object.values((row.images ?? {}) as Record<string, unknown>)
         .map(toStorageFile)

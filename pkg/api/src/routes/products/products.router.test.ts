@@ -1,5 +1,16 @@
 import { listAllProducts } from '@pkg/core';
-import { auditEvents, type Db, jobBays, parts, productRanges, products, sql, supplier, user } from '@pkg/db';
+import {
+  auditEvents,
+  type Db,
+  jobBays,
+  parts,
+  productRanges,
+  productRangeVariants,
+  products,
+  sql,
+  supplier,
+  user,
+} from '@pkg/db';
 import { EMPTY_PRODUCT_IMAGES, type Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -89,6 +100,44 @@ describe('products.create', () => {
       rangeId: range.id,
     });
     await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({ rangeId: range.id });
+  });
+
+  test('creates products with a selected Variant and returns it on Product reads', async ({ context }) => {
+    const caller = context.createCaller();
+    const variant = await caller.productRanges.createVariant({ rangeId: context.rangeId, name: 'Wide Body' });
+
+    const created = await createProduct(caller, 'Wheel Loader Variant', context.rangeId, { variantId: variant.id });
+
+    expect(created).toMatchObject({
+      name: 'Wheel Loader Variant',
+      rangeId: context.rangeId,
+      variant: { id: variant.id, name: 'Wide Body', rangeId: context.rangeId },
+      variantId: variant.id,
+    });
+    await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
+      variant: { id: variant.id, name: 'Wide Body', rangeId: context.rangeId },
+      variantId: variant.id,
+    });
+    await expect(caller.products.list({ search: 'Wheel Loader Variant' })).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: created.id, variantId: variant.id })],
+      total: 1,
+    });
+  });
+
+  test('rejects assigning a Variant from a different Range', async ({ context }) => {
+    const caller = context.createCaller();
+    const otherRange = await createRange(context.db, {
+      id: '00000000-0000-4000-8000-000000000509',
+      name: 'Other Variant Range',
+    });
+    const otherVariant = await caller.productRanges.createVariant({ rangeId: otherRange.id, name: 'Other Variant' });
+
+    await expect(
+      createProduct(caller, 'Wheel Loader Wrong Variant', context.rangeId, { variantId: otherVariant.id }),
+    ).rejects.toMatchObject({
+      appCode: 'product.variant.not_found',
+      code: 'BAD_REQUEST',
+    });
   });
 
   test('rejects creating products in a removed Range', async ({ context }) => {
@@ -252,6 +301,30 @@ describe('products.read', () => {
     expect(result.ranges).toContainEqual({ id: visibleRange.id, name: 'Earthmoving' });
     expect(result.ranges).not.toContainEqual({ id: removedRange.id, name: removedRange.name });
     expect(result.ranges.every((range) => Object.keys(range).sort().join(',') === 'id,name')).toBe(true);
+  });
+
+  test('lists Variant options for a selected Range through Product read access', async ({ context }) => {
+    const adminCaller = context.createCaller();
+    const procurementCaller = context.createCaller(mockSession('procurement-manager'));
+    const otherRange = await createRange(context.db, {
+      id: '00000000-0000-4000-8000-00000000050a',
+      name: 'Other Variant Options Range',
+    });
+    const first = await adminCaller.productRanges.createVariant({ rangeId: context.rangeId, name: 'Standard' });
+    const second = await adminCaller.productRanges.createVariant({ rangeId: context.rangeId, name: 'Wide Body' });
+    const removed = await adminCaller.productRanges.createVariant({ rangeId: context.rangeId, name: 'Removed' });
+    await adminCaller.productRanges.createVariant({ rangeId: otherRange.id, name: 'Other Range Variant' });
+    await context.db
+      .update(productRangeVariants)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(sql`${productRangeVariants.id} = ${removed.id}`);
+
+    await expect(procurementCaller.products.variantOptions({ rangeId: context.rangeId })).resolves.toEqual({
+      variants: [
+        { id: first.id, name: 'Standard', rangeId: context.rangeId },
+        { id: second.id, name: 'Wide Body', rangeId: context.rangeId },
+      ],
+    });
   });
 
   test('returns distinct assembly names through Product read access', async ({ context }) => {
@@ -623,6 +696,44 @@ describe('products.update', () => {
 
     expect(updated.rangeId).toBe(range.id);
     await expect(adminCaller.products.get({ id: created.id })).resolves.toMatchObject({ rangeId: range.id });
+  });
+
+  test('clears the Product Variant when the Product Range changes', async ({ context }) => {
+    const caller = context.createCaller();
+    const nextRange = await createRange(context.db, {
+      id: '00000000-0000-4000-8000-00000000050b',
+      name: 'Variant Clear Range',
+    });
+    const variant = await caller.productRanges.createVariant({ rangeId: context.rangeId, name: 'Narrow Body' });
+    const created = await createProduct(caller, 'Wheel Loader Variant Clear', context.rangeId, {
+      variantId: variant.id,
+    });
+
+    const updated = await caller.products.update({
+      id: created.id,
+      basePrice: created.basePrice,
+      currencyCode: created.currencyCode,
+      description: created.description,
+      buildTimeDays: created.buildTimeDays,
+      modelCode: created.modelCode,
+      name: created.name,
+      rangeId: nextRange.id,
+      variantId: variant.id,
+      requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
+    });
+
+    expect(updated).toMatchObject({
+      rangeId: nextRange.id,
+      variant: null,
+      variantId: null,
+    });
+    await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
+      rangeId: nextRange.id,
+      variant: null,
+      variantId: null,
+    });
   });
 
   test('rejects updating a product into a removed Range', async ({ context }) => {

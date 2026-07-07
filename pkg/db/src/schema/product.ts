@@ -14,7 +14,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { parts } from './part.js';
-import { productRanges } from './product-range.js';
+import { productRanges, productRangeVariants } from './product-range.js';
 import type { StoredFile } from './stored-file.js';
 
 // Product images are keyed by slot; each value is a shared {@link StoredFile}. Slots replace in
@@ -48,6 +48,7 @@ export const products = pgTable(
     rangeId: uuid('range_id')
       .notNull()
       .references(() => productRanges.id, { onDelete: 'restrict' }),
+    variantId: uuid('variant_id'),
     requiresVinNumber: boolean('requires_vin_number').notNull().default(false),
     brochureEnabled: boolean('brochure_enabled').notNull().default(false),
     landerEnabled: boolean('lander_enabled').notNull().default(false),
@@ -59,6 +60,11 @@ export const products = pgTable(
     check('products_build_time_days_nonnegative', sql`${table.buildTimeDays} >= 0`),
     uniqueIndex('products_model_code_unique').on(table.modelCode).where(sql`${table.deletedAt} is null`),
     uniqueIndex('products_name_unique').on(table.name).where(sql`${table.deletedAt} is null`),
+    foreignKey({
+      columns: [table.variantId, table.rangeId],
+      foreignColumns: [productRangeVariants.id, productRangeVariants.rangeId],
+      name: 'products_variant_range_fk',
+    }).onDelete('restrict'),
   ],
 );
 
@@ -137,6 +143,10 @@ export const productsRelations = relations(products, ({ many, one }) => ({
   range: one(productRanges, {
     fields: [products.rangeId],
     references: [productRanges.id],
+  }),
+  variant: one(productRangeVariants, {
+    fields: [products.variantId, products.rangeId],
+    references: [productRangeVariants.id, productRangeVariants.rangeId],
   }),
 }));
 

@@ -78,6 +78,7 @@ export async function createProductFixture(
       requiresVinNumber: false,
       technicalDetails: [],
       thumbnailDataUrl: null,
+      variantId: null,
       ...overrides,
     },
   });

@@ -122,7 +122,8 @@ describe('snapshot table registry', () => {
     expect(configFor('product_range_variants').omitReadColumns).toContain('deletedAt');
     expect(configFor('product_range_variants').seedRowDefaults?.({}, 0)).toEqual({ deletedAt: null });
     expect(configFor('products').omitReadColumns).toContain('deletedAt');
-    expect(configFor('products').seedRowDefaults?.({}, 0)).toEqual({ deletedAt: null });
+    expect(configFor('products').omitReadColumns).toContain('variantId');
+    expect(configFor('products').seedRowDefaults?.({}, 0)).toEqual({ deletedAt: null, variantId: null });
   });
 
   it('extracts product image storage files, ignoring the inline thumbnail data URL', () => {

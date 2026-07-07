@@ -12,7 +12,7 @@ import {
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { Bay } from '../jobs/job.js';
-import { ProductRangeOption } from './product-range.js';
+import { ProductRangeOption, ProductRangeVariantOption } from './product-range.js';
 
 export type ProductName = z.infer<typeof ProductName>;
 export const ProductName = requiredTrimmedText('Product name is required');
@@ -455,6 +455,8 @@ export const Product = z.object({
   buildTimeDays: ProductBuildTimeDays,
   currencyCode: ProductCurrencyCode,
   rangeId: UUID,
+  variantId: UUID.nullable(),
+  variant: ProductRangeVariantOption.nullable(),
   requiresVinNumber: ProductRequiresVinNumber,
   brochureEnabled: ProductBrochureEnabled.default(false),
   landerEnabled: ProductLanderEnabled.default(false),
@@ -493,6 +495,7 @@ export const ProductCreateInput = z
     modelCode: ProductModelCode,
     basePrice: ProductBasePrice,
     rangeId: UUID,
+    variantId: UUID.nullable().default(null),
     assemblies: ProductAssembliesInput,
     productBays: ProductBaysInput,
     category: ProductCategoryInput,
@@ -527,6 +530,7 @@ export const ProductUpdateInput = z
     // Omitting preserves the stored highlight, like category and the other marketing fields above.
     nameHighlight: nullableTrimmedTextInputOptional(),
     rangeId: UUID,
+    variantId: UUID.nullable().optional(),
     requiresVinNumber: ProductRequiresVinNumber,
     brochureEnabled: ProductBrochureEnabled,
     landerEnabled: ProductLanderEnabled,

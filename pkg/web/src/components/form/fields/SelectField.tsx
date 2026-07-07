@@ -10,19 +10,31 @@ type SelectFieldOption = {
   value: string;
 };
 
+const EMPTY_SELECT_VALUE = '__empty__';
+
 export type SelectFieldProps = {
   disabled?: boolean;
+  emptyLabel?: React.ReactNode;
   label: React.ReactNode;
-  onValueCommit?: () => void;
+  onValueCommit?: (value: string) => void;
   options: readonly SelectFieldOption[];
   placeholder?: string;
 };
 
-export function SelectField({ disabled = false, label, onValueCommit, options, placeholder }: SelectFieldProps) {
+export function SelectField({
+  disabled = false,
+  emptyLabel,
+  label,
+  onValueCommit,
+  options,
+  placeholder,
+}: SelectFieldProps) {
   const field = useFieldContext<string>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
   const selectedOption = options.find((option) => option.value === field.state.value);
+  const selectValue = emptyLabel && field.state.value === '' ? EMPTY_SELECT_VALUE : field.state.value;
+  const selectedLabel = emptyLabel && field.state.value === '' ? emptyLabel : selectedOption?.label;
 
   return (
     <Field data-invalid={isInvalid}>
@@ -30,16 +42,18 @@ export function SelectField({ disabled = false, label, onValueCommit, options, p
       <Select
         disabled={disabled}
         onValueChange={(value) => {
-          field.handleChange(value ?? '');
-          onValueCommit?.();
+          const nextValue = value === EMPTY_SELECT_VALUE ? '' : (value ?? '');
+          field.handleChange(nextValue);
+          onValueCommit?.(nextValue);
         }}
-        value={field.state.value}
+        value={selectValue}
       >
         <SelectTrigger id={field.name} className="w-full">
-          <SelectValue placeholder={placeholder}>{selectedOption?.label ?? null}</SelectValue>
+          <SelectValue placeholder={placeholder}>{selectedLabel ?? null}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
+            {emptyLabel ? <SelectItem value={EMPTY_SELECT_VALUE}>{emptyLabel}</SelectItem> : null}
             {options.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}

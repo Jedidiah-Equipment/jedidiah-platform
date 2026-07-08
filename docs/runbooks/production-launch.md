@@ -75,30 +75,30 @@ Publish all of the above via the normal PR flow (`/blast-it`), merge to `main`.
 
 ## Phase 2 — Provision third parties
 
-- [ ] **Tigris**: create the production bucket in the existing account + a dedicated
+- [x] **Tigris**: create the production bucket in the existing account + a dedicated
       access key pair. Record bucket name, keys.
-- [ ] **PostHog**: create a new project "Jedidiah Production"; record project token (+ API
+- [x] **PostHog**: create a new project "Jedidiah Production"; record project token (+ APIs
       key / project id if sourcemap upload is wanted for web).
-- [ ] **OpenAI**: create a production API key (separate cost attribution, independently
+- [x] **OpenAI**: create a production API key (separate cost attribution, independently
       revocable).
-- [ ] **Resend**: confirm `jedidiahequipment.co.za` is a verified sending domain; create a
+- [x] **Resend**: confirm `jedidiahequipment.co.za` is a verified sending domain; create a
       production-scoped API key. Password-reset email delivery is a **launch blocker** —
       no one can log in without it.
-- [ ] Generate a fresh `AUTH_SECRET`: `openssl rand -base64 48`.
+- [x] Generate a fresh `AUTH_SECRET`: `openssl rand -base64 48`.
 
 ---
 
 ## Phase 3 — Railway production environment
 
-- [ ] In the Railway dashboard, confirm which branch the **staging** environment deploys
+- [x] In the Railway dashboard, confirm which branch the **staging** environment deploys
       from (expected: `main`) — this mapping lives only in the dashboard.
-- [ ] **Duplicate the staging environment**, name it `production`. This clones services
+- [x] **Duplicate the staging environment**, name it `production`. This clones services
       and variables; the Postgres service comes up new and empty.
-- [ ] **Delete the `reset-db` service** from the production environment.
+- [x] **Delete the `reset-db` service** from the production environment.
 - [ ] Enable **daily backups** on the production Postgres service.
-- [ ] Create the `production` git branch from current `main` and push it:
+- [x] Create the `production` git branch from current `main` and push it:
       `git push origin main:refs/heads/production`.
-- [ ] Point every production-environment service's deploy trigger at the `production`
+- [x] Point every production-environment service's deploy trigger at the `production`
       branch. Verify staging services still track `main`.
 - [ ] GitHub: protect the `production` branch (require PR; disable squash/rebase for PRs
       targeting it if possible — merge commits only).
@@ -151,10 +151,10 @@ secrets; every secret above must be **overridden**, not inherited.
 
 ## Phase 4 — First deploy + internal verification
 
-- [ ] Open a PR `main` → `production`; merge with a **merge commit**. The api service's
+- [x] Open a PR `main` → `production`; merge with a **merge commit**. The api service's
       pre-deploy `pnpm db:migrate` runs all migrations against the empty production DB.
-- [ ] Verify `/health` on web, api, lander via their Railway-generated domains.
-- [ ] Add custom domains in Railway: `app.` (web), `api.` (api). Create the DNS CNAMEs.
+- [x] Verify `/health` on web, api, lander via their Railway-generated domains.
+- [x] Add custom domains in Railway: `app.` (web), `api.` (api). Create the DNS CNAMEs.
       These are new subdomains — safe to do now, independent of the apex cutover.
 - [ ] Add apex + `www` to the production lander in Railway but **do not** change apex DNS
       yet (old site still live).
@@ -165,12 +165,14 @@ secrets; every secret above must be **overridden**, not inherited.
 
 ## Phase 5 — Data promote (one-time staging → production import)
 
-- [ ] Take a fresh staging snapshot: `pnpm --filter @pkg/seed seed:read` (staging creds
+- [x] Take a fresh staging snapshot: `pnpm --filter @pkg/seed seed:read` (staging creds
       from `pkg/seed/.env.dev`; downloads all referenced objects).
-- [ ] Run the promote import against production with production `DATABASE_URL`,
-      `DOCUMENT_STORAGE_*`, and `CONFIRM_PRODUCTION_IMPORT=production`. Use the Railway
-      **public** Postgres URL from a workstation.
-- [ ] Verify: row counts for users/customers/suppliers/products/ranges/parts/assemblies/
+- [x] Add production targets to `pkg/seed/.env.dev` as `PRODUCTION_DATABASE_URL` and
+      `PRODUCTION_DOCUMENT_STORAGE_*`. Use the Railway **public** Postgres URL from a
+      workstation.
+- [x] Run the promote import against production: `APP_ENV=production
+      CONFIRM_PRODUCTION_IMPORT=production pnpm --filter @pkg/seed seed:promote`.
+- [x] Verify: row counts for users/customers/suppliers/products/ranges/parts/assemblies/
       bays match staging (minus Sue Smith); `quote`/`job` empty; spot-check product images
       and range logos render via the api image routes; documents table is empty (expected —
       documents were never in the snapshot).
@@ -179,14 +181,14 @@ secrets; every secret above must be **overridden**, not inherited.
 
 ## Phase 6 — Accounts + smoke test
 
-- [ ] Do a forgot-password reset for your own account at
+- [x] Do a forgot-password reset for your own account at
       `https://app.jedidiahequipment.co.za/forgot-password` — this proves Resend + auth
       end-to-end.
-- [ ] Admin sets passwords for the two bay-operator accounts via Users → edit (admin
+- [x] Admin sets passwords for the two bay-operator accounts via Users → edit (admin
       set-password).
-- [ ] Smoke test: log in, browse products/ranges (images load), create a throwaway quote →
+- [x] Smoke test: log in, browse products/ranges (images load), create a throwaway quote →
       accept → job appears in Bay Queue → delete/void the test data.
-- [ ] Lander: browse product pages on the Railway domain (images stream), submit the
+- [x] Lander: browse product pages on the Railway domain (images stream), submit the
       contact form, confirm the email arrives.
 - [ ] Trigger a restore-test of the production DB backup (restore to a scratch service,
       confirm tables, delete).

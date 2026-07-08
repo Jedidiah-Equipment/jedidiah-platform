@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import './load-promote-env.js';
 import type { DatabaseTransaction } from '@pkg/db';
 import { hashPassword } from 'better-auth/crypto';
 import { sql } from 'drizzle-orm';
@@ -24,12 +25,12 @@ const insertBatchSize = 500;
 const productionImportConfirmation = 'production';
 const sueSmithDemoUser = { id: 'seed-sue-user', email: 'sales@jedidiahequipment.co.za' } as const;
 const requiredProductionStorageEnv = [
-  'DOCUMENT_STORAGE_ACCESS_KEY_ID',
-  'DOCUMENT_STORAGE_BUCKET',
-  'DOCUMENT_STORAGE_ENDPOINT',
-  'DOCUMENT_STORAGE_FORCE_PATH_STYLE',
-  'DOCUMENT_STORAGE_REGION',
-  'DOCUMENT_STORAGE_SECRET_ACCESS_KEY',
+  'PRODUCTION_DOCUMENT_STORAGE_ACCESS_KEY_ID',
+  'PRODUCTION_DOCUMENT_STORAGE_BUCKET',
+  'PRODUCTION_DOCUMENT_STORAGE_ENDPOINT',
+  'PRODUCTION_DOCUMENT_STORAGE_FORCE_PATH_STYLE',
+  'PRODUCTION_DOCUMENT_STORAGE_REGION',
+  'PRODUCTION_DOCUMENT_STORAGE_SECRET_ACCESS_KEY',
 ] as const;
 
 const quoteJobClusterTableNames = new Set([
@@ -186,10 +187,10 @@ export function assertProductionImportIsAllowed(
 }
 
 function readRequiredProductionDatabaseUrl(env: NodeJS.ProcessEnv): string {
-  const databaseUrl = env.DATABASE_URL;
+  const databaseUrl = env.PRODUCTION_DATABASE_URL;
 
   if (!databaseUrl) {
-    throw new Error('Production seed import requires DATABASE_URL.');
+    throw new Error('Production seed import requires PRODUCTION_DATABASE_URL.');
   }
 
   return databaseUrl;
@@ -202,7 +203,7 @@ function assertProductionStorageEnvIsComplete(env: NodeJS.ProcessEnv): void {
     throw new Error(`Production seed import requires document storage env: ${missing.join(', ')}.`);
   }
 
-  const endpoint = env.DOCUMENT_STORAGE_ENDPOINT;
+  const endpoint = env.PRODUCTION_DOCUMENT_STORAGE_ENDPOINT;
 
   if (!endpoint) {
     return;
@@ -213,7 +214,7 @@ function assertProductionStorageEnvIsComplete(env: NodeJS.ProcessEnv): void {
   try {
     parsedEndpoint = new URL(endpoint);
   } catch {
-    throw new Error('Production seed import requires DOCUMENT_STORAGE_ENDPOINT to be a URL.');
+    throw new Error('Production seed import requires PRODUCTION_DOCUMENT_STORAGE_ENDPOINT to be a URL.');
   }
 
   if (isLocalHostname(parsedEndpoint.hostname)) {
@@ -229,7 +230,7 @@ function assertTargetDatabaseIsNotBlocked(targetDatabaseUrl: string, env: NodeJS
     ['TEST_DATABASE_URL', env.TEST_DATABASE_URL],
   ] as const) {
     if (value && target === normalizeDatabaseUrl(value)) {
-      throw new Error(`Refusing production seed import because DATABASE_URL matches ${name}.`);
+      throw new Error(`Refusing production seed import because PRODUCTION_DATABASE_URL matches ${name}.`);
     }
   }
 
@@ -400,7 +401,7 @@ function attachPromotionTables(
 
 export async function promoteSeedSnapshot(): Promise<void> {
   const targetDatabaseUrl = assertProductionImportIsAllowed(process.env);
-  const productionStorage: SeedStorage = createStorageFromEnv('');
+  const productionStorage: SeedStorage = createStorageFromEnv('PRODUCTION_');
 
   const snapshots = await withProductionCredentialPasswords(filterProductionSnapshots(await readPromotionSnapshots()));
   await assertSnapshotObjectFilesExist(snapshots);

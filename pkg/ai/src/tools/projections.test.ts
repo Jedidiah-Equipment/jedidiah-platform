@@ -65,9 +65,20 @@ describe('tool result projections', () => {
               id: 'bay-1',
               slots: [
                 {
+                  dayBreakdown: {
+                    closureDays: 1,
+                    overtimeDays: 1,
+                    workingDays: 3,
+                  },
                   jobCode: 'JOB-00001',
                   jobId: '00000000-0000-4000-8000-000000000001',
                   kind: 'work',
+                  operator: {
+                    email: 'operator@example.com',
+                    id: 'operator-id',
+                    name: 'Operator',
+                    thumbnailDataUrl: 'data:image/png;base64,operator-slot',
+                  },
                 },
                 {
                   jobCode: 'JOB-00002',
@@ -108,9 +119,19 @@ describe('tool result projections', () => {
               id: 'bay-1',
               slots: [
                 {
+                  dayBreakdown: {
+                    closureDays: 1,
+                    overtimeDays: 1,
+                    workingDays: 3,
+                  },
                   jobCode: 'JOB-00001',
                   jobId: '00000000-0000-4000-8000-000000000001',
                   kind: 'work',
+                  operator: {
+                    email: 'operator@example.com',
+                    id: 'operator-id',
+                    name: 'Operator',
+                  },
                 },
               ],
             },

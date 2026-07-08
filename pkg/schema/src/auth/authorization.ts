@@ -64,6 +64,7 @@ export const UserAccessSummary = z.object({
 
 export type UserSummary = z.infer<typeof UserSummary>;
 export const UserSummary = z.object({
+  assistantEnabled: z.boolean(),
   departments: z.array(Department),
   emailVerified: z.boolean(),
   id: AuthId,

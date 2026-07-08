@@ -8,6 +8,7 @@ export function mockSession(_role: AppRole = 'admin'): AiSession {
     user: {
       id: 'test-user-id',
       email: 'test@example.com',
+      assistantEnabled: true,
     },
   };
 }

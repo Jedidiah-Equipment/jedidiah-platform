@@ -13,6 +13,7 @@ export const user = pgTable(
     image: text('image'),
     phoneNumber: text('phone_number'),
     role: text('role').notNull().default(DEFAULT_APP_ROLE),
+    assistantEnabled: boolean('assistant_enabled').default(false).notNull(),
     banned: boolean('banned').default(false),
     banReason: text('ban_reason'),
     banExpires: timestamp('ban_expires', { mode: 'date' }),

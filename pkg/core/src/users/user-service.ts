@@ -32,13 +32,17 @@ export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
   }),
 });
 
-type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' | 'image' | 'name' | 'phoneNumber'> & {
+type UserRow = Pick<
+  typeof user.$inferSelect,
+  'assistantEnabled' | 'email' | 'emailVerified' | 'id' | 'image' | 'name' | 'phoneNumber'
+> & {
   departments: readonly Department[];
   role?: unknown;
 };
 
 export function mapUser(row: UserRow): UserSummary {
   return {
+    assistantEnabled: row.assistantEnabled,
     departments: row.departments.map((department) => Department.parse(department)),
     email: row.email,
     emailVerified: row.emailVerified,
@@ -53,6 +57,7 @@ export function mapUser(row: UserRow): UserSummary {
 export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): Promise<UserAccount> {
   const [row] = await db
     .select({
+      assistantEnabled: user.assistantEnabled,
       email: user.email,
       emailVerified: user.emailVerified,
       id: user.id,
@@ -76,6 +81,7 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
 export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
   const rows = await db.query.user.findMany({
     columns: {
+      assistantEnabled: true,
       email: true,
       emailVerified: true,
       id: true,

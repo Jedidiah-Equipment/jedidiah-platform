@@ -200,7 +200,9 @@ function isOpenBayOperatorAssignmentRoleError(error: unknown): error is AuthAdmi
   return error instanceof AuthAdminError && error.code === 'USER_HAS_OPEN_BAY_OPERATOR_ASSIGNMENTS';
 }
 
-type ProfileUpdateData = Partial<Pick<UserEditFormValues, 'email' | 'emailVerified' | 'name' | 'phoneNumber'>>;
+type ProfileUpdateData = Partial<
+  Pick<UserEditFormValues, 'assistantEnabled' | 'email' | 'emailVerified' | 'name' | 'phoneNumber'>
+>;
 
 function buildProfileUpdateData({
   baselineUser,
@@ -228,6 +230,9 @@ function buildProfileUpdateData({
   }
   if (canUpdateProfile && value.phoneNumber !== baselineUser.phoneNumber) {
     data.phoneNumber = value.phoneNumber;
+  }
+  if (canUpdateProfile && value.assistantEnabled !== baselineUser.assistantEnabled) {
+    data.assistantEnabled = value.assistantEnabled;
   }
 
   return data;

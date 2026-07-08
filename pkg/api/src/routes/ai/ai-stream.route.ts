@@ -40,6 +40,12 @@ export async function registerAiStreamRoute(
       });
     }
 
+    if (ctx.session.user.assistantEnabled !== true) {
+      return reply.code(403).send({
+        error: 'Assistant is not enabled for this account',
+      });
+    }
+
     const parsedInput = ChatStreamInput.safeParse(request.body);
 
     if (!parsedInput.success) {

@@ -11,6 +11,7 @@ import { RoleField } from './UserRoleField.js';
 
 export type UserEditFormValues = z.infer<typeof UserEditFormValues>;
 export const UserEditFormValues = UserSummary.pick({
+  assistantEnabled: true,
   departments: true,
   email: true,
   emailVerified: true,
@@ -54,6 +55,7 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
   const canSaveUser = canUpdateProfile || canSetEmail || canSetRole || canAssignDepartments;
   const form = useAppForm({
     defaultValues: {
+      assistantEnabled: initialUser.assistantEnabled,
       departments: initialUser.departments,
       email: initialUser.email,
       emailVerified: initialUser.emailVerified,
@@ -99,6 +101,9 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                 </form.AppField>
                 <form.AppField name="phoneNumber">
                   {(field) => <field.PhoneNumberField disabled={isPending} label="Phone number" />}
+                </form.AppField>
+                <form.AppField name="assistantEnabled">
+                  {(field) => <field.CheckboxField disabled={isPending} label="Assistant enabled" />}
                 </form.AppField>
               </>
             ) : null}

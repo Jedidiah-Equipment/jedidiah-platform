@@ -60,7 +60,7 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
         {jobQuery.isPending ? <JobSheetSkeleton /> : null}
         {jobQuery.data ? (
           <Tabs className="min-h-0 flex-1 gap-0" onValueChange={(value) => setTab(value as JobSheetTab)} value={tab}>
-            <div className="px-4 pt-5 pb-1">
+            <div className="px-4 pt-5 pb-0">
               <TabsList>
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -275,31 +275,33 @@ const JobScheduleTab: React.FC<{ job: JobDetail }> = ({ job }) => {
 const ScheduleSlotRow: React.FC<{ slot: JobDetail['schedule'][number]['bays'][number]['slots'][number] }> = ({
   slot,
 }) => (
-  <Collapsible className="rounded-md border bg-background">
-    <CollapsibleTrigger
-      render={
-        <button
-          className="group flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
-          type="button"
+  <Card className="gap-0 py-0" size="sm">
+    <Collapsible>
+      <CollapsibleTrigger
+        render={
+          <button
+            className="group flex w-full min-w-0 items-center gap-3 px-3 py-2 text-left outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
+            type="button"
+          />
+        }
+      >
+        <OperatorValue operator={slot.operator} />
+        <span className="min-w-0 flex-1 truncate tabular-nums">
+          {formatDate(slot.startDate, 'short')} to {formatDate(slot.endDate, 'short')}
+        </span>
+        <span className="shrink-0 tabular-nums">{slot.durationDays}d</span>
+        <IconChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-180"
         />
-      }
-    >
-      <OperatorValue operator={slot.operator} />
-      <span className="min-w-0 flex-1 truncate tabular-nums">
-        {formatDate(slot.startDate, 'short')} to {formatDate(slot.endDate, 'short')}
-      </span>
-      <span className="shrink-0 tabular-nums">{slot.durationDays}d</span>
-      <IconChevronDown
-        aria-hidden="true"
-        className="size-4 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-180"
-      />
-    </CollapsibleTrigger>
-    <CollapsibleContent className="border-t p-3">
-      <InfoList>
-        <SlotDayBreakdownRows dayBreakdown={slot.dayBreakdown} endDate={slot.endDate} startDate={slot.startDate} />
-      </InfoList>
-    </CollapsibleContent>
-  </Collapsible>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="border-t p-3">
+        <InfoList className="rounded-none border-0">
+          <SlotDayBreakdownRows dayBreakdown={slot.dayBreakdown} endDate={slot.endDate} startDate={slot.startDate} />
+        </InfoList>
+      </CollapsibleContent>
+    </Collapsible>
+  </Card>
 );
 
 const OperatorValue: React.FC<{

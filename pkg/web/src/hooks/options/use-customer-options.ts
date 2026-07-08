@@ -10,6 +10,7 @@ export type CustomerOption = Pick<Customer, 'companyName' | 'email' | 'id'>;
 type UseCustomerOptionsOptions = {
   fallbackCustomer?: CustomerOption | null;
   pageSize?: number;
+  readScope?: 'customer' | 'job';
   search?: string;
   value?: UUID | '';
 };
@@ -25,6 +26,7 @@ const defaultCustomerListInput = {
 export function useCustomerOptions({
   fallbackCustomer = null,
   pageSize = 20,
+  readScope = 'customer',
   search = '',
   value = '',
 }: UseCustomerOptionsOptions = {}) {
@@ -34,13 +36,21 @@ export function useCustomerOptions({
     pageSize,
     search,
   };
-  const customersQuery = useQuery(trpc.customers.list.queryOptions(input));
+  const customersQuery = useQuery(
+    readScope === 'job' ? trpc.jobs.customerOptions.queryOptions(input) : trpc.customers.list.queryOptions(input),
+  );
   const selectedCustomerQuery = useQuery({
-    ...trpc.customers.list.queryOptions({
-      ...defaultCustomerListInput,
-      columnFilters: { id: value },
-      pageSize: 1,
-    }),
+    ...(readScope === 'job'
+      ? trpc.jobs.customerOptions.queryOptions({
+          ...defaultCustomerListInput,
+          columnFilters: { id: value },
+          pageSize: 1,
+        })
+      : trpc.customers.list.queryOptions({
+          ...defaultCustomerListInput,
+          columnFilters: { id: value },
+          pageSize: 1,
+        })),
     enabled: Boolean(value),
   });
   const selectedItem = selectedCustomerQuery.data?.items.find((customer) => customer.id === value) ?? null;

@@ -14,7 +14,7 @@ import { createPersistedDataTableStore } from '@/components/data-table/store.js'
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Switch } from '@/components/ui/switch.js';
-import { toSelectOptions } from '@/hooks/options/index.js';
+import { useCustomerOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -80,15 +80,7 @@ const JobListTable: React.FC = () => {
     sortOptions: jobSortOptions,
     getListInputExtras,
   });
-  const customersQuery = useQuery(
-    trpc.jobs.customerOptions.queryOptions({
-      page: 1,
-      pageSize: 0,
-      search: '',
-      sortBy: 'companyName',
-      sortDirection: 'asc',
-    }),
-  );
+  const customerOptions = useCustomerOptions({ pageSize: 0, readScope: 'job' });
 
   const jobsQuery = useQuery(
     trpc.jobs.list.queryOptions(tableController.listInput, {
@@ -105,13 +97,9 @@ const JobListTable: React.FC = () => {
     total,
   });
 
-  const customerOptions = useMemo(
-    () => toSelectOptions(customersQuery.data?.items ?? [], (customer) => customer.companyName),
-    [customersQuery.data?.items],
-  );
   const columns = useMemo(
-    () => createJobListColumns({ canEditJobs, canOpenJobs, customerOptions }),
-    [canEditJobs, canOpenJobs, customerOptions],
+    () => createJobListColumns({ canEditJobs, canOpenJobs, customerOptions: customerOptions.selectOptions }),
+    [canEditJobs, canOpenJobs, customerOptions.selectOptions],
   );
   const columnPinning = useMemo(
     () => ({

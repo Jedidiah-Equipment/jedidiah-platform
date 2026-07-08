@@ -14,7 +14,7 @@ function Card({ className, interactive = false, size = 'default', ...props }: Ca
       data-slot="card"
       data-size={size}
       className={cn(
-        'group/card flex min-w-0 flex-col gap-4 overflow-hidden rounded-lg border border-border/70 bg-card py-4 text-sm text-card-foreground transition-colors has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[interactive=true]:hover:border-foreground/20 data-[interactive=true]:hover:bg-muted/30 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 in-data-[slot=card]:bg-muted/30 dark:in-data-[slot=card]:bg-muted/40 *:[img:first-child]:rounded-t-lg *:[img:last-child]:rounded-b-lg',
+        'group/card flex min-w-0 flex-col gap-4 overflow-hidden rounded-lg border border-border/70 bg-card py-4 text-sm text-card-foreground transition-colors has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[interactive=true]:hover:border-foreground/20 data-[interactive=true]:hover:bg-muted/30 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 in-data-[slot=card]:bg-muted/30 dark:in-data-[slot=card]:bg-muted/40 dark:in-data-[slot=sheet-content]:bg-muted/25 *:[img:first-child]:rounded-t-lg *:[img:last-child]:rounded-b-lg',
         className,
       )}
       {...props}

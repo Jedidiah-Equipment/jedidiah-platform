@@ -74,7 +74,7 @@ export const BoardGantt: React.FC<{
   /** Preview seeds resolved by `jobs.previewSchedule` against the server-held queue. */
   ghostSeeds?: readonly BoardGhostSeed[] | undefined;
   onFullscreenChange?: ((fullscreen: boolean) => void) | undefined;
-  onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
+  onSelectSlot?: ((jobId: UUID) => void) | undefined;
   /** When set, only these Bays render as lanes, sorted into Department pipeline order. */
   visibleBayIds?: readonly UUID[] | undefined;
 }> = ({
@@ -516,7 +516,7 @@ const BaySlotBars: React.FC<{
   onMoveSlot: (slotId: string, direction: JobSlotMoveDirection) => void;
   onRemoveSlot: (slotId: string) => Promise<void>;
   onResizeSlot: (slotId: string, durationDays: number) => void;
-  onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
+  onSelectSlot?: ((jobId: UUID) => void) | undefined;
   optimisticResizeDaysBySlotId: Record<string, number>;
   workingCalendarsByBayId: ReadonlyMap<string, WorkingCalendar>;
 }> = ({
@@ -544,7 +544,6 @@ const BaySlotBars: React.FC<{
 
         return bay.slots.map((slot, slotIndex) => (
           <BaySlotBar
-            bayId={bay.id}
             // Split halves carry synthetic ids that must never reach a mutation.
             canEditSchedule={canEditScheduleByBayId.has(bay.id) && !slot.previewSplit}
             isDimmed={isFilterActive && !slotMatchesBoardFilter({ bayId: bay.id, filter, jobsById, slot })}

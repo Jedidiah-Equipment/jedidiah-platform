@@ -172,8 +172,8 @@ function JobActionsCell({ canEditJobs, job }: { canEditJobs: boolean; job: JobSu
       </Button>
       {canEditJobs ? (
         <Button
-          aria-label={`Edit ${job.code}`}
-          render={<Link params={{ id: job.id }} to="/jobs/$id/edit" onClick={(event) => event.stopPropagation()} />}
+          aria-label={`Open ${job.code} details`}
+          render={<Link search={{ job: job.id }} to="/jobs/list" onClick={(event) => event.stopPropagation()} />}
           size="icon"
           variant="ghost"
         >

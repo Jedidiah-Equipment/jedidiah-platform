@@ -23,6 +23,7 @@ import {
   parseJobCodeSearch,
   resolveBoardWindowFrom,
   sliceJobSchedule,
+  summarizeSlotCalendarDays,
   windowActiveBoard,
 } from '@pkg/domain';
 import {
@@ -31,8 +32,8 @@ import {
   type DateOnlyIso,
   type JobCustomerOptionListInput,
   type JobCustomerOptionListResult,
-  type JobDepartmentSchedule,
   type JobDetail,
+  type JobDetailDepartmentSchedule,
   JobDocument,
   type JobListInput,
   type JobListResult,
@@ -40,6 +41,7 @@ import {
   type JobSortBy,
   type JobSummary,
   type ProjectedBayQueue,
+  type ProjectedWorkJobSlot,
   QuoteCode,
   type SortDirection,
   UUID,
@@ -53,7 +55,12 @@ import {
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { findBoardBayRows, findBoardBayRowsForJobs, toProjectedBoard } from './board-read.js';
+import {
+  findBoardBayRows,
+  findBoardBayRowsForJobs,
+  type ProjectedBoardQueues,
+  toProjectedBoard,
+} from './board-read.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
@@ -257,9 +264,21 @@ async function findProjectedBaysForJobs({
   jobIds: readonly UUID[];
   today: DateOnlyIso;
 }): Promise<ProjectedBayQueue[]> {
+  return (await findProjectedBoardForJobs({ db, jobIds, today })).queues;
+}
+
+async function findProjectedBoardForJobs({
+  db,
+  jobIds,
+  today,
+}: {
+  db: Db | DatabaseTransaction;
+  jobIds: readonly UUID[];
+  today: DateOnlyIso;
+}): Promise<ProjectedBoardQueues> {
   const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBoardBayRowsForJobs({ db, jobIds })]);
 
-  return toProjectedBoard(rows, { offDays, today }).queues;
+  return toProjectedBoard(rows, { offDays, today });
 }
 
 async function getJobSchedule({
@@ -268,8 +287,28 @@ async function getJobSchedule({
 }: {
   db: Db | DatabaseTransaction;
   jobId: UUID;
-}): Promise<JobDepartmentSchedule[]> {
-  return sliceJobSchedule(await findProjectedBaysForJobs({ db, jobIds: [jobId], today: getPlantDateNow() }), jobId);
+}): Promise<JobDetailDepartmentSchedule[]> {
+  const projectedBoard = await findProjectedBoardForJobs({ db, jobIds: [jobId], today: getPlantDateNow() });
+
+  return sliceJobSchedule(projectedBoard.queues, jobId).map((department) => ({
+    ...department,
+    bays: department.bays.map((bay) => {
+      const workingCalendar = projectedBoard.workingCalendarsByBayId.get(bay.id) ?? {};
+
+      return {
+        ...bay,
+        slots: bay.slots.filter(isProjectedWorkJobSlot).map((slot) => ({
+          ...slot,
+          dayBreakdown: summarizeSlotCalendarDays(slot.startDate, slot.endDate, workingCalendar),
+          operator: bay.currentOperator,
+        })),
+      };
+    }),
+  }));
+}
+
+function isProjectedWorkJobSlot(slot: ProjectedBayQueue['slots'][number]): slot is ProjectedWorkJobSlot {
+  return slot.kind === 'work';
 }
 
 export async function listJobs({ db, input }: { db: Db; input: JobListInput }): Promise<JobListResult> {

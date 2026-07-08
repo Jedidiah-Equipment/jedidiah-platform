@@ -388,6 +388,70 @@ describe('createJob', () => {
     ).toHaveLength(2);
   });
 
+  test('returns operator and day breakdown on Job detail schedule slots', async ({ context }) => {
+    const bay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: '2026-06-05',
+    });
+    const operator = await createTestUser(context.db, {
+      email: 'schedule.operator@example.com',
+      id: 'schedule-operator-user-id',
+      name: 'Schedule Operator',
+      role: 'bay-operator',
+    });
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    await assignJobBayOperator({
+      actorUserId,
+      db: context.db,
+      input: { bayId: bay.id, operatorUserId: operator.id },
+    });
+    await toggleOffDay({
+      db: context.db,
+      input: offDayInput({ date: '2026-06-06', isOffDay: true, label: 'Shutdown' }),
+    });
+    await toggleOffDay({
+      db: context.db,
+      input: offDayInput({ date: '2026-06-07', isOffDay: true, label: 'Sunday shutdown' }),
+    });
+    await addBayCalendarException({
+      db: context.db,
+      input: bayExceptionInput({ bayId: bay.id, date: '2026-06-06', direction: 'work', label: 'Saturday push' }),
+    });
+
+    const job = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [{ bayId: bay.id, durationDays: 3 }], quoteId: quote.id },
+    });
+    const detail = await getJob({ db: context.db, id: job.id });
+
+    expect(detail.schedule.find((department) => department.department === 'fabrication')?.bays).toMatchObject([
+      {
+        id: bay.id,
+        slots: [
+          {
+            dayBreakdown: {
+              closureDays: 1,
+              overtimeDays: 1,
+              workingDays: 3,
+            },
+            endDate: '2026-06-09',
+            operator: {
+              email: 'schedule.operator@example.com',
+              id: operator.id,
+              name: 'Schedule Operator',
+            },
+            startDate: '2026-06-05',
+          },
+        ],
+      },
+    ]);
+  });
+
   test('auto-inserts an idle gap before a seeded slot when the Bay queue ended in the past', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',

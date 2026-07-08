@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import { type JobListInput, JobSortBy } from '@pkg/schema';
+import { type JobListInput, JobSortBy, type UUID } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -25,6 +25,7 @@ import {
   jobTablePinnedLeftColumns,
   jobTablePinnedRightColumns,
 } from './components/JobListTableColumns.js';
+import { JobSheet } from './components/JobSheet.js';
 
 export const useJobListTableStore = createPersistedDataTableStore({
   initialState: {
@@ -47,11 +48,22 @@ const jobSortOptions: SortOptions<JobListInput> = {
   },
 };
 
-export const JobListPage: React.FC = () => (
-  <PageLayout description={jobListPageDescription} size="full" title="Job List">
-    <JobListTable />
-  </PageLayout>
-);
+export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ selectedJobId }) => {
+  const navigate = useNavigate();
+
+  return (
+    <PageLayout description={jobListPageDescription} size="full" title="Job List">
+      <JobListTable />
+      {selectedJobId ? (
+        <JobSheet
+          key={selectedJobId}
+          jobId={selectedJobId}
+          onClose={() => navigate({ search: {}, to: '/jobs/list' })}
+        />
+      ) : null}
+    </PageLayout>
+  );
+};
 
 const JobListTable: React.FC = () => {
   const trpc = useTRPC();
@@ -155,7 +167,7 @@ const JobListTable: React.FC = () => {
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
       isLoading={isLoading}
-      onRowClick={canOpenJobs ? (job) => void navigate({ search: { job: job.id }, to: '/jobs' }) : undefined}
+      onRowClick={canOpenJobs ? (job) => void navigate({ search: { job: job.id }, to: '/jobs/list' }) : undefined}
       rightSection={
         <label
           className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"

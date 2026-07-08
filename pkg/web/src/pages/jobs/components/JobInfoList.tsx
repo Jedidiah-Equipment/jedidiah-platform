@@ -2,9 +2,12 @@ import { formatDate, type SlotCalendarDays } from '@pkg/domain';
 import type { DateOnlyIso } from '@pkg/schema';
 import type React from 'react';
 
-export const InfoList: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <dl className="divide-y rounded-lg border text-sm">{children}</dl>
-);
+import { cn } from '@/lib/utils.js';
+
+export const InfoList: React.FC<{ children: React.ReactNode; className?: string | undefined }> = ({
+  children,
+  className,
+}) => <dl className={cn('divide-y rounded-lg border text-sm', className)}>{children}</dl>;
 
 export const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="flex items-start justify-between gap-3 px-3 py-2">
@@ -13,8 +16,7 @@ export const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ l
   </div>
 );
 
-// Slot Start/End plus its calendar-day breakdown, shared by the schedule aside and the
-// Bay slot hover card so both surfaces describe a slot identically.
+// Slot Start/End plus its calendar-day breakdown, shared by the Job Sheet and Bay slot hover card.
 export const SlotDayBreakdownRows: React.FC<{
   dayBreakdown: SlotCalendarDays;
   endDate: DateOnlyIso;

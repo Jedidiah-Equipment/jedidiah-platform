@@ -7,29 +7,19 @@ import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { baySchedulePageDescription } from '@/utils/page-descriptions.js';
 import { BoardGantt } from './components/BoardGantt.js';
 import { BookSlotDialog } from './components/BookSlotDialog.js';
-import { JobDetailAside } from './components/JobDetailAside.js';
+import { JobSheet } from './components/JobSheet.js';
 
 type JobsPageProps = {
-  selectedBayId?: UUID | undefined;
   selectedJobId?: UUID | undefined;
 };
 
-export const JobsPage: React.FC<JobsPageProps> = ({ selectedBayId, selectedJobId }) => {
+export const JobsPage: React.FC<JobsPageProps> = ({ selectedJobId }) => {
   const navigate = useNavigate();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   return (
     <PageLayout
       actions={<BookSlotDialog />}
-      aside={
-        selectedJobId ? (
-          <JobDetailAside
-            bayId={selectedBayId}
-            jobId={selectedJobId}
-            onClose={() => navigate({ search: {}, to: '/jobs' })}
-          />
-        ) : undefined
-      }
       description={baySchedulePageDescription}
       fullscreen={isFullscreen}
       onFullscreenChange={setIsFullscreen}
@@ -39,8 +29,11 @@ export const JobsPage: React.FC<JobsPageProps> = ({ selectedBayId, selectedJobId
       <BoardGantt
         fullscreen={isFullscreen}
         onFullscreenChange={setIsFullscreen}
-        onSelectSlot={(jobId, bayId) => navigate({ search: { bay: bayId, job: jobId }, to: '/jobs' })}
+        onSelectSlot={(jobId) => navigate({ search: { job: jobId }, to: '/jobs' })}
       />
+      {selectedJobId ? (
+        <JobSheet key={selectedJobId} jobId={selectedJobId} onClose={() => navigate({ search: {}, to: '/jobs' })} />
+      ) : null}
     </PageLayout>
   );
 };

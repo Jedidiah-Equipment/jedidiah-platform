@@ -1,5 +1,5 @@
 import { appRoleAccess, authorizationStatement } from '@pkg/domain';
-import { adminClient } from 'better-auth/client/plugins';
+import { adminClient, inferAdditionalFields } from 'better-auth/client/plugins';
 import { createAccessControl } from 'better-auth/plugins/access';
 import { createAuthClient } from 'better-auth/react';
 
@@ -20,5 +20,14 @@ const authRoles = {
 
 export const authClient = createAuthClient({
   baseURL: config.authBaseUrl,
-  plugins: [adminClient({ ac, roles: authRoles })],
+  plugins: [
+    adminClient({ ac, roles: authRoles }),
+    // Mirror the server `user.additionalFields` so `session.user.assistantEnabled` is typed on the client.
+    inferAdditionalFields({
+      user: {
+        assistantEnabled: { type: 'boolean' },
+        phoneNumber: { type: 'string' },
+      },
+    }),
+  ],
 });

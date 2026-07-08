@@ -60,7 +60,12 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
   const snapshots = await Promise.all(
     snapshotTables.map(async (config) => ({
       config,
-      rows: (await readSnapshotFile(config)).map((row) => projectWritableRow(config, row)),
+      // Merge seedRowDefaults under each row so columns the committed snapshot predates (a not-yet-read
+      // migration column, e.g. user.assistantEnabled) get a derived value; snapshot values still win.
+      rows: (await readSnapshotFile(config)).map((row, index) => ({
+        ...(config.seedRowDefaults?.(row, index) ?? {}),
+        ...projectWritableRow(config, row),
+      })),
     })),
   );
   const localClient = database ? null : createDatabaseClient(localDatabaseUrl);

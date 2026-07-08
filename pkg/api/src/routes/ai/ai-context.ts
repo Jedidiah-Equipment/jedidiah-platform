@@ -5,7 +5,7 @@ import { createUserAccessSummary } from '@pkg/domain';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { FastifyRequest } from 'fastify';
 
-import { getSessionFromHeaders, parseBetterAuthRole } from '@/auth/session.js';
+import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '@/auth/session.js';
 import { log } from '@/logger.js';
 import { deliverQuoteDraftEmail } from '@/routes/quotes/quote-draft-email.js';
 
@@ -16,9 +16,23 @@ export type AiContextDependencies = {
 export type CreateAiContextInput = {
   access: UserAccessSummary | null;
   db: AiContext['db'];
-  session: AiSession | null;
+  session: AppSession | null;
   storage: StorageAdapter;
 };
+
+// Projects the full Better Auth session onto the minimal shape the AI runtime needs. `assistantEnabled`
+// (a nullable additional field) is normalized to a definite boolean for the stream route's access gate.
+export function toAiSession(session: AppSession | null): AiSession | null {
+  return session
+    ? {
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          assistantEnabled: session.user.assistantEnabled === true,
+        },
+      }
+    : null;
+}
 
 // The one place API-owned dependencies are injected into @pkg/ai; route every AiContext
 // construction through here so call sites cannot drift.
@@ -28,7 +42,7 @@ export function createAiContext({ access, db, session, storage }: CreateAiContex
     db,
     deliverQuoteDraftEmail,
     log,
-    session,
+    session: toAiSession(session),
     storage,
   };
 }

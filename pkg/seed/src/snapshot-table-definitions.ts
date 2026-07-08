@@ -61,9 +61,13 @@ const standardTimestampColumns = ['createdAt', 'updatedAt'] as const;
 
 export const snapshotTableDefinitions = [
   {
+    // `assistantEnabled` is a not-yet-deployed local migration column absent from the staging source;
+    // omit it from the staging read and derive it from role so seed:read works before it deploys.
     fileName: 'user.json',
     tableName: 'user',
     timestampColumns: authTimestampColumns,
+    omitReadColumns: ['assistantEnabled'],
+    seedRowDefaults: (row) => ({ assistantEnabled: row.role === 'admin' || row.role === 'super-admin' }),
   },
   {
     fileName: 'user_department.json',

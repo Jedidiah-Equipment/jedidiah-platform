@@ -12,20 +12,26 @@ import { createSilentLogger, mockSession } from '@/test/test-utils.js';
 type AiAgentRunInput = Parameters<AiAgentRunner['run']>[0];
 
 function createAiContext({
-  access = null,
   db = {} as AiContext['db'],
   session = mockSession(),
 }: {
-  access?: AiContext['access'];
   db?: AiContext['db'];
-  session?: AiContext['session'];
+  session?: ReturnType<typeof mockSession> | null;
 } = {}): AiContext {
   return {
-    access,
+    access: null,
     db,
     deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
     log: createSilentLogger(),
-    session,
+    session: session
+      ? {
+          user: {
+            id: session.user.id,
+            email: session.user.email,
+            assistantEnabled: session.user.assistantEnabled === true,
+          },
+        }
+      : null,
     storage: {} as AiContext['storage'],
   };
 }
@@ -125,6 +131,29 @@ describe('POST /ai/chat-stream', () => {
     });
 
     expect(response.statusCode).toBe(401);
+    expect(createAgentRunner).not.toHaveBeenCalled();
+  });
+
+  test('returns 403 without constructing the agent runner when the assistant is disabled', async () => {
+    const app = Fastify();
+    const createAgentRunner = vi.fn(() => createRunner(new StubAgentTextStream(() => textDeltas())));
+    const disabledSession = mockSession();
+    disabledSession.user.assistantEnabled = false;
+    await registerAiStreamRoute(app, {
+      buildContext: async () => createAiContext({ session: disabledSession }),
+      createAgentRunner,
+      model: 'test-model',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/ai/chat-stream',
+      payload: {
+        messages: [{ role: 'user', content: 'Show me loaders' }],
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
     expect(createAgentRunner).not.toHaveBeenCalled();
   });
 

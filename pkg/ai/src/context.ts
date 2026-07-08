@@ -12,6 +12,7 @@ export type AiSession = {
   user: {
     id: AuthId;
     email: string;
+    assistantEnabled: boolean;
   };
 };
 

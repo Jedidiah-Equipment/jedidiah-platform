@@ -2,6 +2,7 @@ import type { AiContext } from '@pkg/ai';
 import { type Db, user } from '@pkg/db';
 import type { AppRole, UserAccessSummary } from '@pkg/schema';
 
+import { toAiSession } from '@/routes/ai/ai-context.js';
 import { createSilentLogger, mockSession } from '@/test/test-utils.js';
 
 export function createAiContext(db: Db, access: UserAccessSummary): AiContext {
@@ -10,7 +11,7 @@ export function createAiContext(db: Db, access: UserAccessSummary): AiContext {
     db,
     deliverQuoteDraftEmail: async () => ({ recipientEmail: 'test@example.com', warnings: [] }),
     log: createSilentLogger(),
-    session: mockSession(access.role),
+    session: toAiSession(mockSession(access.role)),
     storage: {} as AiContext['storage'],
   };
 }

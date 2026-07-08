@@ -353,6 +353,7 @@ export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserList
   return {
     users: rows.map((row) =>
       UserSummary.parse({
+        assistantEnabled: row.assistantEnabled,
         departments: [],
         email: row.email,
         emailVerified: row.emailVerified,

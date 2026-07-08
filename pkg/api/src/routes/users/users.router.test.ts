@@ -35,6 +35,7 @@ describe('users.list', () => {
 
     expect(result.users).toEqual([
       {
+        assistantEnabled: false,
         departments: [],
         email: 'viewer@example.com',
         emailVerified: true,
@@ -363,6 +364,7 @@ describe('users.sendVerificationEmail', () => {
 async function createUser(
   db: Db,
   input: {
+    assistantEnabled?: boolean;
     email: string;
     emailVerified?: boolean;
     id: string;
@@ -377,6 +379,7 @@ async function createUser(
   await db
     .insert(user)
     .values({
+      assistantEnabled: input.assistantEnabled ?? false,
       email: input.email,
       emailVerified: input.emailVerified ?? true,
       id: input.id,

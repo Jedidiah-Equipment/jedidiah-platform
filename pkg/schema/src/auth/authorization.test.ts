@@ -84,6 +84,7 @@ describe('UserSummary', () => {
 
     expect(
       UserSummary.parse({
+        assistantEnabled: false,
         departments: ['supply'],
         email: 'user@example.com',
         emailVerified: true,
@@ -101,6 +102,7 @@ describe('UserAccount', () => {
   it('parses a user without department memberships', () => {
     expect(
       UserAccount.parse({
+        assistantEnabled: false,
         email: 'user@example.com',
         emailVerified: true,
         id: 'user_123',
@@ -110,6 +112,7 @@ describe('UserAccount', () => {
         thumbnailDataUrl: null,
       }),
     ).toEqual({
+      assistantEnabled: false,
       email: 'user@example.com',
       emailVerified: true,
       id: 'user_123',

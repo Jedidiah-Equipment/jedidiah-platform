@@ -24,6 +24,7 @@ export function mockSession(role: AppRole = 'admin'): NonNullable<Context['sessi
       emailVerified: true,
       image: null,
       role,
+      assistantEnabled: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     },

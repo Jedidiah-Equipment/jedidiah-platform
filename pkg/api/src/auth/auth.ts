@@ -41,6 +41,9 @@ export function createAuth(database: Db) {
     user: {
       additionalFields: {
         phoneNumber: { type: 'string', required: false, input: true },
+        // input: false so users cannot self-enable via the non-admin update-user endpoint; only the
+        // admin update path (gated by user:update) can set it.
+        assistantEnabled: { type: 'boolean', required: false, defaultValue: false, input: false },
       },
     },
     plugins: [

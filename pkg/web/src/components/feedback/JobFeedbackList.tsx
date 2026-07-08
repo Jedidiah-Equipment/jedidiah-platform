@@ -6,6 +6,7 @@ import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { FeedbackStatusBadge, FeedbackStatusSelect } from '@/components/feedback/FeedbackStatusBadge.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { Card, CardContent } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
@@ -38,21 +39,25 @@ export const JobFeedbackList: React.FC<JobFeedbackListProps> = ({ canUpdateStatu
 };
 
 const JobFeedbackCard: React.FC<{ canUpdateStatus: boolean; item: JobFeedbackItem }> = ({ canUpdateStatus, item }) => (
-  <article className="grid gap-2 rounded-lg border p-3">
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
-        <EntityThumbnail label={item.submitter.name} size="sm" thumbnailDataUrl={item.submitter.thumbnailDataUrl} />
-        <span className="truncate">{item.submitter.name}</span>
-      </span>
-      <span className="text-xs text-muted-foreground">
-        <DateDisplay date={item.createdAt} />
-      </span>
-      <span className="ml-auto">
-        {canUpdateStatus ? <JobFeedbackStatusSelect item={item} /> : <FeedbackStatusBadge status={item.status} />}
-      </span>
-    </div>
-    <p className="whitespace-pre-wrap text-sm leading-6">{item.text}</p>
-  </article>
+  <Card size="sm">
+    <CardContent>
+      <article className="grid gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
+            <EntityThumbnail label={item.submitter.name} size="sm" thumbnailDataUrl={item.submitter.thumbnailDataUrl} />
+            <span className="truncate">{item.submitter.name}</span>
+          </span>
+          <span className="text-xs text-muted-foreground">
+            <DateDisplay date={item.createdAt} />
+          </span>
+          <span className="ml-auto">
+            {canUpdateStatus ? <JobFeedbackStatusSelect item={item} /> : <FeedbackStatusBadge status={item.status} />}
+          </span>
+        </div>
+        <p className="whitespace-pre-wrap text-sm leading-6">{item.text}</p>
+      </article>
+    </CardContent>
+  </Card>
 );
 
 const JobFeedbackStatusSelect: React.FC<{ item: JobFeedbackItem }> = ({ item }) => {

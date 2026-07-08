@@ -40,5 +40,5 @@ LAN URL.
 Use `ios:staging-api`, `android:staging-api`, or `dev:staging-api` when you want the local dev
 client to authenticate against `https://staging-api.jedidiahequipment.co.za` instead of a local API.
 
-The local Expo dev server runs on `http://localhost:7003`, which must stay in the API's
-`AUTH_TRUSTED_ORIGINS`.
+The local Expo dev server runs on `http://localhost:7003`, and staging mobile builds use
+`jedidiahopsstaging://`; both must stay in the API's `AUTH_TRUSTED_ORIGINS`.

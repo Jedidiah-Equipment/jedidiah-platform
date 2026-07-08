@@ -9,7 +9,7 @@ Step-by-step guide to stand up the production environment and go live. Decisions
 | --- | --- |
 | Railway topology | Same project, new `production` environment duplicated from `staging` |
 | Deploy flow | `production` branch; deploy = PR `main` → `production`, **merge commits only** (never squash/rebase — rewritten SHAs would permanently diverge the branches). Staging keeps deploying `main`. |
-| Data | Copy everything except the quote/job clusters. Exclude the Sue Smith demo user. Quote/job code sequences start fresh. |
+| Data | Copy everything except the quote/job clusters, Sue Smith demo user, and soft-deleted catalog/supplier rows plus children that depend on them. Quote/job code sequences start fresh. |
 | Credentials | Staging password hashes are never copied (the reader already omits them). Production credential accounts get random unusable passwords; staff set real passwords via the forgot-password flow. Bay-operator shared accounts (`fabrication.operator@`, `assembly.operator@`) get passwords set manually by an admin via the Users page. |
 | Domains | Web `app.jedidiahequipment.co.za`, API `api.jedidiahequipment.co.za`, lander apex `jedidiahequipment.co.za` + `www`. An old site currently holds the apex — that DNS move is the final cutover step. |
 | Object storage | New Tigris bucket in the existing account; objects copied key-for-key (storage keys are bucket-relative, so no URL rewriting — image links do not break). |
@@ -38,6 +38,10 @@ Add a production-import path reusing the existing snapshot machinery
 - [ ] Excludes the Sue Smith demo user (`seed-sue-user`, `sales@jedidiahequipment.co.za`)
       and her `account` / `user_department` rows. All other users copy, including the two
       bay-operator accounts.
+- [ ] Excludes soft-deleted `supplier`, `product_ranges`, `product_range_variants`, and
+      `products` rows. Child rows copy only when their retained parent graph stays valid
+      (`parts`, `product_bay`, `product_serial_sequence`, `product_assemblies`,
+      `assembly_parts`, `assembly_overrides`).
 - [ ] Credential accounts are inserted with a **random per-account password hash** instead
       of `SEED_USER_PASSWORD` (`test123`). No one can log in until they reset.
 - [ ] Hard guard: refuses to run unless `CONFIRM_PRODUCTION_IMPORT=production` is set, and
@@ -59,10 +63,11 @@ Add a production-import path reusing the existing snapshot machinery
       (production DB/bucket, apex) exist. Keep the read-only / no-migrations invariants and
       the deferred image-cache-volume note.
 
-### 1.4 Staging fix (spotted during planning)
+### 1.4 Staging mobile trusted origin
 
 - [ ] Verify staging's `AUTH_TRUSTED_ORIGINS` includes `jedidiahopsstaging://` (the staging
-      mobile deep-link scheme). `.env.example` only lists `jedidiahops://`.
+      mobile deep-link scheme). Keep local examples/tests covering both staging and production
+      schemes.
 
 Publish all of the above via the normal PR flow (`/blast-it`), merge to `main`.
 

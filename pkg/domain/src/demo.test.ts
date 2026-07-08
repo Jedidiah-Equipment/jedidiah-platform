@@ -8,9 +8,19 @@ describe('demoUsers', () => {
       'admin',
       'bay-operator',
       'bay-operator',
-      'sales',
       'super-admin',
       'super-admin',
     ]);
+  });
+
+  it('does not seed the retired Sue Smith demo account', () => {
+    expect(demoUsers).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'seed-sue-user',
+          email: 'sales@jedidiahequipment.co.za',
+        }),
+      ]),
+    );
   });
 });

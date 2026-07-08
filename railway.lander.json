@@ -29,6 +29,11 @@
       "deploy": {
         "numReplicas": 1
       }
+    },
+    "production": {
+      "deploy": {
+        "numReplicas": 1
+      }
     }
   }
 }

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { JobsPage } from '@/pages/jobs/JobsPage.js';
 
 export const Route = createFileRoute('/_authed/jobs/')({
-  validateSearch: z.object({ bay: UUID.optional(), job: UUID.optional() }),
+  validateSearch: z.object({ job: UUID.optional() }),
   staticData: {
     pageLabel: 'Jobs',
   },
@@ -13,7 +13,7 @@ export const Route = createFileRoute('/_authed/jobs/')({
 });
 
 function JobsRoute() {
-  const { bay, job } = Route.useSearch();
+  const { job } = Route.useSearch();
 
-  return <JobsPage selectedBayId={bay} selectedJobId={job} />;
+  return <JobsPage selectedJobId={job} />;
 }

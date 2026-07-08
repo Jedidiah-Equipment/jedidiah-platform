@@ -185,6 +185,24 @@ export const ProjectedBayQueue = Bay.extend({
   slots: z.array(ProjectedJobSlot),
 });
 
+export type JobScheduleSlotDayBreakdown = z.infer<typeof JobScheduleSlotDayBreakdown>;
+export const JobScheduleSlotDayBreakdown = z.object({
+  closureDays: z.int().nonnegative(),
+  overtimeDays: z.int().nonnegative(),
+  workingDays: z.int().nonnegative(),
+});
+
+export type JobScheduleWorkSlot = z.infer<typeof JobScheduleWorkSlot>;
+export const JobScheduleWorkSlot = ProjectedWorkJobSlot.extend({
+  dayBreakdown: JobScheduleSlotDayBreakdown,
+  operator: BayOperator.nullable(),
+});
+
+export type JobScheduleBayQueue = z.infer<typeof JobScheduleBayQueue>;
+export const JobScheduleBayQueue = ProjectedBayQueue.omit({ slots: true }).extend({
+  slots: z.array(JobScheduleWorkSlot),
+});
+
 export type JobBayListResult = z.infer<typeof JobBayListResult>;
 export const JobBayListResult = z.object({
   items: z.array(Bay),
@@ -412,6 +430,11 @@ export const JobDepartmentSchedule = z.object({
   bays: z.array(ProjectedBayQueue),
 });
 
+export type JobDetailDepartmentSchedule = z.infer<typeof JobDetailDepartmentSchedule>;
+export const JobDetailDepartmentSchedule = JobDepartmentSchedule.omit({ bays: true }).extend({
+  bays: z.array(JobScheduleBayQueue),
+});
+
 export type Job = z.infer<typeof Job>;
 export const Job = z.object({
   id: UUID,
@@ -636,7 +659,7 @@ export const JobDetail = JobSummary.extend({
     }),
   ),
   documents: z.array(JobDocument),
-  schedule: z.array(JobDepartmentSchedule).length(5),
+  schedule: z.array(JobDetailDepartmentSchedule).length(5),
 });
 
 export type JobBaySeedInput = z.infer<typeof JobBaySeedInput>;

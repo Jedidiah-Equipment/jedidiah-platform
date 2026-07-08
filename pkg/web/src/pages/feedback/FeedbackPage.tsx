@@ -432,13 +432,24 @@ function UserLabel({ name, thumbnailDataUrl }: { name: string; thumbnailDataUrl:
 }
 
 function SubjectLink({ item }: { item: FeedbackListItem }) {
-  const to = item.subject.subjectType === 'quote' ? '/quotes/$id/edit' : '/jobs/$id/edit';
+  if (item.subject.subjectType === 'job') {
+    return (
+      <Link
+        className="block truncate font-medium hover:underline"
+        search={{ job: item.subject.id }}
+        to="/jobs"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {item.subject.label}
+      </Link>
+    );
+  }
 
   return (
     <Link
       className="block truncate font-medium hover:underline"
       params={{ id: item.subject.id }}
-      to={to}
+      to="/quotes/$id/edit"
       onClick={(event) => event.stopPropagation()}
     >
       {item.subject.label}

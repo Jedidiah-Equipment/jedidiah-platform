@@ -59,7 +59,6 @@ type SlotResizeDrag = {
 };
 
 export const BaySlotBar: React.FC<{
-  bayId: UUID;
   canEditSchedule: boolean;
   isDimmed: boolean;
   /** This slot is next off the line after the one running today — highlighted green. */
@@ -70,7 +69,7 @@ export const BaySlotBar: React.FC<{
   onMove: (slotId: string, direction: JobSlotMoveDirection) => void;
   onRemove: (slotId: string) => Promise<void>;
   onResize: (slotId: string, durationDays: number) => void;
-  onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
+  onSelectSlot?: ((jobId: UUID) => void) | undefined;
   optimisticDurationDays: number | null;
   rowTop: number;
   slot: ProjectedJobSlot;
@@ -79,7 +78,6 @@ export const BaySlotBar: React.FC<{
   today: DateOnlyIso;
   workingCalendar: WorkingCalendar;
 }> = ({
-  bayId,
   canEditSchedule,
   isDimmed,
   isNext,
@@ -268,7 +266,7 @@ export const BaySlotBar: React.FC<{
               disabled={!job || slot.previewSplit !== undefined}
               onClick={() => {
                 if (job) {
-                  onSelectSlot?.(job.id, bayId);
+                  onSelectSlot?.(job.id);
                 }
               }}
               type="button"

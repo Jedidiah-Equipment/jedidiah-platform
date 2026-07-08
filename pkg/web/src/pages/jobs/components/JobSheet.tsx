@@ -6,13 +6,7 @@ import {
   PRODUCT_DOCUMENT_TYPE_LABELS,
 } from '@pkg/domain';
 import type { JobDetail, JobDocument, JobUpdateInput, UUID } from '@pkg/schema';
-import {
-  IconCalendarTime,
-  IconChevronDown,
-  IconFileText,
-  IconInfoCircle,
-  IconMessageCircle,
-} from '@tabler/icons-react';
+import { IconChevronDown, IconInfoCircle, IconMessageCircle } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';
@@ -66,20 +60,11 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
         {jobQuery.isPending ? <JobSheetSkeleton /> : null}
         {jobQuery.data ? (
           <Tabs className="min-h-0 flex-1 gap-0" onValueChange={(value) => setTab(value as JobSheetTab)} value={tab}>
-            <div className="border-b px-4 pb-3">
+            <div className="px-4 pb-3">
               <TabsList>
-                <TabsTrigger value="details">
-                  <IconInfoCircle data-icon="inline-start" />
-                  Details
-                </TabsTrigger>
-                <TabsTrigger value="documents">
-                  <IconFileText data-icon="inline-start" />
-                  Documents
-                </TabsTrigger>
-                <TabsTrigger value="schedule">
-                  <IconCalendarTime data-icon="inline-start" />
-                  Schedule
-                </TabsTrigger>
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="documents">Documents</TabsTrigger>
+                <TabsTrigger value="schedule">Schedule</TabsTrigger>
               </TabsList>
             </div>
             <ScrollArea className="min-h-0 flex-1">

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { NodeEnv } from '../domain/environment.js';
+import { type AppEnv, NodeEnv } from '../domain/environment.js';
 
 export const POSTHOG_CLIENT_API_HOST = '/info';
 export const POSTHOG_ASSET_HOST = 'https://us-assets.i.posthog.com';
@@ -29,3 +29,32 @@ export const ClientConfig = z.object({
       release: null,
     }),
 });
+
+type PostHogToggleConfig = {
+  APP_ENV: AppEnv;
+  POSTHOG_ENABLED?: boolean | undefined;
+  POSTHOG_PROJECT_TOKEN?: string | undefined;
+};
+
+type PostHogSourceMapsToggleConfig = PostHogToggleConfig & {
+  POSTHOG_SOURCEMAPS_ENABLED?: boolean | undefined;
+  POSTHOG_API_KEY?: string | undefined;
+  POSTHOG_PROJECT_ID?: string | undefined;
+};
+
+export function isPostHogEnabled(config: PostHogToggleConfig): boolean {
+  return Boolean(config.POSTHOG_PROJECT_TOKEN && (config.POSTHOG_ENABLED ?? isRemoteAppEnv(config.APP_ENV)));
+}
+
+export function isPostHogSourceMapsEnabled(config: PostHogSourceMapsToggleConfig): boolean {
+  const sourceMapsRequested =
+    config.POSTHOG_SOURCEMAPS_ENABLED ?? config.POSTHOG_ENABLED ?? isRemoteAppEnv(config.APP_ENV);
+
+  return Boolean(
+    isPostHogEnabled(config) && sourceMapsRequested && config.POSTHOG_API_KEY && config.POSTHOG_PROJECT_ID,
+  );
+}
+
+function isRemoteAppEnv(appEnv: AppEnv): boolean {
+  return appEnv === 'staging' || appEnv === 'production';
+}

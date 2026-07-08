@@ -51,13 +51,44 @@ describe('web server config', () => {
     });
   });
 
-  it('requires PostHog and source map credentials in production', () => {
-    expect(() =>
-      ServerConfig.parse({
-        ...baseEnv,
-        APP_ENV: 'production',
-      }),
-    ).toThrow('POSTHOG_PROJECT_TOKEN is required when PostHog is enabled');
+  it('keeps PostHog optional in production and treats blank Railway vars as unset', () => {
+    const config = ServerConfig.parse({
+      ...baseEnv,
+      APP_ENV: 'production',
+      POSTHOG_PROJECT_TOKEN: '',
+      POSTHOG_API_KEY: '',
+      POSTHOG_PROJECT_ID: '',
+      POSTHOG_INGEST_HOST: '',
+      POSTHOG_ASSET_HOST: '',
+      POSTHOG_UI_HOST: '',
+      POSTHOG_SOURCEMAPS_HOST: '',
+    });
+
+    expect(config.clientConfig.posthog).toMatchObject({
+      enabled: false,
+      token: undefined,
+      apiHost: '/info',
+      uiHost: 'https://us.posthog.com',
+    });
+    expect(config.posthogProxy.enabled).toBe(false);
+    expect(config.posthogSourceMaps).toEqual({
+      enabled: false,
+      apiKey: null,
+      projectId: null,
+      host: 'https://us.posthog.com',
+    });
+  });
+
+  it('enables PostHog without source maps when only the project token is present', () => {
+    const config = ServerConfig.parse({
+      ...baseEnv,
+      APP_ENV: 'production',
+      POSTHOG_PROJECT_TOKEN: 'phc_test',
+    });
+
+    expect(config.clientConfig.posthog.enabled).toBe(true);
+    expect(config.posthogProxy.enabled).toBe(true);
+    expect(config.posthogSourceMaps.enabled).toBe(false);
   });
 
   it('enables PostHog and source maps in staging when credentials are present', () => {

@@ -70,12 +70,25 @@ function PageHeader() {
   );
 }
 
-function FilterChip({ active, label, search }: { active: boolean; label: string; search: ProductsSearch }) {
+function FilterChip({
+  active,
+  label,
+  search,
+  size = 'default',
+}: {
+  active: boolean;
+  label: string;
+  search: ProductsSearch;
+  size?: 'default' | 'compact';
+}) {
+  const sizeClassName =
+    size === 'compact' ? 'px-3 py-2 text-[13px] tracking-[0.8px]' : 'px-3.5 py-[9px] text-[15px] tracking-[1px]';
+
   return (
     <Link
       to="/products"
       search={search}
-      className={`border-[1.5px] px-3.5 py-[9px] font-display text-[15px] font-semibold uppercase tracking-[1px] no-underline transition-colors ${
+      className={`border-[1.5px] font-display font-semibold uppercase no-underline transition-colors ${sizeClassName} ${
         active ? 'border-ink bg-ink text-white' : 'border-[#d6d4ce] bg-white text-ink hover:border-ink'
       }`}
     >
@@ -103,8 +116,9 @@ function VariantFilterBar({
         </span>
         <FilterChip
           active={activeVariant === undefined}
-          label={`All ${activeGroup.label}`}
+          label="All"
           search={{ range: activeGroup.slug }}
+          size="compact"
         />
         {activeGroup.variants.map((variant) => (
           <FilterChip
@@ -112,6 +126,7 @@ function VariantFilterBar({
             active={activeVariant?.id === variant.id}
             label={variant.name}
             search={{ range: activeGroup.slug, variant: variant.slug }}
+            size="compact"
           />
         ))}
       </div>
@@ -136,7 +151,7 @@ function FilterBar({
         <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999]">
           Filter by range
         </span>
-        <FilterChip active={activeSlug === undefined} label="All Products" search={{}} />
+        <FilterChip active={activeSlug === undefined} label="All" search={{}} />
         {groups.map((group) => (
           <FilterChip
             key={group.id}

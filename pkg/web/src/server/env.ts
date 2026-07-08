@@ -1,8 +1,12 @@
-import { getReleaseMetadata, isRemoteAppEnv } from '@pkg/domain';
+import { getReleaseMetadata } from '@pkg/domain';
 import {
   AppEnv,
   ClientConfig,
-  EnvBoolean,
+  defaultedEnvUrl,
+  isPostHogEnabled,
+  isPostHogSourceMapsEnabled,
+  OptionalEnvBoolean,
+  OptionalEnvString,
   POSTHOG_ASSET_HOST,
   POSTHOG_CLIENT_API_HOST,
   POSTHOG_INGEST_HOST,
@@ -34,15 +38,15 @@ const ServerEnv = z.object({
   APP_BASE_URL: z.url(),
   API_BASE_URL: z.url(),
   AUTH_BASE_URL: z.url(),
-  POSTHOG_ENABLED: EnvBoolean.optional(),
-  POSTHOG_PROJECT_TOKEN: z.string().min(1).optional(),
-  POSTHOG_INGEST_HOST: z.url().default(POSTHOG_INGEST_HOST),
-  POSTHOG_ASSET_HOST: z.url().default(POSTHOG_ASSET_HOST),
-  POSTHOG_UI_HOST: z.url().default(POSTHOG_UI_HOST),
-  POSTHOG_SOURCEMAPS_ENABLED: EnvBoolean.optional(),
-  POSTHOG_API_KEY: z.string().min(1).optional(),
-  POSTHOG_PROJECT_ID: z.string().min(1).optional(),
-  POSTHOG_SOURCEMAPS_HOST: z.url().default(POSTHOG_UI_HOST),
+  POSTHOG_ENABLED: OptionalEnvBoolean,
+  POSTHOG_PROJECT_TOKEN: OptionalEnvString,
+  POSTHOG_INGEST_HOST: defaultedEnvUrl(POSTHOG_INGEST_HOST),
+  POSTHOG_ASSET_HOST: defaultedEnvUrl(POSTHOG_ASSET_HOST),
+  POSTHOG_UI_HOST: defaultedEnvUrl(POSTHOG_UI_HOST),
+  POSTHOG_SOURCEMAPS_ENABLED: OptionalEnvBoolean,
+  POSTHOG_API_KEY: OptionalEnvString,
+  POSTHOG_PROJECT_ID: OptionalEnvString,
+  POSTHOG_SOURCEMAPS_HOST: defaultedEnvUrl(POSTHOG_UI_HOST),
   RAILWAY_DEPLOYMENT_ID: z.string().min(1).optional(),
   RAILWAY_SNAPSHOT_ID: z.string().min(1).optional(),
   RAILWAY_SERVICE_NAME: z.string().min(1).optional(),
@@ -51,50 +55,25 @@ const ServerEnv = z.object({
 });
 
 export type ServerConfig = z.infer<typeof ServerConfig>;
-export const ServerConfig = ServerEnv.superRefine((env, ctx) => {
-  const posthogEnabled = env.POSTHOG_ENABLED ?? isRemoteAppEnv(env.APP_ENV);
-  const sourcemapsEnabled = env.POSTHOG_SOURCEMAPS_ENABLED ?? posthogEnabled;
-
-  if (posthogEnabled && !env.POSTHOG_PROJECT_TOKEN) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'POSTHOG_PROJECT_TOKEN is required when PostHog is enabled',
-      path: ['POSTHOG_PROJECT_TOKEN'],
-    });
-  }
-
-  if (sourcemapsEnabled && !env.POSTHOG_API_KEY) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'POSTHOG_API_KEY is required when PostHog source maps are enabled',
-      path: ['POSTHOG_API_KEY'],
-    });
-  }
-
-  if (sourcemapsEnabled && !env.POSTHOG_PROJECT_ID) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'POSTHOG_PROJECT_ID is required when PostHog source maps are enabled',
-      path: ['POSTHOG_PROJECT_ID'],
-    });
-  }
-}).transform((env) => {
+export const ServerConfig = ServerEnv.transform((env) => {
   const release = getReleaseMetadata({
     railwayDeploymentId: env.RAILWAY_DEPLOYMENT_ID ?? null,
     railwayGitCommitSha: env.RAILWAY_GIT_COMMIT_SHA ?? null,
   });
+  const posthogEnabled = isPostHogEnabled(env);
+  const posthogSourceMapsEnabled = isPostHogSourceMapsEnabled(env);
 
   return {
     port: env.PORT,
     posthogProxy: {
-      enabled: env.POSTHOG_ENABLED ?? isRemoteAppEnv(env.APP_ENV),
+      enabled: posthogEnabled,
       apiPath: POSTHOG_CLIENT_API_HOST,
       assetPath: POSTHOG_PROXY_ASSET_PATH,
       ingestHost: env.POSTHOG_INGEST_HOST,
       assetHost: env.POSTHOG_ASSET_HOST,
     },
     posthogSourceMaps: {
-      enabled: env.POSTHOG_SOURCEMAPS_ENABLED ?? env.POSTHOG_ENABLED ?? isRemoteAppEnv(env.APP_ENV),
+      enabled: posthogSourceMapsEnabled,
       apiKey: env.POSTHOG_API_KEY ?? null,
       projectId: env.POSTHOG_PROJECT_ID ?? null,
       host: env.POSTHOG_SOURCEMAPS_HOST,
@@ -129,7 +108,7 @@ function createClientConfig(env: ServerEnv, release: string | null): ClientConfi
     authBaseUrl: env.AUTH_BASE_URL,
     deploymentVersion: release,
     posthog: {
-      enabled: env.POSTHOG_ENABLED ?? isRemoteAppEnv(env.APP_ENV),
+      enabled: isPostHogEnabled(env),
       token: env.POSTHOG_PROJECT_TOKEN,
       apiHost: POSTHOG_CLIENT_API_HOST,
       uiHost: env.POSTHOG_UI_HOST,

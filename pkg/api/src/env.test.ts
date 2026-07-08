@@ -26,10 +26,21 @@ describe('API config PostHog validation', () => {
     });
   });
 
-  it('requires a PostHog token when production capture is enabled by default', () => {
-    expect(() => ApiConfig.parse({ ...baseEnv, APP_ENV: 'production' })).toThrow(
-      'POSTHOG_PROJECT_TOKEN is required when PostHog is enabled',
-    );
+  it('keeps PostHog optional in production and treats blank Railway vars as unset', () => {
+    expect(
+      ApiConfig.parse({
+        ...baseEnv,
+        APP_ENV: 'production',
+        POSTHOG_ENABLED: '',
+        POSTHOG_PROJECT_TOKEN: '',
+        POSTHOG_HOST: '',
+      }),
+    ).toMatchObject({
+      APP_ENV: 'production',
+      POSTHOG_ENABLED: undefined,
+      POSTHOG_PROJECT_TOKEN: undefined,
+      POSTHOG_HOST: 'https://us.i.posthog.com',
+    });
   });
 
   it('allows explicit opt-out in staging', () => {

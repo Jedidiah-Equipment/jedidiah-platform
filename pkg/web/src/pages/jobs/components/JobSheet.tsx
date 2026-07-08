@@ -60,7 +60,7 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
         {jobQuery.isPending ? <JobSheetSkeleton /> : null}
         {jobQuery.data ? (
           <Tabs className="min-h-0 flex-1 gap-0" onValueChange={(value) => setTab(value as JobSheetTab)} value={tab}>
-            <div className="px-4 pb-3">
+            <div className="px-4 pt-5 pb-1">
               <TabsList>
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="documents">Documents</TabsTrigger>

@@ -21,6 +21,16 @@ describe('PostHog config helpers', () => {
     ).toBe(false);
   });
 
+  it('keeps source maps disabled when upload credentials remain but PostHog is opted out', () => {
+    expect(
+      isPostHogSourceMapsEnabled({
+        APP_ENV: 'production',
+        POSTHOG_API_KEY: 'phx_test',
+        POSTHOG_PROJECT_ID: '123',
+      }),
+    ).toBe(false);
+  });
+
   it('enables source maps in remote environments when both upload credentials are configured', () => {
     expect(
       isPostHogSourceMapsEnabled({

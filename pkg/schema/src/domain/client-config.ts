@@ -50,7 +50,9 @@ export function isPostHogSourceMapsEnabled(config: PostHogSourceMapsToggleConfig
   const sourceMapsRequested =
     config.POSTHOG_SOURCEMAPS_ENABLED ?? config.POSTHOG_ENABLED ?? isRemoteAppEnv(config.APP_ENV);
 
-  return Boolean(sourceMapsRequested && config.POSTHOG_API_KEY && config.POSTHOG_PROJECT_ID);
+  return Boolean(
+    isPostHogEnabled(config) && sourceMapsRequested && config.POSTHOG_API_KEY && config.POSTHOG_PROJECT_ID,
+  );
 }
 
 function isRemoteAppEnv(appEnv: AppEnv): boolean {

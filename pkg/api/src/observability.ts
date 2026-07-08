@@ -1,7 +1,10 @@
-import { getReleaseMetadata, isRemoteAppEnv } from '@pkg/domain';
+import { getReleaseMetadata } from '@pkg/domain';
+import { isPostHogEnabled } from '@pkg/schema';
 import { PostHog } from 'posthog-node';
 
 import type { ApiConfig } from './env.js';
+
+export { isPostHogEnabled };
 
 type CaptureExceptionParams = {
   distinctId?: string;
@@ -41,12 +44,6 @@ export function createObservability(
       await client.flush();
     },
   };
-}
-
-export function isPostHogEnabled(
-  config: Pick<ApiConfig, 'APP_ENV' | 'POSTHOG_ENABLED' | 'POSTHOG_PROJECT_TOKEN'>,
-): boolean {
-  return Boolean(config.POSTHOG_PROJECT_TOKEN && (config.POSTHOG_ENABLED ?? isRemoteAppEnv(config.APP_ENV)));
 }
 
 function createPostHogClient(config: ApiConfig): PostHogObservabilityClient | null {

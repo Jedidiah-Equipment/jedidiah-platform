@@ -120,7 +120,7 @@ Publish all of the above via the normal PR flow (`/blast-it`), merge to `main`.
 | `EMAIL_PROVIDER` | `resend` |
 | `RESEND_API_KEY` | production key |
 | `EMAIL_FROM` | `noreply@jedidiahequipment.co.za` (or current staging value) |
-| `POSTHOG_PROJECT_TOKEN` | production project token (`POSTHOG_ENABLED` defaults true in production) |
+| `POSTHOG_PROJECT_TOKEN` | optional production project token; omit/leave blank to run without PostHog |
 
 **web**
 
@@ -130,7 +130,7 @@ Publish all of the above via the normal PR flow (`/blast-it`), merge to `main`.
 | `APP_BASE_URL` | `https://app.jedidiahequipment.co.za` |
 | `API_BASE_URL` | `https://api.jedidiahequipment.co.za` |
 | `AUTH_BASE_URL` | `https://api.jedidiahequipment.co.za/api/auth` |
-| PostHog client vars | production project values |
+| PostHog client vars | optional production project values; omit/leave blank to run without PostHog |
 
 **lander**
 

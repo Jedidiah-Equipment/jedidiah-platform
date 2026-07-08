@@ -474,7 +474,16 @@ export const Product = z.object({
 });
 
 export type ProductSortBy = z.infer<typeof ProductSortBy>;
-export const ProductSortBy = z.enum(['basePrice', 'createdAt', 'id', 'modelCode', 'name', 'rangeName', 'variantName']);
+export const ProductSortBy = z.enum([
+  'basePrice',
+  'createdAt',
+  'id',
+  'modelCode',
+  'name',
+  'rangeName',
+  'updatedAt',
+  'variantName',
+]);
 
 export type ProductColumnFilters = z.infer<typeof ProductColumnFilters>;
 export const ProductColumnFilters = z

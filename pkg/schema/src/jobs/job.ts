@@ -573,7 +573,34 @@ export const BoardPreviewResult = z.object({
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
-export const JobSortBy = z.enum(['code', 'createdAt', 'id', 'scheduledSlots']);
+export const JobSortBy = z.enum(['code', 'createdAt', 'id', 'productSerialNumber', 'scheduledSlots']);
+
+export type JobCustomerOptionSortBy = z.infer<typeof JobCustomerOptionSortBy>;
+export const JobCustomerOptionSortBy = z.enum(['companyName', 'id']);
+
+export type JobCustomerOption = z.infer<typeof JobCustomerOption>;
+export const JobCustomerOption = z.object({
+  companyName: z.string().trim().min(1),
+  id: UUID,
+});
+
+export type JobCustomerOptionListInput = z.infer<typeof JobCustomerOptionListInput>;
+export const JobCustomerOptionListInput = createSearchedSortedPagedQueryInput({
+  shape: {},
+  sortBy: JobCustomerOptionSortBy.default('companyName'),
+});
+
+export type JobCustomerOptionListResult = z.infer<typeof JobCustomerOptionListResult>;
+export const JobCustomerOptionListResult = createSortedPagedQueryResult(JobCustomerOption, JobCustomerOptionSortBy);
+
+export type JobColumnFilters = z.infer<typeof JobColumnFilters>;
+export const JobColumnFilters = z
+  .object({
+    code: z.string().trim().optional(),
+    customerId: UUID.optional(),
+    productSerialNumber: z.string().trim().optional(),
+  })
+  .default({});
 
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
@@ -646,6 +673,7 @@ export const JobUpdateResult = z.object({
 export type JobListInput = z.infer<typeof JobListInput>;
 export const JobListInput = createSearchedSortedPagedQueryInput({
   shape: {
+    columnFilters: JobColumnFilters,
     filters: JobListFilters,
     include: JobListInclude.optional(),
   },

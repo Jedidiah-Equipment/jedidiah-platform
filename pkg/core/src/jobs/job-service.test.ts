@@ -2131,6 +2131,7 @@ describe('removeJobSlot', () => {
 describe('listJobs scheduleState', () => {
   function listInput(overrides: Partial<Parameters<typeof listJobs>[0]['input']> = {}) {
     return {
+      columnFilters: {},
       filters: {},
       include: {},
       page: 1,

@@ -1185,10 +1185,91 @@ describe('jobs.list scheduleState', () => {
     expect(sorted.items.map((item) => item.id)).toEqual([unscheduled.id, scheduled.id]);
   });
 
+  test('filters jobs by customer and code', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const alphaQuote = await createAcceptedQuote(context.db, context.product.id, { customerName: 'Alpha Customer' });
+    const betaQuote = await createAcceptedQuote(context.db, context.product.id, { customerName: 'Beta Customer' });
+    const alphaJob = await caller.jobs.create({ quoteId: alphaQuote.id });
+    const betaJob = await caller.jobs.create({ quoteId: betaQuote.id });
+
+    await expect(
+      caller.jobs.list({ columnFilters: { customerId: alphaQuote.customerId }, filters: {} }),
+    ).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: alphaJob.id })],
+      total: 1,
+    });
+
+    const codeResult = await caller.jobs.list({ columnFilters: { code: betaJob.code }, filters: {} });
+    expect(codeResult.items.map((item) => item.id)).toEqual([betaJob.id]);
+
+    const numericCodeResult = await caller.jobs.list({
+      columnFilters: { code: betaJob.code.replace(/^JOB-0*/, '') },
+      filters: {},
+    });
+    expect(numericCodeResult.items.map((item) => item.id)).toEqual([betaJob.id]);
+  });
+
+  test('filters jobs by serial with escaped wildcards and sorts by serial', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const percentQuote = await createAcceptedQuote(context.db, context.product.id, {
+      customerName: 'Percent Customer',
+    });
+    const plainQuote = await createAcceptedQuote(context.db, context.product.id, { customerName: 'Plain Customer' });
+    const percentJob = await caller.jobs.create({ quoteId: percentQuote.id });
+    const plainJob = await caller.jobs.create({ quoteId: plainQuote.id });
+
+    await setJobSerial(context.db, percentJob.id, 'SERIAL-%-MATCH');
+    await setJobSerial(context.db, plainJob.id, 'SERIAL-A-MATCH');
+
+    const filtered = await caller.jobs.list({ columnFilters: { productSerialNumber: '%' }, filters: {} });
+    expect(filtered.items.map((item) => item.id)).toEqual([percentJob.id]);
+
+    const sorted = await caller.jobs.list({
+      columnFilters: { productSerialNumber: 'SERIAL' },
+      filters: {},
+      sortBy: 'productSerialNumber',
+      sortDirection: 'desc',
+    });
+    expect(sorted.items.map((item) => item.id)).toEqual([plainJob.id, percentJob.id]);
+    expect(sorted.sortBy).toBe('productSerialNumber');
+  });
+
   test('rejects callers without job:read', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
 
     await expect(salesCaller.jobs.list({ filters: { unscheduledOnly: true } })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+});
+
+describe('jobs.customerOptions', () => {
+  test('lists only job-linked customer options for job readers', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
+    const optionQuote = await createAcceptedQuote(context.db, context.product.id, {
+      customerName: 'Option Customer',
+    });
+    await adminCaller.jobs.create({ quoteId: optionQuote.id });
+    const [unlinkedCustomer] = await context.db
+      .insert(customers)
+      .values({
+        companyName: 'Option Customer Without Jobs',
+        email: null,
+      })
+      .returning({ id: customers.id });
+
+    const result = await jobViewerCaller.jobs.customerOptions({
+      page: 1,
+      pageSize: 0,
+      search: 'Option Customer',
+      sortBy: 'companyName',
+      sortDirection: 'asc',
+    });
+
+    expect(result.items).toEqual([{ companyName: 'Option Customer', id: optionQuote.customerId }]);
+    expect(result.items.map((item) => item.id)).not.toContain(unlinkedCustomer?.id);
+    await expect(context.createCaller(mockSession('sales')).jobs.customerOptions({})).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });
@@ -2457,11 +2538,11 @@ async function createUser(
   });
 }
 
-async function createAcceptedQuote(db: Db, productId: Product['id']) {
+async function createAcceptedQuote(db: Db, productId: Product['id'], options: { customerName?: string } = {}) {
   const [customer] = await db
     .insert(customers)
     .values({
-      companyName: 'Job Test Customer',
+      companyName: options.customerName ?? 'Job Test Customer',
       email: null,
     })
     .returning({ id: customers.id });
@@ -2479,11 +2560,18 @@ async function createAcceptedQuote(db: Db, productId: Product['id']) {
       salesPersonId: 'test-user-id',
       status: 'accepted',
     })
-    .returning({ id: quotes.id });
+    .returning({ customerId: quotes.customerId, id: quotes.id });
 
   if (!quote) {
     throw new Error('Quote insert did not return a row');
   }
 
   return quote;
+}
+
+async function setJobSerial(db: Db, jobId: string, serial: string): Promise<void> {
+  await db
+    .update(jobs)
+    .set({ productSerialNumber: serial, updatedAt: new Date('2026-06-05T00:00:00.000Z') })
+    .where(sql`${jobs.id} = ${jobId}`);
 }

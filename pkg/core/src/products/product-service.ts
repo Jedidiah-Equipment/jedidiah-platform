@@ -1225,6 +1225,10 @@ function getProductSortColumn(sortBy: ProductListInput['sortBy']) {
     return products.modelCode;
   }
 
+  if (sortBy === 'updatedAt') {
+    return products.updatedAt;
+  }
+
   return products.name;
 }
 

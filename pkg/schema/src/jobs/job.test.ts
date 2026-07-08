@@ -32,9 +32,13 @@ import {
   JobBayUnassignOperatorInput,
   JobBayUnassignOperatorResult,
   JobCode,
+  JobColumnFilters,
   JobCreateInput,
+  JobCustomerOptionListInput,
   JobDetail,
   JobListFilters,
+  JobListInput,
+  JobSortBy,
   MoveJobSlotInput,
   MoveJobSlotResult,
   OffDay,
@@ -413,6 +417,45 @@ describe('JobListFilters', () => {
   it('allows other filters without status filters', () => {
     expect(JobListFilters.parse({ jobId: '00000000-0000-4000-8000-000000000001' })).toEqual({
       jobId: '00000000-0000-4000-8000-000000000001',
+    });
+  });
+});
+
+describe('JobColumnFilters', () => {
+  it('defaults to no column filters', () => {
+    expect(JobColumnFilters.parse(undefined)).toEqual({});
+  });
+
+  it('trims text filters and accepts customer ids', () => {
+    expect(
+      JobListInput.parse({
+        columnFilters: {
+          code: '  JOB-00042  ',
+          customerId: '00000000-0000-4000-8000-000000000001',
+          productSerialNumber: '  SN-0042  ',
+        },
+        sortBy: 'productSerialNumber',
+      }),
+    ).toMatchObject({
+      columnFilters: {
+        code: 'JOB-00042',
+        customerId: '00000000-0000-4000-8000-000000000001',
+        productSerialNumber: 'SN-0042',
+      },
+      sortBy: 'productSerialNumber',
+    });
+    expect(JobSortBy.parse('productSerialNumber')).toBe('productSerialNumber');
+  });
+});
+
+describe('JobCustomerOptionListInput', () => {
+  it('defaults to company-name sorting', () => {
+    expect(JobCustomerOptionListInput.parse({ search: '  Acme  ' })).toMatchObject({
+      page: 1,
+      pageSize: 10,
+      search: 'Acme',
+      sortBy: 'companyName',
+      sortDirection: 'asc',
     });
   });
 });

@@ -15,6 +15,7 @@ import {
   ProductCreateInput,
   ProductKeyFeatures,
   ProductListInput,
+  ProductSortBy,
   ProductTechnicalDetails,
   ProductUpdateInput,
 } from './product.js';
@@ -291,6 +292,14 @@ describe('ProductUpdateInput', () => {
 });
 
 describe('ProductListInput', () => {
+  it('accepts updated-at sorting', () => {
+    expect(ProductSortBy.parse('updatedAt')).toBe('updatedAt');
+    expect(ProductListInput.parse({ sortBy: 'updatedAt', sortDirection: 'desc' })).toMatchObject({
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+  });
+
   it('accepts optional Range and Variant filters', () => {
     expect(
       ProductListInput.parse({

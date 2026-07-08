@@ -162,7 +162,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
         accessorKey: 'updatedAt',
         cell: ({ row }) => <DateDisplay date={row.original.updatedAt} />,
         enableColumnFilter: false,
-        enableSorting: false,
+        enableSorting: true,
         header: 'Updated',
       },
       {

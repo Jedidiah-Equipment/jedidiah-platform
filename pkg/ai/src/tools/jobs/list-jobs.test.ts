@@ -24,6 +24,7 @@ describe('listJobsTool', () => {
     });
     const created = await createJobFixture(context.db, context.quote.id);
     const input: JobListInput = {
+      columnFilters: {},
       filters: {},
       page: 1,
       pageSize: 10,

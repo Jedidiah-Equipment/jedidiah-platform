@@ -61,6 +61,7 @@ const JobCodeHoverCard: React.FC<{
   const input = useMemo(
     () =>
       ({
+        columnFilters: {},
         filters: {
           jobId,
         },

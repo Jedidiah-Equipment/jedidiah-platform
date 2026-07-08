@@ -498,6 +498,38 @@ describe('products.read', () => {
     expect(sortedDesc.sortBy).toBe('variantName');
   });
 
+  test('sorts products by updated date', async ({ context }) => {
+    const caller = context.createCaller();
+    const olderProduct = await createProduct(caller, 'Updated Sort Older Product', context.rangeId);
+    const newerProduct = await createProduct(caller, 'Updated Sort Newer Product', context.rangeId);
+
+    await context.db
+      .update(products)
+      .set({ updatedAt: new Date('2026-06-01T00:00:00.000Z') })
+      .where(sql`${products.id} = ${olderProduct.id}`);
+    await context.db
+      .update(products)
+      .set({ updatedAt: new Date('2026-06-03T00:00:00.000Z') })
+      .where(sql`${products.id} = ${newerProduct.id}`);
+
+    const sortedAsc = await caller.products.list({
+      columnFilters: { name: 'Updated Sort' },
+      pageSize: 10,
+      sortBy: 'updatedAt',
+      sortDirection: 'asc',
+    });
+    expect(sortedAsc.items.map((product) => product.id)).toEqual([olderProduct.id, newerProduct.id]);
+
+    const sortedDesc = await caller.products.list({
+      columnFilters: { name: 'Updated Sort' },
+      pageSize: 10,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+    expect(sortedDesc.items.map((product) => product.id)).toEqual([newerProduct.id, olderProduct.id]);
+    expect(sortedDesc.sortBy).toBe('updatedAt');
+  });
+
   test('returns assemblies on get and list', async ({ context }) => {
     const caller = context.createCaller();
     const partIds = await createParts(context.db);

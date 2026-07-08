@@ -138,6 +138,11 @@ export const BaySlotBar: React.FC<{
     default: 'border-border',
     next: scheduleBarToneClass.scheduled,
   }[tone];
+  // Custom (non-product) jobs carry a persistent brown fill so they stay recognizable across
+  // work states; the border keeps encoding state (blue today, green next/overtime, red closure,
+  // yellow primary). Tailwind has no brown, so this uses arbitrary hues tuned per theme (a lighter
+  // brown on the dark card, a deeper brown on the light card). Idle slots have no job, so no tint.
+  const slotFillClass = !isIdle && job?.quoteKind === 'custom' ? 'bg-[#795548]/35 dark:bg-[#a1887f]/35' : 'bg-card';
   const resizeHandleToneClass = {
     active: scheduleResizeHandleToneClass.active,
     default: 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-ring',
@@ -226,7 +231,7 @@ export const BaySlotBar: React.FC<{
                     'pointer-events-auto absolute cursor-default overflow-hidden text-xs shadow-sm transition-opacity duration-200',
                     isIdle
                       ? cn('rounded-sm border-2 bg-card px-2 py-1 text-muted-foreground', slotBorderClass)
-                      : cn('rounded-lg border-2 bg-card px-2.5 py-1.5 text-card-foreground', slotBorderClass),
+                      : cn('rounded-lg border-2 px-2.5 py-1.5 text-card-foreground', slotFillClass, slotBorderClass),
                     // Filtered-out slots fade back but stay interactive; hover restores them.
                     isDimmed && 'opacity-20 hover:opacity-100',
                   )}

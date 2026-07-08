@@ -8,10 +8,10 @@ import type {
   JobDepartmentSchedule,
   JobDetail,
   JobDocument,
+  JobScheduleWorkSlot,
   JobSummary,
   Product,
   ProductBay,
-  ProjectedWorkJobSlot,
   QuoteDetail,
   QuoteLineItem,
   QuoteProductDetailFacts,
@@ -203,7 +203,9 @@ const JOB_SCHEDULE_SLOT_KEYS = [
   'jobCode',
   'jobId',
   'jobUnfinished',
-] as const satisfies ProjectionKeys<ProjectedWorkJobSlot>;
+  'dayBreakdown',
+  'operator',
+] as const satisfies ProjectionKeys<JobScheduleWorkSlot>;
 
 const JOB_DOCUMENT_KEYS = [
   'id',
@@ -586,7 +588,10 @@ function projectJobScheduleSlot(value: unknown): unknown {
     return value;
   }
 
-  return pickDefined(value, JOB_SCHEDULE_SLOT_KEYS);
+  return {
+    ...pickDefined(value, JOB_SCHEDULE_SLOT_KEYS),
+    ...(Object.hasOwn(value, 'operator') ? { operator: projectBayOperator(value.operator) } : {}),
+  };
 }
 
 function projectJobDocument(value: unknown): unknown {

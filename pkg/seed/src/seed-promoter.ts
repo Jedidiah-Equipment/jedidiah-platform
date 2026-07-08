@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import './load-write-env.js';
-import { createDatabaseClient, type DatabaseTransaction, getDatabaseUrl, sql } from '@pkg/db';
+import type { DatabaseTransaction } from '@pkg/db';
 import { hashPassword } from 'better-auth/crypto';
+import { sql } from 'drizzle-orm';
 import { deserializeSnapshotRows } from './snapshot-json.js';
 import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
 import {
@@ -12,15 +12,25 @@ import {
   type SnapshotRow,
   type SnapshotStorageFile,
   type SnapshotTableConfig,
-  snapshotTables,
-} from './snapshot-tables.js';
+  type SnapshotTableDefinition,
+  snapshotTableDefinitions,
+} from './snapshot-table-definitions.js';
 import { createStorageFromEnv, type SeedStorage, uploadObject } from './storage.js';
 
-export type SnapshotWithRows = { config: SnapshotTableConfig; rows: SnapshotRow[] };
+export type SnapshotWithRows = { config: SnapshotTableDefinition; rows: SnapshotRow[] };
+type SnapshotWithTableRows = { config: SnapshotTableConfig; rows: SnapshotRow[] };
 
 const insertBatchSize = 500;
 const productionImportConfirmation = 'production';
 const sueSmithDemoUser = { id: 'seed-sue-user', email: 'sales@jedidiahequipment.co.za' } as const;
+const requiredProductionStorageEnv = [
+  'DOCUMENT_STORAGE_ACCESS_KEY_ID',
+  'DOCUMENT_STORAGE_BUCKET',
+  'DOCUMENT_STORAGE_ENDPOINT',
+  'DOCUMENT_STORAGE_FORCE_PATH_STYLE',
+  'DOCUMENT_STORAGE_REGION',
+  'DOCUMENT_STORAGE_SECRET_ACCESS_KEY',
+] as const;
 
 const quoteJobClusterTableNames = new Set([
   'quote',
@@ -158,8 +168,8 @@ export function filterProductionSnapshots(snapshots: readonly SnapshotWithRows[]
 
 export function assertProductionImportIsAllowed(
   env: NodeJS.ProcessEnv = process.env,
-  targetDatabaseUrl = getDatabaseUrl(env),
-): void {
+  targetDatabaseUrl?: string,
+): string {
   if (env.APP_ENV !== 'production') {
     throw new Error('Production seed import requires APP_ENV=production.');
   }
@@ -168,7 +178,47 @@ export function assertProductionImportIsAllowed(
     throw new Error(`Production seed import requires CONFIRM_PRODUCTION_IMPORT=${productionImportConfirmation}.`);
   }
 
-  assertTargetDatabaseIsNotBlocked(targetDatabaseUrl, env);
+  const resolvedTargetDatabaseUrl = targetDatabaseUrl ?? readRequiredProductionDatabaseUrl(env);
+  assertTargetDatabaseIsNotBlocked(resolvedTargetDatabaseUrl, env);
+  assertProductionStorageEnvIsComplete(env);
+
+  return resolvedTargetDatabaseUrl;
+}
+
+function readRequiredProductionDatabaseUrl(env: NodeJS.ProcessEnv): string {
+  const databaseUrl = env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    throw new Error('Production seed import requires DATABASE_URL.');
+  }
+
+  return databaseUrl;
+}
+
+function assertProductionStorageEnvIsComplete(env: NodeJS.ProcessEnv): void {
+  const missing = requiredProductionStorageEnv.filter((name) => !env[name]);
+
+  if (missing.length > 0) {
+    throw new Error(`Production seed import requires document storage env: ${missing.join(', ')}.`);
+  }
+
+  const endpoint = env.DOCUMENT_STORAGE_ENDPOINT;
+
+  if (!endpoint) {
+    return;
+  }
+
+  let parsedEndpoint: URL;
+
+  try {
+    parsedEndpoint = new URL(endpoint);
+  } catch {
+    throw new Error('Production seed import requires DOCUMENT_STORAGE_ENDPOINT to be a URL.');
+  }
+
+  if (isLocalHostname(parsedEndpoint.hostname)) {
+    throw new Error('Refusing production seed import with a local document storage endpoint.');
+  }
 }
 
 function assertTargetDatabaseIsNotBlocked(targetDatabaseUrl: string, env: NodeJS.ProcessEnv): void {
@@ -196,11 +246,17 @@ function assertTargetDatabaseIsNotBlocked(targetDatabaseUrl: string, env: NodeJS
   }
 }
 
+function isLocalHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase().replace(/^\[/, '').replace(/\]$/, '');
+
+  return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1' || normalized === '0.0.0.0';
+}
+
 function normalizeDatabaseUrl(databaseUrl: string): string {
   return new URL(databaseUrl).href;
 }
 
-async function readSnapshotFile(config: SnapshotTableConfig): Promise<SnapshotRow[]> {
+async function readSnapshotFile(config: SnapshotTableDefinition): Promise<SnapshotRow[]> {
   const snapshotFile = new URL(config.fileName, snapshotDirectory);
 
   return deserializeSnapshotRows(config, await readFile(snapshotFile, 'utf8'));
@@ -208,7 +264,7 @@ async function readSnapshotFile(config: SnapshotTableConfig): Promise<SnapshotRo
 
 async function readPromotionSnapshots(): Promise<SnapshotWithRows[]> {
   return Promise.all(
-    snapshotTables.map(async (config) => ({
+    snapshotTableDefinitions.map(async (config) => ({
       config,
       rows: await readSnapshotFile(config),
     })),
@@ -238,8 +294,11 @@ export async function withProductionCredentialPasswords(
   );
 }
 
-async function assertTargetTablesAreEmpty(db: DatabaseTransaction): Promise<void> {
-  for (const config of snapshotTables) {
+async function assertTargetTablesAreEmpty(
+  db: DatabaseTransaction,
+  snapshots: readonly SnapshotWithTableRows[],
+): Promise<void> {
+  for (const { config } of snapshots) {
     const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(config.table);
 
     if ((row?.count ?? 0) > 0) {
@@ -266,9 +325,7 @@ export function collectPromotedStorageFiles(snapshots: readonly SnapshotWithRows
   return [...filesByKey.values()];
 }
 
-async function uploadSnapshotObjects(snapshots: readonly SnapshotWithRows[]): Promise<void> {
-  const storage: SeedStorage = createStorageFromEnv('');
-
+async function uploadSnapshotObjects(storage: SeedStorage, snapshots: readonly SnapshotWithRows[]): Promise<void> {
   for (const { config, rows } of snapshots) {
     if (!config.storageFiles) {
       continue;
@@ -324,27 +381,56 @@ async function resetSnapshotSequence(tx: DatabaseTransaction, config: SnapshotTa
   );
 }
 
+function attachPromotionTables(
+  snapshots: readonly SnapshotWithRows[],
+  tableConfigs: readonly SnapshotTableConfig[],
+): SnapshotWithTableRows[] {
+  const tableConfigsByName = new Map(tableConfigs.map((config) => [config.tableName, config]));
+
+  return snapshots.map(({ config, rows }) => {
+    const tableConfig = tableConfigsByName.get(config.tableName);
+
+    if (!tableConfig) {
+      throw new Error(`Missing database table config for snapshot table ${config.tableName}.`);
+    }
+
+    return { config: tableConfig, rows };
+  });
+}
+
 export async function promoteSeedSnapshot(): Promise<void> {
-  const targetDatabaseUrl = getDatabaseUrl();
-  assertProductionImportIsAllowed(process.env, targetDatabaseUrl);
+  const targetDatabaseUrl = assertProductionImportIsAllowed(process.env);
+  const productionStorage: SeedStorage = createStorageFromEnv('');
 
   const snapshots = await withProductionCredentialPasswords(filterProductionSnapshots(await readPromotionSnapshots()));
   await assertSnapshotObjectFilesExist(snapshots);
 
+  const [{ createDatabaseClient }, { snapshotTables }] = await Promise.all([
+    import('@pkg/db'),
+    import('./snapshot-tables.js'),
+  ]);
+  const promotionSnapshots = attachPromotionTables(snapshots, snapshotTables);
   const client = createDatabaseClient(targetDatabaseUrl);
 
   try {
     await client.db.transaction(async (tx) => {
-      await assertTargetTablesAreEmpty(tx);
+      await assertTargetTablesAreEmpty(tx, promotionSnapshots);
+    });
 
-      for (const { config, rows } of snapshots) {
+    // Production rows must never point at objects that failed to copy; if this throws, the target DB is
+    // still empty and the promotion can be retried after fixing storage credentials or network access.
+    await uploadSnapshotObjects(productionStorage, snapshots);
+
+    await client.db.transaction(async (tx) => {
+      // Re-check after uploads so a concurrent or partial import cannot slip between the guard and writes.
+      await assertTargetTablesAreEmpty(tx, promotionSnapshots);
+
+      for (const { config, rows } of promotionSnapshots) {
         await insertSnapshotRows(tx, config, rows);
         await resetSnapshotSequence(tx, config);
         console.info(`[seed:promote] Imported ${rows.length} ${config.tableName} row(s)`);
       }
     });
-
-    await uploadSnapshotObjects(snapshots);
   } finally {
     await client.close();
   }

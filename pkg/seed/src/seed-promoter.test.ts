@@ -8,11 +8,11 @@ import {
   type SnapshotWithRows,
   withProductionCredentialPasswords,
 } from './seed-promoter.js';
-import type { SnapshotRow, SnapshotTableConfig } from './snapshot-tables.js';
-import { snapshotTables } from './snapshot-tables.js';
+import type { SnapshotRow, SnapshotTableDefinition } from './snapshot-table-definitions.js';
+import { snapshotTableDefinitions } from './snapshot-table-definitions.js';
 
-function configFor(tableName: string): SnapshotTableConfig {
-  const config = snapshotTables.find((table) => table.tableName === tableName);
+function configFor(tableName: string): SnapshotTableDefinition {
+  const config = snapshotTableDefinitions.find((table) => table.tableName === tableName);
 
   if (!config) {
     throw new Error(`Missing snapshot table config for ${tableName}`);
@@ -22,7 +22,7 @@ function configFor(tableName: string): SnapshotTableConfig {
 }
 
 function snapshots(rowsByTable: Record<string, SnapshotRow[]>): SnapshotWithRows[] {
-  return snapshotTables.map((config) => ({
+  return snapshotTableDefinitions.map((config) => ({
     config,
     rows: rowsByTable[config.tableName] ?? [],
   }));
@@ -252,6 +252,13 @@ describe('production seed promotion guards', () => {
   const safeEnv = {
     APP_ENV: 'production',
     CONFIRM_PRODUCTION_IMPORT: 'production',
+    DATABASE_URL: 'postgres://db.example.test/prod',
+    DOCUMENT_STORAGE_ACCESS_KEY_ID: 'prod-access-key',
+    DOCUMENT_STORAGE_BUCKET: 'prod-documents',
+    DOCUMENT_STORAGE_ENDPOINT: 'https://objects.example.test',
+    DOCUMENT_STORAGE_FORCE_PATH_STYLE: 'false',
+    DOCUMENT_STORAGE_REGION: 'af-south-1',
+    DOCUMENT_STORAGE_SECRET_ACCESS_KEY: 'prod-secret-key',
   } satisfies NodeJS.ProcessEnv;
 
   it('requires production app env and explicit confirmation', () => {
@@ -266,6 +273,17 @@ describe('production seed promotion guards', () => {
     ).toThrow('CONFIRM_PRODUCTION_IMPORT=production');
   });
 
+  it('requires explicit production database and document storage env', () => {
+    expect(() => assertProductionImportIsAllowed({ ...safeEnv, DATABASE_URL: undefined })).toThrow('DATABASE_URL');
+    expect(() =>
+      assertProductionImportIsAllowed({
+        ...safeEnv,
+        DOCUMENT_STORAGE_BUCKET: undefined,
+        DOCUMENT_STORAGE_REGION: undefined,
+      }),
+    ).toThrow('DOCUMENT_STORAGE_BUCKET, DOCUMENT_STORAGE_REGION');
+  });
+
   it('refuses staging, local, and template database targets', () => {
     expect(() =>
       assertProductionImportIsAllowed(
@@ -277,6 +295,12 @@ describe('production seed promotion guards', () => {
     expect(() => assertProductionImportIsAllowed(safeEnv, 'postgres://db.example.test/jedidiah_template')).toThrow(
       'template database',
     );
+  });
+
+  it('refuses local document storage targets', () => {
+    expect(() =>
+      assertProductionImportIsAllowed({ ...safeEnv, DOCUMENT_STORAGE_ENDPOINT: 'http://localhost:9000' }),
+    ).toThrow('local document storage endpoint');
   });
 
   it('fails when a retained object is missing from the local snapshot object cache', async () => {

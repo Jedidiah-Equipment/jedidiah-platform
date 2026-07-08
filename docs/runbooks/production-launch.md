@@ -9,7 +9,7 @@ Step-by-step guide to stand up the production environment and go live. Decisions
 | --- | --- |
 | Railway topology | Same project, new `production` environment duplicated from `staging` |
 | Deploy flow | `production` branch; deploy = PR `main` → `production`, **merge commits only** (never squash/rebase — rewritten SHAs would permanently diverge the branches). Staging keeps deploying `main`. |
-| Data | Copy everything except the quote/job clusters. Exclude the Sue Smith demo user. Quote/job code sequences start fresh. |
+| Data | Copy everything except the quote/job clusters, Sue Smith demo user, and soft-deleted catalog/supplier rows plus children that depend on them. Quote/job code sequences start fresh. |
 | Credentials | Staging password hashes are never copied (the reader already omits them). Production credential accounts get random unusable passwords; staff set real passwords via the forgot-password flow. Bay-operator shared accounts (`fabrication.operator@`, `assembly.operator@`) get passwords set manually by an admin via the Users page. |
 | Domains | Web `app.jedidiahequipment.co.za`, API `api.jedidiahequipment.co.za`, lander apex `jedidiahequipment.co.za` + `www`. An old site currently holds the apex — that DNS move is the final cutover step. |
 | Object storage | New Tigris bucket in the existing account; objects copied key-for-key (storage keys are bucket-relative, so no URL rewriting — image links do not break). |
@@ -28,41 +28,46 @@ Step-by-step guide to stand up the production environment and go live. Decisions
 Add a production-import path reusing the existing snapshot machinery
 (`snapshot-tables.ts` ordering, object upload, sequence resets):
 
-- [ ] New script (e.g. `seed:promote`) that writes a snapshot into a **production** target
+- [x] New script (e.g. `seed:promote`) that writes a snapshot into a **production** target
       (`DATABASE_URL` + `DOCUMENT_STORAGE_*`).
-- [ ] Excludes the quote/job clusters as a set: `quote`, `quote_line_items`,
+- [x] Excludes the quote/job clusters as a set: `quote`, `quote_line_items`,
       `quote_selected_assemblies`, `job`, `job_cfo_assembly`, `job_cfo_part`, `job_slot`.
       (`job.quote_id` is NOT NULL + unique, so they can only go together.) Bay
       infrastructure (`job_bay`, `job_bay_operator_assignment`, `product_bay`, calendars,
       `product_serial_sequence`) **is** copied.
-- [ ] Excludes the Sue Smith demo user (`seed-sue-user`, `sales@jedidiahequipment.co.za`)
+- [x] Excludes the Sue Smith demo user (`seed-sue-user`, `sales@jedidiahequipment.co.za`)
       and her `account` / `user_department` rows. All other users copy, including the two
       bay-operator accounts.
-- [ ] Credential accounts are inserted with a **random per-account password hash** instead
+- [x] Excludes soft-deleted `supplier`, `product_ranges`, `product_range_variants`, and
+      `products` rows. Child rows copy only when their retained parent graph stays valid
+      (`parts`, `product_bay`, `product_serial_sequence`, `product_assemblies`,
+      `assembly_parts`, `assembly_overrides`).
+- [x] Credential accounts are inserted with a **random per-account password hash** instead
       of `SEED_USER_PASSWORD` (`test123`). No one can log in until they reset.
-- [ ] Hard guard: refuses to run unless `CONFIRM_PRODUCTION_IMPORT=production` is set, and
+- [x] Hard guard: refuses to run unless `CONFIRM_PRODUCTION_IMPORT=production` is set, and
       refuses if the target `DATABASE_URL` equals `STAGING_DATABASE_URL` is *not* the point —
       here the target **must not** be staging or local-template; mirror the existing
       `assertLocalDatabaseIsNotStaging` pattern in reverse.
-- [ ] Still resets `quote_code_seq` / `job_code_seq` behavior correctly: with no quote/job
+- [x] Still resets `quote_code_seq` / `job_code_seq` behavior correctly: with no quote/job
       rows, sequences stay at their defaults (codes start at 1).
 
 ### 1.2 Railway config
 
-- [ ] `railway.lander.json`: add a `production` environment block (mirror staging; the
+- [x] `railway.lander.json`: add a `production` environment block (mirror staging; the
       lander never migrates — ADR 0007 invariant holds).
 
 ### 1.3 ADR 0007
 
-- [ ] Delete `docs/adr/0007-public-lander-direct-core-access.md` and recreate it: both a
+- [x] Delete `docs/adr/0007-public-lander-direct-core-access.md` and recreate it: both a
       staging lander (staging DB/bucket, staging subdomain) and a production lander
       (production DB/bucket, apex) exist. Keep the read-only / no-migrations invariants and
       the deferred image-cache-volume note.
 
-### 1.4 Staging fix (spotted during planning)
+### 1.4 Staging mobile trusted origin
 
-- [ ] Verify staging's `AUTH_TRUSTED_ORIGINS` includes `jedidiahopsstaging://` (the staging
-      mobile deep-link scheme). `.env.example` only lists `jedidiahops://`.
+- [x] Verify staging's `AUTH_TRUSTED_ORIGINS` includes `jedidiahopsstaging://` (the staging
+      mobile deep-link scheme). Keep local examples/tests covering both staging and production
+      schemes.
 
 Publish all of the above via the normal PR flow (`/blast-it`), merge to `main`.
 

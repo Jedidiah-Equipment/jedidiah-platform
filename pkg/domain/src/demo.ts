@@ -38,14 +38,6 @@ export const demoUsers = [
   },
   {
     departments: [],
-    id: 'seed-sue-user',
-    name: 'Sue Smith',
-    email: 'sales@jedidiahequipment.co.za',
-    password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'sales',
-  },
-  {
-    departments: [],
     id: 'seed-operator-fabrication-user',
     name: 'Fabrication Bay Operator',
     email: 'fabrication.operator@jedidiahequipment.co.za',

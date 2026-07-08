@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { deserializeSnapshotRows, serializeSnapshotRows } from './snapshot-json.js';
-import type { SnapshotTableConfig } from './snapshot-tables.js';
+import type { SnapshotTableDefinition } from './snapshot-table-definitions.js';
 
 const timestampConfig = {
   fileName: 'example.json',
   tableName: 'example',
   timestampColumns: ['createdAt', 'updatedAt'],
-  table: {} as SnapshotTableConfig['table'],
-} satisfies SnapshotTableConfig;
+} satisfies SnapshotTableDefinition;
 
 describe('snapshot JSON serialization', () => {
   it('serializes rows with stable pretty formatting and revives configured timestamps', () => {

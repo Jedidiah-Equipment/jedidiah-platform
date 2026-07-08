@@ -1,17 +1,34 @@
-# Public Lander Reads Core/DB/S3 Directly
+# Public Landers Read Their Environment Directly
 
-The public marketing **Lander** (`@pkg/lander`, TanStack Start with SSR) renders the live catalog by calling `@pkg/core` read services against its own database connection and S3 `StorageAdapter`, rather than calling the existing authenticated API. We chose this because the Lander is a read-only, unauthenticated surface that needs the same domain reads the app already owns, and routing it through the auth-gated API (or building a parallel public API) would add a network hop and an auth-bypass path for no benefit.
+The public marketing Lander (`@pkg/lander`, TanStack Start with SSR) renders catalog data by calling
+`@pkg/core` read services against its own database connection and S3 `StorageAdapter`, rather than
+calling the authenticated API. This keeps the public surface read-only and avoids adding unauthenticated
+variants of API routes whose normal contract is session-gated.
 
 ## Considered Options
 
-- **Call the existing `@pkg/api`.** Rejected: every product/range/image route is behind Better Auth session checks; exposing public variants means a second, unauthenticated entry into the app API and its surface area.
-- **Stand up a separate public read API.** Rejected: duplicates `@pkg/core` reads behind a new transport for a single consumer; more infra, more drift.
-- **Read `@pkg/core` directly from the Lander server (chosen).** The Lander owns a lazy DB client (`createDatabaseClient`) and an S3 `StorageAdapter`, and SSR loaders call core reads (`listProductRanges`, product reads, `generateProductBrochureIfComplete`) the same way the API does.
+- **Call the existing `@pkg/api`.** Rejected: product/range/image routes are behind Better Auth session
+  checks, and adding public variants would expand the API's unauthenticated surface.
+- **Stand up a separate public read API.** Rejected: duplicates `@pkg/core` reads behind a new transport
+  for one consumer.
+- **Read `@pkg/core` directly from the Lander server (chosen).** The Lander owns a lazy DB client and S3
+  adapter, then calls the same core read services the app API uses.
 
 ## Consequences
 
-- The Lander needs its own runtime config — `DATABASE_URL` and S3 credentials pointing at the **same environment's** Postgres and bucket the API uses. It is read-only and must **not** run migrations (the API owns schema migration).
-- The Lander serves images itself via public, cache-friendly server routes that stream bytes from S3 through the existing `readProductRangeImage` / `readProductBrochureImage` services; brochure PDFs download through `generateProductBrochureIfComplete`.
-- The Lander **optimizes** those images on demand rather than streaming raw source bytes: it resolves the image ref, downscales to a single 1280px-wide WebP (quality ~80, `sharp`, no enlargement) and streams that. Results are held in a **local-directory cache** keyed by the object's S3 storage key plus a transform signature. Because each upload writes a fresh `randomUUID()` storage key (and replacement deletes the old object), the storage key is immutable content identity, so a cached variant can never go stale — a replaced image is a new key. On a cache hit the route serves the cached file without touching S3 or `sharp`; on a miss it fetches, optimizes, and writes atomically (temp file + rename), coalescing concurrent misses for the same key. Optimization failures (corrupt bytes, SVG/placeholder, non-raster input) fall back to streaming the original bytes so a bad source never breaks a working image. The cache directory is configurable (`LANDER_IMAGE_CACHE_DIR`) and treated as ephemeral — it re-warms lazily after a restart or redeploy and is unbounded but bounded in practice by the small catalog. On the current Railway deployment (`railway.lander.json`, no volume attached) the container filesystem is ephemeral, so the cache is confirmed cold after every redeploy and restart; the lazy re-warm is what makes that acceptable. Future intent: attach a Railway Volume to the Lander service and point `LANDER_IMAGE_CACHE_DIR` at its mount path so the cache survives redeploys — deferred until the re-warm cost proves worth the added infra (a volume also historically pins the service to a single replica; the Lander is at `numReplicas: 1` today). Versioned image URLs (those carrying the `?v=` file-`updatedAt` token) are served `public, max-age=31536000, immutable`; the neutral placeholder and any unversioned response keep a short cache so a later upload still appears quickly. This all lives in `@pkg/lander`; `@pkg/core` is unchanged. Deploy note: `sharp` is a native binary — it must be external to the Vite SSR bundle and its platform binary present at runtime.
-- The contact form sends lead email via **Resend** called directly from a Lander server route, since `@pkg/api`'s email sender is coupled to API config and its fixed `EmailType` set.
-- Staging-only for now: the Lander reads the **staging** DB/bucket. At production launch the staging Lander is dropped and a production Lander service reads production.
+- Both staging and production landers exist. The staging lander reads the staging DB/bucket and serves a
+  staging subdomain; the production lander reads the production DB/bucket and serves the apex/`www`.
+- Each Lander requires runtime config for its own environment: `DATABASE_URL` and `DOCUMENT_STORAGE_*`
+  must point at the same environment's Postgres and bucket used by that environment's API.
+- The Lander remains read-only and must not run migrations. API deployment owns schema migration for each
+  environment.
+- The Lander serves images through public cache-friendly routes that stream source bytes from object
+  storage through existing product/range image services, and brochure PDFs through
+  `generateProductBrochureIfComplete`.
+- Image optimization stays local to `@pkg/lander`: it downscales raster images to a 1280px-wide WebP
+  variant, caches by immutable storage key plus transform signature, and falls back to streaming the
+  original bytes if optimization fails. The cache directory remains ephemeral on Railway for now.
+- A future Railway Volume for the Lander image cache remains deferred until cache re-warm cost justifies
+  the added infrastructure.
+- The contact form sends lead email via Resend directly from a Lander server route because `@pkg/api`'s
+  email sender is coupled to API config and its fixed `EmailType` set.

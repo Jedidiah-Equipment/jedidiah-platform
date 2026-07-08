@@ -13,6 +13,7 @@
     "build": "tsc -b",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "seed:promote": "tsx src/seed-promoter.ts",
     "seed:read": "tsx src/seed-reader.ts",
     "seed:write": "tsx src/seed-writer.ts",
     "db:seed": "tsx src/seed-writer.ts",

@@ -45,12 +45,21 @@ describe('API config PostHog validation', () => {
     expect(() => ApiConfig.parse(env)).toThrow();
   });
 
-  it('accepts the mobile deep-link scheme as a trusted auth origin', () => {
+  it('accepts the production mobile deep-link scheme as a trusted auth origin', () => {
     expect(
       ApiConfig.parse({
         ...baseEnv,
         AUTH_TRUSTED_ORIGINS: 'http://localhost:3000,jedidiahops://',
       }).AUTH_TRUSTED_ORIGINS,
     ).toContain('jedidiahops://');
+  });
+
+  it('accepts the staging mobile deep-link scheme as a trusted auth origin', () => {
+    expect(
+      ApiConfig.parse({
+        ...baseEnv,
+        AUTH_TRUSTED_ORIGINS: 'http://localhost:3000,jedidiahopsstaging://',
+      }).AUTH_TRUSTED_ORIGINS,
+    ).toContain('jedidiahopsstaging://');
   });
 });

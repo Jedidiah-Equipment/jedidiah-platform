@@ -13,19 +13,23 @@ import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
 export const jobTablePinnedLeftColumns = ['code'];
 export const jobTablePinnedRightColumns = ['actions'];
 
+type JobListColumnOption = {
+  label: string;
+  value: string;
+};
+
 /**
- * Job List columns. Only Job code (`code`) and Schedule (`scheduledSlots`) map to a server sort key
- * in `JobSortBy`; Customer, Product, and Serial are display-only. Schedule renders the shared Slice 2
- * badges from each Job's opt-in `scheduleState`. Start date, End date, and Is Complete are also
- * display-only for now (no server sort/filter) and are derived from that same `scheduleState`
- * projection: the earliest Slot start, the latest Slot end, and whether every Slot is done.
+ * Job List columns. Start date, End date, and Is Complete stay display-only because they are derived
+ * from opt-in `scheduleState` projection, not stored Job columns.
  */
 export function createJobListColumns({
   canEditJobs,
   canOpenJobs,
+  customerOptions,
 }: {
   canEditJobs: boolean;
   canOpenJobs: boolean;
+  customerOptions: JobListColumnOption[];
 }): ColumnDef<JobSummary>[] {
   return [
     {
@@ -33,7 +37,7 @@ export function createJobListColumns({
       cell: ({ row }) => (
         <JobCodeDisplay canOpenJob={canOpenJobs} jobCode={row.original.code} jobId={row.original.id} />
       ),
-      enableColumnFilter: false,
+      enableColumnFilter: true,
       enableSorting: true,
       header: 'Job',
       id: 'code',
@@ -45,12 +49,14 @@ export function createJobListColumns({
     {
       accessorFn: (job) => job.customerCompanyName,
       cell: ({ row }) => <CustomerCell job={row.original} />,
-      enableColumnFilter: false,
+      enableColumnFilter: true,
       enableSorting: false,
       header: 'Customer',
       id: 'customer',
       meta: {
         cellClassName: 'max-w-52 overflow-hidden',
+        filterOptions: customerOptions,
+        filterVariant: 'select',
         headerClassName: 'min-w-44',
       },
     },
@@ -73,10 +79,10 @@ export function createJobListColumns({
         ) : (
           <span className="text-muted-foreground">—</span>
         ),
-      enableColumnFilter: false,
-      enableSorting: false,
+      enableColumnFilter: true,
+      enableSorting: true,
       header: 'Serial',
-      id: 'serial',
+      id: 'productSerialNumber',
       meta: {
         headerClassName: 'min-w-36',
       },

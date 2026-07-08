@@ -2,7 +2,7 @@ import { hasPermission } from '@pkg/domain';
 import { type JobListInput, JobSortBy } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -14,6 +14,7 @@ import { createPersistedDataTableStore } from '@/components/data-table/store.js'
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Switch } from '@/components/ui/switch.js';
+import { toSelectOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -35,7 +36,7 @@ export const useJobListTableStore = createPersistedDataTableStore({
     ],
   },
   persistName: 'jobs-list-table',
-  persistVersion: 1,
+  persistVersion: 2,
 });
 
 const jobSortOptions: SortOptions<JobListInput> = {
@@ -61,11 +62,16 @@ const JobListTable: React.FC = () => {
   const [unscheduledOnly, setUnscheduledOnly] = useState(false);
 
   const getListInputExtras = useCallback(
-    () =>
+    (columnFilters: ColumnFiltersState) =>
       ({
+        columnFilters: {
+          code: getColumnFilterValue(columnFilters, 'code'),
+          customerId: getColumnFilterValue(columnFilters, 'customer'),
+          productSerialNumber: getColumnFilterValue(columnFilters, 'productSerialNumber'),
+        },
         filters: { unscheduledOnly },
         include: { scheduleState: true },
-      }) satisfies Pick<JobListInput, 'filters' | 'include'>,
+      }) satisfies Pick<JobListInput, 'columnFilters' | 'filters' | 'include'>,
     [unscheduledOnly],
   );
 
@@ -74,6 +80,15 @@ const JobListTable: React.FC = () => {
     sortOptions: jobSortOptions,
     getListInputExtras,
   });
+  const customersQuery = useQuery(
+    trpc.jobs.customerOptions.queryOptions({
+      page: 1,
+      pageSize: 0,
+      search: '',
+      sortBy: 'companyName',
+      sortDirection: 'asc',
+    }),
+  );
 
   const jobsQuery = useQuery(
     trpc.jobs.list.queryOptions(tableController.listInput, {
@@ -90,7 +105,14 @@ const JobListTable: React.FC = () => {
     total,
   });
 
-  const columns = useMemo(() => createJobListColumns({ canEditJobs, canOpenJobs }), [canEditJobs, canOpenJobs]);
+  const customerOptions = useMemo(
+    () => toSelectOptions(customersQuery.data?.items ?? [], (customer) => customer.companyName),
+    [customersQuery.data?.items],
+  );
+  const columns = useMemo(
+    () => createJobListColumns({ canEditJobs, canOpenJobs, customerOptions }),
+    [canEditJobs, canOpenJobs, customerOptions],
+  );
   const columnPinning = useMemo(
     () => ({
       left: jobTablePinnedLeftColumns,
@@ -107,12 +129,14 @@ const JobListTable: React.FC = () => {
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
+    onColumnFiltersChange: tableController.setColumnFilters,
     onGlobalFilterChange: tableController.setGlobalFilter,
     onPaginationChange: tableController.setPagination,
     onSortingChange: tableController.setSorting,
     pageCount: tableState.pageCount,
     rowCount: total,
     state: {
+      columnFilters: tableController.columnFilters,
       globalFilter: tableController.globalFilter,
       columnPinning,
       pagination: tableState.pagination,
@@ -148,3 +172,12 @@ const JobListTable: React.FC = () => {
     />
   );
 };
+
+function getColumnFilterValue(
+  columnFilters: ColumnFiltersState,
+  id: 'code' | 'customer' | 'productSerialNumber',
+): string | undefined {
+  const value = columnFilters.find((filter) => filter.id === id)?.value;
+
+  return typeof value === 'string' && value ? value : undefined;
+}

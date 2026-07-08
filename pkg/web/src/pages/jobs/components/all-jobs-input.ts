@@ -2,6 +2,7 @@ import type { JobListInput } from '@pkg/schema';
 
 // The booking dialog needs a full Job picker; schedule boards use the bounded summaries from listBays.
 export const allJobsInput = {
+  columnFilters: {},
   filters: {},
   page: 1,
   pageSize: 0,

@@ -335,6 +335,17 @@ function jobQuoteWorkTitleSearchCondition(alias: 'search_quote', search: string)
   )`;
 }
 
+function jobCustomerFilterCondition(alias: 'filter_customer_quote', customerId: UUID): SQL {
+  const quote = sql.raw(`"${alias}"`);
+
+  return sql`exists (
+    select 1
+    from ${quotes} ${quote}
+    where ${quote}."id" = ${jobs.quoteId}
+      and ${quote}."customer_id" = ${customerId}
+  )`;
+}
+
 function buildJobListWhere(input: JobListInput): SQL | undefined {
   const conditions: SQL[] = [];
 
@@ -350,6 +361,26 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     // Existence check, not `count(*) = 0`: `not exists` stops at the first Work Slot instead of
     // scanning them all — cheaper on the unindexed `job_slot.job_id` as Jobs accumulate bay slots.
     conditions.push(sql`not exists (${jobWorkSlotsSubquery('filter_slot', sql`1`)})`);
+  }
+
+  if (input.columnFilters.customerId) {
+    conditions.push(jobCustomerFilterCondition('filter_customer_quote', input.columnFilters.customerId));
+  }
+
+  if (input.columnFilters.productSerialNumber) {
+    conditions.push(
+      createEscapedContainsSearchCondition(sql`${jobs.productSerialNumber}`, input.columnFilters.productSerialNumber),
+    );
+  }
+
+  if (input.columnFilters.code) {
+    const codeFilter = parseJobCodeSearch(input.columnFilters.code);
+
+    conditions.push(
+      codeFilter === undefined
+        ? createEscapedContainsSearchCondition(sql`${jobs.code}::text`, input.columnFilters.code)
+        : eq(jobs.code, codeFilter),
+    );
   }
 
   if (input.search) {
@@ -603,6 +634,7 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
     id: sql`${jobs.id}`,
+    productSerialNumber: sql`${jobs.productSerialNumber}`,
     // Total Work Slots per Job; ascending puts the unscheduled (count 0) Jobs first.
     scheduledSlots: sql`(${jobWorkSlotsSubquery('sort_slot', sql`count(*)`)})`,
   } as const satisfies Record<JobSortBy, SQL>;

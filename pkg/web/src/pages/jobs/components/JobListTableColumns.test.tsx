@@ -7,6 +7,8 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 
 import { createJobListColumns, jobTablePinnedLeftColumns, jobTablePinnedRightColumns } from './JobListTableColumns.js';
 
+const customerOptions = [{ label: 'Acme Mining', value: '10000000-0000-4000-8000-000000000000' }];
+
 describe('Job List table columns', () => {
   it('pins job code left and actions right', () => {
     const html = renderJobListRows([], { canEditJobs: true, canOpenJobs: true });
@@ -91,6 +93,18 @@ describe('Job List table columns', () => {
     expect(html).toContain('Custom work');
     expect(html).not.toContain('SN-2026-0001');
   });
+
+  it('exposes server-backed filters and serial sorting controls', () => {
+    const html = renderJobListRows([buildJob()]);
+
+    expect(html).toContain('aria-label="Filter Job"');
+    expect(html).toContain('aria-label="Filter Customer"');
+    expect(html).toContain('aria-label="Filter Serial"');
+    expect(html).toContain('aria-label="Sort Serial"');
+    expect(html).not.toContain('aria-label="Sort Customer"');
+    expect(html).not.toContain('aria-label="Sort Start date"');
+    expect(html).not.toContain('aria-label="Filter Complete"');
+  });
 });
 
 function renderJobListRows(
@@ -108,7 +122,7 @@ function TestJobListTable({
   rows: JobSummary[];
 }) {
   const table = useReactTable({
-    columns: createJobListColumns(permissions),
+    columns: createJobListColumns({ ...permissions, customerOptions }),
     data: rows,
     getCoreRowModel: getCoreRowModel(),
     state: {

@@ -12,6 +12,7 @@ import {
   listBayOperatorAssignmentHistory,
   listBayOperators,
   listBays,
+  listCustomers,
   listJobBays,
   listJobs,
   moveJobSlot,
@@ -33,6 +34,7 @@ import {
   BoardListInput,
   BoardPreviewInput,
   BookJobSlotInput,
+  CustomerListInput,
   JobBayAssignOperatorInput,
   JobBayCreateInput,
   JobBayListInput,
@@ -111,6 +113,10 @@ export const jobsRouter = router({
   list: authorizedProcedure('job:read')
     .input(JobListInput)
     .query(({ ctx, input }) => listJobs({ db: ctx.db, input })),
+
+  customerOptions: authorizedProcedure('job:read')
+    .input(CustomerListInput)
+    .query(({ ctx, input }) => listCustomers({ db: ctx.db, input })),
 
   get: authorizedProcedure('job:read')
     .input(z.object({ id: UUID }))

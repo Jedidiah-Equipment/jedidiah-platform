@@ -235,36 +235,42 @@ const JobDocumentsTab: React.FC<{
   />
 );
 
-const JobScheduleTab: React.FC<{ job: JobDetail }> = ({ job }) => (
-  <div className="grid gap-3 text-sm">
-    {job.schedule.map((department) => (
-      <Card key={department.department}>
-        <CardHeader>
-          <CardTitle>{departmentLabels[department.department]}</CardTitle>
-        </CardHeader>
-        <CardSeparator />
-        <CardContent>
-          {department.bays.length === 0 ? (
-            <div className="text-muted-foreground">No slots scheduled.</div>
-          ) : (
+const JobScheduleTab: React.FC<{ job: JobDetail }> = ({ job }) => {
+  const scheduledDepartments = job.schedule.filter((department) => department.bays.some((bay) => bay.slots.length > 0));
+
+  if (scheduledDepartments.length === 0) {
+    return <div className="text-muted-foreground text-sm">No slots scheduled.</div>;
+  }
+
+  return (
+    <div className="grid gap-3 text-sm">
+      {scheduledDepartments.map((department) => (
+        <Card key={department.department}>
+          <CardHeader>
+            <CardTitle>{departmentLabels[department.department]}</CardTitle>
+          </CardHeader>
+          <CardSeparator />
+          <CardContent>
             <div className="grid gap-3">
-              {department.bays.map((bay) => (
-                <div className="grid gap-2" key={bay.id}>
-                  <div className="text-muted-foreground">{bay.name}</div>
-                  <div className="grid gap-2">
-                    {bay.slots.map((slot) => (
-                      <ScheduleSlotRow key={slot.id} slot={slot} />
-                    ))}
+              {department.bays
+                .filter((bay) => bay.slots.length > 0)
+                .map((bay) => (
+                  <div className="grid gap-2" key={bay.id}>
+                    <div className="text-muted-foreground">{bay.name}</div>
+                    <div className="grid gap-2">
+                      {bay.slots.map((slot) => (
+                        <ScheduleSlotRow key={slot.id} slot={slot} />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
-    ))}
-  </div>
-);
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
 
 const ScheduleSlotRow: React.FC<{ slot: JobDetail['schedule'][number]['bays'][number]['slots'][number] }> = ({
   slot,

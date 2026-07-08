@@ -252,7 +252,7 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
       description: true,
     },
     where,
-    orderBy: [orderBy, asc(jobs.id)],
+    orderBy: [...orderBy, asc(jobs.id)],
     ...getPaginationQueryOptions(input),
     with: {
       product: {
@@ -642,8 +642,20 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
   return columns[sortBy];
 }
 
-export function getJobSortOrder(sortBy: JobSortBy, sortDirection: SortDirection): SQL {
-  return sortDirection === 'desc' ? desc(getJobSortColumn(sortBy)) : asc(getJobSortColumn(sortBy));
+export function getJobSortOrder(sortBy: JobSortBy, sortDirection: SortDirection): SQL[] {
+  if (sortBy === 'productSerialNumber') {
+    // Serial values are non-empty when present; these sentinels keep null custom/legacy Jobs last.
+    const serialSortColumn =
+      sortDirection === 'desc'
+        ? sql`coalesce(${jobs.productSerialNumber}, '')`
+        : sql`coalesce(${jobs.productSerialNumber}, ${'\uffff'})`;
+    return [sortDirection === 'desc' ? desc(serialSortColumn) : asc(serialSortColumn)];
+  }
+
+  const sortColumn = getJobSortColumn(sortBy);
+  const sortOrder = sortDirection === 'desc' ? desc(sortColumn) : asc(sortColumn);
+
+  return [sortOrder];
 }
 
 export function mapJobSummary(row: JobWithProductRow, scheduleState: JobScheduleState | null = null): JobSummary {

@@ -1215,8 +1215,13 @@ describe('jobs.list scheduleState', () => {
       customerName: 'Percent Customer',
     });
     const plainQuote = await createAcceptedQuote(context.db, context.product.id, { customerName: 'Plain Customer' });
+    const customQuote = await createAcceptedCustomQuote(context.db, {
+      customerName: 'Custom Customer',
+      workTitle: 'Serial-less custom job',
+    });
     const percentJob = await caller.jobs.create({ quoteId: percentQuote.id });
     const plainJob = await caller.jobs.create({ quoteId: plainQuote.id });
+    const customJob = await caller.jobs.create({ quoteId: customQuote.id });
 
     await setJobSerial(context.db, percentJob.id, 'SERIAL-%-MATCH');
     await setJobSerial(context.db, plainJob.id, 'SERIAL-A-MATCH');
@@ -1232,6 +1237,13 @@ describe('jobs.list scheduleState', () => {
     });
     expect(sorted.items.map((item) => item.id)).toEqual([plainJob.id, percentJob.id]);
     expect(sorted.sortBy).toBe('productSerialNumber');
+
+    const sortedWithNulls = await caller.jobs.list({
+      filters: {},
+      sortBy: 'productSerialNumber',
+      sortDirection: 'desc',
+    });
+    expect(sortedWithNulls.items.map((item) => item.id)).toEqual([plainJob.id, percentJob.id, customJob.id]);
   });
 
   test('rejects callers without job:read', async ({ context }) => {
@@ -2569,6 +2581,45 @@ async function createAcceptedQuote(db: Db, productId: Product['id'], options: { 
       quotedCurrencyCode: 'ZAR',
       salesPersonId: 'test-user-id',
       status: 'accepted',
+    })
+    .returning({ customerId: quotes.customerId, id: quotes.id });
+
+  if (!quote) {
+    throw new Error('Quote insert did not return a row');
+  }
+
+  return quote;
+}
+
+async function createAcceptedCustomQuote(
+  db: Db,
+  options: {
+    customerName: string;
+    workTitle: string;
+  },
+) {
+  const [customer] = await db
+    .insert(customers)
+    .values({
+      companyName: options.customerName,
+      email: null,
+    })
+    .returning({ id: customers.id });
+  if (!customer) {
+    throw new Error('Customer insert did not return a row');
+  }
+
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId: customer.id,
+      kind: 'custom',
+      productId: null,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      status: 'accepted',
+      workTitle: options.workTitle,
     })
     .returning({ customerId: quotes.customerId, id: quotes.id });
 

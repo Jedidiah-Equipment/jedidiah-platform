@@ -201,6 +201,28 @@ describe('ProductBaysInput', () => {
 });
 
 describe('ProductAssembliesInput', () => {
+  it('accepts negative optional assembly prices as product price adjustments', () => {
+    expect(
+      ProductAssembliesInput.parse([
+        {
+          kind: 'optional',
+          name: 'Manual controls credit',
+          overrideStandardAssemblyIds: [],
+          parts: [],
+          price: '-250',
+        },
+      ]),
+    ).toEqual([
+      {
+        kind: 'optional',
+        name: 'Manual controls credit',
+        overrideStandardAssemblyIds: [],
+        parts: [],
+        price: -250,
+      },
+    ]);
+  });
+
   it('rejects duplicate override targets', () => {
     const standardAssemblyId = '00000000-0000-4000-8000-000000000101';
 

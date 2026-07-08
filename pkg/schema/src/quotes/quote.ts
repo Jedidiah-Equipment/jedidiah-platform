@@ -18,6 +18,7 @@ import {
 import { Bay } from '../jobs/job.js';
 import {
   Assembly,
+  AssemblyPrice,
   ProductBay,
   ProductBayDefaultWorkingDays,
   ProductBuildTimeDays,
@@ -116,7 +117,7 @@ export const QuoteSelectedAssembly = z.object({
   quoteId: UUID,
   productAssemblyId: UUID.nullable(),
   quotedName: z.string().trim().min(1),
-  quotedPrice: Price,
+  quotedPrice: AssemblyPrice,
   createdAt: DateIso,
   updatedAt: DateIso,
 });

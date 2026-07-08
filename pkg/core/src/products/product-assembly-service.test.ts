@@ -68,6 +68,24 @@ async function selectDisplayOrders(db: Db, productId: string) {
 }
 
 describe('assembly display order', () => {
+  test('persists negative optional assembly price adjustments', async ({ context }) => {
+    const created = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [optional('Manual controls credit', -250)]),
+    });
+
+    await expect(getProduct({ db: context.db, id: created.id })).resolves.toMatchObject({
+      assemblies: [
+        {
+          kind: 'optional',
+          name: 'Manual controls credit',
+          price: -250,
+        },
+      ],
+    });
+  });
+
   test('assigns display_order densely per kind from array position, ignoring name', async ({ context }) => {
     // Names deliberately out of alphabetical order to prove order follows array position.
     const product = await createProduct({

@@ -1,6 +1,7 @@
 import {
   AssemblyName,
   AssemblyPart,
+  AssemblyPrice,
   NullableThumbnailDataUrl,
   Price,
   type Product,
@@ -30,7 +31,7 @@ import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-s
 
 // Form representation of an assembly: like the API `AssemblyInput` but without its coercion
 // and defaults, so the controlled value shape matches what the editor holds. Field rules still
-// come from the schema scalars (`AssemblyName`, `AssemblyPart`, `Price`, `UUID`).
+// come from the schema scalars (`AssemblyName`, `AssemblyPart`, `AssemblyPrice`, `UUID`).
 const StandardAssemblyFormInput = z.object({
   id: UUID.optional(),
   kind: z.literal('standard'),
@@ -44,7 +45,7 @@ const OptionalAssemblyFormInput = z.object({
   name: AssemblyName,
   overrideStandardAssemblyIds: z.array(UUID),
   parts: z.array(AssemblyPart),
-  price: Price,
+  price: AssemblyPrice,
 });
 
 export type ProductAssemblyFormInput = z.infer<typeof ProductAssemblyFormInput>;

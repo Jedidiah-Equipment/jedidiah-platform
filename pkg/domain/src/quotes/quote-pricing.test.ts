@@ -111,6 +111,26 @@ describe('computeQuoteTotal', () => {
     ).toBe(1530);
   });
 
+  it('subtracts negative optional assembly snapshot prices from the product total', () => {
+    expect(
+      computeQuoteTotal({
+        discountPercent: 0,
+        quotedBasePrice: 1250,
+        selectedAssemblyPrices: [-300],
+      }),
+    ).toBe(950);
+  });
+
+  it('does not let a negative discountable subtotal produce a negative discount', () => {
+    expect(
+      computeQuoteDiscountAmount({
+        discountPercent: 10,
+        quotedBasePrice: 100,
+        selectedAssemblyPrices: [-150],
+      }),
+    ).toBe(0);
+  });
+
   it('includes line items in the discountable subtotal', () => {
     expect(
       computeQuoteTotal({

@@ -202,6 +202,34 @@ describe('toProductCreateInput', () => {
       thumbnailDataUrl: null,
     });
   });
+
+  it('keeps negative optional assembly price adjustments in the create payload', () => {
+    const values = toProductFormValues(
+      buildProduct({
+        assemblies: [
+          { id: STANDARD_ID, productId: PRODUCT_ID, kind: 'standard', name: 'Base', parts: [] },
+          {
+            id: OPTIONAL_ID,
+            productId: PRODUCT_ID,
+            kind: 'optional',
+            name: 'Manual controls credit',
+            price: -250,
+            parts: [],
+            overrideStandardAssemblyIds: [STANDARD_ID],
+          },
+        ],
+      }),
+    );
+
+    expect(toProductCreateInput(values).assemblies).toContainEqual({
+      id: OPTIONAL_ID,
+      kind: 'optional',
+      name: 'Manual controls credit',
+      overrideStandardAssemblyIds: [STANDARD_ID],
+      parts: [],
+      price: -250,
+    });
+  });
 });
 
 describe('toProductMinimalCreateInput', () => {

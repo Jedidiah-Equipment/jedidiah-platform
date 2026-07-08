@@ -1,0 +1,3 @@
+ALTER TABLE "product_assemblies" DROP CONSTRAINT "product_assemblies_price_kind_check";--> statement-breakpoint
+ALTER TABLE "quote_selected_assemblies" DROP CONSTRAINT "quote_selected_assemblies_price_nonnegative";--> statement-breakpoint
+ALTER TABLE "product_assemblies" ADD CONSTRAINT "product_assemblies_price_kind_check" CHECK (("product_assemblies"."kind" = 'standard' AND "product_assemblies"."price" IS NULL) OR ("product_assemblies"."kind" = 'optional' AND "product_assemblies"."price" IS NOT NULL));

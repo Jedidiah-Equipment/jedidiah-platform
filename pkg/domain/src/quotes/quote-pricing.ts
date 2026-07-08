@@ -37,8 +37,9 @@ export function computeQuoteDiscountAmount({
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
   const lineItemTotal = computeQuoteLineItemsTotal(lineItems);
+  const discountableSubtotal = Math.max(0, quotedBasePrice + selectedAssemblyTotal + lineItemTotal);
 
-  return roundCurrency((quotedBasePrice + selectedAssemblyTotal + lineItemTotal) * (discountPercent / 100));
+  return roundCurrency(discountableSubtotal * (discountPercent / 100));
 }
 
 export function computeQuoteLineItemsTotal(lineItems: readonly { quantity: number; unitPrice: number }[]): number {

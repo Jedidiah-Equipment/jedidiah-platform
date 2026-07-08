@@ -35,6 +35,12 @@ export const ProductDescriptionInput = nullableTrimmedTextInput();
 export type ProductBasePrice = z.infer<typeof ProductBasePrice>;
 export const ProductBasePrice = z.coerce.number().pipe(Price);
 
+export type AssemblyPrice = z.infer<typeof AssemblyPrice>;
+export const AssemblyPrice = z.number().finite('Assembly price is required');
+
+export type AssemblyPriceInput = z.infer<typeof AssemblyPriceInput>;
+export const AssemblyPriceInput = z.coerce.number().pipe(AssemblyPrice);
+
 export type ProductBuildTimeDays = z.infer<typeof ProductBuildTimeDays>;
 export const ProductBuildTimeDays = z
   .number()
@@ -121,7 +127,7 @@ export const OptionalAssembly = z.object({
   productId: UUID,
   kind: z.literal('optional'),
   name: AssemblyName,
-  price: ProductBasePrice,
+  price: AssemblyPrice,
   parts: z.array(AssemblyPart),
   overrideStandardAssemblyIds: z.array(UUID),
 });
@@ -142,7 +148,7 @@ export const OptionalAssemblyInput = z.object({
   id: UUID.optional(),
   kind: z.literal('optional'),
   name: AssemblyName,
-  price: ProductBasePrice,
+  price: AssemblyPriceInput,
   parts: z.array(AssemblyPart),
   overrideStandardAssemblyIds: z.array(UUID).default([]),
 });

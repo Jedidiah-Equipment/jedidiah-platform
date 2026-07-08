@@ -87,7 +87,7 @@ export const productAssemblies = pgTable(
     check('product_assemblies_name_nonempty', sql`length(trim(${table.name})) > 0`),
     check(
       'product_assemblies_price_kind_check',
-      sql`(${table.kind} = 'standard' AND ${table.price} IS NULL) OR (${table.kind} = 'optional' AND ${table.price} IS NOT NULL AND ${table.price} >= 0)`,
+      sql`(${table.kind} = 'standard' AND ${table.price} IS NULL) OR (${table.kind} = 'optional' AND ${table.price} IS NOT NULL)`,
     ),
     uniqueIndex('product_assemblies_product_id_name_unique').on(table.productId, table.name),
     uniqueIndex('product_assemblies_id_product_id_kind_unique').on(table.id, table.productId, table.kind),

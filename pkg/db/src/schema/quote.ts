@@ -84,7 +84,6 @@ export const quoteSelectedAssemblies = pgTable(
   },
   (table) => [
     check('quote_selected_assemblies_name_nonempty', sql`length(trim(${table.quotedName})) > 0`),
-    check('quote_selected_assemblies_price_nonnegative', sql`${table.quotedPrice} >= 0`),
     uniqueIndex('quote_selected_assemblies_quote_product_assembly_unique').on(table.quoteId, table.productAssemblyId),
   ],
 );

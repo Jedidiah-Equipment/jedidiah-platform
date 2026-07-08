@@ -252,13 +252,13 @@ describe('production seed promotion guards', () => {
   const safeEnv = {
     APP_ENV: 'production',
     CONFIRM_PRODUCTION_IMPORT: 'production',
-    DATABASE_URL: 'postgres://db.example.test/prod',
-    DOCUMENT_STORAGE_ACCESS_KEY_ID: 'prod-access-key',
-    DOCUMENT_STORAGE_BUCKET: 'prod-documents',
-    DOCUMENT_STORAGE_ENDPOINT: 'https://objects.example.test',
-    DOCUMENT_STORAGE_FORCE_PATH_STYLE: 'false',
-    DOCUMENT_STORAGE_REGION: 'af-south-1',
-    DOCUMENT_STORAGE_SECRET_ACCESS_KEY: 'prod-secret-key',
+    PRODUCTION_DATABASE_URL: 'postgres://db.example.test/prod',
+    PRODUCTION_DOCUMENT_STORAGE_ACCESS_KEY_ID: 'prod-access-key',
+    PRODUCTION_DOCUMENT_STORAGE_BUCKET: 'prod-documents',
+    PRODUCTION_DOCUMENT_STORAGE_ENDPOINT: 'https://objects.example.test',
+    PRODUCTION_DOCUMENT_STORAGE_FORCE_PATH_STYLE: 'false',
+    PRODUCTION_DOCUMENT_STORAGE_REGION: 'af-south-1',
+    PRODUCTION_DOCUMENT_STORAGE_SECRET_ACCESS_KEY: 'prod-secret-key',
   } satisfies NodeJS.ProcessEnv;
 
   it('requires production app env and explicit confirmation', () => {
@@ -274,14 +274,16 @@ describe('production seed promotion guards', () => {
   });
 
   it('requires explicit production database and document storage env', () => {
-    expect(() => assertProductionImportIsAllowed({ ...safeEnv, DATABASE_URL: undefined })).toThrow('DATABASE_URL');
+    expect(() => assertProductionImportIsAllowed({ ...safeEnv, PRODUCTION_DATABASE_URL: undefined })).toThrow(
+      'PRODUCTION_DATABASE_URL',
+    );
     expect(() =>
       assertProductionImportIsAllowed({
         ...safeEnv,
-        DOCUMENT_STORAGE_BUCKET: undefined,
-        DOCUMENT_STORAGE_REGION: undefined,
+        PRODUCTION_DOCUMENT_STORAGE_BUCKET: undefined,
+        PRODUCTION_DOCUMENT_STORAGE_REGION: undefined,
       }),
-    ).toThrow('DOCUMENT_STORAGE_BUCKET, DOCUMENT_STORAGE_REGION');
+    ).toThrow('PRODUCTION_DOCUMENT_STORAGE_BUCKET, PRODUCTION_DOCUMENT_STORAGE_REGION');
   });
 
   it('refuses staging, local, and template database targets', () => {
@@ -299,7 +301,7 @@ describe('production seed promotion guards', () => {
 
   it('refuses local document storage targets', () => {
     expect(() =>
-      assertProductionImportIsAllowed({ ...safeEnv, DOCUMENT_STORAGE_ENDPOINT: 'http://localhost:9000' }),
+      assertProductionImportIsAllowed({ ...safeEnv, PRODUCTION_DOCUMENT_STORAGE_ENDPOINT: 'http://localhost:9000' }),
     ).toThrow('local document storage endpoint');
   });
 

@@ -10,9 +10,8 @@ export type SeedStorage = {
   client: S3Client;
 };
 
-// `prefix` selects which env block to read: '' for the LOCAL store (write phase), 'STAGING_' for the
-// staging store (read phase).
-export function createStorageFromEnv(prefix: '' | 'STAGING_'): SeedStorage {
+// `prefix` selects which env block to read: '' for LOCAL, 'STAGING_' for read, 'PRODUCTION_' for promote.
+export function createStorageFromEnv(prefix: '' | 'STAGING_' | 'PRODUCTION_'): SeedStorage {
   const read = (name: string): string => {
     const value = process.env[`${prefix}${name}`];
 

@@ -1,5 +1,5 @@
 import * as core from '@pkg/core';
-import { type AiToolBase, type Customer, CustomerCompanyName, CustomerUpdateInput, UUID } from '@pkg/schema';
+import { type AiToolBase, type Customer, CustomerCompanyName, CustomerFieldUpdateInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 import type { AiContext } from '@/context.js';
 import { aiLinkMetadata } from '@/link-metadata.js';
@@ -8,8 +8,9 @@ import { requireActorSession } from '../actor.js';
 import { toAiToolJsonSchema } from '../json-schema.js';
 import { projectCustomerDetail } from '../projections.js';
 
-// Partial input: only fields the user wants to change. `undefined` leaves the current value untouched
-// (the handler merges over the current record) so the model cannot silently null out unrelated fields.
+// Partial input: only fields the user wants to change. `undefined` leaves the current value untouched.
+// The merge over the current record happens under the row lock in `core.updateCustomerFields`, so the
+// model can neither null out unrelated fields nor revert a concurrent edit to an omitted field.
 const UpdateCustomerInput = z.strictObject({
   id: UUID,
   companyName: CustomerCompanyName.optional(),
@@ -32,20 +33,9 @@ export const updateCustomerTool: UpdateCustomerTool = {
   requiredPermission: 'customer:update',
   async handler(args: unknown, ctx: AiContext) {
     const rawInput = UpdateCustomerInput.parse(args);
-    const current = await core.getCustomer({ db: ctx.db, id: rawInput.id });
-    const input = CustomerUpdateInput.parse({
-      id: current.id,
-      address: rawInput.address !== undefined ? rawInput.address : current.address,
-      companyName: rawInput.companyName ?? current.companyName,
-      contactPerson: rawInput.contactPerson !== undefined ? rawInput.contactPerson : current.contactPerson,
-      email: rawInput.email !== undefined ? rawInput.email : current.email,
-      notes: rawInput.notes !== undefined ? rawInput.notes : current.notes,
-      phone: rawInput.phone !== undefined ? rawInput.phone : current.phone,
-      thumbnailDataUrl: current.thumbnailDataUrl,
-      vatNumber: rawInput.vatNumber !== undefined ? rawInput.vatNumber : current.vatNumber,
-    });
+    const input = CustomerFieldUpdateInput.parse(rawInput);
 
-    return core.updateCustomer({ actorUserId: requireActorSession(ctx).user.id, db: ctx.db, input });
+    return core.updateCustomerFields({ actorUserId: requireActorSession(ctx).user.id, db: ctx.db, input });
   },
 };
 

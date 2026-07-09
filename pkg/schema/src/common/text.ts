@@ -40,6 +40,19 @@ export function nullableEmailInput(message = 'Enter a valid email address') {
     .pipe(z.email(message).nullable());
 }
 
+// Like {@link nullableEmailInput} but omittable: an absent key stays `undefined` (preserve), while an
+// explicit `null` or blank clears the value.
+export function nullableEmailInputOptional(message = 'Enter a valid email address') {
+  return z
+    .string()
+    .trim()
+    .toLowerCase()
+    .transform((value) => (value === '' ? null : value))
+    .nullable()
+    .optional()
+    .pipe(z.email(message).nullable().optional());
+}
+
 export type EmailAddress = z.infer<typeof EmailAddress>;
 export const EmailAddress = z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address'));
 

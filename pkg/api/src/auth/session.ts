@@ -2,17 +2,18 @@ import type { IncomingHttpHeaders } from 'node:http';
 
 import { fromNodeHeaders } from 'better-auth/node';
 
-import { auth } from './auth.js';
+import { type Auth, auth } from './auth.js';
 import { isBetterAuthRoleSignInEligible } from './sign-in-eligibility.js';
 
 export { parseBetterAuthRole } from './sign-in-eligibility.js';
 
-type BetterAuthSession = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
-type AuthApi = Pick<typeof auth.api, 'getSession'>;
+type BetterAuthSession = Auth['$Infer']['Session'];
+type AuthApi = Pick<Auth['api'], 'getSession'>;
 
 export type AppSession = BetterAuthSession & {
   user: BetterAuthSession['user'] & {
     role?: string | string[] | null;
+    assistantEnabled?: boolean | null;
   };
 };
 

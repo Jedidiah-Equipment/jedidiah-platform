@@ -1,4 +1,0 @@
-interface:
-  display_name: "Create Retrieval Playbook Item"
-  short_description: "Add one Jedidiah AI retrieval playbook item with tests."
-  default_prompt: "Create a retrieval playbook item for this Jedidiah AI intent."

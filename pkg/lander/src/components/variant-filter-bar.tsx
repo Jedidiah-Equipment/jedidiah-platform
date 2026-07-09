@@ -157,6 +157,31 @@ function MoreMenu({
   onOpenChange: (open: boolean) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  // The panel stays mounted through its collapse transition: `mounted` keeps it in the DOM, `shown` drives
+  // the open/closed classes. Opening flips `shown` on the next frame so the enter transition actually plays;
+  // closing flips it immediately, then `onTransitionEnd` unmounts once the collapse finishes.
+  const [mounted, setMounted] = useState(open);
+  const [shown, setShown] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      return;
+    }
+    setShown(false);
+    // `onTransitionEnd` normally unmounts once the collapse finishes; this fallback covers cases where it
+    // never fires (reduced motion, a background tab), so the panel can't linger invisibly in the DOM.
+    const timer = setTimeout(() => setMounted(false), 220);
+    return () => clearTimeout(timer);
+  }, [open]);
+
+  useEffect(() => {
+    if (!mounted || !open) {
+      return;
+    }
+    const frame = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(frame);
+  }, [mounted, open]);
 
   useEffect(() => {
     if (!open) {
@@ -194,13 +219,20 @@ function MoreMenu({
           size={16}
           stroke={2.4}
           aria-hidden="true"
-          className={`transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
         />
       </button>
-      {open ? (
+      {mounted ? (
         <div
           role="menu"
-          className="absolute top-[calc(100%+8px)] right-0 z-40 flex min-w-[220px] flex-col gap-1.5 border border-line bg-white p-2 shadow-[0_12px_30px_rgba(0,0,0,0.12)]"
+          onTransitionEnd={() => {
+            if (!open) {
+              setMounted(false);
+            }
+          }}
+          className={`absolute top-[calc(100%+8px)] right-0 z-40 flex min-w-[220px] origin-top-right flex-col gap-1.5 border border-line bg-white p-2 shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition duration-150 ease-out motion-reduce:transition-none ${
+            shown ? 'scale-100 opacity-100' : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
+          }`}
         >
           {chips.map((chip) => (
             <Link

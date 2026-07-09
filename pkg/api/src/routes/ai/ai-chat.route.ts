@@ -1,0 +1,127 @@
+import type { OutgoingHttpHeaders } from 'node:http';
+import { Readable } from 'node:stream';
+
+import { type AiChatModel, type AiContext, type AiUiMessage, createOpenAiChatModel, streamAiChat } from '@pkg/ai';
+import type { StorageAdapter } from '@pkg/core';
+import { AiChatInput, type AiReasoningEffort } from '@pkg/schema';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+
+import { type ApiConfig, getApiConfig } from '@/env.js';
+import { buildAiContext } from './ai-context.js';
+
+export type RegisterAiChatRouteOptions = {
+  buildContext?: (req: FastifyRequest) => Promise<AiContext>;
+  createModel?: () => AiChatModel;
+  reasoningEffort?: AiReasoningEffort;
+  storage?: StorageAdapter;
+};
+
+// AI SDK v6 chat route. Sits beside `POST /ai/chat-stream`, sharing its gates — session auth (401),
+// the `assistantEnabled` check (403), and the 40-message/64KB input caps (400) — but speaks the AI
+// SDK UI-message-stream protocol instead of the bespoke SSE `ChatEvent` protocol. The assistant
+// run itself lives in `@pkg/ai`; this route owns transport: auth, input parsing, and bridging the
+// web `Response` from `toUIMessageStreamResponse()` onto the raw Node reply.
+export async function registerAiChatRoute(
+  app: FastifyInstance,
+  options: RegisterAiChatRouteOptions = {},
+): Promise<void> {
+  const reasoningEffort = options.reasoningEffort ?? getApiConfig().OPENAI_REASONING_EFFORT;
+  const createModel = options.createModel ?? (() => getDefaultModel(getApiConfig()));
+  const createContext = options.buildContext ?? ((req) => buildAiContext(req, { storage: getAiStorage(options) }));
+
+  app.post('/ai/chat', async (request, reply) => {
+    const ctx = await createContext(request);
+
+    if (!ctx.session) {
+      return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    if (ctx.session.user.assistantEnabled !== true) {
+      return reply.code(403).send({ error: 'Assistant is not enabled for this account' });
+    }
+
+    const parsedInput = AiChatInput.safeParse(request.body);
+
+    if (!parsedInput.success) {
+      return reply.code(400).send({
+        error: 'Invalid chat payload',
+        issues: z.treeifyError(parsedInput.error),
+      });
+    }
+
+    const abortController = new AbortController();
+    const handleRequestClose = () => {
+      if (request.raw.destroyed) {
+        abortController.abort();
+      }
+    };
+    request.raw.on('close', handleRequestClose);
+
+    try {
+      const response = await streamAiChat({
+        abortSignal: abortController.signal,
+        ctx,
+        messages: parsedInput.data.messages as unknown as AiUiMessage[],
+        model: createModel(),
+        reasoningEffort,
+      });
+
+      await sendWebResponse(reply, response);
+    } finally {
+      request.raw.off('close', handleRequestClose);
+    }
+  });
+}
+
+// Writes a web `Response` (headers + streamed body) onto the raw Node reply, preserving the
+// headers Fastify already set for this reply (e.g. CORS from `@fastify/cors`).
+async function sendWebResponse(reply: FastifyReply, response: Response): Promise<void> {
+  reply.hijack();
+
+  const headers: OutgoingHttpHeaders = {};
+
+  for (const [name, value] of Object.entries(reply.getHeaders())) {
+    if (value !== undefined) {
+      headers[name] = value;
+    }
+  }
+
+  response.headers.forEach((value, name) => {
+    headers[name] = value;
+  });
+
+  reply.raw.writeHead(response.status, headers);
+
+  if (!response.body) {
+    reply.raw.end();
+    return;
+  }
+
+  const body = Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]);
+  reply.raw.on('close', () => {
+    if (!reply.raw.writableEnded) {
+      body.destroy();
+    }
+  });
+
+  try {
+    for await (const chunk of body) {
+      reply.raw.write(chunk);
+    }
+  } finally {
+    reply.raw.end();
+  }
+}
+
+function getDefaultModel(config: ApiConfig): AiChatModel {
+  return createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
+}
+
+function getAiStorage(options: RegisterAiChatRouteOptions): StorageAdapter {
+  if (!options.storage) {
+    throw new Error('AI chat route requires document storage.');
+  }
+
+  return options.storage;
+}

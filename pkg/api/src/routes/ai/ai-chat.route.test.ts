@@ -4,7 +4,7 @@ import type { AiContext } from '@pkg/ai';
 import { createUserAccessSummary } from '@pkg/domain';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import Fastify from 'fastify';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { registerAiChatRoute } from '@/routes/ai/ai-chat.route.js';
 import { createSilentLogger, mockSession } from '@/test/test-utils.js';
@@ -97,6 +97,10 @@ function readUiChunks(body: string): UiChunk[] {
     .map((data) => JSON.parse(data) as UiChunk);
 }
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('POST /ai/chat', () => {
   test('returns 401 without building the model when there is no session', async () => {
     const app = Fastify();
@@ -161,6 +165,67 @@ describe('POST /ai/chat', () => {
 
     expect(response.statusCode).toBe(400);
     expect(createModel).not.toHaveBeenCalled();
+  });
+
+  test('returns 400 without building the model for messages that fail deep UI-message validation', async () => {
+    const app = Fastify();
+    const createModel = vi.fn(() => createTwoStepModel());
+    await registerAiChatRoute(app, {
+      buildContext: async () => createChatContext(),
+      createModel,
+      reasoningEffort: 'low',
+    });
+
+    // Passes the shallow `AiChatInput` caps but the part type is not a real UI-message part, so
+    // `convertToModelMessages` would otherwise throw a 500 downstream.
+    const response = await app.inject({
+      method: 'POST',
+      url: '/ai/chat',
+      payload: { messages: [{ id: 'm1', role: 'assistant', parts: [{ type: 'not-a-real-part' }] }] },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(createModel).not.toHaveBeenCalled();
+  });
+
+  test('aborts and closes the stream when it exceeds the timeout budget', async () => {
+    vi.useFakeTimers();
+    const app = Fastify();
+    // A stream that only completes once streamText aborts it — the route's timeout is the sole path
+    // to termination here.
+    const model = new MockLanguageModelV3({
+      doStream: async ({ abortSignal }) => ({
+        stream: new ReadableStream<LanguageModelV3StreamPart>({
+          start(controller) {
+            controller.enqueue({ type: 'stream-start', warnings: [] });
+            controller.enqueue({ type: 'text-start', id: 't1' });
+            abortSignal?.addEventListener('abort', () => {
+              try {
+                controller.close();
+              } catch {
+                // already closed
+              }
+            });
+          },
+        }),
+      }),
+    });
+    await registerAiChatRoute(app, {
+      buildContext: async () => createChatContext(),
+      createModel: () => model,
+      reasoningEffort: 'low',
+    });
+
+    const responsePromise = app.inject({
+      method: 'POST',
+      url: '/ai/chat',
+      payload: { messages: [userMessage('Show me loaders')] },
+    });
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    const response = await responsePromise;
+
+    expect(response.statusCode).toBe(200);
   });
 
   test('streams tool-call, tool-result, and text parts for a multi-step conversation', async () => {

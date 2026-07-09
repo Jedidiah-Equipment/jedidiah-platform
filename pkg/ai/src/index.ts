@@ -1,6 +1,12 @@
 export type { LanguageModel as AiChatModel, UIMessage as AiUiMessage } from 'ai';
 export { generateQuoteEmailBody } from './actions/quote-email-body.js';
-export { type StreamAiChatOptions, streamAiChat, TRACER_AI_CHAT_TOOL_NAMES } from './ai-chat.js';
+export {
+  type StreamAiChatOptions,
+  streamAiChat,
+  TRACER_AI_CHAT_TOOL_NAMES,
+  type ValidateAiUiMessagesResult,
+  validateAiUiMessages,
+} from './ai-chat.js';
 export { createOpenAiChatModel } from './ai-sdk-model.js';
 export { type CreateAiSdkToolsOptions, createAiSdkTools } from './ai-sdk-tools.js';
 export { type RunChatStreamOptions, runChatStream } from './chat-stream.js';

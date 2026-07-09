@@ -3,6 +3,7 @@ import {
   convertToModelMessages,
   type LanguageModel,
   type LanguageModelUsage,
+  safeValidateUIMessages,
   stepCountIs,
   streamText,
   type UIMessage,
@@ -14,6 +15,17 @@ import { createSystemPrompt } from './prompts.js';
 import type { AiToolName } from './tool-registry.js';
 
 const MAX_STEPS = 10;
+
+export type ValidateAiUiMessagesResult = { messages: UIMessage[]; ok: true } | { error: string; ok: false };
+
+// Deep structural check of the posted UI messages. The `AiChatInput` schema deliberately keeps only
+// the transport caps and stays permissive on part internals; this is where malformed parts (e.g. an
+// assistant part with an unknown `type`) are rejected — so the route can turn them into a 400 rather
+// than letting `convertToModelMessages` throw a 500 mid-request.
+export async function validateAiUiMessages(messages: unknown): Promise<ValidateAiUiMessagesResult> {
+  const result = await safeValidateUIMessages({ messages });
+  return result.success ? { messages: result.data, ok: true } : { error: result.error.message, ok: false };
+}
 
 // The tracer read tools this slice exposes. Kept read-only and small on purpose; the factory can
 // expose the full authorized set once the old stack is retired.

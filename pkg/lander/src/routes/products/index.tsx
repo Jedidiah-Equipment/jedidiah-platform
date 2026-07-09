@@ -3,6 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { PageHero } from '../../components/page-hero.js';
 import { ProductCard } from '../../components/product-card.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
+import { VariantFilterBar } from '../../components/variant-filter-bar.js';
 import { seoHead } from '../../lib/seo.js';
 import { getProductsCatalog } from '../../server/catalog/products.js';
 import type { CatalogGroup, CatalogVariant } from '../../server/catalog/products-data.js';
@@ -70,67 +71,17 @@ function PageHeader() {
   );
 }
 
-function FilterChip({
-  active,
-  label,
-  search,
-  size = 'default',
-}: {
-  active: boolean;
-  label: string;
-  search: ProductsSearch;
-  size?: 'default' | 'compact';
-}) {
-  const sizeClassName =
-    size === 'compact' ? 'px-3 py-2 text-[13px] tracking-[0.8px]' : 'px-3.5 py-[9px] text-[15px] tracking-[1px]';
-
+function FilterChip({ active, label, search }: { active: boolean; label: string; search: ProductsSearch }) {
   return (
     <Link
       to="/products"
       search={search}
-      className={`border-[1.5px] font-display font-semibold uppercase no-underline transition-colors ${sizeClassName} ${
+      className={`border-[1.5px] px-3.5 py-[9px] font-display text-[15px] font-semibold uppercase tracking-[1px] no-underline transition-colors ${
         active ? 'border-ink bg-ink text-white' : 'border-[#d6d4ce] bg-white text-ink hover:border-ink'
       }`}
     >
       {label}
     </Link>
-  );
-}
-
-function VariantFilterBar({
-  activeGroup,
-  activeVariant,
-}: {
-  activeGroup: CatalogGroup | undefined;
-  activeVariant: CatalogVariant | undefined;
-}) {
-  if (!activeGroup || activeGroup.variants.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="border-t border-line/70">
-      <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-3.5 max-nav:px-5 max-nav:py-3">
-        <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999]">
-          Filter by variant
-        </span>
-        <FilterChip
-          active={activeVariant === undefined}
-          label="All"
-          search={{ range: activeGroup.slug }}
-          size="compact"
-        />
-        {activeGroup.variants.map((variant) => (
-          <FilterChip
-            key={variant.id}
-            active={activeVariant?.id === variant.id}
-            label={variant.name}
-            search={{ range: activeGroup.slug, variant: variant.slug }}
-            size="compact"
-          />
-        ))}
-      </div>
-    </div>
   );
 }
 

@@ -86,7 +86,7 @@ export function VariantFilterBar({
       <div className={overflowVisible ? 'overflow-visible' : 'overflow-hidden'} inert={!hasVariants}>
         <div className="border-t border-line/70">
           <div className="mx-auto flex max-w-[1320px] items-center gap-2.5 px-12 py-3.5 max-nav:px-5 max-nav:py-3">
-            <span className="mr-1.5 flex-none font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999]">
+            <span className="mr-1.5 flex-none font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
               Filter by variant
             </span>
             <OverflowChipRow chips={displayChips} />

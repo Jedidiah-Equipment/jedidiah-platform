@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest';
 import { getAiDebugInfo } from './debug-info.js';
 import { createSystemPrompt } from './prompts.js';
 import { AI_TOOL_REGISTRY } from './tool-registry.js';
+import { getAuthorizedToolNames, getAuthorizedTools } from './tools.js';
 
 const adminAccess = createUserAccessSummary({ role: 'admin', userId: 'test-user-id' });
 
@@ -11,18 +12,16 @@ describe('getAiDebugInfo', () => {
   test('assembles the system prompt through the shared chat code path', () => {
     const info = getAiDebugInfo(adminAccess);
 
-    // A full-access admin authorizes every registry tool, so the prompt must equal the shared
-    // createSystemPrompt output for the full ordered tool list — proving no parallel assembly.
-    expect(info.systemPrompt).toBe(createSystemPrompt(AI_TOOL_REGISTRY.map((definition) => definition.tool.name)));
+    // Debug info uses the same authorized tool set as chat assembly, including duplicate-tool suppression.
+    expect(info.systemPrompt).toBe(createSystemPrompt(getAuthorizedToolNames(getAuthorizedTools(adminAccess))));
     expect(info.systemPrompt).toContain('## Role');
   });
 
-  test('lists every registry tool in registry order, authorized for a full-access user', () => {
+  test('lists every registry tool in registry order and marks suppressed twins for a full-access user', () => {
     const info = getAiDebugInfo(adminAccess);
 
     expect(info.toolResultMaxSerializedBytes).toBe(24 * 1024);
     expect(info.tools.map((tool) => tool.name)).toEqual(AI_TOOL_REGISTRY.map((definition) => definition.tool.name));
-    expect(info.tools.every((tool) => tool.authorized)).toBe(true);
 
     const createQuote = info.tools.find((tool) => tool.name === 'createQuote');
     expect(createQuote).toMatchObject({
@@ -31,6 +30,14 @@ describe('getAiDebugInfo', () => {
       requiredPermission: 'quote:create',
     });
     expect(createQuote?.jsonSchema).toEqual(expect.objectContaining({ type: 'object' }));
+    expect(info.tools.find((tool) => tool.name === 'listQuoteCustomers')).toMatchObject({
+      authorized: false,
+      suppressedBy: 'listCustomers',
+    });
+    expect(info.tools.find((tool) => tool.name === 'listQuoteProducts')).toMatchObject({
+      authorized: false,
+      suppressedBy: 'listProducts',
+    });
   });
 
   test('flags unauthorized tools and omits write-tool warnings for a null access user', () => {
@@ -48,6 +55,7 @@ describe('getAiDebugInfo', () => {
     const authorized = new Map(info.tools.map((tool) => [tool.name, tool.authorized]));
     expect(authorized.get('createQuote')).toBe(false);
     expect(authorized.get('listProducts')).toBe(true);
+    expect(info.tools.find((tool) => tool.name === 'listQuoteProducts')?.suppressedBy).toBe('listProducts');
   });
 
   test('produces a JSON-serializable result that survives a round-trip unchanged', () => {

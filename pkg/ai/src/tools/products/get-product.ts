@@ -31,11 +31,6 @@ export const getProductDefinition: AiToolDefinition<GetProductTool> = {
   tool: getProductTool,
   descriptor: {
     purpose: 'Get one Product by UUID.',
-    useWhen: ['A Product id is already known and the user needs catalog details.'],
-    doNotUseWhen: [
-      'Searching by product name, model code, description, or partial id; use listProducts or listQuoteProducts first.',
-    ],
-    searchableIdentifiers: ['Product UUID'],
     resultIdentifiers: ['Product name', 'Product model code'],
     linkTarget: aiLinkMetadata.Product,
   },

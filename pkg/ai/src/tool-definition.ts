@@ -7,9 +7,9 @@ export type AiToolKind = 'read' | 'write';
 
 export type AiToolDescriptorInput = {
   purpose: string;
-  useWhen: readonly string[];
-  doNotUseWhen: readonly string[];
-  searchableIdentifiers: readonly string[];
+  useWhen?: readonly string[];
+  doNotUseWhen?: readonly string[];
+  searchableIdentifiers?: readonly string[];
   resultIdentifiers: readonly string[];
   linkTarget?: AiLinkMetadata;
 };

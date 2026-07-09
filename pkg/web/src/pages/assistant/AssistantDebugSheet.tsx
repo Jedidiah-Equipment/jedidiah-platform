@@ -116,11 +116,15 @@ function AssistantDebugToolRow({ tool }: { tool: AiToolDebugInfo }) {
         >
           {tool.requiredPermission}
         </Badge>
-        {!tool.authorized && (
+        {tool.suppressedBy ? (
+          <Badge className="ml-auto" variant="outline">
+            Suppressed by {tool.suppressedBy}
+          </Badge>
+        ) : !tool.authorized ? (
           <Badge className="ml-auto" variant="outline">
             No access
           </Badge>
-        )}
+        ) : null}
       </CollapsibleTrigger>
       <CollapsibleContent className="border-t">
         <div className="flex flex-col gap-3 p-3 text-xs">
@@ -129,7 +133,7 @@ function AssistantDebugToolRow({ tool }: { tool: AiToolDebugInfo }) {
           </FieldBlock>
           <BulletBlock label="Use when" items={tool.useWhen} />
           <BulletBlock label="Do not use when" items={tool.doNotUseWhen} />
-          <BulletBlock label="Searchable identifiers" items={tool.searchableIdentifiers} />
+          <BulletBlock label="Free-text search matches" items={tool.searchableIdentifiers} />
           <BulletBlock label="Result identifiers" items={tool.resultIdentifiers} />
           {tool.linkTarget && (
             <FieldBlock label="Link target">

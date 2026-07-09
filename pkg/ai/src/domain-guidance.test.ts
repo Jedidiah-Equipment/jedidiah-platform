@@ -1,3 +1,4 @@
+import { createUserAccessSummary } from '@pkg/domain';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -6,6 +7,7 @@ import {
   createDomainGuidancePrompt,
 } from './domain-guidance.js';
 import type { AiToolName } from './tool-registry.js';
+import { getAuthorizedToolNames, getAuthorizedTools } from './tools.js';
 
 describe('AI domain guidance', () => {
   test('playbooks reference registered tools', () => {
@@ -57,6 +59,29 @@ describe('AI domain guidance', () => {
     expect(prompt).toContain('Intent customer_job_progress');
     expect(prompt).toContain('listCustomers: Find matching Customers by company name');
     expect(prompt).not.toContain('listQuoteCustomers: Find matching Customers by company name');
+  });
+
+  test('renders the Customer lookup step using the authorized primary or quote-reader twin', () => {
+    const adminToolNames = getAuthorizedToolNames(
+      getAuthorizedTools(createUserAccessSummary({ role: 'admin', userId: 'test-user-id' })),
+    );
+    const quoteOnlyToolNames = getAuthorizedToolNames(
+      getAuthorizedTools({
+        permissions: ['quote:read', 'job:read'],
+        role: 'sales',
+        userId: 'test-user-id',
+      }),
+    );
+
+    expect(createDomainGuidancePrompt(adminToolNames)).toContain(
+      'listCustomers: Find matching Customers by company name',
+    );
+    expect(createDomainGuidancePrompt(adminToolNames)).not.toContain(
+      'listQuoteCustomers: Find matching Customers by company name',
+    );
+    expect(createDomainGuidancePrompt(quoteOnlyToolNames)).toContain(
+      'listQuoteCustomers: Find matching Customers by company name',
+    );
   });
 
   test('does not render an unusable playbook when required tools are unavailable', () => {

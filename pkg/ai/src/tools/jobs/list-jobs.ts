@@ -27,26 +27,15 @@ export const listJobsDefinition: AiToolDefinition<ListJobsTool> = {
   tool: listJobsTool,
   descriptor: {
     purpose: 'List Product Jobs and Custom Jobs visible to Job readers.',
-    useWhen: [
-      'Searching by Job Code, Product Job serial number, Custom Job Work Title, numeric code, Job UUID, or partial UUID.',
-    ],
-    doNotUseWhen: [
-      'The user needs Bay schedule detail, Product Job CFO parts, or Job Documents for one Job; call getJob after identifying the Job id.',
-    ],
-    searchableIdentifiers: [
-      'Job UUID',
-      'Job Code such as JOB-00001',
-      'Product serial number for Product Jobs such as SG1836260009',
-      'Custom Job Work Title',
-      'numeric Job Code',
-    ],
+    useWhen: ['Searching Jobs by free text.'],
+    searchableIdentifiers: ['Job Code (JOB- prefix ok)', 'Product serial number', 'Custom Job Work Title', 'Job UUID'],
     resultIdentifiers: [
       'Job Code',
       'Quote Kind',
-      'Product serial number (null for Custom Jobs)',
       'Customer company name',
-      'Product name and Product model code (null for Custom Jobs)',
-      'Work Title display fallback for Custom Jobs',
+      'Product serial number',
+      'Product name / Custom Work Title',
+      'Product model code',
       'schedule summary when requested',
       'Quote Code',
     ],

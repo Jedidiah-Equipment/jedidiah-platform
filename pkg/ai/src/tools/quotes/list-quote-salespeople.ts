@@ -38,7 +38,6 @@ export const listQuoteSalespeopleDefinition: AiToolDefinition<ListQuoteSalespeop
     purpose: 'List Users who can be assigned as Quote Salespeople.',
     useWhen: ['The user needs the salesperson roster or needs to identify a salesperson id for a Quote follow-up.'],
     doNotUseWhen: ['Searching, sorting, or paging Users; this tool intentionally accepts no filters.'],
-    searchableIdentifiers: ['none'],
     resultIdentifiers: ['User name', 'User email', 'User UUID'],
   },
   projectResult: projectQuoteSalespeople,

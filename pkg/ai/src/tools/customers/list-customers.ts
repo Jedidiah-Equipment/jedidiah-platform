@@ -24,9 +24,8 @@ export const listCustomersDefinition: AiToolDefinition<ListCustomersTool> = {
   tool: listCustomersTool,
   descriptor: {
     purpose: 'List Customers visible to Customer readers.',
-    useWhen: ['Searching by Customer company name, email, VAT number, UUID, or partial text.'],
-    doNotUseWhen: ['The caller only has quote access; use listQuoteCustomers for quote-reader Customer lookup.'],
-    searchableIdentifiers: ['Customer UUID', 'company name', 'email', 'VAT number'],
+    useWhen: ['Searching Customers by free text.'],
+    searchableIdentifiers: ['Customer company name', 'email', 'VAT number', 'Customer UUID'],
     resultIdentifiers: ['Customer company name', 'Customer UUID', 'VAT number'],
     linkTarget: aiLinkMetadata.Customer,
   },

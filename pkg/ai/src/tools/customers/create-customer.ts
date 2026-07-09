@@ -61,7 +61,6 @@ export const createCustomerDefinition: AiToolDefinition<CreateCustomerTool> = {
       'A sales user is creating a Quote for a new company; use createQuote with an inline customer instead.',
       'The user only needs to search existing Customers; use listCustomers or listQuoteCustomers first.',
     ],
-    searchableIdentifiers: ['companyName', 'email', 'VAT number'],
     resultIdentifiers: ['Customer company name', 'Customer UUID', 'VAT number'],
     linkTarget: aiLinkMetadata.Customer,
   },

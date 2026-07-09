@@ -31,9 +31,6 @@ export const getCustomerDefinition: AiToolDefinition<GetCustomerTool> = {
   tool: getCustomerTool,
   descriptor: {
     purpose: 'Get one Customer by UUID.',
-    useWhen: ['A Customer id is already known and the user needs that Customer record.'],
-    doNotUseWhen: ['Searching by company name, email, or partial id; use listCustomers or listQuoteCustomers first.'],
-    searchableIdentifiers: ['Customer UUID'],
     resultIdentifiers: ['Customer company name', 'Customer UUID', 'VAT number'],
     linkTarget: aiLinkMetadata.Customer,
   },

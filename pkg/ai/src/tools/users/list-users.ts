@@ -25,7 +25,6 @@ export const listUsersDefinition: AiToolDefinition<ListUsersTool> = {
     purpose: 'List all Users as safe summaries.',
     useWhen: ['The user needs the User roster or needs to identify a User id for a more specific follow-up query.'],
     doNotUseWhen: ['Searching, sorting, or paging Users; this tool intentionally accepts no filters.'],
-    searchableIdentifiers: ['none'],
     resultIdentifiers: ['User name', 'User email', 'User UUID', 'App Role'],
   },
   projectResult: projectUserList,

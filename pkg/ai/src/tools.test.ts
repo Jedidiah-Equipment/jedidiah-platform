@@ -61,9 +61,12 @@ describe('aiTools', () => {
 
     expect(jobDescriptions).toContain('Bay schedule detail');
     expect(jobDescriptions).toContain('CFO Part quantities with unitOfMeasure');
-    expect(jobDescriptions).toContain('Product serial number (null for Custom Jobs)');
-    expect(jobDescriptions).toContain('Work Title display fallback for Custom Jobs');
-    expect(jobDescriptions).toContain('Custom Jobs start without Product Document Snapshots or generated Brochures');
+    expect(jobDescriptions).toContain('Job Documents');
+    expect(jobDescriptions).not.toContain('Product serial number (null for Custom Jobs)');
+    expect(jobDescriptions).not.toContain('Work Title display fallback for Custom Jobs');
+    expect(jobDescriptions).not.toContain(
+      'Custom Jobs start without Product Document Snapshots or generated Brochures',
+    );
     expect(jobDescriptions).not.toContain('Stage');
     expect(jobDescriptions).not.toContain('Job Status');
     expect(jobDescriptions).not.toContain('Due Date');
@@ -77,21 +80,33 @@ describe('aiTools', () => {
       aiTools.createQuote.description,
     ].join('\n');
 
-    expect(quoteDescriptions).toContain(
-      'Product UUID and nested product facts (name, modelCode, buildTimeDays, currencyCode) when this is a Product Quote; product is null for Custom Quotes or unresolved Product projections',
-    );
-    expect(quoteDescriptions).toContain('Work Title display fallback when this is a Custom Quote');
-    expect(quoteDescriptions).toContain(
-      'quotedBasePrice and quotedCurrencyCode: latched from Product for Product Quotes; entered base price in ZAR for Custom Quotes',
-    );
-    expect(quoteDescriptions).toContain(
-      'quotedBasePrice: latched from Product for Product Quotes; entered base price for Custom Quotes',
-    );
-    expect(quoteDescriptions).toContain('Quote Line Items quantity x unit price contribution');
-    expect(quoteDescriptions).toContain('Selected Assemblies for Product Quotes; empty for Custom Quotes');
-    expect(aiTools.listQuotes.description).not.toContain('Quote Line Items quantity x unit price contribution');
-    expect(aiTools.listQuotes.description).not.toContain(
-      'Selected Assemblies for Product Quotes; empty for Custom Quotes',
+    expect(quoteDescriptions).toContain('Product name / Custom Work Title');
+    expect(quoteDescriptions).toContain('quoted price and currency');
+    expect(quoteDescriptions).toContain('Quote Line Items');
+    expect(quoteDescriptions).toContain('Selected Assemblies');
+    expect(quoteDescriptions).not.toContain('product is null for Custom Quotes');
+    expect(quoteDescriptions).not.toContain('Work Title display fallback when this is a Custom Quote');
+    expect(quoteDescriptions).not.toContain('latched from Product for Product Quotes');
+    expect(quoteDescriptions).not.toContain('Quote Line Items quantity x unit price contribution');
+    expect(quoteDescriptions).not.toContain('empty for Custom Quotes');
+  });
+
+  test('describes listQuotes free-text search without status or kind drift', () => {
+    const freeTextLine = aiTools.listQuotes.description
+      .split('\n')
+      .find((line) => line.startsWith('Free-text search matches:'));
+
+    expect(freeTextLine).toBeDefined();
+    expect(freeTextLine).toContain('Quote Code (QUO- prefix ok)');
+    expect(freeTextLine).toContain('linked Job Codes (JOB- prefix ok)');
+    expect(freeTextLine).toContain('use filters for status, kind, customerId, productId, salesPersonId');
+    expect(freeTextLine).not.toContain('Quote Status');
+    expect(freeTextLine).not.toContain('Quote Kind');
+  });
+
+  test('omits optional descriptor sections instead of rendering empty lines', () => {
+    expect(createToolDescription({ purpose: 'Tiny tool.', resultIdentifiers: ['Result label'] })).toBe(
+      'Tiny tool.\nRelevant result identifiers: Result label.',
     );
   });
 
@@ -124,6 +139,7 @@ describe('aiTools', () => {
     for (const name of AI_TOOL_NAMES) {
       expect(collectJsonSchemaPaths(aiTools[name].jsonSchema, name, 'oneOf')).toEqual([]);
       expect(collectUnsupportedRegexPatternPaths(aiTools[name].jsonSchema, name)).toEqual([]);
+      expect(collectRedundantFormatPatternPaths(aiTools[name].jsonSchema, name)).toEqual([]);
     }
   });
 
@@ -250,11 +266,27 @@ describe('aiTools', () => {
       'getQuote',
       'createQuote',
       'sendDraftQuoteEmail',
-      'listQuoteCustomers',
-      'listQuoteProducts',
       'listQuoteSalespeople',
       'listAuditEvents',
       'listUsers',
+    ]);
+  });
+
+  test('suppresses quote-reader twins when their primary lookup tools are authorized', () => {
+    const tools = getAuthorizedTools({
+      permissions: ['quote:read', 'customer:read', 'product:read'],
+      role: 'sales',
+      userId: 'test-user-id',
+    });
+
+    expect(getAuthorizedToolNames(tools)).toEqual([
+      'listProducts',
+      'getProduct',
+      'listCustomers',
+      'getCustomer',
+      'listQuotes',
+      'getQuote',
+      'listQuoteSalespeople',
     ]);
   });
 
@@ -326,6 +358,27 @@ function collectUnsupportedRegexPatternPaths(schema: unknown, path: string): str
   ];
 }
 
+function collectRedundantFormatPatternPaths(schema: unknown, path: string): string[] {
+  if (Array.isArray(schema)) {
+    return schema.flatMap((item, index) => collectRedundantFormatPatternPaths(item, `${path}[${index}]`));
+  }
+
+  if (!schema || typeof schema !== 'object') {
+    return [];
+  }
+
+  return [
+    ...('format' in schema && isRedundantFormat(schema.format) && 'pattern' in schema ? [path] : []),
+    ...Object.entries(schema).flatMap(([childKey, value]) =>
+      collectRedundantFormatPatternPaths(value, `${path}.${childKey}`),
+    ),
+  ];
+}
+
 function hasRegexLookaround(pattern: string) {
   return /\(\?(?:[=!]|<[=!])/.test(pattern);
+}
+
+function isRedundantFormat(format: unknown): boolean {
+  return format === 'uuid' || format === 'date' || format === 'date-time';
 }

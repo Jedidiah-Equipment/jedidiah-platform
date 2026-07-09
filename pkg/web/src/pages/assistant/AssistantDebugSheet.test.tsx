@@ -48,6 +48,27 @@ describe('AssistantDebugContent', () => {
     // The authorized tool must not carry the flag.
     expect(html.match(/No access/g)).toHaveLength(1);
   });
+
+  it('marks suppressed tools separately from missing access', () => {
+    const html = renderToStaticMarkup(
+      <AssistantDebugContent
+        info={{
+          ...buildDebugInfo(),
+          tools: [
+            buildTool({
+              authorized: false,
+              name: 'listQuoteProducts',
+              requiredPermission: 'quote:read',
+              suppressedBy: 'listProducts',
+            }),
+          ],
+        }}
+      />,
+    );
+
+    expect(html).toContain('Suppressed by listProducts');
+    expect(html).not.toContain('No access');
+  });
 });
 
 function buildDebugInfo(): AiDebugInfo {
@@ -85,6 +106,7 @@ function buildTool(overrides: Partial<AiToolDebugInfo> & Pick<AiToolDebugInfo, '
     requiredPermission: 'product:read',
     resultIdentifiers: [],
     searchableIdentifiers: [],
+    suppressedBy: null,
     useWhen: [],
     ...overrides,
   };

@@ -105,9 +105,11 @@ function OverflowChipRow({ chips }: { chips: VariantChip[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   // A new Range swaps in a different chip set: drop the cached widths, re-expand so every chip is present to
-  // measure, and close any open menu. Adjusting state during render (the React "reset on prop change"
-  // pattern) keeps the swap in one paint instead of flashing the old cutoff.
-  const signature = chips.map((chip) => chip.key).join('|');
+  // measure, and close any open menu. The signature keys on both id and label so a different range — even one
+  // with the same variant count but different label widths — invalidates the cache and re-measures.
+  // Adjusting state during render (the React "reset on prop change" pattern) keeps the swap in one paint
+  // instead of flashing the old cutoff.
+  const signature = chips.map((chip) => `${chip.key}:${chip.label}`).join('|');
   const prevSignature = useRef(signature);
   if (prevSignature.current !== signature) {
     prevSignature.current = signature;

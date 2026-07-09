@@ -175,7 +175,7 @@ const AssistantUsageFooter: FC = () => {
   }
 
   return (
-    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
+    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
       <span>{formatTokenCount(runUsage.inputTokens)} in</span>
       <span aria-hidden="true">·</span>
       <span>{formatTokenCount(runUsage.outputTokens)} out</span>

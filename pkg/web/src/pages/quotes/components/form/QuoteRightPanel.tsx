@@ -208,7 +208,7 @@ function QuoteTotalCard({
           label={quote.kind === 'custom' ? 'Base price' : 'Product price'}
           value={formatCurrency(summary.basePrice, summary.currencyCode)}
         />
-        {summary.selectedAssemblyTotal > 0 ? (
+        {summary.selectedAssemblies.length > 0 ? (
           <div className="grid gap-1">
             <QuoteSummaryRow
               label="Optional assemblies"

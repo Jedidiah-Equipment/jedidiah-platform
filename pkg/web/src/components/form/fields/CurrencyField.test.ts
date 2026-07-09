@@ -20,6 +20,12 @@ describe('formatCurrencyInputText', () => {
     expect(formatCurrencyInputText('1 000,5')).toBe('1 000.5');
   });
 
+  it('preserves a leading minus before and after digits are typed', () => {
+    expect(formatCurrencyInputText('-')).toBe('-');
+    expect(formatCurrencyInputText('-1')).toBe('-1');
+    expect(formatCurrencyInputText('-1000.5')).toBe('-1 000.5');
+  });
+
   it('accepts pasted currency and historical grouping formats', () => {
     expect(formatCurrencyInputText('1 000 000')).toBe('1 000 000');
     expect(formatCurrencyInputText('1,000,000.00')).toBe('1 000 000.00');

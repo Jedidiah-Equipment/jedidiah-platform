@@ -44,10 +44,13 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-git -C "$ROOT" fetch "$REMOTE" "$SOURCE_BRANCH" "$TARGET_BRANCH" --prune
-
 SOURCE_REF="refs/remotes/$REMOTE/$SOURCE_BRANCH"
 TARGET_REF="refs/remotes/$REMOTE/$TARGET_BRANCH"
+
+git -C "$ROOT" fetch --prune "$REMOTE" \
+  "+refs/heads/$SOURCE_BRANCH:$SOURCE_REF" \
+  "+refs/heads/$TARGET_BRANCH:$TARGET_REF"
+
 SOURCE_SHA=$(git -C "$ROOT" rev-parse "$SOURCE_REF")
 TARGET_SHA=$(git -C "$ROOT" rev-parse "$TARGET_REF")
 

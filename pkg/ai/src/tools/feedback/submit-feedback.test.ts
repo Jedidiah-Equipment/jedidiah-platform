@@ -45,4 +45,13 @@ describe('submitFeedbackTool', () => {
       ),
     ).rejects.toBeInstanceOf(z.ZodError);
   });
+
+  test('rejects a mismatched id instead of silently ignoring it', async ({ context }) => {
+    await expect(
+      submitFeedbackTool.handler(
+        { subjectType: 'job', jobId: context.job.id, quoteId: context.job.id, text: 'Wrong target field' },
+        createAiContext(context.db, adminAccess),
+      ),
+    ).rejects.toBeInstanceOf(z.ZodError);
+  });
 });

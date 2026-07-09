@@ -790,6 +790,15 @@ describe('patchQuote', () => {
       input: { id: acceptedCustom.id, notes: 'Post-acceptance note' },
     });
     expect(noted.notes).toBe('Post-acceptance note');
+
+    // Status is not a lock-editable field, so patching it on a locked Quote is rejected.
+    await expect(
+      patchQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: { id: acceptedCustom.id, status: 'sent' },
+      }),
+    ).rejects.toThrow('Quote is locked because it has been accepted; status cannot be changed.');
   });
 });
 

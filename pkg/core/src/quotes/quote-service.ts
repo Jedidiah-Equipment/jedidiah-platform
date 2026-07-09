@@ -288,11 +288,14 @@ export async function patchQuote({
       { row: before, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
       { row: after, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
     );
-    const changedFields = new Set(Object.keys(changes ?? {}));
 
-    if (changedFields.size === 0) {
+    // No commercial line-item/assembly changes are possible here, so `changes` is the whole story:
+    // null means nothing changed, and non-null narrows it for the audit write below.
+    if (!changes) {
       return getQuote({ db: tx, id: before.id });
     }
+
+    const changedFields = new Set(Object.keys(changes));
 
     const editable = assertQuoteEditable({
       changedFields,
@@ -319,15 +322,14 @@ export async function patchQuote({
       throw new QuoteNotFoundError(input.id);
     }
 
-    if (changes) {
-      await recordAuditUpdate({
-        db: tx,
-        descriptor: quoteAuditDescriptor,
-        actorUserId,
-        after: { row, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
-        changes,
-      });
-    }
+    // `changes` is always non-null here: the `changedFields.size === 0` guard above returned early otherwise.
+    await recordAuditUpdate({
+      db: tx,
+      descriptor: quoteAuditDescriptor,
+      actorUserId,
+      after: { row, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
+      changes,
+    });
 
     return getQuote({ db: tx, id: row.id });
   });

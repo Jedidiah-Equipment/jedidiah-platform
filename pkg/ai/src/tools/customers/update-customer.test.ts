@@ -1,5 +1,5 @@
 import * as core from '@pkg/core';
-import { Customer, type UserAccessSummary } from '@pkg/schema';
+import { Customer, CustomerPatchInput, type UserAccessSummary } from '@pkg/schema';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { AiContext } from '@/context.js';
 import { createSilentLogger, mockSession } from '@/test/test-utils.js';
@@ -41,6 +41,13 @@ describe('updateCustomerTool', () => {
   test('is a customer:update write tool', () => {
     expect(updateCustomerTool.requiredPermission).toBe('customer:update');
     expect(updateCustomerDefinition.kind).toBe('write');
+  });
+
+  test('exposes exactly the fields of the core CustomerPatchInput schema', () => {
+    // The model-facing input schema is hand-duplicated (its transforms do not serialize to the OpenAI
+    // strict subset), so guard against it drifting from the core patch schema it feeds.
+    const exposedFields = Object.keys((updateCustomerTool.jsonSchema.properties as Record<string, unknown>) ?? {});
+    expect(exposedFields.sort()).toEqual(Object.keys(CustomerPatchInput.shape).sort());
   });
 
   test('forwards only the named field so core keeps the rest under its row lock', async () => {

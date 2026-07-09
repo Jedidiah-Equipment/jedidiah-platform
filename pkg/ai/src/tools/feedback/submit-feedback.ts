@@ -18,7 +18,28 @@ const SubmitFeedbackInput = z
     jobId: UUID.optional(),
     text: FeedbackText,
   })
-  .describe('Submit general feedback: subjectType job requires jobId; subjectType quote requires quoteId.');
+  .describe('Submit general feedback: subjectType job requires jobId; subjectType quote requires quoteId.')
+  // Require the id that matches `subjectType` and reject the other, so a mismatched id is a visible
+  // error rather than being silently ignored when the handler builds the subject. (Refinements do not
+  // affect the emitted JSON schema, so this stays within the OpenAI strict subset.)
+  .superRefine((value, ctx) => {
+    if (value.subjectType === 'quote') {
+      if (value.quoteId === undefined) {
+        ctx.addIssue({ code: 'custom', path: ['quoteId'], message: 'quoteId is required when subjectType is quote.' });
+      }
+      if (value.jobId !== undefined) {
+        ctx.addIssue({ code: 'custom', path: ['jobId'], message: 'jobId must be omitted when subjectType is quote.' });
+      }
+      return;
+    }
+
+    if (value.jobId === undefined) {
+      ctx.addIssue({ code: 'custom', path: ['jobId'], message: 'jobId is required when subjectType is job.' });
+    }
+    if (value.quoteId !== undefined) {
+      ctx.addIssue({ code: 'custom', path: ['quoteId'], message: 'quoteId must be omitted when subjectType is job.' });
+    }
+  });
 
 type SubmitFeedbackInput = z.infer<typeof SubmitFeedbackInput>;
 

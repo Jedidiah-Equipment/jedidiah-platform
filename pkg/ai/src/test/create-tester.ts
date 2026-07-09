@@ -39,6 +39,7 @@ export function createTester<T extends object = Record<string, never>>(
         try {
           const createAiContext = (overrides: Partial<AiContext> = {}): AiContext => ({
             access: null,
+            brochureRenderer: vi.fn(async () => new Uint8Array()),
             db: databaseClient.db,
             deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
             log: createSilentLogger(),

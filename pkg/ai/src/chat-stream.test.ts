@@ -20,6 +20,7 @@ function createAiContext({
 } = {}): AiContext {
   return {
     access,
+    brochureRenderer: vi.fn(async () => new Uint8Array()),
     db,
     deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
     log: createSilentLogger(),
@@ -234,7 +235,7 @@ describe('runChatStream', () => {
     }
   });
 
-  test('does not expose tools without the required permission', async () => {
+  test('exposes only the session-only tool without any permission', async () => {
     let exposedToolNames: string[] | null = null;
     let reasoningEffort: unknown = null;
     let systemPrompt: string | null = null;
@@ -258,7 +259,8 @@ describe('runChatStream', () => {
     });
 
     expect(events).toEqual([{ type: 'done' }]);
-    expect(exposedToolNames).toEqual([]);
+    // submitFeedback is session-only (protectedProcedure), so it surfaces for any authenticated user.
+    expect(exposedToolNames).toEqual(['submitFeedback']);
     expect(reasoningEffort).toBe('minimal');
     expect(systemPrompt).not.toContain('listProducts');
   });
@@ -286,10 +288,19 @@ describe('runChatStream', () => {
       'listQuotes',
       'getQuote',
       'createQuote',
+      'updateQuote',
       'sendDraftQuoteEmail',
+      'listStaleSentQuotes',
+      'listUpcomingDeliveryQuotes',
+      'summarizeQuotesByStatus',
+      'summarizeQuotePipeline',
+      'summarizeQuoteWeeklyFlow',
+      'getQuoteProductBayAvailability',
+      'listQuoteDocuments',
       'listQuoteCustomers',
       'listQuoteProducts',
       'listQuoteSalespeople',
+      'submitFeedback',
     ]);
     expect(systemPrompt).toContain('Write tools mutate records immediately');
     expect(systemPrompt).toContain('createQuote');

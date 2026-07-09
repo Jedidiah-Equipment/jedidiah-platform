@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { tool as createAgentTool, type Tool, type ToolInputParameters } from '@openai/agents';
 import { hasPermission } from '@pkg/domain';
-import type { ChatEvent, ChatToolResultSizeInfo, UserAccessSummary } from '@pkg/schema';
+import type { AppPermission, ChatEvent, ChatToolResultSizeInfo, UserAccessSummary } from '@pkg/schema';
 import type { AiContext } from './context.js';
 import type { AiToolName, RegisteredAiTool } from './tool-registry.js';
 import { AI_TOOL_NAMES, aiTools, projectAiToolResult } from './tool-registry.js';
@@ -50,7 +50,7 @@ export function getAuthorizedTools(
       continue;
     }
 
-    if (hasPermission(access, tool.requiredPermission)) {
+    if (isToolAuthorized(access, tool.requiredPermission)) {
       authorizedTools[name] = tool;
     }
   }
@@ -58,12 +58,18 @@ export function getAuthorizedTools(
   return authorizedTools;
 }
 
+// A `null` permission is a session-only gate: any authenticated caller (non-null access) is
+// authorized. Otherwise fall back to the permission check.
+function isToolAuthorized(access: UserAccessSummary | null, requiredPermission: AppPermission | null): boolean {
+  return requiredPermission === null ? access !== null : hasPermission(access, requiredPermission);
+}
+
 export function getToolSuppressedByPrimary(
   name: AiToolName,
   access: UserAccessSummary | null | undefined,
 ): AiToolName | null {
   const primaryName = SHADOWED_BY_PRIMARY[name];
-  return primaryName && hasPermission(access, aiTools[primaryName].requiredPermission) ? primaryName : null;
+  return primaryName && isToolAuthorized(access ?? null, aiTools[primaryName].requiredPermission) ? primaryName : null;
 }
 
 function isShadowedByAuthorizedPrimary(name: AiToolName, access: UserAccessSummary | null | undefined): boolean {

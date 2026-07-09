@@ -5,6 +5,7 @@ import type {
   BayOperator,
   ChatToolResultSizeInfo,
   Customer,
+  DocumentSummary,
   JobDepartmentSchedule,
   JobDetail,
   JobDocument,
@@ -12,12 +13,15 @@ import type {
   JobSummary,
   Product,
   ProductBay,
+  ProjectedBayQueue,
   QuoteDetail,
   QuoteLineItem,
   QuoteProductDetailFacts,
   QuoteProductSummaryFacts,
   QuoteSelectedAssembly,
   QuoteSummary,
+  StaleSentQuote,
+  Supplier,
   UserSummary,
 } from '@pkg/schema';
 
@@ -265,6 +269,45 @@ const AUDIT_EVENT_KEYS = [
   'summary',
 ] as const satisfies ProjectionKeys<AuditEvent>;
 
+const BOARD_BAY_KEYS = [
+  'id',
+  'name',
+  'department',
+  'nextAvailableDate',
+] as const satisfies ProjectionKeys<ProjectedBayQueue>;
+
+// ProjectedJobSlot is a discriminated union; pickDefined keeps only the keys present on each variant
+// (work slots carry jobId/jobCode, idle slots carry label), so a flat key list is safe here.
+const BOARD_SLOT_KEYS = ['kind', 'startDate', 'endDate', 'state', 'durationDays', 'jobId', 'jobCode', 'label'] as const;
+
+const STALE_SENT_QUOTE_KEYS = [
+  'id',
+  'code',
+  'customerCompanyName',
+  'currencyCode',
+  'sentDaysAgo',
+  'statusChangedAt',
+  'totalValue',
+] as const satisfies ProjectionKeys<StaleSentQuote>;
+
+const SUPPLIER_KEYS = [
+  'id',
+  'companyName',
+  'email',
+  'address',
+  'contactPerson',
+  'phone',
+  'notes',
+] as const satisfies ProjectionKeys<Supplier>;
+
+const DOCUMENT_LIST_KEYS = [
+  'id',
+  'filename',
+  'contentType',
+  'metadata',
+  'createdAt',
+] as const satisfies ProjectionKeys<DocumentSummary>;
+
 export function identityProjection(result: unknown): unknown {
   return result;
 }
@@ -450,6 +493,96 @@ export function projectAuditEventList(value: unknown): unknown {
     items: value.items.map(projectAuditEvent),
     ...(typeof value.total === 'number' ? { total: value.total } : {}),
   };
+}
+
+export function projectBaySchedule(value: unknown): unknown {
+  if (!isObjectRecord(value) || !Array.isArray(value.items)) {
+    return value;
+  }
+
+  return {
+    items: value.items.map(projectBoardBayQueue),
+    ...(Array.isArray(value.jobs) ? { jobs: value.jobs.map(projectJobListItem) } : {}),
+    ...(typeof value.today === 'string' ? { today: value.today } : {}),
+  };
+}
+
+function projectBoardBayQueue(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return {
+    ...pickDefined(value, BOARD_BAY_KEYS),
+    disabled: value.disabledAt != null,
+    ...(Array.isArray(value.slots) ? { slots: value.slots.map(projectBoardSlot) } : {}),
+  };
+}
+
+function projectBoardSlot(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return pickDefined(value, BOARD_SLOT_KEYS);
+}
+
+export function projectStaleSentQuotes(value: unknown): unknown {
+  if (!isObjectRecord(value) || !Array.isArray(value.items)) {
+    return value;
+  }
+
+  return { items: value.items.map(projectStaleSentQuote) };
+}
+
+function projectStaleSentQuote(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  const projectedValue = pickDefined(value, STALE_SENT_QUOTE_KEYS);
+  const label = typeof value.code === 'string' ? value.code : null;
+  return addLinks({ id: value.id, ...projectedValue }, [label ? createAiLink('Quote', label, value.id) : null]);
+}
+
+export function projectUpcomingDeliveryQuotes(value: unknown): unknown {
+  if (!isObjectRecord(value) || !Array.isArray(value.items)) {
+    return value;
+  }
+
+  return {
+    items: value.items.map(projectQuoteListItem),
+    ...(typeof value.today === 'string' ? { today: value.today } : {}),
+    ...(typeof value.windowEndDate === 'string' ? { windowEndDate: value.windowEndDate } : {}),
+  };
+}
+
+export function projectSupplier(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return pickDefined(value, SUPPLIER_KEYS);
+}
+
+export function projectSupplierList(value: unknown): unknown {
+  return projectPagedItems(value, projectSupplier);
+}
+
+export function projectDocumentList(value: unknown): unknown {
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  return value.map(projectDocumentSummary);
+}
+
+function projectDocumentSummary(value: unknown): unknown {
+  if (!isObjectRecord(value)) {
+    return value;
+  }
+
+  return pickDefined(value, DOCUMENT_LIST_KEYS);
 }
 
 export function prepareAiToolResultForModel(

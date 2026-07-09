@@ -16,7 +16,7 @@ export type AiToolDebugInfo = {
   linkTarget: AiLinkMetadata | null;
   name: string;
   purpose: string;
-  requiredPermission: AppPermission;
+  requiredPermission: AppPermission | null;
   resultIdentifiers: readonly string[];
   searchableIdentifiers: readonly string[];
   suppressedBy: string | null;

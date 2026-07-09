@@ -2,6 +2,7 @@ import type { AiContext, AiSession } from '@pkg/ai';
 import type { StorageAdapter } from '@pkg/core';
 import { db } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
+import { renderBrochurePdf } from '@pkg/pdf';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { FastifyRequest } from 'fastify';
 
@@ -39,6 +40,7 @@ export function toAiSession(session: AppSession | null): AiSession | null {
 export function createAiContext({ access, db, session, storage }: CreateAiContextInput): AiContext {
   return {
     access,
+    brochureRenderer: renderBrochurePdf,
     db,
     deliverQuoteDraftEmail,
     log,

@@ -10,6 +10,7 @@ import { createSilentLogger, mockSession } from './test-utils.js';
 export function createAiContext(db: Db, access: UserAccessSummary | null): AiContext {
   return {
     access,
+    brochureRenderer: vi.fn(async () => new Uint8Array()),
     db,
     deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
     log: createSilentLogger(),

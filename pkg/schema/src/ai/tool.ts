@@ -8,5 +8,7 @@ export type AiToolBase<TName extends string, TResult, TInput, TContext extends A
   handler: (args: unknown, ctx: TContext) => Promise<TResult>;
   inputSchema: z.ZodType<TInput>;
   jsonSchema: Record<string, unknown>;
-  requiredPermission: AppPermission;
+  // `null` marks a session-only gate: any authenticated caller is authorized, with no permission
+  // check. Used by tools whose API route is `protectedProcedure` rather than permission-gated.
+  requiredPermission: AppPermission | null;
 };

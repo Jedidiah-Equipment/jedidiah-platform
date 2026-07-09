@@ -8,6 +8,7 @@ import { createSilentLogger, mockSession } from '@/test/test-utils.js';
 export function createAiContext(db: Db, access: UserAccessSummary): AiContext {
   return {
     access,
+    brochureRenderer: async () => new Uint8Array(),
     db,
     deliverQuoteDraftEmail: async () => ({ recipientEmail: 'test@example.com', warnings: [] }),
     log: createSilentLogger(),

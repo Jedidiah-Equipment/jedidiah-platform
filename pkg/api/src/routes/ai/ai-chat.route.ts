@@ -1,7 +1,7 @@
 import type { OutgoingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
 
-import { type AiChatModel, type AiContext, type AiUiMessage, createOpenAiChatModel, streamAiChat } from '@pkg/ai';
+import { type AiChatModel, type AiContext, createOpenAiChatModel, streamAiChat, validateAiUiMessages } from '@pkg/ai';
 import type { StorageAdapter } from '@pkg/core';
 import { AiChatInput, type AiReasoningEffort } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -9,6 +9,10 @@ import { z } from 'zod';
 
 import { type ApiConfig, getApiConfig } from '@/env.js';
 import { buildAiContext } from './ai-context.js';
+
+// Aborts a stalled provider stream and closes the response, matching the legacy chat-stream route's
+// budget so a hung upstream cannot tie up the connection (and OpenAI cost) indefinitely.
+const STREAM_TIMEOUT_MS = 60_000;
 
 export type RegisterAiChatRouteOptions = {
   buildContext?: (req: FastifyRequest) => Promise<AiContext>;
@@ -50,7 +54,16 @@ export async function registerAiChatRoute(
       });
     }
 
+    // Deep UI-message validation the shallow schema delegates: reject malformed parts here with a
+    // 400 instead of letting `convertToModelMessages` throw a 500 once inside `streamAiChat`.
+    const validated = await validateAiUiMessages(parsedInput.data.messages);
+
+    if (!validated.ok) {
+      return reply.code(400).send({ error: 'Invalid chat payload', issues: validated.error });
+    }
+
     const abortController = new AbortController();
+    const timeout = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
     const handleRequestClose = () => {
       if (request.raw.destroyed) {
         abortController.abort();
@@ -62,13 +75,14 @@ export async function registerAiChatRoute(
       const response = await streamAiChat({
         abortSignal: abortController.signal,
         ctx,
-        messages: parsedInput.data.messages as unknown as AiUiMessage[],
+        messages: validated.messages,
         model: createModel(),
         reasoningEffort,
       });
 
       await sendWebResponse(reply, response);
     } finally {
+      clearTimeout(timeout);
       request.raw.off('close', handleRequestClose);
     }
   });
@@ -109,6 +123,10 @@ async function sendWebResponse(reply: FastifyReply, response: Response): Promise
     for await (const chunk of body) {
       reply.raw.write(chunk);
     }
+  } catch {
+    // The response is already committed (200 + streamed body), so a teardown mid-stream — client
+    // disconnect or the stream-timeout abort — can only be handled by closing the reply, not by
+    // surfacing an HTTP error.
   } finally {
     reply.raw.end();
   }

@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { AssistantDebugProvider } from '@/components/assistant-ui/assistant-debug-state.js';
 import { Thread } from '@/components/assistant-ui/thread.js';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button.js';
 import { Button } from '@/components/ui/button.js';
@@ -39,6 +40,7 @@ export function AssistantPanel({ newChat = false, prompt }: AssistantPanelProps)
   );
   const handledDraftSearchRef = useRef<string | null>(null);
   const [pendingDraftPrompt, setPendingDraftPrompt] = useState<PendingDraftPrompt | null>(null);
+  const [debugEnabled, setDebugEnabled] = useState(false);
 
   useEffect(() => {
     if (!activeChat) {
@@ -80,6 +82,15 @@ export function AssistantPanel({ newChat = false, prompt }: AssistantPanelProps)
     });
   }, [navigate]);
 
+  const debugState = useMemo(
+    () => ({
+      debugEnabled,
+      setDebugEnabled,
+      toggleDebugEnabled: () => setDebugEnabled((current) => !current),
+    }),
+    [debugEnabled],
+  );
+
   if (!activeChat) {
     return null;
   }
@@ -87,7 +98,7 @@ export function AssistantPanel({ newChat = false, prompt }: AssistantPanelProps)
   const activeDraftPrompt = pendingDraftPrompt?.chatId === activeChatId ? pendingDraftPrompt.prompt : undefined;
 
   return (
-    <>
+    <AssistantDebugProvider value={debugState}>
       <AssistantDebugSheet />
       <AssistantRuntimeSession
         key={activeChatId}
@@ -98,7 +109,7 @@ export function AssistantPanel({ newChat = false, prompt }: AssistantPanelProps)
           ) : null
         }
       />
-    </>
+    </AssistantDebugProvider>
   );
 }
 

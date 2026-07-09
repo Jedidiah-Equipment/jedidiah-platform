@@ -2,8 +2,8 @@ import type { AiDebugInfo, AiToolDebugInfo } from '@pkg/api';
 import { formatNumber } from '@pkg/domain';
 import { IconChevronDown } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
 
+import { useAssistantDebugState } from '@/components/assistant-ui/assistant-debug-state.js';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -17,15 +17,14 @@ import { cn } from '@/lib/utils.js';
 import { useDebugSheetHotkey } from './useDebugSheetHotkey.js';
 
 export function AssistantDebugSheet() {
-  const [open, setOpen] = useState(false);
+  const { debugEnabled: open, setDebugEnabled: setOpen, toggleDebugEnabled } = useAssistantDebugState();
   const trpc = useTRPC();
   const debugQuery = useQuery({
     ...trpc.ai.debugInfo.queryOptions(),
     enabled: open,
   });
 
-  const toggle = useCallback(() => setOpen((current) => !current), []);
-  useDebugSheetHotkey(toggle);
+  useDebugSheetHotkey(toggleDebugEnabled);
 
   return (
     <Sheet onOpenChange={setOpen} open={open}>

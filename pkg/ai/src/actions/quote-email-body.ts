@@ -48,7 +48,7 @@ export async function generateQuoteEmailBody({
 
   aiContext.log.ai.info({ model, quoteCode: quote.code }, 'drafting quote email body');
 
-  const stream = await runner.run({
+  const { textStream, usage } = await runner.run({
     agent,
     context: aiContext,
     input,
@@ -58,10 +58,16 @@ export async function generateQuoteEmailBody({
 
   const decoder = new TextDecoder();
   let body = '';
-  for await (const delta of stream) {
+  for await (const delta of textStream) {
     body += typeof delta === 'string' ? delta : decoder.decode(delta, { stream: true });
   }
   body += decoder.decode();
+
+  try {
+    aiContext.log.ai.info({ usage: await usage() }, 'drafted quote email body');
+  } catch (error) {
+    aiContext.log.ai.warn({ error }, 'failed to read quote email usage');
+  }
 
   const trimmed = body.trim();
 

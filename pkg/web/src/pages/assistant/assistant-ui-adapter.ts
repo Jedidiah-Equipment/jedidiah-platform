@@ -73,6 +73,7 @@ export const jedidiahChatAdapter: ChatModelAdapter = {
       } else if (event.type === 'done') {
         yield {
           content: buildContent(),
+          ...(event.usage ? { metadata: { custom: { runUsage: event.usage } } } : {}),
           status: {
             reason: 'stop',
             type: 'complete',

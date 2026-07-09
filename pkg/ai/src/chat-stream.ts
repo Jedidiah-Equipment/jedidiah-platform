@@ -1,5 +1,5 @@
 import type { AgentInputItem } from '@openai/agents';
-import type { AiReasoningEffort, ChatEvent, ChatStreamInput, ChatStreamMessage } from '@pkg/schema';
+import type { AiReasoningEffort, ChatEvent, ChatRunUsage, ChatStreamInput, ChatStreamMessage } from '@pkg/schema';
 import { createAssistantAgent } from './agent.js';
 import type { AiContext } from './context.js';
 import type { AiAgentRunner } from './openai.js';
@@ -41,7 +41,7 @@ export async function runChatStream({
 
     ctx.log.ai.info({ input: agentInput, model, reasoningEffort, toolNames: authorizedToolNames }, 'starting chat');
 
-    const stream = await runner.run({
+    const { textStream, usage } = await runner.run({
       agent,
       context: ctx,
       input: agentInput,
@@ -51,7 +51,7 @@ export async function runChatStream({
 
     const textDecoder = new TextDecoder();
 
-    for await (const delta of stream) {
+    for await (const delta of textStream) {
       const textDelta = decodeTextDelta(delta, textDecoder);
 
       ctx.log.ai.trace({ delta: textDelta }, 'content delta');
@@ -73,15 +73,26 @@ export async function runChatStream({
       });
     }
 
-    ctx.log.ai.info({}, 'stream done');
+    const runUsage = await readRunUsage(usage, ctx);
+    ctx.log.ai.info({ usage: runUsage }, 'stream done');
     emit({
       type: 'done',
+      ...(runUsage ? { usage: runUsage } : {}),
     });
   } catch (error) {
     emit({
       type: 'error',
       message: error instanceof Error ? error.message : 'AI stream failed',
     });
+  }
+}
+
+async function readRunUsage(usage: () => Promise<ChatRunUsage>, ctx: AiContext): Promise<ChatRunUsage | null> {
+  try {
+    return await usage();
+  } catch (error) {
+    ctx.log.ai.warn({ error }, 'failed to read run usage');
+    return null;
   }
 }
 

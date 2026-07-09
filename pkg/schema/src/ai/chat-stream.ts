@@ -8,8 +8,21 @@ export type ChatEvent =
   | { type: 'token'; delta: string }
   | { type: 'tool_call'; id: string; name: string; args: unknown }
   | { type: 'tool_result'; id: string; result: unknown; size?: ChatToolResultSizeInfo }
-  | { type: 'done' }
+  | { type: 'done'; usage?: ChatRunUsage }
   | { type: 'error'; message: string };
+
+export type ChatRequestUsage = {
+  cachedInputTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningOutputTokens: number;
+  totalTokens: number;
+};
+
+export type ChatRunUsage = ChatRequestUsage & {
+  requestUsage: ChatRequestUsage[];
+  requests: number;
+};
 
 export type ChatToolResultSizeInfo = {
   maxSerializedBytes: number;

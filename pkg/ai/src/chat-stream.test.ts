@@ -1,7 +1,7 @@
 import { RunContext, type Tool } from '@openai/agents';
 import * as productsCore from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { ChatEvent } from '@pkg/schema';
+import type { ChatEvent, ChatRunUsage } from '@pkg/schema';
 import { Product } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 import { runChatStream } from './chat-stream.js';
@@ -39,7 +39,10 @@ function createRunner(...streams: StubAgentTextStream[]): AiAgentRunner {
       }
 
       nextStream.setInput(input);
-      return nextStream;
+      return {
+        textStream: nextStream,
+        usage: nextStream.usage,
+      };
     }),
   };
 }
@@ -72,8 +75,16 @@ async function collectChatEvents({
 
 class StubAgentTextStream implements AsyncIterable<string | Uint8Array> {
   private input: AiAgentRunInput | null = null;
+  readonly usage: () => Promise<ChatRunUsage>;
 
-  constructor(private readonly run: (input: AiAgentRunInput) => AsyncIterable<string | Uint8Array>) {}
+  constructor(
+    private readonly run: (input: AiAgentRunInput) => AsyncIterable<string | Uint8Array>,
+    usage: () => Promise<ChatRunUsage> = async () => {
+      throw new Error('No stub run usage was queued');
+    },
+  ) {
+    this.usage = usage;
+  }
 
   setInput(input: AiAgentRunInput): void {
     this.input = input;
@@ -86,6 +97,19 @@ class StubAgentTextStream implements AsyncIterable<string | Uint8Array> {
 
     yield* this.run(this.input);
   }
+}
+
+function chatRunUsage(overrides: Partial<ChatRunUsage> = {}): ChatRunUsage {
+  return {
+    cachedInputTokens: 4,
+    inputTokens: 120,
+    outputTokens: 32,
+    reasoningOutputTokens: 8,
+    requestUsage: [],
+    requests: 1,
+    totalTokens: 152,
+    ...overrides,
+  };
 }
 
 function textDeltas(...deltas: (string | Uint8Array)[]): AsyncIterable<string | Uint8Array> {
@@ -128,6 +152,43 @@ describe('runChatStream', () => {
     await expect(collectChatEvents({ runner: createRunner(stream) })).resolves.toEqual([
       { type: 'token', delta: 'A' },
       { type: 'token', delta: '💛B' },
+      { type: 'done' },
+    ]);
+  });
+
+  test('emits run usage on the done event', async () => {
+    const usage = chatRunUsage({
+      requestUsage: [
+        {
+          cachedInputTokens: 4,
+          inputTokens: 120,
+          outputTokens: 32,
+          reasoningOutputTokens: 8,
+          totalTokens: 152,
+        },
+      ],
+    });
+    const stream = new StubAgentTextStream(
+      () => textDeltas('Done'),
+      async () => usage,
+    );
+
+    await expect(collectChatEvents({ runner: createRunner(stream) })).resolves.toEqual([
+      { type: 'token', delta: 'Done' },
+      { type: 'done', usage },
+    ]);
+  });
+
+  test('emits bare done when reading run usage fails', async () => {
+    const stream = new StubAgentTextStream(
+      () => textDeltas('Done'),
+      async () => {
+        throw new Error('usage failed');
+      },
+    );
+
+    await expect(collectChatEvents({ runner: createRunner(stream) })).resolves.toEqual([
+      { type: 'token', delta: 'Done' },
       { type: 'done' },
     ]);
   });

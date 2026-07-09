@@ -47,7 +47,12 @@ function createRunner(...streams: StubAgentTextStream[]): AiAgentRunner {
       }
 
       nextStream.setInput(input);
-      return nextStream;
+      return {
+        textStream: nextStream,
+        usage: async () => {
+          throw new Error('No stub run usage was queued');
+        },
+      };
     }),
   };
 }

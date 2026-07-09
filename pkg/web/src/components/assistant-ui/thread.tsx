@@ -12,12 +12,14 @@ import {
 import { IconArrowDown, IconArrowUp, IconCopy, IconRefresh, IconSquare } from '@tabler/icons-react';
 import type { FC, ReactNode } from 'react';
 
+import { getRunUsageFromMetadata } from '@/components/assistant-ui/assistant-run-usage.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';
 
+import { useAssistantDebugEnabled } from './assistant-debug-state.js';
 import { MarkdownText } from './markdown-text.js';
 import { TooltipIconButton } from './tooltip-icon-button.js';
 
@@ -154,12 +156,38 @@ const AssistantMessage: FC = () => {
           }}
         </MessagePrimitive.GroupedParts>
         <AssistantThinking />
+        <AssistantUsageFooter />
         <MessageError />
       </div>
       <div className="h-9 pt-1">
         <AssistantActionBar />
       </div>
     </MessagePrimitive.Root>
+  );
+};
+
+const AssistantUsageFooter: FC = () => {
+  const debugEnabled = useAssistantDebugEnabled();
+  const runUsage = useAuiState((state) =>
+    state.message.role === 'assistant' ? getRunUsageFromMetadata(state.message.metadata?.custom) : undefined,
+  );
+
+  if (!debugEnabled || !runUsage) {
+    return null;
+  }
+
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
+      <span>{formatTokenCount(runUsage.inputTokens)} in</span>
+      <span aria-hidden="true">·</span>
+      <span>{formatTokenCount(runUsage.outputTokens)} out</span>
+      <span aria-hidden="true">·</span>
+      <span>{formatTokenCount(runUsage.reasoningOutputTokens)} reasoning</span>
+      <span aria-hidden="true">·</span>
+      <span>{formatTokenCount(runUsage.cachedInputTokens)} cached</span>
+      <span aria-hidden="true">·</span>
+      <span>{runUsage.requests} requests</span>
+    </div>
   );
 };
 
@@ -295,6 +323,10 @@ function getResultCount(result: unknown): number | null {
   }
 
   return null;
+}
+
+function formatTokenCount(count: number): string {
+  return count >= 1000 ? `${(count / 1000).toFixed(1)}k` : String(count);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

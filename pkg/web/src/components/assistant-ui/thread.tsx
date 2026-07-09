@@ -221,15 +221,25 @@ const groupToolCallParts = (part: PartState): readonly ['group-tool-calls'] | nu
 };
 
 const ToolCallGroup: FC<{ children: ReactNode; indices: readonly number[] }> = ({ children, indices }) => {
-  const summary = useAuiState((state) => {
+  // useAuiState selectors feed useSyncExternalStore; returning fresh objects here can trigger an update loop.
+  const totalSerializedBytes = useAuiState((state) => {
     const sizes = getToolResultSizesFromMetadata(state.message.metadata?.custom);
     const groupSizes = state.message.parts
       .filter((part, index) => indices.includes(index) && part.type === 'tool-call')
       .map((part) => getToolResultSize(part, sizes));
 
-    return summarizeToolResultSizes(groupSizes);
+    return summarizeToolResultSizes(groupSizes)?.totalSerializedBytes;
+  });
+  const truncatedCount = useAuiState((state) => {
+    const sizes = getToolResultSizesFromMetadata(state.message.metadata?.custom);
+    const groupSizes = state.message.parts
+      .filter((part, index) => indices.includes(index) && part.type === 'tool-call')
+      .map((part) => getToolResultSize(part, sizes));
+
+    return summarizeToolResultSizes(groupSizes)?.truncatedCount;
   });
   const count = indices.length;
+  const hasSizeSummary = totalSerializedBytes !== undefined;
 
   return (
     <div className="mb-3 inline-flex max-w-full pe-2">
@@ -240,17 +250,17 @@ const ToolCallGroup: FC<{ children: ReactNode; indices: readonly number[] }> = (
               className="max-w-full cursor-default truncate border-border/70 bg-muted/30 px-2 py-0.5 font-normal text-muted-foreground text-xs"
               variant="outline"
             >
-              {summary ? (
+              {hasSizeSummary ? (
                 <>
                   <span>{count} tool calls</span>
                   <span aria-hidden="true">·</span>
-                  <span>{formatKb(summary.totalSerializedBytes)} returned</span>
-                  {summary.truncatedCount > 0 ? (
+                  <span>{formatKb(totalSerializedBytes)} returned</span>
+                  {truncatedCount ? (
                     <>
                       <span aria-hidden="true">·</span>
                       <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
                         <span className="size-1.5 rounded-full bg-amber-500" />
-                        {summary.truncatedCount} truncated
+                        {truncatedCount} truncated
                       </span>
                     </>
                   ) : null}

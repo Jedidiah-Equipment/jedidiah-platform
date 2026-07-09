@@ -19,7 +19,6 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';
 
-import { useAssistantDebugEnabled } from './assistant-debug-state.js';
 import { MarkdownText } from './markdown-text.js';
 import { TooltipIconButton } from './tooltip-icon-button.js';
 
@@ -167,12 +166,11 @@ const AssistantMessage: FC = () => {
 };
 
 const AssistantUsageFooter: FC = () => {
-  const debugEnabled = useAssistantDebugEnabled();
   const runUsage = useAuiState((state) =>
     state.message.role === 'assistant' ? getRunUsageFromMetadata(state.message.metadata?.custom) : undefined,
   );
 
-  if (!debugEnabled || !runUsage) {
+  if (!runUsage) {
     return null;
   }
 

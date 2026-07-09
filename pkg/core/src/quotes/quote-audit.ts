@@ -42,7 +42,8 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
     validUntil: row.validUntil,
   }),
   toCollections: ({ lineItems, selectedAssemblies }) => ({
-    // Line items have no stable audited id; same-name items pair in sorted order in the diff.
+    // Line items have no stable audited id; same-name items pair in position order in the diff, so
+    // the projection must not re-sort them.
     lineItem: toQuoteLineItemAuditRecord(lineItems).map((lineItem) => ({
       key: lineItem.name,
       label: lineItem.name,
@@ -80,8 +81,9 @@ export function toQuoteSelectedAssemblyAuditRecord(selectedAssemblies: readonly 
     );
 }
 
+// Keeps the caller's position order (DB reads are position-ordered, inputs are array-ordered): sorting
+// by a mutable value like unitPrice would mispair same-name duplicates when one item's price crosses
+// another's.
 export function toQuoteLineItemAuditRecord(lineItems: readonly QuoteLineItemAuditItem[]) {
-  return lineItems
-    .map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice }))
-    .toSorted((left, right) => left.name.localeCompare(right.name) || left.unitPrice - right.unitPrice);
+  return lineItems.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice }));
 }

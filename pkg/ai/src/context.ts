@@ -3,6 +3,7 @@ import type { Db } from '@pkg/db';
 import type {
   AiContext as AiContextSchema,
   AuthId,
+  BrochurePdfRenderer,
   Logger,
   QuoteDraftEmailInput,
   QuoteDraftEmailResult,
@@ -26,6 +27,7 @@ export type DeliverQuoteDraftEmail = (args: {
 }) => Promise<QuoteDraftEmailResult>;
 
 export type AiDependencies = {
+  brochureRenderer: BrochurePdfRenderer;
   deliverQuoteDraftEmail: DeliverQuoteDraftEmail;
   log: Logger;
 };

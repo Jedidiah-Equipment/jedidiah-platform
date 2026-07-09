@@ -15,6 +15,7 @@ import {
 function createAiContext(access: UserAccessSummary | null = null): AiContext {
   return {
     access,
+    brochureRenderer: async () => new Uint8Array(),
     db: {} as AiContext['db'],
     deliverQuoteDraftEmail: async () => ({ recipientEmail: 'test@example.com', warnings: [] }),
     log: createSilentLogger(),
@@ -162,6 +163,7 @@ describe('aiTools', () => {
     expect(aiTools.listQuotes.requiredPermission).toBe('quote:read');
     expect(aiTools.listUsers.requiredPermission).toBe('user:list');
     expect(aiTools.sendDraftQuoteEmail.requiredPermission).toBe('quote:update');
+    expect(aiTools.submitFeedback.requiredPermission).toBeNull();
   });
 
   test('returns procurement tools for procurement managers', () => {
@@ -175,13 +177,20 @@ describe('aiTools', () => {
     expect(getAuthorizedToolNames(tools)).toEqual([
       'listProducts',
       'getProduct',
+      'listProductDocuments',
       'listParts',
       'getPart',
       'listCustomers',
       'getCustomer',
       'createCustomer',
+      'updateCustomer',
       'listJobs',
       'getJob',
+      'listBaySchedule',
+      'listJobFeedback',
+      'listSuppliers',
+      'getSupplier',
+      'submitFeedback',
     ]);
   });
 
@@ -192,7 +201,7 @@ describe('aiTools', () => {
       userId: 'test-user-id',
     });
 
-    expect(getAuthorizedToolNames(tools)).toEqual(['listParts', 'getPart']);
+    expect(getAuthorizedToolNames(tools)).toEqual(['listParts', 'getPart', 'submitFeedback']);
   });
 
   test('returns quote tools for sales users', () => {
@@ -207,10 +216,19 @@ describe('aiTools', () => {
       'listQuotes',
       'getQuote',
       'createQuote',
+      'updateQuote',
       'sendDraftQuoteEmail',
+      'listStaleSentQuotes',
+      'listUpcomingDeliveryQuotes',
+      'summarizeQuotesByStatus',
+      'summarizeQuotePipeline',
+      'summarizeQuoteWeeklyFlow',
+      'getQuoteProductBayAvailability',
+      'listQuoteDocuments',
       'listQuoteCustomers',
       'listQuoteProducts',
       'listQuoteSalespeople',
+      'submitFeedback',
     ]);
   });
 
@@ -221,7 +239,13 @@ describe('aiTools', () => {
       userId: 'test-user-id',
     });
 
-    expect(getAuthorizedToolNames(tools)).toEqual(['listJobs', 'getJob']);
+    expect(getAuthorizedToolNames(tools)).toEqual([
+      'listJobs',
+      'getJob',
+      'listBaySchedule',
+      'listJobFeedback',
+      'submitFeedback',
+    ]);
   });
 
   test('returns customer tools for customer readers', () => {
@@ -231,7 +255,38 @@ describe('aiTools', () => {
       userId: 'test-user-id',
     });
 
-    expect(getAuthorizedToolNames(tools)).toEqual(['listCustomers', 'getCustomer']);
+    expect(getAuthorizedToolNames(tools)).toEqual(['listCustomers', 'getCustomer', 'submitFeedback']);
+  });
+
+  test('returns feedback reads for feedback readers', () => {
+    const tools = getAuthorizedTools({
+      permissions: ['feedback:read'],
+      role: 'sales',
+      userId: 'test-user-id',
+    });
+
+    expect(getAuthorizedToolNames(tools)).toEqual(['listFeedback', 'submitFeedback']);
+  });
+
+  test('returns supplier tools for supplier readers', () => {
+    const tools = getAuthorizedTools({
+      permissions: ['supplier:read'],
+      role: 'sales',
+      userId: 'test-user-id',
+    });
+
+    expect(getAuthorizedToolNames(tools)).toEqual(['listSuppliers', 'getSupplier', 'submitFeedback']);
+  });
+
+  test('authorizes the session-only submitFeedback tool for any authenticated user', () => {
+    const authenticated = getAuthorizedTools({
+      permissions: [],
+      role: 'sales',
+      userId: 'test-user-id',
+    });
+
+    expect(getAuthorizedToolNames(authenticated)).toEqual(['submitFeedback']);
+    expect(getAuthorizedTools(null)).toEqual({});
   });
 
   test('returns audit and user tools for their permissions', () => {
@@ -241,7 +296,7 @@ describe('aiTools', () => {
       userId: 'test-user-id',
     });
 
-    expect(getAuthorizedToolNames(tools)).toEqual(['listAuditEvents', 'listUsers']);
+    expect(getAuthorizedToolNames(tools)).toEqual(['submitFeedback', 'listAuditEvents', 'listUsers']);
   });
 
   test('returns all tools for admins', () => {
@@ -255,18 +310,34 @@ describe('aiTools', () => {
     expect(getAuthorizedToolNames(tools)).toEqual([
       'listProducts',
       'getProduct',
+      'listProductDocuments',
       'listParts',
       'getPart',
       'listCustomers',
       'getCustomer',
       'createCustomer',
+      'updateCustomer',
       'listJobs',
       'getJob',
+      'listBaySchedule',
+      'listJobFeedback',
+      'createJobFromQuote',
       'listQuotes',
       'getQuote',
       'createQuote',
+      'updateQuote',
       'sendDraftQuoteEmail',
+      'listStaleSentQuotes',
+      'listUpcomingDeliveryQuotes',
+      'summarizeQuotesByStatus',
+      'summarizeQuotePipeline',
+      'summarizeQuoteWeeklyFlow',
+      'getQuoteProductBayAvailability',
+      'listQuoteDocuments',
       'listQuoteSalespeople',
+      'listSuppliers',
+      'getSupplier',
+      'submitFeedback',
       'listAuditEvents',
       'listUsers',
     ]);
@@ -282,16 +353,28 @@ describe('aiTools', () => {
     expect(getAuthorizedToolNames(tools)).toEqual([
       'listProducts',
       'getProduct',
+      'listProductDocuments',
       'listCustomers',
       'getCustomer',
       'listQuotes',
       'getQuote',
+      'listStaleSentQuotes',
+      'listUpcomingDeliveryQuotes',
+      'summarizeQuotesByStatus',
+      'summarizeQuotePipeline',
+      'summarizeQuoteWeeklyFlow',
+      'getQuoteProductBayAvailability',
+      'listQuoteDocuments',
       'listQuoteSalespeople',
+      'submitFeedback',
     ]);
   });
 
-  test('hides tools when the user lacks the required permission', () => {
-    expect(getAuthorizedTools(createAccessWithNoProductRead())).toEqual({});
+  test('hides permission-gated tools when the user lacks the required permission', () => {
+    // The session-only submitFeedback tool still surfaces for any authenticated caller.
+    expect(getAuthorizedTools(createAccessWithNoProductRead())).toEqual({
+      submitFeedback: aiTools.submitFeedback,
+    });
     expect(getAuthorizedTools(null)).toEqual({});
   });
 
@@ -307,6 +390,13 @@ describe('aiTools', () => {
     expect(getAuthorizedToolNames(tools)).toEqual([
       'listQuotes',
       'getQuote',
+      'listStaleSentQuotes',
+      'listUpcomingDeliveryQuotes',
+      'summarizeQuotesByStatus',
+      'summarizeQuotePipeline',
+      'summarizeQuoteWeeklyFlow',
+      'getQuoteProductBayAvailability',
+      'listQuoteDocuments',
       'listQuoteCustomers',
       'listQuoteProducts',
       'listQuoteSalespeople',

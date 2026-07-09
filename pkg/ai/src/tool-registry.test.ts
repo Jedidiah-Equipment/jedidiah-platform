@@ -14,20 +14,37 @@ import {
 const EXPECTED_TOOL_NAMES = [
   'listProducts',
   'getProduct',
+  'listProductDocuments',
   'listParts',
   'getPart',
   'listCustomers',
   'getCustomer',
   'createCustomer',
+  'updateCustomer',
   'listJobs',
   'getJob',
+  'listBaySchedule',
+  'listJobFeedback',
+  'createJobFromQuote',
   'listQuotes',
   'getQuote',
   'createQuote',
+  'updateQuote',
   'sendDraftQuoteEmail',
+  'listStaleSentQuotes',
+  'listUpcomingDeliveryQuotes',
+  'summarizeQuotesByStatus',
+  'summarizeQuotePipeline',
+  'summarizeQuoteWeeklyFlow',
+  'getQuoteProductBayAvailability',
+  'listQuoteDocuments',
   'listQuoteCustomers',
   'listQuoteProducts',
   'listQuoteSalespeople',
+  'listSuppliers',
+  'getSupplier',
+  'listFeedback',
+  'submitFeedback',
   'listAuditEvents',
   'listUsers',
 ] as const;
@@ -35,7 +52,7 @@ const EXPECTED_TOOL_NAMES = [
 describe('AI tool registry', () => {
   test('keeps the stable ordered tool list', () => {
     expect(AI_TOOL_NAMES).toEqual(EXPECTED_TOOL_NAMES);
-    expect(AI_TOOL_REGISTRY).toHaveLength(18);
+    expect(AI_TOOL_REGISTRY).toHaveLength(35);
     expect(new Set(AI_TOOL_NAMES).size).toBe(AI_TOOL_NAMES.length);
   });
 
@@ -59,7 +76,15 @@ describe('AI tool registry', () => {
     );
 
     expect([...AI_WRITE_TOOL_NAMES]).toEqual(writeToolNames);
-    expect(writeToolNames).toEqual(['createCustomer', 'createQuote', 'sendDraftQuoteEmail']);
+    expect(writeToolNames).toEqual([
+      'createCustomer',
+      'updateCustomer',
+      'createJobFromQuote',
+      'createQuote',
+      'updateQuote',
+      'sendDraftQuoteEmail',
+      'submitFeedback',
+    ]);
   });
 
   test('references known link metadata entries from descriptors', () => {

@@ -20,6 +20,7 @@ vi.mock('../actions/quote-email-body.js', () => ({
 function createAiContext(access: UserAccessSummary | null = null): AiContext {
   return {
     access,
+    brochureRenderer: vi.fn(async () => new Uint8Array()),
     db: {} as AiContext['db'],
     deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
     log: createSilentLogger(),

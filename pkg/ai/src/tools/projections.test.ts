@@ -3,7 +3,9 @@ import { describe, expect, test } from 'vitest';
 import {
   prepareAiToolResultForModel,
   projectAuditEventList,
+  projectBaySchedule,
   projectCustomerListItem,
+  projectDocumentList,
   projectJobDetail,
   projectJobListItem,
   projectPagedItems,
@@ -11,6 +13,8 @@ import {
   projectQuoteDetail,
   projectQuoteListItem,
   projectQuoteSalespeople,
+  projectStaleSentQuotes,
+  projectSupplier,
   projectUserList,
 } from './projections.js';
 
@@ -569,5 +573,103 @@ describe('tool result projections', () => {
     expect(projected.items).toHaveLength(61);
     expect(JSON.stringify(projected.items.at(-1))).toContain('__aiToolResultTruncatedItems');
     expect(JSON.stringify(projected.items[0])).toContain('"links"');
+  });
+
+  test('projectSupplier drops thumbnails and adds no links', () => {
+    expect(
+      projectSupplier({
+        id: '00000000-0000-4000-8000-000000000001',
+        companyName: 'Bolt Traders',
+        email: 'bolt@example.com',
+        address: null,
+        contactPerson: 'Sam Supplier',
+        phone: '+27110000000',
+        notes: null,
+        thumbnailDataUrl: 'data:image/webp;base64,aaaa',
+        createdAt: '2026-06-17T08:00:00.000Z',
+        updatedAt: '2026-06-17T08:00:00.000Z',
+      }),
+    ).toEqual({
+      id: '00000000-0000-4000-8000-000000000001',
+      companyName: 'Bolt Traders',
+      email: 'bolt@example.com',
+      address: null,
+      contactPerson: 'Sam Supplier',
+      phone: '+27110000000',
+      notes: null,
+    });
+  });
+
+  test('projectDocumentList trims each document to id, filename, type, and created date', () => {
+    expect(
+      projectDocumentList([
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+          ownerType: 'quote',
+          quoteId: '00000000-0000-4000-8000-000000000009',
+          filename: 'quote.pdf',
+          contentType: 'application/pdf',
+          byteSize: 2048,
+          metadata: { revision: 2 },
+          uploaderUserId: 'test-user-id',
+          uploaderName: 'Test User',
+          uploaderEmail: 'test@example.com',
+          createdAt: '2026-06-17T08:00:00.000Z',
+        },
+      ]),
+    ).toEqual([
+      {
+        id: '00000000-0000-4000-8000-000000000001',
+        filename: 'quote.pdf',
+        contentType: 'application/pdf',
+        metadata: { revision: 2 },
+        createdAt: '2026-06-17T08:00:00.000Z',
+      },
+    ]);
+  });
+
+  test('projectStaleSentQuotes links each Quote by Quote Code', () => {
+    const projected = projectStaleSentQuotes({
+      items: [
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+          code: 'QUO-00001',
+          customerCompanyName: 'Apex Quarry Services',
+          currencyCode: 'ZAR',
+          sentDaysAgo: 30,
+          statusChangedAt: '2026-06-17T08:00:00.000Z',
+          totalValue: 1000,
+        },
+      ],
+    }) as { items: Array<{ links: unknown[] }> };
+
+    expect(projected.items[0]?.links).toEqual([
+      { entity: 'Quote', href: '/quotes/00000000-0000-4000-8000-000000000001/edit', label: 'QUO-00001' },
+    ]);
+  });
+
+  test('projectBaySchedule flattens the disabled flag and keeps Job display facts', () => {
+    const projected = projectBaySchedule({
+      items: [
+        {
+          id: '00000000-0000-4000-8000-000000000010',
+          name: 'Bay 1',
+          department: 'paint',
+          disabledAt: null,
+          nextAvailableDate: '2026-07-13',
+          scheduleOrigin: '2026-07-09',
+          createdAt: '2026-06-01T08:00:00.000Z',
+          updatedAt: '2026-06-01T08:00:00.000Z',
+          calendarExceptions: [],
+          slots: [],
+        },
+      ],
+      jobs: [],
+      offDays: [],
+      today: '2026-07-09',
+    }) as { items: Array<{ disabled: boolean }>; today: string };
+
+    expect(projected.items[0]?.disabled).toBe(false);
+    expect(projected.today).toBe('2026-07-09');
   });
 });

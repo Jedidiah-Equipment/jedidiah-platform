@@ -20,6 +20,7 @@ function createAiContext({
 } = {}): AiContext {
   return {
     access: null,
+    brochureRenderer: vi.fn(async () => new Uint8Array()),
     db,
     deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
     log: createSilentLogger(),

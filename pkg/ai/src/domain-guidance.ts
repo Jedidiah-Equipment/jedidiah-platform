@@ -52,7 +52,7 @@ export const AI_DOMAIN_RELATIONSHIPS = [
   },
 ] satisfies readonly AiDomainRelationship[];
 
-export const AI_RETRIEVAL_PLAYBOOKS = [
+export const AI_RETRIEVAL_PLAYBOOKS: readonly AiRetrievalPlaybook[] = [
   {
     intent: 'customer_job_progress',
     appliesWhen: 'The user asks about Job progress using a Customer or company name.',
@@ -82,7 +82,28 @@ export const AI_RETRIEVAL_PLAYBOOKS = [
     ],
     linkTargets: [aiLinkMetadata.Job, aiLinkMetadata.Quote, aiLinkMetadata.Customer],
   },
-] satisfies readonly AiRetrievalPlaybook[];
+  {
+    intent: 'department_schedule',
+    appliesWhen: 'The user asks what a Department or Bay is working on, or which Bays are free over a date window.',
+    steps: [
+      {
+        tool: 'listBaySchedule',
+        instruction:
+          'List the production schedule to see Work Slots on Bays grouped by Department with per-Job display facts. Bound the window with the `from` date when the user names a date range.',
+      },
+      {
+        tool: 'getJob',
+        instruction: "Fetch a specific Job referenced by a Work Slot only when the user wants that one Job's detail.",
+      },
+    ],
+    disambiguation: [
+      "If the user names a Department, report only that Department's Bays and Work Slots.",
+      'For "which Bays are free", use each Bay\'s next available date instead of guessing.',
+      'Use listBaySchedule for the board view; use getJob only for single-Job detail.',
+    ],
+    linkTargets: [aiLinkMetadata.Job],
+  },
+];
 
 const REGISTERED_TOOL_NAMES = new Set<AiToolName>(AI_TOOL_NAMES);
 

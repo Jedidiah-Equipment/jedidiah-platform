@@ -11,10 +11,12 @@ describe('ai.debugInfo', () => {
   });
 
   test('returns the assembled system prompt and every registry tool for a signed-in user', async ({ context }) => {
-    const info = await context.createCaller(mockSession('admin')).ai.debugInfo();
+    // super-admin holds every permission (admin plus feedback:read), so only the shadowed
+    // quote-reader twins remain unauthorized-and-unsuppressed.
+    const info = await context.createCaller(mockSession('super-admin')).ai.debugInfo();
 
     expect(info.systemPrompt).toContain('## Role');
-    expect(info.tools).toHaveLength(18);
+    expect(info.tools).toHaveLength(35);
     expect(info.tools.find((tool) => tool.name === 'listQuoteCustomers')).toMatchObject({
       authorized: false,
       suppressedBy: 'listCustomers',
@@ -30,7 +32,7 @@ describe('ai.debugInfo', () => {
     const info = await context.createCaller(mockSession('procurement-manager')).ai.debugInfo();
 
     const authorized = new Map(info.tools.map((tool) => [tool.name, tool.authorized]));
-    expect(info.tools).toHaveLength(18);
+    expect(info.tools).toHaveLength(35);
     expect(authorized.get('createQuote')).toBe(false);
     expect(authorized.get('listProducts')).toBe(true);
   });

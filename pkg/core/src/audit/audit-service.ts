@@ -17,6 +17,14 @@ export type AuditSummaryDescriptor = {
   primaryLabelFormatter?: (value: unknown) => string;
 };
 
+// One element of an audited child collection. `key` is the stable matching identity (an id where one
+// exists), `label` names the element in the change set (omit it when unknown — the diff falls back to
+// the counterpart element's label, then the key), `value` is the audited projection. Descriptors must
+// pre-sort/normalize `value` so JSON.stringify equality is order-stable.
+export type AuditCollectionElement = { key: string; label?: string | undefined; value: unknown };
+// Field prefix -> elements; each changed element records as `${prefix}:${label}`.
+export type AuditCollections = Record<string, AuditCollectionElement[]>;
+
 /**
  * A feature owns its descriptor and defines it next to its service. `toRecord` projects the aggregate
  * (row plus any related collections) into the audited record; the audited field set is exactly the
@@ -26,6 +34,10 @@ export type AuditSummaryDescriptor = {
  */
 export type AuditDescriptor<TInput> = AuditSummaryDescriptor & {
   toRecord: (input: TInput) => AuditRecord;
+  // Optional child collections diffed element-wise by `key`: only elements that changed are recorded,
+  // each as its own `${prefix}:${label}` entry with structured from/to values, instead of folding the
+  // whole collection into one field of `toRecord`.
+  toCollections?: (input: TInput) => AuditCollections;
   entityId: (input: TInput) => string;
   // Optional when the summary label is not itself an audited field (e.g. a Job's code or a User's
   // email): keeps the label out of `toRecord` so it never pollutes the change set. Defaults to
@@ -66,7 +78,74 @@ export function diffAuditUpdate<TInput>(
   before: TInput,
   after: TInput,
 ): AuditChanges | null {
-  return diffAuditRecords(descriptor.toRecord(before), descriptor.toRecord(after));
+  const changes = {
+    ...diffAuditRecords(descriptor.toRecord(before), descriptor.toRecord(after)),
+    ...diffAuditCollections(descriptor.toCollections?.(before) ?? {}, descriptor.toCollections?.(after) ?? {}),
+  };
+
+  return Object.keys(changes).length > 0 ? changes : null;
+}
+
+// Elements sharing a key (collections without a stable id) are paired in array order; unpaired
+// leftovers record as additions/removals.
+function diffAuditCollections(before: AuditCollections, after: AuditCollections): AuditChanges {
+  const changes: AuditChanges = {};
+
+  for (const prefix of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    const unmatched = groupCollectionElementsByKey(before[prefix] ?? []);
+
+    for (const element of after[prefix] ?? []) {
+      const match = unmatched.get(element.key)?.shift();
+      const label = element.label ?? match?.label ?? element.key;
+
+      if (!match) {
+        addCollectionChange(changes, prefix, label, { from: null, to: toAuditValue(element.value) });
+      } else if (JSON.stringify(match.value) !== JSON.stringify(element.value)) {
+        addCollectionChange(changes, prefix, label, {
+          from: toAuditValue(match.value),
+          to: toAuditValue(element.value),
+        });
+      }
+    }
+
+    for (const leftovers of unmatched.values()) {
+      for (const element of leftovers) {
+        addCollectionChange(changes, prefix, element.label ?? element.key, {
+          from: toAuditValue(element.value),
+          to: null,
+        });
+      }
+    }
+  }
+
+  return changes;
+}
+
+function groupCollectionElementsByKey(elements: AuditCollectionElement[]): Map<string, AuditCollectionElement[]> {
+  const groups = new Map<string, AuditCollectionElement[]>();
+
+  for (const element of elements) {
+    const group = groups.get(element.key);
+
+    if (group) {
+      group.push(element);
+    } else {
+      groups.set(element.key, [element]);
+    }
+  }
+
+  return groups;
+}
+
+function addCollectionChange(changes: AuditChanges, prefix: string, label: string, change: AuditChanges[string]): void {
+  const base = `${prefix}:${label}`;
+  let key = base;
+
+  for (let ordinal = 2; key in changes; ordinal += 1) {
+    key = `${base} (${ordinal})`;
+  }
+
+  changes[key] = change;
 }
 
 function snapshotAuditChanges(record: AuditRecord, action: Extract<AuditAction, 'created' | 'deleted'>): AuditChanges {
@@ -76,6 +155,28 @@ function snapshotAuditChanges(record: AuditRecord, action: Extract<AuditAction, 
     const value = toAuditValue(record[field]);
 
     changes[field] = action === 'created' ? { from: null, to: value } : { from: value, to: null };
+  }
+
+  return changes;
+}
+
+function snapshotAuditCollections(
+  collections: AuditCollections,
+  action: Extract<AuditAction, 'created' | 'deleted'>,
+): AuditChanges {
+  const changes: AuditChanges = {};
+
+  for (const [prefix, elements] of Object.entries(collections)) {
+    for (const element of elements) {
+      const value = toAuditValue(element.value);
+
+      addCollectionChange(
+        changes,
+        prefix,
+        element.label ?? element.key,
+        action === 'created' ? { from: null, to: value } : { from: value, to: null },
+      );
+    }
   }
 
   return changes;
@@ -187,7 +288,10 @@ export async function recordAuditCreate<TInput>({
     action: 'created',
     actorUserId,
     entityId: descriptor.entityId(input),
-    changes: snapshotAuditChanges(record, 'created'),
+    changes: {
+      ...snapshotAuditChanges(record, 'created'),
+      ...snapshotAuditCollections(descriptor.toCollections?.(input) ?? {}, 'created'),
+    },
     label: recordLabel(descriptor, input, record),
   });
 }
@@ -211,7 +315,10 @@ export async function recordAuditDelete<TInput>({
     action: 'deleted',
     actorUserId,
     entityId: descriptor.entityId(input),
-    changes: snapshotAuditChanges(record, 'deleted'),
+    changes: {
+      ...snapshotAuditChanges(record, 'deleted'),
+      ...snapshotAuditCollections(descriptor.toCollections?.(input) ?? {}, 'deleted'),
+    },
     label: recordLabel(descriptor, input, record),
   });
 }

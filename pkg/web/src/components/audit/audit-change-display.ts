@@ -15,6 +15,8 @@ const auditFieldLabels: Record<string, string> = {
   address: 'Address',
   actualEnd: 'Actual end',
   actualStart: 'Actual start',
+  assembly: 'Assembly',
+  assemblies: 'Assemblies',
   basePrice: 'Base price',
   byteSize: 'Byte size',
   code: 'Code',
@@ -33,6 +35,10 @@ const auditFieldLabels: Record<string, string> = {
   filename: 'Filename',
   buildTimeDays: 'Build time (days)',
   jobId: 'Job',
+  keyFeature: 'Key feature',
+  keyFeatures: 'Key features',
+  lineItem: 'Line item',
+  lineItems: 'Line items',
   member: 'Department membership',
   modelCode: 'Model code',
   name: 'Name',
@@ -43,6 +49,8 @@ const auditFieldLabels: Record<string, string> = {
   plannedEnd: 'Planned end',
   plannedStart: 'Planned start',
   price: 'Price',
+  productBay: 'Product bay',
+  productBays: 'Product bays',
   productId: 'Product',
   preferredDeliveryDate: 'Preferred delivery date',
   quoteId: 'Quote',
@@ -52,6 +60,8 @@ const auditFieldLabels: Record<string, string> = {
   requiresVinNumber: 'Requires VIN number',
   salesPersonId: 'Salesperson',
   scheduleOrigin: 'Schedule origin',
+  selectedAssembly: 'Selected assembly',
+  selectedAssemblies: 'Selected assemblies',
   sourceProductId: 'Source product',
   startedAt: 'Started at',
   status: 'Status',
@@ -91,6 +101,13 @@ export function getAuditChangeDisplays(changes: AuditChangeMap | null): AuditCha
 }
 
 export function getAuditFieldLabel(field: string): string {
+  // Collection element keys are `${prefix}:${elementLabel}`, e.g. `assembly:Bugle eye hitch`.
+  const separatorIndex = field.indexOf(':');
+
+  if (separatorIndex > 0) {
+    return `${getAuditFieldLabel(field.slice(0, separatorIndex))}: ${field.slice(separatorIndex + 1)}`;
+  }
+
   return (
     auditFieldLabels[field] ??
     field
@@ -164,7 +181,7 @@ function formatValidDate(value: string | number | Date): string | undefined {
 
 function stringifyJsonValue(value: object): string {
   try {
-    return JSON.stringify(value) ?? String(value);
+    return JSON.stringify(value, null, 2) ?? String(value);
   } catch {
     return String(value);
   }

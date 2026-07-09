@@ -110,7 +110,52 @@ describe('audit change display helpers', () => {
     expect(formatAuditChangeValue('validUntil', '2026-05-20T08:30:00.000Z')).toContain('May');
     expect(formatAuditChangeValue('name', '')).toBe('Empty');
     expect(formatAuditChangeValue('member', true)).toBe('Yes');
-    expect(formatAuditChangeValue('metadata', { source: 'seed' })).toBe('{"source":"seed"}');
+    expect(formatAuditChangeValue('metadata', { source: 'seed' })).toBe('{\n  "source": "seed"\n}');
+  });
+
+  it('labels collection element keys as "Prefix: element"', () => {
+    expect(getAuditFieldLabel('assembly:Bugle eye hitch')).toBe('Assembly: Bugle eye hitch');
+    expect(getAuditFieldLabel('lineItem:Transport crate')).toBe('Line item: Transport crate');
+    expect(getAuditFieldLabel('selectedAssembly:Air brakes')).toBe('Selected assembly: Air brakes');
+  });
+
+  it('renders structured collection changes as pretty JSON with collapsed previews', () => {
+    const assembly = { id: 'a1', kind: 'optional', name: 'Air brakes', parts: [], price: 6000 };
+
+    expect(
+      getAuditChangeDisplays({
+        'assembly:Air brakes': {
+          from: null,
+          to: assembly,
+        },
+      }),
+    ).toEqual([
+      {
+        field: 'Assembly: Air brakes',
+        from: 'None',
+        key: 'assembly:Air brakes',
+        preview: 'Assembly: Air brakes changed',
+        to: JSON.stringify(assembly, null, 2),
+      },
+    ]);
+  });
+
+  it('still renders legacy whole-collection string values verbatim', () => {
+    const legacy = JSON.stringify([{ id: 'a1', kind: 'standard', name: 'Frame', parts: [] }]);
+
+    expect(
+      getAuditChangeDisplays({
+        assemblies: { from: legacy, to: legacy },
+      }),
+    ).toEqual([
+      {
+        field: 'Assemblies',
+        from: legacy,
+        key: 'assemblies',
+        preview: 'Assemblies changed',
+        to: legacy,
+      },
+    ]);
   });
 
   it('formats deposit percent as a percentage', () => {

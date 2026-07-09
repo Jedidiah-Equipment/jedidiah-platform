@@ -13,8 +13,8 @@ type QuoteAuditInput = {
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[];
 };
 
-// `code` is the summary label, not an audited field, so it lives in `label`. `selectedAssemblies` is
-// folded into one stable JSON field: the Quote Selected Assembly snapshot the audit log diffs against.
+// `code` is the summary label, not an audited field, so it lives in `label`. Line items and selected
+// assemblies audit element-wise (`toCollections`) so only the changed elements are recorded.
 export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
   entityType: 'quote',
   noun: 'quote',
@@ -22,7 +22,7 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
   primaryLabelFormatter: formatQuoteAuditLabel,
   entityId: ({ row }) => row.id,
   label: ({ row }) => row.code,
-  toRecord: ({ row, lineItems, selectedAssemblies }) => ({
+  toRecord: ({ row }) => ({
     customerId: row.customerId,
     depositPercent: row.depositPercent,
     deliveryIncluded: row.deliveryIncluded,
@@ -38,10 +38,21 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
     quotedCurrencyCode: row.quotedCurrencyCode,
     salesPersonId: row.salesPersonId,
     workTitle: row.workTitle,
-    lineItems: JSON.stringify(toQuoteLineItemAuditRecord(lineItems)),
-    selectedAssemblies: JSON.stringify(toQuoteSelectedAssemblyAuditRecord(selectedAssemblies)),
     status: row.status,
     validUntil: row.validUntil,
+  }),
+  toCollections: ({ lineItems, selectedAssemblies }) => ({
+    // Line items have no stable audited id; same-name items pair in sorted order in the diff.
+    lineItem: toQuoteLineItemAuditRecord(lineItems).map((lineItem) => ({
+      key: lineItem.name,
+      label: lineItem.name,
+      value: lineItem,
+    })),
+    selectedAssembly: toQuoteSelectedAssemblyAuditRecord(selectedAssemblies).map((selection) => ({
+      key: selection.productAssemblyId ?? selection.quotedName,
+      label: selection.quotedName,
+      value: selection,
+    })),
   }),
 });
 

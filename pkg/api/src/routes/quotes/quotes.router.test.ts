@@ -311,9 +311,9 @@ describe('quotes.create', () => {
     });
     const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
     const updateEvent = events.findLast((event) => event.entityType === 'quote' && event.action === 'updated');
-    const selectedAssembliesChange = (
+    const selectedAssemblyChange = (
       updateEvent?.changes as Record<string, { from: unknown; to: unknown }> | undefined
-    )?.selectedAssemblies;
+    )?.['selectedAssembly:Wear liner upgrade'];
 
     expect(withAssembly).toMatchObject({
       selectedAssemblies: [
@@ -324,14 +324,14 @@ describe('quotes.create', () => {
         }),
       ],
     });
-    expect(selectedAssembliesChange?.from).toBe('[]');
-    expect(JSON.parse(String(selectedAssembliesChange?.to))).toEqual([
-      {
+    expect(selectedAssemblyChange).toEqual({
+      from: null,
+      to: {
         productAssemblyId: optionalAssembly.id,
         quotedName: 'Wear liner upgrade',
         quotedPrice: 325,
       },
-    ]);
+    });
 
     await context.db.delete(productAssemblies).where(sql`${productAssemblies.id} = ${optionalAssembly.id}`);
 

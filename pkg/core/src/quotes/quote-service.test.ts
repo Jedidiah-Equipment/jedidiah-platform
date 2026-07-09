@@ -6,6 +6,7 @@ import {
   jobBays,
   jobSlots,
   jobs,
+  productAssemblies,
   productBays,
   products,
   quoteLineItems,
@@ -409,10 +410,59 @@ describe('quote line items', () => {
       .where(and(eq(auditEvents.entityType, 'quote'), eq(auditEvents.entityId, quote.id)));
     const updateEvent = events.find((event) => event.action === 'updated');
 
-    expect(updateEvent?.changes).toMatchObject({
-      lineItems: {
-        from: JSON.stringify([{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }]),
-        to: JSON.stringify([{ name: 'Hydraulic hose', quantity: 3, unitPrice: 125 }]),
+    expect(updateEvent?.changes).toEqual({
+      'lineItem:Hydraulic hose': {
+        from: { name: 'Hydraulic hose', quantity: 2, unitPrice: 125 },
+        to: { name: 'Hydraulic hose', quantity: 3, unitPrice: 125 },
+      },
+    });
+  });
+
+  test('records only the changed selected assembly in quote audit events', async ({ context }) => {
+    const [optionalAssembly] = await context.db
+      .insert(productAssemblies)
+      .values({
+        displayOrder: 0,
+        kind: 'optional',
+        name: 'Bugle eye hitch',
+        price: 8500,
+        productId: context.product.id,
+      })
+      .returning();
+
+    if (!optionalAssembly) {
+      throw new Error('Product assembly insert did not return a row');
+    }
+
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(quote, {
+        selectedAssemblies: [{ type: 'catalog', productAssemblyId: optionalAssembly.id }],
+      }),
+    });
+
+    const events = await context.db
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.entityType, 'quote'), eq(auditEvents.entityId, quote.id)));
+    const updateEvent = events.find((event) => event.action === 'updated');
+
+    expect(updateEvent?.changes).toEqual({
+      'selectedAssembly:Bugle eye hitch': {
+        from: null,
+        to: { productAssemblyId: optionalAssembly.id, quotedName: 'Bugle eye hitch', quotedPrice: 8500 },
       },
     });
   });

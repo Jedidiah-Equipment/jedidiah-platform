@@ -99,7 +99,7 @@ function FilterBar({
   return (
     <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-nav:top-16">
       <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
-        <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999]">
+        <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
           Filter by range
         </span>
         <FilterChip active={activeSlug === undefined} label="All" search={{}} />

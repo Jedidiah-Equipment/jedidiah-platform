@@ -55,7 +55,10 @@ export const updateQuoteDefinition: AiToolDefinition<UpdateQuoteTool> = {
   descriptor: {
     purpose:
       'Update low-risk Quote fields (status, salesperson, delivery dates, valid-until, notes), leaving pricing, offering, and line items untouched.',
-    useWhen: ['The user explicitly asks to change one of those Quote fields on a specific Quote.'],
+    useWhen: [
+      'The user explicitly asks to change one of those Quote fields on a specific Quote.',
+      'Confirm with the user before moving status to accepted or rejected; that transition drives locking and pipeline reporting.',
+    ],
     doNotUseWhen: [
       'Editing pricing, offering, line items, or assemblies (that belongs in the Quote form).',
       'The Quote is locked; the change will be rejected.',

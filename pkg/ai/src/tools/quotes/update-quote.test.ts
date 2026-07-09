@@ -1,5 +1,5 @@
 import * as core from '@pkg/core';
-import { QuoteDetail, type UserAccessSummary } from '@pkg/schema';
+import { QuoteDetail, QuotePatchInput, type UserAccessSummary } from '@pkg/schema';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { AiContext } from '@/context.js';
 import { createSilentLogger, mockSession } from '@/test/test-utils.js';
@@ -76,6 +76,13 @@ describe('updateQuoteTool', () => {
   test('is a quote:update write tool', () => {
     expect(updateQuoteTool.requiredPermission).toBe('quote:update');
     expect(updateQuoteDefinition.kind).toBe('write');
+  });
+
+  test('exposes exactly the fields of the core QuotePatchInput schema', () => {
+    // The model-facing input schema is hand-duplicated (its transforms do not serialize to the OpenAI
+    // strict subset), so guard against it drifting from the core patch schema it feeds.
+    const exposedFields = Object.keys((updateQuoteTool.jsonSchema.properties as Record<string, unknown>) ?? {});
+    expect(exposedFields.sort()).toEqual(Object.keys(QuotePatchInput.shape).sort());
   });
 
   test('forwards only the named low-risk fields so core keeps the rest under its row lock', async () => {

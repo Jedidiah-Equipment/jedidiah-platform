@@ -8,6 +8,7 @@ export type ChatEvent =
   | { type: 'token'; delta: string }
   | { type: 'tool_call'; id: string; name: string; args: unknown }
   | { type: 'tool_result'; id: string; result: unknown; size?: ChatToolResultSizeInfo }
+  | { type: 'usage'; request: number; usage: ChatRequestUsage; contextWindow: number | null }
   | { type: 'done'; usage?: ChatRunUsage }
   | { type: 'error'; message: string };
 

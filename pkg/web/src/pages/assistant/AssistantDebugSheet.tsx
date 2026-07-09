@@ -4,6 +4,7 @@ import { IconChevronDown } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAssistantDebugState } from '@/components/assistant-ui/assistant-debug-state.js';
+import { useLiveRunUsage } from '@/components/assistant-ui/live-run-usage.js';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -35,6 +36,7 @@ export function AssistantDebugSheet() {
             Context assembled for your session: system prompt and tool permission gates.
           </SheetDescription>
         </SheetHeader>
+        <LiveContextGauge />
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-6 p-4 pt-0">
             {debugQuery.isPending ? (
@@ -48,6 +50,39 @@ export function AssistantDebugSheet() {
         </ScrollArea>
       </SheetContent>
     </Sheet>
+  );
+}
+
+// Pinned below the header (outside the scroll area) so the gauge stays visible
+// while a run streams and the debug body is scrolled.
+function LiveContextGauge() {
+  const live = useLiveRunUsage();
+
+  if (!live?.contextWindow) {
+    return null;
+  }
+
+  const { contextWindow } = live;
+  const inputTokens = live.usage.inputTokens;
+  const percent = Math.min(100, Math.round((inputTokens / contextWindow) * 100));
+  const fillClass = percent > 90 ? 'bg-destructive' : percent > 70 ? 'bg-amber-500' : 'bg-primary';
+
+  return (
+    <div className="mx-4 mb-4 flex flex-col gap-1.5 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+      <div className="flex items-center justify-between font-medium">
+        <span>Live context</span>
+        <span className="font-mono tabular-nums">{percent}%</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className={cn('h-full transition-all', fillClass)} style={{ width: `${percent}%` }} />
+      </div>
+      <div className="flex items-center justify-between text-muted-foreground text-xs">
+        <span className="font-mono tabular-nums">
+          {formatNumber(inputTokens)} / {formatNumber(contextWindow)} input tokens
+        </span>
+        <span>request {live.request}</span>
+      </div>
+    </div>
   );
 }
 

@@ -418,6 +418,48 @@ describe('quote line items', () => {
     });
   });
 
+  test('pairs same-name line items by position when one price crosses another', async ({ context }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        lineItems: [
+          { name: 'Hydraulic hose', quantity: 1, unitPrice: 100 },
+          { name: 'Hydraulic hose', quantity: 1, unitPrice: 200 },
+        ],
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    // The first item's price crosses the second's; only that item may audit as changed.
+    await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(quote, {
+        lineItems: [
+          { name: 'Hydraulic hose', quantity: 1, unitPrice: 300 },
+          { name: 'Hydraulic hose', quantity: 1, unitPrice: 200 },
+        ],
+      }),
+    });
+
+    const events = await context.db
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.entityType, 'quote'), eq(auditEvents.entityId, quote.id)));
+    const updateEvent = events.find((event) => event.action === 'updated');
+
+    expect(updateEvent?.changes).toEqual({
+      'lineItem:Hydraulic hose': {
+        from: { name: 'Hydraulic hose', quantity: 1, unitPrice: 100 },
+        to: { name: 'Hydraulic hose', quantity: 1, unitPrice: 300 },
+      },
+    });
+  });
+
   test('records only the changed selected assembly in quote audit events', async ({ context }) => {
     const [optionalAssembly] = await context.db
       .insert(productAssemblies)

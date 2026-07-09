@@ -933,7 +933,10 @@ describe('products.update', () => {
     expect(events).toContainEqual(
       expect.objectContaining({
         changes: expect.objectContaining({
-          assemblies: expect.any(Object),
+          'assembly:Standard bucket renamed': expect.objectContaining({
+            from: expect.objectContaining({ name: 'Standard bucket' }),
+            to: expect.objectContaining({ name: 'Standard bucket renamed' }),
+          }),
         }),
         entityType: 'product',
       }),
@@ -1025,7 +1028,10 @@ describe('products.update', () => {
     expect(events).toContainEqual(
       expect.objectContaining({
         changes: expect.objectContaining({
-          productBays: expect.any(Object),
+          'productBay:Assembly Bay 2': expect.objectContaining({
+            from: expect.objectContaining({ bayId: secondBayId, defaultWorkingDays: 8 }),
+            to: null,
+          }),
         }),
         entityType: 'product',
       }),
@@ -1186,7 +1192,8 @@ describe('products marketing fields', () => {
       expect.objectContaining({
         changes: expect.objectContaining({
           category: { from: null, to: 'Silage & Grain' },
-          keyFeatures: { from: '[]', to: JSON.stringify(['Heavy duty', 'Low maintenance']) },
+          'keyFeature:Heavy duty': { from: null, to: { position: 0, text: 'Heavy duty' } },
+          'keyFeature:Low maintenance': { from: null, to: { position: 1, text: 'Low maintenance' } },
         }),
         entityType: 'product',
       }),

@@ -340,8 +340,12 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, disp
                 key={display.key}
               >
                 <div className="px-2 py-1.5 font-medium text-foreground">{display.field}</div>
-                <div className="min-w-0 wrap-break-word px-2 py-1.5 text-muted-foreground">{display.from}</div>
-                <div className="min-w-0 wrap-break-word px-2 py-1.5 text-muted-foreground">{display.to}</div>
+                <div className="min-w-0 whitespace-pre-wrap wrap-break-word px-2 py-1.5 text-muted-foreground">
+                  {display.from}
+                </div>
+                <div className="min-w-0 whitespace-pre-wrap wrap-break-word px-2 py-1.5 text-muted-foreground">
+                  {display.to}
+                </div>
               </div>
             ))}
           </div>

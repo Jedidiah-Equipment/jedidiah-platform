@@ -179,7 +179,17 @@ export async function updateQuote({
     );
     const lineItemsChanged = haveQuoteLineItemsChanged({ before: beforeLineItems, next: input.lineItems });
     const selectedAssembliesChanged = resolved.newRows.length > 0 || resolved.removeIds.length > 0;
-    const changedFields = new Set(Object.keys(changes ?? {}));
+    // Per-element audit keys (`lineItem:<name>`) normalize back to their collection field so the
+    // Locked Quote gate and its error message speak in field names.
+    const changedFields = new Set(
+      Object.keys(changes ?? {}).map((field) =>
+        field.startsWith('lineItem:')
+          ? 'lineItems'
+          : field.startsWith('selectedAssembly:')
+            ? 'selectedAssemblies'
+            : field,
+      ),
+    );
 
     if (lineItemsChanged) {
       changedFields.add('lineItems');

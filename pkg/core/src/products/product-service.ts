@@ -174,32 +174,57 @@ type ProductBayFlatRow = typeof productBays.$inferSelect & {
   bayUpdatedAt: Date;
 };
 
-// Child collections are folded into stable JSON fields so Product aggregate updates audit as a unit
-// instead of introducing separate audit entity types for Product Assemblies or Product Bays.
+// Child collections audit element-wise (`toCollections`) so a change to one assembly or bay records
+// only that element instead of introducing separate audit entity types for Product Assemblies or
+// Product Bays — or dumping the whole collection into one field.
 export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
   entityType: 'product',
   noun: 'product',
   primaryLabelField: 'name',
   entityId: (input) => input.id,
   toRecord: (input) => ({
-    assemblies: JSON.stringify(toAuditAssemblies(input.assemblies)),
     basePrice: input.basePrice,
     category: input.category,
     currencyCode: input.currencyCode,
     description: input.description,
-    keyFeatures: JSON.stringify(input.keyFeatures),
-    technicalDetails: JSON.stringify(input.technicalDetails),
     buildTimeDays: input.buildTimeDays,
     modelCode: input.modelCode,
     name: input.name,
     nameHighlight: input.nameHighlight,
-    productBays: JSON.stringify(toAuditProductBays(input.productBays)),
     rangeId: input.rangeId,
     variantId: input.variantId,
     requiresVinNumber: input.requiresVinNumber,
     brochureEnabled: input.brochureEnabled,
     landerEnabled: input.landerEnabled,
     thumbnailDataUrl: input.thumbnailDataUrl,
+  }),
+  toCollections: (input) => ({
+    assembly: toAuditAssemblies(input.assemblies).map((assembly) => ({
+      // Client-sent assemblies without an id audit as removed + added, matching syncAssemblies'
+      // delete-and-recreate semantics.
+      key: assembly.id ?? `new:${assembly.name}`,
+      label: assembly.name,
+      value: assembly,
+    })),
+    // keyFeatures/technicalDetails are ordered jsonb arrays; `position` keeps reorders diffable for
+    // the same reason as assembly displayOrder.
+    keyFeature: input.keyFeatures.map((feature, index) => ({
+      key: feature,
+      label: feature,
+      value: { position: index, text: feature },
+    })),
+    productBay: input.productBays.map((productBay) => ({
+      key: productBay.bayId,
+      // ProductBayInput carries no bay name; the diff falls back to the persisted side's label, so
+      // only a newly added bay labels as its id.
+      label: 'bay' in productBay ? productBay.bay.name : undefined,
+      value: { bayId: productBay.bayId, defaultWorkingDays: productBay.defaultWorkingDays },
+    })),
+    technicalDetail: input.technicalDetails.map((detail, index) => ({
+      key: detail.label,
+      label: detail.label,
+      value: { label: detail.label, position: index, value: detail.value },
+    })),
   }),
 });
 export type ProductDocumentCreateInput = {
@@ -1171,10 +1196,14 @@ async function assertActiveProductRangeVariant({
   return ProductRangeVariantOptionSchema.parse(variant);
 }
 
-function toAuditAssemblies(
-  assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']>,
-): NonNullable<ProductUpdateInput['assemblies']> {
+// `displayOrder` is derived the same way syncAssemblies assigns it (dense per kind from array
+// position) so pure reorders still register as changes — updateProduct skips the write entirely when
+// the audit diff is empty.
+function toAuditAssemblies(assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']>) {
+  const kindCounts = { optional: 0, standard: 0 };
+
   return assemblies.map((assembly) => {
+    const displayOrder = kindCounts[assembly.kind]++;
     const parts = assembly.parts
       .map((part) => ({ partId: part.partId, quantity: part.quantity }))
       .toSorted((left, right) => left.partId.localeCompare(right.partId));
@@ -1182,30 +1211,23 @@ function toAuditAssemblies(
     if (assembly.kind === 'standard') {
       return {
         id: assembly.id,
-        kind: 'standard',
+        kind: 'standard' as const,
         name: assembly.name,
+        displayOrder,
         parts,
       };
     }
 
     return {
       id: assembly.id,
-      kind: 'optional',
+      kind: 'optional' as const,
       name: assembly.name,
+      displayOrder,
       overrideStandardAssemblyIds: assembly.overrideStandardAssemblyIds.toSorted(),
       parts,
       price: assembly.price,
     };
   });
-}
-
-function toAuditProductBays(productBaysForProduct: ProductBay[] | ProductBayInput[]): ProductBayInput[] {
-  return productBaysForProduct
-    .map((productBay) => ({
-      bayId: productBay.bayId,
-      defaultWorkingDays: productBay.defaultWorkingDays,
-    }))
-    .toSorted((left, right) => left.bayId.localeCompare(right.bayId));
 }
 
 function getProductSortColumn(sortBy: ProductListInput['sortBy']) {

@@ -1,6 +1,6 @@
-import { type Db, productAssemblies, user } from '@pkg/db';
-import type { AssemblyInput, ProductCreateInput } from '@pkg/schema';
-import { asc, eq } from 'drizzle-orm';
+import { auditEvents, type Db, productAssemblies, user } from '@pkg/db';
+import type { AssemblyInput, ProductCreateInput, ProductUpdateInput } from '@pkg/schema';
+import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
@@ -184,6 +184,139 @@ describe('assembly display order', () => {
         { displayOrder: 1, kind: 'optional', name: 'Yak' },
       ]),
     );
+  });
+});
+
+describe('assembly audit events', () => {
+  function updateInput(id: string, rangeId: string, assemblies: AssemblyInput[]): ProductUpdateInput {
+    return {
+      assemblies,
+      basePrice: 1000,
+      buildTimeDays: 14,
+      currencyCode: 'ZAR',
+      description: null,
+      id,
+      modelCode: 'MODEL-1',
+      name: 'Test Product',
+      productBays: [],
+      rangeId,
+      requiresVinNumber: false,
+      brochureEnabled: false,
+      landerEnabled: false,
+      thumbnailDataUrl: null,
+    };
+  }
+
+  async function selectAuditEvents(db: Db, productId: string) {
+    return db
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.entityType, 'product'), eq(auditEvents.entityId, productId)));
+  }
+
+  test('records only the changed assembly on update, as structured values', async ({ context }) => {
+    const created = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [standard('Alpha'), optional('Yak', 100)]),
+    });
+    const yak = created.assemblies.find((assembly) => assembly.name === 'Yak');
+
+    await updateProduct({
+      actorUserId,
+      db: context.db,
+      input: updateInput(created.id, context.rangeId, [
+        {
+          id: created.assemblies.find((assembly) => assembly.name === 'Alpha')?.id,
+          kind: 'standard',
+          name: 'Alpha',
+          parts: [],
+        },
+        { id: yak?.id, kind: 'optional', name: 'Yak', overrideStandardAssemblyIds: [], parts: [], price: 150 },
+      ]),
+    });
+
+    const events = await selectAuditEvents(context.db, created.id);
+    const updateEvent = events.find((event) => event.action === 'updated');
+
+    const yakRecord = {
+      displayOrder: 0,
+      id: yak?.id,
+      kind: 'optional',
+      name: 'Yak',
+      overrideStandardAssemblyIds: [],
+      parts: [],
+    };
+
+    expect(updateEvent?.changes).toEqual({
+      'assembly:Yak': {
+        from: { ...yakRecord, price: 100 },
+        to: { ...yakRecord, price: 150 },
+      },
+    });
+  });
+
+  test('records added and removed assemblies with null sides', async ({ context }) => {
+    const created = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [standard('Alpha'), optional('Yak', 100)]),
+    });
+    const alpha = created.assemblies.find((assembly) => assembly.name === 'Alpha');
+    const yak = created.assemblies.find((assembly) => assembly.name === 'Yak');
+
+    await updateProduct({
+      actorUserId,
+      db: context.db,
+      input: updateInput(created.id, context.rangeId, [
+        { id: alpha?.id, kind: 'standard', name: 'Alpha', parts: [] },
+        optional('Beta', 200),
+      ]),
+    });
+
+    const events = await selectAuditEvents(context.db, created.id);
+    const updateEvent = events.find((event) => event.action === 'updated');
+
+    expect(updateEvent?.changes).toEqual({
+      'assembly:Beta': {
+        from: null,
+        to: { displayOrder: 0, kind: 'optional', name: 'Beta', overrideStandardAssemblyIds: [], parts: [], price: 200 },
+      },
+      'assembly:Yak': {
+        from: {
+          displayOrder: 0,
+          id: yak?.id,
+          kind: 'optional',
+          name: 'Yak',
+          overrideStandardAssemblyIds: [],
+          parts: [],
+          price: 100,
+        },
+        to: null,
+      },
+    });
+  });
+
+  test('snapshots assemblies per element on create and delete', async ({ context }) => {
+    const created = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [standard('Alpha')]),
+    });
+    await removeProduct({ actorUserId, db: context.db, id: created.id });
+
+    const events = await selectAuditEvents(context.db, created.id);
+    const createEvent = events.find((event) => event.action === 'created');
+    const deleteEvent = events.find((event) => event.action === 'deleted');
+    const alpha = created.assemblies.find((assembly) => assembly.name === 'Alpha');
+
+    expect(createEvent?.changes).toMatchObject({
+      'assembly:Alpha': { from: null, to: { kind: 'standard', name: 'Alpha', parts: [] } },
+    });
+    expect(createEvent?.changes).not.toHaveProperty('assemblies');
+    expect(deleteEvent?.changes).toMatchObject({
+      'assembly:Alpha': { from: { id: alpha?.id, kind: 'standard', name: 'Alpha', parts: [] }, to: null },
+    });
   });
 });
 

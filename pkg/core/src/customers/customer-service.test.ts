@@ -3,7 +3,7 @@ import { CustomerCreateInput } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
-import { createCustomer, mapCustomer, updateCustomerFields } from './customer-service.js';
+import { createCustomer, mapCustomer, patchCustomer } from './customer-service.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -20,7 +20,7 @@ const test = createTester(async ({ db }) => {
   return { db };
 });
 
-describe('updateCustomerFields', () => {
+describe('patchCustomer', () => {
   test('changes only the named field and leaves the rest untouched', async ({ context }) => {
     const created = await createCustomer({
       actorUserId: 'actor-user-id',
@@ -36,7 +36,7 @@ describe('updateCustomerFields', () => {
       }),
     });
 
-    const updated = await updateCustomerFields({
+    const updated = await patchCustomer({
       actorUserId: 'actor-user-id',
       db: context.db,
       input: { id: created.id, email: 'new@acme.example' },
@@ -58,7 +58,7 @@ describe('updateCustomerFields', () => {
       input: CustomerCreateInput.parse({ companyName: 'Acme Mining', notes: 'Remove me' }),
     });
 
-    const updated = await updateCustomerFields({
+    const updated = await patchCustomer({
       actorUserId: 'actor-user-id',
       db: context.db,
       input: { id: created.id, notes: null },

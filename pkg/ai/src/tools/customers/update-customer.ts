@@ -1,5 +1,5 @@
 import * as core from '@pkg/core';
-import { type AiToolBase, type Customer, CustomerCompanyName, CustomerFieldUpdateInput, UUID } from '@pkg/schema';
+import { type AiToolBase, type Customer, CustomerCompanyName, CustomerPatchInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 import type { AiContext } from '@/context.js';
 import { aiLinkMetadata } from '@/link-metadata.js';
@@ -9,7 +9,7 @@ import { toAiToolJsonSchema } from '../json-schema.js';
 import { projectCustomerDetail } from '../projections.js';
 
 // Partial input: only fields the user wants to change. `undefined` leaves the current value untouched.
-// The merge over the current record happens under the row lock in `core.updateCustomerFields`, so the
+// The merge over the current record happens under the row lock in `core.patchCustomer`, so the
 // model can neither null out unrelated fields nor revert a concurrent edit to an omitted field.
 const UpdateCustomerInput = z.strictObject({
   id: UUID,
@@ -33,9 +33,9 @@ export const updateCustomerTool: UpdateCustomerTool = {
   requiredPermission: 'customer:update',
   async handler(args: unknown, ctx: AiContext) {
     const rawInput = UpdateCustomerInput.parse(args);
-    const input = CustomerFieldUpdateInput.parse(rawInput);
+    const input = CustomerPatchInput.parse(rawInput);
 
-    return core.updateCustomerFields({ actorUserId: requireActorSession(ctx).user.id, db: ctx.db, input });
+    return core.patchCustomer({ actorUserId: requireActorSession(ctx).user.id, db: ctx.db, input });
   },
 };
 

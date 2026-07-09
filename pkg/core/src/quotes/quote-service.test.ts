@@ -27,7 +27,7 @@ import {
   listQuoteSalespeople,
   listQuotes,
 } from './quote-read-service.js';
-import { createQuote as createQuoteService, updateQuote, updateQuoteFields } from './quote-service.js';
+import { createQuote as createQuoteService, patchQuote, updateQuote } from './quote-service.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -713,7 +713,7 @@ describe('custom quotes', () => {
   });
 });
 
-describe('updateQuoteFields', () => {
+describe('patchQuote', () => {
   test('changes only the named field and leaves commercial fields untouched', async ({ context }) => {
     const quote = await createQuoteService({
       actorUserId: context.salesPerson.id,
@@ -729,7 +729,7 @@ describe('updateQuoteFields', () => {
       }),
     });
 
-    const updated = await updateQuoteFields({
+    const updated = await patchQuote({
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: { id: quote.id, status: 'sent' },
@@ -755,14 +755,14 @@ describe('updateQuoteFields', () => {
       }),
     });
 
-    const cleared = await updateQuoteFields({
+    const cleared = await patchQuote({
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: { id: quote.id, documentNotes: null },
     });
     expect(cleared.documentNotes).toBeNull();
 
-    const unchanged = await updateQuoteFields({
+    const unchanged = await patchQuote({
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: { id: quote.id },
@@ -784,7 +784,7 @@ describe('updateQuoteFields', () => {
     });
 
     // Notes stay editable after acceptance even though commercial fields are locked.
-    const noted = await updateQuoteFields({
+    const noted = await patchQuote({
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: { id: acceptedCustom.id, notes: 'Post-acceptance note' },

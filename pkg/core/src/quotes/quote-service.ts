@@ -5,9 +5,9 @@ import {
   DEFAULT_PRODUCT_CURRENCY_CODE,
   type QuoteCreateInput,
   type QuoteDetail,
-  type QuoteFieldUpdateInput,
   type QuoteKind,
   type QuoteLineItemInput,
+  type QuotePatchInput,
   type QuoteUpdateInput,
   type UUID,
 } from '@pkg/schema';
@@ -247,14 +247,14 @@ export async function updateQuote({
  * omitted field (e.g. pricing) is never reverted. Offering, pricing, line items, and assemblies are
  * never touched. Used by the assistant's partial Quote update tool.
  */
-export async function updateQuoteFields({
+export async function patchQuote({
   actorUserId,
   db,
   input,
 }: {
   actorUserId: AuthId;
   db: Db;
-  input: QuoteFieldUpdateInput;
+  input: QuotePatchInput;
 }): Promise<QuoteDetail> {
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(quotes).where(eq(quotes.id, input.id)).for('update');

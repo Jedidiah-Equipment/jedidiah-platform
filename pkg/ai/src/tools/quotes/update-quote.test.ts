@@ -79,7 +79,7 @@ describe('updateQuoteTool', () => {
   });
 
   test('forwards only the named low-risk fields so core keeps the rest under its row lock', async () => {
-    const updateSpy = vi.spyOn(core, 'updateQuoteFields').mockResolvedValue(sampleQuote());
+    const updateSpy = vi.spyOn(core, 'patchQuote').mockResolvedValue(sampleQuote());
 
     await updateQuoteTool.handler({ id: '00000000-0000-4000-8000-000000000301', status: 'sent' }, createAiContext());
 

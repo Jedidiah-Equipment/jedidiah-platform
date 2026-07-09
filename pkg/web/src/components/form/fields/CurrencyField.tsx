@@ -71,6 +71,7 @@ export function hasCurrencyFieldValueChanged(previousValue: number, nextValue: n
 export function formatCurrencyInputText(text: string): string {
   const normalizedText = normalizeCurrencyInputText(text);
   if (normalizedText === '') return '';
+  if (normalizedText === '-') return '-';
 
   const [integerText = '', decimalText] = normalizedText.split('.');
   const isNegative = integerText.trim().startsWith('-');

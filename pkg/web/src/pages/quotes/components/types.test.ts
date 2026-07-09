@@ -320,6 +320,39 @@ describe('computeQuoteSummary', () => {
     ]);
   });
 
+  it('keeps selected assembly credits in the pricing summary', () => {
+    const productQuote = buildQuoteDetail();
+    if (productQuote.product === null) {
+      throw new Error('Expected product quote fixture to include product facts');
+    }
+
+    const creditAssembly = { ...optionalAssembly, name: 'Manual controls credit', price: -250 };
+    const quote = buildQuoteDetail({
+      product: {
+        ...productQuote.product,
+        assemblies: [creditAssembly],
+      },
+    });
+    const summary = computeQuoteSummary({
+      quote,
+      values: buildFormValues({
+        discountPercent: 0,
+        selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
+      }),
+    });
+
+    expect(summary.selectedAssemblyTotal).toBe(-250);
+    expect(summary.total).toBe(800);
+    expect(summary.selectedAssemblies).toEqual([
+      {
+        id: PRODUCT_ASSEMBLY_ID,
+        productAssemblyId: PRODUCT_ASSEMBLY_ID,
+        quotedName: 'Manual controls credit',
+        quotedPrice: -250,
+      },
+    ]);
+  });
+
   it('excludes stale catalog selections from product quote pricing', () => {
     const summary = computeQuoteSummary({
       quote: buildQuoteDetail(),

@@ -8,7 +8,7 @@ Step-by-step guide to stand up the production environment and go live. Decisions
 | Topic | Decision |
 | --- | --- |
 | Railway topology | Same project, new `production` environment duplicated from `staging` |
-| Deploy flow | `production` branch; deploy = PR `main` → `production`, **merge commits only** (never squash/rebase — rewritten SHAs would permanently diverge the branches). Staging keeps deploying `main`. |
+| Deploy flow | `production` branch; deploy = fast-forward `production` to the exact commit on `main` with `pnpm release:production`. Never PR-merge, squash, cherry-pick, or resolve conflicts on `production`. Staging keeps deploying `main`. |
 | Data | Copy everything except the quote/job clusters, Sue Smith demo user, and soft-deleted catalog/supplier rows plus children that depend on them. Quote/job code sequences start fresh. |
 | Credentials | Staging password hashes are never copied (the reader already omits them). Production credential accounts get random unusable passwords; staff set real passwords via the forgot-password flow. Bay-operator shared accounts (`fabrication.operator@`, `assembly.operator@`) get passwords set manually by an admin via the Users page. |
 | Domains | Web `app.jedidiahequipment.co.za`, API `api.jedidiahequipment.co.za`, lander apex `jedidiahequipment.co.za` + `www`. An old site currently holds the apex — that DNS move is the final cutover step. |
@@ -100,8 +100,8 @@ Publish all of the above via the normal PR flow (`/blast-it`), merge to `main`.
       `git push origin main:refs/heads/production`.
 - [x] Point every production-environment service's deploy trigger at the `production`
       branch. Verify staging services still track `main`.
-- [ ] GitHub: protect the `production` branch (require PR; disable squash/rebase for PRs
-      targeting it if possible — merge commits only).
+- [ ] GitHub: protect the `production` branch. Disable deletion and force pushes, restrict direct
+      pushes to the release actor, and do not require PR merges for production releases.
 
 ### Environment variables (production env, per service)
 
@@ -151,7 +151,7 @@ secrets; every secret above must be **overridden**, not inherited.
 
 ## Phase 4 — First deploy + internal verification
 
-- [x] Open a PR `main` → `production`; merge with a **merge commit**. The api service's
+- [x] Run `pnpm release:production` to fast-forward `production` to `main`. The api service's
       pre-deploy `pnpm db:migrate` runs all migrations against the empty production DB.
 - [x] Verify `/health` on web, api, lander via their Railway-generated domains.
 - [x] Add custom domains in Railway: `app.` (web), `api.` (api). Create the DNS CNAMEs.
@@ -209,8 +209,9 @@ secrets; every secret above must be **overridden**, not inherited.
       staging after the snapshot is silently lost (quotes/jobs excluded anyway; this is
       about catalog/customer edits).
 
-**Rollback:** web/api/lander — redeploy the previous Railway deployment, or revert the
-merge PR on `production`. Apex — repoint DNS at the old host (TTL still low).
+**Rollback:** web/api/lander — redeploy the previous Railway deployment, or revert the faulty change
+on `main` and run `pnpm release:production` again after the fix lands. Apex — repoint DNS at the old
+host (TTL still low).
 
 ---
 

@@ -36,27 +36,62 @@ export function VariantFilterBar({
   activeGroup: CatalogGroup | undefined;
   activeVariant: CatalogVariant | undefined;
 }) {
-  if (!activeGroup || activeGroup.variants.length === 0) {
-    return null;
+  const hasVariants = !!activeGroup && activeGroup.variants.length > 0;
+
+  const chips: VariantChip[] = hasVariants
+    ? [
+        { key: '__all__', label: 'All', active: activeVariant === undefined, search: { range: activeGroup.slug } },
+        ...activeGroup.variants.map((variant) => ({
+          key: variant.id,
+          label: variant.label,
+          active: activeVariant?.id === variant.id,
+          search: { range: activeGroup.slug, variant: variant.slug },
+        })),
+      ]
+    : [];
+
+  // Selecting a Range with no Variants slides the row shut rather than snapping it away, so keep the last
+  // populated chip set mounted while it collapses — there is content to slide out even though the current
+  // selection has none.
+  const lastChips = useRef<VariantChip[]>(chips);
+  if (hasVariants) {
+    lastChips.current = chips;
   }
+  const displayChips = hasVariants ? chips : lastChips.current;
 
-  const chips: VariantChip[] = [
-    { key: '__all__', label: 'All', active: activeVariant === undefined, search: { range: activeGroup.slug } },
-    ...activeGroup.variants.map((variant) => ({
-      key: variant.id,
-      label: variant.label,
-      active: activeVariant?.id === variant.id,
-      search: { range: activeGroup.slug, variant: variant.slug },
-    })),
-  ];
+  // While collapsed or mid-slide the inner wrapper clips to the track height (`overflow-hidden`); once fully
+  // open it must let the "More" dropdown overflow downward, so overflow flips to visible after the open
+  // transition and back to hidden the moment a collapse starts.
+  const [overflowVisible, setOverflowVisible] = useState(hasVariants);
+  useEffect(() => {
+    if (!hasVariants) {
+      setOverflowVisible(false);
+    }
+  }, [hasVariants]);
 
+  // The grid `0fr <-> 1fr` track animates height without measuring content, so the bordered row slides
+  // open/closed. The starting class already matches `hasVariants`, so a first paint with Variants opens
+  // instantly instead of animating on load.
   return (
-    <div className="border-t border-line/70">
-      <div className="mx-auto flex max-w-[1320px] items-center gap-2.5 px-12 py-3.5 max-nav:px-5 max-nav:py-3">
-        <span className="mr-1.5 flex-none font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999]">
-          Filter by variant
-        </span>
-        <OverflowChipRow chips={chips} />
+    <div
+      className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+        hasVariants ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+      }`}
+      onTransitionEnd={(event) => {
+        if (event.propertyName === 'grid-template-rows' && hasVariants) {
+          setOverflowVisible(true);
+        }
+      }}
+    >
+      <div className={overflowVisible ? 'overflow-visible' : 'overflow-hidden'} inert={!hasVariants}>
+        <div className="border-t border-line/70">
+          <div className="mx-auto flex max-w-[1320px] items-center gap-2.5 px-12 py-3.5 max-nav:px-5 max-nav:py-3">
+            <span className="mr-1.5 flex-none font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999]">
+              Filter by variant
+            </span>
+            <OverflowChipRow chips={displayChips} />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -69,6 +104,18 @@ function OverflowChipRow({ chips }: { chips: VariantChip[] }) {
   const [visibleCount, setVisibleCount] = useState(chips.length);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // A new Range swaps in a different chip set: drop the cached widths, re-expand so every chip is present to
+  // measure, and close any open menu. Adjusting state during render (the React "reset on prop change"
+  // pattern) keeps the swap in one paint instead of flashing the old cutoff.
+  const signature = chips.map((chip) => chip.key).join('|');
+  const prevSignature = useRef(signature);
+  if (prevSignature.current !== signature) {
+    prevSignature.current = signature;
+    widthsRef.current = null;
+    setVisibleCount(chips.length);
+    setMenuOpen(false);
+  }
+
   useIsomorphicLayoutEffect(() => {
     const row = rowRef.current;
     if (!row) {
@@ -76,7 +123,7 @@ function OverflowChipRow({ chips }: { chips: VariantChip[] }) {
     }
 
     // Chip widths are stable (labels never change once rendered), so measure them once, from the fully
-    // expanded first paint, then recompute the cutoff on every resize from the cached widths.
+    // expanded paint, then recompute the cutoff on every resize from the cached widths.
     const measure = () => {
       if (!widthsRef.current) {
         const measured = chipRefs.current.slice(0, chips.length).map((chip) => chip?.offsetWidth ?? 0);
@@ -92,7 +139,7 @@ function OverflowChipRow({ chips }: { chips: VariantChip[] }) {
     const observer = new ResizeObserver(measure);
     observer.observe(row);
     return () => observer.disconnect();
-  }, [chips.length]);
+  }, [signature]);
 
   const visible = chips.slice(0, visibleCount);
   const hidden = chips.slice(visibleCount);

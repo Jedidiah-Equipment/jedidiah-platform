@@ -66,9 +66,9 @@ const groups: CatalogGroup[] = [
     description: '',
     count: 4,
     variants: [
-      { id: 'variant-wide', name: 'Wide Body', slug: 'wide-body' },
-      { id: 'variant-wide-dashed', name: 'Wide-Body', slug: 'wide-body-12345678' },
-      { id: 'variant-narrow', name: 'Narrow Body', slug: 'narrow-body' },
+      { id: 'variant-wide', name: 'Wide Body', slug: 'wide-body', label: 'Wide' },
+      { id: 'variant-wide-dashed', name: 'Wide-Body', slug: 'wide-body-12345678', label: 'Wide-Body' },
+      { id: 'variant-narrow', name: 'Narrow Body', slug: 'narrow-body', label: 'Narrow' },
     ],
     products: [
       product({ id: 'base-model', variantId: null }),
@@ -84,7 +84,7 @@ const groups: CatalogGroup[] = [
     label: 'Tanks',
     description: '',
     count: 1,
-    variants: [{ id: 'tank-wide', name: 'Wide Body', slug: 'wide-body' }],
+    variants: [{ id: 'tank-wide', name: 'Wide Body', slug: 'wide-body', label: 'Wide Body' }],
     products: [product({ id: 'tank-wide-model', variantId: 'tank-wide' })],
   },
 ];

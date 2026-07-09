@@ -18,6 +18,7 @@ export type CatalogVariant = {
   id: string;
   slug: string;
   name: string;
+  label: string;
 };
 
 export type CatalogGroup = {
@@ -49,12 +50,39 @@ export function toRangeLabel(name: string): string {
   return name.replace(/\s+Range$/i, '');
 }
 
+// Variant chip labels drop the trailing words the whole Range shares — every Crosshaul variant ends in
+// "Trailer", so the bar reads "Silage Grain", "Gravel", "Slope Deck" instead of repeating the range noun on
+// every chip (issue #776). Only the common suffix is stripped, and never the whole name, so the labels stay
+// distinct. A lone variant keeps its full name (there is nothing to de-duplicate against).
+export function toVariantLabels(names: string[]): string[] {
+  if (names.length < 2) {
+    return [...names];
+  }
+
+  const wordLists = names.map((name) => name.trim().split(/\s+/));
+  const minLength = Math.min(...wordLists.map((words) => words.length));
+
+  let sharedTrailing = 0;
+  while (sharedTrailing < minLength - 1) {
+    const offset = sharedTrailing + 1;
+    const word = wordLists[0]?.[wordLists[0].length - offset]?.toLowerCase();
+    if (word && wordLists.every((words) => words[words.length - offset]?.toLowerCase() === word)) {
+      sharedTrailing += 1;
+    } else {
+      break;
+    }
+  }
+
+  return wordLists.map((words) => words.slice(0, words.length - sharedTrailing).join(' '));
+}
+
 function toCatalogVariants(
   variants: { id: string; name: string }[],
   groupProducts: readonly CatalogProduct[],
 ): CatalogVariant[] {
   const visibleVariantIds = new Set(groupProducts.flatMap((product) => (product.variantId ? [product.variantId] : [])));
   const visibleVariants = variants.filter((variant) => visibleVariantIds.has(variant.id));
+  const labels = toVariantLabels(visibleVariants.map((variant) => variant.name));
   const slugCounts = new Map<string, number>();
 
   for (const variant of visibleVariants) {
@@ -62,13 +90,14 @@ function toCatalogVariants(
     slugCounts.set(slug, (slugCounts.get(slug) ?? 0) + 1);
   }
 
-  return visibleVariants.map((variant) => {
+  return visibleVariants.map((variant, index) => {
     const baseSlug = toRangeSlug(variant.name);
 
     return {
       id: variant.id,
       slug: slugCounts.get(baseSlug) === 1 ? baseSlug : `${baseSlug}-${variant.id}`,
       name: variant.name,
+      label: labels[index] ?? variant.name,
     };
   });
 }

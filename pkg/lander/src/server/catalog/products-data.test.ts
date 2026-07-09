@@ -2,7 +2,7 @@ import { productAssemblies, productRanges, productRangeVariants, products, sql }
 import { expect } from 'vitest';
 import { test } from '../../test/tester.js';
 import { transformSignature } from '../media/image-transform.js';
-import { loadProductsCatalog, toRangeSlug } from './products-data.js';
+import { loadProductsCatalog, toRangeSlug, toVariantLabels } from './products-data.js';
 
 type Db = Parameters<typeof loadProductsCatalog>[0];
 
@@ -76,6 +76,18 @@ test('toRangeSlug builds URL-safe slugs from Range names', () => {
   expect(toRangeSlug('Silage & Grain Range')).toBe('silage-grain-range');
 });
 
+test('toVariantLabels strips the trailing words the whole Range shares', () => {
+  expect(
+    toVariantLabels(['Silage Grain Trailer', 'Gravel Grain Trailer', 'Gravel Trailer', 'Slope Deck Trailer']),
+  ).toEqual(['Silage Grain', 'Gravel Grain', 'Gravel', 'Slope Deck']);
+});
+
+test('toVariantLabels never strips a whole name and leaves a lone variant untouched', () => {
+  // Every name collapses to the same trailing word, so keep the leading word to stay distinct.
+  expect(toVariantLabels(['Big Trailer', 'Small Trailer'])).toEqual(['Big', 'Small']);
+  expect(toVariantLabels(['Silage Grain Trailer'])).toEqual(['Silage Grain Trailer']);
+});
+
 test('loadProductsCatalog groups Products under their Range with a model count', async ({ db }) => {
   const suffix = crypto.randomUUID();
   const range = await insertRange(db, `Crosshaul ${suffix} Range`, 'Tipping trailers built tough.');
@@ -140,10 +152,17 @@ test('loadProductsCatalog exposes Range Variants in display order with range-sco
   const { groups } = await loadProductsCatalog(db);
   const group = groups.find((candidate) => candidate.id === range.id);
 
+  // The shared trailing token (here the UUID suffix every variant name carries) is stripped from the chip
+  // label; "Body" stays because "Wide-Body" is a single hyphenated word and stripping it would erase a name.
   expect(group?.variants).toEqual([
-    { id: narrow.id, name: narrow.name, slug: toRangeSlug(narrow.name) },
-    { id: wide.id, name: wide.name, slug: `${toRangeSlug(wide.name)}-${wide.id}` },
-    { id: dashedWide.id, name: dashedWide.name, slug: `${toRangeSlug(dashedWide.name)}-${dashedWide.id}` },
+    { id: narrow.id, name: narrow.name, slug: toRangeSlug(narrow.name), label: `Narrow Body` },
+    { id: wide.id, name: wide.name, slug: `${toRangeSlug(wide.name)}-${wide.id}`, label: `Wide Body` },
+    {
+      id: dashedWide.id,
+      name: dashedWide.name,
+      slug: `${toRangeSlug(dashedWide.name)}-${dashedWide.id}`,
+      label: `Wide-Body`,
+    },
   ]);
   expect(group?.products).toEqual(
     expect.arrayContaining([

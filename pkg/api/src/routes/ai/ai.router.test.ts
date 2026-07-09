@@ -10,12 +10,20 @@ describe('ai.debugInfo', () => {
     await expect(context.createAnonCaller().ai.debugInfo()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
   });
 
-  test('returns the assembled system prompt and every tool for a signed-in user', async ({ context }) => {
+  test('returns the assembled system prompt and every registry tool for a signed-in user', async ({ context }) => {
     const info = await context.createCaller(mockSession('admin')).ai.debugInfo();
 
     expect(info.systemPrompt).toContain('## Role');
     expect(info.tools).toHaveLength(18);
-    expect(info.tools.every((tool) => tool.authorized)).toBe(true);
+    expect(info.tools.find((tool) => tool.name === 'listQuoteCustomers')).toMatchObject({
+      authorized: false,
+      suppressedBy: 'listCustomers',
+    });
+    expect(info.tools.find((tool) => tool.name === 'listQuoteProducts')).toMatchObject({
+      authorized: false,
+      suppressedBy: 'listProducts',
+    });
+    expect(info.tools.filter((tool) => !tool.authorized && !tool.suppressedBy)).toEqual([]);
   });
 
   test('flags tools the caller is not permitted to use without hiding them', async ({ context }) => {

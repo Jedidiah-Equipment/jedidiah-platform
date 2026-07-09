@@ -6,7 +6,7 @@ import { createSystemPrompt } from './prompts.js';
 import type { AiToolKind } from './tool-definition.js';
 import { AI_TOOL_REGISTRY } from './tool-registry.js';
 import { AI_TOOL_RESULT_MAX_SERIALIZED_BYTES } from './tools/projections.js';
-import { getAuthorizedToolNames, getAuthorizedTools } from './tools.js';
+import { getAuthorizedToolNames, getAuthorizedTools, getToolSuppressedByPrimary } from './tools.js';
 
 export type AiToolDebugInfo = {
   authorized: boolean;
@@ -19,6 +19,7 @@ export type AiToolDebugInfo = {
   requiredPermission: AppPermission;
   resultIdentifiers: readonly string[];
   searchableIdentifiers: readonly string[];
+  suppressedBy: string | null;
   useWhen: readonly string[];
 };
 
@@ -41,7 +42,7 @@ export function getAiDebugInfo(access: UserAccessSummary | null): AiDebugInfo {
     toolResultMaxSerializedBytes: AI_TOOL_RESULT_MAX_SERIALIZED_BYTES,
     tools: AI_TOOL_REGISTRY.map((definition) => ({
       authorized: authorizedToolNameSet.has(definition.tool.name),
-      doNotUseWhen: definition.descriptor.doNotUseWhen,
+      doNotUseWhen: definition.descriptor.doNotUseWhen ?? [],
       jsonSchema: definition.tool.jsonSchema,
       kind: definition.kind,
       linkTarget: definition.descriptor.linkTarget ?? null,
@@ -49,8 +50,9 @@ export function getAiDebugInfo(access: UserAccessSummary | null): AiDebugInfo {
       purpose: definition.descriptor.purpose,
       requiredPermission: definition.tool.requiredPermission,
       resultIdentifiers: definition.descriptor.resultIdentifiers,
-      searchableIdentifiers: definition.descriptor.searchableIdentifiers,
-      useWhen: definition.descriptor.useWhen,
+      searchableIdentifiers: definition.descriptor.searchableIdentifiers ?? [],
+      suppressedBy: getToolSuppressedByPrimary(definition.tool.name, access),
+      useWhen: definition.descriptor.useWhen ?? [],
     })),
   };
 }

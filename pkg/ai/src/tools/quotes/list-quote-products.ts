@@ -24,9 +24,9 @@ export const listQuoteProductsDefinition: AiToolDefinition<ListQuoteProductsTool
   tool: listQuoteProductsTool,
   descriptor: {
     purpose: 'List Products available to Quote readers.',
-    useWhen: ['A quote-reader needs to find a Product by name, model code, description, UUID, or partial text.'],
+    useWhen: ['A quote-reader needs Product lookup while creating or inspecting Quotes.'],
     doNotUseWhen: ['The user needs Product-only catalog workflows outside quoting.'],
-    searchableIdentifiers: ['Product UUID', 'Product name', 'model code', 'description'],
+    searchableIdentifiers: ['Product name', 'Product model code', 'description', 'Product UUID'],
     resultIdentifiers: ['Product name', 'Product model code'],
     linkTarget: aiLinkMetadata.Product,
   },

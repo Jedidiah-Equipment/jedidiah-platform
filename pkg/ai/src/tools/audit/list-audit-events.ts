@@ -28,7 +28,6 @@ export const listAuditEventsDefinition: AiToolDefinition<ListAuditEventsTool> = 
       'Entity ids, entity types, actor ids, or date bounds can narrow the history.',
     ],
     doNotUseWhen: ['The user needs current entity state rather than forensic change history.'],
-    searchableIdentifiers: ['entityIds', 'entityTypes', 'actorUserIds', 'occurredAtStart', 'occurredAtEnd'],
     resultIdentifiers: ['Audit Event summary', 'entity type', 'entity id', 'actor', 'occurred time'],
   },
   projectResult: projectAuditEventList,

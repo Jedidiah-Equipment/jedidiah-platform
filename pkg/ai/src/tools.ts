@@ -15,6 +15,11 @@ export type GetAuthorizedToolsOptions = {
 type StrictJsonObjectParameters = Extract<ToolInputParameters, { additionalProperties: false }>;
 type JsonSchemaObject = Record<string, unknown>;
 
+const SHADOWED_BY_PRIMARY: Partial<Record<AiToolName, AiToolName>> = {
+  listQuoteCustomers: 'listCustomers',
+  listQuoteProducts: 'listProducts',
+};
+
 type InternalToolResult =
   | {
       name: AiToolName;
@@ -41,12 +46,28 @@ export function getAuthorizedTools(
       continue;
     }
 
+    if (isShadowedByAuthorizedPrimary(name, access)) {
+      continue;
+    }
+
     if (hasPermission(access, tool.requiredPermission)) {
       authorizedTools[name] = tool;
     }
   }
 
   return authorizedTools;
+}
+
+export function getToolSuppressedByPrimary(
+  name: AiToolName,
+  access: UserAccessSummary | null | undefined,
+): AiToolName | null {
+  const primaryName = SHADOWED_BY_PRIMARY[name];
+  return primaryName && hasPermission(access, aiTools[primaryName].requiredPermission) ? primaryName : null;
+}
+
+function isShadowedByAuthorizedPrimary(name: AiToolName, access: UserAccessSummary | null | undefined): boolean {
+  return getToolSuppressedByPrimary(name, access) !== null;
 }
 
 export function getAuthorizedToolNames(tools: AuthorizedAiTools): AiToolName[] {

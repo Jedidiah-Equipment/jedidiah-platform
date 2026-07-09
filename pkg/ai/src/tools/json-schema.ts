@@ -28,6 +28,11 @@ function closeJsonSchemaObjects(schema: unknown): unknown {
     delete closedSchema.pattern;
   }
 
+  // Large format regexes duplicate the model-facing `format`; zod still validates tool inputs server-side.
+  if (isRedundantFormatPattern(closedSchema) && typeof closedSchema.pattern === 'string') {
+    delete closedSchema.pattern;
+  }
+
   for (const key of ['$defs', 'properties'] as const) {
     if (isJsonSchemaObject(closedSchema[key])) {
       closedSchema[key] = Object.fromEntries(
@@ -54,4 +59,8 @@ function isJsonSchemaObject(value: unknown): value is Record<string, unknown> {
 
 function hasRegexLookaround(pattern: string) {
   return /\(\?(?:[=!]|<[=!])/.test(pattern);
+}
+
+function isRedundantFormatPattern(schema: Record<string, unknown>): boolean {
+  return schema.format === 'uuid' || schema.format === 'date' || schema.format === 'date-time';
 }

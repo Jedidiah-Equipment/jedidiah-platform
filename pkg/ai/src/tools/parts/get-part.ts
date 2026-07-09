@@ -30,11 +30,6 @@ export const getPartDefinition: AiToolDefinition<GetPartTool> = {
   tool: getPartTool,
   descriptor: {
     purpose: 'Get one Part by UUID, including its Supplier, unitOfMeasure, and isInternallyFabricated.',
-    useWhen: [
-      'A Part id is already known and the user needs the Part unit, internal fabrication flag, Supplier, or details.',
-    ],
-    doNotUseWhen: ['Searching by Part code, name, category, supplier, or partial id; use listParts first.'],
-    searchableIdentifiers: ['Part UUID'],
     resultIdentifiers: ['Part code', 'Part name', 'Supplier company name', 'unitOfMeasure', 'isInternallyFabricated'],
   },
   projectResult: projectPart,

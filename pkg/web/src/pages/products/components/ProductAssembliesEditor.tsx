@@ -2,7 +2,7 @@ import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor,
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { formatCurrency } from '@pkg/domain';
-import { type AssemblyInput, AssemblyName, AssemblyPrice, type Part, UUID } from '@pkg/schema';
+import { type AssemblyInput, AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
@@ -55,7 +55,7 @@ const AssemblyPartSelection = requiredSelection(UUID, 'Select a part');
 const getAssemblyPartKey = createStableRowKeys<AssemblyInput['parts'][number]>('assembly-part');
 
 const ASSEMBLY_NAME_FIELD_VALIDATORS = validateStructuralFieldOnMount(AssemblyName);
-const ASSEMBLY_PRICE_FIELD_VALIDATORS = validateStructuralFieldOnMount(AssemblyPrice);
+const ASSEMBLY_PRICE_FIELD_VALIDATORS = validateStructuralFieldOnMount(PriceDelta);
 const ASSEMBLY_PART_FIELD_VALIDATORS = validateStructuralFieldOnMount(AssemblyPartSelection);
 
 type ProductAssembliesEditorProps = {

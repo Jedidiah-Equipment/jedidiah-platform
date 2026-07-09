@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
-import { Price } from '../common/price.js';
+import { Price, PriceDelta } from '../common/price.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
@@ -18,7 +18,6 @@ import {
 import { Bay } from '../jobs/job.js';
 import {
   Assembly,
-  AssemblyPrice,
   ProductBay,
   ProductBayDefaultWorkingDays,
   ProductBuildTimeDays,
@@ -117,7 +116,7 @@ export const QuoteSelectedAssembly = z.object({
   quoteId: UUID,
   productAssemblyId: UUID.nullable(),
   quotedName: z.string().trim().min(1),
-  quotedPrice: AssemblyPrice,
+  quotedPrice: PriceDelta,
   createdAt: DateIso,
   updatedAt: DateIso,
 });

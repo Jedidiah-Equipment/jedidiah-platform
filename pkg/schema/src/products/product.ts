@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { DateIso } from '../common/date.js';
 import { EntityFile } from '../common/file.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
-import { Price } from '../common/price.js';
+import { Price, PriceDelta, PriceDeltaInput } from '../common/price.js';
 import {
   nullableTrimmedText,
   nullableTrimmedTextInput,
@@ -34,12 +34,6 @@ export const ProductDescriptionInput = nullableTrimmedTextInput();
 
 export type ProductBasePrice = z.infer<typeof ProductBasePrice>;
 export const ProductBasePrice = z.coerce.number().pipe(Price);
-
-export type AssemblyPrice = z.infer<typeof AssemblyPrice>;
-export const AssemblyPrice = z.number().finite('Assembly price is required');
-
-export type AssemblyPriceInput = z.infer<typeof AssemblyPriceInput>;
-export const AssemblyPriceInput = z.coerce.number().pipe(AssemblyPrice);
 
 export type ProductBuildTimeDays = z.infer<typeof ProductBuildTimeDays>;
 export const ProductBuildTimeDays = z
@@ -127,7 +121,7 @@ export const OptionalAssembly = z.object({
   productId: UUID,
   kind: z.literal('optional'),
   name: AssemblyName,
-  price: AssemblyPrice,
+  price: PriceDelta,
   parts: z.array(AssemblyPart),
   overrideStandardAssemblyIds: z.array(UUID),
 });
@@ -148,7 +142,7 @@ export const OptionalAssemblyInput = z.object({
   id: UUID.optional(),
   kind: z.literal('optional'),
   name: AssemblyName,
-  price: AssemblyPriceInput,
+  price: PriceDeltaInput,
   parts: z.array(AssemblyPart),
   overrideStandardAssemblyIds: z.array(UUID).default([]),
 });

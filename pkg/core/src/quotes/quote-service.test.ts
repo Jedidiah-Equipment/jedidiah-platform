@@ -27,7 +27,7 @@ import {
   listQuoteSalespeople,
   listQuotes,
 } from './quote-read-service.js';
-import { createQuote as createQuoteService, updateQuote } from './quote-service.js';
+import { createQuote as createQuoteService, updateQuote, updateQuoteFields } from './quote-service.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -710,6 +710,86 @@ describe('custom quotes', () => {
       quotedBasePrice: { from: 2000, to: 2100 },
       workTitle: { from: 'Audit repair', to: 'Audit repair revised' },
     });
+  });
+});
+
+describe('updateQuoteFields', () => {
+  test('changes only the named field and leaves commercial fields untouched', async ({ context }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        depositPercent: 30,
+        discountPercent: 10,
+        documentNotes: 'Deposit on order',
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    const updated = await updateQuoteFields({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: { id: quote.id, status: 'sent' },
+    });
+
+    expect(updated.status).toBe('sent');
+    expect(updated.discountPercent).toBe(10);
+    expect(updated.depositPercent).toBe(30);
+    expect(updated.documentNotes).toBe('Deposit on order');
+    expect(updated.statusChangedAt).not.toBe(quote.statusChangedAt);
+  });
+
+  test('clears a nullable field on an explicit null and no-ops when nothing changes', async ({ context }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        documentNotes: 'Clear me',
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    const cleared = await updateQuoteFields({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: { id: quote.id, documentNotes: null },
+    });
+    expect(cleared.documentNotes).toBeNull();
+
+    const unchanged = await updateQuoteFields({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: { id: quote.id },
+    });
+    expect(unchanged.documentNotes).toBeNull();
+    expect(unchanged.status).toBe('draft');
+  });
+
+  test('enforces the Quote lock rules for the changed fields', async ({ context }) => {
+    const acceptedCustom = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Locked repair', basePrice: 2200 },
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+
+    // Notes stay editable after acceptance even though commercial fields are locked.
+    const noted = await updateQuoteFields({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: { id: acceptedCustom.id, notes: 'Post-acceptance note' },
+    });
+    expect(noted.notes).toBe('Post-acceptance note');
   });
 });
 

@@ -5,7 +5,12 @@ import { DateIso, DateOnlyIso } from '../common/date.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { Price, PriceDelta } from '../common/price.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
-import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
+import {
+  nullableTrimmedText,
+  nullableTrimmedTextInput,
+  nullableTrimmedTextInputOptional,
+  requiredTrimmedText,
+} from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import {
@@ -310,6 +315,25 @@ export const QuoteUpdateInput = z
     documentNotes: QuoteDocumentNotesInput,
     lineItems: z.array(QuoteLineItemInput).optional(),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
+  })
+  .strict();
+
+// Partial low-risk field update. Every field except `id` is optional; `undefined` means "leave the
+// current value untouched". The merge over the current row happens under the row lock in core, so a
+// concurrent edit to an omitted field is never reverted. Deliberately excludes offering, pricing,
+// line items, and assemblies.
+export type QuoteFieldUpdateInput = z.infer<typeof QuoteFieldUpdateInput>;
+export const QuoteFieldUpdateInput = z
+  .object({
+    id: UUID,
+    status: QuoteStatus.optional(),
+    salesPersonId: AuthId.optional(),
+    // The `-Optional` text variant preserves `undefined` (keep) instead of defaulting it to `null` (clear).
+    documentNotes: nullableTrimmedTextInputOptional(),
+    notes: nullableTrimmedTextInputOptional(),
+    preferredDeliveryDate: DateOnlyIso.nullable().optional(),
+    plannedDeliveryDate: DateOnlyIso.nullable().optional(),
+    validUntil: DateIso.nullable().optional(),
   })
   .strict();
 

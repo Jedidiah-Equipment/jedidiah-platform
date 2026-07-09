@@ -5,6 +5,7 @@ import {
   DEFAULT_PRODUCT_CURRENCY_CODE,
   type QuoteCreateInput,
   type QuoteDetail,
+  type QuoteFieldUpdateInput,
   type QuoteKind,
   type QuoteLineItemInput,
   type QuoteUpdateInput,
@@ -232,6 +233,98 @@ export async function updateQuote({
         descriptor: quoteAuditDescriptor,
         actorUserId,
         after: { row, lineItems, selectedAssemblies },
+        changes,
+      });
+    }
+
+    return getQuote({ db: tx, id: row.id });
+  });
+}
+
+/**
+ * Applies only the low-risk fields present in `input` over the current row, all under the same row
+ * lock as the write. Fields left `undefined` are read from the locked row, so a concurrent edit to an
+ * omitted field (e.g. pricing) is never reverted. Offering, pricing, line items, and assemblies are
+ * never touched. Used by the assistant's partial Quote update tool.
+ */
+export async function updateQuoteFields({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: QuoteFieldUpdateInput;
+}): Promise<QuoteDetail> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(quotes).where(eq(quotes.id, input.id)).for('update');
+
+    if (!before) {
+      throw new QuoteNotFoundError(input.id);
+    }
+
+    if (input.salesPersonId !== undefined && input.salesPersonId !== before.salesPersonId) {
+      await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
+    }
+
+    // `undefined` keeps the current value; an explicit `null` clears a nullable field.
+    const patch = {
+      documentNotes: input.documentNotes !== undefined ? input.documentNotes : before.documentNotes,
+      notes: input.notes !== undefined ? input.notes : before.notes,
+      plannedDeliveryDate:
+        input.plannedDeliveryDate !== undefined ? input.plannedDeliveryDate : before.plannedDeliveryDate,
+      preferredDeliveryDate:
+        input.preferredDeliveryDate !== undefined ? input.preferredDeliveryDate : before.preferredDeliveryDate,
+      salesPersonId: input.salesPersonId ?? before.salesPersonId,
+      status: input.status ?? before.status,
+      validUntil: input.validUntil !== undefined ? input.validUntil : before.validUntil,
+    };
+    const after = { ...before, ...patch };
+    // Line items and assemblies never change here; pass the current rows on both sides of the diff.
+    const beforeLineItems = await listQuoteLineItems({ quoteId: before.id, tx });
+    const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId: before.id, tx });
+    const changes = diffAuditUpdate(
+      quoteAuditDescriptor,
+      { row: before, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
+      { row: after, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
+    );
+    const changedFields = new Set(Object.keys(changes ?? {}));
+
+    if (changedFields.size === 0) {
+      return getQuote({ db: tx, id: before.id });
+    }
+
+    const editable = assertQuoteEditable({
+      changedFields,
+      hasJob: await quoteHasJob({ quoteId: before.id, tx }),
+      kind: before.kind,
+      status: before.status,
+    });
+
+    if (!editable.allowed) {
+      throw new QuoteLockedError(editable.reason);
+    }
+
+    const [row] = await tx
+      .update(quotes)
+      .set({
+        ...patch,
+        updatedAt: new Date(),
+        ...(patch.status === before.status ? {} : { statusChangedAt: new Date() }),
+      })
+      .where(eq(quotes.id, input.id))
+      .returning();
+
+    if (!row) {
+      throw new QuoteNotFoundError(input.id);
+    }
+
+    if (changes) {
+      await recordAuditUpdate({
+        db: tx,
+        descriptor: quoteAuditDescriptor,
+        actorUserId,
+        after: { row, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
         changes,
       });
     }

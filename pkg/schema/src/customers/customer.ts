@@ -5,8 +5,10 @@ import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } fro
 import {
   EmailAddress,
   nullableEmailInput,
+  nullableEmailInputOptional,
   nullableTrimmedText,
   nullableTrimmedTextInput,
+  nullableTrimmedTextInputOptional,
   requiredTrimmedText,
 } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
@@ -77,6 +79,23 @@ export type CustomerUpdateInput = z.infer<typeof CustomerUpdateInput>;
 export const CustomerUpdateInput = CustomerCreateInput.extend({
   id: UUID,
 });
+
+// Partial field update. Every field except `id` is optional; `undefined` means "leave the current
+// value untouched". The merge over the current row happens under the row lock in core, so a
+// concurrent edit to an omitted field is never reverted. Excludes the thumbnail (image work is UI-only).
+export type CustomerFieldUpdateInput = z.infer<typeof CustomerFieldUpdateInput>;
+export const CustomerFieldUpdateInput = z
+  .object({
+    id: UUID,
+    companyName: CustomerCompanyName.optional(),
+    email: nullableEmailInputOptional(),
+    vatNumber: nullableTrimmedTextInputOptional(),
+    address: nullableTrimmedTextInputOptional(),
+    contactPerson: nullableTrimmedTextInputOptional(),
+    phone: nullableTrimmedTextInputOptional(),
+    notes: nullableTrimmedTextInputOptional(),
+  })
+  .strict();
 
 export type CustomerListInput = z.infer<typeof CustomerListInput>;
 export const CustomerListInput = createSearchedSortedPagedQueryInput({

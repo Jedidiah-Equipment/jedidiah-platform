@@ -17,17 +17,17 @@ function createAiContext(access: UserAccessSummary | null = null): AiContext {
   };
 }
 
-function currentCustomer(): Customer {
+function sampleCustomer(): Customer {
   return Customer.parse({
     address: '1 Quarry Road',
     companyName: 'Acme Mining',
     contactPerson: 'Jane Buyer',
     createdAt: '2026-06-17T08:00:00.000Z',
-    email: 'old@acme.example',
+    email: 'new@acme.example',
     id: '00000000-0000-4000-8000-000000000101',
     notes: 'Needs follow-up',
     phone: '+27123456789',
-    thumbnailDataUrl: 'data:image/webp;base64,aaaa',
+    thumbnailDataUrl: null,
     updatedAt: '2026-06-17T08:00:00.000Z',
     vatNumber: 'VAT-123',
   });
@@ -43,46 +43,36 @@ describe('updateCustomerTool', () => {
     expect(updateCustomerDefinition.kind).toBe('write');
   });
 
-  test('merges the partial change over the current record and keeps other fields untouched', async () => {
-    const current = currentCustomer();
-    vi.spyOn(core, 'getCustomer').mockResolvedValue(current);
-    const updateSpy = vi.spyOn(core, 'updateCustomer').mockResolvedValue({ ...current, email: 'new@acme.example' });
+  test('forwards only the named field so core keeps the rest under its row lock', async () => {
+    const updateSpy = vi.spyOn(core, 'updateCustomerFields').mockResolvedValue(sampleCustomer());
 
-    await updateCustomerTool.handler({ id: current.id, email: 'new@acme.example' }, createAiContext());
+    await updateCustomerTool.handler(
+      { id: '00000000-0000-4000-8000-000000000101', email: 'new@acme.example' },
+      createAiContext(),
+    );
 
     expect(updateSpy).toHaveBeenCalledWith({
       actorUserId: 'test-user-id',
       db: expect.any(Object),
-      input: {
-        id: current.id,
-        address: '1 Quarry Road',
-        companyName: 'Acme Mining',
-        contactPerson: 'Jane Buyer',
-        email: 'new@acme.example',
-        notes: 'Needs follow-up',
-        phone: '+27123456789',
-        thumbnailDataUrl: 'data:image/webp;base64,aaaa',
-        vatNumber: 'VAT-123',
-      },
+      input: { id: '00000000-0000-4000-8000-000000000101', email: 'new@acme.example' },
     });
+    // Omitted fields are absent, so the locked merge in core leaves them untouched.
+    const passedInput = updateSpy.mock.calls[0]?.[0].input as Record<string, unknown>;
+    expect(Object.keys(passedInput).sort()).toEqual(['email', 'id']);
   });
 
-  test('can explicitly null a field without disturbing the rest', async () => {
-    const current = currentCustomer();
-    vi.spyOn(core, 'getCustomer').mockResolvedValue(current);
-    const updateSpy = vi.spyOn(core, 'updateCustomer').mockResolvedValue(current);
+  test('forwards an explicit null to clear a nullable field', async () => {
+    const updateSpy = vi.spyOn(core, 'updateCustomerFields').mockResolvedValue(sampleCustomer());
 
-    await updateCustomerTool.handler({ id: current.id, notes: null }, createAiContext());
+    await updateCustomerTool.handler({ id: '00000000-0000-4000-8000-000000000101', notes: null }, createAiContext());
 
     expect(updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: expect.objectContaining({ notes: null, address: '1 Quarry Road', vatNumber: 'VAT-123' }),
-      }),
+      expect.objectContaining({ input: { id: '00000000-0000-4000-8000-000000000101', notes: null } }),
     );
   });
 
   test('projects the updated Customer with a Customer link', () => {
-    expect((updateCustomerDefinition.projectResult as (value: unknown) => unknown)(currentCustomer())).toMatchObject({
+    expect((updateCustomerDefinition.projectResult as (value: unknown) => unknown)(sampleCustomer())).toMatchObject({
       links: [
         { entity: 'Customer', href: '/customers/00000000-0000-4000-8000-000000000101/edit', label: 'Acme Mining' },
       ],

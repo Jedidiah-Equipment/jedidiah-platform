@@ -17,47 +17,30 @@ function createAiContext(access: UserAccessSummary | null = null): AiContext {
   };
 }
 
-const baseQuote = {
-  code: 'QUO-00001',
-  createdAt: '2026-06-17T08:00:00.000Z',
-  customerAddress: null,
-  customerCompanyName: 'Acme Mining',
-  customerContactPerson: null,
-  customerEmail: null,
-  customerId: '00000000-0000-4000-8000-000000000101',
-  customerPhone: null,
-  customerThumbnailDataUrl: null,
-  customerVatNumber: null,
-  depositPercent: 30,
-  deliveryIncluded: true,
-  deliveryPrice: 0,
-  discountPercent: 10,
-  documentNotes: 'Deposit on order',
-  id: '00000000-0000-4000-8000-000000000301',
-  job: null,
-  lineItems: [],
-  notes: 'Internal note',
-  plannedDeliveryDate: '2026-07-15',
-  preferredDeliveryDate: '2026-07-10',
-  quotedBasePrice: 1000,
-  quotedCurrencyCode: 'ZAR',
-  salesPersonEmail: 'sales@example.com',
-  salesPersonId: 'test-user-id',
-  salesPersonName: 'Test User',
-  salesPersonThumbnailDataUrl: null,
-  selectedAssemblies: [],
-  status: 'draft',
-  statusChangedAt: '2026-06-17T08:00:00.000Z',
-  updatedAt: '2026-06-17T08:00:00.000Z',
-  validUntil: null,
-};
-
-function productQuote(): QuoteDetail {
+function sampleQuote(): QuoteDetail {
   return QuoteDetail.parse({
-    ...baseQuote,
+    code: 'QUO-00001',
+    createdAt: '2026-06-17T08:00:00.000Z',
+    customerAddress: null,
+    customerCompanyName: 'Acme Mining',
+    customerContactPerson: null,
+    customerEmail: null,
+    customerId: '00000000-0000-4000-8000-000000000101',
+    customerPhone: null,
+    customerThumbnailDataUrl: null,
+    customerVatNumber: null,
+    depositPercent: 30,
+    deliveryIncluded: true,
+    deliveryPrice: 0,
+    discountPercent: 10,
+    documentNotes: 'Deposit on order',
+    id: '00000000-0000-4000-8000-000000000301',
+    job: null,
     kind: 'product',
-    productId: '00000000-0000-4000-8000-000000000201',
-    workTitle: null,
+    lineItems: [],
+    notes: 'Internal note',
+    plannedDeliveryDate: '2026-07-15',
+    preferredDeliveryDate: '2026-07-10',
     product: {
       assemblies: [],
       bays: [],
@@ -69,16 +52,19 @@ function productQuote(): QuoteDetail {
       requiresVinNumber: false,
       thumbnailDataUrl: null,
     },
-  });
-}
-
-function customQuote(): QuoteDetail {
-  return QuoteDetail.parse({
-    ...baseQuote,
-    kind: 'custom',
-    productId: null,
-    workTitle: 'Hydraulic repair',
-    product: null,
+    productId: '00000000-0000-4000-8000-000000000201',
+    quotedBasePrice: 1000,
+    quotedCurrencyCode: 'ZAR',
+    salesPersonEmail: 'sales@example.com',
+    salesPersonId: 'test-user-id',
+    salesPersonName: 'Test User',
+    salesPersonThumbnailDataUrl: null,
+    selectedAssemblies: [],
+    status: 'draft',
+    statusChangedAt: '2026-06-17T08:00:00.000Z',
+    updatedAt: '2026-06-17T08:00:00.000Z',
+    validUntil: null,
+    workTitle: null,
   });
 }
 
@@ -92,51 +78,30 @@ describe('updateQuoteTool', () => {
     expect(updateQuoteDefinition.kind).toBe('write');
   });
 
-  test('changes only the named field and reconstructs the product offering', async () => {
-    const current = productQuote();
-    vi.spyOn(core, 'getQuote').mockResolvedValue(current);
-    const updateSpy = vi.spyOn(core, 'updateQuote').mockResolvedValue(current);
+  test('forwards only the named low-risk fields so core keeps the rest under its row lock', async () => {
+    const updateSpy = vi.spyOn(core, 'updateQuoteFields').mockResolvedValue(sampleQuote());
 
-    await updateQuoteTool.handler({ id: current.id, status: 'sent' }, createAiContext());
+    await updateQuoteTool.handler({ id: '00000000-0000-4000-8000-000000000301', status: 'sent' }, createAiContext());
 
-    expect(updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actorUserId: 'test-user-id',
-        input: expect.objectContaining({
-          id: current.id,
-          offering: { kind: 'product' },
-          status: 'sent',
-          salesPersonId: 'test-user-id',
-          discountPercent: 10,
-          depositPercent: 30,
-          notes: 'Internal note',
-          documentNotes: 'Deposit on order',
-          plannedDeliveryDate: '2026-07-15',
-          preferredDeliveryDate: '2026-07-10',
-        }),
-      }),
-    );
-    // Line items and assemblies are left untouched (omitted so core keeps the current rows).
+    expect(updateSpy).toHaveBeenCalledWith({
+      actorUserId: 'test-user-id',
+      db: expect.any(Object),
+      input: { id: '00000000-0000-4000-8000-000000000301', status: 'sent' },
+    });
+    // No pricing/offering fields are ever supplied, so a concurrent commercial edit cannot be reverted.
     const passedInput = updateSpy.mock.calls[0]?.[0].input as Record<string, unknown>;
-    expect(passedInput.lineItems).toBeUndefined();
-    expect(passedInput.selectedAssemblies).toBeUndefined();
+    expect(Object.keys(passedInput).sort()).toEqual(['id', 'status']);
+    expect(passedInput).not.toHaveProperty('discountPercent');
+    expect(passedInput).not.toHaveProperty('offering');
   });
 
-  test('reconstructs the custom offering from the current Quote', async () => {
-    const current = customQuote();
-    vi.spyOn(core, 'getQuote').mockResolvedValue(current);
-    const updateSpy = vi.spyOn(core, 'updateQuote').mockResolvedValue(current);
+  test('projects the updated Quote with a Quote link', () => {
+    const projected = (updateQuoteDefinition.projectResult as (value: unknown) => { links: unknown[] })(sampleQuote());
 
-    await updateQuoteTool.handler({ id: current.id, plannedDeliveryDate: '2026-08-01' }, createAiContext());
-
-    expect(updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: expect.objectContaining({
-          offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 1000 },
-          plannedDeliveryDate: '2026-08-01',
-          status: 'draft',
-        }),
-      }),
-    );
+    expect(projected.links).toContainEqual({
+      entity: 'Quote',
+      href: '/quotes/00000000-0000-4000-8000-000000000301/edit',
+      label: 'QUO-00001',
+    });
   });
 });

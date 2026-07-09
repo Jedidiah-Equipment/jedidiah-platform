@@ -9,6 +9,7 @@ import {
 import type {
   AuthId,
   CustomerCreateInput,
+  CustomerFieldUpdateInput,
   CustomerListInput,
   CustomerListResult,
   CustomerUpdateInput,
@@ -175,6 +176,60 @@ export async function updateCustomer({
       phone: input.phone,
       thumbnailDataUrl: input.thumbnailDataUrl,
       vatNumber: input.vatNumber,
+    };
+    const after = { ...before, ...patch };
+    const changes = diffAuditUpdate(customerAuditDescriptor, before, after);
+
+    if (!changes) {
+      return mapCustomer(before);
+    }
+
+    const [row] = await tx
+      .update(customers)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(customers.id, input.id))
+      .returning();
+
+    if (!row) {
+      throw new CustomerNotFoundError(input.id);
+    }
+
+    await recordAuditUpdate({ db: tx, descriptor: customerAuditDescriptor, actorUserId, after: row, changes });
+
+    return mapCustomer(row);
+  });
+}
+
+/**
+ * Applies only the fields present in `input` over the current row, all under the same row lock as the
+ * write. Fields left `undefined` are read from the locked row, so a concurrent edit to an omitted
+ * field can never be reverted. Used by the assistant's partial Customer update tool.
+ */
+export async function updateCustomerFields({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: CustomerFieldUpdateInput;
+}): Promise<Customer> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(customers).where(eq(customers.id, input.id)).for('update');
+
+    if (!before) {
+      throw new CustomerNotFoundError(input.id);
+    }
+
+    // `undefined` keeps the current value; an explicit `null` clears a nullable field.
+    const patch = {
+      address: input.address !== undefined ? input.address : before.address,
+      companyName: input.companyName ?? before.companyName,
+      contactPerson: input.contactPerson !== undefined ? input.contactPerson : before.contactPerson,
+      email: input.email !== undefined ? input.email : before.email,
+      notes: input.notes !== undefined ? input.notes : before.notes,
+      phone: input.phone !== undefined ? input.phone : before.phone,
+      vatNumber: input.vatNumber !== undefined ? input.vatNumber : before.vatNumber,
     };
     const after = { ...before, ...patch };
     const changes = diffAuditUpdate(customerAuditDescriptor, before, after);

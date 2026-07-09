@@ -5,8 +5,8 @@ import {
   DateIso,
   DateOnlyIso,
   type QuoteDetail,
+  QuoteFieldUpdateInput,
   QuoteStatus,
-  QuoteUpdateInput,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
@@ -18,7 +18,9 @@ import { toAiToolJsonSchema } from '../json-schema.js';
 import { projectQuoteDetail } from '../projections.js';
 
 // v1 deliberately exposes only low-risk commercial-neutral fields. Offering, pricing, line items, and
-// assemblies stay in the UI form. `undefined` leaves the current value untouched (get-then-merge).
+// assemblies stay in the UI form. `undefined` leaves the current value untouched. The merge over the
+// current row happens under the row lock in `core.updateQuoteFields`, so omitted commercial fields are
+// never re-supplied from a stale read and a concurrent pricing edit is never reverted.
 const UpdateQuoteInput = z.strictObject({
   id: UUID,
   status: QuoteStatus.optional(),
@@ -41,32 +43,9 @@ export const updateQuoteTool: UpdateQuoteTool = {
   requiredPermission: 'quote:update',
   async handler(args: unknown, ctx: AiContext) {
     const rawInput = UpdateQuoteInput.parse(args);
-    const current = await core.getQuote({ db: ctx.db, id: rawInput.id });
-    // Reconstruct the current offering: the update schema requires it, but this tool never mutates it.
-    const offering =
-      current.kind === 'custom'
-        ? { kind: 'custom' as const, workTitle: current.workTitle, basePrice: current.quotedBasePrice }
-        : { kind: 'product' as const };
-    const input = QuoteUpdateInput.parse({
-      id: current.id,
-      offering,
-      salesPersonId: rawInput.salesPersonId ?? current.salesPersonId,
-      status: rawInput.status ?? current.status,
-      discountPercent: current.discountPercent,
-      depositPercent: current.depositPercent,
-      deliveryIncluded: current.deliveryIncluded,
-      deliveryPrice: current.deliveryPrice,
-      validUntil: rawInput.validUntil !== undefined ? rawInput.validUntil : current.validUntil,
-      preferredDeliveryDate:
-        rawInput.preferredDeliveryDate !== undefined ? rawInput.preferredDeliveryDate : current.preferredDeliveryDate,
-      plannedDeliveryDate:
-        rawInput.plannedDeliveryDate !== undefined ? rawInput.plannedDeliveryDate : current.plannedDeliveryDate,
-      notes: rawInput.notes !== undefined ? rawInput.notes : current.notes,
-      documentNotes: rawInput.documentNotes !== undefined ? rawInput.documentNotes : current.documentNotes,
-      // lineItems and selectedAssemblies omitted so core leaves them unchanged.
-    });
+    const input = QuoteFieldUpdateInput.parse(rawInput);
 
-    return core.updateQuote({ actorUserId: requireActorSession(ctx).user.id, db: ctx.db, input });
+    return core.updateQuoteFields({ actorUserId: requireActorSession(ctx).user.id, db: ctx.db, input });
   },
 };
 

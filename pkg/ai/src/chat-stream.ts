@@ -2,6 +2,7 @@ import type { AgentInputItem } from '@openai/agents';
 import type { AiReasoningEffort, ChatEvent, ChatRunUsage, ChatStreamInput, ChatStreamMessage } from '@pkg/schema';
 import { createAssistantAgent } from './agent.js';
 import type { AiContext } from './context.js';
+import { getModelContextWindow } from './model-limits.js';
 import type { AiAgentRunner } from './openai.js';
 import { getAuthorizedToolNames, getAuthorizedTools } from './tools.js';
 
@@ -41,11 +42,19 @@ export async function runChatStream({
 
     ctx.log.ai.info({ input: agentInput, model, reasoningEffort, toolNames: authorizedToolNames }, 'starting chat');
 
+    const contextWindow = getModelContextWindow(model);
+    let requestIndex = 0;
+
     const { textStream, usage } = await runner.run({
       agent,
       context: ctx,
       input: agentInput,
       maxTurns: MAX_AGENT_TURNS,
+      onRequestUsage: (requestUsage) => {
+        requestIndex += 1;
+        ctx.log.ai.debug({ request: requestIndex, usage: requestUsage }, 'request usage');
+        emit({ contextWindow, request: requestIndex, type: 'usage', usage: requestUsage });
+      },
       signal,
     });
 

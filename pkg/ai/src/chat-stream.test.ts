@@ -1,7 +1,7 @@
 import { RunContext, type Tool } from '@openai/agents';
 import * as productsCore from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { ChatEvent, ChatRunUsage } from '@pkg/schema';
+import type { ChatEvent, ChatRequestUsage, ChatRunUsage } from '@pkg/schema';
 import { Product } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 import { runChatStream } from './chat-stream.js';
@@ -49,10 +49,12 @@ function createRunner(...streams: StubAgentTextStream[]): AiAgentRunner {
 
 async function collectChatEvents({
   ctx = createAiContext(),
+  model = 'test-model',
   reasoningEffort = 'low',
   runner,
 }: {
   ctx?: AiContext;
+  model?: string;
   reasoningEffort?: 'minimal' | 'low';
   runner: AiAgentRunner;
 }): Promise<ChatEvent[]> {
@@ -64,13 +66,24 @@ async function collectChatEvents({
     input: {
       messages: [{ role: 'user', content: 'Show me loaders' }],
     },
-    model: 'test-model',
+    model,
     reasoningEffort,
     runner,
     signal: new AbortController().signal,
   });
 
   return events;
+}
+
+function chatRequestUsage(overrides: Partial<ChatRequestUsage> = {}): ChatRequestUsage {
+  return {
+    cachedInputTokens: 0,
+    inputTokens: 100,
+    outputTokens: 20,
+    reasoningOutputTokens: 0,
+    totalTokens: 120,
+    ...overrides,
+  };
 }
 
 class StubAgentTextStream implements AsyncIterable<string | Uint8Array> {
@@ -177,6 +190,43 @@ describe('runChatStream', () => {
       { type: 'token', delta: 'Done' },
       { type: 'done', usage },
     ]);
+  });
+
+  test('emits a usage event per request with incrementing index and the configured context window', async () => {
+    const firstUsage = chatRequestUsage({ inputTokens: 100 });
+    const secondUsage = chatRequestUsage({ inputTokens: 340 });
+    const stream = new StubAgentTextStream(async function* (input) {
+      input.onRequestUsage?.(firstUsage);
+      yield 'thinking';
+      input.onRequestUsage?.(secondUsage);
+      yield ' done';
+    });
+
+    const events = await collectChatEvents({ model: 'gpt-5.5', runner: createRunner(stream) });
+
+    expect(events).toEqual([
+      { contextWindow: 400_000, request: 1, type: 'usage', usage: firstUsage },
+      { type: 'token', delta: 'thinking' },
+      { contextWindow: 400_000, request: 2, type: 'usage', usage: secondUsage },
+      { type: 'token', delta: ' done' },
+      { type: 'done' },
+    ]);
+  });
+
+  test('emits a null context window for an unknown model', async () => {
+    const stream = new StubAgentTextStream(async function* (input) {
+      input.onRequestUsage?.(chatRequestUsage());
+      yield 'hi';
+    });
+
+    const events = await collectChatEvents({ model: 'mystery-model', runner: createRunner(stream) });
+
+    expect(events).toContainEqual({
+      contextWindow: null,
+      request: 1,
+      type: 'usage',
+      usage: chatRequestUsage(),
+    });
   });
 
   test('emits bare done when reading run usage fails', async () => {

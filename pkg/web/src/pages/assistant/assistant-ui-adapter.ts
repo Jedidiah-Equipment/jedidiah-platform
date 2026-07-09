@@ -6,6 +6,8 @@ import type {
 } from '@assistant-ui/react';
 import type { ChatRunUsage, ChatStreamMessage, ChatToolResultSizeInfo } from '@pkg/schema';
 
+import { clearLiveRunUsage, setLiveRunUsage } from '@/components/assistant-ui/live-run-usage.js';
+
 import { streamChatEvents } from './sse-client.js';
 
 type ToolCallState = {
@@ -25,6 +27,8 @@ export const jedidiahChatAdapter: ChatModelAdapter = {
     const backendMessages = toBackendMessages(messages);
     const toolCalls: Record<string, ToolCallState> = {};
     let textContent = '';
+
+    clearLiveRunUsage();
 
     const buildContent = (): ThreadAssistantMessagePart[] => {
       const content: ThreadAssistantMessagePart[] = [];
@@ -91,6 +95,8 @@ export const jedidiahChatAdapter: ChatModelAdapter = {
 
           yield buildResult();
         }
+      } else if (event.type === 'usage') {
+        setLiveRunUsage({ contextWindow: event.contextWindow, request: event.request, usage: event.usage });
       } else if (event.type === 'error') {
         throw new Error(event.message);
       } else if (event.type === 'done') {

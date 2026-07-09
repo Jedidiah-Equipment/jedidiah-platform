@@ -5,7 +5,7 @@ import {
   DateIso,
   DateOnlyIso,
   type QuoteDetail,
-  QuoteFieldUpdateInput,
+  QuotePatchInput,
   QuoteStatus,
   UUID,
 } from '@pkg/schema';
@@ -19,7 +19,7 @@ import { projectQuoteDetail } from '../projections.js';
 
 // v1 deliberately exposes only low-risk commercial-neutral fields. Offering, pricing, line items, and
 // assemblies stay in the UI form. `undefined` leaves the current value untouched. The merge over the
-// current row happens under the row lock in `core.updateQuoteFields`, so omitted commercial fields are
+// current row happens under the row lock in `core.patchQuote`, so omitted commercial fields are
 // never re-supplied from a stale read and a concurrent pricing edit is never reverted.
 const UpdateQuoteInput = z.strictObject({
   id: UUID,
@@ -43,9 +43,9 @@ export const updateQuoteTool: UpdateQuoteTool = {
   requiredPermission: 'quote:update',
   async handler(args: unknown, ctx: AiContext) {
     const rawInput = UpdateQuoteInput.parse(args);
-    const input = QuoteFieldUpdateInput.parse(rawInput);
+    const input = QuotePatchInput.parse(rawInput);
 
-    return core.updateQuoteFields({ actorUserId: requireActorSession(ctx).user.id, db: ctx.db, input });
+    return core.patchQuote({ actorUserId: requireActorSession(ctx).user.id, db: ctx.db, input });
   },
 };
 

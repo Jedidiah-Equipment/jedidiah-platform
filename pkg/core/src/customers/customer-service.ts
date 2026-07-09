@@ -9,9 +9,9 @@ import {
 import type {
   AuthId,
   CustomerCreateInput,
-  CustomerFieldUpdateInput,
   CustomerListInput,
   CustomerListResult,
+  CustomerPatchInput,
   CustomerUpdateInput,
   UUID,
 } from '@pkg/schema';
@@ -205,14 +205,14 @@ export async function updateCustomer({
  * write. Fields left `undefined` are read from the locked row, so a concurrent edit to an omitted
  * field can never be reverted. Used by the assistant's partial Customer update tool.
  */
-export async function updateCustomerFields({
+export async function patchCustomer({
   actorUserId,
   db,
   input,
 }: {
   actorUserId: AuthId;
   db: Db;
-  input: CustomerFieldUpdateInput;
+  input: CustomerPatchInput;
 }): Promise<Customer> {
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(customers).where(eq(customers.id, input.id)).for('update');

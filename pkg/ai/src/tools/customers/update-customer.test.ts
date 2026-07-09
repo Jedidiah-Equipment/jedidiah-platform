@@ -44,7 +44,7 @@ describe('updateCustomerTool', () => {
   });
 
   test('forwards only the named field so core keeps the rest under its row lock', async () => {
-    const updateSpy = vi.spyOn(core, 'updateCustomerFields').mockResolvedValue(sampleCustomer());
+    const updateSpy = vi.spyOn(core, 'patchCustomer').mockResolvedValue(sampleCustomer());
 
     await updateCustomerTool.handler(
       { id: '00000000-0000-4000-8000-000000000101', email: 'new@acme.example' },
@@ -62,7 +62,7 @@ describe('updateCustomerTool', () => {
   });
 
   test('forwards an explicit null to clear a nullable field', async () => {
-    const updateSpy = vi.spyOn(core, 'updateCustomerFields').mockResolvedValue(sampleCustomer());
+    const updateSpy = vi.spyOn(core, 'patchCustomer').mockResolvedValue(sampleCustomer());
 
     await updateCustomerTool.handler({ id: '00000000-0000-4000-8000-000000000101', notes: null }, createAiContext());
 

@@ -322,8 +322,8 @@ export const QuoteUpdateInput = z
 // current value untouched". The merge over the current row happens under the row lock in core, so a
 // concurrent edit to an omitted field is never reverted. Deliberately excludes offering, pricing,
 // line items, and assemblies.
-export type QuoteFieldUpdateInput = z.infer<typeof QuoteFieldUpdateInput>;
-export const QuoteFieldUpdateInput = z
+export type QuotePatchInput = z.infer<typeof QuotePatchInput>;
+export const QuotePatchInput = z
   .object({
     id: UUID,
     status: QuoteStatus.optional(),

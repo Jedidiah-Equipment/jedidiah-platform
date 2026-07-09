@@ -31,18 +31,18 @@
   },
   "dependencies": {
     "@pkg/schema": "workspace:*",
-    "better-auth": "^1.6.20",
-    "fastify": "^5.8.5",
+    "better-auth": "^1.6.23",
+    "fastify": "^5.10.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
-    "@types/node": "^26.0.0",
+    "@biomejs/biome": "^2.5.3",
+    "@types/node": "^26.1.1",
     "dotenv": "^17.4.2",
-    "shadcn": "^4.11.0",
-    "tsx": "^4.22.4",
-    "turbo": "^2.9.18",
+    "shadcn": "^4.13.0",
+    "tsx": "^4.23.0",
+    "turbo": "^2.10.4",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   }
 }

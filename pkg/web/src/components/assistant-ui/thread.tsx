@@ -9,10 +9,17 @@ import {
   type ToolCallMessagePartProps,
   useAuiState,
 } from '@assistant-ui/react';
+import type { ChatToolResultSizeInfo } from '@pkg/schema';
 import { IconArrowDown, IconArrowUp, IconCopy, IconRefresh, IconSquare } from '@tabler/icons-react';
 import type { FC, ReactNode } from 'react';
 
 import { getRunUsageFromMetadata } from '@/components/assistant-ui/assistant-run-usage.js';
+import {
+  formatKb,
+  formatThumbnailDropCount,
+  getToolResultSizesFromMetadata,
+  summarizeToolResultSizes,
+} from '@/components/assistant-ui/assistant-tool-result-size.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
@@ -136,7 +143,7 @@ const AssistantMessage: FC = () => {
         <MessagePrimitive.GroupedParts groupBy={groupToolCallParts}>
           {({ part, children }) => {
             if (part.type === 'group-tool-calls') {
-              return <ToolCallGroup count={part.indices.length}>{children}</ToolCallGroup>;
+              return <ToolCallGroup indices={part.indices}>{children}</ToolCallGroup>;
             }
 
             if (part.type === 'text') {
@@ -213,7 +220,17 @@ const groupToolCallParts = (part: PartState): readonly ['group-tool-calls'] | nu
   return part.type === 'tool-call' ? ['group-tool-calls'] : null;
 };
 
-const ToolCallGroup: FC<{ children: ReactNode; count: number }> = ({ children, count }) => {
+const ToolCallGroup: FC<{ children: ReactNode; indices: readonly number[] }> = ({ children, indices }) => {
+  const summary = useAuiState((state) => {
+    const sizes = getToolResultSizesFromMetadata(state.message.metadata?.custom);
+    const groupSizes = state.message.parts
+      .filter((part, index) => indices.includes(index) && part.type === 'tool-call')
+      .map((part) => getToolResultSize(part, sizes));
+
+    return summarizeToolResultSizes(groupSizes);
+  });
+  const count = indices.length;
+
   return (
     <div className="mb-3 inline-flex max-w-full pe-2">
       <HoverCard>
@@ -223,7 +240,24 @@ const ToolCallGroup: FC<{ children: ReactNode; count: number }> = ({ children, c
               className="max-w-full cursor-default truncate border-border/70 bg-muted/30 px-2 py-0.5 font-normal text-muted-foreground text-xs"
               variant="outline"
             >
-              tool calls {count}
+              {summary ? (
+                <>
+                  <span>{count} tool calls</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{formatKb(summary.totalSerializedBytes)} returned</span>
+                  {summary.truncatedCount > 0 ? (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
+                        <span className="size-1.5 rounded-full bg-amber-500" />
+                        {summary.truncatedCount} truncated
+                      </span>
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <>tool calls {count}</>
+              )}
             </Badge>
           }
         />
@@ -235,12 +269,40 @@ const ToolCallGroup: FC<{ children: ReactNode; count: number }> = ({ children, c
   );
 };
 
-const ToolCallDetail: FC<ToolCallMessagePartProps> = ({ result, status, toolName }) => {
+const ToolCallDetail: FC<ToolCallMessagePartProps> = ({ result, status, toolCallId, toolName }) => {
+  const size = useAuiState((state) => getToolResultSizesFromMetadata(state.message.metadata?.custom)?.[toolCallId]);
+
   return (
-    <div className="flex items-center justify-between gap-3 px-1 py-2 text-xs first:pt-1 last:pb-1">
-      <span className="truncate font-medium text-foreground">{toolName}</span>
-      <span className="shrink-0 text-muted-foreground">{formatToolStatus(status.type, result)}</span>
+    <div className="flex items-start gap-3 px-1 py-2 text-xs first:pt-1 last:pb-1">
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium text-foreground">{toolName}</span>
+        {size && size.removedThumbnailFieldsByFallback > 0 ? (
+          <span className="mt-0.5 block text-muted-foreground">
+            {formatThumbnailDropCount(size.removedThumbnailFieldsByFallback)}
+          </span>
+        ) : null}
+      </span>
+      <span className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 text-muted-foreground">
+        <span>{formatToolStatus(status.type, result)}</span>
+        {size ? <ToolResultSizeLabel size={size} /> : null}
+      </span>
     </div>
+  );
+};
+
+const ToolResultSizeLabel: FC<{ size: ChatToolResultSizeInfo }> = ({ size }) => {
+  return (
+    <>
+      {size.truncated ? (
+        <Badge
+          className="h-5 border-amber-300 bg-amber-100 px-1.5 font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+          variant="outline"
+        >
+          truncated {formatKb(size.maxSerializedBytes)}
+        </Badge>
+      ) : null}
+      <span>{formatKb(size.serializedBytes)}</span>
+    </>
   );
 };
 
@@ -305,6 +367,16 @@ function formatToolStatus(status: string, result: unknown): string {
   }
 
   return 'done';
+}
+
+function getToolResultSize(part: PartState, sizes: Record<string, ChatToolResultSizeInfo> | undefined) {
+  if (part.type !== 'tool-call' || !sizes) {
+    return undefined;
+  }
+
+  const toolCallId = (part as { toolCallId?: unknown }).toolCallId;
+
+  return typeof toolCallId === 'string' ? sizes[toolCallId] : undefined;
 }
 
 function getResultCount(result: unknown): number | null {

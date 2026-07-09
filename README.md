@@ -98,6 +98,20 @@ pnpm test
 pnpm build
 ```
 
+Release production by fast-forwarding the `production` branch to the exact commit already on
+`origin/main`:
+
+```sh
+pnpm release:production:check
+pnpm release:production
+```
+
+`production` is a release pointer, not a development branch. Every commit on `production` must be
+reachable from `main`; do not squash, cherry-pick, resolve conflicts, or create merge commits on
+`production`. The release script refuses to push when `production` contains commits that are not on
+`main`. GitHub protections should disable deletion and force pushes on `production`, restrict direct
+pushes to the release actor, and avoid requiring PR merges for production releases.
+
 Run the dev services (API, web, lander, and mobile) locally:
 
 ```sh

@@ -10,6 +10,7 @@ import { type ApiConfig, getApiConfig } from './env.js';
 import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
+import { registerAiChatRoute } from './routes/ai/ai-chat.route.js';
 import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
 import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
 import { registerEntityFileRoutes } from './routes/files/entity-file-http.route.js';
@@ -53,6 +54,7 @@ export async function buildServer(
     },
   });
   await registerAiStreamRoute(app, { storage });
+  await registerAiChatRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
   await registerEntityFileRoutes(app, [
     createProductImageRouteConfig(storage),

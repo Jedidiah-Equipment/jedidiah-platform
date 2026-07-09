@@ -1,0 +1,215 @@
+import type { LanguageModelV3FinishReason, LanguageModelV3StreamPart, LanguageModelV3Usage } from '@ai-sdk/provider';
+import fastifyCors from '@fastify/cors';
+import type { AiContext } from '@pkg/ai';
+import { createUserAccessSummary } from '@pkg/domain';
+import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
+import Fastify from 'fastify';
+import { describe, expect, test, vi } from 'vitest';
+
+import { registerAiChatRoute } from '@/routes/ai/ai-chat.route.js';
+import { createSilentLogger, mockSession } from '@/test/test-utils.js';
+
+// The tracer tool's core read is stubbed so the route test stays DB-free; the route still exercises
+// the real tool factory, authorization, projection, and truncation around it.
+const listProductsMock = vi.fn(async () => ({
+  items: [{ id: '00000000-0000-4000-8000-000000000001', name: 'Compact Loader', modelCode: 'CL-1' }],
+  total: 1,
+  page: 1,
+  pageSize: 20,
+}));
+
+vi.mock('@pkg/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@pkg/core')>();
+  return { ...actual, listProducts: () => listProductsMock() };
+});
+
+function createChatContext(session: ReturnType<typeof mockSession> | null = mockSession()): AiContext {
+  return {
+    access: session ? createUserAccessSummary({ role: 'admin', userId: session.user.id }) : null,
+    brochureRenderer: vi.fn(async () => new Uint8Array()),
+    db: {} as AiContext['db'],
+    deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
+    log: createSilentLogger(),
+    session: session
+      ? {
+          user: {
+            id: session.user.id,
+            email: session.user.email,
+            assistantEnabled: session.user.assistantEnabled === true,
+          },
+        }
+      : null,
+    storage: {} as AiContext['storage'],
+  };
+}
+
+const STEP_USAGE: LanguageModelV3Usage = {
+  inputTokens: { total: 12, noCache: 12, cacheRead: 0, cacheWrite: 0 },
+  outputTokens: { total: 6, text: 6, reasoning: 0 },
+};
+
+function finishPart(unified: LanguageModelV3FinishReason['unified']): LanguageModelV3StreamPart {
+  return { type: 'finish', finishReason: { unified, raw: unified }, usage: STEP_USAGE };
+}
+
+function streamResult(parts: LanguageModelV3StreamPart[]) {
+  return { stream: convertArrayToReadableStream(parts) };
+}
+
+// Step 1 asks for the tool; step 2 answers with text. `stepCountIs` drives the loop between them.
+// Driven by an explicit call counter rather than a doStream array: MockLanguageModelV3 records the
+// call before indexing, so an array is effectively 1-based and would skip the first step.
+function createTwoStepModel(): MockLanguageModelV3 {
+  let call = 0;
+  return new MockLanguageModelV3({
+    doStream: async () => {
+      call += 1;
+      return call === 1
+        ? streamResult([
+            { type: 'stream-start', warnings: [] },
+            { type: 'tool-call', toolCallId: 'call-1', toolName: 'listProducts', input: JSON.stringify({}) },
+            finishPart('tool-calls'),
+          ])
+        : streamResult([
+            { type: 'stream-start', warnings: [] },
+            { type: 'text-start', id: 't1' },
+            { type: 'text-delta', id: 't1', delta: 'You have 1 Product' },
+            { type: 'text-delta', id: 't1', delta: ': Compact Loader.' },
+            { type: 'text-end', id: 't1' },
+            finishPart('stop'),
+          ]);
+    },
+  });
+}
+
+function userMessage(text: string) {
+  return { id: 'm1', role: 'user' as const, parts: [{ type: 'text' as const, text }] };
+}
+
+type UiChunk = { type: string; [key: string]: unknown };
+
+function readUiChunks(body: string): UiChunk[] {
+  return body
+    .split('\n')
+    .filter((line) => line.startsWith('data: '))
+    .map((line) => line.slice('data: '.length))
+    .filter((data) => data !== '[DONE]')
+    .map((data) => JSON.parse(data) as UiChunk);
+}
+
+describe('POST /ai/chat', () => {
+  test('returns 401 without building the model when there is no session', async () => {
+    const app = Fastify();
+    const createModel = vi.fn(() => createTwoStepModel());
+    await registerAiChatRoute(app, {
+      buildContext: async () => createChatContext(null),
+      createModel,
+      reasoningEffort: 'low',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/ai/chat',
+      payload: { messages: [userMessage('Show me loaders')] },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(createModel).not.toHaveBeenCalled();
+  });
+
+  test('returns 403 without building the model when the assistant is disabled', async () => {
+    const app = Fastify();
+    const createModel = vi.fn(() => createTwoStepModel());
+    const disabledSession = mockSession();
+    disabledSession.user.assistantEnabled = false;
+    await registerAiChatRoute(app, {
+      buildContext: async () => createChatContext(disabledSession),
+      createModel,
+      reasoningEffort: 'low',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/ai/chat',
+      payload: { messages: [userMessage('Show me loaders')] },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(createModel).not.toHaveBeenCalled();
+  });
+
+  test('returns 400 without building the model for oversized payloads', async () => {
+    const app = Fastify();
+    const createModel = vi.fn(() => createTwoStepModel());
+    await registerAiChatRoute(app, {
+      buildContext: async () => createChatContext(),
+      createModel,
+      reasoningEffort: 'low',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/ai/chat',
+      payload: {
+        messages: Array.from({ length: 40 }, (_, index) => ({
+          id: `m${index}`,
+          role: 'user',
+          parts: [{ type: 'text', text: 'a'.repeat(2_000) }],
+        })),
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(createModel).not.toHaveBeenCalled();
+  });
+
+  test('streams tool-call, tool-result, and text parts for a multi-step conversation', async () => {
+    const app = Fastify();
+    await registerAiChatRoute(app, {
+      buildContext: async () => createChatContext(),
+      createModel: () => createTwoStepModel(),
+      reasoningEffort: 'low',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/ai/chat',
+      payload: { messages: [userMessage('Show me loaders')] },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('text/event-stream');
+    expect(listProductsMock).toHaveBeenCalledOnce();
+
+    const chunks = readUiChunks(response.body);
+    const toolCall = chunks.find((chunk) => chunk.type === 'tool-input-available');
+    const toolResult = chunks.find((chunk) => chunk.type === 'tool-output-available');
+    const textDeltas = chunks.filter((chunk) => chunk.type === 'text-delta');
+
+    expect(toolCall?.toolName).toBe('listProducts');
+    expect(toolResult).toBeDefined();
+    expect(toolResult?.output).toMatchObject({ total: 1 });
+    expect(textDeltas.map((chunk) => chunk.delta).join('')).toBe('You have 1 Product: Compact Loader.');
+  });
+
+  test('preserves CORS headers on the streamed response', async () => {
+    const app = Fastify();
+    await app.register(fastifyCors, { credentials: true, origin: ['http://localhost:7001'] });
+    await registerAiChatRoute(app, {
+      buildContext: async () => createChatContext(),
+      createModel: () => createTwoStepModel(),
+      reasoningEffort: 'low',
+    });
+
+    const response = await app.inject({
+      headers: { origin: 'http://localhost:7001' },
+      method: 'POST',
+      url: '/ai/chat',
+      payload: { messages: [userMessage('Show me loaders')] },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['access-control-allow-origin']).toBe('http://localhost:7001');
+    expect(response.headers['access-control-allow-credentials']).toBe('true');
+  });
+});

@@ -1,3 +1,5 @@
+export * from './ai/chat.js';
+export * from './ai/chat-input-limits.js';
 export * from './ai/chat-stream.js';
 export * from './ai/context.js';
 export * from './ai/reasoning-effort.js';

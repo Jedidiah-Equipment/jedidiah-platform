@@ -4,7 +4,7 @@ import type {
   ThreadAssistantMessagePart,
   ThreadMessage,
 } from '@assistant-ui/react';
-import type { ChatStreamMessage } from '@pkg/schema';
+import type { ChatRunUsage, ChatStreamMessage, ChatToolResultSizeInfo } from '@pkg/schema';
 
 import { streamChatEvents } from './sse-client.js';
 
@@ -14,6 +14,7 @@ type ToolCallState = {
   id: string;
   name: string;
   result?: unknown;
+  size?: ChatToolResultSizeInfo;
 };
 
 type JsonValue = null | boolean | number | string | readonly JsonValue[] | JsonObject;
@@ -49,10 +50,27 @@ export const jedidiahChatAdapter: ChatModelAdapter = {
       return content;
     };
 
+    const buildResult = (usage?: ChatRunUsage): ChatModelRunResult => {
+      const toolResultSizes = Object.fromEntries(
+        Object.values(toolCalls)
+          .filter((toolCall) => toolCall.size)
+          .map((toolCall) => [toolCall.id, toolCall.size]),
+      );
+      const custom = {
+        ...(Object.keys(toolResultSizes).length > 0 ? { toolResultSizes } : {}),
+        ...(usage ? { runUsage: usage } : {}),
+      };
+
+      return {
+        content: buildContent(),
+        ...(Object.keys(custom).length > 0 ? { metadata: { custom } } : {}),
+      };
+    };
+
     for await (const event of streamChatEvents({ messages: backendMessages, signal: abortSignal })) {
       if (event.type === 'token') {
         textContent += event.delta;
-        yield { content: buildContent() };
+        yield buildResult();
       } else if (event.type === 'tool_call') {
         toolCalls[event.id] = {
           args: toToolArgs(event.args),
@@ -60,20 +78,24 @@ export const jedidiahChatAdapter: ChatModelAdapter = {
           id: event.id,
           name: event.name,
         };
-        yield { content: buildContent() };
+        yield buildResult();
       } else if (event.type === 'tool_result') {
         const toolCall = toolCalls[event.id];
 
         if (toolCall) {
           toolCall.result = event.result;
-          yield { content: buildContent() };
+
+          if (event.size) {
+            toolCall.size = event.size;
+          }
+
+          yield buildResult();
         }
       } else if (event.type === 'error') {
         throw new Error(event.message);
       } else if (event.type === 'done') {
         yield {
-          content: buildContent(),
-          ...(event.usage ? { metadata: { custom: { runUsage: event.usage } } } : {}),
+          ...buildResult(event.usage),
           status: {
             reason: 'stop',
             type: 'complete',

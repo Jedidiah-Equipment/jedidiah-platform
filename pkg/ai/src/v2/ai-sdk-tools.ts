@@ -1,8 +1,7 @@
 import { hasPermission } from '@pkg/domain';
-import { tool as createAiSdkTool, type Tool, type ToolSet } from 'ai';
+import { tool as createAiSdkTool, type ToolSet } from 'ai';
 
 import type { AiV2Context } from './context.js';
-import { prepareToolResult } from './tool-result.js';
 import { listProductsDefinition } from './tools/products/list-products.js';
 
 export type V2AiToolName = typeof listProductsDefinition.name;
@@ -12,9 +11,7 @@ export type CreateAiSdkToolsOptions = {
   include?: readonly V2AiToolName[];
 };
 
-// V2 deliberately registers its own copied tools instead of reading the legacy registry. Keeping
-// the authorization, projection, and result budget here makes the complete v2 surface visible in
-// this folder while preserving the established tool boundary behavior.
+// V2 deliberately registers its own tools instead of inheriting the legacy registry.
 export function createAiSdkTools(ctx: AiV2Context, options: CreateAiSdkToolsOptions = {}): ToolSet {
   const tool = listProductsDefinition;
 
@@ -22,10 +19,7 @@ export function createAiSdkTools(ctx: AiV2Context, options: CreateAiSdkToolsOpti
     return {};
   }
 
-  const isAuthorized =
-    tool.requiredPermission === null ? ctx.access !== null : hasPermission(ctx.access, tool.requiredPermission);
-
-  if (!isAuthorized) {
+  if (!hasPermission(ctx.access, tool.requiredPermission)) {
     return {};
   }
 
@@ -33,14 +27,8 @@ export function createAiSdkTools(ctx: AiV2Context, options: CreateAiSdkToolsOpti
     [tool.name]: createAiSdkTool({
       description: tool.description,
       inputSchema: tool.inputSchema,
-      async execute(input) {
-        try {
-          const result = await tool.handler(input, ctx);
-          return prepareToolResult(tool.projectResult(result));
-        } catch (error) {
-          return { error: error instanceof Error ? error.message : 'Tool call failed' };
-        }
-      },
-    }) as Tool,
+      outputSchema: tool.outputSchema,
+      execute: (input) => tool.handler(input, ctx),
+    }),
   };
 }

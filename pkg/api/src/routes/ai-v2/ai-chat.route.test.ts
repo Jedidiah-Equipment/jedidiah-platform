@@ -9,13 +9,30 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { registerAiChatRoute } from '@/routes/ai-v2/ai-chat.route.js';
 import { createSilentLogger, mockSession } from '@/test/test-utils.js';
 
-// The tracer tool's core read is stubbed so the route test stays DB-free; the route still exercises
-// the real tool factory, authorization, projection, and truncation around it.
+// The tool's core read is stubbed so the route test stays DB-free; the route still exercises the
+// real tool factory, authorization, and core-to-tool response mapping around it.
 const listProductsMock = vi.fn(async () => ({
-  items: [{ id: '00000000-0000-4000-8000-000000000001', name: 'Compact Loader', modelCode: 'CL-1' }],
+  items: [
+    {
+      basePrice: 1_000,
+      buildTimeDays: 14,
+      category: null,
+      createdAt: '2026-07-10T08:00:00.000Z',
+      currencyCode: 'ZAR' as const,
+      description: 'Compact articulated loader',
+      id: '00000000-0000-4000-8000-000000000001',
+      keyFeatures: [],
+      modelCode: 'CL-1',
+      name: 'Compact Loader',
+      nameHighlight: null,
+      range: { id: '00000000-0000-4000-8000-000000000002', name: 'Loaders' },
+      requiresVinNumber: false,
+      technicalDetails: [],
+    },
+  ],
+  sortBy: 'name' as const,
+  sortDirection: 'asc' as const,
   total: 1,
-  page: 1,
-  pageSize: 20,
 }));
 
 vi.mock('@pkg/core', async (importOriginal) => {

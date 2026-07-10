@@ -65,8 +65,11 @@ vi.mock('@pkg/core', async (importOriginal) => {
 function createChatContext(session: ReturnType<typeof mockSession> | null = mockSession()): AiV2Context {
   return {
     access: session ? createUserAccessSummary({ role: 'admin', userId: session.user.id }) : null,
+    brochureRenderer: vi.fn(),
     db: {} as AiV2Context['db'],
     log: createSilentLogger(),
+    quoteDocumentRenderer: vi.fn(),
+    sendEmail: vi.fn(),
     session: session
       ? {
           user: {
@@ -76,6 +79,7 @@ function createChatContext(session: ReturnType<typeof mockSession> | null = mock
           },
         }
       : null,
+    storage: {} as AiV2Context['storage'],
   };
 }
 

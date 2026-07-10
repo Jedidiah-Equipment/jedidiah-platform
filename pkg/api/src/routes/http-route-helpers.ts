@@ -55,7 +55,18 @@ export function requirePermission(
   message: string,
   forbiddenCode: string,
 ): void {
-  if (hasPermission(auth.access, permission)) {
+  requireAnyPermission(auth, [permission], message, forbiddenCode);
+}
+
+// Throws a 403 unless the actor holds at least one permission. This models shared picker and
+// generated-document reads that legitimately sit behind more than one workflow authority.
+export function requireAnyPermission(
+  auth: RouteAuthContext,
+  permissions: readonly AppPermission[],
+  message: string,
+  forbiddenCode: string,
+): void {
+  if (permissions.some((permission) => hasPermission(auth.access, permission))) {
     return;
   }
 

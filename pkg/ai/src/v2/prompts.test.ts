@@ -12,4 +12,14 @@ describe('v2 system prompt', () => {
     expect(prompt).toContain('Never invent or modify a URL');
     expect(prompt).toContain('If `links.app` is absent, use plain text');
   });
+
+  test('separates email drafting, document generation, and explicit delivery', () => {
+    const prompt = createSystemPrompt();
+
+    expect(prompt).toContain('Do not call `sendEmail` when the user only asks to draft');
+    expect(prompt).toContain('write the complete subject and body yourself');
+    expect(prompt).toContain('copy its `attachment` result unchanged');
+    expect(prompt).toContain('`{ type: "me" }`');
+    expect(prompt).toContain('`links.download`');
+  });
 });

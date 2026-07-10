@@ -54,7 +54,7 @@ export async function buildServer(
     },
   });
   await registerAiStreamRoute(app, { storage });
-  await registerAiChatRoute(app);
+  await registerAiChatRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
   await registerEntityFileRoutes(app, [
     createProductImageRouteConfig(storage),

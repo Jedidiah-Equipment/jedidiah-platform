@@ -13,12 +13,13 @@ import {
 } from './authorization.js';
 
 describe('getRolePermissions', () => {
-  it('grants all v1 permissions to admins', () => {
+  it('grants all admin permissions to admins', () => {
     expect(getRolePermissions('admin')).toEqual([
       'audit:read',
       'customer:create',
       'customer:read',
       'customer:update',
+      'email:send',
       'job:create',
       'job:read',
       'job:schedule',
@@ -77,8 +78,8 @@ describe('getRolePermissions', () => {
     expect(getRolePermissions('job-viewer')).toEqual(['job:read']);
   });
 
-  it('grants quote-only permissions to sales', () => {
-    expect(getRolePermissions('sales')).toEqual(['quote:create', 'quote:read', 'quote:update']);
+  it('grants Quote and email permissions to sales', () => {
+    expect(getRolePermissions('sales')).toEqual(['email:send', 'quote:create', 'quote:read', 'quote:update']);
   });
 
   it('grants no permissions to Bay Operators', () => {
@@ -132,7 +133,7 @@ describe('createUserAccessSummary', () => {
         userId: 'user_123',
       }),
     ).toEqual({
-      permissions: ['quote:create', 'quote:read', 'quote:update'],
+      permissions: ['email:send', 'quote:create', 'quote:read', 'quote:update'],
       role: 'sales',
       userId: 'user_123',
     });

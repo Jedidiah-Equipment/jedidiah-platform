@@ -72,7 +72,7 @@ App Role owns authorization. Department Membership is descriptive only and must 
 - **admin**: full operational access; owns Bay scheduling, calendar updates, Job creation and updates, admin Bay configuration, and Suppliers. Sees General Feedback on subjects it can read, like any subject reader; cannot see Corrective Feedback.
 - **procurement-manager**: Customers, Products, Parts, Suppliers, and Job reads; no scheduling mutation.
 - **job-viewer**: Job and Bay schedule reads only.
-- **sales**: Quote create/read/update.
+- **sales**: Quote create/read/update and assistant-authored email sending.
 - **bay-operator**: no app permissions and cannot sign in unless the role gains permissions later.
 
 Server/API checks are the security boundary. Browser access checks are UX only.

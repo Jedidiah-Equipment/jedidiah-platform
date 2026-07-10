@@ -19,6 +19,7 @@ describe('createAiSdkTools v2', () => {
     expect(Object.keys(createAiSdkTools(createContext('admin')))).toEqual([
       'findProducts',
       'getProduct',
+      'generateProductBrochureDocument',
       'findCustomers',
       'getCustomer',
       'createCustomer',
@@ -27,6 +28,8 @@ describe('createAiSdkTools v2', () => {
       'getQuote',
       'createQuote',
       'patchQuote',
+      'generateQuoteDocument',
+      'sendEmail',
       'findJobs',
       'getJob',
     ]);
@@ -35,15 +38,19 @@ describe('createAiSdkTools v2', () => {
   test('exposes only tools allowed by the caller permissions', () => {
     expect(Object.keys(createAiSdkTools(createContext('sales')))).toEqual([
       'findProducts',
+      'generateProductBrochureDocument',
       'findCustomers',
       'findQuotes',
       'getQuote',
       'createQuote',
       'patchQuote',
+      'generateQuoteDocument',
+      'sendEmail',
     ]);
     expect(Object.keys(createAiSdkTools(createContext('job-viewer')))).toEqual(['findJobs', 'getJob']);
     expect(Object.keys(createAiSdkTools(createContextWithPermissions(['quote:create'])))).toEqual([
       'findProducts',
+      'generateProductBrochureDocument',
       'findCustomers',
       'createQuote',
     ]);

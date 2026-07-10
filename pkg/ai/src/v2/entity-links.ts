@@ -21,6 +21,14 @@ export function createJobAppHref(jobId: string): InternalAppHref {
   return InternalAppHref.parse(`/jobs/${jobId}`);
 }
 
+export function createQuoteDocumentDownloadHref(quoteId: string, documentId: string): InternalAppHref {
+  return InternalAppHref.parse(`/api/quotes/${quoteId}/documents/${documentId}/download`);
+}
+
+export function createProductBrochureDownloadHref(productId: string): InternalAppHref {
+  return InternalAppHref.parse(`/api/products/${productId}/brochure-preview`);
+}
+
 function isInternalAppHref(href: string): boolean {
   if (!href.startsWith('/') || href.includes('\\') || [...href].some(isControlCharacter)) {
     return false;

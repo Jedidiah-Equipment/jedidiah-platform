@@ -81,7 +81,7 @@ describe('findProducts v2 contract', () => {
     expect(response).toEqual([
       {
         id: PRODUCT_ID,
-        links: [{ entity: 'Product', href: `/products/${PRODUCT_ID}/edit`, label: 'Compact Loader' }],
+        links: { app: `/products/${PRODUCT_ID}/edit` },
         modelCode: 'CL-100',
         name: 'Compact Loader',
       },

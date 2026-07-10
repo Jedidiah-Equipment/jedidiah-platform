@@ -45,6 +45,28 @@ const observability: Observability = {
 };
 
 describe('API server', () => {
+  it('registers the v2 assistant in the development environment', async () => {
+    const app = await buildServer(config, observability, new MemoryStorage());
+    try {
+      expect(app.hasRoute({ method: 'POST', url: '/ai/chat' })).toBe(true);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it.each(['staging', 'production'] as const)('does not register the v2 assistant in %s', async (APP_ENV) => {
+    const app = await buildServer({ ...config, APP_ENV }, observability, new MemoryStorage());
+
+    try {
+      expect(app.hasRoute({ method: 'POST', url: '/ai/chat' })).toBe(false);
+
+      const response = await app.inject({ method: 'POST', url: '/ai/chat', payload: { messages: [] } });
+      expect(response.statusCode).toBe(404);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('routes long tRPC GET batch paths', async () => {
     const app = await buildServer(config, observability, new MemoryStorage());
     const path = [

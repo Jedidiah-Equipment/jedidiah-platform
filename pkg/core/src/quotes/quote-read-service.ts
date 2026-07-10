@@ -16,6 +16,7 @@ import { addDateOnlyDays, parseDateOnlyParts, parseJobCodeSearch, toPlantDateOnl
 import {
   DateOnlyIso,
   type PriorityQuote,
+  parseQuoteCodeNumber,
   type QuoteDetail,
   type QuoteListInput,
   type QuoteListResult,
@@ -436,12 +437,20 @@ export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
     conditions.push(eq(quotes.productId, input.filters.productId));
   }
 
+  if (input.filters.quoteCode) {
+    const quoteCode = parseQuoteCodeNumber(input.filters.quoteCode);
+
+    if (quoteCode !== undefined) {
+      conditions.push(eq(quotes.code, quoteCode));
+    }
+  }
+
   if (input.filters.salesPersonId) {
     conditions.push(eq(quotes.salesPersonId, input.filters.salesPersonId));
   }
 
   if (input.search) {
-    const codeSearch = parseQuoteCodeSearch(input.search);
+    const codeSearch = parseQuoteCodeNumber(input.search);
     const jobCodeSearch = parseJobCodeSearch(input.search);
     const globalSearchWhere = or(
       createGlobalSearchCondition(input.search, [
@@ -506,18 +515,6 @@ export function getPriorityQuoteWindowEndDate(now: Date): DateOnlyIso {
   const targetDay = Math.min(currentPlantDate.day, lastDayOfTargetMonth);
 
   return toDateOnlyParts({ day: targetDay, month: targetMonth, year: targetYear });
-}
-
-export function parseQuoteCodeSearch(search: string): number | undefined {
-  const normalized = search.trim().replace(/^QUO-/i, '');
-
-  if (!/^\d+$/.test(normalized)) {
-    return undefined;
-  }
-
-  const code = Number.parseInt(normalized, 10);
-
-  return Number.isSafeInteger(code) && code > 0 ? code : undefined;
 }
 
 export function toDateOnlyParts({ day, month, year }: { day: number; month: number; year: number }): DateOnlyIso {

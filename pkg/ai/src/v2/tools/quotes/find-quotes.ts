@@ -1,11 +1,13 @@
 import * as quotesCore from '@pkg/core';
 import { hasPermission } from '@pkg/domain';
 import {
-  QuoteListInput,
+  QuoteCodeInput,
+  type QuoteListInput,
   type QuoteListResult,
   QuoteProductSummaryFacts,
   QuoteSummary,
   type UserAccessSummary,
+  UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
 
@@ -19,7 +21,11 @@ import {
 } from '@/v2/entity-links.js';
 
 export type FindQuotesInput = z.infer<typeof FindQuotesInput>;
-export const FindQuotesInput = QuoteListInput.pick({ search: true }).strict();
+export const FindQuotesInput = z.discriminatedUnion('by', [
+  z.object({ by: z.literal('code'), quoteCode: QuoteCodeInput }).strict(),
+  z.object({ by: z.literal('customer'), customerId: UUID }).strict(),
+  z.object({ by: z.literal('product'), productId: UUID }).strict(),
+]);
 
 const QuoteLinks = z.object({
   app: InternalAppHref,
@@ -68,11 +74,18 @@ export type FindQuotesResponse = z.infer<typeof FindQuotesResponse>;
 export const FindQuotesResponse = z.array(z.discriminatedUnion('kind', [FindProductQuote, FindCustomQuote]));
 
 export function toCoreQuoteListInput(input: FindQuotesInput): QuoteListInput {
+  const filters: QuoteListInput['filters'] = {
+    statuses: [],
+    ...(input.by === 'code' ? { quoteCode: input.quoteCode } : {}),
+    ...(input.by === 'customer' ? { customerId: input.customerId } : {}),
+    ...(input.by === 'product' ? { productId: input.productId } : {}),
+  };
+
   return {
-    filters: { statuses: [] },
+    filters,
     page: 1,
     pageSize: 0,
-    search: input.search,
+    search: '',
     sortBy: 'code',
     sortDirection: 'asc',
   };
@@ -117,8 +130,9 @@ function createQuoteLinks(
 export const findQuotesDefinition = {
   name: 'findQuotes',
   description: [
-    'Search for Quotes by Quote Code, Customer, Product, model code, Custom Work Title, linked Job Code, or UUID.',
-    'Returns lightweight commercial and identity matches with code-owned app and relationship links.',
+    'Find Quotes using exactly one selector: an exact Quote Code, Customer ID, or Product ID.',
+    'To find Quotes by customer or product name, call findCustomers or findProducts first, then pass the selected id here.',
+    'Returns lightweight commercial and identity matches with app and relationship links.',
     'Call getQuote with the selected id when full Quote details are needed.',
   ].join('\n'),
   inputSchema: FindQuotesInput,

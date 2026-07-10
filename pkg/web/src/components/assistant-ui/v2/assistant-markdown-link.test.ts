@@ -1,8 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { getInternalRouterHref } from './assistant-markdown-link.js';
+import { getInternalRouterHref, resolveAssistantLinkHref } from './assistant-markdown-link.js';
 
 const ORIGIN = 'https://jedidiah.test';
+
+describe('resolveAssistantLinkHref', () => {
+  it('points generated document paths at the API origin', () => {
+    expect(
+      resolveAssistantLinkHref('/api/quotes/quote-id/documents/document-id/download', 'http://localhost:7002'),
+    ).toBe('http://localhost:7002/api/quotes/quote-id/documents/document-id/download');
+  });
+
+  it('leaves app and external links unchanged', () => {
+    expect(resolveAssistantLinkHref('/quotes/quote-id/edit', 'http://localhost:7002')).toBe('/quotes/quote-id/edit');
+    expect(resolveAssistantLinkHref('https://example.com/document.pdf', 'http://localhost:7002')).toBe(
+      'https://example.com/document.pdf',
+    );
+  });
+});
 
 describe('getInternalRouterHref', () => {
   it('returns relative internal paths unchanged', () => {

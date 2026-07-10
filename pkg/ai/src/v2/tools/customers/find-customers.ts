@@ -56,7 +56,7 @@ export const findCustomersDefinition = {
   ].join('\n'),
   inputSchema: FindCustomersInput,
   outputSchema: FindCustomersResponse,
-  requiredPermission: ['customer:read', 'quote:read'] as const,
+  requiredPermission: ['customer:read', 'quote:read', 'quote:create'],
   async handler(args: unknown, ctx: AiV2Context): Promise<FindCustomersResponse> {
     const input = FindCustomersInput.parse(args ?? {});
     const result = await customersCore.listCustomers({ db: ctx.db, input: toCoreCustomerListInput(input) });

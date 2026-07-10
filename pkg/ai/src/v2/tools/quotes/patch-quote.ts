@@ -97,7 +97,7 @@ export const patchQuoteDefinition = {
   ].join('\n'),
   inputSchema: PatchQuoteInput,
   outputSchema: PatchQuoteResponse,
-  requiredPermission: 'quote:update',
+  requiredPermission: ['quote:update'],
   async handler(args: unknown, ctx: AiV2Context): Promise<PatchQuoteResponse> {
     const input = toCoreQuotePatchInput(PatchQuoteInput.parse(args));
     const quote = await quotesCore.patchQuote({

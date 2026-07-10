@@ -16,6 +16,10 @@ import { findQuotesDefinition } from './tools/quotes/find-quotes.js';
 import { getQuoteDefinition } from './tools/quotes/get-quote.js';
 import { patchQuoteDefinition } from './tools/quotes/patch-quote.js';
 
+type PermissionedV2ToolDefinition = {
+  requiredPermission: readonly AppPermission[];
+};
+
 const V2_TOOL_DEFINITIONS = [
   findProductsDefinition,
   getProductDefinition,
@@ -29,7 +33,7 @@ const V2_TOOL_DEFINITIONS = [
   patchQuoteDefinition,
   findJobsDefinition,
   getJobDefinition,
-] as const;
+] as const satisfies readonly PermissionedV2ToolDefinition[];
 
 export type V2AiToolName = (typeof V2_TOOL_DEFINITIONS)[number]['name'];
 
@@ -53,9 +57,7 @@ export function createAiSdkTools(ctx: AiV2Context): ToolSet {
 
 function hasAnyRequiredPermission(
   access: UserAccessSummary | null,
-  requiredPermission: AppPermission | readonly AppPermission[],
+  requiredPermission: readonly AppPermission[],
 ): boolean {
-  // Arrays model existing API picker boundaries where either entity-read or quote-read grants the lookup.
-  const permissions = typeof requiredPermission === 'string' ? [requiredPermission] : requiredPermission;
-  return permissions.some((permission) => hasPermission(access, permission));
+  return requiredPermission.some((permission) => hasPermission(access, permission));
 }

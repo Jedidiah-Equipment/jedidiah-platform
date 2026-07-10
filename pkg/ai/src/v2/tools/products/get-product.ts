@@ -88,7 +88,7 @@ export const getProductDefinition = {
   ].join('\n'),
   inputSchema: GetProductInput,
   outputSchema: GetProductResponse,
-  requiredPermission: 'product:read',
+  requiredPermission: ['product:read'],
   async handler(args: unknown, ctx: AiV2Context): Promise<GetProductResponse> {
     const input = GetProductInput.parse(args);
     const product = await productsCore.getProduct({ db: ctx.db, id: input.id });

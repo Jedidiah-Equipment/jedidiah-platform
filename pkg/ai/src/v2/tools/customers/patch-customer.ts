@@ -64,7 +64,7 @@ export const patchCustomerDefinition = {
   ].join('\n'),
   inputSchema: PatchCustomerInput,
   outputSchema: PatchCustomerResponse,
-  requiredPermission: 'customer:update',
+  requiredPermission: ['customer:update'],
   async handler(args: unknown, ctx: AiV2Context): Promise<PatchCustomerResponse> {
     const input = toCoreCustomerPatchInput(PatchCustomerInput.parse(args));
     const customer = await customersCore.patchCustomer({

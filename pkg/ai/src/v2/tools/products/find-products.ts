@@ -52,7 +52,7 @@ export const findProductsDefinition = {
   ].join('\n'),
   inputSchema: FindProductsInput,
   outputSchema: FindProductsResponse,
-  requiredPermission: ['product:read', 'quote:read'] as const,
+  requiredPermission: ['product:read', 'quote:read', 'quote:create'],
   async handler(args: unknown, ctx: AiV2Context): Promise<FindProductsResponse> {
     const input = FindProductsInput.parse(args ?? {});
     const result = await productsCore.listProducts({

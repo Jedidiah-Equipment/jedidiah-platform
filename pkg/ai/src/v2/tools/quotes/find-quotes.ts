@@ -137,7 +137,7 @@ export const findQuotesDefinition = {
   ].join('\n'),
   inputSchema: FindQuotesInput,
   outputSchema: FindQuotesResponse,
-  requiredPermission: 'quote:read',
+  requiredPermission: ['quote:read'],
   async handler(args: unknown, ctx: AiV2Context): Promise<FindQuotesResponse> {
     const input = FindQuotesInput.parse(args ?? {});
     const result = await quotesCore.listQuotes({ db: ctx.db, input: toCoreQuoteListInput(input) });

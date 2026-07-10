@@ -1,12 +1,12 @@
 import type { LanguageModelV3FinishReason, LanguageModelV3StreamPart, LanguageModelV3Usage } from '@ai-sdk/provider';
 import fastifyCors from '@fastify/cors';
-import type { AiContext } from '@pkg/ai';
+import type { AiV2Context } from '@pkg/ai';
 import { createUserAccessSummary } from '@pkg/domain';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import Fastify from 'fastify';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { registerAiChatRoute } from '@/routes/ai/ai-chat.route.js';
+import { registerAiChatRoute } from '@/routes/ai-v2/ai-chat.route.js';
 import { createSilentLogger, mockSession } from '@/test/test-utils.js';
 
 // The tracer tool's core read is stubbed so the route test stays DB-free; the route still exercises
@@ -23,12 +23,10 @@ vi.mock('@pkg/core', async (importOriginal) => {
   return { ...actual, listProducts: () => listProductsMock() };
 });
 
-function createChatContext(session: ReturnType<typeof mockSession> | null = mockSession()): AiContext {
+function createChatContext(session: ReturnType<typeof mockSession> | null = mockSession()): AiV2Context {
   return {
     access: session ? createUserAccessSummary({ role: 'admin', userId: session.user.id }) : null,
-    brochureRenderer: vi.fn(async () => new Uint8Array()),
-    db: {} as AiContext['db'],
-    deliverQuoteDraftEmail: vi.fn(async () => ({ recipientEmail: 'test@example.com', warnings: [] })),
+    db: {} as AiV2Context['db'],
     log: createSilentLogger(),
     session: session
       ? {
@@ -39,7 +37,6 @@ function createChatContext(session: ReturnType<typeof mockSession> | null = mock
           },
         }
       : null,
-    storage: {} as AiContext['storage'],
   };
 }
 

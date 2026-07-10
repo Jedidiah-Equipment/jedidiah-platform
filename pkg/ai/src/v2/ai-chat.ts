@@ -9,10 +9,9 @@ import {
   type UIMessage,
 } from 'ai';
 
-import { createAiSdkTools } from './ai-sdk-tools.js';
-import type { AiContext } from './context.js';
+import { createAiSdkTools, type V2AiToolName } from './ai-sdk-tools.js';
+import type { AiV2Context } from './context.js';
 import { createSystemPrompt } from './prompts.js';
-import type { AiToolName } from './tool-registry.js';
 
 const MAX_STEPS = 10;
 
@@ -27,22 +26,18 @@ export async function validateAiUiMessages(messages: unknown): Promise<ValidateA
   return result.success ? { messages: result.data, ok: true } : { error: result.error.message, ok: false };
 }
 
-// The tracer read tools this slice exposes. Kept read-only and small on purpose; the factory can
-// expose the full authorized set once the old stack is retired.
-export const TRACER_AI_CHAT_TOOL_NAMES = [
-  'listProducts',
-  'getProduct',
-  'listCustomers',
-] as const satisfies readonly AiToolName[];
+// V2 starts with one copied read tool so its surface is explicit and does not inherit the legacy
+// registry as new tools are added there.
+export const V2_AI_CHAT_TOOL_NAMES = ['listProducts'] as const satisfies readonly V2AiToolName[];
 
 export type StreamAiChatOptions = {
   abortSignal?: AbortSignal;
-  ctx: AiContext;
+  ctx: AiV2Context;
   messages: UIMessage[];
   model: LanguageModel;
   reasoningEffort: AiReasoningEffort;
-  // Tool names to expose (intersected with the caller's authorization). Defaults to the tracer set.
-  toolNames?: readonly AiToolName[];
+  // Tool names to expose (intersected with the caller's authorization). Defaults to the v2 set.
+  toolNames?: readonly V2AiToolName[];
 };
 
 // AI SDK v6 chat turn: authorized tool set → `streamText` with a bounded multi-step tool loop →
@@ -54,10 +49,10 @@ export async function streamAiChat({
   messages,
   model,
   reasoningEffort,
-  toolNames = TRACER_AI_CHAT_TOOL_NAMES,
+  toolNames = V2_AI_CHAT_TOOL_NAMES,
 }: StreamAiChatOptions): Promise<Response> {
   const tools = createAiSdkTools(ctx, { include: toolNames });
-  const system = createSystemPrompt(Object.keys(tools) as AiToolName[]);
+  const system = createSystemPrompt(Object.keys(tools) as V2AiToolName[]);
   const modelMessages = await convertToModelMessages(messages, { tools });
 
   const result = streamText({

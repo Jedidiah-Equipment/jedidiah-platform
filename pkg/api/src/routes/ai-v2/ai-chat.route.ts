@@ -1,27 +1,25 @@
 import type { OutgoingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
 
-import { type AiChatModel, type AiContext, createOpenAiChatModel, streamAiChat, validateAiUiMessages } from '@pkg/ai';
-import type { StorageAdapter } from '@pkg/core';
+import { type AiChatModel, type AiV2Context, createOpenAiChatModel, streamAiChat, validateAiUiMessages } from '@pkg/ai';
 import { AiChatInput, type AiReasoningEffort } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import { type ApiConfig, getApiConfig } from '@/env.js';
-import { buildAiContext } from './ai-context.js';
+import { buildAiV2Context } from './ai-context.js';
 
 // Aborts a stalled provider stream and closes the response, matching the legacy chat-stream route's
 // budget so a hung upstream cannot tie up the connection (and OpenAI cost) indefinitely.
 const STREAM_TIMEOUT_MS = 60_000;
 
 export type RegisterAiChatRouteOptions = {
-  buildContext?: (req: FastifyRequest) => Promise<AiContext>;
+  buildContext?: (req: FastifyRequest) => Promise<AiV2Context>;
   createModel?: () => AiChatModel;
   reasoningEffort?: AiReasoningEffort;
-  storage?: StorageAdapter;
 };
 
-// AI SDK v6 chat route. Sits beside `POST /ai/chat-stream`, sharing its gates — session auth (401),
+// AI SDK v6 chat route. It keeps parity with `POST /ai/chat-stream` gates — session auth (401),
 // the `assistantEnabled` check (403), and the 40-message/64KB input caps (400) — but speaks the AI
 // SDK UI-message-stream protocol instead of the bespoke SSE `ChatEvent` protocol. The assistant
 // run itself lives in `@pkg/ai`; this route owns transport: auth, input parsing, and bridging the
@@ -32,7 +30,7 @@ export async function registerAiChatRoute(
 ): Promise<void> {
   const reasoningEffort = options.reasoningEffort ?? getApiConfig().OPENAI_REASONING_EFFORT;
   const createModel = options.createModel ?? (() => getDefaultModel(getApiConfig()));
-  const createContext = options.buildContext ?? ((req) => buildAiContext(req, { storage: getAiStorage(options) }));
+  const createContext = options.buildContext ?? buildAiV2Context;
 
   app.post('/ai/chat', async (request, reply) => {
     const ctx = await createContext(request);
@@ -134,12 +132,4 @@ async function sendWebResponse(reply: FastifyReply, response: Response): Promise
 
 function getDefaultModel(config: ApiConfig): AiChatModel {
   return createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
-}
-
-function getAiStorage(options: RegisterAiChatRouteOptions): StorageAdapter {
-  if (!options.storage) {
-    throw new Error('AI chat route requires document storage.');
-  }
-
-  return options.storage;
 }

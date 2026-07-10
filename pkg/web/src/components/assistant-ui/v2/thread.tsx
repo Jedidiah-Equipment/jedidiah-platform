@@ -11,14 +11,14 @@ import {
 import { IconArrowDown, IconArrowUp, IconCopy, IconRefresh, IconSquare } from '@tabler/icons-react';
 import type { FC } from 'react';
 
-import { MarkdownText } from '@/components/assistant-ui/markdown-text.js';
-import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button.js';
 import { Button } from '@/components/ui/button.js';
 
+import { MarkdownText } from './markdown-text.js';
 import { ToolFallback } from './tool-fallback.js';
+import { TooltipIconButton } from './tooltip-icon-button.js';
 
 // Vanilla assistant-ui thread for the floating modal. Runs on the AI SDK v6 runtime and renders
-// standard message parts — text through the shared MarkdownText (keeps domain entity-link nav) and
+// standard message parts — text through the v2 MarkdownText (keeps domain entity-link nav) and
 // tool calls through the stock ToolFallback. Kept close to the assistant-ui reference thread.
 export const ModalThread: FC = () => {
   return (

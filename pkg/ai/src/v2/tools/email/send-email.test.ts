@@ -92,7 +92,7 @@ describe('sendEmail v2 contract', () => {
       subject: 'Draft quote QUO-00008 — Acme Mining',
       to: 'sales@example.com',
     });
-    expect(sendEmailDefinition.requiredPermission).toEqual(['email:send']);
+    expect(sendEmailDefinition.anyOfPermissions).toEqual(['email:send']);
     expect(() => z.toJSONSchema(sendEmailDefinition.inputSchema)).not.toThrow();
   });
 

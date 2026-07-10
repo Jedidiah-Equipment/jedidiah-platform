@@ -20,7 +20,7 @@ import { getQuoteDefinition } from './tools/quotes/get-quote.js';
 import { patchQuoteDefinition } from './tools/quotes/patch-quote.js';
 
 type PermissionedV2ToolDefinition = {
-  requiredPermission: readonly AppPermission[];
+  anyOfPermissions: readonly AppPermission[];
 };
 
 const V2_TOOL_DEFINITIONS = [
@@ -48,7 +48,7 @@ export function createAiSdkTools(ctx: AiV2Context): ToolSet {
   const tools: ToolSet = {};
 
   for (const definition of V2_TOOL_DEFINITIONS) {
-    if (!hasAnyRequiredPermission(ctx.access, definition.requiredPermission)) continue;
+    if (!hasAnyToolPermission(ctx.access, definition.anyOfPermissions)) continue;
 
     tools[definition.name] = createAiSdkTool<unknown, unknown>({
       description: definition.description,
@@ -61,9 +61,6 @@ export function createAiSdkTools(ctx: AiV2Context): ToolSet {
   return tools;
 }
 
-function hasAnyRequiredPermission(
-  access: UserAccessSummary | null,
-  requiredPermission: readonly AppPermission[],
-): boolean {
-  return requiredPermission.some((permission) => hasPermission(access, permission));
+function hasAnyToolPermission(access: UserAccessSummary | null, anyOfPermissions: readonly AppPermission[]): boolean {
+  return anyOfPermissions.some((permission) => hasPermission(access, permission));
 }

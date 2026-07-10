@@ -49,7 +49,7 @@ describe('generateProductBrochureDocument v2 contract', () => {
       productId: PRODUCT_ID,
       storage: ctx.storage,
     });
-    expect(generateProductBrochureDocumentDefinition.requiredPermission).toEqual(['product:read', 'quote:create']);
+    expect(generateProductBrochureDocumentDefinition.anyOfPermissions).toEqual(['product:read', 'quote:create']);
     expect(() => z.toJSONSchema(generateProductBrochureDocumentDefinition.inputSchema)).not.toThrow();
   });
 });

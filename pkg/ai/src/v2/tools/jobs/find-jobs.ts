@@ -1,26 +1,13 @@
 import * as jobsCore from '@pkg/core';
-import { hasPermission } from '@pkg/domain';
 import { JobListInput, type JobListResult, JobSummary, type UserAccessSummary } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiV2Context } from '@/v2/context.js';
-import {
-  createCustomerAppHref,
-  createJobAppHref,
-  createProductAppHref,
-  createQuoteAppHref,
-  InternalAppHref,
-} from '@/v2/entity-links.js';
+
+import { createJobLinks, JobLinks } from './job-links.js';
 
 export type FindJobsInput = z.infer<typeof FindJobsInput>;
 export const FindJobsInput = JobListInput.pick({ search: true }).strict();
-
-const JobLinks = z.object({
-  app: InternalAppHref,
-  customer: InternalAppHref.optional(),
-  product: InternalAppHref.optional(),
-  quote: InternalAppHref.optional(),
-});
 
 const FindJobItem = JobSummary.pick({
   code: true,
@@ -62,14 +49,7 @@ export function toFindJobsResponse(result: JobListResult, access: UserAccessSumm
     customerId: job.customerId,
     description: job.description,
     id: job.id,
-    links: {
-      app: createJobAppHref(job.id),
-      ...(hasPermission(access, 'customer:read') ? { customer: createCustomerAppHref(job.customerId) } : {}),
-      ...(job.productId && hasPermission(access, 'product:read')
-        ? { product: createProductAppHref(job.productId) }
-        : {}),
-      ...(hasPermission(access, 'quote:read') ? { quote: createQuoteAppHref(job.quoteId) } : {}),
-    },
+    links: createJobLinks(job, access),
     productId: job.productId,
     productModelCode: job.productModelCode,
     productName: job.productName,
@@ -90,7 +70,7 @@ export const findJobsDefinition = {
   ].join('\n'),
   inputSchema: FindJobsInput,
   outputSchema: FindJobsResponse,
-  requiredPermission: ['job:read'],
+  anyOfPermissions: ['job:read'],
   async handler(args: unknown, ctx: AiV2Context): Promise<FindJobsResponse> {
     const input = FindJobsInput.parse(args ?? {});
     const result = await jobsCore.listJobs({ db: ctx.db, input: toCoreJobListInput(input) });

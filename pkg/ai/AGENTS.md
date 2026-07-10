@@ -4,9 +4,9 @@
 - Keep HTTP transport, Fastify request parsing, SSE serialization, env/config reads, and API-only delivery wiring in `@pkg/api`.
 - Do not import Fastify, `@pkg/api`, API `@/` modules, `getApiConfig`, or direct `process.env` from `src`.
 - Inject API-owned dependencies through `AiContext` (`log`, `deliverQuoteDraftEmail`) instead of reaching back into API modules.
-- Keep each AI tool self-contained under `src/tools/<entity>/<tool>.ts`: schema, handler, permission, descriptor, and projector all live together.
-- Use the deletion test for tool colocation: if deleting the tool would make the code dead, keep it in the tool file; shared entity metadata, playbooks, and domain kind facts stay central.
-- Keep `src/tool-registry.ts` as a dumb ordered list plus derived maps only; do not add per-tool descriptor or projection logic there.
+- Keep each v2 AI tool under `src/v2/tools/<entity>/<tool>.ts`: input/output schemas, core/tool mappers, permission alternatives, descriptor, and handler live together.
+- Use the deletion test for tool colocation: if deleting the tool would make the code dead, keep it in the tool file; response contracts and mappers shared by multiple tools belong in an entity-level sibling module.
+- Keep `src/tool-registry.ts` and `src/v2/ai-sdk-tools.ts` as dumb ordered lists plus derived maps only; do not add per-tool descriptor or projection logic there.
 - Put quote-reader lookup tools (`list-quote-*`) under `src/tools/quotes/` because they exist for the quote flow and use `quote:read`.
 
-Canonical examples: `src/chat-stream.ts`, `src/context.ts`, `src/tools/products/list-products.ts`.
+Canonical v2 examples: `src/v2/ai-chat.ts`, `src/v2/context.ts`, `src/v2/tools/products/find-products.ts`.

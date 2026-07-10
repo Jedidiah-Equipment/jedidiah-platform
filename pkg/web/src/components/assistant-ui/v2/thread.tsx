@@ -12,6 +12,7 @@ import { IconArrowDown, IconArrowUp, IconCopy, IconRefresh, IconSquare } from '@
 import type { FC } from 'react';
 
 import { Button } from '@/components/ui/button.js';
+import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@/components/ui/scroll-area.js';
 
 import { MarkdownText } from './markdown-text.js';
 import { ToolFallback } from './tool-fallback.js';
@@ -22,10 +23,14 @@ import { TooltipIconButton } from './tooltip-icon-button.js';
 // tool calls through the stock ToolFallback. Kept close to the assistant-ui reference thread.
 export const ModalThread: FC = () => {
   return (
-    <ThreadPrimitive.Root className="flex h-full flex-col bg-background">
-      <ThreadPrimitive.Viewport
-        className="relative flex flex-1 flex-col overflow-x-hidden overflow-y-scroll scroll-smooth px-3 pt-3"
-        turnAnchor="top"
+    <ScrollAreaRoot render={<ThreadPrimitive.Root className="flex h-full min-h-0 flex-col bg-background" />}>
+      <ScrollAreaViewport
+        render={
+          <ThreadPrimitive.Viewport
+            className="relative flex h-full min-h-0 flex-1 flex-col overflow-x-hidden scroll-smooth px-3 pt-3"
+            turnAnchor="top"
+          />
+        }
       >
         <AuiIf condition={(state) => state.thread.isEmpty}>
           <ThreadWelcome />
@@ -39,8 +44,9 @@ export const ModalThread: FC = () => {
           <ThreadScrollToBottom />
           <Composer />
         </ThreadPrimitive.ViewportFooter>
-      </ThreadPrimitive.Viewport>
-    </ThreadPrimitive.Root>
+      </ScrollAreaViewport>
+      <ScrollBar />
+    </ScrollAreaRoot>
   );
 };
 

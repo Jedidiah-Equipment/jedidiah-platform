@@ -1,6 +1,7 @@
 import type { ApiConfig } from '../env.js';
+import type { EmailType } from './email-sender.js';
 
-export type MockEmailType = 'assistant' | 'email-verification' | 'password-reset' | 'quote-draft';
+export type MockEmailType = EmailType;
 
 export interface MockEmailMessage {
   to: string;

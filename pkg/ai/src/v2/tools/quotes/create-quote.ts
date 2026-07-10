@@ -153,7 +153,7 @@ export const createQuoteDefinition = {
   ].join('\n'),
   inputSchema: CreateQuoteInput,
   outputSchema: CreateQuoteResponse,
-  requiredPermission: 'quote:create',
+  requiredPermission: ['quote:create'],
   async handler(args: unknown, ctx: AiV2Context): Promise<CreateQuoteResponse> {
     const actorUserId = requireAiV2ActorId(ctx);
     const input = toCoreQuoteCreateInput(CreateQuoteInput.parse(args), actorUserId);

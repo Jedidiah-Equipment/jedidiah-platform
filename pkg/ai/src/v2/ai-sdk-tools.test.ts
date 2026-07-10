@@ -10,6 +10,10 @@ function createContext(role: 'admin' | 'job-viewer' | 'sales'): AiV2Context {
   } as AiV2Context;
 }
 
+function createContextWithPermissions(permissions: NonNullable<AiV2Context['access']>['permissions']): AiV2Context {
+  return { access: { permissions } } as AiV2Context;
+}
+
 describe('createAiSdkTools v2', () => {
   test('exposes every v2 read and write workflow to an administrator', () => {
     expect(Object.keys(createAiSdkTools(createContext('admin')))).toEqual([
@@ -38,5 +42,10 @@ describe('createAiSdkTools v2', () => {
       'patchQuote',
     ]);
     expect(Object.keys(createAiSdkTools(createContext('job-viewer')))).toEqual(['findJobs', 'getJob']);
+    expect(Object.keys(createAiSdkTools(createContextWithPermissions(['quote:create'])))).toEqual([
+      'findProducts',
+      'findCustomers',
+      'createQuote',
+    ]);
   });
 });

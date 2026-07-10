@@ -132,7 +132,7 @@ describe('createQuote v2 contract', () => {
       toCreateQuoteResponse(quote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links,
     ).toEqual({ app: `/quotes/${QUOTE_ID}/edit` });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
-    expect(createQuoteDefinition.requiredPermission).toBe('quote:create');
+    expect(createQuoteDefinition.requiredPermission).toEqual(['quote:create']);
     expect(createQuoteDefinition.description).toContain('inline Customer');
     expect(createQuoteDefinition.description).toContain('findProducts');
     expect(createQuoteDefinition.description).toContain('findCustomers');

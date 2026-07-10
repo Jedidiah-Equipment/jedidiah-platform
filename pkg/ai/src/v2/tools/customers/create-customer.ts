@@ -62,7 +62,7 @@ export const createCustomerDefinition = {
   ].join('\n'),
   inputSchema: CreateCustomerInput,
   outputSchema: CreateCustomerResponse,
-  requiredPermission: 'customer:create',
+  requiredPermission: ['customer:create'],
   async handler(args: unknown, ctx: AiV2Context): Promise<CreateCustomerResponse> {
     const input = toCoreCustomerCreateInput(CreateCustomerInput.parse(args));
     const customer = await customersCore.createCustomer({

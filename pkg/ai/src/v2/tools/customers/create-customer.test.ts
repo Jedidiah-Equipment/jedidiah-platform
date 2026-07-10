@@ -80,7 +80,7 @@ describe('createCustomer v2 contract', () => {
     expect(CreateCustomerResponse.parse(response)).toEqual(response);
     expect(response.links.app).toBe(`/customers/${CUSTOMER_ID}/edit`);
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
-    expect(createCustomerDefinition.requiredPermission).toBe('customer:create');
+    expect(createCustomerDefinition.requiredPermission).toEqual(['customer:create']);
     expect(createCustomerDefinition.description).toContain('standalone Customer');
     expect(createCustomerDefinition.description).toContain('createQuote');
     expect(() => z.toJSONSchema(CreateCustomerInput)).not.toThrow();

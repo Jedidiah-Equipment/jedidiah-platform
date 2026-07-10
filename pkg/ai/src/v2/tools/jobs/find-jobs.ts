@@ -90,7 +90,7 @@ export const findJobsDefinition = {
   ].join('\n'),
   inputSchema: FindJobsInput,
   outputSchema: FindJobsResponse,
-  requiredPermission: 'job:read',
+  requiredPermission: ['job:read'],
   async handler(args: unknown, ctx: AiV2Context): Promise<FindJobsResponse> {
     const input = FindJobsInput.parse(args ?? {});
     const result = await jobsCore.listJobs({ db: ctx.db, input: toCoreJobListInput(input) });

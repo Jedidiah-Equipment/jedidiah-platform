@@ -9,6 +9,18 @@ export function createProductAppHref(productId: string): InternalAppHref {
   return InternalAppHref.parse(`/products/${productId}/edit`);
 }
 
+export function createCustomerAppHref(customerId: string): InternalAppHref {
+  return InternalAppHref.parse(`/customers/${customerId}/edit`);
+}
+
+export function createQuoteAppHref(quoteId: string): InternalAppHref {
+  return InternalAppHref.parse(`/quotes/${quoteId}/edit`);
+}
+
+export function createJobAppHref(jobId: string): InternalAppHref {
+  return InternalAppHref.parse(`/jobs/${jobId}`);
+}
+
 function isInternalAppHref(href: string): boolean {
   if (!href.startsWith('/') || href.includes('\\') || [...href].some(isControlCharacter)) {
     return false;

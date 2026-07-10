@@ -1,0 +1,100 @@
+import * as jobsCore from '@pkg/core';
+import { hasPermission } from '@pkg/domain';
+import {
+  BayOperator,
+  JobDetail,
+  JobDetailDepartmentSchedule,
+  JobScheduleBayQueue,
+  JobScheduleWorkSlot,
+  type UserAccessSummary,
+  UUID,
+} from '@pkg/schema';
+import { z } from 'zod';
+
+import type { AiV2Context } from '@/v2/context.js';
+import {
+  createCustomerAppHref,
+  createJobAppHref,
+  createProductAppHref,
+  createQuoteAppHref,
+  InternalAppHref,
+} from '@/v2/entity-links.js';
+
+export type GetJobInput = z.infer<typeof GetJobInput>;
+export const GetJobInput = z.object({ id: UUID }).strict();
+
+const JobLinks = z.object({
+  app: InternalAppHref,
+  customer: InternalAppHref.optional(),
+  product: InternalAppHref.optional(),
+  quote: InternalAppHref.optional(),
+});
+
+const GetJobOperator = BayOperator.omit({ thumbnailDataUrl: true });
+const GetJobScheduleSlot = JobScheduleWorkSlot.omit({ operator: true }).extend({
+  operator: GetJobOperator.nullable(),
+});
+const GetJobScheduleBay = JobScheduleBayQueue.omit({ currentOperator: true, slots: true }).extend({
+  currentOperator: GetJobOperator.nullable(),
+  slots: z.array(GetJobScheduleSlot),
+});
+const GetJobDepartmentSchedule = JobDetailDepartmentSchedule.omit({ bays: true }).extend({
+  bays: z.array(GetJobScheduleBay),
+});
+
+export type GetJobResponse = z.infer<typeof GetJobResponse>;
+export const GetJobResponse = JobDetail.pick({
+  cfo: true,
+  code: true,
+  createdAt: true,
+  customerCompanyName: true,
+  customerId: true,
+  description: true,
+  documents: true,
+  id: true,
+  productId: true,
+  productModelCode: true,
+  productName: true,
+  productSerialNumber: true,
+  quoteCode: true,
+  quoteId: true,
+  quoteKind: true,
+  scheduleState: true,
+  updatedAt: true,
+  vinNumber: true,
+  workTitle: true,
+}).extend({
+  links: JobLinks,
+  schedule: z.array(GetJobDepartmentSchedule).length(5),
+});
+
+export function toGetJobResponse(job: JobDetail, access: UserAccessSummary | null): GetJobResponse {
+  return GetJobResponse.parse({
+    ...job,
+    links: {
+      app: createJobAppHref(job.id),
+      ...(hasPermission(access, 'customer:read') ? { customer: createCustomerAppHref(job.customerId) } : {}),
+      ...(job.productId && hasPermission(access, 'product:read')
+        ? { product: createProductAppHref(job.productId) }
+        : {}),
+      ...(hasPermission(access, 'quote:read') ? { quote: createQuoteAppHref(job.quoteId) } : {}),
+    },
+  });
+}
+
+export const getJobDefinition = {
+  name: 'getJob',
+  description: [
+    'Get the full details for one Product Job or Custom Job by UUID.',
+    'Use after findJobs identifies the Job the user means.',
+    'Returns identifiers, Customer and Quote facts, schedule, CFO parts, documents, timestamps, and relationship links without thumbnail data.',
+  ].join('\n'),
+  inputSchema: GetJobInput,
+  outputSchema: GetJobResponse,
+  requiredPermission: 'job:read',
+  async handler(args: unknown, ctx: AiV2Context): Promise<GetJobResponse> {
+    const input = GetJobInput.parse(args);
+    const job = await jobsCore.getJob({ db: ctx.db, id: input.id });
+    return toGetJobResponse(job, ctx.access);
+  },
+} as const;

@@ -2,10 +2,25 @@ import { hasPermission } from '@pkg/domain';
 import { tool as createAiSdkTool, type ToolSet } from 'ai';
 
 import type { AiV2Context } from './context.js';
+import { findCustomersDefinition } from './tools/customers/find-customers.js';
+import { getCustomerDefinition } from './tools/customers/get-customer.js';
+import { findJobsDefinition } from './tools/jobs/find-jobs.js';
+import { getJobDefinition } from './tools/jobs/get-job.js';
 import { findProductsDefinition } from './tools/products/find-products.js';
 import { getProductDefinition } from './tools/products/get-product.js';
+import { findQuotesDefinition } from './tools/quotes/find-quotes.js';
+import { getQuoteDefinition } from './tools/quotes/get-quote.js';
 
-const V2_TOOL_DEFINITIONS = [findProductsDefinition, getProductDefinition] as const;
+const V2_TOOL_DEFINITIONS = [
+  findProductsDefinition,
+  getProductDefinition,
+  findCustomersDefinition,
+  getCustomerDefinition,
+  findQuotesDefinition,
+  getQuoteDefinition,
+  findJobsDefinition,
+  getJobDefinition,
+] as const;
 
 export type V2AiToolName = (typeof V2_TOOL_DEFINITIONS)[number]['name'];
 

@@ -9,7 +9,7 @@ export type AiV2Session = {
   };
 };
 
-// Keep this context limited to dependencies that v2 orchestration and its Product tools use.
+// Keep this context limited to dependencies that v2 orchestration and its tools use.
 // Add new ports only when a v2 tool actually needs them.
 export type AiV2Context = {
   access: UserAccessSummary | null;

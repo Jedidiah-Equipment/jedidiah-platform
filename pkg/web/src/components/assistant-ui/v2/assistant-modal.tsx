@@ -8,7 +8,7 @@ import { ModalThread } from './thread.js';
 
 // The stock assistant-ui floating widget, wired to the AI SDK v6 runtime. A fixed round trigger sits
 // bottom-right on every authed page; opening it reveals a popover-anchored chat panel. Namespaced
-// beside the legacy `assistant-ui/thread.tsx` so the old assistant page is untouched.
+// inside `assistant-ui/v2` so the old assistant page can be removed independently.
 export const AssistantModal: FC = () => {
   return (
     <AssistantModalPrimitive.Root>

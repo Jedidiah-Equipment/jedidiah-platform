@@ -1,3 +1,4 @@
+import { createUserAccessSummary } from '@pkg/domain';
 import { ProductListResult } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
@@ -75,7 +76,10 @@ describe('findProducts v2 contract', () => {
       total: 1,
     });
 
-    const response = toFindProductsResponse(coreResult);
+    const response = toFindProductsResponse(
+      coreResult,
+      createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+    );
 
     expect(FindProductsResponse.parse(response)).toEqual(response);
     expect(response).toEqual([
@@ -87,5 +91,14 @@ describe('findProducts v2 contract', () => {
       },
     ]);
     expect(JSON.stringify(response)).not.toMatch(/thumbnail|images|assemblies|productBays/);
+    expect(
+      toFindProductsResponse(coreResult, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })),
+    ).toEqual([
+      {
+        id: PRODUCT_ID,
+        modelCode: 'CL-100',
+        name: 'Compact Loader',
+      },
+    ]);
   });
 });

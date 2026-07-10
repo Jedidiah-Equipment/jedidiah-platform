@@ -1,3 +1,4 @@
+import { createUserAccessSummary } from '@pkg/domain';
 import { CustomerListResult } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
@@ -53,7 +54,10 @@ describe('findCustomers v2 contract', () => {
       total: 1,
     });
 
-    const response = toFindCustomersResponse(result);
+    const response = toFindCustomersResponse(
+      result,
+      createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+    );
 
     expect(FindCustomersResponse.parse(response)).toEqual(response);
     expect(response).toEqual([
@@ -68,5 +72,17 @@ describe('findCustomers v2 contract', () => {
       },
     ]);
     expect(JSON.stringify(response)).not.toMatch(/address|notes|thumbnail/);
+    expect(toFindCustomersResponse(result, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' }))).toEqual(
+      [
+        {
+          companyName: 'Acme Mining',
+          contactPerson: 'A. Person',
+          email: 'buyer@example.com',
+          id: CUSTOMER_ID,
+          phone: '+27110000000',
+          vatNumber: 'VAT-1',
+        },
+      ],
+    );
   });
 });

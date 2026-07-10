@@ -11,21 +11,32 @@ function createContext(role: 'admin' | 'job-viewer' | 'sales'): AiV2Context {
 }
 
 describe('createAiSdkTools v2', () => {
-  test('exposes every find-then-get workflow to an administrator', () => {
+  test('exposes every v2 read and write workflow to an administrator', () => {
     expect(Object.keys(createAiSdkTools(createContext('admin')))).toEqual([
       'findProducts',
       'getProduct',
       'findCustomers',
       'getCustomer',
+      'createCustomer',
+      'patchCustomer',
       'findQuotes',
       'getQuote',
+      'createQuote',
+      'patchQuote',
       'findJobs',
       'getJob',
     ]);
   });
 
   test('exposes only tools allowed by the caller permissions', () => {
-    expect(Object.keys(createAiSdkTools(createContext('sales')))).toEqual(['findQuotes', 'getQuote']);
+    expect(Object.keys(createAiSdkTools(createContext('sales')))).toEqual([
+      'findProducts',
+      'findCustomers',
+      'findQuotes',
+      'getQuote',
+      'createQuote',
+      'patchQuote',
+    ]);
     expect(Object.keys(createAiSdkTools(createContext('job-viewer')))).toEqual(['findJobs', 'getJob']);
   });
 });

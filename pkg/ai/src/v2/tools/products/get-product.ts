@@ -3,15 +3,10 @@ import { Product, ProductBay, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiV2Context } from '@/v2/context.js';
+import { createProductAppHref, InternalAppHref } from '@/v2/entity-links.js';
 
 export type GetProductInput = z.infer<typeof GetProductInput>;
 export const GetProductInput = z.object({ id: UUID }).strict();
-
-const ProductLink = z.object({
-  entity: z.literal('Product'),
-  href: z.string(),
-  label: z.string(),
-});
 
 const GetProductBay = ProductBay.pick({
   defaultWorkingDays: true,
@@ -46,7 +41,7 @@ export const GetProductResponse = Product.pick({
   updatedAt: true,
   variant: true,
 }).extend({
-  links: z.array(ProductLink),
+  links: z.object({ app: InternalAppHref }),
   productBays: z.array(GetProductBay),
 });
 
@@ -64,7 +59,7 @@ export function toGetProductResponse(product: Product): GetProductResponse {
     images: product.images,
     keyFeatures: product.keyFeatures,
     landerEnabled: product.landerEnabled,
-    links: [{ entity: 'Product', href: `/products/${product.id}/edit`, label: product.name }],
+    links: { app: createProductAppHref(product.id) },
     modelCode: product.modelCode,
     name: product.name,
     nameHighlight: product.nameHighlight,

@@ -3,23 +3,18 @@ import { Product, ProductListInput, type ProductListResult } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiV2Context } from '@/v2/context.js';
+import { createProductAppHref, InternalAppHref } from '@/v2/entity-links.js';
 
 export type FindProductsInput = z.infer<typeof FindProductsInput>;
 export const FindProductsInput = ProductListInput.pick({
   search: true,
 }).strict();
 
-const ProductLink = z.object({
-  entity: z.literal('Product'),
-  href: z.string(),
-  label: z.string(),
-});
-
 const FindProductsItem = Product.pick({
   id: true,
   modelCode: true,
   name: true,
-}).extend({ links: z.array(ProductLink) });
+}).extend({ links: z.object({ app: InternalAppHref }) });
 
 export type FindProductsResponse = z.infer<typeof FindProductsResponse>;
 export const FindProductsResponse = z.array(FindProductsItem);
@@ -38,7 +33,7 @@ export function toCoreProductListInput(input: FindProductsInput): ProductListInp
 export function toFindProductsResponse(result: ProductListResult): FindProductsResponse {
   return result.items.map((product) => ({
     id: product.id,
-    links: [{ entity: 'Product', href: `/products/${product.id}/edit`, label: product.name }],
+    links: { app: createProductAppHref(product.id) },
     modelCode: product.modelCode,
     name: product.name,
   }));

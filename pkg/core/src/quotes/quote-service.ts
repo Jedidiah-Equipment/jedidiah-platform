@@ -1,6 +1,7 @@
 import { customers, type DatabaseTransaction, type Db, jobs, notRemoved, products, quotes, user } from '@pkg/db';
 import { assertQuoteEditable, validateDiscount } from '@pkg/domain';
 import {
+  type AuditChanges,
   type AuthId,
   DEFAULT_PRODUCT_CURRENCY_CODE,
   type QuoteCreateInput,
@@ -8,6 +9,7 @@ import {
   type QuoteKind,
   type QuoteLineItemInput,
   type QuotePatchInput,
+  type QuoteSelectedAssemblyInput,
   type QuoteUpdateInput,
   type UUID,
 } from '@pkg/schema';
@@ -38,6 +40,11 @@ type QuoteOfferingRow = {
   quotedBasePrice: number;
   quotedCurrencyCode: string;
   workTitle: string | null;
+};
+
+type QuoteCollectionPatch = {
+  lineItems?: readonly QuoteLineItemInput[] | undefined;
+  selectedAssemblies?: readonly QuoteSelectedAssemblyInput[] | undefined;
 };
 
 export async function createQuote({
@@ -125,8 +132,6 @@ export async function updateQuote({
       throw new QuoteNotFoundError(input.id);
     }
 
-    const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId: before.id, tx });
-    const beforeLineItems = await listQuoteLineItems({ quoteId: before.id, tx });
     const beforeOffering = narrowQuoteOffering(before);
 
     if (input.offering.kind !== beforeOffering.kind) {
@@ -161,43 +166,22 @@ export async function updateQuote({
       workTitle: input.offering.kind === 'custom' ? input.offering.workTitle : before.workTitle,
     };
     const after = { ...before, ...patch };
-    const nextLineItems = input.lineItems ?? beforeLineItems;
-    const resolved =
-      beforeOffering.kind === 'product' && input.selectedAssemblies !== undefined
-        ? await resolveQuoteSelectedAssemblies({
-            currentRows: beforeSelectedAssemblies,
-            productId: beforeOffering.productId,
-            quoteId: before.id,
-            selectedAssemblies: input.selectedAssemblies,
-            tx,
-          })
-        : { newRows: [], removeIds: [], rows: beforeSelectedAssemblies };
+    const collections = await prepareQuoteCollectionPatch({
+      input,
+      offering: beforeOffering,
+      quoteId: before.id,
+      tx,
+    });
     const changes = diffAuditUpdate(
       quoteAuditDescriptor,
-      { row: before, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
-      { row: after, lineItems: nextLineItems, selectedAssemblies: resolved.rows },
+      {
+        row: before,
+        lineItems: collections.beforeLineItems,
+        selectedAssemblies: collections.beforeSelectedAssemblies,
+      },
+      { row: after, lineItems: collections.nextLineItems, selectedAssemblies: collections.resolved.rows },
     );
-    const lineItemsChanged = haveQuoteLineItemsChanged({ before: beforeLineItems, next: input.lineItems });
-    const selectedAssembliesChanged = resolved.newRows.length > 0 || resolved.removeIds.length > 0;
-    // Per-element audit keys (`lineItem:<name>`) normalize back to their collection field so the
-    // Locked Quote gate and its error message speak in field names.
-    const changedFields = new Set(
-      Object.keys(changes ?? {}).map((field) =>
-        field.startsWith('lineItem:')
-          ? 'lineItems'
-          : field.startsWith('selectedAssembly:')
-            ? 'selectedAssemblies'
-            : field,
-      ),
-    );
-
-    if (lineItemsChanged) {
-      changedFields.add('lineItems');
-    }
-
-    if (selectedAssembliesChanged) {
-      changedFields.add('selectedAssemblies');
-    }
+    const changedFields = toQuoteChangedFields({ changes, collections });
 
     if (changedFields.size === 0) {
       return getQuote({ db: tx, id: before.id });
@@ -228,14 +212,13 @@ export async function updateQuote({
       throw new QuoteNotFoundError(input.id);
     }
 
-    const selectedAssemblies =
-      before.kind === 'product' && input.selectedAssemblies !== undefined
-        ? await persistQuoteSelectedAssemblies({ quoteId: row.id, resolved, tx })
-        : resolved.rows;
-    const lineItems =
-      input.lineItems === undefined
-        ? beforeLineItems
-        : await persistQuoteLineItems({ lineItems: input.lineItems, quoteId: row.id, tx });
+    const { lineItems, selectedAssemblies } = await persistQuoteCollectionPatch({
+      collections,
+      input,
+      offering: beforeOffering,
+      quoteId: row.id,
+      tx,
+    });
 
     if (changes) {
       await recordAuditUpdate({
@@ -252,10 +235,11 @@ export async function updateQuote({
 }
 
 /**
- * Applies only the low-risk fields present in `input` over the current row, all under the same row
+ * Applies only the fields present in `input` over the current row, all under the same row
  * lock as the write. Fields left `undefined` are read from the locked row, so a concurrent edit to an
- * omitted field (e.g. pricing) is never reverted. Offering, pricing, line items, and assemblies are
- * never touched. Used by the assistant's partial Quote update tool.
+ * omitted field (e.g. pricing) is never reverted. Line items and selected assemblies are complete
+ * replacements only when supplied. Offering and quote-level pricing are never touched. Used by the
+ * assistant's partial Quote update tool.
  */
 export async function patchQuote({
   actorUserId,
@@ -271,6 +255,12 @@ export async function patchQuote({
 
     if (!before) {
       throw new QuoteNotFoundError(input.id);
+    }
+
+    const beforeOffering = narrowQuoteOffering(before);
+
+    if (beforeOffering.kind === 'custom') {
+      assertNoCustomSelectedAssemblies(input);
     }
 
     if (input.salesPersonId !== undefined && input.salesPersonId !== before.salesPersonId) {
@@ -290,22 +280,26 @@ export async function patchQuote({
       validUntil: input.validUntil !== undefined ? input.validUntil : before.validUntil,
     };
     const after = { ...before, ...patch };
-    // Line items and assemblies never change here; pass the current rows on both sides of the diff.
-    const beforeLineItems = await listQuoteLineItems({ quoteId: before.id, tx });
-    const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId: before.id, tx });
+    const collections = await prepareQuoteCollectionPatch({
+      input,
+      offering: beforeOffering,
+      quoteId: before.id,
+      tx,
+    });
     const changes = diffAuditUpdate(
       quoteAuditDescriptor,
-      { row: before, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
-      { row: after, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
+      {
+        row: before,
+        lineItems: collections.beforeLineItems,
+        selectedAssemblies: collections.beforeSelectedAssemblies,
+      },
+      { row: after, lineItems: collections.nextLineItems, selectedAssemblies: collections.resolved.rows },
     );
+    const changedFields = toQuoteChangedFields({ changes, collections });
 
-    // No commercial line-item/assembly changes are possible here, so `changes` is the whole story:
-    // null means nothing changed, and non-null narrows it for the audit write below.
-    if (!changes) {
+    if (changedFields.size === 0) {
       return getQuote({ db: tx, id: before.id });
     }
-
-    const changedFields = new Set(Object.keys(changes));
 
     const editable = assertQuoteEditable({
       changedFields,
@@ -332,17 +326,116 @@ export async function patchQuote({
       throw new QuoteNotFoundError(input.id);
     }
 
-    // `changes` is always non-null here: the `changedFields.size === 0` guard above returned early otherwise.
-    await recordAuditUpdate({
-      db: tx,
-      descriptor: quoteAuditDescriptor,
-      actorUserId,
-      after: { row, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
-      changes,
+    const { lineItems, selectedAssemblies } = await persistQuoteCollectionPatch({
+      collections,
+      input,
+      offering: beforeOffering,
+      quoteId: row.id,
+      tx,
     });
+
+    if (changes) {
+      await recordAuditUpdate({
+        db: tx,
+        descriptor: quoteAuditDescriptor,
+        actorUserId,
+        after: { row, lineItems, selectedAssemblies },
+        changes,
+      });
+    }
 
     return getQuote({ db: tx, id: row.id });
   });
+}
+
+async function prepareQuoteCollectionPatch({
+  input,
+  offering,
+  quoteId,
+  tx,
+}: {
+  input: QuoteCollectionPatch;
+  offering: ReturnType<typeof narrowQuoteOffering>;
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}) {
+  const beforeLineItems = await listQuoteLineItems({ quoteId, tx });
+  const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId, tx });
+  const nextLineItems = input.lineItems ?? beforeLineItems;
+  const resolved =
+    offering.kind === 'product' && input.selectedAssemblies !== undefined
+      ? await resolveQuoteSelectedAssemblies({
+          currentRows: beforeSelectedAssemblies,
+          productId: offering.productId,
+          quoteId,
+          selectedAssemblies: input.selectedAssemblies,
+          tx,
+        })
+      : { newRows: [], removeIds: [], rows: beforeSelectedAssemblies };
+
+  return {
+    beforeLineItems,
+    beforeSelectedAssemblies,
+    lineItemsChanged: haveQuoteLineItemsChanged({ before: beforeLineItems, next: input.lineItems }),
+    nextLineItems,
+    resolved,
+    selectedAssembliesChanged: resolved.newRows.length > 0 || resolved.removeIds.length > 0,
+  };
+}
+
+function toQuoteChangedFields({
+  changes,
+  collections,
+}: {
+  changes: AuditChanges | null;
+  collections: Awaited<ReturnType<typeof prepareQuoteCollectionPatch>>;
+}): Set<string> {
+  // Per-element audit keys normalize back to their collection field so the Locked Quote gate and
+  // its error message speak in field names. The booleans also catch reorder-only line item changes.
+  const changedFields = new Set(
+    Object.keys(changes ?? {}).map((field) =>
+      field.startsWith('lineItem:')
+        ? 'lineItems'
+        : field.startsWith('selectedAssembly:')
+          ? 'selectedAssemblies'
+          : field,
+    ),
+  );
+
+  if (collections.lineItemsChanged) {
+    changedFields.add('lineItems');
+  }
+
+  if (collections.selectedAssembliesChanged) {
+    changedFields.add('selectedAssemblies');
+  }
+
+  return changedFields;
+}
+
+async function persistQuoteCollectionPatch({
+  collections,
+  input,
+  offering,
+  quoteId,
+  tx,
+}: {
+  collections: Awaited<ReturnType<typeof prepareQuoteCollectionPatch>>;
+  input: QuoteCollectionPatch;
+  offering: ReturnType<typeof narrowQuoteOffering>;
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}) {
+  const selectedAssemblies =
+    offering.kind === 'product' && input.selectedAssemblies !== undefined
+      ? await persistQuoteSelectedAssemblies({ quoteId, resolved: collections.resolved, tx })
+      : collections.resolved.rows;
+  const lineItems =
+    input.lineItems === undefined
+      ? collections.beforeLineItems
+      : await persistQuoteLineItems({ lineItems: input.lineItems, quoteId, tx });
+
+  return { lineItems, selectedAssemblies };
 }
 
 function haveQuoteLineItemsChanged({
@@ -451,7 +544,7 @@ async function resolveQuoteOffering({
 }
 
 function assertNoCustomSelectedAssemblies(
-  input: Pick<QuoteCreateInput | QuoteUpdateInput, 'selectedAssemblies'>,
+  input: Pick<QuoteCreateInput | QuotePatchInput | QuoteUpdateInput, 'selectedAssemblies'>,
 ): void {
   if ((input.selectedAssemblies?.length ?? 0) > 0) {
     throw new QuoteCustomSelectedAssembliesError('Custom Quotes cannot have Selected Assemblies.');

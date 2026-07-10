@@ -806,6 +806,54 @@ describe('custom quotes', () => {
 });
 
 describe('patchQuote', () => {
+  test('full-replaces line items and selected assemblies when those collections are supplied', async ({ context }) => {
+    const [optionalAssembly] = await context.db
+      .insert(productAssemblies)
+      .values({
+        displayOrder: 0,
+        kind: 'optional',
+        name: 'Calibration package',
+        price: 650,
+        productId: context.product.id,
+      })
+      .returning();
+
+    if (!optionalAssembly) {
+      throw new Error('Product assembly insert did not return a row');
+    }
+
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        lineItems: [{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }],
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    const updated = await patchQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: {
+        id: quote.id,
+        lineItems: [{ name: 'Commissioning', quantity: 1, unitPrice: 450 }],
+        selectedAssemblies: [{ type: 'catalog', productAssemblyId: optionalAssembly.id }],
+      },
+    });
+
+    expect(updated.lineItems).toMatchObject([{ name: 'Commissioning', quantity: 1, unitPrice: 450 }]);
+    expect(updated.selectedAssemblies).toMatchObject([
+      {
+        productAssemblyId: optionalAssembly.id,
+        quotedName: 'Calibration package',
+        quotedPrice: 650,
+      },
+    ]);
+  });
+
   test('changes only the named field and leaves commercial fields untouched', async ({ context }) => {
     const quote = await createQuoteService({
       actorUserId: context.salesPerson.id,

@@ -16,6 +16,7 @@ import {
 
 const QUOTE_ID = '00000000-0000-4000-8000-000000000301';
 const CUSTOMER_ID = '00000000-0000-4000-8000-000000000101';
+const PRODUCT_ASSEMBLY_ID = '00000000-0000-4000-8000-000000000201';
 
 const quote = QuoteDetail.parse({
   code: 'QUO-00001',
@@ -71,8 +72,14 @@ function createContext(): AiV2Context {
 }
 
 describe('patchQuote v2 contract', () => {
-  test('passes only named low-risk Quote changes to core and returns linked details', async () => {
-    const input = PatchQuoteInput.parse({ id: QUOTE_ID, notes: ' Updated note ', plannedDeliveryDate: null });
+  test('passes named Quote changes, line items, and assemblies to core and returns linked details', async () => {
+    const input = PatchQuoteInput.parse({
+      id: QUOTE_ID,
+      lineItems: [{ name: ' Calibration ', quantity: 2, unitPrice: 450 }],
+      notes: ' Updated note ',
+      plannedDeliveryDate: null,
+      selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
+    });
     const coreInput = toCoreQuotePatchInput(input);
     const patchSpy = vi.spyOn(quotesCore, 'patchQuote').mockResolvedValue(quote);
 
@@ -80,7 +87,13 @@ describe('patchQuote v2 contract', () => {
       toPatchQuoteResponse(quote, createContext().access),
     );
 
-    expect(coreInput).toEqual({ id: QUOTE_ID, notes: 'Updated note', plannedDeliveryDate: null });
+    expect(coreInput).toEqual({
+      id: QUOTE_ID,
+      lineItems: [{ name: 'Calibration', quantity: 2, unitPrice: 450 }],
+      notes: 'Updated note',
+      plannedDeliveryDate: null,
+      selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
+    });
     expect(coreInput).not.toHaveProperty('status');
     expect(coreInput).not.toHaveProperty('discountPercent');
     expect(patchSpy).toHaveBeenCalledWith({
@@ -101,7 +114,7 @@ describe('patchQuote v2 contract', () => {
     expect(patchQuoteDefinition.requiredPermission).toEqual(['quote:update']);
     expect(patchQuoteDefinition.description).toContain('findQuotes');
     expect(patchQuoteDefinition.description).toContain('accepted or rejected');
-    expect(patchQuoteDefinition.description.toLowerCase()).toContain('pricing');
+    expect(patchQuoteDefinition.description).toContain('replace the complete collection');
     expect(() => z.toJSONSchema(PatchQuoteInput)).not.toThrow();
   });
 });

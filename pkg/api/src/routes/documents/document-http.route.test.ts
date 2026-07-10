@@ -261,8 +261,19 @@ describe('document HTTP routes', () => {
     expect(response.statusCode).toBe(401);
   });
 
-  test('forbids previewing a brochure without product read access', async ({ context }) => {
+  test('allows sales to preview a brochure through Quote creation access', async ({ context }) => {
     routeTestState.session = mockSession('sales');
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const product = await createCompleteBrochureProduct({ db: context.db, storage });
+
+    const response = await app.inject(`/api/products/${product.id}/brochure-preview`);
+
+    expect(response.statusCode, response.body).toBe(200);
+  });
+
+  test('forbids previewing a brochure without Product or Quote creation access', async ({ context }) => {
+    routeTestState.session = mockSession('job-viewer');
     const app = await createDocumentApp(new MemoryStorage());
 
     const response = await app.inject(`/api/products/${context.product.id}/brochure-preview`);

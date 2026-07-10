@@ -17,7 +17,7 @@ export const roleDescriptions = {
   'bay-operator': 'Shop-floor personnel record for Bay assignment; this role is not enabled for sign-in.',
   'job-viewer': 'Read-only access to production Jobs.',
   'procurement-manager': 'Manage procurement records and view production Jobs.',
-  sales: 'Create, read, and update sales Quotes.',
+  sales: 'Create, read, and update sales Quotes, and send assistant-authored email.',
 } as const satisfies Record<AppRole, string>;
 
 export const permissionLabels = {
@@ -25,6 +25,7 @@ export const permissionLabels = {
   'customer:create': 'Create customers',
   'customer:read': 'View customers',
   'customer:update': 'Update customers',
+  'email:send': 'Send email',
   'feedback:read': 'View feedback',
   'feedback:update': 'Manage feedback',
   'part:read': 'View parts',
@@ -61,6 +62,7 @@ export const permissionDescriptions = {
   'customer:create': 'Add new customer directory records.',
   'customer:read': 'View customer directory records.',
   'customer:update': 'Edit existing customer directory records.',
+  'email:send': 'Send assistant-authored email to an explicitly chosen recipient.',
   'feedback:read': 'View all submitted Feedback records, including Corrective Feedback.',
   'feedback:update': 'Update any Feedback status and internal notes.',
   'part:read': 'View part records.',
@@ -95,6 +97,7 @@ export const permissionDescriptions = {
 export const authorizationStatement = {
   audit: ['read'],
   customer: ['read', 'create', 'update'],
+  email: ['send'],
   feedback: ['read', 'update'],
   job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
   job_bay: ['read', 'update'],
@@ -115,6 +118,7 @@ type RoleAccess = Partial<{
 const adminAccess = {
   audit: ['read'],
   customer: ['read', 'create', 'update'],
+  email: ['send'],
   job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
   job_bay: ['read', 'update'],
   part: ['read', 'update'],
@@ -149,6 +153,7 @@ export const appRoleAccess = {
     job: ['read'],
   },
   sales: {
+    email: ['send'],
     quote: ['read', 'create', 'update'],
   },
   'bay-operator': {},

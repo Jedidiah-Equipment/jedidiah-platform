@@ -19,6 +19,7 @@ import { z } from 'zod';
 
 import {
   RouteHttpError,
+  requireAnyPermission,
   requirePermission,
   requireRouteAuth,
   sendHttpError,
@@ -108,9 +109,9 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
     if (!auth) return;
 
     try {
-      requirePermission(
+      requireAnyPermission(
         auth,
-        'product:read',
+        ['product:read', 'quote:create'],
         'You do not have permission to preview this brochure.',
         'document.forbidden',
       );

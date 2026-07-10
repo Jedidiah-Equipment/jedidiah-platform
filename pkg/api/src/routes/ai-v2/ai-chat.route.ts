@@ -2,6 +2,7 @@ import type { OutgoingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
 
 import { type AiChatModel, type AiV2Context, createOpenAiChatModel, streamAiChat, validateAiUiMessages } from '@pkg/ai';
+import type { StorageAdapter } from '@pkg/core';
 import { AiChatInput, type AiReasoningEffort } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -17,6 +18,7 @@ export type RegisterAiChatRouteOptions = {
   buildContext?: (req: FastifyRequest) => Promise<AiV2Context>;
   createModel?: () => AiChatModel;
   reasoningEffort?: AiReasoningEffort;
+  storage?: StorageAdapter;
 };
 
 // AI SDK v6 chat route. It keeps parity with `POST /ai/chat-stream` gates — session auth (401),
@@ -30,7 +32,7 @@ export async function registerAiChatRoute(
 ): Promise<void> {
   const reasoningEffort = options.reasoningEffort ?? getApiConfig().OPENAI_REASONING_EFFORT;
   const createModel = options.createModel ?? (() => getDefaultModel(getApiConfig()));
-  const createContext = options.buildContext ?? buildAiV2Context;
+  const createContext = options.buildContext ?? createDefaultContextBuilder(options.storage);
 
   app.post('/ai/chat', async (request, reply) => {
     const ctx = await createContext(request);
@@ -84,6 +86,14 @@ export async function registerAiChatRoute(
       request.raw.off('close', handleRequestClose);
     }
   });
+}
+
+function createDefaultContextBuilder(storage: StorageAdapter | undefined) {
+  if (!storage) {
+    throw new Error('AI v2 document storage is required when buildContext is not provided.');
+  }
+
+  return (request: FastifyRequest) => buildAiV2Context(request, { storage });
 }
 
 // Writes a web `Response` (headers + streamed body) onto the raw Node reply, preserving the

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { UUID } from '../common/uuid.js';
 import type { QuoteDocument } from '../documents/document.js';
 
@@ -48,10 +49,11 @@ export type QuoteDocumentCreateInput = {
   quoteId: UUID;
 };
 
-export type QuoteDocumentGenerationWarning = {
-  code: 'quote_document.brochure_config_incomplete';
-  message: string;
-};
+export type QuoteDocumentGenerationWarning = z.infer<typeof QuoteDocumentGenerationWarning>;
+export const QuoteDocumentGenerationWarning = z.object({
+  code: z.literal('quote_document.brochure_config_incomplete'),
+  message: z.string(),
+});
 
 export type QuoteDocumentGenerationResult = {
   document: QuoteDocument;

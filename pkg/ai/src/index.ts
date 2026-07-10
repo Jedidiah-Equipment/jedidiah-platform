@@ -13,4 +13,10 @@ export {
 } from './v2/ai-chat.js';
 export { createOpenAiChatModel } from './v2/ai-sdk-model.js';
 export { createAiSdkTools, type V2AiToolName } from './v2/ai-sdk-tools.js';
-export type { AiV2Context, AiV2Session } from './v2/context.js';
+export type {
+  AiV2Context,
+  AiV2EmailAttachment,
+  AiV2EmailMessage,
+  AiV2EmailSender,
+  AiV2Session,
+} from './v2/context.js';

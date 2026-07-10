@@ -1,5 +1,6 @@
 import * as customersCore from '@pkg/core';
-import { Customer, CustomerListInput, type CustomerListResult } from '@pkg/schema';
+import { hasPermission } from '@pkg/domain';
+import { Customer, CustomerListInput, type CustomerListResult, type UserAccessSummary } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiV2Context } from '@/v2/context.js';
@@ -15,7 +16,7 @@ const FindCustomerItem = Customer.pick({
   id: true,
   phone: true,
   vatNumber: true,
-}).extend({ links: z.object({ app: InternalAppHref }) });
+}).extend({ links: z.object({ app: InternalAppHref }).optional() });
 
 export type FindCustomersResponse = z.infer<typeof FindCustomersResponse>;
 export const FindCustomersResponse = z.array(FindCustomerItem);
@@ -31,13 +32,16 @@ export function toCoreCustomerListInput(input: FindCustomersInput): CustomerList
   };
 }
 
-export function toFindCustomersResponse(result: CustomerListResult): FindCustomersResponse {
+export function toFindCustomersResponse(
+  result: CustomerListResult,
+  access: UserAccessSummary | null,
+): FindCustomersResponse {
   return result.items.map((customer) => ({
     companyName: customer.companyName,
     contactPerson: customer.contactPerson,
     email: customer.email,
     id: customer.id,
-    links: { app: createCustomerAppHref(customer.id) },
+    ...(hasPermission(access, 'customer:read') ? { links: { app: createCustomerAppHref(customer.id) } } : {}),
     phone: customer.phone,
     vatNumber: customer.vatNumber,
   }));
@@ -47,15 +51,15 @@ export const findCustomersDefinition = {
   name: 'findCustomers',
   description: [
     'Search for Customers by company name, email, VAT number, or UUID.',
-    'Returns lightweight matches containing Customer identity, contact fields, and links.app.',
-    'Call getCustomer with the selected id when full Customer details are needed.',
+    'Returns lightweight matches containing Customer identity, contact fields, and links.app when the caller can open Customer pages.',
+    'For Quote creation, pass the selected id to createQuote. Call getCustomer when available and full Customer details are needed.',
   ].join('\n'),
   inputSchema: FindCustomersInput,
   outputSchema: FindCustomersResponse,
-  requiredPermission: 'customer:read',
+  requiredPermission: ['customer:read', 'quote:read'] as const,
   async handler(args: unknown, ctx: AiV2Context): Promise<FindCustomersResponse> {
     const input = FindCustomersInput.parse(args ?? {});
     const result = await customersCore.listCustomers({ db: ctx.db, input: toCoreCustomerListInput(input) });
-    return toFindCustomersResponse(result);
+    return toFindCustomersResponse(result, ctx.access);
   },
 } as const;

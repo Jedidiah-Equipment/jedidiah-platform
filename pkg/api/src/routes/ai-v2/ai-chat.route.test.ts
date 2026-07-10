@@ -4,40 +4,62 @@ import type { AiV2Context } from '@pkg/ai';
 import { createUserAccessSummary } from '@pkg/domain';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import Fastify from 'fastify';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { registerAiChatRoute } from '@/routes/ai-v2/ai-chat.route.js';
 import { createSilentLogger, mockSession } from '@/test/test-utils.js';
 
-// The tool's core read is stubbed so the route test stays DB-free; the route still exercises the
+// The tools' core reads are stubbed so the route test stays DB-free; the route still exercises the
 // real tool factory, authorization, and core-to-tool response mapping around it.
+const PRODUCT_ID = '00000000-0000-4000-8000-000000000001';
+const PRODUCT = {
+  assemblies: [],
+  basePrice: 1_000,
+  brochureEnabled: false,
+  buildTimeDays: 14,
+  category: null,
+  createdAt: '2026-07-10T08:00:00.000Z',
+  currencyCode: 'ZAR' as const,
+  description: 'Compact articulated loader',
+  id: PRODUCT_ID,
+  images: {
+    banner: null,
+    primary: null,
+    secondary1: null,
+    secondary2: null,
+    technicalDrawing: null,
+  },
+  keyFeatures: [],
+  landerEnabled: false,
+  modelCode: 'CL-1',
+  name: 'Compact Loader',
+  nameHighlight: null,
+  productBays: [],
+  range: { id: '00000000-0000-4000-8000-000000000002', name: 'Loaders' },
+  rangeId: '00000000-0000-4000-8000-000000000002',
+  requiresVinNumber: false,
+  technicalDetails: [],
+  thumbnailDataUrl: null,
+  updatedAt: '2026-07-10T09:00:00.000Z',
+  variant: null,
+  variantId: null,
+};
+
 const listProductsMock = vi.fn(async () => ({
-  items: [
-    {
-      basePrice: 1_000,
-      buildTimeDays: 14,
-      category: null,
-      createdAt: '2026-07-10T08:00:00.000Z',
-      currencyCode: 'ZAR' as const,
-      description: 'Compact articulated loader',
-      id: '00000000-0000-4000-8000-000000000001',
-      keyFeatures: [],
-      modelCode: 'CL-1',
-      name: 'Compact Loader',
-      nameHighlight: null,
-      range: { id: '00000000-0000-4000-8000-000000000002', name: 'Loaders' },
-      requiresVinNumber: false,
-      technicalDetails: [],
-    },
-  ],
+  items: [PRODUCT],
   sortBy: 'name' as const,
   sortDirection: 'asc' as const,
   total: 1,
 }));
+const getProductMock = vi.fn(async () => PRODUCT);
 
 vi.mock('@pkg/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@pkg/core')>();
-  return { ...actual, listProducts: () => listProductsMock() };
+  return {
+    ...actual,
+    getProduct: () => getProductMock(),
+    listProducts: () => listProductsMock(),
+  };
 });
 
 function createChatContext(session: ReturnType<typeof mockSession> | null = mockSession()): AiV2Context {
@@ -81,7 +103,7 @@ function createTwoStepModel(): MockLanguageModelV3 {
       return call === 1
         ? streamResult([
             { type: 'stream-start', warnings: [] },
-            { type: 'tool-call', toolCallId: 'call-1', toolName: 'listProducts', input: JSON.stringify({}) },
+            { type: 'tool-call', toolCallId: 'call-1', toolName: 'findProducts', input: JSON.stringify({}) },
             finishPart('tool-calls'),
           ])
         : streamResult([
@@ -92,6 +114,44 @@ function createTwoStepModel(): MockLanguageModelV3 {
             { type: 'text-end', id: 't1' },
             finishPart('stop'),
           ]);
+    },
+  });
+}
+
+function createFindThenGetModel(): MockLanguageModelV3 {
+  let call = 0;
+  return new MockLanguageModelV3({
+    doStream: async () => {
+      call += 1;
+
+      if (call === 1) {
+        return streamResult([
+          { type: 'stream-start', warnings: [] },
+          { type: 'tool-call', toolCallId: 'find-1', toolName: 'findProducts', input: JSON.stringify({}) },
+          finishPart('tool-calls'),
+        ]);
+      }
+
+      if (call === 2) {
+        return streamResult([
+          { type: 'stream-start', warnings: [] },
+          {
+            type: 'tool-call',
+            toolCallId: 'get-1',
+            toolName: 'getProduct',
+            input: JSON.stringify({ id: PRODUCT_ID }),
+          },
+          finishPart('tool-calls'),
+        ]);
+      }
+
+      return streamResult([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'The Compact Loader costs R 1 000.00.' },
+        { type: 'text-end', id: 't1' },
+        finishPart('stop'),
+      ]);
     },
   });
 }
@@ -113,6 +173,10 @@ function readUiChunks(body: string): UiChunk[] {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
 describe('POST /ai/chat', () => {
@@ -265,10 +329,44 @@ describe('POST /ai/chat', () => {
     const toolResult = chunks.find((chunk) => chunk.type === 'tool-output-available');
     const textDeltas = chunks.filter((chunk) => chunk.type === 'text-delta');
 
-    expect(toolCall?.toolName).toBe('listProducts');
+    expect(toolCall?.toolName).toBe('findProducts');
     expect(toolResult).toBeDefined();
-    expect(toolResult?.output).toMatchObject({ total: 1 });
+    expect(toolResult?.output).toEqual([
+      expect.objectContaining({ id: '00000000-0000-4000-8000-000000000001', name: 'Compact Loader' }),
+    ]);
     expect(textDeltas.map((chunk) => chunk.delta).join('')).toBe('You have 1 Product: Compact Loader.');
+  });
+
+  test('supports the lightweight find followed by a full Product read', async () => {
+    const app = Fastify();
+    await registerAiChatRoute(app, {
+      buildContext: async () => createChatContext(),
+      createModel: () => createFindThenGetModel(),
+      reasoningEffort: 'low',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/ai/chat',
+      payload: { messages: [userMessage('Tell me about the Compact Loader')] },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(listProductsMock).toHaveBeenCalledOnce();
+    expect(getProductMock).toHaveBeenCalledOnce();
+
+    const chunks = readUiChunks(response.body);
+    expect(chunks.filter((chunk) => chunk.type === 'tool-input-available').map((chunk) => chunk.toolName)).toEqual([
+      'findProducts',
+      'getProduct',
+    ]);
+    expect(chunks.filter((chunk) => chunk.type === 'tool-output-available')).toHaveLength(2);
+    expect(
+      chunks
+        .filter((chunk) => chunk.type === 'text-delta')
+        .map((chunk) => chunk.delta)
+        .join(''),
+    ).toBe('The Compact Loader costs R 1 000.00.');
   });
 
   test('preserves CORS headers on the streamed response', async () => {

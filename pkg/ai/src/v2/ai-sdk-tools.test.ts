@@ -11,15 +11,11 @@ function createContext(role: 'admin' | 'sales'): AiV2Context {
 }
 
 describe('createAiSdkTools v2', () => {
-  test('exposes only the copied listProducts tool to an authorized caller', () => {
-    expect(Object.keys(createAiSdkTools(createContext('admin')))).toEqual(['listProducts']);
+  test('exposes the find-then-get Product workflow to an authorized caller', () => {
+    expect(Object.keys(createAiSdkTools(createContext('admin')))).toEqual(['findProducts', 'getProduct']);
   });
 
-  test('does not expose listProducts without product read permission', () => {
+  test('does not expose Product tools without product read permission', () => {
     expect(createAiSdkTools(createContext('sales'))).toEqual({});
-  });
-
-  test('honors an explicitly empty include list', () => {
-    expect(createAiSdkTools(createContext('admin'), { include: [] })).toEqual({});
   });
 });

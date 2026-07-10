@@ -2,33 +2,27 @@ import { hasPermission } from '@pkg/domain';
 import { tool as createAiSdkTool, type ToolSet } from 'ai';
 
 import type { AiV2Context } from './context.js';
-import { listProductsDefinition } from './tools/products/list-products.js';
+import { findProductsDefinition } from './tools/products/find-products.js';
+import { getProductDefinition } from './tools/products/get-product.js';
 
-export type V2AiToolName = typeof listProductsDefinition.name;
+const V2_TOOL_DEFINITIONS = [findProductsDefinition, getProductDefinition] as const;
 
-export type CreateAiSdkToolsOptions = {
-  // Restrict the exposed set to these tool names (still intersected with the caller's authorization).
-  include?: readonly V2AiToolName[];
-};
+export type V2AiToolName = (typeof V2_TOOL_DEFINITIONS)[number]['name'];
 
 // V2 deliberately registers its own tools instead of inheriting the legacy registry.
-export function createAiSdkTools(ctx: AiV2Context, options: CreateAiSdkToolsOptions = {}): ToolSet {
-  const tool = listProductsDefinition;
+export function createAiSdkTools(ctx: AiV2Context): ToolSet {
+  const tools: ToolSet = {};
 
-  if (options.include && !options.include.includes(tool.name)) {
-    return {};
+  for (const definition of V2_TOOL_DEFINITIONS) {
+    if (!hasPermission(ctx.access, definition.requiredPermission)) continue;
+
+    tools[definition.name] = createAiSdkTool<unknown, unknown>({
+      description: definition.description,
+      inputSchema: definition.inputSchema,
+      outputSchema: definition.outputSchema,
+      execute: (input: unknown) => definition.handler(input, ctx),
+    });
   }
 
-  if (!hasPermission(ctx.access, tool.requiredPermission)) {
-    return {};
-  }
-
-  return {
-    [tool.name]: createAiSdkTool({
-      description: tool.description,
-      inputSchema: tool.inputSchema,
-      outputSchema: tool.outputSchema,
-      execute: (input) => tool.handler(input, ctx),
-    }),
-  };
+  return tools;
 }

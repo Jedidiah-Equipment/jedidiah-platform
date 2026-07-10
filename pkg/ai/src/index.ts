@@ -8,10 +8,9 @@ export { type AiAgentRunner, createAiAgentRunner } from './openai.js';
 export {
   type StreamAiChatOptions,
   streamAiChat,
-  V2_AI_CHAT_TOOL_NAMES,
   type ValidateAiUiMessagesResult,
   validateAiUiMessages,
 } from './v2/ai-chat.js';
 export { createOpenAiChatModel } from './v2/ai-sdk-model.js';
-export { type CreateAiSdkToolsOptions, createAiSdkTools, type V2AiToolName } from './v2/ai-sdk-tools.js';
+export { createAiSdkTools, type V2AiToolName } from './v2/ai-sdk-tools.js';
 export type { AiV2Context, AiV2Session } from './v2/context.js';

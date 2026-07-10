@@ -9,8 +9,8 @@ export type AiV2Session = {
   };
 };
 
-// V2 currently has one read tool, so its context contains only the dependencies that orchestration
-// and listProducts use. Add new ports here only when a v2 tool actually needs them.
+// Keep this context limited to dependencies that v2 orchestration and its Product tools use.
+// Add new ports only when a v2 tool actually needs them.
 export type AiV2Context = {
   access: UserAccessSummary | null;
   db: Db;

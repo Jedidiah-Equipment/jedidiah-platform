@@ -318,10 +318,10 @@ export const QuoteUpdateInput = z
   })
   .strict();
 
-// Partial low-risk field update. Every field except `id` is optional; `undefined` means "leave the
+// Partial field update. Every field except `id` is optional; `undefined` means "leave the
 // current value untouched". The merge over the current row happens under the row lock in core, so a
-// concurrent edit to an omitted field is never reverted. Deliberately excludes offering, pricing,
-// line items, and assemblies.
+// concurrent edit to an omitted field is never reverted. Collections are full replacements only
+// when supplied. Deliberately excludes offering and quote-level pricing fields.
 export type QuotePatchInput = z.infer<typeof QuotePatchInput>;
 export const QuotePatchInput = z
   .object({
@@ -330,9 +330,11 @@ export const QuotePatchInput = z
     salesPersonId: AuthId.optional(),
     // The `-Optional` text variant preserves `undefined` (keep) instead of defaulting it to `null` (clear).
     documentNotes: nullableTrimmedTextInputOptional(),
+    lineItems: z.array(QuoteLineItemInput).optional(),
     notes: nullableTrimmedTextInputOptional(),
     preferredDeliveryDate: DateOnlyIso.nullable().optional(),
     plannedDeliveryDate: DateOnlyIso.nullable().optional(),
+    selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
     validUntil: DateIso.nullable().optional(),
   })
   .strict();

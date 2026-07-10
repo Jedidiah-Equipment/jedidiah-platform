@@ -44,8 +44,8 @@ export async function streamAiChat({
   model,
   reasoningEffort,
 }: StreamAiChatOptions): Promise<Response> {
+  const system = createSystemPrompt();
   const tools = createAiSdkTools(ctx);
-  const system = createSystemPrompt(Object.keys(tools) as V2AiToolName[]);
   const modelMessages = await convertToModelMessages(messages, { tools });
 
   const result = streamText({

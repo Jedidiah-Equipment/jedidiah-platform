@@ -37,7 +37,7 @@ import { QuoteKind, QuoteWorkTitle } from './quote-shared.js';
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
 
-export { formatQuoteCode, QuoteCode } from '../common/public-code.js';
+export { formatQuoteCode, parseQuoteCodeNumber, QuoteCode, QuoteCodeInput } from '../common/public-code.js';
 export { QuoteKind, QuoteWorkTitle } from './quote-shared.js';
 
 export type QuoteNotes = z.infer<typeof QuoteNotes>;
@@ -390,6 +390,7 @@ export const QuoteListFilters = z
     customerId: UUID.optional(),
     kind: QuoteKind.optional(),
     productId: UUID.optional(),
+    quoteCode: QuoteCode.optional(),
     salesPersonId: AuthId.optional(),
     statuses: z.array(QuoteStatus),
   })

@@ -764,6 +764,23 @@ describe('quotes.list', () => {
     await expect(
       salesCaller.quotes.list({
         filters: {
+          quoteCode: finalQuote.code,
+          statuses: [],
+        },
+        page: 1,
+        pageSize: 10,
+        search: '',
+        sortBy: 'code',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [{ id: finalQuote.id }],
+    });
+
+    await expect(
+      salesCaller.quotes.list({
+        filters: {
           statuses: ['accepted'],
         },
         page: 1,

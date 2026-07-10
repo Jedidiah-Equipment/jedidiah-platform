@@ -26,18 +26,12 @@ export async function validateAiUiMessages(messages: unknown): Promise<ValidateA
   return result.success ? { messages: result.data, ok: true } : { error: result.error.message, ok: false };
 }
 
-// V2 starts with one copied read tool so its surface is explicit and does not inherit the legacy
-// registry as new tools are added there.
-export const V2_AI_CHAT_TOOL_NAMES = ['listProducts'] as const satisfies readonly V2AiToolName[];
-
 export type StreamAiChatOptions = {
   abortSignal?: AbortSignal;
   ctx: AiV2Context;
   messages: UIMessage[];
   model: LanguageModel;
   reasoningEffort: AiReasoningEffort;
-  // Tool names to expose (intersected with the caller's authorization). Defaults to the v2 set.
-  toolNames?: readonly V2AiToolName[];
 };
 
 // AI SDK v6 chat turn: authorized tool set → `streamText` with a bounded multi-step tool loop →
@@ -49,9 +43,8 @@ export async function streamAiChat({
   messages,
   model,
   reasoningEffort,
-  toolNames = V2_AI_CHAT_TOOL_NAMES,
 }: StreamAiChatOptions): Promise<Response> {
-  const tools = createAiSdkTools(ctx, { include: toolNames });
+  const tools = createAiSdkTools(ctx);
   const system = createSystemPrompt(Object.keys(tools) as V2AiToolName[]);
   const modelMessages = await convertToModelMessages(messages, { tools });
 

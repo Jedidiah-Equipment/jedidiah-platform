@@ -2,30 +2,38 @@ import { ProductListResult } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
 import {
-  ListProductsToolInput,
-  ListProductsToolResponse,
-  toCoreListProductsInput,
-  toListProductsToolResponse,
-} from './list-products.js';
+  FindProductsInput,
+  FindProductsResponse,
+  findProductsDefinition,
+  toCoreProductListInput,
+  toFindProductsResponse,
+} from './find-products.js';
 
 const PRODUCT_ID = '00000000-0000-4000-8000-000000000001';
 const RANGE_ID = '00000000-0000-4000-8000-000000000002';
 
-describe('listProducts v2 contract', () => {
-  test('maps the narrow tool input onto the core list contract', () => {
-    const input = ListProductsToolInput.parse({ search: 'loader' });
+describe('findProducts v2 contract', () => {
+  test('describes the lightweight find-before-get workflow', () => {
+    expect(findProductsDefinition.name).toBe('findProducts');
+    expect(findProductsDefinition.description).toContain('lightweight');
+    expect(findProductsDefinition.description).toContain('use getProduct');
+    expect(findProductsDefinition.description).toContain('full Product details');
+  });
 
-    expect(toCoreListProductsInput(input)).toEqual({
+  test('maps its search input onto an unpaged core list read', () => {
+    const input = FindProductsInput.parse({ search: 'loader' });
+
+    expect(toCoreProductListInput(input)).toEqual({
       columnFilters: {},
       page: 1,
-      pageSize: 10,
+      pageSize: 0,
       search: 'loader',
       sortBy: 'name',
       sortDirection: 'asc',
     });
   });
 
-  test('maps core products onto the declared compact response', () => {
+  test('maps core products onto lightweight identity results', () => {
     const coreResult = ProductListResult.parse({
       items: [
         {
@@ -66,20 +74,17 @@ describe('listProducts v2 contract', () => {
       total: 1,
     });
 
-    const response = toListProductsToolResponse(coreResult);
+    const response = toFindProductsResponse(coreResult);
 
-    expect(ListProductsToolResponse.parse(response)).toEqual(response);
-    expect(response).toEqual({
-      items: [
-        expect.objectContaining({
-          id: PRODUCT_ID,
-          links: [{ entity: 'Product', href: `/products/${PRODUCT_ID}/edit`, label: 'Compact Loader' }],
-          modelCode: 'CL-100',
-          name: 'Compact Loader',
-        }),
-      ],
-      total: 1,
-    });
+    expect(FindProductsResponse.parse(response)).toEqual(response);
+    expect(response).toEqual([
+      {
+        id: PRODUCT_ID,
+        links: [{ entity: 'Product', href: `/products/${PRODUCT_ID}/edit`, label: 'Compact Loader' }],
+        modelCode: 'CL-100',
+        name: 'Compact Loader',
+      },
+    ]);
     expect(JSON.stringify(response)).not.toMatch(/thumbnail|images|assemblies|productBays/);
   });
 });

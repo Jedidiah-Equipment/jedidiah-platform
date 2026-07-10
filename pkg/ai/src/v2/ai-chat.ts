@@ -9,7 +9,7 @@ import {
   type UIMessage,
 } from 'ai';
 
-import { createAiSdkTools, type V2AiToolName } from './ai-sdk-tools.js';
+import { createAiSdkTools } from './ai-sdk-tools.js';
 import type { AiV2Context } from './context.js';
 import { createSystemPrompt } from './prompts.js';
 

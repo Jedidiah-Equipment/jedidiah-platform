@@ -4,18 +4,28 @@ import { describe, expect, test } from 'vitest';
 import { createAiSdkTools } from './ai-sdk-tools.js';
 import type { AiV2Context } from './context.js';
 
-function createContext(role: 'admin' | 'sales'): AiV2Context {
+function createContext(role: 'admin' | 'job-viewer' | 'sales'): AiV2Context {
   return {
     access: createUserAccessSummary({ role, userId: '00000000-0000-4000-8000-000000000001' }),
   } as AiV2Context;
 }
 
 describe('createAiSdkTools v2', () => {
-  test('exposes the find-then-get Product workflow to an authorized caller', () => {
-    expect(Object.keys(createAiSdkTools(createContext('admin')))).toEqual(['findProducts', 'getProduct']);
+  test('exposes every find-then-get workflow to an administrator', () => {
+    expect(Object.keys(createAiSdkTools(createContext('admin')))).toEqual([
+      'findProducts',
+      'getProduct',
+      'findCustomers',
+      'getCustomer',
+      'findQuotes',
+      'getQuote',
+      'findJobs',
+      'getJob',
+    ]);
   });
 
-  test('does not expose Product tools without product read permission', () => {
-    expect(createAiSdkTools(createContext('sales'))).toEqual({});
+  test('exposes only tools allowed by the caller permissions', () => {
+    expect(Object.keys(createAiSdkTools(createContext('sales')))).toEqual(['findQuotes', 'getQuote']);
+    expect(Object.keys(createAiSdkTools(createContext('job-viewer')))).toEqual(['findJobs', 'getJob']);
   });
 });

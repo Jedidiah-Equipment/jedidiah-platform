@@ -1,32 +1,23 @@
 import * as customersCore from '@pkg/core';
-import { Customer, UUID } from '@pkg/schema';
+import { type Customer, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiV2Context } from '@/v2/context.js';
-import { createCustomerAppHref, InternalAppHref } from '@/v2/entity-links.js';
+
+import {
+  CustomerResponse as SharedCustomerResponse,
+  type CustomerResponse as SharedCustomerResponseType,
+  toCustomerResponse,
+} from './customer-response.js';
 
 export type GetCustomerInput = z.infer<typeof GetCustomerInput>;
 export const GetCustomerInput = z.object({ id: UUID }).strict();
 
-export type GetCustomerResponse = z.infer<typeof GetCustomerResponse>;
-export const GetCustomerResponse = Customer.pick({
-  address: true,
-  companyName: true,
-  contactPerson: true,
-  createdAt: true,
-  email: true,
-  id: true,
-  notes: true,
-  phone: true,
-  updatedAt: true,
-  vatNumber: true,
-}).extend({ links: z.object({ app: InternalAppHref }) });
+export type GetCustomerResponse = SharedCustomerResponseType;
+export const GetCustomerResponse = SharedCustomerResponse;
 
 export function toGetCustomerResponse(customer: Customer): GetCustomerResponse {
-  return GetCustomerResponse.parse({
-    ...customer,
-    links: { app: createCustomerAppHref(customer.id) },
-  });
+  return toCustomerResponse(customer);
 }
 
 export const getCustomerDefinition = {
@@ -38,7 +29,7 @@ export const getCustomerDefinition = {
   ].join('\n'),
   inputSchema: GetCustomerInput,
   outputSchema: GetCustomerResponse,
-  requiredPermission: ['customer:read'],
+  anyOfPermissions: ['customer:read'],
   async handler(args: unknown, ctx: AiV2Context): Promise<GetCustomerResponse> {
     const input = GetCustomerInput.parse(args);
     const customer = await customersCore.getCustomer({ db: ctx.db, id: input.id });

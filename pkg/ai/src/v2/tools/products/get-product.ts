@@ -1,22 +1,14 @@
 import * as productsCore from '@pkg/core';
-import { Product, ProductBay, UUID } from '@pkg/schema';
+import { Product, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiV2Context } from '@/v2/context.js';
 import { createProductAppHref, InternalAppHref } from '@/v2/entity-links.js';
 
+import { ProductBayResponse } from './product-bay-response.js';
+
 export type GetProductInput = z.infer<typeof GetProductInput>;
 export const GetProductInput = z.object({ id: UUID }).strict();
-
-const GetProductBay = ProductBay.pick({
-  defaultWorkingDays: true,
-}).extend({
-  bay: ProductBay.shape.bay.pick({
-    department: true,
-    id: true,
-    name: true,
-  }),
-});
 
 export type GetProductResponse = z.infer<typeof GetProductResponse>;
 export const GetProductResponse = Product.pick({
@@ -42,7 +34,7 @@ export const GetProductResponse = Product.pick({
   variant: true,
 }).extend({
   links: z.object({ app: InternalAppHref }),
-  productBays: z.array(GetProductBay),
+  productBays: z.array(ProductBayResponse),
 });
 
 export function toGetProductResponse(product: Product): GetProductResponse {
@@ -88,7 +80,7 @@ export const getProductDefinition = {
   ].join('\n'),
   inputSchema: GetProductInput,
   outputSchema: GetProductResponse,
-  requiredPermission: ['product:read'],
+  anyOfPermissions: ['product:read'],
   async handler(args: unknown, ctx: AiV2Context): Promise<GetProductResponse> {
     const input = GetProductInput.parse(args);
     const product = await productsCore.getProduct({ db: ctx.db, id: input.id });

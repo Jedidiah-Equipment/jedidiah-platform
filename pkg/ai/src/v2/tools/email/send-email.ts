@@ -39,7 +39,7 @@ export const sendEmailDefinition = {
   ].join('\n'),
   inputSchema: SendEmailInput,
   outputSchema: SendEmailResponse,
-  requiredPermission: ['email:send'],
+  anyOfPermissions: ['email:send'],
   async handler(args: unknown, ctx: AiV2Context): Promise<SendEmailResponse> {
     const input = SendEmailInput.parse(args);
     const to = resolveRecipient(input.to, ctx);

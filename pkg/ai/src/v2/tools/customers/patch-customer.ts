@@ -2,7 +2,7 @@ import * as customersCore from '@pkg/core';
 import {
   CustomerPatchInput as CoreCustomerPatchInput,
   type CustomerPatchInput as CoreCustomerPatchInputType,
-  Customer,
+  type Customer,
   CustomerCompanyName,
   CustomerEmail,
   CustomerOptionalText,
@@ -13,7 +13,12 @@ import { z } from 'zod';
 
 import { requireAiV2ActorId } from '@/v2/actor.js';
 import type { AiV2Context } from '@/v2/context.js';
-import { createCustomerAppHref, InternalAppHref } from '@/v2/entity-links.js';
+
+import {
+  CustomerResponse as SharedCustomerResponse,
+  type CustomerResponse as SharedCustomerResponseType,
+  toCustomerResponse,
+} from './customer-response.js';
 
 export type PatchCustomerInput = z.infer<typeof PatchCustomerInput>;
 export const PatchCustomerInput = z
@@ -29,29 +34,15 @@ export const PatchCustomerInput = z
   })
   .strict();
 
-export type PatchCustomerResponse = z.infer<typeof PatchCustomerResponse>;
-export const PatchCustomerResponse = Customer.pick({
-  address: true,
-  companyName: true,
-  contactPerson: true,
-  createdAt: true,
-  email: true,
-  id: true,
-  notes: true,
-  phone: true,
-  updatedAt: true,
-  vatNumber: true,
-}).extend({ links: z.object({ app: InternalAppHref }) });
+export type PatchCustomerResponse = SharedCustomerResponseType;
+export const PatchCustomerResponse = SharedCustomerResponse;
 
 export function toCoreCustomerPatchInput(input: PatchCustomerInput): CoreCustomerPatchInputType {
   return CoreCustomerPatchInput.parse(input);
 }
 
 export function toPatchCustomerResponse(customer: Customer): PatchCustomerResponse {
-  return PatchCustomerResponse.parse({
-    ...customer,
-    links: { app: createCustomerAppHref(customer.id) },
-  });
+  return toCustomerResponse(customer);
 }
 
 export const patchCustomerDefinition = {
@@ -64,7 +55,7 @@ export const patchCustomerDefinition = {
   ].join('\n'),
   inputSchema: PatchCustomerInput,
   outputSchema: PatchCustomerResponse,
-  requiredPermission: ['customer:update'],
+  anyOfPermissions: ['customer:update'],
   async handler(args: unknown, ctx: AiV2Context): Promise<PatchCustomerResponse> {
     const input = toCoreCustomerPatchInput(PatchCustomerInput.parse(args));
     const customer = await customersCore.patchCustomer({

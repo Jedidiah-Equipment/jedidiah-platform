@@ -31,6 +31,8 @@ import { getQuote } from './quote-read-service.js';
 import {
   listQuoteSelectedAssemblies,
   persistQuoteSelectedAssemblies,
+  type QuoteSelectedAssemblyRow,
+  type ResolvedQuoteSelectedAssemblies,
   resolveQuoteSelectedAssemblies,
 } from './quote-selected-assemblies.js';
 
@@ -42,9 +44,18 @@ type QuoteOfferingRow = {
   workTitle: string | null;
 };
 
-type QuoteCollectionPatch = {
+type QuoteCollectionPatchInput = {
   lineItems?: readonly QuoteLineItemInput[] | undefined;
   selectedAssemblies?: readonly QuoteSelectedAssemblyInput[] | undefined;
+};
+
+type QuoteCollectionPatch = {
+  beforeLineItems: QuoteLineItemRow[];
+  beforeSelectedAssemblies: QuoteSelectedAssemblyRow[];
+  lineItemsChanged: boolean;
+  nextLineItems: readonly QuoteLineItemInput[];
+  resolved: ResolvedQuoteSelectedAssemblies;
+  selectedAssembliesChanged: boolean;
 };
 
 export async function createQuote({
@@ -354,11 +365,11 @@ async function prepareQuoteCollectionPatch({
   quoteId,
   tx,
 }: {
-  input: QuoteCollectionPatch;
+  input: QuoteCollectionPatchInput;
   offering: ReturnType<typeof narrowQuoteOffering>;
   quoteId: UUID;
   tx: DatabaseTransaction;
-}) {
+}): Promise<QuoteCollectionPatch> {
   const beforeLineItems = await listQuoteLineItems({ quoteId, tx });
   const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId, tx });
   const nextLineItems = input.lineItems ?? beforeLineItems;
@@ -388,7 +399,7 @@ function toQuoteChangedFields({
   collections,
 }: {
   changes: AuditChanges | null;
-  collections: Awaited<ReturnType<typeof prepareQuoteCollectionPatch>>;
+  collections: QuoteCollectionPatch;
 }): Set<string> {
   // Per-element audit keys normalize back to their collection field so the Locked Quote gate and
   // its error message speak in field names. The booleans also catch reorder-only line item changes.
@@ -420,8 +431,8 @@ async function persistQuoteCollectionPatch({
   quoteId,
   tx,
 }: {
-  collections: Awaited<ReturnType<typeof prepareQuoteCollectionPatch>>;
-  input: QuoteCollectionPatch;
+  collections: QuoteCollectionPatch;
+  input: QuoteCollectionPatchInput;
   offering: ReturnType<typeof narrowQuoteOffering>;
   quoteId: UUID;
   tx: DatabaseTransaction;

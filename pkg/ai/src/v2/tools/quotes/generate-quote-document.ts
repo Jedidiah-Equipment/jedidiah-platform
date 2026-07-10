@@ -39,7 +39,7 @@ export const generateQuoteDocumentDefinition = {
   ].join('\n'),
   inputSchema: GenerateQuoteDocumentInput,
   outputSchema: GenerateQuoteDocumentResponse,
-  requiredPermission: ['quote:update'],
+  anyOfPermissions: ['quote:update'],
   async handler(args: unknown, ctx: AiV2Context): Promise<GenerateQuoteDocumentResponse> {
     const input = CoreQuoteDocumentGenerationInput.parse(GenerateQuoteDocumentInput.parse(args));
     const result = await quotesCore.generateQuoteDocument({

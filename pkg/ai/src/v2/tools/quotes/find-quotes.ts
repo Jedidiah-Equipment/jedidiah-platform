@@ -1,5 +1,4 @@
 import * as quotesCore from '@pkg/core';
-import { hasPermission } from '@pkg/domain';
 import {
   QuoteCodeInput,
   type QuoteListInput,
@@ -12,13 +11,7 @@ import {
 import { z } from 'zod';
 
 import type { AiV2Context } from '@/v2/context.js';
-import {
-  createCustomerAppHref,
-  createJobAppHref,
-  createProductAppHref,
-  createQuoteAppHref,
-  InternalAppHref,
-} from '@/v2/entity-links.js';
+import { createQuoteLinks, QuoteLinks } from '@/v2/tools/quotes/quote-response.js';
 
 export type FindQuotesInput = z.infer<typeof FindQuotesInput>;
 export const FindQuotesInput = z.discriminatedUnion('by', [
@@ -26,13 +19,6 @@ export const FindQuotesInput = z.discriminatedUnion('by', [
   z.object({ by: z.literal('customer'), customerId: UUID }).strict(),
   z.object({ by: z.literal('product'), productId: UUID }).strict(),
 ]);
-
-const QuoteLinks = z.object({
-  app: InternalAppHref,
-  customer: InternalAppHref.optional(),
-  job: InternalAppHref.optional(),
-  product: InternalAppHref.optional(),
-});
 
 const FindProductQuote = QuoteSummary.options[0]
   .pick({
@@ -113,20 +99,6 @@ export function toFindQuotesResponse(result: QuoteListResult, access: UserAccess
   );
 }
 
-function createQuoteLinks(
-  quote: QuoteListResult['items'][number],
-  access: UserAccessSummary | null,
-): z.infer<typeof QuoteLinks> {
-  return {
-    app: createQuoteAppHref(quote.id),
-    ...(hasPermission(access, 'customer:read') ? { customer: createCustomerAppHref(quote.customerId) } : {}),
-    ...(quote.job && hasPermission(access, 'job:read') ? { job: createJobAppHref(quote.job.jobId) } : {}),
-    ...(quote.productId && hasPermission(access, 'product:read')
-      ? { product: createProductAppHref(quote.productId) }
-      : {}),
-  };
-}
-
 export const findQuotesDefinition = {
   name: 'findQuotes',
   description: [
@@ -137,7 +109,7 @@ export const findQuotesDefinition = {
   ].join('\n'),
   inputSchema: FindQuotesInput,
   outputSchema: FindQuotesResponse,
-  requiredPermission: ['quote:read'],
+  anyOfPermissions: ['quote:read'],
   async handler(args: unknown, ctx: AiV2Context): Promise<FindQuotesResponse> {
     const input = FindQuotesInput.parse(args ?? {});
     const result = await quotesCore.listQuotes({ db: ctx.db, input: toCoreQuoteListInput(input) });

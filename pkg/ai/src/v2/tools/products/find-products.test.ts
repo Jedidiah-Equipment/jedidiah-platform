@@ -20,7 +20,7 @@ describe('findProducts v2 contract', () => {
     expect(findProductsDefinition.description).toContain('lightweight');
     expect(findProductsDefinition.description).toContain('Call getProduct');
     expect(findProductsDefinition.description).toContain('full Product details');
-    expect(findProductsDefinition.requiredPermission).toEqual(['product:read', 'quote:read', 'quote:create']);
+    expect(findProductsDefinition.anyOfPermissions).toEqual(['product:read', 'quote:read', 'quote:create']);
   });
 
   test('maps its search input onto an unpaged core list read', () => {

@@ -27,7 +27,7 @@ export const generateProductBrochureDocumentDefinition = {
   ].join('\n'),
   inputSchema: GenerateProductBrochureDocumentInput,
   outputSchema: GenerateProductBrochureDocumentResponse,
-  requiredPermission: ['product:read', 'quote:create'],
+  anyOfPermissions: ['product:read', 'quote:create'],
   async handler(args: unknown, ctx: AiV2Context): Promise<GenerateProductBrochureDocumentResponse> {
     const input = GenerateProductBrochureDocumentInput.parse(args);
     const brochure = await productsCore.renderProductBrochurePreview({

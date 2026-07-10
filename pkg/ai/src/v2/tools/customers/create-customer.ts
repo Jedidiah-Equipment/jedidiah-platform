@@ -2,7 +2,7 @@ import * as customersCore from '@pkg/core';
 import {
   CustomerCreateInput as CoreCustomerCreateInput,
   type CustomerCreateInput as CoreCustomerCreateInputType,
-  Customer,
+  type Customer,
   CustomerCompanyName,
   CustomerEmail,
   CustomerOptionalText,
@@ -12,7 +12,12 @@ import { z } from 'zod';
 
 import { requireAiV2ActorId } from '@/v2/actor.js';
 import type { AiV2Context } from '@/v2/context.js';
-import { createCustomerAppHref, InternalAppHref } from '@/v2/entity-links.js';
+
+import {
+  CustomerResponse as SharedCustomerResponse,
+  type CustomerResponse as SharedCustomerResponseType,
+  toCustomerResponse,
+} from './customer-response.js';
 
 export type CreateCustomerInput = z.infer<typeof CreateCustomerInput>;
 export const CreateCustomerInput = z
@@ -27,29 +32,15 @@ export const CreateCustomerInput = z
   })
   .strict();
 
-export type CreateCustomerResponse = z.infer<typeof CreateCustomerResponse>;
-export const CreateCustomerResponse = Customer.pick({
-  address: true,
-  companyName: true,
-  contactPerson: true,
-  createdAt: true,
-  email: true,
-  id: true,
-  notes: true,
-  phone: true,
-  updatedAt: true,
-  vatNumber: true,
-}).extend({ links: z.object({ app: InternalAppHref }) });
+export type CreateCustomerResponse = SharedCustomerResponseType;
+export const CreateCustomerResponse = SharedCustomerResponse;
 
 export function toCoreCustomerCreateInput(input: CreateCustomerInput): CoreCustomerCreateInputType {
   return CoreCustomerCreateInput.parse({ ...input, thumbnailDataUrl: null });
 }
 
 export function toCreateCustomerResponse(customer: Customer): CreateCustomerResponse {
-  return CreateCustomerResponse.parse({
-    ...customer,
-    links: { app: createCustomerAppHref(customer.id) },
-  });
+  return toCustomerResponse(customer);
 }
 
 export const createCustomerDefinition = {
@@ -62,7 +53,7 @@ export const createCustomerDefinition = {
   ].join('\n'),
   inputSchema: CreateCustomerInput,
   outputSchema: CreateCustomerResponse,
-  requiredPermission: ['customer:create'],
+  anyOfPermissions: ['customer:create'],
   async handler(args: unknown, ctx: AiV2Context): Promise<CreateCustomerResponse> {
     const input = toCoreCustomerCreateInput(CreateCustomerInput.parse(args));
     const customer = await customersCore.createCustomer({

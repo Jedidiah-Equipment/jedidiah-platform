@@ -47,10 +47,9 @@ export function toFindProductsResponse(result: ProductListResult): FindProductsR
 export const findProductsDefinition = {
   name: 'findProducts',
   description: [
-    'Find lightweight Product references by free-text search.',
-    'Returns only the Product id, name, model code, and app link.',
-    'Use this to identify the right Product; use getProduct with its id when full Product details are needed.',
-    'Search matches Product name, model code, description, or UUID.',
+    'Search for Products by name, model code, description, or UUID.',
+    'Returns lightweight matches containing only the Product id, name, model code, and app link.',
+    'This tool does not return full Product details. Call getProduct with the selected id when those details are needed.',
   ].join('\n'),
   inputSchema: FindProductsInput,
   outputSchema: FindProductsResponse,

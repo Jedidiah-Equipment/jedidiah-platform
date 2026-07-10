@@ -15,8 +15,9 @@ const RANGE_ID = '00000000-0000-4000-8000-000000000002';
 describe('findProducts v2 contract', () => {
   test('describes the lightweight find-before-get workflow', () => {
     expect(findProductsDefinition.name).toBe('findProducts');
+    expect(findProductsDefinition.description).toContain('name, model code, description, or UUID');
     expect(findProductsDefinition.description).toContain('lightweight');
-    expect(findProductsDefinition.description).toContain('use getProduct');
+    expect(findProductsDefinition.description).toContain('Call getProduct');
     expect(findProductsDefinition.description).toContain('full Product details');
   });
 

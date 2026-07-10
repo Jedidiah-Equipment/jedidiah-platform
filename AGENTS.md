@@ -26,6 +26,7 @@
 - Assume the `gh` CLI is installed and authenticated.
 - Use `/blast-it` when publishing normal changes for review. It standardizes commit messages and PR titles, keeps `Closes #<issue-number>` in PR bodies when applicable, and marks the PR ready for review.
 - When `/blast-it` or "stage everything" is requested, inspect the full diff and stage with `git add -A` unless the user asks for narrower scope.
+- Production deploys by fast-forwarding `production` to the exact commit on `origin/main`: check with `pnpm release:production:check`, release with `pnpm release:production`, and never merge, squash, cherry-pick, or resolve conflicts on `production`.
 
 ## Project Docs
 

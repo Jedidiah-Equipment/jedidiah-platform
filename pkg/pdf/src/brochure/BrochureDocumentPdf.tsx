@@ -1,21 +1,16 @@
-import {
-  type BrochureDocumentImage,
-  type BrochureDocumentModel,
-  type Locale,
-  PRODUCT_KEY_FEATURES_MAX_COUNT,
-} from '@pkg/schema';
+import { type BrochureDocumentImage, type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg/schema';
 import { Document, Image, Page, Path, StyleSheet, type Styles, Svg, Text, View } from '@react-pdf/renderer';
 
 import { pdfFontFamily, pdfTitleFontFamily } from '../pdf-fonts.js';
 import { jedidiahFooterBannerSrc, jedidiahLogoSrc } from '../pdf-logo.js';
 import { pdfColors, pdfFontSize, pdfFontWeight, pdfLineHeight } from '../quote-document/pdf-theme.js';
 import { brochureMessages } from './messages/index.js';
+import type { Messages } from './messages/types.js';
 
 type Style = Styles[string];
 
 type BrochureDocumentPdfProps = {
   document: BrochureDocumentModel;
-  locale?: Locale;
 };
 
 type ImageFit = NonNullable<BrochureDocumentImage>['fit'];
@@ -341,17 +336,17 @@ const styles = StyleSheet.create({
   },
 });
 
-export function BrochureDocumentPdf({ document, locale = 'en' }: BrochureDocumentPdfProps) {
+export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
   const hasColumns = document.standardAssemblies.length > 0 || document.optionalAssemblies.length > 0;
   const coverLayout = getCoverLayout(document.keyFeatures, document.title);
   const detailLayout = getDetailLayout(document);
-  const messages = brochureMessages[locale];
+  const messages = brochureMessages[document.locale];
 
   return (
     <Document
       author="Jedidiah Equipment"
       creator="Jedidiah Platform"
-      language={locale}
+      language={document.locale}
       producer="Jedidiah Platform"
       subject={`${messages.subject} ${document.modelCode}`}
       title={document.title}
@@ -778,7 +773,7 @@ function SpecColumn({
   );
 }
 
-function Footer({ messages }: { messages: (typeof brochureMessages)[Locale] }) {
+function Footer({ messages }: { messages: Messages }) {
   return (
     <View style={styles.footer}>
       <Image src={jedidiahFooterBannerSrc} style={styles.footerBackground} />

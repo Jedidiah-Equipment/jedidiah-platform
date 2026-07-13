@@ -7,7 +7,7 @@ import {
 } from '@pkg/core';
 import { isBrochureReady } from '@pkg/domain';
 import { renderBrochurePdf } from '@pkg/pdf';
-import { Locale, UUID } from '@pkg/schema';
+import { CANONICAL_LOCALE, Locale, UUID } from '@pkg/schema';
 
 import { getDb } from '../runtime/db.js';
 import { getStorage } from '../runtime/storage.js';
@@ -37,7 +37,7 @@ export function brochureResponse(brochure: BrochurePreviewResult | null): Respon
 }
 
 export function resolveBrochureLocale(requestUrl: string): Locale {
-  return Locale.catch('en').parse(new URL(requestUrl).searchParams.get('locale'));
+  return Locale.catch(CANONICAL_LOCALE).parse(new URL(requestUrl).searchParams.get('locale'));
 }
 
 // Server-only handler for the public brochure download route. Serves the PDF only when the Product's
@@ -45,7 +45,7 @@ export function resolveBrochureLocale(requestUrl: string): Locale {
 // incomplete, or unknown Product all yield a 404 rather than leaking a brochure via a guessed id (the
 // detail page exposes the Product id in its image URLs). Kept out of the route module so @pkg/pdf (and
 // react-pdf) stay off the client bundle.
-export async function serveProductBrochure(productId: string, locale: Locale = 'en'): Promise<Response> {
+export async function serveProductBrochure(productId: string, locale: Locale): Promise<Response> {
   const parsed = UUID.safeParse(productId);
   if (!parsed.success) {
     return brochureResponse(null);

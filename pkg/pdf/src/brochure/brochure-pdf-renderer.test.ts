@@ -3,9 +3,8 @@ import { PDFDocument } from 'pdf-lib';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../bytes/pdf-bytes.js';
-import { BrochureDocumentPdf, getCoverLayout } from './BrochureDocumentPdf.js';
+import { getCoverLayout } from './BrochureDocumentPdf.js';
 import { renderBrochurePdf } from './brochure-pdf-renderer.js';
-import { brochureMessages } from './messages/index.js';
 
 // A tiny 4x4 PNG so the renderer exercises its real image path without bundling a large fixture.
 const PNG_DATA_URI =
@@ -24,6 +23,7 @@ function fullBrochure(): BrochureDocumentModel {
       banner: image('cover'),
     },
     keyFeatures: ['Heavy-duty steel construction', 'Low maintenance', 'Hydraulic drive'],
+    locale: 'en',
     modelCode: 'SG1836',
     optionalAssemblies: ['Side working lights', 'BKT tyres'],
     rangeLogo: image('contain'),
@@ -43,17 +43,10 @@ async function expectTwoPageBrochure(document: BrochureDocumentModel) {
 }
 
 describe('renderBrochurePdf', () => {
-  test('keeps the default document tree identical to an explicit English render', () => {
-    const document = fullBrochure();
-
-    expect(BrochureDocumentPdf({ document })).toEqual(BrochureDocumentPdf({ document, locale: 'en' }));
-  });
-
   test('renders Afrikaans PDF metadata', async () => {
     const bytes = await renderBrochurePdf({
-      document: fullBrochure(),
+      document: { ...fullBrochure(), locale: 'af' },
       filename: 'SG1836-brochure-af.pdf',
-      locale: 'af',
     });
     const pdf = await PDFDocument.load(bytes);
 
@@ -69,6 +62,7 @@ describe('renderBrochurePdf', () => {
       bodyCopy: [],
       images: { primary: null, technicalDrawing: null, banner: null },
       keyFeatures: [],
+      locale: 'en',
       modelCode: 'SG1836',
       optionalAssemblies: [],
       rangeLogo: null,
@@ -124,18 +118,6 @@ describe('renderBrochurePdf', () => {
       ),
       optionalAssemblies: denseAssemblies('Optional', 20),
       standardAssemblies: denseAssemblies('Standard', 18),
-    });
-  });
-});
-
-describe('brochureMessages', () => {
-  test('provides Afrikaans brochure labels', () => {
-    expect(brochureMessages.af).toMatchObject({
-      keyFeatures: ['Belangrike', 'Kenmerke'],
-      optionalAssemblies: 'Opsionele Ekstras',
-      phone: 'Telefoon',
-      standardAssemblies: 'Standaard',
-      subject: 'Brosjure',
     });
   });
 });

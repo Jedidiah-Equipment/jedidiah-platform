@@ -78,6 +78,7 @@ describe('getBrochureDocumentModel', () => {
 
     const document = await getBrochureDocumentModel({
       images: {},
+      locale: 'en',
       product: brochureProduct(),
       rangeLogo: rangeLogo.ref,
       storage: rangeLogo.storage,
@@ -96,6 +97,7 @@ describe('getBrochureDocumentModel', () => {
 
     const document = await getBrochureDocumentModel({
       images: {},
+      locale: 'en',
       product: brochureProduct(),
       rangeLogo: rangeLogo.ref,
       storage: rangeLogo.storage,

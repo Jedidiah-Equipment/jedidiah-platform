@@ -21,15 +21,14 @@ type ImageFit = NonNullable<BrochureDocumentImage>['fit'];
 
 async function main() {
   const outputPath = outputPathFromArg(process.argv[2]);
-  const locale = fixtureLocale();
   const variant = fixtureVariant();
-  const document = withTitleOverride(await fixtureDocument(variant));
-  const bytes = await renderBrochurePdf({ document, filename: path.basename(outputPath), locale });
+  const document = withTitleOverride(await fixtureDocument(variant, fixtureLocale()));
+  const bytes = await renderBrochurePdf({ document, filename: path.basename(outputPath) });
 
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, bytes);
 
-  console.log(`Rendered ${variant} ${locale} fixture (${bytes.byteLength} bytes) to ${outputPath}`);
+  console.log(`Rendered ${variant} ${document.locale} fixture (${bytes.byteLength} bytes) to ${outputPath}`);
 }
 
 function withTitleOverride(document: BrochureDocumentModel): BrochureDocumentModel {
@@ -46,7 +45,7 @@ function withTitleOverride(document: BrochureDocumentModel): BrochureDocumentMod
   };
 }
 
-async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumentModel> {
+async function fixtureDocument(variant: FixtureVariant, locale: Locale): Promise<BrochureDocumentModel> {
   const document: BrochureDocumentModel = {
     bodyCopy: [
       "1836 Plus Crosshaul Silage and Grain trailers feature a robust construction designed and developed to work in any demanding conditions. Whether you're moving grain at high speed or silage in uneven fields, these trailers are perfectly balanced and every detail carefully considered.",
@@ -58,6 +57,7 @@ async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumen
       technicalDrawing: await imageFromEnv('BROCHURE_TECHNICAL_IMAGE', 'contain'),
     },
     keyFeatures: ['Pay load: 18 tons', 'Volume standard: 25 cubic meters', 'Volume with extensions: 36 cubic meters'],
+    locale,
     modelCode: 'SG1836',
     rangeLogo: await imageFromEnv('BROCHURE_RANGE_LOGO_IMAGE', 'contain'),
     optionalAssemblies: [

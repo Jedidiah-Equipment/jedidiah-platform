@@ -20,6 +20,9 @@ export type BrochureDocumentModel = {
   bodyCopy: string[];
   images: BrochureDocumentImages;
   keyFeatures: string[];
+  // The locale the catalog copy was resolved in; the renderer keys its own chrome (labels, PDF
+  // metadata language) off this so a document can never mix locales.
+  locale: Locale;
   modelCode: string;
   optionalAssemblies: string[];
   // The top-right logo, resolved from the owning Product Range's image. Null when the Range has no image.
@@ -33,8 +36,4 @@ export type BrochureDocumentModel = {
 
 // Renders a resolved Brochure model into PDF bytes. Mirrors {@link QuoteDocumentPdfRenderer}: a pure
 // function the API injects so @pkg/core never imports @react-pdf/renderer.
-export type BrochurePdfRenderer = (input: {
-  document: BrochureDocumentModel;
-  filename: string;
-  locale?: Locale;
-}) => Promise<Uint8Array>;
+export type BrochurePdfRenderer = (input: { document: BrochureDocumentModel; filename: string }) => Promise<Uint8Array>;

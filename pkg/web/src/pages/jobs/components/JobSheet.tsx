@@ -322,6 +322,12 @@ const ScheduleTimelineItem: React.FC<{
   slot: JobScheduleSlot;
 }> = ({ bayName, department, isFirst, isLast, isNext, slot }) => {
   const tone = scheduleTimelineTone[slot.state === 'active' ? 'active' : isNext ? 'next' : slot.state];
+  const breakdownNote = [
+    slot.dayBreakdown.closureDays > 0 ? `${slot.dayBreakdown.closureDays}d closure` : null,
+    slot.dayBreakdown.overtimeDays > 0 ? `${slot.dayBreakdown.overtimeDays}d overtime` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <div className="flex gap-3">
@@ -348,9 +354,14 @@ const ScheduleTimelineItem: React.FC<{
           <CardSeparator />
           <div className="flex min-w-0 items-center gap-3 px-3 py-2">
             <OperatorValue operator={slot.operator} />
-            <span className="min-w-0 flex-1 truncate tabular-nums">
-              {formatDate(slot.startDate, 'short')} to {formatDate(slot.endDate, 'short')}
-            </span>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate tabular-nums">
+                {formatDate(slot.startDate, 'short')} to {formatDate(slot.endDate, 'short')}
+              </span>
+              {breakdownNote ? (
+                <span className="truncate text-muted-foreground text-xs tabular-nums">incl. {breakdownNote}</span>
+              ) : null}
+            </div>
             <span className="shrink-0 tabular-nums">{slot.durationDays}d</span>
           </div>
         </Card>

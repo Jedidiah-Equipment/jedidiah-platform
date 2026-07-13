@@ -10,6 +10,7 @@ import {
   type BrochureDocumentImages,
   type BrochureDocumentModel,
   type BrochurePdfRenderer,
+  CANONICAL_LOCALE,
   type Locale,
   PRODUCT_IMAGE_SLOT_SPECS,
   type Product,
@@ -35,16 +36,15 @@ export type BrochurePreviewResult = {
  * Renders the on-the-fly Brochure preview PDF for a Product WITHOUT persisting it. Gated on the shared
  * completeness predicate: an incomplete brochure throws {@link ProductBrochureIncompleteError} rather
  * than producing a partial document. The PDF renderer is injected so @pkg/core never imports react-pdf.
+ * Always renders the canonical locale: previews back internal document flows, not the public site.
  */
 export async function renderProductBrochurePreview({
   db,
-  locale = 'en',
   pdfRenderer,
   productId,
   storage,
 }: {
   db: Db;
-  locale?: Locale;
   pdfRenderer: BrochurePdfRenderer;
   productId: UUID;
   storage: StorageAdapter;
@@ -57,7 +57,7 @@ export async function renderProductBrochurePreview({
     throw new ProductBrochureIncompleteError(productId, completeness.missingFields);
   }
 
-  return renderBrochureForProduct({ images, locale, pdfRenderer, product, rangeLogo, storage });
+  return renderBrochureForProduct({ images, locale: CANONICAL_LOCALE, pdfRenderer, product, rangeLogo, storage });
 }
 
 /**
@@ -68,13 +68,13 @@ export async function renderProductBrochurePreview({
  */
 export async function generateProductBrochureIfComplete({
   db,
-  locale = 'en',
+  locale,
   pdfRenderer,
   productId,
   storage,
 }: {
   db: Db;
-  locale?: Locale;
+  locale: Locale;
   pdfRenderer: BrochurePdfRenderer;
   productId: UUID;
   storage: StorageAdapter;
@@ -90,17 +90,16 @@ export async function generateProductBrochureIfComplete({
 
 /**
  * Generates a brochure for immutable Quote/Job document packets from the referenced Product row, even
- * after that Product has been removed from active catalog flows.
+ * after that Product has been removed from active catalog flows. Document packets are always rendered
+ * in the canonical locale, so no locale is accepted here.
  */
 export async function generateHistoricalProductBrochureIfComplete({
   db,
-  locale = 'en',
   pdfRenderer,
   productId,
   storage,
 }: {
   db: Db;
-  locale?: Locale;
   pdfRenderer: BrochurePdfRenderer;
   productId: UUID;
   storage: StorageAdapter;
@@ -111,7 +110,7 @@ export async function generateHistoricalProductBrochureIfComplete({
     return null;
   }
 
-  return renderBrochureForProduct({ images, locale, pdfRenderer, product, rangeLogo, storage });
+  return renderBrochureForProduct({ images, locale: CANONICAL_LOCALE, pdfRenderer, product, rangeLogo, storage });
 }
 
 /**
@@ -185,8 +184,9 @@ async function renderBrochureForProduct({
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
   const document = await getBrochureDocumentModel({ images, locale, product, rangeLogo, storage });
-  const filename = `${product.modelCode}-brochure${locale === 'en' ? '' : `-${locale}`}.pdf`;
-  const bytes = await pdfRenderer({ document, filename, locale });
+  const localeSuffix = document.locale === CANONICAL_LOCALE ? '' : `-${document.locale}`;
+  const filename = `${product.modelCode}-brochure${localeSuffix}.pdf`;
+  const bytes = await pdfRenderer({ document, filename });
 
   return { bytes, filename };
 }
@@ -200,13 +200,13 @@ async function renderBrochureForProduct({
  */
 export async function getBrochureDocumentModel({
   images,
-  locale = 'en',
+  locale,
   product,
   rangeLogo: rangeLogoRef,
   storage,
 }: {
   images: ProductImageStore;
-  locale?: Locale;
+  locale: Locale;
   product: Product;
   rangeLogo: StoredFile | null;
   storage: StorageAdapter;
@@ -235,6 +235,7 @@ export async function getBrochureDocumentModel({
     bodyCopy: toDisplayLines(localized.description),
     images: resolvedImages,
     keyFeatures: localized.keyFeatures,
+    locale,
     modelCode: product.modelCode,
     optionalAssemblies: assemblyNames('optional'),
     rangeLogo,

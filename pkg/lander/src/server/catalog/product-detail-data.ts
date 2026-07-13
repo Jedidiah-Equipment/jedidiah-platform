@@ -2,7 +2,7 @@ import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import { isBrochureReady, isLanderReady, localizeFields } from '@pkg/domain';
 import type { AssemblyKind, ProductImageSlot } from '@pkg/schema';
-import type { Locale } from '../../lib/locale.js';
+import { CANONICAL_LOCALE, type Locale } from '../../lib/locale.js';
 import { OG_IMAGE_FORMAT } from '../media/image-transform.js';
 import { type CatalogProduct, imageUrl, toCatalogProduct, toRangeSlug } from './products-data.js';
 
@@ -103,19 +103,15 @@ export async function loadProductDetail(db: Db, modelCode: string, locale: Local
     standardAssemblies: assemblyNames('standard'),
     optionalAssemblies: assemblyNames('optional'),
     keyFeatures: localized.keyFeatures,
-    brochureHref: brochureHref(fullProduct.id, locale, isBrochureReady(fullProduct)),
+    brochureHref: isBrochureReady(fullProduct) ? brochureHref(fullProduct.id, locale) : null,
     related,
   };
 }
 
-function brochureHref(productId: string, locale: Locale, ready: boolean): string | null {
-  if (!ready) {
-    return null;
-  }
-
+function brochureHref(productId: string, locale: Locale): string {
   const canonicalHref = `/downloads/products/${productId}/brochure`;
 
-  return locale === 'en' ? canonicalHref : `${canonicalHref}?locale=${locale}`;
+  return locale === CANONICAL_LOCALE ? canonicalHref : `${canonicalHref}?locale=${locale}`;
 }
 
 function productImageUrl(productId: string, slot: ProductImageSlot, updatedAt: string | null | undefined): string {

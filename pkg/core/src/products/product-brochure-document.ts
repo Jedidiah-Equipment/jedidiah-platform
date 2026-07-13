@@ -13,6 +13,7 @@ import {
   type Product,
   type UUID,
 } from '@pkg/schema';
+import sharp from 'sharp';
 
 import {
   createDocumentRecord,
@@ -200,8 +201,7 @@ export async function getBrochureDocumentModel({
 }): Promise<BrochureDocumentModel> {
   const [resolvedImages, rangeLogo] = await Promise.all([
     resolveBrochureImages({ store: images, storage }),
-    // The Range logo fits without cropping, matching the old per-product range-logo slot.
-    resolveStoredImage({ fit: 'contain', ref: rangeLogoRef, storage }),
+    resolveRangeLogo({ ref: rangeLogoRef, storage }),
   ]);
 
   return {
@@ -242,8 +242,57 @@ async function resolveBrochureImages({
   return Object.fromEntries(entries) as BrochureDocumentImages;
 }
 
-// Reads a stored image's bytes and inlines them as a base64 data URI with the given render fit, or
-// returns null when there is no image. Shared by the Brochure slots and the Range logo.
+async function resolveRangeLogo({
+  ref,
+  storage,
+}: {
+  ref: StoredFile | null;
+  storage: StorageAdapter;
+}): Promise<BrochureDocumentImage> {
+  if (!ref) {
+    return null;
+  }
+
+  const bytes = await readStoredObjectBytes(storage, ref.storageKey);
+  const normalizedBytes = await trimExcessRangeLogoPadding(bytes);
+  const dataUri = `data:${ref.contentType};base64,${Buffer.from(normalizedBytes).toString('base64')}`;
+
+  return { dataUri, fit: 'contain' };
+}
+
+async function trimExcessRangeLogoPadding(bytes: Uint8Array): Promise<Uint8Array> {
+  try {
+    const metadata = await sharp(bytes).metadata();
+
+    if (!metadata.height || !metadata.width) {
+      return bytes;
+    }
+
+    const backgroundPixel = await sharp(bytes)
+      .ensureAlpha()
+      .extract({ height: 1, left: 0, top: 0, width: 1 })
+      .raw()
+      .toBuffer();
+    const [red = 0, green = 0, blue = 0, alpha = 255] = backgroundPixel;
+    const hasTrimmableBackground = alpha <= 10 || Math.min(red, green, blue) >= 240;
+
+    if (!hasTrimmableBackground) {
+      return bytes;
+    }
+
+    const trimmed = await sharp(bytes).trim({ lineArt: true }).toBuffer({ resolveWithObject: true });
+    const isWideMarkOnPaddedCanvas =
+      trimmed.info.height <= metadata.height * 0.5 && trimmed.info.width >= metadata.width * 0.5;
+
+    // Only collapse strongly vertical padding around a wide mark. Square badge backgrounds are part of
+    // their logo artwork and must keep their canvas rather than being cropped down to their lettering.
+    return isWideMarkOnPaddedCanvas ? trimmed.data : bytes;
+  } catch {
+    // Normalization is best-effort; an image React-PDF previously accepted must not block the brochure.
+    return bytes;
+  }
+}
+
 async function resolveStoredImage({
   fit,
   ref,

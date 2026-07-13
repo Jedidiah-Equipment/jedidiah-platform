@@ -4,11 +4,13 @@ import { IconMapPin, IconMenu2, IconPhone, IconX } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
 
+import { useMessages } from '../messages/index.js';
+
 const LINKS = [
-  { label: 'Home', href: '/' },
-  { label: 'About Us', href: '/about' },
-  { label: 'Products', href: '/products' },
-  { label: 'Contact Us', href: '/contact' },
+  { key: 'home', href: '/' },
+  { key: 'about', href: '/about' },
+  { key: 'products', href: '/products' },
+  { key: 'contact', href: '/contact' },
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
@@ -24,14 +26,17 @@ function PinIcon() {
 }
 
 function Logo({ onNavigate }: { onNavigate: () => void }) {
+  const m = useMessages();
+
   return (
     <Link to="/" onClick={onNavigate} className="flex flex-none items-center no-underline">
-      <img src={logoUrl} alt="Jedidiah Equipment" className="h-11 w-auto max-nav:h-9" />
+      <img src={logoUrl} alt={m.site.logoAlt} className="h-11 w-auto max-nav:h-9" />
     </Link>
   );
 }
 
 export function Nav() {
+  const m = useMessages();
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
@@ -51,7 +56,7 @@ export function Nav() {
                   active ? 'text-yellow' : 'text-[#cfcfcf] hover:text-white'
                 }`}
               >
-                {link.label}
+                {m.nav[link.key]}
                 {active ? <span className="absolute right-0 -bottom-0.5 left-0 h-[3px] bg-yellow" /> : null}
               </Link>
             );
@@ -72,7 +77,7 @@ export function Nav() {
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          aria-label="Menu"
+          aria-label={m.nav.menuLabel}
           aria-expanded={open}
           className="hidden h-[46px] w-[46px] flex-none items-center justify-center border-[1.5px] border-[#3a3a3a] bg-transparent max-nav:flex"
         >
@@ -98,7 +103,7 @@ export function Nav() {
                     active ? 'text-yellow' : 'text-[#cfcfcf]'
                   }`}
                 >
-                  {link.label}
+                  {m.nav[link.key]}
                 </Link>
               );
             })}

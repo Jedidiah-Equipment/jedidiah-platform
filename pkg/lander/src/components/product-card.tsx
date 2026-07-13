@@ -1,11 +1,13 @@
 import { IconArrowRight } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-
+import { useMessages } from '../messages/index.js';
 import type { CatalogProduct } from '../server/catalog/products-data.js';
 
 // Reusable Product card shared by the Products page (and, later, related-Product strips). The image route
 // streams the brochure hero or a neutral brand placeholder, so the image never renders broken.
 export function ProductCard({ product }: { product: CatalogProduct }) {
+  const m = useMessages();
+
   return (
     // The <Link> is the (stationary) hover target; the lift lives on the inner card. Transforming the link
     // itself would slide its bottom edge out from under the cursor and flicker the hover on/off.
@@ -30,7 +32,7 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
             {product.description}
           </p>
           <span className="flex items-center gap-3 font-display text-[15px] font-bold uppercase tracking-[1.5px] text-ink">
-            View Details
+            {m.productCard.viewDetails}
             <IconArrowRight
               className="text-gold transition-transform duration-300 ease-out group-hover:translate-x-2"
               size={24}

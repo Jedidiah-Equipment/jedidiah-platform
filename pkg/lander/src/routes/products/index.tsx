@@ -5,6 +5,8 @@ import { ProductCard } from '../../components/product-card.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
 import { VariantFilterBar } from '../../components/variant-filter-bar.js';
 import { seoHead } from '../../lib/seo.js';
+import { en } from '../../messages/en.js';
+import { useMessages } from '../../messages/index.js';
 import { getProductsCatalog } from '../../server/catalog/products.js';
 import type { CatalogGroup, CatalogVariant } from '../../server/catalog/products-data.js';
 
@@ -19,9 +21,8 @@ type ProductsCatalogView = {
 export const Route = createFileRoute('/products/')({
   head: () =>
     seoHead({
-      title: 'Products — Jedidiah Equipment',
-      description:
-        'Trailers, tanks, tillage and planting equipment — engineered and built in South Africa for the toughest conditions.',
+      title: en.products.pageTitle,
+      description: en.products.metaDescription,
       path: '/products',
     }),
   validateSearch: (search: Record<string, unknown>): ProductsSearch => ({
@@ -61,12 +62,11 @@ export function resolveProductsCatalogView(groups: CatalogGroup[], search: Produ
 }
 
 function PageHeader() {
+  const m = useMessages();
+
   return (
-    <PageHero eyebrow="The full range" title="Our Products">
-      <p className="m-0">
-        Trailers, tanks, tillage and planting equipment — engineered and built in South Africa for the toughest
-        conditions.
-      </p>
+    <PageHero eyebrow={m.products.heroEyebrow} title={m.products.heroTitle}>
+      <p className="m-0">{m.products.heroBody}</p>
     </PageHero>
   );
 }
@@ -96,13 +96,15 @@ function FilterBar({
   activeVariant: CatalogVariant | undefined;
   groups: CatalogGroup[];
 }) {
+  const m = useMessages();
+
   return (
     <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-nav:top-16">
       <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
         <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
-          Filter by range
+          {m.products.filterByRange}
         </span>
-        <FilterChip active={activeSlug === undefined} label="All" search={{}} />
+        <FilterChip active={activeSlug === undefined} label={m.products.allChip} search={{}} />
         {groups.map((group) => (
           <FilterChip
             key={group.id}
@@ -118,6 +120,8 @@ function FilterBar({
 }
 
 function ProductGroup({ group }: { group: CatalogGroup }) {
+  const m = useMessages();
+
   return (
     <div className="mb-16 last:mb-0">
       <div className="mb-7 flex flex-wrap items-end gap-x-[18px] gap-y-1.5 border-b-2 border-ink pb-[18px]">
@@ -126,7 +130,7 @@ function ProductGroup({ group }: { group: CatalogGroup }) {
         </h2>
         {group.description ? <span className="pb-1 font-body text-[15px] text-[#777]">{group.description}</span> : null}
         <span className="ml-auto pb-1 font-display text-[14px] font-semibold uppercase tracking-[1px] text-[#999] max-nav:ml-0">
-          {group.count} {group.count === 1 ? 'model' : 'models'}
+          {m.products.modelCount(group.count)}
         </span>
       </div>
       <div className="grid grid-cols-3 gap-6 max-nav:grid-cols-2 max-xs:grid-cols-1">

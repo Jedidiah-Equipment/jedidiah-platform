@@ -2,17 +2,18 @@ import { EmailAddress, requiredTrimmedText } from '@pkg/schema';
 import { Resend } from 'resend';
 import { z } from 'zod';
 
+import { en } from '../../messages/en.js';
 import { getLanderConfig } from '../runtime/env.js';
 
 // The enquiry form payload. Name, email, and message are required; phone and equipment are optional
 // context. Lengths are capped so a malformed or abusive body is rejected before any Resend call.
 export type ContactLead = z.infer<typeof ContactLead>;
 export const ContactLead = z.object({
-  name: requiredTrimmedText('Please enter your name').max(120),
+  name: requiredTrimmedText(en.contact.validation.enterName).max(120),
   email: EmailAddress.pipe(z.string().max(200)),
   phone: z.string().trim().max(40).default(''),
   equipment: z.string().trim().max(120).default(''),
-  message: requiredTrimmedText('Please enter a message').max(4000),
+  message: requiredTrimmedText(en.contact.validation.enterMessage).max(4000),
 });
 
 // Resolved Resend settings for the Contact form, or null when no API key is configured. Returning null
@@ -104,24 +105,24 @@ export async function handleContactRequest(
   try {
     body = await request.json();
   } catch {
-    return jsonResponse({ error: 'Expected a JSON request body' }, 400);
+    return jsonResponse({ error: en.contact.validation.expectedJson }, 400);
   }
 
   const parsed = ContactLead.safeParse(body);
   if (!parsed.success) {
-    return jsonResponse({ error: 'Please check the form and try again', issues: z.treeifyError(parsed.error) }, 400);
+    return jsonResponse({ error: en.contact.validation.checkForm, issues: z.treeifyError(parsed.error) }, 400);
   }
 
   const config = deps.config === undefined ? getContactEmailConfig() : deps.config;
   if (!config) {
-    return jsonResponse({ error: 'The contact form is not available right now. Please email us directly.' }, 503);
+    return jsonResponse({ error: en.contact.validation.unavailable }, 503);
   }
 
   const send = deps.send ?? sendContactLeadViaResend;
   try {
     await send(parsed.data, config);
   } catch {
-    return jsonResponse({ error: 'We could not send your message. Please try again or email us directly.' }, 502);
+    return jsonResponse({ error: en.contact.validation.sendFailed }, 502);
   }
 
   return jsonResponse({ ok: true }, 200);

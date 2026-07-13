@@ -21,7 +21,7 @@ export function createCatalogTranslationRunner({
 }): (key: CatalogTranslationKey) => Promise<CatalogTranslationRunResult> {
   return async (key) => {
     const source = await loadCatalogTranslationSource({ db, key });
-    if (!source || source.current) return 'skipped';
+    if (!source || source.state === 'fresh') return 'skipped';
 
     if (source.kind === 'product') {
       const translation = await translateProductBundleToAfrikaans({ model, source: source.canonical });

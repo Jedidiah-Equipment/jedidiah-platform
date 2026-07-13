@@ -31,6 +31,7 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { productRangesPageDescription } from '@/utils/page-descriptions.js';
+import { CatalogTranslationHealth } from './components/CatalogTranslationHealth.js';
 import { RangeThumbnail } from './components/RangeThumbnail.js';
 import { ProductRangeFormValues, toProductRangeCreateInput } from './components/types.js';
 
@@ -132,6 +133,7 @@ export const ProductRangesPage: React.FC = () => {
         size="lg"
         title="Product Ranges"
       >
+        {canUpdateRanges ? <CatalogTranslationHealth /> : null}
         {orderedRanges.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
             No Product Ranges yet.

@@ -16,6 +16,7 @@ import { Route as HealthRouteImport } from './routes/health'
 import { Route as Char123LocaleChar125IndexRouteImport } from './routes/{-$locale}/index'
 import { Route as Char123LocaleChar125ContactRouteImport } from './routes/{-$locale}/contact'
 import { Route as Char123LocaleChar125AboutRouteImport } from './routes/{-$locale}/about'
+import { Route as LocaleLocaleRouteImport } from './routes/locale/$locale'
 import { Route as InfoSplatRouteImport } from './routes/info/$'
 import { Route as ApiContactRouteImport } from './routes/api/contact'
 import { Route as Char123LocaleChar125ProductsIndexRouteImport } from './routes/{-$locale}/products/index'
@@ -63,6 +64,11 @@ const Char123LocaleChar125AboutRoute =
     path: '/about',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
+const LocaleLocaleRoute = LocaleLocaleRouteImport.update({
+  id: '/locale/$locale',
+  path: '/locale/$locale',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InfoSplatRoute = InfoSplatRouteImport.update({
   id: '/info/$',
   path: '/info/$',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
   '/api/contact': typeof ApiContactRoute
   '/info/$': typeof InfoSplatRoute
+  '/locale/$locale': typeof LocaleLocaleRoute
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
   '/{-$locale}/contact': typeof Char123LocaleChar125ContactRoute
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/contact': typeof ApiContactRoute
   '/info/$': typeof InfoSplatRoute
+  '/locale/$locale': typeof LocaleLocaleRoute
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
   '/{-$locale}/contact': typeof Char123LocaleChar125ContactRoute
   '/{-$locale}': typeof Char123LocaleChar125IndexRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
   '/api/contact': typeof ApiContactRoute
   '/info/$': typeof InfoSplatRoute
+  '/locale/$locale': typeof LocaleLocaleRoute
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
   '/{-$locale}/contact': typeof Char123LocaleChar125ContactRoute
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/{-$locale}'
     | '/api/contact'
     | '/info/$'
+    | '/locale/$locale'
     | '/{-$locale}/about'
     | '/{-$locale}/contact'
     | '/{-$locale}/'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/api/contact'
     | '/info/$'
+    | '/locale/$locale'
     | '/{-$locale}/about'
     | '/{-$locale}/contact'
     | '/{-$locale}'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/{-$locale}'
     | '/api/contact'
     | '/info/$'
+    | '/locale/$locale'
     | '/{-$locale}/about'
     | '/{-$locale}/contact'
     | '/{-$locale}/'
@@ -218,6 +230,7 @@ export interface RootRouteChildren {
   Char123LocaleChar125Route: typeof Char123LocaleChar125RouteWithChildren
   ApiContactRoute: typeof ApiContactRoute
   InfoSplatRoute: typeof InfoSplatRoute
+  LocaleLocaleRoute: typeof LocaleLocaleRoute
   ImagesProductsProductIdRoute: typeof ImagesProductsProductIdRoute
   ImagesRangesRangeIdRoute: typeof ImagesRangesRangeIdRoute
   InfoStaticSplatRoute: typeof InfoStaticSplatRoute
@@ -274,6 +287,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$locale}/about'
       preLoaderRoute: typeof Char123LocaleChar125AboutRouteImport
       parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/locale/$locale': {
+      id: '/locale/$locale'
+      path: '/locale/$locale'
+      fullPath: '/locale/$locale'
+      preLoaderRoute: typeof LocaleLocaleRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/info/$': {
       id: '/info/$'
@@ -362,6 +382,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char123LocaleChar125Route: Char123LocaleChar125RouteWithChildren,
   ApiContactRoute: ApiContactRoute,
   InfoSplatRoute: InfoSplatRoute,
+  LocaleLocaleRoute: LocaleLocaleRoute,
   ImagesProductsProductIdRoute: ImagesProductsProductIdRoute,
   ImagesRangesRangeIdRoute: ImagesRangesRangeIdRoute,
   InfoStaticSplatRoute: InfoStaticSplatRoute,

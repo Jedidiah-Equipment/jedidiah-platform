@@ -5,10 +5,10 @@ import { describe, expect, test, vi } from 'vitest';
 import { routeTree } from '../routeTree.gen.js';
 
 vi.mock('../lib/site-origin.js', () => ({ siteOrigin: () => 'https://lander.example.test' }));
-vi.mock('../lib/locale-preference.js', () => ({
-  honorLocalePreference: () => undefined,
-  persistLocalePreference: () => undefined,
-}));
+vi.mock('../lib/locale-preference.js', async () => {
+  const actual = await vi.importActual<typeof import('../lib/locale-preference.js')>('../lib/locale-preference.js');
+  return { ...actual, honorLocalePreference: () => undefined };
+});
 vi.mock('../styles/app.css?url', () => ({ default: '/styles/app.css' }));
 vi.mock('../server/site/site-meta.js', () => ({ getSiteMeta: async () => ({ indexable: true }) }));
 vi.mock('../server/catalog/ranges.js', () => ({
@@ -81,6 +81,13 @@ describe('localized public routes', () => {
     expect(markup).not.toContain('Boere Bou vir Boere');
   });
 
+  test('renders language choices as server-backed links that work without client-side cookie writes', async () => {
+    const router = await routerAt('/about');
+    const markup = renderToStaticMarkup(<RouterProvider router={router} />);
+
+    expect(markup).toContain('href="/locale/af?returnTo=%2Faf%2Fabout"');
+  });
+
   test('rejects an unknown locale prefix instead of rendering English', async () => {
     const router = await routerAt('/fr/about');
 
@@ -112,6 +119,7 @@ describe('localized public routes', () => {
     ['/downloads/products/product-1/brochure', '/downloads/products/$productId/brochure'],
     ['/info/e', '/info/$'],
     ['/info/static/recorder.js', '/info/static/$'],
+    ['/locale/af?returnTo=%2Faf%2Fproducts', '/locale/$locale'],
   ])('keeps the non-page route %s outside the locale tree', (href, routeId) => {
     const router = createRouter({ routeTree, history: createMemoryHistory() });
 

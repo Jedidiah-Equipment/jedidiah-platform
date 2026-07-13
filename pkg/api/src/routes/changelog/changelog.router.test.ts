@@ -138,35 +138,53 @@ describe('changelog.markSeen', () => {
     });
   });
 
+  test('rejects a releasedAt that matches no released changelog', async ({ context }) => {
+    const real = changelog(daysAgo(3));
+    const caller = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED), {
+      changelogLoader: () => [real],
+    });
+
+    await expect(caller.changelog.markSeen({ releasedAt: '9999-01-01T00:00:00.000Z' })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+    expect(await readMark(context.db)).toBeNull();
+  });
+
   test('advances the high-water mark', async ({ context }) => {
-    const caller = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED));
-    const releasedAt = daysAgo(3);
+    const released = changelog(daysAgo(3));
+    const caller = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED), {
+      changelogLoader: () => [released],
+    });
 
-    await caller.changelog.markSeen({ releasedAt });
+    await caller.changelog.markSeen({ releasedAt: released.releasedAt });
 
-    expect(await readMark(context.db)).toEqual(new Date(releasedAt));
+    expect(await readMark(context.db)).toEqual(new Date(released.releasedAt));
   });
 
   test('does not regress the mark when called with an older release', async ({ context }) => {
-    const caller = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED));
-    const newer = daysAgo(3);
-    const older = daysAgo(20);
+    const newer = changelog(daysAgo(3));
+    const older = changelog(daysAgo(20));
+    const caller = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED), {
+      changelogLoader: () => [newer, older],
+    });
 
-    await caller.changelog.markSeen({ releasedAt: newer });
-    await caller.changelog.markSeen({ releasedAt: older });
+    await caller.changelog.markSeen({ releasedAt: newer.releasedAt });
+    await caller.changelog.markSeen({ releasedAt: older.releasedAt });
 
-    expect(await readMark(context.db)).toEqual(new Date(newer));
+    expect(await readMark(context.db)).toEqual(new Date(newer.releasedAt));
   });
 
   test('advances the mark forward on a newer release', async ({ context }) => {
-    const caller = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED));
-    const older = daysAgo(20);
-    const newer = daysAgo(3);
+    const older = changelog(daysAgo(20));
+    const newer = changelog(daysAgo(3));
+    const caller = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED), {
+      changelogLoader: () => [older, newer],
+    });
 
-    await caller.changelog.markSeen({ releasedAt: older });
-    await caller.changelog.markSeen({ releasedAt: newer });
+    await caller.changelog.markSeen({ releasedAt: older.releasedAt });
+    await caller.changelog.markSeen({ releasedAt: newer.releasedAt });
 
-    expect(await readMark(context.db)).toEqual(new Date(newer));
+    expect(await readMark(context.db)).toEqual(new Date(newer.releasedAt));
   });
 });
 

@@ -18,6 +18,13 @@ export const scheduleBarToneClass = {
   scheduled: 'border-emerald-500/70 ring-1 ring-emerald-500/25',
 } as const;
 
+/** Timeline status-dot fill; neutral covers complete and non-next future slots. */
+export const scheduleDotToneClass = {
+  active: 'bg-blue-500',
+  neutral: 'bg-muted-foreground/40',
+  scheduled: 'bg-emerald-500',
+} as const;
+
 /** Gantt resize-handle border/background for the highlighted tones. */
 export const scheduleResizeHandleToneClass = {
   active: 'border-blue-500/70 bg-blue-500/15 hover:bg-blue-500/25 focus-visible:ring-blue-500',

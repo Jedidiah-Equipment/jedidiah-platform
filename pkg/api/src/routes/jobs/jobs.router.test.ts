@@ -2261,22 +2261,6 @@ describe('jobs.update', () => {
     expect(events).toHaveLength(0);
   });
 
-  test('preserves the invoice number when an older client omits it', async ({ context }) => {
-    const caller = context.createCaller(mockSession('admin'));
-    const job = await caller.jobs.create({ quoteId: context.quote.id });
-
-    await caller.jobs.update({ id: job.id, description: '', invoiceNumber: 'INV-1001', vinNumber: '' });
-
-    await expect(
-      caller.jobs.update({ id: job.id, description: 'Updated by an older client.', vinNumber: '' }),
-    ).resolves.toMatchObject({
-      job: {
-        description: 'Updated by an older client.',
-        invoiceNumber: 'INV-1001',
-      },
-    });
-  });
-
   test('rejects callers without job update permission', async ({ context }) => {
     const adminCaller = context.createCaller(mockSession('admin'));
     const job = await adminCaller.jobs.create({

@@ -1,10 +1,5 @@
+import { CHANGELOG_WINDOW_DAYS } from '@pkg/schema';
 import { differenceInCalendarDays } from 'date-fns';
-
-/**
- * How long a Changelog stays displayable, and therefore how long its file stays bundled in the repo.
- * The reading surface applies its own display window; pruning here only drops files no longer needed.
- */
-export const CHANGELOG_MAX_AGE_DAYS = 30;
 
 export interface ChangelogFileRef {
   /** Path used to remove the file later. Opaque to selection. */
@@ -22,7 +17,7 @@ export interface ChangelogFileRef {
 export function selectStaleChangelogs(
   files: readonly ChangelogFileRef[],
   now: Date,
-  maxAgeDays: number = CHANGELOG_MAX_AGE_DAYS,
+  maxAgeDays: number = CHANGELOG_WINDOW_DAYS,
 ): string[] {
   return files
     .filter((file) => differenceInCalendarDays(now, new Date(file.releasedAt)) > maxAgeDays)

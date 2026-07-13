@@ -14,7 +14,6 @@ import {
   initialChangelogDialogState,
   primaryControlLabel,
   reduceChangelogControl,
-  shouldOpenChangelogDialog,
 } from './changelog-dialog-state.js';
 
 export const ChangelogDialog: React.FC = () => {
@@ -37,7 +36,7 @@ export const ChangelogDialog: React.FC = () => {
   // Open once when unseen changelogs arrive. `dismissed` holds it closed across navigation after any
   // interaction; a full reload remounts this component and resets the state.
   useEffect(() => {
-    if (!state.dismissed && unseenQuery.data && shouldOpenChangelogDialog(unseenQuery.data)) {
+    if (!state.dismissed && unseenQuery.data && unseenQuery.data.length > 0) {
       setState((current) => (current.open ? current : { ...current, open: true }));
     }
   }, [unseenQuery.data, state.dismissed]);

@@ -1,8 +1,22 @@
 import { formatDate } from '@pkg/domain';
-import type { Changelog } from '@pkg/schema';
+import type { Changelog, ChangelogSection, ChangelogSurface } from '@pkg/schema';
 import type React from 'react';
 
-import { changelogSurfaceLabels, orderedChangelogSections } from './changelog-dialog-state.js';
+/** Surface display order and labels for the dialog. */
+const CHANGELOG_SURFACE_ORDER = ['app', 'lander', 'mobile'] as const satisfies readonly ChangelogSurface[];
+
+const changelogSurfaceLabels: Record<ChangelogSurface, string> = {
+  app: 'App',
+  lander: 'Lander',
+  mobile: 'Mobile',
+};
+
+/** A release's sections in canonical Surface order, omitting Surfaces the release does not touch. */
+function orderedChangelogSections(changelog: Changelog): ChangelogSection[] {
+  return CHANGELOG_SURFACE_ORDER.flatMap((surface) =>
+    changelog.sections.filter((section) => section.surface === surface),
+  );
+}
 
 type ChangelogReleaseViewProps = {
   changelog: Changelog;

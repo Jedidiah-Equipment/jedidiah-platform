@@ -48,6 +48,11 @@ export function existingBasenames(dir: string): string[] {
   return jsonFilenames(dir).map((name) => name.slice(0, -'.json'.length));
 }
 
+/** The full paths of the changelog `*.json` files in `dir`. */
+export function listJsonPaths(dir: string): string[] {
+  return jsonFilenames(dir).map((name) => join(dir, name));
+}
+
 /** Writes a changelog to `<dir>/<basename>.json` (pretty-printed, trailing newline) and returns the path. */
 export function writeChangelogFile(dir: string, basename: string, changelog: Changelog): string {
   mkdirSync(dir, { recursive: true });

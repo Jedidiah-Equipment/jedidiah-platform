@@ -3,6 +3,14 @@ import { z } from 'zod';
 import { DateIso } from '../common/date.js';
 import { requiredTrimmedText } from '../common/text.js';
 
+/**
+ * How long a Changelog stays displayable after release, and therefore how long its file stays
+ * bundled in the repo. The display surface applies this as an exact server-time delta; release-time
+ * pruning applies it conservatively (strictly-older calendar days) so a file is never removed while
+ * still displayable.
+ */
+export const CHANGELOG_WINDOW_DAYS = 30;
+
 export type ChangelogSurface = z.infer<typeof ChangelogSurface>;
 export const ChangelogSurface = z.enum(['app', 'lander', 'mobile']);
 

@@ -5,7 +5,12 @@ import { DateIso, DateOnlyIso } from '../common/date.js';
 import { Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
-import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
+import {
+  nullableTrimmedText,
+  nullableTrimmedTextInput,
+  nullableTrimmedTextInputOptional,
+  requiredTrimmedText,
+} from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { JobDocument } from '../documents/document.js';
@@ -690,7 +695,7 @@ export const JobUpdateInput = z
   .object({
     id: UUID,
     description: nullableTrimmedTextInput(),
-    invoiceNumber: nullableTrimmedTextInput(),
+    invoiceNumber: nullableTrimmedTextInputOptional(),
     vinNumber: nullableTrimmedTextInput(),
   })
   .strict();

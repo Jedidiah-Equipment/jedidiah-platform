@@ -22,7 +22,7 @@ export const CatalogTranslationHealthCard: React.FC<CatalogTranslationHealthCard
   onRetranslate,
   status,
 }) => {
-  const total = status ? translationCount(status) : 0;
+  const total = status ? catalogTranslationHealthCount(status) : 0;
   const description = hasError
     ? 'Unable to load Afrikaans translation health.'
     : isLoading || !status
@@ -74,6 +74,6 @@ const TranslationCounts: React.FC<{ label: string; value: TranslationCounts }> =
   </div>
 );
 
-function translationCount(status: CatalogTranslationStatus): number {
+export function catalogTranslationHealthCount(status: CatalogTranslationStatus): number {
   return Object.values(status).reduce((total, counts) => total + counts.missing + counts.stale, 0);
 }

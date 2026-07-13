@@ -5,11 +5,12 @@ import { CHAT_MAX_MESSAGES, CHAT_MAX_PAYLOAD_BYTES, getUtf8ByteLength } from './
 // The AI SDK UI-message envelope posted to `/ai/chat`. Validation is intentionally permissive
 // on message/part internals — `convertToModelMessages` on the server performs the exhaustive
 // part-shape check, and passthrough keeps part payloads (text, tool state, output) intact for it.
-// This schema owns only the route's message-count and total UTF-8 payload caps.
+// System instructions are server-owned; clients may only submit conversation roles alongside the
+// route's message-count and total UTF-8 payload caps.
 export type AiChatUiMessage = z.infer<typeof AiChatUiMessage>;
 export const AiChatUiMessage = z.looseObject({
   id: z.string().optional(),
-  role: z.enum(['system', 'user', 'assistant']),
+  role: z.enum(['user', 'assistant']),
   parts: z.array(z.looseObject({ type: z.string() })),
 });
 

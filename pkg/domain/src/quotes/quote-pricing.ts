@@ -50,6 +50,16 @@ export function computeQuoteLineItemAmount(item: { quantity: number; unitPrice: 
   return item.quantity * item.unitPrice;
 }
 
+export function computeAdditionalDeliveryPrice({
+  deliveryIncluded = true,
+  deliveryPrice = 0,
+}: {
+  deliveryIncluded?: boolean;
+  deliveryPrice?: number;
+}): number {
+  return deliveryIncluded ? 0 : deliveryPrice;
+}
+
 export function computeQuoteVatAmount(subtotal: number, vatPercent: number = QUOTE_DOCUMENT_VAT_PERCENT): number {
   return (subtotal * vatPercent) / 100;
 }
@@ -62,7 +72,7 @@ export function computeQuoteTotalIncludingVat(
 }
 
 export function computeQuoteTotal({
-  deliveryIncluded = false,
+  deliveryIncluded = true,
   deliveryPrice = 0,
   discountPercent,
   lineItems = [],
@@ -87,7 +97,7 @@ export function computeQuoteTotal({
 
   return (
     Math.max(0, quotedBasePrice + selectedAssemblyTotal + lineItemTotal - discountAmount) +
-    (deliveryIncluded ? deliveryPrice : 0)
+    computeAdditionalDeliveryPrice({ deliveryIncluded, deliveryPrice })
   );
 }
 

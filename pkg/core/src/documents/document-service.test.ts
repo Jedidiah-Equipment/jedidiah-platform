@@ -542,7 +542,7 @@ describe('generateQuoteDocument', () => {
     expect(rendered.document.staleSelectionNotes).toEqual(['Deleted Light Bar unavailable']);
     expect(rendered.document.notes).toEqual(['Confirm customer details before order processing.']);
     expect(rendered.document.paymentTerms).toBe('0% deposit');
-    expect(rendered.document.transport).toBe('Included');
+    expect(rendered.document.transport).toBe('Included in sale price');
     expect(rendered.document.leadTime).toBe('14 working days');
     expect(rendered.document.subtotal).toBe(1_550);
     expect(rendered.document.vatAmount).toBe(232.5);
@@ -669,7 +669,7 @@ describe('generateQuoteDocument', () => {
       .insert(quotes)
       .values({
         customerId: context.customerId,
-        deliveryIncluded: true,
+        deliveryIncluded: false,
         deliveryPrice: 120,
         depositPercent: 25,
         discountPercent: 10,
@@ -760,7 +760,7 @@ describe('generateQuoteDocument', () => {
     });
     expect(rendered.document.notes).toEqual(['Install during shutdown.']);
     expect(rendered.document.paymentTerms).toBe('25% deposit');
-    expect(rendered.document.transport).toBe('Included (R 120.00)');
+    expect(rendered.document.transport).toBe('Additional charge (R 120.00)');
     expect(rendered.document.leadTime).toBe('Customer-confirmed shutdown window');
     expect(rendered.document.subtotal).toBe(2_055);
     expect(rendered.document.vatAmount).toBe(308.25);

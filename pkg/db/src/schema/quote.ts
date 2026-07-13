@@ -57,6 +57,7 @@ export const quotes = pgTable(
     check('quote_deposit_percent_nonnegative', sql`${table.depositPercent} >= 0`),
     check('quote_deposit_percent_not_above_100', sql`${table.depositPercent} <= 100`),
     check('quote_delivery_price_nonnegative', sql`${table.deliveryPrice} >= 0`),
+    check('quote_delivery_inclusion_matches_price', sql`${table.deliveryIncluded} = (${table.deliveryPrice} = 0)`),
     check(
       'quote_kind_shape',
       sql`(

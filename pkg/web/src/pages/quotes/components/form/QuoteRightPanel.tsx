@@ -224,7 +224,7 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
           label="Less discount"
           value={`${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)})`}
         />
-        {summary.deliveryIncluded ? (
+        {!summary.deliveryIncluded ? (
           <QuoteSummaryRow label="Delivery" value={formatCurrency(summary.deliveryPrice, summary.currencyCode)} />
         ) : null}
         <div className="flex items-center justify-between gap-3 border-t pt-2 font-medium">

@@ -157,14 +157,14 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
 
                                     field.handleChange(isChecked);
 
-                                    if (!isChecked) {
+                                    if (isChecked) {
                                       form.setFieldValue('deliveryPrice', 0);
                                     }
 
                                     autosave.commit();
                                   }}
                                 />
-                                <FieldLabel htmlFor={field.name}>Delivery included</FieldLabel>
+                                <FieldLabel htmlFor={field.name}>Delivery included in sale price</FieldLabel>
                               </div>
                               <FieldError errors={fieldErrors} />
                             </Field>
@@ -173,7 +173,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                       </form.Field>
                       <form.Subscribe selector={(state) => state.values.deliveryIncluded}>
                         {(deliveryIncluded) =>
-                          deliveryIncluded ? (
+                          !deliveryIncluded ? (
                             <form.AppField name="deliveryPrice">
                               {(field) => (
                                 <field.CurrencyField

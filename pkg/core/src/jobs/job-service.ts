@@ -216,7 +216,8 @@ export async function updateJob({
     id: input.id,
     patch: {
       description: input.description,
-      invoiceNumber: input.invoiceNumber,
+      // Older clients omit this newly added field from full Job updates; preserve the stored value during rollout.
+      ...(input.invoiceNumber === undefined ? {} : { invoiceNumber: input.invoiceNumber }),
       vinNumber: input.vinNumber,
     },
   });

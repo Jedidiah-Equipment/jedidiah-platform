@@ -1,3 +1,4 @@
+import { LOCALE_METADATA, type Locale, localePath } from './locale.js';
 import { siteOrigin } from './site-origin.js';
 
 // Configured public site origin, used only for the sitemap `<loc>` entries and the robots.txt `Sitemap:`
@@ -34,6 +35,7 @@ export function truncateDescription(text: string, max = 160): string {
 export type SeoInput = {
   title: string;
   description: string;
+  locale: Locale;
   // Root-relative path for this page, e.g. "/products". Also the canonical target, so pass the clean path
   // without query params (e.g. "/products", never "/products?range=...").
   path: string;
@@ -47,8 +49,10 @@ export type SeoInput = {
 // collapses query-param variants (footer/chip links generate /products?range=...) onto the clean path.
 // Spread into a route's `head()` return so the per-page values override the site defaults set on the root
 // route.
-export function seoHead({ title, description, path, image = DEFAULT_OG_IMAGE }: SeoInput) {
-  const url = absoluteUrl(path);
+export function seoHead({ title, description, locale, path, image = DEFAULT_OG_IMAGE }: SeoInput) {
+  const canonicalPath = localePath(path, 'en');
+  const localizedPath = localePath(path, locale);
+  const url = absoluteUrl(localizedPath);
   const imageUrl = absoluteUrl(image);
 
   return {
@@ -58,11 +62,17 @@ export function seoHead({ title, description, path, image = DEFAULT_OG_IMAGE }: 
       { property: 'og:title', content: title },
       { property: 'og:description', content: description },
       { property: 'og:url', content: url },
+      { property: 'og:locale', content: LOCALE_METADATA[locale].openGraphLocale },
       { property: 'og:image', content: imageUrl },
       { name: 'twitter:title', content: title },
       { name: 'twitter:description', content: description },
       { name: 'twitter:image', content: imageUrl },
     ],
-    links: [{ rel: 'canonical', href: url }],
+    links: [
+      { rel: 'canonical', href: url },
+      { rel: 'alternate', hrefLang: 'en', href: absoluteUrl(canonicalPath) },
+      { rel: 'alternate', hrefLang: 'af', href: absoluteUrl(localePath(path, 'af')) },
+      { rel: 'alternate', hrefLang: 'x-default', href: absoluteUrl(canonicalPath) },
+    ],
   };
 }

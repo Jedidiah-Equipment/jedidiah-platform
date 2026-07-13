@@ -70,12 +70,14 @@ test('listSitemapPaths lists the static pages plus every lander-ready Product, s
 });
 
 describe('renderSitemap', () => {
-  test('emits a urlset with an absolute loc per path', () => {
+  test('emits canonical and Afrikaans URLs for every sitemap path', () => {
     const xml = renderSitemap(['/', '/products/CH14']);
 
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
     expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
     expect(xml).toContain(`<loc>${SITE_URL}/</loc>`);
+    expect(xml).toContain(`<loc>${SITE_URL}/af</loc>`);
     expect(xml).toContain(`<loc>${SITE_URL}/products/CH14</loc>`);
+    expect(xml).toContain(`<loc>${SITE_URL}/af/products/CH14</loc>`);
   });
 });

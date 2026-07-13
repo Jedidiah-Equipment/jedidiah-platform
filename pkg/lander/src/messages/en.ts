@@ -17,6 +17,12 @@ export const en: Messages = {
     contact: 'Contact Us',
     menuLabel: 'Menu',
   },
+  language: {
+    label: 'Language',
+    english: 'English',
+    afrikaans: 'Afrikaans',
+    switchTo: (language) => `Switch to ${language}`,
+  },
   footer: {
     description:
       'Heavy-duty agricultural equipment, proudly designed and manufactured in South Africa to perform in local conditions.',

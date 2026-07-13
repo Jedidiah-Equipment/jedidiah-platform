@@ -1,8 +1,9 @@
-import { IconChevronDown } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useMessages } from '../messages/index.js';
+import { localePath } from '../lib/locale.js';
+import { useLocale, useMessages } from '../messages/index.js';
 import type { CatalogGroup, CatalogVariant } from '../server/catalog/products-data.js';
+import { DropdownMenu } from './dropdown-menu.js';
 
 type VariantSearch = { range: string; variant?: string };
 
@@ -104,6 +105,7 @@ export function VariantFilterBar({
 }
 
 function OverflowChipRow({ chips }: { chips: VariantChip[] }) {
+  const locale = useLocale();
   const rowRef = useRef<HTMLDivElement | null>(null);
   const chipRefs = useRef<(HTMLElement | null)[]>([]);
   const widthsRef = useRef<number[] | null>(null);
@@ -161,7 +163,7 @@ function OverflowChipRow({ chips }: { chips: VariantChip[] }) {
           ref={(node: HTMLAnchorElement | null) => {
             chipRefs.current[index] = node;
           }}
-          to="/products"
+          to={localePath('/products', locale)}
           search={chip.search}
           className={`${CHIP_CLASS} ${chip.active ? CHIP_ACTIVE : CHIP_IDLE}`}
         >
@@ -212,98 +214,28 @@ function MoreMenu({
   onOpenChange: (open: boolean) => void;
 }) {
   const m = useMessages();
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-  // The panel stays mounted through its collapse transition: `mounted` keeps it in the DOM, `shown` drives
-  // the open/closed classes. Opening flips `shown` on the next frame so the enter transition actually plays;
-  // closing flips it immediately, then `onTransitionEnd` unmounts once the collapse finishes.
-  const [mounted, setMounted] = useState(open);
-  const [shown, setShown] = useState(open);
-
-  useEffect(() => {
-    if (open) {
-      setMounted(true);
-      return;
-    }
-    setShown(false);
-    // `onTransitionEnd` normally unmounts once the collapse finishes; this fallback covers cases where it
-    // never fires (reduced motion, a background tab), so the panel can't linger invisibly in the DOM.
-    const timer = setTimeout(() => setMounted(false), 220);
-    return () => clearTimeout(timer);
-  }, [open]);
-
-  useEffect(() => {
-    if (!mounted || !open) {
-      return;
-    }
-    const frame = requestAnimationFrame(() => setShown(true));
-    return () => cancelAnimationFrame(frame);
-  }, [mounted, open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onPointerDown = (event: PointerEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) {
-        onOpenChange(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onOpenChange(false);
-      }
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open, onOpenChange]);
+  const locale = useLocale();
 
   return (
-    <div ref={wrapRef} className="relative flex-none">
-      <button
-        type="button"
-        onClick={() => onOpenChange(!open)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className={`${CHIP_CLASS} flex items-center gap-1.5 ${active ? CHIP_ACTIVE : CHIP_IDLE}`}
-      >
-        {m.variantFilter.moreChip(chips.length)}
-        <IconChevronDown
-          size={16}
-          stroke={2.4}
-          aria-hidden="true"
-          className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-      {mounted ? (
-        <div
-          role="menu"
-          onTransitionEnd={() => {
-            if (!open) {
-              setMounted(false);
-            }
-          }}
-          className={`absolute top-[calc(100%+8px)] right-0 z-40 flex min-w-[220px] origin-top-right flex-col gap-1.5 border border-line bg-white p-2 shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition duration-150 ease-out motion-reduce:transition-none ${
-            shown ? 'scale-100 opacity-100' : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
-          }`}
+    <DropdownMenu
+      open={open}
+      onOpenChange={onOpenChange}
+      label={m.variantFilter.moreChip(chips.length)}
+      triggerClassName={`${CHIP_CLASS} flex items-center gap-1.5 ${active ? CHIP_ACTIVE : CHIP_IDLE}`}
+      panelClassName="min-w-[220px] border border-line bg-white p-2 shadow-[0_12px_30px_rgba(0,0,0,0.12)]"
+    >
+      {chips.map((chip) => (
+        <Link
+          key={chip.key}
+          to={localePath('/products', locale)}
+          search={chip.search}
+          role="menuitem"
+          onClick={() => onOpenChange(false)}
+          className={`${CHIP_CLASS} block ${chip.active ? CHIP_ACTIVE : CHIP_IDLE}`}
         >
-          {chips.map((chip) => (
-            <Link
-              key={chip.key}
-              to="/products"
-              search={chip.search}
-              role="menuitem"
-              onClick={() => onOpenChange(false)}
-              className={`${CHIP_CLASS} block ${chip.active ? CHIP_ACTIVE : CHIP_IDLE}`}
-            >
-              {chip.label}
-            </Link>
-          ))}
-        </div>
-      ) : null}
-    </div>
+          {chip.label}
+        </Link>
+      ))}
+    </DropdownMenu>
   );
 }

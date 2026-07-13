@@ -1,20 +1,18 @@
 import { describe, expect, test } from 'vitest';
 
+import { af } from './af.js';
 import { en } from './en.js';
-import { useMessages } from './index.js';
+import { messagesForLocale } from './index.js';
 
-describe('useMessages', () => {
-  test('returns the canonical English static copy', () => {
-    const messages = useMessages();
+describe('messagesForLocale', () => {
+  test('returns the canonical English static copy for en', () => {
+    expect(messagesForLocale('en')).toBe(en);
+    expect(en.productDetail.relatedHeading('Chaser Bins')).toBe('More in Chaser Bins');
+  });
 
-    expect(messages).toBe(en);
-    expect(messages.nav).toEqual({
-      home: 'Home',
-      products: 'Products',
-      about: 'About Us',
-      contact: 'Contact Us',
-      menuLabel: 'Menu',
-    });
-    expect(messages.productDetail.relatedHeading('Chaser Bins')).toBe('More in Chaser Bins');
+  test('returns complete Afrikaans static copy for af', () => {
+    expect(messagesForLocale('af')).toBe(af);
+    expect(af.nav.home).toBe('Tuis');
+    expect(af.productDetail.relatedHeading('Graanwaens')).toBe('Meer in Graanwaens');
   });
 });

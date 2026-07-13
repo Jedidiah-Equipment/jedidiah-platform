@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
 
-import type { ProductDetail } from '../../server/catalog/product-detail-data.js';
+import type { ProductDetail } from '../../../server/catalog/product-detail-data.js';
 import { AssembliesAndFeatures, Downloads } from './$modelCode.js';
 
 describe('Downloads', () => {

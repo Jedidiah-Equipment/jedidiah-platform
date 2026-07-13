@@ -1,8 +1,9 @@
 import { contactNumberE164, formatContactNumber, JEDIDIAH_INSTAGRAM_URL, JEDIDIAH_LOCATION } from '@pkg/domain';
 import logoFullUrl from '@pkg/domain/assets/brand/jedidiah-logo-full.png';
 import { IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
-import { useMessages } from '../messages/index.js';
+import { Link, useRouterState } from '@tanstack/react-router';
+import { localePath, switchLocaleHref } from '../lib/locale.js';
+import { useLocale, useMessages } from '../messages/index.js';
 import type { FooterRange } from '../server/catalog/ranges.js';
 
 import { DungBeetle } from './dung-beetle.js';
@@ -17,8 +18,10 @@ const EXPLORE = [
 const footerLinkClass = 'font-body text-[15px] text-[#a8a8a8] no-underline transition-colors hover:text-yellow';
 
 function FooterLink({ label, href }: { label: string; href: (typeof EXPLORE)[number]['href'] }) {
+  const locale = useLocale();
+
   return (
-    <Link to={href} className={footerLinkClass}>
+    <Link to={localePath(href, locale)} className={footerLinkClass}>
       {label}
     </Link>
   );
@@ -26,6 +29,10 @@ function FooterLink({ label, href }: { label: string; href: (typeof EXPLORE)[num
 
 export function Footer({ ranges }: { ranges: FooterRange[] }) {
   const m = useMessages();
+  const locale = useLocale();
+  const currentHref = useRouterState({ select: (state) => state.location.href });
+  const targetLocale = locale === 'en' ? 'af' : 'en';
+  const targetLanguage = targetLocale === 'en' ? m.language.english : m.language.afrikaans;
 
   return (
     <footer className="bg-ink-soft text-white">
@@ -57,7 +64,12 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
             </h4>
             <div className="flex flex-col gap-[13px]">
               {ranges.map((range) => (
-                <Link key={range.slug} to="/products" search={{ range: range.slug }} className={footerLinkClass}>
+                <Link
+                  key={range.slug}
+                  to={localePath('/products', locale)}
+                  search={{ range: range.slug }}
+                  className={footerLinkClass}
+                >
                   {range.label}
                 </Link>
               ))}
@@ -87,7 +99,7 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
                 <span className="font-body text-[15px] text-[#cfcfcf]">{m.footer.instagramHandle}</span>
               </a>
               <Link
-                to="/contact"
+                to={localePath('/contact', locale)}
                 className="mt-1.5 self-start bg-yellow px-[22px] py-[11px] font-display text-[15px] font-bold uppercase tracking-[1px] text-ink no-underline"
               >
                 {m.footer.contactUs}
@@ -103,6 +115,13 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
           <span className="font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#6a6a6a]">
             {m.footer.tagline}
           </span>
+          <a
+            href={switchLocaleHref(currentHref, targetLocale)}
+            aria-label={m.language.switchTo(targetLanguage)}
+            className="font-body text-[13px] text-[#8a8a8a] underline decoration-[#5a5a5a] underline-offset-4 hover:text-yellow"
+          >
+            {targetLanguage}
+          </a>
         </div>
       </div>
     </footer>

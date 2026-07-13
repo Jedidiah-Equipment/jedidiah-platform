@@ -11,20 +11,23 @@ import {
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
-import { SandWatermarkSection } from '../components/sand-watermark-section.js';
-import { captureEvent } from '../lib/analytics.js';
-import { seoHead } from '../lib/seo.js';
-import { en } from '../messages/en.js';
-import { useMessages } from '../messages/index.js';
-import { getRangeOptions } from '../server/catalog/ranges.js';
+import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
+import { captureEvent } from '../../lib/analytics.js';
+import { seoHead } from '../../lib/seo.js';
+import { messagesForLocale, useLocale, useMessages } from '../../messages/index.js';
+import { getRangeOptions } from '../../server/catalog/ranges.js';
 
-export const Route = createFileRoute('/contact')({
-  head: () =>
-    seoHead({
-      title: en.contact.pageTitle,
-      description: en.contact.metaDescription,
+export const Route = createFileRoute('/{-$locale}/contact')({
+  head: ({ match }) => {
+    const m = messagesForLocale(match.context.locale);
+
+    return seoHead({
+      title: m.contact.pageTitle,
+      description: m.contact.metaDescription,
+      locale: match.context.locale,
       path: '/contact',
-    }),
+    });
+  },
   loader: async () => ({ equipmentOptions: await getRangeOptions() }),
   component: ContactPage,
 });
@@ -78,6 +81,7 @@ function SentState() {
 
 function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
   const m = useMessages();
+  const locale = useLocale();
   const [status, setStatus] = useState<FormStatus>('idle');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -87,7 +91,7 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
     setStatus('submitting');
 
     try {
-      const response = await fetch('/api/contact', {
+      const response = await fetch(`/api/contact?locale=${locale}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

@@ -33,6 +33,7 @@ describe('seoHead', () => {
       title: 'Products — Jedidiah Equipment',
       description: 'The full range.',
       path: '/products',
+      locale: 'en',
     });
 
     expect(meta).toContainEqual({ title: 'Products — Jedidiah Equipment' });
@@ -40,7 +41,26 @@ describe('seoHead', () => {
     expect(meta).toContainEqual({ property: 'og:url', content: `${ORIGIN}/products` });
     expect(meta).toContainEqual({ property: 'og:image', content: `${ORIGIN}${DEFAULT_OG_IMAGE}` });
     expect(meta).toContainEqual({ name: 'twitter:title', content: 'Products — Jedidiah Equipment' });
+    expect(meta).toContainEqual({ property: 'og:locale', content: 'en_ZA' });
     expect(links).toContainEqual({ rel: 'canonical', href: `${ORIGIN}/products` });
+    expect(links).toContainEqual({ rel: 'alternate', hrefLang: 'en', href: `${ORIGIN}/products` });
+    expect(links).toContainEqual({ rel: 'alternate', hrefLang: 'af', href: `${ORIGIN}/af/products` });
+    expect(links).toContainEqual({ rel: 'alternate', hrefLang: 'x-default', href: `${ORIGIN}/products` });
+  });
+
+  test('makes an Afrikaans page self-canonical while alternating to the same English path', () => {
+    const { meta, links } = seoHead({
+      title: 'Produkte — Jedidiah Equipment',
+      description: 'Die volledige reeks.',
+      path: '/products',
+      locale: 'af',
+    });
+
+    expect(meta).toContainEqual({ property: 'og:url', content: `${ORIGIN}/af/products` });
+    expect(meta).toContainEqual({ property: 'og:locale', content: 'af_ZA' });
+    expect(links).toContainEqual({ rel: 'canonical', href: `${ORIGIN}/af/products` });
+    expect(links).toContainEqual({ rel: 'alternate', hrefLang: 'en', href: `${ORIGIN}/products` });
+    expect(links).toContainEqual({ rel: 'alternate', hrefLang: 'af', href: `${ORIGIN}/af/products` });
   });
 
   test('uses a page-specific image when given, qualified against the serving origin', () => {
@@ -48,6 +68,7 @@ describe('seoHead', () => {
       title: 'CH14',
       description: 'Tipper.',
       path: '/products/CH14',
+      locale: 'en',
       image: '/images/products/abc',
     });
 

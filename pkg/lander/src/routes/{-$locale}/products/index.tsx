@@ -1,14 +1,14 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 
-import { PageHero } from '../../components/page-hero.js';
-import { ProductCard } from '../../components/product-card.js';
-import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
-import { VariantFilterBar } from '../../components/variant-filter-bar.js';
-import { seoHead } from '../../lib/seo.js';
-import { en } from '../../messages/en.js';
-import { useMessages } from '../../messages/index.js';
-import { getProductsCatalog } from '../../server/catalog/products.js';
-import type { CatalogGroup, CatalogVariant } from '../../server/catalog/products-data.js';
+import { PageHero } from '../../../components/page-hero.js';
+import { ProductCard } from '../../../components/product-card.js';
+import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
+import { VariantFilterBar } from '../../../components/variant-filter-bar.js';
+import { localePath } from '../../../lib/locale.js';
+import { seoHead } from '../../../lib/seo.js';
+import { messagesForLocale, useLocale, useMessages } from '../../../messages/index.js';
+import { getProductsCatalog } from '../../../server/catalog/products.js';
+import type { CatalogGroup, CatalogVariant } from '../../../server/catalog/products-data.js';
 
 type ProductsSearch = { range?: string; variant?: string };
 type ProductsCatalogView = {
@@ -18,13 +18,17 @@ type ProductsCatalogView = {
   visibleGroups: CatalogGroup[];
 };
 
-export const Route = createFileRoute('/products/')({
-  head: () =>
-    seoHead({
-      title: en.products.pageTitle,
-      description: en.products.metaDescription,
+export const Route = createFileRoute('/{-$locale}/products/')({
+  head: ({ match }) => {
+    const m = messagesForLocale(match.context.locale);
+
+    return seoHead({
+      title: m.products.pageTitle,
+      description: m.products.metaDescription,
+      locale: match.context.locale,
       path: '/products',
-    }),
+    });
+  },
   validateSearch: (search: Record<string, unknown>): ProductsSearch => ({
     ...(typeof search.range === 'string' ? { range: search.range } : {}),
     ...(typeof search.variant === 'string' ? { variant: search.variant } : {}),
@@ -72,9 +76,11 @@ function PageHeader() {
 }
 
 function FilterChip({ active, label, search }: { active: boolean; label: string; search: ProductsSearch }) {
+  const locale = useLocale();
+
   return (
     <Link
-      to="/products"
+      to={localePath('/products', locale)}
       search={search}
       className={`border-[1.5px] px-3.5 py-[9px] font-display text-[15px] font-semibold uppercase tracking-[1px] no-underline transition-colors ${
         active ? 'border-ink bg-ink text-white' : 'border-[#d6d4ce] bg-white text-ink hover:border-ink'

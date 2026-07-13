@@ -5,7 +5,7 @@ import { IconAlertTriangle, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type React from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { AddBaySelect, BayRowCard } from '@/components/bays/index.js';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/card.js';
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { Switch } from '@/components/ui/switch.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -226,6 +227,7 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
   quote,
   scheduling,
 }) => {
+  const [showAllBays, setShowAllBays] = useState(true);
   const initialFormValues = useMemo(
     () => toJobCreateFormValues({ productBays: quote.product?.bays ?? [], scheduling }),
     [quote.product, scheduling],
@@ -261,9 +263,24 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
                 <CardDescription>
                   Each row books a Work Slot into that Bay's queue when the Job is created.
                 </CardDescription>
-                <CardAction>
+                <CardAction className="col-span-2 col-start-1 row-span-1 row-start-3 mt-2 justify-self-stretch sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
                   <AddBaySelect
                     bays={enabledBays}
+                    beforeSelect={
+                      <label
+                        className="flex shrink-0 items-center gap-2 text-sm font-medium"
+                        htmlFor="start-job-show-all-bays"
+                      >
+                        <Switch
+                          checked={showAllBays}
+                          disabled={isPending}
+                          id="start-job-show-all-bays"
+                          onCheckedChange={(checked) => setShowAllBays(checked === true)}
+                          size="sm"
+                        />
+                        Show all Bays
+                      </label>
+                    }
                     disabled={isPending}
                     excludeBayIds={selectedBayIds}
                     onAdd={(bay) =>
@@ -341,12 +358,12 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
       </form.Field>
       <form.Subscribe selector={(state) => state.values.baySeeds}>
         {(baySeeds) =>
-          baySeeds.length > 0 ? (
+          showAllBays || baySeeds.length > 0 ? (
             <BoardGantt
               embedded
               ghostLabel={quote.code}
               ghostSeeds={baySeeds}
-              visibleBayIds={baySeeds.map((row) => row.bayId)}
+              visibleBayIds={showAllBays ? undefined : baySeeds.map((row) => row.bayId)}
             />
           ) : null
         }

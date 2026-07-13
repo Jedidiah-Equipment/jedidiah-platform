@@ -1,13 +1,12 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import { runCodexCli } from './codex.js';
 import { deriveChangelogBasename } from './filename.js';
-import { existingBasenames, listChangelogFiles, removeFiles, writeChangelogFile } from './files.js';
+import { existingBasenames, listChangelogFiles, listJsonPaths, removeFiles, writeChangelogFile } from './files.js';
 import { generateChangelog } from './generate.js';
 import { readReleaseCommitLog } from './git.js';
-import { CHANGELOG_MAX_AGE_DAYS, selectStaleChangelogs } from './prune.js';
+import { selectStaleChangelogs } from './prune.js';
 import { validateChangelogJson } from './validate.js';
 
 const PROMPT_PATH = new URL('../prompts/generate-changelog.md', import.meta.url);
@@ -85,7 +84,7 @@ function validate(argv: string[]): void {
   });
 
   const files = values.dir
-    ? existingBasenames(values.dir).map((base) => join(values.dir as string, `${base}.json`))
+    ? listJsonPaths(values.dir)
     : [positionals[0] ?? fail('validate: a changelog file path or --dir is required')];
 
   for (const file of files) {
@@ -102,7 +101,7 @@ function prune(argv: string[]): void {
   const { values } = parseArgs({ args: argv, options: { dir: { type: 'string' } } });
   const dir = values.dir ?? fail('prune: --dir <changelogs-dir> is required');
 
-  const stale = selectStaleChangelogs(listChangelogFiles(dir), new Date(), CHANGELOG_MAX_AGE_DAYS);
+  const stale = selectStaleChangelogs(listChangelogFiles(dir), new Date());
   removeFiles(stale);
   if (stale.length === 0) process.stdout.write('No stale changelogs to prune.\n');
   else process.stdout.write(`Pruned ${stale.length} stale changelog(s):\n${stale.map((p) => `  - ${p}`).join('\n')}\n`);

@@ -1,13 +1,4 @@
-import type { Changelog, ChangelogSection, ChangelogSurface } from '@pkg/schema';
-
-/** Surface display order and labels for the dialog. */
-export const CHANGELOG_SURFACE_ORDER = ['app', 'lander', 'mobile'] as const satisfies readonly ChangelogSurface[];
-
-export const changelogSurfaceLabels: Record<ChangelogSurface, string> = {
-  app: 'App',
-  lander: 'Lander',
-  mobile: 'Mobile',
-};
+import type { Changelog } from '@pkg/schema';
 
 /** Controls the user can press: the primary button (Next/Done), Skip, or a Close (X, backdrop, Esc). */
 export type ChangelogControl = 'primary' | 'skip' | 'close';
@@ -26,10 +17,6 @@ export type ChangelogDialogTransition = {
 
 export const initialChangelogDialogState: ChangelogDialogState = { dismissed: false, open: false, pageIndex: 0 };
 
-export function shouldOpenChangelogDialog(changelogs: readonly Changelog[]): boolean {
-  return changelogs.length > 0;
-}
-
 export function primaryControlLabel(pageIndex: number, count: number): 'Next' | 'Done' {
   return isLastPage(pageIndex, count) ? 'Done' : 'Next';
 }
@@ -39,6 +26,9 @@ export function primaryControlLabel(pageIndex: number, count: number): 'Next' | 
  * close the dialog for the rest of this app load (`dismissed`), but only Done and Skip mark the
  * newest release seen — which advances the high-water mark past every release shown, so the dialog
  * stays gone. Close leaves the mark untouched, so a full reload brings the dialog back.
+ *
+ * `changelogs` are oldest-first (the API contract the pager also relies on), so the newest release —
+ * the mark that acknowledges everything shown — is the last element.
  */
 export function reduceChangelogControl(
   state: ChangelogDialogState,
@@ -49,26 +39,9 @@ export function reduceChangelogControl(
     return { markSeenReleasedAt: null, state: { ...state, pageIndex: state.pageIndex + 1 } };
   }
 
-  const markSeenReleasedAt = control === 'close' ? null : acknowledgeableReleasedAt(changelogs);
+  const newest = changelogs[changelogs.length - 1];
+  const markSeenReleasedAt = control === 'close' ? null : (newest?.releasedAt ?? null);
   return { markSeenReleasedAt, state: { ...state, dismissed: true, open: false } };
-}
-
-/** The newest release in the set — the mark that acknowledges everything shown. */
-export function acknowledgeableReleasedAt(changelogs: readonly Changelog[]): string | null {
-  let newest: string | null = null;
-  for (const changelog of changelogs) {
-    if (newest === null || new Date(changelog.releasedAt).getTime() > new Date(newest).getTime()) {
-      newest = changelog.releasedAt;
-    }
-  }
-  return newest;
-}
-
-/** A release's sections in canonical Surface order, omitting Surfaces the release does not touch. */
-export function orderedChangelogSections(changelog: Changelog): ChangelogSection[] {
-  return CHANGELOG_SURFACE_ORDER.flatMap((surface) =>
-    changelog.sections.filter((section) => section.surface === surface),
-  );
 }
 
 function isLastPage(pageIndex: number, count: number): boolean {

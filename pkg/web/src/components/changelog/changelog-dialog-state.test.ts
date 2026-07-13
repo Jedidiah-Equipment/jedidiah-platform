@@ -1,23 +1,13 @@
 import type { Changelog } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
-import {
-  acknowledgeableReleasedAt,
-  type ChangelogDialogState,
-  orderedChangelogSections,
-  primaryControlLabel,
-  reduceChangelogControl,
-  shouldOpenChangelogDialog,
-} from './changelog-dialog-state.js';
+import { type ChangelogDialogState, primaryControlLabel, reduceChangelogControl } from './changelog-dialog-state.js';
 
-function changelog(releasedAt: string, sections: Changelog['sections'] = defaultSections()): Changelog {
-  return { releasedAt, sections } as Changelog;
-}
-
-function defaultSections(): Changelog['sections'] {
-  return [
-    { surface: 'app', entries: [{ title: 'A change', description: 'A user-visible change.' }] },
-  ] as Changelog['sections'];
+function changelog(releasedAt: string): Changelog {
+  return {
+    releasedAt,
+    sections: [{ surface: 'app', entries: [{ title: 'A change', description: 'A user-visible change.' }] }],
+  } as Changelog;
 }
 
 // Oldest-first, as the API returns them.
@@ -25,16 +15,6 @@ const oldest = changelog('2026-05-01T00:00:00.000Z');
 const middle = changelog('2026-06-01T00:00:00.000Z');
 const newest = changelog('2026-07-01T00:00:00.000Z');
 const releases = [oldest, middle, newest];
-
-describe('shouldOpenChangelogDialog', () => {
-  test('does not open when there are no unseen changelogs', () => {
-    expect(shouldOpenChangelogDialog([])).toBe(false);
-  });
-
-  test('opens when at least one unseen changelog exists', () => {
-    expect(shouldOpenChangelogDialog([oldest])).toBe(true);
-  });
-});
 
 describe('primaryControlLabel', () => {
   test('is "Next" while earlier pages remain', () => {
@@ -87,37 +67,11 @@ describe('reduceChangelogControl', () => {
       state: { dismissed: true, open: false, pageIndex: 1 },
     });
   });
-});
 
-describe('acknowledgeableReleasedAt', () => {
-  test('is the newest release regardless of input order', () => {
-    expect(acknowledgeableReleasedAt([middle, newest, oldest])).toBe(newest.releasedAt);
-  });
-
-  test('is null for an empty set', () => {
-    expect(acknowledgeableReleasedAt([])).toBeNull();
-  });
-});
-
-describe('orderedChangelogSections', () => {
-  test('orders sections App, Lander, Mobile regardless of input order', () => {
-    const entry = { title: 't', description: 'd' };
-    const release = changelog('2026-07-01T00:00:00.000Z', [
-      { surface: 'mobile', entries: [entry] },
-      { surface: 'app', entries: [entry] },
-      { surface: 'lander', entries: [entry] },
-    ] as Changelog['sections']);
-
-    expect(orderedChangelogSections(release).map((section) => section.surface)).toEqual(['app', 'lander', 'mobile']);
-  });
-
-  test('omits Surfaces with no section', () => {
-    const entry = { title: 't', description: 'd' };
-    const release = changelog('2026-07-01T00:00:00.000Z', [
-      { surface: 'mobile', entries: [entry] },
-      { surface: 'app', entries: [entry] },
-    ] as Changelog['sections']);
-
-    expect(orderedChangelogSections(release).map((section) => section.surface)).toEqual(['app', 'mobile']);
+  test('Skip on an empty set marks nothing seen', () => {
+    expect(reduceChangelogControl(openOnPage(0), 'skip', [])).toEqual({
+      markSeenReleasedAt: null,
+      state: { dismissed: true, open: false, pageIndex: 0 },
+    });
   });
 });

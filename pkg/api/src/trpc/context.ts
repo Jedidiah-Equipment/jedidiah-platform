@@ -52,15 +52,3 @@ export function createContextFactory(dependencies: ContextDependencies) {
 }
 
 const NOOP_TRANSLATION_MARKER: TranslationMarker = { mark: () => undefined };
-
-export const createContext = createContextFactory({
-  appEnv: 'development',
-  changelogLoader: () => [],
-  storage: {
-    deleteObject: async () => undefined,
-    get: async () => {
-      throw new Error('Document storage is not configured.');
-    },
-    put: async () => undefined,
-  },
-});

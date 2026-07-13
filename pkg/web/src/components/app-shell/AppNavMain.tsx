@@ -13,6 +13,7 @@ import {
   IconMessageReport,
   IconPackage,
   IconRobot,
+  IconTool,
   IconUsers,
   type TablerIcon,
 } from '@tabler/icons-react';
@@ -117,6 +118,12 @@ const navSections = [
         permission: 'supplier:read',
         link: linkOptions({ to: '/suppliers' }),
         icon: IconHeartHandshake,
+      },
+      {
+        title: 'Parts',
+        permission: 'part:read',
+        link: linkOptions({ to: '/parts' }),
+        icon: IconTool,
       },
       {
         title: 'Products',

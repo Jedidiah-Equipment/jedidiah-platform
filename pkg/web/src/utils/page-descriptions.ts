@@ -11,6 +11,8 @@ export const jobCalendarPageDescription = 'Org Off-Days and per-Bay calendar exc
 export const jobListPageDescription =
   'Searchable roster of Jobs with their schedule state, surfacing the unscheduled ones';
 
+export const partsPageDescription = 'Reusable purchasable items across all Suppliers';
+
 export const productsPageDescription = 'Product models with assemblies, pricing, and build documents';
 
 export const productRangesPageDescription = 'Admin-managed catalog groupings for product presentation';

@@ -24,20 +24,26 @@ import { useTRPC } from '@/lib/trpc.js';
 type PartTableProps = {
   onEditPart: ((part: Part) => void) | undefined;
   rightSection?: React.ReactNode;
-  supplierId: UUID;
+  supplierId?: UUID;
 };
 
-export const usePartTableStore = createPersistedDataTableStore({
-  initialState: {
-    sorting: [
-      {
-        id: 'name',
-        desc: false,
-      },
-    ],
-  },
-  persistName: 'supplier-parts-table',
-});
+export const usePartTableStore = createPartTableStore('supplier-parts-table');
+
+const useAllPartsTableStore = createPartTableStore('parts-table');
+
+function createPartTableStore(persistName: string) {
+  return createPersistedDataTableStore({
+    initialState: {
+      sorting: [
+        {
+          id: 'name',
+          desc: false,
+        },
+      ],
+    },
+    persistName,
+  });
+}
 
 const partSortOptions: SortOptions<PartListInput> = {
   allowedSortIds: PartSortBy.options,
@@ -50,7 +56,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
   const trpc = useTRPC();
 
   const tableController = useServerSideTableController({
-    store: usePartTableStore,
+    store: supplierId ? usePartTableStore : useAllPartsTableStore,
     sortOptions: partSortOptions,
     getListInputExtras: (columnFilters) => getPartListInputExtras(columnFilters, supplierId),
   });
@@ -102,6 +108,17 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
         enableSorting: true,
         header: 'Supplier code',
       },
+      ...(!supplierId
+        ? [
+            {
+              accessorKey: 'supplier.companyName',
+              enableColumnFilter: true,
+              enableSorting: true,
+              header: 'Supplier',
+              id: 'supplierName',
+            } satisfies ColumnDef<Part>,
+          ]
+        : []),
       {
         accessorKey: 'finish',
         enableColumnFilter: false,
@@ -156,7 +173,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
     ];
 
     return tableColumns;
-  }, [categoryOptions.selectOptions]);
+  }, [categoryOptions.selectOptions, supplierId]);
 
   const table = useReactTable({
     columns,
@@ -196,7 +213,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
   );
 };
 
-function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId: UUID) {
+function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId?: UUID) {
   return {
     category: getColumnFilterValue(columnFilters, 'category'),
     columnFilters: {
@@ -204,6 +221,7 @@ function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId: U
       isInternallyFabricated: getInternallyFabricatedFilterValue(columnFilters),
       name: getColumnFilterValue(columnFilters, 'name'),
       supplierCode: getColumnFilterValue(columnFilters, 'supplierCode'),
+      supplierName: getColumnFilterValue(columnFilters, 'supplierName'),
       unitOfMeasure: getUnitOfMeasureFilterValue(columnFilters),
     },
     supplierId,
@@ -212,7 +230,7 @@ function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId: U
 
 function getColumnFilterValue(
   columnFilters: ColumnFiltersState,
-  id: 'category' | 'code' | 'name' | 'supplierCode',
+  id: 'category' | 'code' | 'name' | 'supplierCode' | 'supplierName',
 ): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 

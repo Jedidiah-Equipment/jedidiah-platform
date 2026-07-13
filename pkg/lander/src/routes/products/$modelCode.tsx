@@ -14,6 +14,8 @@ import { ProductCard } from '../../components/product-card.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
 import { captureEvent } from '../../lib/analytics.js';
 import { seoHead, truncateDescription } from '../../lib/seo.js';
+import { en } from '../../messages/en.js';
+import { useMessages } from '../../messages/index.js';
 import { getProductDetail } from '../../server/catalog/product-detail.js';
 import type { ProductDetail, ProductHighlight } from '../../server/catalog/product-detail-data.js';
 
@@ -32,18 +34,18 @@ export const Route = createFileRoute('/products/$modelCode')({
       // The loader throws notFound() for unknown model codes, so there's no detail to describe. Emit a
       // sensible head pointing back at the catalog rather than leaking a half-built title.
       return seoHead({
-        title: 'Product not found — Jedidiah Equipment',
-        description: 'Browse the full Jedidiah Equipment range to find the right machine for your operation.',
+        title: en.productDetail.notFoundPageTitle,
+        description: en.productDetail.notFoundMetaDescription,
         path: `/products/${encodeURIComponent(params.modelCode)}`,
       });
     }
 
     const description = truncateDescription(
-      detail.description || `${detail.name} from the ${detail.rangeName} by Jedidiah Equipment.`,
+      detail.description || en.productDetail.fallbackDescription(detail.name, detail.rangeName),
     );
 
     return seoHead({
-      title: `${detail.name} — ${detail.rangeName} | Jedidiah Equipment`,
+      title: en.productDetail.pageTitle(detail.name, detail.rangeName),
       description,
       path: `/products/${encodeURIComponent(detail.modelCode)}`,
       image: detail.ogImageUrl,
@@ -54,15 +56,17 @@ export const Route = createFileRoute('/products/$modelCode')({
 });
 
 function Breadcrumb({ rangeName, name }: { rangeName: string; name: string }) {
+  const m = useMessages();
+
   return (
     <div className="bg-ink border-b border-[#2a2a2a]">
       <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-4 font-body text-[14px] text-[#8a8a8a] max-nav:px-5 max-nav:py-3.5">
         <Link to="/" className="text-[#8a8a8a] no-underline hover:text-white">
-          Home
+          {m.productDetail.breadcrumbHome}
         </Link>
         <span>/</span>
         <Link to="/products" className="text-[#8a8a8a] no-underline hover:text-white">
-          Products
+          {m.productDetail.breadcrumbProducts}
         </Link>
         <span>/</span>
         <span className="text-yellow">{rangeName}</span>
@@ -74,6 +78,7 @@ function Breadcrumb({ rangeName, name }: { rangeName: string; name: string }) {
 }
 
 function Gallery({ images, name }: { images: ProductDetail['galleryImages']; name: string }) {
+  const m = useMessages();
   const [active, setActive] = useState(0);
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const activeImage = images[active] ?? images[0];
@@ -98,7 +103,7 @@ function Gallery({ images, name }: { images: ProductDetail['galleryImages']; nam
       <button
         type="button"
         onClick={() => setIsImageDialogOpen(true)}
-        aria-label={`Open full-size image of ${name}`}
+        aria-label={m.productDetail.openFullSizeImage(name)}
         className="group block aspect-[16/11] w-full cursor-pointer overflow-hidden border border-line bg-[#dcdcd6] p-0 transition-[translate,border-color,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:border-gold hover:shadow-[0_18px_36px_rgba(0,0,0,0.18)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
       >
         <img
@@ -113,7 +118,7 @@ function Gallery({ images, name }: { images: ProductDetail['galleryImages']; nam
             key={image.slot}
             type="button"
             onClick={() => setActive(index)}
-            aria-label={`View image ${index + 1}`}
+            aria-label={m.productDetail.viewImage(index + 1)}
             className="group aspect-[16/11] cursor-pointer bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-gold"
           >
             <div
@@ -139,7 +144,7 @@ function Gallery({ images, name }: { images: ProductDetail['galleryImages']; nam
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`${name} full-size image`}
+          aria-label={m.productDetail.fullSizeImage(name)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-5 backdrop-blur-[2px]"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
@@ -150,7 +155,7 @@ function Gallery({ images, name }: { images: ProductDetail['galleryImages']; nam
           <div className="relative flex max-h-[92vh] w-full max-w-[1200px] items-center justify-center">
             <button
               type="button"
-              aria-label="Close image dialog"
+              aria-label={m.productDetail.closeImageDialog}
               onClick={() => setIsImageDialogOpen(false)}
               className="absolute top-0 right-0 z-10 flex size-11 -translate-y-3 translate-x-3 cursor-pointer items-center justify-center bg-gold text-ink transition-transform duration-200 hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
             >
@@ -195,6 +200,8 @@ function HighlightTiles({ highlights }: { highlights: ProductHighlight[] }) {
 }
 
 function Hero({ detail }: { detail: ProductDetail }) {
+  const m = useMessages();
+
   return (
     <section className="border-b border-line bg-white">
       <div className="mx-auto grid max-w-[1320px] grid-cols-[1.05fr_1fr] gap-14 px-12 pt-12 pb-14 max-nav:grid-cols-1 max-nav:gap-8 max-nav:px-5 max-nav:pt-8 max-nav:pb-10">
@@ -222,14 +229,14 @@ function Hero({ detail }: { detail: ProductDetail }) {
               to="/contact"
               className="flex items-center gap-3 bg-gold px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-yellow"
             >
-              Contact Us
+              {m.productDetail.contactUs}
               <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />
             </Link>
             <a
               href={`tel:${contactNumberE164()}`}
               className="flex items-center border-2 border-ink bg-transparent px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-ink hover:text-white"
             >
-              Call Us
+              {m.productDetail.callUs}
             </a>
           </div>
         </div>
@@ -280,9 +287,11 @@ function DownloadIcon() {
 }
 
 export function Downloads({ brochureHref, modelCode }: { brochureHref: string; modelCode: string }) {
+  const m = useMessages();
+
   return (
     <div>
-      <SectionHeading>Downloads</SectionHeading>
+      <SectionHeading>{m.productDetail.downloads}</SectionHeading>
       <div className="flex flex-col gap-3">
         <a
           href={brochureHref}
@@ -292,7 +301,7 @@ export function Downloads({ brochureHref, modelCode }: { brochureHref: string; m
           className="flex items-center gap-3.5 border border-[#e2e0da] bg-white px-[18px] py-3.5 no-underline transition-colors hover:border-ink"
         >
           <DownloadIcon />
-          <span className="flex-1 font-body text-[15px] font-semibold text-ink">Product Brochure (PDF)</span>
+          <span className="flex-1 font-body text-[15px] font-semibold text-ink">{m.productDetail.productBrochure}</span>
         </a>
       </div>
     </div>
@@ -300,6 +309,7 @@ export function Downloads({ brochureHref, modelCode }: { brochureHref: string; m
 }
 
 export function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
+  const m = useMessages();
   const { standardAssemblies, optionalAssemblies, keyFeatures } = detail;
   const hasTopRow = keyFeatures.length > 0 || Boolean(detail.brochureHref);
   const hasAssemblyRow = standardAssemblies.length > 0 || optionalAssemblies.length > 0;
@@ -311,7 +321,7 @@ export function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
           <div className="grid grid-cols-[1.15fr_1fr] items-start gap-16 max-nav:grid-cols-1 max-nav:gap-11">
             {keyFeatures.length > 0 ? (
               <div>
-                <SectionHeading>Key Features</SectionHeading>
+                <SectionHeading>{m.productDetail.keyFeatures}</SectionHeading>
                 <div className="flex flex-col gap-4">
                   {keyFeatures.map((feature) => (
                     <div key={feature} className="flex items-start gap-3.5">
@@ -330,13 +340,13 @@ export function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
           <div className="grid grid-cols-[1.15fr_1fr] items-start gap-16 max-nav:grid-cols-1 max-nav:gap-11">
             {standardAssemblies.length > 0 ? (
               <div>
-                <SectionHeading>Standard Assemblies</SectionHeading>
+                <SectionHeading>{m.productDetail.standardAssemblies}</SectionHeading>
                 <ItemList items={standardAssemblies} icon={StandardIcon} />
               </div>
             ) : null}
             {optionalAssemblies.length > 0 ? (
               <div>
-                <SectionHeading>Optional Assemblies</SectionHeading>
+                <SectionHeading>{m.productDetail.optionalAssemblies}</SectionHeading>
                 <ItemList items={optionalAssemblies} icon={OptionalIcon} />
               </div>
             ) : null}
@@ -348,6 +358,8 @@ export function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
 }
 
 function Related({ rangeName, related }: { rangeName: string; related: ProductDetail['related'] }) {
+  const m = useMessages();
+
   if (related.length === 0) {
     return null;
   }
@@ -356,7 +368,7 @@ function Related({ rangeName, related }: { rangeName: string; related: ProductDe
     <section className="bg-[#ececea] py-[72px] max-nav:py-14">
       <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
         <h2 className="m-0 mb-8 font-display text-[40px] font-extrabold uppercase tracking-[0.5px] text-ink">
-          More in {rangeName}
+          {m.productDetail.relatedHeading(rangeName)}
         </h2>
         <div className="grid grid-cols-3 gap-6 max-nav:grid-cols-2 max-xs:grid-cols-1">
           {related.map((product) => (
@@ -386,24 +398,24 @@ function ProductDetailPage() {
 }
 
 function ProductNotFound() {
+  const m = useMessages();
+
   return (
     <main className="bg-sand">
       <SandWatermarkSection variant="product-not-found" className="py-32 text-center max-nav:py-20">
         <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
           <span className="font-display text-[15px] font-semibold uppercase tracking-[3px] text-[#8a7a2a]">
-            Not found
+            {m.productDetail.notFoundEyebrow}
           </span>
           <h1 className="mt-3.5 mb-4 font-display text-[56px] font-extrabold uppercase leading-[0.94] tracking-[0.5px] text-ink max-nav:text-[40px]">
-            Product not found
+            {m.productDetail.notFoundTitle}
           </h1>
-          <p className="m-0 mb-8 font-body text-[19px] leading-[1.6] text-[#555]">
-            We couldn't find that model. Browse the full range to find what you need.
-          </p>
+          <p className="m-0 mb-8 font-body text-[19px] leading-[1.6] text-[#555]">{m.productDetail.notFoundBody}</p>
           <Link
             to="/products"
             className="inline-flex items-center gap-3 bg-ink px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:bg-black"
           >
-            View All Products
+            {m.productDetail.viewAllProducts}
           </Link>
         </div>
       </SandWatermarkSection>

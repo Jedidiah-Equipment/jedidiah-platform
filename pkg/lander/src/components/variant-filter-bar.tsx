@@ -1,7 +1,7 @@
 import { IconChevronDown } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-
+import { useMessages } from '../messages/index.js';
 import type { CatalogGroup, CatalogVariant } from '../server/catalog/products-data.js';
 
 type VariantSearch = { range: string; variant?: string };
@@ -36,11 +36,17 @@ export function VariantFilterBar({
   activeGroup: CatalogGroup | undefined;
   activeVariant: CatalogVariant | undefined;
 }) {
+  const m = useMessages();
   const hasVariants = !!activeGroup && activeGroup.variants.length > 0;
 
   const chips: VariantChip[] = hasVariants
     ? [
-        { key: '__all__', label: 'All', active: activeVariant === undefined, search: { range: activeGroup.slug } },
+        {
+          key: '__all__',
+          label: m.variantFilter.allChip,
+          active: activeVariant === undefined,
+          search: { range: activeGroup.slug },
+        },
         ...activeGroup.variants.map((variant) => ({
           key: variant.id,
           label: variant.label,
@@ -87,7 +93,7 @@ export function VariantFilterBar({
         <div className="border-t border-line/70">
           <div className="mx-auto flex max-w-[1320px] items-center gap-2.5 px-12 py-3.5 max-nav:px-5 max-nav:py-3">
             <span className="mr-1.5 flex-none font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
-              Filter by variant
+              {m.variantFilter.filterByVariant}
             </span>
             <OverflowChipRow chips={displayChips} />
           </div>
@@ -205,6 +211,7 @@ function MoreMenu({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const m = useMessages();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   // The panel stays mounted through its collapse transition: `mounted` keeps it in the DOM, `shown` drives
   // the open/closed classes. Opening flips `shown` on the next frame so the enter transition actually plays;
@@ -263,7 +270,7 @@ function MoreMenu({
         aria-haspopup="menu"
         className={`${CHIP_CLASS} flex items-center gap-1.5 ${active ? CHIP_ACTIVE : CHIP_IDLE}`}
       >
-        More +{chips.length}
+        {m.variantFilter.moreChip(chips.length)}
         <IconChevronDown
           size={16}
           stroke={2.4}

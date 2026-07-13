@@ -1,4 +1,4 @@
-import { LOCALE_METADATA, type Locale, localePath } from './locale.js';
+import { CANONICAL_LOCALE, LOCALE_METADATA, LOCALES, type Locale, localePath } from './locale.js';
 import { siteOrigin } from './site-origin.js';
 
 // Configured public site origin, used only for the sitemap `<loc>` entries and the robots.txt `Sitemap:`
@@ -50,7 +50,7 @@ export type SeoInput = {
 // Spread into a route's `head()` return so the per-page values override the site defaults set on the root
 // route.
 export function seoHead({ title, description, locale, path, image = DEFAULT_OG_IMAGE }: SeoInput) {
-  const canonicalPath = localePath(path, 'en');
+  const canonicalPath = localePath(path, CANONICAL_LOCALE);
   const localizedPath = localePath(path, locale);
   const url = absoluteUrl(localizedPath);
   const imageUrl = absoluteUrl(image);
@@ -70,8 +70,11 @@ export function seoHead({ title, description, locale, path, image = DEFAULT_OG_I
     ],
     links: [
       { rel: 'canonical', href: url },
-      { rel: 'alternate', hrefLang: 'en', href: absoluteUrl(canonicalPath) },
-      { rel: 'alternate', hrefLang: 'af', href: absoluteUrl(localePath(path, 'af')) },
+      ...LOCALES.map((alternate) => ({
+        rel: 'alternate',
+        hrefLang: alternate,
+        href: absoluteUrl(localePath(path, alternate)),
+      })),
       { rel: 'alternate', hrefLang: 'x-default', href: absoluteUrl(canonicalPath) },
     ],
   };

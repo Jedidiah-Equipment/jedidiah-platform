@@ -13,16 +13,12 @@ import { type FormEvent, useState } from 'react';
 
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
 import { captureEvent } from '../../lib/analytics.js';
-import { type LocaleRouteContext, requireRouteContextLocale } from '../../lib/locale.js';
 import { seoHead } from '../../lib/seo.js';
 import { messagesForLocale, useLocale, useMessages } from '../../messages/index.js';
 import { getRangeOptions } from '../../server/catalog/ranges.js';
 
-async function loadContactPage({ context }: { context: LocaleRouteContext }): Promise<{ equipmentOptions: string[] }> {
-  return { equipmentOptions: await getRangeOptions({ data: { locale: requireRouteContextLocale(context) } }) };
-}
-
 export const Route = createFileRoute('/{-$locale}/contact')({
+  loader: async ({ context }) => ({ equipmentOptions: await getRangeOptions({ data: { locale: context.locale } }) }),
   head: ({ match }) => {
     const m = messagesForLocale(match.context.locale);
 
@@ -33,7 +29,6 @@ export const Route = createFileRoute('/{-$locale}/contact')({
       path: '/contact',
     });
   },
-  loader: loadContactPage,
   component: ContactPage,
 });
 

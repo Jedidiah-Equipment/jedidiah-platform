@@ -2,8 +2,6 @@ import { CANONICAL_LOCALE, LOCALES, type Locale, Locale as LocaleSchema } from '
 
 export { CANONICAL_LOCALE, LOCALES, type Locale } from '@pkg/schema';
 
-export type LocaleRouteContext = { locale?: Locale };
-
 type LocaleMetadata = { pathPrefix: string; openGraphLocale: string };
 
 export const LOCALE_METADATA: Record<Locale, LocaleMetadata> = {
@@ -21,15 +19,6 @@ export function resolveRouteLocale(param: string | undefined): Locale | null {
   }
 
   return isLocale(param) && param !== CANONICAL_LOCALE ? param : null;
-}
-
-export function requireRouteContextLocale(context: LocaleRouteContext): Locale {
-  if (!context.locale) {
-    // The locale layout's beforeLoad always supplies this; throwing catches route wiring regressions.
-    throw new Error('Locale route context is missing');
-  }
-
-  return context.locale;
 }
 
 export function localePath(canonicalPath: string, locale: Locale): string {

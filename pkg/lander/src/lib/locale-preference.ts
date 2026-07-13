@@ -10,9 +10,7 @@ const PREFERENCE_VARY = 'Cookie, Accept-Language';
 const ACCEPT_LANGUAGE_ENTRY =
   /^([a-z]{1,8}(?:-[a-z0-9]{1,8})*|\*)(?:\s*;\s*q=(?:0(?:\.[0-9]{0,3})?|1(?:\.0{0,3})?))?$/i;
 
-export type LocalePreferenceSource = 'auto' | 'explicit';
-export type LocalePreference = { locale: Locale; source: LocalePreferenceSource };
-export type LocalePreferenceDecision = { cookie: LocalePreference | null; redirectHref: string | null };
+export type LocalePreferenceDecision = { cookie: Locale | null; redirectHref: string | null };
 
 export function preferredLocaleFromAcceptLanguage(header: string | undefined): Locale {
   if (!header) {
@@ -30,21 +28,11 @@ export function preferredLocaleFromAcceptLanguage(header: string | undefined): L
   return hasAfrikaans ? 'af' : CANONICAL_LOCALE;
 }
 
-export function parseLocalePreference(value: string | undefined): LocalePreference | null {
-  if (!value) {
-    return null;
-  }
+export function parseLocalePreference(value: string | undefined): Locale | null {
+  // Reading only the leading segment tolerates the legacy `<locale>.<source>` cookie format.
+  const locale = value?.split('.')[0];
 
-  const [locale, source, extra] = value.split('.');
-  if (extra !== undefined || !isLocale(locale) || (source !== 'auto' && source !== 'explicit')) {
-    return null;
-  }
-
-  return { locale, source };
-}
-
-function serializeLocalePreference(preference: LocalePreference): string {
-  return `${preference.locale}.${preference.source}`;
+  return isLocale(locale) ? locale : null;
 }
 
 function requestCookie(request: Request, name: string): string | undefined {
@@ -67,15 +55,14 @@ function requestCookie(request: Request, name: string): string | undefined {
 }
 
 export function resolveLocalePreferenceRequest(request: Request, routeLocale: Locale): LocalePreferenceDecision {
-  const storedPreference = parseLocalePreference(requestCookie(request, LOCALE_PREFERENCE_COOKIE));
+  const storedLocale = parseLocalePreference(requestCookie(request, LOCALE_PREFERENCE_COOKIE));
   const requestUrl = new URL(request.url);
   const currentHref = `${requestUrl.pathname}${requestUrl.search}${requestUrl.hash}`;
 
-  if (storedPreference) {
+  if (storedLocale) {
     return {
       cookie: null,
-      redirectHref:
-        storedPreference.locale === routeLocale ? null : switchLocaleHref(currentHref, storedPreference.locale),
+      redirectHref: storedLocale === routeLocale ? null : switchLocaleHref(currentHref, storedLocale),
     };
   }
 
@@ -85,16 +72,15 @@ export function resolveLocalePreferenceRequest(request: Request, routeLocale: Lo
     routeLocale === CANONICAL_LOCALE
       ? preferredLocaleFromAcceptLanguage(request.headers.get('accept-language') ?? undefined)
       : routeLocale;
-  const preference: LocalePreference = { locale, source: 'auto' };
 
   return {
-    cookie: preference,
+    cookie: locale,
     redirectHref: locale === routeLocale ? null : switchLocaleHref(currentHref, locale),
   };
 }
 
-export function localePreferenceCookie(preference: LocalePreference, secure: boolean): string {
-  return `${LOCALE_PREFERENCE_COOKIE}=${serializeLocalePreference(preference)}; Path=/; Max-Age=${COOKIE_MAX_AGE_SECONDS}; SameSite=Lax${secure ? '; Secure' : ''}`;
+export function localePreferenceCookie(locale: Locale, secure: boolean): string {
+  return `${LOCALE_PREFERENCE_COOKIE}=${locale}; Path=/; Max-Age=${COOKIE_MAX_AGE_SECONDS}; SameSite=Lax${secure ? '; Secure' : ''}`;
 }
 
 export function localePreferenceHref(currentHref: string, target: Locale): string {
@@ -102,9 +88,9 @@ export function localePreferenceHref(currentHref: string, target: Locale): strin
   return `/locale/${target}?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
-function persistServerLocalePreference(preference: LocalePreference) {
+function persistServerLocalePreference(locale: Locale) {
   const requestUrl = getRequestUrl({ xForwardedHost: true });
-  setResponseHeader('set-cookie', localePreferenceCookie(preference, requestUrl.protocol === 'https:'));
+  setResponseHeader('set-cookie', localePreferenceCookie(locale, requestUrl.protocol === 'https:'));
 }
 
 export const honorLocalePreference: (routeLocale: Locale) => void = createIsomorphicFn()

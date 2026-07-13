@@ -81,6 +81,17 @@ describe('localized public routes', () => {
     expect(markup).not.toContain('Boere Bou vir Boere');
   });
 
+  test('renders internal links prefixed for the active locale', async () => {
+    const afMarkup = renderToStaticMarkup(<RouterProvider router={await routerAt('/af/about')} />);
+    const enMarkup = renderToStaticMarkup(<RouterProvider router={await routerAt('/about')} />);
+
+    expect(afMarkup).toContain('href="/af"');
+    expect(afMarkup).toContain('href="/af/products"');
+    expect(enMarkup).toContain('href="/"');
+    expect(enMarkup).toContain('href="/products"');
+    expect(enMarkup).not.toContain('href="/af/');
+  });
+
   test('renders language choices as server-backed links that work without client-side cookie writes', async () => {
     const router = await routerAt('/about');
     const markup = renderToStaticMarkup(<RouterProvider router={router} />);

@@ -39,19 +39,19 @@ describe('preferredLocaleFromAcceptLanguage', () => {
 });
 
 describe('locale preference cookie', () => {
-  test('parses only supported locale and source combinations', () => {
-    expect(parseLocalePreference('af.explicit')).toEqual({ locale: 'af', source: 'explicit' });
-    expect(parseLocalePreference('en.auto')).toEqual({ locale: 'en', source: 'auto' });
-    expect(parseLocalePreference('af')).toBeNull();
+  test('parses supported locales, tolerating the legacy locale.source format', () => {
+    expect(parseLocalePreference('af')).toBe('af');
+    expect(parseLocalePreference('af.explicit')).toBe('af');
+    expect(parseLocalePreference('en.auto')).toBe('en');
+    expect(parseLocalePreference('fr')).toBeNull();
     expect(parseLocalePreference('fr.explicit')).toBeNull();
+    expect(parseLocalePreference(undefined)).toBeNull();
   });
 
   test('is available site-wide and secure on HTTPS', () => {
-    expect(localePreferenceCookie({ locale: 'af', source: 'auto' }, false)).toBe(
-      'jedidiah_locale=af.auto; Path=/; Max-Age=31536000; SameSite=Lax',
-    );
-    expect(localePreferenceCookie({ locale: 'en', source: 'explicit' }, true)).toBe(
-      'jedidiah_locale=en.explicit; Path=/; Max-Age=31536000; SameSite=Lax; Secure',
+    expect(localePreferenceCookie('af', false)).toBe('jedidiah_locale=af; Path=/; Max-Age=31536000; SameSite=Lax');
+    expect(localePreferenceCookie('en', true)).toBe(
+      'jedidiah_locale=en; Path=/; Max-Age=31536000; SameSite=Lax; Secure',
     );
   });
 });
@@ -61,47 +61,47 @@ describe('resolveLocalePreferenceRequest', () => {
     entry: string;
     acceptLanguage?: string;
     routeLocale: Locale;
-    expectedCookie: string;
+    expectedCookie: Locale;
     expectedRedirect: string | null;
   }>([
     {
       entry: '/products',
       acceptLanguage: 'af-ZA',
       routeLocale: 'en',
-      expectedCookie: 'af.auto',
+      expectedCookie: 'af',
       expectedRedirect: '/af/products',
     },
     {
       entry: '/products',
       acceptLanguage: 'en-ZA',
       routeLocale: 'en',
-      expectedCookie: 'en.auto',
+      expectedCookie: 'en',
       expectedRedirect: null,
     },
     {
       entry: '/products',
       routeLocale: 'en',
-      expectedCookie: 'en.auto',
+      expectedCookie: 'en',
       expectedRedirect: null,
     },
     {
       entry: '/af/products',
       acceptLanguage: 'af-ZA',
       routeLocale: 'af',
-      expectedCookie: 'af.auto',
+      expectedCookie: 'af',
       expectedRedirect: null,
     },
     {
       entry: '/af/products',
       acceptLanguage: 'en-ZA',
       routeLocale: 'af',
-      expectedCookie: 'af.auto',
+      expectedCookie: 'af',
       expectedRedirect: null,
     },
     {
       entry: '/af/products',
       routeLocale: 'af',
-      expectedCookie: 'af.auto',
+      expectedCookie: 'af',
       expectedRedirect: null,
     },
   ])('resolves first visit $entry with Accept-Language $acceptLanguage', ({
@@ -112,12 +112,13 @@ describe('resolveLocalePreferenceRequest', () => {
     expectedRedirect,
   }) => {
     expect(resolveLocalePreferenceRequest(localeRequest(entry, acceptLanguage), routeLocale)).toEqual({
-      cookie: parseLocalePreference(expectedCookie),
+      cookie: expectedCookie,
       redirectHref: expectedRedirect,
     });
   });
 
-  test('lets an explicit preference win over the entered URL and preserves the query string', () => {
+  test('lets a stored preference win over the entered URL and preserves the query string', () => {
+    // The legacy `.explicit` suffix still parses; new cookies store the bare locale.
     const request = localeRequest('/products/CH-450?x=1', undefined, 'other=value; jedidiah_locale=af.explicit');
 
     expect(resolveLocalePreferenceRequest(request, 'en')).toEqual({
@@ -126,8 +127,8 @@ describe('resolveLocalePreferenceRequest', () => {
     });
   });
 
-  test('continues honoring an auto preference until an explicit choice replaces it', () => {
-    const request = localeRequest('/af/about', undefined, 'jedidiah_locale=en.auto');
+  test('continues honoring a stored preference on mismatched deep links', () => {
+    const request = localeRequest('/af/about', undefined, 'jedidiah_locale=en');
 
     expect(resolveLocalePreferenceRequest(request, 'af')).toEqual({
       cookie: null,

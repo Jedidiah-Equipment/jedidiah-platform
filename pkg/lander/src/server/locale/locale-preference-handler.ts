@@ -28,10 +28,7 @@ export function handleExplicitLocalePreference(request: Request, requestedLocale
     status: 302,
     headers: {
       location,
-      'set-cookie': localePreferenceCookie(
-        { locale: requestedLocale, source: 'explicit' },
-        requestUrl.protocol === 'https:',
-      ),
+      'set-cookie': localePreferenceCookie(requestedLocale, requestUrl.protocol === 'https:'),
     },
   });
 }

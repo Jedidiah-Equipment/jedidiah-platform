@@ -1,3 +1,5 @@
+import type { Locale } from '../lib/locale.js';
+
 type FeatureMessage = { title: string; body: string };
 type ValueMessage = { num: string; title: string; body: string };
 type MilestoneMessage = { year: string; text: string };
@@ -21,8 +23,7 @@ export type Messages = {
   };
   language: {
     label: string;
-    english: string;
-    afrikaans: string;
+    names: Record<Locale, string>;
     switchTo: (language: string) => string;
   };
   footer: {

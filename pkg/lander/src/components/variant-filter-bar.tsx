@@ -1,7 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { localePath } from '../lib/locale.js';
-import { useLocale, useMessages } from '../messages/index.js';
+import { useMessages } from '../messages/index.js';
 import type { CatalogGroup, CatalogVariant } from '../server/catalog/products-data.js';
 import { DropdownMenu } from './dropdown-menu.js';
 
@@ -105,7 +104,6 @@ export function VariantFilterBar({
 }
 
 function OverflowChipRow({ chips }: { chips: VariantChip[] }) {
-  const locale = useLocale();
   const rowRef = useRef<HTMLDivElement | null>(null);
   const chipRefs = useRef<(HTMLElement | null)[]>([]);
   const widthsRef = useRef<number[] | null>(null);
@@ -163,7 +161,7 @@ function OverflowChipRow({ chips }: { chips: VariantChip[] }) {
           ref={(node: HTMLAnchorElement | null) => {
             chipRefs.current[index] = node;
           }}
-          to={localePath('/products', locale)}
+          to="/{-$locale}/products"
           search={chip.search}
           className={`${CHIP_CLASS} ${chip.active ? CHIP_ACTIVE : CHIP_IDLE}`}
         >
@@ -214,7 +212,6 @@ function MoreMenu({
   onOpenChange: (open: boolean) => void;
 }) {
   const m = useMessages();
-  const locale = useLocale();
 
   return (
     <DropdownMenu
@@ -227,7 +224,7 @@ function MoreMenu({
       {chips.map((chip) => (
         <Link
           key={chip.key}
-          to={localePath('/products', locale)}
+          to="/{-$locale}/products"
           search={chip.search}
           role="menuitem"
           onClick={() => onOpenChange(false)}

@@ -4,15 +4,10 @@ import { PageHero } from '../../../components/page-hero.js';
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
 import { VariantFilterBar } from '../../../components/variant-filter-bar.js';
-import { type LocaleRouteContext, localePath, requireRouteContextLocale } from '../../../lib/locale.js';
 import { seoHead } from '../../../lib/seo.js';
-import { messagesForLocale, useLocale, useMessages } from '../../../messages/index.js';
-import { getProductsCatalog, type ProductsCatalog } from '../../../server/catalog/products.js';
+import { messagesForLocale, useMessages } from '../../../messages/index.js';
+import { getProductsCatalog } from '../../../server/catalog/products.js';
 import type { CatalogGroup, CatalogVariant } from '../../../server/catalog/products-data.js';
-
-async function loadProductsPage({ context }: { context: LocaleRouteContext }): Promise<{ catalog: ProductsCatalog }> {
-  return { catalog: await getProductsCatalog({ data: { locale: requireRouteContextLocale(context) } }) };
-}
 
 type ProductsSearch = { range?: string; variant?: string };
 type ProductsCatalogView = {
@@ -23,6 +18,7 @@ type ProductsCatalogView = {
 };
 
 export const Route = createFileRoute('/{-$locale}/products/')({
+  loader: async ({ context }) => ({ catalog: await getProductsCatalog({ data: { locale: context.locale } }) }),
   head: ({ match }) => {
     const m = messagesForLocale(match.context.locale);
 
@@ -37,7 +33,6 @@ export const Route = createFileRoute('/{-$locale}/products/')({
     ...(typeof search.range === 'string' ? { range: search.range } : {}),
     ...(typeof search.variant === 'string' ? { variant: search.variant } : {}),
   }),
-  loader: loadProductsPage,
   component: ProductsPage,
 });
 
@@ -80,11 +75,9 @@ function PageHeader() {
 }
 
 function FilterChip({ active, label, search }: { active: boolean; label: string; search: ProductsSearch }) {
-  const locale = useLocale();
-
   return (
     <Link
-      to={localePath('/products', locale)}
+      to="/{-$locale}/products"
       search={search}
       className={`border-[1.5px] px-3.5 py-[9px] font-display text-[15px] font-semibold uppercase tracking-[1px] no-underline transition-colors ${
         active ? 'border-ink bg-ink text-white' : 'border-[#d6d4ce] bg-white text-ink hover:border-ink'

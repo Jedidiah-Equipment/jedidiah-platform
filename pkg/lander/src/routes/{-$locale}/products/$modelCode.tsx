@@ -10,16 +10,16 @@ import {
 import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
-import { ProductCard } from '../../components/product-card.js';
-import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
-import { captureEvent } from '../../lib/analytics.js';
-import { seoHead, truncateDescription } from '../../lib/seo.js';
-import { en } from '../../messages/en.js';
-import { useMessages } from '../../messages/index.js';
-import { getProductDetail } from '../../server/catalog/product-detail.js';
-import type { ProductDetail, ProductHighlight } from '../../server/catalog/product-detail-data.js';
+import { ProductCard } from '../../../components/product-card.js';
+import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
+import { captureEvent } from '../../../lib/analytics.js';
+import { localePath } from '../../../lib/locale.js';
+import { seoHead, truncateDescription } from '../../../lib/seo.js';
+import { messagesForLocale, useLocale, useMessages } from '../../../messages/index.js';
+import { getProductDetail } from '../../../server/catalog/product-detail.js';
+import type { ProductDetail, ProductHighlight } from '../../../server/catalog/product-detail-data.js';
 
-export const Route = createFileRoute('/products/$modelCode')({
+export const Route = createFileRoute('/{-$locale}/products/$modelCode')({
   loader: async ({ params }) => {
     const detail = await getProductDetail({ data: params.modelCode });
     if (!detail) {
@@ -28,25 +28,28 @@ export const Route = createFileRoute('/products/$modelCode')({
 
     return { detail };
   },
-  head: ({ loaderData, params }) => {
+  head: ({ loaderData, match, params }) => {
+    const m = messagesForLocale(match.context.locale);
     const detail = loaderData?.detail;
     if (!detail) {
       // The loader throws notFound() for unknown model codes, so there's no detail to describe. Emit a
       // sensible head pointing back at the catalog rather than leaking a half-built title.
       return seoHead({
-        title: en.productDetail.notFoundPageTitle,
-        description: en.productDetail.notFoundMetaDescription,
+        title: m.productDetail.notFoundPageTitle,
+        description: m.productDetail.notFoundMetaDescription,
+        locale: match.context.locale,
         path: `/products/${encodeURIComponent(params.modelCode)}`,
       });
     }
 
     const description = truncateDescription(
-      detail.description || en.productDetail.fallbackDescription(detail.name, detail.rangeName),
+      detail.description || m.productDetail.fallbackDescription(detail.name, detail.rangeName),
     );
 
     return seoHead({
-      title: en.productDetail.pageTitle(detail.name, detail.rangeName),
+      title: m.productDetail.pageTitle(detail.name, detail.rangeName),
       description,
+      locale: match.context.locale,
       path: `/products/${encodeURIComponent(detail.modelCode)}`,
       image: detail.ogImageUrl,
     });
@@ -57,15 +60,16 @@ export const Route = createFileRoute('/products/$modelCode')({
 
 function Breadcrumb({ rangeName, name }: { rangeName: string; name: string }) {
   const m = useMessages();
+  const locale = useLocale();
 
   return (
     <div className="bg-ink border-b border-[#2a2a2a]">
       <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-4 font-body text-[14px] text-[#8a8a8a] max-nav:px-5 max-nav:py-3.5">
-        <Link to="/" className="text-[#8a8a8a] no-underline hover:text-white">
+        <Link to={localePath('/', locale)} className="text-[#8a8a8a] no-underline hover:text-white">
           {m.productDetail.breadcrumbHome}
         </Link>
         <span>/</span>
-        <Link to="/products" className="text-[#8a8a8a] no-underline hover:text-white">
+        <Link to={localePath('/products', locale)} className="text-[#8a8a8a] no-underline hover:text-white">
           {m.productDetail.breadcrumbProducts}
         </Link>
         <span>/</span>
@@ -201,6 +205,7 @@ function HighlightTiles({ highlights }: { highlights: ProductHighlight[] }) {
 
 function Hero({ detail }: { detail: ProductDetail }) {
   const m = useMessages();
+  const locale = useLocale();
 
   return (
     <section className="border-b border-line bg-white">
@@ -226,7 +231,7 @@ function Hero({ detail }: { detail: ProductDetail }) {
 
           <div className="mt-auto flex flex-wrap gap-3.5">
             <Link
-              to="/contact"
+              to={localePath('/contact', locale)}
               className="flex items-center gap-3 bg-gold px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-yellow"
             >
               {m.productDetail.contactUs}
@@ -399,6 +404,7 @@ function ProductDetailPage() {
 
 function ProductNotFound() {
   const m = useMessages();
+  const locale = useLocale();
 
   return (
     <main className="bg-sand">
@@ -412,7 +418,7 @@ function ProductNotFound() {
           </h1>
           <p className="m-0 mb-8 font-body text-[19px] leading-[1.6] text-[#555]">{m.productDetail.notFoundBody}</p>
           <Link
-            to="/products"
+            to={localePath('/products', locale)}
             className="inline-flex items-center gap-3 bg-ink px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:bg-black"
           >
             {m.productDetail.viewAllProducts}

@@ -81,10 +81,19 @@ describe('buildContactLeadEmail', () => {
 });
 
 describe('handleContactRequest', () => {
+  test('returns Afrikaans validation copy for an Afrikaans submission', async () => {
+    const response = await handleContactRequest(contactRequest('not json'), 'af', {
+      config: CONFIG,
+      send: vi.fn(),
+    });
+
+    await expect(response.json()).resolves.toEqual({ error: '’n JSON-versoekliggaam is verwag' });
+  });
+
   test('sends the lead and returns 200 on a valid submission', async () => {
     const send = vi.fn().mockResolvedValue(undefined);
 
-    const response = await handleContactRequest(contactRequest(VALID_BODY), { config: CONFIG, send });
+    const response = await handleContactRequest(contactRequest(VALID_BODY), 'en', { config: CONFIG, send });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true });
@@ -97,7 +106,7 @@ describe('handleContactRequest', () => {
   test('returns 400 for an invalid submission without sending', async () => {
     const send = vi.fn();
 
-    const response = await handleContactRequest(contactRequest({ name: '', email: 'bad', message: '' }), {
+    const response = await handleContactRequest(contactRequest({ name: '', email: 'bad', message: '' }), 'en', {
       config: CONFIG,
       send,
     });
@@ -107,7 +116,10 @@ describe('handleContactRequest', () => {
   });
 
   test('returns 400 for a non-JSON body', async () => {
-    const response = await handleContactRequest(contactRequest('not json'), { config: CONFIG, send: vi.fn() });
+    const response = await handleContactRequest(contactRequest('not json'), 'en', {
+      config: CONFIG,
+      send: vi.fn(),
+    });
 
     expect(response.status).toBe(400);
   });
@@ -115,7 +127,7 @@ describe('handleContactRequest', () => {
   test('returns 503 when Resend is not configured', async () => {
     const send = vi.fn();
 
-    const response = await handleContactRequest(contactRequest(VALID_BODY), { config: null, send });
+    const response = await handleContactRequest(contactRequest(VALID_BODY), 'en', { config: null, send });
 
     expect(response.status).toBe(503);
     expect(send).not.toHaveBeenCalled();
@@ -124,7 +136,7 @@ describe('handleContactRequest', () => {
   test('returns 502 when sending fails', async () => {
     const send = vi.fn().mockRejectedValue(new Error('resend down'));
 
-    const response = await handleContactRequest(contactRequest(VALID_BODY), { config: CONFIG, send });
+    const response = await handleContactRequest(contactRequest(VALID_BODY), 'en', { config: CONFIG, send });
 
     expect(response.status).toBe(502);
   });

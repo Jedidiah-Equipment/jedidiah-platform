@@ -1,43 +1,26 @@
 import faviconUrl from '@pkg/domain/assets/brand/jedidiah-favicon-yellow.png';
-import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
+import { createRootRoute, HeadContent, Outlet, Scripts, useRouterState } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
-import { Footer } from '../components/footer.js';
-import { Nav } from '../components/nav.js';
 import { initAnalytics } from '../lib/analytics.js';
+import { CANONICAL_LOCALE, isLocale, type Locale } from '../lib/locale.js';
 import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
-import { en } from '../messages/en.js';
-import { getFooterRanges } from '../server/catalog/ranges.js';
 import { getSiteMeta } from '../server/site/site-meta.js';
 import appCss from '../styles/app.css?url';
 
 export const Route = createRootRoute({
   loader: async () => {
-    const [meta, footerRanges] = await Promise.all([getSiteMeta(), getFooterRanges()]);
-
-    return { ...meta, footerRanges };
+    return getSiteMeta();
   },
   head: ({ loaderData }) => ({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: en.site.title },
-      {
-        name: 'description',
-        content: en.site.description,
-      },
       // Keep non-production environments (staging, development) out of search results. The robots.txt route
       // already disallows crawling there; this adds a defence-in-depth noindex for any page fetched directly.
       ...(loaderData?.indexable === false ? [{ name: 'robots', content: 'noindex, nofollow' }] : []),
-      // Site-wide Open Graph / Twitter defaults. Per-page heads override title, description, image and url
-      // (matched by name/property), so these act as the fallback for any page that doesn't set its own.
+      // Site-wide social-card defaults. Localized page heads add their own title, description, locale and URL.
       { property: 'og:type', content: 'website' },
-      { property: 'og:site_name', content: en.site.ogSiteName },
-      { property: 'og:title', content: en.site.ogTitle },
-      {
-        property: 'og:description',
-        content: en.site.ogDescription,
-      },
       { property: 'og:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
@@ -67,19 +50,31 @@ function AnalyticsTracker() {
   return null;
 }
 
+function contextLocale(context: unknown): Locale | undefined {
+  if (typeof context !== 'object' || context === null || !('locale' in context)) {
+    return undefined;
+  }
+
+  const locale = context.locale;
+  return isLocale(locale) ? locale : undefined;
+}
+
 function RootDocument() {
-  const { footerRanges } = Route.useLoaderData();
+  const locale = useRouterState({
+    select: (state) =>
+      state.matches
+        .map((match) => contextLocale(match.context))
+        .find((value): value is Locale => value !== undefined) ?? CANONICAL_LOCALE,
+  });
 
   return (
-    <html lang="en">
+    <html lang={locale}>
       <head>
         <HeadContent />
       </head>
       <body>
         <AnalyticsTracker />
-        <Nav />
         <Outlet />
-        <Footer ranges={footerRanges} />
         <Scripts />
       </body>
     </html>

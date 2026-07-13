@@ -2,19 +2,26 @@ import { EmailAddress, requiredTrimmedText } from '@pkg/schema';
 import { Resend } from 'resend';
 import { z } from 'zod';
 
-import { en } from '../../messages/en.js';
+import { CANONICAL_LOCALE, type Locale } from '../../lib/locale.js';
+import { messagesForLocale } from '../../messages/index.js';
 import { getLanderConfig } from '../runtime/env.js';
 
 // The enquiry form payload. Name, email, and message are required; phone and equipment are optional
 // context. Lengths are capped so a malformed or abusive body is rejected before any Resend call.
+function contactLeadSchema(locale: Locale) {
+  const validation = messagesForLocale(locale).contact.validation;
+
+  return z.object({
+    name: requiredTrimmedText(validation.enterName).max(120),
+    email: EmailAddress.pipe(z.string().max(200)),
+    phone: z.string().trim().max(40).default(''),
+    equipment: z.string().trim().max(120).default(''),
+    message: requiredTrimmedText(validation.enterMessage).max(4000),
+  });
+}
+
+export const ContactLead = contactLeadSchema(CANONICAL_LOCALE);
 export type ContactLead = z.infer<typeof ContactLead>;
-export const ContactLead = z.object({
-  name: requiredTrimmedText(en.contact.validation.enterName).max(120),
-  email: EmailAddress.pipe(z.string().max(200)),
-  phone: z.string().trim().max(40).default(''),
-  equipment: z.string().trim().max(120).default(''),
-  message: requiredTrimmedText(en.contact.validation.enterMessage).max(4000),
-});
 
 // Resolved Resend settings for the Contact form, or null when no API key is configured. Returning null
 // (rather than throwing) keeps page load safe: a missing key only blocks form submission (issue #568).
@@ -99,30 +106,32 @@ function jsonResponse(body: unknown, status: number): Response {
 // `deps` is injectable so tests can exercise the flow without a live Resend client.
 export async function handleContactRequest(
   request: Request,
+  locale: Locale,
   deps: { config?: ContactEmailConfig | null; send?: SendContactLead } = {},
 ): Promise<Response> {
+  const validation = messagesForLocale(locale).contact.validation;
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonResponse({ error: en.contact.validation.expectedJson }, 400);
+    return jsonResponse({ error: validation.expectedJson }, 400);
   }
 
-  const parsed = ContactLead.safeParse(body);
+  const parsed = contactLeadSchema(locale).safeParse(body);
   if (!parsed.success) {
-    return jsonResponse({ error: en.contact.validation.checkForm, issues: z.treeifyError(parsed.error) }, 400);
+    return jsonResponse({ error: validation.checkForm, issues: z.treeifyError(parsed.error) }, 400);
   }
 
   const config = deps.config === undefined ? getContactEmailConfig() : deps.config;
   if (!config) {
-    return jsonResponse({ error: en.contact.validation.unavailable }, 503);
+    return jsonResponse({ error: validation.unavailable }, 503);
   }
 
   const send = deps.send ?? sendContactLeadViaResend;
   try {
     await send(parsed.data, config);
   } catch {
-    return jsonResponse({ error: en.contact.validation.sendFailed }, 502);
+    return jsonResponse({ error: validation.sendFailed }, 502);
   }
 
   return jsonResponse({ ok: true }, 200);

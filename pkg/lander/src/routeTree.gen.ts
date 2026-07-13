@@ -9,21 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Char123LocaleChar125RouteImport } from './routes/{-$locale}'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as HealthRouteImport } from './routes/health'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as AboutRouteImport } from './routes/about'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ProductsIndexRouteImport } from './routes/products/index'
-import { Route as ProductsModelCodeRouteImport } from './routes/products/$modelCode'
+import { Route as Char123LocaleChar125IndexRouteImport } from './routes/{-$locale}/index'
+import { Route as Char123LocaleChar125ContactRouteImport } from './routes/{-$locale}/contact'
+import { Route as Char123LocaleChar125AboutRouteImport } from './routes/{-$locale}/about'
 import { Route as InfoSplatRouteImport } from './routes/info/$'
 import { Route as ApiContactRouteImport } from './routes/api/contact'
+import { Route as Char123LocaleChar125ProductsIndexRouteImport } from './routes/{-$locale}/products/index'
+import { Route as Char123LocaleChar125ProductsModelCodeRouteImport } from './routes/{-$locale}/products/$modelCode'
 import { Route as InfoStaticSplatRouteImport } from './routes/info/static/$'
 import { Route as ImagesRangesRangeIdRouteImport } from './routes/images/ranges/$rangeId'
 import { Route as ImagesProductsProductIdRouteImport } from './routes/images/products/$productId'
 import { Route as DownloadsProductsProductIdBrochureRouteImport } from './routes/downloads/products/$productId/brochure'
 
+const Char123LocaleChar125Route = Char123LocaleChar125RouteImport.update({
+  id: '/{-$locale}',
+  path: '/{-$locale}',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -39,31 +45,24 @@ const HealthRoute = HealthRouteImport.update({
   path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProductsIndexRoute = ProductsIndexRouteImport.update({
-  id: '/products/',
-  path: '/products/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProductsModelCodeRoute = ProductsModelCodeRouteImport.update({
-  id: '/products/$modelCode',
-  path: '/products/$modelCode',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const Char123LocaleChar125IndexRoute =
+  Char123LocaleChar125IndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125ContactRoute =
+  Char123LocaleChar125ContactRouteImport.update({
+    id: '/contact',
+    path: '/contact',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125AboutRoute =
+  Char123LocaleChar125AboutRouteImport.update({
+    id: '/about',
+    path: '/about',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
 const InfoSplatRoute = InfoSplatRouteImport.update({
   id: '/info/$',
   path: '/info/$',
@@ -74,6 +73,18 @@ const ApiContactRoute = ApiContactRouteImport.update({
   path: '/api/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char123LocaleChar125ProductsIndexRoute =
+  Char123LocaleChar125ProductsIndexRouteImport.update({
+    id: '/products/',
+    path: '/products/',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125ProductsModelCodeRoute =
+  Char123LocaleChar125ProductsModelCodeRouteImport.update({
+    id: '/products/$modelCode',
+    path: '/products/$modelCode',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
 const InfoStaticSplatRoute = InfoStaticSplatRouteImport.update({
   id: '/info/static/$',
   path: '/info/static/$',
@@ -97,116 +108,116 @@ const DownloadsProductsProductIdBrochureRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
   '/api/contact': typeof ApiContactRoute
   '/info/$': typeof InfoSplatRoute
-  '/products/$modelCode': typeof ProductsModelCodeRoute
-  '/products/': typeof ProductsIndexRoute
+  '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
+  '/{-$locale}/contact': typeof Char123LocaleChar125ContactRoute
+  '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
   '/info/static/$': typeof InfoStaticSplatRoute
+  '/{-$locale}/products/$modelCode': typeof Char123LocaleChar125ProductsModelCodeRoute
+  '/{-$locale}/products/': typeof Char123LocaleChar125ProductsIndexRoute
   '/downloads/products/$productId/brochure': typeof DownloadsProductsProductIdBrochureRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/contact': typeof ApiContactRoute
   '/info/$': typeof InfoSplatRoute
-  '/products/$modelCode': typeof ProductsModelCodeRoute
-  '/products': typeof ProductsIndexRoute
+  '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
+  '/{-$locale}/contact': typeof Char123LocaleChar125ContactRoute
+  '/{-$locale}': typeof Char123LocaleChar125IndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
   '/info/static/$': typeof InfoStaticSplatRoute
+  '/{-$locale}/products/$modelCode': typeof Char123LocaleChar125ProductsModelCodeRoute
+  '/{-$locale}/products': typeof Char123LocaleChar125ProductsIndexRoute
   '/downloads/products/$productId/brochure': typeof DownloadsProductsProductIdBrochureRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
   '/api/contact': typeof ApiContactRoute
   '/info/$': typeof InfoSplatRoute
-  '/products/$modelCode': typeof ProductsModelCodeRoute
-  '/products/': typeof ProductsIndexRoute
+  '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
+  '/{-$locale}/contact': typeof Char123LocaleChar125ContactRoute
+  '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
   '/info/static/$': typeof InfoStaticSplatRoute
+  '/{-$locale}/products/$modelCode': typeof Char123LocaleChar125ProductsModelCodeRoute
+  '/{-$locale}/products/': typeof Char123LocaleChar125ProductsIndexRoute
   '/downloads/products/$productId/brochure': typeof DownloadsProductsProductIdBrochureRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/about'
-    | '/contact'
     | '/health'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/{-$locale}'
     | '/api/contact'
     | '/info/$'
-    | '/products/$modelCode'
-    | '/products/'
+    | '/{-$locale}/about'
+    | '/{-$locale}/contact'
+    | '/{-$locale}/'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
     | '/info/static/$'
+    | '/{-$locale}/products/$modelCode'
+    | '/{-$locale}/products/'
     | '/downloads/products/$productId/brochure'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/about'
-    | '/contact'
     | '/health'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/api/contact'
     | '/info/$'
-    | '/products/$modelCode'
-    | '/products'
+    | '/{-$locale}/about'
+    | '/{-$locale}/contact'
+    | '/{-$locale}'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
     | '/info/static/$'
+    | '/{-$locale}/products/$modelCode'
+    | '/{-$locale}/products'
     | '/downloads/products/$productId/brochure'
   id:
     | '__root__'
-    | '/'
-    | '/about'
-    | '/contact'
     | '/health'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/{-$locale}'
     | '/api/contact'
     | '/info/$'
-    | '/products/$modelCode'
-    | '/products/'
+    | '/{-$locale}/about'
+    | '/{-$locale}/contact'
+    | '/{-$locale}/'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
     | '/info/static/$'
+    | '/{-$locale}/products/$modelCode'
+    | '/{-$locale}/products/'
     | '/downloads/products/$productId/brochure'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
-  ContactRoute: typeof ContactRoute
   HealthRoute: typeof HealthRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  Char123LocaleChar125Route: typeof Char123LocaleChar125RouteWithChildren
   ApiContactRoute: typeof ApiContactRoute
   InfoSplatRoute: typeof InfoSplatRoute
-  ProductsModelCodeRoute: typeof ProductsModelCodeRoute
-  ProductsIndexRoute: typeof ProductsIndexRoute
   ImagesProductsProductIdRoute: typeof ImagesProductsProductIdRoute
   ImagesRangesRangeIdRoute: typeof ImagesRangesRangeIdRoute
   InfoStaticSplatRoute: typeof InfoStaticSplatRoute
@@ -215,6 +226,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/{-$locale}': {
+      id: '/{-$locale}'
+      path: '/{-$locale}'
+      fullPath: '/{-$locale}'
+      preLoaderRoute: typeof Char123LocaleChar125RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -236,40 +254,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
+    '/{-$locale}/': {
+      id: '/{-$locale}/'
       path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/{-$locale}/'
+      preLoaderRoute: typeof Char123LocaleChar125IndexRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
     }
-    '/products/': {
-      id: '/products/'
-      path: '/products'
-      fullPath: '/products/'
-      preLoaderRoute: typeof ProductsIndexRouteImport
-      parentRoute: typeof rootRouteImport
+    '/{-$locale}/contact': {
+      id: '/{-$locale}/contact'
+      path: '/contact'
+      fullPath: '/{-$locale}/contact'
+      preLoaderRoute: typeof Char123LocaleChar125ContactRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
     }
-    '/products/$modelCode': {
-      id: '/products/$modelCode'
-      path: '/products/$modelCode'
-      fullPath: '/products/$modelCode'
-      preLoaderRoute: typeof ProductsModelCodeRouteImport
-      parentRoute: typeof rootRouteImport
+    '/{-$locale}/about': {
+      id: '/{-$locale}/about'
+      path: '/about'
+      fullPath: '/{-$locale}/about'
+      preLoaderRoute: typeof Char123LocaleChar125AboutRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
     }
     '/info/$': {
       id: '/info/$'
@@ -284,6 +288,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/contact'
       preLoaderRoute: typeof ApiContactRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/{-$locale}/products/': {
+      id: '/{-$locale}/products/'
+      path: '/products'
+      fullPath: '/{-$locale}/products/'
+      preLoaderRoute: typeof Char123LocaleChar125ProductsIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/products/$modelCode': {
+      id: '/{-$locale}/products/$modelCode'
+      path: '/products/$modelCode'
+      fullPath: '/{-$locale}/products/$modelCode'
+      preLoaderRoute: typeof Char123LocaleChar125ProductsModelCodeRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
     }
     '/info/static/$': {
       id: '/info/static/$'
@@ -316,17 +334,34 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface Char123LocaleChar125RouteChildren {
+  Char123LocaleChar125AboutRoute: typeof Char123LocaleChar125AboutRoute
+  Char123LocaleChar125ContactRoute: typeof Char123LocaleChar125ContactRoute
+  Char123LocaleChar125IndexRoute: typeof Char123LocaleChar125IndexRoute
+  Char123LocaleChar125ProductsModelCodeRoute: typeof Char123LocaleChar125ProductsModelCodeRoute
+  Char123LocaleChar125ProductsIndexRoute: typeof Char123LocaleChar125ProductsIndexRoute
+}
+
+const Char123LocaleChar125RouteChildren: Char123LocaleChar125RouteChildren = {
+  Char123LocaleChar125AboutRoute: Char123LocaleChar125AboutRoute,
+  Char123LocaleChar125ContactRoute: Char123LocaleChar125ContactRoute,
+  Char123LocaleChar125IndexRoute: Char123LocaleChar125IndexRoute,
+  Char123LocaleChar125ProductsModelCodeRoute:
+    Char123LocaleChar125ProductsModelCodeRoute,
+  Char123LocaleChar125ProductsIndexRoute:
+    Char123LocaleChar125ProductsIndexRoute,
+}
+
+const Char123LocaleChar125RouteWithChildren =
+  Char123LocaleChar125Route._addFileChildren(Char123LocaleChar125RouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AboutRoute: AboutRoute,
-  ContactRoute: ContactRoute,
   HealthRoute: HealthRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  Char123LocaleChar125Route: Char123LocaleChar125RouteWithChildren,
   ApiContactRoute: ApiContactRoute,
   InfoSplatRoute: InfoSplatRoute,
-  ProductsModelCodeRoute: ProductsModelCodeRoute,
-  ProductsIndexRoute: ProductsIndexRoute,
   ImagesProductsProductIdRoute: ImagesProductsProductIdRoute,
   ImagesRangesRangeIdRoute: ImagesRangesRangeIdRoute,
   InfoStaticSplatRoute: InfoStaticSplatRoute,

@@ -1,20 +1,24 @@
 import { IconArrowRight } from '@tabler/icons-react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 
-import { PageHero } from '../components/page-hero.js';
-import { SandWatermarkSection } from '../components/sand-watermark-section.js';
-import { seoHead } from '../lib/seo.js';
-import { en } from '../messages/en.js';
-import { useMessages } from '../messages/index.js';
-import { getProductRangeCount } from '../server/catalog/ranges.js';
+import { PageHero } from '../../components/page-hero.js';
+import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
+import { localePath } from '../../lib/locale.js';
+import { seoHead } from '../../lib/seo.js';
+import { messagesForLocale, useLocale, useMessages } from '../../messages/index.js';
+import { getProductRangeCount } from '../../server/catalog/ranges.js';
 
-export const Route = createFileRoute('/about')({
-  head: () =>
-    seoHead({
-      title: en.about.pageTitle,
-      description: en.about.metaDescription,
+export const Route = createFileRoute('/{-$locale}/about')({
+  head: ({ match }) => {
+    const m = messagesForLocale(match.context.locale);
+
+    return seoHead({
+      title: m.about.pageTitle,
+      description: m.about.metaDescription,
+      locale: match.context.locale,
       path: '/about',
-    }),
+    });
+  },
   loader: async () => ({ productRangeCount: await getProductRangeCount() }),
   component: AboutPage,
 });
@@ -152,6 +156,7 @@ function Timeline() {
 
 function CtaBand() {
   const m = useMessages();
+  const locale = useLocale();
 
   return (
     <section className="bg-ink">
@@ -163,7 +168,7 @@ function CtaBand() {
           <p className="m-0 max-w-[560px] font-body text-[19px] text-[#bdbdbd]">{m.about.ctaBody}</p>
         </div>
         <Link
-          to="/contact"
+          to={localePath('/contact', locale)}
           className="flex flex-none items-center gap-3.5 bg-yellow px-[38px] py-5 font-display text-[20px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
         >
           {m.about.contactUs} <ArrowIcon />

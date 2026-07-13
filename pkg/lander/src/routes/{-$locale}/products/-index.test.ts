@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import type { CatalogGroup } from '../../server/catalog/products-data.js';
+import type { CatalogGroup } from '../../../server/catalog/products-data.js';
 import { resolveProductsCatalogView } from './index.js';
 
 describe('resolveProductsCatalogView', () => {

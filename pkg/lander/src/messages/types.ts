@@ -19,6 +19,12 @@ export type Messages = {
     contact: string;
     menuLabel: string;
   };
+  language: {
+    label: string;
+    english: string;
+    afrikaans: string;
+    switchTo: (language: string) => string;
+  };
   footer: {
     description: string;
     exploreHeading: string;

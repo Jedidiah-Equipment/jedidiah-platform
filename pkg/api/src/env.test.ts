@@ -74,3 +74,19 @@ describe('API config PostHog validation', () => {
     ).toContain('jedidiahopsstaging://');
   });
 });
+
+describe('API translation model config', () => {
+  it('uses the configured assistant model by default', () => {
+    expect(ApiConfig.parse({ ...baseEnv, OPENAI_MODEL: 'gpt-custom' }).OPENAI_TRANSLATION_MODEL).toBe('gpt-custom');
+  });
+
+  it('accepts a dedicated translation model override', () => {
+    expect(
+      ApiConfig.parse({
+        ...baseEnv,
+        OPENAI_MODEL: 'gpt-assistant',
+        OPENAI_TRANSLATION_MODEL: 'gpt-translation',
+      }).OPENAI_TRANSLATION_MODEL,
+    ).toBe('gpt-translation');
+  });
+});

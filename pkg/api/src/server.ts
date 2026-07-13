@@ -1,11 +1,15 @@
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
+import { createOpenAiChatModel } from '@pkg/ai';
 import type { StorageAdapter } from '@pkg/core';
+import { db } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 
 import { registerAuthHandler } from './auth/handler.js';
+import { createCatalogTranslationRunner } from './catalog-translations/catalog-translation-runner.js';
+import { TranslationScheduler } from './catalog-translations/translation-scheduler.js';
 import { type ApiConfig, getApiConfig } from './env.js';
 import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
@@ -30,6 +34,13 @@ export async function buildServer(
   storage: StorageAdapter = createDocumentStorageAdapter(config),
 ) {
   log.root.info({ config }, 'Building server');
+  const catalogTranslationScheduler = new TranslationScheduler({
+    onError: (error, key) => log.ai.error({ error, key }, 'Catalog translation failed'),
+    run: createCatalogTranslationRunner({
+      db,
+      model: createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_TRANSLATION_MODEL }),
+    }),
+  });
 
   const app = Fastify({
     loggerInstance: log.http as FastifyBaseLogger,
@@ -66,6 +77,7 @@ export async function buildServer(
     router: appRouter,
     createContext: createContextFactory({
       appEnv: config.APP_ENV,
+      catalogTranslationScheduler,
       changelogLoader: createFileChangelogLoader(),
       storage,
     }),
@@ -83,6 +95,7 @@ export async function buildServer(
   });
 
   app.addHook('onClose', async () => {
+    catalogTranslationScheduler.dispose();
     await observability.flush();
   });
 

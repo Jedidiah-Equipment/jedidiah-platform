@@ -60,6 +60,7 @@ export const ApiConfig = z
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_MODEL: z.string().min(1).default('gpt-5.5'),
     OPENAI_REASONING_EFFORT: z.enum(AI_REASONING_EFFORTS).default('low'),
+    OPENAI_TRANSLATION_MODEL: z.string().min(1).optional(),
     PORT: z.coerce.number().int().positive().default(7002),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
     LOG_DOMAINS_DISABLED: z.string().optional(),
@@ -72,6 +73,10 @@ export const ApiConfig = z
     RAILWAY_ENVIRONMENT_NAME: z.string().min(1).optional(),
     RAILWAY_GIT_COMMIT_SHA: z.string().min(1).optional(),
   })
+  .transform((config) => ({
+    ...config,
+    OPENAI_TRANSLATION_MODEL: config.OPENAI_TRANSLATION_MODEL ?? config.OPENAI_MODEL,
+  }))
   .superRefine((config, ctx) => {
     if (config.EMAIL_PROVIDER === 'resend' && !config.RESEND_API_KEY) {
       ctx.addIssue({

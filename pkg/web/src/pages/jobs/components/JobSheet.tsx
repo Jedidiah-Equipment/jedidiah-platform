@@ -6,7 +6,7 @@ import {
   PRODUCT_DOCUMENT_TYPE_LABELS,
 } from '@pkg/domain';
 import type { JobDetail, JobDocument, JobUpdateInput, UUID } from '@pkg/schema';
-import { IconChevronDown, IconInfoCircle, IconMessageCircle } from '@tabler/icons-react';
+import { IconInfoCircle, IconMessageCircle } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';
@@ -17,8 +17,8 @@ import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton.js'
 import { JobFeedbackList } from '@/components/feedback/JobFeedbackList.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { Badge } from '@/components/ui/badge.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
@@ -26,9 +26,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.j
 import { useCan } from '@/hooks/use-access.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
 
-import { InfoList, InfoRow, SlotDayBreakdownRows } from './JobInfoList.js';
+import { InfoList, InfoRow } from './JobInfoList.js';
 import { JobEditFormValues, toJobEditFormValues, toJobUpdateInput } from './job-edit-form.js';
+import { scheduleBadgeToneClass, scheduleBarToneClass, scheduleDotToneClass } from './schedule-state-tone.js';
 
 type JobSheetTab = 'details' | 'documents' | 'schedule';
 
@@ -243,77 +245,122 @@ const JobDocumentsTab: React.FC<{
   />
 );
 
-const JobScheduleTab: React.FC<{ job: JobDetail }> = ({ job }) => {
-  const scheduledDepartments = job.schedule.filter((department) => department.bays.some((bay) => bay.slots.length > 0));
+type JobScheduleSlot = JobDetail['schedule'][number]['bays'][number]['slots'][number];
 
-  if (scheduledDepartments.length === 0) {
+/** Timeline tones follow the planning Gantt bars: only the single next-up slot reads green; other
+ * future slots stay neutral like done ones. */
+const scheduleTimelineTone = {
+  active: {
+    badge: scheduleBadgeToneClass.active,
+    card: scheduleBarToneClass.active,
+    dot: scheduleDotToneClass.active,
+    label: 'Active',
+  },
+  done: {
+    badge: scheduleBadgeToneClass.done,
+    card: '',
+    dot: scheduleDotToneClass.neutral,
+    label: 'Done',
+  },
+  next: {
+    badge: scheduleBadgeToneClass.scheduled,
+    card: scheduleBarToneClass.scheduled,
+    dot: scheduleDotToneClass.scheduled,
+    label: 'Next up',
+  },
+  scheduled: {
+    badge: scheduleBadgeToneClass.done,
+    card: '',
+    dot: scheduleDotToneClass.neutral,
+    label: 'Scheduled',
+  },
+} as const;
+
+const JobScheduleTab: React.FC<{ job: JobDetail }> = ({ job }) => {
+  const entries = job.schedule
+    .flatMap((department) =>
+      department.bays.flatMap((bay) =>
+        bay.slots.map((slot) => ({ bayName: bay.name, department: department.department, slot })),
+      ),
+    )
+    .sort(
+      (a, b) =>
+        a.slot.startDate.localeCompare(b.slot.startDate) ||
+        a.slot.endDate.localeCompare(b.slot.endDate) ||
+        a.slot.sequence - b.slot.sequence,
+    );
+
+  if (entries.length === 0) {
     return <div className="text-muted-foreground text-sm">No slots scheduled.</div>;
   }
 
+  const nextSlotId = entries.find((entry) => entry.slot.state === 'scheduled')?.slot.id ?? null;
+
   return (
-    <div className="grid gap-3 text-sm">
-      {scheduledDepartments.map((department) => (
-        <Card key={department.department}>
-          <CardHeader>
-            <CardTitle>{departmentLabels[department.department]}</CardTitle>
-          </CardHeader>
-          <CardSeparator />
-          <CardContent>
-            <div className="grid gap-3">
-              {department.bays
-                .filter((bay) => bay.slots.length > 0)
-                .map((bay) => (
-                  <div className="grid gap-2" key={bay.id}>
-                    <div className="text-muted-foreground">{bay.name}</div>
-                    <div className="grid gap-2">
-                      {bay.slots.map((slot) => (
-                        <ScheduleSlotRow key={slot.id} slot={slot} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
+    <div className="text-sm">
+      {entries.map((entry, index) => (
+        <ScheduleTimelineItem
+          key={entry.slot.id}
+          bayName={entry.bayName}
+          department={entry.department}
+          isFirst={index === 0}
+          isLast={index === entries.length - 1}
+          isNext={entry.slot.id === nextSlotId}
+          slot={entry.slot}
+        />
       ))}
     </div>
   );
 };
 
-const ScheduleSlotRow: React.FC<{ slot: JobDetail['schedule'][number]['bays'][number]['slots'][number] }> = ({
-  slot,
-}) => (
-  <Card className="gap-0 py-0" size="sm">
-    <Collapsible>
-      <CollapsibleTrigger
-        render={
-          <button
-            className="group flex w-full min-w-0 items-center gap-3 px-3 py-2 text-left outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
-            type="button"
+const ScheduleTimelineItem: React.FC<{
+  bayName: string;
+  department: JobDetail['schedule'][number]['department'];
+  isFirst: boolean;
+  isLast: boolean;
+  isNext: boolean;
+  slot: JobScheduleSlot;
+}> = ({ bayName, department, isFirst, isLast, isNext, slot }) => {
+  const tone = scheduleTimelineTone[slot.state === 'active' ? 'active' : isNext ? 'next' : slot.state];
+
+  return (
+    <div className="flex gap-3">
+      <div className="relative flex w-2.5 shrink-0 justify-center">
+        {isFirst && isLast ? null : (
+          <span
+            aria-hidden="true"
+            className={cn('absolute w-px bg-border', isFirst ? 'top-3.5 bottom-0' : isLast ? 'top-0 h-5' : 'inset-y-0')}
           />
-        }
-      >
-        <OperatorValue operator={slot.operator} />
-        <span className="min-w-0 flex-1 truncate tabular-nums">
-          {formatDate(slot.startDate, 'short')} to {formatDate(slot.endDate, 'short')}
-        </span>
-        <span className="shrink-0 tabular-nums">{slot.durationDays}d</span>
-        <IconChevronDown
-          aria-hidden="true"
-          className="size-4 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-180"
-        />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="border-t p-3">
-        <InfoList className="rounded-none border-0">
-          <SlotDayBreakdownRows dayBreakdown={slot.dayBreakdown} endDate={slot.endDate} startDate={slot.startDate} />
-        </InfoList>
-      </CollapsibleContent>
-    </Collapsible>
-  </Card>
-);
+        )}
+        <span aria-hidden="true" className={cn('relative mt-3.5 size-2.5 rounded-full', tone.dot)} />
+      </div>
+      <div className={cn('min-w-0 flex-1', isLast ? '' : 'pb-3')}>
+        <Card className={cn('gap-0 py-0', tone.card)} size="sm">
+          <div className="flex min-w-0 items-center gap-3 px-3 py-2">
+            <span className="min-w-0 flex-1 truncate">
+              <span className="font-medium">{departmentLabels[department]}</span>
+              <span className="text-muted-foreground"> · {bayName}</span>
+            </span>
+            <Badge className={cn('shrink-0', tone.badge)} variant="outline">
+              {tone.label}
+            </Badge>
+          </div>
+          <CardSeparator />
+          <div className="flex min-w-0 items-center gap-3 px-3 py-2">
+            <OperatorValue operator={slot.operator} />
+            <span className="min-w-0 flex-1 truncate tabular-nums">
+              {formatDate(slot.startDate, 'short')} to {formatDate(slot.endDate, 'short')}
+            </span>
+            <span className="shrink-0 tabular-nums">{slot.durationDays}d</span>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
 
 const OperatorValue: React.FC<{
-  operator: JobDetail['schedule'][number]['bays'][number]['slots'][number]['operator'];
+  operator: JobScheduleSlot['operator'];
 }> = ({ operator }) => {
   if (!operator) {
     return <span className="shrink-0 text-muted-foreground">No operator</span>;

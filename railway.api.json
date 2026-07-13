@@ -10,10 +10,12 @@
       "turbo.json",
       "tsconfig.base.json",
       "pkg/api/**",
+      "pkg/changelog/**",
       "pkg/core/**",
       "pkg/db/**",
       "pkg/domain/**",
-      "pkg/schema/**"
+      "pkg/schema/**",
+      "changelogs/**"
     ]
   },
   "deploy": {

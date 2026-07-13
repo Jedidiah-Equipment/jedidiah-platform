@@ -1,5 +1,6 @@
 export const APP_CODE_PREFIXES = [
   'auth',
+  'changelog',
   'customer',
   'document',
   'feedback',

@@ -15,19 +15,33 @@ function imageRef(slot: string) {
   };
 }
 
-async function insertRange(db: Db, name: string, description: string | null) {
+async function insertRange(
+  db: Db,
+  name: string,
+  description: string | null,
+  translations?: typeof productRanges.$inferInsert.translations,
+) {
   const existing = await db.select({ id: productRanges.id }).from(productRanges);
   const [range] = await db
     .insert(productRanges)
-    .values({ name, description, displayOrder: existing.length })
+    .values({ name, description, displayOrder: existing.length, translations })
     .returning();
   if (!range) throw new Error('range insert did not return a row');
 
   return range;
 }
 
-async function insertVariant(db: Db, rangeId: string, name: string, displayOrder: number) {
-  const [variant] = await db.insert(productRangeVariants).values({ displayOrder, name, rangeId }).returning();
+async function insertVariant(
+  db: Db,
+  rangeId: string,
+  name: string,
+  displayOrder: number,
+  translations?: typeof productRangeVariants.$inferInsert.translations,
+) {
+  const [variant] = await db
+    .insert(productRangeVariants)
+    .values({ displayOrder, name, rangeId, translations })
+    .returning();
   if (!variant) throw new Error('variant insert did not return a row');
 
   return variant;
@@ -44,6 +58,7 @@ async function insertProduct(
     description?: string | null;
     landerEnabled?: boolean;
     variantId?: string | null;
+    translations?: typeof products.$inferInsert.translations;
   },
 ) {
   const [product] = await db
@@ -70,6 +85,83 @@ async function insertProduct(
 
   return product;
 }
+
+test('loadProductsCatalog translates display text while keeping canonical Range and Variant slugs', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const translatedAt = '2026-07-13T10:00:00.000Z';
+  const range = await insertRange(db, `Silage & Grain ${suffix} Range`, 'Canonical range description.', {
+    af: {
+      sourceHash: 'stale-range-hash',
+      translatedAt,
+      name: `Kuilvoer en Graan ${suffix} Reeks`,
+      description: null,
+    },
+  });
+  const wide = await insertVariant(db, range.id, `Wide Body ${suffix}`, 0, {
+    af: { sourceHash: 'stale-wide-hash', translatedAt, name: `Wye Bak ${suffix}` },
+  });
+  const narrow = await insertVariant(db, range.id, `Narrow Body ${suffix}`, 1, {
+    af: { sourceHash: 'stale-narrow-hash', translatedAt, name: `Smal Bak ${suffix}` },
+  });
+  const product = await insertProduct(db, range.id, {
+    name: `Silage Trailer ${suffix}`,
+    modelCode: `ST-${suffix}`,
+    description: 'Canonical product description.',
+    variantId: wide.id,
+    translations: {
+      af: {
+        sourceHash: 'stale-product-hash',
+        translatedAt,
+        name: `Kuilvoerwa ${suffix}`,
+        nameHighlight: null,
+        category: 'Kuilvoer en graan',
+        description: 'Afrikaanse produkbeskrywing.',
+        keyFeatures: ['Afrikaanse kenmerk'],
+        technicalDetails: [{ label: 'Kapasiteit', value: '42 m³' }],
+      },
+    },
+  });
+  const untranslatedProduct = await insertProduct(db, range.id, {
+    name: `Narrow Trailer ${suffix}`,
+    modelCode: `NT-${suffix}`,
+    variantId: narrow.id,
+  });
+
+  const afGroup = (await loadProductsCatalog(db, 'af')).groups.find((group) => group.id === range.id);
+
+  expect(afGroup).toMatchObject({
+    slug: toRangeSlug(range.name),
+    name: `Kuilvoer en Graan ${suffix} Reeks`,
+    label: `Kuilvoer en Graan ${suffix} Reeks`,
+    description: 'Canonical range description.',
+  });
+  expect(afGroup?.variants).toEqual([
+    { id: wide.id, name: `Wye Bak ${suffix}`, slug: toRangeSlug(wide.name), label: 'Wye' },
+    { id: narrow.id, name: `Smal Bak ${suffix}`, slug: toRangeSlug(narrow.name), label: 'Smal' },
+  ]);
+  expect(afGroup?.products.find((candidate) => candidate.id === product.id)).toMatchObject({
+    name: `Kuilvoerwa ${suffix}`,
+    description: 'Afrikaanse produkbeskrywing.',
+    modelCode: product.modelCode,
+  });
+  expect(afGroup?.products.find((candidate) => candidate.id === untranslatedProduct.id)).toMatchObject({
+    name: untranslatedProduct.name,
+    description: 'Default description.',
+    modelCode: untranslatedProduct.modelCode,
+  });
+
+  const enGroup = (await loadProductsCatalog(db, 'en')).groups.find((group) => group.id === range.id);
+  expect(enGroup).toMatchObject({
+    slug: toRangeSlug(range.name),
+    name: range.name,
+    label: `Silage & Grain ${suffix}`,
+    description: 'Canonical range description.',
+  });
+  expect(enGroup?.products.find((candidate) => candidate.id === product.id)).toMatchObject({
+    name: product.name,
+    description: 'Canonical product description.',
+  });
+});
 
 test('toRangeSlug builds URL-safe slugs from Range names', () => {
   expect(toRangeSlug('Crosshaul Range')).toBe('crosshaul-range');

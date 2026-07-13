@@ -1,7 +1,8 @@
 import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { isLanderReady } from '@pkg/domain';
+import { isLanderReady, selectTranslated } from '@pkg/domain';
 
+import { type Locale, translationForLocale } from '../../lib/locale.js';
 import { imageUrl, toRangeLabel, toRangeSlug } from './products-data.js';
 
 export type HomeRange = {
@@ -18,20 +19,24 @@ export type HomeRange = {
 // Equipment Ranges for the Home grid. Real data only: a Range with no marketing blurb renders an empty
 // description rather than fabricated copy. Every card points at the public Range image route, which streams
 // the real image or falls back to the neutral placeholder, so the view model needs no image presence flag.
-export async function loadHomeRanges(db: Db): Promise<HomeRange[]> {
+export async function loadHomeRanges(db: Db, locale: Locale = 'en'): Promise<HomeRange[]> {
   const [{ ranges }, allProducts] = await Promise.all([listProductRanges({ db }), listAllProducts({ db })]);
   const visibleRangeIds = new Set(allProducts.filter(isLanderReady).map((product) => product.rangeId));
 
   return ranges
     .filter((range) => visibleRangeIds.has(range.id))
-    .map((range) => ({
-      id: range.id,
-      name: range.name,
-      description: range.description ?? '',
-      href: '/products',
-      slug: toRangeSlug(range.name),
-      imageUrl: imageUrl(`/images/ranges/${range.id}`, range.image?.updatedAt),
-    }));
+    .map((range) => {
+      const translation = translationForLocale(range.translations, locale);
+
+      return {
+        id: range.id,
+        name: selectTranslated(range.name, translation?.name),
+        description: selectTranslated(range.description, translation?.description) ?? '',
+        href: '/products',
+        slug: toRangeSlug(range.name),
+        imageUrl: imageUrl(`/images/ranges/${range.id}`, range.image?.updatedAt),
+      };
+    });
 }
 
 // Footer "Ranges" links. The slug feeds the Products page `?range=` filter (same helpers as the chip bar),
@@ -39,13 +44,17 @@ export async function loadHomeRanges(db: Db): Promise<HomeRange[]> {
 // full list, which lives on the Products page.
 export type FooterRange = { label: string; slug: string };
 
-export async function loadFooterRanges(db: Db): Promise<FooterRange[]> {
+export async function loadFooterRanges(db: Db, locale: Locale = 'en'): Promise<FooterRange[]> {
   const { ranges } = await listProductRanges({ db });
 
-  return ranges.slice(0, 4).map((range) => ({
-    label: toRangeLabel(range.name),
-    slug: toRangeSlug(range.name),
-  }));
+  return ranges.slice(0, 4).map((range) => {
+    const translation = translationForLocale(range.translations, locale);
+
+    return {
+      label: toRangeLabel(selectTranslated(range.name, translation?.name)),
+      slug: toRangeSlug(range.name),
+    };
+  });
 }
 
 export async function loadProductRangeCount(db: Db): Promise<number> {
@@ -56,8 +65,12 @@ export async function loadProductRangeCount(db: Db): Promise<number> {
 
 // Every Range label, in display order — the "Equipment of interest" options on the Contact form. Uses the
 // same chip-bar label helper so the names read consistently across the site.
-export async function loadRangeOptions(db: Db): Promise<string[]> {
+export async function loadRangeOptions(db: Db, locale: Locale = 'en'): Promise<string[]> {
   const { ranges } = await listProductRanges({ db });
 
-  return ranges.map((range) => toRangeLabel(range.name));
+  return ranges.map((range) => {
+    const translation = translationForLocale(range.translations, locale);
+
+    return toRangeLabel(selectTranslated(range.name, translation?.name));
+  });
 }

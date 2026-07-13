@@ -1,14 +1,14 @@
 import faviconUrl from '@pkg/domain/assets/brand/jedidiah-favicon-yellow.png';
-import { createRootRoute, HeadContent, Outlet, Scripts, useRouterState } from '@tanstack/react-router';
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouterState } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
 import { initAnalytics } from '../lib/analytics.js';
-import { CANONICAL_LOCALE, isLocale, type Locale } from '../lib/locale.js';
+import { CANONICAL_LOCALE, isLocale, type Locale, type LocaleRouteContext } from '../lib/locale.js';
 import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
 import { getSiteMeta } from '../server/site/site-meta.js';
 import appCss from '../styles/app.css?url';
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<LocaleRouteContext>()({
   loader: async () => {
     return getSiteMeta();
   },

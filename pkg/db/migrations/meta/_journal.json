@@ -526,6 +526,13 @@
       "when": 1783928586684,
       "tag": "0074_mature_dark_phoenix",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1783942573989,
+      "tag": "0075_futuristic_blonde_phantom",
+      "breakpoints": true
     }
   ]
 }

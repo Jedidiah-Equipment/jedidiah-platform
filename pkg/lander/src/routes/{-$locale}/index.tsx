@@ -4,10 +4,14 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { FeatureBar } from '../../components/feature-bar.js';
 import { RangeCard } from '../../components/range-card.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
-import { localePath } from '../../lib/locale.js';
+import { type LocaleRouteContext, localePath, requireRouteContextLocale } from '../../lib/locale.js';
 import { seoHead } from '../../lib/seo.js';
 import { messagesForLocale, useLocale, useMessages } from '../../messages/index.js';
-import { getHomeRanges } from '../../server/catalog/ranges.js';
+import { getHomeRanges, type HomeRange } from '../../server/catalog/ranges.js';
+
+async function loadHomePage({ context }: { context: LocaleRouteContext }): Promise<{ ranges: HomeRange[] }> {
+  return { ranges: await getHomeRanges({ data: { locale: requireRouteContextLocale(context) } }) };
+}
 
 export const Route = createFileRoute('/{-$locale}/')({
   head: ({ match }) => {
@@ -15,7 +19,7 @@ export const Route = createFileRoute('/{-$locale}/')({
 
     return seoHead({ title: m.site.title, description: m.site.description, locale: match.context.locale, path: '/' });
   },
-  loader: async () => ({ ranges: await getHomeRanges() }),
+  loader: loadHomePage,
   component: HomePage,
 });
 

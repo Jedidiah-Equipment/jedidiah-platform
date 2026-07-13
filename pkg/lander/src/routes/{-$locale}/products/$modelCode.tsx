@@ -13,21 +13,31 @@ import { useEffect, useState } from 'react';
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
 import { captureEvent } from '../../../lib/analytics.js';
-import { localePath } from '../../../lib/locale.js';
+import { type LocaleRouteContext, localePath, requireRouteContextLocale } from '../../../lib/locale.js';
 import { seoHead, truncateDescription } from '../../../lib/seo.js';
 import { messagesForLocale, useLocale, useMessages } from '../../../messages/index.js';
 import { getProductDetail } from '../../../server/catalog/product-detail.js';
 import type { ProductDetail, ProductHighlight } from '../../../server/catalog/product-detail-data.js';
 
-export const Route = createFileRoute('/{-$locale}/products/$modelCode')({
-  loader: async ({ params }) => {
-    const detail = await getProductDetail({ data: params.modelCode });
-    if (!detail) {
-      throw notFound();
-    }
+async function loadProductPage({
+  context,
+  params,
+}: {
+  context: LocaleRouteContext;
+  params: { modelCode: string };
+}): Promise<{ detail: ProductDetail }> {
+  const detail = await getProductDetail({
+    data: { locale: requireRouteContextLocale(context), modelCode: params.modelCode },
+  });
+  if (!detail) {
+    throw notFound();
+  }
 
-    return { detail };
-  },
+  return { detail };
+}
+
+export const Route = createFileRoute('/{-$locale}/products/$modelCode')({
+  loader: loadProductPage,
   head: ({ loaderData, match, params }) => {
     const m = messagesForLocale(match.context.locale);
     const detail = loaderData?.detail;

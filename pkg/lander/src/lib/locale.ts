@@ -1,6 +1,7 @@
 export const LOCALES = ['en', 'af'] as const;
 export type Locale = (typeof LOCALES)[number];
 export const CANONICAL_LOCALE: Locale = 'en';
+export type LocaleRouteContext = { locale?: Locale };
 
 type LocaleMetadata = { pathPrefix: string; openGraphLocale: string };
 
@@ -19,6 +20,22 @@ export function resolveRouteLocale(param: string | undefined): Locale | null {
   }
 
   return isLocale(param) && param !== CANONICAL_LOCALE ? param : null;
+}
+
+export function requireRouteContextLocale(context: LocaleRouteContext): Locale {
+  if (!context.locale) {
+    // The locale layout's beforeLoad always supplies this; throwing catches route wiring regressions.
+    throw new Error('Locale route context is missing');
+  }
+
+  return context.locale;
+}
+
+export function translationForLocale<T>(
+  translations: Partial<Record<string, T>> | undefined,
+  locale: Locale,
+): T | undefined {
+  return locale === CANONICAL_LOCALE ? undefined : translations?.[locale];
 }
 
 export function localePath(canonicalPath: string, locale: Locale): string {

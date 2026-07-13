@@ -40,6 +40,7 @@ describe('mapProduct', () => {
         brochureEnabled: true,
         landerEnabled: false,
         thumbnailDataUrl: null,
+        translations: {},
         updatedAt,
       }),
     ).toEqual({
@@ -72,6 +73,7 @@ describe('mapProduct', () => {
       brochureEnabled: true,
       landerEnabled: false,
       thumbnailDataUrl: null,
+      translations: {},
       updatedAt: updatedAt.toISOString(),
     });
   });

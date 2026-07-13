@@ -126,6 +126,7 @@ const productListColumns = {
   brochureEnabled: true,
   landerEnabled: true,
   thumbnailDataUrl: true,
+  translations: true,
   updatedAt: true,
 } as const;
 
@@ -260,6 +261,7 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
     brochureEnabled: row.brochureEnabled,
     landerEnabled: row.landerEnabled,
     thumbnailDataUrl: row.thumbnailDataUrl,
+    translations: row.translations,
     updatedAt: row.updatedAt.toISOString(),
   });
 }

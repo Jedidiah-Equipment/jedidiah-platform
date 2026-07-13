@@ -4,9 +4,11 @@ import {
   ProductRange,
   ProductRangeCreateInput,
   ProductRangeReorderInput,
+  ProductRangeTranslations,
   ProductRangeUpdateInput,
   ProductRangeVariantCreateInput,
   ProductRangeVariantReorderInput,
+  ProductRangeVariantTranslations,
   ProductRangeVariantUpdateInput,
 } from './product-range.js';
 
@@ -52,6 +54,21 @@ describe('ProductRange', () => {
     );
     expect(ProductRange.parse({ ...base, description: null }).description).toBeNull();
     expect(ProductRange.parse({ ...base, description: null }).displayOrder).toBe(3);
+  });
+});
+
+describe('Range translation blobs', () => {
+  it('validates locale-keyed Range and Variant translations', () => {
+    const metadata = { sourceHash: 'abc123', translatedAt: '2026-07-13T10:00:00.000Z' };
+
+    expect(
+      ProductRangeTranslations.parse({
+        af: { ...metadata, name: 'Kuilvoerreeks', description: 'Gebou vir die oes.' },
+      }),
+    ).toMatchObject({ af: { name: 'Kuilvoerreeks' } });
+    expect(ProductRangeVariantTranslations.parse({ af: { ...metadata, name: 'Wye bak' } })).toMatchObject({
+      af: { name: 'Wye bak' },
+    });
   });
 });
 

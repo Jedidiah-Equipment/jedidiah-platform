@@ -8,7 +8,14 @@ import {
   productAssemblies,
   products,
 } from '@pkg/db';
-import type { Assembly, AssemblyInput, AssemblyKind, AssemblyNameListResult, UUID } from '@pkg/schema';
+import {
+  type Assembly,
+  type AssemblyInput,
+  type AssemblyKind,
+  type AssemblyNameListResult,
+  ProductAssemblyTranslations,
+  type UUID,
+} from '@pkg/schema';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
@@ -195,6 +202,7 @@ export function mapAssembly(row: AssemblyListRow): Assembly {
       name: row.name,
       parts: assemblyPartsForRow,
       productId: row.productId,
+      translations: ProductAssemblyTranslations.parse(row.translations),
     };
   }
 
@@ -206,6 +214,7 @@ export function mapAssembly(row: AssemblyListRow): Assembly {
     parts: assemblyPartsForRow,
     price: row.price ?? 0,
     productId: row.productId,
+    translations: ProductAssemblyTranslations.parse(row.translations),
   };
 }
 

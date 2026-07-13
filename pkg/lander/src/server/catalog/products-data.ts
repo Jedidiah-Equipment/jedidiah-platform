@@ -1,7 +1,8 @@
 import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { isLanderReady } from '@pkg/domain';
+import { isLanderReady, selectTranslated } from '@pkg/domain';
 
+import { type Locale, translationForLocale } from '../../lib/locale.js';
 import { parseImageFormat, transformSignature } from '../media/image-transform.js';
 
 export type CatalogProduct = {
@@ -77,12 +78,22 @@ export function toVariantLabels(names: string[]): string[] {
 }
 
 function toCatalogVariants(
-  variants: { id: string; name: string }[],
+  variants: {
+    id: string;
+    name: string;
+    translations?: Partial<Record<string, { name: string }>> | undefined;
+  }[],
   groupProducts: readonly CatalogProduct[],
+  locale: Locale,
 ): CatalogVariant[] {
   const visibleVariantIds = new Set(groupProducts.flatMap((product) => (product.variantId ? [product.variantId] : [])));
   const visibleVariants = variants.filter((variant) => visibleVariantIds.has(variant.id));
-  const labels = toVariantLabels(visibleVariants.map((variant) => variant.name));
+  const displayNames = visibleVariants.map((variant) => {
+    const translation = translationForLocale(variant.translations, locale);
+
+    return selectTranslated(variant.name, translation?.name);
+  });
+  const labels = toVariantLabels(displayNames);
   const slugCounts = new Map<string, number>();
 
   for (const variant of visibleVariants) {
@@ -96,8 +107,8 @@ function toCatalogVariants(
     return {
       id: variant.id,
       slug: slugCounts.get(baseSlug) === 1 ? baseSlug : `${baseSlug}-${variant.id}`,
-      name: variant.name,
-      label: labels[index] ?? variant.name,
+      name: displayNames[index] ?? variant.name,
+      label: labels[index] ?? displayNames[index] ?? variant.name,
     };
   });
 }
@@ -127,19 +138,25 @@ export function imageUrl(
 // Shared Product -> card view model. The detail page is keyed by modelCode (`/products/:modelCode`); the
 // image route is keyed by id and streams the brochure hero or a neutral placeholder. Used by the catalog
 // grouping and the detail page's "More in {Range}" strip so both speak the same card shape.
-export function toCatalogProduct(row: {
-  id: string;
-  name: string;
-  modelCode: string;
-  description: string | null;
-  variantId?: string | null;
-  images?: { primary: { updatedAt: string } | null };
-}): CatalogProduct {
+export function toCatalogProduct(
+  row: {
+    id: string;
+    name: string;
+    modelCode: string;
+    description: string | null;
+    variantId?: string | null;
+    images?: { primary: { updatedAt: string } | null };
+    translations?: Partial<Record<string, { name: string; description: string | null }>> | undefined;
+  },
+  locale: Locale = 'en',
+): CatalogProduct {
+  const translation = translationForLocale(row.translations, locale);
+
   return {
     id: row.id,
-    name: row.name,
+    name: selectTranslated(row.name, translation?.name),
     modelCode: row.modelCode,
-    description: row.description ?? '',
+    description: selectTranslated(row.description, translation?.description) ?? '',
     variantId: row.variantId ?? null,
     href: `/products/${encodeURIComponent(row.modelCode)}`,
     imageUrl: imageUrl(`/images/products/${row.id}`, row.images?.primary?.updatedAt),
@@ -151,7 +168,7 @@ export function toCatalogProduct(row: {
 // needs each Product's images, category, key features, and standard assemblies — hence the full read rather
 // than the lightweight column read. Each card points at the public Product image route, which streams the
 // hero or the neutral placeholder. Pricing and bays are not surfaced — this is the unauthenticated surface.
-export async function loadProductsCatalog(db: Db): Promise<ProductsCatalog> {
+export async function loadProductsCatalog(db: Db, locale: Locale = 'en'): Promise<ProductsCatalog> {
   const [{ ranges }, allProducts] = await Promise.all([listProductRanges({ db }), listAllProducts({ db })]);
 
   const rows = allProducts.filter(isLanderReady);
@@ -163,7 +180,7 @@ export async function loadProductsCatalog(db: Db): Promise<ProductsCatalog> {
   const productsByRange = new Map<string, CatalogProduct[]>();
   for (const row of rows) {
     const list = productsByRange.get(row.rangeId) ?? [];
-    list.push(toCatalogProduct(row));
+    list.push(toCatalogProduct(row, locale));
     productsByRange.set(row.rangeId, list);
   }
 
@@ -176,14 +193,17 @@ export async function loadProductsCatalog(db: Db): Promise<ProductsCatalog> {
       continue;
     }
 
+    const rangeTranslation = translationForLocale(range.translations, locale);
+    const displayName = selectTranslated(range.name, rangeTranslation?.name);
+
     groups.push({
       id: range.id,
       slug: toRangeSlug(range.name),
-      name: range.name,
-      label: toRangeLabel(range.name),
-      description: range.description ?? '',
+      name: displayName,
+      label: toRangeLabel(displayName),
+      description: selectTranslated(range.description, rangeTranslation?.description) ?? '',
       count: groupProducts.length,
-      variants: toCatalogVariants(range.variants, groupProducts),
+      variants: toCatalogVariants(range.variants, groupProducts, locale),
       products: groupProducts,
     });
   }

@@ -6,18 +6,23 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 REMOTE=${REMOTE:-origin}
 SOURCE_BRANCH=${SOURCE_BRANCH:-main}
 TARGET_BRANCH=${TARGET_BRANCH:-production}
+CHANGELOG_DIR="$ROOT/changelogs"
 DRY_RUN=0
 YES=0
+SKIP_CHANGELOG=0
 
 usage() {
   cat <<USAGE
-Usage: pnpm release:production [--dry-run] [--yes]
+Usage: pnpm release:production [--dry-run] [--yes] [--skip-changelog]
 
-Fast-forward the production branch to the current remote main branch.
+Generate the release Changelog, commit it to $SOURCE_BRANCH, then fast-forward the
+$TARGET_BRANCH branch to it.
 
 Options:
-  --dry-run  Check and print what would be released without pushing.
-  --yes      Skip the interactive confirmation prompt.
+  --dry-run          Check and preview what would be released without pushing.
+  --yes              Skip the interactive confirmation prompt.
+  --skip-changelog   Release without generating a Changelog (pure fast-forward of
+                     $SOURCE_BRANCH to $TARGET_BRANCH; does not touch your working tree).
 USAGE
 }
 
@@ -30,6 +35,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --yes|-y)
       YES=1
+      ;;
+    --skip-changelog)
+      SKIP_CHANGELOG=1
       ;;
     --help|-h)
       usage
@@ -75,10 +83,62 @@ echo
 echo "Commits to release:"
 git -C "$ROOT" log --oneline --reverse "$TARGET_REF..$SOURCE_REF"
 
+# Runs the release-time Changelog tooling from the workspace.
+changelog_cli() {
+  ( cd "$ROOT" && pnpm --filter @pkg/changelog exec tsx src/cli.ts "$@" )
+}
+
 if [ "$DRY_RUN" -eq 1 ]; then
+  if [ "$SKIP_CHANGELOG" -eq 0 ]; then
+    echo
+    echo "Changelog preview ($TARGET_BRANCH..$SOURCE_BRANCH):"
+    if ! changelog_cli generate --from "$TARGET_REF" --to "$SOURCE_REF" --dir "$CHANGELOG_DIR" --repo "$ROOT" --dry-run; then
+      echo "Changelog preview unavailable (generation failed); the release itself would block here." >&2
+    fi
+  fi
   echo
   echo "Dry run only; no push performed."
   exit 0
+fi
+
+# --- Changelog: generated and committed to $SOURCE_BRANCH before the fast-forward ---
+COMMITTED_CHANGELOG=0
+ORIGINAL_REF=""
+
+restore_checkout() {
+  status=$?
+  if [ -n "$ORIGINAL_REF" ]; then
+    if [ "$COMMITTED_CHANGELOG" -eq 0 ]; then
+      # Discard any generated-but-uncommitted changelog before returning.
+      git -C "$ROOT" reset --hard "$SOURCE_REF" >/dev/null 2>&1 || true
+      git -C "$ROOT" clean -fdq -- "$CHANGELOG_DIR" >/dev/null 2>&1 || true
+    fi
+    git -C "$ROOT" checkout --quiet "$ORIGINAL_REF" >/dev/null 2>&1 || true
+  fi
+  return "$status"
+}
+
+if [ "$SKIP_CHANGELOG" -eq 0 ]; then
+  if [ -n "$(git -C "$ROOT" status --porcelain)" ]; then
+    echo "Refusing to release: working tree is not clean." >&2
+    echo "Commit or stash your changes, or pass --skip-changelog to release without a changelog." >&2
+    exit 1
+  fi
+
+  ORIGINAL_REF=$(git -C "$ROOT" symbolic-ref --quiet --short HEAD || git -C "$ROOT" rev-parse HEAD)
+  trap restore_checkout EXIT
+
+  git -C "$ROOT" checkout --quiet "$SOURCE_BRANCH"
+  if ! git -C "$ROOT" merge --ff-only "$SOURCE_REF" >/dev/null 2>&1; then
+    echo "Refusing to release: local $SOURCE_BRANCH cannot fast-forward to $REMOTE/$SOURCE_BRANCH." >&2
+    echo "Reconcile your local $SOURCE_BRANCH first." >&2
+    exit 1
+  fi
+
+  echo
+  echo "Generating changelog for $TARGET_BRANCH..$SOURCE_BRANCH ..."
+  changelog_cli generate --from "$TARGET_REF" --to "$SOURCE_REF" --dir "$CHANGELOG_DIR" --repo "$ROOT"
+  echo "Review (and edit if needed) the changelog above before confirming the release."
 fi
 
 if [ "$YES" -ne 1 ]; then
@@ -96,4 +156,20 @@ if [ "$YES" -ne 1 ]; then
   fi
 fi
 
-git -C "$ROOT" push "$REMOTE" "$SOURCE_REF:refs/heads/$TARGET_BRANCH"
+if [ "$SKIP_CHANGELOG" -eq 0 ]; then
+  # Re-validate (the file may have been edited during review), prune the display window, and commit.
+  changelog_cli validate --dir "$CHANGELOG_DIR"
+  changelog_cli prune --dir "$CHANGELOG_DIR"
+
+  git -C "$ROOT" add -- "$CHANGELOG_DIR"
+  if git -C "$ROOT" diff --cached --quiet; then
+    echo "No changelog changes to commit."
+  else
+    git -C "$ROOT" commit --quiet -m "chore(changelog): release $(date -u +%Y-%m-%d)"
+    git -C "$ROOT" push --quiet "$REMOTE" "$SOURCE_BRANCH"
+    COMMITTED_CHANGELOG=1
+    SOURCE_SHA=$(git -C "$ROOT" rev-parse "$SOURCE_BRANCH")
+  fi
+fi
+
+git -C "$ROOT" push "$REMOTE" "$SOURCE_SHA:refs/heads/$TARGET_BRANCH"

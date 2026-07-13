@@ -7,6 +7,7 @@
     "paths": {
       "@pkg/api": ["./pkg/api/src/index.ts"],
       "@pkg/ai": ["./pkg/ai/src/index.ts"],
+      "@pkg/changelog": ["./pkg/changelog/src/index.ts"],
       "@pkg/core": ["./pkg/core/src/index.ts"],
       "@pkg/db": ["./pkg/db/src/index.ts"],
       "@pkg/domain": ["./pkg/domain/src/index.ts"],

@@ -6,6 +6,7 @@ import {
   productRangeVariantSourceHash,
   productSourceHash,
   selectTranslated,
+  translationForLocale,
 } from './catalog-translation.js';
 
 const canonicalProduct = {
@@ -65,6 +66,17 @@ describe('translation selection and staleness', () => {
     expect(selectTranslated('Canonical', undefined)).toBe('Canonical');
     expect(selectTranslated('Canonical', null)).toBe('Canonical');
     expect(selectTranslated('Canonical', '')).toBe('');
+  });
+
+  it('ignores stored canonical translations and selects non-canonical translations', () => {
+    const translations = {
+      en: { name: 'Stored English' },
+      af: { name: 'Afrikaans' },
+    };
+
+    expect(translationForLocale(translations, 'en')).toBeUndefined();
+    expect(translationForLocale(translations, 'af')).toEqual({ name: 'Afrikaans' });
+    expect(translationForLocale(undefined, 'af')).toBeUndefined();
   });
 
   it('only marks an existing translation with a different source hash stale', () => {

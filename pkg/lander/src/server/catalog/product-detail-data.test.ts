@@ -331,6 +331,9 @@ test('loadProductDetail exposes the brochure download link only when the brochur
   const detail = await loadProductDetail(db, product.modelCode);
 
   expect(detail?.brochureHref).toBe(`/downloads/products/${product.id}/brochure`);
+  expect((await loadProductDetail(db, product.modelCode, 'af'))?.brochureHref).toBe(
+    `/downloads/products/${product.id}/brochure?locale=af`,
+  );
 });
 
 test('loadProductDetail hides the brochure link when the brochure is not ready', async ({ db }) => {
@@ -351,4 +354,5 @@ test('loadProductDetail hides the brochure link when the brochure is not ready',
 
   expect(detail).not.toBeNull();
   expect(detail?.brochureHref).toBeNull();
+  expect((await loadProductDetail(db, product.modelCode, 'af'))?.brochureHref).toBeNull();
 });

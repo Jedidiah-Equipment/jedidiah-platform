@@ -10,6 +10,68 @@ const PRODUCT_ID = '11111111-1111-4111-8111-111111111111';
 const RANGE_ID = '22222222-2222-4222-8222-222222222222';
 
 describe('getBrochureDocumentModel', () => {
+  test('selects Afrikaans catalog text with per-field canonical fallback', async () => {
+    const product = brochureProduct({
+      assemblies: [
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          kind: 'standard',
+          name: 'Hydraulic tailgate',
+          parts: [],
+          productId: PRODUCT_ID,
+          translations: {
+            af: {
+              name: 'Hidrouliese agterklap',
+              sourceHash: 'assembly-hash',
+              translatedAt: '2026-07-13T00:00:00.000Z',
+            },
+          },
+        },
+        {
+          id: '44444444-4444-4444-8444-444444444444',
+          kind: 'optional',
+          name: 'Working lights',
+          overrideStandardAssemblyIds: [],
+          parts: [],
+          price: 100,
+          productId: PRODUCT_ID,
+        },
+      ],
+      keyFeatures: ['Canonical feature'],
+      nameHighlight: 'Product',
+      translations: {
+        af: {
+          category: 'Kuilvoer en graan',
+          description: null,
+          keyFeatures: ['Afrikaanse kenmerk'],
+          name: 'Toetsproduk',
+          nameHighlight: null,
+          sourceHash: 'product-hash',
+          technicalDetails: [],
+          translatedAt: '2026-07-13T00:00:00.000Z',
+        },
+      },
+    });
+
+    const document = await getBrochureDocumentModel({
+      images: {},
+      locale: 'af',
+      product,
+      rangeLogo: null,
+      storage: new InMemoryStorageAdapter(),
+    });
+
+    expect(document).toMatchObject({
+      bodyCopy: ['Built for demanding field conditions.'],
+      keyFeatures: ['Afrikaanse kenmerk'],
+      optionalAssemblies: ['Working lights'],
+      standardAssemblies: ['Hidrouliese agterklap'],
+      subtitle: 'Kuilvoer en graan',
+      title: 'Toetsproduk',
+      titleHighlight: 'Product',
+    });
+  });
+
   test('trims excessive vertical padding from a landscape Range logo', async () => {
     const logoBytes = await paddedLandscapeLogo();
     const rangeLogo = await storeRangeLogo(logoBytes);
@@ -92,7 +154,7 @@ async function dataUriDimensions(dataUri: string | undefined): Promise<{ height:
   return { height: metadata.height, width: metadata.width };
 }
 
-function brochureProduct(): Product {
+function brochureProduct(overrides: Partial<Product> = {}): Product {
   return Product.parse({
     assemblies: [],
     basePrice: 1_000,
@@ -124,5 +186,6 @@ function brochureProduct(): Product {
     updatedAt: '2026-07-13T00:00:00.000Z',
     variant: null,
     variantId: null,
+    ...overrides,
   });
 }

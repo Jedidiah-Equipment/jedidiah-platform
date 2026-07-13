@@ -1,9 +1,11 @@
 import { type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg/schema';
+import { PDFDocument } from 'pdf-lib';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../bytes/pdf-bytes.js';
-import { getCoverLayout } from './BrochureDocumentPdf.js';
+import { BrochureDocumentPdf, getCoverLayout } from './BrochureDocumentPdf.js';
 import { renderBrochurePdf } from './brochure-pdf-renderer.js';
+import { brochureMessages } from './messages/index.js';
 
 // A tiny 4x4 PNG so the renderer exercises its real image path without bundling a large fixture.
 const PNG_DATA_URI =
@@ -41,6 +43,23 @@ async function expectTwoPageBrochure(document: BrochureDocumentModel) {
 }
 
 describe('renderBrochurePdf', () => {
+  test('keeps the default document tree identical to an explicit English render', () => {
+    const document = fullBrochure();
+
+    expect(BrochureDocumentPdf({ document })).toEqual(BrochureDocumentPdf({ document, locale: 'en' }));
+  });
+
+  test('renders Afrikaans PDF metadata', async () => {
+    const bytes = await renderBrochurePdf({
+      document: fullBrochure(),
+      filename: 'SG1836-brochure-af.pdf',
+      locale: 'af',
+    });
+    const pdf = await PDFDocument.load(bytes);
+
+    expect(pdf.getSubject()).toBe('Brosjure SG1836');
+  });
+
   test('renders a complete brochure model to valid PDF bytes spanning two pages', async () => {
     await expectTwoPageBrochure(fullBrochure());
   });
@@ -97,6 +116,18 @@ describe('renderBrochurePdf', () => {
       ),
       optionalAssemblies: denseAssemblies('Optional', 20),
       standardAssemblies: denseAssemblies('Standard', 18),
+    });
+  });
+});
+
+describe('brochureMessages', () => {
+  test('provides Afrikaans brochure labels', () => {
+    expect(brochureMessages.af).toMatchObject({
+      keyFeatures: ['Belangrike', 'Kenmerke'],
+      optionalAssemblies: 'Opsionele Ekstras',
+      phone: 'Telefoon',
+      standardAssemblies: 'Standaard',
+      subject: 'Brosjure',
     });
   });
 });

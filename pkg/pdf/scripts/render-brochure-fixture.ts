@@ -1,7 +1,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type BrochureDocumentImage, type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg/schema';
+import {
+  type BrochureDocumentImage,
+  type BrochureDocumentModel,
+  Locale,
+  PRODUCT_KEY_FEATURES_MAX_COUNT,
+} from '@pkg/schema';
 
 import { renderBrochurePdf } from '../src/brochure/brochure-pdf-renderer.js';
 
@@ -16,14 +21,15 @@ type ImageFit = NonNullable<BrochureDocumentImage>['fit'];
 
 async function main() {
   const outputPath = outputPathFromArg(process.argv[2]);
+  const locale = fixtureLocale();
   const variant = fixtureVariant();
   const document = await fixtureDocument(variant);
-  const bytes = await renderBrochurePdf({ document, filename: path.basename(outputPath) });
+  const bytes = await renderBrochurePdf({ document, filename: path.basename(outputPath), locale });
 
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, bytes);
 
-  console.log(`Rendered ${variant} fixture (${bytes.byteLength} bytes) to ${outputPath}`);
+  console.log(`Rendered ${variant} ${locale} fixture (${bytes.byteLength} bytes) to ${outputPath}`);
 }
 
 async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumentModel> {
@@ -147,6 +153,10 @@ function fixtureVariant(): FixtureVariant {
   }
 
   throw new Error(`Unsupported brochure fixture variant: ${value}`);
+}
+
+function fixtureLocale(): Locale {
+  return Locale.parse(process.env.BROCHURE_FIXTURE_LOCALE ?? 'en');
 }
 
 function denseAssemblies(prefix: string, count: number): string[] {

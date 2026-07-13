@@ -1,6 +1,7 @@
-export const LOCALES = ['en', 'af'] as const;
-export type Locale = (typeof LOCALES)[number];
-export const CANONICAL_LOCALE: Locale = 'en';
+import { CANONICAL_LOCALE, LOCALES, type Locale, Locale as LocaleSchema } from '@pkg/schema';
+
+export { CANONICAL_LOCALE, LOCALES, type Locale } from '@pkg/schema';
+
 export type LocaleRouteContext = { locale?: Locale };
 
 type LocaleMetadata = { pathPrefix: string; openGraphLocale: string };
@@ -11,7 +12,7 @@ export const LOCALE_METADATA: Record<Locale, LocaleMetadata> = {
 };
 
 export function isLocale(value: unknown): value is Locale {
-  return LOCALES.some((locale) => locale === value);
+  return LocaleSchema.safeParse(value).success;
 }
 
 export function resolveRouteLocale(param: string | undefined): Locale | null {
@@ -29,13 +30,6 @@ export function requireRouteContextLocale(context: LocaleRouteContext): Locale {
   }
 
   return context.locale;
-}
-
-export function translationForLocale<T>(
-  translations: Partial<Record<string, T>> | undefined,
-  locale: Locale,
-): T | undefined {
-  return locale === CANONICAL_LOCALE ? undefined : translations?.[locale];
 }
 
 export function localePath(canonicalPath: string, locale: Locale): string {

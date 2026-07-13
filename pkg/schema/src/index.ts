@@ -10,6 +10,7 @@ export * from './common/date.js';
 export * from './common/departments.js';
 export * from './common/file.js';
 export * from './common/image.js';
+export * from './common/locale.js';
 export * from './common/pagination.js';
 export * from './common/phone-number.js';
 export * from './common/price.js';

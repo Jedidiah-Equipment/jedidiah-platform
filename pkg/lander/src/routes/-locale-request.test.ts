@@ -97,4 +97,14 @@ describe('locale preference HTTP boundary', () => {
     expect(response.headers.get('set-cookie')).toBeNull();
     await response.arrayBuffer();
   });
+
+  test.each([
+    '/downloads/products/00000000-0000-0000-0000-000000000000/brochure',
+    '/downloads/products/00000000-0000-0000-0000-000000000000/brochure?locale=af',
+  ])('returns 404 for an unknown brochure in either locale at %s', async (path) => {
+    const response = await request(path);
+
+    expect(response.status).toBe(404);
+    await response.arrayBuffer();
+  });
 });

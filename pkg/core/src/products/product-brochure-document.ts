@@ -281,12 +281,11 @@ async function trimExcessRangeLogoPadding(bytes: Uint8Array): Promise<Uint8Array
     }
 
     const trimmed = await sharp(bytes).trim({ lineArt: true }).toBuffer({ resolveWithObject: true });
-    const isWideMarkOnPaddedCanvas =
-      trimmed.info.height <= metadata.height * 0.5 && trimmed.info.width >= metadata.width * 0.5;
+    const hasExcessVerticalPadding = trimmed.info.height <= metadata.height * 0.5;
 
-    // Only collapse strongly vertical padding around a wide mark. Square badge backgrounds are part of
-    // their logo artwork and must keep their canvas rather than being cropped down to their lettering.
-    return isWideMarkOnPaddedCanvas ? trimmed.data : bytes;
+    // Only collapse strongly vertical padding. Square badge backgrounds are part of their logo artwork
+    // and must keep their canvas rather than being cropped down to their lettering.
+    return hasExcessVerticalPadding ? trimmed.data : bytes;
   } catch {
     // Normalization is best-effort; an image React-PDF previously accepted must not block the brochure.
     return bytes;

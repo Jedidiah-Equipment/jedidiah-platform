@@ -51,9 +51,9 @@ async function paddedLandscapeLogo(): Promise<Uint8Array> {
     .toBuffer();
 
   return sharp({
-    create: { background: '#ffffff', channels: 3, height: 200, width: 200 },
+    create: { background: '#ffffff', channels: 3, height: 500, width: 500 },
   })
-    .composite([{ input: mark, left: 20, top: 80 }])
+    .composite([{ input: mark, left: 170, top: 230 }])
     .png()
     .toBuffer();
 }

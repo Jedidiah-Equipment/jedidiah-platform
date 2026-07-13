@@ -3,8 +3,8 @@ import logoUrl from '@pkg/domain/assets/brand/jedidiah-logo.png';
 import { IconMapPin, IconMenu2, IconPhone, IconX } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
-import { LOCALES, type Locale, localePath, switchLocaleHref } from '../lib/locale.js';
-import { persistLocalePreference } from '../lib/locale-preference.js';
+import { LOCALES, type Locale, localePath } from '../lib/locale.js';
+import { localePreferenceHref } from '../lib/locale-preference.js';
 import { useLocale, useMessages } from '../messages/index.js';
 import { DropdownMenu } from './dropdown-menu.js';
 
@@ -39,7 +39,7 @@ function Logo({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
-function LanguageSelect({ className, onChange }: { className: string; onChange: (locale: Locale) => void }) {
+function LanguageSelect({ className, currentHref }: { className: string; currentHref: string }) {
   const m = useMessages();
   const locale = useLocale();
   const [open, setOpen] = useState(false);
@@ -58,23 +58,18 @@ function LanguageSelect({ className, onChange }: { className: string; onChange: 
       panelClassName="min-w-full border border-[#4a4a4a] bg-[#1b1b1b] p-2 shadow-[0_12px_30px_rgba(0,0,0,0.35)]"
     >
       {LOCALES.map((optionLocale) => (
-        <button
+        <a
           key={optionLocale}
-          type="button"
+          href={localePreferenceHref(currentHref, optionLocale)}
           role="menuitemradio"
           aria-checked={optionLocale === locale}
-          onClick={() => {
-            setOpen(false);
-            if (optionLocale !== locale) {
-              onChange(optionLocale);
-            }
-          }}
-          className={`w-full px-3 py-2.5 text-left font-body text-[14px] font-semibold transition-colors ${
+          onClick={() => setOpen(false)}
+          className={`w-full px-3 py-2.5 text-left font-body text-[14px] font-semibold no-underline transition-colors ${
             optionLocale === locale ? 'bg-yellow text-ink' : 'text-[#e8e8e8] hover:bg-[#2a2a2a] hover:text-white'
           }`}
         >
           {labels[optionLocale]}
-        </button>
+        </a>
       ))}
     </DropdownMenu>
   );
@@ -85,11 +80,6 @@ export function Nav() {
   const locale = useLocale();
   const [open, setOpen] = useState(false);
   const location = useRouterState({ select: (state) => state.location });
-
-  function switchLocale(target: Locale) {
-    persistLocalePreference(target);
-    window.location.assign(switchLocaleHref(location.href, target));
-  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#2a2a2a] bg-ink">
@@ -117,7 +107,7 @@ export function Nav() {
 
         <div className="flex flex-none items-center gap-7 max-header:hidden">
           <LanguageSelect
-            onChange={switchLocale}
+            currentHref={location.href}
             className="min-w-[132px] border border-[#4a4a4a] bg-ink px-3 py-2 font-body text-[14px] font-semibold text-[#e8e8e8]"
           />
           <a href={`tel:${contactNumberE164()}`} className="flex items-center gap-[9px] no-underline">
@@ -165,7 +155,7 @@ export function Nav() {
               );
             })}
             <LanguageSelect
-              onChange={switchLocale}
+              currentHref={location.href}
               className="mt-4 border border-[#4a4a4a] bg-[#1b1b1b] px-3 py-3 font-body text-[16px] font-semibold text-[#e8e8e8]"
             />
             <div className="flex flex-col gap-[14px] pt-[18px]">

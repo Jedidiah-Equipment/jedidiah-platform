@@ -2,8 +2,8 @@ import { contactNumberE164, formatContactNumber, JEDIDIAH_INSTAGRAM_URL, JEDIDIA
 import logoFullUrl from '@pkg/domain/assets/brand/jedidiah-logo-full.png';
 import { IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { localePath, switchLocaleHref } from '../lib/locale.js';
-import { persistLocalePreference } from '../lib/locale-preference.js';
+import { localePath } from '../lib/locale.js';
+import { localePreferenceHref } from '../lib/locale-preference.js';
 import { useLocale, useMessages } from '../messages/index.js';
 import type { FooterRange } from '../server/catalog/ranges.js';
 
@@ -117,9 +117,8 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
             {m.footer.tagline}
           </span>
           <a
-            href={switchLocaleHref(currentHref, targetLocale)}
+            href={localePreferenceHref(currentHref, targetLocale)}
             aria-label={m.language.switchTo(targetLanguage)}
-            onClick={() => persistLocalePreference(targetLocale)}
             className="font-body text-[13px] text-[#8a8a8a] underline decoration-[#5a5a5a] underline-offset-4 hover:text-yellow"
           >
             {targetLanguage}

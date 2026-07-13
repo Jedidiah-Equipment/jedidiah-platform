@@ -1,6 +1,6 @@
 import { IconChevronDown } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function DropdownMenu({
   open,
@@ -19,28 +19,7 @@ export function DropdownMenu({
   panelClassName?: string;
   children: ReactNode;
 }) {
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-  // Keep the panel mounted while its close transition runs, then remove it from the tab order and DOM.
-  const [mounted, setMounted] = useState(open);
-  const [shown, setShown] = useState(open);
-
-  useEffect(() => {
-    if (open) {
-      setMounted(true);
-      return;
-    }
-    setShown(false);
-    const timer = setTimeout(() => setMounted(false), 220);
-    return () => clearTimeout(timer);
-  }, [open]);
-
-  useEffect(() => {
-    if (!mounted || !open) {
-      return;
-    }
-    const frame = requestAnimationFrame(() => setShown(true));
-    return () => cancelAnimationFrame(frame);
-  }, [mounted, open]);
+  const wrapRef = useRef<HTMLDetailsElement | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -65,38 +44,35 @@ export function DropdownMenu({
   }, [open, onOpenChange]);
 
   return (
-    <div ref={wrapRef} className="relative flex-none">
-      <button
-        type="button"
-        onClick={() => onOpenChange(!open)}
+    <details
+      ref={wrapRef}
+      open={open}
+      onToggle={(event) => {
+        if (event.currentTarget.open !== open) {
+          onOpenChange(event.currentTarget.open);
+        }
+      }}
+      className="group relative flex-none"
+    >
+      <summary
         aria-label={ariaLabel}
-        aria-expanded={open}
         aria-haspopup="menu"
-        className={triggerClassName}
+        className={`${triggerClassName} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
       >
         {label}
         <IconChevronDown
           size={16}
           stroke={2.4}
           aria-hidden="true"
-          className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+          className="transition-transform duration-150 group-open:rotate-180"
         />
-      </button>
-      {mounted ? (
-        <div
-          role="menu"
-          onTransitionEnd={() => {
-            if (!open) {
-              setMounted(false);
-            }
-          }}
-          className={`absolute top-[calc(100%+8px)] right-0 z-40 flex origin-top-right flex-col gap-1.5 transition duration-150 ease-out motion-reduce:transition-none ${
-            shown ? 'scale-100 opacity-100' : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
-          } ${panelClassName ?? ''}`}
-        >
-          {children}
-        </div>
-      ) : null}
-    </div>
+      </summary>
+      <div
+        role="menu"
+        className={`absolute top-[calc(100%+8px)] right-0 z-40 flex origin-top-right -translate-y-1 scale-95 flex-col gap-1.5 opacity-0 transition duration-150 ease-out group-open:translate-y-0 group-open:scale-100 group-open:opacity-100 motion-reduce:transition-none ${panelClassName ?? ''}`}
+      >
+        {children}
+      </div>
+    </details>
   );
 }

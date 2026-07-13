@@ -8,8 +8,6 @@ import { createAssistantChatTransport } from './assistant-chat-transport.js';
 import { AssistantDevtools } from './assistant-devtools.js';
 import { AssistantModal } from './assistant-modal.js';
 
-// Development-only floating assistant runtime. The wrapper owns the compile-time environment gate;
-// this module owns session eligibility and the actual assistant-ui runtime.
 export const FloatingAssistantRuntime: FC = () => {
   const { data: session } = authClient.useSession();
 

@@ -754,8 +754,9 @@ describe('createJob', () => {
     await makeBrochureComplete(context.db, storage, context.catalog.product.id);
     const renderedBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, 0x0a, 0x42]);
     let rendererCalls = 0;
-    const renderer: BrochurePdfRenderer = async () => {
+    const renderer: BrochurePdfRenderer = async ({ locale }) => {
       rendererCalls += 1;
+      expect(locale).toBe('en');
 
       return renderedBytes;
     };

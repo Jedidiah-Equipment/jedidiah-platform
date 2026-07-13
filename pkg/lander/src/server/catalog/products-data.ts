@@ -1,8 +1,8 @@
 import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { isLanderReady, selectTranslated } from '@pkg/domain';
+import { isLanderReady, selectTranslated, translationForLocale } from '@pkg/domain';
 
-import { type Locale, translationForLocale } from '../../lib/locale.js';
+import type { Locale } from '../../lib/locale.js';
 import { parseImageFormat, transformSignature } from '../media/image-transform.js';
 
 export type CatalogProduct = {

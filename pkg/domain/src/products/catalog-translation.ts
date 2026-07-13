@@ -51,6 +51,13 @@ export function selectTranslated<T>(canonical: T, translated: T | null | undefin
   return translated ?? canonical;
 }
 
+export function translationForLocale<T>(
+  translations: Partial<Record<string, T>> | undefined,
+  locale: string,
+): T | undefined {
+  return locale === 'en' ? undefined : translations?.[locale];
+}
+
 function catalogSourceHash(canonicalText: unknown): string {
   return bytesToHex(sha256(utf8ToBytes(JSON.stringify(canonicalText))));
 }

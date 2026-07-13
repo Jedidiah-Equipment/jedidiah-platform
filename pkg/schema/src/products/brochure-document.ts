@@ -1,3 +1,4 @@
+import type { Locale } from '../common/locale.js';
 import type { BROCHURE_IMAGE_SLOTS } from './product.js';
 
 // A single Brochure image slot rendered into the PDF: a base64 data URI of the stored image bytes plus
@@ -32,4 +33,8 @@ export type BrochureDocumentModel = {
 
 // Renders a resolved Brochure model into PDF bytes. Mirrors {@link QuoteDocumentPdfRenderer}: a pure
 // function the API injects so @pkg/core never imports @react-pdf/renderer.
-export type BrochurePdfRenderer = (input: { document: BrochureDocumentModel; filename: string }) => Promise<Uint8Array>;
+export type BrochurePdfRenderer = (input: {
+  document: BrochureDocumentModel;
+  filename: string;
+  locale?: Locale;
+}) => Promise<Uint8Array>;

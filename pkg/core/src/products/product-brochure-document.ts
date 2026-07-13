@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { DatabaseTransaction, Db, ProductImageStore, StoredFile } from '@pkg/db';
-import { evaluateProductBrochureCompleteness } from '@pkg/domain';
+import { evaluateProductBrochureCompleteness, selectTranslated, translationForLocale } from '@pkg/domain';
 import {
   type AuthId,
   BROCHURE_IMAGE_SLOTS,
@@ -9,6 +9,7 @@ import {
   type BrochureDocumentImages,
   type BrochureDocumentModel,
   type BrochurePdfRenderer,
+  type Locale,
   PRODUCT_IMAGE_SLOT_SPECS,
   type Product,
   type UUID,
@@ -36,11 +37,13 @@ export type BrochurePreviewResult = {
  */
 export async function renderProductBrochurePreview({
   db,
+  locale = 'en',
   pdfRenderer,
   productId,
   storage,
 }: {
   db: Db;
+  locale?: Locale;
   pdfRenderer: BrochurePdfRenderer;
   productId: UUID;
   storage: StorageAdapter;
@@ -53,7 +56,7 @@ export async function renderProductBrochurePreview({
     throw new ProductBrochureIncompleteError(productId, completeness.missingFields);
   }
 
-  return renderBrochureForProduct({ images, pdfRenderer, product, rangeLogo, storage });
+  return renderBrochureForProduct({ images, locale, pdfRenderer, product, rangeLogo, storage });
 }
 
 /**
@@ -64,11 +67,13 @@ export async function renderProductBrochurePreview({
  */
 export async function generateProductBrochureIfComplete({
   db,
+  locale = 'en',
   pdfRenderer,
   productId,
   storage,
 }: {
   db: Db;
+  locale?: Locale;
   pdfRenderer: BrochurePdfRenderer;
   productId: UUID;
   storage: StorageAdapter;
@@ -79,7 +84,7 @@ export async function generateProductBrochureIfComplete({
     return null;
   }
 
-  return renderBrochureForProduct({ images, pdfRenderer, product, rangeLogo, storage });
+  return renderBrochureForProduct({ images, locale, pdfRenderer, product, rangeLogo, storage });
 }
 
 /**
@@ -88,11 +93,13 @@ export async function generateProductBrochureIfComplete({
  */
 export async function generateHistoricalProductBrochureIfComplete({
   db,
+  locale = 'en',
   pdfRenderer,
   productId,
   storage,
 }: {
   db: Db;
+  locale?: Locale;
   pdfRenderer: BrochurePdfRenderer;
   productId: UUID;
   storage: StorageAdapter;
@@ -103,7 +110,7 @@ export async function generateHistoricalProductBrochureIfComplete({
     return null;
   }
 
-  return renderBrochureForProduct({ images, pdfRenderer, product, rangeLogo, storage });
+  return renderBrochureForProduct({ images, locale, pdfRenderer, product, rangeLogo, storage });
 }
 
 /**
@@ -163,20 +170,22 @@ export async function snapshotJobBrochureDocument({
 
 async function renderBrochureForProduct({
   images,
+  locale,
   pdfRenderer,
   product,
   rangeLogo,
   storage,
 }: {
   images: ProductImageStore;
+  locale: Locale;
   pdfRenderer: BrochurePdfRenderer;
   product: Product;
   rangeLogo: StoredFile | null;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
-  const document = await getBrochureDocumentModel({ images, product, rangeLogo, storage });
-  const filename = `${product.modelCode}-brochure.pdf`;
-  const bytes = await pdfRenderer({ document, filename });
+  const document = await getBrochureDocumentModel({ images, locale, product, rangeLogo, storage });
+  const filename = `${product.modelCode}-brochure${locale === 'en' ? '' : `-${locale}`}.pdf`;
+  const bytes = await pdfRenderer({ document, filename, locale });
 
   return { bytes, filename };
 }
@@ -190,11 +199,13 @@ async function renderBrochureForProduct({
  */
 export async function getBrochureDocumentModel({
   images,
+  locale = 'en',
   product,
   rangeLogo: rangeLogoRef,
   storage,
 }: {
   images: ProductImageStore;
+  locale?: Locale;
   product: Product;
   rangeLogo: StoredFile | null;
   storage: StorageAdapter;
@@ -203,22 +214,23 @@ export async function getBrochureDocumentModel({
     resolveBrochureImages({ store: images, storage }),
     resolveRangeLogo({ ref: rangeLogoRef, storage }),
   ]);
+  const translation = translationForLocale(product.translations, locale);
 
   return {
-    bodyCopy: toDisplayLines(product.description),
+    bodyCopy: toDisplayLines(selectTranslated(product.description, translation?.description)),
     images: resolvedImages,
-    keyFeatures: product.keyFeatures,
+    keyFeatures: selectTranslated(product.keyFeatures, translation?.keyFeatures),
     modelCode: product.modelCode,
     optionalAssemblies: product.assemblies
       .filter((assembly) => assembly.kind === 'optional')
-      .map((assembly) => assembly.name),
+      .map((assembly) => selectTranslated(assembly.name, translationForLocale(assembly.translations, locale)?.name)),
     rangeLogo,
     standardAssemblies: product.assemblies
       .filter((assembly) => assembly.kind === 'standard')
-      .map((assembly) => assembly.name),
-    subtitle: product.category,
-    title: product.name,
-    titleHighlight: product.nameHighlight,
+      .map((assembly) => selectTranslated(assembly.name, translationForLocale(assembly.translations, locale)?.name)),
+    subtitle: selectTranslated(product.category, translation?.category),
+    title: selectTranslated(product.name, translation?.name),
+    titleHighlight: selectTranslated(product.nameHighlight, translation?.nameHighlight),
   };
 }
 

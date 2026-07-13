@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { brochureResponse } from './brochure-handlers.js';
+import { brochureResponse, resolveBrochureLocale } from './brochure-handlers.js';
 
 describe('brochureResponse', () => {
   test('streams the generated PDF bytes with an inline download filename', async () => {
@@ -19,5 +19,16 @@ describe('brochureResponse', () => {
     const response = brochureResponse(null);
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe('resolveBrochureLocale', () => {
+  test.each([
+    ['https://example.com/downloads/products/1/brochure', 'en'],
+    ['https://example.com/downloads/products/1/brochure?locale=en', 'en'],
+    ['https://example.com/downloads/products/1/brochure?locale=af', 'af'],
+    ['https://example.com/downloads/products/1/brochure?locale=unsupported', 'en'],
+  ] as const)('resolves %s to %s', (url, locale) => {
+    expect(resolveBrochureLocale(url)).toBe(locale);
   });
 });

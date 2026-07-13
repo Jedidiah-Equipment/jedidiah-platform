@@ -1,14 +1,21 @@
-import { type BrochureDocumentImage, type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg/schema';
+import {
+  type BrochureDocumentImage,
+  type BrochureDocumentModel,
+  type Locale,
+  PRODUCT_KEY_FEATURES_MAX_COUNT,
+} from '@pkg/schema';
 import { Document, Image, Page, Path, StyleSheet, type Styles, Svg, Text, View } from '@react-pdf/renderer';
 
 import { pdfFontFamily, pdfTitleFontFamily } from '../pdf-fonts.js';
 import { jedidiahFooterBannerSrc, jedidiahLogoSrc } from '../pdf-logo.js';
 import { pdfColors, pdfFontSize, pdfFontWeight, pdfLineHeight } from '../quote-document/pdf-theme.js';
+import { brochureMessages } from './messages/index.js';
 
 type Style = Styles[string];
 
 type BrochureDocumentPdfProps = {
   document: BrochureDocumentModel;
+  locale?: Locale;
 };
 
 type ImageFit = NonNullable<BrochureDocumentImage>['fit'];
@@ -334,18 +341,19 @@ const styles = StyleSheet.create({
   },
 });
 
-export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
+export function BrochureDocumentPdf({ document, locale = 'en' }: BrochureDocumentPdfProps) {
   const hasColumns = document.standardAssemblies.length > 0 || document.optionalAssemblies.length > 0;
   const coverLayout = getCoverLayout(document.keyFeatures);
   const detailLayout = getDetailLayout(document);
+  const messages = brochureMessages[locale];
 
   return (
     <Document
       author="Jedidiah Equipment"
       creator="Jedidiah Platform"
-      language="en"
+      language={locale}
       producer="Jedidiah Platform"
-      subject={`Brochure ${document.modelCode}`}
+      subject={`${messages.subject} ${document.modelCode}`}
       title={document.title}
     >
       <Page size="A4" style={styles.page}>
@@ -373,8 +381,12 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
           {document.keyFeatures.length > 0 ? (
             <View style={[styles.sectionCentered, { marginTop: coverLayout.sectionMarginTop }]}>
               <View style={[styles.centerHeadingRow, { marginBottom: coverLayout.headingMarginBottom }]}>
-                <Text style={[styles.headingDark, { fontSize: coverLayout.headingFontSize }]}>Key </Text>
-                <Text style={[styles.headingAccent, { fontSize: coverLayout.headingFontSize }]}>Features</Text>
+                <Text style={[styles.headingDark, { fontSize: coverLayout.headingFontSize }]}>
+                  {messages.keyFeatures[0]}{' '}
+                </Text>
+                <Text style={[styles.headingAccent, { fontSize: coverLayout.headingFontSize }]}>
+                  {messages.keyFeatures[1]}
+                </Text>
               </View>
               <View style={[styles.featureList, { width: coverLayout.featureListWidth }]}>
                 {document.keyFeatures.map((feature) => (
@@ -396,13 +408,13 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
             <View style={styles.columns}>
               <SpecColumn
                 accent="standard"
-                heading="Standard"
+                heading={messages.standardAssemblies}
                 items={document.standardAssemblies}
                 layout={detailLayout.assembly}
               />
               <SpecColumn
                 accent="optional"
-                heading="Optional Extras"
+                heading={messages.optionalAssemblies}
                 items={document.optionalAssemblies}
                 layout={detailLayout.assembly}
               />
@@ -435,7 +447,7 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
           ) : null}
         </View>
         <View style={styles.detailSpacer} />
-        <Footer />
+        <Footer messages={messages} />
       </Page>
     </Document>
   );
@@ -740,13 +752,13 @@ function SpecColumn({
   );
 }
 
-function Footer() {
+function Footer({ messages }: { messages: (typeof brochureMessages)[Locale] }) {
   return (
     <View style={styles.footer}>
       <Image src={jedidiahFooterBannerSrc} style={styles.footerBackground} />
       <View style={styles.footerContactBlock}>
         <View style={styles.footerContactGroup}>
-          <Text style={styles.footerContact}>Phone: 045 050 0545</Text>
+          <Text style={styles.footerContact}>{messages.phone}: 045 050 0545</Text>
           <Text style={[styles.footerContact, styles.footerWebsite]}>www.jedidiahequipment.co.za</Text>
         </View>
         <View style={styles.footerContactGroup}>
@@ -765,8 +777,8 @@ function Footer() {
             style={{ height: layout.footerLogoHeight, objectFit: 'contain', width: layout.footerLogoWidth }}
           />
         </View>
-        <Text style={styles.footerTagline}>Built for high productivity and reliability</Text>
-        <Text style={styles.footerAddress}>Stoneybrook Farm, Kokstad, KwaZulu-Natal, South Africa</Text>
+        <Text style={styles.footerTagline}>{messages.tagline}</Text>
+        <Text style={styles.footerAddress}>{messages.address}</Text>
       </View>
     </View>
   );

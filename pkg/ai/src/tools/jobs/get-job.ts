@@ -39,6 +39,7 @@ export const GetJobResponse = JobDetail.pick({
   description: true,
   documents: true,
   id: true,
+  invoiceNumber: true,
   productId: true,
   productModelCode: true,
   productName: true,

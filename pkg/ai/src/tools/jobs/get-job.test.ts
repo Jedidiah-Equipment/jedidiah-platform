@@ -18,7 +18,7 @@ const job = JobDetail.parse({
   description: 'Repair hydraulic leak',
   documents: [],
   id: JOB_ID,
-  invoiceNumber: null,
+  invoiceNumber: 'INV-1001',
   productId: null,
   productModelCode: null,
   productName: null,
@@ -55,6 +55,7 @@ describe('getJob contract', () => {
       code: 'JOB-00001',
       description: 'Repair hydraulic leak',
       id: JOB_ID,
+      invoiceNumber: 'INV-1001',
       links: {
         app: `/jobs/${JOB_ID}`,
         customer: `/customers/${CUSTOMER_ID}/edit`,

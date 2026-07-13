@@ -26,6 +26,7 @@ export * from './feedback/feedback.js';
 export * from './jobs/job.js';
 export * from './parts/part.js';
 export * from './products/brochure-document.js';
+export * from './products/catalog-translation.js';
 export * from './products/product.js';
 export * from './products/product-range.js';
 export * from './quotes/quote.js';

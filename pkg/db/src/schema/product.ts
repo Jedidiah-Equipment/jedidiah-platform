@@ -53,6 +53,27 @@ export const products = pgTable(
     brochureEnabled: boolean('brochure_enabled').notNull().default(false),
     landerEnabled: boolean('lander_enabled').notNull().default(false),
     thumbnailDataUrl: text('thumbnail_data_url'),
+    // Inline structural type keeps Product row declarations portable across package boundaries (TS2883).
+    translations: jsonb('translations')
+      .$type<
+        Partial<
+          Record<
+            string,
+            {
+              sourceHash: string;
+              translatedAt: string;
+              name: string;
+              nameHighlight: string | null;
+              category: string | null;
+              description: string | null;
+              keyFeatures: string[];
+              technicalDetails: { label: string; value: string }[];
+            }
+          >
+        >
+      >()
+      .notNull()
+      .default({}),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -80,6 +101,11 @@ export const productAssemblies = pgTable(
     productId: uuid('product_id')
       .notNull()
       .references(() => products.id, { onDelete: 'cascade' }),
+    // Inline for the same emitted-declaration portability constraint as Product translations above.
+    translations: jsonb('translations')
+      .$type<Partial<Record<string, { sourceHash: string; translatedAt: string; name: string }>>>()
+      .notNull()
+      .default({}),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

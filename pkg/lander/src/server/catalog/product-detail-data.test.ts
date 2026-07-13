@@ -59,6 +59,7 @@ async function insertProduct(
     images?: Partial<Record<string, ProductImageRef>>;
     brochureEnabled?: boolean;
     landerEnabled?: boolean;
+    translations?: typeof products.$inferInsert.translations;
   },
 ) {
   const [product] = await db
@@ -88,6 +89,84 @@ async function insertAssembly(
 ) {
   await db.insert(productAssemblies).values({ productId, price: values.kind === 'optional' ? 100 : null, ...values });
 }
+
+test('loadProductDetail selects Afrikaans fields with per-field canonical fallback and serves stale blobs', async ({
+  db,
+}) => {
+  const suffix = crypto.randomUUID();
+  const translatedAt = '2026-07-13T10:00:00.000Z';
+  const [range] = await db
+    .insert(productRanges)
+    .values({
+      name: `Silage & Grain ${suffix} Range`,
+      description: 'Built for harvest.',
+      displayOrder: 0,
+      translations: {
+        af: {
+          sourceHash: 'stale-range-hash',
+          translatedAt,
+          name: `Kuilvoer en Graan ${suffix} Reeks`,
+          description: 'Gebou vir die oes.',
+        },
+      },
+    })
+    .returning();
+  if (!range) throw new Error('range insert did not return a row');
+
+  const product = await insertProduct(db, range.id, {
+    name: `Silage Trailer ${suffix}`,
+    modelCode: `ST-${suffix}`,
+    description: 'Canonical description.',
+    category: 'Canonical tagline',
+    keyFeatures: ['Canonical feature'],
+    technicalDetails: [{ label: 'Capacity', value: '42 m³' }],
+    translations: {
+      af: {
+        sourceHash: 'stale-product-hash',
+        translatedAt,
+        name: `Kuilvoerwa ${suffix}`,
+        nameHighlight: null,
+        category: 'Afrikaanse byskrif',
+        description: null,
+        keyFeatures: ['Afrikaanse kenmerk'],
+        technicalDetails: [{ label: 'Kapasiteit', value: '42 m³' }],
+      },
+    },
+  });
+  await db.insert(productAssemblies).values({
+    productId: product.id,
+    kind: 'standard',
+    name: 'Hydraulic tailgate',
+    displayOrder: 0,
+    translations: {
+      af: { sourceHash: 'stale-assembly-hash', translatedAt, name: 'Hidrouliese agterklap' },
+    },
+  });
+
+  const detail = await loadProductDetail(db, product.modelCode, 'af');
+
+  expect(detail).toMatchObject({
+    name: `Kuilvoerwa ${suffix}`,
+    modelCode: product.modelCode,
+    rangeName: `Kuilvoer en Graan ${suffix} Reeks`,
+    rangeSlug: `silage-grain-${suffix}-range`,
+    tagline: 'Afrikaanse byskrif',
+    description: 'Canonical description.',
+    keyFeatures: ['Afrikaanse kenmerk'],
+    highlights: [{ label: 'Kapasiteit', value: '42 m³' }],
+    standardAssemblies: ['Hidrouliese agterklap'],
+  });
+
+  expect(await loadProductDetail(db, product.modelCode, 'en')).toMatchObject({
+    name: product.name,
+    rangeName: range.name,
+    tagline: 'Canonical tagline',
+    description: 'Canonical description.',
+    keyFeatures: ['Canonical feature'],
+    highlights: [{ label: 'Capacity', value: '42 m³' }],
+    standardAssemblies: ['Hydraulic tailgate'],
+  });
+});
 
 test('loadProductDetail resolves a Product by model code with its Range and brochure copy', async ({ db }) => {
   const suffix = crypto.randomUUID();

@@ -4,11 +4,15 @@ import { PageHero } from '../../../components/page-hero.js';
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
 import { VariantFilterBar } from '../../../components/variant-filter-bar.js';
-import { localePath } from '../../../lib/locale.js';
+import { type LocaleRouteContext, localePath, requireRouteContextLocale } from '../../../lib/locale.js';
 import { seoHead } from '../../../lib/seo.js';
 import { messagesForLocale, useLocale, useMessages } from '../../../messages/index.js';
-import { getProductsCatalog } from '../../../server/catalog/products.js';
+import { getProductsCatalog, type ProductsCatalog } from '../../../server/catalog/products.js';
 import type { CatalogGroup, CatalogVariant } from '../../../server/catalog/products-data.js';
+
+async function loadProductsPage({ context }: { context: LocaleRouteContext }): Promise<{ catalog: ProductsCatalog }> {
+  return { catalog: await getProductsCatalog({ data: { locale: requireRouteContextLocale(context) } }) };
+}
 
 type ProductsSearch = { range?: string; variant?: string };
 type ProductsCatalogView = {
@@ -33,7 +37,7 @@ export const Route = createFileRoute('/{-$locale}/products/')({
     ...(typeof search.range === 'string' ? { range: search.range } : {}),
     ...(typeof search.variant === 'string' ? { variant: search.variant } : {}),
   }),
-  loader: async () => ({ catalog: await getProductsCatalog() }),
+  loader: loadProductsPage,
   component: ProductsPage,
 });
 

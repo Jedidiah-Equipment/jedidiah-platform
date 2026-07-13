@@ -10,6 +10,7 @@ import {
   PRODUCT_TECHNICAL_DETAILS_MAX_COUNT,
   Product,
   ProductAssembliesInput,
+  ProductAssemblyTranslations,
   ProductBaysInput,
   ProductCategoryInput,
   ProductCreateInput,
@@ -17,6 +18,7 @@ import {
   ProductListInput,
   ProductSortBy,
   ProductTechnicalDetails,
+  ProductTranslations,
   ProductUpdateInput,
 } from './product.js';
 
@@ -347,6 +349,34 @@ describe('ProductListInput', () => {
 describe('Product', () => {
   it('can be represented as JSON Schema', () => {
     expect(() => z.toJSONSchema(Product)).not.toThrow();
+  });
+});
+
+describe('catalog translation blobs', () => {
+  it('validates locale-keyed Product and Assembly translations', () => {
+    const metadata = { sourceHash: 'abc123', translatedAt: '2026-07-13T10:00:00.000Z' };
+
+    expect(
+      ProductTranslations.parse({
+        af: {
+          ...metadata,
+          name: 'Kuilvoerwa',
+          nameHighlight: null,
+          category: 'Kuilvoer en graan',
+          description: null,
+          keyFeatures: ['Swaardiens-onderstel'],
+          technicalDetails: [{ label: 'Kapasiteit', value: '42 m³' }],
+        },
+      }),
+    ).toMatchObject({ af: { name: 'Kuilvoerwa', description: null } });
+    expect(ProductAssemblyTranslations.parse({ af: { ...metadata, name: 'Hidrouliese agterklap' } })).toMatchObject({
+      af: { name: 'Hidrouliese agterklap' },
+    });
+    expect(() =>
+      ProductAssemblyTranslations.parse({
+        af: { ...metadata, translatedAt: '2026-07-13', name: 'Hidrouliese agterklap' },
+      }),
+    ).toThrow();
   });
 });
 

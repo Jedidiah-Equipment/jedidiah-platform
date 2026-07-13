@@ -12,6 +12,7 @@ import {
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { Bay } from '../jobs/job.js';
+import { CatalogTranslationMetadata } from './catalog-translation.js';
 import { ProductRangeOption, ProductRangeVariantOption } from './product-range.js';
 import { ProductBuildTimeDays, ProductBuildTimeDaysInput } from './product-shared.js';
 
@@ -85,6 +86,14 @@ export const AssemblyKind = z.enum(['standard', 'optional']);
 export type AssemblyName = z.infer<typeof AssemblyName>;
 export const AssemblyName = requiredTrimmedText('Assembly name is required');
 
+export type ProductAssemblyTranslation = z.infer<typeof ProductAssemblyTranslation>;
+export const ProductAssemblyTranslation = CatalogTranslationMetadata.extend({
+  name: z.string(),
+});
+
+export type ProductAssemblyTranslations = z.infer<typeof ProductAssemblyTranslations>;
+export const ProductAssemblyTranslations = z.record(z.string(), ProductAssemblyTranslation);
+
 export type AssemblyPartQuantity = z.infer<typeof AssemblyPartQuantity>;
 export const AssemblyPartQuantity = z
   .number()
@@ -107,6 +116,7 @@ export const StandardAssembly = z.object({
   kind: z.literal('standard'),
   name: AssemblyName,
   parts: z.array(AssemblyPart),
+  translations: ProductAssemblyTranslations.optional(),
 });
 
 export type OptionalAssembly = z.infer<typeof OptionalAssembly>;
@@ -117,6 +127,7 @@ export const OptionalAssembly = z.object({
   name: AssemblyName,
   price: PriceDelta,
   parts: z.array(AssemblyPart),
+  translations: ProductAssemblyTranslations.optional(),
   overrideStandardAssemblyIds: z.array(UUID),
 });
 
@@ -315,6 +326,19 @@ export const ProductTechnicalDetails = z
   .array(ProductTechnicalDetail)
   .max(PRODUCT_TECHNICAL_DETAILS_MAX_COUNT, `Add at most ${PRODUCT_TECHNICAL_DETAILS_MAX_COUNT} technical details`);
 
+export type ProductTranslation = z.infer<typeof ProductTranslation>;
+export const ProductTranslation = CatalogTranslationMetadata.extend({
+  name: z.string(),
+  nameHighlight: z.string().nullable(),
+  category: z.string().nullable(),
+  description: z.string().nullable(),
+  keyFeatures: z.array(z.string()),
+  technicalDetails: z.array(z.object({ label: z.string(), value: z.string() })),
+});
+
+export type ProductTranslations = z.infer<typeof ProductTranslations>;
+export const ProductTranslations = z.record(z.string(), ProductTranslation);
+
 // The canonical Product image slots. Each replaces in place, so a Product holds at most one current image
 // per slot. Order is the visual order and drives the form's slot grid, the upload/download routes, and
 // storage. The top-right brochure logo is not a slot here — it comes from the owning Product Range's image.
@@ -459,6 +483,7 @@ export const Product = z.object({
   category: ProductCategory.default(null),
   keyFeatures: ProductKeyFeatures.default([]),
   technicalDetails: ProductTechnicalDetails.default([]),
+  translations: ProductTranslations.optional(),
   // Images replace in place through their own upload endpoint, so they are read-only here and stay out of
   // the create/update inputs (the text-only autosave payload).
   images: ProductImages.default(EMPTY_PRODUCT_IMAGES),

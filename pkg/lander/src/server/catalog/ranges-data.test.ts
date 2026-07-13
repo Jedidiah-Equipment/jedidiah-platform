@@ -4,7 +4,7 @@ import { expect } from 'vitest';
 
 import { test } from '../../test/tester.js';
 import { toRangeLabel, toRangeSlug } from './products-data.js';
-import { loadFooterRanges, loadHomeRanges, loadProductRangeCount } from './ranges-data.js';
+import { loadFooterRanges, loadHomeRanges, loadProductRangeCount, loadRangeOptions } from './ranges-data.js';
 
 type Db = Parameters<typeof loadHomeRanges>[0];
 
@@ -42,6 +42,47 @@ async function insertReadyProduct(db: Db, rangeId: string, suffix = crypto.rando
 
   return product;
 }
+
+test('Range loaders translate display text while preserving canonical filter slugs', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const [range] = await db
+    .insert(productRanges)
+    .values({
+      name: `Crosshaul ${suffix} Range`,
+      description: 'Canonical range description.',
+      displayOrder: 0,
+      translations: {
+        af: {
+          sourceHash: 'stale-range-hash',
+          translatedAt: '2026-07-13T10:00:00.000Z',
+          name: `Dwarsvervoer ${suffix} Reeks`,
+          description: null,
+        },
+      },
+    })
+    .returning();
+  if (!range) throw new Error('insert did not return a row');
+  await insertReadyProduct(db, range.id);
+
+  const homeRange = (await loadHomeRanges(db, 'af')).find((candidate) => candidate.id === range.id);
+  const footerRange = (await loadFooterRanges(db, 'af')).find(
+    (candidate) => candidate.slug === toRangeSlug(range.name),
+  );
+
+  expect(homeRange).toMatchObject({
+    name: `Dwarsvervoer ${suffix} Reeks`,
+    description: 'Canonical range description.',
+    slug: toRangeSlug(range.name),
+  });
+  expect(footerRange).toEqual({ label: `Dwarsvervoer ${suffix} Reeks`, slug: toRangeSlug(range.name) });
+  expect(await loadRangeOptions(db, 'af')).toContain(`Dwarsvervoer ${suffix} Reeks`);
+
+  expect((await loadHomeRanges(db, 'en')).find((candidate) => candidate.id === range.id)).toMatchObject({
+    name: range.name,
+    description: 'Canonical range description.',
+    slug: toRangeSlug(range.name),
+  });
+});
 
 test('loadHomeRanges returns Range name, blurb, and Products href from the database', async ({ db }) => {
   const [withBlurb] = await db

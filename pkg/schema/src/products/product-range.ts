@@ -4,6 +4,7 @@ import { DateIso } from '../common/date.js';
 import { EntityFile } from '../common/file.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
+import { CatalogTranslationMetadata } from './catalog-translation.js';
 
 // Cap for an uploaded Product Range image. The bytes live in private object storage (not inline in the
 // row), so this matches the brochure image ceiling rather than the small inline-data-URL limits.
@@ -25,11 +26,29 @@ export const ProductRangeDescription = nullableTrimmedText();
 export type ProductRangeDescriptionInput = z.infer<typeof ProductRangeDescriptionInput>;
 export const ProductRangeDescriptionInput = nullableTrimmedTextInput();
 
+export type ProductRangeTranslation = z.infer<typeof ProductRangeTranslation>;
+export const ProductRangeTranslation = CatalogTranslationMetadata.extend({
+  name: z.string(),
+  description: z.string().nullable(),
+});
+
+export type ProductRangeTranslations = z.infer<typeof ProductRangeTranslations>;
+export const ProductRangeTranslations = z.record(z.string(), ProductRangeTranslation);
+
+export type ProductRangeVariantTranslation = z.infer<typeof ProductRangeVariantTranslation>;
+export const ProductRangeVariantTranslation = CatalogTranslationMetadata.extend({
+  name: z.string(),
+});
+
+export type ProductRangeVariantTranslations = z.infer<typeof ProductRangeVariantTranslations>;
+export const ProductRangeVariantTranslations = z.record(z.string(), ProductRangeVariantTranslation);
+
 export type ProductRangeVariant = z.infer<typeof ProductRangeVariant>;
 export const ProductRangeVariant = z.object({
   id: UUID,
   rangeId: UUID,
   name: ProductRangeVariantName,
+  translations: ProductRangeVariantTranslations.optional(),
   displayOrder: z.number().int(),
   createdAt: DateIso,
   updatedAt: DateIso,
@@ -39,6 +58,7 @@ export type ProductRange = z.infer<typeof ProductRange>;
 export const ProductRange = z.object({
   id: UUID,
   name: ProductRangeName,
+  translations: ProductRangeTranslations.optional(),
   description: ProductRangeDescription,
   // The Range's single presentation image, exposed as a client-safe reference (no storage key). Replaced
   // in place through the dedicated image route, never carried on the create/update payload.

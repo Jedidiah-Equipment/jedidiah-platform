@@ -52,6 +52,7 @@ export function mapProductRange(row: ProductRangeRow & { variants?: ProductRange
       : null,
     displayOrder: row.displayOrder,
     name: row.name,
+    translations: row.translations,
     updatedAt: row.updatedAt.toISOString(),
     variants: (row.variants ?? []).map((variant) =>
       ProductRangeVariantSchema.parse({
@@ -60,6 +61,7 @@ export function mapProductRange(row: ProductRangeRow & { variants?: ProductRange
         id: variant.id,
         name: variant.name,
         rangeId: variant.rangeId,
+        translations: variant.translations,
         updatedAt: variant.updatedAt.toISOString(),
       }),
     ),

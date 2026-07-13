@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { isLocale, localePath, resolveRouteLocale, switchLocaleHref } from './locale.js';
+import { isLocale, localePath, resolveRouteLocale, switchLocaleHref, translationForLocale } from './locale.js';
 
 describe('resolveRouteLocale', () => {
   test('uses English for the unprefixed tree and Afrikaans for the /af tree', () => {
@@ -42,5 +42,21 @@ describe('switchLocaleHref', () => {
   test('switches both home URLs without introducing a trailing slash', () => {
     expect(switchLocaleHref('/', 'af')).toBe('/af');
     expect(switchLocaleHref('/af', 'en')).toBe('/');
+  });
+});
+
+describe('translationForLocale', () => {
+  const translations = {
+    en: { name: 'Stored English' },
+    af: { name: 'Afrikaans' },
+  };
+
+  test('ignores stored canonical translations', () => {
+    expect(translationForLocale(translations, 'en')).toBeUndefined();
+  });
+
+  test('selects a stored non-canonical translation when available', () => {
+    expect(translationForLocale(translations, 'af')).toEqual({ name: 'Afrikaans' });
+    expect(translationForLocale(undefined, 'af')).toBeUndefined();
   });
 });

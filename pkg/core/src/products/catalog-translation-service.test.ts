@@ -56,7 +56,7 @@ describe('catalog translation persistence', () => {
     const source = await loadCatalogTranslationSource({ db: context.db, key: `product:${product.id}` });
     expect(source).toMatchObject({
       kind: 'product',
-      current: false,
+      state: 'missing',
       canonical: {
         name: 'Silage Trailer',
         assemblies: [{ id: assembly.id, name: 'Hydraulic tailgate' }],
@@ -81,7 +81,7 @@ describe('catalog translation persistence', () => {
     });
 
     const reread = await loadCatalogTranslationSource({ db: context.db, key: `product:${product.id}` });
-    expect(reread).toMatchObject({ current: true, sourceHash: source.sourceHash });
+    expect(reread).toMatchObject({ sourceHash: source.sourceHash, state: 'fresh' });
 
     const [productRow] = await context.db.select().from(products);
     const [assemblyRow] = await context.db.select().from(productAssemblies);
@@ -133,10 +133,10 @@ describe('catalog translation persistence', () => {
 
     await expect(
       loadCatalogTranslationSource({ db: context.db, key: `product_range:${range.id}` }),
-    ).resolves.toMatchObject({ current: true });
+    ).resolves.toMatchObject({ state: 'fresh' });
     await expect(
       loadCatalogTranslationSource({ db: context.db, key: `product_range_variant:${variant.id}` }),
-    ).resolves.toMatchObject({ current: true });
+    ).resolves.toMatchObject({ state: 'fresh' });
   });
 
   test('lists every active catalog translation unit for an idempotent sweep', async ({ context }) => {

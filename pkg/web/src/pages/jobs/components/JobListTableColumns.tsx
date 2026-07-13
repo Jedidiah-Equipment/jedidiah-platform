@@ -3,9 +3,11 @@ import type { JobSummary } from '@pkg/schema';
 import { IconCheck, IconPencil, IconTimeline } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useEffect, useState } from 'react';
 
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
 
 import { JobCodeDisplay } from './JobCodeDisplay.js';
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
@@ -26,10 +28,12 @@ export function createJobListColumns({
   canEditJobs,
   canOpenJobs,
   customerOptions,
+  onInvoiceNumberChange,
 }: {
   canEditJobs: boolean;
   canOpenJobs: boolean;
   customerOptions: JobListColumnOption[];
+  onInvoiceNumberChange: (jobId: JobSummary['id'], invoiceNumber: string | null) => Promise<void>;
 }): ColumnDef<JobSummary>[] {
   return [
     {
@@ -85,6 +89,19 @@ export function createJobListColumns({
       id: 'productSerialNumber',
       meta: {
         headerClassName: 'min-w-36',
+      },
+    },
+    {
+      accessorFn: (job) => job.invoiceNumber,
+      cell: ({ row }) => (
+        <InvoiceNumberCell canEdit={canEditJobs} job={row.original} onInvoiceNumberChange={onInvoiceNumberChange} />
+      ),
+      enableColumnFilter: true,
+      enableSorting: false,
+      header: 'Invoice',
+      id: 'invoiceNumber',
+      meta: {
+        headerClassName: 'min-w-40',
       },
     },
     {
@@ -157,6 +174,72 @@ export function createJobListColumns({
         ]
       : []),
   ];
+}
+
+function InvoiceNumberCell({
+  canEdit,
+  job,
+  onInvoiceNumberChange,
+}: {
+  canEdit: boolean;
+  job: JobSummary;
+  onInvoiceNumberChange: (jobId: JobSummary['id'], invoiceNumber: string | null) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState(job.invoiceNumber ?? '');
+  const [isPending, setIsPending] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setDraft(job.invoiceNumber ?? '');
+  }, [job.invoiceNumber]);
+
+  if (!canEdit) {
+    return job.invoiceNumber ? (
+      <span className="text-sm">{job.invoiceNumber}</span>
+    ) : (
+      <span className="text-muted-foreground">—</span>
+    );
+  }
+
+  const save = async (rawValue: string) => {
+    const trimmed = rawValue.trim();
+    const invoiceNumber = trimmed === '' ? null : trimmed;
+
+    setDraft(trimmed);
+    setHasError(false);
+
+    if (invoiceNumber === job.invoiceNumber) return;
+
+    setIsPending(true);
+    try {
+      await onInvoiceNumberChange(job.id, invoiceNumber);
+    } catch {
+      setHasError(true);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <Input
+      aria-invalid={hasError || undefined}
+      aria-label={`Invoice number for ${job.code}`}
+      className="h-7"
+      disabled={isPending}
+      onBlur={(event) => void save(event.currentTarget.value)}
+      onChange={(event) => setDraft(event.currentTarget.value)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.currentTarget.blur();
+        } else if (event.key === 'Escape') {
+          setDraft(job.invoiceNumber ?? '');
+          event.currentTarget.value = job.invoiceNumber ?? '';
+          event.currentTarget.blur();
+        }
+      }}
+      value={draft}
+    />
+  );
 }
 
 function JobActionsCell({ canEditJobs, job }: { canEditJobs: boolean; job: JobSummary }) {

@@ -35,7 +35,7 @@ import {
   QuoteUpdateInput,
   ToggleOffDayInput,
 } from '@pkg/schema';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
@@ -58,6 +58,7 @@ import {
   bookJobSlot,
   createJob as createJobCore,
   moveJobSlot,
+  patchJob,
   removeJobSlot,
   resizeJobSlot,
 } from './job-service.js';
@@ -2192,6 +2193,54 @@ describe('removeJobSlot', () => {
   });
 });
 
+describe('patchJob', () => {
+  test('sets and clears the invoice number without changing other Job fields', async ({ context }) => {
+    const created = await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db
+      .update(jobs)
+      .set({ description: 'Keep this description', vinNumber: 'VIN-123' })
+      .where(eq(jobs.id, created.id));
+
+    const setResult = await patchJob({
+      actorUserId,
+      db: context.db,
+      input: { id: created.id, invoiceNumber: 'INV-1001' },
+    });
+
+    expect(setResult.job).toMatchObject({
+      description: 'Keep this description',
+      id: created.id,
+      invoiceNumber: 'INV-1001',
+      vinNumber: 'VIN-123',
+    });
+
+    const clearResult = await patchJob({
+      actorUserId,
+      db: context.db,
+      input: { id: created.id, invoiceNumber: null },
+    });
+    expect(clearResult.job.invoiceNumber).toBeNull();
+
+    const events = await context.db
+      .select()
+      .from(auditEvents)
+      .where(sql`${auditEvents.entityType} = 'job' AND ${auditEvents.action} = 'updated'`);
+    expect(events).toHaveLength(2);
+  });
+
+  test('does not update or audit when the patch omits the invoice number', async ({ context }) => {
+    const created = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    await patchJob({ actorUserId, db: context.db, input: { id: created.id } });
+
+    const events = await context.db
+      .select()
+      .from(auditEvents)
+      .where(sql`${auditEvents.entityType} = 'job' AND ${auditEvents.action} = 'updated'`);
+    expect(events).toHaveLength(0);
+  });
+});
+
 describe('listJobs scheduleState', () => {
   function listInput(overrides: Partial<Parameters<typeof listJobs>[0]['input']> = {}) {
     return {
@@ -2294,19 +2343,26 @@ describe('listJobs scheduleState', () => {
     });
   });
 
-  test('unscheduledOnly keeps only Jobs with no Work Slot', async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
-    const scheduled = await createAcceptedJob(context.db, context.catalog.product.id);
-    const unscheduled = await createAcceptedJob(context.db, context.catalog.product.id);
-    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 1, jobId: scheduled.id } });
+  test('filters Jobs by invoice presence and invoice-number text', async ({ context }) => {
+    const invoiced = await createAcceptedJob(context.db, context.catalog.product.id);
+    const otherInvoice = await createAcceptedJob(context.db, context.catalog.product.id);
+    await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db.update(jobs).set({ invoiceNumber: 'INV-ALPHA' }).where(eq(jobs.id, invoiced.id));
+    await context.db.update(jobs).set({ invoiceNumber: 'INV-BETA' }).where(eq(jobs.id, otherInvoice.id));
 
-    const result = await listJobs({
+    const invoicedResult = await listJobs({
       db: context.db,
-      input: listInput({ filters: { unscheduledOnly: true } }),
+      input: listInput({ filters: { invoicedOnly: true } }),
+    });
+    const textResult = await listJobs({
+      db: context.db,
+      input: listInput({ columnFilters: { invoiceNumber: 'alpha' } }),
     });
 
-    expect(result.items.map((item) => item.id)).toEqual([unscheduled.id]);
-    expect(result.total).toBe(1);
+    expect(invoicedResult.items.map((item) => item.id).sort()).toEqual([invoiced.id, otherInvoice.id].sort());
+    expect(invoicedResult.total).toBe(2);
+    expect(textResult.items.map((item) => item.id)).toEqual([invoiced.id]);
+    expect(textResult.total).toBe(1);
   });
 
   test('sortBy scheduledSlots ascending orders unscheduled Jobs first', async ({ context }) => {

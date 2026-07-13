@@ -94,6 +94,7 @@ function jobRow(): Parameters<typeof mapJobSummary>[0] {
     code: 1,
     createdAt: now,
     id: '00000000-0000-4000-8000-000000000001',
+    invoiceNumber: null,
     product: {
       modelCode: 'MODEL-001',
       name: 'Test Product',

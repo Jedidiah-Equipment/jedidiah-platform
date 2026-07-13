@@ -21,11 +21,12 @@ describe('Job List table columns', () => {
     expect(html.match(/sticky/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
 
-  it('renders the code, customer, product, serial, and schedule window for a scheduled Job', () => {
+  it('renders the code, customer, product, serial, invoice, and schedule window for a scheduled Job', () => {
     const html = renderJobListRows([
       buildJob({
         code: 42,
         customerCompanyName: 'Acme Mining',
+        invoiceNumber: 'INV-0042',
         productModelCode: 'MDL-1',
         productName: 'Loader Bucket',
         productSerialNumber: 'SN-2026-0042',
@@ -38,6 +39,7 @@ describe('Job List table columns', () => {
     expect(html).toContain('Loader Bucket');
     expect(html).toContain('MDL-1');
     expect(html).toContain('SN-2026-0042');
+    expect(html).toContain('INV-0042');
     expect(html).toContain('1 Done');
     expect(html).toContain('1 Active');
     expect(html).toContain('2 Scheduled');
@@ -100,10 +102,24 @@ describe('Job List table columns', () => {
     expect(html).toContain('aria-label="Filter Job"');
     expect(html).toContain('aria-label="Filter Customer"');
     expect(html).toContain('aria-label="Filter Serial"');
+    expect(html).toContain('aria-label="Filter Invoice"');
     expect(html).toContain('aria-label="Sort Serial"');
     expect(html).not.toContain('aria-label="Sort Customer"');
     expect(html).not.toContain('aria-label="Sort Start date"');
     expect(html).not.toContain('aria-label="Filter Complete"');
+  });
+
+  it('renders an editable invoice number input only for Job editors', () => {
+    const editableHtml = renderJobListRows([buildJob({ invoiceNumber: 'INV-0001' })], {
+      canEditJobs: true,
+      canOpenJobs: false,
+    });
+    const readOnlyHtml = renderJobListRows([buildJob({ invoiceNumber: 'INV-0001' })]);
+
+    expect(editableHtml).toContain('aria-label="Invoice number for JOB-00001"');
+    expect(editableHtml).toContain('value="INV-0001"');
+    expect(readOnlyHtml).not.toContain('aria-label="Invoice number for JOB-00001"');
+    expect(readOnlyHtml).toContain('INV-0001');
   });
 });
 
@@ -122,7 +138,7 @@ function TestJobListTable({
   rows: JobSummary[];
 }) {
   const table = useReactTable({
-    columns: createJobListColumns({ ...permissions, customerOptions }),
+    columns: createJobListColumns({ ...permissions, customerOptions, onInvoiceNumberChange: async () => undefined }),
     data: rows,
     getCoreRowModel: getCoreRowModel(),
     state: {
@@ -144,6 +160,7 @@ function buildJob(overrides: Partial<Record<keyof JobSummary, unknown>> = {}): J
     customerId: '10000000-0000-4000-8000-000000000000',
     customerThumbnailDataUrl: null,
     id: '00000000-0000-4000-8000-000000000000',
+    invoiceNumber: null,
     productId: '20000000-0000-4000-8000-000000000000',
     productModelCode: 'MDL-1',
     productName: 'Loader Bucket',

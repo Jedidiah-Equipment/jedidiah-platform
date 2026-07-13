@@ -24,6 +24,8 @@ import {
   JobCode,
   type JobCreateInput,
   type JobDetail,
+  type JobPatchInput,
+  type JobPatchResult,
   type JobUpdateInput,
   type JobUpdateResult,
   type MoveJobSlotInput,
@@ -81,6 +83,7 @@ export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   label: (row) => row.code,
   toRecord: (row) => ({
     description: row.description,
+    invoiceNumber: row.invoiceNumber,
     productId: row.productId,
     productSerialNumber: row.productSerialNumber,
     quoteId: row.quoteId,
@@ -209,17 +212,52 @@ export async function updateJob({
   db: Db;
   input: JobUpdateInput;
 }): Promise<JobUpdateResult> {
-  return db.transaction(async (tx) => {
-    const [before] = await tx.select().from(jobs).where(eq(jobs.id, input.id)).for('update');
-
-    if (!before) {
-      throw new JobNotFoundError(input.id);
-    }
-
-    const patch = {
+  return applyJobFieldPatch({
+    actorUserId,
+    db,
+    id: input.id,
+    patch: {
       description: input.description,
       vinNumber: input.vinNumber,
-    };
+    },
+  });
+}
+
+export async function patchJob({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: JobPatchInput;
+}): Promise<JobPatchResult> {
+  return applyJobFieldPatch({
+    actorUserId,
+    db,
+    id: input.id,
+    patch: input.invoiceNumber === undefined ? {} : { invoiceNumber: input.invoiceNumber },
+  });
+}
+
+async function applyJobFieldPatch({
+  actorUserId,
+  db,
+  id,
+  patch,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  id: UUID;
+  patch: Partial<Pick<JobRow, 'description' | 'invoiceNumber' | 'vinNumber'>>;
+}): Promise<JobPatchResult> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(jobs).where(eq(jobs.id, id)).for('update');
+
+    if (!before) {
+      throw new JobNotFoundError(id);
+    }
+
     const after = { ...before, ...patch };
     const changes = diffAuditUpdate(jobAuditDescriptor, before, after);
 
@@ -230,11 +268,11 @@ export async function updateJob({
     const [row] = await tx
       .update(jobs)
       .set({ ...patch, updatedAt: new Date() })
-      .where(eq(jobs.id, input.id))
+      .where(eq(jobs.id, id))
       .returning();
 
     if (!row) {
-      throw new JobNotFoundError(input.id);
+      throw new JobNotFoundError(id);
     }
 
     await recordAuditUpdate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, after: row, changes });

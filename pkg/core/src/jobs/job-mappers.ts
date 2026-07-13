@@ -8,6 +8,7 @@ export function mapJob(row: JobRow): Job {
     code: row.code,
     createdAt: row.createdAt.toISOString(),
     id: row.id,
+    invoiceNumber: row.invoiceNumber,
     productId: row.productId,
     productSerialNumber: row.productSerialNumber,
     productSerialPrefix: row.productSerialPrefix,

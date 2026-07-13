@@ -1169,15 +1169,22 @@ describe('jobs.list scheduleState', () => {
     });
   });
 
-  test('filters to unscheduled Jobs and sorts by scheduled-slot count', async ({ context }) => {
+  test('filters Jobs by invoice presence and sorts by scheduled-slot count', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const unscheduled = await caller.jobs.create({ quoteId: context.quote.id });
     const scheduledQuote = await createAcceptedQuote(context.db, context.product.id);
     const scheduled = await caller.jobs.create({ quoteId: scheduledQuote.id });
-    await caller.jobs.bookSlot({ bayId: doneBayId, durationDays: 1, jobId: scheduled.id });
+    await caller.jobs.bookSlot({ bayId: activeBayId, durationDays: 10, jobId: scheduled.id });
+    await caller.jobs.patch({ id: scheduled.id, invoiceNumber: 'INV-SCHEDULED' });
 
-    await expect(caller.jobs.list({ filters: { unscheduledOnly: true } })).resolves.toMatchObject({
-      items: [expect.objectContaining({ id: unscheduled.id })],
+    await expect(caller.jobs.list({ filters: { invoicedOnly: true } })).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: scheduled.id })],
+      total: 1,
+    });
+    await expect(
+      caller.jobs.list({ columnFilters: { invoiceNumber: 'scheduled' }, filters: {} }),
+    ).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: scheduled.id, invoiceNumber: 'INV-SCHEDULED' })],
       total: 1,
     });
 
@@ -1237,7 +1244,7 @@ describe('jobs.list scheduleState', () => {
   test('rejects callers without job:read', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
 
-    await expect(salesCaller.jobs.list({ filters: { unscheduledOnly: true } })).rejects.toMatchObject({
+    await expect(salesCaller.jobs.list({ filters: { invoicedOnly: true } })).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });
@@ -2273,6 +2280,29 @@ describe('jobs.update', () => {
         vinNumber: '',
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
+describe('jobs.patch', () => {
+  test('sets and clears an invoice number for callers with job update permission', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+
+    await expect(caller.jobs.patch({ id: job.id, invoiceNumber: '  INV-1001  ' })).resolves.toMatchObject({
+      job: { id: job.id, invoiceNumber: 'INV-1001' },
+    });
+    await expect(caller.jobs.patch({ id: job.id, invoiceNumber: '' })).resolves.toMatchObject({
+      job: { id: job.id, invoiceNumber: null },
+    });
+  });
+
+  test('rejects callers without job update permission', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const job = await adminCaller.jobs.create({ quoteId: context.quote.id });
+
+    await expect(
+      context.createCaller(mockSession('job-viewer')).jobs.patch({ id: job.id, invoiceNumber: 'INV-1001' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });
 

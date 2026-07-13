@@ -15,8 +15,10 @@ TypeScript dictionaries (`en.ts` / `af.ts` conforming to one `Messages` type), n
   existing indexed URLs survive, `hreflang` alternates and both trees in the sitemap. Visitor locale
   preference lives in a cookie (not localStorage — SSR must see it before first byte): auto-detected
   from `Accept-Language` on first visit, overwritten by explicit dropdown choice, honored with 302
-  redirects on entry. Crawlers send neither `af` Accept-Language nor cookies, so they always see
-  canonical pages.
+  redirects on entry. A locale-prefixed URL wins over detection: a first visit (no cookie) to an
+  `/af/…` URL renders Afrikaans and never redirects, so both sitemap/hreflang trees stay fetchable;
+  detection-based redirects fire only from unprefixed URLs, and stored-preference redirects require a
+  cookie. Cookieless crawlers therefore see every URL as-served in its own locale.
 - **Translation storage — per-entity translation tables or one generic `(entity, field, locale)`
   table.** Rejected: array fields (`keyFeatures`) pivot badly, every Lander read gains joins, and
   translations have exactly one writer so relational granularity buys nothing. The on-row jsonb blob

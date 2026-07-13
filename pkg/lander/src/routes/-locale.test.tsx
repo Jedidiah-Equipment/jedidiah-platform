@@ -5,6 +5,10 @@ import { describe, expect, test, vi } from 'vitest';
 import { routeTree } from '../routeTree.gen.js';
 
 vi.mock('../lib/site-origin.js', () => ({ siteOrigin: () => 'https://lander.example.test' }));
+vi.mock('../lib/locale-preference.js', () => ({
+  honorLocalePreference: () => undefined,
+  persistLocalePreference: () => undefined,
+}));
 vi.mock('../styles/app.css?url', () => ({ default: '/styles/app.css' }));
 vi.mock('../server/site/site-meta.js', () => ({ getSiteMeta: async () => ({ indexable: true }) }));
 vi.mock('../server/catalog/ranges.js', () => ({

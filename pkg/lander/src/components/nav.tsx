@@ -4,6 +4,7 @@ import { IconMapPin, IconMenu2, IconPhone, IconX } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
 import { LOCALES, type Locale, localePath, switchLocaleHref } from '../lib/locale.js';
+import { persistLocalePreference } from '../lib/locale-preference.js';
 import { useLocale, useMessages } from '../messages/index.js';
 import { DropdownMenu } from './dropdown-menu.js';
 
@@ -86,6 +87,7 @@ export function Nav() {
   const location = useRouterState({ select: (state) => state.location });
 
   function switchLocale(target: Locale) {
+    persistLocalePreference(target);
     window.location.assign(switchLocaleHref(location.href, target));
   }
 

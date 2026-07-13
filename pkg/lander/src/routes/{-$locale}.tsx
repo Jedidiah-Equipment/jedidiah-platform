@@ -3,6 +3,7 @@ import { createFileRoute, notFound, Outlet } from '@tanstack/react-router';
 import { Footer } from '../components/footer.js';
 import { Nav } from '../components/nav.js';
 import { resolveRouteLocale } from '../lib/locale.js';
+import { honorLocalePreference } from '../lib/locale-preference.js';
 import { LocaleProvider, messagesForLocale } from '../messages/index.js';
 import { getFooterRanges } from '../server/catalog/ranges.js';
 
@@ -12,6 +13,7 @@ export const Route = createFileRoute('/{-$locale}')({
     if (!locale) {
       throw notFound();
     }
+    honorLocalePreference(locale);
 
     return { locale };
   },

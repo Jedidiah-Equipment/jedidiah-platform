@@ -3,6 +3,7 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
+import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -69,12 +70,14 @@ export const ChangelogDialog: React.FC = () => {
       }}
       open={state.open}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col sm:max-w-md">
+        <DialogHeader className="shrink-0">
           <DialogTitle>What's new</DialogTitle>
         </DialogHeader>
-        <ChangelogReleaseView changelog={currentRelease} />
-        <DialogFooter className="items-center sm:justify-between">
+        <ScrollArea className="-mx-4 min-h-0 flex-1 px-4">
+          <ChangelogReleaseView changelog={currentRelease} />
+        </ScrollArea>
+        <DialogFooter className="shrink-0 items-center sm:justify-between">
           <span className="text-xs text-muted-foreground">
             {safePageIndex + 1} of {changelogs.length}
           </span>

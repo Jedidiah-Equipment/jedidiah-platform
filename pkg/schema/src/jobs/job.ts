@@ -15,6 +15,7 @@ import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { JobDocument } from '../documents/document.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
+import { ProductBuildTimeDays } from '../products/product-shared.js';
 import { QuoteKind, QuoteWorkTitle } from '../quotes/quote-shared.js';
 
 export { formatJobCode, JobCode } from '../common/public-code.js';
@@ -467,7 +468,7 @@ export const Job = z.object({
  * marks a Job that is not scheduled anywhere. Also carries the Job's projected schedule window —
  * `startDate` is the earliest Slot start and `endDate` the latest Slot end, both `null` when the Job
  * has no Work Slot. Present only when a list read opts in via `JobListInput.include.scheduleState`;
- * `null` otherwise so the Gantt and booking reads pay no projection cost.
+ * `null` otherwise so callers that do not filter or display schedule state avoid the projection cost.
  */
 export type JobScheduleState = z.infer<typeof JobScheduleState>;
 export const JobScheduleState = z.object({
@@ -484,6 +485,7 @@ export const JobSummary = Job.extend({
   customerCompanyName: z.string().trim().min(1).nullable(),
   customerId: UUID,
   customerThumbnailDataUrl: NullableThumbnailDataUrl,
+  productBuildTimeDays: ProductBuildTimeDays.nullable(),
   productModelCode: z.string().trim().min(1).nullable(),
   productName: z.string().trim().min(1).nullable(),
   productThumbnailDataUrl: NullableThumbnailDataUrl,
@@ -644,7 +646,7 @@ export const JobListFilters = z
   })
   .default({});
 
-/** Opt-in list extras that carry a projection cost, kept off the Gantt and booking reads. */
+/** Opt-in list extras that carry a projection cost. */
 export type JobListInclude = z.infer<typeof JobListInclude>;
 export const JobListInclude = z.object({
   scheduleState: z.boolean().optional(),

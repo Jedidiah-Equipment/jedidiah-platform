@@ -18,6 +18,7 @@ const job = JobDetail.parse({
   description: 'Repair hydraulic leak',
   documents: [],
   id: JOB_ID,
+  productBuildTimeDays: null,
   invoiceNumber: 'INV-1001',
   productId: null,
   productModelCode: null,

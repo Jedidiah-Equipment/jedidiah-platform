@@ -9,7 +9,7 @@ describe('mapJobSummary', () => {
   it('maps jobs without stage summaries', () => {
     const summary = mapJobSummary(jobRow());
 
-    expect(summary.productSerialNumber).toBe('MODEL-001260001');
+    expect(summary).toMatchObject({ productBuildTimeDays: 12, productSerialNumber: 'MODEL-001260001' });
   });
 
   it('maps custom jobs with nullable product and serial facts', () => {
@@ -96,6 +96,7 @@ function jobRow(): Parameters<typeof mapJobSummary>[0] {
     id: '00000000-0000-4000-8000-000000000001',
     invoiceNumber: null,
     product: {
+      buildTimeDays: 12,
       modelCode: 'MODEL-001',
       name: 'Test Product',
       thumbnailDataUrl: null,

@@ -1,3 +1,10 @@
+import type { CatalogTranslationKind } from '@pkg/domain';
+import {
+  TranslatableAssembly,
+  TranslatableProductFields,
+  TranslatableProductRangeFields,
+  TranslatableProductRangeVariantFields,
+} from '@pkg/schema';
 import type { LanguageModel } from 'ai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
@@ -7,96 +14,71 @@ Use a professional South African agricultural-equipment marketing register; for 
 Pass model codes, brand names, numbers, units, and dimensions through verbatim.
 Return arrays in exactly the same length and order as the input. Echo every assembly id unchanged and translate only its name.`;
 
-export type ProductTranslationSource = {
-  assemblies: Array<{ id: string; name: string }>;
-  category: string | null;
-  description: string | null;
-  keyFeatures: string[];
-  name: string;
-  nameHighlight: string | null;
-  technicalDetails: Array<{ label: string; value: string }>;
-};
-
-export const ProductTranslationOutput = z.object({
-  assemblies: z.array(z.object({ id: z.string().uuid(), name: z.string() })),
-  category: z.string().nullable(),
-  description: z.string().nullable(),
-  keyFeatures: z.array(z.string()),
-  name: z.string(),
-  nameHighlight: z.string().nullable(),
-  technicalDetails: z.array(z.object({ label: z.string(), value: z.string() })),
+export const ProductTranslationOutput = TranslatableProductFields.extend({
+  assemblies: z.array(TranslatableAssembly),
 });
 export type ProductTranslationOutput = z.infer<typeof ProductTranslationOutput>;
 
-const ProductRangeTranslationOutput = z.object({
-  description: z.string().nullable(),
-  name: z.string(),
-});
+const ProductRangeTranslationOutput = TranslatableProductRangeFields;
 export type ProductRangeTranslationOutput = z.infer<typeof ProductRangeTranslationOutput>;
 
-const ProductRangeVariantTranslationOutput = z.object({ name: z.string() });
+const ProductRangeVariantTranslationOutput = TranslatableProductRangeVariantFields;
 export type ProductRangeVariantTranslationOutput = z.infer<typeof ProductRangeVariantTranslationOutput>;
 
-export async function translateProductBundleToAfrikaans({
+// Sources mirror outputs: canonical text goes in, the same-shaped Afrikaans text comes out.
+export type ProductTranslationSource = ProductTranslationOutput;
+
+type CatalogTranslationOutputByKind = {
+  product: ProductTranslationOutput;
+  range: ProductRangeTranslationOutput;
+  variant: ProductRangeVariantTranslationOutput;
+};
+
+type CatalogTranslationSourceByKind = CatalogTranslationOutputByKind;
+
+const TRANSLATORS: {
+  [Kind in CatalogTranslationKind]: {
+    schema: z.ZodType<CatalogTranslationOutputByKind[Kind]>;
+    schemaName: string;
+    validate: (source: CatalogTranslationSourceByKind[Kind], output: CatalogTranslationOutputByKind[Kind]) => string;
+  };
+} = {
+  product: { schema: ProductTranslationOutput, schemaName: 'ProductTranslation', validate: validateProductOutput },
+  range: { schema: ProductRangeTranslationOutput, schemaName: 'ProductRangeTranslation', validate: () => '' },
+  variant: {
+    schema: ProductRangeVariantTranslationOutput,
+    schemaName: 'ProductRangeVariantTranslation',
+    validate: () => '',
+  },
+};
+
+export async function translateCatalogSourceToAfrikaans<Kind extends CatalogTranslationKind>({
+  kind,
   model,
   source,
 }: {
+  kind: Kind;
   model: LanguageModel;
-  source: ProductTranslationSource;
-}): Promise<ProductTranslationOutput> {
+  source: CatalogTranslationSourceByKind[Kind];
+}): Promise<CatalogTranslationOutputByKind[Kind]> {
+  const translator = TRANSLATORS[kind];
   let validationError = '';
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const { object } = await generateObject({
       maxRetries: 0,
       model,
-      schema: ProductTranslationOutput,
-      schemaName: 'ProductTranslation',
+      schema: translator.schema,
+      schemaName: translator.schemaName,
       system: AFRIKAANS_TRANSLATION_SYSTEM_PROMPT,
       prompt: createPrompt(source, validationError),
     });
 
-    validationError = validateProductOutput(source, object);
+    validationError = translator.validate(source, object);
     if (!validationError) return object;
   }
 
-  throw new Error(`Product translation output changed input structure: ${validationError}`);
-}
-
-export async function translateProductRangeToAfrikaans({
-  model,
-  source,
-}: {
-  model: LanguageModel;
-  source: { description: string | null; name: string };
-}): Promise<ProductRangeTranslationOutput> {
-  const { object } = await generateObject({
-    maxRetries: 0,
-    model,
-    schema: ProductRangeTranslationOutput,
-    schemaName: 'ProductRangeTranslation',
-    system: AFRIKAANS_TRANSLATION_SYSTEM_PROMPT,
-    prompt: createPrompt(source),
-  });
-  return object;
-}
-
-export async function translateProductRangeVariantToAfrikaans({
-  model,
-  source,
-}: {
-  model: LanguageModel;
-  source: { name: string };
-}): Promise<ProductRangeVariantTranslationOutput> {
-  const { object } = await generateObject({
-    maxRetries: 0,
-    model,
-    schema: ProductRangeVariantTranslationOutput,
-    schemaName: 'ProductRangeVariantTranslation',
-    system: AFRIKAANS_TRANSLATION_SYSTEM_PROMPT,
-    prompt: createPrompt(source),
-  });
-  return object;
+  throw new Error(`${translator.schemaName} output changed input structure: ${validationError}`);
 }
 
 function createPrompt(source: unknown, validationError = ''): string {

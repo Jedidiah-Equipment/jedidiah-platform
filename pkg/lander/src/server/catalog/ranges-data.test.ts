@@ -96,7 +96,7 @@ test('loadHomeRanges returns Range name, blurb, and Products href from the datab
   if (!withBlurb) throw new Error('insert did not return a row');
   await insertReadyProduct(db, withBlurb.id);
 
-  const ranges = await loadHomeRanges(db);
+  const ranges = await loadHomeRanges(db, 'en');
   const found = ranges.find((range) => range.id === withBlurb.id);
 
   expect(found).toEqual({
@@ -117,7 +117,7 @@ test('loadHomeRanges renders a missing blurb as empty rather than fabricating co
   if (!withoutBlurb) throw new Error('insert did not return a row');
   await insertReadyProduct(db, withoutBlurb.id);
 
-  const ranges = await loadHomeRanges(db);
+  const ranges = await loadHomeRanges(db, 'en');
   const found = ranges.find((range) => range.id === withoutBlurb.id);
 
   expect(found?.description).toBe('');
@@ -149,7 +149,7 @@ test('loadHomeRanges omits Ranges without lander-ready Products', async ({ db })
     modelCode: `HR-${suffix}`,
   });
 
-  const ranges = await loadHomeRanges(db);
+  const ranges = await loadHomeRanges(db, 'en');
 
   expect(ranges.some((range) => range.id === emptyRange.id)).toBe(false);
   expect(ranges.some((range) => range.id === hiddenRange.id)).toBe(false);
@@ -157,7 +157,7 @@ test('loadHomeRanges omits Ranges without lander-ready Products', async ({ db })
 
 test('loadFooterRanges returns the top four Ranges as chip-matching label/slug links', async ({ db }) => {
   const { ranges } = await listProductRanges({ db });
-  const footer = await loadFooterRanges(db);
+  const footer = await loadFooterRanges(db, 'en');
 
   // Footer teaser: the first four Ranges by display order, mapped through the same label/slug helpers the
   // Products chip bar and `?range=` filter use, so the links land on the matching filter.

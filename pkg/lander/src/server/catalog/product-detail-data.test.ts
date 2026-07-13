@@ -184,7 +184,7 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
   });
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
 
-  const detail = await loadProductDetail(db, product.modelCode);
+  const detail = await loadProductDetail(db, product.modelCode, 'en');
 
   expect(detail).not.toBeNull();
   expect(detail?.id).toBe(product.id);
@@ -216,7 +216,7 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
 });
 
 test('loadProductDetail returns null for an unknown model code', async ({ db }) => {
-  const detail = await loadProductDetail(db, `missing-${crypto.randomUUID()}`);
+  const detail = await loadProductDetail(db, `missing-${crypto.randomUUID()}`, 'en');
 
   expect(detail).toBeNull();
 });
@@ -232,7 +232,7 @@ test('loadProductDetail splits assemblies by kind in display order', async ({ db
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Bugle eye hitch', displayOrder: 0 });
   await insertAssembly(db, product.id, { kind: 'optional', name: 'Air brakes', displayOrder: 0 });
 
-  const detail = await loadProductDetail(db, product.modelCode);
+  const detail = await loadProductDetail(db, product.modelCode, 'en');
 
   expect(detail?.standardAssemblies).toEqual(['Bugle eye hitch', 'Sprung drawbar']);
   expect(detail?.optionalAssemblies).toEqual(['Air brakes']);
@@ -252,7 +252,7 @@ test('loadProductDetail lists other Products in the same Range as related cards'
   await insertAssembly(db, sibling.id, { kind: 'standard', name: 'Tank frame', displayOrder: 0 });
   await insertProduct(db, otherRange.id, { name: `HD2020 ${suffix}`, modelCode: `HD2020-${suffix}` });
 
-  const detail = await loadProductDetail(db, product.modelCode);
+  const detail = await loadProductDetail(db, product.modelCode, 'en');
 
   expect(detail?.related).toEqual([
     {
@@ -279,7 +279,7 @@ test('loadProductDetail returns null when a required lander field is missing', a
     category: null,
   });
 
-  expect(await loadProductDetail(db, product.modelCode)).toBeNull();
+  expect(await loadProductDetail(db, product.modelCode, 'en')).toBeNull();
 });
 
 test('loadProductDetail returns null when the lander publish toggle is off', async ({ db }) => {
@@ -292,7 +292,7 @@ test('loadProductDetail returns null when the lander publish toggle is off', asy
   });
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Frame', displayOrder: 0 });
 
-  expect(await loadProductDetail(db, product.modelCode)).toBeNull();
+  expect(await loadProductDetail(db, product.modelCode, 'en')).toBeNull();
 });
 
 test('loadProductDetail excludes not-lander-ready siblings from the related strip', async ({ db }) => {
@@ -307,7 +307,7 @@ test('loadProductDetail excludes not-lander-ready siblings from the related stri
     landerEnabled: false,
   });
 
-  const detail = await loadProductDetail(db, product.modelCode);
+  const detail = await loadProductDetail(db, product.modelCode, 'en');
 
   expect(detail?.related).toEqual([]);
 });
@@ -328,7 +328,7 @@ test('loadProductDetail exposes the brochure download link only when the brochur
   });
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
 
-  const detail = await loadProductDetail(db, product.modelCode);
+  const detail = await loadProductDetail(db, product.modelCode, 'en');
 
   expect(detail?.brochureHref).toBe(`/downloads/products/${product.id}/brochure`);
   expect((await loadProductDetail(db, product.modelCode, 'af'))?.brochureHref).toBe(
@@ -350,7 +350,7 @@ test('loadProductDetail hides the brochure link when the brochure is not ready',
   });
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
 
-  const detail = await loadProductDetail(db, product.modelCode);
+  const detail = await loadProductDetail(db, product.modelCode, 'en');
 
   expect(detail).not.toBeNull();
   expect(detail?.brochureHref).toBeNull();

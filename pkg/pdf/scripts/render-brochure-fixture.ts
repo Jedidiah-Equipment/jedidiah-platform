@@ -23,13 +23,27 @@ async function main() {
   const outputPath = outputPathFromArg(process.argv[2]);
   const locale = fixtureLocale();
   const variant = fixtureVariant();
-  const document = await fixtureDocument(variant);
+  const document = withTitleOverride(await fixtureDocument(variant));
   const bytes = await renderBrochurePdf({ document, filename: path.basename(outputPath), locale });
 
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, bytes);
 
   console.log(`Rendered ${variant} ${locale} fixture (${bytes.byteLength} bytes) to ${outputPath}`);
+}
+
+function withTitleOverride(document: BrochureDocumentModel): BrochureDocumentModel {
+  const title = process.env.BROCHURE_FIXTURE_TITLE;
+
+  if (!title) {
+    return document;
+  }
+
+  return {
+    ...document,
+    title,
+    titleHighlight: process.env.BROCHURE_FIXTURE_TITLE_HIGHLIGHT ?? null,
+  };
 }
 
 async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumentModel> {

@@ -1,11 +1,7 @@
 import { MockLanguageModelV3 } from 'ai/test';
 import { describe, expect, test } from 'vitest';
 
-import {
-  translateProductBundleToAfrikaans,
-  translateProductRangeToAfrikaans,
-  translateProductRangeVariantToAfrikaans,
-} from './catalog-translation.js';
+import { translateCatalogSourceToAfrikaans } from './catalog-translation.js';
 
 const ASSEMBLY_ID = '00000000-0000-4000-8000-000000000001';
 
@@ -36,7 +32,8 @@ describe('Afrikaans catalog translation', () => {
         }),
     });
 
-    const translated = await translateProductBundleToAfrikaans({
+    const translated = await translateCatalogSourceToAfrikaans({
+      kind: 'product',
       model,
       source: {
         name: 'Silage Trailer',
@@ -87,7 +84,8 @@ describe('Afrikaans catalog translation', () => {
     });
 
     await expect(
-      translateProductBundleToAfrikaans({
+      translateCatalogSourceToAfrikaans({
+        kind: 'product',
         model,
         source: {
           name: 'Trailer',
@@ -112,13 +110,14 @@ describe('Afrikaans catalog translation', () => {
     });
 
     await expect(
-      translateProductRangeToAfrikaans({
+      translateCatalogSourceToAfrikaans({
+        kind: 'range',
         model: rangeModel,
         source: { name: 'Silage Trailers', description: 'Trailers for harvest.' },
       }),
     ).resolves.toEqual({ name: 'Kuilvoerwaens', description: 'Waens vir die oes.' });
     await expect(
-      translateProductRangeVariantToAfrikaans({ model: variantModel, source: { name: 'Heavy Duty' } }),
+      translateCatalogSourceToAfrikaans({ kind: 'variant', model: variantModel, source: { name: 'Heavy Duty' } }),
     ).resolves.toEqual({ name: 'Swaardiens' });
   });
 });

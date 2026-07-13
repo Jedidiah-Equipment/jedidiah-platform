@@ -1,7 +1,7 @@
 import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { isBrochureReady, isLanderReady, selectTranslated, translationForLocale } from '@pkg/domain';
-import type { ProductImageSlot } from '@pkg/schema';
+import { isBrochureReady, isLanderReady, localizeFields } from '@pkg/domain';
+import type { AssemblyKind, ProductImageSlot } from '@pkg/schema';
 import type { Locale } from '../../lib/locale.js';
 import { OG_IMAGE_FORMAT } from '../media/image-transform.js';
 import { type CatalogProduct, imageUrl, toCatalogProduct, toRangeSlug } from './products-data.js';
@@ -40,11 +40,7 @@ const DETAIL_IMAGE_SLOTS = ['primary', 'secondary1', 'secondary2'] as const sati
 // lander-ready (the route turns null into a 404 — an unready Product is invisible publicly). Reads every
 // fully-mapped Product once (the marketing catalog is small) so the readiness gate, this Product's fields,
 // and the same-Range "related" strip all share one pass. Pricing and bays are not surfaced.
-export async function loadProductDetail(
-  db: Db,
-  modelCode: string,
-  locale: Locale = 'en',
-): Promise<ProductDetail | null> {
+export async function loadProductDetail(db: Db, modelCode: string, locale: Locale): Promise<ProductDetail | null> {
   const [{ ranges }, allProducts] = await Promise.all([listProductRanges({ db }), listAllProducts({ db })]);
 
   const fullProduct = allProducts.find((candidate) => candidate.modelCode === modelCode);
@@ -54,8 +50,21 @@ export async function loadProductDetail(
 
   const range = ranges.find((candidate) => candidate.id === fullProduct.rangeId);
   const rangeName = range?.name ?? '';
-  const translation = translationForLocale(fullProduct.translations, locale);
-  const rangeTranslation = translationForLocale(range?.translations, locale);
+  const localized = localizeFields(
+    {
+      category: fullProduct.category,
+      description: fullProduct.description,
+      keyFeatures: fullProduct.keyFeatures,
+      name: fullProduct.name,
+      technicalDetails: fullProduct.technicalDetails,
+    },
+    fullProduct.translations,
+    locale,
+  );
+  const assemblyNames = (kind: AssemblyKind) =>
+    fullProduct.assemblies
+      .filter((assembly) => assembly.kind === kind)
+      .map((assembly) => localizeFields({ name: assembly.name }, assembly.translations, locale).name);
 
   // Other lander-ready Products in the same Range, sorted by name like the catalog so the related strip is
   // deterministic. Unready siblings are excluded so the strip never links to a 404.
@@ -71,12 +80,12 @@ export async function loadProductDetail(
   // by kind preserves display order within each list.
   return {
     id: fullProduct.id,
-    name: selectTranslated(fullProduct.name, translation?.name),
+    name: localized.name,
     modelCode: fullProduct.modelCode,
-    rangeName: selectTranslated(rangeName, rangeTranslation?.name),
+    rangeName: localizeFields({ name: rangeName }, range?.translations, locale).name,
     rangeSlug: toRangeSlug(rangeName),
-    tagline: selectTranslated(fullProduct.category, translation?.category) ?? '',
-    description: selectTranslated(fullProduct.description, translation?.description) ?? '',
+    tagline: localized.category ?? '',
+    description: localized.description ?? '',
     imageUrl: imageUrl(`/images/products/${fullProduct.id}`, fullProduct.images.primary?.updatedAt),
     ogImageUrl: imageUrl(`/images/products/${fullProduct.id}`, fullProduct.images.primary?.updatedAt, {
       format: OG_IMAGE_FORMAT,
@@ -87,25 +96,13 @@ export async function loadProductDetail(
     })) as ProductGalleryImages,
     // The hero highlight tiles render the Product's technical details (value is the bold headline, label
     // the small-caps caption). Lander readiness gates on at least one, so a visible Product always has tiles.
-    highlights: selectTranslated(fullProduct.technicalDetails, translation?.technicalDetails).map((detail) => ({
+    highlights: localized.technicalDetails.map((detail) => ({
       value: detail.value,
       label: detail.label,
     })),
-    standardAssemblies: fullProduct.assemblies
-      .filter((assembly) => assembly.kind === 'standard')
-      .map((assembly) => {
-        const assemblyTranslation = translationForLocale(assembly.translations, locale);
-
-        return selectTranslated(assembly.name, assemblyTranslation?.name);
-      }),
-    optionalAssemblies: fullProduct.assemblies
-      .filter((assembly) => assembly.kind === 'optional')
-      .map((assembly) => {
-        const assemblyTranslation = translationForLocale(assembly.translations, locale);
-
-        return selectTranslated(assembly.name, assemblyTranslation?.name);
-      }),
-    keyFeatures: selectTranslated(fullProduct.keyFeatures, translation?.keyFeatures),
+    standardAssemblies: assemblyNames('standard'),
+    optionalAssemblies: assemblyNames('optional'),
+    keyFeatures: localized.keyFeatures,
     brochureHref: brochureHref(fullProduct.id, locale, isBrochureReady(fullProduct)),
     related,
   };

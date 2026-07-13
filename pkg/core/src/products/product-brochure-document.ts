@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
 import type { DatabaseTransaction, Db, ProductImageStore, StoredFile } from '@pkg/db';
-import { evaluateProductBrochureCompleteness, selectTranslated, translationForLocale } from '@pkg/domain';
+import { evaluateProductBrochureCompleteness, localizeFields } from '@pkg/domain';
 import {
+  type AssemblyKind,
   type AuthId,
   BROCHURE_IMAGE_SLOTS,
   type BrochureDocumentImage,
@@ -214,23 +215,33 @@ export async function getBrochureDocumentModel({
     resolveBrochureImages({ store: images, storage }),
     resolveRangeLogo({ ref: rangeLogoRef, storage }),
   ]);
-  const translation = translationForLocale(product.translations, locale);
+  const localized = localizeFields(
+    {
+      category: product.category,
+      description: product.description,
+      keyFeatures: product.keyFeatures,
+      name: product.name,
+      nameHighlight: product.nameHighlight,
+    },
+    product.translations,
+    locale,
+  );
+  const assemblyNames = (kind: AssemblyKind) =>
+    product.assemblies
+      .filter((assembly) => assembly.kind === kind)
+      .map((assembly) => localizeFields({ name: assembly.name }, assembly.translations, locale).name);
 
   return {
-    bodyCopy: toDisplayLines(selectTranslated(product.description, translation?.description)),
+    bodyCopy: toDisplayLines(localized.description),
     images: resolvedImages,
-    keyFeatures: selectTranslated(product.keyFeatures, translation?.keyFeatures),
+    keyFeatures: localized.keyFeatures,
     modelCode: product.modelCode,
-    optionalAssemblies: product.assemblies
-      .filter((assembly) => assembly.kind === 'optional')
-      .map((assembly) => selectTranslated(assembly.name, translationForLocale(assembly.translations, locale)?.name)),
+    optionalAssemblies: assemblyNames('optional'),
     rangeLogo,
-    standardAssemblies: product.assemblies
-      .filter((assembly) => assembly.kind === 'standard')
-      .map((assembly) => selectTranslated(assembly.name, translationForLocale(assembly.translations, locale)?.name)),
-    subtitle: selectTranslated(product.category, translation?.category),
-    title: selectTranslated(product.name, translation?.name),
-    titleHighlight: selectTranslated(product.nameHighlight, translation?.nameHighlight),
+    standardAssemblies: assemblyNames('standard'),
+    subtitle: localized.category,
+    title: localized.name,
+    titleHighlight: localized.nameHighlight,
   };
 }
 

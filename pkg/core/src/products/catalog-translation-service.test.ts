@@ -67,6 +67,7 @@ describe('catalog translation persistence', () => {
     const translatedAt = new Date('2026-07-13T10:00:00.000Z');
     await persistCatalogTranslation({
       db: context.db,
+      kind: 'product',
       source,
       translatedAt,
       translation: {
@@ -120,12 +121,14 @@ describe('catalog translation persistence', () => {
 
     await persistCatalogTranslation({
       db: context.db,
+      kind: 'range',
       source: rangeSource,
       translatedAt: new Date('2026-07-13T10:00:00.000Z'),
       translation: { name: 'Sleepwaens', description: 'Oessleepwaens.' },
     });
     await persistCatalogTranslation({
       db: context.db,
+      kind: 'variant',
       source: variantSource,
       translatedAt: new Date('2026-07-13T10:00:00.000Z'),
       translation: { name: 'Swaardiens' },

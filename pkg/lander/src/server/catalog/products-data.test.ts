@@ -190,7 +190,7 @@ test('loadProductsCatalog groups Products under their Range with a model count',
   });
   await insertProduct(db, range.id, { name: `CH12 Tipping Trailer ${suffix}`, modelCode: `CH12-${suffix}` });
 
-  const { groups } = await loadProductsCatalog(db);
+  const { groups } = await loadProductsCatalog(db, 'en');
   const group = groups.find((candidate) => candidate.id === range.id);
 
   expect(group).toBeDefined();
@@ -241,7 +241,7 @@ test('loadProductsCatalog exposes Range Variants in display order with range-sco
     modelCode: `BAS-${suffix}`,
   });
 
-  const { groups } = await loadProductsCatalog(db);
+  const { groups } = await loadProductsCatalog(db, 'en');
   const group = groups.find((candidate) => candidate.id === range.id);
 
   // The shared trailing token (here the UUID suffix every variant name carries) is stripped from the chip
@@ -277,7 +277,7 @@ test('loadProductsCatalog omits Products that are not lander-ready', async ({ db
     landerEnabled: false,
   });
 
-  const { groups } = await loadProductsCatalog(db);
+  const { groups } = await loadProductsCatalog(db, 'en');
   const group = groups.find((candidate) => candidate.id === range.id);
 
   expect(group?.count).toBe(1);
@@ -295,7 +295,7 @@ test('loadProductsCatalog omits soft-removed Products', async ({ db }) => {
     .set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(sql`${products.id} = ${removed.id}`);
 
-  const { groups } = await loadProductsCatalog(db);
+  const { groups } = await loadProductsCatalog(db, 'en');
   const group = groups.find((candidate) => candidate.id === range.id);
 
   expect(group?.products.map((card) => card.id)).toEqual([ready.id]);
@@ -310,7 +310,7 @@ test('loadProductsCatalog omits Ranges whose only Products are not lander-ready'
     landerEnabled: false,
   });
 
-  const { groups } = await loadProductsCatalog(db);
+  const { groups } = await loadProductsCatalog(db, 'en');
 
   expect(groups.some((group) => group.id === emptyRange.id)).toBe(false);
   expect(groups.some((group) => group.id === unreadyRange.id)).toBe(false);
@@ -325,7 +325,7 @@ test('loadProductsCatalog omits soft-removed Ranges', async ({ db }) => {
     .set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(sql`${productRanges.id} = ${range.id}`);
 
-  const { groups } = await loadProductsCatalog(db);
+  const { groups } = await loadProductsCatalog(db, 'en');
 
   expect(groups.some((group) => group.id === range.id)).toBe(false);
 });

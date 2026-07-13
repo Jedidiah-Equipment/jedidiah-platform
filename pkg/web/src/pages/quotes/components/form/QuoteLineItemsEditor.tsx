@@ -43,18 +43,6 @@ export const QuoteLineItemsEditor: React.FC<QuoteLineItemsEditorProps> = ({
 
   return (
     <div className="grid gap-3">
-      <div className="flex justify-end">
-        <Button
-          disabled={readOnly}
-          onClick={() => lineItemsField.pushValue({ ...DEFAULT_LINE_ITEM })}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <IconPlus data-icon="inline-start" />
-          Add line item
-        </Button>
-      </div>
       {lineItems.length === 0 ? (
         <div className="rounded-md border border-dashed px-3 py-4 text-muted-foreground text-sm">No line items.</div>
       ) : (
@@ -111,6 +99,22 @@ export const QuoteLineItemsEditor: React.FC<QuoteLineItemsEditorProps> = ({
     </div>
   );
 };
+
+export const QuoteAddLineItemButton: React.FC<Pick<QuoteLineItemsEditorProps, 'lineItemsField' | 'readOnly'>> = ({
+  lineItemsField,
+  readOnly,
+}) => (
+  <Button
+    disabled={readOnly}
+    onClick={() => lineItemsField.pushValue({ ...DEFAULT_LINE_ITEM })}
+    size="sm"
+    type="button"
+    variant="outline"
+  >
+    <IconPlus data-icon="inline-start" />
+    Add line item
+  </Button>
+);
 
 function getLineItemTotal(lineItem: QuoteLineItemFormInput): number {
   return Number.isFinite(lineItem.quantity) && Number.isFinite(lineItem.unitPrice)

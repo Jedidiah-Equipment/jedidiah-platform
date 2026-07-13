@@ -126,7 +126,7 @@ export async function listPartCategories({ db }: { db: Db }): Promise<PartCatego
 }
 
 function buildPartListWhere(input: PartListInput): SQL | undefined {
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [isNull(supplier.deletedAt)];
 
   if (input.search) {
     const globalSearchWhere = or(

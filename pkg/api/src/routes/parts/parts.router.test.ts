@@ -416,6 +416,21 @@ describe('parts.list and parts.categories', () => {
     expect(nameWildcardResult.items).toHaveLength(0);
     expect(supplierNameWildcardResult.items).toHaveLength(0);
   });
+
+  test('hides parts belonging to removed suppliers', async ({ context }) => {
+    const caller = context.createCaller();
+    const removedSupplier = await createSupplier(caller, 'Removed Supplies');
+    const activeSupplier = await createSupplier(caller, 'Active Supplies');
+    await createPart(caller, removedSupplier.id, { code: 'REMOVED-100', name: 'Removed part' });
+    await createPart(caller, activeSupplier.id, { code: 'ACTIVE-100', name: 'Active part' });
+
+    await caller.suppliers.remove({ id: removedSupplier.id });
+
+    const list = await caller.parts.list({});
+
+    expect(partNames(list.items)).toEqual(['Active part']);
+    expect(list.total).toBe(1);
+  });
 });
 
 describe('parts.get', () => {

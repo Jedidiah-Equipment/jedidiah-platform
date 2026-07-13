@@ -165,7 +165,7 @@ describe('summarizeQuotePipeline', () => {
     // 30-day window covering plant today starts at 2026-05-06; sent on the boundary day is included.
     const [boundaryQuote] = await createQuoteRows(context.db, {
       customerId: context.customer.id,
-      deliveryIncluded: true,
+      deliveryIncluded: false,
       deliveryPrice: 100,
       discountPercent: 10,
       productId: context.product.id,
@@ -211,7 +211,7 @@ describe('summarizeQuotePipeline', () => {
   test('includes custom sent quote value in the pipeline totals', async ({ context }) => {
     const [customQuote] = await createQuoteRows(context.db, {
       customerId: context.customer.id,
-      deliveryIncluded: true,
+      deliveryIncluded: false,
       deliveryPrice: 50,
       discountPercent: 10,
       kind: 'custom',
@@ -277,7 +277,7 @@ describe('listStaleSentQuotes', () => {
     });
     const [oldestQuote] = await createQuoteRows(context.db, {
       customerId: context.customer.id,
-      deliveryIncluded: true,
+      deliveryIncluded: false,
       deliveryPrice: 50,
       productId: context.product.id,
       quotedBasePrice: 3000,
@@ -363,7 +363,7 @@ async function createQuoteRows(
   {
     createdAt,
     customerId,
-    deliveryIncluded = false,
+    deliveryIncluded = true,
     deliveryPrice = 0,
     discountPercent = 0,
     kind = 'product',

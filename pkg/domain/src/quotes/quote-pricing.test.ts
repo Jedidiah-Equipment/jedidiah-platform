@@ -95,10 +95,14 @@ describe('computeQuoteTotal', () => {
     expect(computeQuoteTotal({ quotedBasePrice: 1250, discountPercent: 10 })).toBe(1125);
   });
 
-  it('adds delivery price when delivery is included', () => {
+  it('does not add delivery price when delivery is included in the sale price', () => {
     expect(
       computeQuoteTotal({ deliveryIncluded: true, deliveryPrice: 350, quotedBasePrice: 1250, discountPercent: 10 }),
-    ).toBe(1475);
+    ).toBe(1125);
+  });
+
+  it('defaults omitted delivery inclusion to included in the sale price', () => {
+    expect(computeQuoteTotal({ deliveryPrice: 350, quotedBasePrice: 1250, discountPercent: 10 })).toBe(1125);
   });
 
   it('discounts selected optional assembly snapshot prices', () => {
@@ -145,15 +149,15 @@ describe('computeQuoteTotal', () => {
     ).toBe(1800);
   });
 
-  it('ignores delivery price when delivery is excluded', () => {
+  it('adds delivery price when delivery is not included in the sale price', () => {
     expect(
       computeQuoteTotal({ deliveryIncluded: false, deliveryPrice: 350, quotedBasePrice: 1250, discountPercent: 10 }),
-    ).toBe(1125);
+    ).toBe(1475);
   });
 
-  it('keeps delivery undiscounted when the commercial subtotal is fully discounted', () => {
+  it('keeps the additional delivery charge undiscounted when the commercial subtotal is fully discounted', () => {
     expect(
-      computeQuoteTotal({ deliveryIncluded: true, deliveryPrice: 50, quotedBasePrice: 100, discountPercent: 100 }),
+      computeQuoteTotal({ deliveryIncluded: false, deliveryPrice: 50, quotedBasePrice: 100, discountPercent: 100 }),
     ).toBe(50);
   });
 });
@@ -162,7 +166,7 @@ describe('priceQuoteFromLiveSelections', () => {
   it('builds the breakdown from facts and a live selection set', () => {
     const pricing = priceQuoteFromLiveSelections(
       {
-        deliveryIncluded: true,
+        deliveryIncluded: false,
         deliveryPrice: 350,
         discountPercent: 10,
         lineItems: [{ quantity: 2, unitPrice: 125 }],
@@ -203,10 +207,10 @@ describe('priceQuote', () => {
     expect(pricing.liveSelections).toHaveLength(1);
   });
 
-  it('keeps delivery undiscounted under a full discount', () => {
+  it('keeps an additional delivery charge undiscounted under a full discount', () => {
     expect(
       priceQuote({
-        deliveryIncluded: true,
+        deliveryIncluded: false,
         deliveryPrice: 50,
         discountPercent: 100,
         quotedBasePrice: 100,

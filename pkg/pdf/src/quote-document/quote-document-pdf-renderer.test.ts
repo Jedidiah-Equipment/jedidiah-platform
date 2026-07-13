@@ -94,7 +94,7 @@ function testQuoteDocument(): QuoteDocumentModel {
     staleSelectionNotes: [],
     subtotal: 615_300,
     total: 707_595,
-    transport: 'Excluded',
+    transport: 'Included in sale price',
     vatAmount: 92_295,
   };
 }

@@ -325,8 +325,8 @@ function TermsCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSum
       <span className="tabular-nums">{formatPercent(quote.depositPercent)} deposit</span>
       <span className={cn('text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
         {quote.deliveryIncluded
-          ? `${formatCurrency(quote.deliveryPrice, quote.quotedCurrencyCode)} delivery`
-          : 'Delivery excluded'}
+          ? 'Delivery included'
+          : `${formatCurrency(quote.deliveryPrice, quote.quotedCurrencyCode)} delivery`}
       </span>
     </div>
   );

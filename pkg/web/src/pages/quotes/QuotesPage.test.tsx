@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatCurrency, formatDate } from '@pkg/domain';
 import { PriorityQuote, type PriorityQuote as PriorityQuoteType } from '@pkg/schema';
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { addDays, format as formatDateFns } from 'date-fns';
@@ -76,6 +76,16 @@ describe('Quote table priority rows', () => {
     expect(html).toContain('bg-inherit');
     expect(html.match(/sticky/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
   });
+
+  it('renders whether delivery is included in the sale price or charged separately', () => {
+    const html = renderQuoteTableRows([
+      createQuoteTableRow(buildPriorityQuote({ deliveryIncluded: true, deliveryPrice: 0 })),
+      createQuoteTableRow(buildPriorityQuote({ deliveryIncluded: false, deliveryPrice: 1_500 })),
+    ]);
+
+    expect(html).toContain('Delivery included');
+    expect(html).toContain(`${formatCurrency(1_500, 'ZAR')} delivery`);
+  });
 });
 
 function toDateOnly(date: Date): string {
@@ -123,7 +133,7 @@ function buildPriorityQuote(overrides: Partial<Record<keyof PriorityQuoteType, u
     customerId: '10000000-0000-4000-8000-000000000000',
     customerThumbnailDataUrl: null,
     deliveryIncluded: true,
-    deliveryPrice: 1500,
+    deliveryPrice: 0,
     depositPercent: 50,
     discountPercent: 0,
     documentNotes: null,

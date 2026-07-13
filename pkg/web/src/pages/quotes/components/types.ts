@@ -1,10 +1,11 @@
-import { priceQuoteFromLiveSelections, resolveEffectiveBom } from '@pkg/domain';
+import { computeAdditionalDeliveryPrice, priceQuoteFromLiveSelections, resolveEffectiveBom } from '@pkg/domain';
 import {
   type Assembly,
   AuthId,
   CustomerCompanyName,
   DateIsoString,
   DateOnlyIsoString,
+  getQuoteDeliveryPricingError,
   Price,
   QuoteCreateInput,
   QuoteDepositPercent,
@@ -78,6 +79,16 @@ export const QuoteFormValues = z
 
 export function getQuoteFormValuesValidator(kind: QuoteKind) {
   return QuoteFormValues.superRefine((value, context) => {
+    const deliveryPricingError = getQuoteDeliveryPricingError(value);
+
+    if (deliveryPricingError) {
+      context.addIssue({
+        code: 'custom',
+        message: deliveryPricingError,
+        path: ['deliveryPrice'],
+      });
+    }
+
     if (kind === 'custom' && !QuoteWorkTitle.safeParse(value.workTitle).success) {
       context.addIssue({
         code: 'custom',
@@ -142,7 +153,7 @@ export function computeQuoteSummary({
 }): QuoteComputedSummary {
   const catalogAssemblies = quote.product?.assemblies ?? [];
   const currencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
-  const deliveryPrice = values.deliveryIncluded ? values.deliveryPrice : 0;
+  const deliveryPrice = computeAdditionalDeliveryPrice(values);
   const quotedBasePrice = quote.kind === 'custom' ? values.basePrice : quote.quotedBasePrice;
   const selectedSnapshots =
     quote.kind === 'custom'
@@ -249,7 +260,7 @@ export function toQuoteUpdateInput({
         ? { kind: 'product' }
         : { kind: 'custom', basePrice: value.basePrice, workTitle: value.workTitle },
     deliveryIncluded: value.deliveryIncluded,
-    deliveryPrice: value.deliveryIncluded ? value.deliveryPrice : 0,
+    deliveryPrice: computeAdditionalDeliveryPrice(value),
     depositPercent: value.depositPercent,
     discountPercent: value.discountPercent,
     notes: value.notes,

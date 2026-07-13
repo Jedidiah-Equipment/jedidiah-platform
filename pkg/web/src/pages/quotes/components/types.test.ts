@@ -38,7 +38,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     depositPercent: 30,
     discountPercent: 10,
     deliveryIncluded: true,
-    deliveryPrice: 50,
+    deliveryPrice: 0,
     validUntil: '2026-01-01',
     preferredDeliveryDate: '2026-02-01',
     plannedDeliveryDate: '2026-03-01',
@@ -132,7 +132,7 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
   return {
     depositPercent: 30,
     deliveryIncluded: true,
-    deliveryPrice: 50,
+    deliveryPrice: 0,
     discountPercent: 10,
     basePrice: 1000,
     notes: 'Some notes',
@@ -314,7 +314,7 @@ describe('computeQuoteSummary', () => {
     expect(summary.lineItemTotal).toBe(200);
     expect(summary.selectedAssemblyTotal).toBe(250);
     expect(summary.discountAmount).toBe(145);
-    expect(summary.total).toBe(1355);
+    expect(summary.total).toBe(1305);
     expect(summary.selectedAssemblies).toEqual([
       { id: PRODUCT_ASSEMBLY_ID, productAssemblyId: PRODUCT_ASSEMBLY_ID, quotedName: 'Optional A', quotedPrice: 250 },
     ]);
@@ -342,7 +342,7 @@ describe('computeQuoteSummary', () => {
     });
 
     expect(summary.selectedAssemblyTotal).toBe(-250);
-    expect(summary.total).toBe(800);
+    expect(summary.total).toBe(750);
     expect(summary.selectedAssemblies).toEqual([
       {
         id: PRODUCT_ASSEMBLY_ID,
@@ -364,7 +364,7 @@ describe('computeQuoteSummary', () => {
 
     expect(summary.selectedAssemblies).toEqual([]);
     expect(summary.selectedAssemblyTotal).toBe(0);
-    expect(summary.total).toBe(1050);
+    expect(summary.total).toBe(1000);
   });
 
   it('uses entered base price and no assemblies for custom quotes', () => {
@@ -382,10 +382,10 @@ describe('computeQuoteSummary', () => {
     });
 
     expect(summary.basePrice).toBe(2500);
-    expect(summary.deliveryPrice).toBe(0);
+    expect(summary.deliveryPrice).toBe(500);
     expect(summary.lineItemTotal).toBe(300);
     expect(summary.selectedAssemblies).toEqual([]);
-    expect(summary.total).toBe(2660);
+    expect(summary.total).toBe(3160);
   });
 });
 
@@ -467,12 +467,12 @@ describe('toQuoteUpdateInput', () => {
     expect(input).not.toHaveProperty('productId');
   });
 
-  it('coalesces empty edit dates to null and gates delivery price', () => {
+  it('coalesces empty edit dates to null and clears delivery price when it is included in the sale price', () => {
     const input = toQuoteUpdateInput({
       id: QUOTE_ID,
       kind: 'product',
       value: buildFormValues({
-        deliveryIncluded: false,
+        deliveryIncluded: true,
         deliveryPrice: 99,
         plannedDeliveryDate: '',
         preferredDeliveryDate: '',
@@ -480,7 +480,7 @@ describe('toQuoteUpdateInput', () => {
       }),
     });
 
-    expect(input.deliveryIncluded).toBe(false);
+    expect(input.deliveryIncluded).toBe(true);
     expect(input.deliveryPrice).toBe(0);
     expect(input.plannedDeliveryDate).toBeNull();
     expect(input.preferredDeliveryDate).toBeNull();
@@ -520,6 +520,20 @@ describe('toQuoteUpdateInput', () => {
     expect(
       getQuoteFormValuesValidator('custom').safeParse(buildFormValues({ workTitle: 'Hydraulic repair' })).success,
     ).toBe(true);
+  });
+
+  it('requires a positive price when delivery is not included', () => {
+    const result = getQuoteFormValuesValidator('product').safeParse(
+      buildFormValues({ deliveryIncluded: false, deliveryPrice: 0 }),
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toContainEqual(
+      expect.objectContaining({
+        message: 'Must be greater than zero when delivery is not included',
+        path: ['deliveryPrice'],
+      }),
+    );
   });
 
   it('rejects customer and product keys at the schema boundary', () => {

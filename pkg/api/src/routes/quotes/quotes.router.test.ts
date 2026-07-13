@@ -39,7 +39,7 @@ describe('quotes.create', () => {
         type: 'inline',
         companyName: 'Acme Mining',
       },
-      deliveryIncluded: true,
+      deliveryIncluded: false,
       deliveryPrice: 350,
       depositPercent: 30,
       discountPercent: 10,
@@ -60,7 +60,7 @@ describe('quotes.create', () => {
       code: 'QUO-00001',
       customerCompanyName: 'Acme Mining',
       depositPercent: 30,
-      deliveryIncluded: true,
+      deliveryIncluded: false,
       deliveryPrice: 350,
       documentNotes: '30% deposit, balance on delivery',
       kind: 'product',
@@ -75,7 +75,7 @@ describe('quotes.create', () => {
     expect(quoteRows).toHaveLength(1);
     expect(quoteRows[0]).toMatchObject({
       depositPercent: 30,
-      deliveryIncluded: true,
+      deliveryIncluded: false,
       deliveryPrice: 350,
       plannedDeliveryDate: '2026-07-15',
       preferredDeliveryDate: '2026-07-10',
@@ -435,7 +435,7 @@ describe('quotes.update', () => {
 
     expect(updated).toMatchObject({
       deliveryIncluded: false,
-      deliveryPrice: 0,
+      deliveryPrice: 777,
       depositPercent: 50,
       discountPercent: 12.5,
       notes: 'Updated draft terms',
@@ -1582,7 +1582,8 @@ describe('jobs.create with quote links', () => {
         field: 'deliveryIncluded',
         input: (quote: QuoteDetail) => ({
           ...toUpdateInput(quote),
-          deliveryIncluded: false,
+          deliveryIncluded: !quote.deliveryIncluded,
+          deliveryPrice: 0,
         }),
       },
       {
@@ -1633,7 +1634,7 @@ describe('jobs.create with quote links', () => {
       const created = await createReadyQuote(salesCaller, context.product.id);
       const accepted = await salesCaller.quotes.update({
         ...toUpdateInput(created),
-        deliveryIncluded: true,
+        deliveryIncluded: false,
         deliveryPrice: 100,
         status: 'accepted',
       });
@@ -1795,7 +1796,7 @@ async function createNamedQuote(
       type: 'inline',
       companyName: customerCompanyName,
     },
-    deliveryIncluded: true,
+    deliveryIncluded: deliveryPrice === 0,
     deliveryPrice,
     depositPercent,
     discountPercent,

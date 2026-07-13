@@ -126,6 +126,18 @@ describe('QuoteCreateInput', () => {
       }),
     ).toThrow();
   });
+
+  it('rejects an additional delivery price when delivery is included', () => {
+    expect(() => QuoteCreateInput.parse({ ...baseCreateInput, deliveryPrice: 350 })).toThrow(
+      'Must be zero when delivery is included',
+    );
+  });
+
+  it('requires a positive delivery price when delivery is not included', () => {
+    expect(() => QuoteCreateInput.parse({ ...baseCreateInput, deliveryIncluded: false, deliveryPrice: 0 })).toThrow(
+      'Must be greater than zero when delivery is not included',
+    );
+  });
 });
 
 describe('QuoteLineItemInput', () => {
@@ -177,6 +189,18 @@ describe('QuoteUpdateInput', () => {
         },
       }),
     ).toThrow();
+  });
+
+  it('rejects an additional delivery price when delivery is included', () => {
+    expect(() => QuoteUpdateInput.parse({ ...baseUpdateInput(), deliveryPrice: 350 })).toThrow(
+      'Must be zero when delivery is included',
+    );
+  });
+
+  it('requires a positive delivery price when delivery is not included', () => {
+    expect(() => QuoteUpdateInput.parse({ ...baseUpdateInput(), deliveryIncluded: false, deliveryPrice: 0 })).toThrow(
+      'Must be greater than zero when delivery is not included',
+    );
   });
 
   it('preserves omitted child collections instead of defaulting them to empty replacements', () => {

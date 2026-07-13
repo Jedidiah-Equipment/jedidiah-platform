@@ -1,0 +1,1 @@
+ALTER TABLE "quote" ADD CONSTRAINT "quote_delivery_inclusion_matches_price" CHECK ("quote"."delivery_included" = ("quote"."delivery_price" = 0));

@@ -266,24 +266,52 @@ export const QuoteOfferingInput = z.discriminatedUnion('kind', [
   }),
 ]);
 
+export function getQuoteDeliveryPricingError(input: {
+  deliveryIncluded: boolean;
+  deliveryPrice: number;
+}): string | null {
+  if (input.deliveryIncluded) {
+    return input.deliveryPrice === 0 ? null : 'Must be zero when delivery is included';
+  }
+
+  return input.deliveryPrice > 0 ? null : 'Must be greater than zero when delivery is not included';
+}
+
+function validateQuoteDeliveryPricing(
+  input: { deliveryIncluded: boolean; deliveryPrice: number },
+  context: z.RefinementCtx,
+) {
+  const message = getQuoteDeliveryPricingError(input);
+
+  if (message) {
+    context.addIssue({
+      code: 'custom',
+      message,
+      path: ['deliveryPrice'],
+    });
+  }
+}
+
 export type QuoteCreateInput = z.infer<typeof QuoteCreateInput>;
-export const QuoteCreateInput = z.object({
-  customer: QuoteCustomerInput,
-  offering: QuoteOfferingInput,
-  salesPersonId: AuthId,
-  status: QuoteStatus,
-  discountPercent: z.coerce.number().pipe(QuoteDiscountPercent).default(0),
-  depositPercent: z.coerce.number().pipe(QuoteDepositPercent).default(0),
-  deliveryIncluded: z.boolean().default(true),
-  deliveryPrice: z.coerce.number().pipe(Price).default(0),
-  validUntil: DateIso.nullable().default(null),
-  preferredDeliveryDate: DateOnlyIso.nullable().default(null),
-  plannedDeliveryDate: DateOnlyIso.nullable().default(null),
-  notes: QuoteNotesInput,
-  documentNotes: QuoteDocumentNotesInput,
-  lineItems: z.array(QuoteLineItemInput).default([]),
-  selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
-});
+export const QuoteCreateInput = z
+  .object({
+    customer: QuoteCustomerInput,
+    offering: QuoteOfferingInput,
+    salesPersonId: AuthId,
+    status: QuoteStatus,
+    discountPercent: z.coerce.number().pipe(QuoteDiscountPercent).default(0),
+    depositPercent: z.coerce.number().pipe(QuoteDepositPercent).default(0),
+    deliveryIncluded: z.boolean().default(true),
+    deliveryPrice: z.coerce.number().pipe(Price).default(0),
+    validUntil: DateIso.nullable().default(null),
+    preferredDeliveryDate: DateOnlyIso.nullable().default(null),
+    plannedDeliveryDate: DateOnlyIso.nullable().default(null),
+    notes: QuoteNotesInput,
+    documentNotes: QuoteDocumentNotesInput,
+    lineItems: z.array(QuoteLineItemInput).default([]),
+    selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
+  })
+  .superRefine(validateQuoteDeliveryPricing);
 
 export type QuoteUpdateOfferingInput = z.infer<typeof QuoteUpdateOfferingInput>;
 export const QuoteUpdateOfferingInput = z.discriminatedUnion('kind', [
@@ -316,7 +344,8 @@ export const QuoteUpdateInput = z
     lineItems: z.array(QuoteLineItemInput).optional(),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine(validateQuoteDeliveryPricing);
 
 // Partial field update. Every field except `id` is optional; `undefined` means "leave the
 // current value untouched". The merge over the current row happens under the row lock in core, so a

@@ -8,6 +8,7 @@ import {
   type user,
 } from '@pkg/db';
 import {
+  computeAdditionalDeliveryPrice,
   computeQuoteLineItemAmount,
   computeQuoteTotalIncludingVat,
   computeQuoteVatAmount,
@@ -228,6 +229,7 @@ async function getQuoteDocumentModel({
   // never have catalog staleness, so they always remain in the discountable subtotal.
   const pricing = priceQuoteFromLiveSelections(quote, liveSelections);
   const discountAmount = pricing.discountAmount;
+  const additionalDeliveryPrice = computeAdditionalDeliveryPrice(quote);
   const lineItems: QuoteDocumentLineItem[] = [
     {
       amount: quote.quotedBasePrice,
@@ -255,14 +257,14 @@ async function getQuoteDocumentModel({
           },
         ]
       : []),
-    ...(quote.deliveryIncluded && quote.deliveryPrice > 0
+    ...(additionalDeliveryPrice > 0
       ? [
           {
-            amount: quote.deliveryPrice,
+            amount: additionalDeliveryPrice,
             descriptionLines: ['Delivery'],
             kind: 'charge' as const,
             quantity: 1,
-            unitPrice: quote.deliveryPrice,
+            unitPrice: additionalDeliveryPrice,
           },
         ]
       : []),
@@ -283,8 +285,8 @@ async function getQuoteDocumentModel({
     subtotal,
     total: computeQuoteTotalIncludingVat(subtotal),
     transport: quote.deliveryIncluded
-      ? `Included${quote.deliveryPrice > 0 ? ` (${formatCurrency(quote.deliveryPrice, quote.quotedCurrencyCode)})` : ''}`
-      : 'Excluded',
+      ? 'Included in sale price'
+      : `Additional charge (${formatCurrency(additionalDeliveryPrice, quote.quotedCurrencyCode)})`,
     vatAmount,
     currencyCode: quote.quotedCurrencyCode,
   };

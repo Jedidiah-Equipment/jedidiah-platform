@@ -5,12 +5,7 @@ import { DateIso, DateOnlyIso } from '../common/date.js';
 import { Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
-import {
-  nullableTrimmedText,
-  nullableTrimmedTextInput,
-  nullableTrimmedTextInputOptional,
-  requiredTrimmedText,
-} from '../common/text.js';
+import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { JobDocument } from '../documents/document.js';
@@ -695,25 +690,13 @@ export const JobUpdateInput = z
   .object({
     id: UUID,
     description: nullableTrimmedTextInput(),
+    invoiceNumber: nullableTrimmedTextInput(),
     vinNumber: nullableTrimmedTextInput(),
   })
   .strict();
 
 export type JobUpdateResult = z.infer<typeof JobUpdateResult>;
 export const JobUpdateResult = z.object({
-  job: Job,
-});
-
-export type JobPatchInput = z.infer<typeof JobPatchInput>;
-export const JobPatchInput = z
-  .object({
-    id: UUID,
-    invoiceNumber: nullableTrimmedTextInputOptional(),
-  })
-  .strict();
-
-export type JobPatchResult = z.infer<typeof JobPatchResult>;
-export const JobPatchResult = z.object({
   job: Job,
 });
 

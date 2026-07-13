@@ -38,7 +38,6 @@ import {
   JobDetail,
   JobListFilters,
   JobListInput,
-  JobPatchInput,
   JobSortBy,
   MoveJobSlotInput,
   MoveJobSlotResult,
@@ -454,16 +453,6 @@ describe('JobColumnFilters', () => {
       sortBy: 'productSerialNumber',
     });
     expect(JobSortBy.parse('productSerialNumber')).toBe('productSerialNumber');
-  });
-});
-
-describe('JobPatchInput', () => {
-  it('trims invoice numbers and turns blank values into null', () => {
-    const id = '00000000-0000-4000-8000-000000000001';
-
-    expect(JobPatchInput.parse({ id, invoiceNumber: '  INV-0042  ' })).toEqual({ id, invoiceNumber: 'INV-0042' });
-    expect(JobPatchInput.parse({ id, invoiceNumber: '  ' })).toEqual({ id, invoiceNumber: null });
-    expect(JobPatchInput.parse({ id })).toEqual({ id });
   });
 });
 

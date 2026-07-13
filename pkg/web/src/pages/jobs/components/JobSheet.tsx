@@ -154,6 +154,13 @@ const EditableJobDetails: React.FC<{
       >
         <InfoList className="rounded-none border-0">
           <ImmutableJobRows job={job} />
+          <EditableInfoRow label="Invoice number">
+            <form.AppField name="invoiceNumber">
+              {(field) => (
+                <field.TextField aria-label="Invoice number" label={<span className="sr-only">Invoice number</span>} />
+              )}
+            </form.AppField>
+          </EditableInfoRow>
           <EditableInfoRow label="Description">
             <form.AppField name="description">
               {(field) => (
@@ -185,6 +192,7 @@ const ReadOnlyJobDetails: React.FC<{ job: JobDetail }> = ({ job }) => (
   <Section contentClassName="p-0" icon={<IconInfoCircle />} title="Details">
     <InfoList className="rounded-none border-0">
       <ImmutableJobRows job={job} />
+      <InfoRow label="Invoice number" value={job.invoiceNumber ?? 'Not captured'} />
       <InfoRow
         label="Description"
         value={

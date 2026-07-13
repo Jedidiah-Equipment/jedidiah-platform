@@ -109,15 +109,15 @@ describe('Job List table columns', () => {
     expect(html).not.toContain('aria-label="Filter Complete"');
   });
 
-  it('renders an editable invoice number input only for Job editors', () => {
+  it('renders invoice numbers as text for Job editors and viewers', () => {
     const editableHtml = renderJobListRows([buildJob({ invoiceNumber: 'INV-0001' })], {
       canEditJobs: true,
       canOpenJobs: false,
     });
     const readOnlyHtml = renderJobListRows([buildJob({ invoiceNumber: 'INV-0001' })]);
 
-    expect(editableHtml).toContain('aria-label="Invoice number for JOB-00001"');
-    expect(editableHtml).toContain('value="INV-0001"');
+    expect(editableHtml).not.toContain('aria-label="Invoice number for JOB-00001"');
+    expect(editableHtml).toContain('INV-0001');
     expect(readOnlyHtml).not.toContain('aria-label="Invoice number for JOB-00001"');
     expect(readOnlyHtml).toContain('INV-0001');
   });
@@ -138,7 +138,7 @@ function TestJobListTable({
   rows: JobSummary[];
 }) {
   const table = useReactTable({
-    columns: createJobListColumns({ ...permissions, customerOptions, onInvoiceNumberChange: async () => undefined }),
+    columns: createJobListColumns({ ...permissions, customerOptions }),
     data: rows,
     getCoreRowModel: getCoreRowModel(),
     state: {

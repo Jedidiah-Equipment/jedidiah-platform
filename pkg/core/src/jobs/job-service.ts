@@ -24,8 +24,6 @@ import {
   JobCode,
   type JobCreateInput,
   type JobDetail,
-  type JobPatchInput,
-  type JobPatchResult,
   type JobUpdateInput,
   type JobUpdateResult,
   type MoveJobSlotInput,
@@ -218,25 +216,9 @@ export async function updateJob({
     id: input.id,
     patch: {
       description: input.description,
+      invoiceNumber: input.invoiceNumber,
       vinNumber: input.vinNumber,
     },
-  });
-}
-
-export async function patchJob({
-  actorUserId,
-  db,
-  input,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: JobPatchInput;
-}): Promise<JobPatchResult> {
-  return applyJobFieldPatch({
-    actorUserId,
-    db,
-    id: input.id,
-    patch: input.invoiceNumber === undefined ? {} : { invoiceNumber: input.invoiceNumber },
   });
 }
 
@@ -250,7 +232,7 @@ async function applyJobFieldPatch({
   db: Db;
   id: UUID;
   patch: Partial<Pick<JobRow, 'description' | 'invoiceNumber' | 'vinNumber'>>;
-}): Promise<JobPatchResult> {
+}): Promise<JobUpdateResult> {
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(jobs).where(eq(jobs.id, id)).for('update');
 

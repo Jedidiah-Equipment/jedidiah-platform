@@ -5,6 +5,12 @@ packageExtensions:
   "@config-plugins/react-native-pdf@*":
     dependencies:
       "@expo/config-plugins": "^56"
+  # The worklets Babel plugin imports these packages but 0.8.3 does not declare them.
+  "react-native-worklets@0.8.3":
+    dependencies:
+      "@babel/generator": "7.29.7"
+      "@babel/traverse": "7.29.7"
+      "@babel/types": "7.29.7"
 
 allowBuilds:
   "@posthog/cli": true

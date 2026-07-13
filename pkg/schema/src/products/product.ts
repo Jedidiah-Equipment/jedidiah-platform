@@ -13,6 +13,9 @@ import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { Bay } from '../jobs/job.js';
 import { ProductRangeOption, ProductRangeVariantOption } from './product-range.js';
+import { ProductBuildTimeDays, ProductBuildTimeDaysInput } from './product-shared.js';
+
+export { ProductBuildTimeDays, ProductBuildTimeDaysInput } from './product-shared.js';
 
 export type ProductName = z.infer<typeof ProductName>;
 export const ProductName = requiredTrimmedText('Product name is required');
@@ -34,15 +37,6 @@ export const ProductDescriptionInput = nullableTrimmedTextInput();
 
 export type ProductBasePrice = z.infer<typeof ProductBasePrice>;
 export const ProductBasePrice = z.coerce.number().pipe(Price);
-
-export type ProductBuildTimeDays = z.infer<typeof ProductBuildTimeDays>;
-export const ProductBuildTimeDays = z
-  .number()
-  .int('Build time must be a whole number')
-  .min(0, 'Must be zero or greater');
-
-export type ProductBuildTimeDaysInput = z.infer<typeof ProductBuildTimeDaysInput>;
-export const ProductBuildTimeDaysInput = z.coerce.number().pipe(ProductBuildTimeDays);
 
 export type ProductCurrencyCode = z.infer<typeof ProductCurrencyCode>;
 export const ProductCurrencyCode = z.literal('ZAR').default('ZAR');

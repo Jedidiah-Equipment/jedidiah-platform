@@ -24,6 +24,7 @@ import {
   describeInsertAtDatePlacement,
   getInsertAtDatePickerBounds,
 } from './book-slot-insert-at-date.js';
+import { type BookSlotJobFilter, filterBookSlotJobs, getDefaultSlotDurationDays } from './book-slot-jobs.js';
 
 export const BookSlotDialog: React.FC = () => {
   const trpc = useTRPC();
@@ -50,11 +51,13 @@ export const BookSlotDialog: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [selectedBayId, setSelectedBayId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
+  const [jobFilter, setJobFilter] = useState<BookSlotJobFilter>('active');
   const [durationDays, setDurationDays] = useState(1);
   const [startDate, setStartDate] = useState('');
 
   const selectedBay = schedulableBays.find((bay) => bay.id === selectedBayId) ?? null;
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
+  const filteredJobs = useMemo(() => filterBookSlotJobs(jobs, jobFilter), [jobFilter, jobs]);
 
   const bayCalendars = useBayCalendars();
   const selectedBayCalendar = selectedBay ? (bayCalendars?.workingCalendarsByBayId.get(selectedBay.id) ?? {}) : {};
@@ -101,6 +104,7 @@ export const BookSlotDialog: React.FC = () => {
     if (nextOpen) {
       setSelectedBayId('');
       setSelectedJobId('');
+      setJobFilter('active');
       setDurationDays(1);
       setStartDate('');
     }
@@ -117,6 +121,19 @@ export const BookSlotDialog: React.FC = () => {
         ? getInsertAtDatePickerBounds(bay, bayCalendars?.workingCalendarsByBayId.get(bay.id) ?? {}, plantToday).maxValue
         : '',
     );
+  };
+
+  const handleJobFilterSelect = (value: string) => {
+    setJobFilter(value as BookSlotJobFilter);
+    setSelectedJobId('');
+    setDurationDays(1);
+  };
+
+  const handleJobSelect = (jobId: string) => {
+    const job = jobs.find((candidate) => candidate.id === jobId);
+
+    setSelectedJobId(jobId);
+    setDurationDays(job ? getDefaultSlotDurationDays(job) : 1);
   };
 
   if (schedulableBays.length === 0) {
@@ -210,14 +227,41 @@ export const BookSlotDialog: React.FC = () => {
                 </Field>
               ) : null}
               <Field>
+                <FieldLabel htmlFor="book-slot-job-filter">Jobs shown</FieldLabel>
+                <Select
+                  disabled={isPending || jobsQuery.isLoading}
+                  onValueChange={(value) => handleJobFilterSelect(String(value))}
+                  value={jobFilter}
+                >
+                  <SelectTrigger id="book-slot-job-filter" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      <SelectItem value="active">Active jobs</SelectItem>
+                      <SelectItem value="all">All jobs</SelectItem>
+                      <SelectItem value="unscheduled">Unscheduled jobs</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
                 <FieldLabel htmlFor="book-slot-job">Job</FieldLabel>
                 <Select
                   disabled={isPending || jobsQuery.isLoading}
-                  onValueChange={(value) => setSelectedJobId(String(value))}
+                  onValueChange={(value) => handleJobSelect(String(value))}
                   value={selectedJob?.id ?? ''}
                 >
                   <SelectTrigger id="book-slot-job" className="w-full">
-                    <SelectValue placeholder={jobsQuery.isLoading ? 'Loading jobs' : 'Select job'}>
+                    <SelectValue
+                      placeholder={
+                        jobsQuery.isLoading
+                          ? 'Loading jobs'
+                          : filteredJobs.length === 0
+                            ? 'No matching jobs'
+                            : 'Select job'
+                      }
+                    >
                       {selectedJob ? (
                         <>
                           <span className="truncate">{selectedJob.code}</span>
@@ -228,7 +272,7 @@ export const BookSlotDialog: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent align="start">
                     <SelectGroup>
-                      {jobs.map((job) => (
+                      {filteredJobs.map((job) => (
                         <SelectItem key={job.id} value={job.id}>
                           {job.code}
                           <span className="text-muted-foreground">{getJobOptionHint(job)}</span>

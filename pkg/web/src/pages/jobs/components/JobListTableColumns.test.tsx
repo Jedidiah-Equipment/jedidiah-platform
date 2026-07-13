@@ -160,6 +160,7 @@ function buildJob(overrides: Partial<Record<keyof JobSummary, unknown>> = {}): J
     customerId: '10000000-0000-4000-8000-000000000000',
     customerThumbnailDataUrl: null,
     id: '00000000-0000-4000-8000-000000000000',
+    productBuildTimeDays: 12,
     invoiceNumber: null,
     productId: '20000000-0000-4000-8000-000000000000',
     productModelCode: 'MDL-1',

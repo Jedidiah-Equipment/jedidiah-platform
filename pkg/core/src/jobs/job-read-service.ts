@@ -65,7 +65,7 @@ import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
-type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name' | 'thumbnailDataUrl'>;
+type ProductRow = Pick<typeof products.$inferSelect, 'buildTimeDays' | 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
 type QuoteRow = Pick<typeof quotes.$inferSelect, 'code' | 'kind' | 'workTitle'> & {
   customer: CustomerRow;
@@ -188,6 +188,7 @@ async function listJobSummariesByIds({
       with: {
         product: {
           columns: {
+            buildTimeDays: true,
             modelCode: true,
             name: true,
             thumbnailDataUrl: true,
@@ -338,6 +339,7 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
     with: {
       product: {
         columns: {
+          buildTimeDays: true,
           modelCode: true,
           name: true,
           thumbnailDataUrl: true,
@@ -364,8 +366,8 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
 
   const total = await db.$count(jobs, where);
 
-  // Schedule state is a Slot projection, so resolve it only for the returned page. Callers such as
-  // the Gantt and booking dialog omit the include and must stay projection-free.
+  // Schedule state is a Slot projection, so resolve it only for the returned page. Most callers omit
+  // the include; the booking dialog opts in because its Job picker filters on projected state.
   const scheduleStates = input.include?.scheduleState
     ? await computeJobScheduleStates({ db, jobIds: rows.map((row) => UUID.parse(row.id)) })
     : null;
@@ -505,6 +507,7 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
     with: {
       product: {
         columns: {
+          buildTimeDays: true,
           modelCode: true,
           name: true,
           thumbnailDataUrl: true,
@@ -738,6 +741,7 @@ export function mapJobSummary(row: JobWithProductRow, scheduleState: JobSchedule
     customerCompanyName: row.quote.customer.companyName,
     customerId: UUID.parse(row.quote.customer.id),
     customerThumbnailDataUrl: row.quote.customer.thumbnailDataUrl,
+    productBuildTimeDays: row.product?.buildTimeDays ?? null,
     productModelCode: row.product?.modelCode ?? null,
     productName: row.product?.name ?? null,
     productThumbnailDataUrl: row.product?.thumbnailDataUrl ?? null,

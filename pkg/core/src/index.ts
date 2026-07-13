@@ -1,4 +1,6 @@
 export * from './audit/audit-service.js';
+export * from './changelog/changelog-service.js';
+export * from './changelog/changelog-visibility.js';
 export * from './customers/customer-errors.js';
 export * from './customers/customer-service.js';
 export * from './documents/document-errors.js';

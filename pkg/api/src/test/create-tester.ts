@@ -12,13 +12,19 @@ import { type TestAPI, type TestContext, test as testBase } from 'vitest';
 
 import { type Auth, createAuth } from '@/auth/auth.js';
 import { parseBetterAuthRole } from '@/auth/session.js';
-import type { Context } from '@/trpc/context.js';
+import type { ChangelogLoader, Context } from '@/trpc/context.js';
 import { type AppRouter, createAppRouterCaller } from '@/trpc/router.js';
 
 import { mockSession } from './test-utils.js';
 
 type Cleanup = () => Promise<void> | void;
 export type AppRouterCaller = ReturnType<AppRouter['createCaller']>;
+
+/** Per-caller overrides for the injectable context dependencies a test wants to vary. */
+export type CallerOverrides = {
+  appEnv?: Context['appEnv'];
+  changelogLoader?: ChangelogLoader;
+};
 
 export type TesterScope = {
   auth: Auth;
@@ -30,7 +36,7 @@ export type TesterScope = {
 
 export type TesterContext = {
   createAnonCaller: () => AppRouterCaller;
-  createCaller: (session?: NonNullable<Context['session']>) => AppRouterCaller;
+  createCaller: (session?: NonNullable<Context['session']>, overrides?: CallerOverrides) => AppRouterCaller;
 };
 
 type CreateTesterContext<T extends object> = (scope: TesterScope & TesterContext) => Promise<T> | T;
@@ -51,21 +57,27 @@ export function createTester<T extends object = Record<string, never>>(
       try {
         try {
           const testLog = pino({ level: 'silent' });
+          // The changelog feature is production-only, so tests default to production and supply an
+          // empty changelog set; the changelog router tests override these per caller.
           const callerContext: TesterContext = {
             createAnonCaller: () =>
               createAppRouterCaller({
                 access: null,
+                appEnv: 'production',
+                changelogLoader: () => [],
                 db: databaseClient.db,
                 log: testLog,
                 session: null,
                 storage: new MemoryStorage(),
               }),
-            createCaller: (session = mockSession()) => {
+            createCaller: (session = mockSession(), overrides = {}) => {
               return createAppRouterCaller({
                 access: createUserAccessSummary({
                   role: parseBetterAuthRole(session.user.role),
                   userId: session.user.id,
                 }),
+                appEnv: overrides.appEnv ?? 'production',
+                changelogLoader: overrides.changelogLoader ?? (() => []),
                 db: databaseClient.db,
                 log: testLog,
                 session,

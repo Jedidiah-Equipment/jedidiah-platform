@@ -1,5 +1,6 @@
 export * from './schema/audit.js';
 export * from './schema/auth.js';
+export * from './schema/changelog.js';
 export * from './schema/customer.js';
 export * from './schema/document.js';
 export * from './schema/feedback.js';
@@ -13,6 +14,7 @@ export * from './schema/supplier.js';
 
 import * as auditSchema from './schema/audit.js';
 import * as authSchema from './schema/auth.js';
+import * as changelogSchema from './schema/changelog.js';
 import * as customerSchema from './schema/customer.js';
 import * as documentSchema from './schema/document.js';
 import * as feedbackSchema from './schema/feedback.js';
@@ -26,6 +28,7 @@ import * as supplierSchema from './schema/supplier.js';
 export const schema = {
   ...auditSchema,
   ...authSchema,
+  ...changelogSchema,
   ...customerSchema,
   ...documentSchema,
   ...feedbackSchema,

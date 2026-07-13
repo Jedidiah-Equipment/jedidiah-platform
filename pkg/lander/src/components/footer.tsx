@@ -2,7 +2,7 @@ import { contactNumberE164, formatContactNumber, JEDIDIAH_INSTAGRAM_URL, JEDIDIA
 import logoFullUrl from '@pkg/domain/assets/brand/jedidiah-logo-full.png';
 import { IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { localePath } from '../lib/locale.js';
+import { LOCALES } from '../lib/locale.js';
 import { localePreferenceHref } from '../lib/locale-preference.js';
 import { useLocale, useMessages } from '../messages/index.js';
 import type { FooterRange } from '../server/catalog/ranges.js';
@@ -10,19 +10,17 @@ import type { FooterRange } from '../server/catalog/ranges.js';
 import { DungBeetle } from './dung-beetle.js';
 
 const EXPLORE = [
-  { key: 'home', href: '/' },
-  { key: 'about', href: '/about' },
-  { key: 'products', href: '/products' },
-  { key: 'contact', href: '/contact' },
+  { key: 'home', to: '/{-$locale}' },
+  { key: 'about', to: '/{-$locale}/about' },
+  { key: 'products', to: '/{-$locale}/products' },
+  { key: 'contact', to: '/{-$locale}/contact' },
 ] as const;
 
 const footerLinkClass = 'font-body text-[15px] text-[#a8a8a8] no-underline transition-colors hover:text-yellow';
 
-function FooterLink({ label, href }: { label: string; href: (typeof EXPLORE)[number]['href'] }) {
-  const locale = useLocale();
-
+function FooterLink({ label, to }: { label: string; to: (typeof EXPLORE)[number]['to'] }) {
   return (
-    <Link to={localePath(href, locale)} className={footerLinkClass}>
+    <Link to={to} className={footerLinkClass}>
       {label}
     </Link>
   );
@@ -32,8 +30,8 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
   const m = useMessages();
   const locale = useLocale();
   const currentHref = useRouterState({ select: (state) => state.location.href });
-  const targetLocale = locale === 'en' ? 'af' : 'en';
-  const targetLanguage = targetLocale === 'en' ? m.language.english : m.language.afrikaans;
+  const targetLocale = LOCALES.find((other) => other !== locale) ?? locale;
+  const targetLanguage = m.language.names[targetLocale];
 
   return (
     <footer className="bg-ink-soft text-white">
@@ -54,7 +52,7 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
             </h4>
             <div className="flex flex-col gap-[13px]">
               {EXPLORE.map((link) => (
-                <FooterLink key={link.href} href={link.href} label={m.nav[link.key]} />
+                <FooterLink key={link.to} to={link.to} label={m.nav[link.key]} />
               ))}
             </div>
           </div>
@@ -67,7 +65,7 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
               {ranges.map((range) => (
                 <Link
                   key={range.slug}
-                  to={localePath('/products', locale)}
+                  to="/{-$locale}/products"
                   search={{ range: range.slug }}
                   className={footerLinkClass}
                 >
@@ -100,7 +98,7 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
                 <span className="font-body text-[15px] text-[#cfcfcf]">{m.footer.instagramHandle}</span>
               </a>
               <Link
-                to={localePath('/contact', locale)}
+                to="/{-$locale}/contact"
                 className="mt-1.5 self-start bg-yellow px-[22px] py-[11px] font-display text-[15px] font-bold uppercase tracking-[1px] text-ink no-underline"
               >
                 {m.footer.contactUs}

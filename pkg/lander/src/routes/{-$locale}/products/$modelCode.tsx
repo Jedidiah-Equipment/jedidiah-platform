@@ -13,31 +13,20 @@ import { useEffect, useState } from 'react';
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
 import { captureEvent } from '../../../lib/analytics.js';
-import { type LocaleRouteContext, localePath, requireRouteContextLocale } from '../../../lib/locale.js';
 import { seoHead, truncateDescription } from '../../../lib/seo.js';
-import { messagesForLocale, useLocale, useMessages } from '../../../messages/index.js';
+import { messagesForLocale, useMessages } from '../../../messages/index.js';
 import { getProductDetail } from '../../../server/catalog/product-detail.js';
 import type { ProductDetail, ProductHighlight } from '../../../server/catalog/product-detail-data.js';
 
-async function loadProductPage({
-  context,
-  params,
-}: {
-  context: LocaleRouteContext;
-  params: { modelCode: string };
-}): Promise<{ detail: ProductDetail }> {
-  const detail = await getProductDetail({
-    data: { locale: requireRouteContextLocale(context), modelCode: params.modelCode },
-  });
-  if (!detail) {
-    throw notFound();
-  }
-
-  return { detail };
-}
-
 export const Route = createFileRoute('/{-$locale}/products/$modelCode')({
-  loader: loadProductPage,
+  loader: async ({ context, params }) => {
+    const detail = await getProductDetail({ data: { locale: context.locale, modelCode: params.modelCode } });
+    if (!detail) {
+      throw notFound();
+    }
+
+    return { detail };
+  },
   head: ({ loaderData, match, params }) => {
     const m = messagesForLocale(match.context.locale);
     const detail = loaderData?.detail;
@@ -70,16 +59,15 @@ export const Route = createFileRoute('/{-$locale}/products/$modelCode')({
 
 function Breadcrumb({ rangeName, name }: { rangeName: string; name: string }) {
   const m = useMessages();
-  const locale = useLocale();
 
   return (
     <div className="bg-ink border-b border-[#2a2a2a]">
       <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-4 font-body text-[14px] text-[#8a8a8a] max-nav:px-5 max-nav:py-3.5">
-        <Link to={localePath('/', locale)} className="text-[#8a8a8a] no-underline hover:text-white">
+        <Link to="/{-$locale}" className="text-[#8a8a8a] no-underline hover:text-white">
           {m.productDetail.breadcrumbHome}
         </Link>
         <span>/</span>
-        <Link to={localePath('/products', locale)} className="text-[#8a8a8a] no-underline hover:text-white">
+        <Link to="/{-$locale}/products" className="text-[#8a8a8a] no-underline hover:text-white">
           {m.productDetail.breadcrumbProducts}
         </Link>
         <span>/</span>
@@ -215,7 +203,6 @@ function HighlightTiles({ highlights }: { highlights: ProductHighlight[] }) {
 
 function Hero({ detail }: { detail: ProductDetail }) {
   const m = useMessages();
-  const locale = useLocale();
 
   return (
     <section className="border-b border-line bg-white">
@@ -241,7 +228,7 @@ function Hero({ detail }: { detail: ProductDetail }) {
 
           <div className="mt-auto flex flex-wrap gap-3.5">
             <Link
-              to={localePath('/contact', locale)}
+              to="/{-$locale}/contact"
               className="flex items-center gap-3 bg-gold px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-yellow"
             >
               {m.productDetail.contactUs}
@@ -414,7 +401,6 @@ function ProductDetailPage() {
 
 function ProductNotFound() {
   const m = useMessages();
-  const locale = useLocale();
 
   return (
     <main className="bg-sand">
@@ -428,7 +414,7 @@ function ProductNotFound() {
           </h1>
           <p className="m-0 mb-8 font-body text-[19px] leading-[1.6] text-[#555]">{m.productDetail.notFoundBody}</p>
           <Link
-            to={localePath('/products', locale)}
+            to="/{-$locale}/products"
             className="inline-flex items-center gap-3 bg-ink px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:bg-black"
           >
             {m.productDetail.viewAllProducts}

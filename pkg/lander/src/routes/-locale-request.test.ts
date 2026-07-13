@@ -47,12 +47,12 @@ async function request(
 
 describe('locale preference HTTP boundary', () => {
   test.each([
-    ['/products', 'af-ZA', 302, 'af.auto', '/af/products'],
-    ['/products', 'en-ZA', 200, 'en.auto', null],
-    ['/products', undefined, 200, 'en.auto', null],
-    ['/af/about', 'af-ZA', 200, 'af.auto', null],
-    ['/af/about', 'en-ZA', 200, 'af.auto', null],
-    ['/af/about', undefined, 200, 'af.auto', null],
+    ['/products', 'af-ZA', 302, 'af', '/af/products'],
+    ['/products', 'en-ZA', 200, 'en', null],
+    ['/products', undefined, 200, 'en', null],
+    ['/af/about', 'af-ZA', 200, 'af', null],
+    ['/af/about', 'en-ZA', 200, 'af', null],
+    ['/af/about', undefined, 200, 'af', null],
   ] as const)('handles first visit %s with Accept-Language %s', async (path, acceptLanguage, expectedStatus, expectedCookie, expectedLocation) => {
     const response = await request(path, { acceptLanguage });
 
@@ -63,6 +63,7 @@ describe('locale preference HTTP boundary', () => {
   });
 
   test('stored preferences win over mismatched deep links and preserve query strings', async () => {
+    // The legacy `<locale>.<source>` cookie format from earlier visitors must keep working.
     const explicitResponse = await request('/products/CH-450?x=1', { cookie: 'jedidiah_locale=af.explicit' });
     const autoResponse = await request('/af/about', { cookie: 'jedidiah_locale=en.auto' });
 
@@ -72,14 +73,14 @@ describe('locale preference HTTP boundary', () => {
     expect(autoResponse.headers.get('location')).toBe('/about');
   });
 
-  test('explicit language route overwrites an auto preference with a 302 response', async () => {
+  test('explicit language route overwrites a stored preference with a 302 response', async () => {
     const response = await request('/locale/af?returnTo=%2Fproducts%3Fx%3D1', {
-      cookie: 'jedidiah_locale=en.auto',
+      cookie: 'jedidiah_locale=en',
     });
 
     expect(response.status).toBe(302);
     expect(response.headers.get('location')).toBe('/af/products?x=1');
-    expect(response.headers.get('set-cookie')).toContain('jedidiah_locale=af.explicit');
+    expect(response.headers.get('set-cookie')).toContain('jedidiah_locale=af');
   });
 
   test.each([

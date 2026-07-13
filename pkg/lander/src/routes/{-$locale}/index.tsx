@@ -4,22 +4,19 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { FeatureBar } from '../../components/feature-bar.js';
 import { RangeCard } from '../../components/range-card.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
-import { type LocaleRouteContext, localePath, requireRouteContextLocale } from '../../lib/locale.js';
 import { seoHead } from '../../lib/seo.js';
-import { messagesForLocale, useLocale, useMessages } from '../../messages/index.js';
-import { getHomeRanges, type HomeRange } from '../../server/catalog/ranges.js';
-
-async function loadHomePage({ context }: { context: LocaleRouteContext }): Promise<{ ranges: HomeRange[] }> {
-  return { ranges: await getHomeRanges({ data: { locale: requireRouteContextLocale(context) } }) };
-}
+import { messagesForLocale, useMessages } from '../../messages/index.js';
+import { getHomeRanges } from '../../server/catalog/ranges.js';
 
 export const Route = createFileRoute('/{-$locale}/')({
+  // Loader precedes head: TypeScript infers the route's loader data poorly when a context-sensitive head
+  // callback comes first.
+  loader: async ({ context }) => ({ ranges: await getHomeRanges({ data: { locale: context.locale } }) }),
   head: ({ match }) => {
     const m = messagesForLocale(match.context.locale);
 
     return seoHead({ title: m.site.title, description: m.site.description, locale: match.context.locale, path: '/' });
   },
-  loader: loadHomePage,
   component: HomePage,
 });
 
@@ -29,7 +26,6 @@ function ArrowIcon({ className }: { className: string }) {
 
 function Hero() {
   const m = useMessages();
-  const locale = useLocale();
 
   return (
     <section className="relative overflow-hidden bg-ink">
@@ -57,13 +53,13 @@ function Hero() {
           </p>
           <div className="flex flex-wrap gap-4">
             <Link
-              to={localePath('/contact', locale)}
+              to="/{-$locale}/contact"
               className="flex items-center gap-3.5 bg-yellow px-8 py-[18px] font-display text-[19px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
             >
               {m.home.contactUs} <ArrowIcon className="text-ink" />
             </Link>
             <Link
-              to={localePath('/products', locale)}
+              to="/{-$locale}/products"
               className="flex items-center border-2 border-white/[0.55] bg-transparent px-8 py-[18px] font-display text-[19px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:border-yellow hover:text-yellow"
             >
               {m.home.viewEquipmentRange}
@@ -80,7 +76,6 @@ function Hero() {
 
 function EquipmentRanges({ ranges }: { ranges: Awaited<ReturnType<typeof getHomeRanges>> }) {
   const m = useMessages();
-  const locale = useLocale();
 
   return (
     <SandWatermarkSection variant="home-ranges" className="py-24 pb-26 max-nav:py-14">
@@ -98,7 +93,7 @@ function EquipmentRanges({ ranges }: { ranges: Awaited<ReturnType<typeof getHome
             </h2>
           </div>
           <Link
-            to={localePath('/products', locale)}
+            to="/{-$locale}/products"
             className="flex items-center gap-3.5 bg-ink px-[26px] py-[15px] font-display text-[16px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:bg-black"
           >
             {m.home.viewAllProducts} <ArrowIcon className="text-yellow" />
@@ -119,7 +114,6 @@ function EquipmentRanges({ ranges }: { ranges: Awaited<ReturnType<typeof getHome
 
 function CtaBand() {
   const m = useMessages();
-  const locale = useLocale();
 
   return (
     <section className="relative overflow-hidden bg-ink">
@@ -131,7 +125,7 @@ function CtaBand() {
           <p className="m-0 max-w-[560px] font-body text-[19px] text-[#bdbdbd]">{m.home.ctaBody}</p>
         </div>
         <Link
-          to={localePath('/contact', locale)}
+          to="/{-$locale}/contact"
           className="flex flex-none items-center gap-3.5 bg-yellow px-[38px] py-5 font-display text-[20px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
         >
           {m.home.contactUs} <ArrowIcon className="text-ink" />

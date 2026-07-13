@@ -2,16 +2,10 @@ import { createFileRoute, notFound, Outlet } from '@tanstack/react-router';
 
 import { Footer } from '../components/footer.js';
 import { Nav } from '../components/nav.js';
-import { type LocaleRouteContext, requireRouteContextLocale, resolveRouteLocale } from '../lib/locale.js';
+import { resolveRouteLocale } from '../lib/locale.js';
 import { honorLocalePreference } from '../lib/locale-preference.js';
 import { LocaleProvider, messagesForLocale } from '../messages/index.js';
-import { type FooterRange, getFooterRanges } from '../server/catalog/ranges.js';
-
-async function loadLocaleLayout({ context }: { context: LocaleRouteContext }): Promise<{
-  footerRanges: FooterRange[];
-}> {
-  return { footerRanges: await getFooterRanges({ data: { locale: requireRouteContextLocale(context) } }) };
-}
+import { getFooterRanges } from '../server/catalog/ranges.js';
 
 export const Route = createFileRoute('/{-$locale}')({
   beforeLoad: ({ params }) => {
@@ -23,6 +17,7 @@ export const Route = createFileRoute('/{-$locale}')({
 
     return { locale };
   },
+  loader: async ({ context }) => ({ footerRanges: await getFooterRanges({ data: { locale: context.locale } }) }),
   head: ({ params }) => {
     const locale = resolveRouteLocale(params.locale);
     if (!locale) {
@@ -31,7 +26,6 @@ export const Route = createFileRoute('/{-$locale}')({
 
     return { meta: [{ property: 'og:site_name', content: messagesForLocale(locale).site.ogSiteName }] };
   },
-  loader: loadLocaleLayout,
   component: LocaleLayout,
 });
 

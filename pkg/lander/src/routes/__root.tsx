@@ -1,14 +1,14 @@
 import faviconUrl from '@pkg/domain/assets/brand/jedidiah-favicon-yellow.png';
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouterState } from '@tanstack/react-router';
+import { createRootRoute, HeadContent, Outlet, Scripts, useMatch } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
 import { initAnalytics } from '../lib/analytics.js';
-import { CANONICAL_LOCALE, isLocale, type Locale, type LocaleRouteContext } from '../lib/locale.js';
+import { CANONICAL_LOCALE } from '../lib/locale.js';
 import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
 import { getSiteMeta } from '../server/site/site-meta.js';
 import appCss from '../styles/app.css?url';
 
-export const Route = createRootRouteWithContext<LocaleRouteContext>()({
+export const Route = createRootRoute({
   loader: async () => {
     return getSiteMeta();
   },
@@ -50,22 +50,11 @@ function AnalyticsTracker() {
   return null;
 }
 
-function contextLocale(context: unknown): Locale | undefined {
-  if (typeof context !== 'object' || context === null || !('locale' in context)) {
-    return undefined;
-  }
-
-  const locale = context.locale;
-  return isLocale(locale) ? locale : undefined;
-}
-
 function RootDocument() {
-  const locale = useRouterState({
-    select: (state) =>
-      state.matches
-        .map((match) => contextLocale(match.context))
-        .find((value): value is Locale => value !== undefined) ?? CANONICAL_LOCALE,
-  });
+  // The locale layout's beforeLoad supplies context.locale; it is absent when the layout rejected the URL
+  // (unknown prefix -> notFound), so the error document falls back to the canonical language.
+  const localeMatch = useMatch({ from: '/{-$locale}', shouldThrow: false });
+  const locale = localeMatch?.context.locale ?? CANONICAL_LOCALE;
 
   return (
     <html lang={locale}>

@@ -19,8 +19,7 @@ export const en: Messages = {
   },
   language: {
     label: 'Language',
-    english: 'English',
-    afrikaans: 'Afrikaans',
+    names: { en: 'English', af: 'Afrikaans' },
     switchTo: (language) => `Switch to ${language}`,
   },
   footer: {

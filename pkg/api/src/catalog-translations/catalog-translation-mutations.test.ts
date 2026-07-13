@@ -125,6 +125,10 @@ describe('catalog mutation translation triggers', () => {
     finishFirst?.(generatedJson(productTranslation('Ou inhoud.')));
     await firstResponse;
     await waitForTurns();
+
+    const [afterStaleResponse] = await context.db.select().from(products).where(eq(products.id, created.id));
+    expect(afterStaleResponse?.translations.af).toBeUndefined();
+
     context.timers.advance(60_000);
     await waitForModelCalls(context.model, 2);
     await waitForTurns();

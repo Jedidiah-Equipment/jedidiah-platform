@@ -35,7 +35,7 @@ import {
   QuoteUpdateInput,
   ToggleOffDayInput,
 } from '@pkg/schema';
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
@@ -58,7 +58,6 @@ import {
   bookJobSlot,
   createJob as createJobCore,
   moveJobSlot,
-  patchJob,
   removeJobSlot,
   resizeJobSlot,
 } from './job-service.js';
@@ -2190,54 +2189,6 @@ describe('removeJobSlot', () => {
         startDate: '2026-06-05',
       }),
     ]);
-  });
-});
-
-describe('patchJob', () => {
-  test('sets and clears the invoice number without changing other Job fields', async ({ context }) => {
-    const created = await createAcceptedJob(context.db, context.catalog.product.id);
-    await context.db
-      .update(jobs)
-      .set({ description: 'Keep this description', vinNumber: 'VIN-123' })
-      .where(eq(jobs.id, created.id));
-
-    const setResult = await patchJob({
-      actorUserId,
-      db: context.db,
-      input: { id: created.id, invoiceNumber: 'INV-1001' },
-    });
-
-    expect(setResult.job).toMatchObject({
-      description: 'Keep this description',
-      id: created.id,
-      invoiceNumber: 'INV-1001',
-      vinNumber: 'VIN-123',
-    });
-
-    const clearResult = await patchJob({
-      actorUserId,
-      db: context.db,
-      input: { id: created.id, invoiceNumber: null },
-    });
-    expect(clearResult.job.invoiceNumber).toBeNull();
-
-    const events = await context.db
-      .select()
-      .from(auditEvents)
-      .where(sql`${auditEvents.entityType} = 'job' AND ${auditEvents.action} = 'updated'`);
-    expect(events).toHaveLength(2);
-  });
-
-  test('does not update or audit when the patch omits the invoice number', async ({ context }) => {
-    const created = await createAcceptedJob(context.db, context.catalog.product.id);
-
-    await patchJob({ actorUserId, db: context.db, input: { id: created.id } });
-
-    const events = await context.db
-      .select()
-      .from(auditEvents)
-      .where(sql`${auditEvents.entityType} = 'job' AND ${auditEvents.action} = 'updated'`);
-    expect(events).toHaveLength(0);
   });
 });
 

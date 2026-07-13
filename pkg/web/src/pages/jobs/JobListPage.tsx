@@ -1,6 +1,6 @@
 import { hasPermission } from '@pkg/domain';
 import { type JobListInput, JobSortBy, type UUID } from '@pkg/schema';
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
@@ -16,8 +16,6 @@ import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Switch } from '@/components/ui/switch.js';
 import { toSelectOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { jobListPageDescription } from '@/utils/page-descriptions.js';
@@ -70,13 +68,10 @@ export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ se
 const JobListTable: React.FC = () => {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const showMutationError = useApiMutationErrorToast();
-  const { invalidateJobs } = useQueryInvalidation();
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
   const canEditJobs = hasPermission(accessQuery.data, 'job:update');
   const [invoicedOnly, setInvoicedOnly] = useState(false);
-  const patchJobMutation = useMutation(trpc.jobs.patch.mutationOptions());
 
   const getListInputExtras = useCallback(
     (columnFilters: ColumnFiltersState) =>
@@ -127,27 +122,14 @@ const JobListTable: React.FC = () => {
     () => toSelectOptions(customersQuery.data?.items ?? [], (customer) => customer.companyName),
     [customersQuery.data?.items],
   );
-  const handleInvoiceNumberChange = useCallback(
-    async (jobId: UUID, invoiceNumber: string | null) => {
-      try {
-        await patchJobMutation.mutateAsync({ id: jobId, invoiceNumber });
-        await invalidateJobs();
-      } catch (error) {
-        showMutationError(error, 'Unable to update the invoice number.');
-        throw error;
-      }
-    },
-    [invalidateJobs, patchJobMutation, showMutationError],
-  );
   const columns = useMemo(
     () =>
       createJobListColumns({
         canEditJobs,
         canOpenJobs,
         customerOptions,
-        onInvoiceNumberChange: handleInvoiceNumberChange,
       }),
-    [canEditJobs, canOpenJobs, customerOptions, handleInvoiceNumberChange],
+    [canEditJobs, canOpenJobs, customerOptions],
   );
   const columnPinning = useMemo(
     () => ({

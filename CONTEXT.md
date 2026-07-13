@@ -101,6 +101,14 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Locale Preference** is a visitor's per-browser remembered Locale. It is detected from the browser language on first visit; an explicit choice via the language dropdown overrides detection, and the Preference wins over the entered URL's Locale on arrival.
 
+## Changelog
+
+**Changelog** is the per-release, user-facing summary of what changed, generated at release time from the released commits, reviewed by the releaser before publishing, and grouped by **Surface** (App, Lander, Mobile). Changes with no user-visible effect are omitted rather than grouped separately. Avoid Release Notes or What's New for the domain object. A Changelog exists only for production releases.
+
+**Changelog Entry** is one titled, described change within a Surface group of a Changelog.
+
+**Changelog View** is a per-user high-water mark: the release time of the newest Changelog the user has acknowledged. A Changelog is **Unseen** for a user when it is newer than their Changelog View, released within the last 30 days, released after the user's account was created, and the environment is production. In the dialog, finishing or skipping advances the Changelog View past everything shown; closing does not.
+
 ## Cross-Cutting
 
 **Audit Event** records boundary-visible changes for Customers, Jobs, Job Bays, Products, Quotes, Suppliers, and Users. Slot create/resize/remove are not audited; Slot reorders are. Feedback is not audited.

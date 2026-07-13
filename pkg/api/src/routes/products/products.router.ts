@@ -43,15 +43,23 @@ export const productsRouter = router({
 
   create: authorizedProcedure('product:create')
     .input(ProductCreateInput)
-    .mutation(({ ctx, input }) =>
-      mapProductErrors(() => createProduct({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const product = await mapProductErrors(() =>
+        createProduct({ db: ctx.db, input, actorUserId: ctx.session.user.id }),
+      );
+      ctx.catalogTranslationScheduler.mark(`product:${product.id}`);
+      return product;
+    }),
 
   update: authorizedProcedure('product:update')
     .input(ProductUpdateInput)
-    .mutation(({ ctx, input }) =>
-      mapProductErrors(() => updateProduct({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const product = await mapProductErrors(() =>
+        updateProduct({ db: ctx.db, input, actorUserId: ctx.session.user.id }),
+      );
+      ctx.catalogTranslationScheduler.mark(`product:${product.id}`);
+      return product;
+    }),
 
   remove: authorizedProcedure('product:update')
     .input(z.object({ id: UUID }))

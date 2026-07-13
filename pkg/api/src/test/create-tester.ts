@@ -12,6 +12,7 @@ import { type TestAPI, type TestContext, test as testBase } from 'vitest';
 
 import { type Auth, createAuth } from '@/auth/auth.js';
 import { parseBetterAuthRole } from '@/auth/session.js';
+import type { TranslationMarker } from '@/catalog-translations/translation-scheduler.js';
 import type { ChangelogLoader, Context } from '@/trpc/context.js';
 import { type AppRouter, createAppRouterCaller } from '@/trpc/router.js';
 
@@ -57,6 +58,7 @@ export function createTester<T extends object = Record<string, never>>(
       try {
         try {
           const testLog = pino({ level: 'silent' });
+          let catalogTranslationScheduler: TranslationMarker = { mark: () => undefined };
           // The changelog feature is production-only, so tests default to production and supply an
           // empty changelog set; the changelog router tests override these per caller.
           const callerContext: TesterContext = {
@@ -64,6 +66,7 @@ export function createTester<T extends object = Record<string, never>>(
               createAppRouterCaller({
                 access: null,
                 appEnv: 'production',
+                catalogTranslationScheduler,
                 changelogLoader: () => [],
                 db: databaseClient.db,
                 log: testLog,
@@ -77,6 +80,7 @@ export function createTester<T extends object = Record<string, never>>(
                   userId: session.user.id,
                 }),
                 appEnv: overrides.appEnv ?? 'production',
+                catalogTranslationScheduler,
                 changelogLoader: overrides.changelogLoader ?? (() => []),
                 db: databaseClient.db,
                 log: testLog,
@@ -93,6 +97,10 @@ export function createTester<T extends object = Record<string, never>>(
             db: databaseClient.db,
             auth,
           });
+          const translationContext = context as { catalogTranslationScheduler?: TranslationMarker };
+          if (translationContext.catalogTranslationScheduler) {
+            catalogTranslationScheduler = translationContext.catalogTranslationScheduler;
+          }
 
           await use({
             ...callerContext,

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { isTranslationStale, productSourceHash, selectTranslated } from './catalog-translation.js';
+import {
+  isTranslationStale,
+  productRangeSourceHash,
+  productRangeVariantSourceHash,
+  productSourceHash,
+  selectTranslated,
+} from './catalog-translation.js';
 
 const canonicalProduct = {
   name: 'Silage Trailer',
@@ -65,5 +71,23 @@ describe('translation selection and staleness', () => {
     expect(isTranslationStale('current', undefined)).toBe(false);
     expect(isTranslationStale('current', { sourceHash: 'current' })).toBe(false);
     expect(isTranslationStale('current', { sourceHash: 'old' })).toBe(true);
+  });
+});
+
+describe('range and variant source hashes', () => {
+  it('changes a Range hash only when its Canonical Text changes', () => {
+    const original = productRangeSourceHash({ name: 'Silage Trailers', description: 'Built for harvest.' });
+
+    expect(productRangeSourceHash({ name: 'Silage Trailers', description: 'Built for harvest.' })).toBe(original);
+    expect(productRangeSourceHash({ name: 'Silage Trailers', description: 'Updated copy.' })).not.toBe(original);
+  });
+
+  it('hashes a Variant name', () => {
+    expect(productRangeVariantSourceHash({ name: 'Heavy Duty' })).toBe(
+      productRangeVariantSourceHash({ name: 'Heavy Duty' }),
+    );
+    expect(productRangeVariantSourceHash({ name: 'Heavy Duty' })).not.toBe(
+      productRangeVariantSourceHash({ name: 'Compact' }),
+    );
   });
 });

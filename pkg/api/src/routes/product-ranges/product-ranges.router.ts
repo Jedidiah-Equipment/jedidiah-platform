@@ -35,11 +35,19 @@ export const productRangesRouter = router({
 
   create: authorizedProcedure('product_range:create')
     .input(ProductRangeCreateInput)
-    .mutation(({ ctx, input }) => mapProductRangeErrors(() => createProductRange({ db: ctx.db, input }))),
+    .mutation(async ({ ctx, input }) => {
+      const range = await mapProductRangeErrors(() => createProductRange({ db: ctx.db, input }));
+      ctx.catalogTranslationScheduler.mark(`product_range:${range.id}`);
+      return range;
+    }),
 
   update: authorizedProcedure('product_range:update')
     .input(ProductRangeUpdateInput)
-    .mutation(({ ctx, input }) => mapProductRangeErrors(() => updateProductRange({ db: ctx.db, input }))),
+    .mutation(async ({ ctx, input }) => {
+      const range = await mapProductRangeErrors(() => updateProductRange({ db: ctx.db, input }));
+      ctx.catalogTranslationScheduler.mark(`product_range:${range.id}`);
+      return range;
+    }),
 
   remove: authorizedProcedure('product_range:update')
     .input(z.object({ id: UUID }))
@@ -51,11 +59,19 @@ export const productRangesRouter = router({
 
   createVariant: authorizedProcedure('product_range:update')
     .input(ProductRangeVariantCreateInput)
-    .mutation(({ ctx, input }) => mapProductRangeErrors(() => createProductRangeVariant({ db: ctx.db, input }))),
+    .mutation(async ({ ctx, input }) => {
+      const variant = await mapProductRangeErrors(() => createProductRangeVariant({ db: ctx.db, input }));
+      ctx.catalogTranslationScheduler.mark(`product_range_variant:${variant.id}`);
+      return variant;
+    }),
 
   updateVariant: authorizedProcedure('product_range:update')
     .input(ProductRangeVariantUpdateInput)
-    .mutation(({ ctx, input }) => mapProductRangeErrors(() => updateProductRangeVariant({ db: ctx.db, input }))),
+    .mutation(async ({ ctx, input }) => {
+      const variant = await mapProductRangeErrors(() => updateProductRangeVariant({ db: ctx.db, input }));
+      ctx.catalogTranslationScheduler.mark(`product_range_variant:${variant.id}`);
+      return variant;
+    }),
 
   removeVariant: authorizedProcedure('product_range:update')
     .input(z.object({ id: UUID, rangeId: UUID }))

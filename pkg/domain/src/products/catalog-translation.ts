@@ -1,6 +1,8 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 
+export type CatalogTranslationKey = `product:${string}` | `product_range:${string}` | `product_range_variant:${string}`;
+
 export type TranslatableProductFields = {
   category: string | null;
   description: string | null;
@@ -11,6 +13,10 @@ export type TranslatableProductFields = {
 };
 
 export type TranslatableAssemblyFields = { id: string; name: string };
+
+export type TranslatableProductRangeFields = { description: string | null; name: string };
+
+export type TranslatableProductRangeVariantFields = { name: string };
 
 export function productSourceHash(
   product: TranslatableProductFields,
@@ -26,7 +32,15 @@ export function productSourceHash(
     assemblies.toSorted((left, right) => left.id.localeCompare(right.id)).map(({ name }) => name),
   ];
 
-  return bytesToHex(sha256(utf8ToBytes(JSON.stringify(canonicalText))));
+  return catalogSourceHash(canonicalText);
+}
+
+export function productRangeSourceHash(range: TranslatableProductRangeFields): string {
+  return catalogSourceHash([range.name, range.description]);
+}
+
+export function productRangeVariantSourceHash(variant: TranslatableProductRangeVariantFields): string {
+  return catalogSourceHash([variant.name]);
 }
 
 export function isTranslationStale(currentHash: string, translation: { sourceHash: string } | undefined): boolean {
@@ -35,4 +49,8 @@ export function isTranslationStale(currentHash: string, translation: { sourceHas
 
 export function selectTranslated<T>(canonical: T, translated: T | null | undefined): T {
   return translated ?? canonical;
+}
+
+function catalogSourceHash(canonicalText: unknown): string {
+  return bytesToHex(sha256(utf8ToBytes(JSON.stringify(canonicalText))));
 }

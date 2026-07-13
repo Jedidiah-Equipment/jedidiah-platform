@@ -33,6 +33,7 @@ const config: ApiConfig = {
   OPENAI_API_KEY: 'test-key',
   OPENAI_MODEL: 'gpt-5.5',
   OPENAI_REASONING_EFFORT: 'low',
+  OPENAI_TRANSLATION_MODEL: 'gpt-5.5',
   POSTHOG_HOST: 'https://us.i.posthog.com',
   PORT: 7002,
   LOG_LEVEL: 'silent',

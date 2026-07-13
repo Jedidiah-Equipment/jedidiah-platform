@@ -5,11 +5,13 @@ import type { AppEnv, Changelog, UserAccessSummary } from '@pkg/schema';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 
 import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../auth/session.js';
+import type { TranslationMarker } from '../catalog-translations/translation-scheduler.js';
 
 /** Reads the bundled Changelog files. Injected so the changelog router can be tested without the filesystem. */
 export type ChangelogLoader = () => Changelog[];
 
 export type ContextDependencies = {
+  catalogTranslationScheduler?: TranslationMarker;
   appEnv: AppEnv;
   changelogLoader: ChangelogLoader;
   storage: StorageAdapter;
@@ -18,6 +20,7 @@ export type ContextDependencies = {
 export type Context = {
   access: UserAccessSummary | null;
   appEnv: AppEnv;
+  catalogTranslationScheduler: TranslationMarker;
   changelogLoader: ChangelogLoader;
   db: typeof db;
   log: CreateFastifyContextOptions['req']['log'];
@@ -38,6 +41,7 @@ export function createContextFactory(dependencies: ContextDependencies) {
     return {
       access,
       appEnv: dependencies.appEnv,
+      catalogTranslationScheduler: dependencies.catalogTranslationScheduler ?? NOOP_TRANSLATION_MARKER,
       changelogLoader: dependencies.changelogLoader,
       db,
       log: req.log,
@@ -46,6 +50,8 @@ export function createContextFactory(dependencies: ContextDependencies) {
     };
   };
 }
+
+const NOOP_TRANSLATION_MARKER: TranslationMarker = { mark: () => undefined };
 
 export const createContext = createContextFactory({
   appEnv: 'development',

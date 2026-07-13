@@ -13,6 +13,7 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsc -b && tsc-alias -p tsconfig.json",
     "start": "node dist/main.js",
+    "translate:backfill": "tsx src/scripts/translate-backfill.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },

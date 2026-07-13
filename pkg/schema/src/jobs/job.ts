@@ -5,7 +5,12 @@ import { DateIso, DateOnlyIso } from '../common/date.js';
 import { Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
-import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
+import {
+  nullableTrimmedText,
+  nullableTrimmedTextInput,
+  nullableTrimmedTextInputOptional,
+  requiredTrimmedText,
+} from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { JobDocument } from '../documents/document.js';
@@ -404,6 +409,9 @@ export const JobVinNumber = nullableTrimmedText();
 export type JobDescription = z.infer<typeof JobDescription>;
 export const JobDescription = nullableTrimmedText();
 
+export type JobInvoiceNumber = z.infer<typeof JobInvoiceNumber>;
+export const JobInvoiceNumber = nullableTrimmedText();
+
 export function formatProductSerialNumber({
   prefix,
   sequence,
@@ -446,6 +454,7 @@ export const Job = z.object({
   productSerialSequence: ProductSerialSequence.nullable(),
   productSerialYear: ProductSerialYear.nullable(),
   quoteId: UUID,
+  invoiceNumber: JobInvoiceNumber,
   vinNumber: JobVinNumber,
   description: JobDescription,
   createdAt: DateIso,
@@ -621,6 +630,7 @@ export const JobColumnFilters = z
   .object({
     code: z.string().trim().optional(),
     customerId: UUID.optional(),
+    invoiceNumber: z.string().trim().optional(),
     productSerialNumber: z.string().trim().optional(),
   })
   .default({});
@@ -629,9 +639,8 @@ export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
     createdAtStart: DateIso.optional(),
+    invoicedOnly: z.boolean().optional(),
     jobId: UUID.optional(),
-    /** Keep only Jobs with no Work Slot — the "lost" Jobs missing from the planning board. */
-    unscheduledOnly: z.boolean().optional(),
   })
   .default({});
 
@@ -690,6 +699,19 @@ export const JobUpdateInput = z
 
 export type JobUpdateResult = z.infer<typeof JobUpdateResult>;
 export const JobUpdateResult = z.object({
+  job: Job,
+});
+
+export type JobPatchInput = z.infer<typeof JobPatchInput>;
+export const JobPatchInput = z
+  .object({
+    id: UUID,
+    invoiceNumber: nullableTrimmedTextInputOptional(),
+  })
+  .strict();
+
+export type JobPatchResult = z.infer<typeof JobPatchResult>;
+export const JobPatchResult = z.object({
   job: Job,
 });
 

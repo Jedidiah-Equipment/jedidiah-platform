@@ -16,6 +16,7 @@ import {
   listJobCustomerOptions,
   listJobs,
   moveJobSlot,
+  patchJob,
   previewBoard,
   type QuoteCoreError,
   removeBayCalendarException,
@@ -44,6 +45,7 @@ import {
   JobCreateInput,
   JobCustomerOptionListInput,
   JobListInput,
+  JobPatchInput,
   JobUpdateInput,
   MoveJobSlotInput,
   RemoveBayCalendarExceptionInput,
@@ -140,6 +142,12 @@ export const jobsRouter = router({
     .input(JobUpdateInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => updateJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
+  patch: authorizedProcedure('job:update')
+    .input(JobPatchInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => patchJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
   bookSlot: authorizedProcedure('job:schedule')

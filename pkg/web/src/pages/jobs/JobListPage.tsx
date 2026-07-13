@@ -1,6 +1,6 @@
 import { hasPermission } from '@pkg/domain';
 import { type JobListInput, JobSortBy, type UUID } from '@pkg/schema';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
@@ -16,6 +16,8 @@ import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Switch } from '@/components/ui/switch.js';
 import { toSelectOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { jobListPageDescription } from '@/utils/page-descriptions.js';
@@ -68,10 +70,13 @@ export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ se
 const JobListTable: React.FC = () => {
   const trpc = useTRPC();
   const navigate = useNavigate();
+  const showMutationError = useApiMutationErrorToast();
+  const { invalidateJobs } = useQueryInvalidation();
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
   const canEditJobs = hasPermission(accessQuery.data, 'job:update');
-  const [unscheduledOnly, setUnscheduledOnly] = useState(false);
+  const [invoicedOnly, setInvoicedOnly] = useState(false);
+  const patchJobMutation = useMutation(trpc.jobs.patch.mutationOptions());
 
   const getListInputExtras = useCallback(
     (columnFilters: ColumnFiltersState) =>
@@ -79,12 +84,13 @@ const JobListTable: React.FC = () => {
         columnFilters: {
           code: getColumnFilterValue(columnFilters, 'code'),
           customerId: getColumnFilterValue(columnFilters, 'customer'),
+          invoiceNumber: getColumnFilterValue(columnFilters, 'invoiceNumber'),
           productSerialNumber: getColumnFilterValue(columnFilters, 'productSerialNumber'),
         },
-        filters: { unscheduledOnly },
+        filters: { invoicedOnly },
         include: { scheduleState: true },
       }) satisfies Pick<JobListInput, 'columnFilters' | 'filters' | 'include'>,
-    [unscheduledOnly],
+    [invoicedOnly],
   );
 
   const tableController = useServerSideTableController({
@@ -121,9 +127,27 @@ const JobListTable: React.FC = () => {
     () => toSelectOptions(customersQuery.data?.items ?? [], (customer) => customer.companyName),
     [customersQuery.data?.items],
   );
+  const handleInvoiceNumberChange = useCallback(
+    async (jobId: UUID, invoiceNumber: string | null) => {
+      try {
+        await patchJobMutation.mutateAsync({ id: jobId, invoiceNumber });
+        await invalidateJobs();
+      } catch (error) {
+        showMutationError(error, 'Unable to update the invoice number.');
+        throw error;
+      }
+    },
+    [invalidateJobs, patchJobMutation, showMutationError],
+  );
   const columns = useMemo(
-    () => createJobListColumns({ canEditJobs, canOpenJobs, customerOptions }),
-    [canEditJobs, canOpenJobs, customerOptions],
+    () =>
+      createJobListColumns({
+        canEditJobs,
+        canOpenJobs,
+        customerOptions,
+        onInvoiceNumberChange: handleInvoiceNumberChange,
+      }),
+    [canEditJobs, canOpenJobs, customerOptions, handleInvoiceNumberChange],
   );
   const columnPinning = useMemo(
     () => ({
@@ -156,25 +180,27 @@ const JobListTable: React.FC = () => {
     },
   });
 
-  const handleUnscheduledOnlyChange = (checked: boolean) => {
-    setUnscheduledOnly(checked);
+  const handleInvoicedOnlyChange = (checked: boolean) => {
+    setInvoicedOnly(checked);
     tableController.setPageIndex(0);
   };
 
   return (
     <DataTable
-      emptyMessage={unscheduledOnly ? 'No unscheduled jobs.' : 'No jobs found.'}
+      emptyMessage={invoicedOnly ? 'No invoiced jobs.' : 'No jobs found.'}
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
       isLoading={isLoading}
       onRowClick={canOpenJobs ? (job) => void navigate({ search: { job: job.id }, to: '/jobs/list' }) : undefined}
       rightSection={
-        <label
-          className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"
-          htmlFor="jobs-unscheduled-only"
-        >
-          <Switch checked={unscheduledOnly} id="jobs-unscheduled-only" onCheckedChange={handleUnscheduledOnlyChange} />
-          Unscheduled only
+        <label className="flex items-center gap-2 text-sm font-medium" htmlFor="jobs-is-invoiced">
+          <Switch
+            checked={invoicedOnly}
+            id="jobs-is-invoiced"
+            onCheckedChange={(checked) => handleInvoicedOnlyChange(checked === true)}
+            size="sm"
+          />
+          Is Invoiced
         </label>
       }
       tableClassName="min-w-[1120px]"
@@ -187,7 +213,7 @@ const JobListTable: React.FC = () => {
 
 function getColumnFilterValue(
   columnFilters: ColumnFiltersState,
-  id: 'code' | 'customer' | 'productSerialNumber',
+  id: 'code' | 'customer' | 'invoiceNumber' | 'productSerialNumber',
 ): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 

@@ -512,6 +512,13 @@
       "when": 1783529074319,
       "tag": "0072_lame_luminals",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1783926481929,
+      "tag": "0073_broken_deathbird",
+      "breakpoints": true
     }
   ]
 }

@@ -46,7 +46,7 @@ import {
   type SortDirection,
   UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, or, type SQL, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -173,6 +173,7 @@ async function listJobSummariesByIds({
         createdAt: true,
         id: true,
         code: true,
+        invoiceNumber: true,
         productId: true,
         productSerialNumber: true,
         productSerialPrefix: true,
@@ -320,6 +321,7 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
       createdAt: true,
       id: true,
       code: true,
+      invoiceNumber: true,
       productId: true,
       productSerialNumber: true,
       productSerialPrefix: true,
@@ -362,8 +364,8 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
 
   const total = await db.$count(jobs, where);
 
-  // Schedule-state is a Slot projection, so it is computed only when a caller opts in and only for
-  // the returned page — the Gantt and BookSlotDialog share this read and must stay projection-free.
+  // Schedule state is a Slot projection, so resolve it only for the returned page. Callers such as
+  // the Gantt and booking dialog omit the include and must stay projection-free.
   const scheduleStates = input.include?.scheduleState
     ? await computeJobScheduleStates({ db, jobIds: rows.map((row) => UUID.parse(row.id)) })
     : null;
@@ -394,13 +396,11 @@ async function computeJobScheduleStates({
  * Body of a correlated subquery over a Job's Work Slots, for use inside a `db.query.jobs` (RQB) read.
  * The inner table gets a caller-supplied raw alias because the RQB rewrites drizzle column refs inside
  * a raw `sql` fragment to the outer Job alias — only `${jobs.id}` should correlate outward. Idle Slots
- * carry a null jobId, so `kind = 'work'` is the Work-Slot filter. `projection` is the inner select list
- * (`count(*)` for sorting, `1` for an existence check). This is the single definition of "a Job's
- * Work Slots" shared by the `scheduledSlots` sort and the `unscheduledOnly` filter.
+ * carry a null jobId, so `kind = 'work'` is the Work-Slot filter.
  */
-function jobWorkSlotsSubquery(alias: 'sort_slot' | 'filter_slot', projection: SQL): SQL {
-  const slot = sql.raw(`"${alias}"`);
-  return sql`select ${projection} from ${jobSlots} ${slot} where ${slot}."job_id" = ${jobs.id} and ${slot}."kind" = 'work'`;
+function jobWorkSlotCountSubquery(): SQL {
+  const slot = sql.raw('"sort_slot"');
+  return sql`select count(*) from ${jobSlots} ${slot} where ${slot}."job_id" = ${jobs.id} and ${slot}."kind" = 'work'`;
 }
 
 function jobQuoteWorkTitleSearchCondition(alias: 'search_quote', search: string): SQL {
@@ -436,10 +436,8 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     conditions.push(gte(jobs.createdAt, new Date(input.filters.createdAtStart)));
   }
 
-  if (input.filters.unscheduledOnly) {
-    // Existence check, not `count(*) = 0`: `not exists` stops at the first Work Slot instead of
-    // scanning them all — cheaper on the unindexed `job_slot.job_id` as Jobs accumulate bay slots.
-    conditions.push(sql`not exists (${jobWorkSlotsSubquery('filter_slot', sql`1`)})`);
+  if (input.filters.invoicedOnly) {
+    conditions.push(isNotNull(jobs.invoiceNumber));
   }
 
   if (input.columnFilters.customerId) {
@@ -449,6 +447,12 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   if (input.columnFilters.productSerialNumber) {
     conditions.push(
       createEscapedContainsSearchCondition(sql`${jobs.productSerialNumber}`, input.columnFilters.productSerialNumber),
+    );
+  }
+
+  if (input.columnFilters.invoiceNumber) {
+    conditions.push(
+      createEscapedContainsSearchCondition(sql`${jobs.invoiceNumber}`, input.columnFilters.invoiceNumber),
     );
   }
 
@@ -486,6 +490,7 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
       createdAt: true,
       code: true,
       id: true,
+      invoiceNumber: true,
       productId: true,
       productSerialNumber: true,
       productSerialPrefix: true,
@@ -715,7 +720,7 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     id: sql`${jobs.id}`,
     productSerialNumber: sql`${jobs.productSerialNumber}`,
     // Total Work Slots per Job; ascending puts the unscheduled (count 0) Jobs first.
-    scheduledSlots: sql`(${jobWorkSlotsSubquery('sort_slot', sql`count(*)`)})`,
+    scheduledSlots: sql`(${jobWorkSlotCountSubquery()})`,
   } as const satisfies Record<JobSortBy, SQL>;
 
   return columns[sortBy];

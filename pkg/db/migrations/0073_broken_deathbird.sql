@@ -1,0 +1,2 @@
+ALTER TABLE "job" ADD COLUMN "invoice_number" text;--> statement-breakpoint
+ALTER TABLE "job" ADD CONSTRAINT "job_invoice_number_nonempty" CHECK ("job"."invoice_number" IS NULL OR length(trim("job"."invoice_number")) > 0);

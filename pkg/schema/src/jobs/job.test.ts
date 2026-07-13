@@ -38,6 +38,7 @@ import {
   JobDetail,
   JobListFilters,
   JobListInput,
+  JobPatchInput,
   JobSortBy,
   MoveJobSlotInput,
   MoveJobSlotResult,
@@ -74,6 +75,7 @@ describe('Job', () => {
         code: 1,
         createdAt: '2026-06-01T00:00:00.000Z',
         id: '00000000-0000-4000-8000-000000000001',
+        invoiceNumber: null,
         productId: '00000000-0000-4000-8000-000000000002',
         productSerialNumber: 'SG1836260009',
         productSerialPrefix: 'SG1836',
@@ -100,6 +102,7 @@ describe('Job', () => {
         code: 2,
         createdAt: '2026-06-01T00:00:00.000Z',
         id: '00000000-0000-4000-8000-000000000001',
+        invoiceNumber: null,
         productId: null,
         productSerialNumber: null,
         productSerialPrefix: null,
@@ -419,6 +422,10 @@ describe('JobListFilters', () => {
       jobId: '00000000-0000-4000-8000-000000000001',
     });
   });
+
+  it('accepts the invoiced-only filter', () => {
+    expect(JobListFilters.parse({ invoicedOnly: true })).toEqual({ invoicedOnly: true });
+  });
 });
 
 describe('JobColumnFilters', () => {
@@ -432,6 +439,7 @@ describe('JobColumnFilters', () => {
         columnFilters: {
           code: '  JOB-00042  ',
           customerId: '00000000-0000-4000-8000-000000000001',
+          invoiceNumber: '  INV-0042  ',
           productSerialNumber: '  SN-0042  ',
         },
         sortBy: 'productSerialNumber',
@@ -440,11 +448,22 @@ describe('JobColumnFilters', () => {
       columnFilters: {
         code: 'JOB-00042',
         customerId: '00000000-0000-4000-8000-000000000001',
+        invoiceNumber: 'INV-0042',
         productSerialNumber: 'SN-0042',
       },
       sortBy: 'productSerialNumber',
     });
     expect(JobSortBy.parse('productSerialNumber')).toBe('productSerialNumber');
+  });
+});
+
+describe('JobPatchInput', () => {
+  it('trims invoice numbers and turns blank values into null', () => {
+    const id = '00000000-0000-4000-8000-000000000001';
+
+    expect(JobPatchInput.parse({ id, invoiceNumber: '  INV-0042  ' })).toEqual({ id, invoiceNumber: 'INV-0042' });
+    expect(JobPatchInput.parse({ id, invoiceNumber: '  ' })).toEqual({ id, invoiceNumber: null });
+    expect(JobPatchInput.parse({ id })).toEqual({ id });
   });
 });
 

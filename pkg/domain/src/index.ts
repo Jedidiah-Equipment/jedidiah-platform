@@ -34,7 +34,6 @@ export * from './products/product-range-image-policy.js';
 export * from './products/product-range-logo-policy.js';
 export * from './quotes/effective-bom.js';
 export * from './quotes/quote-display.js';
-export * from './quotes/quote-email-prompt.js';
 export * from './quotes/quote-lock.js';
 export * from './quotes/quote-pricing.js';
 export * from './quotes/quote-start-job.js';

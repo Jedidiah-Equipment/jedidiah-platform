@@ -306,7 +306,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
               ) : null}
             </Tabs>
             <form.Subscribe selector={(state) => computeQuoteSummary({ quote, values: state.values })}>
-              {(summary) => <QuoteRightPanel flushAutosave={autosave.flush} quote={quote} summary={summary} />}
+              {(summary) => <QuoteRightPanel quote={quote} summary={summary} />}
             </form.Subscribe>
           </div>
         </FieldGroup>

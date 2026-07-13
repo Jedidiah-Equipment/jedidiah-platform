@@ -26,7 +26,6 @@ export * from './products/product-image-service.js';
 export * from './products/product-service.js';
 export * from './quotes/quote-document.js';
 export * from './quotes/quote-document-generation.js';
-export * from './quotes/quote-email-draft.js';
 export * from './quotes/quote-errors.js';
 export * from './quotes/quote-read-service.js';
 export * from './quotes/quote-report-service.js';

@@ -1,75 +1,42 @@
-import * as core from '@pkg/core';
-import { createUserAccessSummary } from '@pkg/domain';
-import { describe, expect } from 'vitest';
-import { z } from 'zod';
-import { createTester } from '@/test/create-tester.js';
-import { createCustomerFixture } from '@/test/domain-fixtures.js';
-import { createActorUser, createAiContext } from '@/test/tools.js';
-import { getCustomerDefinition, getCustomerTool } from './get-customer.js';
+import { Customer } from '@pkg/schema';
+import { describe, expect, test } from 'vitest';
 
-const test = createTester(async ({ db }) => {
-  await createActorUser(db);
+import { GetCustomerInput, GetCustomerResponse, getCustomerDefinition, toGetCustomerResponse } from './get-customer.js';
 
-  return { db };
+const CUSTOMER_ID = '00000000-0000-4000-8000-000000000101';
+
+const customer = Customer.parse({
+  address: '1 Quarry Road',
+  companyName: 'Acme Mining',
+  contactPerson: 'A. Person',
+  createdAt: '2026-07-10T08:00:00.000Z',
+  email: 'buyer@example.com',
+  id: CUSTOMER_ID,
+  notes: 'Internal note',
+  phone: '+27110000000',
+  thumbnailDataUrl: 'data:image/webp;base64,YQ==',
+  updatedAt: '2026-07-10T09:00:00.000Z',
+  vatNumber: 'VAT-1',
 });
 
-describe('getCustomerTool', () => {
-  test('returns the same customer result shape as customers.get', async ({ context }) => {
-    const created = await createCustomerFixture(context.db, 'Acme Mining');
-    const access = createUserAccessSummary({
-      role: 'admin',
-      userId: 'test-user-id',
-    });
-
-    const [toolResult, trpcResult] = await Promise.all([
-      getCustomerTool.handler({ id: created.id }, createAiContext(context.db, access)),
-      core.getCustomer({ db: context.db, id: created.id }),
-    ]);
-
-    expect(toolResult).toEqual(trpcResult);
+describe('getCustomer contract', () => {
+  test('requires a Customer UUID and describes the find follow-up', () => {
+    expect(GetCustomerInput.parse({ id: CUSTOMER_ID })).toEqual({ id: CUSTOMER_ID });
+    expect(() => GetCustomerInput.parse({ id: 'bad-id' })).toThrow();
+    expect(getCustomerDefinition.description).toContain('findCustomers');
   });
 
-  test('surfaces the core not-found message for missing customers', async ({ context }) => {
-    const access = createUserAccessSummary({
-      role: 'admin',
-      userId: 'test-user-id',
+  test('returns full Customer details without thumbnail data', () => {
+    const response = toGetCustomerResponse(customer);
+
+    expect(GetCustomerResponse.parse(response)).toEqual(response);
+    expect(response).toMatchObject({
+      address: '1 Quarry Road',
+      companyName: 'Acme Mining',
+      id: CUSTOMER_ID,
+      links: { app: `/customers/${CUSTOMER_ID}/edit` },
+      notes: 'Internal note',
     });
-
-    await expect(
-      getCustomerTool.handler(
-        {
-          id: '00000000-0000-4000-8000-000000000001',
-        },
-        createAiContext(context.db, access),
-      ),
-    ).rejects.toThrow('Customer not found: 00000000-0000-4000-8000-000000000001');
-  });
-
-  test('rejects invalid customer get args', async ({ context }) => {
-    const access = createUserAccessSummary({
-      role: 'admin',
-      userId: 'test-user-id',
-    });
-
-    await expect(getCustomerTool.handler({ id: 'bad-id' }, createAiContext(context.db, access))).rejects.toBeInstanceOf(
-      z.ZodError,
-    );
-  });
-
-  test('projects Customer metadata using public labels', () => {
-    expect(
-      (getCustomerDefinition.projectResult as (value: unknown) => unknown)({
-        companyName: 'Acme Mining',
-        id: '00000000-0000-4000-8000-000000000005',
-      }),
-    ).toMatchObject({
-      links: [
-        {
-          entity: 'Customer',
-          href: '/customers/00000000-0000-4000-8000-000000000005/edit',
-          label: 'Acme Mining',
-        },
-      ],
-    });
+    expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
   });
 });

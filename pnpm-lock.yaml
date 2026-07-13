@@ -58,9 +58,6 @@ importers:
       '@ai-sdk/openai':
         specifier: 3.0.82
         version: 3.0.82(zod@4.4.3)
-      '@openai/agents':
-        specifier: ^0.11.8
-        version: 0.11.8(ws@8.21.0)(zod@4.4.3)
       '@pkg/core':
         specifier: workspace:*
         version: link:../core
@@ -76,19 +73,10 @@ importers:
       ai:
         specifier: 6.0.221
         version: 6.0.221(zod@4.4.3)
-      js-tiktoken:
-        specifier: ^1.0.21
-        version: 1.0.21
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      dotenv:
-        specifier: ^17.4.2
-        version: 17.4.2
-      pino:
-        specifier: ^10.3.1
-        version: 10.3.1
       tsc-alias:
         specifier: ^1.9.0
         version: 1.9.0
@@ -113,9 +101,6 @@ importers:
       '@fastify/multipart':
         specifier: ^10.0.0
         version: 10.0.0
-      '@openai/agents':
-        specifier: ^0.11.8
-        version: 0.11.8(ws@8.21.0)(zod@4.4.3)
       '@pkg/ai':
         specifier: workspace:*
         version: link:../ai
@@ -140,9 +125,6 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
-      openai:
-        specifier: ^6.45.0
-        version: 6.45.0(@aws-sdk/credential-provider-node@3.972.64)(@smithy/signature-v4@5.6.2)(ws@8.21.0)(zod@4.4.3)
       pino:
         specifier: ^10.3.1
         version: 10.3.1
@@ -152,9 +134,6 @@ importers:
       resend:
         specifier: ^6.17.1
         version: 6.17.1
-      zod-to-json-schema:
-        specifier: ^3.25.2
-        version: 3.25.2(zod@4.4.3)
     devDependencies:
       '@ai-sdk/provider':
         specifier: 3.0.13
@@ -2403,29 +2382,6 @@ packages:
   '@open-draft/until@2.1.0':
     resolution: {integrity: sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg==}
 
-  '@openai/agents-core@0.11.8':
-    resolution: {integrity: sha512-TrE34RXXPoWYv2PjXf5hq3Eq+uvRJMNiY+Q5WBgEPjAg60yt2hya8cS2I8qkO6i25MjNJl37a25X0vL/gs5Wdg==}
-    peerDependencies:
-      zod: ^4.0.0
-    peerDependenciesMeta:
-      zod:
-        optional: true
-
-  '@openai/agents-openai@0.11.8':
-    resolution: {integrity: sha512-XjHCnJPGapgZBlh8y5oxU7zV0hrAQTF5im6HpUwaPcH5CeRFLtc06VXLso0vJ5G3g9e/J5gIh3S1iAxiJqEAVQ==}
-    peerDependencies:
-      zod: ^4.0.0
-
-  '@openai/agents-realtime@0.11.8':
-    resolution: {integrity: sha512-i1qEGUE8GTW0neWgAc1aj/3wZFtstz8bVG2BvVbU/BzQbyhZV8j3CvndkMJGFfgeobvVmn2qGTV5Ry6ibfuxeQ==}
-    peerDependencies:
-      zod: ^4.0.0
-
-  '@openai/agents@0.11.8':
-    resolution: {integrity: sha512-D4XHF2g+Ub/L9fRJT/xpuiCqHyxiKzZbi0BqQxnso42t+J049O/OSvVzFBcRskF4uPFAvs0TOOB7KBbanCwaYQ==}
-    peerDependencies:
-      zod: ^4.0.0
-
   '@opentelemetry/api@1.9.1':
     resolution: {integrity: sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==}
     engines: {node: '>=8.0.0'}
@@ -4199,9 +4155,6 @@ packages:
 
   '@types/validate-npm-package-name@4.0.2':
     resolution: {integrity: sha512-lrpDziQipxCEeK5kWxvljWYhUvOiB2A9izZd9B2AFarYAkqZshb4lPbRs7zKEic6eGtH8V/2qJW+dPp9OtF6bw==}
-
-  '@types/ws@8.18.1':
-    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
@@ -6214,9 +6167,6 @@ packages:
   js-md5@0.8.3:
     resolution: {integrity: sha512-qR0HB5uP6wCuRMrWPTrkMaev7MJZwJuuw4fnwAzRgP4J4/F8RwtodOKpGp4XpqsLBFzzgqIO42efFAyz2Et6KQ==}
 
-  js-tiktoken@1.0.21:
-    resolution: {integrity: sha512-biOj/6M5qdgx5TKjDnFT1ymSpM5tbd3ylwDtrQvFQSu0Z7bBYko2dF+W/aUkXUPuk6IVpRxk/3Q2sHOzGlS36g==}
-
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
@@ -6969,37 +6919,6 @@ packages:
   open@7.4.2:
     resolution: {integrity: sha512-MVHddDVweXZF3awtlAS+6pgKLlm/JgxZ90+/NBurBoQctVOOB/zDdVjcyPzQ+0laDGbsWgrRkflI65sQeOgT9Q==}
     engines: {node: '>=8'}
-
-  openai@6.42.0:
-    resolution: {integrity: sha512-1WFEt/uXMXOLhYRNkgJWo08Y2YNvNwpVU72K7ibrWgWpNOXd4VojXLbe6SQ4bLiUQ3Y8jz4IiyVkylJCL1DtZg==}
-    peerDependencies:
-      ws: ^8.18.0
-      zod: ^3.25 || ^4.0
-    peerDependenciesMeta:
-      ws:
-        optional: true
-      zod:
-        optional: true
-
-  openai@6.45.0:
-    resolution: {integrity: sha512-5DQVNErssk0afNpTTHUm/qZPU4iKR9OYdNid8Ib4puq4gHNNvGWZht2zY4h9a8JMF949Ik6m8gQutllVPbjdnw==}
-    peerDependencies:
-      '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
-      '@smithy/hash-node': '>=4.3.0 <5'
-      '@smithy/signature-v4': '>=5.4.0 <6'
-      ws: ^8.18.0
-      zod: ^3.25 || ^4.0
-    peerDependenciesMeta:
-      '@aws-sdk/credential-provider-node':
-        optional: true
-      '@smithy/hash-node':
-        optional: true
-      '@smithy/signature-v4':
-        optional: true
-      ws:
-        optional: true
-      zod:
-        optional: true
 
   ora@3.4.0:
     resolution: {integrity: sha512-eNwHudNbO1folBP3JsZ19v9azXWtQZjICdr3Q0TDPIaeBQ3mXLrh54wM+er0+hSp+dWKf+Z8KM58CYzEyIYxYg==}
@@ -11263,29 +11182,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
-    dependencies:
-      '@hono/node-server': 1.19.14(hono@4.12.26)
-      ajv: 8.20.0
-      ajv-formats: 3.0.1(ajv@8.20.0)
-      content-type: 1.0.5
-      cors: 2.8.6
-      cross-spawn: 7.0.6
-      eventsource: 3.0.7
-      eventsource-parser: 3.0.8
-      express: 5.2.1
-      express-rate-limit: 8.5.2(express@5.2.1)
-      hono: 4.12.26
-      jose: 6.2.3
-      json-schema-typed: 8.0.2
-      pkce-challenge: 5.0.1
-      raw-body: 3.0.2
-      zod: 4.4.3
-      zod-to-json-schema: 3.25.2(zod@4.4.3)
-    transitivePeerDependencies:
-      - supports-color
-    optional: true
-
   '@mswjs/interceptors@0.41.9':
     dependencies:
       '@open-draft/deferred-promise': 2.2.0
@@ -11358,57 +11254,6 @@ snapshots:
 
   '@open-draft/until@2.1.0':
     optional: true
-
-  '@openai/agents-core@0.11.8(ws@8.21.0)(zod@4.4.3)':
-    dependencies:
-      debug: 4.4.3
-      openai: 6.42.0(ws@8.21.0)(zod@4.4.3)
-    optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.3)
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - supports-color
-      - ws
-
-  '@openai/agents-openai@0.11.8(ws@8.21.0)(zod@4.4.3)':
-    dependencies:
-      '@openai/agents-core': 0.11.8(ws@8.21.0)(zod@4.4.3)
-      debug: 4.4.3
-      openai: 6.42.0(ws@8.21.0)(zod@4.4.3)
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - supports-color
-      - ws
-
-  '@openai/agents-realtime@0.11.8(zod@4.4.3)':
-    dependencies:
-      '@openai/agents-core': 0.11.8(ws@8.21.0)(zod@4.4.3)
-      '@types/ws': 8.18.1
-      debug: 4.4.3
-      ws: 8.21.0
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
-  '@openai/agents@0.11.8(ws@8.21.0)(zod@4.4.3)':
-    dependencies:
-      '@openai/agents-core': 0.11.8(ws@8.21.0)(zod@4.4.3)
-      '@openai/agents-openai': 0.11.8(ws@8.21.0)(zod@4.4.3)
-      '@openai/agents-realtime': 0.11.8(zod@4.4.3)
-      debug: 4.4.3
-      openai: 6.42.0(ws@8.21.0)(zod@4.4.3)
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-      - ws
 
   '@opentelemetry/api@1.9.1': {}
 
@@ -13658,10 +13503,6 @@ snapshots:
   '@types/use-sync-external-store@0.0.6': {}
 
   '@types/validate-npm-package-name@4.0.2': {}
-
-  '@types/ws@8.18.1':
-    dependencies:
-      '@types/node': 26.1.1
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -15916,10 +15757,6 @@ snapshots:
 
   js-md5@0.8.3: {}
 
-  js-tiktoken@1.0.21:
-    dependencies:
-      base64-js: 1.5.1
-
   js-tokens@4.0.0: {}
 
   js-yaml@4.2.0:
@@ -16895,18 +16732,6 @@ snapshots:
     dependencies:
       is-docker: 2.2.1
       is-wsl: 2.2.0
-
-  openai@6.42.0(ws@8.21.0)(zod@4.4.3):
-    optionalDependencies:
-      ws: 8.21.0
-      zod: 4.4.3
-
-  openai@6.45.0(@aws-sdk/credential-provider-node@3.972.64)(@smithy/signature-v4@5.6.2)(ws@8.21.0)(zod@4.4.3):
-    optionalDependencies:
-      '@aws-sdk/credential-provider-node': 3.972.64
-      '@smithy/signature-v4': 5.6.2
-      ws: 8.21.0
-      zod: 4.4.3
 
   ora@3.4.0:
     dependencies:
@@ -19055,10 +18880,6 @@ snapshots:
   zod-to-json-schema@3.25.2(zod@3.25.76):
     dependencies:
       zod: 3.25.76
-
-  zod-to-json-schema@3.25.2(zod@4.4.3):
-    dependencies:
-      zod: 4.4.3
 
   zod@3.25.76: {}
 

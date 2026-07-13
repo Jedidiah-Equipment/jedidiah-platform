@@ -1,40 +1,27 @@
 import { formatCurrency, formatPercent, getQuoteOfferingName } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { IconClock, IconMail, IconMapPin, IconPackage, IconPhone, IconReceipt2 } from '@tabler/icons-react';
-import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
-import { toast } from 'sonner';
 
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { createStableRowKeys } from '@/components/form/create-stable-row-keys.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
-import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
-import { openQuoteEmailAssistant } from '../quote-email-assistant.js';
 import { StartJobLink } from '../StartJobLink.js';
 import type { QuoteComputedSummary, QuoteFormValues } from '../types.js';
-import { DraftQuoteEmailDialog } from './DraftQuoteEmailDialog.js';
 
 type QuoteLineItemFormInput = QuoteFormValues['lineItems'][number];
 const getSummaryLineItemKey = createStableRowKeys<QuoteLineItemFormInput>('quote-summary-line-item');
 
-export function QuoteRightPanel({
-  flushAutosave,
-  quote,
-  summary,
-}: {
-  flushAutosave: () => Promise<boolean>;
-  quote: QuoteDetail;
-  summary: QuoteComputedSummary;
-}) {
+export function QuoteRightPanel({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
   return (
     <aside className="order-first grid h-fit gap-4 border-b pb-5 text-sm xl:sticky xl:top-4 xl:order-0 xl:border-b-0 xl:pb-0 xl:pl-5">
       <QuoteCustomerCard quote={quote} />
       <QuoteProductCard quote={quote} />
-      <QuoteTotalCard flushAutosave={flushAutosave} quote={quote} summary={summary} />
+      <QuoteTotalCard quote={quote} summary={summary} />
     </aside>
   );
 }
@@ -186,17 +173,7 @@ function QuoteCustomWorkCard({ quote }: { quote: QuoteDetail }) {
   );
 }
 
-function QuoteTotalCard({
-  flushAutosave,
-  quote,
-  summary,
-}: {
-  flushAutosave: () => Promise<boolean>;
-  quote: QuoteDetail;
-  summary: QuoteComputedSummary;
-}) {
-  const navigate = useNavigate();
-
+function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
   return (
     <Card size="sm">
       <CardHeader>
@@ -254,26 +231,6 @@ function QuoteTotalCard({
           <span>Total</span>
           <span>{formatCurrency(summary.total, summary.currencyCode)}</span>
         </div>
-        <Button
-          className="mt-2 w-full"
-          onClick={() => {
-            void openQuoteEmailAssistant({
-              flushAutosave,
-              navigate,
-              quote,
-            }).then((didOpen) => {
-              if (!didOpen) {
-                toast.error('Fix the highlighted quote fields before generating the email.');
-              }
-            });
-          }}
-          type="button"
-          variant="outline"
-        >
-          <IconMail data-icon="inline-start" />
-          Generate Email
-        </Button>
-        <DraftQuoteEmailDialog className="mt-2 w-full" flushAutosave={flushAutosave} quote={quote} />
         <StartJobLink className="mt-2 w-full" quote={quote} />
       </CardContent>
     </Card>

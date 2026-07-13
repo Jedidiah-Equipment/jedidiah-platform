@@ -345,9 +345,6 @@ export const QuoteDocumentGenerationInput = z.object({
   leadTime: QuoteDocumentLeadTime,
 });
 
-export type QuoteDraftEmailInput = z.infer<typeof QuoteDraftEmailInput>;
-export const QuoteDraftEmailInput = QuoteDocumentGenerationInput;
-
 export type QuoteProductBayAvailabilityInput = z.infer<typeof QuoteProductBayAvailabilityInput>;
 export const QuoteProductBayAvailabilityInput = z
   .object({

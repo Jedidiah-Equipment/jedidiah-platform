@@ -3,7 +3,7 @@ import type { ApiConfig } from '../env.js';
 import { log } from '../logger.js';
 import { recordMockEmail } from './mock-email.js';
 
-export type EmailType = 'assistant' | 'email-verification' | 'password-reset' | 'quote-draft';
+export type EmailType = 'assistant' | 'email-verification' | 'password-reset';
 
 export interface EmailAttachment {
   content: Uint8Array;

@@ -15,11 +15,11 @@ and root tooling. Current architecture decisions live in `docs/adr/`.
 
 ```txt
 pkg/
-  api/     Fastify, Better Auth, tRPC, health/version routes, AI chat stream transport
+  api/     Fastify, Better Auth, tRPC, health/version routes, AI chat transport
   web/     React, Vite, TanStack Router, shadcn/ui, Better Auth client
   mobile/  Expo (React Native) app with Expo Router and NativeWind
   lander/  public TanStack Start SSR marketing site
-  ai/      assistant orchestration: prompts, tool registry, tool handlers, projections
+  ai/      assistant orchestration: prompts, tool registration, tool handlers
   pdf/     React-PDF renderers for quote documents and product brochures
   schema/  global Zod schemas and types shared across packages
   domain/  shared pure authorization, environment, job, quote, and demo policies
@@ -167,7 +167,7 @@ schema changes that produced them.
 - `GET /api/version`
 - `/api/auth/*` through Better Auth (with the admin plugin enabled)
 - `/trpc/*` through tRPC
-- `POST /ai/chat-stream` for the authenticated assistant SSE stream (assistant logic lives in `@pkg/ai`)
+- `POST /ai/chat` for the authenticated assistant stream in development (assistant logic lives in `@pkg/ai`)
 - authenticated document/file HTTP routes for uploads and downloads
 - `auth.session`, `auth.me`, and `auth.access` tRPC procedures for the current user and permissions
 - `products`, `productRanges`, `parts`, `customers`, `suppliers`, `quotes`, `jobs`, `audit`, `feedback`,
@@ -210,7 +210,7 @@ Jobs are scheduled through Bay Queues:
 - `/jobs` authenticated job workflow with list, planning, and calendar views (visible with `job:read`)
 - `/bays` authenticated bay management (visible with `job_bay:read`)
 - `/audit` authenticated audit history (visible with `audit:read`)
-- `/assistant` authenticated AI assistant
+- a development-only floating AI assistant in the authenticated app shell
 - `/feedback` authenticated feedback review (visible with `feedback:read`)
 - `/users` admin-only user management with role assignment
 - `/forgot-password`, `/reset-password`, and `/verify-email` auth support pages

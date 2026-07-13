@@ -12,7 +12,6 @@ import {
   IconLayoutKanban,
   IconMessageReport,
   IconPackage,
-  IconRobot,
   IconTool,
   IconUsers,
   type TablerIcon,
@@ -32,7 +31,6 @@ import {
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar.js';
 import { useAccess } from '@/hooks/use-access.js';
-import { authClient } from '@/lib/auth-client.js';
 import { cn } from '@/lib/utils.js';
 import { FeedbackOpenNavIndicator, QuotesPriorityNavIndicator } from './AppNavIndicators.js';
 
@@ -45,7 +43,6 @@ type NavSubItem = {
 type MainNavItem = {
   title: string;
   permission?: AppPermission;
-  requiresAssistantEnabled?: boolean;
   link: ReturnType<typeof linkOptions>;
   icon: TablerIcon;
   indicator?: React.ComponentType;
@@ -65,12 +62,6 @@ const navSections = [
         title: 'Dashboard',
         link: linkOptions({ to: '/dashboard' }),
         icon: IconGauge,
-      },
-      {
-        title: 'Assistant',
-        requiresAssistantEnabled: true,
-        link: linkOptions({ to: '/assistant' }),
-        icon: IconRobot,
       },
     ],
   },
@@ -241,15 +232,11 @@ const NavCollapsibleItem: React.FC<{
 
 export const AppNavMain: React.FC = () => {
   const accessQuery = useAccess();
-  const { data: session } = authClient.useSession();
-  const assistantEnabled = session?.user.assistantEnabled === true;
 
   const canSee = (permission?: AppPermission) =>
     permission === undefined || hasPermission(accessQuery.data, permission);
 
-  const canSeeItem = (item: MainNavItem) =>
-    canSee('permission' in item ? item.permission : undefined) &&
-    (!('requiresAssistantEnabled' in item && item.requiresAssistantEnabled) || assistantEnabled);
+  const canSeeItem = (item: MainNavItem) => canSee('permission' in item ? item.permission : undefined);
 
   const visibleSections = navSections
     .map((section) => ({

@@ -1,38 +1,89 @@
-import * as core from '@pkg/core';
-import { type AiToolBase, type Product, UUID } from '@pkg/schema';
+import * as productsCore from '@pkg/core';
+import { Product, UUID } from '@pkg/schema';
 import { z } from 'zod';
-import type { AiContext } from '@/context.js';
-import { aiLinkMetadata } from '@/link-metadata.js';
-import type { AiToolDefinition } from '@/tool-definition.js';
-import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectProductDetail } from '../projections.js';
 
-const GetProductInput = z.object({
-  id: UUID,
+import type { AiContext } from '@/context.js';
+import { createProductAppHref, InternalAppHref } from '@/entity-links.js';
+
+import { ProductBayResponse } from './product-bay-response.js';
+
+export type GetProductInput = z.infer<typeof GetProductInput>;
+export const GetProductInput = z.object({ id: UUID }).strict();
+
+export type GetProductResponse = z.infer<typeof GetProductResponse>;
+export const GetProductResponse = Product.pick({
+  assemblies: true,
+  basePrice: true,
+  brochureEnabled: true,
+  buildTimeDays: true,
+  category: true,
+  createdAt: true,
+  currencyCode: true,
+  description: true,
+  id: true,
+  images: true,
+  keyFeatures: true,
+  landerEnabled: true,
+  modelCode: true,
+  name: true,
+  nameHighlight: true,
+  range: true,
+  requiresVinNumber: true,
+  technicalDetails: true,
+  updatedAt: true,
+  variant: true,
+}).extend({
+  links: z.object({ app: InternalAppHref }),
+  productBays: z.array(ProductBayResponse),
 });
 
-type GetProductInput = z.infer<typeof GetProductInput>;
+export function toGetProductResponse(product: Product): GetProductResponse {
+  return GetProductResponse.parse({
+    assemblies: product.assemblies,
+    basePrice: product.basePrice,
+    brochureEnabled: product.brochureEnabled,
+    buildTimeDays: product.buildTimeDays,
+    category: product.category,
+    createdAt: product.createdAt,
+    currencyCode: product.currencyCode,
+    description: product.description,
+    id: product.id,
+    images: product.images,
+    keyFeatures: product.keyFeatures,
+    landerEnabled: product.landerEnabled,
+    links: { app: createProductAppHref(product.id) },
+    modelCode: product.modelCode,
+    name: product.name,
+    nameHighlight: product.nameHighlight,
+    productBays: product.productBays.map((productBay) => ({
+      bay: {
+        department: productBay.bay.department,
+        id: productBay.bay.id,
+        name: productBay.bay.name,
+      },
+      defaultWorkingDays: productBay.defaultWorkingDays,
+    })),
+    range: product.range,
+    requiresVinNumber: product.requiresVinNumber,
+    technicalDetails: product.technicalDetails,
+    updatedAt: product.updatedAt,
+    variant: product.variant,
+  });
+}
 
-export type GetProductTool = AiToolBase<'getProduct', Product, GetProductInput, AiContext>;
-
-export const getProductTool: GetProductTool = {
+export const getProductDefinition = {
   name: 'getProduct',
+  description: [
+    'Get the full details for one Product by UUID.',
+    'Use after findProducts identifies the Product the user means.',
+    'Returns commercial, marketing, configuration, bay, assembly, image metadata, and app-link details.',
+  ].join('\n'),
   inputSchema: GetProductInput,
-  jsonSchema: toAiToolJsonSchema(GetProductInput),
-  requiredPermission: 'product:read',
-  async handler(args: unknown, ctx: AiContext) {
+  outputSchema: GetProductResponse,
+  anyOfPermissions: ['product:read'],
+  async handler(args: unknown, ctx: AiContext): Promise<GetProductResponse> {
     const input = GetProductInput.parse(args);
-    return core.getProduct({ db: ctx.db, id: input.id });
+    const product = await productsCore.getProduct({ db: ctx.db, id: input.id });
+    return toGetProductResponse(product);
   },
-};
-
-export const getProductDefinition: AiToolDefinition<GetProductTool> = {
-  kind: 'read',
-  tool: getProductTool,
-  descriptor: {
-    purpose: 'Get one Product by UUID.',
-    resultIdentifiers: ['Product name', 'Product model code'],
-    linkTarget: aiLinkMetadata.Product,
-  },
-  projectResult: projectProductDetail,
-};
+} as const;

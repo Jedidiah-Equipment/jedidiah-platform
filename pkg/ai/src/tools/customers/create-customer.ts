@@ -1,68 +1,66 @@
-import * as core from '@pkg/core';
+import * as customersCore from '@pkg/core';
 import {
-  type AiToolBase,
+  CustomerCreateInput as CoreCustomerCreateInput,
+  type CustomerCreateInput as CoreCustomerCreateInputType,
   type Customer,
   CustomerCompanyName,
-  CustomerCreateInput,
-  NullableThumbnailDataUrl,
+  CustomerEmail,
+  CustomerOptionalText,
+  CustomerVatNumber,
 } from '@pkg/schema';
 import { z } from 'zod';
+
+import { requireAiActorId } from '@/actor.js';
 import type { AiContext } from '@/context.js';
-import { aiLinkMetadata } from '@/link-metadata.js';
-import type { AiToolDefinition } from '@/tool-definition.js';
-import { requireActorSession } from '../actor.js';
-import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectCustomerDetail } from '../projections.js';
 
-const CreateCustomerInput = z.strictObject({
-  address: z.string().nullable().optional(),
-  companyName: CustomerCompanyName,
-  contactPerson: z.string().nullable().optional(),
-  email: z.email().nullable().optional(),
-  notes: z.string().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  thumbnailDataUrl: NullableThumbnailDataUrl.optional(),
-  vatNumber: z.string().nullable().optional(),
-});
+import {
+  CustomerResponse as SharedCustomerResponse,
+  type CustomerResponse as SharedCustomerResponseType,
+  toCustomerResponse,
+} from './customer-response.js';
 
-type CreateCustomerInput = z.infer<typeof CreateCustomerInput>;
+export type CreateCustomerInput = z.infer<typeof CreateCustomerInput>;
+export const CreateCustomerInput = z
+  .object({
+    address: CustomerOptionalText.default(null),
+    companyName: CustomerCompanyName,
+    contactPerson: CustomerOptionalText.default(null),
+    email: CustomerEmail.nullable().default(null),
+    notes: CustomerOptionalText.default(null),
+    phone: CustomerOptionalText.default(null),
+    vatNumber: CustomerVatNumber.default(null),
+  })
+  .strict();
 
-export type CreateCustomerTool = AiToolBase<'createCustomer', Customer, CreateCustomerInput, AiContext>;
+export type CreateCustomerResponse = SharedCustomerResponseType;
+export const CreateCustomerResponse = SharedCustomerResponse;
 
-export const createCustomerTool: CreateCustomerTool = {
+export function toCoreCustomerCreateInput(input: CreateCustomerInput): CoreCustomerCreateInputType {
+  return CoreCustomerCreateInput.parse({ ...input, thumbnailDataUrl: null });
+}
+
+export function toCreateCustomerResponse(customer: Customer): CreateCustomerResponse {
+  return toCustomerResponse(customer);
+}
+
+export const createCustomerDefinition = {
   name: 'createCustomer',
+  description: [
+    'Create one standalone Customer record.',
+    'Use only when the user explicitly asks to add a Customer outside a Quote workflow.',
+    'When creating a Quote for a new company, use createQuote with an inline Customer instead.',
+    'Returns the created Customer details and links.app without thumbnail data.',
+  ].join('\n'),
   inputSchema: CreateCustomerInput,
-  jsonSchema: toAiToolJsonSchema(CreateCustomerInput),
-  requiredPermission: 'customer:create',
-  async handler(args: unknown, ctx: AiContext) {
-    const rawInput = CreateCustomerInput.parse(args);
-    const input = CustomerCreateInput.parse({
-      address: rawInput.address ?? null,
-      companyName: rawInput.companyName,
-      contactPerson: rawInput.contactPerson ?? null,
-      email: rawInput.email ?? null,
-      notes: rawInput.notes ?? null,
-      phone: rawInput.phone ?? null,
-      thumbnailDataUrl: rawInput.thumbnailDataUrl ?? null,
-      vatNumber: rawInput.vatNumber ?? null,
+  outputSchema: CreateCustomerResponse,
+  anyOfPermissions: ['customer:create'],
+  async handler(args: unknown, ctx: AiContext): Promise<CreateCustomerResponse> {
+    const input = toCoreCustomerCreateInput(CreateCustomerInput.parse(args));
+    const customer = await customersCore.createCustomer({
+      actorUserId: requireAiActorId(ctx),
+      db: ctx.db,
+      input,
     });
-
-    return core.createCustomer({ actorUserId: requireActorSession(ctx).user.id, db: ctx.db, input });
+    return toCreateCustomerResponse(customer);
   },
-};
-
-export const createCustomerDefinition: AiToolDefinition<CreateCustomerTool> = {
-  kind: 'write',
-  tool: createCustomerTool,
-  descriptor: {
-    purpose: 'Create one standalone Customer record.',
-    useWhen: ['The user explicitly asks to create or add a Customer record outside a Quote workflow.'],
-    doNotUseWhen: [
-      'A sales user is creating a Quote for a new company; use createQuote with an inline customer instead.',
-      'The user only needs to search existing Customers; use listCustomers or listQuoteCustomers first.',
-    ],
-    resultIdentifiers: ['Customer company name', 'Customer UUID', 'VAT number'],
-    linkTarget: aiLinkMetadata.Customer,
-  },
-  projectResult: projectCustomerDetail,
-};
+} as const;

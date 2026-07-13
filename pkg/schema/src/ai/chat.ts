@@ -2,11 +2,10 @@ import { z } from 'zod';
 
 import { CHAT_MAX_MESSAGES, CHAT_MAX_PAYLOAD_BYTES, getUtf8ByteLength } from './chat-input-limits.js';
 
-// The AI SDK v6 UI-message envelope posted to `/ai/chat`. Validation is intentionally permissive
+// The AI SDK UI-message envelope posted to `/ai/chat`. Validation is intentionally permissive
 // on message/part internals — `convertToModelMessages` on the server performs the exhaustive
 // part-shape check, and passthrough keeps part payloads (text, tool state, output) intact for it.
-// This schema owns only the transport caps the route enforces at parity with the legacy
-// chat-stream route: message count and total UTF-8 payload bytes.
+// This schema owns only the route's message-count and total UTF-8 payload caps.
 export type AiChatUiMessage = z.infer<typeof AiChatUiMessage>;
 export const AiChatUiMessage = z.looseObject({
   id: z.string().optional(),

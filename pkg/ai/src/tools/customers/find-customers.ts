@@ -1,0 +1,65 @@
+import * as customersCore from '@pkg/core';
+import { hasPermission } from '@pkg/domain';
+import { Customer, CustomerListInput, type CustomerListResult, type UserAccessSummary } from '@pkg/schema';
+import { z } from 'zod';
+
+import type { AiContext } from '@/context.js';
+import { createCustomerAppHref, InternalAppHref } from '@/entity-links.js';
+
+export type FindCustomersInput = z.infer<typeof FindCustomersInput>;
+export const FindCustomersInput = CustomerListInput.pick({ search: true }).strict();
+
+const FindCustomerItem = Customer.pick({
+  companyName: true,
+  contactPerson: true,
+  email: true,
+  id: true,
+  phone: true,
+  vatNumber: true,
+}).extend({ links: z.object({ app: InternalAppHref }).optional() });
+
+export type FindCustomersResponse = z.infer<typeof FindCustomersResponse>;
+export const FindCustomersResponse = z.array(FindCustomerItem);
+
+export function toCoreCustomerListInput(input: FindCustomersInput): CustomerListInput {
+  return {
+    columnFilters: {},
+    page: 1,
+    pageSize: 0,
+    search: input.search,
+    sortBy: 'companyName',
+    sortDirection: 'asc',
+  };
+}
+
+export function toFindCustomersResponse(
+  result: CustomerListResult,
+  access: UserAccessSummary | null,
+): FindCustomersResponse {
+  return result.items.map((customer) => ({
+    companyName: customer.companyName,
+    contactPerson: customer.contactPerson,
+    email: customer.email,
+    id: customer.id,
+    ...(hasPermission(access, 'customer:read') ? { links: { app: createCustomerAppHref(customer.id) } } : {}),
+    phone: customer.phone,
+    vatNumber: customer.vatNumber,
+  }));
+}
+
+export const findCustomersDefinition = {
+  name: 'findCustomers',
+  description: [
+    'Search for Customers by company name, email, VAT number, or UUID.',
+    'Returns lightweight matches containing Customer identity, contact fields, and links.app when the caller can open Customer pages.',
+    'For Quote creation, pass the selected id to createQuote. Call getCustomer when available and full Customer details are needed.',
+  ].join('\n'),
+  inputSchema: FindCustomersInput,
+  outputSchema: FindCustomersResponse,
+  anyOfPermissions: ['customer:read', 'quote:read', 'quote:create'],
+  async handler(args: unknown, ctx: AiContext): Promise<FindCustomersResponse> {
+    const input = FindCustomersInput.parse(args ?? {});
+    const result = await customersCore.listCustomers({ db: ctx.db, input: toCoreCustomerListInput(input) });
+    return toFindCustomersResponse(result, ctx.access);
+  },
+} as const;

@@ -1,132 +1,122 @@
-import * as core from '@pkg/core';
+import * as quotesCore from '@pkg/core';
 import {
-  type AiToolBase,
   AuthId,
-  CustomerEmailInput,
+  type AuthId as AuthIdType,
+  QuoteCreateInput as CoreQuoteCreateInput,
+  type QuoteCreateInput as CoreQuoteCreateInputType,
+  CustomerCompanyName,
+  CustomerEmail,
+  CustomerOptionalText,
   DateIsoString,
   DateOnlyIsoString,
   Price,
-  type QuoteCreateInput,
-  QuoteCreateInput as QuoteCreateInputSchema,
+  QuoteDepositPercent,
   type QuoteDetail,
+  QuoteDiscountPercent,
+  QuoteDocumentNotes,
+  QuoteLineItemName,
+  QuoteLineItemQuantity,
+  QuoteNotes,
+  QuoteSelectedAssemblyInput,
+  QuoteStatus,
   QuoteWorkTitle,
-  requiredTrimmedText,
+  type UserAccessSummary,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
+
+import { requireAiActorId } from '@/actor.js';
 import type { AiContext } from '@/context.js';
-import { aiLinkMetadata } from '@/link-metadata.js';
-import type { AiToolDefinition } from '@/tool-definition.js';
-import { requireActorSession } from '../actor.js';
-import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectQuoteCreateResult } from '../projections.js';
+import {
+  QuoteDetailResponse as SharedQuoteDetailResponse,
+  type QuoteDetailResponse as SharedQuoteDetailResponseType,
+  toQuoteDetailResponse,
+} from '@/tools/quotes/quote-response.js';
 
-const CreateQuoteCustomerInput = z
-  .object({
-    address: z.string().nullable().optional(),
-    companyName: requiredTrimmedText('Company name is required').optional(),
-    contactPerson: z.string().nullable().optional(),
-    customerId: UUID.optional(),
-    email: CustomerEmailInput.optional(),
-    phone: z.string().nullable().optional(),
-    type: z.enum(['existing', 'inline']),
-  })
-  .strict()
-  .describe(
-    'Quote Customer: existing requires customerId; inline creates a new Customer from companyName plus any contactPerson, email, phone, or address the user mentioned.',
-  );
+const CreateQuoteCustomerInput = z.discriminatedUnion('type', [
+  z.object({ customerId: UUID, type: z.literal('existing') }).strict(),
+  z
+    .object({
+      address: CustomerOptionalText.default(null),
+      companyName: CustomerCompanyName,
+      contactPerson: CustomerOptionalText.default(null),
+      email: CustomerEmail.nullable().default(null),
+      phone: CustomerOptionalText.default(null),
+      type: z.literal('inline'),
+    })
+    .strict(),
+]);
 
-const CreateQuoteOfferingInput = z
-  .object({
-    basePrice: z.coerce.number().pipe(Price).optional(),
-    kind: z.enum(['product', 'custom']),
-    productId: UUID.optional(),
-    workTitle: QuoteWorkTitle.optional(),
-  })
-  .strict();
+const CreateQuoteOfferingInput = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('product'), productId: UUID }).strict(),
+  z.object({ basePrice: Price, kind: z.literal('custom'), workTitle: QuoteWorkTitle }).strict(),
+]);
 
-const CreateQuoteSelectedAssemblyInput = z
+const CreateQuoteLineItemInput = z
   .object({
-    id: UUID.optional(),
-    productAssemblyId: UUID.optional(),
-    type: z.enum(['existing', 'catalog']),
+    name: QuoteLineItemName,
+    quantity: QuoteLineItemQuantity.default(1),
+    unitPrice: Price,
   })
   .strict();
 
-const CreateQuoteInput = QuoteCreateInputSchema.omit({
-  customer: true,
-  documentNotes: true,
-  notes: true,
-  offering: true,
-  plannedDeliveryDate: true,
-  preferredDeliveryDate: true,
-  salesPersonId: true,
-  selectedAssemblies: true,
-  status: true,
-  validUntil: true,
-})
-  .extend({
-    customer: CreateQuoteCustomerInput,
-    documentNotes: QuoteCreateInputSchema.shape.documentNotes.optional(),
-    notes: QuoteCreateInputSchema.shape.notes.optional(),
-    offering: CreateQuoteOfferingInput,
+// Provider tool schemas are JSON-only, so compose non-transforming schema leaves and normalize in the mapper.
+export type CreateQuoteInput = z.infer<typeof CreateQuoteInput>;
+export const CreateQuoteInput = z
+  .object({
+    customer: CreateQuoteCustomerInput.describe(
+      'Use an existing Customer UUID from findCustomers, or inline Customer details to create one with the Quote.',
+    ),
+    deliveryIncluded: z.boolean().default(true),
+    deliveryPrice: Price.default(0),
+    depositPercent: QuoteDepositPercent.default(0),
+    discountPercent: QuoteDiscountPercent.default(0),
+    documentNotes: QuoteDocumentNotes.default(null),
+    lineItems: z.array(CreateQuoteLineItemInput).default([]),
+    notes: QuoteNotes.default(null),
+    offering: CreateQuoteOfferingInput.describe(
+      'A Product offering requires a Product UUID from findProducts. A Custom offering requires a Work Title and base price.',
+    ),
     plannedDeliveryDate: DateOnlyIsoString.nullable().default(null),
     preferredDeliveryDate: DateOnlyIsoString.nullable().default(null),
     salesPersonId: AuthId.optional().describe(
-      'Salesperson User ID. Optional: when omitted the Quote is assigned to the acting user (the person making this request). Only set this when the user explicitly asks to assign the Quote to a different salesperson; do not pick one from the roster otherwise.',
+      'Optional salesperson User ID. Omit to assign the acting user; set only when the user explicitly requests another salesperson.',
     ),
-    selectedAssemblies: z.array(CreateQuoteSelectedAssemblyInput).default([]),
-    status: QuoteCreateInputSchema.shape.status.default('draft'),
+    selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
+    status: QuoteStatus.default('draft'),
     validUntil: DateIsoString.nullable().default(null),
   })
   .strict();
 
-type CreateQuoteInput = z.infer<typeof CreateQuoteInput>;
+export type CreateQuoteResponse = SharedQuoteDetailResponseType;
+export const CreateQuoteResponse = SharedQuoteDetailResponse;
 
-export type CreateQuoteTool = AiToolBase<'createQuote', QuoteDetail, CreateQuoteInput, AiContext>;
+export function toCoreQuoteCreateInput(input: CreateQuoteInput, actorUserId: AuthIdType): CoreQuoteCreateInputType {
+  return CoreQuoteCreateInput.parse({
+    ...input,
+    salesPersonId: input.salesPersonId ?? actorUserId,
+  });
+}
 
-export const createQuoteTool: CreateQuoteTool = {
+export function toCreateQuoteResponse(quote: QuoteDetail, access: UserAccessSummary | null): CreateQuoteResponse {
+  return toQuoteDetailResponse(quote, access);
+}
+
+export const createQuoteDefinition = {
   name: 'createQuote',
+  description: [
+    'Create one Product Quote or Custom Quote when the user explicitly asks for it.',
+    'Use findProducts to resolve a Product Quote productId and findCustomers to resolve an existing Customer; use an inline Customer when the company is new.',
+    'Omit salesPersonId to assign the acting user. Do not choose another salesperson unless the user explicitly requests it.',
+    'Returns the created Quote details and permission-safe relationship links without thumbnail data.',
+  ].join('\n'),
   inputSchema: CreateQuoteInput,
-  jsonSchema: toAiToolJsonSchema(CreateQuoteInput, { io: 'input' }),
-  requiredPermission: 'quote:create',
-  async handler(args: unknown, ctx: AiContext) {
-    const parsedInput = CreateQuoteInput.parse(args);
-    const actorUserId = requireActorSession(ctx).user.id;
-    const input: QuoteCreateInput = QuoteCreateInputSchema.parse({
-      ...parsedInput,
-      documentNotes: parsedInput.documentNotes ?? null,
-      notes: parsedInput.notes ?? null,
-      salesPersonId: parsedInput.salesPersonId ?? actorUserId,
-    });
-
-    return core.createQuote({ actorUserId, db: ctx.db, input });
+  outputSchema: CreateQuoteResponse,
+  anyOfPermissions: ['quote:create'],
+  async handler(args: unknown, ctx: AiContext): Promise<CreateQuoteResponse> {
+    const actorUserId = requireAiActorId(ctx);
+    const input = toCoreQuoteCreateInput(CreateQuoteInput.parse(args), actorUserId);
+    const quote = await quotesCore.createQuote({ actorUserId, db: ctx.db, input });
+    return toCreateQuoteResponse(quote, ctx.access);
   },
-};
-
-export const createQuoteDefinition: AiToolDefinition<CreateQuoteTool> = {
-  kind: 'write',
-  tool: createQuoteTool,
-  descriptor: {
-    purpose: 'Create one Product Quote or Custom Quote.',
-    useWhen: [
-      'The user explicitly asks to create a Product Quote for a Product, or a Custom Quote with a Work Title and entered base price.',
-    ],
-    doNotUseWhen: [
-      'The user only needs to search or inspect Quotes; use listQuotes or getQuote.',
-      'The user asks for standalone Customer creation; use createCustomer only when customer:create is available.',
-    ],
-    resultIdentifiers: [
-      'Quote Code',
-      'Quote Kind',
-      'Quote Status',
-      'Customer company name',
-      'Product name / Custom Work Title',
-      'quoted price and currency',
-      'Quote Line Items',
-      'Selected Assemblies',
-    ],
-    linkTarget: aiLinkMetadata.Quote,
-  },
-  projectResult: projectQuoteCreateResult,
-};
+} as const;

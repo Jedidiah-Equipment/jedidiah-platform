@@ -1,0 +1,143 @@
+import type { OutgoingHttpHeaders } from 'node:http';
+import { Readable } from 'node:stream';
+
+import { type AiChatModel, type AiContext, createOpenAiChatModel, streamAiChat, validateAiUiMessages } from '@pkg/ai';
+import type { StorageAdapter } from '@pkg/core';
+import { AiChatInput, type AiReasoningEffort } from '@pkg/schema';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+
+import { getApiConfig } from '@/env.js';
+import { buildAiContext } from './ai-context.js';
+
+// Aborts a stalled provider stream so a hung upstream cannot tie up the connection and provider
+// spend indefinitely.
+const STREAM_TIMEOUT_MS = 60_000;
+
+export type RegisterAiChatRouteOptions = {
+  buildContext?: (req: FastifyRequest) => Promise<AiContext>;
+  createModel?: () => AiChatModel;
+  reasoningEffort?: AiReasoningEffort;
+  storage?: StorageAdapter;
+};
+
+// The assistant run lives in `@pkg/ai`; this route owns transport: auth, input parsing, access
+// gates, and bridging the AI SDK web `Response` onto the raw Node reply.
+export async function registerAiChatRoute(
+  app: FastifyInstance,
+  options: RegisterAiChatRouteOptions = {},
+): Promise<void> {
+  const reasoningEffort = options.reasoningEffort ?? getApiConfig().OPENAI_REASONING_EFFORT;
+  const createModel =
+    options.createModel ??
+    (() => {
+      const config = getApiConfig();
+      return createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
+    });
+  const createContext = options.buildContext ?? createDefaultContextBuilder(options.storage);
+
+  app.post('/ai/chat', async (request, reply) => {
+    const ctx = await createContext(request);
+
+    if (!ctx.session) {
+      return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    if (ctx.session.user.assistantEnabled !== true) {
+      return reply.code(403).send({ error: 'Assistant is not enabled for this account' });
+    }
+
+    const parsedInput = AiChatInput.safeParse(request.body);
+
+    if (!parsedInput.success) {
+      return reply.code(400).send({
+        error: 'Invalid chat payload',
+        issues: z.treeifyError(parsedInput.error),
+      });
+    }
+
+    // Deep UI-message validation the shallow schema delegates: reject malformed parts here with a
+    // 400 instead of letting `convertToModelMessages` throw a 500 once inside `streamAiChat`.
+    const validated = await validateAiUiMessages(parsedInput.data.messages);
+
+    if (!validated.ok) {
+      return reply.code(400).send({ error: 'Invalid chat payload', issues: validated.error });
+    }
+
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
+    const handleRequestClose = () => {
+      if (request.raw.destroyed) {
+        abortController.abort();
+      }
+    };
+    request.raw.on('close', handleRequestClose);
+
+    try {
+      const response = await streamAiChat({
+        abortSignal: abortController.signal,
+        ctx,
+        messages: validated.messages,
+        model: createModel(),
+        reasoningEffort,
+      });
+
+      await sendWebResponse(reply, response);
+    } finally {
+      clearTimeout(timeout);
+      request.raw.off('close', handleRequestClose);
+    }
+  });
+}
+
+function createDefaultContextBuilder(storage: StorageAdapter | undefined) {
+  if (!storage) {
+    throw new Error('AI document storage is required when buildContext is not provided.');
+  }
+
+  return (request: FastifyRequest) => buildAiContext(request, { storage });
+}
+
+// Writes a web `Response` (headers + streamed body) onto the raw Node reply, preserving the
+// headers Fastify already set for this reply (e.g. CORS from `@fastify/cors`).
+async function sendWebResponse(reply: FastifyReply, response: Response): Promise<void> {
+  reply.hijack();
+
+  const headers: OutgoingHttpHeaders = {};
+
+  for (const [name, value] of Object.entries(reply.getHeaders())) {
+    if (value !== undefined) {
+      headers[name] = value;
+    }
+  }
+
+  response.headers.forEach((value, name) => {
+    headers[name] = value;
+  });
+
+  reply.raw.writeHead(response.status, headers);
+
+  if (!response.body) {
+    reply.raw.end();
+    return;
+  }
+
+  const body = Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]);
+  reply.raw.on('close', () => {
+    if (!reply.raw.writableEnded) {
+      body.destroy();
+    }
+  });
+
+  try {
+    for await (const chunk of body) {
+      reply.raw.write(chunk);
+    }
+  } catch {
+    // The response is already committed (200 + streamed body), so a teardown mid-stream — client
+    // disconnect or the stream-timeout abort — can only be handled by closing the reply, not by
+    // surfacing an HTTP error.
+  } finally {
+    reply.raw.end();
+  }
+}

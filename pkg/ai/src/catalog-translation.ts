@@ -54,7 +54,6 @@ export async function translateProductBundleToAfrikaans({
       schemaName: 'ProductTranslation',
       system: AFRIKAANS_TRANSLATION_SYSTEM_PROMPT,
       prompt: createPrompt(source, validationError),
-      temperature: 0.2,
     });
 
     validationError = validateProductOutput(source, object);
@@ -78,7 +77,6 @@ export async function translateProductRangeToAfrikaans({
     schemaName: 'ProductRangeTranslation',
     system: AFRIKAANS_TRANSLATION_SYSTEM_PROMPT,
     prompt: createPrompt(source),
-    temperature: 0.2,
   });
   return object;
 }
@@ -97,7 +95,6 @@ export async function translateProductRangeVariantToAfrikaans({
     schemaName: 'ProductRangeVariantTranslation',
     system: AFRIKAANS_TRANSLATION_SYSTEM_PROMPT,
     prompt: createPrompt(source),
-    temperature: 0.2,
   });
   return object;
 }

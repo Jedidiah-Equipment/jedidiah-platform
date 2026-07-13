@@ -3,7 +3,7 @@ import {
   translateProductRangeToAfrikaans,
   translateProductRangeVariantToAfrikaans,
 } from '@pkg/ai';
-import { loadCatalogTranslationSource, persistCatalogTranslation } from '@pkg/core';
+import { type CatalogTranslationSource, loadCatalogTranslationSource, persistCatalogTranslation } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import type { CatalogTranslationKey } from '@pkg/domain';
 import type { LanguageModel } from 'ai';
@@ -25,15 +25,24 @@ export function createCatalogTranslationRunner({
 
     if (source.kind === 'product') {
       const translation = await translateProductBundleToAfrikaans({ model, source: source.canonical });
+      if (!(await isCatalogSourceUnchanged(db, source))) return 'skipped';
       await persistCatalogTranslation({ db, source, translatedAt: now(), translation });
     } else if (source.kind === 'range') {
       const translation = await translateProductRangeToAfrikaans({ model, source: source.canonical });
+      if (!(await isCatalogSourceUnchanged(db, source))) return 'skipped';
       await persistCatalogTranslation({ db, source, translatedAt: now(), translation });
     } else {
       const translation = await translateProductRangeVariantToAfrikaans({ model, source: source.canonical });
+      if (!(await isCatalogSourceUnchanged(db, source))) return 'skipped';
       await persistCatalogTranslation({ db, source, translatedAt: now(), translation });
     }
 
     return 'translated';
   };
+}
+
+async function isCatalogSourceUnchanged(db: Db, source: CatalogTranslationSource): Promise<boolean> {
+  // Model calls are slow enough for catalog edits to land mid-flight; never publish their stale result.
+  const latest = await loadCatalogTranslationSource({ db, key: source.key });
+  return latest?.sourceHash === source.sourceHash;
 }

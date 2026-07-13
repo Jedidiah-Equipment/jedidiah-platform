@@ -2,6 +2,7 @@ import { statusDaysLeftColor } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { BayIdentityLabels } from '@/components/bays/BayIdentityLabels';
 import { Text } from '@/components/ui/text';
 import type { BayListCard } from '@/lib/use-bay-list';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -75,14 +76,7 @@ function BayPrimaryRow({ bay }: { bay: BayListCard }) {
         name={bay.operator?.name ?? 'Unassigned'}
         uri={bay.operator?.thumbnailDataUrl}
       />
-      <View className="min-w-0 flex-1">
-        <Text className="text-base leading-5 text-surface-foreground" numberOfLines={1} weight="bold">
-          {bay.operator?.name ?? 'No operator'}
-        </Text>
-        <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
-          {bay.name}
-        </Text>
-      </View>
+      <BayIdentityLabels bayName={bay.name} operatorName={bay.operator?.name ?? null} />
     </View>
   );
 }

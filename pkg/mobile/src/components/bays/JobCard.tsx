@@ -2,26 +2,24 @@ import { statusDaysLeftColor } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { BayIdentityLabels } from '@/components/bays/BayIdentityLabels';
 import { Text } from '@/components/ui/text';
 import type { JobListCard } from '@/lib/use-job-list';
 import { useColorMode } from '@/theme/use-color-mode';
 
 import { BoardCard } from './BoardCard';
-import { STATUS_TONE } from './status-chip';
 
 /**
- * One Job tile in the Jobs grid: product + Job code, operator + Bay status, a coloured days-left
+ * One Job tile in the Jobs grid: product + Job code, operator + Bay name, a coloured days-left
  * countdown paced by the latest-ending Bay, a work-day-weighted overall-progress bar, and the
  * customer + 'bay X of N' stage label. Tapping opens the Job Detail screen (#615).
  */
 export function JobCard({ job, onPress }: { job: JobListCard; onPress: () => void }) {
   const { progress } = job;
   const { resolved } = useColorMode();
-  const isActive = progress.status === 'in-progress';
   // Countdown + bar share the status accent: blue while in progress, green while queued, amber/red
   // as the finish nears.
   const dayColor = statusDaysLeftColor({ status: progress.status, daysLeft: progress.daysLeft, scheme: resolved });
-  const bayLabel = progress.currentBayName.toUpperCase();
 
   return (
     <BoardCard
@@ -41,7 +39,7 @@ export function JobCard({ job, onPress }: { job: JobListCard; onPress: () => voi
       onPress={onPress}
       primaryRow={<JobPrimaryRow job={job} />}
       progressPercent={progress.overallPercent}
-      secondaryRow={<OperatorRow bayLabel={bayLabel} isActive={isActive} job={job} />}
+      secondaryRow={<OperatorRow bayName={progress.currentBayName} job={job} />}
     />
   );
 }
@@ -62,9 +60,7 @@ function JobPrimaryRow({ job }: { job: JobListCard }) {
   );
 }
 
-function OperatorRow({ bayLabel, isActive, job }: { bayLabel: string; isActive: boolean; job: JobListCard }) {
-  const tone = STATUS_TONE[isActive ? 'in-progress' : 'next'];
-
+function OperatorRow({ bayName, job }: { bayName: string; job: JobListCard }) {
   return (
     <View className="flex-row items-center gap-3">
       <Avatar
@@ -72,17 +68,7 @@ function OperatorRow({ bayLabel, isActive, job }: { bayLabel: string; isActive: 
         name={job.operator?.name ?? 'Unassigned'}
         uri={job.operator?.thumbnailDataUrl}
       />
-      <View className="min-w-0 flex-1">
-        <Text className="text-sm leading-4 text-surface-foreground" numberOfLines={1} weight="semibold">
-          {job.operator?.name ?? 'No operator'}
-        </Text>
-        <View className="mt-0.5 flex-row items-center gap-1.5">
-          <View className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
-          <Text className={`text-[10px] leading-3 tracking-wide ${tone.text}`} numberOfLines={1} weight="semibold">
-            {isActive ? `IN ${bayLabel}` : `NEXT · ${bayLabel}`}
-          </Text>
-        </View>
-      </View>
+      <BayIdentityLabels bayName={bayName} operatorName={job.operator?.name ?? null} />
     </View>
   );
 }

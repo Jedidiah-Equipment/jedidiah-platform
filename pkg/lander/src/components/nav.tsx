@@ -34,7 +34,7 @@ function Logo({ onNavigate }: { onNavigate: () => void }) {
 
   return (
     <Link to={localePath('/', locale)} onClick={onNavigate} className="flex flex-none items-center no-underline">
-      <img src={logoUrl} alt={m.site.logoAlt} className="h-11 w-auto max-nav:h-9" />
+      <img src={logoUrl} alt={m.site.logoAlt} className="h-11 w-auto max-header:h-9" />
     </Link>
   );
 }
@@ -93,10 +93,10 @@ export function Nav() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#2a2a2a] bg-ink">
-      <div className="mx-auto flex h-[76px] max-w-[1320px] items-center justify-between gap-6 px-12 max-nav:h-16 max-nav:px-5">
+      <div className="mx-auto flex h-[76px] max-w-[1320px] items-center justify-between gap-6 px-12 max-header:h-16 max-header:px-5">
         <Logo onNavigate={() => setOpen(false)} />
 
-        <nav className="flex flex-none items-center gap-10 max-nav:hidden">
+        <nav className="flex flex-none items-center gap-10 max-header:hidden">
           {LINKS.map((link) => {
             const href = localePath(link.href, locale);
             const active = isActive(location.pathname, href);
@@ -115,7 +115,7 @@ export function Nav() {
           })}
         </nav>
 
-        <div className="flex flex-none items-center gap-7 max-nav:hidden">
+        <div className="flex flex-none items-center gap-7 max-header:hidden">
           <LanguageSelect
             onChange={switchLocale}
             className="min-w-[132px] border border-[#4a4a4a] bg-ink px-3 py-2 font-body text-[14px] font-semibold text-[#e8e8e8]"
@@ -135,7 +135,7 @@ export function Nav() {
           onClick={() => setOpen((value) => !value)}
           aria-label={m.nav.menuLabel}
           aria-expanded={open}
-          className="hidden h-[46px] w-[46px] flex-none items-center justify-center border-[1.5px] border-[#3a3a3a] bg-transparent max-nav:flex"
+          className="hidden h-[46px] w-[46px] flex-none items-center justify-center border-[1.5px] border-[#3a3a3a] bg-transparent max-header:flex"
         >
           {open ? (
             <IconX className="text-yellow" size={22} stroke={2.2} aria-hidden="true" />
@@ -146,7 +146,7 @@ export function Nav() {
       </div>
 
       {open ? (
-        <div className="border-t border-[#2a2a2a] bg-[#1b1b1b] nav:hidden">
+        <div className="border-t border-[#2a2a2a] bg-[#1b1b1b] header:hidden">
           <nav className="flex flex-col px-5 pt-2 pb-[18px]">
             {LINKS.map((link) => {
               const href = localePath(link.href, locale);

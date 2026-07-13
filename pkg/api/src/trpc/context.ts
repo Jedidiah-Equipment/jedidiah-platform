@@ -1,17 +1,24 @@
 import type { StorageAdapter } from '@pkg/core';
 import { db } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { UserAccessSummary } from '@pkg/schema';
+import type { AppEnv, Changelog, UserAccessSummary } from '@pkg/schema';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 
 import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../auth/session.js';
 
+/** Reads the bundled Changelog files. Injected so the changelog router can be tested without the filesystem. */
+export type ChangelogLoader = () => Changelog[];
+
 export type ContextDependencies = {
+  appEnv: AppEnv;
+  changelogLoader: ChangelogLoader;
   storage: StorageAdapter;
 };
 
 export type Context = {
   access: UserAccessSummary | null;
+  appEnv: AppEnv;
+  changelogLoader: ChangelogLoader;
   db: typeof db;
   log: CreateFastifyContextOptions['req']['log'];
   session: AppSession | null;
@@ -30,6 +37,8 @@ export function createContextFactory(dependencies: ContextDependencies) {
 
     return {
       access,
+      appEnv: dependencies.appEnv,
+      changelogLoader: dependencies.changelogLoader,
       db,
       log: req.log,
       session,
@@ -39,6 +48,8 @@ export function createContextFactory(dependencies: ContextDependencies) {
 }
 
 export const createContext = createContextFactory({
+  appEnv: 'development',
+  changelogLoader: () => [],
   storage: {
     deleteObject: async () => undefined,
     get: async () => {

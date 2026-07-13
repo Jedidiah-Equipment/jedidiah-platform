@@ -13,6 +13,7 @@
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "references": [
     { "path": "../../pkg/ai" },
+    { "path": "../../pkg/changelog" },
     { "path": "../../pkg/schema" },
     { "path": "../../pkg/domain" },
     { "path": "../../pkg/db" },

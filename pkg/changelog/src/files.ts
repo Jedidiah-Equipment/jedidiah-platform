@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { Changelog } from '@pkg/schema';
 
 import type { ChangelogFileRef } from './prune.js';
+import { validateChangelogJson } from './validate.js';
 
 /** The changelog `*.json` filenames present in `dir`, or none if the directory does not exist. */
 function jsonFilenames(dir: string): string[] {
@@ -24,6 +25,22 @@ export function listChangelogFiles(dir: string): ChangelogFileRef[] {
     }
   }
   return refs;
+}
+
+/** Reads and validates every changelog in `dir`, returning the valid ones. Unreadable or invalid files are skipped. */
+export function loadChangelogs(dir: string): Changelog[] {
+  const changelogs: Changelog[] = [];
+  for (const name of jsonFilenames(dir)) {
+    let text: string;
+    try {
+      text = readFileSync(join(dir, name), 'utf8');
+    } catch {
+      continue;
+    }
+    const result = validateChangelogJson(text);
+    if (result.ok) changelogs.push(result.changelog);
+  }
+  return changelogs;
 }
 
 /** The base names (no extension) already taken in `dir`, for same-day disambiguation. */

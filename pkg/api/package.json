@@ -23,6 +23,7 @@
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^10.0.0",
     "@pkg/ai": "workspace:*",
+    "@pkg/changelog": "workspace:*",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",

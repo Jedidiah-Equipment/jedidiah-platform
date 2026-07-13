@@ -223,6 +223,8 @@ describe('users.list', () => {
     });
     const caller = createAppRouterCaller({
       access,
+      appEnv: 'production',
+      changelogLoader: () => [],
       db: context.db,
       log: pino({ level: 'silent' }),
       session,

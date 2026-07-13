@@ -11,6 +11,7 @@ import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
 import { registerAiChatRoute } from './routes/ai/ai-chat.route.js';
+import { createFileChangelogLoader } from './routes/changelog/changelog-loader.js';
 import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
 import { registerEntityFileRoutes } from './routes/files/entity-file-http.route.js';
 import {
@@ -64,6 +65,8 @@ export async function buildServer(
   const trpcOptions = {
     router: appRouter,
     createContext: createContextFactory({
+      appEnv: config.APP_ENV,
+      changelogLoader: createFileChangelogLoader(),
       storage,
     }),
     onError({ error, path, type }) {

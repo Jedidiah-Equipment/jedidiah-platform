@@ -104,6 +104,9 @@ importers:
       '@pkg/ai':
         specifier: workspace:*
         version: link:../ai
+      '@pkg/changelog':
+        specifier: workspace:*
+        version: link:../changelog
       '@pkg/core':
         specifier: workspace:*
         version: link:../core

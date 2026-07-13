@@ -92,9 +92,8 @@ if [ "$DRY_RUN" -eq 1 ]; then
   if [ "$SKIP_CHANGELOG" -eq 0 ]; then
     echo
     echo "Changelog preview ($TARGET_BRANCH..$SOURCE_BRANCH):"
-    if ! changelog_cli generate --from "$TARGET_REF" --to "$SOURCE_REF" --dir "$CHANGELOG_DIR" --repo "$ROOT" --dry-run; then
-      echo "Changelog preview unavailable (generation failed); the release itself would block here." >&2
-    fi
+    # Generation failure aborts the check (set -e), matching the real release, which blocks here too.
+    changelog_cli generate --from "$TARGET_REF" --to "$SOURCE_REF" --dir "$CHANGELOG_DIR" --repo "$ROOT" --dry-run
   fi
   echo
   echo "Dry run only; no push performed."
@@ -103,14 +102,18 @@ fi
 
 # --- Changelog: generated and committed to $SOURCE_BRANCH before the fast-forward ---
 COMMITTED_CHANGELOG=0
+SWITCHED=0
 ORIGINAL_REF=""
 
 restore_checkout() {
   status=$?
-  if [ -n "$ORIGINAL_REF" ]; then
+  # Only clean up when we actually switched to the source branch. If the checkout never happened
+  # (e.g. $SOURCE_BRANCH is checked out in another worktree), the user is still on their original
+  # branch and it must not be touched.
+  if [ "$SWITCHED" -eq 1 ]; then
     if [ "$COMMITTED_CHANGELOG" -eq 0 ]; then
-      # Discard any generated-but-uncommitted changelog before returning.
-      git -C "$ROOT" reset --hard "$SOURCE_REF" >/dev/null 2>&1 || true
+      # Discard the generated-but-uncommitted changelog, scoped to changelogs/ — never a branch reset.
+      git -C "$ROOT" checkout --quiet -- "$CHANGELOG_DIR" >/dev/null 2>&1 || true
       git -C "$ROOT" clean -fdq -- "$CHANGELOG_DIR" >/dev/null 2>&1 || true
     fi
     git -C "$ROOT" checkout --quiet "$ORIGINAL_REF" >/dev/null 2>&1 || true
@@ -129,6 +132,7 @@ if [ "$SKIP_CHANGELOG" -eq 0 ]; then
   trap restore_checkout EXIT
 
   git -C "$ROOT" checkout --quiet "$SOURCE_BRANCH"
+  SWITCHED=1
   if ! git -C "$ROOT" merge --ff-only "$SOURCE_REF" >/dev/null 2>&1; then
     echo "Refusing to release: local $SOURCE_BRANCH cannot fast-forward to $REMOTE/$SOURCE_BRANCH." >&2
     echo "Reconcile your local $SOURCE_BRANCH first." >&2

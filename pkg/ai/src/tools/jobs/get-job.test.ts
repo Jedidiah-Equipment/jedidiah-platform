@@ -1,150 +1,76 @@
-import * as core from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
-import { describe, expect } from 'vitest';
-import { z } from 'zod';
-import { aiLinkMetadata } from '@/link-metadata.js';
-import { createTester } from '@/test/create-tester.js';
-import { createJobFixture, createProductWithRangeFixture, createQuoteFixture } from '@/test/domain-fixtures.js';
-import { createActorUser, createAiContext } from '@/test/tools.js';
-import { getJobDefinition, getJobTool } from './get-job.js';
+import { JobDetail } from '@pkg/schema';
+import { describe, expect, test } from 'vitest';
 
-const test = createTester(async ({ db }) => {
-  await createActorUser(db, 'admin');
-  const product = await createProductWithRangeFixture(db, 'Job Get Product');
-  const quote = await createQuoteFixture(db, product.id, { status: 'accepted' });
+import { GetJobInput, GetJobResponse, getJobDefinition, toGetJobResponse } from './get-job.js';
 
-  return { db, product, quote };
+const JOB_ID = '00000000-0000-4000-8000-000000000401';
+const CUSTOMER_ID = '00000000-0000-4000-8000-000000000101';
+const QUOTE_ID = '00000000-0000-4000-8000-000000000301';
+
+const job = JobDetail.parse({
+  cfo: [],
+  code: 'JOB-00001',
+  createdAt: '2026-07-10T08:00:00.000Z',
+  customerCompanyName: 'Acme Mining',
+  customerId: CUSTOMER_ID,
+  customerThumbnailDataUrl: 'data:image/webp;base64,YQ==',
+  description: 'Repair hydraulic leak',
+  documents: [],
+  id: JOB_ID,
+  productId: null,
+  productModelCode: null,
+  productName: null,
+  productSerialNumber: null,
+  productSerialPrefix: null,
+  productSerialSequence: null,
+  productSerialYear: null,
+  productThumbnailDataUrl: null,
+  quoteCode: 'QUO-00001',
+  quoteId: QUOTE_ID,
+  quoteKind: 'custom',
+  schedule: ['procurement', 'supply', 'fabrication', 'paint', 'assembly'].map((department) => ({
+    bays: [],
+    department,
+  })),
+  scheduleState: null,
+  updatedAt: '2026-07-10T09:00:00.000Z',
+  vinNumber: null,
+  workTitle: 'Hydraulic repair',
 });
 
-describe('getJobTool', () => {
-  test('returns the same job detail shape as jobs.get', async ({ context }) => {
-    const viewerAccess = createUserAccessSummary({
-      role: 'job-viewer',
-      userId: 'test-user-id',
-    });
-    const created = await createJobFixture(context.db, context.quote.id);
-
-    const [toolResult, trpcResult] = await Promise.all([
-      getJobTool.handler({ id: created.id }, createAiContext(context.db, viewerAccess)),
-      core.getJob({ db: context.db, id: created.id }),
-    ]);
-
-    expect(toolResult).toEqual(trpcResult);
-    expect(toolResult.schedule.map((item) => item.department)).toEqual([
-      'procurement',
-      'supply',
-      'fabrication',
-      'paint',
-      'assembly',
-    ]);
+describe('getJob contract', () => {
+  test('requires a Job UUID and describes the find follow-up', () => {
+    expect(GetJobInput.parse({ id: JOB_ID })).toEqual({ id: JOB_ID });
+    expect(() => GetJobInput.parse({ id: 'bad-id' })).toThrow();
+    expect(getJobDefinition.description).toContain('findJobs');
   });
 
-  test('surfaces the core not-found message for missing jobs', async ({ context }) => {
-    const access = createUserAccessSummary({
-      role: 'admin',
-      userId: 'test-user-id',
-    });
+  test('returns full Job details and relationships without thumbnail data', () => {
+    const response = toGetJobResponse(job, createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }));
 
-    await expect(
-      getJobTool.handler(
-        {
-          id: '00000000-0000-4000-8000-000000000001',
-        },
-        createAiContext(context.db, access),
-      ),
-    ).rejects.toThrow('Job not found: 00000000-0000-4000-8000-000000000001');
-  });
-
-  test('rejects invalid job get args', async ({ context }) => {
-    const access = createUserAccessSummary({
-      role: 'admin',
-      userId: 'test-user-id',
-    });
-
-    await expect(getJobTool.handler({ id: 'bad-id' }, createAiContext(context.db, access))).rejects.toBeInstanceOf(
-      z.ZodError,
-    );
-  });
-
-  test('projects Job and linked Quote and Customer metadata without mutating the base result', () => {
-    const job = {
-      id: '00000000-0000-4000-8000-000000000001',
+    expect(GetJobResponse.parse(response)).toEqual(response);
+    expect(response).toMatchObject({
       code: 'JOB-00001',
-      customerCompanyName: 'Apex Quarry Services',
-      customerId: '00000000-0000-4000-8000-000000000005',
-      quoteCode: 'QUO-00002',
-      quoteId: '00000000-0000-4000-8000-000000000002',
-    };
-
-    const project = getJobDefinition.projectResult as (result: unknown) => unknown;
-    const projected = project(job);
-
-    expect(projected).toEqual({
-      ...job,
-      links: [
-        {
-          entity: 'Job',
-          href: '/jobs/00000000-0000-4000-8000-000000000001',
-          label: 'JOB-00001',
-        },
-        {
-          entity: 'Quote',
-          href: '/quotes/00000000-0000-4000-8000-000000000002/edit',
-          label: 'QUO-00002',
-        },
-        {
-          entity: 'Customer',
-          href: '/customers/00000000-0000-4000-8000-000000000005/edit',
-          label: 'Apex Quarry Services',
-        },
+      description: 'Repair hydraulic leak',
+      id: JOB_ID,
+      links: {
+        app: `/jobs/${JOB_ID}`,
+        customer: `/customers/${CUSTOMER_ID}/edit`,
+        quote: `/quotes/${QUOTE_ID}/edit`,
+      },
+      schedule: [
+        { department: 'procurement' },
+        { department: 'supply' },
+        { department: 'fabrication' },
+        { department: 'paint' },
+        { department: 'assembly' },
       ],
+      workTitle: 'Hydraulic repair',
     });
-    expect(job).not.toHaveProperty('links');
-  });
-
-  test('uses the shared route metadata for projected Job links', () => {
-    expect(aiLinkMetadata.Job.href).toBe('/jobs/{id}');
-    const project = getJobDefinition.projectResult as (result: unknown) => unknown;
-
-    expect(project({ code: 'JOB-00001', id: 'job-id' })).toMatchObject({
-      links: [{ href: '/jobs/job-id' }],
-    });
-  });
-
-  test('keeps CFO part units in Job detail projections', () => {
-    const job = {
-      id: '00000000-0000-4000-8000-000000000001',
-      code: 'JOB-00001',
-      cfo: [
-        {
-          assemblyName: 'Hydraulics',
-          kind: 'standard',
-          parts: [
-            {
-              partCode: 'HOSE-001',
-              partId: '00000000-0000-4000-8000-000000000010',
-              partName: 'Hydraulic hose',
-              quantity: 6000,
-              unitOfMeasure: 'mm',
-            },
-          ],
-        },
-      ],
-    };
-
-    const project = getJobDefinition.projectResult as (result: unknown) => unknown;
-
-    expect(project(job)).toMatchObject({
-      cfo: [
-        {
-          parts: [
-            {
-              quantity: 6000,
-              unitOfMeasure: 'mm',
-            },
-          ],
-        },
-      ],
-    });
+    expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
+    expect(
+      toGetJobResponse(job, createUserAccessSummary({ role: 'job-viewer', userId: 'test-user-id' })).links,
+    ).toEqual({ app: `/jobs/${JOB_ID}` });
   });
 });

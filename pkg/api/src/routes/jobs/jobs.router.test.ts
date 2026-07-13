@@ -15,7 +15,7 @@ import { toPlantDateOnly } from '@pkg/domain';
 import { type BoardListResult, type BoardPreviewResult, type Product, ProjectedBayQueue } from '@pkg/schema';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
-import { createActorUser } from '@/test/ai-tools.js';
+import { createActorUser } from '@/test/actor-user.js';
 import { createTester } from '@/test/create-tester.js';
 import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';

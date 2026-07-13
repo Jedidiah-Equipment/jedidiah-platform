@@ -22,7 +22,6 @@
     "@better-auth/expo": "1.6.23",
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^10.0.0",
-    "@openai/agents": "^0.11.8",
     "@pkg/ai": "workspace:*",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
@@ -31,11 +30,9 @@
     "@pkg/schema": "workspace:*",
     "@trpc/server": "^11.18.0",
     "dotenv": "^17.4.2",
-    "openai": "^6.45.0",
     "pino": "^10.3.1",
     "posthog-node": "^5.40.0",
-    "resend": "^6.17.1",
-    "zod-to-json-schema": "^3.25.2"
+    "resend": "^6.17.1"
   },
   "devDependencies": {
     "@ai-sdk/provider": "3.0.13",

@@ -1,6 +1,5 @@
 import type { BuiltRouter } from '@trpc/server/unstable-core-do-not-import';
 
-import { aiRouter } from '../routes/ai/ai.router.js';
 import { auditRouter } from '../routes/audit/audit.router.js';
 import { authRouter } from '../routes/auth/auth.router.js';
 import { customersRouter } from '../routes/customers/customers.router.js';
@@ -18,7 +17,6 @@ import { createCallerFactory, router } from './init.js';
 type AppRouterRootTypes = (typeof authRouter)['_def']['_config']['$types'];
 
 type AppRouterRecord = {
-  ai: (typeof aiRouter)['_def']['record'];
   audit: (typeof auditRouter)['_def']['record'];
   auth: (typeof authRouter)['_def']['record'];
   customers: (typeof customersRouter)['_def']['record'];
@@ -38,7 +36,6 @@ export type AppRouter = BuiltRouter<AppRouterRootTypes, AppRouterRecord>;
 // Naming the router shape keeps declaration emit from serializing the full nested tRPC type.
 function createAppRouter(): AppRouter {
   return router({
-    ai: aiRouter,
     audit: auditRouter,
     auth: authRouter,
     customers: customersRouter,

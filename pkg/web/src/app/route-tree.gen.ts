@@ -29,7 +29,6 @@ import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboa
 import { Route as AuthedCustomersRouteImport } from './../routes/_authed.customers'
 import { Route as AuthedBaysRouteImport } from './../routes/_authed.bays'
 import { Route as AuthedAuditRouteImport } from './../routes/_authed.audit'
-import { Route as AuthedAssistantRouteImport } from './../routes/_authed.assistant'
 import { Route as AuthedSuppliersIndexRouteImport } from './../routes/_authed.suppliers.index'
 import { Route as AuthedQuotesIndexRouteImport } from './../routes/_authed.quotes.index'
 import { Route as AuthedProductsIndexRouteImport } from './../routes/_authed.products.index'
@@ -145,11 +144,6 @@ const AuthedAuditRoute = AuthedAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedAssistantRoute = AuthedAssistantRouteImport.update({
-  id: '/assistant',
-  path: '/assistant',
-  getParentRoute: () => AuthedRoute,
-} as any)
 const AuthedSuppliersIndexRoute = AuthedSuppliersIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -236,7 +230,6 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/assistant': typeof AuthedAssistantRoute
   '/audit': typeof AuthedAuditRoute
   '/bays': typeof AuthedBaysRoute
   '/customers': typeof AuthedCustomersRouteWithChildren
@@ -273,7 +266,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/assistant': typeof AuthedAssistantRoute
   '/audit': typeof AuthedAuditRoute
   '/bays': typeof AuthedBaysRoute
   '/dashboard': typeof AuthedDashboardRoute
@@ -306,7 +298,6 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/_authed/assistant': typeof AuthedAssistantRoute
   '/_authed/audit': typeof AuthedAuditRoute
   '/_authed/bays': typeof AuthedBaysRoute
   '/_authed/customers': typeof AuthedCustomersRouteWithChildren
@@ -345,7 +336,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/support'
     | '/verify-email'
-    | '/assistant'
     | '/audit'
     | '/bays'
     | '/customers'
@@ -382,7 +372,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/support'
     | '/verify-email'
-    | '/assistant'
     | '/audit'
     | '/bays'
     | '/dashboard'
@@ -414,7 +403,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/support'
     | '/verify-email'
-    | '/_authed/assistant'
     | '/_authed/audit'
     | '/_authed/bays'
     | '/_authed/customers'
@@ -595,13 +583,6 @@ declare module '@tanstack/react-router' {
       path: '/audit'
       fullPath: '/audit'
       preLoaderRoute: typeof AuthedAuditRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/assistant': {
-      id: '/_authed/assistant'
-      path: '/assistant'
-      fullPath: '/assistant'
-      preLoaderRoute: typeof AuthedAssistantRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/suppliers/': {
@@ -802,7 +783,6 @@ const AuthedSuppliersRouteWithChildren = AuthedSuppliersRoute._addFileChildren(
 )
 
 interface AuthedRouteChildren {
-  AuthedAssistantRoute: typeof AuthedAssistantRoute
   AuthedAuditRoute: typeof AuthedAuditRoute
   AuthedBaysRoute: typeof AuthedBaysRoute
   AuthedCustomersRoute: typeof AuthedCustomersRouteWithChildren
@@ -818,7 +798,6 @@ interface AuthedRouteChildren {
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedAssistantRoute: AuthedAssistantRoute,
   AuthedAuditRoute: AuthedAuditRoute,
   AuthedBaysRoute: AuthedBaysRoute,
   AuthedCustomersRoute: AuthedCustomersRouteWithChildren,

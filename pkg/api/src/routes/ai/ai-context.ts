@@ -2,22 +2,22 @@ import type { AiContext, AiSession } from '@pkg/ai';
 import type { StorageAdapter } from '@pkg/core';
 import { db } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import { renderBrochurePdf } from '@pkg/pdf';
+import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { FastifyRequest } from 'fastify';
 
 import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '@/auth/session.js';
 import { log } from '@/logger.js';
-import { deliverQuoteDraftEmail } from '@/routes/quotes/quote-draft-email.js';
-
-export type AiContextDependencies = {
-  storage: StorageAdapter;
-};
+import { sendAiEmail } from './ai-email.js';
 
 export type CreateAiContextInput = {
   access: UserAccessSummary | null;
   db: AiContext['db'];
   session: AppSession | null;
+  storage: StorageAdapter;
+};
+
+export type AiContextDependencies = {
   storage: StorageAdapter;
 };
 
@@ -35,15 +35,16 @@ export function toAiSession(session: AppSession | null): AiSession | null {
     : null;
 }
 
-// The one place API-owned dependencies are injected into @pkg/ai; route every AiContext
-// construction through here so call sites cannot drift.
+// Keep API-owned rendering and delivery dependencies beside the transport; `@pkg/ai` stays free of
+// API configuration and concrete delivery clients.
 export function createAiContext({ access, db, session, storage }: CreateAiContextInput): AiContext {
   return {
     access,
     brochureRenderer: renderBrochurePdf,
     db,
-    deliverQuoteDraftEmail,
     log,
+    quoteDocumentRenderer: renderQuoteDocumentPdf,
+    sendEmail: sendAiEmail,
     session: toAiSession(session),
     storage,
   };

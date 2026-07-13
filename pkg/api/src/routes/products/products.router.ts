@@ -1,4 +1,5 @@
 import {
+  type AssemblyExportRow,
   createProduct,
   exportProductAssemblies,
   getProduct,
@@ -36,7 +37,9 @@ export const productsRouter = router({
 
   assemblyNames: authorizedProcedure('product:read').query(({ ctx }) => listAssemblyNames({ db: ctx.db })),
 
-  assemblyExport: authorizedProcedure('product:read').query(({ ctx }) => exportProductAssemblies({ db: ctx.db })),
+  assemblyExport: authorizedProcedure('product:read').query(
+    ({ ctx }): Promise<AssemblyExportRow[]> => exportProductAssemblies({ db: ctx.db }),
+  ),
 
   create: authorizedProcedure('product:create')
     .input(ProductCreateInput)

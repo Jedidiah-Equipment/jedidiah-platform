@@ -1,4 +1,3 @@
-import { generateQuoteEmailBody } from '@pkg/ai';
 import {
   createQuote,
   generateQuoteDocument,
@@ -27,7 +26,6 @@ import {
   ProductListInput,
   QuoteCreateInput,
   QuoteDocumentGenerationInput,
-  QuoteDraftEmailInput,
   QuoteListInput,
   QuoteProductBayAvailabilityInput,
   QuoteUpdateInput,
@@ -36,12 +34,8 @@ import {
 import { z } from 'zod';
 
 import { log } from '@/logger.js';
-import type { Context } from '@/trpc/context.js';
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
-import { createAiContext } from '../ai/ai-context.js';
-import { getAiRunConfig } from '../ai/ai-run-config.js';
-import { deliverQuoteDraftEmail } from './quote-draft-email.js';
 
 export const quotesRouter = router({
   list: authorizedProcedure('quote:read')
@@ -120,53 +114,7 @@ export const quotesRouter = router({
         }),
       ),
     ),
-
-  draftEmail: authorizedProcedure('quote:update')
-    .input(QuoteDraftEmailInput)
-    .mutation(({ ctx, input }) =>
-      mapQuoteErrors(() =>
-        draftQuoteEmailWithGeneratedBody({
-          access: ctx.access,
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          input,
-          recipientEmail: ctx.session.user.email,
-          session: ctx.session,
-          storage: ctx.storage,
-        }),
-      ),
-    ),
 });
-
-async function draftQuoteEmailWithGeneratedBody({
-  access,
-  actorUserId,
-  db,
-  input,
-  recipientEmail,
-  session,
-  storage,
-}: {
-  access: Context['access'];
-  actorUserId: NonNullable<Context['session']>['user']['id'];
-  db: Context['db'];
-  input: QuoteDraftEmailInput;
-  recipientEmail: string;
-  session: NonNullable<Context['session']>;
-  storage: Context['storage'];
-}) {
-  const quote = await getQuote({ db, id: input.quoteId });
-  const { model, reasoningEffort, runner } = getAiRunConfig();
-  const emailBody = await generateQuoteEmailBody({
-    aiContext: createAiContext({ access, db, session, storage }),
-    model,
-    quote,
-    reasoningEffort,
-    runner,
-  });
-
-  return deliverQuoteDraftEmail({ actorUserId, db, emailBody, input, recipientEmail, storage });
-}
 
 async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapKnownCoreError(action, isQuoteCoreError, mapQuoteCoreError);
@@ -197,7 +145,6 @@ function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreErr
     case 'quote.locked':
     case 'quote.document_generation_not_allowed':
     case 'quote.product_bay_availability_not_applicable':
-    case 'quote.draft_email_recipient_missing':
       return {
         appCode: error.code,
         code: 'BAD_REQUEST',

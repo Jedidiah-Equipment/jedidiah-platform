@@ -4,62 +4,44 @@ import {
   ComposerPrimitive,
   ErrorPrimitive,
   MessagePrimitive,
-  type PartState,
   ThreadPrimitive,
-  type ToolCallMessagePartProps,
+  type ToolCallMessagePartComponent,
   useAuiState,
 } from '@assistant-ui/react';
-import type { ChatToolResultSizeInfo } from '@pkg/schema';
 import { IconArrowDown, IconArrowUp, IconCopy, IconRefresh, IconSquare } from '@tabler/icons-react';
-import type { FC, ReactNode } from 'react';
+import type { FC } from 'react';
 
-import { getRunUsageFromMetadata } from '@/components/assistant-ui/assistant-run-usage.js';
-import {
-  formatKb,
-  formatThumbnailDropCount,
-  getToolResultSizesFromMetadata,
-  summarizeToolResultSizes,
-} from '@/components/assistant-ui/assistant-tool-result-size.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@/components/ui/scroll-area.js';
-import { cn } from '@/lib/utils.js';
 
 import { MarkdownText } from './markdown-text.js';
+import { ToolFallback } from './tool-fallback.js';
 import { TooltipIconButton } from './tooltip-icon-button.js';
 
-type ThreadProps = {
-  composerSlot?: ReactNode;
-};
-
-export const Thread: FC<ThreadProps> = ({ composerSlot }) => {
+// Keep the reference thread structure, but preserve MarkdownText for app-aware entity links.
+export const ModalThread: FC = () => {
   return (
-    <ScrollAreaRoot
-      render={<ThreadPrimitive.Root className="flex h-full min-h-0 min-w-0 flex-col rounded-lg border bg-background" />}
-    >
+    <ScrollAreaRoot render={<ThreadPrimitive.Root className="flex h-full min-h-0 flex-col bg-background" />}>
       <ScrollAreaViewport
         render={
           <ThreadPrimitive.Viewport
-            className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden scroll-smooth"
+            className="relative flex h-full min-h-0 flex-1 flex-col overflow-x-hidden scroll-smooth px-3 pt-3"
             turnAnchor="top"
           />
         }
       >
-        <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-1 flex-col px-4 pt-4">
-          <AuiIf condition={(state) => state.thread.isEmpty}>
-            <ThreadWelcome />
-          </AuiIf>
+        <AuiIf condition={(state) => state.thread.isEmpty}>
+          <ThreadWelcome />
+        </AuiIf>
 
-          <div className="flex w-full min-w-0 flex-col gap-6 pb-8">
-            <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
-          </div>
-
-          <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mt-auto flex flex-col gap-3 bg-background pb-4">
-            <ThreadScrollToBottom />
-            <Composer composerSlot={composerSlot} />
-          </ThreadPrimitive.ViewportFooter>
+        <div className="flex flex-1 flex-col gap-4">
+          <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
         </div>
+
+        <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mt-auto flex flex-col gap-2 bg-background pb-3">
+          <ThreadScrollToBottom />
+          <Composer />
+        </ThreadPrimitive.ViewportFooter>
       </ScrollAreaViewport>
       <ScrollBar />
     </ScrollAreaRoot>
@@ -74,11 +56,8 @@ const ThreadMessage: FC = () => {
 
 const ThreadWelcome: FC = () => {
   return (
-    <div className="my-auto flex min-h-72 flex-col justify-center px-2">
-      <div>
-        <h1 className="font-semibold text-2xl">Assistant</h1>
-        <p className="text-muted-foreground text-sm">Conversations are saved locally in this browser.</p>
-      </div>
+    <div className="flex flex-1 flex-col items-center justify-center px-2 text-center">
+      <h1 className="font-semibold text-lg">How can I help you today?</h1>
     </div>
   );
 };
@@ -88,7 +67,7 @@ const ThreadScrollToBottom: FC = () => {
     <ThreadPrimitive.ScrollToBottom
       render={
         <TooltipIconButton
-          className="absolute -top-12 self-center rounded-full bg-background shadow-sm disabled:invisible"
+          className="absolute -top-10 self-center rounded-full bg-background shadow-sm disabled:invisible"
           tooltip="Scroll to bottom"
           variant="outline"
         >
@@ -99,38 +78,35 @@ const ThreadScrollToBottom: FC = () => {
   );
 };
 
-const Composer: FC<ThreadProps> = ({ composerSlot }) => {
+const Composer: FC = () => {
   return (
-    <ComposerPrimitive.Root className="relative flex w-full flex-col">
-      {composerSlot}
-      <div className="flex w-full flex-col gap-2 rounded-lg border bg-background p-2 shadow-sm focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20">
-        <ComposerPrimitive.Input
-          aria-label="Message"
-          autoFocus
-          className="max-h-36 min-h-16 w-full resize-none bg-transparent px-2 py-1 text-sm outline-none placeholder:text-muted-foreground"
-          placeholder="Message the assistant"
-          rows={2}
-        />
-        <div className="flex items-center justify-end gap-2">
-          <AuiIf condition={(state) => state.thread.isRunning}>
-            <ComposerPrimitive.Cancel
-              render={
-                <Button aria-label="Stop generating" size="icon-sm" type="button" variant="outline">
-                  <IconSquare className="fill-current" />
-                </Button>
-              }
-            />
-          </AuiIf>
-          <AuiIf condition={(state) => !state.thread.isRunning}>
-            <ComposerPrimitive.Send
-              render={
-                <Button aria-label="Send message" size="icon-sm" type="button">
-                  <IconArrowUp />
-                </Button>
-              }
-            />
-          </AuiIf>
-        </div>
+    <ComposerPrimitive.Root className="relative flex w-full flex-col rounded-lg border bg-background p-2 shadow-sm focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20">
+      <ComposerPrimitive.Input
+        aria-label="Message"
+        autoFocus
+        className="max-h-32 min-h-12 w-full resize-none bg-transparent px-2 py-1 text-sm outline-none placeholder:text-muted-foreground"
+        placeholder="Send a message..."
+        rows={2}
+      />
+      <div className="flex items-center justify-end gap-2">
+        <AuiIf condition={(state) => state.thread.isRunning}>
+          <ComposerPrimitive.Cancel
+            render={
+              <Button aria-label="Stop generating" size="icon-sm" type="button" variant="outline">
+                <IconSquare className="fill-current" />
+              </Button>
+            }
+          />
+        </AuiIf>
+        <AuiIf condition={(state) => !state.thread.isRunning}>
+          <ComposerPrimitive.Send
+            render={
+              <Button aria-label="Send message" size="icon-sm" type="button">
+                <IconArrowUp />
+              </Button>
+            }
+          />
+        </AuiIf>
       </div>
     </ComposerPrimitive.Root>
   );
@@ -138,189 +114,38 @@ const Composer: FC<ThreadProps> = ({ composerSlot }) => {
 
 const AssistantMessage: FC = () => {
   return (
-    <MessagePrimitive.Root className="group/message relative w-full min-w-0">
-      <div className="min-w-0 px-2 text-sm leading-6">
-        <MessagePrimitive.GroupedParts groupBy={groupToolCallParts}>
-          {({ part, children }) => {
-            if (part.type === 'group-tool-calls') {
-              return <ToolCallGroup indices={part.indices}>{children}</ToolCallGroup>;
-            }
-
-            if (part.type === 'text') {
-              if (part.status?.type === 'running' && part.text.length === 0) {
-                return <ThinkingText />;
-              }
-
-              return <MarkdownText />;
-            }
-
-            if (part.type === 'tool-call') {
-              return <ToolCallDetail {...part} />;
-            }
-
-            return null;
-          }}
-        </MessagePrimitive.GroupedParts>
-        <AssistantThinking />
-        <AssistantUsageFooter />
+    <MessagePrimitive.Root className="relative w-full">
+      <div className="px-1 text-sm leading-6">
+        <MessagePrimitive.Parts components={{ Text: MarkdownText, tools: { Fallback: SpacedToolFallback } }} />
         <MessageError />
       </div>
-      <div className="h-9 pt-1">
-        <AssistantActionBar />
-      </div>
+      <AssistantActionBar />
     </MessagePrimitive.Root>
   );
 };
 
-const AssistantUsageFooter: FC = () => {
-  const runUsage = useAuiState((state) =>
-    state.message.role === 'assistant' ? getRunUsageFromMetadata(state.message.metadata?.custom) : undefined,
-  );
+// Adds a little breathing room below the tool call, and pretty-prints the tool input so it reads
+// like the result JSON (the runtime hands `argsText` over as a compact single line).
+const SpacedToolFallback: ToolCallMessagePartComponent = (props) => (
+  <div className="mb-3">
+    <ToolFallback {...props} argsText={prettyPrintJson(props.argsText)} />
+  </div>
+);
 
-  if (!runUsage) {
-    return null;
+// While the call is still streaming the args text can be partial/unparseable — fall back to it as-is.
+function prettyPrintJson(value: string): string {
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    return value;
   }
-
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
-      <span>{formatTokenCount(runUsage.inputTokens)} in</span>
-      <span aria-hidden="true">·</span>
-      <span>{formatTokenCount(runUsage.outputTokens)} out</span>
-      <span aria-hidden="true">·</span>
-      <span>{formatTokenCount(runUsage.reasoningOutputTokens)} reasoning</span>
-      <span aria-hidden="true">·</span>
-      <span>{formatTokenCount(runUsage.cachedInputTokens)} cached</span>
-      <span aria-hidden="true">·</span>
-      <span>{runUsage.requests} requests</span>
-    </div>
-  );
-};
-
-const AssistantThinking: FC = () => {
-  const isThinking = useAuiState(
-    (state) =>
-      state.message.status?.type === 'running' &&
-      !state.message.parts.some((part) => part.type === 'text' && part.text.length > 0),
-  );
-
-  return isThinking ? <ThinkingText /> : null;
-};
-
-const ThinkingText: FC = () => {
-  return (
-    <div>
-      <span className="inline-flex bg-[linear-gradient(110deg,var(--muted-foreground)_0%,var(--muted-foreground)_35%,var(--foreground)_50%,var(--muted-foreground)_65%,var(--muted-foreground)_100%)] bg-[length:220%_100%] bg-clip-text text-sm text-transparent [animation:assistant-thinking-shimmer_1.6s_linear_infinite]">
-        Thinking...
-      </span>
-    </div>
-  );
-};
-
-const groupToolCallParts = (part: PartState): readonly ['group-tool-calls'] | null => {
-  return part.type === 'tool-call' ? ['group-tool-calls'] : null;
-};
-
-const ToolCallGroup: FC<{ children: ReactNode; indices: readonly number[] }> = ({ children, indices }) => {
-  // useAuiState selectors feed useSyncExternalStore; returning fresh objects here can trigger an update loop.
-  const totalSerializedBytes = useAuiState((state) => {
-    const sizes = getToolResultSizesFromMetadata(state.message.metadata?.custom);
-    const groupSizes = state.message.parts
-      .filter((part, index) => indices.includes(index) && part.type === 'tool-call')
-      .map((part) => getToolResultSize(part, sizes));
-
-    return summarizeToolResultSizes(groupSizes)?.totalSerializedBytes;
-  });
-  const truncatedCount = useAuiState((state) => {
-    const sizes = getToolResultSizesFromMetadata(state.message.metadata?.custom);
-    const groupSizes = state.message.parts
-      .filter((part, index) => indices.includes(index) && part.type === 'tool-call')
-      .map((part) => getToolResultSize(part, sizes));
-
-    return summarizeToolResultSizes(groupSizes)?.truncatedCount;
-  });
-  const count = indices.length;
-  const hasSizeSummary = totalSerializedBytes !== undefined;
-
-  return (
-    <div className="mb-3 inline-flex max-w-full pe-2">
-      <HoverCard>
-        <HoverCardTrigger
-          render={
-            <Badge
-              className="max-w-full cursor-default truncate border-border/70 bg-muted/30 px-2 py-0.5 font-normal text-muted-foreground text-xs"
-              variant="outline"
-            >
-              {hasSizeSummary ? (
-                <>
-                  <span>{count} tool calls</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{formatKb(totalSerializedBytes)} returned</span>
-                  {truncatedCount ? (
-                    <>
-                      <span aria-hidden="true">·</span>
-                      <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
-                        <span className="size-1.5 rounded-full bg-amber-500" />
-                        {truncatedCount} truncated
-                      </span>
-                    </>
-                  ) : null}
-                </>
-              ) : (
-                <>tool calls {count}</>
-              )}
-            </Badge>
-          }
-        />
-        <HoverCardContent align="start" className="w-72 max-w-[calc(100vw-2rem)] p-2" side="top">
-          <div className="divide-y divide-border/70">{children}</div>
-        </HoverCardContent>
-      </HoverCard>
-    </div>
-  );
-};
-
-const ToolCallDetail: FC<ToolCallMessagePartProps> = ({ result, status, toolCallId, toolName }) => {
-  const size = useAuiState((state) => getToolResultSizesFromMetadata(state.message.metadata?.custom)?.[toolCallId]);
-
-  return (
-    <div className="flex items-start gap-3 px-1 py-2 text-xs first:pt-1 last:pb-1">
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium text-foreground">{toolName}</span>
-        {size && size.removedThumbnailFieldsByFallback > 0 ? (
-          <span className="mt-0.5 block text-muted-foreground">
-            {formatThumbnailDropCount(size.removedThumbnailFieldsByFallback)}
-          </span>
-        ) : null}
-      </span>
-      <span className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 text-muted-foreground">
-        <span>{formatToolStatus(status.type, result)}</span>
-        {size ? <ToolResultSizeLabel size={size} /> : null}
-      </span>
-    </div>
-  );
-};
-
-const ToolResultSizeLabel: FC<{ size: ChatToolResultSizeInfo }> = ({ size }) => {
-  return (
-    <>
-      {size.truncated ? (
-        <Badge
-          className="h-5 border-amber-300 bg-amber-100 px-1.5 font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
-          variant="outline"
-        >
-          truncated {formatKb(size.maxSerializedBytes)}
-        </Badge>
-      ) : null}
-      <span>{formatKb(size.serializedBytes)}</span>
-    </>
-  );
-};
+}
 
 const AssistantActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
       autohide="not-last"
-      className="ms-1 flex items-center gap-1 text-muted-foreground"
+      className="mt-1 flex items-center gap-1 px-1 text-muted-foreground"
       hideWhenRunning
     >
       <ActionBarPrimitive.Copy
@@ -343,8 +168,8 @@ const AssistantActionBar: FC = () => {
 
 const UserMessage: FC = () => {
   return (
-    <MessagePrimitive.Root className="block w-full min-w-0 px-2">
-      <div className="ml-auto w-fit min-w-0 max-w-[min(42rem,85%)] rounded-lg bg-primary px-3 py-2 text-primary-foreground text-sm leading-6">
+    <MessagePrimitive.Root className="w-full px-1">
+      <div className="ml-auto w-fit max-w-[85%] rounded-lg bg-primary px-3 py-2 text-primary-foreground text-sm leading-6">
         <MessagePrimitive.Parts />
       </div>
     </MessagePrimitive.Root>
@@ -354,61 +179,9 @@ const UserMessage: FC = () => {
 const MessageError: FC = () => {
   return (
     <MessagePrimitive.Error>
-      <ErrorPrimitive.Root className="mt-2 rounded-md border border-destructive bg-destructive/10 p-3 text-destructive text-sm">
-        <ErrorPrimitive.Message className={cn('line-clamp-2')} />
+      <ErrorPrimitive.Root className="mt-2 rounded-md border border-destructive bg-destructive/10 p-2.5 text-destructive text-sm">
+        <ErrorPrimitive.Message className="line-clamp-3" />
       </ErrorPrimitive.Root>
     </MessagePrimitive.Error>
   );
 };
-
-function formatToolStatus(status: string, result: unknown): string {
-  if (status === 'running') {
-    return 'running';
-  }
-
-  if (status === 'incomplete') {
-    return 'failed';
-  }
-
-  const count = getResultCount(result);
-
-  if (count !== null) {
-    return `${count} result${count === 1 ? '' : 's'}`;
-  }
-
-  return 'done';
-}
-
-function getToolResultSize(part: PartState, sizes: Record<string, ChatToolResultSizeInfo> | undefined) {
-  if (part.type !== 'tool-call' || !sizes) {
-    return undefined;
-  }
-
-  const toolCallId = (part as { toolCallId?: unknown }).toolCallId;
-
-  return typeof toolCallId === 'string' ? sizes[toolCallId] : undefined;
-}
-
-function getResultCount(result: unknown): number | null {
-  if (isRecord(result) && Array.isArray(result.items)) {
-    return result.items.length;
-  }
-
-  if (isRecord(result) && typeof result.total === 'number') {
-    return result.total;
-  }
-
-  if (Array.isArray(result)) {
-    return result.length;
-  }
-
-  return null;
-}
-
-function formatTokenCount(count: number): string {
-  return count >= 1000 ? `${(count / 1000).toFixed(1)}k` : String(count);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}

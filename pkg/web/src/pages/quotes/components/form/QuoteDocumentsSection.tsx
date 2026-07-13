@@ -1,11 +1,6 @@
-import type {
-  QuoteDetail,
-  QuoteDocument,
-  QuoteDocumentGenerationResult,
-  QuoteDocumentGenerationWarning,
-} from '@pkg/schema';
-import { IconAlertTriangle, IconFilePlus } from '@tabler/icons-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from '@pkg/schema';
+import { IconAlertTriangle } from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
@@ -14,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { QuoteDocumentActionDialog } from './QuoteDocumentActionDialog.js';
+import { GenerateQuoteDocumentDialog } from './GenerateQuoteDocumentDialog.js';
 
 type QuoteDocumentsSectionProps = {
   flushAutosave: () => Promise<boolean>;
@@ -73,39 +68,5 @@ export function QuoteDocumentsSection({
         owner={{ id: quote.id, type: 'quote' }}
       />
     </>
-  );
-}
-
-function GenerateQuoteDocumentDialog({
-  flushAutosave,
-  onGenerated,
-  quote,
-}: {
-  flushAutosave: () => Promise<boolean>;
-  onGenerated: (warnings: QuoteDocumentGenerationWarning[]) => void;
-  quote: QuoteDetail;
-}) {
-  const trpc = useTRPC();
-  const generateMutation = useMutation(trpc.quotes.generateDocument.mutationOptions());
-
-  return (
-    <QuoteDocumentActionDialog<QuoteDocumentGenerationResult>
-      description="Create a saved PDF revision from the current saved Quote."
-      errorMessage="Unable to generate Quote Document."
-      flushAutosave={flushAutosave}
-      isPending={generateMutation.isPending}
-      onConfirm={(input) => generateMutation.mutateAsync(input)}
-      onSuccess={(result) => onGenerated(result.warnings)}
-      quote={quote}
-      submitLabel="Generate"
-      successMessage={() => 'Quote Document generated'}
-      title="Generate Quote Document"
-      trigger={{
-        ariaLabel: `Generate Quote Document for quote ${quote.code}`,
-        icon: <IconFilePlus data-icon="inline-start" />,
-        label: 'Generate Quote Document',
-      }}
-      unsavedErrorMessage="Fix the highlighted quote fields before generating the Quote Document."
-    />
   );
 }

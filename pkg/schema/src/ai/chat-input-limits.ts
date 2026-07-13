@@ -1,6 +1,4 @@
-// Transport-level caps shared by every chat input schema (legacy chat-stream and AI SDK v6
-// `/ai/chat`). Both routes gate the same way, so the constants and the byte counter live here
-// once instead of each schema re-declaring them.
+// Transport-level caps stay separate from the UI-message envelope so byte counting has one owner.
 export const CHAT_MAX_MESSAGES = 40;
 export const CHAT_MAX_PAYLOAD_BYTES = 64 * 1024;
 

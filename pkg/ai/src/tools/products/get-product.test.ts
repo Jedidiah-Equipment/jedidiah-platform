@@ -1,77 +1,69 @@
-import * as core from '@pkg/core';
-import { createUserAccessSummary } from '@pkg/domain';
-import { describe, expect } from 'vitest';
-import { z } from 'zod';
-import { createTester } from '@/test/create-tester.js';
-import { createProductFixture } from '@/test/domain-fixtures.js';
-import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
-import { createActorUser, createAiContext } from '@/test/tools.js';
-import { getProductDefinition, getProductTool } from './get-product.js';
+import { Product } from '@pkg/schema';
+import { describe, expect, test } from 'vitest';
 
-const test = createTester(async ({ db }) => {
-  await createActorUser(db);
-  const rangeId = await createProductRangeFixture(db);
+import { GetProductInput, GetProductResponse, getProductDefinition, toGetProductResponse } from './get-product.js';
 
-  return { db, rangeId };
+const PRODUCT_ID = '00000000-0000-4000-8000-000000000001';
+const RANGE_ID = '00000000-0000-4000-8000-000000000002';
+
+const product = Product.parse({
+  assemblies: [],
+  basePrice: 1_000,
+  brochureEnabled: false,
+  buildTimeDays: 14,
+  category: 'Earthmoving',
+  createdAt: '2026-07-10T08:00:00.000Z',
+  currencyCode: 'ZAR',
+  description: 'Compact articulated loader',
+  id: PRODUCT_ID,
+  images: {
+    banner: null,
+    primary: null,
+    secondary1: null,
+    secondary2: null,
+    technicalDrawing: null,
+  },
+  keyFeatures: ['Tight turning circle'],
+  landerEnabled: false,
+  modelCode: 'CL-100',
+  name: 'Compact Loader',
+  nameHighlight: null,
+  productBays: [],
+  range: { id: RANGE_ID, name: 'Loaders' },
+  rangeId: RANGE_ID,
+  requiresVinNumber: false,
+  technicalDetails: [{ label: 'Capacity', value: '1.2 t' }],
+  thumbnailDataUrl: 'data:image/webp;base64,YQ==',
+  updatedAt: '2026-07-10T09:00:00.000Z',
+  variant: null,
+  variantId: null,
 });
 
-describe('getProductTool', () => {
-  test('returns the same product result shape as products.get', async ({ context }) => {
-    const created = await createProductFixture(context.db, 'Compact Loader', context.rangeId);
-    const access = createUserAccessSummary({
-      role: 'procurement-manager',
-      userId: 'test-user-id',
-    });
-
-    const [toolResult, trpcResult] = await Promise.all([
-      getProductTool.handler({ id: created.id }, createAiContext(context.db, access)),
-      core.getProduct({ db: context.db, id: created.id }),
-    ]);
-
-    expect(toolResult).toEqual(trpcResult);
+describe('getProduct contract', () => {
+  test('requires a Product UUID', () => {
+    expect(GetProductInput.parse({ id: PRODUCT_ID })).toEqual({ id: PRODUCT_ID });
+    expect(() => GetProductInput.parse({ id: 'not-a-uuid' })).toThrow();
   });
 
-  test('surfaces the core not-found message for missing products', async ({ context }) => {
-    const access = createUserAccessSummary({
-      role: 'procurement-manager',
-      userId: 'test-user-id',
-    });
-
-    await expect(
-      getProductTool.handler(
-        {
-          id: '00000000-0000-4000-8000-000000000001',
-        },
-        createAiContext(context.db, access),
-      ),
-    ).rejects.toThrow('Product not found: 00000000-0000-4000-8000-000000000001');
+  test('describes the full-detail follow-up to findProducts', () => {
+    expect(getProductDefinition.name).toBe('getProduct');
+    expect(getProductDefinition.description).toContain('full details');
+    expect(getProductDefinition.description).toContain('findProducts');
   });
 
-  test('rejects invalid product get args', async ({ context }) => {
-    const access = createUserAccessSummary({
-      role: 'procurement-manager',
-      userId: 'test-user-id',
-    });
+  test('maps the complete Product details without inline thumbnail data', () => {
+    const response = toGetProductResponse(product);
 
-    await expect(getProductTool.handler({ id: 'bad-id' }, createAiContext(context.db, access))).rejects.toBeInstanceOf(
-      z.ZodError,
-    );
-  });
-
-  test('projects Product metadata using public labels', () => {
-    expect(
-      (getProductDefinition.projectResult as (value: unknown) => unknown)({
-        id: '00000000-0000-4000-8000-000000000006',
-        name: 'Compact Loader',
-      }),
-    ).toMatchObject({
-      links: [
-        {
-          entity: 'Product',
-          href: '/products/00000000-0000-4000-8000-000000000006/edit',
-          label: 'Compact Loader',
-        },
-      ],
+    expect(GetProductResponse.parse(response)).toEqual(response);
+    expect(response).toMatchObject({
+      basePrice: 1_000,
+      description: 'Compact articulated loader',
+      id: PRODUCT_ID,
+      keyFeatures: ['Tight turning circle'],
+      links: { app: `/products/${PRODUCT_ID}/edit` },
+      modelCode: 'CL-100',
+      name: 'Compact Loader',
     });
+    expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
   });
 });

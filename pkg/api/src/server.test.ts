@@ -45,7 +45,7 @@ const observability: Observability = {
 };
 
 describe('API server', () => {
-  it('registers the v2 assistant in the development environment', async () => {
+  it('registers the assistant in the development environment', async () => {
     const app = await buildServer(config, observability, new MemoryStorage());
     try {
       expect(app.hasRoute({ method: 'POST', url: '/ai/chat' })).toBe(true);
@@ -54,7 +54,7 @@ describe('API server', () => {
     }
   });
 
-  it.each(['staging', 'production'] as const)('does not register the v2 assistant in %s', async (APP_ENV) => {
+  it.each(['staging', 'production'] as const)('does not register the assistant in %s', async (APP_ENV) => {
     const app = await buildServer({ ...config, APP_ENV }, observability, new MemoryStorage());
 
     try {

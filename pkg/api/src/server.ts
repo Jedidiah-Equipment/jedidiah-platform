@@ -10,8 +10,7 @@ import { type ApiConfig, getApiConfig } from './env.js';
 import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
-import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
-import { registerAiChatRoute } from './routes/ai-v2/ai-chat.route.js';
+import { registerAiChatRoute } from './routes/ai/ai-chat.route.js';
 import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
 import { registerEntityFileRoutes } from './routes/files/entity-file-http.route.js';
 import {
@@ -53,8 +52,7 @@ export async function buildServer(
       fileSize: PRODUCT_DOCUMENT_MAX_BYTES,
     },
   });
-  await registerAiStreamRoute(app, { storage });
-  // V2 is still under development. Keep the transport absent outside local development so a hidden
+  // The assistant is still under development. Keep the transport absent outside local development so a hidden
   // browser control cannot be bypassed by calling the model endpoint directly.
   if (config.APP_ENV === 'development') {
     await registerAiChatRoute(app, { storage });

@@ -21,7 +21,6 @@ import {
   type AuthId,
   type BrochurePdfRenderer,
   formatQuoteCode,
-  type QuoteDocument,
   type QuoteDocumentGenerationInput,
   type QuoteDocumentGenerationResult,
   type QuoteDocumentGenerationWarning,
@@ -78,20 +77,14 @@ function resolveQuoteDocumentSource(quote: QuoteDocumentGenerationRow): QuoteDoc
   return { kind: 'product', productId: offering.productId, product: quote.product };
 }
 
-export type QuoteDocumentRevisionDraft = {
+type RenderedQuoteDocument = {
   bytes: Uint8Array;
   filename: string;
   revision: number;
   warnings: QuoteDocumentGenerationWarning[];
 };
 
-/**
- * Renders the next Quote Document revision (PDF bytes + brochure merge) WITHOUT persisting it. Use this
- * when the revision should only be stored after a dependent step succeeds — e.g. Draft Email, which must
- * not leave an orphan revision when AI generation or email delivery fails. Pair with
- * `persistQuoteDocumentRevision` once the dependent work is done.
- */
-export async function renderQuoteDocumentRevision({
+async function renderQuoteDocument({
   brochureRenderer,
   db,
   input,
@@ -103,7 +96,7 @@ export async function renderQuoteDocumentRevision({
   input: QuoteDocumentGenerationInput;
   pdfRenderer: QuoteDocumentPdfRenderer;
   storage: StorageAdapter;
-}): Promise<QuoteDocumentRevisionDraft> {
+}): Promise<RenderedQuoteDocument> {
   const quote = await getQuoteDocumentGenerationRow({ db, quoteId: input.quoteId });
   assertQuoteDocumentGenerationAllowed(quote);
   const source = resolveQuoteDocumentSource(quote);
@@ -137,32 +130,6 @@ export async function renderQuoteDocumentRevision({
   };
 }
 
-export async function persistQuoteDocumentRevision({
-  actorUserId,
-  db,
-  draft,
-  quoteId,
-  storage,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  draft: QuoteDocumentRevisionDraft;
-  quoteId: UUID;
-  storage: StorageAdapter;
-}): Promise<QuoteDocument> {
-  return createQuoteDocument({
-    actorUserId,
-    db,
-    input: {
-      bytes: draft.bytes,
-      filename: draft.filename,
-      metadata: { revision: draft.revision },
-      quoteId,
-    },
-    storage,
-  });
-}
-
 export async function generateQuoteDocument({
   actorUserId,
   brochureRenderer,
@@ -178,12 +145,22 @@ export async function generateQuoteDocument({
   pdfRenderer: QuoteDocumentPdfRenderer;
   storage: StorageAdapter;
 }): Promise<QuoteDocumentGenerationResult> {
-  const draft = await renderQuoteDocumentRevision({ brochureRenderer, db, input, pdfRenderer, storage });
-  const document = await persistQuoteDocumentRevision({ actorUserId, db, draft, quoteId: input.quoteId, storage });
+  const rendered = await renderQuoteDocument({ brochureRenderer, db, input, pdfRenderer, storage });
+  const document = await createQuoteDocument({
+    actorUserId,
+    db,
+    input: {
+      bytes: rendered.bytes,
+      filename: rendered.filename,
+      metadata: { revision: rendered.revision },
+      quoteId: input.quoteId,
+    },
+    storage,
+  });
 
   return {
     document,
-    warnings: draft.warnings,
+    warnings: rendered.warnings,
   };
 }
 

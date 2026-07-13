@@ -1,38 +1,38 @@
-import * as core from '@pkg/core';
-import { type AiToolBase, type Customer, UUID } from '@pkg/schema';
+import * as customersCore from '@pkg/core';
+import { type Customer, UUID } from '@pkg/schema';
 import { z } from 'zod';
+
 import type { AiContext } from '@/context.js';
-import { aiLinkMetadata } from '@/link-metadata.js';
-import type { AiToolDefinition } from '@/tool-definition.js';
-import { toAiToolJsonSchema } from '../json-schema.js';
-import { projectCustomerDetail } from '../projections.js';
 
-const GetCustomerInput = z.object({
-  id: UUID,
-});
+import {
+  CustomerResponse as SharedCustomerResponse,
+  type CustomerResponse as SharedCustomerResponseType,
+  toCustomerResponse,
+} from './customer-response.js';
 
-type GetCustomerInput = z.infer<typeof GetCustomerInput>;
+export type GetCustomerInput = z.infer<typeof GetCustomerInput>;
+export const GetCustomerInput = z.object({ id: UUID }).strict();
 
-export type GetCustomerTool = AiToolBase<'getCustomer', Customer, GetCustomerInput, AiContext>;
+export type GetCustomerResponse = SharedCustomerResponseType;
+export const GetCustomerResponse = SharedCustomerResponse;
 
-export const getCustomerTool: GetCustomerTool = {
+export function toGetCustomerResponse(customer: Customer): GetCustomerResponse {
+  return toCustomerResponse(customer);
+}
+
+export const getCustomerDefinition = {
   name: 'getCustomer',
+  description: [
+    'Get the full details for one Customer by UUID.',
+    'Use after findCustomers identifies the Customer the user means.',
+    'Returns contact, address, VAT, notes, timestamps, and links.app details without thumbnail data.',
+  ].join('\n'),
   inputSchema: GetCustomerInput,
-  jsonSchema: toAiToolJsonSchema(GetCustomerInput),
-  requiredPermission: 'customer:read',
-  async handler(args: unknown, ctx: AiContext) {
+  outputSchema: GetCustomerResponse,
+  anyOfPermissions: ['customer:read'],
+  async handler(args: unknown, ctx: AiContext): Promise<GetCustomerResponse> {
     const input = GetCustomerInput.parse(args);
-    return core.getCustomer({ db: ctx.db, id: input.id });
+    const customer = await customersCore.getCustomer({ db: ctx.db, id: input.id });
+    return toGetCustomerResponse(customer);
   },
-};
-
-export const getCustomerDefinition: AiToolDefinition<GetCustomerTool> = {
-  kind: 'read',
-  tool: getCustomerTool,
-  descriptor: {
-    purpose: 'Get one Customer by UUID.',
-    resultIdentifiers: ['Customer company name', 'Customer UUID', 'VAT number'],
-    linkTarget: aiLinkMetadata.Customer,
-  },
-  projectResult: projectCustomerDetail,
-};
+} as const;

@@ -52,11 +52,7 @@ export async function buildServer(
       fileSize: PRODUCT_DOCUMENT_MAX_BYTES,
     },
   });
-  // The assistant is still under development. Keep the transport absent outside local development so a hidden
-  // browser control cannot be bypassed by calling the model endpoint directly.
-  if (config.APP_ENV === 'development') {
-    await registerAiChatRoute(app, { storage });
-  }
+  await registerAiChatRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
   await registerEntityFileRoutes(app, [
     createProductImageRouteConfig(storage),

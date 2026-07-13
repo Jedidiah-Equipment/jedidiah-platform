@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  catalogTranslationKey,
+  catalogTranslationState,
   isTranslationStale,
+  localizeFields,
+  parseCatalogTranslationKey,
   productRangeSourceHash,
   productRangeVariantSourceHash,
   productSourceHash,
-  selectTranslated,
   translationForLocale,
 } from './catalog-translation.js';
 
@@ -62,10 +65,21 @@ describe('productSourceHash', () => {
 });
 
 describe('translation selection and staleness', () => {
-  it('uses canonical text only for missing or null translated values', () => {
-    expect(selectTranslated('Canonical', undefined)).toBe('Canonical');
-    expect(selectTranslated('Canonical', null)).toBe('Canonical');
-    expect(selectTranslated('Canonical', '')).toBe('');
+  it('overlays translated fields and falls back to canonical for missing or null values', () => {
+    const canonical: { description: string | null; name: string } = {
+      description: 'Canonical copy.',
+      name: 'Silage Trailer',
+    };
+    const translations = {
+      af: { description: null, name: 'Kuilvoer-sleepwa', sourceHash: 'hash', translatedAt: '2026-01-01T00:00:00Z' },
+    };
+
+    expect(localizeFields(canonical, translations, 'af')).toEqual({
+      description: 'Canonical copy.',
+      name: 'Kuilvoer-sleepwa',
+    });
+    expect(localizeFields(canonical, translations, 'en')).toEqual(canonical);
+    expect(localizeFields(canonical, undefined, 'af')).toEqual(canonical);
   });
 
   it('ignores stored canonical translations and selects non-canonical translations', () => {
@@ -83,6 +97,27 @@ describe('translation selection and staleness', () => {
     expect(isTranslationStale('current', undefined)).toBe(false);
     expect(isTranslationStale('current', { sourceHash: 'current' })).toBe(false);
     expect(isTranslationStale('current', { sourceHash: 'old' })).toBe(true);
+  });
+
+  it('reports the weakest member of a translation unit as its state', () => {
+    expect(catalogTranslationState('current', [{ sourceHash: 'current' }])).toBe('fresh');
+    expect(catalogTranslationState('current', [{ sourceHash: 'current' }, undefined])).toBe('missing');
+    expect(catalogTranslationState('current', [{ sourceHash: 'current' }, { sourceHash: 'old' }])).toBe('stale');
+  });
+});
+
+describe('catalog translation keys', () => {
+  it('round-trips every kind and rejects malformed keys', () => {
+    expect(parseCatalogTranslationKey(catalogTranslationKey('product', 'id-1'))).toEqual({
+      id: 'id-1',
+      kind: 'product',
+    });
+    expect(parseCatalogTranslationKey(catalogTranslationKey('range', 'id-2'))).toEqual({ id: 'id-2', kind: 'range' });
+    expect(parseCatalogTranslationKey(catalogTranslationKey('variant', 'id-3'))).toEqual({
+      id: 'id-3',
+      kind: 'variant',
+    });
+    expect(() => parseCatalogTranslationKey('part:id-4' as never)).toThrow('Malformed catalog translation key');
   });
 });
 

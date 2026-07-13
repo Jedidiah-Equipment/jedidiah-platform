@@ -12,9 +12,7 @@ export {
   type ProductRangeVariantTranslationOutput,
   type ProductTranslationOutput,
   type ProductTranslationSource,
-  translateProductBundleToAfrikaans,
-  translateProductRangeToAfrikaans,
-  translateProductRangeVariantToAfrikaans,
+  translateCatalogSourceToAfrikaans,
 } from './catalog-translation.js';
 export type {
   AiContext,

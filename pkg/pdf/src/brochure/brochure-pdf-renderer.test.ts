@@ -90,6 +90,14 @@ describe('renderBrochurePdf', () => {
     });
   });
 
+  test('keeps long product names from pushing cover content onto an extra page', async () => {
+    await expectTwoPageBrochure({
+      ...fullBrochure(),
+      title: 'KUILVOER- EN GRAANSLEEPWA 18 TON',
+      titleHighlight: '18',
+    });
+  });
+
   test('keeps dense assembly columns on the two-page brochure', async () => {
     await expectTwoPageBrochure({
       ...fullBrochure(),
@@ -133,6 +141,15 @@ describe('brochureMessages', () => {
 });
 
 describe('getCoverLayout', () => {
+  test('reduces the title font size without changing cover spacing', () => {
+    const keyFeatures = ['Pay load: 18 tons', 'Volume standard: 25 cubic meters'];
+
+    expect(getCoverLayout(keyFeatures, 'SG1836 Plus').titleFontSize).toBe(52);
+    expect(getCoverLayout(keyFeatures, 'KUILVOER- EN GRAANSLEEPWA 18 TON').titleFontSize).toBe(40);
+    expect(getCoverLayout(keyFeatures, 'SG1836 Plus').sectionMarginTop).toBe(86);
+    expect(getCoverLayout(keyFeatures, 'KUILVOER- EN GRAANSLEEPWA 18 TON').sectionMarginTop).toBe(86);
+  });
+
   test('widens the key feature list for cubic-meter labels', () => {
     expect(
       getCoverLayout([

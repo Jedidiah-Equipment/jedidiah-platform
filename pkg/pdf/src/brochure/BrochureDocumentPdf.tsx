@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
 
 export function BrochureDocumentPdf({ document, locale = 'en' }: BrochureDocumentPdfProps) {
   const hasColumns = document.standardAssemblies.length > 0 || document.optionalAssemblies.length > 0;
-  const coverLayout = getCoverLayout(document.keyFeatures);
+  const coverLayout = getCoverLayout(document.keyFeatures, document.title);
   const detailLayout = getDetailLayout(document);
   const messages = brochureMessages[locale];
 
@@ -371,7 +371,11 @@ export function BrochureDocumentPdf({ document, locale = 'en' }: BrochureDocumen
 
           <View style={styles.titleBlock}>
             {document.subtitle ? <Text style={styles.eyebrow}>{document.subtitle}</Text> : null}
-            <TitleText title={document.title} highlight={document.titleHighlight} />
+            <TitleText
+              fontSize={coverLayout.titleFontSize}
+              highlight={document.titleHighlight}
+              title={document.title}
+            />
           </View>
 
           {document.images.primary ? (
@@ -453,7 +457,7 @@ export function BrochureDocumentPdf({ document, locale = 'en' }: BrochureDocumen
   );
 }
 
-function TitleText({ title, highlight }: { title: string; highlight: string | null }) {
+function TitleText({ title, highlight, fontSize }: { title: string; highlight: string | null; fontSize: number }) {
   const upperTitle = title.toUpperCase();
   const needle = highlight?.trim().toUpperCase();
   const at = needle ? upperTitle.indexOf(needle) : -1;
@@ -461,14 +465,14 @@ function TitleText({ title, highlight }: { title: string; highlight: string | nu
   // No highlight, or it isn't a substring of the title: render the whole title in the default colour.
   if (!needle || at === -1) {
     return (
-      <Text style={styles.title} wrap={false}>
+      <Text style={[styles.title, { fontSize }]} wrap={false}>
         {upperTitle}
       </Text>
     );
   }
 
   return (
-    <Text style={styles.title} wrap={false}>
+    <Text style={[styles.title, { fontSize }]} wrap={false}>
       {upperTitle.slice(0, at)}
       <Text style={styles.titleHighlight}>{upperTitle.slice(at, at + needle.length)}</Text>
       {upperTitle.slice(at + needle.length)}
@@ -485,6 +489,7 @@ export type CoverLayout = {
   heroHeight: number;
   rowMarginBottom: number;
   sectionMarginTop: number;
+  titleFontSize: number;
 };
 
 type DetailLayout = {
@@ -504,7 +509,7 @@ type DescriptionLayout = {
   paragraphMarginBottom: number;
 };
 
-export function getCoverLayout(keyFeatures: string[]): CoverLayout {
+export function getCoverLayout(keyFeatures: string[], title = ''): CoverLayout {
   const featureCount = keyFeatures.length;
   const measuredFeatureListWidth = (baseWidth: number, fontSize: number) =>
     measureKeyFeatureListWidth(keyFeatures, baseWidth, fontSize);
@@ -519,6 +524,7 @@ export function getCoverLayout(keyFeatures: string[]): CoverLayout {
       heroHeight: layout.heroHeight,
       rowMarginBottom: 9,
       sectionMarginTop: 86,
+      titleFontSize: fitTitleFontSize(title),
     };
   }
 
@@ -532,6 +538,7 @@ export function getCoverLayout(keyFeatures: string[]): CoverLayout {
       heroHeight: 360,
       rowMarginBottom: 5,
       sectionMarginTop: 48,
+      titleFontSize: fitTitleFontSize(title),
     };
   }
 
@@ -544,6 +551,7 @@ export function getCoverLayout(keyFeatures: string[]): CoverLayout {
     heroHeight: 318,
     rowMarginBottom: featureCount >= PRODUCT_KEY_FEATURES_MAX_COUNT ? 2 : 3,
     sectionMarginTop: 30,
+    titleFontSize: fitTitleFontSize(title),
   };
 }
 
@@ -561,6 +569,10 @@ const KEY_FEATURE_CHAR_WIDTH_FACTOR = 0.62;
 const KEY_FEATURE_ICON_AND_GAP = 23;
 const KEY_FEATURE_WIDTH_BUFFER = 8;
 const KEY_FEATURE_MAX_WIDTH = 430;
+const TITLE_MAX_FONT_SIZE = 52;
+const TITLE_MIN_FONT_SIZE = 28;
+const TITLE_CHAR_WIDTH_FACTOR = 0.42;
+const TITLE_WIDTH_BUFFER = 16;
 
 const clampNumber = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
@@ -571,6 +583,20 @@ function measureKeyFeatureListWidth(keyFeatures: string[], baseWidth: number, fo
   );
 
   return clampNumber(measuredWidth, baseWidth, KEY_FEATURE_MAX_WIDTH);
+}
+
+function fitTitleFontSize(title: string): number {
+  const availableWidth = A4_WIDTH - layout.pagePaddingX * 2 - TITLE_WIDTH_BUFFER;
+  const estimatedTitleWidthAtOnePoint = title.trim().length * TITLE_CHAR_WIDTH_FACTOR;
+
+  if (estimatedTitleWidthAtOnePoint === 0) {
+    return TITLE_MAX_FONT_SIZE;
+  }
+
+  // The title font is condensed; this estimate keeps long names on one line without changing cover spacing.
+  const fittedSize = Math.floor((availableWidth / estimatedTitleWidthAtOnePoint) * 2) / 2;
+
+  return clampNumber(fittedSize, TITLE_MIN_FONT_SIZE, TITLE_MAX_FONT_SIZE);
 }
 
 function getDetailLayout(document: BrochureDocumentModel): DetailLayout {

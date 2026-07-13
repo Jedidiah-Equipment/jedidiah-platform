@@ -1,6 +1,7 @@
 import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { isLanderReady, selectTranslated, translationForLocale } from '@pkg/domain';
+import { isLanderReady, localizeFields } from '@pkg/domain';
+import type { ProductRangeVariantTranslations, ProductTranslations } from '@pkg/schema';
 
 import type { Locale } from '../../lib/locale.js';
 import { parseImageFormat, transformSignature } from '../media/image-transform.js';
@@ -81,18 +82,16 @@ function toCatalogVariants(
   variants: {
     id: string;
     name: string;
-    translations?: Partial<Record<string, { name: string }>> | undefined;
+    translations?: ProductRangeVariantTranslations | undefined;
   }[],
   groupProducts: readonly CatalogProduct[],
   locale: Locale,
 ): CatalogVariant[] {
   const visibleVariantIds = new Set(groupProducts.flatMap((product) => (product.variantId ? [product.variantId] : [])));
   const visibleVariants = variants.filter((variant) => visibleVariantIds.has(variant.id));
-  const displayNames = visibleVariants.map((variant) => {
-    const translation = translationForLocale(variant.translations, locale);
-
-    return selectTranslated(variant.name, translation?.name);
-  });
+  const displayNames = visibleVariants.map(
+    (variant) => localizeFields({ name: variant.name }, variant.translations, locale).name,
+  );
   const labels = toVariantLabels(displayNames);
   const slugCounts = new Map<string, number>();
 
@@ -146,17 +145,21 @@ export function toCatalogProduct(
     description: string | null;
     variantId?: string | null;
     images?: { primary: { updatedAt: string } | null };
-    translations?: Partial<Record<string, { name: string; description: string | null }>> | undefined;
+    translations?: ProductTranslations | undefined;
   },
-  locale: Locale = 'en',
+  locale: Locale,
 ): CatalogProduct {
-  const translation = translationForLocale(row.translations, locale);
+  const { description, name } = localizeFields(
+    { description: row.description, name: row.name },
+    row.translations,
+    locale,
+  );
 
   return {
     id: row.id,
-    name: selectTranslated(row.name, translation?.name),
+    name,
     modelCode: row.modelCode,
-    description: selectTranslated(row.description, translation?.description) ?? '',
+    description: description ?? '',
     variantId: row.variantId ?? null,
     href: `/products/${encodeURIComponent(row.modelCode)}`,
     imageUrl: imageUrl(`/images/products/${row.id}`, row.images?.primary?.updatedAt),
@@ -168,7 +171,7 @@ export function toCatalogProduct(
 // needs each Product's images, category, key features, and standard assemblies — hence the full read rather
 // than the lightweight column read. Each card points at the public Product image route, which streams the
 // hero or the neutral placeholder. Pricing and bays are not surfaced — this is the unauthenticated surface.
-export async function loadProductsCatalog(db: Db, locale: Locale = 'en'): Promise<ProductsCatalog> {
+export async function loadProductsCatalog(db: Db, locale: Locale): Promise<ProductsCatalog> {
   const [{ ranges }, allProducts] = await Promise.all([listProductRanges({ db }), listAllProducts({ db })]);
 
   const rows = allProducts.filter(isLanderReady);
@@ -193,15 +196,14 @@ export async function loadProductsCatalog(db: Db, locale: Locale = 'en'): Promis
       continue;
     }
 
-    const rangeTranslation = translationForLocale(range.translations, locale);
-    const displayName = selectTranslated(range.name, rangeTranslation?.name);
+    const localized = localizeFields({ description: range.description, name: range.name }, range.translations, locale);
 
     groups.push({
       id: range.id,
       slug: toRangeSlug(range.name),
-      name: displayName,
-      label: toRangeLabel(displayName),
-      description: selectTranslated(range.description, rangeTranslation?.description) ?? '',
+      name: localized.name,
+      label: toRangeLabel(localized.name),
+      description: localized.description ?? '',
       count: groupProducts.length,
       variants: toCatalogVariants(range.variants, groupProducts, locale),
       products: groupProducts,

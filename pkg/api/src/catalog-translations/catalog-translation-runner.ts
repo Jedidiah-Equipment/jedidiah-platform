@@ -1,9 +1,5 @@
-import {
-  translateProductBundleToAfrikaans,
-  translateProductRangeToAfrikaans,
-  translateProductRangeVariantToAfrikaans,
-} from '@pkg/ai';
-import { type CatalogTranslationSource, loadCatalogTranslationSource, persistCatalogTranslation } from '@pkg/core';
+import { translateCatalogSourceToAfrikaans } from '@pkg/ai';
+import { loadCatalogTranslationSource, persistCatalogTranslation } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import type { CatalogTranslationKey } from '@pkg/domain';
 import type { LanguageModel } from 'ai';
@@ -23,26 +19,17 @@ export function createCatalogTranslationRunner({
     const source = await loadCatalogTranslationSource({ db, key });
     if (!source || source.state === 'fresh') return 'skipped';
 
-    if (source.kind === 'product') {
-      const translation = await translateProductBundleToAfrikaans({ model, source: source.canonical });
-      if (!(await isCatalogSourceUnchanged(db, source))) return 'skipped';
-      await persistCatalogTranslation({ db, source, translatedAt: now(), translation });
-    } else if (source.kind === 'range') {
-      const translation = await translateProductRangeToAfrikaans({ model, source: source.canonical });
-      if (!(await isCatalogSourceUnchanged(db, source))) return 'skipped';
-      await persistCatalogTranslation({ db, source, translatedAt: now(), translation });
-    } else {
-      const translation = await translateProductRangeVariantToAfrikaans({ model, source: source.canonical });
-      if (!(await isCatalogSourceUnchanged(db, source))) return 'skipped';
-      await persistCatalogTranslation({ db, source, translatedAt: now(), translation });
-    }
+    const translation = await translateCatalogSourceToAfrikaans({ kind: source.kind, model, source: source.canonical });
 
-    return 'translated';
+    // Model calls are slow enough for catalog edits to land mid-flight; persist rechecks the source hash
+    // inside its transaction and skips the write, so a stale result is never published.
+    const persisted = await persistCatalogTranslation({
+      db,
+      kind: source.kind,
+      source,
+      translatedAt: now(),
+      translation,
+    });
+    return persisted === 'persisted' ? 'translated' : 'skipped';
   };
-}
-
-async function isCatalogSourceUnchanged(db: Db, source: CatalogTranslationSource): Promise<boolean> {
-  // Model calls are slow enough for catalog edits to land mid-flight; never publish their stale result.
-  const latest = await loadCatalogTranslationSource({ db, key: source.key });
-  return latest?.sourceHash === source.sourceHash;
 }

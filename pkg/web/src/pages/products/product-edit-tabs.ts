@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const ProductEditTab = z.enum(['details', 'bays', 'assemblies', 'images', 'documents', 'audit']);
+export const ProductEditTab = z.enum(['details', 'bays', 'assemblies', 'images', 'documents', 'translations', 'audit']);
 export type ProductEditTab = z.infer<typeof ProductEditTab>;
 
 export const ProductEditSearch = z.object({

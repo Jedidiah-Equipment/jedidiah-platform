@@ -58,6 +58,21 @@ describe('createAutosaveController', () => {
     expect(controller.hasPendingChanges()).toBe(true);
   });
 
+  it('accepts refreshed server values as the new saved baseline', () => {
+    let values: TestValues = { name: 'Acme' };
+    const controller = createAutosaveController({
+      getValues: () => values,
+      isValid: () => true,
+      save: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    });
+
+    values = { name: 'Acme translated' };
+    controller.updateSavedValues(values);
+
+    expect(controller.hasPendingChanges()).toBe(false);
+    expect(controller.getState()).toMatchObject({ hasUnsavedChanges: false, status: 'saved' });
+  });
+
   it('detects and saves changes nested below top-level fields', async () => {
     let values: NestedValues = {
       assemblies: [

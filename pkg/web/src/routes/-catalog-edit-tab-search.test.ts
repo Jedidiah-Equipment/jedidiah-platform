@@ -5,7 +5,7 @@ import { ProductEditSearch, resolveProductEditTab } from '@/pages/products/produ
 
 describe('catalog edit tab search params', () => {
   it('selects a requested Product tab', () => {
-    expect(ProductEditSearch.parse({ tab: 'images' })).toEqual({ tab: 'images' });
+    expect(ProductEditSearch.parse({ tab: 'translations' })).toEqual({ tab: 'translations' });
   });
 
   it('selects a requested Product Range tab', () => {

@@ -24,8 +24,11 @@ export type AppRouterCaller = ReturnType<AppRouter['createCaller']>;
 /** Per-caller overrides for the injectable context dependencies a test wants to vary. */
 export type CallerOverrides = {
   appEnv?: Context['appEnv'];
+  catalogTranslationScheduler?: TranslationMarker;
   changelogLoader?: ChangelogLoader;
 };
+
+const NOOP_TRANSLATION_MARKER: TranslationMarker = { mark: () => undefined, markNow: () => undefined };
 
 export type TesterScope = {
   auth: Auth;
@@ -58,7 +61,6 @@ export function createTester<T extends object = Record<string, never>>(
       try {
         try {
           const testLog = pino({ level: 'silent' });
-          let catalogTranslationScheduler: TranslationMarker = { mark: () => undefined };
           // The changelog feature is production-only, so tests default to production and supply an
           // empty changelog set; the changelog router tests override these per caller.
           const callerContext: TesterContext = {
@@ -66,7 +68,7 @@ export function createTester<T extends object = Record<string, never>>(
               createAppRouterCaller({
                 access: null,
                 appEnv: 'production',
-                catalogTranslationScheduler,
+                catalogTranslationScheduler: NOOP_TRANSLATION_MARKER,
                 changelogLoader: () => [],
                 db: databaseClient.db,
                 log: testLog,
@@ -80,7 +82,7 @@ export function createTester<T extends object = Record<string, never>>(
                   userId: session.user.id,
                 }),
                 appEnv: overrides.appEnv ?? 'production',
-                catalogTranslationScheduler,
+                catalogTranslationScheduler: overrides.catalogTranslationScheduler ?? NOOP_TRANSLATION_MARKER,
                 changelogLoader: overrides.changelogLoader ?? (() => []),
                 db: databaseClient.db,
                 log: testLog,
@@ -97,10 +99,6 @@ export function createTester<T extends object = Record<string, never>>(
             db: databaseClient.db,
             auth,
           });
-          const translationContext = context as { catalogTranslationScheduler?: TranslationMarker };
-          if (translationContext.catalogTranslationScheduler) {
-            catalogTranslationScheduler = translationContext.catalogTranslationScheduler;
-          }
 
           await use({
             ...callerContext,

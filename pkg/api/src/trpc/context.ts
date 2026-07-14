@@ -11,7 +11,7 @@ import type { TranslationMarker } from '../catalog-translations/translation-sche
 export type ChangelogLoader = () => Changelog[];
 
 export type ContextDependencies = {
-  catalogTranslationScheduler?: TranslationMarker;
+  catalogTranslationScheduler: TranslationMarker;
   appEnv: AppEnv;
   changelogLoader: ChangelogLoader;
   storage: StorageAdapter;
@@ -41,7 +41,7 @@ export function createContextFactory(dependencies: ContextDependencies) {
     return {
       access,
       appEnv: dependencies.appEnv,
-      catalogTranslationScheduler: dependencies.catalogTranslationScheduler ?? NOOP_TRANSLATION_MARKER,
+      catalogTranslationScheduler: dependencies.catalogTranslationScheduler,
       changelogLoader: dependencies.changelogLoader,
       db,
       log: req.log,
@@ -50,5 +50,3 @@ export function createContextFactory(dependencies: ContextDependencies) {
     };
   };
 }
-
-const NOOP_TRANSLATION_MARKER: TranslationMarker = { mark: () => undefined };

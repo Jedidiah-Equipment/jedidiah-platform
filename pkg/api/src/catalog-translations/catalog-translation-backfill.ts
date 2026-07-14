@@ -3,6 +3,7 @@ import type { Db } from '@pkg/db';
 import type { CatalogTranslationKey } from '@pkg/domain';
 
 import type { CatalogTranslationRunResult } from './catalog-translation-runner.js';
+import { ConcurrencyLimit } from './concurrency-limit.js';
 
 export type CatalogTranslationBackfillResult = {
   failed: number;
@@ -35,28 +36,24 @@ export async function runCatalogTranslationBackfill({
 
   const keys = await listCatalogTranslationKeys({ db });
   const counts: CatalogTranslationBackfillResult = { failed: 0, skipped: 0, translated: 0 };
+  const limit = new ConcurrencyLimit(concurrency);
   let completed = 0;
-  let nextIndex = 0;
 
-  async function worker(): Promise<void> {
-    while (nextIndex < keys.length) {
-      const key = keys[nextIndex];
-      nextIndex += 1;
-      if (!key) return;
-
-      try {
-        const result = await run(key);
-        counts[result] += 1;
-        completed += 1;
-        onProgress({ completed, key, result, total: keys.length });
-      } catch (error) {
-        counts.failed += 1;
-        completed += 1;
-        onProgress({ completed, error, key, result: 'failed', total: keys.length });
-      }
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, keys.length) }, () => worker()));
+  await Promise.all(
+    keys.map((key) =>
+      limit.run(async () => {
+        try {
+          const result = await run(key);
+          counts[result] += 1;
+          completed += 1;
+          onProgress({ completed, key, result, total: keys.length });
+        } catch (error) {
+          counts.failed += 1;
+          completed += 1;
+          onProgress({ completed, error, key, result: 'failed', total: keys.length });
+        }
+      }),
+    ),
+  );
   return counts;
 }

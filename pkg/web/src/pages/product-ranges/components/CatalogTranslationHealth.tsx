@@ -8,19 +8,20 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CatalogTranslationHealthCard, catalogTranslationHealthCount } from './CatalogTranslationHealthCard.js';
 
-const TRANSLATION_HEALTH_POLL_INTERVAL_MS = 10_000;
-const TRANSLATION_HEALTH_POLL_WINDOW_MS = 5 * 60_000;
+// Recovery now runs immediately, so the card only needs a short refetch burst to watch counts settle.
+const TRANSLATION_HEALTH_POLL_INTERVAL_MS = 3_000;
+const TRANSLATION_HEALTH_POLL_WINDOW_MS = 30_000;
 
 export const CatalogTranslationHealth: React.FC = () => {
   const trpc = useTRPC();
   const showMutationError = useApiMutationErrorToast();
   const { invalidateProductRanges } = useQueryInvalidation();
-  const [pollUntil, setPollUntil] = useState(0);
+  const [isPolling, setIsPolling] = useState(false);
   const statusQuery = useQuery({
     ...trpc.productRanges.translationStatus.queryOptions(),
     refetchInterval: ({ state }) => {
       const status = state.data;
-      return pollUntil > Date.now() && status && catalogTranslationHealthCount(status) > 0
+      return isPolling && status && catalogTranslationHealthCount(status) > 0
         ? TRANSLATION_HEALTH_POLL_INTERVAL_MS
         : false;
     },
@@ -29,7 +30,10 @@ export const CatalogTranslationHealth: React.FC = () => {
     trpc.productRanges.retranslateStale.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to queue Afrikaans translations.'),
       onSuccess: async ({ queued }) => {
-        if (queued > 0) setPollUntil(Date.now() + TRANSLATION_HEALTH_POLL_WINDOW_MS);
+        if (queued > 0) {
+          setIsPolling(true);
+          setTimeout(() => setIsPolling(false), TRANSLATION_HEALTH_POLL_WINDOW_MS);
+        }
         await invalidateProductRanges();
         toast.success(
           queued === 1 ? '1 item queued for Afrikaans translation' : `${queued} items queued for Afrikaans translation`,

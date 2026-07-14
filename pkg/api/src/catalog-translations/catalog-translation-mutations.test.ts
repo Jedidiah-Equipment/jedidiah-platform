@@ -9,6 +9,7 @@ import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 
 import { createCatalogTranslationRunner } from './catalog-translation-runner.js';
 import { TranslationScheduler } from './translation-scheduler.js';
+import { generatedJson, ManualTimers, waitForModelCalls, waitForTurns } from './translation-test-utils.js';
 
 type DoGenerate = (options: LanguageModelV3CallOptions) => PromiseLike<LanguageModelV3GenerateResult>;
 
@@ -53,7 +54,9 @@ describe('catalog mutation translation triggers', () => {
         assemblies: [],
       }),
     );
-    const caller = context.createCaller();
+    const caller = context.createCaller(undefined, {
+      catalogTranslationScheduler: context.catalogTranslationScheduler,
+    });
     const created = await createProduct(caller, context.rangeId);
 
     const firstSave = await caller.products.update(productUpdate(created, { description: 'First edit.' }));
@@ -87,7 +90,9 @@ describe('catalog mutation translation triggers', () => {
           : { name: 'Swaardiens' },
       );
     });
-    const caller = context.createCaller();
+    const caller = context.createCaller(undefined, {
+      catalogTranslationScheduler: context.catalogTranslationScheduler,
+    });
     const range = await caller.productRanges.create({ name: 'Harvest Trailers', description: 'Harvest equipment.' });
     const variant = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Heavy Duty' });
 
@@ -115,7 +120,9 @@ describe('catalog mutation translation triggers', () => {
       if (call === 1) return firstResponse;
       return generatedJson(productTranslation('Jongste inhoud.'));
     });
-    const caller = context.createCaller();
+    const caller = context.createCaller(undefined, {
+      catalogTranslationScheduler: context.catalogTranslationScheduler,
+    });
     const created = await createProduct(caller, context.rangeId);
 
     context.timers.advance(60_000);
@@ -142,7 +149,9 @@ describe('catalog mutation translation triggers', () => {
     context.setGenerate(async () => {
       throw new Error('model unavailable');
     });
-    const caller = context.createCaller();
+    const caller = context.createCaller(undefined, {
+      catalogTranslationScheduler: context.catalogTranslationScheduler,
+    });
     const created = await createProduct(caller, context.rangeId);
 
     context.timers.advance(60_000);
@@ -194,18 +203,6 @@ function productUpdate(
   };
 }
 
-function generatedJson(value: unknown) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(value) }],
-    finishReason: { unified: 'stop' as const, raw: 'stop' },
-    usage: {
-      inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
-      outputTokens: { total: 10, text: 10, reasoning: 0 },
-    },
-    warnings: [],
-  };
-}
-
 function productTranslation(description: string) {
   return {
     name: 'Kuilvoer-sleepwa',
@@ -216,47 +213,6 @@ function productTranslation(description: string) {
     technicalDetails: [],
     assemblies: [],
   };
-}
-
-async function waitForModelCalls(model: MockLanguageModelV3, count: number): Promise<void> {
-  for (let attempt = 0; attempt < 200 && model.doGenerateCalls.length < count; attempt += 1) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 5));
-  }
-  expect(model.doGenerateCalls).toHaveLength(count);
-}
-
-async function waitForTurns(): Promise<void> {
-  for (let turn = 0; turn < 20; turn += 1) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 5));
-  }
-}
-
-class ManualTimers {
-  readonly #scheduled = new Map<number, { callback: () => void; dueAt: number }>();
-  #nextId = 1;
-  #now = 0;
-
-  set(callback: () => void, delayMs: number): number {
-    const id = this.#nextId;
-    this.#nextId += 1;
-    this.#scheduled.set(id, { callback, dueAt: this.#now + delayMs });
-    return id;
-  }
-
-  clear(timer: unknown): void {
-    if (typeof timer === 'number') this.#scheduled.delete(timer);
-  }
-
-  advance(durationMs: number): void {
-    this.#now += durationMs;
-    const due = [...this.#scheduled.entries()]
-      .filter(([, task]) => task.dueAt <= this.#now)
-      .sort((left, right) => left[1].dueAt - right[1].dueAt);
-    for (const [id, task] of due) {
-      this.#scheduled.delete(id);
-      task.callback();
-    }
-  }
 }
 
 async function createActorUser(db: Db): Promise<void> {

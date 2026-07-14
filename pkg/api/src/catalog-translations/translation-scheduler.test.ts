@@ -24,6 +24,44 @@ describe('TranslationScheduler', () => {
     scheduler.dispose();
   });
 
+  test('markNow fires immediately instead of waiting for the debounce', async () => {
+    vi.useFakeTimers();
+    const run = vi.fn(async () => undefined);
+    const scheduler = new TranslationScheduler({ debounceMs: 60_000, run });
+
+    scheduler.markNow('product:00000000-0000-4000-8000-000000000001');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(run).toHaveBeenCalledOnce();
+
+    scheduler.dispose();
+  });
+
+  test('markNow single-flights and reruns once when an edit lands mid-run', async () => {
+    vi.useFakeTimers();
+    let finishFirstRun: (() => void) | undefined;
+    const firstRun = new Promise<void>((resolve) => {
+      finishFirstRun = resolve;
+    });
+    const run = vi
+      .fn()
+      .mockImplementationOnce(() => firstRun)
+      .mockResolvedValue(undefined);
+    const scheduler = new TranslationScheduler({ debounceMs: 100, run });
+    const key = 'product:00000000-0000-4000-8000-000000000001' as const;
+
+    scheduler.markNow(key);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(run).toHaveBeenCalledOnce();
+
+    scheduler.mark(key);
+    finishFirstRun?.();
+    await firstRun;
+    await vi.advanceTimersByTimeAsync(100);
+    expect(run).toHaveBeenCalledTimes(2);
+
+    scheduler.dispose();
+  });
+
   test('runs exactly once more when marked during an in-flight run', async () => {
     vi.useFakeTimers();
     let finishFirstRun: (() => void) | undefined;

@@ -38,7 +38,7 @@ export const productRangesRouter = router({
 
   retranslateStale: authorizedProcedure('product_range:update').mutation(async ({ ctx }) => {
     const keys = await listCatalogTranslationKeysNeedingTranslation({ db: ctx.db });
-    for (const key of keys) ctx.catalogTranslationScheduler.mark(key);
+    for (const key of keys) ctx.catalogTranslationScheduler.markNow(key);
     return { queued: keys.length };
   }),
 

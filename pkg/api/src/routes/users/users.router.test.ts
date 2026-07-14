@@ -224,7 +224,7 @@ describe('users.list', () => {
     const caller = createAppRouterCaller({
       access,
       appEnv: 'production',
-      catalogTranslationScheduler: { mark: () => undefined },
+      catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined },
       changelogLoader: () => [],
       db: context.db,
       log: pino({ level: 'silent' }),

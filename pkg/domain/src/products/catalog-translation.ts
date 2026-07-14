@@ -1,6 +1,11 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
-import { CANONICAL_LOCALE, type CatalogTranslationEnvelope, type Locale } from '@pkg/schema';
+import {
+  CANONICAL_LOCALE,
+  type CatalogTranslationEnvelope,
+  type CatalogTranslationFieldState,
+  type Locale,
+} from '@pkg/schema';
 
 export type { CatalogTranslationEnvelope } from '@pkg/schema';
 
@@ -48,21 +53,27 @@ export function catalogSourceHashes<Canonical extends object>(canonical: Canonic
   ) as CatalogSourceHashes<Canonical>;
 }
 
-export type CatalogTranslationState = 'fresh' | 'missing' | 'stale';
+export type CatalogTranslationState = CatalogTranslationFieldState;
 
 export function catalogTranslationFieldState(
   sourceHash: string,
-  translation: Pick<CatalogTranslationEnvelope<unknown>, 'sourceHash'> | undefined,
+  translation: Pick<CatalogTranslationEnvelope<unknown>, 'isManual' | 'sourceHash'> | undefined,
 ): CatalogTranslationState {
   if (!translation) return 'missing';
-  return translation.sourceHash === sourceHash ? 'fresh' : 'stale';
+  if (translation.sourceHash === sourceHash) return 'fresh';
+  return translation.isManual ? 'needsReview' : 'stale';
 }
 
-// Missing wins so health recovery keeps reporting an incomplete unit until every field exists; stale is
-// next because an existing but outdated field still needs the translation pipeline.
+// Queueable states win so a mixed entity still enters the AI pipeline; a pure manual mismatch stays
+// review-only and cannot loop through translation recovery.
 export function catalogTranslationState(fieldStates: readonly CatalogTranslationState[]): CatalogTranslationState {
   if (fieldStates.includes('missing')) return 'missing';
-  return fieldStates.includes('stale') ? 'stale' : 'fresh';
+  if (fieldStates.includes('stale')) return 'stale';
+  return fieldStates.includes('needsReview') ? 'needsReview' : 'fresh';
+}
+
+export function catalogTranslationNeedsAi(state: CatalogTranslationState): boolean {
+  return state === 'missing' || state === 'stale';
 }
 
 export function translationForLocale<T>(

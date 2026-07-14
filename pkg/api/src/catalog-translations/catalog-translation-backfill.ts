@@ -1,4 +1,4 @@
-import { listCatalogTranslationKeys } from '@pkg/core';
+import { listCatalogTranslationKeysNeedingTranslation } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import type { CatalogTranslationKey } from '@pkg/domain';
 
@@ -34,7 +34,7 @@ export async function runCatalogTranslationBackfill({
     throw new Error('Translation backfill concurrency must be a positive integer');
   }
 
-  const keys = await listCatalogTranslationKeys({ db });
+  const keys = await listCatalogTranslationKeysNeedingTranslation({ db });
   const counts: CatalogTranslationBackfillResult = { failed: 0, skipped: 0, translated: 0 };
   const limit = new ConcurrencyLimit(concurrency);
   let completed = 0;

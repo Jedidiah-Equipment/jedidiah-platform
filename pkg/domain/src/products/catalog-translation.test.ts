@@ -4,6 +4,7 @@ import {
   catalogSourceHashes,
   catalogTranslationFieldState,
   catalogTranslationKey,
+  catalogTranslationNeedsAi,
   catalogTranslationState,
   localizeFields,
   parseCatalogTranslationKey,
@@ -97,17 +98,29 @@ describe('translation selection and staleness', () => {
     expect(translationForLocale(undefined, 'af')).toBeUndefined();
   });
 
-  it('computes fresh, missing, and stale per-field states', () => {
+  it('computes fresh, missing, stale, and needs-review per-field states', () => {
     expect(catalogTranslationFieldState('current', undefined)).toBe('missing');
-    expect(catalogTranslationFieldState('current', { sourceHash: 'current' })).toBe('fresh');
-    expect(catalogTranslationFieldState('current', { sourceHash: 'old' })).toBe('stale');
+    expect(catalogTranslationFieldState('current', { isManual: false, sourceHash: 'current' })).toBe('fresh');
+    expect(catalogTranslationFieldState('current', { isManual: false, sourceHash: 'old' })).toBe('stale');
+    expect(catalogTranslationFieldState('current', { isManual: true, sourceHash: 'current' })).toBe('fresh');
+    expect(catalogTranslationFieldState('current', { isManual: true, sourceHash: 'old' })).toBe('needsReview');
   });
 
   it('reports the weakest field of a translation unit as its state', () => {
     expect(catalogTranslationState(['fresh'])).toBe('fresh');
     expect(catalogTranslationState(['fresh', 'missing'])).toBe('missing');
     expect(catalogTranslationState(['fresh', 'stale'])).toBe('stale');
+    expect(catalogTranslationState(['fresh', 'needsReview'])).toBe('needsReview');
+    expect(catalogTranslationState(['needsReview', 'stale'])).toBe('stale');
+    expect(catalogTranslationState(['needsReview', 'missing'])).toBe('missing');
     expect(catalogTranslationState(['stale', 'missing'])).toBe('missing');
+  });
+
+  it('queues only missing and stale translation units for AI', () => {
+    expect(catalogTranslationNeedsAi('missing')).toBe(true);
+    expect(catalogTranslationNeedsAi('stale')).toBe(true);
+    expect(catalogTranslationNeedsAi('fresh')).toBe(false);
+    expect(catalogTranslationNeedsAi('needsReview')).toBe(false);
   });
 });
 

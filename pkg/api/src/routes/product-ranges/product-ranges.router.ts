@@ -12,6 +12,7 @@ import {
   updateProductRange,
   updateProductRangeVariant,
 } from '@pkg/core';
+import { catalogTranslationKey } from '@pkg/domain';
 import {
   ProductRangeCreateInput,
   ProductRangeReorderInput,
@@ -22,6 +23,8 @@ import {
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
+
+import { markCatalogTranslationIfNeeded } from '@/catalog-translations/catalog-translation-scheduling.js';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
@@ -37,7 +40,11 @@ export const productRangesRouter = router({
     .input(ProductRangeCreateInput)
     .mutation(async ({ ctx, input }) => {
       const range = await mapProductRangeErrors(() => createProductRange({ db: ctx.db, input }));
-      ctx.catalogTranslationScheduler.mark(`product_range:${range.id}`);
+      await markCatalogTranslationIfNeeded({
+        db: ctx.db,
+        key: catalogTranslationKey('range', range.id),
+        marker: ctx.catalogTranslationScheduler,
+      });
       return range;
     }),
 
@@ -45,7 +52,11 @@ export const productRangesRouter = router({
     .input(ProductRangeUpdateInput)
     .mutation(async ({ ctx, input }) => {
       const range = await mapProductRangeErrors(() => updateProductRange({ db: ctx.db, input }));
-      ctx.catalogTranslationScheduler.mark(`product_range:${range.id}`);
+      await markCatalogTranslationIfNeeded({
+        db: ctx.db,
+        key: catalogTranslationKey('range', range.id),
+        marker: ctx.catalogTranslationScheduler,
+      });
       return range;
     }),
 
@@ -61,7 +72,11 @@ export const productRangesRouter = router({
     .input(ProductRangeVariantCreateInput)
     .mutation(async ({ ctx, input }) => {
       const variant = await mapProductRangeErrors(() => createProductRangeVariant({ db: ctx.db, input }));
-      ctx.catalogTranslationScheduler.mark(`product_range_variant:${variant.id}`);
+      await markCatalogTranslationIfNeeded({
+        db: ctx.db,
+        key: catalogTranslationKey('variant', variant.id),
+        marker: ctx.catalogTranslationScheduler,
+      });
       return variant;
     }),
 
@@ -69,7 +84,11 @@ export const productRangesRouter = router({
     .input(ProductRangeVariantUpdateInput)
     .mutation(async ({ ctx, input }) => {
       const variant = await mapProductRangeErrors(() => updateProductRangeVariant({ db: ctx.db, input }));
-      ctx.catalogTranslationScheduler.mark(`product_range_variant:${variant.id}`);
+      await markCatalogTranslationIfNeeded({
+        db: ctx.db,
+        key: catalogTranslationKey('variant', variant.id),
+        marker: ctx.catalogTranslationScheduler,
+      });
       return variant;
     }),
 

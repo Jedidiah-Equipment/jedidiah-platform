@@ -97,7 +97,7 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Canonical Text** is the English source text staff author on catalog entities (Products, Ranges, Variants, Assemblies). Slugs, URL parameters, and uniqueness rules derive only from Canonical Text, so URLs are identical across Locales apart from the prefix.
 
-**Translation** is the machine-generated rendering of an entity's text into a Locale, stored with the entity and regenerated automatically after edits settle. Every text field is translatable except Model Code. A Translation is **Stale** when its Canonical Text changed after it was generated; a Stale Translation keeps serving until regenerated, while a missing one falls back per-field to Canonical Text. Staleness is derivable from stored facts, never tracked as queue state.
+**Translation** is a per-field rendering of an entity's text into a Locale, stored with the entity in an envelope containing its value, Canonical Text source hash, update time, and whether staff own it manually. Every text field is translatable except Model Code. A field is **Stale** when its AI-owned envelope no longer matches Canonical Text; a manual mismatch instead **Needs Review** and never enters the AI queue. Both keep serving, while a missing field falls back to Canonical Text. Saving a manual value stamps the current source hash; reverting it to AI removes the envelope and eagerly queues regeneration. Translation state is derived from stored facts, never tracked as queue state.
 
 **Locale Preference** is a visitor's per-browser remembered Locale. It is detected from the browser language on first visit; an explicit choice via the language dropdown overrides detection, and the Preference wins over the entered URL's Locale on arrival.
 

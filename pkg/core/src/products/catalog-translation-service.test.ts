@@ -1,9 +1,12 @@
 import { eq, productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db';
+import { catalogSourceHashes } from '@pkg/domain';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
 import {
+  getCatalogTranslationStatus,
   listCatalogTranslationKeys,
+  listCatalogTranslationKeysNeedingTranslation,
   loadCatalogTranslationSource,
   persistCatalogTranslation,
 } from './catalog-translation-service.js';
@@ -168,6 +171,71 @@ describe('catalog translation persistence', () => {
     ).resolves.toMatchObject({ state: 'fresh' });
   });
 
+  test('does not overwrite a field made manual after the AI source was loaded', async ({ context }) => {
+    const [range] = await context.db
+      .insert(productRanges)
+      .values({ description: 'Harvest trailers.', displayOrder: 0, name: 'Trailers' })
+      .returning({ id: productRanges.id });
+    if (!range) throw new Error('Range fixture missing');
+
+    const source = await loadCatalogTranslationSource({ db: context.db, key: `product_range:${range.id}` });
+    if (source?.kind !== 'range') throw new Error('Range translation source missing');
+
+    await context.db
+      .update(productRanges)
+      .set({
+        translations: {
+          af: {
+            name: {
+              isManual: true,
+              sourceHash: 'manual-lock',
+              translatedAt: '2026-07-14T09:00:00.000Z',
+              value: 'My handgeskrewe reeks',
+            },
+          },
+        },
+      })
+      .where(eq(productRanges.id, range.id));
+
+    await persistCatalogTranslation({
+      db: context.db,
+      kind: 'range',
+      source,
+      translatedAt: new Date('2026-07-14T10:00:00.000Z'),
+      translation: { description: 'Oessleepwaens.', name: 'AI-reeks' },
+    });
+
+    const [row] = await context.db.select().from(productRanges).where(eq(productRanges.id, range.id));
+    expect(row?.translations.af?.name).toMatchObject({ isManual: true, value: 'My handgeskrewe reeks' });
+    expect(row?.translations.af?.description).toMatchObject({ isManual: false, value: 'Oessleepwaens.' });
+  });
+
+  test('reports manual source drift for review without adding it to the AI queue', async ({ context }) => {
+    const canonical = { description: 'Harvest trailers.', name: 'Trailers' };
+    const sourceHashes = catalogSourceHashes(canonical);
+    const [range] = await context.db
+      .insert(productRanges)
+      .values({
+        ...canonical,
+        displayOrder: 0,
+        translations: {
+          af: {
+            description: envelope('Oessleepwaens.', 'outdated', true),
+            name: envelope('Sleepwaens', sourceHashes.name),
+          },
+        },
+      })
+      .returning({ id: productRanges.id });
+    if (!range) throw new Error('Range fixture missing');
+
+    await expect(getCatalogTranslationStatus({ db: context.db })).resolves.toEqual({
+      products: { missing: 0, needsReview: 0, stale: 0 },
+      ranges: { missing: 0, needsReview: 1, stale: 0 },
+      variants: { missing: 0, needsReview: 0, stale: 0 },
+    });
+    await expect(listCatalogTranslationKeysNeedingTranslation({ db: context.db })).resolves.toEqual([]);
+  });
+
   test('lists every active catalog translation unit for an idempotent sweep', async ({ context }) => {
     const [range] = await context.db
       .insert(productRanges)
@@ -200,9 +268,9 @@ describe('catalog translation persistence', () => {
   });
 });
 
-function envelope<Value>(value: Value, sourceHash = 'hash') {
+function envelope<Value>(value: Value, sourceHash = 'hash', isManual = false) {
   return {
-    isManual: false,
+    isManual,
     sourceHash,
     translatedAt: '2026-01-01T00:00:00.000Z',
     value,

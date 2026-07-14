@@ -1,4 +1,5 @@
-import { productAssemblies, productRanges, products } from '@pkg/db';
+import { eq, productAssemblies, productRanges, products } from '@pkg/db';
+import { catalogSourceHashes } from '@pkg/domain';
 import { MockLanguageModelV3 } from 'ai/test';
 import { describe, expect, vi } from 'vitest';
 
@@ -68,7 +69,40 @@ describe('catalog translation runner', () => {
     expect(assembly?.translations.af?.name?.isManual).toBe(false);
   });
 
-  test('backfill translates the stale set and a second sweep skips every entity', async ({ context }) => {
+  test('does not call the model for a manual field that needs review', async ({ context }) => {
+    const canonical = { description: 'Harvest equipment.', name: 'Trailers' };
+    const sourceHashes = catalogSourceHashes(canonical);
+    await context.db
+      .update(productRanges)
+      .set({
+        translations: {
+          af: {
+            description: {
+              isManual: true,
+              sourceHash: 'outdated',
+              translatedAt: '2026-07-14T09:00:00.000Z',
+              value: 'Handmatige oestoerusting.',
+            },
+            name: {
+              isManual: false,
+              sourceHash: sourceHashes.name,
+              translatedAt: '2026-07-14T09:00:00.000Z',
+              value: 'Sleepwaens',
+            },
+          },
+        },
+      })
+      .where(eq(productRanges.id, context.rangeId));
+    const model = new MockLanguageModelV3({
+      doGenerate: async () => generatedJson({ description: 'AI-inhoud.', name: 'AI-reeks' }),
+    });
+    const run = createCatalogTranslationRunner({ db: context.db, model });
+
+    await expect(run(`product_range:${context.rangeId}`)).resolves.toBe('skipped');
+    expect(model.doGenerateCalls).toHaveLength(0);
+  });
+
+  test('backfill translates the stale set and excludes healthy entities from later sweeps', async ({ context }) => {
     const model = new MockLanguageModelV3({
       doGenerate: async ({ prompt }) => {
         const request = JSON.stringify(prompt);
@@ -95,7 +129,7 @@ describe('catalog translation runner', () => {
     });
     await expect(runCatalogTranslationBackfill({ db: context.db, run })).resolves.toEqual({
       failed: 0,
-      skipped: 2,
+      skipped: 0,
       translated: 0,
     });
     expect(onProgress).toHaveBeenCalledTimes(2);

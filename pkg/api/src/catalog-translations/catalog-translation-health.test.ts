@@ -1,6 +1,5 @@
 import type { LanguageModelV3CallOptions, LanguageModelV3GenerateResult } from '@ai-sdk/provider';
 import { type Db, productRanges, productRangeVariants, products } from '@pkg/db';
-import { productRangeSourceHash, productRangeVariantSourceHash, productSourceHash } from '@pkg/domain';
 import { MockLanguageModelV3 } from 'ai/test';
 import { describe, expect } from 'vitest';
 
@@ -9,7 +8,13 @@ import { mockSession } from '@/test/test-utils.js';
 
 import { createCatalogTranslationRunner } from './catalog-translation-runner.js';
 import { TranslationScheduler } from './translation-scheduler.js';
-import { generatedJson, ManualTimers, waitForModelCalls, waitForTurns } from './translation-test-utils.js';
+import {
+  generatedJson,
+  ManualTimers,
+  translationEnvelopes,
+  waitForModelCalls,
+  waitForTurns,
+} from './translation-test-utils.js';
 
 type DoGenerate = (options: LanguageModelV3CallOptions) => PromiseLike<LanguageModelV3GenerateResult>;
 
@@ -110,12 +115,7 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
       ...parent,
       displayOrder: 0,
       translations: {
-        af: {
-          description: 'Vars ouerreeks.',
-          name: 'Ouerreeks',
-          sourceHash: productRangeSourceHash(parent),
-          translatedAt: '2026-07-13T10:00:00.000Z',
-        },
+        af: translationEnvelopes(parent, { description: 'Vars ouerreeks.', name: 'Ouerreeks' }),
       },
     })
     .returning({ id: productRanges.id });
@@ -128,12 +128,11 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
       displayOrder: 2,
       name: 'Stale Range',
       translations: {
-        af: {
-          description: 'Ou reeks.',
-          name: 'Ou Reeks',
-          sourceHash: 'outdated',
-          translatedAt: '2026-07-13T10:00:00.000Z',
-        },
+        af: translationEnvelopes(
+          { description: 'Stale range.', name: 'Stale Range' },
+          { description: 'Ou reeks.', name: 'Ou Reeks' },
+          'outdated',
+        ),
       },
     },
   ]);
@@ -146,11 +145,7 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
       name: freshVariant.name,
       rangeId: parentRow.id,
       translations: {
-        af: {
-          name: 'Vars Variant',
-          sourceHash: productRangeVariantSourceHash(freshVariant),
-          translatedAt: '2026-07-13T10:00:00.000Z',
-        },
+        af: translationEnvelopes(freshVariant, { name: 'Vars Variant' }),
       },
     },
     {
@@ -158,7 +153,7 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
       name: 'Stale Variant',
       rangeId: parentRow.id,
       translations: {
-        af: { name: 'Ou Variant', sourceHash: 'outdated', translatedAt: '2026-07-13T10:00:00.000Z' },
+        af: translationEnvelopes({ name: 'Stale Variant' }, { name: 'Ou Variant' }, 'outdated'),
       },
     },
   ]);
@@ -188,16 +183,14 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
       name: freshProduct.name,
       rangeId: parentRow.id,
       translations: {
-        af: {
+        af: translationEnvelopes(freshProduct, {
           category: null,
           description: 'Vars produk.',
           keyFeatures: [],
           name: 'Vars Produk',
           nameHighlight: null,
-          sourceHash: productSourceHash(freshProduct, []),
           technicalDetails: [],
-          translatedAt: '2026-07-13T10:00:00.000Z',
-        },
+        }),
       },
     },
     {
@@ -208,16 +201,25 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
       name: 'Stale Product',
       rangeId: parentRow.id,
       translations: {
-        af: {
-          category: null,
-          description: 'Ou produk.',
-          keyFeatures: [],
-          name: 'Ou Produk',
-          nameHighlight: null,
-          sourceHash: 'outdated',
-          technicalDetails: [],
-          translatedAt: '2026-07-13T10:00:00.000Z',
-        },
+        af: translationEnvelopes(
+          {
+            category: null,
+            description: 'Stale product.',
+            keyFeatures: [] as string[],
+            name: 'Stale Product',
+            nameHighlight: null,
+            technicalDetails: [] as Array<{ label: string; value: string }>,
+          },
+          {
+            category: null,
+            description: 'Ou produk.',
+            keyFeatures: [],
+            name: 'Ou Produk',
+            nameHighlight: null,
+            technicalDetails: [],
+          },
+          'outdated',
+        ),
       },
     },
   ]);

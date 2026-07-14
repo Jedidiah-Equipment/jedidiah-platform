@@ -1,4 +1,4 @@
-import { productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db';
+import { eq, productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
@@ -33,14 +33,7 @@ describe('catalog translation persistence', () => {
         technicalDetails: [{ label: 'Capacity', value: '42 m³' }],
         translations: {
           zu: {
-            sourceHash: 'older',
-            translatedAt: '2026-01-01T00:00:00.000Z',
-            name: 'Inqola',
-            nameHighlight: 'XL',
-            category: 'Silage',
-            description: null,
-            keyFeatures: [],
-            technicalDetails: [],
+            name: envelope('Inqola', 'older'),
           },
         },
       })
@@ -82,21 +75,54 @@ describe('catalog translation persistence', () => {
     });
 
     const reread = await loadCatalogTranslationSource({ db: context.db, key: `product:${product.id}` });
-    expect(reread).toMatchObject({ sourceHash: source.sourceHash, state: 'fresh' });
+    expect(reread).toMatchObject({ sourceHashes: source.sourceHashes, state: 'fresh' });
 
     const [productRow] = await context.db.select().from(products);
     const [assemblyRow] = await context.db.select().from(productAssemblies);
-    expect(productRow?.translations.zu?.name).toBe('Inqola');
+    expect(productRow?.translations.zu?.name?.value).toBe('Inqola');
     expect(productRow?.translations.af).toMatchObject({
-      sourceHash: source.sourceHash,
-      translatedAt: translatedAt.toISOString(),
-      name: 'Kuilvoer-sleepwa',
+      name: {
+        isManual: false,
+        sourceHash: source.sourceHashes.product.name,
+        translatedAt: translatedAt.toISOString(),
+        value: 'Kuilvoer-sleepwa',
+      },
     });
     expect(assemblyRow?.translations.af).toEqual({
-      sourceHash: source.sourceHash,
-      translatedAt: translatedAt.toISOString(),
-      name: 'Hidrouliese agterklap',
+      name: {
+        isManual: false,
+        sourceHash: source.sourceHashes.assemblies[0]?.name,
+        translatedAt: translatedAt.toISOString(),
+        value: 'Hidrouliese agterklap',
+      },
     });
+
+    await context.db.update(products).set({ description: 'Updated harvest copy.' }).where(eq(products.id, product.id));
+    const staleSource = await loadCatalogTranslationSource({ db: context.db, key: `product:${product.id}` });
+    expect(staleSource).toMatchObject({ kind: 'product', state: 'stale' });
+    if (staleSource?.kind !== 'product') throw new Error('Stale Product translation source missing');
+
+    await persistCatalogTranslation({
+      db: context.db,
+      kind: 'product',
+      source: staleSource,
+      translatedAt: new Date('2026-07-13T11:00:00.000Z'),
+      translation: {
+        name: 'Reworded name that must not persist',
+        nameHighlight: 'Reworded highlight',
+        category: 'Reworded category',
+        description: 'Bygewerkte oesteks.',
+        keyFeatures: ['Reworded feature'],
+        technicalDetails: [{ label: 'Reworded', value: 'detail' }],
+        assemblies: [{ id: assembly.id, name: 'Reworded assembly' }],
+      },
+    });
+
+    const [updatedProductRow] = await context.db.select().from(products);
+    const [updatedAssemblyRow] = await context.db.select().from(productAssemblies);
+    expect(updatedProductRow?.translations.af?.name?.value).toBe('Kuilvoer-sleepwa');
+    expect(updatedProductRow?.translations.af?.description?.value).toBe('Bygewerkte oesteks.');
+    expect(updatedAssemblyRow?.translations.af?.name?.value).toBe('Hidrouliese agterklap');
   });
 
   test('loads and persists Range and Variant translation units', async ({ context }) => {
@@ -173,3 +199,12 @@ describe('catalog translation persistence', () => {
     ]);
   });
 });
+
+function envelope<Value>(value: Value, sourceHash = 'hash') {
+  return {
+    isManual: false,
+    sourceHash,
+    translatedAt: '2026-01-01T00:00:00.000Z',
+    value,
+  };
+}

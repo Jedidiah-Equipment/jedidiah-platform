@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { translationEnvelopeFixture } from './catalog-translation.test-fixtures.js';
 import {
   ProductRange,
   ProductRangeCreateInput,
@@ -58,17 +59,18 @@ describe('ProductRange', () => {
 });
 
 describe('Range translation blobs', () => {
-  it('validates locale-keyed Range and Variant translations', () => {
-    const metadata = { sourceHash: 'abc123', translatedAt: '2026-07-13T10:00:00.000Z' };
-
+  it('validates partial locale-keyed Range and Variant field envelopes', () => {
     expect(
       ProductRangeTranslations.parse({
-        af: { ...metadata, name: 'Kuilvoerreeks', description: 'Gebou vir die oes.' },
+        af: {
+          name: translationEnvelopeFixture('Kuilvoerreeks'),
+          description: translationEnvelopeFixture('Gebou vir die oes.'),
+        },
       }),
-    ).toMatchObject({ af: { name: 'Kuilvoerreeks' } });
-    expect(ProductRangeVariantTranslations.parse({ af: { ...metadata, name: 'Wye bak' } })).toMatchObject({
-      af: { name: 'Wye bak' },
-    });
+    ).toMatchObject({ af: { name: { value: 'Kuilvoerreeks' } } });
+    expect(
+      ProductRangeVariantTranslations.parse({ af: { name: translationEnvelopeFixture('Wye bak') } }),
+    ).toMatchObject({ af: { name: { value: 'Wye bak' } } });
   });
 });
 

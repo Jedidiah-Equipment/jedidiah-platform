@@ -13,7 +13,7 @@ import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { Bay } from '../jobs/job.js';
 import {
-  CatalogTranslationMetadata,
+  catalogTranslationEnvelope,
   TranslatableAssemblyFields,
   TranslatableProductFields,
 } from './catalog-translation.js';
@@ -91,7 +91,9 @@ export type AssemblyName = z.infer<typeof AssemblyName>;
 export const AssemblyName = requiredTrimmedText('Assembly name is required');
 
 export type ProductAssemblyTranslation = z.infer<typeof ProductAssemblyTranslation>;
-export const ProductAssemblyTranslation = CatalogTranslationMetadata.extend(TranslatableAssemblyFields.shape);
+export const ProductAssemblyTranslation = z
+  .object({ name: catalogTranslationEnvelope(TranslatableAssemblyFields.shape.name) })
+  .partial();
 
 export type ProductAssemblyTranslations = z.infer<typeof ProductAssemblyTranslations>;
 export const ProductAssemblyTranslations = z.partialRecord(z.string(), ProductAssemblyTranslation);
@@ -329,7 +331,16 @@ export const ProductTechnicalDetails = z
   .max(PRODUCT_TECHNICAL_DETAILS_MAX_COUNT, `Add at most ${PRODUCT_TECHNICAL_DETAILS_MAX_COUNT} technical details`);
 
 export type ProductTranslation = z.infer<typeof ProductTranslation>;
-export const ProductTranslation = CatalogTranslationMetadata.extend(TranslatableProductFields.shape);
+export const ProductTranslation = z
+  .object({
+    name: catalogTranslationEnvelope(TranslatableProductFields.shape.name),
+    nameHighlight: catalogTranslationEnvelope(TranslatableProductFields.shape.nameHighlight),
+    category: catalogTranslationEnvelope(TranslatableProductFields.shape.category),
+    description: catalogTranslationEnvelope(TranslatableProductFields.shape.description),
+    keyFeatures: catalogTranslationEnvelope(TranslatableProductFields.shape.keyFeatures),
+    technicalDetails: catalogTranslationEnvelope(TranslatableProductFields.shape.technicalDetails),
+  })
+  .partial();
 
 export type ProductTranslations = z.infer<typeof ProductTranslations>;
 export const ProductTranslations = z.partialRecord(z.string(), ProductTranslation);

@@ -1,22 +1,21 @@
 import { type Db, notRemoved, productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db';
 import {
+  type CatalogSourceHashes,
   type CatalogTranslationKey,
   type CatalogTranslationKeyFor,
   type CatalogTranslationKind,
   type CatalogTranslationState,
+  catalogSourceHashes,
+  catalogTranslationFieldState,
   catalogTranslationKey,
   catalogTranslationState,
   parseCatalogTranslationKey,
-  productRangeSourceHash,
-  productRangeVariantSourceHash,
-  productSourceHash,
 } from '@pkg/domain';
 import {
-  type CatalogTranslationMetadata,
+  type CatalogTranslationEnvelope,
   type CatalogTranslationStatus,
   TRANSLATED_LOCALE,
   type TranslatableAssembly,
-  type TranslatableAssemblyFields,
   type TranslatableProductFields,
   type TranslatableProductRangeFields,
   type TranslatableProductRangeVariantFields,
@@ -34,7 +33,10 @@ type ProductTranslationSource = {
   id: string;
   key: CatalogTranslationKeyFor<'product'>;
   kind: 'product';
-  sourceHash: string;
+  sourceHashes: {
+    assemblies: Array<{ id: string; name: string }>;
+    product: CatalogSourceHashes<TranslatableProductFields>;
+  };
   state: CatalogTranslationState;
 };
 
@@ -43,7 +45,7 @@ type ProductRangeTranslationSource = {
   id: string;
   key: CatalogTranslationKeyFor<'range'>;
   kind: 'range';
-  sourceHash: string;
+  sourceHashes: CatalogSourceHashes<ProductRangeCatalogTranslation>;
   state: CatalogTranslationState;
 };
 
@@ -52,7 +54,7 @@ type ProductRangeVariantTranslationSource = {
   id: string;
   key: CatalogTranslationKeyFor<'variant'>;
   kind: 'variant';
-  sourceHash: string;
+  sourceHashes: CatalogSourceHashes<ProductRangeVariantCatalogTranslation>;
   state: CatalogTranslationState;
 };
 
@@ -214,8 +216,7 @@ async function loadProductSource(db: Db, id: string): Promise<ProductTranslation
 }
 
 function toProductTranslationSource(row: ProductSourceRow): ProductTranslationSource {
-  const canonical = {
-    assemblies: row.assemblies.map(({ id: assemblyId, name }) => ({ id: assemblyId, name })),
+  const productCanonical = {
     category: row.category,
     description: row.description,
     keyFeatures: row.keyFeatures,
@@ -223,13 +224,32 @@ function toProductTranslationSource(row: ProductSourceRow): ProductTranslationSo
     nameHighlight: row.nameHighlight,
     technicalDetails: row.technicalDetails,
   };
-  const sourceHash = productSourceHash(canonical, canonical.assemblies);
-  const state = catalogTranslationState(sourceHash, [
-    row.translations[TRANSLATED_LOCALE],
-    ...row.assemblies.map((assembly) => assembly.translations[TRANSLATED_LOCALE]),
-  ]);
+  const assemblies = row.assemblies.map(({ id: assemblyId, name }) => ({ id: assemblyId, name }));
+  const canonical = { ...productCanonical, assemblies };
+  const productSourceHashes = catalogSourceHashes(productCanonical);
+  const assemblySourceHashes = assemblies.map(({ id, name }) => ({ id, name: catalogSourceHashes({ name }).name }));
+  const productTranslation = row.translations[TRANSLATED_LOCALE];
+  const fieldStates = Object.entries(productSourceHashes).map(([field, sourceHash]) =>
+    catalogTranslationFieldState(sourceHash, productTranslation?.[field as keyof typeof productTranslation]),
+  );
+  fieldStates.push(
+    ...row.assemblies.map((assembly) =>
+      catalogTranslationFieldState(
+        catalogSourceHashes({ name: assembly.name }).name,
+        assembly.translations[TRANSLATED_LOCALE]?.name,
+      ),
+    ),
+  );
+  const state = catalogTranslationState(fieldStates);
 
-  return { canonical, id: row.id, key: catalogTranslationKey('product', row.id), kind: 'product', sourceHash, state };
+  return {
+    canonical,
+    id: row.id,
+    key: catalogTranslationKey('product', row.id),
+    kind: 'product',
+    sourceHashes: { assemblies: assemblySourceHashes, product: productSourceHashes },
+    state,
+  };
 }
 
 async function loadRangeSource(db: Db, id: string): Promise<ProductRangeTranslationSource | null> {
@@ -243,9 +263,14 @@ async function loadRangeSource(db: Db, id: string): Promise<ProductRangeTranslat
 
 function toProductRangeTranslationSource(row: typeof productRanges.$inferSelect): ProductRangeTranslationSource {
   const canonical = { description: row.description, name: row.name };
-  const sourceHash = productRangeSourceHash(canonical);
-  const state = catalogTranslationState(sourceHash, [row.translations[TRANSLATED_LOCALE]]);
-  return { canonical, id: row.id, key: catalogTranslationKey('range', row.id), kind: 'range', sourceHash, state };
+  const sourceHashes = catalogSourceHashes(canonical);
+  const translation = row.translations[TRANSLATED_LOCALE];
+  const state = catalogTranslationState(
+    Object.entries(sourceHashes).map(([field, sourceHash]) =>
+      catalogTranslationFieldState(sourceHash, translation?.[field as keyof typeof translation]),
+    ),
+  );
+  return { canonical, id: row.id, key: catalogTranslationKey('range', row.id), kind: 'range', sourceHashes, state };
 }
 
 async function loadVariantSource(db: Db, id: string): Promise<ProductRangeVariantTranslationSource | null> {
@@ -268,9 +293,11 @@ function toProductRangeVariantTranslationSource(
   row: ProductRangeVariantSourceRow,
 ): ProductRangeVariantTranslationSource {
   const canonical = { name: row.name };
-  const sourceHash = productRangeVariantSourceHash(canonical);
-  const state = catalogTranslationState(sourceHash, [row.translations[TRANSLATED_LOCALE]]);
-  return { canonical, id: row.id, key: catalogTranslationKey('variant', row.id), kind: 'variant', sourceHash, state };
+  const sourceHashes = catalogSourceHashes(canonical);
+  const state = catalogTranslationState([
+    catalogTranslationFieldState(sourceHashes.name, row.translations[TRANSLATED_LOCALE]?.name),
+  ]);
+  return { canonical, id: row.id, key: catalogTranslationKey('variant', row.id), kind: 'variant', sourceHashes, state };
 }
 
 async function persistProductTranslation({
@@ -279,31 +306,63 @@ async function persistProductTranslation({
   translatedAt,
   translation,
 }: PersistCatalogTranslationInput<'product'>): Promise<PersistCatalogTranslationResult> {
-  const metadata = translationMetadata(source, translatedAt);
-
   return db.transaction(async (tx) => {
-    const row = await tx.query.products.findFirst({
-      where: and(eq(products.id, source.id), notRemoved(products)),
-      with: { assemblies: { orderBy: [asc(productAssemblies.displayOrder), asc(productAssemblies.id)] } },
-    });
-    if (!row || toProductTranslationSource(row).sourceHash !== source.sourceHash) return 'skipped';
+    const [productRow] = await tx
+      .select()
+      .from(products)
+      .where(and(eq(products.id, source.id), notRemoved(products)))
+      .for('update');
+    if (!productRow) return 'skipped';
+    const assemblyRows = await tx
+      .select()
+      .from(productAssemblies)
+      .where(eq(productAssemblies.productId, source.id))
+      .orderBy(asc(productAssemblies.displayOrder), asc(productAssemblies.id))
+      .for('update');
+    const row: ProductSourceRow = { ...productRow, assemblies: assemblyRows };
 
     const { assemblies, ...productTranslation } = translation;
-    await tx
-      .update(products)
-      .set({ translations: mergeTranslation(products.translations, { ...metadata, ...productTranslation }) })
-      .where(and(eq(products.id, source.id), notRemoved(products)));
+    const current = toProductTranslationSource(row);
+    const { assemblies: canonicalAssemblies, ...productCanonical } = current.canonical;
+    const productPatch = createTranslationPatch({
+      canonical: productCanonical,
+      currentTranslation: row.translations[TRANSLATED_LOCALE],
+      sourceHashes: source.sourceHashes.product,
+      translatedAt,
+      translation: productTranslation,
+    });
+    let persisted = false;
+    if (Object.keys(productPatch).length > 0) {
+      await tx
+        .update(products)
+        .set({ translations: mergeTranslationFields(products.translations, productPatch) })
+        .where(and(eq(products.id, source.id), notRemoved(products)));
+      persisted = true;
+    }
 
     for (const assembly of assemblies) {
+      const canonicalAssembly = canonicalAssemblies.find(({ id }) => id === assembly.id);
+      const sourceHashes = source.sourceHashes.assemblies.find(({ id }) => id === assembly.id);
+      const assemblyRow = row.assemblies.find(({ id }) => id === assembly.id);
+      if (!canonicalAssembly || !sourceHashes || !assemblyRow) continue;
+      const assemblyPatch = createTranslationPatch({
+        canonical: { name: canonicalAssembly.name },
+        currentTranslation: assemblyRow.translations[TRANSLATED_LOCALE],
+        sourceHashes: { name: sourceHashes.name },
+        translatedAt,
+        translation: { name: assembly.name },
+      });
+      if (Object.keys(assemblyPatch).length === 0) continue;
       await tx
         .update(productAssemblies)
         .set({
-          translations: mergeTranslation(productAssemblies.translations, { ...metadata, name: assembly.name }),
+          translations: mergeTranslationFields(productAssemblies.translations, assemblyPatch),
         })
         .where(and(eq(productAssemblies.id, assembly.id), eq(productAssemblies.productId, source.id)));
+      persisted = true;
     }
 
-    return 'persisted';
+    return persisted ? 'persisted' : 'skipped';
   });
 }
 
@@ -313,17 +372,27 @@ async function persistProductRangeTranslation({
   translatedAt,
   translation,
 }: PersistCatalogTranslationInput<'range'>): Promise<PersistCatalogTranslationResult> {
-  const metadata = translationMetadata(source, translatedAt);
-
   return db.transaction(async (tx) => {
-    const row = await tx.query.productRanges.findFirst({
-      where: and(eq(productRanges.id, source.id), notRemoved(productRanges)),
+    const [row] = await tx
+      .select()
+      .from(productRanges)
+      .where(and(eq(productRanges.id, source.id), notRemoved(productRanges)))
+      .for('update');
+    if (!row) return 'skipped';
+
+    const current = toProductRangeTranslationSource(row);
+    const patch = createTranslationPatch({
+      canonical: current.canonical,
+      currentTranslation: row.translations[TRANSLATED_LOCALE],
+      sourceHashes: source.sourceHashes,
+      translatedAt,
+      translation,
     });
-    if (!row || toProductRangeTranslationSource(row).sourceHash !== source.sourceHash) return 'skipped';
+    if (Object.keys(patch).length === 0) return 'skipped';
 
     await tx
       .update(productRanges)
-      .set({ translations: mergeTranslation(productRanges.translations, { ...metadata, ...translation }) })
+      .set({ translations: mergeTranslationFields(productRanges.translations, patch) })
       .where(and(eq(productRanges.id, source.id), notRemoved(productRanges)));
 
     return 'persisted';
@@ -336,8 +405,6 @@ async function persistProductRangeVariantTranslation({
   translatedAt,
   translation,
 }: PersistCatalogTranslationInput<'variant'>): Promise<PersistCatalogTranslationResult> {
-  const metadata = translationMetadata(source, translatedAt);
-
   return db.transaction(async (tx) => {
     const [row] = await tx
       .select({
@@ -348,13 +415,24 @@ async function persistProductRangeVariantTranslation({
       .from(productRangeVariants)
       .innerJoin(productRanges, eq(productRangeVariants.rangeId, productRanges.id))
       .where(and(eq(productRangeVariants.id, source.id), notRemoved(productRangeVariants), notRemoved(productRanges)))
-      .limit(1);
-    if (!row || toProductRangeVariantTranslationSource(row).sourceHash !== source.sourceHash) return 'skipped';
+      .limit(1)
+      .for('update');
+    if (!row) return 'skipped';
+
+    const current = toProductRangeVariantTranslationSource(row);
+    const patch = createTranslationPatch({
+      canonical: current.canonical,
+      currentTranslation: row.translations[TRANSLATED_LOCALE],
+      sourceHashes: source.sourceHashes,
+      translatedAt,
+      translation,
+    });
+    if (Object.keys(patch).length === 0) return 'skipped';
 
     await tx
       .update(productRangeVariants)
       .set({
-        translations: mergeTranslation(productRangeVariants.translations, { ...metadata, ...translation }),
+        translations: mergeTranslationFields(productRangeVariants.translations, patch),
       })
       .where(and(eq(productRangeVariants.id, source.id), notRemoved(productRangeVariants)));
 
@@ -362,23 +440,52 @@ async function persistProductRangeVariantTranslation({
   });
 }
 
-function translationMetadata(source: CatalogTranslationSource, translatedAt: Date): CatalogTranslationMetadata {
-  return { sourceHash: source.sourceHash, translatedAt: translatedAt.toISOString() };
+function createTranslationPatch<Canonical extends object>({
+  canonical,
+  currentTranslation,
+  sourceHashes,
+  translatedAt,
+  translation,
+}: {
+  canonical: Canonical;
+  currentTranslation:
+    | Partial<{ [Field in keyof Canonical]: Pick<CatalogTranslationEnvelope<unknown>, 'sourceHash'> }>
+    | undefined;
+  sourceHashes: CatalogSourceHashes<Canonical>;
+  translatedAt: Date;
+  translation: Canonical;
+}): Partial<{ [Field in keyof Canonical]: CatalogTranslationEnvelope<Canonical[Field]> }> {
+  const currentSourceHashes = catalogSourceHashes(canonical);
+  const patch: Partial<{ [Field in keyof Canonical]: CatalogTranslationEnvelope<Canonical[Field]> }> = {};
+
+  for (const field of Object.keys(currentSourceHashes) as Array<keyof Canonical>) {
+    const currentSourceHash = currentSourceHashes[field];
+    if (currentSourceHash !== sourceHashes[field]) continue;
+    if (catalogTranslationFieldState(currentSourceHash, currentTranslation?.[field]) === 'fresh') continue;
+
+    patch[field] = {
+      isManual: false,
+      sourceHash: currentSourceHash,
+      translatedAt: translatedAt.toISOString(),
+      value: translation[field],
+    };
+  }
+
+  return patch;
 }
 
-function mergeTranslation(
+function mergeTranslationFields(
   column:
     | typeof productAssemblies.translations
     | typeof productRanges.translations
     | typeof productRangeVariants.translations
     | typeof products.translations,
-  translation: CatalogTranslationMetadata &
-    (
-      | TranslatableAssemblyFields
-      | TranslatableProductFields
-      | TranslatableProductRangeFields
-      | TranslatableProductRangeVariantFields
-    ),
+  fields: Record<string, CatalogTranslationEnvelope<unknown>> | object,
 ) {
-  return sql`jsonb_set(${column}, array[${TRANSLATED_LOCALE}]::text[], ${JSON.stringify(translation)}::jsonb, true)`;
+  return sql`jsonb_set(
+    ${column},
+    array[${TRANSLATED_LOCALE}]::text[],
+    coalesce(${column} -> ${TRANSLATED_LOCALE}, '{}'::jsonb) || ${JSON.stringify(fields)}::jsonb,
+    true
+  )`;
 }

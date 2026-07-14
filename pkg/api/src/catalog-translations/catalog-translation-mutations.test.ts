@@ -70,9 +70,10 @@ describe('catalog mutation translation triggers', () => {
     expect(JSON.stringify(context.model.doGenerateCalls[0]?.prompt)).toContain('Latest description.');
 
     const [translated] = await context.db.select().from(products).where(eq(products.id, created.id));
-    expect(translated?.translations.af).toMatchObject({
-      description: 'Jongste beskrywing.',
+    expect(translated?.translations.af?.description).toMatchObject({
+      isManual: false,
       sourceHash: expect.any(String),
+      value: 'Jongste beskrywing.',
     });
 
     await caller.products.update(productUpdate(settled, { basePrice: settled.basePrice + 500 }));
@@ -105,8 +106,8 @@ describe('catalog mutation translation triggers', () => {
       .select()
       .from(productRangeVariants)
       .where(eq(productRangeVariants.id, variant.id));
-    expect(rangeRow?.translations.af?.name).toBe('Sleepwaens');
-    expect(variantRow?.translations.af?.name).toBe('Swaardiens');
+    expect(rangeRow?.translations.af?.name?.value).toBe('Sleepwaens');
+    expect(variantRow?.translations.af?.name?.value).toBe('Swaardiens');
   });
 
   test('runs once more with the latest Product content when an edit lands mid-translation', async ({ context }) => {
@@ -134,7 +135,8 @@ describe('catalog mutation translation triggers', () => {
     await waitForTurns();
 
     const [afterStaleResponse] = await context.db.select().from(products).where(eq(products.id, created.id));
-    expect(afterStaleResponse?.translations.af).toBeUndefined();
+    expect(afterStaleResponse?.translations.af?.description).toBeUndefined();
+    expect(afterStaleResponse?.translations.af?.name?.value).toBe('Kuilvoer-sleepwa');
 
     context.timers.advance(60_000);
     await waitForModelCalls(context.model, 2);
@@ -142,7 +144,7 @@ describe('catalog mutation translation triggers', () => {
     expect(JSON.stringify(context.model.doGenerateCalls[1]?.prompt)).toContain('Latest content.');
 
     const [translated] = await context.db.select().from(products).where(eq(products.id, created.id));
-    expect(translated?.translations.af?.description).toBe('Jongste inhoud.');
+    expect(translated?.translations.af?.description?.value).toBe('Jongste inhoud.');
   });
 
   test('leaves a failed Product stale and accepts a later retry', async ({ context }) => {
@@ -167,7 +169,7 @@ describe('catalog mutation translation triggers', () => {
     await waitForTurns();
 
     const [translated] = await context.db.select().from(products).where(eq(products.id, created.id));
-    expect(translated?.translations.af?.description).toBe('Herstel.');
+    expect(translated?.translations.af?.description?.value).toBe('Herstel.');
   });
 });
 

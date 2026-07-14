@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  catalogSourceHashes,
+  catalogTranslationFieldState,
   catalogTranslationKey,
   catalogTranslationState,
-  isTranslationStale,
   localizeFields,
   parseCatalogTranslationKey,
-  productRangeSourceHash,
-  productRangeVariantSourceHash,
-  productSourceHash,
   translationForLocale,
 } from './catalog-translation.js';
 
@@ -26,40 +24,33 @@ const canonicalProduct = {
   images: { primary: 'ignored' },
 };
 
-const assemblies = [
-  { id: 'assembly-b', name: 'Hydraulic tailgate' },
-  { id: 'assembly-a', name: 'Standard drawbar' },
-] as const;
-
-describe('productSourceHash', () => {
-  it('hashes only canonical translatable text', () => {
-    const original = productSourceHash(canonicalProduct, assemblies);
+describe('catalogSourceHashes', () => {
+  it('hashes each canonical field independently', () => {
+    const original = catalogSourceHashes(canonicalProduct);
     const editedNonTextFields = { ...canonicalProduct, basePrice: 2_000_000, images: { primary: 'replaced' } };
-    const nonTextEdit = productSourceHash(editedNonTextFields, assemblies);
-    const textEdit = productSourceHash({ ...canonicalProduct, description: 'Updated brochure copy.' }, assemblies);
+    const nonTextEdit = catalogSourceHashes(editedNonTextFields);
+    const textEdit = catalogSourceHashes({ ...canonicalProduct, description: 'Updated brochure copy.' });
 
-    expect(nonTextEdit).toBe(original);
-    expect(textEdit).not.toBe(original);
+    expect(nonTextEdit.name).toBe(original.name);
+    expect(nonTextEdit.description).toBe(original.description);
+    expect(textEdit.name).toBe(original.name);
+    expect(textEdit.description).not.toBe(original.description);
   });
 
-  it('includes assembly names without depending on assembly order', () => {
-    const original = productSourceHash(canonicalProduct, assemblies);
+  it('treats list fields as one translation field', () => {
+    const original = catalogSourceHashes(canonicalProduct);
+    const edited = catalogSourceHashes({
+      ...canonicalProduct,
+      keyFeatures: [...canonicalProduct.keyFeatures, 'Fast unloading'],
+    });
 
-    expect(productSourceHash(canonicalProduct, assemblies.toReversed())).toBe(original);
-    expect(
-      productSourceHash(canonicalProduct, [
-        { ...assemblies[0], id: 'replacement-b' },
-        { ...assemblies[1], id: 'replacement-a' },
-      ]),
-    ).toBe(original);
-    expect(
-      productSourceHash(canonicalProduct, [{ ...assemblies[0], name: 'Updated tailgate' }, assemblies[1]]),
-    ).not.toBe(original);
+    expect(edited.name).toBe(original.name);
+    expect(edited.keyFeatures).not.toBe(original.keyFeatures);
   });
 
   it('distinguishes an empty string from null', () => {
-    expect(productSourceHash({ ...canonicalProduct, description: '' }, assemblies)).not.toBe(
-      productSourceHash({ ...canonicalProduct, description: null }, assemblies),
+    expect(catalogSourceHashes({ description: '' }).description).not.toBe(
+      catalogSourceHashes({ description: null }).description,
     );
   });
 });
@@ -71,7 +62,20 @@ describe('translation selection and staleness', () => {
       name: 'Silage Trailer',
     };
     const translations = {
-      af: { description: null, name: 'Kuilvoer-sleepwa', sourceHash: 'hash', translatedAt: '2026-01-01T00:00:00Z' },
+      af: {
+        description: {
+          isManual: false,
+          sourceHash: 'description-hash',
+          translatedAt: '2026-01-01T00:00:00Z',
+          value: null,
+        },
+        name: {
+          isManual: false,
+          sourceHash: 'name-hash',
+          translatedAt: '2026-01-01T00:00:00Z',
+          value: 'Kuilvoer-sleepwa',
+        },
+      },
     };
 
     expect(localizeFields(canonical, translations, 'af')).toEqual({
@@ -93,16 +97,17 @@ describe('translation selection and staleness', () => {
     expect(translationForLocale(undefined, 'af')).toBeUndefined();
   });
 
-  it('only marks an existing translation with a different source hash stale', () => {
-    expect(isTranslationStale('current', undefined)).toBe(false);
-    expect(isTranslationStale('current', { sourceHash: 'current' })).toBe(false);
-    expect(isTranslationStale('current', { sourceHash: 'old' })).toBe(true);
+  it('computes fresh, missing, and stale per-field states', () => {
+    expect(catalogTranslationFieldState('current', undefined)).toBe('missing');
+    expect(catalogTranslationFieldState('current', { sourceHash: 'current' })).toBe('fresh');
+    expect(catalogTranslationFieldState('current', { sourceHash: 'old' })).toBe('stale');
   });
 
-  it('reports the weakest member of a translation unit as its state', () => {
-    expect(catalogTranslationState('current', [{ sourceHash: 'current' }])).toBe('fresh');
-    expect(catalogTranslationState('current', [{ sourceHash: 'current' }, undefined])).toBe('missing');
-    expect(catalogTranslationState('current', [{ sourceHash: 'current' }, { sourceHash: 'old' }])).toBe('stale');
+  it('reports the weakest field of a translation unit as its state', () => {
+    expect(catalogTranslationState(['fresh'])).toBe('fresh');
+    expect(catalogTranslationState(['fresh', 'missing'])).toBe('missing');
+    expect(catalogTranslationState(['fresh', 'stale'])).toBe('stale');
+    expect(catalogTranslationState(['stale', 'missing'])).toBe('missing');
   });
 });
 
@@ -118,23 +123,5 @@ describe('catalog translation keys', () => {
       kind: 'variant',
     });
     expect(() => parseCatalogTranslationKey('part:id-4' as never)).toThrow('Malformed catalog translation key');
-  });
-});
-
-describe('range and variant source hashes', () => {
-  it('changes a Range hash only when its Canonical Text changes', () => {
-    const original = productRangeSourceHash({ name: 'Silage Trailers', description: 'Built for harvest.' });
-
-    expect(productRangeSourceHash({ name: 'Silage Trailers', description: 'Built for harvest.' })).toBe(original);
-    expect(productRangeSourceHash({ name: 'Silage Trailers', description: 'Updated copy.' })).not.toBe(original);
-  });
-
-  it('hashes a Variant name', () => {
-    expect(productRangeVariantSourceHash({ name: 'Heavy Duty' })).toBe(
-      productRangeVariantSourceHash({ name: 'Heavy Duty' }),
-    );
-    expect(productRangeVariantSourceHash({ name: 'Heavy Duty' })).not.toBe(
-      productRangeVariantSourceHash({ name: 'Compact' }),
-    );
   });
 });

@@ -1,20 +1,8 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
-import {
-  CANONICAL_LOCALE,
-  type Locale,
-  type TranslatableAssembly,
-  type TranslatableProductFields,
-  type TranslatableProductRangeFields,
-  type TranslatableProductRangeVariantFields,
-} from '@pkg/schema';
+import { CANONICAL_LOCALE, type CatalogTranslationEnvelope, type Locale } from '@pkg/schema';
 
-export type {
-  TranslatableAssembly,
-  TranslatableProductFields,
-  TranslatableProductRangeFields,
-  TranslatableProductRangeVariantFields,
-} from '@pkg/schema';
+export type { CatalogTranslationEnvelope } from '@pkg/schema';
 
 const CATALOG_TRANSLATION_KINDS = ['product', 'range', 'variant'] as const;
 
@@ -49,46 +37,32 @@ export function parseCatalogTranslationKey(key: CatalogTranslationKey): { id: st
   return { id: key.slice(separator + 1), kind };
 }
 
-export function productSourceHash(
-  product: TranslatableProductFields,
-  assemblies: readonly TranslatableAssembly[],
-): string {
-  const canonicalText = [
-    product.name,
-    product.nameHighlight,
-    product.category,
-    product.description,
-    product.keyFeatures,
-    product.technicalDetails.map(({ label, value }) => [label, value]),
-    assemblies.toSorted((left, right) => left.id.localeCompare(right.id)).map(({ name }) => name),
-  ];
+export type CatalogSourceHashes<Canonical extends object> = { [Field in keyof Canonical]: string };
 
-  return catalogSourceHash(canonicalText);
-}
-
-export function productRangeSourceHash(range: TranslatableProductRangeFields): string {
-  return catalogSourceHash([range.name, range.description]);
-}
-
-export function productRangeVariantSourceHash(variant: TranslatableProductRangeVariantFields): string {
-  return catalogSourceHash([variant.name]);
-}
-
-export function isTranslationStale(currentHash: string, translation: { sourceHash: string } | undefined): boolean {
-  return translation !== undefined && translation.sourceHash !== currentHash;
+export function catalogSourceHashes<Canonical extends object>(canonical: Canonical): CatalogSourceHashes<Canonical> {
+  return Object.fromEntries(
+    (Object.entries(canonical) as [keyof Canonical & string, Canonical[keyof Canonical]][]).map(([field, value]) => [
+      field,
+      catalogSourceHash(value),
+    ]),
+  ) as CatalogSourceHashes<Canonical>;
 }
 
 export type CatalogTranslationState = 'fresh' | 'missing' | 'stale';
 
-// A translation unit is only as fresh as its weakest member: for a product bundle, any assembly missing
-// its translation marks the whole unit missing, and any stale member taints it stale.
-export function catalogTranslationState(
+export function catalogTranslationFieldState(
   sourceHash: string,
-  translations: ReadonlyArray<{ sourceHash: string } | undefined>,
+  translation: Pick<CatalogTranslationEnvelope<unknown>, 'sourceHash'> | undefined,
 ): CatalogTranslationState {
-  if (translations.some((translation) => translation === undefined)) return 'missing';
+  if (!translation) return 'missing';
+  return translation.sourceHash === sourceHash ? 'fresh' : 'stale';
+}
 
-  return translations.some((translation) => isTranslationStale(sourceHash, translation)) ? 'stale' : 'fresh';
+// Missing wins so health recovery keeps reporting an incomplete unit until every field exists; stale is
+// next because an existing but outdated field still needs the translation pipeline.
+export function catalogTranslationState(fieldStates: readonly CatalogTranslationState[]): CatalogTranslationState {
+  if (fieldStates.includes('missing')) return 'missing';
+  return fieldStates.includes('stale') ? 'stale' : 'fresh';
 }
 
 export function translationForLocale<T>(
@@ -102,7 +76,9 @@ export function translationForLocale<T>(
 // canonical field shape, so any absent or null translated field falls back to its canonical value.
 export function localizeFields<T extends object>(
   canonical: T,
-  translations: Partial<Record<string, Partial<T>>> | undefined,
+  translations:
+    | Partial<Record<string, Partial<{ [Field in keyof T]: CatalogTranslationEnvelope<T[Field]> | undefined }>>>
+    | undefined,
   locale: Locale,
 ): T {
   const translation = translationForLocale(translations, locale);
@@ -111,7 +87,7 @@ export function localizeFields<T extends object>(
   return Object.fromEntries(
     (Object.entries(canonical) as [keyof T & string, T[keyof T]][]).map(([key, value]) => [
       key,
-      translation[key] ?? value,
+      translation[key]?.value ?? value,
     ]),
   ) as T;
 }

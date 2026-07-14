@@ -2,6 +2,7 @@ import { listProductRanges } from '@pkg/core';
 import { productAssemblies, productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
 
+import { translationEnvelope } from '../../test/catalog-translation.js';
 import { test } from '../../test/tester.js';
 import { toRangeLabel, toRangeSlug } from './products-data.js';
 import { loadFooterRanges, loadHomeRanges, loadProductRangeCount, loadRangeOptions } from './ranges-data.js';
@@ -53,10 +54,8 @@ test('Range loaders translate display text while preserving canonical filter slu
       displayOrder: 0,
       translations: {
         af: {
-          sourceHash: 'stale-range-hash',
-          translatedAt: '2026-07-13T10:00:00.000Z',
-          name: `Dwarsvervoer ${suffix} Reeks`,
-          description: null,
+          name: translationEnvelope(`Dwarsvervoer ${suffix} Reeks`, 'stale-range-name'),
+          description: translationEnvelope(null, 'stale-range-description'),
         },
       },
     })

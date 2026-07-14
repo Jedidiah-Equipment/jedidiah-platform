@@ -1,5 +1,6 @@
 import { productAssemblies, productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
+import { translationEnvelope } from '../../test/catalog-translation.js';
 import { test } from '../../test/tester.js';
 import { transformSignature } from '../media/image-transform.js';
 import { loadProductDetail } from './product-detail-data.js';
@@ -103,10 +104,8 @@ test('loadProductDetail selects Afrikaans fields with per-field canonical fallba
       displayOrder: 0,
       translations: {
         af: {
-          sourceHash: 'stale-range-hash',
-          translatedAt,
-          name: `Kuilvoer en Graan ${suffix} Reeks`,
-          description: 'Gebou vir die oes.',
+          name: translationEnvelope(`Kuilvoer en Graan ${suffix} Reeks`, 'stale-range-name', translatedAt),
+          description: translationEnvelope('Gebou vir die oes.', 'stale-range-description', translatedAt),
         },
       },
     })
@@ -122,14 +121,16 @@ test('loadProductDetail selects Afrikaans fields with per-field canonical fallba
     technicalDetails: [{ label: 'Capacity', value: '42 m³' }],
     translations: {
       af: {
-        sourceHash: 'stale-product-hash',
-        translatedAt,
-        name: `Kuilvoerwa ${suffix}`,
-        nameHighlight: null,
-        category: 'Afrikaanse byskrif',
-        description: null,
-        keyFeatures: ['Afrikaanse kenmerk'],
-        technicalDetails: [{ label: 'Kapasiteit', value: '42 m³' }],
+        name: translationEnvelope(`Kuilvoerwa ${suffix}`, 'stale-product-name', translatedAt),
+        nameHighlight: translationEnvelope(null, 'stale-product-highlight', translatedAt),
+        category: translationEnvelope('Afrikaanse byskrif', 'stale-product-category', translatedAt),
+        description: translationEnvelope(null, 'stale-product-description', translatedAt),
+        keyFeatures: translationEnvelope(['Afrikaanse kenmerk'], 'stale-product-features', translatedAt),
+        technicalDetails: translationEnvelope(
+          [{ label: 'Kapasiteit', value: '42 m³' }],
+          'stale-product-details',
+          translatedAt,
+        ),
       },
     },
   });
@@ -139,7 +140,7 @@ test('loadProductDetail selects Afrikaans fields with per-field canonical fallba
     name: 'Hydraulic tailgate',
     displayOrder: 0,
     translations: {
-      af: { sourceHash: 'stale-assembly-hash', translatedAt, name: 'Hidrouliese agterklap' },
+      af: { name: translationEnvelope('Hidrouliese agterklap', 'stale-assembly-name', translatedAt) },
     },
   });
 

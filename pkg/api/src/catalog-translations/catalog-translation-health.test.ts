@@ -41,7 +41,7 @@ describe('catalog translation health', () => {
   test('derives missing and stale counts for every catalog translation unit', async ({ context }) => {
     await insertTranslationMatrix(context.db);
 
-    await expect(context.createCaller().productRanges.translationStatus()).resolves.toEqual({
+    await expect(context.createCaller().catalogTranslations.translationStatus()).resolves.toEqual({
       products: { missing: 1, stale: 1 },
       ranges: { missing: 1, stale: 1 },
       variants: { missing: 1, stale: 1 },
@@ -77,12 +77,12 @@ describe('catalog translation health', () => {
       catalogTranslationScheduler: context.catalogTranslationScheduler,
     });
 
-    await expect(caller.productRanges.retranslateStale()).resolves.toEqual({ queued: 6 });
+    await expect(caller.catalogTranslations.retranslateStale()).resolves.toEqual({ queued: 6 });
     expect(context.model.doGenerateCalls).toHaveLength(0);
 
     context.timers.advance(60_000);
     await waitForModelCalls(context.model, 2);
-    await expect(caller.productRanges.retranslateStale()).resolves.toEqual({ queued: 6 });
+    await expect(caller.catalogTranslations.retranslateStale()).resolves.toEqual({ queued: 6 });
     releaseTranslations?.();
     await waitForHealthyStatus(caller);
     expect(context.model.doGenerateCalls).toHaveLength(6);
@@ -91,14 +91,14 @@ describe('catalog translation health', () => {
     context.timers.advance(60_000);
     await waitForTurns();
     expect(context.model.doGenerateCalls).toHaveLength(6);
-    await expect(caller.productRanges.retranslateStale()).resolves.toEqual({ queued: 0 });
+    await expect(caller.catalogTranslations.retranslateStale()).resolves.toEqual({ queued: 0 });
   });
 
   test('denies translation health and recovery to non-admin users', async ({ context }) => {
     const caller = context.createCaller(mockSession('procurement-manager'));
 
-    await expect(caller.productRanges.translationStatus()).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(caller.productRanges.retranslateStale()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(caller.catalogTranslations.translationStatus()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(caller.catalogTranslations.retranslateStale()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });
 
@@ -230,8 +230,8 @@ async function waitForHealthyStatus(caller: AppRouterCaller): Promise<void> {
     variants: { missing: 0, stale: 0 },
   };
   for (let attempt = 0; attempt < 200; attempt += 1) {
-    if (JSON.stringify(await caller.productRanges.translationStatus()) === JSON.stringify(healthy)) return;
+    if (JSON.stringify(await caller.catalogTranslations.translationStatus()) === JSON.stringify(healthy)) return;
     await new Promise<void>((resolve) => setTimeout(resolve, 5));
   }
-  expect(await caller.productRanges.translationStatus()).toEqual(healthy);
+  expect(await caller.catalogTranslations.translationStatus()).toEqual(healthy);
 }

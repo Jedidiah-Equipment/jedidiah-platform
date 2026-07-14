@@ -208,7 +208,12 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
                 {(field) => (
                   <CatalogTranslationFieldFrame
                     {...fieldControlProps(target)}
-                    canonical={<CatalogTranslationCanonicalText value={fieldTranslation.canonical} />}
+                    canonical={
+                      <CatalogTranslationCanonicalText
+                        multiline={fieldName === 'description'}
+                        value={fieldTranslation.canonical}
+                      />
+                    }
                     fieldLabel={label}
                     state={fieldTranslation.state}
                   >

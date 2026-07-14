@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input.js';
 import { Label } from '@/components/ui/label.js';
 import { Switch } from '@/components/ui/switch.js';
+import { Textarea } from '@/components/ui/textarea.js';
 
 type CatalogTranslationManualToggleProps = {
   disabled?: boolean;
@@ -132,11 +133,17 @@ export function CatalogTranslationFieldFrame({
   );
 }
 
-export function CatalogTranslationCanonicalText({ value }: { value: string | null }) {
-  return (
-    <div className="min-h-8 whitespace-pre-wrap rounded-md bg-muted px-3 py-2 text-sm">
-      {value || <span className="text-muted-foreground">Empty</span>}
-    </div>
+export function CatalogTranslationCanonicalText({
+  multiline = false,
+  value,
+}: {
+  multiline?: boolean;
+  value: string | null;
+}) {
+  return multiline ? (
+    <Textarea aria-label="English canonical text" disabled rows={4} value={value ?? ''} />
+  ) : (
+    <Input aria-label="English canonical text" disabled value={value ?? ''} />
   );
 }
 
@@ -148,7 +155,18 @@ export function CatalogTranslationStateBadge({ state }: { state: CatalogTranslat
     stale: 'Stale',
   } satisfies Record<CatalogTranslationFieldState, string>;
 
-  return <Badge variant={state === 'fresh' ? 'secondary' : 'outline'}>{labels[state]}</Badge>;
+  const colorClassNames = {
+    fresh: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200',
+    missing: 'border-slate-500/50 bg-slate-500/15 text-slate-800 dark:text-slate-200',
+    needsReview: 'border-blue-500/50 bg-blue-500/15 text-blue-800 dark:text-blue-200',
+    stale: 'border-orange-500/50 bg-orange-500/15 text-orange-800 dark:text-orange-200',
+  } satisfies Record<CatalogTranslationFieldState, string>;
+
+  return (
+    <Badge className={colorClassNames[state]} variant="outline">
+      {labels[state]}
+    </Badge>
+  );
 }
 
 type CatalogTranslationStringListInputsProps = {
@@ -161,13 +179,11 @@ type CatalogTranslationStringListInputsProps = {
 
 export function CatalogTranslationCanonicalStringList({ value }: { value: string[] }) {
   return (
-    <ol className="space-y-2">
+    <div className="space-y-2">
       {value.map((item, index) => (
-        <li className="min-h-8 rounded-md bg-muted px-3 py-2 text-sm" key={`${index}-${item}`}>
-          {item}
-        </li>
+        <Input aria-label={`English canonical item ${index + 1}`} disabled key={`${index}-${item}`} value={item} />
       ))}
-    </ol>
+    </div>
   );
 }
 
@@ -212,9 +228,9 @@ export function CatalogTranslationCanonicalTechnicalDetails({
   return (
     <div className="space-y-2">
       {value.map((detail, index) => (
-        <div className="grid min-h-[4.75rem] grid-cols-2 gap-2 rounded-md bg-muted px-3 py-2 text-sm" key={index}>
-          <span>{detail.label}</span>
-          <span>{detail.value}</span>
+        <div className="grid grid-cols-2 gap-2" key={index}>
+          <Input aria-label={`English canonical technical detail label ${index + 1}`} disabled value={detail.label} />
+          <Input aria-label={`English canonical technical detail value ${index + 1}`} disabled value={detail.value} />
         </div>
       ))}
     </div>
@@ -230,7 +246,7 @@ export function CatalogTranslationTechnicalDetailsInputs({
   return (
     <div className="space-y-2">
       {canonical.map((_, index) => (
-        <div className="grid min-h-[4.75rem] grid-cols-2 gap-2" key={index}>
+        <div className="grid grid-cols-2 gap-2" key={index}>
           {(['label', 'value'] as const).map((part) => (
             <Input
               aria-label={`Technical details Afrikaans ${part} ${index + 1}`}

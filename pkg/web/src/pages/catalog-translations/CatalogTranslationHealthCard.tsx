@@ -23,13 +23,14 @@ export const CatalogTranslationHealthCard: React.FC<CatalogTranslationHealthCard
   status,
 }) => {
   const total = status ? catalogTranslationHealthCount(status) : 0;
+  const queueableTotal = status ? catalogTranslationAiQueueCount(status) : 0;
   const description = hasError
     ? 'Unable to load Afrikaans translation health.'
     : isLoading || !status
       ? 'Checking Afrikaans translation health…'
       : total === 0
         ? 'All Afrikaans catalog translations are up to date.'
-        : `${total} ${total === 1 ? 'item needs' : 'items need'} Afrikaans translation`;
+        : `${total} ${total === 1 ? 'item needs' : 'items need'} Afrikaans translation attention`;
 
   return (
     <Card>
@@ -43,7 +44,7 @@ export const CatalogTranslationHealthCard: React.FC<CatalogTranslationHealthCard
         </div>
         <CardAction span="header">
           <Button
-            disabled={isLoading || hasError || !status || total === 0 || isPending}
+            disabled={isLoading || hasError || !status || queueableTotal === 0 || isPending}
             onClick={onRetranslate}
             size="sm"
             type="button"
@@ -69,11 +70,16 @@ const TranslationCounts: React.FC<{ label: string; value: TranslationCounts }> =
   <div className="rounded-md border bg-muted/30 px-3 py-2">
     <div className="font-medium">{label}</div>
     <div className="text-muted-foreground text-xs">
-      {value.missing} missing · {value.stale} stale
+      {value.missing} missing · {value.stale} stale · {value.needsReview} {value.needsReview === 1 ? 'needs' : 'need'}{' '}
+      review
     </div>
   </div>
 );
 
 export function catalogTranslationHealthCount(status: CatalogTranslationStatus): number {
+  return Object.values(status).reduce((total, counts) => total + counts.missing + counts.stale + counts.needsReview, 0);
+}
+
+export function catalogTranslationAiQueueCount(status: CatalogTranslationStatus): number {
   return Object.values(status).reduce((total, counts) => total + counts.missing + counts.stale, 0);
 }

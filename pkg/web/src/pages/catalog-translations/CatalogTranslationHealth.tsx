@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { CatalogTranslationHealthCard, catalogTranslationHealthCount } from './CatalogTranslationHealthCard.js';
+import { CatalogTranslationHealthCard, catalogTranslationAiQueueCount } from './CatalogTranslationHealthCard.js';
 
 // Recovery now runs immediately, so the card only needs a short refetch burst to watch counts settle.
 const TRANSLATION_HEALTH_POLL_INTERVAL_MS = 3_000;
@@ -21,7 +21,7 @@ export const CatalogTranslationHealth: React.FC = () => {
     ...trpc.catalogTranslations.translationStatus.queryOptions(),
     refetchInterval: ({ state }) => {
       const status = state.data;
-      return isPolling && status && catalogTranslationHealthCount(status) > 0
+      return isPolling && status && catalogTranslationAiQueueCount(status) > 0
         ? TRANSLATION_HEALTH_POLL_INTERVAL_MS
         : false;
     },

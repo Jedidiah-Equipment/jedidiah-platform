@@ -1,5 +1,5 @@
 import type { LanguageModelV3CallOptions, LanguageModelV3GenerateResult } from '@ai-sdk/provider';
-import { type Db, productRanges, productRangeVariants, products } from '@pkg/db';
+import { type Db, productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db';
 import { catalogSourceHashes } from '@pkg/domain';
 import { MockLanguageModelV3 } from 'ai/test';
 import { describe, expect } from 'vitest';
@@ -44,6 +44,68 @@ const test = createTester(({ cleanup, db }) => {
 });
 
 describe('catalog translation health', () => {
+  test('lists every catalog entity and field whose manual translation needs review', async ({ context }) => {
+    const queue = await insertNeedsReviewQueue(context.db);
+
+    await expect(context.createCaller().catalogTranslations.listNeedsReview()).resolves.toEqual([
+      {
+        affectedFields: [
+          { field: 'description', kind: 'product' },
+          { kind: 'assembly', name: 'Hydraulic tailgate' },
+        ],
+        id: queue.productId,
+        kind: 'product',
+        name: 'Silage Trailer',
+      },
+      {
+        affectedFields: [{ field: 'description', kind: 'range' }],
+        id: queue.rangeId,
+        kind: 'range',
+        name: 'Trailers',
+      },
+      {
+        affectedFields: [{ field: 'name', kind: 'variant' }],
+        id: queue.variantId,
+        kind: 'variant',
+        name: 'Heavy Duty',
+        rangeId: queue.rangeId,
+      },
+    ]);
+
+    await expect(context.createCaller().catalogTranslations.translationStatus()).resolves.toEqual({
+      products: { missing: 1, needsReview: 1, stale: 0 },
+      ranges: { missing: 1, needsReview: 1, stale: 0 },
+      variants: { missing: 0, needsReview: 1, stale: 0 },
+    });
+
+    const caller = context.createCaller();
+    await caller.catalogTranslations.updateProduct({
+      assemblies: [
+        {
+          fields: { name: { isManual: true, value: 'Hidrouliese agterklap' } },
+          id: queue.assemblyId,
+        },
+      ],
+      fields: { description: { isManual: true, value: 'Gebou vir die oes.' } },
+      id: queue.productId,
+    });
+    await caller.catalogTranslations.updateRange({
+      fields: { description: { isManual: false } },
+      id: queue.rangeId,
+    });
+    await caller.catalogTranslations.updateVariant({
+      fields: { name: { isManual: true, value: 'Swaardiens' } },
+      id: queue.variantId,
+    });
+
+    await expect(caller.catalogTranslations.listNeedsReview()).resolves.toEqual([]);
+    await expect(caller.catalogTranslations.translationStatus()).resolves.toEqual({
+      products: { missing: 1, needsReview: 0, stale: 0 },
+      ranges: { missing: 1, needsReview: 0, stale: 0 },
+      variants: { missing: 0, needsReview: 0, stale: 0 },
+    });
+  });
+
   test('derives missing, stale, and needs-review counts for every catalog translation unit', async ({ context }) => {
     await insertTranslationMatrix(context.db);
 
@@ -107,6 +169,71 @@ describe('catalog translation health', () => {
     await expect(caller.catalogTranslations.retranslateStale()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });
+
+async function insertNeedsReviewQueue(db: Db) {
+  const [range] = await db
+    .insert(productRanges)
+    .values({
+      description: 'Harvest trailers.',
+      displayOrder: 0,
+      name: 'Trailers',
+      translations: {
+        af: {
+          description: manualEnvelope('Oessleepwaens.'),
+        },
+      },
+    })
+    .returning({ id: productRanges.id });
+  if (!range) throw new Error('Range fixture missing');
+
+  const [variant] = await db
+    .insert(productRangeVariants)
+    .values({
+      displayOrder: 0,
+      name: 'Heavy Duty',
+      rangeId: range.id,
+      translations: { af: { name: manualEnvelope('Swaardiens') } },
+    })
+    .returning({ id: productRangeVariants.id });
+  if (!variant) throw new Error('Variant fixture missing');
+
+  const [product] = await db
+    .insert(products)
+    .values({
+      basePrice: 1_000,
+      buildTimeDays: 14,
+      description: 'Built for harvest.',
+      modelCode: 'ST-42',
+      name: 'Silage Trailer',
+      rangeId: range.id,
+      translations: { af: { description: manualEnvelope('Gebou vir die oes.') } },
+    })
+    .returning({ id: products.id });
+  if (!product) throw new Error('Product fixture missing');
+
+  const [assembly] = await db
+    .insert(productAssemblies)
+    .values({
+      displayOrder: 0,
+      kind: 'standard',
+      name: 'Hydraulic tailgate',
+      productId: product.id,
+      translations: { af: { name: manualEnvelope('Hidrouliese agterklap') } },
+    })
+    .returning({ id: productAssemblies.id });
+  if (!assembly) throw new Error('Assembly fixture missing');
+
+  return { assemblyId: assembly.id, productId: product.id, rangeId: range.id, variantId: variant.id };
+}
+
+function manualEnvelope(value: string) {
+  return {
+    isManual: true,
+    sourceHash: 'outdated',
+    translatedAt: '2026-07-14T09:00:00.000Z',
+    value,
+  };
+}
 
 async function insertTranslationMatrix(db: Db): Promise<void> {
   const parent = { description: 'Fresh parent range.', name: 'Parent Range' };

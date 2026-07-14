@@ -13,6 +13,7 @@ import {
   CatalogTranslationFieldFrame,
   CatalogTranslationRevertDialog,
 } from '@/components/catalog-translations/CatalogTranslationField.js';
+import { PRODUCT_RANGE_TRANSLATION_FIELD_LABELS } from '@/components/catalog-translations/catalog-translation-labels.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { AutosaveStatus, useAutosaveForm, useTypedAppFormContext } from '@/components/form/index.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -281,7 +282,7 @@ function renderProductRangeTranslationFields({
           {(['name', 'description'] as const).map((field) => {
             const target = { field, kind: 'range' } as const;
             const fieldTranslation = translation.range.fields[field];
-            const label = field === 'name' ? 'Name' : 'Description';
+            const label = PRODUCT_RANGE_TRANSLATION_FIELD_LABELS[field];
             return (
               <CatalogTranslationFieldFrame
                 fieldLabel={label}
@@ -362,7 +363,7 @@ function isTargetManual(manual: ProductRangeTranslationManualFields, target: Pro
 }
 
 function getTargetLabel(translation: ProductRangeTranslationBundle, target: ProductRangeTranslationTarget): string {
-  if (target.kind === 'range') return target.field === 'name' ? 'Name' : 'Description';
+  if (target.kind === 'range') return PRODUCT_RANGE_TRANSLATION_FIELD_LABELS[target.field];
   return translation.variants.find((variant) => variant.id === target.variantId)?.fields.name.canonical ?? 'Variant';
 }
 

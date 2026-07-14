@@ -9,6 +9,7 @@ import {
   IconFileText,
   IconGauge,
   IconHeartHandshake,
+  IconLanguage,
   IconLayoutKanban,
   IconMessageReport,
   IconPackage,
@@ -144,6 +145,12 @@ const navSections = [
         permission: 'product_range:read',
         link: linkOptions({ to: '/product-ranges' }),
         icon: IconCategory2,
+      },
+      {
+        title: 'Translations',
+        permission: 'product_range:update',
+        link: linkOptions({ to: '/catalog-translations' }),
+        icon: IconLanguage,
       },
       {
         title: 'Feedback',

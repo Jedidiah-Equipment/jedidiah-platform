@@ -1,0 +1,43 @@
+{
+  "releasedAt": "2026-07-14T16:13:39.420Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Manage catalog translations directly",
+          "description": "Edit translations for products, ranges, and variants field by field, with manual overrides when automated wording needs adjustment."
+        },
+        {
+          "title": "Review translations that need attention",
+          "description": "See accurate review counts and work through a dedicated queue with clear links to each affected item."
+        },
+        {
+          "title": "Open the right edit tab directly",
+          "description": "Catalog edit tabs now have shareable URLs and switch reliably without losing pending changes."
+        },
+        {
+          "title": "Keep long audit changes readable",
+          "description": "Long values now stay contained within the audit history instead of disrupting the page layout."
+        },
+        {
+          "title": "Open related records from assistant replies",
+          "description": "Assistant responses now link related items so you can jump directly to the referenced records."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Switch languages in one click",
+          "description": "Use the compact language toggle to move between English and Afrikaans while keeping desktop navigation and page layouts tidy."
+        },
+        {
+          "title": "Stay oriented on product pages",
+          "description": "The Home navigation item no longer appears active while you are viewing a product page."
+        }
+      ]
+    }
+  ]
+}

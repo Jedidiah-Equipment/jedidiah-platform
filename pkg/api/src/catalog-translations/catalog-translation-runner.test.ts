@@ -6,6 +6,7 @@ import { createTester } from '@/test/create-tester.js';
 
 import { runCatalogTranslationBackfill } from './catalog-translation-backfill.js';
 import { createCatalogTranslationRunner } from './catalog-translation-runner.js';
+import { generatedJson } from './translation-test-utils.js';
 
 const test = createTester(async ({ db }) => {
   const [range] = await db
@@ -34,18 +35,6 @@ const test = createTester(async ({ db }) => {
 
   return { assemblyId: assembly.id, db, productId: product.id, rangeId: range.id };
 });
-
-function generatedJson(value: unknown) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(value) }],
-    finishReason: { unified: 'stop' as const, raw: 'stop' },
-    usage: {
-      inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
-      outputTokens: { total: 10, text: 10, reasoning: 0 },
-    },
-    warnings: [],
-  };
-}
 
 describe('catalog translation runner', () => {
   test('translates a stale Product once and skips it when its source hash matches', async ({ context }) => {

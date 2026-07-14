@@ -1,6 +1,11 @@
 import type { CatalogTranslationKey } from '@pkg/domain';
 
-export type TranslationMarker = { mark: (key: CatalogTranslationKey) => void };
+import { ConcurrencyLimit } from './concurrency-limit.js';
+
+export type TranslationMarker = {
+  mark: (key: CatalogTranslationKey) => void;
+  markNow: (key: CatalogTranslationKey) => void;
+};
 
 type Entry = { dirty: false; state: 'waiting'; timer: unknown } | { dirty: boolean; state: 'running' };
 
@@ -44,6 +49,15 @@ export class TranslationScheduler {
   }
 
   mark(key: CatalogTranslationKey): void {
+    this.#schedule(key, this.#debounceMs);
+  }
+
+  /** Deliberate admin recovery: skip the edit-coalescing debounce but keep single-flight + dirty. */
+  markNow(key: CatalogTranslationKey): void {
+    this.#schedule(key, 0);
+  }
+
+  #schedule(key: CatalogTranslationKey, delayMs: number): void {
     if (this.#disposed) return;
 
     const current = this.#entries.get(key);
@@ -55,7 +69,7 @@ export class TranslationScheduler {
       this.#clearTimer(current.timer);
     }
 
-    const timer = this.#setTimer(() => void this.#fire(key), this.#debounceMs);
+    const timer = this.#setTimer(() => void this.#fire(key), delayMs);
     this.#entries.set(key, { dirty: false, state: 'waiting', timer });
   }
 
@@ -84,32 +98,5 @@ export class TranslationScheduler {
 
     this.#entries.delete(key);
     if (running.dirty && !this.#disposed) this.mark(key);
-  }
-}
-
-class ConcurrencyLimit {
-  readonly #concurrency: number;
-  readonly #waiting: Array<() => void> = [];
-  #active = 0;
-
-  constructor(concurrency: number) {
-    if (!Number.isInteger(concurrency) || concurrency < 1) {
-      throw new Error('Translation concurrency must be a positive integer');
-    }
-    this.#concurrency = concurrency;
-  }
-
-  async run<T>(task: () => Promise<T>): Promise<T> {
-    if (this.#active >= this.#concurrency) {
-      await new Promise<void>((resolve) => this.#waiting.push(resolve));
-    }
-
-    this.#active += 1;
-    try {
-      return await task();
-    } finally {
-      this.#active -= 1;
-      this.#waiting.shift()?.();
-    }
   }
 }

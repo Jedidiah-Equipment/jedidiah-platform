@@ -5,12 +5,42 @@ import { describe, expect, it, vi } from 'vitest';
 import { Button } from '@/components/ui/button.js';
 import {
   CatalogTranslationCanonicalStringList,
+  CatalogTranslationCanonicalTechnicalDetails,
+  CatalogTranslationCanonicalText,
   CatalogTranslationManualToggle,
   CatalogTranslationRevertDialog,
+  CatalogTranslationStateBadge,
   CatalogTranslationStringListInputs,
 } from './CatalogTranslationField.js';
 
 describe('CatalogTranslationField', () => {
+  it('renders English values in disabled controls that match the Afrikaans field styling', () => {
+    const html = renderToStaticMarkup(
+      <>
+        <CatalogTranslationCanonicalText value="Gravel" />
+        <CatalogTranslationCanonicalText multiline value="English description" />
+        <CatalogTranslationCanonicalStringList value={['Feature']} />
+        <CatalogTranslationCanonicalTechnicalDetails value={[{ label: 'Capacity', value: '42 m3' }]} />
+      </>,
+    );
+
+    expect(html).toContain('value="Gravel"');
+    expect(html).toContain('<textarea');
+    expect(html.match(/data-slot="input"/g)).toHaveLength(4);
+    expect(html).toMatch(/<textarea[^>]*disabled=""/);
+  });
+
+  it.each([
+    ['fresh', 'bg-emerald-500/15'],
+    ['missing', 'bg-slate-500/15'],
+    ['needsReview', 'bg-blue-500/15'],
+    ['stale', 'bg-orange-500/15'],
+  ] as const)('uses a distinct color for the %s status', (state, colorClassName) => {
+    const html = renderToStaticMarkup(<CatalogTranslationStateBadge state={state} />);
+
+    expect(html).toContain(colorClassName);
+  });
+
   it('routes manual toggle changes to enable or confirm-revert actions', () => {
     const onEnable = vi.fn();
     const onRequestRevert = vi.fn();

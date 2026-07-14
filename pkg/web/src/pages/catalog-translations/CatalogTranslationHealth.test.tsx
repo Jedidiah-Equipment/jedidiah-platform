@@ -10,9 +10,9 @@ describe('CatalogTranslationHealthCard', () => {
         isPending={false}
         onRetranslate={vi.fn()}
         status={{
-          products: { missing: 2, stale: 1 },
-          ranges: { missing: 0, stale: 1 },
-          variants: { missing: 1, stale: 0 },
+          products: { missing: 2, needsReview: 0, stale: 1 },
+          ranges: { missing: 0, needsReview: 0, stale: 1 },
+          variants: { missing: 1, needsReview: 0, stale: 0 },
         }}
       />,
     );
@@ -33,9 +33,9 @@ describe('CatalogTranslationHealthCard', () => {
         isPending={false}
         onRetranslate={vi.fn()}
         status={{
-          products: { missing: 0, stale: 0 },
-          ranges: { missing: 0, stale: 0 },
-          variants: { missing: 0, stale: 0 },
+          products: { missing: 0, needsReview: 0, stale: 0 },
+          ranges: { missing: 0, needsReview: 0, stale: 0 },
+          variants: { missing: 0, needsReview: 0, stale: 0 },
         }}
       />,
     );

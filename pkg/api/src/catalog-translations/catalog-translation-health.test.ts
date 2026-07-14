@@ -1,5 +1,6 @@
 import type { LanguageModelV3CallOptions, LanguageModelV3GenerateResult } from '@ai-sdk/provider';
 import { type Db, productRanges, productRangeVariants, products } from '@pkg/db';
+import { catalogSourceHashes } from '@pkg/domain';
 import { MockLanguageModelV3 } from 'ai/test';
 import { describe, expect } from 'vitest';
 
@@ -43,13 +44,13 @@ const test = createTester(({ cleanup, db }) => {
 });
 
 describe('catalog translation health', () => {
-  test('derives missing and stale counts for every catalog translation unit', async ({ context }) => {
+  test('derives missing, stale, and needs-review counts for every catalog translation unit', async ({ context }) => {
     await insertTranslationMatrix(context.db);
 
     await expect(context.createCaller().catalogTranslations.translationStatus()).resolves.toEqual({
-      products: { missing: 1, stale: 1 },
-      ranges: { missing: 1, stale: 1 },
-      variants: { missing: 1, stale: 1 },
+      products: { missing: 1, needsReview: 0, stale: 1 },
+      ranges: { missing: 1, needsReview: 1, stale: 1 },
+      variants: { missing: 1, needsReview: 0, stale: 1 },
     });
   });
 
@@ -133,6 +134,27 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
           { description: 'Ou reeks.', name: 'Ou Reeks' },
           'outdated',
         ),
+      },
+    },
+    {
+      description: 'Manually translated range.',
+      displayOrder: 3,
+      name: 'Manual Range',
+      translations: {
+        af: {
+          description: {
+            isManual: true,
+            sourceHash: 'outdated',
+            translatedAt: '2026-07-14T09:00:00.000Z',
+            value: 'Handvertaalde reeks.',
+          },
+          name: {
+            isManual: false,
+            sourceHash: catalogSourceHashes({ name: 'Manual Range' }).name,
+            translatedAt: '2026-07-14T09:00:00.000Z',
+            value: 'Handreeks',
+          },
+        },
       },
     },
   ]);
@@ -227,9 +249,9 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
 
 async function waitForHealthyStatus(caller: AppRouterCaller): Promise<void> {
   const healthy = {
-    products: { missing: 0, stale: 0 },
-    ranges: { missing: 0, stale: 0 },
-    variants: { missing: 0, stale: 0 },
+    products: { missing: 0, needsReview: 0, stale: 0 },
+    ranges: { missing: 0, needsReview: 1, stale: 0 },
+    variants: { missing: 0, needsReview: 0, stale: 0 },
   };
   for (let attempt = 0; attempt < 200; attempt += 1) {
     if (JSON.stringify(await caller.catalogTranslations.translationStatus()) === JSON.stringify(healthy)) return;

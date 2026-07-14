@@ -12,9 +12,10 @@ import {
   removeProduct,
   updateProduct,
 } from '@pkg/core';
+import { catalogTranslationKey } from '@pkg/domain';
 import { ProductCreateInput, ProductListInput, ProductUpdateInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
-
+import { markCatalogTranslationIfNeeded } from '@/catalog-translations/catalog-translation-scheduling.js';
 import { log } from '@/logger.js';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
@@ -47,7 +48,11 @@ export const productsRouter = router({
       const product = await mapProductErrors(() =>
         createProduct({ db: ctx.db, input, actorUserId: ctx.session.user.id }),
       );
-      ctx.catalogTranslationScheduler.mark(`product:${product.id}`);
+      await markCatalogTranslationIfNeeded({
+        db: ctx.db,
+        key: catalogTranslationKey('product', product.id),
+        marker: ctx.catalogTranslationScheduler,
+      });
       return product;
     }),
 
@@ -57,7 +62,11 @@ export const productsRouter = router({
       const product = await mapProductErrors(() =>
         updateProduct({ db: ctx.db, input, actorUserId: ctx.session.user.id }),
       );
-      ctx.catalogTranslationScheduler.mark(`product:${product.id}`);
+      await markCatalogTranslationIfNeeded({
+        db: ctx.db,
+        key: catalogTranslationKey('product', product.id),
+        marker: ctx.catalogTranslationScheduler,
+      });
       return product;
     }),
 

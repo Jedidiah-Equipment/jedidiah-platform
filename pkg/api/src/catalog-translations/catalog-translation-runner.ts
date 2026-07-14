@@ -1,7 +1,7 @@
 import { translateCatalogSourceToAfrikaans } from '@pkg/ai';
 import { loadCatalogTranslationSource, persistCatalogTranslation } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import type { CatalogTranslationKey } from '@pkg/domain';
+import { type CatalogTranslationKey, catalogTranslationNeedsAi } from '@pkg/domain';
 import type { LanguageModel } from 'ai';
 
 export type CatalogTranslationRunResult = 'skipped' | 'translated';
@@ -17,7 +17,7 @@ export function createCatalogTranslationRunner({
 }): (key: CatalogTranslationKey) => Promise<CatalogTranslationRunResult> {
   return async (key) => {
     const source = await loadCatalogTranslationSource({ db, key });
-    if (!source || source.state === 'fresh') return 'skipped';
+    if (!source || !catalogTranslationNeedsAi(source.state)) return 'skipped';
 
     const translation = await translateCatalogSourceToAfrikaans({ kind: source.kind, model, source: source.canonical });
 

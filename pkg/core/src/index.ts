@@ -22,6 +22,7 @@ export * from './product-ranges/product-range-errors.js';
 export * from './product-ranges/product-range-image-service.js';
 export * from './product-ranges/product-range-service.js';
 export * from './product-ranges/product-range-variant-service.js';
+export * from './products/catalog-translation-errors.js';
 export * from './products/catalog-translation-service.js';
 export * from './products/product-assembly-service.js';
 export * from './products/product-brochure-document.js';

@@ -152,8 +152,11 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
   }, [controller]);
 
   useBlocker({
-    shouldBlockFn: async () => {
+    shouldBlockFn: async ({ current, next }) => {
       const didSave = await flush();
+      // Moving between tabs of the same editor only changes the search params. Invalid or failed values
+      // must not trap the user on the tab they need to leave to fix them — but they still flush first.
+      if (current.pathname === next.pathname) return false;
       return !didSave && controller.getState().shouldBlockNavigation;
     },
     enableBeforeUnload: () => controller.hasPendingChanges(),

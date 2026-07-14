@@ -26,16 +26,6 @@ function ProductEditRoute() {
   const navigate = Route.useNavigate();
 
   return (
-    <ProductEditPage
-      onTabChange={(nextTab) =>
-        void navigate({
-          // This stays inside the editor, so invalid fields must not prevent users reaching another tab to fix them.
-          ignoreBlocker: true,
-          search: { tab: nextTab },
-        })
-      }
-      productId={id}
-      tab={tab}
-    />
+    <ProductEditPage onTabChange={(nextTab) => void navigate({ search: { tab: nextTab } })} productId={id} tab={tab} />
   );
 }

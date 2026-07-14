@@ -1,4 +1,8 @@
-import type { CatalogProductRangeTranslation, CatalogProductTranslation } from '@pkg/schema';
+import type {
+  CatalogProductRangeTranslation,
+  CatalogProductTranslation,
+  TranslatableProductRangeVariantFields,
+} from '@pkg/schema';
 
 export const PRODUCT_TRANSLATION_FIELD_LABELS = {
   category: 'Category',
@@ -13,3 +17,7 @@ export const PRODUCT_RANGE_TRANSLATION_FIELD_LABELS = {
   description: 'Description',
   name: 'Name',
 } satisfies Record<keyof CatalogProductRangeTranslation['fields'], string>;
+
+export const PRODUCT_RANGE_VARIANT_TRANSLATION_FIELD_LABELS = {
+  name: 'Name',
+} satisfies Record<keyof TranslatableProductRangeVariantFields, string>;

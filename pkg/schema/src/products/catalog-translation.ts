@@ -124,18 +124,6 @@ const ProductRangeTranslationFieldPatches = z
   })
   .partial();
 
-export type CatalogProductRangeTranslation = z.infer<typeof CatalogProductRangeTranslation>;
-export const CatalogProductRangeTranslation = z.object({
-  fields: ProductRangeTranslationFields,
-  id: UUID,
-});
-
-export type CatalogProductRangeTranslationPatchInput = z.infer<typeof CatalogProductRangeTranslationPatchInput>;
-export const CatalogProductRangeTranslationPatchInput = z.object({
-  fields: ProductRangeTranslationFieldPatches,
-  id: UUID,
-});
-
 const ProductRangeVariantTranslationFields = z.object({
   name: catalogTranslationField(TranslatableProductRangeVariantFields.shape.name),
 });
@@ -144,18 +132,18 @@ const ProductRangeVariantTranslationFieldPatches = z
   .object({ name: catalogTranslationFieldPatch(TranslatableProductRangeVariantFields.shape.name) })
   .partial();
 
-export type CatalogProductRangeVariantTranslation = z.infer<typeof CatalogProductRangeVariantTranslation>;
-export const CatalogProductRangeVariantTranslation = z.object({
-  fields: ProductRangeVariantTranslationFields,
+export type CatalogProductRangeTranslation = z.infer<typeof CatalogProductRangeTranslation>;
+export const CatalogProductRangeTranslation = z.object({
+  fields: ProductRangeTranslationFields,
   id: UUID,
+  variants: z.array(z.object({ fields: ProductRangeVariantTranslationFields, id: UUID })),
 });
 
-export type CatalogProductRangeVariantTranslationPatchInput = z.infer<
-  typeof CatalogProductRangeVariantTranslationPatchInput
->;
-export const CatalogProductRangeVariantTranslationPatchInput = z.object({
-  fields: ProductRangeVariantTranslationFieldPatches,
+export type CatalogProductRangeTranslationPatchInput = z.infer<typeof CatalogProductRangeTranslationPatchInput>;
+export const CatalogProductRangeTranslationPatchInput = z.object({
+  fields: ProductRangeTranslationFieldPatches.optional(),
   id: UUID,
+  variants: z.array(z.object({ fields: ProductRangeVariantTranslationFieldPatches, id: UUID })).optional(),
 });
 
 const CatalogTranslationStatusCounts = z.object({

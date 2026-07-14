@@ -1,6 +1,22 @@
 import type { CatalogTranslationNeedsReviewItem } from '@pkg/schema';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// Link needs a router context it can't have in a static render; the route target is what matters here, so
+// render it as the anchor it becomes.
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    params,
+    search,
+    to,
+  }: {
+    children?: React.ReactNode;
+    params: { id: string };
+    search: { tab: string };
+    to: string;
+  }) => <a href={`${to.replace('$id', params.id)}?tab=${search.tab}`}>{children}</a>,
+}));
 
 import { CatalogTranslationNeedsReviewContent } from './CatalogTranslationNeedsReview.js';
 

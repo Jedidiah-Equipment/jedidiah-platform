@@ -103,6 +103,9 @@ export function localizeFields<T extends object>(
   ) as T;
 }
 
-function catalogSourceHash(canonicalText: unknown): string {
+// Hashes one field's Canonical Text. Values are hashed as stored, so callers must pass DB-read or
+// schema-parsed values: JSON.stringify is key-order sensitive, and an object built with a different key
+// order would hash differently despite being equal content.
+export function catalogSourceHash(canonicalText: unknown): string {
   return bytesToHex(sha256(utf8ToBytes(JSON.stringify(canonicalText))));
 }

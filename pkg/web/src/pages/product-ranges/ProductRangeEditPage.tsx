@@ -52,10 +52,7 @@ export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ onTa
           <TabsList variant="default">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="variants">Variants</TabsTrigger>
-            <ProductRangeTranslationsTabTrigger
-              rangeId={rangeQuery.data.id}
-              variantIds={rangeQuery.data.variants.map((variant) => variant.id)}
-            />
+            <ProductRangeTranslationsTabTrigger rangeId={rangeQuery.data.id} />
           </TabsList>
           <TabsContent className="pt-4" value="details">
             <ProductRangeForm
@@ -73,10 +70,7 @@ export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ onTa
           <TabsContent className="pt-4" value="variants">
             <ProductRangeVariantsEditor canEdit={canEdit} range={rangeQuery.data} />
           </TabsContent>
-          <ProductRangeTranslationsEditor
-            rangeId={rangeQuery.data.id}
-            variantIds={rangeQuery.data.variants.map((variant) => variant.id)}
-          />
+          <ProductRangeTranslationsEditor rangeId={rangeQuery.data.id} />
         </Tabs>
       ) : null}
     </PageLayout>

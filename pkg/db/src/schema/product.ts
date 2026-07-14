@@ -16,6 +16,7 @@ import {
 import { parts } from './part.js';
 import { productRanges, productRangeVariants } from './product-range.js';
 import type { StoredFile } from './stored-file.js';
+import type { TranslationEnvelope, TranslationsColumn } from './translation-envelope.js';
 
 // Product images are keyed by slot; each value is a shared {@link StoredFile}. Slots replace in
 // place, so a missing key means "no current image".
@@ -53,27 +54,16 @@ export const products = pgTable(
     brochureEnabled: boolean('brochure_enabled').notNull().default(false),
     landerEnabled: boolean('lander_enabled').notNull().default(false),
     thumbnailDataUrl: text('thumbnail_data_url'),
-    // Inline structural type keeps Product row declarations portable across package boundaries (TS2883).
     translations: jsonb('translations')
       .$type<
-        Partial<
-          Record<
-            string,
-            Partial<{
-              name: { isManual: boolean; sourceHash: string; translatedAt: string; value: string };
-              nameHighlight: { isManual: boolean; sourceHash: string; translatedAt: string; value: string | null };
-              category: { isManual: boolean; sourceHash: string; translatedAt: string; value: string | null };
-              description: { isManual: boolean; sourceHash: string; translatedAt: string; value: string | null };
-              keyFeatures: { isManual: boolean; sourceHash: string; translatedAt: string; value: string[] };
-              technicalDetails: {
-                isManual: boolean;
-                sourceHash: string;
-                translatedAt: string;
-                value: { label: string; value: string }[];
-              };
-            }>
-          >
-        >
+        TranslationsColumn<{
+          name: TranslationEnvelope<string>;
+          nameHighlight: TranslationEnvelope<string | null>;
+          category: TranslationEnvelope<string | null>;
+          description: TranslationEnvelope<string | null>;
+          keyFeatures: TranslationEnvelope<string[]>;
+          technicalDetails: TranslationEnvelope<{ label: string; value: string }[]>;
+        }>
       >()
       .notNull()
       .default({}),
@@ -104,18 +94,8 @@ export const productAssemblies = pgTable(
     productId: uuid('product_id')
       .notNull()
       .references(() => products.id, { onDelete: 'cascade' }),
-    // Inline for the same emitted-declaration portability constraint as Product translations above.
     translations: jsonb('translations')
-      .$type<
-        Partial<
-          Record<
-            string,
-            Partial<{
-              name: { isManual: boolean; sourceHash: string; translatedAt: string; value: string };
-            }>
-          >
-        >
-      >()
+      .$type<TranslationsColumn<{ name: TranslationEnvelope<string> }>>()
       .notNull()
       .default({}),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),

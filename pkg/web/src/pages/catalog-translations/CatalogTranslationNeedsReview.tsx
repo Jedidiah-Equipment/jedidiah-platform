@@ -1,9 +1,11 @@
 import type { CatalogTranslationNeedsReviewItem } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import type React from 'react';
 
 import {
   PRODUCT_RANGE_TRANSLATION_FIELD_LABELS,
+  PRODUCT_RANGE_VARIANT_TRANSLATION_FIELD_LABELS,
   PRODUCT_TRANSLATION_FIELD_LABELS,
 } from '@/components/catalog-translations/catalog-translation-labels.js';
 import { Button } from '@/components/ui/button.js';
@@ -77,7 +79,7 @@ export const CatalogTranslationNeedsReviewContent: React.FC<CatalogTranslationNe
                   {affectedFieldLabels(item).join(', ')}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button render={<a href={needsReviewEditHref(item)} />} size="sm" variant="outline">
+                  <Button render={<NeedsReviewLink item={item} />} size="sm" variant="outline">
                     Review
                   </Button>
                 </TableCell>
@@ -96,10 +98,18 @@ const ENTITY_KIND_LABELS = {
   variant: 'Variant',
 } satisfies Record<CatalogTranslationNeedsReviewItem['kind'], string>;
 
-function needsReviewEditHref(item: CatalogTranslationNeedsReviewItem): string {
-  return item.kind === 'product'
-    ? `/products/${item.id}/edit?tab=translations`
-    : `/product-ranges/${item.kind === 'range' ? item.id : item.rangeId}/edit?tab=translations`;
+// A Variant's translations live on its Range's Translations tab, so triage links there.
+function NeedsReviewLink({ item }: { item: CatalogTranslationNeedsReviewItem }) {
+  const search = { tab: 'translations' } as const;
+  return item.kind === 'product' ? (
+    <Link params={{ id: item.id }} search={search} to="/products/$id/edit" />
+  ) : (
+    <Link
+      params={{ id: item.kind === 'range' ? item.id : item.rangeId }}
+      search={search}
+      to="/product-ranges/$id/edit"
+    />
+  );
 }
 
 function affectedFieldLabels(item: CatalogTranslationNeedsReviewItem): string[] {
@@ -111,5 +121,5 @@ function affectedFieldLabels(item: CatalogTranslationNeedsReviewItem): string[] 
   if (item.kind === 'range') {
     return item.affectedFields.map(({ field }) => PRODUCT_RANGE_TRANSLATION_FIELD_LABELS[field]);
   }
-  return item.affectedFields.map(() => 'Name');
+  return item.affectedFields.map(({ field }) => PRODUCT_RANGE_VARIANT_TRANSLATION_FIELD_LABELS[field]);
 }

@@ -1,24 +1,28 @@
-import type { CatalogProductRangeTranslation, CatalogProductRangeVariantTranslation } from '@pkg/schema';
+import type { CatalogProductRangeTranslation } from '@pkg/schema';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-
-import { useAppForm } from '@/components/form/index.js';
 
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
   useApiMutationErrorToast: () => vi.fn(),
 }));
 
-import { ProductRangeTranslationFields } from './ProductRangeTranslationsEditor.js';
-import {
-  getProductRangeTranslationManualFields,
-  type ProductRangeTranslationBundle,
-  toProductRangeTranslationFormValues,
-} from './product-range-translations/types.js';
+// Autosave guards navigation through the router; a static render has no router to guard.
+vi.mock('@tanstack/react-router', () => ({
+  useBlocker: () => undefined,
+}));
 
-describe('ProductRangeTranslationFields', () => {
+import { ProductRangeTranslationsForm } from './ProductRangeTranslationsEditor.js';
+
+describe('ProductRangeTranslationsForm', () => {
   it('renders Range fields and every Variant name with English beside Afrikaans', () => {
-    const translation = buildBundle();
-    const html = renderToStaticMarkup(<ProductRangeTranslationFieldsHarness translation={translation} />);
+    const html = renderToStaticMarkup(
+      <ProductRangeTranslationsForm
+        isTogglePending={false}
+        onSave={vi.fn()}
+        onToggle={vi.fn()}
+        translation={buildTranslation()}
+      />,
+    );
 
     expect(html).toContain('Range translations');
     expect(html).toContain('Harvest Range');
@@ -33,31 +37,24 @@ describe('ProductRangeTranslationFields', () => {
     expect(html.match(/>English</g)).toHaveLength(4);
     expect(html.match(/>Afrikaans</g)).toHaveLength(4);
   });
+
+  it('leaves AI-managed fields disabled and manual fields editable', () => {
+    const html = renderToStaticMarkup(
+      <ProductRangeTranslationsForm
+        isTogglePending={false}
+        onSave={vi.fn()}
+        onToggle={vi.fn()}
+        translation={buildTranslation()}
+      />,
+    );
+
+    // Name is AI-managed, Description is manual.
+    expect(html).toMatch(/aria-label="Name Afrikaans"[^>]*disabled/);
+    expect(html).not.toMatch(/aria-label="Description Afrikaans"[^>]*disabled/);
+  });
 });
 
-const ProductRangeTranslationFieldsHarness: React.FC<{ translation: ProductRangeTranslationBundle }> = ({
-  translation,
-}) => {
-  const form = useAppForm({
-    defaultValues: toProductRangeTranslationFormValues(translation),
-    onSubmit: () => undefined,
-  });
-
-  return (
-    <form.AppForm>
-      <ProductRangeTranslationFields
-        isTogglePending={false}
-        manual={getProductRangeTranslationManualFields(translation)}
-        onEnable={vi.fn()}
-        onInteract={vi.fn()}
-        onRequestRevert={vi.fn()}
-        translation={translation}
-      />
-    </form.AppForm>
-  );
-};
-
-function buildBundle(): ProductRangeTranslationBundle {
+function buildTranslation(): CatalogProductRangeTranslation {
   const field = (canonical: string, value: string, isManual: boolean) => ({
     canonical,
     state: 'fresh' as const,
@@ -68,23 +65,16 @@ function buildBundle(): ProductRangeTranslationBundle {
       value,
     },
   });
-  const range = {
+
+  return {
     fields: {
       description: field('Built for harvest', 'Gebou vir oes', true),
       name: field('Harvest Range', 'Oesreeks', false),
     },
     id: '123e4567-e89b-42d3-a456-426614174000',
-  } satisfies CatalogProductRangeTranslation;
-  const variants = [
-    {
-      fields: { name: field('Heavy Duty', 'Swaardiens', true) },
-      id: '123e4567-e89b-42d3-a456-426614174001',
-    },
-    {
-      fields: { name: field('Compact', 'Kompak', false) },
-      id: '123e4567-e89b-42d3-a456-426614174002',
-    },
-  ] satisfies CatalogProductRangeVariantTranslation[];
-
-  return { range, variants };
+    variants: [
+      { fields: { name: field('Heavy Duty', 'Swaardiens', true) }, id: '123e4567-e89b-42d3-a456-426614174001' },
+      { fields: { name: field('Compact', 'Kompak', false) }, id: '123e4567-e89b-42d3-a456-426614174002' },
+    ],
+  };
 }

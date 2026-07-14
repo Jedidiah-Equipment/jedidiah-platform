@@ -1,12 +1,7 @@
-import type {
-  CatalogProductTranslation,
-  CatalogProductTranslationPatchInput,
-  CatalogTranslationFieldState,
-  UUID,
-} from '@pkg/schema';
+import type { CatalogProductTranslation, CatalogProductTranslationPatchInput, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import {
   CatalogTranslationCanonicalStringList,
@@ -18,6 +13,11 @@ import {
   CatalogTranslationTechnicalDetailsInputs,
 } from '@/components/catalog-translations/CatalogTranslationField.js';
 import { PRODUCT_TRANSLATION_FIELD_LABELS } from '@/components/catalog-translations/catalog-translation-labels.js';
+import {
+  useAutosaveServerSync,
+  useManualOverrideToggle,
+  useTranslationRegeneration,
+} from '@/components/catalog-translations/use-translation-overrides.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -29,7 +29,8 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import {
-  getProductTranslationManualFields,
+  getProductTranslationTargetState,
+  isProductTranslationTargetManual,
   ProductTranslationFormValuesSchema,
   type ProductTranslationTarget,
   toProductTranslationFormValues,
@@ -41,39 +42,23 @@ type ProductTranslationsEditorProps = {
   productId: UUID;
 };
 
-type PendingRegeneration = {
-  startedAt: number;
-  target: ProductTranslationTarget;
-};
-
-const REGENERATION_POLL_INTERVAL_MS = 2_000;
-const REGENERATION_POLL_LIMIT_MS = 5 * 60_000;
-
 const PRODUCT_TRANSLATION_TEXT_FIELDS = ['name', 'nameHighlight', 'category', 'description'] as const;
 
 export const ProductTranslationsEditor: React.FC<ProductTranslationsEditorProps> = ({ productId }) => {
   const trpc = useTRPC();
   const { invalidateCatalogTranslations } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const [pendingRegeneration, setPendingRegeneration] = useState<PendingRegeneration | null>(null);
+
+  const { awaitRegeneration, refetchInterval, settleRegeneration } = useTranslationRegeneration({
+    getTargetState: getProductTranslationTargetState,
+  });
 
   const translationQuery = useQuery({
     ...trpc.catalogTranslations.getProduct.queryOptions({ id: productId }),
-    // Reverting queues background AI work. Poll only that field, and only for a bounded window, so the
-    // missing value visibly reappears without turning every unhealthy Product page into a permanent poller.
-    refetchInterval: (query) =>
-      shouldPollForRegeneration(query.state.data, pendingRegeneration) ? REGENERATION_POLL_INTERVAL_MS : false,
+    refetchInterval: (query) => refetchInterval(query.state.data),
   });
 
-  useEffect(() => {
-    if (
-      pendingRegeneration &&
-      translationQuery.data &&
-      getTargetState(translationQuery.data, pendingRegeneration.target) === 'fresh'
-    ) {
-      setPendingRegeneration(null);
-    }
-  }, [pendingRegeneration, translationQuery.data]);
+  useEffect(() => settleRegeneration(translationQuery.data), [settleRegeneration, translationQuery.data]);
 
   const updateMutation = useMutation(
     trpc.catalogTranslations.updateProduct.mutationOptions({
@@ -83,14 +68,14 @@ export const ProductTranslationsEditor: React.FC<ProductTranslationsEditorProps>
     }),
   );
 
-  const updateManualState = async (
+  const toggleManual = async (
     target: ProductTranslationTarget,
     isManual: boolean,
     values: ReturnType<typeof toProductTranslationFormValues>,
   ) => {
     try {
       await updateMutation.mutateAsync(toProductTranslationTogglePatch(productId, values, target, isManual));
-      if (!isManual) setPendingRegeneration({ startedAt: Date.now(), target });
+      if (!isManual) awaitRegeneration(target);
       return true;
     } catch (error) {
       showMutationError(error, 'Unable to update the manual translation setting.');
@@ -106,7 +91,7 @@ export const ProductTranslationsEditor: React.FC<ProductTranslationsEditorProps>
         <ProductTranslationsForm
           isTogglePending={updateMutation.isPending}
           onSave={(input) => updateMutation.mutateAsync(input)}
-          onToggle={updateManualState}
+          onToggle={toggleManual}
           translation={translationQuery.data}
         />
       ) : null}
@@ -132,9 +117,6 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
   translation,
 }) => {
   const initialValues = useMemo(() => toProductTranslationFormValues(translation), [translation]);
-  const manual = getProductTranslationManualFields(translation);
-  const syncedTranslationRef = useRef(translation);
-  const [pendingRevert, setPendingRevert] = useState<ProductTranslationTarget | null>(null);
   const { autosave, form, formProps } = useAutosaveForm({
     defaultValues: initialValues,
     failureMessage: 'Unable to save the Afrikaans translation.',
@@ -143,47 +125,28 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
     validator: ProductTranslationFormValuesSchema,
   });
 
-  useEffect(() => {
-    if (
-      syncedTranslationRef.current === translation ||
-      autosave.state.status === 'saving' ||
-      autosave.hasPendingChanges()
-    ) {
-      return;
-    }
-    autosave.resetToSavedValues(initialValues);
-    syncedTranslationRef.current = translation;
-  }, [autosave.hasPendingChanges, autosave.resetToSavedValues, autosave.state.status, initialValues, translation]);
+  useAutosaveServerSync({ autosave, initialValues, translation });
 
-  const persistToggle = async (target: ProductTranslationTarget, isManual: boolean) => {
-    if (!(await autosave.flush())) return;
-    const didSave = await onToggle(target, isManual, form.state.values);
-    if (didSave && !isManual) setPendingRevert(null);
-  };
+  const { confirmRevert, dismissRevert, enable, pendingRevert, requestRevert } = useManualOverrideToggle({
+    flush: autosave.flush,
+    isPending: isTogglePending,
+    onToggle: (target: ProductTranslationTarget, isManual: boolean) => onToggle(target, isManual, form.state.values),
+  });
 
   const fieldControlProps = (target: ProductTranslationTarget) => {
-    const isManual =
-      target.kind === 'product' ? manual.fields[target.field] : (manual.assemblies[target.assemblyId] ?? false);
+    const isManual = isProductTranslationTargetManual(translation, target);
 
     return {
       isManual,
       isPending: isTogglePending,
-      onEnable: () => toggle(target, true),
+      onEnable: () => enable(target),
       onInteract: () => {
-        if (isManual && getTargetState(translation, target) === 'needsReview') {
+        if (isManual && getProductTranslationTargetState(translation, target) === 'needsReview') {
           form.setFieldValue('reviewedTarget', target);
         }
       },
-      onRequestRevert: () => toggle(target, false),
+      onRequestRevert: () => requestRevert(target),
     };
-  };
-
-  const toggle = (target: ProductTranslationTarget, isManual: boolean) => {
-    if (!isManual) {
-      setPendingRevert(target);
-      return;
-    }
-    void persistToggle(target, true);
   };
 
   return (
@@ -218,7 +181,7 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
                     {fieldName === 'description' ? (
                       <Textarea
                         aria-label={`${label} Afrikaans`}
-                        disabled={!manual.fields[fieldName]}
+                        disabled={!isProductTranslationTargetManual(translation, target)}
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(event.target.value)}
                         rows={4}
@@ -227,7 +190,7 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
                     ) : (
                       <Input
                         aria-label={`${label} Afrikaans`}
-                        disabled={!manual.fields[fieldName]}
+                        disabled={!isProductTranslationTargetManual(translation, target)}
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(event.target.value)}
                         value={field.state.value}
@@ -251,7 +214,7 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
                   <CatalogTranslationStringListInputs
                     canonical={translation.fields.keyFeatures.canonical}
                     fieldLabel="Key features"
-                    isManual={manual.fields.keyFeatures}
+                    isManual={isProductTranslationTargetManual(translation, target)}
                     onValueChange={field.handleChange}
                     value={field.state.value}
                   />
@@ -275,7 +238,7 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
                 >
                   <CatalogTranslationTechnicalDetailsInputs
                     canonical={translation.fields.technicalDetails.canonical}
-                    isManual={manual.fields.technicalDetails}
+                    isManual={isProductTranslationTargetManual(translation, target)}
                     onValueChange={field.handleChange}
                     value={field.state.value}
                   />
@@ -305,7 +268,7 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
                     >
                       <Input
                         aria-label={`${assembly.fields.name.canonical} Afrikaans`}
-                        disabled={!manual.assemblies[assembly.id]}
+                        disabled={!isProductTranslationTargetManual(translation, target)}
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(event.target.value)}
                         value={field.state.value}
@@ -322,13 +285,8 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
         fieldLabel={pendingRevert ? getTargetLabel(translation, pendingRevert) : 'translation'}
         isOpen={pendingRevert !== null}
         isPending={isTogglePending}
-        onConfirm={() => {
-          if (!pendingRevert) return;
-          void persistToggle(pendingRevert, false);
-        }}
-        onOpenChange={(open) => {
-          if (!open && !isTogglePending) setPendingRevert(null);
-        }}
+        onConfirm={confirmRevert}
+        onOpenChange={dismissRevert}
       />
     </form>
   );
@@ -341,22 +299,6 @@ function getTargetLabel(translation: CatalogProductTranslation, target: ProductT
   return (
     translation.assemblies.find((assembly) => assembly.id === target.assemblyId)?.fields.name.canonical ?? 'Assembly'
   );
-}
-
-function getTargetState(
-  translation: CatalogProductTranslation,
-  target: ProductTranslationTarget,
-): CatalogTranslationFieldState | undefined {
-  if (target.kind === 'product') return translation.fields[target.field].state;
-  return translation.assemblies.find((assembly) => assembly.id === target.assemblyId)?.fields.name.state;
-}
-
-function shouldPollForRegeneration(
-  translation: CatalogProductTranslation | undefined,
-  pending: PendingRegeneration | null,
-): boolean {
-  if (!pending || Date.now() - pending.startedAt >= REGENERATION_POLL_LIMIT_MS) return false;
-  return !translation || getTargetState(translation, pending.target) !== 'fresh';
 }
 
 function ProductTranslationsSkeleton() {

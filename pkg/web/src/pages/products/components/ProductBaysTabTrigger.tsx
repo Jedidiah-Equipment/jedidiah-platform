@@ -1,7 +1,7 @@
 import type { UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 
-import { TabsTrigger } from '@/components/ui/tabs.js';
+import { AttentionTabTrigger } from '@/components/common/AttentionTabTrigger.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 type ProductBaysTabTriggerProps = {
@@ -14,14 +14,6 @@ export const ProductBaysTabTrigger: React.FC<ProductBaysTabTriggerProps> = ({ pr
   const hasNoBays = productQuery.data?.productBays.length === 0;
 
   return (
-    <TabsTrigger value="bays">
-      <span>Bays</span>
-      {hasNoBays ? (
-        <>
-          <span aria-hidden className="size-2 rounded-full bg-orange-400" />
-          <span className="sr-only">No Bay estimates added</span>
-        </>
-      ) : null}
-    </TabsTrigger>
+    <AttentionTabTrigger attentionLabel="No Bay estimates added" label="Bays" needsAttention={hasNoBays} value="bays" />
   );
 };

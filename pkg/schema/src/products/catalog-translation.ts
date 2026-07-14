@@ -2,11 +2,22 @@ import { z } from 'zod';
 
 import { UUID } from '../common/uuid.js';
 
-export type CatalogTranslationMetadata = z.infer<typeof CatalogTranslationMetadata>;
-export const CatalogTranslationMetadata = z.object({
+const CatalogTranslationEnvelopeMetadata = z.object({
+  isManual: z.boolean(),
   sourceHash: z.string(),
   translatedAt: z.iso.datetime({ offset: true }),
 });
+
+export type CatalogTranslationEnvelope<Value> = {
+  isManual: boolean;
+  sourceHash: string;
+  translatedAt: string;
+  value: Value;
+};
+
+export function catalogTranslationEnvelope<ValueSchema extends z.ZodType>(value: ValueSchema) {
+  return CatalogTranslationEnvelopeMetadata.extend({ value });
+}
 
 // The translatable fields of each catalog entity, declared once. Stored translation shapes, the AI
 // translation I/O, and the source hashes all derive from these.

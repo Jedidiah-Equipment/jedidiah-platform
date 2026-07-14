@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { translationEnvelopeFixture } from './catalog-translation.test-fixtures.js';
 import {
   PRODUCT_IMAGE_SLOT_SPECS,
   PRODUCT_KEY_FEATURE_MAX_LENGTH,
@@ -353,28 +354,24 @@ describe('Product', () => {
 });
 
 describe('catalog translation blobs', () => {
-  it('validates locale-keyed Product and Assembly translations', () => {
-    const metadata = { sourceHash: 'abc123', translatedAt: '2026-07-13T10:00:00.000Z' };
-
+  it('validates partial locale-keyed Product and Assembly field envelopes', () => {
     expect(
       ProductTranslations.parse({
         af: {
-          ...metadata,
-          name: 'Kuilvoerwa',
-          nameHighlight: null,
-          category: 'Kuilvoer en graan',
-          description: null,
-          keyFeatures: ['Swaardiens-onderstel'],
-          technicalDetails: [{ label: 'Kapasiteit', value: '42 m³' }],
+          name: translationEnvelopeFixture('Kuilvoerwa'),
+          description: translationEnvelopeFixture(null),
+          keyFeatures: translationEnvelopeFixture(['Swaardiens-onderstel']),
         },
       }),
-    ).toMatchObject({ af: { name: 'Kuilvoerwa', description: null } });
-    expect(ProductAssemblyTranslations.parse({ af: { ...metadata, name: 'Hidrouliese agterklap' } })).toMatchObject({
-      af: { name: 'Hidrouliese agterklap' },
-    });
+    ).toMatchObject({ af: { name: { value: 'Kuilvoerwa' }, description: { value: null } } });
+    expect(
+      ProductAssemblyTranslations.parse({ af: { name: translationEnvelopeFixture('Hidrouliese agterklap') } }),
+    ).toMatchObject({ af: { name: { isManual: false, value: 'Hidrouliese agterklap' } } });
     expect(() =>
       ProductAssemblyTranslations.parse({
-        af: { ...metadata, translatedAt: '2026-07-13', name: 'Hidrouliese agterklap' },
+        af: {
+          name: { ...translationEnvelopeFixture('Hidrouliese agterklap'), translatedAt: '2026-07-13' },
+        },
       }),
     ).toThrow();
   });

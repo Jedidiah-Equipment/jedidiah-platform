@@ -5,7 +5,7 @@ import { EntityFile } from '../common/file.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 import {
-  CatalogTranslationMetadata,
+  catalogTranslationEnvelope,
   TranslatableProductRangeFields,
   TranslatableProductRangeVariantFields,
 } from './catalog-translation.js';
@@ -31,15 +31,20 @@ export type ProductRangeDescriptionInput = z.infer<typeof ProductRangeDescriptio
 export const ProductRangeDescriptionInput = nullableTrimmedTextInput();
 
 export type ProductRangeTranslation = z.infer<typeof ProductRangeTranslation>;
-export const ProductRangeTranslation = CatalogTranslationMetadata.extend(TranslatableProductRangeFields.shape);
+export const ProductRangeTranslation = z
+  .object({
+    name: catalogTranslationEnvelope(TranslatableProductRangeFields.shape.name),
+    description: catalogTranslationEnvelope(TranslatableProductRangeFields.shape.description),
+  })
+  .partial();
 
 export type ProductRangeTranslations = z.infer<typeof ProductRangeTranslations>;
 export const ProductRangeTranslations = z.partialRecord(z.string(), ProductRangeTranslation);
 
 export type ProductRangeVariantTranslation = z.infer<typeof ProductRangeVariantTranslation>;
-export const ProductRangeVariantTranslation = CatalogTranslationMetadata.extend(
-  TranslatableProductRangeVariantFields.shape,
-);
+export const ProductRangeVariantTranslation = z
+  .object({ name: catalogTranslationEnvelope(TranslatableProductRangeVariantFields.shape.name) })
+  .partial();
 
 export type ProductRangeVariantTranslations = z.infer<typeof ProductRangeVariantTranslations>;
 export const ProductRangeVariantTranslations = z.partialRecord(z.string(), ProductRangeVariantTranslation);

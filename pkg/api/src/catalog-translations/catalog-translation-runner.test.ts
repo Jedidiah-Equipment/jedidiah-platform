@@ -62,9 +62,10 @@ describe('catalog translation runner', () => {
 
     const [product] = await context.db.select().from(products);
     const [assembly] = await context.db.select().from(productAssemblies);
-    expect(product?.translations.af?.name).toBe('Kuilvoer-sleepwa');
-    expect(assembly?.translations.af?.name).toBe('Hidrouliese agterklap');
-    expect(assembly?.translations.af?.sourceHash).toBe(product?.translations.af?.sourceHash);
+    expect(product?.translations.af?.name?.value).toBe('Kuilvoer-sleepwa');
+    expect(product?.translations.af?.name?.isManual).toBe(false);
+    expect(assembly?.translations.af?.name?.value).toBe('Hidrouliese agterklap');
+    expect(assembly?.translations.af?.name?.isManual).toBe(false);
   });
 
   test('backfill translates the stale set and a second sweep skips every entity', async ({ context }) => {

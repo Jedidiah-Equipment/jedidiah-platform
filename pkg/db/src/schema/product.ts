@@ -59,16 +59,19 @@ export const products = pgTable(
         Partial<
           Record<
             string,
-            {
-              sourceHash: string;
-              translatedAt: string;
-              name: string;
-              nameHighlight: string | null;
-              category: string | null;
-              description: string | null;
-              keyFeatures: string[];
-              technicalDetails: { label: string; value: string }[];
-            }
+            Partial<{
+              name: { isManual: boolean; sourceHash: string; translatedAt: string; value: string };
+              nameHighlight: { isManual: boolean; sourceHash: string; translatedAt: string; value: string | null };
+              category: { isManual: boolean; sourceHash: string; translatedAt: string; value: string | null };
+              description: { isManual: boolean; sourceHash: string; translatedAt: string; value: string | null };
+              keyFeatures: { isManual: boolean; sourceHash: string; translatedAt: string; value: string[] };
+              technicalDetails: {
+                isManual: boolean;
+                sourceHash: string;
+                translatedAt: string;
+                value: { label: string; value: string }[];
+              };
+            }>
           >
         >
       >()
@@ -103,7 +106,16 @@ export const productAssemblies = pgTable(
       .references(() => products.id, { onDelete: 'cascade' }),
     // Inline for the same emitted-declaration portability constraint as Product translations above.
     translations: jsonb('translations')
-      .$type<Partial<Record<string, { sourceHash: string; translatedAt: string; name: string }>>>()
+      .$type<
+        Partial<
+          Record<
+            string,
+            Partial<{
+              name: { isManual: boolean; sourceHash: string; translatedAt: string; value: string };
+            }>
+          >
+        >
+      >()
       .notNull()
       .default({}),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),

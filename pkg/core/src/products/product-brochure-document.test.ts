@@ -21,9 +21,7 @@ describe('getBrochureDocumentModel', () => {
           productId: PRODUCT_ID,
           translations: {
             af: {
-              name: 'Hidrouliese agterklap',
-              sourceHash: 'assembly-hash',
-              translatedAt: '2026-07-13T00:00:00.000Z',
+              name: envelope('Hidrouliese agterklap', 'assembly-hash'),
             },
           },
         },
@@ -41,14 +39,12 @@ describe('getBrochureDocumentModel', () => {
       nameHighlight: 'Product',
       translations: {
         af: {
-          category: 'Kuilvoer en graan',
-          description: null,
-          keyFeatures: ['Afrikaanse kenmerk'],
-          name: 'Toetsproduk',
-          nameHighlight: null,
-          sourceHash: 'product-hash',
-          technicalDetails: [],
-          translatedAt: '2026-07-13T00:00:00.000Z',
+          category: envelope('Kuilvoer en graan'),
+          description: envelope(null),
+          keyFeatures: envelope(['Afrikaanse kenmerk']),
+          name: envelope('Toetsproduk', 'product-hash'),
+          nameHighlight: envelope(null),
+          technicalDetails: envelope([]),
         },
       },
     });
@@ -106,6 +102,15 @@ describe('getBrochureDocumentModel', () => {
     expect(await dataUriDimensions(document.rangeLogo?.dataUri)).toEqual({ height: 100, width: 100 });
   });
 });
+
+function envelope<Value>(value: Value, sourceHash = 'hash') {
+  return {
+    isManual: false,
+    sourceHash,
+    translatedAt: '2026-07-13T00:00:00.000Z',
+    value,
+  };
+}
 
 async function paddedLandscapeLogo(): Promise<Uint8Array> {
   const mark = await sharp({

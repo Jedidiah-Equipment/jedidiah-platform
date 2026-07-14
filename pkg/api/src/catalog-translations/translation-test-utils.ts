@@ -1,4 +1,6 @@
 import type { LanguageModelV3GenerateResult } from '@ai-sdk/provider';
+import { type CatalogSourceHashes, catalogSourceHashes } from '@pkg/domain';
+import type { CatalogTranslationEnvelope } from '@pkg/schema';
 import type { MockLanguageModelV3 } from 'ai/test';
 import { expect } from 'vitest';
 
@@ -12,6 +14,26 @@ export function generatedJson(value: unknown): LanguageModelV3GenerateResult {
     },
     warnings: [],
   };
+}
+
+export function translationEnvelopes<Canonical extends object>(
+  canonical: Canonical,
+  translated: Canonical,
+  sourceHashOverride?: string,
+): { [Field in keyof Canonical]: CatalogTranslationEnvelope<Canonical[Field]> } {
+  const sourceHashes: CatalogSourceHashes<Canonical> = catalogSourceHashes(canonical);
+
+  return Object.fromEntries(
+    (Object.keys(canonical) as Array<keyof Canonical>).map((field) => [
+      field,
+      {
+        isManual: false,
+        sourceHash: sourceHashOverride ?? sourceHashes[field],
+        translatedAt: '2026-07-13T10:00:00.000Z',
+        value: translated[field],
+      },
+    ]),
+  ) as { [Field in keyof Canonical]: CatalogTranslationEnvelope<Canonical[Field]> };
 }
 
 export async function waitForModelCalls(model: MockLanguageModelV3, count: number): Promise<void> {

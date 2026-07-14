@@ -17,7 +17,15 @@ export const productRanges = pgTable(
     // Inline structural type keeps inferred row declarations portable across package boundaries (TS2883).
     translations: jsonb('translations')
       .$type<
-        Partial<Record<string, { sourceHash: string; translatedAt: string; name: string; description: string | null }>>
+        Partial<
+          Record<
+            string,
+            Partial<{
+              name: { isManual: boolean; sourceHash: string; translatedAt: string; value: string };
+              description: { isManual: boolean; sourceHash: string; translatedAt: string; value: string | null };
+            }>
+          >
+        >
       >()
       .notNull()
       .default({}),
@@ -44,7 +52,16 @@ export const productRangeVariants = pgTable(
     name: text('name').notNull(),
     // Inline for the same emitted-declaration portability constraint as Range translations above.
     translations: jsonb('translations')
-      .$type<Partial<Record<string, { sourceHash: string; translatedAt: string; name: string }>>>()
+      .$type<
+        Partial<
+          Record<
+            string,
+            Partial<{
+              name: { isManual: boolean; sourceHash: string; translatedAt: string; value: string };
+            }>
+          >
+        >
+      >()
       .notNull()
       .default({}),
     displayOrder: integer('display_order').notNull(),

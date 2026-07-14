@@ -540,6 +540,13 @@
       "when": 1783947882346,
       "tag": "0076_yummy_bug",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1784016722958,
+      "tag": "0077_reset_catalog_translation_envelopes",
+      "breakpoints": true
     }
   ]
 }

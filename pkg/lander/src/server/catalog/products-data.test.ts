@@ -1,5 +1,6 @@
 import { productAssemblies, productRanges, productRangeVariants, products, sql } from '@pkg/db';
 import { expect } from 'vitest';
+import { translationEnvelope } from '../../test/catalog-translation.js';
 import { test } from '../../test/tester.js';
 import { transformSignature } from '../media/image-transform.js';
 import { loadProductsCatalog, toRangeSlug, toVariantLabels } from './products-data.js';
@@ -91,17 +92,15 @@ test('loadProductsCatalog translates display text while keeping canonical Range 
   const translatedAt = '2026-07-13T10:00:00.000Z';
   const range = await insertRange(db, `Silage & Grain ${suffix} Range`, 'Canonical range description.', {
     af: {
-      sourceHash: 'stale-range-hash',
-      translatedAt,
-      name: `Kuilvoer en Graan ${suffix} Reeks`,
-      description: null,
+      name: translationEnvelope(`Kuilvoer en Graan ${suffix} Reeks`, 'stale-range-name', translatedAt),
+      description: translationEnvelope(null, 'stale-range-description', translatedAt),
     },
   });
   const wide = await insertVariant(db, range.id, `Wide Body ${suffix}`, 0, {
-    af: { sourceHash: 'stale-wide-hash', translatedAt, name: `Wye Bak ${suffix}` },
+    af: { name: translationEnvelope(`Wye Bak ${suffix}`, 'stale-wide-name', translatedAt) },
   });
   const narrow = await insertVariant(db, range.id, `Narrow Body ${suffix}`, 1, {
-    af: { sourceHash: 'stale-narrow-hash', translatedAt, name: `Smal Bak ${suffix}` },
+    af: { name: translationEnvelope(`Smal Bak ${suffix}`, 'stale-narrow-name', translatedAt) },
   });
   const product = await insertProduct(db, range.id, {
     name: `Silage Trailer ${suffix}`,
@@ -110,14 +109,16 @@ test('loadProductsCatalog translates display text while keeping canonical Range 
     variantId: wide.id,
     translations: {
       af: {
-        sourceHash: 'stale-product-hash',
-        translatedAt,
-        name: `Kuilvoerwa ${suffix}`,
-        nameHighlight: null,
-        category: 'Kuilvoer en graan',
-        description: 'Afrikaanse produkbeskrywing.',
-        keyFeatures: ['Afrikaanse kenmerk'],
-        technicalDetails: [{ label: 'Kapasiteit', value: '42 m³' }],
+        name: translationEnvelope(`Kuilvoerwa ${suffix}`, 'stale-product-name', translatedAt),
+        nameHighlight: translationEnvelope(null, 'stale-product-highlight', translatedAt),
+        category: translationEnvelope('Kuilvoer en graan', 'stale-product-category', translatedAt),
+        description: translationEnvelope('Afrikaanse produkbeskrywing.', 'stale-product-description', translatedAt),
+        keyFeatures: translationEnvelope(['Afrikaanse kenmerk'], 'stale-product-features', translatedAt),
+        technicalDetails: translationEnvelope(
+          [{ label: 'Kapasiteit', value: '42 m³' }],
+          'stale-product-details',
+          translatedAt,
+        ),
       },
     },
   });

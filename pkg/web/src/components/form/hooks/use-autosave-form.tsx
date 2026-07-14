@@ -106,6 +106,14 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
     return flush();
   }, [flush]);
 
+  const resetToSavedValues = useCallback(
+    (values: TValues) => {
+      formRef.current.reset(values);
+      controller.updateSavedValues(values);
+    },
+    [controller],
+  );
+
   const formProps = useMemo(
     () => ({
       onBlur: (event: React.FocusEvent<HTMLFormElement>) => {
@@ -155,7 +163,9 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
     autosave: {
       commit,
       flush,
+      hasPendingChanges: controller.hasPendingChanges,
       markChanged,
+      resetToSavedValues,
       retry,
       state: autosaveState,
     },

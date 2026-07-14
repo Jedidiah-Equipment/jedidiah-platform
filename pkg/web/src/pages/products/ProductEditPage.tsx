@@ -22,6 +22,8 @@ import { ProductDocumentsTabTrigger } from './components/ProductDocumentsTabTrig
 import { ProductForm } from './components/ProductForm.js';
 import { ProductImagesSection } from './components/ProductImagesSection.js';
 import { isProductFullyReady, ProductReadinessAside } from './components/ProductReadinessAside.js';
+import { ProductTranslationsEditor } from './components/ProductTranslationsEditor.js';
+import { ProductTranslationsTabTrigger } from './components/ProductTranslationsTabTrigger.js';
 import { ProductEditTab, resolveProductEditTab } from './product-edit-tabs.js';
 
 type ProductEditPageProps = {
@@ -32,14 +34,14 @@ type ProductEditPageProps = {
 
 export const ProductEditPage: React.FC<ProductEditPageProps> = ({ onTabChange, productId, tab }) => {
   const trpc = useTRPC();
-  const { invalidateProducts } = useQueryInvalidation();
+  const { invalidateCatalogTranslations, invalidateProducts } = useQueryInvalidation();
 
   const productQuery = useQuery(trpc.products.get.queryOptions({ id: productId }));
 
   const updateProductMutation = useMutation(
     trpc.products.update.mutationOptions({
       onSuccess: async () => {
-        await invalidateProducts();
+        await Promise.all([invalidateProducts(), invalidateCatalogTranslations()]);
       },
     }),
   );
@@ -105,6 +107,7 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabC
           <ProductAssembliesTabTrigger productId={product.id} />
           <TabsTrigger value="images">Images</TabsTrigger>
           <ProductDocumentsTabTrigger productId={product.id} />
+          <ProductTranslationsTabTrigger productId={product.id} />
           {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
         </TabsList>
         <ProductForm
@@ -125,6 +128,7 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabC
         <TabsContent className="pt-4" value="documents">
           <ProductDocumentsSection product={product} />
         </TabsContent>
+        <ProductTranslationsEditor productId={product.id} />
         {auditAccess.can ? (
           <TabsContent className="pt-4" value="audit">
             <AuditTable

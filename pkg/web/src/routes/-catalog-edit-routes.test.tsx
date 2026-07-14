@@ -58,7 +58,7 @@ describe('catalog edit routes', () => {
 
     expect(captured.product?.tab).toBe('images');
     captured.product?.onTabChange('details');
-    expect(navigate).toHaveBeenCalledWith({ search: { tab: 'details' } });
+    expect(navigate).toHaveBeenCalledWith({ ignoreBlocker: true, search: { tab: 'details' } });
   });
 
   it('drives the Product Range tab from route search and writes tab changes back to search', () => {
@@ -72,6 +72,6 @@ describe('catalog edit routes', () => {
 
     expect(captured.range?.tab).toBe('variants');
     captured.range?.onTabChange('details');
-    expect(navigate).toHaveBeenCalledWith({ search: { tab: 'details' } });
+    expect(navigate).toHaveBeenCalledWith({ ignoreBlocker: true, search: { tab: 'details' } });
   });
 });

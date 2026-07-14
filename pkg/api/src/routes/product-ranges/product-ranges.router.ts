@@ -1,10 +1,8 @@
 import {
   createProductRange,
   createProductRangeVariant,
-  getCatalogTranslationStatus,
   getProductRange,
   isProductRangeCoreError,
-  listCatalogTranslationKeysNeedingTranslation,
   listProductRanges,
   type ProductRangeCoreError,
   removeProductRange,
@@ -15,7 +13,6 @@ import {
   updateProductRangeVariant,
 } from '@pkg/core';
 import {
-  CatalogTranslationStatus,
   ProductRangeCreateInput,
   ProductRangeReorderInput,
   ProductRangeUpdateInput,
@@ -31,16 +28,6 @@ import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const productRangesRouter = router({
   list: authorizedProcedure('product_range:read').query(({ ctx }) => listProductRanges({ db: ctx.db })),
-
-  translationStatus: authorizedProcedure('product_range:update')
-    .output(CatalogTranslationStatus)
-    .query(({ ctx }) => getCatalogTranslationStatus({ db: ctx.db })),
-
-  retranslateStale: authorizedProcedure('product_range:update').mutation(async ({ ctx }) => {
-    const keys = await listCatalogTranslationKeysNeedingTranslation({ db: ctx.db });
-    for (const key of keys) ctx.catalogTranslationScheduler.markNow(key);
-    return { queued: keys.length };
-  }),
 
   get: authorizedProcedure('product_range:read')
     .input(z.object({ id: UUID }))

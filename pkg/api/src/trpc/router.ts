@@ -2,6 +2,7 @@ import type { BuiltRouter } from '@trpc/server/unstable-core-do-not-import';
 
 import { auditRouter } from '../routes/audit/audit.router.js';
 import { authRouter } from '../routes/auth/auth.router.js';
+import { catalogTranslationsRouter } from '../routes/catalog-translations/catalog-translations.router.js';
 import { changelogRouter } from '../routes/changelog/changelog.router.js';
 import { customersRouter } from '../routes/customers/customers.router.js';
 import { documentsRouter } from '../routes/documents/documents.router.js';
@@ -20,6 +21,7 @@ type AppRouterRootTypes = (typeof authRouter)['_def']['_config']['$types'];
 type AppRouterRecord = {
   audit: (typeof auditRouter)['_def']['record'];
   auth: (typeof authRouter)['_def']['record'];
+  catalogTranslations: (typeof catalogTranslationsRouter)['_def']['record'];
   changelog: (typeof changelogRouter)['_def']['record'];
   customers: (typeof customersRouter)['_def']['record'];
   documents: (typeof documentsRouter)['_def']['record'];
@@ -40,6 +42,7 @@ function createAppRouter(): AppRouter {
   return router({
     audit: auditRouter,
     auth: authRouter,
+    catalogTranslations: catalogTranslationsRouter,
     changelog: changelogRouter,
     customers: customersRouter,
     documents: documentsRouter,

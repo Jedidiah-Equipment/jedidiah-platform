@@ -15,10 +15,10 @@ const TRANSLATION_HEALTH_POLL_WINDOW_MS = 30_000;
 export const CatalogTranslationHealth: React.FC = () => {
   const trpc = useTRPC();
   const showMutationError = useApiMutationErrorToast();
-  const { invalidateProductRanges } = useQueryInvalidation();
+  const { invalidateCatalogTranslations } = useQueryInvalidation();
   const [isPolling, setIsPolling] = useState(false);
   const statusQuery = useQuery({
-    ...trpc.productRanges.translationStatus.queryOptions(),
+    ...trpc.catalogTranslations.translationStatus.queryOptions(),
     refetchInterval: ({ state }) => {
       const status = state.data;
       return isPolling && status && catalogTranslationHealthCount(status) > 0
@@ -27,14 +27,14 @@ export const CatalogTranslationHealth: React.FC = () => {
     },
   });
   const retranslateMutation = useMutation(
-    trpc.productRanges.retranslateStale.mutationOptions({
+    trpc.catalogTranslations.retranslateStale.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to queue Afrikaans translations.'),
       onSuccess: async ({ queued }) => {
         if (queued > 0) {
           setIsPolling(true);
           setTimeout(() => setIsPolling(false), TRANSLATION_HEALTH_POLL_WINDOW_MS);
         }
-        await invalidateProductRanges();
+        await invalidateCatalogTranslations();
         toast.success(
           queued === 1 ? '1 item queued for Afrikaans translation' : `${queued} items queued for Afrikaans translation`,
         );

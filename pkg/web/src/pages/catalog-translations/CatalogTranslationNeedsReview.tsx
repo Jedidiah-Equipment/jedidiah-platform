@@ -79,9 +79,7 @@ export const CatalogTranslationNeedsReviewContent: React.FC<CatalogTranslationNe
                   {affectedFieldLabels(item).join(', ')}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button render={<NeedsReviewLink item={item} />} size="sm" variant="outline">
-                    Review
-                  </Button>
+                  <NeedsReviewButton item={item} />
                 </TableCell>
               </TableRow>
             ))}
@@ -98,17 +96,37 @@ const ENTITY_KIND_LABELS = {
   variant: 'Variant',
 } satisfies Record<CatalogTranslationNeedsReviewItem['kind'], string>;
 
-// A Variant's translations live on its Range's Translations tab, so triage links there.
-function NeedsReviewLink({ item }: { item: CatalogTranslationNeedsReviewItem }) {
+// Button renders the link by cloning it with its own label and styling, so the Link has to be the direct
+// render element. A Variant's translations live on its Range's Translations tab, so triage links there.
+function NeedsReviewButton({ item }: { item: CatalogTranslationNeedsReviewItem }) {
   const search = { tab: 'translations' } as const;
-  return item.kind === 'product' ? (
-    <Link params={{ id: item.id }} search={search} to="/products/$id/edit" />
-  ) : (
-    <Link
-      params={{ id: item.kind === 'range' ? item.id : item.rangeId }}
-      search={search}
-      to="/product-ranges/$id/edit"
-    />
+
+  if (item.kind === 'product') {
+    return (
+      <Button
+        render={<Link params={{ id: item.id }} search={search} to="/products/$id/edit" />}
+        size="sm"
+        variant="outline"
+      >
+        Review
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      render={
+        <Link
+          params={{ id: item.kind === 'range' ? item.id : item.rangeId }}
+          search={search}
+          to="/product-ranges/$id/edit"
+        />
+      }
+      size="sm"
+      variant="outline"
+    >
+      Review
+    </Button>
   );
 }
 

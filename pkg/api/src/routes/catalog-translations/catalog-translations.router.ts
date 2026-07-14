@@ -6,6 +6,7 @@ import {
   getCatalogTranslationStatus,
   isCatalogTranslationCoreError,
   listCatalogTranslationKeysNeedingTranslation,
+  listCatalogTranslationsNeedingReview,
   patchCatalogProductRangeTranslation,
   patchCatalogProductRangeVariantTranslation,
   patchCatalogProductTranslation,
@@ -18,6 +19,7 @@ import {
   CatalogProductRangeVariantTranslationPatchInput,
   CatalogProductTranslation,
   CatalogProductTranslationPatchInput,
+  CatalogTranslationNeedsReviewList,
   CatalogTranslationStatus,
   UUID,
 } from '@pkg/schema';
@@ -82,6 +84,10 @@ export const catalogTranslationsRouter = router({
   translationStatus: authorizedProcedure('product_range:update')
     .output(CatalogTranslationStatus)
     .query(({ ctx }) => getCatalogTranslationStatus({ db: ctx.db })),
+
+  listNeedsReview: authorizedProcedure('product_range:update')
+    .output(CatalogTranslationNeedsReviewList)
+    .query(({ ctx }) => listCatalogTranslationsNeedingReview({ db: ctx.db })),
 
   retranslateStale: authorizedProcedure('product_range:update').mutation(async ({ ctx }) => {
     const keys = await listCatalogTranslationKeysNeedingTranslation({ db: ctx.db });

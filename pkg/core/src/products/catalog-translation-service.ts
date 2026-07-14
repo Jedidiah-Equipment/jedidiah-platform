@@ -13,13 +13,17 @@ import {
   parseCatalogTranslationKey,
 } from '@pkg/domain';
 import {
+  type CatalogProductNeedsReviewField,
+  type CatalogProductRangeNeedsReviewField,
   type CatalogProductRangeTranslation,
   type CatalogProductRangeTranslationPatchInput,
+  type CatalogProductRangeVariantNeedsReviewField,
   type CatalogProductRangeVariantTranslation,
   type CatalogProductRangeVariantTranslationPatchInput,
   type CatalogProductTranslation,
   type CatalogProductTranslationPatchInput,
   type CatalogTranslationEnvelope,
+  type CatalogTranslationNeedsReviewItem,
   type CatalogTranslationStatus,
   TRANSLATED_LOCALE,
   type TranslatableAssembly,
@@ -42,6 +46,7 @@ export type ProductRangeCatalogTranslation = TranslatableProductRangeFields;
 export type ProductRangeVariantCatalogTranslation = TranslatableProductRangeVariantFields;
 
 type ProductTranslationSource = {
+  affectedFields: CatalogProductNeedsReviewField[];
   canonical: ProductCatalogTranslation;
   id: string;
   key: CatalogTranslationKeyFor<'product'>;
@@ -54,6 +59,7 @@ type ProductTranslationSource = {
 };
 
 type ProductRangeTranslationSource = {
+  affectedFields: CatalogProductRangeNeedsReviewField[];
   canonical: ProductRangeCatalogTranslation;
   id: string;
   key: CatalogTranslationKeyFor<'range'>;
@@ -63,16 +69,19 @@ type ProductRangeTranslationSource = {
 };
 
 type ProductRangeVariantTranslationSource = {
+  affectedFields: CatalogProductRangeVariantNeedsReviewField[];
   canonical: ProductRangeVariantCatalogTranslation;
   id: string;
   key: CatalogTranslationKeyFor<'variant'>;
   kind: 'variant';
+  rangeId: string;
   sourceHashes: CatalogSourceHashes<ProductRangeVariantCatalogTranslation>;
   state: CatalogTranslationState;
 };
 
 type ProductSourceRow = typeof products.$inferSelect & { assemblies: Array<typeof productAssemblies.$inferSelect> };
-type ProductRangeVariantSourceRow = Pick<typeof productRangeVariants.$inferSelect, 'id' | 'name' | 'translations'>;
+type ProductRangeVariantTranslationRow = Pick<typeof productRangeVariants.$inferSelect, 'id' | 'name' | 'translations'>;
+type ProductRangeVariantSourceRow = ProductRangeVariantTranslationRow & { rangeId: string };
 
 export type CatalogTranslationSource =
   | ProductTranslationSource
@@ -280,6 +289,7 @@ export async function patchCatalogProductRangeVariantTranslation({
       .select({
         id: productRangeVariants.id,
         name: productRangeVariants.name,
+        rangeId: productRangeVariants.rangeId,
         translations: productRangeVariants.translations,
       })
       .from(productRangeVariants)
@@ -352,13 +362,53 @@ export async function getCatalogTranslationStatus({ db }: { db: Db }): Promise<C
   };
 
   for (const source of sources) {
-    if (source.state === 'fresh') continue;
     const group =
       source.kind === 'product' ? status.products : source.kind === 'range' ? status.ranges : status.variants;
-    group[source.state] += 1;
+    if (source.affectedFields.length > 0) group.needsReview += 1;
+    if (source.state === 'missing' || source.state === 'stale') group[source.state] += 1;
   }
 
   return status;
+}
+
+export async function listCatalogTranslationsNeedingReview({
+  db,
+}: {
+  db: Db;
+}): Promise<CatalogTranslationNeedsReviewItem[]> {
+  const sources = await loadAllCatalogTranslationSources(db);
+  const items: CatalogTranslationNeedsReviewItem[] = [];
+  for (const source of sources) {
+    if (source.affectedFields.length === 0) continue;
+    switch (source.kind) {
+      case 'product':
+        items.push({
+          affectedFields: source.affectedFields,
+          id: source.id,
+          kind: source.kind,
+          name: source.canonical.name,
+        });
+        break;
+      case 'range':
+        items.push({
+          affectedFields: source.affectedFields,
+          id: source.id,
+          kind: source.kind,
+          name: source.canonical.name,
+        });
+        break;
+      case 'variant':
+        items.push({
+          affectedFields: source.affectedFields,
+          id: source.id,
+          kind: source.kind,
+          name: source.canonical.name,
+          rangeId: source.rangeId,
+        });
+        break;
+    }
+  }
+  return items;
 }
 
 export async function listCatalogTranslationKeysNeedingTranslation({
@@ -385,6 +435,7 @@ async function loadAllCatalogTranslationSources(db: Db): Promise<CatalogTranslat
       .select({
         id: productRangeVariants.id,
         name: productRangeVariants.name,
+        rangeId: productRangeVariants.rangeId,
         translations: productRangeVariants.translations,
       })
       .from(productRangeVariants)
@@ -417,20 +468,30 @@ function toProductTranslationSource(row: ProductSourceRow): ProductTranslationSo
   const productSourceHashes = catalogSourceHashes(productCanonical);
   const assemblySourceHashes = assemblies.map(({ id, name }) => ({ id, name: catalogSourceHashes({ name }).name }));
   const productTranslation = row.translations[TRANSLATED_LOCALE];
-  const fieldStates = Object.entries(productSourceHashes).map(([field, sourceHash]) =>
-    catalogTranslationFieldState(sourceHash, productTranslation?.[field as keyof typeof productTranslation]),
-  );
-  fieldStates.push(
-    ...row.assemblies.map((assembly) =>
-      catalogTranslationFieldState(
-        catalogSourceHashes({ name: assembly.name }).name,
-        assembly.translations[TRANSLATED_LOCALE]?.name,
-      ),
+  const productFields = (Object.keys(productSourceHashes) as Array<keyof TranslatableProductFields>).map((field) => ({
+    field,
+    state: catalogTranslationFieldState(productSourceHashes[field], productTranslation?.[field]),
+  }));
+  const assemblyFields = row.assemblies.map((assembly) => ({
+    name: assembly.name,
+    state: catalogTranslationFieldState(
+      catalogSourceHashes({ name: assembly.name }).name,
+      assembly.translations[TRANSLATED_LOCALE]?.name,
     ),
-  );
+  }));
+  const fieldStates = [...productFields.map(({ state }) => state), ...assemblyFields.map(({ state }) => state)];
   const state = catalogTranslationState(fieldStates);
+  const affectedFields: CatalogProductNeedsReviewField[] = [
+    ...productFields
+      .filter(({ state: fieldState }) => fieldState === 'needsReview')
+      .map(({ field }) => ({ field, kind: 'product' as const })),
+    ...assemblyFields
+      .filter(({ state: fieldState }) => fieldState === 'needsReview')
+      .map(({ name }) => ({ kind: 'assembly' as const, name })),
+  ];
 
   return {
+    affectedFields,
     canonical,
     id: row.id,
     key: catalogTranslationKey('product', row.id),
@@ -453,12 +514,23 @@ function toProductRangeTranslationSource(row: typeof productRanges.$inferSelect)
   const canonical = { description: row.description, name: row.name };
   const sourceHashes = catalogSourceHashes(canonical);
   const translation = row.translations[TRANSLATED_LOCALE];
-  const state = catalogTranslationState(
-    Object.entries(sourceHashes).map(([field, sourceHash]) =>
-      catalogTranslationFieldState(sourceHash, translation?.[field as keyof typeof translation]),
-    ),
-  );
-  return { canonical, id: row.id, key: catalogTranslationKey('range', row.id), kind: 'range', sourceHashes, state };
+  const fields = (Object.keys(sourceHashes) as Array<keyof TranslatableProductRangeFields>).map((field) => ({
+    field,
+    state: catalogTranslationFieldState(sourceHashes[field], translation?.[field]),
+  }));
+  const state = catalogTranslationState(fields.map(({ state: fieldState }) => fieldState));
+  const affectedFields = fields
+    .filter(({ state: fieldState }) => fieldState === 'needsReview')
+    .map(({ field }) => ({ field, kind: 'range' as const }));
+  return {
+    affectedFields,
+    canonical,
+    id: row.id,
+    key: catalogTranslationKey('range', row.id),
+    kind: 'range',
+    sourceHashes,
+    state,
+  };
 }
 
 async function loadVariantSource(db: Db, id: string): Promise<ProductRangeVariantTranslationSource | null> {
@@ -466,6 +538,7 @@ async function loadVariantSource(db: Db, id: string): Promise<ProductRangeVarian
     .select({
       id: productRangeVariants.id,
       name: productRangeVariants.name,
+      rangeId: productRangeVariants.rangeId,
       translations: productRangeVariants.translations,
     })
     .from(productRangeVariants)
@@ -482,10 +555,18 @@ function toProductRangeVariantTranslationSource(
 ): ProductRangeVariantTranslationSource {
   const canonical = { name: row.name };
   const sourceHashes = catalogSourceHashes(canonical);
-  const state = catalogTranslationState([
-    catalogTranslationFieldState(sourceHashes.name, row.translations[TRANSLATED_LOCALE]?.name),
-  ]);
-  return { canonical, id: row.id, key: catalogTranslationKey('variant', row.id), kind: 'variant', sourceHashes, state };
+  const fieldState = catalogTranslationFieldState(sourceHashes.name, row.translations[TRANSLATED_LOCALE]?.name);
+  const state = catalogTranslationState([fieldState]);
+  return {
+    affectedFields: fieldState === 'needsReview' ? [{ field: 'name', kind: 'variant' }] : [],
+    canonical,
+    id: row.id,
+    key: catalogTranslationKey('variant', row.id),
+    kind: 'variant',
+    rangeId: row.rangeId,
+    sourceHashes,
+    state,
+  };
 }
 
 async function persistProductTranslation({
@@ -598,6 +679,7 @@ async function persistProductRangeVariantTranslation({
       .select({
         id: productRangeVariants.id,
         name: productRangeVariants.name,
+        rangeId: productRangeVariants.rangeId,
         translations: productRangeVariants.translations,
       })
       .from(productRangeVariants)
@@ -710,7 +792,7 @@ function toCatalogProductRangeTranslation(row: typeof productRanges.$inferSelect
 }
 
 function toCatalogProductRangeVariantTranslation(
-  row: ProductRangeVariantSourceRow,
+  row: ProductRangeVariantTranslationRow,
 ): CatalogProductRangeVariantTranslation {
   return {
     fields: {

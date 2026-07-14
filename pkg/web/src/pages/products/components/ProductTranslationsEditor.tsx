@@ -17,6 +17,7 @@ import {
   CatalogTranslationStringListInputs,
   CatalogTranslationTechnicalDetailsInputs,
 } from '@/components/catalog-translations/CatalogTranslationField.js';
+import { PRODUCT_TRANSLATION_FIELD_LABELS } from '@/components/catalog-translations/catalog-translation-labels.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -47,15 +48,6 @@ type PendingRegeneration = {
 
 const REGENERATION_POLL_INTERVAL_MS = 2_000;
 const REGENERATION_POLL_LIMIT_MS = 5 * 60_000;
-
-const PRODUCT_TRANSLATION_FIELD_LABELS = {
-  category: 'Category',
-  description: 'Description',
-  keyFeatures: 'Key features',
-  name: 'Name',
-  nameHighlight: 'Name highlight',
-  technicalDetails: 'Technical details',
-} satisfies Record<keyof CatalogProductTranslation['fields'], string>;
 
 const PRODUCT_TRANSLATION_TEXT_FIELDS = ['name', 'nameHighlight', 'category', 'description'] as const;
 

@@ -1,8 +1,7 @@
 import {
   type CatalogProductRangeTranslation,
   type CatalogProductRangeTranslationPatchInput,
-  type CatalogProductRangeVariantTranslation,
-  type CatalogProductRangeVariantTranslationPatchInput,
+  type CatalogTranslationFieldState,
   TranslatableProductRangeFields,
   TranslatableProductRangeVariantFields,
   UUID,
@@ -21,36 +20,21 @@ export const ProductRangeTranslationFormValuesSchema = z.object({
     description: emptyStringOr(TranslatableProductRangeFields.shape.description),
     name: TranslatableProductRangeFields.shape.name,
   }),
-  variants: z.array(z.object({ id: UUID, name: TranslatableProductRangeVariantFields.shape.name })),
   // Keeping review intent in the form snapshot makes an unchanged reviewed value observable to autosave.
   reviewedTarget: ProductRangeTranslationTargetSchema.optional(),
+  variants: z.array(z.object({ id: UUID, name: TranslatableProductRangeVariantFields.shape.name })),
 });
 
 export type ProductRangeTranslationFormValues = z.infer<typeof ProductRangeTranslationFormValuesSchema>;
 export type ProductRangeTranslationTarget = z.infer<typeof ProductRangeTranslationTargetSchema>;
 
-export type ProductRangeTranslationBundle = {
-  range: CatalogProductRangeTranslation;
-  variants: CatalogProductRangeVariantTranslation[];
-};
-
-export type ProductRangeTranslationManualFields = {
-  fields: Record<keyof ProductRangeTranslationFormValues['fields'], boolean>;
-  variants: Record<UUID, boolean>;
-};
-
-export type ProductRangeTranslationPatch = {
-  range?: CatalogProductRangeTranslationPatchInput;
-  variants: CatalogProductRangeVariantTranslationPatchInput[];
-};
-
 export function toProductRangeTranslationFormValues(
-  translation: ProductRangeTranslationBundle,
+  translation: CatalogProductRangeTranslation,
 ): ProductRangeTranslationFormValues {
   return {
     fields: {
-      description: translation.range.fields.description.translation?.value ?? '',
-      name: translation.range.fields.name.translation?.value ?? '',
+      description: translation.fields.description.translation?.value ?? '',
+      name: translation.fields.name.translation?.value ?? '',
     },
     variants: translation.variants.map((variant) => ({
       id: variant.id,
@@ -59,124 +43,110 @@ export function toProductRangeTranslationFormValues(
   };
 }
 
-export function getProductRangeTranslationManualFields(
-  translation: ProductRangeTranslationBundle,
-): ProductRangeTranslationManualFields {
-  return {
-    fields: {
-      description: translation.range.fields.description.translation?.isManual === true,
-      name: translation.range.fields.name.translation?.isManual === true,
-    },
-    variants: Object.fromEntries(
-      translation.variants.map((variant) => [variant.id, variant.fields.name.translation?.isManual === true]),
-    ),
-  };
+export function isProductRangeTranslationTargetManual(
+  translation: CatalogProductRangeTranslation,
+  target: ProductRangeTranslationTarget,
+): boolean {
+  return getTargetField(translation, target)?.translation?.isManual === true;
+}
+
+export function getProductRangeTranslationTargetState(
+  translation: CatalogProductRangeTranslation,
+  target: ProductRangeTranslationTarget,
+): CatalogTranslationFieldState | undefined {
+  return getTargetField(translation, target)?.state;
 }
 
 export function toProductRangeTranslationPatch(
-  translation: ProductRangeTranslationBundle,
+  translation: CatalogProductRangeTranslation,
   initial: ProductRangeTranslationFormValues,
   current: ProductRangeTranslationFormValues,
-): ProductRangeTranslationPatch {
-  const manual = getProductRangeTranslationManualFields(translation);
-  const fields: CatalogProductRangeTranslationPatchInput['fields'] = {};
-
-  addChangedManualRangeField(
-    fields,
-    manual,
-    initial,
-    current,
-    'name',
-    current.fields.name,
-    shouldResaveRangeField(translation, current.reviewedTarget, 'name'),
-  );
-  addChangedManualRangeField(
-    fields,
-    manual,
-    initial,
-    current,
-    'description',
-    emptyStringToNull(current.fields.description),
-    shouldResaveRangeField(translation, current.reviewedTarget, 'description'),
-  );
+): CatalogProductRangeTranslationPatchInput {
+  const fields: NonNullable<CatalogProductRangeTranslationPatchInput['fields']> = {};
+  if (shouldSaveRangeField(translation, initial, current, 'name')) {
+    fields.name = { isManual: true, value: current.fields.name };
+  }
+  if (shouldSaveRangeField(translation, initial, current, 'description')) {
+    fields.description = { isManual: true, value: emptyStringToNull(current.fields.description) };
+  }
 
   const initialVariants = new Map(initial.variants.map((variant) => [variant.id, variant.name]));
-  const variants = current.variants.flatMap((variant) =>
-    manual.variants[variant.id] &&
-    (initialVariants.get(variant.id) !== variant.name ||
-      shouldResaveVariant(translation, current.reviewedTarget, variant.id))
-      ? [{ fields: { name: { isManual: true as const, value: variant.name } }, id: variant.id }]
-      : [],
-  );
+  const variants = current.variants.flatMap((variant) => {
+    const target = { kind: 'variant', variantId: variant.id } as const;
+    if (!isProductRangeTranslationTargetManual(translation, target)) return [];
+    const changed = initialVariants.get(variant.id) !== variant.name;
+    if (!changed && !isReviewedTarget(translation, current.reviewedTarget, target)) return [];
+    return [{ fields: { name: { isManual: true as const, value: variant.name } }, id: variant.id }];
+  });
 
   return {
-    ...(Object.keys(fields).length > 0 ? { range: { fields, id: translation.range.id } } : {}),
-    variants,
+    ...(Object.keys(fields).length > 0 ? { fields } : {}),
+    id: translation.id,
+    ...(variants.length > 0 ? { variants } : {}),
   };
 }
 
 export function toProductRangeTranslationTogglePatch(
+  rangeId: UUID,
   values: ProductRangeTranslationFormValues,
   target: ProductRangeTranslationTarget,
   isManual: boolean,
-  rangeId: UUID,
-): ProductRangeTranslationPatch {
+): CatalogProductRangeTranslationPatchInput {
   if (target.kind === 'variant') {
     const value = values.variants.find((variant) => variant.id === target.variantId)?.name ?? '';
     return {
+      id: rangeId,
       variants: [
-        {
-          fields: { name: isManual ? { isManual: true, value } : { isManual: false } },
-          id: target.variantId,
-        },
+        { fields: { name: isManual ? { isManual: true, value } : { isManual: false } }, id: target.variantId },
       ],
     };
   }
 
-  const value = values.fields[target.field];
-  const normalizedValue = target.field === 'description' && value === '' ? null : value;
-  return {
-    range: {
-      fields: {
-        [target.field]: isManual ? { isManual: true, value: normalizedValue } : { isManual: false },
-      } as CatalogProductRangeTranslationPatchInput['fields'],
-      id: rangeId,
-    },
-    variants: [],
-  };
+  const fields: NonNullable<CatalogProductRangeTranslationPatchInput['fields']> =
+    target.field === 'name'
+      ? { name: isManual ? { isManual: true, value: values.fields.name } : { isManual: false } }
+      : {
+          description: isManual
+            ? { isManual: true, value: emptyStringToNull(values.fields.description) }
+            : { isManual: false },
+        };
+
+  return { fields, id: rangeId };
 }
 
-function addChangedManualRangeField<Field extends keyof ProductRangeTranslationFormValues['fields']>(
-  fields: CatalogProductRangeTranslationPatchInput['fields'],
-  manual: ProductRangeTranslationManualFields,
+function getTargetField(translation: CatalogProductRangeTranslation, target: ProductRangeTranslationTarget) {
+  return target.kind === 'range'
+    ? translation.fields[target.field]
+    : translation.variants.find((variant) => variant.id === target.variantId)?.fields.name;
+}
+
+function shouldSaveRangeField(
+  translation: CatalogProductRangeTranslation,
   initial: ProductRangeTranslationFormValues,
   current: ProductRangeTranslationFormValues,
-  field: Field,
-  value: ProductRangeTranslationFormValues['fields'][Field] | null,
-  force: boolean,
-) {
-  if (!manual.fields[field] || (!force && initial.fields[field] === current.fields[field])) return;
-  Object.assign(fields, { [field]: { isManual: true, value } });
-}
-
-function shouldResaveRangeField(
-  translation: ProductRangeTranslationBundle,
-  target: ProductRangeTranslationTarget | undefined,
   field: keyof ProductRangeTranslationFormValues['fields'],
 ): boolean {
-  return target?.kind === 'range' && target.field === field && translation.range.fields[field].state === 'needsReview';
+  const target = { field, kind: 'range' } as const;
+  if (!isProductRangeTranslationTargetManual(translation, target)) return false;
+  return (
+    initial.fields[field] !== current.fields[field] || isReviewedTarget(translation, current.reviewedTarget, target)
+  );
 }
 
-function shouldResaveVariant(
-  translation: ProductRangeTranslationBundle,
-  target: ProductRangeTranslationTarget | undefined,
-  variantId: UUID,
+// Re-saving a field the admin just looked at is what clears its needs-review flag, so an unchanged value
+// still has to reach the server.
+function isReviewedTarget(
+  translation: CatalogProductRangeTranslation,
+  reviewed: ProductRangeTranslationTarget | undefined,
+  target: ProductRangeTranslationTarget,
 ): boolean {
-  return (
-    target?.kind === 'variant' &&
-    target.variantId === variantId &&
-    translation.variants.find((variant) => variant.id === variantId)?.fields.name.state === 'needsReview'
-  );
+  if (!reviewed) return false;
+  const isSameTarget =
+    reviewed.kind === 'range' && target.kind === 'range'
+      ? reviewed.field === target.field
+      : reviewed.kind === 'variant' && target.kind === 'variant' && reviewed.variantId === target.variantId;
+
+  return isSameTarget && getProductRangeTranslationTargetState(translation, target) === 'needsReview';
 }
 
 function emptyStringToNull(value: string): string | null {

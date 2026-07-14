@@ -1,5 +1,6 @@
 import { relations, sql } from 'drizzle-orm';
 import { check, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import type { TranslationEnvelope, TranslationsColumn } from './translation-envelope.js';
 
 export const productRanges = pgTable(
   'product_ranges',
@@ -14,18 +15,12 @@ export const productRanges = pgTable(
     // The Range's brochure logo (top-right of the product brochure), stored as a {@link StoredFile}.
     // Inline structural type for the same portability reason as `image`. Null means no current logo.
     logo: jsonb('logo').$type<{ byteSize: number; contentType: string; storageKey: string; updatedAt: string }>(),
-    // Inline structural type keeps inferred row declarations portable across package boundaries (TS2883).
     translations: jsonb('translations')
       .$type<
-        Partial<
-          Record<
-            string,
-            Partial<{
-              name: { isManual: boolean; sourceHash: string; translatedAt: string; value: string };
-              description: { isManual: boolean; sourceHash: string; translatedAt: string; value: string | null };
-            }>
-          >
-        >
+        TranslationsColumn<{
+          name: TranslationEnvelope<string>;
+          description: TranslationEnvelope<string | null>;
+        }>
       >()
       .notNull()
       .default({}),
@@ -50,18 +45,8 @@ export const productRangeVariants = pgTable(
       .notNull()
       .references(() => productRanges.id, { onDelete: 'restrict' }),
     name: text('name').notNull(),
-    // Inline for the same emitted-declaration portability constraint as Range translations above.
     translations: jsonb('translations')
-      .$type<
-        Partial<
-          Record<
-            string,
-            Partial<{
-              name: { isManual: boolean; sourceHash: string; translatedAt: string; value: string };
-            }>
-          >
-        >
-      >()
+      .$type<TranslationsColumn<{ name: TranslationEnvelope<string> }>>()
       .notNull()
       .default({}),
     displayOrder: integer('display_order').notNull(),

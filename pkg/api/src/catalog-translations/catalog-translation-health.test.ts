@@ -92,10 +92,7 @@ describe('catalog translation health', () => {
     await caller.catalogTranslations.updateRange({
       fields: { description: { isManual: false } },
       id: queue.rangeId,
-    });
-    await caller.catalogTranslations.updateVariant({
-      fields: { name: { isManual: true, value: 'Swaardiens' } },
-      id: queue.variantId,
+      variants: [{ fields: { name: { isManual: true, value: 'Swaardiens' } }, id: queue.variantId }],
     });
 
     await expect(caller.catalogTranslations.listNeedsReview()).resolves.toEqual([]);

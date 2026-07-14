@@ -1,15 +1,14 @@
-import type { CatalogProductRangeTranslation, CatalogProductRangeVariantTranslation } from '@pkg/schema';
+import type { CatalogProductRangeTranslation } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
-  getProductRangeTranslationManualFields,
-  type ProductRangeTranslationBundle,
+  isProductRangeTranslationTargetManual,
   toProductRangeTranslationFormValues,
   toProductRangeTranslationPatch,
   toProductRangeTranslationTogglePatch,
 } from './types.js';
 
-const rangeTranslation = {
+const translation = {
   fields: {
     description: {
       canonical: 'Built for harvest.',
@@ -23,39 +22,25 @@ const rangeTranslation = {
     },
   },
   id: '123e4567-e89b-42d3-a456-426614174000',
+  variants: [
+    {
+      fields: { name: { canonical: 'Heavy Duty', state: 'fresh', translation: envelope('Swaardiens', true) } },
+      id: '123e4567-e89b-42d3-a456-426614174001',
+    },
+    {
+      fields: { name: { canonical: 'Compact', state: 'fresh', translation: envelope('Kompak', false) } },
+      id: '123e4567-e89b-42d3-a456-426614174002',
+    },
+  ],
 } satisfies CatalogProductRangeTranslation;
 
-const variantTranslations = [
-  {
-    fields: {
-      name: {
-        canonical: 'Heavy Duty',
-        state: 'fresh',
-        translation: envelope('Swaardiens', true),
-      },
-    },
-    id: '123e4567-e89b-42d3-a456-426614174001',
-  },
-  {
-    fields: {
-      name: {
-        canonical: 'Compact',
-        state: 'fresh',
-        translation: envelope('Kompak', false),
-      },
-    },
-    id: '123e4567-e89b-42d3-a456-426614174002',
-  },
-] satisfies CatalogProductRangeVariantTranslation[];
-const manualVariant = variantTranslations[0];
-const aiVariant = variantTranslations[1];
+const manualVariant = translation.variants[0];
+const aiVariant = translation.variants[1];
 if (!manualVariant || !aiVariant) throw new Error('Variant fixtures missing');
-
-const bundle: ProductRangeTranslationBundle = { range: rangeTranslation, variants: variantTranslations };
 
 describe('Product Range translation form mapping', () => {
   it('maps the Range fields and every Variant name into one editing surface', () => {
-    expect(toProductRangeTranslationFormValues(bundle)).toEqual({
+    expect(toProductRangeTranslationFormValues(translation)).toEqual({
       fields: { description: 'Gebou vir die oes.', name: 'Oesreeks' },
       variants: [
         { id: manualVariant.id, name: 'Swaardiens' },
@@ -65,7 +50,7 @@ describe('Product Range translation form mapping', () => {
   });
 
   it('patches only changed manual Range and Variant fields during autosave', () => {
-    const initial = toProductRangeTranslationFormValues(bundle);
+    const initial = toProductRangeTranslationFormValues(translation);
     const current = structuredClone(initial);
     const firstVariant = current.variants[0];
     const secondVariant = current.variants[1];
@@ -75,66 +60,54 @@ describe('Product Range translation form mapping', () => {
     firstVariant.name = 'Swaar diens';
     secondVariant.name = 'Must remain AI managed';
 
-    expect(toProductRangeTranslationPatch(bundle, initial, current)).toEqual({
-      range: {
-        fields: { description: { isManual: true, value: 'Hersiene beskrywing.' } },
-        id: rangeTranslation.id,
-      },
-      variants: [
-        {
-          fields: { name: { isManual: true, value: 'Swaar diens' } },
-          id: manualVariant.id,
-        },
-      ],
+    expect(toProductRangeTranslationPatch(translation, initial, current)).toEqual({
+      fields: { description: { isManual: true, value: 'Hersiene beskrywing.' } },
+      id: translation.id,
+      variants: [{ fields: { name: { isManual: true, value: 'Swaar diens' } }, id: manualVariant.id }],
     });
   });
 
   it('re-saves an unchanged manual field after a user reviews it', () => {
-    const values = toProductRangeTranslationFormValues(bundle);
-    const reviewedValues = {
-      ...values,
-      reviewedTarget: { field: 'description', kind: 'range' } as const,
-    };
+    const values = toProductRangeTranslationFormValues(translation);
+    const reviewedValues = { ...values, reviewedTarget: { field: 'description', kind: 'range' } as const };
 
-    expect(toProductRangeTranslationPatch(bundle, values, reviewedValues)).toEqual({
-      range: {
-        fields: { description: { isManual: true, value: 'Gebou vir die oes.' } },
-        id: rangeTranslation.id,
-      },
-      variants: [],
+    expect(toProductRangeTranslationPatch(translation, values, reviewedValues)).toEqual({
+      fields: { description: { isManual: true, value: 'Gebou vir die oes.' } },
+      id: translation.id,
     });
   });
 
-  it('builds immediate enable and confirmed revert patches for Range and Variant fields', () => {
-    const values = toProductRangeTranslationFormValues(bundle);
+  it('reads manual ownership per Range field and Variant', () => {
+    expect(isProductRangeTranslationTargetManual(translation, { field: 'description', kind: 'range' })).toBe(true);
+    expect(isProductRangeTranslationTargetManual(translation, { field: 'name', kind: 'range' })).toBe(false);
+    expect(isProductRangeTranslationTargetManual(translation, { kind: 'variant', variantId: manualVariant.id })).toBe(
+      true,
+    );
+    expect(isProductRangeTranslationTargetManual(translation, { kind: 'variant', variantId: aiVariant.id })).toBe(
+      false,
+    );
+  });
 
-    expect(getProductRangeTranslationManualFields(bundle)).toEqual({
-      fields: { description: true, name: false },
-      variants: {
-        [manualVariant.id]: true,
-        [aiVariant.id]: false,
-      },
-    });
+  it('builds immediate enable and confirmed revert patches for Range and Variant fields', () => {
+    const values = toProductRangeTranslationFormValues(translation);
+
     expect(
-      toProductRangeTranslationTogglePatch(values, { field: 'name', kind: 'range' }, true, rangeTranslation.id),
+      toProductRangeTranslationTogglePatch(translation.id, values, { field: 'name', kind: 'range' }, true),
     ).toEqual({
-      range: { fields: { name: { isManual: true, value: 'Oesreeks' } }, id: rangeTranslation.id },
-      variants: [],
+      fields: { name: { isManual: true, value: 'Oesreeks' } },
+      id: translation.id,
     });
+
     expect(
       toProductRangeTranslationTogglePatch(
+        translation.id,
         values,
         { kind: 'variant', variantId: manualVariant.id },
         false,
-        rangeTranslation.id,
       ),
     ).toEqual({
-      variants: [
-        {
-          fields: { name: { isManual: false } },
-          id: manualVariant.id,
-        },
-      ],
+      id: translation.id,
+      variants: [{ fields: { name: { isManual: false } }, id: manualVariant.id }],
     });
   });
 });

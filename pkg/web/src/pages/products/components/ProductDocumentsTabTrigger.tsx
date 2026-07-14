@@ -1,7 +1,7 @@
 import type { UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 
-import { TabsTrigger } from '@/components/ui/tabs.js';
+import { AttentionTabTrigger } from '@/components/common/AttentionTabTrigger.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 type ProductDocumentsTabTriggerProps = {
@@ -14,14 +14,11 @@ export const ProductDocumentsTabTrigger: React.FC<ProductDocumentsTabTriggerProp
   const hasNoDocuments = documentsQuery.data?.length === 0;
 
   return (
-    <TabsTrigger value="documents">
-      <span>Documents</span>
-      {hasNoDocuments ? (
-        <>
-          <span aria-hidden className="size-2 rounded-full bg-orange-400" />
-          <span className="sr-only">No documents added</span>
-        </>
-      ) : null}
-    </TabsTrigger>
+    <AttentionTabTrigger
+      attentionLabel="No documents added"
+      label="Documents"
+      needsAttention={hasNoDocuments}
+      value="documents"
+    />
   );
 };

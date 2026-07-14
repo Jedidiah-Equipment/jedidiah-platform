@@ -1,8 +1,8 @@
 import type { CatalogProductTranslation, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-
-import { TabsTrigger } from '@/components/ui/tabs.js';
+import { translationFieldsNeedAttention } from '@/components/catalog-translations/translation-attention.js';
+import { AttentionTabTrigger } from '@/components/common/AttentionTabTrigger.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 type ProductTranslationsTabTriggerProps = {
@@ -21,24 +21,19 @@ export function ProductTranslationsTabTriggerContent({
 }: {
   translation: CatalogProductTranslation | undefined;
 }) {
-  const needsAttention = translation ? productTranslationNeedsAttention(translation) : false;
-
   return (
-    <TabsTrigger value="translations">
-      <span>Translations</span>
-      {needsAttention ? (
-        <>
-          <span aria-hidden className="size-2 rounded-full bg-orange-400" />
-          <span className="sr-only">Afrikaans translations need attention</span>
-        </>
-      ) : null}
-    </TabsTrigger>
+    <AttentionTabTrigger
+      attentionLabel="Afrikaans translations need attention"
+      label="Translations"
+      needsAttention={translation ? productTranslationNeedsAttention(translation) : false}
+      value="translations"
+    />
   );
 }
 
 export function productTranslationNeedsAttention(translation: CatalogProductTranslation): boolean {
   return (
-    Object.values(translation.fields).some((field) => field.state !== 'fresh') ||
-    translation.assemblies.some((assembly) => assembly.fields.name.state !== 'fresh')
+    translationFieldsNeedAttention(translation.fields) ||
+    translation.assemblies.some((assembly) => translationFieldsNeedAttention(assembly.fields))
   );
 }

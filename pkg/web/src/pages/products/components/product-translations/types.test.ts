@@ -2,7 +2,7 @@ import type { CatalogProductTranslation } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
-  getProductTranslationManualFields,
+  isProductTranslationTargetManual,
   toProductTranslationFormValues,
   toProductTranslationPatch,
   toProductTranslationTogglePatch,
@@ -99,7 +99,7 @@ describe('Product translation form mapping', () => {
     const assembly = productTranslation.assemblies[0];
     if (!assembly) throw new Error('Assembly fixture missing');
 
-    expect(getProductTranslationManualFields(productTranslation).fields.description).toBe(true);
+    expect(isProductTranslationTargetManual(productTranslation, { field: 'description', kind: 'product' })).toBe(true);
     expect(
       toProductTranslationTogglePatch(
         productTranslation.id,

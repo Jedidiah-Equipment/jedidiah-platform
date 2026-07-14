@@ -5,7 +5,6 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../test/create-tester.js';
 import {
   getCatalogTranslationStatus,
-  listCatalogTranslationKeys,
   listCatalogTranslationKeysNeedingTranslation,
   loadCatalogTranslationSource,
   persistCatalogTranslation,
@@ -234,37 +233,6 @@ describe('catalog translation persistence', () => {
       variants: { missing: 0, needsReview: 0, stale: 0 },
     });
     await expect(listCatalogTranslationKeysNeedingTranslation({ db: context.db })).resolves.toEqual([]);
-  });
-
-  test('lists every active catalog translation unit for an idempotent sweep', async ({ context }) => {
-    const [range] = await context.db
-      .insert(productRanges)
-      .values({ displayOrder: 0, name: 'Trailers' })
-      .returning({ id: productRanges.id });
-    if (!range) throw new Error('Range fixture missing');
-    const [variant] = await context.db
-      .insert(productRangeVariants)
-      .values({ displayOrder: 0, name: 'Heavy Duty', rangeId: range.id })
-      .returning({ id: productRangeVariants.id });
-    if (!variant) throw new Error('Variant fixture missing');
-    const [product] = await context.db
-      .insert(products)
-      .values({
-        basePrice: 1000,
-        buildTimeDays: 14,
-        description: null,
-        modelCode: 'ST-42',
-        name: 'Silage Trailer',
-        rangeId: range.id,
-      })
-      .returning({ id: products.id });
-    if (!product) throw new Error('Product fixture missing');
-
-    await expect(listCatalogTranslationKeys({ db: context.db })).resolves.toEqual([
-      `product:${product.id}`,
-      `product_range:${range.id}`,
-      `product_range_variant:${variant.id}`,
-    ]);
   });
 });
 

@@ -1,10 +1,19 @@
-import { type Db, notRemoved, productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db';
+import {
+  type DatabaseTransaction,
+  type Db,
+  notRemoved,
+  productAssemblies,
+  productRanges,
+  productRangeVariants,
+  products,
+} from '@pkg/db';
 import {
   type CatalogSourceHashes,
   type CatalogTranslationKey,
   type CatalogTranslationKeyFor,
   type CatalogTranslationKind,
   type CatalogTranslationState,
+  catalogSourceHash,
   catalogSourceHashes,
   catalogTranslationFieldState,
   catalogTranslationKey,
@@ -18,8 +27,6 @@ import {
   type CatalogProductRangeTranslation,
   type CatalogProductRangeTranslationPatchInput,
   type CatalogProductRangeVariantNeedsReviewField,
-  type CatalogProductRangeVariantTranslation,
-  type CatalogProductRangeVariantTranslationPatchInput,
   type CatalogProductTranslation,
   type CatalogProductTranslationPatchInput,
   type CatalogTranslationEnvelope,
@@ -32,12 +39,9 @@ import {
   type TranslatableProductRangeVariantFields,
 } from '@pkg/schema';
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { ProductRangeNotFoundError } from '../product-ranges/product-range-errors.js';
 
-import {
-  CatalogProductRangeTranslationNotFoundError,
-  CatalogProductRangeVariantTranslationNotFoundError,
-  CatalogProductTranslationNotFoundError,
-} from './catalog-translation-errors.js';
+import { ProductNotFoundError } from './product-errors.js';
 
 export type { CatalogTranslationState } from '@pkg/domain';
 
@@ -110,8 +114,10 @@ type PersistCatalogTranslationInput<Kind extends CatalogTranslationKind> = {
 
 export type PersistCatalogTranslationResult = 'persisted' | 'skipped';
 
+// Reverting a field to AI ownership leaves it missing, so the caller must requeue exactly the translation
+// units that lost a value: a Product covers its assemblies, but each Variant is its own unit.
 type CatalogTranslationPatchResult<Translation> = {
-  requeue: boolean;
+  requeueKeys: CatalogTranslationKey[];
   translation: Translation;
 };
 
@@ -145,7 +151,7 @@ export async function getCatalogProductTranslation({
     where: and(eq(products.id, id), notRemoved(products)),
     with: { assemblies: { orderBy: [asc(productAssemblies.displayOrder), asc(productAssemblies.id)] } },
   });
-  if (!row) throw new CatalogProductTranslationNotFoundError(id);
+  if (!row) throw new ProductNotFoundError(id);
   return toCatalogProductTranslation(row);
 }
 
@@ -156,32 +162,14 @@ export async function getCatalogProductRangeTranslation({
   db: Db;
   id: string;
 }): Promise<CatalogProductRangeTranslation> {
-  const row = await db.query.productRanges.findFirst({
-    where: and(eq(productRanges.id, id), notRemoved(productRanges)),
-  });
-  if (!row) throw new CatalogProductRangeTranslationNotFoundError(id);
-  return toCatalogProductRangeTranslation(row);
-}
-
-export async function getCatalogProductRangeVariantTranslation({
-  db,
-  id,
-}: {
-  db: Db;
-  id: string;
-}): Promise<CatalogProductRangeVariantTranslation> {
-  const [row] = await db
-    .select({
-      id: productRangeVariants.id,
-      name: productRangeVariants.name,
-      translations: productRangeVariants.translations,
-    })
-    .from(productRangeVariants)
-    .innerJoin(productRanges, eq(productRangeVariants.rangeId, productRanges.id))
-    .where(and(eq(productRangeVariants.id, id), notRemoved(productRangeVariants), notRemoved(productRanges)))
-    .limit(1);
-  if (!row) throw new CatalogProductRangeVariantTranslationNotFoundError(id);
-  return toCatalogProductRangeVariantTranslation(row);
+  const [row, variantRows] = await Promise.all([
+    db.query.productRanges.findFirst({ where: and(eq(productRanges.id, id), notRemoved(productRanges)) }),
+    selectVariantTranslationRows(db)
+      .where(and(eq(productRangeVariants.rangeId, id), notRemoved(productRangeVariants)))
+      .orderBy(asc(productRangeVariants.displayOrder), asc(productRangeVariants.id)),
+  ]);
+  if (!row) throw new ProductRangeNotFoundError(id);
+  return toCatalogProductRangeTranslation(row, variantRows);
 }
 
 export async function patchCatalogProductTranslation({
@@ -199,7 +187,7 @@ export async function patchCatalogProductTranslation({
       .from(products)
       .where(and(eq(products.id, input.id), notRemoved(products)))
       .for('update');
-    if (!productRow) throw new CatalogProductTranslationNotFoundError(input.id);
+    if (!productRow) throw new ProductNotFoundError(input.id);
 
     const productCanonical = translatableProductFields(productRow);
     const productPatch = applyManualTranslationPatches(
@@ -240,7 +228,7 @@ export async function patchCatalogProductTranslation({
     return shouldRequeue;
   });
   const translation = await getCatalogProductTranslation({ db, id: input.id });
-  return { requeue, translation };
+  return { requeueKeys: requeue ? [catalogTranslationKey('product', input.id)] : [], translation };
 }
 
 export async function patchCatalogProductRangeTranslation({
@@ -252,64 +240,56 @@ export async function patchCatalogProductRangeTranslation({
   input: CatalogProductRangeTranslationPatchInput;
   now?: () => Date;
 }): Promise<CatalogTranslationPatchResult<CatalogProductRangeTranslation>> {
-  const requeue = await db.transaction(async (tx) => {
+  const requeueKeys = await db.transaction(async (tx) => {
     const [row] = await tx
       .select()
       .from(productRanges)
       .where(and(eq(productRanges.id, input.id), notRemoved(productRanges)))
       .for('update');
-    if (!row) throw new CatalogProductRangeTranslationNotFoundError(input.id);
+    if (!row) throw new ProductRangeNotFoundError(input.id);
 
-    const patch = applyManualTranslationPatches(
+    const keys: CatalogTranslationKey[] = [];
+    const rangePatch = applyManualTranslationPatches(
       row.translations,
       { description: row.description, name: row.name },
-      input.fields,
+      input.fields ?? {},
       now(),
     );
-    if (patch.changed) {
-      await tx.update(productRanges).set({ translations: patch.translations }).where(eq(productRanges.id, input.id));
+    if (rangePatch.changed) {
+      await tx
+        .update(productRanges)
+        .set({ translations: rangePatch.translations })
+        .where(eq(productRanges.id, input.id));
     }
-    return patch.requeue;
+    if (rangePatch.requeue) keys.push(catalogTranslationKey('range', input.id));
+
+    if (input.variants?.length) {
+      const variantRows = await selectVariantTranslationRows(tx)
+        .where(and(eq(productRangeVariants.rangeId, input.id), notRemoved(productRangeVariants)))
+        .for('update');
+      for (const variantInput of input.variants) {
+        const variantRow = variantRows.find(({ id }) => id === variantInput.id);
+        if (!variantRow) continue;
+        const variantPatch = applyManualTranslationPatches(
+          variantRow.translations,
+          { name: variantRow.name },
+          variantInput.fields,
+          now(),
+        );
+        if (variantPatch.changed) {
+          await tx
+            .update(productRangeVariants)
+            .set({ translations: variantPatch.translations })
+            .where(and(eq(productRangeVariants.id, variantInput.id), eq(productRangeVariants.rangeId, input.id)));
+        }
+        if (variantPatch.requeue) keys.push(catalogTranslationKey('variant', variantInput.id));
+      }
+    }
+
+    return keys;
   });
   const translation = await getCatalogProductRangeTranslation({ db, id: input.id });
-  return { requeue, translation };
-}
-
-export async function patchCatalogProductRangeVariantTranslation({
-  db,
-  input,
-  now = () => new Date(),
-}: {
-  db: Db;
-  input: CatalogProductRangeVariantTranslationPatchInput;
-  now?: () => Date;
-}): Promise<CatalogTranslationPatchResult<CatalogProductRangeVariantTranslation>> {
-  const requeue = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        id: productRangeVariants.id,
-        name: productRangeVariants.name,
-        rangeId: productRangeVariants.rangeId,
-        translations: productRangeVariants.translations,
-      })
-      .from(productRangeVariants)
-      .innerJoin(productRanges, eq(productRangeVariants.rangeId, productRanges.id))
-      .where(and(eq(productRangeVariants.id, input.id), notRemoved(productRangeVariants), notRemoved(productRanges)))
-      .limit(1)
-      .for('update');
-    if (!row) throw new CatalogProductRangeVariantTranslationNotFoundError(input.id);
-
-    const patch = applyManualTranslationPatches(row.translations, { name: row.name }, input.fields, now());
-    if (patch.changed) {
-      await tx
-        .update(productRangeVariants)
-        .set({ translations: patch.translations })
-        .where(eq(productRangeVariants.id, input.id));
-    }
-    return patch.requeue;
-  });
-  const translation = await getCatalogProductRangeVariantTranslation({ db, id: input.id });
-  return { requeue, translation };
+  return { requeueKeys, translation };
 }
 
 const persistCatalogTranslationByKind: {
@@ -328,29 +308,6 @@ export async function persistCatalogTranslation<Kind extends CatalogTranslationK
   input: PersistCatalogTranslationInput<Kind>,
 ): Promise<PersistCatalogTranslationResult> {
   return persistCatalogTranslationByKind[input.kind](input);
-}
-
-export async function listCatalogTranslationKeys({ db }: { db: Db }): Promise<CatalogTranslationKey[]> {
-  const [productRows, rangeRows, variantRows] = await Promise.all([
-    db.select({ id: products.id }).from(products).where(notRemoved(products)).orderBy(asc(products.id)),
-    db
-      .select({ id: productRanges.id })
-      .from(productRanges)
-      .where(notRemoved(productRanges))
-      .orderBy(asc(productRanges.id)),
-    db
-      .select({ id: productRangeVariants.id })
-      .from(productRangeVariants)
-      .innerJoin(productRanges, eq(productRangeVariants.rangeId, productRanges.id))
-      .where(and(notRemoved(productRangeVariants), notRemoved(productRanges)))
-      .orderBy(asc(productRangeVariants.id)),
-  ]);
-
-  return [
-    ...productRows.map(({ id }) => catalogTranslationKey('product', id)),
-    ...rangeRows.map(({ id }) => catalogTranslationKey('range', id)),
-    ...variantRows.map(({ id }) => catalogTranslationKey('variant', id)),
-  ];
 }
 
 export async function getCatalogTranslationStatus({ db }: { db: Db }): Promise<CatalogTranslationStatus> {
@@ -378,34 +335,16 @@ export async function listCatalogTranslationsNeedingReview({
 }): Promise<CatalogTranslationNeedsReviewItem[]> {
   const sources = await loadAllCatalogTranslationSources(db);
   const items: CatalogTranslationNeedsReviewItem[] = [];
+  // Each kind carries its own affectedFields shape, so the item is built per kind rather than generically.
   for (const source of sources) {
     if (source.affectedFields.length === 0) continue;
-    switch (source.kind) {
-      case 'product':
-        items.push({
-          affectedFields: source.affectedFields,
-          id: source.id,
-          kind: source.kind,
-          name: source.canonical.name,
-        });
-        break;
-      case 'range':
-        items.push({
-          affectedFields: source.affectedFields,
-          id: source.id,
-          kind: source.kind,
-          name: source.canonical.name,
-        });
-        break;
-      case 'variant':
-        items.push({
-          affectedFields: source.affectedFields,
-          id: source.id,
-          kind: source.kind,
-          name: source.canonical.name,
-          rangeId: source.rangeId,
-        });
-        break;
+    const { affectedFields, canonical, id, kind } = source;
+    if (kind === 'variant') {
+      items.push({ affectedFields, id, kind, name: canonical.name, rangeId: source.rangeId });
+    } else if (kind === 'range') {
+      items.push({ affectedFields, id, kind, name: canonical.name });
+    } else {
+      items.push({ affectedFields, id, kind, name: canonical.name });
     }
   }
   return items;
@@ -420,6 +359,19 @@ export async function listCatalogTranslationKeysNeedingTranslation({
   return sources.filter((source) => catalogTranslationNeedsAi(source.state)).map((source) => source.key);
 }
 
+// Variants live behind their Range's soft delete, so every read of them joins and filters on both.
+function selectVariantTranslationRows(db: Db | DatabaseTransaction) {
+  return db
+    .select({
+      id: productRangeVariants.id,
+      name: productRangeVariants.name,
+      rangeId: productRangeVariants.rangeId,
+      translations: productRangeVariants.translations,
+    })
+    .from(productRangeVariants)
+    .innerJoin(productRanges, eq(productRangeVariants.rangeId, productRanges.id));
+}
+
 async function loadAllCatalogTranslationSources(db: Db): Promise<CatalogTranslationSource[]> {
   const [productRows, rangeRows, variantRows] = await Promise.all([
     db.query.products.findMany({
@@ -431,15 +383,7 @@ async function loadAllCatalogTranslationSources(db: Db): Promise<CatalogTranslat
       orderBy: [asc(productRanges.id)],
       where: notRemoved(productRanges),
     }),
-    db
-      .select({
-        id: productRangeVariants.id,
-        name: productRangeVariants.name,
-        rangeId: productRangeVariants.rangeId,
-        translations: productRangeVariants.translations,
-      })
-      .from(productRangeVariants)
-      .innerJoin(productRanges, eq(productRangeVariants.rangeId, productRanges.id))
+    selectVariantTranslationRows(db)
       .where(and(notRemoved(productRangeVariants), notRemoved(productRanges)))
       .orderBy(asc(productRangeVariants.id)),
   ]);
@@ -466,7 +410,7 @@ function toProductTranslationSource(row: ProductSourceRow): ProductTranslationSo
   const assemblies = row.assemblies.map(({ id: assemblyId, name }) => ({ id: assemblyId, name }));
   const canonical = { ...productCanonical, assemblies };
   const productSourceHashes = catalogSourceHashes(productCanonical);
-  const assemblySourceHashes = assemblies.map(({ id, name }) => ({ id, name: catalogSourceHashes({ name }).name }));
+  const assemblySourceHashes = assemblies.map(({ id, name }) => ({ id, name: catalogSourceHash(name) }));
   const productTranslation = row.translations[TRANSLATED_LOCALE];
   const productFields = (Object.keys(productSourceHashes) as Array<keyof TranslatableProductFields>).map((field) => ({
     field,
@@ -475,7 +419,7 @@ function toProductTranslationSource(row: ProductSourceRow): ProductTranslationSo
   const assemblyFields = row.assemblies.map((assembly) => ({
     name: assembly.name,
     state: catalogTranslationFieldState(
-      catalogSourceHashes({ name: assembly.name }).name,
+      catalogSourceHash(assembly.name),
       assembly.translations[TRANSLATED_LOCALE]?.name,
     ),
   }));
@@ -534,15 +478,7 @@ function toProductRangeTranslationSource(row: typeof productRanges.$inferSelect)
 }
 
 async function loadVariantSource(db: Db, id: string): Promise<ProductRangeVariantTranslationSource | null> {
-  const [row] = await db
-    .select({
-      id: productRangeVariants.id,
-      name: productRangeVariants.name,
-      rangeId: productRangeVariants.rangeId,
-      translations: productRangeVariants.translations,
-    })
-    .from(productRangeVariants)
-    .innerJoin(productRanges, eq(productRangeVariants.rangeId, productRanges.id))
+  const [row] = await selectVariantTranslationRows(db)
     .where(and(eq(productRangeVariants.id, id), notRemoved(productRangeVariants), notRemoved(productRanges)))
     .limit(1);
   if (!row) return null;
@@ -675,15 +611,7 @@ async function persistProductRangeVariantTranslation({
   translation,
 }: PersistCatalogTranslationInput<'variant'>): Promise<PersistCatalogTranslationResult> {
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        id: productRangeVariants.id,
-        name: productRangeVariants.name,
-        rangeId: productRangeVariants.rangeId,
-        translations: productRangeVariants.translations,
-      })
-      .from(productRangeVariants)
-      .innerJoin(productRanges, eq(productRangeVariants.rangeId, productRanges.id))
+    const [row] = await selectVariantTranslationRows(tx)
       .where(and(eq(productRangeVariants.id, source.id), notRemoved(productRangeVariants), notRemoved(productRanges)))
       .limit(1)
       .for('update');
@@ -780,7 +708,10 @@ function toCatalogProductTranslation(row: ProductSourceRow): CatalogProductTrans
   };
 }
 
-function toCatalogProductRangeTranslation(row: typeof productRanges.$inferSelect): CatalogProductRangeTranslation {
+function toCatalogProductRangeTranslation(
+  row: typeof productRanges.$inferSelect,
+  variantRows: ProductRangeVariantTranslationRow[],
+): CatalogProductRangeTranslation {
   const translation = row.translations[TRANSLATED_LOCALE];
   return {
     fields: {
@@ -788,17 +719,10 @@ function toCatalogProductRangeTranslation(row: typeof productRanges.$inferSelect
       name: toCatalogTranslationField(row.name, translation?.name),
     },
     id: row.id,
-  };
-}
-
-function toCatalogProductRangeVariantTranslation(
-  row: ProductRangeVariantTranslationRow,
-): CatalogProductRangeVariantTranslation {
-  return {
-    fields: {
-      name: toCatalogTranslationField(row.name, row.translations[TRANSLATED_LOCALE]?.name),
-    },
-    id: row.id,
+    variants: variantRows.map((variant) => ({
+      fields: { name: toCatalogTranslationField(variant.name, variant.translations[TRANSLATED_LOCALE]?.name) },
+      id: variant.id,
+    })),
   };
 }
 
@@ -808,7 +732,7 @@ function toCatalogTranslationField<Value>(
 ) {
   return {
     canonical,
-    state: catalogTranslationFieldState(catalogSourceHashes({ value: canonical }).value, translation),
+    state: catalogTranslationFieldState(catalogSourceHash(canonical), translation),
     ...(translation ? { translation } : {}),
   };
 }

@@ -150,7 +150,8 @@ describe('catalog translation overrides', () => {
       requiresVinNumber: product.requiresVinNumber,
       thumbnailDataUrl: product.thumbnailDataUrl,
     });
-    expect(marker.mark).not.toHaveBeenCalled();
+    // The English source changed, so the Product is marked — but a manual field is never AI-queued.
+    expect(marker.mark).toHaveBeenCalledWith(`product:${context.productId}`);
     const needsReview = await caller.catalogTranslations.getProduct({ id: context.productId });
     expect(needsReview.fields.description.state).toBe('needsReview');
 
@@ -173,7 +174,6 @@ describe('catalog translation overrides', () => {
     expect(reverted.fields.description).toMatchObject({ canonical: 'Updated English source.', state: 'missing' });
     expect(reverted.fields.description.translation).toBeUndefined();
     expect(marker.markNow).toHaveBeenCalledExactlyOnceWith(`product:${context.productId}`);
-    expect(marker.mark).not.toHaveBeenCalled();
   });
 
   test('gets and updates Range and Variant translation fields', async ({ context }) => {
@@ -191,26 +191,22 @@ describe('catalog translation overrides', () => {
     });
     await expect(caller.catalogTranslations.getRange({ id: context.rangeId })).resolves.toEqual(range);
 
-    const variant = await caller.catalogTranslations.updateVariant({
-      fields: { name: { isManual: true, value: 'My variant' } },
-      id: context.variantId,
+    const withVariant = await caller.catalogTranslations.updateRange({
+      id: context.rangeId,
+      variants: [{ fields: { name: { isManual: true, value: 'My variant' } }, id: context.variantId }],
     });
-    expect(variant.fields.name).toMatchObject({
+    expect(withVariant.variants[0]?.fields.name).toMatchObject({
       canonical: 'Heavy Duty',
       state: 'fresh',
       translation: { isManual: true, value: 'My variant' },
     });
-    await expect(caller.catalogTranslations.getVariant({ id: context.variantId })).resolves.toEqual(variant);
-    expect(marker.mark).not.toHaveBeenCalled();
+    await expect(caller.catalogTranslations.getRange({ id: context.rangeId })).resolves.toEqual(withVariant);
     expect(marker.markNow).not.toHaveBeenCalled();
 
     await caller.catalogTranslations.updateRange({
       fields: { name: { isManual: false } },
       id: context.rangeId,
-    });
-    await caller.catalogTranslations.updateVariant({
-      fields: { name: { isManual: false } },
-      id: context.variantId,
+      variants: [{ fields: { name: { isManual: false } }, id: context.variantId }],
     });
     expect(marker.markNow).toHaveBeenCalledWith(`product_range:${context.rangeId}`);
     expect(marker.markNow).toHaveBeenCalledWith(`product_range_variant:${context.variantId}`);
@@ -229,9 +225,9 @@ describe('catalog translation overrides', () => {
       code: 'FORBIDDEN',
     });
     await expect(
-      productEditor.catalogTranslations.updateVariant({
-        fields: { name: { isManual: true, value: 'My variant' } },
-        id: context.variantId,
+      productEditor.catalogTranslations.updateRange({
+        id: context.rangeId,
+        variants: [{ fields: { name: { isManual: true, value: 'My variant' } }, id: context.variantId }],
       }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
@@ -246,10 +242,6 @@ describe('catalog translation overrides', () => {
     });
     await expect(caller.catalogTranslations.getRange({ id: missingId })).rejects.toMatchObject({
       appCode: 'product_range.not_found',
-      code: 'NOT_FOUND',
-    });
-    await expect(caller.catalogTranslations.getVariant({ id: missingId })).rejects.toMatchObject({
-      appCode: 'product_range.variant_not_found',
       code: 'NOT_FOUND',
     });
   });

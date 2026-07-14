@@ -1,6 +1,7 @@
 import {
   type CatalogProductTranslation,
   type CatalogProductTranslationPatchInput,
+  type CatalogTranslationFieldState,
   TranslatableAssemblyFields,
   TranslatableProductFields,
   UUID,
@@ -32,13 +33,19 @@ export const ProductTranslationFormValuesSchema = z.object({
 });
 
 export type ProductTranslationFormValues = z.infer<typeof ProductTranslationFormValuesSchema>;
-
 export type ProductTranslationTarget = z.infer<typeof ProductTranslationTargetSchema>;
 
-export type ProductTranslationManualFields = {
-  assemblies: Record<UUID, boolean>;
-  fields: Record<keyof ProductTranslationFormValues['fields'], boolean>;
-};
+type ProductTranslationField = keyof ProductTranslationFormValues['fields'];
+type ProductFieldPatches = NonNullable<CatalogProductTranslationPatchInput['fields']>;
+
+const PRODUCT_TRANSLATION_FIELDS = [
+  'name',
+  'nameHighlight',
+  'category',
+  'description',
+  'keyFeatures',
+  'technicalDetails',
+] as const satisfies readonly ProductTranslationField[];
 
 export function toProductTranslationFormValues(translation: CatalogProductTranslation): ProductTranslationFormValues {
   return {
@@ -63,22 +70,18 @@ export function toProductTranslationFormValues(translation: CatalogProductTransl
   };
 }
 
-export function getProductTranslationManualFields(
+export function isProductTranslationTargetManual(
   translation: CatalogProductTranslation,
-): ProductTranslationManualFields {
-  return {
-    assemblies: Object.fromEntries(
-      translation.assemblies.map((assembly) => [assembly.id, assembly.fields.name.translation?.isManual === true]),
-    ),
-    fields: {
-      category: translation.fields.category.translation?.isManual === true,
-      description: translation.fields.description.translation?.isManual === true,
-      keyFeatures: translation.fields.keyFeatures.translation?.isManual === true,
-      name: translation.fields.name.translation?.isManual === true,
-      nameHighlight: translation.fields.nameHighlight.translation?.isManual === true,
-      technicalDetails: translation.fields.technicalDetails.translation?.isManual === true,
-    },
-  };
+  target: ProductTranslationTarget,
+): boolean {
+  return getTargetField(translation, target)?.translation?.isManual === true;
+}
+
+export function getProductTranslationTargetState(
+  translation: CatalogProductTranslation,
+  target: ProductTranslationTarget,
+): CatalogTranslationFieldState | undefined {
+  return getTargetField(translation, target)?.state;
 }
 
 export function toProductTranslationPatch(
@@ -86,73 +89,23 @@ export function toProductTranslationPatch(
   initial: ProductTranslationFormValues,
   current: ProductTranslationFormValues,
 ): CatalogProductTranslationPatchInput {
-  const manual = getProductTranslationManualFields(translation);
-  const reviewedTarget = current.reviewedTarget;
-  const fields: NonNullable<CatalogProductTranslationPatchInput['fields']> = {};
-
-  addChangedManualProductField(
-    fields,
-    manual,
-    initial,
-    current,
-    'name',
-    current.fields.name,
-    shouldResaveProductField(translation, reviewedTarget, 'name'),
-  );
-  addChangedManualProductField(
-    fields,
-    manual,
-    initial,
-    current,
-    'nameHighlight',
-    emptyStringToNull(current.fields.nameHighlight),
-    shouldResaveProductField(translation, reviewedTarget, 'nameHighlight'),
-  );
-  addChangedManualProductField(
-    fields,
-    manual,
-    initial,
-    current,
-    'category',
-    emptyStringToNull(current.fields.category),
-    shouldResaveProductField(translation, reviewedTarget, 'category'),
-  );
-  addChangedManualProductField(
-    fields,
-    manual,
-    initial,
-    current,
-    'description',
-    emptyStringToNull(current.fields.description),
-    shouldResaveProductField(translation, reviewedTarget, 'description'),
-  );
-  addChangedManualProductField(
-    fields,
-    manual,
-    initial,
-    current,
-    'keyFeatures',
-    current.fields.keyFeatures,
-    shouldResaveProductField(translation, reviewedTarget, 'keyFeatures'),
-  );
-  addChangedManualProductField(
-    fields,
-    manual,
-    initial,
-    current,
-    'technicalDetails',
-    current.fields.technicalDetails,
-    shouldResaveProductField(translation, reviewedTarget, 'technicalDetails'),
-  );
+  const fields: ProductFieldPatches = {};
+  for (const field of PRODUCT_TRANSLATION_FIELDS) {
+    const target = { field, kind: 'product' } as const;
+    if (!isProductTranslationTargetManual(translation, target)) continue;
+    const changed = !valuesEqual(initial.fields[field], current.fields[field]);
+    if (!changed && !isReviewedTarget(translation, current.reviewedTarget, target)) continue;
+    Object.assign(fields, productFieldPatch(field, current.fields));
+  }
 
   const initialAssemblies = new Map(initial.assemblies.map((assembly) => [assembly.id, assembly.name]));
-  const assemblies = current.assemblies.flatMap((assembly) =>
-    manual.assemblies[assembly.id] &&
-    (initialAssemblies.get(assembly.id) !== assembly.name ||
-      shouldResaveAssembly(translation, reviewedTarget, assembly.id))
-      ? [{ fields: { name: { isManual: true as const, value: assembly.name } }, id: assembly.id }]
-      : [],
-  );
+  const assemblies = current.assemblies.flatMap((assembly) => {
+    const target = { assemblyId: assembly.id, kind: 'assembly' } as const;
+    if (!isProductTranslationTargetManual(translation, target)) return [];
+    const changed = initialAssemblies.get(assembly.id) !== assembly.name;
+    if (!changed && !isReviewedTarget(translation, current.reviewedTarget, target)) return [];
+    return [{ fields: { name: { isManual: true as const, value: assembly.name } }, id: assembly.id }];
+  });
 
   return {
     ...(assemblies.length > 0 ? { assemblies } : {}),
@@ -171,67 +124,62 @@ export function toProductTranslationTogglePatch(
     const value = values.assemblies.find((assembly) => assembly.id === target.assemblyId)?.name ?? '';
     return {
       assemblies: [
-        {
-          fields: { name: isManual ? { isManual: true, value } : { isManual: false } },
-          id: target.assemblyId,
-        },
+        { fields: { name: isManual ? { isManual: true, value } : { isManual: false } }, id: target.assemblyId },
       ],
       id: productId,
     };
   }
 
-  return {
-    fields: productFieldTogglePatch(target.field, values.fields[target.field], isManual),
-    id: productId,
-  };
-}
-
-function addChangedManualProductField<Field extends keyof ProductTranslationFormValues['fields']>(
-  fields: NonNullable<CatalogProductTranslationPatchInput['fields']>,
-  manual: ProductTranslationManualFields,
-  initial: ProductTranslationFormValues,
-  current: ProductTranslationFormValues,
-  field: Field,
-  value: ProductTranslationFormValues['fields'][Field] | null,
-  force: boolean,
-) {
-  if (!manual.fields[field] || (!force && valuesEqual(initial.fields[field], current.fields[field]))) return;
-
-  Object.assign(fields, { [field]: { isManual: true, value } });
-}
-
-function shouldResaveProductField(
-  translation: CatalogProductTranslation,
-  target: ProductTranslationTarget | undefined,
-  field: keyof ProductTranslationFormValues['fields'],
-): boolean {
-  return target?.kind === 'product' && target.field === field && translation.fields[field].state === 'needsReview';
-}
-
-function shouldResaveAssembly(
-  translation: CatalogProductTranslation,
-  target: ProductTranslationTarget | undefined,
-  assemblyId: UUID,
-): boolean {
-  return (
-    target?.kind === 'assembly' &&
-    target.assemblyId === assemblyId &&
-    translation.assemblies.find((assembly) => assembly.id === assemblyId)?.fields.name.state === 'needsReview'
+  const fields: ProductFieldPatches = {};
+  Object.assign(
+    fields,
+    isManual ? productFieldPatch(target.field, values.fields) : { [target.field]: { isManual: false } },
   );
+  return { fields, id: productId };
 }
 
-function productFieldTogglePatch(
-  field: keyof ProductTranslationFormValues['fields'],
-  value: ProductTranslationFormValues['fields'][keyof ProductTranslationFormValues['fields']],
-  isManual: boolean,
-): NonNullable<CatalogProductTranslationPatchInput['fields']> {
-  if (!isManual) return { [field]: { isManual: false } };
+// Nullable fields clear to null on an empty input; the rest pass their form value straight through. The
+// switch keeps each field's value type tied to its own patch shape without a cast.
+function productFieldPatch(
+  field: ProductTranslationField,
+  values: ProductTranslationFormValues['fields'],
+): ProductFieldPatches {
+  switch (field) {
+    case 'category':
+      return { category: { isManual: true, value: emptyStringToNull(values.category) } };
+    case 'description':
+      return { description: { isManual: true, value: emptyStringToNull(values.description) } };
+    case 'keyFeatures':
+      return { keyFeatures: { isManual: true, value: values.keyFeatures } };
+    case 'name':
+      return { name: { isManual: true, value: values.name } };
+    case 'nameHighlight':
+      return { nameHighlight: { isManual: true, value: emptyStringToNull(values.nameHighlight) } };
+    case 'technicalDetails':
+      return { technicalDetails: { isManual: true, value: values.technicalDetails } };
+  }
+}
 
-  const normalizedValue =
-    (field === 'nameHighlight' || field === 'category' || field === 'description') && value === '' ? null : value;
-  return { [field]: { isManual: true, value: normalizedValue } } as NonNullable<
-    CatalogProductTranslationPatchInput['fields']
-  >;
+function getTargetField(translation: CatalogProductTranslation, target: ProductTranslationTarget) {
+  return target.kind === 'product'
+    ? translation.fields[target.field]
+    : translation.assemblies.find((assembly) => assembly.id === target.assemblyId)?.fields.name;
+}
+
+// Re-saving a field the admin just looked at is what clears its needs-review flag, so an unchanged value
+// still has to reach the server.
+function isReviewedTarget(
+  translation: CatalogProductTranslation,
+  reviewed: ProductTranslationTarget | undefined,
+  target: ProductTranslationTarget,
+): boolean {
+  if (!reviewed) return false;
+  const isSameTarget =
+    reviewed.kind === 'product' && target.kind === 'product'
+      ? reviewed.field === target.field
+      : reviewed.kind === 'assembly' && target.kind === 'assembly' && reviewed.assemblyId === target.assemblyId;
+
+  return isSameTarget && getProductTranslationTargetState(translation, target) === 'needsReview';
 }
 
 function mirrorStringList(canonical: string[], translated: string[] | undefined): string[] {

@@ -18,7 +18,6 @@ export const af: Messages = {
     menuLabel: 'Kieslys',
   },
   language: {
-    label: 'Taal',
     names: { en: 'English', af: 'Afrikaans' },
     switchTo: (language) => `Skakel oor na ${language}`,
   },

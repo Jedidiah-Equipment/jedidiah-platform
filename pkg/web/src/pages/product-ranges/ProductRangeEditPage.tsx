@@ -14,6 +14,8 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductRangeForm } from './components/ProductRangeForm.js';
+import { ProductRangeTranslationsEditor } from './components/ProductRangeTranslationsEditor.js';
+import { ProductRangeTranslationsTabTrigger } from './components/ProductRangeTranslationsTabTrigger.js';
 import { ProductRangeVariantsEditor } from './components/ProductRangeVariantsEditor.js';
 import { ProductRangeEditTab } from './product-range-edit-tabs.js';
 
@@ -26,12 +28,12 @@ type ProductRangeEditPageProps = {
 export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ onTabChange, rangeId, tab }) => {
   const trpc = useTRPC();
   const canEdit = useCan('product_range:update').can;
-  const { invalidateProductRanges } = useQueryInvalidation();
+  const { invalidateCatalogTranslations, invalidateProductRanges } = useQueryInvalidation();
   const rangeQuery = useQuery(trpc.productRanges.get.queryOptions({ id: rangeId }));
   const updateMutation = useMutation(
     trpc.productRanges.update.mutationOptions({
       onSuccess: async () => {
-        await invalidateProductRanges();
+        await Promise.all([invalidateProductRanges(), invalidateCatalogTranslations()]);
       },
     }),
   );
@@ -50,6 +52,10 @@ export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ onTa
           <TabsList variant="default">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="variants">Variants</TabsTrigger>
+            <ProductRangeTranslationsTabTrigger
+              rangeId={rangeQuery.data.id}
+              variantIds={rangeQuery.data.variants.map((variant) => variant.id)}
+            />
           </TabsList>
           <TabsContent className="pt-4" value="details">
             <ProductRangeForm
@@ -67,6 +73,10 @@ export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ onTa
           <TabsContent className="pt-4" value="variants">
             <ProductRangeVariantsEditor canEdit={canEdit} range={rangeQuery.data} />
           </TabsContent>
+          <ProductRangeTranslationsEditor
+            rangeId={rangeQuery.data.id}
+            variantIds={rangeQuery.data.variants.map((variant) => variant.id)}
+          />
         </Tabs>
       ) : null}
     </PageLayout>

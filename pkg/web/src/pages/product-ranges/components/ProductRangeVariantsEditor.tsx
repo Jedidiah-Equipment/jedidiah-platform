@@ -25,7 +25,7 @@ type ProductRangeVariantsEditorProps = {
 export const ProductRangeVariantsEditor: React.FC<ProductRangeVariantsEditorProps> = ({ canEdit, range }) => {
   const trpc = useTRPC();
   const showMutationError = useApiMutationErrorToast();
-  const { invalidateProductRanges } = useQueryInvalidation();
+  const { invalidateCatalogTranslations, invalidateProductRanges } = useQueryInvalidation();
   const [newName, setNewName] = useState('');
   const [orderedVariants, setOrderedVariants] = useState<ProductRangeVariant[]>(range.variants);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -38,7 +38,7 @@ export const ProductRangeVariantsEditor: React.FC<ProductRangeVariantsEditorProp
     trpc.productRanges.createVariant.mutationOptions({
       onSuccess: async () => {
         setNewName('');
-        await invalidateProductRanges();
+        await Promise.all([invalidateProductRanges(), invalidateCatalogTranslations()]);
         toast.success('Variant added');
       },
       onError: (error) => showMutationError(error, 'Unable to add Variant.'),
@@ -46,14 +46,14 @@ export const ProductRangeVariantsEditor: React.FC<ProductRangeVariantsEditorProp
   );
   const updateMutation = useMutation(
     trpc.productRanges.updateVariant.mutationOptions({
-      onSuccess: () => invalidateProductRanges(),
+      onSuccess: () => Promise.all([invalidateProductRanges(), invalidateCatalogTranslations()]),
       onError: (error) => showMutationError(error, 'Unable to rename Variant.'),
     }),
   );
   const removeMutation = useMutation(
     trpc.productRanges.removeVariant.mutationOptions({
       onSuccess: async () => {
-        await invalidateProductRanges();
+        await Promise.all([invalidateProductRanges(), invalidateCatalogTranslations()]);
         toast.success('Variant removed');
       },
       onError: (error) => showMutationError(error, 'Unable to remove Variant.'),

@@ -12,6 +12,10 @@ describe('catalog edit tab search params', () => {
     expect(ProductRangeEditSearch.parse({ tab: 'variants' })).toEqual({ tab: 'variants' });
   });
 
+  it('deep-links to Product Range translations', () => {
+    expect(ProductRangeEditSearch.parse({ tab: 'translations' })).toEqual({ tab: 'translations' });
+  });
+
   it.each([
     ['Product', ProductEditSearch],
     ['Product Range', ProductRangeEditSearch],

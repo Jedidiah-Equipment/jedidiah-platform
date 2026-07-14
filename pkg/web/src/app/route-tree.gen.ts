@@ -27,6 +27,7 @@ import { Route as AuthedJobsRouteImport } from './../routes/_authed.jobs'
 import { Route as AuthedFeedbackRouteImport } from './../routes/_authed.feedback'
 import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboard'
 import { Route as AuthedCustomersRouteImport } from './../routes/_authed.customers'
+import { Route as AuthedCatalogTranslationsRouteImport } from './../routes/_authed.catalog-translations'
 import { Route as AuthedBaysRouteImport } from './../routes/_authed.bays'
 import { Route as AuthedAuditRouteImport } from './../routes/_authed.audit'
 import { Route as AuthedSuppliersIndexRouteImport } from './../routes/_authed.suppliers.index'
@@ -134,6 +135,12 @@ const AuthedCustomersRoute = AuthedCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedCatalogTranslationsRoute =
+  AuthedCatalogTranslationsRouteImport.update({
+    id: '/catalog-translations',
+    path: '/catalog-translations',
+    getParentRoute: () => AuthedRoute,
+  } as any)
 const AuthedBaysRoute = AuthedBaysRouteImport.update({
   id: '/bays',
   path: '/bays',
@@ -232,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof VerifyEmailRoute
   '/audit': typeof AuthedAuditRoute
   '/bays': typeof AuthedBaysRoute
+  '/catalog-translations': typeof AuthedCatalogTranslationsRoute
   '/customers': typeof AuthedCustomersRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
   '/feedback': typeof AuthedFeedbackRoute
@@ -268,6 +276,7 @@ export interface FileRoutesByTo {
   '/verify-email': typeof VerifyEmailRoute
   '/audit': typeof AuthedAuditRoute
   '/bays': typeof AuthedBaysRoute
+  '/catalog-translations': typeof AuthedCatalogTranslationsRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/feedback': typeof AuthedFeedbackRoute
   '/parts': typeof AuthedPartsRoute
@@ -300,6 +309,7 @@ export interface FileRoutesById {
   '/verify-email': typeof VerifyEmailRoute
   '/_authed/audit': typeof AuthedAuditRoute
   '/_authed/bays': typeof AuthedBaysRoute
+  '/_authed/catalog-translations': typeof AuthedCatalogTranslationsRoute
   '/_authed/customers': typeof AuthedCustomersRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/feedback': typeof AuthedFeedbackRoute
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/audit'
     | '/bays'
+    | '/catalog-translations'
     | '/customers'
     | '/dashboard'
     | '/feedback'
@@ -374,6 +385,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/audit'
     | '/bays'
+    | '/catalog-translations'
     | '/dashboard'
     | '/feedback'
     | '/parts'
@@ -405,6 +417,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/_authed/audit'
     | '/_authed/bays'
+    | '/_authed/catalog-translations'
     | '/_authed/customers'
     | '/_authed/dashboard'
     | '/_authed/feedback'
@@ -569,6 +582,13 @@ declare module '@tanstack/react-router' {
       path: '/customers'
       fullPath: '/customers'
       preLoaderRoute: typeof AuthedCustomersRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/catalog-translations': {
+      id: '/_authed/catalog-translations'
+      path: '/catalog-translations'
+      fullPath: '/catalog-translations'
+      preLoaderRoute: typeof AuthedCatalogTranslationsRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/bays': {
@@ -785,6 +805,7 @@ const AuthedSuppliersRouteWithChildren = AuthedSuppliersRoute._addFileChildren(
 interface AuthedRouteChildren {
   AuthedAuditRoute: typeof AuthedAuditRoute
   AuthedBaysRoute: typeof AuthedBaysRoute
+  AuthedCatalogTranslationsRoute: typeof AuthedCatalogTranslationsRoute
   AuthedCustomersRoute: typeof AuthedCustomersRouteWithChildren
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedFeedbackRoute: typeof AuthedFeedbackRoute
@@ -800,6 +821,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAuditRoute: AuthedAuditRoute,
   AuthedBaysRoute: AuthedBaysRoute,
+  AuthedCatalogTranslationsRoute: AuthedCatalogTranslationsRoute,
   AuthedCustomersRoute: AuthedCustomersRouteWithChildren,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedFeedbackRoute: AuthedFeedbackRoute,

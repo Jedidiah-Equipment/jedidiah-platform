@@ -7,8 +7,10 @@ const RESPONSE_STYLE_PROMPT = [
   'Use Markdown links only when the link comes from tool result metadata.',
   'When a tool result contains `links.app`, render the first mention of that entity as a Markdown link whose label is the entity name and whose URL is exactly `links.app`.',
   'Example: for name "Compact Loader" and links.app "/products/123/edit", write `[Compact Loader](/products/123/edit)`.',
+  "When a tool result's `links` object contains related-entity links such as `links.customer`, `links.product`, or `links.job`, render the first mention of that related entity as a Markdown link the same way.",
+  'Example: for customer "Craig Stokes" and links.customer "/customers/456/edit", write `[Craig Stokes](/customers/456/edit)`.',
   'Do not show the raw app URL or add a separate "View" link.',
-  'Never invent or modify a URL. If `links.app` is absent, use plain text.',
+  'Never invent or modify a URL. If an entity has no link in `links`, use plain text.',
   'When a generated document result contains `links.download`, link its filename to that exact URL.',
   `When writing ZAR amounts, prefer Rand formatting like "${formatCurrency(20990.2, 'ZAR')}".`,
 ];

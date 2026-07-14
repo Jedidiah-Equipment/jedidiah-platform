@@ -142,13 +142,12 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
   const initialValues = useMemo(() => toProductTranslationFormValues(translation), [translation]);
   const manual = getProductTranslationManualFields(translation);
   const syncedTranslationRef = useRef(translation);
-  const reviewedTargetRef = useRef<ProductTranslationTarget | undefined>(undefined);
   const [pendingRevert, setPendingRevert] = useState<ProductTranslationTarget | null>(null);
   const { autosave, form, formProps } = useAutosaveForm({
     defaultValues: initialValues,
     failureMessage: 'Unable to save the Afrikaans translation.',
     save: onSave,
-    toInput: (values) => toProductTranslationPatch(translation, initialValues, values, reviewedTargetRef.current),
+    toInput: (values) => toProductTranslationPatch(translation, initialValues, values),
     validator: ProductTranslationFormValuesSchema,
   });
 
@@ -170,15 +169,22 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
     if (didSave && !isManual) setPendingRevert(null);
   };
 
-  const fieldControlProps = (target: ProductTranslationTarget) => ({
-    isManual: target.kind === 'product' ? manual.fields[target.field] : (manual.assemblies[target.assemblyId] ?? false),
-    isPending: isTogglePending,
-    onEnable: () => toggle(target, true),
-    onInteract: () => {
-      reviewedTargetRef.current = target;
-    },
-    onRequestRevert: () => toggle(target, false),
-  });
+  const fieldControlProps = (target: ProductTranslationTarget) => {
+    const isManual =
+      target.kind === 'product' ? manual.fields[target.field] : (manual.assemblies[target.assemblyId] ?? false);
+
+    return {
+      isManual,
+      isPending: isTogglePending,
+      onEnable: () => toggle(target, true),
+      onInteract: () => {
+        if (isManual && getTargetState(translation, target) === 'needsReview') {
+          form.setFieldValue('reviewedTarget', target);
+        }
+      },
+      onRequestRevert: () => toggle(target, false),
+    };
+  };
 
   const toggle = (target: ProductTranslationTarget, isManual: boolean) => {
     if (!isManual) {

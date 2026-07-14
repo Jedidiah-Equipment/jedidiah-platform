@@ -9,6 +9,14 @@ import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
+const ProductTranslationTargetSchema = z.discriminatedUnion('kind', [
+  z.object({
+    field: z.enum(['category', 'description', 'keyFeatures', 'name', 'nameHighlight', 'technicalDetails']),
+    kind: z.literal('product'),
+  }),
+  z.object({ assemblyId: UUID, kind: z.literal('assembly') }),
+]);
+
 export const ProductTranslationFormValuesSchema = z.object({
   assemblies: z.array(z.object({ id: UUID, name: TranslatableAssemblyFields.shape.name })),
   fields: z.object({
@@ -19,13 +27,13 @@ export const ProductTranslationFormValuesSchema = z.object({
     nameHighlight: emptyStringOr(TranslatableProductFields.shape.nameHighlight),
     technicalDetails: TranslatableProductFields.shape.technicalDetails,
   }),
+  // Review intent belongs in the snapshot so unchanged values still trigger autosave.
+  reviewedTarget: ProductTranslationTargetSchema.optional(),
 });
 
 export type ProductTranslationFormValues = z.infer<typeof ProductTranslationFormValuesSchema>;
 
-export type ProductTranslationTarget =
-  | { field: keyof ProductTranslationFormValues['fields']; kind: 'product' }
-  | { assemblyId: UUID; kind: 'assembly' };
+export type ProductTranslationTarget = z.infer<typeof ProductTranslationTargetSchema>;
 
 export type ProductTranslationManualFields = {
   assemblies: Record<UUID, boolean>;
@@ -77,9 +85,9 @@ export function toProductTranslationPatch(
   translation: CatalogProductTranslation,
   initial: ProductTranslationFormValues,
   current: ProductTranslationFormValues,
-  reviewedTarget?: ProductTranslationTarget,
 ): CatalogProductTranslationPatchInput {
   const manual = getProductTranslationManualFields(translation);
+  const reviewedTarget = current.reviewedTarget;
   const fields: NonNullable<CatalogProductTranslationPatchInput['fields']> = {};
 
   addChangedManualProductField(

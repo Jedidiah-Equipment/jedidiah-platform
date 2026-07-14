@@ -83,13 +83,12 @@ describe('Product translation form mapping', () => {
 
   it('re-saves only the reviewed manual field when its value is unchanged', () => {
     const values = toProductTranslationFormValues(productTranslation);
+    const reviewedValues = {
+      ...values,
+      reviewedTarget: { field: 'description', kind: 'product' } as const,
+    };
 
-    expect(
-      toProductTranslationPatch(productTranslation, values, values, {
-        field: 'description',
-        kind: 'product',
-      }),
-    ).toEqual({
+    expect(toProductTranslationPatch(productTranslation, values, reviewedValues)).toEqual({
       fields: { description: { isManual: true, value: 'Gebou vir die oes.' } },
       id: productTranslation.id,
     });

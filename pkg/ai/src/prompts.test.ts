@@ -10,7 +10,15 @@ describe('system prompt', () => {
     expect(prompt).toContain('[Compact Loader](/products/123/edit)');
     expect(prompt).toContain('Do not show the raw app URL');
     expect(prompt).toContain('Never invent or modify a URL');
-    expect(prompt).toContain('If `links.app` is absent, use plain text');
+    expect(prompt).toContain('If an entity has no link in `links`, use plain text');
+  });
+
+  test('renders related-entity names using relationship links', () => {
+    const prompt = createSystemPrompt();
+
+    expect(prompt).toContain('`links.customer`, `links.product`, or `links.job`');
+    expect(prompt).toContain('first mention of that related entity as a Markdown link');
+    expect(prompt).toContain('[Craig Stokes](/customers/456/edit)');
   });
 
   test('separates email drafting, document generation, and explicit delivery', () => {

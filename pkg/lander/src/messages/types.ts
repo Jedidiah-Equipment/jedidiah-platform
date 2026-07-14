@@ -22,7 +22,6 @@ export type Messages = {
     menuLabel: string;
   };
   language: {
-    label: string;
     names: Record<Locale, string>;
     switchTo: (language: string) => string;
   };

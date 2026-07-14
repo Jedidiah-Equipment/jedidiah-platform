@@ -18,7 +18,6 @@ export const en: Messages = {
     menuLabel: 'Menu',
   },
   language: {
-    label: 'Language',
     names: { en: 'English', af: 'Afrikaans' },
     switchTo: (language) => `Switch to ${language}`,
   },

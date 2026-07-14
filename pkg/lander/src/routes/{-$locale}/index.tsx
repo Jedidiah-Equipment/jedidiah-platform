@@ -38,7 +38,7 @@ function Hero() {
       </div>
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,15,15,0.94)_0%,rgba(15,15,15,0.82)_32%,rgba(15,15,15,0.35)_60%,rgba(15,15,15,0.15)_100%)]" />
       <div className="relative mx-auto max-w-[1320px] px-12 pt-24 max-nav:px-5 max-nav:pt-12">
-        <div className="max-w-[620px]">
+        <div className="max-w-[660px]">
           <div className="mb-6 flex items-center gap-3.5">
             <span className="h-1 w-[42px] bg-yellow" />
             <span className="font-display text-[16px] font-semibold uppercase tracking-[3px] text-yellow">

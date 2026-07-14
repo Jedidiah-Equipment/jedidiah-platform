@@ -1,12 +1,11 @@
 import { contactNumberE164, formatContactNumber, JEDIDIAH_LOCATION } from '@pkg/domain';
 import logoUrl from '@pkg/domain/assets/brand/jedidiah-logo.png';
-import { IconMapPin, IconMenu2, IconPhone, IconX } from '@tabler/icons-react';
+import { IconMapPin, IconMenu2, IconPhone, IconSwitchHorizontal, IconX } from '@tabler/icons-react';
 import { Link, useMatch, useMatchRoute, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
-import { LOCALES } from '../lib/locale.js';
+import { CANONICAL_LOCALE } from '../lib/locale.js';
 import { localePreferenceHref } from '../lib/locale-preference.js';
 import { useLocale, useMessages } from '../messages/index.js';
-import { DropdownMenu } from './dropdown-menu.js';
 
 // Match Home by its index route id: matching the optional-locale path itself also matches its parent layout
 // on every localized page. Section links stay lit on their child pages (fuzzy).
@@ -35,35 +34,25 @@ function Logo({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
-function LanguageSelect({ className, currentHref }: { className: string; currentHref: string }) {
+function LanguageToggle({ className = '', currentHref }: { className?: string; currentHref: string }) {
   const m = useMessages();
   const locale = useLocale();
-  const [open, setOpen] = useState(false);
+  const targetLocale = locale === CANONICAL_LOCALE ? 'af' : CANONICAL_LOCALE;
+  const label = m.language.switchTo(m.language.names[targetLocale]);
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-      label={<span>{m.language.names[locale]}</span>}
-      ariaLabel={m.language.label}
-      triggerClassName={`${className} flex w-full items-center justify-between gap-3 transition-colors hover:border-[#777] hover:text-white`}
-      panelClassName="min-w-full border border-[#4a4a4a] bg-[#1b1b1b] p-2 shadow-[0_12px_30px_rgba(0,0,0,0.35)]"
+    <a
+      href={localePreferenceHref(currentHref, targetLocale)}
+      className={`${className} group flex h-11 flex-none items-center gap-2 whitespace-nowrap font-body font-semibold text-[#e8e8e8] no-underline transition-colors hover:text-white`}
     >
-      {LOCALES.map((optionLocale) => (
-        <a
-          key={optionLocale}
-          href={localePreferenceHref(currentHref, optionLocale)}
-          role="menuitemradio"
-          aria-checked={optionLocale === locale}
-          onClick={() => setOpen(false)}
-          className={`w-full px-3 py-2.5 text-left font-body text-[14px] font-semibold no-underline transition-colors ${
-            optionLocale === locale ? 'bg-yellow text-ink' : 'text-[#e8e8e8] hover:bg-[#2a2a2a] hover:text-white'
-          }`}
-        >
-          {m.language.names[optionLocale]}
-        </a>
-      ))}
-    </DropdownMenu>
+      <IconSwitchHorizontal
+        className="text-yellow transition-colors group-hover:text-white"
+        size={17}
+        stroke={2.2}
+        aria-hidden="true"
+      />
+      <span>{label}</span>
+    </a>
   );
 }
 
@@ -100,10 +89,7 @@ export function Nav() {
         </nav>
 
         <div className="flex flex-none items-center gap-7 max-header:hidden">
-          <LanguageSelect
-            currentHref={currentHref}
-            className="min-w-[132px] border border-[#4a4a4a] bg-ink px-3 py-2 font-body text-[14px] font-semibold text-[#e8e8e8]"
-          />
+          <LanguageToggle currentHref={currentHref} className="text-[14px]" />
           <a href={`tel:${contactNumberE164()}`} className="flex items-center gap-[9px] no-underline">
             <PhoneIcon />
             <span className="font-body text-[15px] font-semibold text-[#e8e8e8]">{formatContactNumber()}</span>
@@ -147,10 +133,7 @@ export function Nav() {
                 </Link>
               );
             })}
-            <LanguageSelect
-              currentHref={currentHref}
-              className="mt-4 border border-[#4a4a4a] bg-[#1b1b1b] px-3 py-3 font-body text-[16px] font-semibold text-[#e8e8e8]"
-            />
+            <LanguageToggle currentHref={currentHref} className="mt-4 self-center text-[16px]" />
             <div className="flex flex-col gap-[14px] pt-[18px]">
               <a href={`tel:${contactNumberE164()}`} className="flex items-center gap-[11px] no-underline">
                 <PhoneIcon />

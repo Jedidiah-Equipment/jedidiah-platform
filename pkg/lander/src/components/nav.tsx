@@ -1,15 +1,15 @@
 import { contactNumberE164, formatContactNumber, JEDIDIAH_LOCATION } from '@pkg/domain';
 import logoUrl from '@pkg/domain/assets/brand/jedidiah-logo.png';
 import { IconMapPin, IconMenu2, IconPhone, IconX } from '@tabler/icons-react';
-import { Link, useMatchRoute, useRouterState } from '@tanstack/react-router';
+import { Link, useMatch, useMatchRoute, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
 import { LOCALES } from '../lib/locale.js';
 import { localePreferenceHref } from '../lib/locale-preference.js';
 import { useLocale, useMessages } from '../messages/index.js';
 import { DropdownMenu } from './dropdown-menu.js';
 
-// Home is the locale tree's index route, so only an exact match may highlight it; the section links stay
-// lit on their child pages (fuzzy).
+// Match Home by its index route id: matching the optional-locale path itself also matches its parent layout
+// on every localized page. Section links stay lit on their child pages (fuzzy).
 const LINKS = [
   { key: 'home', to: '/{-$locale}', fuzzy: false },
   { key: 'about', to: '/{-$locale}/about', fuzzy: true },
@@ -70,8 +70,11 @@ function LanguageSelect({ className, currentHref }: { className: string; current
 export function Nav() {
   const m = useMessages();
   const [open, setOpen] = useState(false);
+  const homeMatch = useMatch({ from: '/{-$locale}/', shouldThrow: false });
   const matchRoute = useMatchRoute();
   const currentHref = useRouterState({ select: (state) => state.location.href });
+  const isLinkActive = (link: (typeof LINKS)[number]) =>
+    link.key === 'home' ? Boolean(homeMatch) : Boolean(matchRoute({ to: link.to, fuzzy: link.fuzzy }));
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#2a2a2a] bg-ink">
@@ -80,7 +83,7 @@ export function Nav() {
 
         <nav className="flex flex-none items-center gap-10 max-header:hidden">
           {LINKS.map((link) => {
-            const active = Boolean(matchRoute({ to: link.to, fuzzy: link.fuzzy }));
+            const active = isLinkActive(link);
             return (
               <Link
                 key={link.to}
@@ -130,7 +133,7 @@ export function Nav() {
         <div className="border-t border-[#2a2a2a] bg-[#1b1b1b] header:hidden">
           <nav className="flex flex-col px-5 pt-2 pb-[18px]">
             {LINKS.map((link) => {
-              const active = Boolean(matchRoute({ to: link.to, fuzzy: link.fuzzy }));
+              const active = isLinkActive(link);
               return (
                 <Link
                   key={link.to}

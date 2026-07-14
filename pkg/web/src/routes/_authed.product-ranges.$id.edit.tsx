@@ -2,6 +2,7 @@ import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 
 import { ProductRangeEditPage } from '@/pages/product-ranges/ProductRangeEditPage.js';
+import { ProductRangeEditSearch } from '@/pages/product-ranges/product-range-edit-tabs.js';
 
 export const Route = createFileRoute('/_authed/product-ranges/$id/edit')({
   params: {
@@ -12,6 +13,7 @@ export const Route = createFileRoute('/_authed/product-ranges/$id/edit')({
       id: params.id,
     }),
   },
+  validateSearch: ProductRangeEditSearch,
   staticData: {
     pageLabel: 'Product Ranges',
   },
@@ -20,6 +22,14 @@ export const Route = createFileRoute('/_authed/product-ranges/$id/edit')({
 
 function ProductRangeEditRoute() {
   const { id } = Route.useParams();
+  const { tab } = Route.useSearch();
+  const navigate = Route.useNavigate();
 
-  return <ProductRangeEditPage rangeId={id} />;
+  return (
+    <ProductRangeEditPage
+      onTabChange={(nextTab) => void navigate({ search: { tab: nextTab } })}
+      rangeId={id}
+      tab={tab}
+    />
+  );
 }

@@ -2,7 +2,7 @@ import type { Product, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { AuditTable, useProductAuditTableStore } from '@/components/audit/AuditTable.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -21,13 +21,16 @@ import { ProductDocumentsSection } from './components/ProductDocumentsSection.js
 import { ProductDocumentsTabTrigger } from './components/ProductDocumentsTabTrigger.js';
 import { ProductForm } from './components/ProductForm.js';
 import { ProductImagesSection } from './components/ProductImagesSection.js';
-import { isProductFullyReady, ProductReadinessAside, type ProductTab } from './components/ProductReadinessAside.js';
+import { isProductFullyReady, ProductReadinessAside } from './components/ProductReadinessAside.js';
+import { ProductEditTab, resolveProductEditTab } from './product-edit-tabs.js';
 
 type ProductEditPageProps = {
+  onTabChange: (tab: ProductEditTab) => void;
   productId: UUID;
+  tab: ProductEditTab;
 };
 
-export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) => {
+export const ProductEditPage: React.FC<ProductEditPageProps> = ({ onTabChange, productId, tab }) => {
   const trpc = useTRPC();
   const { invalidateProducts } = useQueryInvalidation();
 
@@ -56,7 +59,9 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
       {productQuery.data ? (
         <ProductEditTabs
           onProductSave={(value) => updateProductMutation.mutateAsync(value)}
+          onTabChange={onTabChange}
           product={productQuery.data}
+          tab={tab}
         />
       ) : null}
     </PageLayout>
@@ -65,10 +70,12 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
 
 type ProductEditTabsProps = {
   onProductSave: React.ComponentProps<typeof ProductForm>['onSave'];
+  onTabChange: (tab: ProductEditTab) => void;
   product: Product;
+  tab: ProductEditTab;
 };
 
-const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, product }) => {
+const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabChange, product, tab }) => {
   const auditAccess = useCan('audit:read');
   const canRemoveProduct = useCan('product:update').can;
   const productAuditFilters = useMemo(
@@ -79,15 +86,19 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, produc
     [product.id],
   );
 
-  // Tabs are controlled so the readiness aside can jump to the tab that owns a missing field. The aside
-  // stays mounted (and reserves its grid column) until the Product is fully ready, then the tabs reclaim the
-  // full width.
-  const [tab, setTab] = useState<ProductTab>('details');
+  // The URL-controlled tabs let readiness links remain shareable while the aside stays mounted until the
+  // Product is fully ready, then the tabs reclaim the full width.
   const showAside = !isProductFullyReady(product);
+  const activeTab = resolveProductEditTab(tab, auditAccess.can);
 
   return (
     <div className={cn('grid gap-4', showAside && 'xl:grid-cols-[minmax(0,1fr)_22rem]')}>
-      <Tabs className="w-full" onValueChange={(value) => setTab(value as ProductTab)} size="sm" value={tab}>
+      <Tabs
+        className="w-full"
+        onValueChange={(value) => onTabChange(ProductEditTab.parse(value))}
+        size="sm"
+        value={activeTab}
+      >
         <TabsList variant="default">
           <TabsTrigger value="details">Details</TabsTrigger>
           <ProductBaysTabTrigger productId={product.id} />
@@ -127,7 +138,7 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, produc
       </Tabs>
       {showAside ? (
         <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-          <ProductReadinessAside onNavigate={setTab} product={product} />
+          <ProductReadinessAside onNavigate={onTabChange} product={product} />
         </aside>
       ) : null}
     </div>

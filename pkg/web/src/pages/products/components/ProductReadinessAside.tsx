@@ -15,6 +15,7 @@ import { IconCircleCheck, IconCircleDashed, IconFileText, IconWorld } from '@tab
 import type React from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { cn } from '@/lib/utils.js';
+import type { ProductEditTab } from '../product-edit-tabs.js';
 
 // Surface accent shared with the form's FieldUsageLabel icons: the Lander is a purple globe, the Brochure a
 // blue file, so the readiness box reads as the same surface a field row is tagged for.
@@ -24,10 +25,6 @@ const SURFACE_ACCENT = {
 } as const;
 
 type ReadinessSurface = keyof typeof SURFACE_ACCENT;
-
-// The Product edit tabs a readiness row can jump to. Only details/images/assemblies own required fields, but
-// the full union keeps the navigate callback aligned with the tab values owned by ProductEditPage.
-export type ProductTab = 'details' | 'bays' | 'assemblies' | 'images' | 'documents' | 'audit';
 
 const BROCHURE_FIELD_LABELS: Record<BrochureRequiredField, string> = {
   category: 'Category',
@@ -39,7 +36,7 @@ const BROCHURE_FIELD_LABELS: Record<BrochureRequiredField, string> = {
   assemblies: 'At least one assembly',
 };
 
-const BROCHURE_FIELD_TABS: Record<BrochureRequiredField, ProductTab> = {
+const BROCHURE_FIELD_TABS: Record<BrochureRequiredField, ProductEditTab> = {
   category: 'details',
   keyFeatures: 'details',
   primary: 'images',
@@ -60,7 +57,7 @@ const LANDER_FIELD_LABELS: Record<LanderRequiredField, string> = {
   standardAssembly: 'At least one standard assembly',
 };
 
-const LANDER_FIELD_TABS: Record<LanderRequiredField, ProductTab> = {
+const LANDER_FIELD_TABS: Record<LanderRequiredField, ProductEditTab> = {
   category: 'details',
   keyFeatures: 'details',
   technicalDetails: 'details',
@@ -75,7 +72,7 @@ type ReadinessRow = {
   key: string;
   label: string;
   satisfied: boolean;
-  tab: ProductTab;
+  tab: ProductEditTab;
 };
 
 // Builds a box's checklist: the publish toggle as the first row, then each required field in vocabulary
@@ -86,7 +83,7 @@ function buildRows<F extends string>(options: {
   fields: readonly F[];
   missing: readonly F[];
   labels: Record<F, string>;
-  tabs: Record<F, ProductTab>;
+  tabs: Record<F, ProductEditTab>;
 }): ReadinessRow[] {
   const missing = new Set<F>(options.missing);
 
@@ -107,7 +104,7 @@ export function isProductFullyReady(product: Product): boolean {
 }
 
 type ProductReadinessAsideProps = {
-  onNavigate: (tab: ProductTab) => void;
+  onNavigate: (tab: ProductEditTab) => void;
   product: Product;
 };
 
@@ -155,7 +152,7 @@ export const ProductReadinessAside: React.FC<ProductReadinessAsideProps> = ({ on
 };
 
 type ReadinessBoxProps = {
-  onNavigate: (tab: ProductTab) => void;
+  onNavigate: (tab: ProductEditTab) => void;
   rows: ReadinessRow[];
   surface: ReadinessSurface;
   title: string;

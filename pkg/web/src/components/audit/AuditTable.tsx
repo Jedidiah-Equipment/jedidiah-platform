@@ -62,7 +62,7 @@ const auditActionColorClassNames = {
 } as const satisfies Record<AuditEvent['action'], string>;
 
 const auditChangesRawJsonClassName =
-  'max-h-52 overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-xs whitespace-pre-wrap text-muted-foreground';
+  'max-h-52 max-w-full overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-xs whitespace-pre-wrap wrap-anywhere text-muted-foreground';
 
 const auditEntityTypeOptions = AuditEntityType.options.map((entityType) => ({
   label: auditEntityTypeLabels[entityType],
@@ -301,17 +301,14 @@ const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes }) => {
     );
   }
 
-  const displays = getAuditChangeDisplays(changes);
-
-  return <AuditChangesDetails changes={changes} displays={displays} />;
+  return <AuditChangesDetails changes={changes} />;
 };
 
 type AuditChangesDetailsProps = {
   changes: NonNullable<AuditEventRow['changes']>;
-  displays: ReturnType<typeof getAuditChangeDisplays>;
 };
 
-const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, displays }) => (
+const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes }) => (
   <Dialog>
     <Tooltip>
       <TooltipTrigger
@@ -326,36 +323,56 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, disp
         <DialogTitle>Change details</DialogTitle>
       </DialogHeader>
 
-      <ScrollArea className="max-h-[calc(100vh-8rem)] min-h-0">
-        <div className="space-y-3 pr-3">
-          <div className="overflow-hidden rounded-md border">
-            <div className="grid grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)] border-b bg-muted/40 text-xs font-medium text-muted-foreground">
-              <div className="px-2 py-1.5">Field</div>
-              <div className="px-2 py-1.5">From</div>
-              <div className="px-2 py-1.5">To</div>
-            </div>
-            {displays.map((display) => (
-              <div
-                className="grid grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)] border-b text-xs last:border-b-0"
-                key={display.key}
-              >
-                <div className="px-2 py-1.5 font-medium text-foreground">{display.field}</div>
-                <div className="min-w-0 whitespace-pre-wrap wrap-break-word px-2 py-1.5 text-muted-foreground">
-                  {display.from}
-                </div>
-                <div className="min-w-0 whitespace-pre-wrap wrap-break-word px-2 py-1.5 text-muted-foreground">
-                  {display.to}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <div className="mb-1.5 text-xs font-medium text-muted-foreground">Raw JSON</div>
-            <pre className={auditChangesRawJsonClassName}>{formatAuditChangesJson(changes)}</pre>
-          </div>
-        </div>
-      </ScrollArea>
+      <AuditChangesContent changes={changes} />
     </DialogContent>
   </Dialog>
 );
+
+type AuditChangesContentProps = {
+  changes: NonNullable<AuditEventRow['changes']>;
+};
+
+export const AuditChangesContent: React.FC<AuditChangesContentProps> = ({ changes }) => {
+  const displays = getAuditChangeDisplays(changes);
+
+  return (
+    <ScrollArea className="max-h-[calc(100vh-8rem)] min-h-0 min-w-0">
+      <div className="min-w-0 space-y-3 pr-3" data-slot="audit-changes-content">
+        <div className="min-w-0 overflow-hidden rounded-md border">
+          <div className="grid grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)] border-b bg-muted/40 text-xs font-medium text-muted-foreground">
+            <div className="px-2 py-1.5">Field</div>
+            <div className="px-2 py-1.5">From</div>
+            <div className="px-2 py-1.5">To</div>
+          </div>
+          {displays.map((display) => (
+            <div
+              className="grid grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)] border-b text-xs last:border-b-0"
+              key={display.key}
+            >
+              <div className="px-2 py-1.5 font-medium text-foreground">{display.field}</div>
+              <div
+                className="min-w-0 whitespace-pre-wrap wrap-anywhere px-2 py-1.5 text-muted-foreground"
+                data-slot="audit-change-value"
+              >
+                {display.from}
+              </div>
+              <div
+                className="min-w-0 whitespace-pre-wrap wrap-anywhere px-2 py-1.5 text-muted-foreground"
+                data-slot="audit-change-value"
+              >
+                {display.to}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="min-w-0">
+          <div className="mb-1.5 text-xs font-medium text-muted-foreground">Raw JSON</div>
+          <pre className={auditChangesRawJsonClassName} data-slot="audit-changes-raw-json">
+            {formatAuditChangesJson(changes)}
+          </pre>
+        </div>
+      </div>
+    </ScrollArea>
+  );
+};

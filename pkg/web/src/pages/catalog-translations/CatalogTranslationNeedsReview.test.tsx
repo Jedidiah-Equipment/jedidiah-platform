@@ -58,6 +58,11 @@ describe('CatalogTranslationNeedsReview', () => {
     expect(html).toContain('/product-ranges/22222222-2222-4222-8222-222222222222/edit?tab=translations');
     expect(html).toContain('Heavy Duty');
     expect(html.match(/product-ranges\/22222222-2222-4222-8222-222222222222\/edit\?tab=translations/g)).toHaveLength(2);
+
+    // Button renders the link by cloning it, so the button's own label has to reach the anchor.
+    const anchors = html.match(/<a\b[^>]*>[\s\S]*?<\/a>/g) ?? [];
+    expect(anchors).toHaveLength(3);
+    for (const anchor of anchors) expect(anchor).toContain('Review');
   });
 
   it('shows a clear empty state when no manual translations need review', () => {

@@ -8,18 +8,22 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductRangeForm } from './components/ProductRangeForm.js';
 import { ProductRangeVariantsEditor } from './components/ProductRangeVariantsEditor.js';
+import { ProductRangeEditTab } from './product-range-edit-tabs.js';
 
 type ProductRangeEditPageProps = {
+  onTabChange: (tab: ProductRangeEditTab) => void;
   rangeId: UUID;
+  tab: ProductRangeEditTab;
 };
 
-export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ rangeId }) => {
+export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ onTabChange, rangeId, tab }) => {
   const trpc = useTRPC();
   const canEdit = useCan('product_range:update').can;
   const { invalidateProductRanges } = useQueryInvalidation();
@@ -37,22 +41,33 @@ export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ rang
       {rangeQuery.isPending ? <Skeleton className="h-10 w-full" /> : null}
       <ErrorMessage error={rangeQuery.error} fallbackMessage="Unable to load Product Range." />
       {rangeQuery.data ? (
-        <>
-          <ProductRangeForm
-            canEdit={canEdit}
-            key={rangeQuery.data.id}
-            onSave={(value) => updateMutation.mutateAsync(value)}
-            range={rangeQuery.data}
-          />
-          <div className="mt-4">
+        <Tabs
+          className="w-full"
+          onValueChange={(value) => onTabChange(ProductRangeEditTab.parse(value))}
+          size="sm"
+          value={tab}
+        >
+          <TabsList variant="default">
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="variants">Variants</TabsTrigger>
+          </TabsList>
+          <TabsContent className="pt-4" value="details">
+            <ProductRangeForm
+              canEdit={canEdit}
+              key={rangeQuery.data.id}
+              onSave={(value) => updateMutation.mutateAsync(value)}
+              range={rangeQuery.data}
+            />
+            {canEdit ? (
+              <div className="mt-8 flex justify-end border-t pt-4">
+                <RemoveProductRangeButton range={rangeQuery.data} />
+              </div>
+            ) : null}
+          </TabsContent>
+          <TabsContent className="pt-4" value="variants">
             <ProductRangeVariantsEditor canEdit={canEdit} range={rangeQuery.data} />
-          </div>
-          {canEdit ? (
-            <div className="mt-8 flex justify-end border-t pt-4">
-              <RemoveProductRangeButton range={rangeQuery.data} />
-            </div>
-          ) : null}
-        </>
+          </TabsContent>
+        </Tabs>
       ) : null}
     </PageLayout>
   );

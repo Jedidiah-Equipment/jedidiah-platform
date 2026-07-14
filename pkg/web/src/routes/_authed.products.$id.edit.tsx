@@ -2,6 +2,7 @@ import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 
 import { ProductEditPage } from '@/pages/products/ProductEditPage.js';
+import { ProductEditSearch } from '@/pages/products/product-edit-tabs.js';
 
 export const Route = createFileRoute('/_authed/products/$id/edit')({
   params: {
@@ -12,6 +13,7 @@ export const Route = createFileRoute('/_authed/products/$id/edit')({
       id: params.id,
     }),
   },
+  validateSearch: ProductEditSearch,
   staticData: {
     pageLabel: 'Products',
   },
@@ -20,6 +22,10 @@ export const Route = createFileRoute('/_authed/products/$id/edit')({
 
 function ProductEditRoute() {
   const { id } = Route.useParams();
+  const { tab } = Route.useSearch();
+  const navigate = Route.useNavigate();
 
-  return <ProductEditPage productId={id} />;
+  return (
+    <ProductEditPage onTabChange={(nextTab) => void navigate({ search: { tab: nextTab } })} productId={id} tab={tab} />
+  );
 }

@@ -27,7 +27,13 @@ function ProductRangeEditRoute() {
 
   return (
     <ProductRangeEditPage
-      onTabChange={(nextTab) => void navigate({ search: { tab: nextTab } })}
+      onTabChange={(nextTab) =>
+        void navigate({
+          // This stays inside the editor, so invalid fields must not prevent users reaching another tab to fix them.
+          ignoreBlocker: true,
+          search: { tab: nextTab },
+        })
+      }
       rangeId={id}
       tab={tab}
     />

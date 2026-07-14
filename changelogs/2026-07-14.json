@@ -1,0 +1,35 @@
+{
+  "releasedAt": "2026-07-14T05:07:42.146Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Catch up on what’s new",
+          "description": "Unseen production updates now appear in a changelog when you open the app, with long releases scrollable so every action remains accessible."
+        },
+        {
+          "title": "Monitor catalog translations",
+          "description": "Authorized users can review Afrikaans translation health on a dedicated Translations page and retry stale or missing translations."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Keep your language choice",
+          "description": "The site now remembers your preferred language as you browse and when you return."
+        },
+        {
+          "title": "Browse a translated catalog",
+          "description": "Catalog content is now available in supported languages, with translations refreshed automatically when product information changes."
+        },
+        {
+          "title": "Download localized brochures",
+          "description": "Product brochures now use your selected language, with improved title sizing for longer translated text."
+        }
+      ]
+    }
+  ]
+}

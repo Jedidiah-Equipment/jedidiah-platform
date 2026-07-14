@@ -92,6 +92,13 @@ describe('localized public routes', () => {
     expect(enMarkup).not.toContain('href="/af/');
   });
 
+  test('highlights Products without also highlighting Home on the Products page', async () => {
+    const markup = renderToStaticMarkup(<RouterProvider router={await routerAt('/products')} />);
+
+    expect(markup).toMatch(/<a(?=[^>]*href="\/")(?=[^>]*class="[^"]*text-\[#cfcfcf\][^"]*")[^>]*>Home<\/a>/);
+    expect(markup).toMatch(/<a(?=[^>]*href="\/products")(?=[^>]*class="[^"]*text-yellow[^"]*")[^>]*>Products/);
+  });
+
   test('renders language choices as server-backed links that work without client-side cookie writes', async () => {
     const router = await routerAt('/about');
     const markup = renderToStaticMarkup(<RouterProvider router={router} />);

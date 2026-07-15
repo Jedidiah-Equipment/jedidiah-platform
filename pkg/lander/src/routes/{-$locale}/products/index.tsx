@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { type RefObject, useEffect, useRef } from 'react';
 
 import { PageHero } from '../../../components/page-hero.js';
 import { ProductCard } from '../../../components/product-card.js';
@@ -16,6 +17,23 @@ type ProductsCatalogView = {
   activeVariant: CatalogVariant | undefined;
   visibleGroups: CatalogGroup[];
 };
+
+export function useProductsFilterScroll(target: RefObject<HTMLDivElement | null>, search: ProductsSearch) {
+  const previousSearch = useRef({ range: search.range, variant: search.variant });
+
+  useEffect(() => {
+    const selectionChanged =
+      previousSearch.current.range !== search.range || previousSearch.current.variant !== search.variant;
+    previousSearch.current = { range: search.range, variant: search.variant };
+
+    // Do not skip the hero on a normal first visit, but do keep "All" aligned after it clears a filter.
+    if (!search.range && !search.variant && !selectionChanged) {
+      return;
+    }
+
+    target.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [search.range, search.variant, target]);
+}
 
 export const Route = createFileRoute('/{-$locale}/products/')({
   loader: async ({ context }) => ({ catalog: await getProductsCatalog({ data: { locale: context.locale } }) }),
@@ -79,6 +97,7 @@ function FilterChip({ active, label, search }: { active: boolean; label: string;
     <Link
       to="/{-$locale}/products"
       search={search}
+      resetScroll={false}
       className={`border-[1.5px] px-3.5 py-[9px] font-display text-[15px] font-semibold uppercase tracking-[1px] no-underline transition-colors ${
         active ? 'border-ink bg-ink text-white' : 'border-[#d6d4ce] bg-white text-ink hover:border-ink'
       }`}
@@ -93,11 +112,13 @@ function FilterBar({
   activeSlug,
   activeVariant,
   groups,
+  target,
 }: {
   activeGroup: CatalogGroup | undefined;
   activeSlug: string | undefined;
   activeVariant: CatalogVariant | undefined;
   groups: CatalogGroup[];
+  target: RefObject<HTMLDivElement | null>;
 }) {
   const m = useMessages();
   const filterGroup = activeGroup ?? (groups.length === 1 ? groups[0] : undefined);
@@ -109,25 +130,29 @@ function FilterBar({
   }
 
   return (
-    <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-header:top-16">
-      {showRangeFilter ? (
-        <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
-          <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
-            {m.products.filterByRange}
-          </span>
-          <FilterChip active={activeSlug === undefined} label={m.products.allChip} search={{}} />
-          {groups.map((group) => (
-            <FilterChip
-              key={group.id}
-              active={activeSlug === group.slug}
-              label={group.label}
-              search={{ range: group.slug }}
-            />
-          ))}
-        </div>
-      ) : null}
-      <VariantFilterBar activeGroup={filterGroup} activeVariant={activeVariant} />
-    </div>
+    <>
+      {/* A sticky element already pinned onscreen will not scroll; target its normal-flow position instead. */}
+      <div ref={target} />
+      <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-header:top-16">
+        {showRangeFilter ? (
+          <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
+            <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
+              {m.products.filterByRange}
+            </span>
+            <FilterChip active={activeSlug === undefined} label={m.products.allChip} search={{}} />
+            {groups.map((group) => (
+              <FilterChip
+                key={group.id}
+                active={activeSlug === group.slug}
+                label={group.label}
+                search={{ range: group.slug }}
+              />
+            ))}
+          </div>
+        ) : null}
+        <VariantFilterBar activeGroup={filterGroup} activeVariant={activeVariant} />
+      </div>
+    </>
   );
 }
 
@@ -157,6 +182,8 @@ function ProductGroup({ group }: { group: CatalogGroup }) {
 function ProductsPage() {
   const { catalog } = Route.useLoaderData();
   const search = Route.useSearch();
+  const filterBar = useRef<HTMLDivElement>(null);
+  useProductsFilterScroll(filterBar, search);
 
   const groups = catalog.groups;
   const { activeGroup, activeSlug, activeVariant, visibleGroups } = resolveProductsCatalogView(groups, search);
@@ -164,7 +191,13 @@ function ProductsPage() {
   return (
     <main className="bg-sand">
       <PageHeader />
-      <FilterBar activeGroup={activeGroup} activeSlug={activeSlug} activeVariant={activeVariant} groups={groups} />
+      <FilterBar
+        activeGroup={activeGroup}
+        activeSlug={activeSlug}
+        activeVariant={activeVariant}
+        groups={groups}
+        target={filterBar}
+      />
       <SandWatermarkSection variant="products-catalog" className="pt-16 pb-24 max-nav:pt-12 max-nav:pb-18">
         <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
           {visibleGroups.map((group) => (

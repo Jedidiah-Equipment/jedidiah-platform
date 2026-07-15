@@ -100,24 +100,33 @@ function FilterBar({
   groups: CatalogGroup[];
 }) {
   const m = useMessages();
+  const filterGroup = activeGroup ?? (groups.length === 1 ? groups[0] : undefined);
+  const showRangeFilter = groups.length > 1;
+  const showVariantFilter = !!filterGroup && filterGroup.variants.length > 0;
+
+  if (!showRangeFilter && !showVariantFilter) {
+    return null;
+  }
 
   return (
     <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-header:top-16">
-      <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
-        <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
-          {m.products.filterByRange}
-        </span>
-        <FilterChip active={activeSlug === undefined} label={m.products.allChip} search={{}} />
-        {groups.map((group) => (
-          <FilterChip
-            key={group.id}
-            active={activeSlug === group.slug}
-            label={group.label}
-            search={{ range: group.slug }}
-          />
-        ))}
-      </div>
-      <VariantFilterBar activeGroup={activeGroup} activeVariant={activeVariant} />
+      {showRangeFilter ? (
+        <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
+          <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
+            {m.products.filterByRange}
+          </span>
+          <FilterChip active={activeSlug === undefined} label={m.products.allChip} search={{}} />
+          {groups.map((group) => (
+            <FilterChip
+              key={group.id}
+              active={activeSlug === group.slug}
+              label={group.label}
+              search={{ range: group.slug }}
+            />
+          ))}
+        </div>
+      ) : null}
+      <VariantFilterBar activeGroup={filterGroup} activeVariant={activeVariant} />
     </div>
   );
 }

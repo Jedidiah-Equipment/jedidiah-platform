@@ -17,7 +17,7 @@ type ProductImageSlotField = {
 const PRODUCT_IMAGE_SLOT_FIELDS: ProductImageSlotField[] = [
   { slot: 'primary', label: 'Primary image', intro: 'Main product photo.' },
   { slot: 'technicalDrawing', label: 'Technical drawing', intro: 'Dimensioned line drawing.' },
-  { slot: 'banner', label: 'Banner image', intro: 'Additional product photo.' },
+  { slot: 'banner', label: 'Banner image', intro: 'Wide brochure banner.' },
   { slot: 'secondary1', label: 'Secondary image 1', intro: 'Extra product photo for the Lander.' },
   { slot: 'secondary2', label: 'Secondary image 2', intro: 'Extra product photo for the Lander.' },
 ];

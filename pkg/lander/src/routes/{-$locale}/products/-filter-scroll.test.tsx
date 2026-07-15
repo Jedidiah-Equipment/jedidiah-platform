@@ -19,7 +19,7 @@ describe('products filter selection scrolling', () => {
     vi.restoreAllMocks();
   });
 
-  async function renderScrollHarness(search: ProductsSearch) {
+  async function renderScrollHarness(search: ProductsSearch, hasRestoredScroll = false) {
     const scrollIntoView = vi.fn();
     Object.defineProperty(Element.prototype, 'scrollIntoView', {
       configurable: true,
@@ -28,11 +28,13 @@ describe('products filter selection scrolling', () => {
     const container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
-    const render = async (nextSearch: ProductsSearch) => {
-      await act(async () => root?.render(<ScrollHarness search={nextSearch} />));
+    const render = async (nextSearch: ProductsSearch, nextHasRestoredScroll = false) => {
+      await act(async () =>
+        root?.render(<ScrollHarness search={nextSearch} hasRestoredScroll={nextHasRestoredScroll} />),
+      );
     };
 
-    await render(search);
+    await render(search, hasRestoredScroll);
 
     return { render, scrollIntoView };
   }
@@ -56,13 +58,19 @@ describe('products filter selection scrolling', () => {
 
     expect(scrollIntoView).not.toHaveBeenCalled();
   });
+
+  test('preserves a restored grid position when returning to a filtered page', async () => {
+    const { scrollIntoView } = await renderScrollHarness({ range: 'trailers' }, true);
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
 });
 
 type ProductsSearch = { range?: string; variant?: string };
 
-function ScrollHarness({ search }: { search: ProductsSearch }) {
+function ScrollHarness({ search, hasRestoredScroll }: { search: ProductsSearch; hasRestoredScroll: boolean }) {
   const target = useRef<HTMLDivElement>(null);
-  useProductsFilterScroll(target, search);
+  useProductsFilterScroll(target, search, hasRestoredScroll);
 
   return <div ref={target} />;
 }

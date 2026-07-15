@@ -63,7 +63,7 @@ export function DataTableSearch<TData>({
             <Button
               className="border-primary/50 text-primary hover:border-primary hover:bg-primary/10 hover:text-primary"
               onClick={handleResetFilters}
-              size="sm"
+              size="xs"
               type="button"
               variant="outline"
             >

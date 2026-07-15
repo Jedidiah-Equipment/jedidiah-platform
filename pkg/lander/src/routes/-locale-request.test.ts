@@ -47,6 +47,21 @@ async function request(
 
 describe('locale preference HTTP boundary', () => {
   test.each([
+    ['/about-us/', '/about'],
+    ['/contact-us/', '/contact'],
+    ['/cross-haul-trailer-range/', '/products'],
+    ['/st300-strip-till-range/', '/products'],
+    ['/hd2020-in-line-ripper-range/', '/products'],
+    ['/elementor-265/', '/products'],
+  ] as const)('permanently redirects legacy URL %s to %s', async (path, expectedLocation) => {
+    const response = await request(path);
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get('location')).toBe(expectedLocation);
+    await response.arrayBuffer();
+  });
+
+  test.each([
     ['/products', 'af-ZA', 302, 'af', '/af/products'],
     ['/products', 'en-ZA', 200, 'en', null],
     ['/products', undefined, 200, 'en', null],

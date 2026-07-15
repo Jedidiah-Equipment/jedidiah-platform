@@ -12,3 +12,8 @@ export function createQueryClient(): QueryClient {
     },
   });
 }
+
+export async function invalidateQueryCache(queryClient: QueryClient): Promise<void> {
+  // Active queries refetch immediately; inactive queries only become stale and reload when revisited.
+  await queryClient.invalidateQueries();
+}

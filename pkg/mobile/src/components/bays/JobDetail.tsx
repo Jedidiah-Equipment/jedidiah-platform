@@ -14,7 +14,9 @@ import { JobWorkCard } from '@/components/bays/JobWorkCard';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
 import { ScheduleHeader } from '@/components/ScheduleHeader';
 import { Pulse } from '@/components/ui/pulse';
+import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
+import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/lib/use-job-detail';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -33,10 +35,11 @@ const WIDE_BREAKPOINT = 760;
 export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void }) {
   const state = useJobDetail(jobId);
   const isWide = useWindowDimensions().width >= WIDE_BREAKPOINT;
+  const refresh = useGlobalRefresh();
 
   if (state.status === 'pending') {
     return (
-      <Frame onBack={onBack}>
+      <Frame onBack={onBack} refresh={refresh}>
         <DetailSkeleton />
       </Frame>
     );
@@ -44,7 +47,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
 
   if (state.status === 'forbidden') {
     return (
-      <Frame onBack={onBack}>
+      <Frame onBack={onBack} refresh={refresh}>
         <Text className="text-sm text-foreground" weight="semibold">
           You don’t have access to this Job.
         </Text>
@@ -57,7 +60,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
 
   if (state.status === 'error') {
     return (
-      <Frame onBack={onBack}>
+      <Frame onBack={onBack} refresh={refresh}>
         <Text className="text-sm text-danger" weight="semibold">
           Couldn’t load this Job.
         </Text>
@@ -68,7 +71,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
 
   if (state.status === 'not-found') {
     return (
-      <Frame onBack={onBack}>
+      <Frame onBack={onBack} refresh={refresh}>
         <Text className="text-sm text-foreground" weight="semibold">
           Job not on the shop floor.
         </Text>
@@ -77,7 +80,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
     );
   }
 
-  return <Ready isWide={isWide} jobId={jobId} onBack={onBack} state={state} />;
+  return <Ready isWide={isWide} jobId={jobId} onBack={onBack} refresh={refresh} state={state} />;
 }
 
 function Ready({
@@ -85,11 +88,13 @@ function Ready({
   jobId,
   isWide,
   onBack,
+  refresh,
 }: {
   state: ReadyState;
   jobId: string;
   isWide: boolean;
   onBack: () => void;
+  refresh: ReturnType<typeof useGlobalRefresh>;
 }) {
   const header = (
     <ScheduleHeader
@@ -110,11 +115,16 @@ function Ready({
           <ScrollView
             className="border-border"
             contentContainerClassName="w-full px-4 pb-10 pt-4"
+            refreshControl={<RefreshControl {...refresh} />}
             style={{ borderRightWidth: 1, flex: 42 }}
           >
             <RoutePane route={state.route} />
           </ScrollView>
-          <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" style={{ flex: 58 }}>
+          <ScrollView
+            contentContainerClassName="w-full px-4 pb-10 pt-4"
+            refreshControl={<RefreshControl {...refresh} />}
+            style={{ flex: 58 }}
+          >
             <DetailPane jobId={jobId} state={state} />
           </ScrollView>
         </View>
@@ -125,7 +135,7 @@ function Ready({
   return (
     <>
       {header}
-      <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4">
+      <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
         <DetailPane jobId={jobId} state={state} />
         <View className="my-5 h-px bg-border" />
         <RoutePane route={state.route} />
@@ -312,11 +322,21 @@ function jobStatus(progress: JobProgress | null): { tone: StatusTone; label: str
 }
 
 /** Header + a single scroll for the non-ready states, mirroring the Bay schedule screen. */
-function Frame({ children, onBack }: { children: ReactNode; onBack: () => void }) {
+function Frame({
+  children,
+  onBack,
+  refresh,
+}: {
+  children: ReactNode;
+  onBack: () => void;
+  refresh: ReturnType<typeof useGlobalRefresh>;
+}) {
   return (
     <>
       <ScheduleHeader onBack={onBack} operator={null} showOperatorAvatar={false} title="Job detail" />
-      <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4">{children}</ScrollView>
+      <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
+        {children}
+      </ScrollView>
     </>
   );
 }

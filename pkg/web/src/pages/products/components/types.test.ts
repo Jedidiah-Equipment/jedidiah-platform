@@ -23,6 +23,7 @@ function buildProduct(overrides: Record<string, unknown> = {}): Product {
     id: PRODUCT_ID,
     name: 'Widget',
     description: 'A widget',
+    displayOrder: 20,
     modelCode: 'MOD-1',
     basePrice: 1000,
     buildTimeDays: 14,
@@ -90,6 +91,7 @@ describe('toProductFormValues', () => {
     expect(values.name).toBe('Widget');
     expect(values.basePrice).toBe(1000);
     expect(values.buildTimeDays).toBe(14);
+    expect(values.displayOrder).toBe(20);
     expect(values.rangeId).toBe(RANGE_ID);
     expect(values.variantId).toBe('');
     expect(values.requiresVinNumber).toBe(false);
@@ -188,6 +190,7 @@ describe('toProductCreateInput', () => {
       buildTimeDays: 14,
       currencyCode: 'ZAR',
       description: null,
+      displayOrder: 20,
       keyFeatures: [],
       technicalDetails: [],
       modelCode: 'MOD-1',
@@ -249,6 +252,7 @@ describe('toProductMinimalCreateInput', () => {
       buildTimeDays: 14,
       currencyCode: 'ZAR',
       description: null,
+      displayOrder: 0,
       keyFeatures: [],
       technicalDetails: [],
       modelCode: 'WL-100',
@@ -302,6 +306,7 @@ describe('toProductUpdateInput', () => {
       ],
       basePrice: 1000,
       buildTimeDays: 14,
+      displayOrder: 20,
       currencyCode: 'ZAR',
       modelCode: 'MOD-1',
       name: 'Widget',

@@ -40,6 +40,7 @@ function productInput(
     buildTimeDays: 14,
     currencyCode: 'ZAR',
     description: null,
+    displayOrder: 0,
     modelCode: 'MODEL-1',
     name: 'Test Product',
     nameHighlight: null,

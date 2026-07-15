@@ -123,6 +123,17 @@ export const ProductForm: React.FC<ProductFormProps> = ({ detailsFooter, onSave,
                       />
                     )}
                   </form.AppField>
+                  <form.AppField name="displayOrder">
+                    {(field) => (
+                      <field.NumberField
+                        autoComplete="off"
+                        inputMode="numeric"
+                        label="Display order"
+                        placeholder="0"
+                        step={1}
+                      />
+                    )}
+                  </form.AppField>
                   <form.AppField name="category">
                     {(field) => (
                       <field.TextField

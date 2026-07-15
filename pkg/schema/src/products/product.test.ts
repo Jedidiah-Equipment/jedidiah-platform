@@ -44,6 +44,7 @@ describe('ProductCreateInput', () => {
       category: null,
       currencyCode: 'ZAR',
       description: 'Earthmoving equipment',
+      displayOrder: 0,
       buildTimeDays: 14,
       keyFeatures: [],
       technicalDetails: [],
@@ -250,6 +251,25 @@ describe('ProductAssembliesInput', () => {
 });
 
 describe('ProductUpdateInput', () => {
+  it('accepts a manually assigned display order', () => {
+    expect(
+      ProductUpdateInput.parse({
+        id: '00000000-0000-4000-8000-000000000102',
+        basePrice: 1234.56,
+        currencyCode: 'ZAR',
+        description: '',
+        displayOrder: 20,
+        buildTimeDays: '14',
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+        rangeId: RANGE_ID,
+        requiresVinNumber: true,
+        brochureEnabled: false,
+        landerEnabled: false,
+      }).displayOrder,
+    ).toBe(20);
+  });
+
   it('preserves omitted child collections as undefined', () => {
     expect(
       ProductUpdateInput.parse({
@@ -317,6 +337,10 @@ describe('ProductUpdateInput', () => {
 });
 
 describe('ProductListInput', () => {
+  it('accepts display-order sorting', () => {
+    expect(ProductSortBy.parse('displayOrder')).toBe('displayOrder');
+  });
+
   it('accepts updated-at sorting', () => {
     expect(ProductSortBy.parse('updatedAt')).toBe('updatedAt');
     expect(ProductListInput.parse({ sortBy: 'updatedAt', sortDirection: 'desc' })).toMatchObject({

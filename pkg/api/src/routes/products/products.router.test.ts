@@ -61,6 +61,7 @@ describe('products.create', () => {
       basePrice: 1_000,
       currencyCode: 'ZAR',
       description: null,
+      displayOrder: 0,
       buildTimeDays: 14,
       modelCode: 'WHEEL-LOADER',
       name: 'Wheel Loader',
@@ -530,6 +531,26 @@ describe('products.read', () => {
     expect(sortedDesc.sortBy).toBe('updatedAt');
   });
 
+  test('sorts products by display order', async ({ context }) => {
+    const caller = context.createCaller();
+    const laterProduct = await createProduct(caller, 'Display Sort Later Product', context.rangeId, {
+      displayOrder: 20,
+    });
+    const earlierProduct = await createProduct(caller, 'Display Sort Earlier Product', context.rangeId, {
+      displayOrder: 10,
+    });
+
+    const sorted = await caller.products.list({
+      columnFilters: { name: 'Display Sort' },
+      pageSize: 10,
+      sortBy: 'displayOrder',
+      sortDirection: 'asc',
+    });
+
+    expect(sorted.items.map((product) => product.id)).toEqual([earlierProduct.id, laterProduct.id]);
+    expect(sorted.sortBy).toBe('displayOrder');
+  });
+
   test('returns assemblies on get and list', async ({ context }) => {
     const caller = context.createCaller();
     const partIds = await createParts(context.db);
@@ -706,6 +727,29 @@ describe('products.remove', () => {
 });
 
 describe('products.update', () => {
+  test('updates a product display order', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Wheel Loader Display Order', context.rangeId);
+
+    const updated = await caller.products.update({
+      id: created.id,
+      basePrice: created.basePrice,
+      currencyCode: created.currencyCode,
+      description: created.description,
+      displayOrder: 30,
+      buildTimeDays: created.buildTimeDays,
+      modelCode: created.modelCode,
+      name: created.name,
+      rangeId: created.rangeId,
+      requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
+    });
+
+    expect(updated.displayOrder).toBe(30);
+    await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({ displayOrder: 30 });
+  });
+
   test('updates product catalog fields', async ({ context }) => {
     const caller = context.createCaller();
     const created = await createProduct(caller, 'Wheel Loader Update', context.rangeId);

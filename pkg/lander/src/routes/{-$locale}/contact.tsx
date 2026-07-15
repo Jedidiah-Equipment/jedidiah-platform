@@ -11,6 +11,7 @@ import {
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
+import { PageHero } from '../../components/page-hero.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
 import { captureEvent } from '../../lib/analytics.js';
 import { seoHead } from '../../lib/seo.js';
@@ -46,20 +47,9 @@ function Header() {
   const m = useMessages();
 
   return (
-    <section className="bg-ink">
-      <div className="mx-auto max-w-[1320px] px-12 pt-16 pb-14 max-nav:px-5 max-nav:pt-12 max-nav:pb-11">
-        <div className="mb-4 flex items-center gap-3.5">
-          <span className="h-1 w-[42px] bg-yellow" />
-          <span className="font-display text-[15px] font-semibold uppercase tracking-[3px] text-yellow">
-            {m.contact.heroEyebrow}
-          </span>
-        </div>
-        <h1 className="m-0 mb-3.5 font-display text-[68px] font-extrabold uppercase leading-[0.95] tracking-[0.5px] text-white max-nav:text-[44px]">
-          {m.contact.heroTitle}
-        </h1>
-        <p className="m-0 max-w-[560px] font-body text-[19px] leading-[1.55] text-[#bdbdbd]">{m.contact.heroBody}</p>
-      </div>
-    </section>
+    <PageHero eyebrow={m.contact.heroEyebrow} title={m.contact.heroTitle} showBackgroundImage={false}>
+      <p className="m-0">{m.contact.heroBody}</p>
+    </PageHero>
   );
 }
 

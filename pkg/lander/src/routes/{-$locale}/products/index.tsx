@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useElementScrollRestoration } from '@tanstack/react-router';
-import { type RefObject, useEffect, useRef } from 'react';
+import { type RefObject, useCallback, useEffect, useRef } from 'react';
 
 import { PageHero } from '../../../components/page-hero.js';
 import { ProductCard } from '../../../components/product-card.js';
@@ -25,16 +25,7 @@ export function useProductsFilterScroll(
 ) {
   const previousSearch = useRef({ range: search.range, variant: search.variant });
 
-  useEffect(() => {
-    const selectionChanged =
-      previousSearch.current.range !== search.range || previousSearch.current.variant !== search.variant;
-    previousSearch.current = { range: search.range, variant: search.variant };
-
-    // Preserve a saved grid position on Back, while still aligning direct filtered entries and filter changes.
-    if (!selectionChanged && (hasRestoredScroll || (!search.range && !search.variant))) {
-      return;
-    }
-
+  const alignTarget = useCallback(() => {
     const element = target.current;
     if (!element) {
       return;
@@ -47,7 +38,22 @@ export function useProductsFilterScroll(
       // Bias fractional layout positions upward so pixel rounding cannot tuck the heading under the filters.
       top: Math.floor(top),
     });
-  }, [hasRestoredScroll, search.range, search.variant, target]);
+  }, [target]);
+
+  useEffect(() => {
+    const selectionChanged =
+      previousSearch.current.range !== search.range || previousSearch.current.variant !== search.variant;
+    previousSearch.current = { range: search.range, variant: search.variant };
+
+    // Preserve a saved grid position on Back, while still aligning direct filtered entries and filter changes.
+    if (!selectionChanged && (hasRestoredScroll || (!search.range && !search.variant))) {
+      return;
+    }
+
+    alignTarget();
+  }, [alignTarget, hasRestoredScroll, search.range, search.variant]);
+
+  return alignTarget;
 }
 
 export const Route = createFileRoute('/{-$locale}/products/')({
@@ -127,12 +133,14 @@ function FilterBar({
   activeSlug,
   activeVariant,
   groups,
+  onHeightTransitionEnd,
   target,
 }: {
   activeGroup: CatalogGroup | undefined;
   activeSlug: string | undefined;
   activeVariant: CatalogVariant | undefined;
   groups: CatalogGroup[];
+  onHeightTransitionEnd: () => void;
   target: RefObject<HTMLDivElement | null>;
 }) {
   const m = useMessages();
@@ -168,7 +176,11 @@ function FilterBar({
             ))}
           </div>
         ) : null}
-        <VariantFilterBar activeGroup={filterGroup} activeVariant={activeVariant} />
+        <VariantFilterBar
+          activeGroup={filterGroup}
+          activeVariant={activeVariant}
+          onHeightTransitionEnd={onHeightTransitionEnd}
+        />
       </div>
     </>
   );
@@ -202,7 +214,7 @@ function ProductsPage() {
   const search = Route.useSearch();
   const filterBar = useRef<HTMLDivElement>(null);
   const restoredWindowScroll = useElementScrollRestoration({ getElement: () => window });
-  useProductsFilterScroll(filterBar, search, restoredWindowScroll !== undefined);
+  const alignFilterBar = useProductsFilterScroll(filterBar, search, restoredWindowScroll !== undefined);
 
   const groups = catalog.groups;
   const { activeGroup, activeSlug, activeVariant, visibleGroups } = resolveProductsCatalogView(groups, search);
@@ -215,6 +227,7 @@ function ProductsPage() {
         activeSlug={activeSlug}
         activeVariant={activeVariant}
         groups={groups}
+        onHeightTransitionEnd={alignFilterBar}
         target={filterBar}
       />
       <SandWatermarkSection variant="products-catalog" className="pt-16 pb-24 max-nav:pt-12 max-nav:pb-18">

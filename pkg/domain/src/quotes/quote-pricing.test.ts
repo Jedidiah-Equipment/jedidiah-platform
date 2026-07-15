@@ -1,18 +1,30 @@
-import type { OptionalAssembly } from '@pkg/schema';
+import type { Assembly, OptionalAssembly } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { resolveEffectiveBom } from './effective-bom.js';
 import {
-  computeQuoteDiscountAmount,
   computeQuoteLineItemAmount,
-  computeQuoteLineItemsTotal,
-  computeQuoteTotal,
   computeQuoteTotalIncludingVat,
   computeQuoteVatAmount,
   priceQuote,
-  priceQuoteFromLiveSelections,
+  priceQuoteWithCatalog,
   validateDiscount,
 } from './quote-pricing.js';
+
+function optionalAssembly(id: string, price: number): OptionalAssembly {
+  return {
+    id,
+    kind: 'optional',
+    name: `Assembly ${id}`,
+    overrideStandardAssemblyIds: [],
+    parts: [],
+    price,
+    productId: 'prod-1',
+  };
+}
+
+function selections(prices: number[]) {
+  return prices.map((quotedPrice, index) => ({ productAssemblyId: `opt-${index}`, quotedPrice }));
+}
 
 describe('validateDiscount', () => {
   it.each([0, 100])('allows discount percent %s', (discountPercent) => {
@@ -35,48 +47,9 @@ describe('validateDiscount', () => {
   });
 });
 
-describe('computeQuoteDiscountAmount', () => {
-  it('discounts the product plus selected optional assemblies', () => {
-    expect(
-      computeQuoteDiscountAmount({
-        discountPercent: 10,
-        quotedBasePrice: 1250,
-        selectedAssemblyPrices: [300, 150],
-      }),
-    ).toBe(170);
-  });
-
-  it('discounts line items with the base price and selected optional assemblies', () => {
-    expect(
-      computeQuoteDiscountAmount({
-        discountPercent: 10,
-        lineItems: [
-          { quantity: 2, unitPrice: 125 },
-          { quantity: 1, unitPrice: 50 },
-        ],
-        quotedBasePrice: 1250,
-        selectedAssemblyPrices: [300, 150],
-      }),
-    ).toBe(200);
-  });
-
-  it('rounds the derived currency amount to cents', () => {
-    expect(computeQuoteDiscountAmount({ discountPercent: 12.5, quotedBasePrice: 99.99 })).toBe(12.5);
-  });
-});
-
-describe('computeQuoteLineItemsTotal', () => {
+describe('computeQuoteLineItemAmount', () => {
   it('computes one line amount from quantity times unit price', () => {
     expect(computeQuoteLineItemAmount({ quantity: 3, unitPrice: 125 })).toBe(375);
-  });
-
-  it('totals quantity times unit price for every line item', () => {
-    expect(
-      computeQuoteLineItemsTotal([
-        { quantity: 2, unitPrice: 125 },
-        { quantity: 3, unitPrice: 10 },
-      ]),
-    ).toBe(280);
   });
 });
 
@@ -90,106 +63,85 @@ describe('quote document VAT helpers', () => {
   });
 });
 
-describe('computeQuoteTotal', () => {
+describe('priceQuote', () => {
   it('subtracts the discount percent from the quoted base price', () => {
-    expect(computeQuoteTotal({ quotedBasePrice: 1250, discountPercent: 10 })).toBe(1125);
+    expect(priceQuote({ quotedBasePrice: 1250, discountPercent: 10, selectedAssemblies: [] }).total).toBe(1125);
   });
 
-  it('does not add delivery price when delivery is included in the sale price', () => {
+  it('discounts the product plus selected optional assemblies', () => {
     expect(
-      computeQuoteTotal({ deliveryIncluded: true, deliveryPrice: 350, quotedBasePrice: 1250, discountPercent: 10 }),
-    ).toBe(1125);
-  });
-
-  it('defaults omitted delivery inclusion to included in the sale price', () => {
-    expect(computeQuoteTotal({ deliveryPrice: 350, quotedBasePrice: 1250, discountPercent: 10 })).toBe(1125);
-  });
-
-  it('discounts selected optional assembly snapshot prices', () => {
-    expect(
-      computeQuoteTotal({
-        discountPercent: 10,
-        quotedBasePrice: 1250,
-        selectedAssemblyPrices: [300, 150],
-      }),
-    ).toBe(1530);
-  });
-
-  it('subtracts negative optional assembly snapshot prices from the product total', () => {
-    expect(
-      computeQuoteTotal({
-        discountPercent: 0,
-        quotedBasePrice: 1250,
-        selectedAssemblyPrices: [-300],
-      }),
-    ).toBe(950);
-  });
-
-  it('does not let a negative discountable subtotal produce a negative discount', () => {
-    expect(
-      computeQuoteDiscountAmount({
-        discountPercent: 10,
-        quotedBasePrice: 100,
-        selectedAssemblyPrices: [-150],
-      }),
-    ).toBe(0);
+      priceQuote({ discountPercent: 10, quotedBasePrice: 1250, selectedAssemblies: selections([300, 150]) }),
+    ).toMatchObject({ discountAmount: 170, selectedAssemblyTotal: 450, total: 1530 });
   });
 
   it('includes line items in the discountable subtotal', () => {
     expect(
-      computeQuoteTotal({
+      priceQuote({
         discountPercent: 10,
         lineItems: [
           { quantity: 2, unitPrice: 125 },
           { quantity: 1, unitPrice: 50 },
         ],
         quotedBasePrice: 1250,
-        selectedAssemblyPrices: [300, 150],
+        selectedAssemblies: selections([300, 150]),
       }),
-    ).toBe(1800);
+    ).toMatchObject({ discountAmount: 200, lineItemTotal: 300, total: 1800 });
+  });
+
+  it('rounds the derived discount amount to cents', () => {
+    expect(priceQuote({ discountPercent: 12.5, quotedBasePrice: 99.99, selectedAssemblies: [] }).discountAmount).toBe(
+      12.5,
+    );
+  });
+
+  it('subtracts negative optional assembly snapshot prices from the product total', () => {
+    expect(
+      priceQuote({ discountPercent: 0, quotedBasePrice: 1250, selectedAssemblies: selections([-300]) }).total,
+    ).toBe(950);
+  });
+
+  it('does not let a negative discountable subtotal produce a negative discount', () => {
+    expect(
+      priceQuote({ discountPercent: 10, quotedBasePrice: 100, selectedAssemblies: selections([-150]) }).discountAmount,
+    ).toBe(0);
+  });
+
+  it('does not add delivery price when delivery is included in the sale price', () => {
+    expect(
+      priceQuote({
+        deliveryIncluded: true,
+        deliveryPrice: 350,
+        discountPercent: 10,
+        quotedBasePrice: 1250,
+        selectedAssemblies: [],
+      }).total,
+    ).toBe(1125);
   });
 
   it('adds delivery price when delivery is not included in the sale price', () => {
     expect(
-      computeQuoteTotal({ deliveryIncluded: false, deliveryPrice: 350, quotedBasePrice: 1250, discountPercent: 10 }),
+      priceQuote({
+        deliveryIncluded: false,
+        deliveryPrice: 350,
+        discountPercent: 10,
+        quotedBasePrice: 1250,
+        selectedAssemblies: [],
+      }).total,
     ).toBe(1475);
   });
 
   it('keeps the additional delivery charge undiscounted when the commercial subtotal is fully discounted', () => {
     expect(
-      computeQuoteTotal({ deliveryIncluded: false, deliveryPrice: 50, quotedBasePrice: 100, discountPercent: 100 }),
+      priceQuote({
+        deliveryIncluded: false,
+        deliveryPrice: 50,
+        discountPercent: 100,
+        quotedBasePrice: 100,
+        selectedAssemblies: [],
+      }).total,
     ).toBe(50);
   });
-});
 
-describe('priceQuoteFromLiveSelections', () => {
-  it('builds the breakdown from facts and a live selection set', () => {
-    const pricing = priceQuoteFromLiveSelections(
-      {
-        deliveryIncluded: false,
-        deliveryPrice: 350,
-        discountPercent: 10,
-        lineItems: [{ quantity: 2, unitPrice: 125 }],
-        quotedBasePrice: 1250,
-      },
-      [{ quotedPrice: 300 }, { quotedPrice: 150 }],
-    );
-
-    expect(pricing).toMatchObject({ discountAmount: 195, lineItemTotal: 250, selectedAssemblyTotal: 450, total: 2105 });
-    expect(pricing.liveSelections).toHaveLength(2);
-  });
-
-  it('handles an empty selection set', () => {
-    expect(priceQuoteFromLiveSelections({ discountPercent: 0, quotedBasePrice: 1000 }, [])).toMatchObject({
-      discountAmount: 0,
-      lineItemTotal: 0,
-      selectedAssemblyTotal: 0,
-      total: 1000,
-    });
-  });
-});
-
-describe('priceQuote', () => {
   it('excludes stale selections whose catalog reference is gone', () => {
     const pricing = priceQuote({
       discountPercent: 0,
@@ -206,45 +158,80 @@ describe('priceQuote', () => {
     expect(pricing.selectedAssemblyTotal).toBe(300);
     expect(pricing.liveSelections).toHaveLength(1);
   });
-
-  it('keeps an additional delivery charge undiscounted under a full discount', () => {
-    expect(
-      priceQuote({
-        deliveryIncluded: false,
-        deliveryPrice: 50,
-        discountPercent: 100,
-        quotedBasePrice: 100,
-        selectedAssemblies: [],
-      }).total,
-    ).toBe(50);
-  });
 });
 
-describe('Quote Pricing agrees with the Effective Bill of Materials on the live set', () => {
-  it('totals the same selections the document line items resolve from the catalog', () => {
-    const liveSelection = { productAssemblyId: 'opt-live', quotedName: 'Heavy Axle', quotedPrice: 300 };
-    const staleSelection = { productAssemblyId: null, quotedName: 'Removed Winch', quotedPrice: 999 };
-    const quote = { discountPercent: 10, quotedBasePrice: 1250, selectedAssemblies: [liveSelection, staleSelection] };
-    const catalog: OptionalAssembly[] = [
+describe('priceQuoteWithCatalog', () => {
+  const catalog: Assembly[] = [optionalAssembly('opt-a', 300), optionalAssembly('opt-b', 150)];
+
+  it('drops selections that do not resolve to a live Optional Assembly and returns them stale', () => {
+    const live = { productAssemblyId: 'opt-a', quotedPrice: 300 };
+    const unresolved = { productAssemblyId: 'opt-gone', quotedPrice: 500 };
+    const nulled = { productAssemblyId: null, quotedPrice: 999 };
+    const pricing = priceQuoteWithCatalog(
+      { discountPercent: 0, quotedBasePrice: 1000, selectedAssemblies: [live, unresolved, nulled] },
+      catalog,
+    );
+
+    expect(pricing.total).toBe(1300);
+    expect(pricing.liveSelections).toEqual([live]);
+    expect(pricing.staleSelections).toEqual([unresolved, nulled]);
+  });
+
+  it('returns live selections in catalog display order, not selection order', () => {
+    const selectionB = { productAssemblyId: 'opt-b', quotedPrice: 150 };
+    const selectionA = { productAssemblyId: 'opt-a', quotedPrice: 300 };
+    const pricing = priceQuoteWithCatalog(
+      { discountPercent: 0, quotedBasePrice: 0, selectedAssemblies: [selectionB, selectionA] },
+      catalog,
+    );
+
+    expect(pricing.liveSelections).toEqual([selectionA, selectionB]);
+    expect(pricing.selectedAssemblyTotal).toBe(450);
+  });
+
+  it('prices line items and discounts identically to the persisted seam', () => {
+    const pricing = priceQuoteWithCatalog(
       {
-        id: 'opt-live',
-        kind: 'optional',
-        name: 'Heavy Axle',
-        overrideStandardAssemblyIds: [],
-        parts: [],
-        price: 300,
-        productId: 'prod-1',
+        deliveryIncluded: false,
+        deliveryPrice: 350,
+        discountPercent: 10,
+        lineItems: [{ quantity: 2, unitPrice: 125 }],
+        quotedBasePrice: 1250,
+        selectedAssemblies: selections([300, 150]).map((selection, index) => ({
+          ...selection,
+          productAssemblyId: index === 0 ? 'opt-a' : 'opt-b',
+        })),
       },
-    ];
+      catalog,
+    );
 
-    const pricing = priceQuote(quote);
-    const effectiveBom = resolveEffectiveBom({
-      catalogAssemblies: catalog,
-      selectedAssemblies: quote.selectedAssemblies,
-    });
+    expect(pricing).toMatchObject({ discountAmount: 195, lineItemTotal: 250, selectedAssemblyTotal: 450, total: 2105 });
+  });
 
-    expect(pricing.liveSelections).toEqual([liveSelection]);
-    expect(effectiveBom.selectedOptionalAssemblies.map(({ selection }) => selection)).toEqual([liveSelection]);
-    expect(effectiveBom.staleSelections).toEqual([staleSelection]);
+  it('agrees with priceQuote on persisted selections, where staleness is exactly a null reference', () => {
+    // Assembly kind is immutable and deletion nulls the reference, so a persisted selection is
+    // either resolvable in the catalog or null. Both seams must produce one Quote Pricing for it.
+    const quote = {
+      deliveryIncluded: false,
+      deliveryPrice: 120,
+      discountPercent: 12.5,
+      lineItems: [{ quantity: 3, unitPrice: 40 }],
+      quotedBasePrice: 2000,
+      selectedAssemblies: [
+        { productAssemblyId: 'opt-b', quotedPrice: 150 },
+        { productAssemblyId: null, quotedPrice: 999 },
+        { productAssemblyId: 'opt-a', quotedPrice: 300 },
+      ],
+    };
+
+    const persisted = priceQuote(quote);
+    const withCatalog = priceQuoteWithCatalog(quote, catalog);
+
+    expect(withCatalog.total).toBe(persisted.total);
+    expect(withCatalog.discountAmount).toBe(persisted.discountAmount);
+    expect(withCatalog.lineItemTotal).toBe(persisted.lineItemTotal);
+    expect(withCatalog.selectedAssemblyTotal).toBe(persisted.selectedAssemblyTotal);
+    expect(new Set(withCatalog.liveSelections)).toEqual(new Set(persisted.liveSelections));
+    expect(withCatalog.staleSelections).toEqual([quote.selectedAssemblies[1]]);
   });
 });

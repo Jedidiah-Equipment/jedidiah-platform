@@ -132,6 +132,17 @@ export class AssemblyWrongProductError extends Error {
   }
 }
 
+export class AssemblyKindChangedError extends Error {
+  readonly code = 'product.assembly.kind_changed';
+  readonly metadata: { assemblyId: string };
+
+  constructor(assemblyId: string) {
+    super(`Assembly kind is immutable: ${assemblyId}`);
+    this.name = 'AssemblyKindChangedError';
+    this.metadata = { assemblyId };
+  }
+}
+
 export class AssemblyOverrideTargetNotFoundError extends Error {
   readonly code = 'product.assembly.override_target_not_found';
   readonly metadata: { assemblyId: string };
@@ -166,6 +177,7 @@ export class AssemblyOverrideTargetWrongKindError extends Error {
 }
 
 export type ProductCoreError =
+  | AssemblyKindChangedError
   | AssemblyOverrideTargetNotFoundError
   | AssemblyOverrideTargetWrongKindError
   | AssemblyOverrideTargetWrongProductError
@@ -184,6 +196,7 @@ export type ProductCoreError =
 
 export function isProductCoreError(error: unknown): error is ProductCoreError {
   return (
+    error instanceof AssemblyKindChangedError ||
     error instanceof AssemblyOverrideTargetNotFoundError ||
     error instanceof AssemblyOverrideTargetWrongKindError ||
     error instanceof AssemblyOverrideTargetWrongProductError ||

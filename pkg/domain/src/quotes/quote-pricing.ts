@@ -1,4 +1,6 @@
-import type { UUID } from '@pkg/schema';
+import type { Assembly, UUID } from '@pkg/schema';
+
+import { resolveEffectiveBom } from './effective-bom.js';
 
 export type QuotePricingResult =
   | {
@@ -24,7 +26,7 @@ export function validateDiscount({ discountPercent }: { discountPercent: number 
   return { allowed: true, reason: null };
 }
 
-export function computeQuoteDiscountAmount({
+function computeQuoteDiscountAmount({
   discountPercent,
   lineItems = [],
   quotedBasePrice,
@@ -42,7 +44,7 @@ export function computeQuoteDiscountAmount({
   return roundCurrency(discountableSubtotal * (discountPercent / 100));
 }
 
-export function computeQuoteLineItemsTotal(lineItems: readonly { quantity: number; unitPrice: number }[]): number {
+function computeQuoteLineItemsTotal(lineItems: readonly { quantity: number; unitPrice: number }[]): number {
   return lineItems.reduce((sum, item) => sum + computeQuoteLineItemAmount(item), 0);
 }
 
@@ -71,7 +73,7 @@ export function computeQuoteTotalIncludingVat(
   return subtotal + computeQuoteVatAmount(subtotal, vatPercent);
 }
 
-export function computeQuoteTotal({
+function computeQuoteTotal({
   deliveryIncluded = true,
   deliveryPrice = 0,
   discountPercent,
@@ -124,11 +126,7 @@ export type QuotePricing<TSelection> = {
   total: number;
 };
 
-/**
- * Builds Quote Pricing from facts and an already-resolved live selection set. The Quote edit form
- * resolves staleness against the freshly loaded catalog and supplies its live set here directly.
- */
-export function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }>(
+function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }>(
   facts: QuotePricingFacts,
   liveSelections: readonly TSelection[],
 ): QuotePricing<TSelection> {
@@ -147,8 +145,9 @@ export function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: n
 
 /**
  * Builds Quote Pricing from a persisted Quote row. A selected Optional Assembly is live when its
- * catalog reference survives: `on delete set null` makes a null `productAssemblyId` the complete
- * stale set for persisted selections, so no product catalog is needed to total a stored Quote.
+ * catalog reference survives: Assembly kind is immutable and deletion is `on delete set null`, so a
+ * null `productAssemblyId` is the complete stale set for persisted selections and no product
+ * catalog is needed to total a stored Quote.
  */
 export function priceQuote<TSelection extends { productAssemblyId: UUID | null; quotedPrice: number }>(
   quote: QuotePricingFacts & { selectedAssemblies: readonly TSelection[] },
@@ -156,6 +155,26 @@ export function priceQuote<TSelection extends { productAssemblyId: UUID | null; 
   const liveSelections = quote.selectedAssemblies.filter((selection) => selection.productAssemblyId !== null);
 
   return priceQuoteFromLiveSelections(quote, liveSelections);
+}
+
+/**
+ * Builds Quote Pricing by resolving selections against a loaded product catalog: selections that do
+ * not resolve to a live Optional Assembly are dropped from the total and returned as
+ * `staleSelections`, and `liveSelections` follows the catalog's display order. This is the seam for
+ * catalog-loaded surfaces — the Quote edit form (whose in-flight selections can go stale mid-edit)
+ * and the Quote Document. On persisted selections it agrees with `priceQuote`.
+ */
+export function priceQuoteWithCatalog<TSelection extends { productAssemblyId: UUID | null; quotedPrice: number }>(
+  quote: QuotePricingFacts & { selectedAssemblies: readonly TSelection[] },
+  catalogAssemblies: readonly Assembly[],
+): QuotePricing<TSelection> & { staleSelections: readonly TSelection[] } {
+  const { selectedOptionalAssemblies, staleSelections } = resolveEffectiveBom({
+    catalogAssemblies,
+    selectedAssemblies: quote.selectedAssemblies,
+  });
+  const liveSelections = selectedOptionalAssemblies.map(({ selection }) => selection);
+
+  return { ...priceQuoteFromLiveSelections(quote, liveSelections), staleSelections };
 }
 
 function deny(reason: string): QuotePricingResult {

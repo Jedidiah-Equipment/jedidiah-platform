@@ -14,8 +14,7 @@ import {
   computeQuoteVatAmount,
   formatCurrency,
   formatPercent,
-  priceQuoteFromLiveSelections,
-  resolveEffectiveBom,
+  priceQuoteWithCatalog,
 } from '@pkg/domain';
 import { mergePdfBytes } from '@pkg/pdf';
 import {
@@ -208,12 +207,11 @@ async function getQuoteDocumentModel({
 }): Promise<QuoteDocumentModel> {
   const productAssemblies =
     source.kind === 'product' ? await listAssemblies({ productId: source.productId, tx: db }) : [];
-  const effectiveBom = resolveEffectiveBom({
-    catalogAssemblies: productAssemblies,
-    selectedAssemblies: quote.selectedAssemblies,
-  });
-  const liveSelections = effectiveBom.selectedOptionalAssemblies.map(({ selection }) => selection);
-  const selectedOptionalAssemblies = liveSelections.map((selection) => ({
+  // Optional rows and their money both come from the catalog-resolved live set, so a selection that
+  // goes stale drops from the PDF rows and the subtotal together. Freeform line items never have
+  // catalog staleness, so they always remain in the discountable subtotal.
+  const pricing = priceQuoteWithCatalog(quote, productAssemblies);
+  const selectedOptionalAssemblies = pricing.liveSelections.map((selection) => ({
     amount: selection.quotedPrice,
     label: selection.quotedName,
   }));
@@ -224,10 +222,6 @@ async function getQuoteDocumentModel({
     quantity: item.quantity,
     unitPrice: item.unitPrice,
   }));
-  // Optional rows and their money both come from the catalog-resolved live set, so a selection that
-  // goes stale by any rule drops from the PDF rows and the subtotal together. Freeform line items
-  // never have catalog staleness, so they always remain in the discountable subtotal.
-  const pricing = priceQuoteFromLiveSelections(quote, liveSelections);
   const discountAmount = pricing.discountAmount;
   const additionalDeliveryPrice = computeAdditionalDeliveryPrice(quote);
   const lineItems: QuoteDocumentLineItem[] = [
@@ -281,7 +275,7 @@ async function getQuoteDocumentModel({
     paymentTerms: `${formatPercent(quote.depositPercent)} deposit`,
     quoteCode: formatQuoteCode(quote.code),
     salesPerson: quote.salesPerson,
-    staleSelectionNotes: effectiveBom.staleSelections.map((selection) => `${selection.quotedName} unavailable`),
+    staleSelectionNotes: pricing.staleSelections.map((selection) => `${selection.quotedName} unavailable`),
     subtotal,
     total: computeQuoteTotalIncludingVat(subtotal),
     transport: quote.deliveryIncluded

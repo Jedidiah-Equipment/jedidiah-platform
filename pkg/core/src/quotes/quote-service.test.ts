@@ -14,7 +14,7 @@ import {
   user,
   workingCalendarOffDays,
 } from '@pkg/db';
-import { addDateOnlyDays, addJobSlotDuration, getPlantDateNow } from '@pkg/domain';
+import { addDateOnlyDays, addJobSlotDuration, getPlantDateNow, priceQuote } from '@pkg/domain';
 import { formatJobCode, QuoteCreateInput, type QuoteDetail, type QuoteStatus, QuoteUpdateInput } from '@pkg/schema';
 import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
@@ -852,6 +852,57 @@ describe('patchQuote', () => {
         quotedPrice: 650,
       },
     ]);
+  });
+
+  test('written pricing facts price the read-back Quote through the persisted Quote Pricing seam', async ({
+    context,
+  }) => {
+    const [optionalAssembly] = await context.db
+      .insert(productAssemblies)
+      .values({
+        displayOrder: 0,
+        kind: 'optional',
+        name: 'Winch package',
+        price: 500,
+        productId: context.product.id,
+      })
+      .returning();
+
+    if (!optionalAssembly) {
+      throw new Error('Product assembly insert did not return a row');
+    }
+
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+    await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(quote, {
+        deliveryIncluded: false,
+        deliveryPrice: 350,
+        discountPercent: 10,
+        lineItems: [{ name: 'Site training', quantity: 2, unitPrice: 125 }],
+        selectedAssemblies: [{ type: 'catalog', productAssemblyId: optionalAssembly.id }],
+      }),
+    });
+
+    const readBack = await getQuote({ db: context.db, id: quote.id });
+
+    // base 1000 + assembly 500 + line items 250 = 1750; 10% discount = 175; + delivery 350 = 1925.
+    expect(priceQuote(readBack)).toMatchObject({
+      discountAmount: 175,
+      lineItemTotal: 250,
+      selectedAssemblyTotal: 500,
+      total: 1925,
+    });
   });
 
   test('changes only the named field and leaves commercial fields untouched', async ({ context }) => {

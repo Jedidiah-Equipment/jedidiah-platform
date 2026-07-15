@@ -12,6 +12,7 @@ import type { Assembly, AssemblyInput, AssemblyKind, AssemblyNameListResult, UUI
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
+  AssemblyKindChangedError,
   AssemblyOverrideTargetNotFoundError,
   AssemblyOverrideTargetWrongKindError,
   AssemblyOverrideTargetWrongProductError,
@@ -51,6 +52,7 @@ export async function syncAssemblies({
 
   const currentRows = await tx.select().from(productAssemblies).where(eq(productAssemblies.productId, productId));
   await assertAssemblyIdsBelongToProduct({ tx, productId, desired });
+  assertAssemblyKindsUnchanged({ currentRows, desired });
   const desiredIds = new Set(desired.map((assembly) => assembly.id).filter((id): id is string => Boolean(id)));
   const removedIds = currentRows.map((row) => row.id).filter((id) => !desiredIds.has(id));
 
@@ -231,6 +233,33 @@ async function assertAssemblyIdsBelongToProduct({
   for (const row of persistedRows) {
     if (row.productId !== productId) {
       throw new AssemblyWrongProductError(row.id, productId);
+    }
+  }
+}
+
+/**
+ * Assembly kind is immutable after creation. Persisted Quote selections rely on this: a selection's
+ * `productAssemblyId` either resolves to a live Optional Assembly or was nulled by deletion, so a
+ * null reference is the complete stale set for Quote Pricing.
+ */
+function assertAssemblyKindsUnchanged({
+  currentRows,
+  desired,
+}: {
+  currentRows: AssemblyRow[];
+  desired: AssemblyInput[];
+}): void {
+  const currentKindById = new Map(currentRows.map((row) => [row.id, row.kind]));
+
+  for (const assembly of desired) {
+    if (!assembly.id) {
+      continue;
+    }
+
+    const currentKind = currentKindById.get(assembly.id);
+
+    if (currentKind !== undefined && currentKind !== assembly.kind) {
+      throw new AssemblyKindChangedError(assembly.id);
     }
   }
 }

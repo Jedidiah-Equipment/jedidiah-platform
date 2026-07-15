@@ -86,6 +86,12 @@ function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductC
         code: 'BAD_REQUEST',
         message: 'A part can only be added once per assembly.',
       };
+    case 'product.assembly.kind_changed':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'An existing assembly cannot change between standard and optional.',
+      };
     case 'product.assembly.override_target_not_found':
     case 'product.assembly.override_target_wrong_kind':
     case 'product.assembly.override_target_wrong_product':

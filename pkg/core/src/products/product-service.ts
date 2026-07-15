@@ -332,11 +332,14 @@ async function listProductsSortedByProductColumn({
   where: SQL;
 }): Promise<[ProductListRow[], number]> {
   const sortColumn = getProductSortColumn(input.sortBy);
-  const orderBy = getSortOrder(sortColumn, input.sortDirection);
+  const primaryOrder = getSortOrder(sortColumn, input.sortDirection);
+  // Display order intentionally allows ties, so stable secondary keys keep pagination deterministic.
+  const orderBy =
+    input.sortBy === 'displayOrder' ? [primaryOrder, asc(products.name), asc(products.id)] : [primaryOrder];
   const productsQuery = db.query.products.findMany({
     columns: productListColumns,
     where,
-    orderBy: [orderBy],
+    orderBy,
     ...getPaginationQueryOptions(input),
     with: productListWith,
   });

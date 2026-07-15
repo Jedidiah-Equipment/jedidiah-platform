@@ -536,7 +536,10 @@ describe('products.read', () => {
     const laterProduct = await createProduct(caller, 'Display Sort Later Product', context.rangeId, {
       displayOrder: 20,
     });
-    const earlierProduct = await createProduct(caller, 'Display Sort Earlier Product', context.rangeId, {
+    const sameOrderLastProduct = await createProduct(caller, 'Display Sort Zulu Product', context.rangeId, {
+      displayOrder: 10,
+    });
+    const sameOrderFirstProduct = await createProduct(caller, 'Display Sort Alpha Product', context.rangeId, {
       displayOrder: 10,
     });
 
@@ -547,7 +550,11 @@ describe('products.read', () => {
       sortDirection: 'asc',
     });
 
-    expect(sorted.items.map((product) => product.id)).toEqual([earlierProduct.id, laterProduct.id]);
+    expect(sorted.items.map((product) => product.id)).toEqual([
+      sameOrderFirstProduct.id,
+      sameOrderLastProduct.id,
+      laterProduct.id,
+    ]);
     expect(sorted.sortBy).toBe('displayOrder');
   });
 

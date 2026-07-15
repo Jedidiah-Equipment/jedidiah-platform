@@ -1,6 +1,12 @@
-import { contactNumberE164, formatContactNumber, JEDIDIAH_INSTAGRAM_URL, JEDIDIAH_LOCATION } from '@pkg/domain';
+import {
+  contactNumberE164,
+  formatContactNumber,
+  JEDIDIAH_FACEBOOK_URL,
+  JEDIDIAH_INSTAGRAM_URL,
+  JEDIDIAH_LOCATION,
+} from '@pkg/domain';
 import logoFullUrl from '@pkg/domain/assets/brand/jedidiah-logo-full.png';
-import { IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
+import { IconBrandFacebook, IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { captureEventForNavigation } from '../lib/analytics.js';
 import { LOCALES } from '../lib/locale.js';
@@ -94,6 +100,15 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
                 <IconMapPin className="mt-0.5 flex-none text-yellow" size={17} aria-hidden="true" />
                 <span className="font-body text-[15px] leading-[1.5] text-[#cfcfcf]">{JEDIDIAH_LOCATION}</span>
               </span>
+              <a
+                href={JEDIDIAH_FACEBOOK_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-[11px] no-underline"
+              >
+                <IconBrandFacebook className="flex-none text-yellow" size={17} aria-hidden="true" />
+                <span className="font-body text-[15px] text-[#cfcfcf]">{m.footer.facebookHandle}</span>
+              </a>
               <a
                 href={JEDIDIAH_INSTAGRAM_URL}
                 target="_blank"

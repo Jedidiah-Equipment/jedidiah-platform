@@ -3,6 +3,8 @@
 
 export const JEDIDIAH_LOCATION = 'KZN, South Africa';
 
+export const JEDIDIAH_FACEBOOK_URL = 'https://www.facebook.com/jedidiahequipment';
+
 export const JEDIDIAH_INSTAGRAM_URL = 'https://www.instagram.com/jedidiahequipment/';
 
 // South African contact number stored as its national significant number (an

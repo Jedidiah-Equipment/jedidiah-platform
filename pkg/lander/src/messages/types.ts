@@ -30,6 +30,7 @@ export type Messages = {
     exploreHeading: string;
     rangesHeading: string;
     contactHeading: string;
+    facebookHandle: string;
     instagramHandle: string;
     contactUs: string;
     copyright: string;
@@ -141,8 +142,10 @@ export type Messages = {
     sendMessage: string;
     notSpecified: string;
     directHeading: string;
+    facebookLabel: string;
     instagramLabel: string;
     locationLabel: string;
+    facebookHandle: string;
     instagramHandle: string;
     emailAddress: string;
     whatsapp: string;

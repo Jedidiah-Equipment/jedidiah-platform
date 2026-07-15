@@ -85,6 +85,13 @@ describe('localized public routes', () => {
     expect(markup).not.toContain('Boere Bou vir Boere');
   });
 
+  test('links to Facebook from the Contact page and site footer', async () => {
+    const markup = renderToStaticMarkup(<RouterProvider router={await routerAt('/contact')} />);
+
+    expect(markup.match(/href="https:\/\/www\.facebook\.com\/jedidiahequipment"/g)).toHaveLength(2);
+    expect(markup).toContain('Facebook');
+  });
+
   test('renders internal links prefixed for the active locale', async () => {
     const afMarkup = renderToStaticMarkup(<RouterProvider router={await routerAt('/af/about')} />);
     const enMarkup = renderToStaticMarkup(<RouterProvider router={await routerAt('/about')} />);

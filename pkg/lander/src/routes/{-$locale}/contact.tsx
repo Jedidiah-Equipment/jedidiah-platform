@@ -1,6 +1,13 @@
-import { contactNumberE164, formatContactNumber, JEDIDIAH_INSTAGRAM_URL, JEDIDIAH_LOCATION } from '@pkg/domain';
+import {
+  contactNumberE164,
+  formatContactNumber,
+  JEDIDIAH_FACEBOOK_URL,
+  JEDIDIAH_INSTAGRAM_URL,
+  JEDIDIAH_LOCATION,
+} from '@pkg/domain';
 import {
   IconArrowRight,
+  IconBrandFacebook,
   IconBrandInstagram,
   IconCheck,
   IconChevronDown,
@@ -227,6 +234,10 @@ function InstagramIcon() {
   return <IconBrandInstagram className="flex-none text-yellow" size={24} aria-hidden="true" />;
 }
 
+function FacebookIcon() {
+  return <IconBrandFacebook className="flex-none text-yellow" size={24} aria-hidden="true" />;
+}
+
 function PinIcon({ className }: { className?: string }) {
   return <IconMapPin className={`text-yellow ${className ?? ''}`} size={24} aria-hidden="true" />;
 }
@@ -265,6 +276,18 @@ function ContactInfo() {
             <span>
               <ContactMethodLabel label={m.contact.emailLabel} />
               <span className="font-body text-[17px] text-white">{m.contact.emailAddress}</span>
+            </span>
+          </a>
+          <a
+            href={JEDIDIAH_FACEBOOK_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-start gap-4 no-underline"
+          >
+            <FacebookIcon />
+            <span>
+              <ContactMethodLabel label={m.contact.facebookLabel} />
+              <span className="font-body text-[17px] text-white">{m.contact.facebookHandle}</span>
             </span>
           </a>
           <a

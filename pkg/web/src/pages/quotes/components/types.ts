@@ -1,4 +1,4 @@
-import { computeAdditionalDeliveryPrice, priceQuoteFromLiveSelections, resolveEffectiveBom } from '@pkg/domain';
+import { computeAdditionalDeliveryPrice, priceQuoteWithCatalog } from '@pkg/domain';
 import {
   type Assembly,
   AuthId,
@@ -163,23 +163,18 @@ export function computeQuoteSummary({
           formSelections: values.selectedAssemblies,
           initialSelections: quote.selectedAssemblies,
         });
-  // Exclude stale selections from the on-screen pricing preview so the figure reflects only
-  // assemblies still present in the freshly loaded Product catalog.
-  const { staleSelections } = resolveEffectiveBom({
-    catalogAssemblies,
-    selectedAssemblies: selectedSnapshots,
-  });
-  const staleSnapshots = new Set(staleSelections);
-  const selectedAssemblies = selectedSnapshots.filter((snapshot) => !staleSnapshots.has(snapshot));
-  const pricing = priceQuoteFromLiveSelections(
+  // Stale selections drop from the on-screen pricing preview, and live ones list in catalog
+  // display order — the same order the generated Quote Document uses.
+  const pricing = priceQuoteWithCatalog(
     {
       deliveryIncluded: values.deliveryIncluded,
       deliveryPrice,
       discountPercent: values.discountPercent,
       lineItems: values.lineItems,
       quotedBasePrice,
+      selectedAssemblies: selectedSnapshots,
     },
-    selectedAssemblies,
+    catalogAssemblies,
   );
 
   return {
@@ -191,7 +186,7 @@ export function computeQuoteSummary({
     currencyCode,
     lineItems: values.lineItems,
     lineItemTotal: pricing.lineItemTotal,
-    selectedAssemblies,
+    selectedAssemblies: [...pricing.liveSelections],
     selectedAssemblyTotal: pricing.selectedAssemblyTotal,
     total: pricing.total,
   };

@@ -6,6 +6,7 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { exportProductAssemblies, listAssemblyNames } from './product-assembly-service.js';
+import { AssemblyKindChangedError } from './product-errors.js';
 import { createProduct, getProduct, removeProduct, updateProduct } from './product-service.js';
 
 const actorUserId = 'test-user-id';
@@ -317,6 +318,82 @@ describe('assembly audit events', () => {
     expect(deleteEvent?.changes).toMatchObject({
       'assembly:Alpha': { from: { id: alpha?.id, kind: 'standard', name: 'Alpha', parts: [] }, to: null },
     });
+  });
+});
+
+describe('assembly kind immutability', () => {
+  function updateInput(id: string, rangeId: string, assemblies: AssemblyInput[]): ProductUpdateInput {
+    return {
+      assemblies,
+      basePrice: 1000,
+      buildTimeDays: 14,
+      currencyCode: 'ZAR',
+      description: null,
+      id,
+      modelCode: 'MODEL-1',
+      name: 'Test Product',
+      productBays: [],
+      rangeId,
+      requiresVinNumber: false,
+      brochureEnabled: false,
+      landerEnabled: false,
+      thumbnailDataUrl: null,
+    };
+  }
+
+  test('rejects resubmitting an existing standard assembly as optional', async ({ context }) => {
+    const created = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [standard('Alpha')]),
+    });
+    const alpha = created.assemblies.find((assembly) => assembly.name === 'Alpha');
+
+    await expect(
+      updateProduct({
+        actorUserId,
+        db: context.db,
+        input: updateInput(created.id, context.rangeId, [
+          { id: alpha?.id, kind: 'optional', name: 'Alpha', overrideStandardAssemblyIds: [], parts: [], price: 100 },
+        ]),
+      }),
+    ).rejects.toThrow(AssemblyKindChangedError);
+  });
+
+  test('rejects resubmitting an existing optional assembly as standard', async ({ context }) => {
+    const created = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [optional('Yak', 100)]),
+    });
+    const yak = created.assemblies.find((assembly) => assembly.name === 'Yak');
+
+    await expect(
+      updateProduct({
+        actorUserId,
+        db: context.db,
+        input: updateInput(created.id, context.rangeId, [{ id: yak?.id, kind: 'standard', name: 'Yak', parts: [] }]),
+      }),
+    ).rejects.toThrow(AssemblyKindChangedError);
+  });
+
+  test('allows resubmitting an existing assembly under its own kind', async ({ context }) => {
+    const created = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [optional('Yak', 100)]),
+    });
+    const yak = created.assemblies.find((assembly) => assembly.name === 'Yak');
+
+    await expect(
+      updateProduct({
+        actorUserId,
+        db: context.db,
+        input: updateInput(created.id, context.rangeId, [
+          { id: yak?.id, kind: 'optional', name: 'Yak', overrideStandardAssemblyIds: [], parts: [], price: 150 },
+        ]),
+      }),
+    ).resolves.toMatchObject({ assemblies: [{ id: yak?.id, kind: 'optional', price: 150 }] });
   });
 });
 

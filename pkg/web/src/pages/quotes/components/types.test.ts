@@ -353,6 +353,35 @@ describe('computeQuoteSummary', () => {
     ]);
   });
 
+  it('lists live selections in catalog display order, matching the Quote Document', () => {
+    const SECOND_ASSEMBLY_ID = '550e8400-e29b-41d4-a716-446655440013';
+    const productQuote = buildQuoteDetail();
+    if (productQuote.product === null) {
+      throw new Error('Expected product quote fixture to include product facts');
+    }
+
+    const laterAssembly = { ...optionalAssembly, id: SECOND_ASSEMBLY_ID, name: 'Optional B', price: 100 };
+    const quote = buildQuoteDetail({
+      product: {
+        ...productQuote.product,
+        assemblies: [optionalAssembly, laterAssembly],
+      },
+    });
+    const summary = computeQuoteSummary({
+      quote,
+      values: buildFormValues({
+        discountPercent: 0,
+        selectedAssemblies: [
+          { type: 'catalog', productAssemblyId: SECOND_ASSEMBLY_ID },
+          { type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID },
+        ],
+      }),
+    });
+
+    expect(summary.selectedAssemblies.map((selection) => selection.quotedName)).toEqual(['Optional A', 'Optional B']);
+    expect(summary.selectedAssemblyTotal).toBe(350);
+  });
+
   it('excludes stale catalog selections from product quote pricing', () => {
     const summary = computeQuoteSummary({
       quote: buildQuoteDetail(),

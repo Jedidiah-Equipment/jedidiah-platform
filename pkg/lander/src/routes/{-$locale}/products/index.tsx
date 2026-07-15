@@ -154,10 +154,10 @@ function FilterBar({
 
   return (
     <>
-      {/* Keep these offsets equal to sticky nav height minus catalog top padding at each breakpoint. */}
+      {/* Keep these offsets equal to sticky nav height minus catalog top padding, plus 12px clearance. */}
       <div
         ref={target}
-        className="[--filter-scroll-offset:16px] nav:[--filter-scroll-offset:0px] header:[--filter-scroll-offset:12px]"
+        className="[--filter-scroll-offset:28px] nav:[--filter-scroll-offset:12px] header:[--filter-scroll-offset:24px]"
       />
       <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-header:top-16">
         {showRangeFilter ? (

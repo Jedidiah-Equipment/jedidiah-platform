@@ -22,7 +22,7 @@ describe('products filter selection scrolling', () => {
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ top: 507.5 } as DOMRect);
     vi.spyOn(window, 'getComputedStyle').mockReturnValue({
-      getPropertyValue: (property: string) => (property === '--filter-scroll-offset' ? '12px' : ''),
+      getPropertyValue: (property: string) => (property === '--filter-scroll-offset' ? '24px' : ''),
     } as CSSStyleDeclaration);
     const container = document.createElement('div');
     document.body.append(container);
@@ -48,7 +48,7 @@ describe('products filter selection scrolling', () => {
   test('scrolls far enough to leave the first catalog heading below the sticky filters', async () => {
     const { scrollTo } = await renderScrollHarness({ range: 'trailers' });
 
-    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 495 });
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 483 });
   });
 
   test('scrolls the filter bar into view when All clears the current selection', async () => {
@@ -56,7 +56,7 @@ describe('products filter selection scrolling', () => {
     scrollTo.mockClear();
     await render({});
 
-    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 495 });
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 483 });
   });
 
   test('realigns after an animated filter row finishes changing height', async () => {
@@ -65,7 +65,7 @@ describe('products filter selection scrolling', () => {
 
     await realign();
 
-    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 495 });
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 483 });
   });
 
   test('leaves an unfiltered first visit at the top of the page', async () => {

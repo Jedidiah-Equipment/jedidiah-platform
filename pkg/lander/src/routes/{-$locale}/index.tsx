@@ -4,6 +4,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { FeatureBar } from '../../components/feature-bar.js';
 import { RangeCard } from '../../components/range-card.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
+import { captureEvent } from '../../lib/analytics.js';
 import { seoHead } from '../../lib/seo.js';
 import { messagesForLocale, useMessages } from '../../messages/index.js';
 import { getHomeRanges } from '../../server/catalog/ranges.js';
@@ -54,12 +55,14 @@ function Hero() {
           <div className="flex flex-wrap gap-4">
             <Link
               to="/{-$locale}/contact"
+              onClick={() => captureEvent('cta_clicked', { cta: 'hero_contact', placement: 'hero' })}
               className="flex items-center gap-3.5 bg-yellow px-8 py-[18px] font-display text-[19px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
             >
               {m.home.contactUs} <ArrowIcon className="text-ink" />
             </Link>
             <Link
               to="/{-$locale}/products"
+              onClick={() => captureEvent('cta_clicked', { cta: 'hero_products', placement: 'hero' })}
               className="flex items-center border-2 border-white/[0.55] bg-transparent px-8 py-[18px] font-display text-[19px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:border-yellow hover:text-yellow"
             >
               {m.home.viewEquipmentRange}
@@ -102,8 +105,8 @@ function EquipmentRanges({ ranges }: { ranges: Awaited<ReturnType<typeof getHome
 
         {ranges.length > 0 ? (
           <div className="grid grid-cols-4 gap-6 max-nav:grid-cols-2 max-xs:grid-cols-1">
-            {ranges.map((range) => (
-              <RangeCard key={range.id} range={range} />
+            {ranges.map((range, position) => (
+              <RangeCard key={range.id} range={range} position={position} />
             ))}
           </div>
         ) : null}
@@ -126,6 +129,7 @@ function CtaBand() {
         </div>
         <Link
           to="/{-$locale}/contact"
+          onClick={() => captureEvent('cta_clicked', { cta: 'bottom_band_contact', placement: 'bottom_band' })}
           className="flex flex-none items-center gap-3.5 bg-yellow px-[38px] py-5 font-display text-[20px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
         >
           {m.home.contactUs} <ArrowIcon className="text-ink" />

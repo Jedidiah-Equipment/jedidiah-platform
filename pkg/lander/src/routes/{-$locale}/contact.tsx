@@ -13,7 +13,7 @@ import { type FormEvent, useState } from 'react';
 
 import { PageHero } from '../../components/page-hero.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
-import { captureEvent } from '../../lib/analytics.js';
+import { captureEvent, captureEventForNavigation } from '../../lib/analytics.js';
 import { seoHead } from '../../lib/seo.js';
 import { messagesForLocale, useLocale, useMessages } from '../../messages/index.js';
 import { getRangeOptions } from '../../server/catalog/ranges.js';
@@ -95,6 +95,7 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
 
       if (!response.ok) {
         setStatus('error');
+        captureEvent('contact_submit_failed', { errorCategory: 'server' });
         return;
       }
 
@@ -105,6 +106,7 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
       });
     } catch {
       setStatus('error');
+      captureEvent('contact_submit_failed', { errorCategory: 'network' });
     }
   }
 
@@ -247,7 +249,11 @@ function ContactInfo() {
           {m.contact.directHeading}
         </h3>
         <div className="flex flex-col gap-[22px]">
-          <a href={`tel:${contactNumberE164()}`} className="flex items-start gap-4 no-underline">
+          <a
+            href={`tel:${contactNumberE164()}`}
+            onClick={() => captureEventForNavigation('phone_link_clicked', { placement: 'contact_page' })}
+            className="flex items-start gap-4 no-underline"
+          >
             <PhoneIcon />
             <span>
               <ContactMethodLabel label={m.contact.phoneLabel} />
@@ -265,6 +271,12 @@ function ContactInfo() {
             href={JEDIDIAH_INSTAGRAM_URL}
             target="_blank"
             rel="noreferrer"
+            onClick={() =>
+              captureEventForNavigation('social_link_clicked', {
+                platform: 'instagram',
+                placement: 'contact_page',
+              })
+            }
             className="flex items-start gap-4 no-underline"
           >
             <InstagramIcon />
@@ -283,6 +295,12 @@ function ContactInfo() {
         </div>
         <a
           href={`https://wa.me/${contactNumberE164().slice(1)}`}
+          onClick={() =>
+            captureEventForNavigation('social_link_clicked', {
+              platform: 'whatsapp',
+              placement: 'contact_page',
+            })
+          }
           className="mt-7 flex items-center justify-center gap-3 bg-yellow px-4 py-[15px] font-display text-[17px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
         >
           {m.contact.whatsapp}

@@ -5,7 +5,7 @@ import type { CatalogProduct } from '../server/catalog/products-data.js';
 
 // Reusable Product card shared by the Products page (and, later, related-Product strips). The image route
 // streams the brochure hero or a neutral brand placeholder, so the image never renders broken.
-export function ProductCard({ product }: { product: CatalogProduct }) {
+export function ProductCard({ onClick, product }: { onClick?: () => void; product: CatalogProduct }) {
   const m = useMessages();
 
   return (
@@ -14,6 +14,7 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
     <Link
       to="/{-$locale}/products/$modelCode"
       params={{ modelCode: product.modelCode }}
+      onClick={onClick}
       className="group block no-underline"
     >
       <div className="flex h-full flex-col border border-line bg-white shadow-[0_1px_3px_rgba(0,0,0,0.07)] transition-[translate,box-shadow,border-color] duration-[450ms] ease-in-out group-hover:-translate-y-1.5 group-hover:border-gold group-hover:shadow-[0_14px_34px_rgba(0,0,0,0.14)]">

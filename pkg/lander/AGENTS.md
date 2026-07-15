@@ -1,5 +1,7 @@
 # AGENTS.md
 
+- Keep `ANALYTICS.md` in sync with the typed event registry whenever Lander analytics change.
+
 ## Localization
 
 - Follow `docs/adr/0011-lander-localization.md` and the Lander Localization vocabulary in `CONTEXT.md`.

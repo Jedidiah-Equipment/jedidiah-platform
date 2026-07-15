@@ -3,6 +3,7 @@ import logoUrl from '@pkg/domain/assets/brand/jedidiah-logo.png';
 import { IconMapPin, IconMenu2, IconPhone, IconSwitchHorizontal, IconX } from '@tabler/icons-react';
 import { Link, useMatch, useMatchRoute, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
+import { captureEventForNavigation } from '../lib/analytics.js';
 import { CANONICAL_LOCALE } from '../lib/locale.js';
 import { localePreferenceHref } from '../lib/locale-preference.js';
 import { useLocale, useMessages } from '../messages/index.js';
@@ -43,6 +44,13 @@ function LanguageToggle({ className = '', currentHref }: { className?: string; c
   return (
     <a
       href={localePreferenceHref(currentHref, targetLocale)}
+      onClick={() =>
+        captureEventForNavigation('language_switched', {
+          fromLocale: locale,
+          toLocale: targetLocale,
+          placement: 'nav',
+        })
+      }
       className={`${className} group flex h-11 flex-none items-center gap-2 whitespace-nowrap font-body font-semibold text-[#e8e8e8] no-underline transition-colors hover:text-white`}
     >
       <IconSwitchHorizontal
@@ -90,7 +98,11 @@ export function Nav() {
 
         <div className="flex flex-none items-center gap-7 max-header:hidden">
           <LanguageToggle currentHref={currentHref} className="text-[14px]" />
-          <a href={`tel:${contactNumberE164()}`} className="flex items-center gap-[9px] no-underline">
+          <a
+            href={`tel:${contactNumberE164()}`}
+            onClick={() => captureEventForNavigation('phone_link_clicked', { placement: 'nav' })}
+            className="flex items-center gap-[9px] no-underline"
+          >
             <PhoneIcon />
             <span className="font-body text-[15px] font-semibold text-[#e8e8e8]">{formatContactNumber()}</span>
           </a>
@@ -135,7 +147,11 @@ export function Nav() {
             })}
             <LanguageToggle currentHref={currentHref} className="mt-4 self-center text-[16px]" />
             <div className="flex flex-col gap-[14px] pt-[18px]">
-              <a href={`tel:${contactNumberE164()}`} className="flex items-center gap-[11px] no-underline">
+              <a
+                href={`tel:${contactNumberE164()}`}
+                onClick={() => captureEventForNavigation('phone_link_clicked', { placement: 'nav' })}
+                className="flex items-center gap-[11px] no-underline"
+              >
                 <PhoneIcon />
                 <span className="font-body text-[16px] font-semibold text-[#e8e8e8]">{formatContactNumber()}</span>
               </a>

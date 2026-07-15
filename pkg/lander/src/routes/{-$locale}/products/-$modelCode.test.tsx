@@ -41,6 +41,7 @@ function productDetail(overrides: Partial<ProductDetail> = {}): ProductDetail {
     modelCode: 'CH14',
     rangeName: 'Chaser Bins',
     rangeSlug: 'chaser-bins',
+    variant: null,
     tagline: 'Built for harvest',
     description: 'A working product detail fixture.',
     imageUrl: '/images/products/product-1',

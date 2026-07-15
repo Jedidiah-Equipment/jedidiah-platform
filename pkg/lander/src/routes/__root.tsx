@@ -3,7 +3,7 @@ import { createRootRoute, HeadContent, Outlet, Scripts, useMatch } from '@tansta
 import { useEffect } from 'react';
 
 import { initAnalytics } from '../lib/analytics.js';
-import { CANONICAL_LOCALE } from '../lib/locale.js';
+import { CANONICAL_LOCALE, type Locale } from '../lib/locale.js';
 import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
 import { getSiteMeta } from '../server/site/site-meta.js';
 import appCss from '../styles/app.css?url';
@@ -42,10 +42,10 @@ export const Route = createRootRoute({
 // Initialises PostHog on mount. Pageviews — including SPA route changes — are captured by posthog-js itself
 // via `capture_pageview: 'history_change'` (set by the `defaults` snapshot), so no manual wiring is needed.
 // No-ops entirely when PostHog is unset.
-function AnalyticsTracker() {
+function AnalyticsTracker({ locale }: { locale: Locale }) {
   useEffect(() => {
-    initAnalytics();
-  }, []);
+    initAnalytics(locale);
+  }, [locale]);
 
   return null;
 }
@@ -62,7 +62,7 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
-        <AnalyticsTracker />
+        <AnalyticsTracker locale={locale} />
         <Outlet />
         <Scripts />
       </body>

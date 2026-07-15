@@ -2,6 +2,7 @@ import { contactNumberE164, formatContactNumber, JEDIDIAH_INSTAGRAM_URL, JEDIDIA
 import logoFullUrl from '@pkg/domain/assets/brand/jedidiah-logo-full.png';
 import { IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
+import { captureEventForNavigation } from '../lib/analytics.js';
 import { LOCALES } from '../lib/locale.js';
 import { localePreferenceHref } from '../lib/locale-preference.js';
 import { useLocale, useMessages } from '../messages/index.js';
@@ -81,7 +82,11 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
               {m.footer.contactHeading}
             </h4>
             <div className="flex flex-col gap-[15px]">
-              <a href={`tel:${contactNumberE164()}`} className="flex items-center gap-[11px] no-underline">
+              <a
+                href={`tel:${contactNumberE164()}`}
+                onClick={() => captureEventForNavigation('phone_link_clicked', { placement: 'footer' })}
+                className="flex items-center gap-[11px] no-underline"
+              >
                 <IconPhone className="flex-none text-yellow" size={17} aria-hidden="true" />
                 <span className="font-body text-[15px] text-[#cfcfcf]">{formatContactNumber()}</span>
               </a>
@@ -93,6 +98,9 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
                 href={JEDIDIAH_INSTAGRAM_URL}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() =>
+                  captureEventForNavigation('social_link_clicked', { platform: 'instagram', placement: 'footer' })
+                }
                 className="flex items-center gap-[11px] no-underline"
               >
                 <IconBrandInstagram className="flex-none text-yellow" size={17} aria-hidden="true" />
@@ -118,6 +126,13 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
           <a
             href={localePreferenceHref(currentHref, targetLocale)}
             aria-label={m.language.switchTo(targetLanguage)}
+            onClick={() =>
+              captureEventForNavigation('language_switched', {
+                fromLocale: locale,
+                toLocale: targetLocale,
+                placement: 'footer',
+              })
+            }
             className="font-body text-[13px] text-[#8a8a8a] underline decoration-[#5a5a5a] underline-offset-4 hover:text-yellow"
           >
             {targetLanguage}

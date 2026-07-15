@@ -28,6 +28,7 @@ vi.mock('../server/catalog/product-detail.js', () => ({
     modelCode: 'CH-450',
     rangeName: 'Chaser Bins',
     rangeSlug: 'chaser-bins',
+    variant: null,
     tagline: 'Built for harvest',
     description: 'Catalog text stays canonical English for now.',
     imageUrl: '/images/products/product-1',

@@ -32,9 +32,11 @@ const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : us
 export function VariantFilterBar({
   activeGroup,
   activeVariant,
+  onHeightTransitionEnd,
 }: {
   activeGroup: CatalogGroup | undefined;
   activeVariant: CatalogVariant | undefined;
+  onHeightTransitionEnd?: () => void;
 }) {
   const m = useMessages();
   const hasVariants = !!activeGroup && activeGroup.variants.length > 0;
@@ -84,9 +86,13 @@ export function VariantFilterBar({
         hasVariants ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
       }`}
       onTransitionEnd={(event) => {
-        if (event.propertyName === 'grid-template-rows' && hasVariants) {
+        if (event.target !== event.currentTarget || event.propertyName !== 'grid-template-rows') {
+          return;
+        }
+        if (hasVariants) {
           setOverflowVisible(true);
         }
+        onHeightTransitionEnd?.();
       }}
     >
       <div className={overflowVisible ? 'overflow-visible' : 'overflow-hidden'} inert={!hasVariants}>

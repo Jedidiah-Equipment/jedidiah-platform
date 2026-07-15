@@ -27,15 +27,22 @@ describe('products filter selection scrolling', () => {
     const container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
+    const realignRef: { current: unknown } = { current: undefined };
     const render = async (nextSearch: ProductsSearch, nextHasRestoredScroll = false) => {
       await act(async () =>
-        root?.render(<ScrollHarness search={nextSearch} hasRestoredScroll={nextHasRestoredScroll} />),
+        root?.render(
+          <ScrollHarness search={nextSearch} hasRestoredScroll={nextHasRestoredScroll} realignRef={realignRef} />,
+        ),
       );
     };
 
     await render(search, hasRestoredScroll);
 
-    return { render, scrollTo };
+    return {
+      realign: async () => act(async () => (realignRef.current as () => void)()),
+      render,
+      scrollTo,
+    };
   }
 
   test('scrolls far enough to leave the first catalog heading below the sticky filters', async () => {
@@ -48,6 +55,15 @@ describe('products filter selection scrolling', () => {
     const { render, scrollTo } = await renderScrollHarness({ range: 'trailers' });
     scrollTo.mockClear();
     await render({});
+
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 495 });
+  });
+
+  test('realigns after an animated filter row finishes changing height', async () => {
+    const { realign, scrollTo } = await renderScrollHarness({ range: 'trailers' });
+    scrollTo.mockClear();
+
+    await realign();
 
     expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 495 });
   });
@@ -67,9 +83,17 @@ describe('products filter selection scrolling', () => {
 
 type ProductsSearch = { range?: string; variant?: string };
 
-function ScrollHarness({ search, hasRestoredScroll }: { search: ProductsSearch; hasRestoredScroll: boolean }) {
+function ScrollHarness({
+  search,
+  hasRestoredScroll,
+  realignRef,
+}: {
+  search: ProductsSearch;
+  hasRestoredScroll: boolean;
+  realignRef: { current: unknown };
+}) {
   const target = useRef<HTMLDivElement>(null);
-  useProductsFilterScroll(target, search, hasRestoredScroll);
+  realignRef.current = useProductsFilterScroll(target, search, hasRestoredScroll);
 
   return <div ref={target} />;
 }

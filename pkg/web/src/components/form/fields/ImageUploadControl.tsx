@@ -1,4 +1,4 @@
-import { IconPhoto, IconTrash, IconUpload } from '@tabler/icons-react';
+import { IconPencil, IconPhoto, IconTrash, IconUpload } from '@tabler/icons-react';
 import type * as React from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -17,9 +17,12 @@ export type ImageUploadControlProps = {
   onBlur?: () => void;
   onChange: (dataUrl: string | null) => void;
   removeLabel: string;
+  replaceLabel: string;
   // Turns the picked file into the data URL stored on the field (resize, re-encode, validate, etc.).
   // Throw an `Error` to surface its message to the user as a toast.
   transform: (file: File) => Promise<string>;
+  trigger?: 'button' | 'thumbnail';
+  uploadLabel: string;
   value: string | null;
 };
 
@@ -36,7 +39,10 @@ export function ImageUploadControl({
   onBlur,
   onChange,
   removeLabel,
+  replaceLabel,
   transform,
+  trigger = 'button',
+  uploadLabel,
   value,
 }: ImageUploadControlProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -60,44 +66,76 @@ export function ImageUploadControl({
     }
   }
 
-  return (
-    <div className="flex items-center gap-3">
-      <EntityThumbnail label={fallbackLabel} size="lg" thumbnailDataUrl={value} />
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Input
-          accept={accept}
-          aria-invalid={isInvalid}
-          className="sr-only"
-          disabled={disabled || isProcessing}
-          id={inputId}
-          onBlur={onBlur}
-          onChange={handleFileChange}
-          ref={inputRef}
-          type="file"
-        />
-        <Button
-          disabled={disabled || isProcessing}
-          onClick={() => inputRef.current?.click()}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          {value ? <IconPhoto data-icon="inline-start" /> : <IconUpload data-icon="inline-start" />}
-          {value ? 'Replace' : 'Upload'}
-        </Button>
-        {value ? (
+  const fileInput = (
+    <Input
+      accept={accept}
+      aria-invalid={isInvalid}
+      className="sr-only"
+      disabled={disabled || isProcessing}
+      id={inputId}
+      onBlur={onBlur}
+      onChange={handleFileChange}
+      ref={inputRef}
+      type="file"
+    />
+  );
+  const removeButton = value ? (
+    <Button
+      disabled={disabled || isProcessing}
+      onClick={() => onChange(null)}
+      size="icon-sm"
+      type="button"
+      variant="outline"
+    >
+      <IconTrash />
+      <span className="sr-only">{removeLabel}</span>
+    </Button>
+  ) : null;
+
+  if (trigger === 'button') {
+    return (
+      <div className="flex items-center gap-3">
+        <EntityThumbnail label={fallbackLabel} size="lg" thumbnailDataUrl={value} />
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {fileInput}
           <Button
             disabled={disabled || isProcessing}
-            onClick={() => onChange(null)}
-            size="icon-sm"
+            onClick={() => inputRef.current?.click()}
+            size="sm"
             type="button"
             variant="outline"
           >
-            <IconTrash />
-            <span className="sr-only">{removeLabel}</span>
+            {value ? <IconPhoto data-icon="inline-start" /> : <IconUpload data-icon="inline-start" />}
+            {value ? replaceLabel : uploadLabel}
           </Button>
-        ) : null}
+          {removeButton}
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {fileInput}
+      <Button
+        aria-invalid={isInvalid}
+        aria-label={value ? replaceLabel : uploadLabel}
+        className="group relative size-10 overflow-hidden rounded-md p-0"
+        disabled={disabled || isProcessing}
+        onClick={() => inputRef.current?.click()}
+        size="icon-lg"
+        type="button"
+        variant="ghost"
+      >
+        <EntityThumbnail label={fallbackLabel} preview={false} size="lg" thumbnailDataUrl={value} />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+        >
+          <IconPencil />
+        </span>
+      </Button>
+      {removeButton}
     </div>
   );
 }

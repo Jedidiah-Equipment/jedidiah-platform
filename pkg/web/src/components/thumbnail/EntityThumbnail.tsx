@@ -11,6 +11,7 @@ const PREVIEW_DELAY_MS = 1500;
 type EntityThumbnailProps = {
   className?: string;
   label: string;
+  preview?: boolean;
   thumbnailDataUrl?: string | null | undefined;
   size?: 'sm' | 'default' | 'lg';
 };
@@ -18,6 +19,7 @@ type EntityThumbnailProps = {
 export const EntityThumbnail: React.FC<EntityThumbnailProps> = ({
   className,
   label,
+  preview = true,
   size = 'default',
   thumbnailDataUrl,
 }) => {
@@ -28,7 +30,7 @@ export const EntityThumbnail: React.FC<EntityThumbnailProps> = ({
     </Avatar>
   );
 
-  if (!thumbnailDataUrl) {
+  if (!thumbnailDataUrl || !preview) {
     return avatar;
   }
 

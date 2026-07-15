@@ -20,7 +20,7 @@ describe('products filter selection scrolling', () => {
 
   async function renderScrollHarness(search: ProductsSearch, hasRestoredScroll = false) {
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ top: 507 } as DOMRect);
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ top: 507.5 } as DOMRect);
     vi.spyOn(window, 'getComputedStyle').mockReturnValue({
       getPropertyValue: (property: string) => (property === '--filter-scroll-offset' ? '12px' : ''),
     } as CSSStyleDeclaration);

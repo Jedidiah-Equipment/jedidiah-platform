@@ -41,9 +41,11 @@ export function useProductsFilterScroll(
     }
 
     const scrollOffset = Number.parseFloat(window.getComputedStyle(element).getPropertyValue('--filter-scroll-offset'));
+    const top = window.scrollY + element.getBoundingClientRect().top - (Number.isNaN(scrollOffset) ? 0 : scrollOffset);
     window.scrollTo({
       behavior: 'smooth',
-      top: window.scrollY + element.getBoundingClientRect().top - (Number.isNaN(scrollOffset) ? 0 : scrollOffset),
+      // Bias fractional layout positions upward so pixel rounding cannot tuck the heading under the filters.
+      top: Math.floor(top),
     });
   }, [hasRestoredScroll, search.range, search.variant, target]);
 }

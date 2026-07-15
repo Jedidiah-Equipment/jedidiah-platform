@@ -9,7 +9,7 @@ import {
 } from '@pkg/domain';
 import type { BayOperator, DateOnlyIso } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 
 import { useTRPC } from './trpc';
 import { useAccess } from './use-access';
@@ -39,9 +39,6 @@ export type BayListState =
 
 export type UseBayListResult = {
   state: BayListState;
-  /** Refetch access + the Board, e.g. from pull-to-refresh. */
-  refresh: () => void;
-  isRefreshing: boolean;
 };
 
 /**
@@ -108,14 +105,5 @@ export function useBayList(): UseBayListResult {
     canReadJobs,
   ]);
 
-  const refresh = useCallback(() => {
-    void accessQuery.refetch();
-    if (canReadJobs) void baysQuery.refetch();
-  }, [accessQuery, baysQuery, canReadJobs]);
-
-  return {
-    state,
-    refresh,
-    isRefreshing: accessQuery.isRefetching || baysQuery.isRefetching,
-  };
+  return { state };
 }

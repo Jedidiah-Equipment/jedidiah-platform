@@ -1,16 +1,13 @@
-import { RefreshControl, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoardList, isListMode, type ListMode } from '@/components/bays/BoardList';
 import { ProfileHeader } from '@/components/ProfileHeader';
+import { RefreshControl } from '@/components/ui/refresh-control';
 import { useBayList } from '@/lib/use-bay-list';
+import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { useJobList } from '@/lib/use-job-list';
 import { usePersistedState } from '@/lib/use-persisted-state';
-import { useColorMode } from '@/theme/use-color-mode';
-
-// Neutral spinner colours per scheme (matches `--color-muted-foreground`), since
-// RefreshControl paints from concrete colour props rather than NativeWind classes.
-const REFRESH_TINT = { dark: '#7a7a82', light: '#737373' } as const;
 
 /**
  * Shop-floor landing screen: the shared profile header over the responsive board, which the
@@ -19,24 +16,16 @@ const REFRESH_TINT = { dark: '#7a7a82', light: '#737373' } as const;
  * the time we render. Owns the board data so the whole page pulls to refresh.
  */
 export default function IndexRoute() {
-  const { resolved } = useColorMode();
   const [listMode, setListMode] = usePersistedState<ListMode>('jedidiah-board-list-mode', 'bays', isListMode);
   const bayList = useBayList();
   const jobList = useJobList();
-  const tint = REFRESH_TINT[resolved];
+  const refresh = useGlobalRefresh();
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <ScrollView
         contentContainerClassName="w-full gap-6 px-4 pb-8 pt-4"
-        refreshControl={
-          <RefreshControl
-            colors={[tint]}
-            onRefresh={bayList.refresh}
-            refreshing={bayList.isRefreshing}
-            tintColor={tint}
-          />
-        }
+        refreshControl={<RefreshControl {...refresh} />}
       >
         <ProfileHeader />
         <BoardList

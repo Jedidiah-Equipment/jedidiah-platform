@@ -35,7 +35,16 @@ export function useProductsFilterScroll(
       return;
     }
 
-    target.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const element = target.current;
+    if (!element) {
+      return;
+    }
+
+    const scrollOffset = Number.parseFloat(window.getComputedStyle(element).getPropertyValue('--filter-scroll-offset'));
+    window.scrollTo({
+      behavior: 'smooth',
+      top: window.scrollY + element.getBoundingClientRect().top - (Number.isNaN(scrollOffset) ? 0 : scrollOffset),
+    });
   }, [hasRestoredScroll, search.range, search.variant, target]);
 }
 
@@ -135,8 +144,11 @@ function FilterBar({
 
   return (
     <>
-      {/* A sticky element already pinned onscreen will not scroll; target its normal-flow position instead. */}
-      <div ref={target} />
+      {/* Keep these offsets equal to sticky nav height minus catalog top padding at each breakpoint. */}
+      <div
+        ref={target}
+        className="[--filter-scroll-offset:16px] nav:[--filter-scroll-offset:0px] header:[--filter-scroll-offset:12px]"
+      />
       <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-header:top-16">
         {showRangeFilter ? (
           <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">

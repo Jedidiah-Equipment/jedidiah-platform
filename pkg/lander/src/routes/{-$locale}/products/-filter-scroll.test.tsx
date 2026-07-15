@@ -15,16 +15,15 @@ describe('products filter selection scrolling', () => {
       root = undefined;
     }
     document.body.replaceChildren();
-    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
     vi.restoreAllMocks();
   });
 
   async function renderScrollHarness(search: ProductsSearch, hasRestoredScroll = false) {
-    const scrollIntoView = vi.fn();
-    Object.defineProperty(Element.prototype, 'scrollIntoView', {
-      configurable: true,
-      value: scrollIntoView,
-    });
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ top: 507 } as DOMRect);
+    vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+      getPropertyValue: (property: string) => (property === '--filter-scroll-offset' ? '12px' : ''),
+    } as CSSStyleDeclaration);
     const container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -36,33 +35,33 @@ describe('products filter selection scrolling', () => {
 
     await render(search, hasRestoredScroll);
 
-    return { render, scrollIntoView };
+    return { render, scrollTo };
   }
 
-  test('scrolls the filter bar into view when the page opens with a selected Range', async () => {
-    const { scrollIntoView } = await renderScrollHarness({ range: 'trailers' });
+  test('scrolls far enough to leave the first catalog heading below the sticky filters', async () => {
+    const { scrollTo } = await renderScrollHarness({ range: 'trailers' });
 
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 495 });
   });
 
   test('scrolls the filter bar into view when All clears the current selection', async () => {
-    const { render, scrollIntoView } = await renderScrollHarness({ range: 'trailers' });
-    scrollIntoView.mockClear();
+    const { render, scrollTo } = await renderScrollHarness({ range: 'trailers' });
+    scrollTo.mockClear();
     await render({});
 
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 495 });
   });
 
   test('leaves an unfiltered first visit at the top of the page', async () => {
-    const { scrollIntoView } = await renderScrollHarness({});
+    const { scrollTo } = await renderScrollHarness({});
 
-    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 
   test('preserves a restored grid position when returning to a filtered page', async () => {
-    const { scrollIntoView } = await renderScrollHarness({ range: 'trailers' }, true);
+    const { scrollTo } = await renderScrollHarness({ range: 'trailers' }, true);
 
-    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });
 

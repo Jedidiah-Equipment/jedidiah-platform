@@ -3,6 +3,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test, vi } from 'vitest';
 
 import { routeTree } from '../routeTree.gen.js';
+import type { CatalogGroup } from '../server/catalog/products-data.js';
+
+let productGroups: CatalogGroup[] = [];
 
 vi.mock('../lib/site-origin.js', () => ({ siteOrigin: () => 'https://lander.example.test' }));
 vi.mock('../lib/locale-preference.js', async () => {
@@ -17,7 +20,7 @@ vi.mock('../server/catalog/ranges.js', () => ({
   getProductRangeCount: async () => 4,
   getRangeOptions: async () => [],
 }));
-vi.mock('../server/catalog/products.js', () => ({ getProductsCatalog: async () => ({ groups: [] }) }));
+vi.mock('../server/catalog/products.js', () => ({ getProductsCatalog: async () => ({ groups: productGroups }) }));
 vi.mock('../server/catalog/product-detail.js', () => ({
   getProductDetail: async () => ({
     id: 'product-1',
@@ -99,6 +102,24 @@ describe('localized public routes', () => {
     expect(markup).toMatch(/<a(?=[^>]*href="\/products")(?=[^>]*class="[^"]*text-yellow[^"]*")[^>]*>Products/);
   });
 
+  test('only shows the Range filter when the catalog has multiple Ranges', async () => {
+    productGroups = [catalogGroup('range-one', true)];
+
+    try {
+      const singleRangeMarkup = renderToStaticMarkup(<RouterProvider router={await routerAt('/products')} />);
+
+      productGroups.push(catalogGroup('range-two'));
+      const multipleRangeMarkup = renderToStaticMarkup(<RouterProvider router={await routerAt('/products')} />);
+
+      expect(singleRangeMarkup).not.toContain('Filter by range');
+      expect(singleRangeMarkup).toContain('Filter by variant');
+      expect(singleRangeMarkup).toContain('variant-one');
+      expect(multipleRangeMarkup).toContain('Filter by range');
+    } finally {
+      productGroups = [];
+    }
+  });
+
   test('renders language choices as server-backed links that work without client-side cookie writes', async () => {
     const router = await routerAt('/about');
     const markup = renderToStaticMarkup(<RouterProvider router={router} />);
@@ -144,3 +165,18 @@ describe('localized public routes', () => {
     expect(router.matchRoutes(href).at(-1)?.routeId).toBe(routeId);
   });
 });
+
+function catalogGroup(id: string, withVariant = false): CatalogGroup {
+  return {
+    id,
+    slug: id,
+    name: id,
+    label: id,
+    description: '',
+    count: 0,
+    variants: withVariant
+      ? [{ id: 'variant-one', slug: 'variant-one', name: 'variant-one', label: 'variant-one' }]
+      : [],
+    products: [],
+  };
+}

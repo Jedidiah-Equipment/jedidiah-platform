@@ -1,0 +1,60 @@
+{
+  "releasedAt": "2026-07-15T13:50:21.882Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Edit thumbnails directly",
+          "description": "Select a customer or supplier thumbnail to replace it, with clearer controls for removing images."
+        },
+        {
+          "title": "Set product display order",
+          "description": "Choose the order in which products appear in product lists and the public catalog."
+        },
+        {
+          "title": "Preview brochure banners accurately",
+          "description": "Brochure banner previews now match the wide shape used in the finished brochure."
+        },
+        {
+          "title": "Scan forms more easily",
+          "description": "Customer and supplier details are now grouped into clearer cards."
+        },
+        {
+          "title": "Use tidier filter controls",
+          "description": "The reset filters button now takes up less space."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Browse products in a curated order",
+          "description": "Products now appear in their intended display order throughout the catalog and related-product suggestions."
+        },
+        {
+          "title": "Navigate catalog filters smoothly",
+          "description": "Product filters now stay visible, scroll results into the right position, preserve your place when returning, and avoid showing redundant options."
+        },
+        {
+          "title": "See more consistent page headers",
+          "description": "Public page headers now use a more compact, aligned layout across screen sizes."
+        },
+        {
+          "title": "Follow old website links safely",
+          "description": "Legacy website links now redirect visitors to the matching current pages."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Pull down to refresh",
+          "description": "Refresh the latest bay and job information from the main board, bay queues, and job details."
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useElementScrollRestoration } from '@tanstack/react-router';
 import { type RefObject, useEffect, useRef } from 'react';
 
 import { PageHero } from '../../../components/page-hero.js';
@@ -18,7 +18,11 @@ type ProductsCatalogView = {
   visibleGroups: CatalogGroup[];
 };
 
-export function useProductsFilterScroll(target: RefObject<HTMLDivElement | null>, search: ProductsSearch) {
+export function useProductsFilterScroll(
+  target: RefObject<HTMLDivElement | null>,
+  search: ProductsSearch,
+  hasRestoredScroll = false,
+) {
   const previousSearch = useRef({ range: search.range, variant: search.variant });
 
   useEffect(() => {
@@ -26,13 +30,13 @@ export function useProductsFilterScroll(target: RefObject<HTMLDivElement | null>
       previousSearch.current.range !== search.range || previousSearch.current.variant !== search.variant;
     previousSearch.current = { range: search.range, variant: search.variant };
 
-    // Do not skip the hero on a normal first visit, but do keep "All" aligned after it clears a filter.
-    if (!search.range && !search.variant && !selectionChanged) {
+    // Preserve a saved grid position on Back, while still aligning direct filtered entries and filter changes.
+    if (!selectionChanged && (hasRestoredScroll || (!search.range && !search.variant))) {
       return;
     }
 
     target.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [search.range, search.variant, target]);
+  }, [hasRestoredScroll, search.range, search.variant, target]);
 }
 
 export const Route = createFileRoute('/{-$locale}/products/')({
@@ -183,7 +187,8 @@ function ProductsPage() {
   const { catalog } = Route.useLoaderData();
   const search = Route.useSearch();
   const filterBar = useRef<HTMLDivElement>(null);
-  useProductsFilterScroll(filterBar, search);
+  const restoredWindowScroll = useElementScrollRestoration({ getElement: () => window });
+  useProductsFilterScroll(filterBar, search, restoredWindowScroll !== undefined);
 
   const groups = catalog.groups;
   const { activeGroup, activeSlug, activeVariant, visibleGroups } = resolveProductsCatalogView(groups, search);

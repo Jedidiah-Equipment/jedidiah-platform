@@ -377,6 +377,8 @@ export const PRODUCT_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 // `cover` photos fill their slot; the `contain` technical drawing preserves the whole image.
 export type ProductImageSlotSpec = {
   fit: 'contain' | 'cover';
+  // Overrides the editor's default 16:9 preview when a slot renders into a distinct fixed frame.
+  previewAspectRatio?: `${number} / ${number}`;
   recommendedHeight: number;
   recommendedWidth: number;
 };
@@ -384,7 +386,7 @@ export type ProductImageSlotSpec = {
 export const PRODUCT_IMAGE_SLOT_SPECS = {
   primary: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
   technicalDrawing: { fit: 'contain', recommendedHeight: 1200, recommendedWidth: 1600 },
-  banner: { fit: 'cover', recommendedHeight: 900, recommendedWidth: 1200 },
+  banner: { fit: 'cover', previewAspectRatio: '30 / 11', recommendedHeight: 880, recommendedWidth: 2400 },
   secondary1: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
   secondary2: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
 } as const satisfies Record<ProductImageSlot, ProductImageSlotSpec>;

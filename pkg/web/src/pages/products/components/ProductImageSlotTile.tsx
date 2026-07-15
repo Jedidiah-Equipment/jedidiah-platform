@@ -1,4 +1,10 @@
-import { PRODUCT_IMAGE_SLOT_SPECS, type ProductImage, type ProductImageSlot, type UUID } from '@pkg/schema';
+import {
+  PRODUCT_IMAGE_SLOT_SPECS,
+  type ProductImage,
+  type ProductImageSlot,
+  type ProductImageSlotSpec,
+  type UUID,
+} from '@pkg/schema';
 import { IconLoader2, IconPhoto, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
@@ -39,7 +45,7 @@ export const ProductImageSlotTile: React.FC<ProductImageSlotTileProps> = ({
   slot,
   usage,
 }) => {
-  const spec = PRODUCT_IMAGE_SLOT_SPECS[slot];
+  const spec: ProductImageSlotSpec = PRODUCT_IMAGE_SLOT_SPECS[slot];
   const { invalidateProducts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,8 +81,10 @@ export const ProductImageSlotTile: React.FC<ProductImageSlotTileProps> = ({
       <p className="text-muted-foreground text-xs">{description}</p>
       <div
         className={cn(
-          'flex aspect-video w-full items-center justify-center overflow-hidden rounded-md border bg-muted/40',
+          'flex w-full items-center justify-center overflow-hidden rounded-md border bg-muted/40',
+          !spec.previewAspectRatio && 'aspect-video',
         )}
+        style={spec.previewAspectRatio ? { aspectRatio: spec.previewAspectRatio } : undefined}
       >
         {previewUrl ? (
           <img

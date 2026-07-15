@@ -46,7 +46,10 @@ export function ThumbnailField({
           onValueCommit?.();
         }}
         removeLabel="Remove thumbnail"
+        replaceLabel="Replace thumbnail"
         transform={createThumbnailDataUrl}
+        trigger="thumbnail"
+        uploadLabel="Upload thumbnail"
         value={field.state.value}
       />
       {description ? <FieldDescription>{description}</FieldDescription> : null}

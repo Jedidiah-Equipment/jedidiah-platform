@@ -52,7 +52,9 @@ export function ImageField({
           onValueCommit?.();
         }}
         removeLabel="Remove image"
+        replaceLabel="Replace"
         transform={(file) => readImageFileAsDataUrl(file, contentTypes, maxBytes)}
+        uploadLabel="Upload"
         value={field.state.value}
       />
       {description ? <FieldDescription>{description}</FieldDescription> : null}

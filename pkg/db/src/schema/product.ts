@@ -44,6 +44,7 @@ export const products = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     buildTimeDays: integer('build_time_days').notNull(),
     modelCode: text('model_code').notNull(),
+    displayOrder: integer('display_order').notNull().default(0),
     name: text('name').notNull(),
     nameHighlight: text('name_highlight'),
     rangeId: uuid('range_id')

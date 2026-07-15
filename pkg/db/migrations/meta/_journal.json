@@ -547,6 +547,13 @@
       "when": 1784016722958,
       "tag": "0077_reset_catalog_translation_envelopes",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1784105392066,
+      "tag": "0078_mean_smasher",
+      "breakpoints": true
     }
   ]
 }

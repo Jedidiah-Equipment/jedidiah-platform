@@ -4,7 +4,13 @@ import { isBrochureReady, isLanderReady, localizeFields } from '@pkg/domain';
 import type { AssemblyKind, ProductImageSlot } from '@pkg/schema';
 import { CANONICAL_LOCALE, type Locale } from '../../lib/locale.js';
 import { OG_IMAGE_FORMAT } from '../media/image-transform.js';
-import { type CatalogProduct, imageUrl, toCatalogProduct, toRangeSlug } from './products-data.js';
+import {
+  type CatalogProduct,
+  compareProductDisplayOrder,
+  imageUrl,
+  toCatalogProduct,
+  toRangeSlug,
+} from './products-data.js';
 
 export type ProductHighlight = { value: string; label: string };
 export type ProductGalleryImage = { imageUrl: string; slot: ProductImageSlot };
@@ -66,14 +72,14 @@ export async function loadProductDetail(db: Db, modelCode: string, locale: Local
       .filter((assembly) => assembly.kind === kind)
       .map((assembly) => localizeFields({ name: assembly.name }, assembly.translations, locale).name);
 
-  // Other lander-ready Products in the same Range, sorted by name like the catalog so the related strip is
-  // deterministic. Unready siblings are excluded so the strip never links to a 404.
+  // Keep the related strip in the same manual order as the catalog. Unready siblings are excluded so the
+  // strip never links to a 404.
   const related = allProducts
     .filter(
       (candidate) =>
         candidate.rangeId === fullProduct.rangeId && candidate.id !== fullProduct.id && isLanderReady(candidate),
     )
-    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.id.localeCompare(b.id))
+    .sort(compareProductDisplayOrder)
     .map((candidate) => toCatalogProduct(candidate, locale));
 
   // getProduct returns assemblies already ordered (standard bucket first, then displayOrder), so filtering

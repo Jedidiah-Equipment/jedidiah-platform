@@ -145,6 +145,12 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
         header: 'Model code',
       },
       {
+        accessorKey: 'displayOrder',
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Display order',
+      },
+      {
         accessorKey: 'basePrice',
         cell: ({ row }) => formatCurrency(row.original.basePrice, row.original.currencyCode),
         enableColumnFilter: false,
@@ -164,17 +170,6 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
         enableColumnFilter: false,
         enableSorting: true,
         header: 'Updated',
-      },
-      {
-        accessorKey: 'description',
-        cell: ({ row }) => (
-          <span className="block max-w-[320px] truncate text-sm text-muted-foreground">
-            {row.original.description ?? '-'}
-          </span>
-        ),
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: 'Summary',
       },
     ];
 

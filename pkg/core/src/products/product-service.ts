@@ -112,6 +112,7 @@ const productListColumns = {
   currencyCode: true,
   deletedAt: true,
   description: true,
+  displayOrder: true,
   id: true,
   images: true,
   keyFeatures: true,
@@ -188,6 +189,7 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
     category: input.category,
     currencyCode: input.currencyCode,
     description: input.description,
+    displayOrder: input.displayOrder,
     buildTimeDays: input.buildTimeDays,
     modelCode: input.modelCode,
     name: input.name,
@@ -244,6 +246,7 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
     createdAt: row.createdAt.toISOString(),
     currencyCode: ProductCurrencyCode.parse(row.currencyCode),
     description: row.description,
+    displayOrder: row.displayOrder,
     id: row.id,
     images: mapProductImages(row.images),
     keyFeatures: row.keyFeatures,
@@ -865,6 +868,7 @@ export async function updateProduct({
         category: input.category === undefined ? before.category : input.category,
         currencyCode: input.currencyCode,
         description: input.description,
+        displayOrder: input.displayOrder ?? before.displayOrder,
         keyFeatures: input.keyFeatures ?? before.keyFeatures,
         technicalDetails: input.technicalDetails ?? before.technicalDetails,
         buildTimeDays: input.buildTimeDays,
@@ -1243,6 +1247,10 @@ function getProductSortColumn(sortBy: ProductListInput['sortBy']) {
 
   if (sortBy === 'id') {
     return products.id;
+  }
+
+  if (sortBy === 'displayOrder') {
+    return products.displayOrder;
   }
 
   if (sortBy === 'modelCode') {

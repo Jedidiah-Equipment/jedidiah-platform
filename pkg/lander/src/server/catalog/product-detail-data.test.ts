@@ -54,6 +54,7 @@ async function insertProduct(
     name: string;
     modelCode: string;
     description?: string | null;
+    displayOrder?: number;
     category?: string | null;
     keyFeatures?: string[];
     technicalDetails?: { label: string; value: string }[];
@@ -249,13 +250,30 @@ test('loadProductDetail lists other Products in the same Range as related cards'
     name: `RC3000 ${suffix}`,
     modelCode: `RC3000-${suffix}`,
     description: 'Compact field bowser.',
+    displayOrder: 20,
   });
   await insertAssembly(db, sibling.id, { kind: 'standard', name: 'Tank frame', displayOrder: 0 });
+  const earlierSibling = await insertProduct(db, range.id, {
+    name: `RC4000 ${suffix}`,
+    modelCode: `RC4000-${suffix}`,
+    description: 'Mid-size field bowser.',
+    displayOrder: 10,
+  });
+  await insertAssembly(db, earlierSibling.id, { kind: 'standard', name: 'Tank frame', displayOrder: 0 });
   await insertProduct(db, otherRange.id, { name: `HD2020 ${suffix}`, modelCode: `HD2020-${suffix}` });
 
   const detail = await loadProductDetail(db, product.modelCode, 'en');
 
   expect(detail?.related).toEqual([
+    {
+      id: earlierSibling.id,
+      name: earlierSibling.name,
+      modelCode: earlierSibling.modelCode,
+      description: 'Mid-size field bowser.',
+      variantId: null,
+      href: `/products/${encodeURIComponent(earlierSibling.modelCode)}`,
+      imageUrl: `/images/products/${earlierSibling.id}?v=${Date.parse(earlierSibling.images.primary?.updatedAt ?? '')}-${transformSignature('webp')}`,
+    },
     {
       id: sibling.id,
       name: sibling.name,

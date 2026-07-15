@@ -57,6 +57,7 @@ async function insertProduct(
     name: string;
     modelCode: string;
     description?: string | null;
+    displayOrder?: number;
     landerEnabled?: boolean;
     variantId?: string | null;
     translations?: typeof products.$inferInsert.translations;
@@ -213,6 +214,30 @@ test('loadProductsCatalog groups Products under their Range with a model count',
     // site (issue #647).
     imageUrl: `/images/products/${product.id}?v=${Date.parse(product.images.primary?.updatedAt ?? '')}-${transformSignature('webp')}`,
   });
+});
+
+test('loadProductsCatalog orders Products by display order and then name', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, `Ordered ${suffix} Range`, null);
+  const later = await insertProduct(db, range.id, {
+    name: `Middle ${suffix}`,
+    modelCode: `MID-${suffix}`,
+    displayOrder: 20,
+  });
+  const sameOrderLast = await insertProduct(db, range.id, {
+    name: `Zulu ${suffix}`,
+    modelCode: `ZUL-${suffix}`,
+    displayOrder: 10,
+  });
+  const sameOrderFirst = await insertProduct(db, range.id, {
+    name: `Alpha ${suffix}`,
+    modelCode: `ALP-${suffix}`,
+    displayOrder: 10,
+  });
+
+  const group = (await loadProductsCatalog(db, 'en')).groups.find((candidate) => candidate.id === range.id);
+
+  expect(group?.products.map((product) => product.id)).toEqual([sameOrderFirst.id, sameOrderLast.id, later.id]);
 });
 
 test('loadProductsCatalog exposes Range Variants in display order with range-scoped slug data', async ({ db }) => {

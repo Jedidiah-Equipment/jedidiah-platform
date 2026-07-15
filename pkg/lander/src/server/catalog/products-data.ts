@@ -1,7 +1,7 @@
 import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import { isLanderReady, localizeFields } from '@pkg/domain';
-import type { ProductRangeVariantTranslations, ProductTranslations } from '@pkg/schema';
+import type { Product, ProductRangeVariantTranslations, ProductTranslations } from '@pkg/schema';
 
 import type { Locale } from '../../lib/locale.js';
 import { parseImageFormat, transformSignature } from '../media/image-transform.js';
@@ -134,6 +134,17 @@ export function imageUrl(
   return query ? `${path}?${query}` : path;
 }
 
+export function compareProductDisplayOrder(
+  left: Pick<Product, 'displayOrder' | 'id' | 'name'>,
+  right: Pick<Product, 'displayOrder' | 'id' | 'name'>,
+): number {
+  return (
+    left.displayOrder - right.displayOrder ||
+    left.name.toLowerCase().localeCompare(right.name.toLowerCase()) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
 // Shared Product -> card view model. The detail page is keyed by modelCode (`/products/:modelCode`); the
 // image route is keyed by id and streams the brochure hero or a neutral placeholder. Used by the catalog
 // grouping and the detail page's "More in {Range}" strip so both speak the same card shape.
@@ -176,9 +187,9 @@ export async function loadProductsCatalog(db: Db, locale: Locale): Promise<Produ
 
   const rows = allProducts.filter(isLanderReady);
 
-  // Deterministic, case-insensitive name order (the whole catalog is loaded, so sort in memory rather than
-  // pulling drizzle ordering helpers into this read-only surface).
-  rows.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.id.localeCompare(b.id));
+  // Equal order values keep the existing deterministic name order, which also preserves the current
+  // catalog layout when a migration initializes every Product to zero.
+  rows.sort(compareProductDisplayOrder);
 
   const productsByRange = new Map<string, CatalogProduct[]>();
   for (const row of rows) {

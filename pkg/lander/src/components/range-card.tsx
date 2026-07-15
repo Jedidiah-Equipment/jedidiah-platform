@@ -1,9 +1,10 @@
 import { IconArrowRight } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 
+import { captureEvent } from '../lib/analytics.js';
 import type { HomeRange } from '../server/catalog/ranges-data.js';
 
-export function RangeCard({ range }: { range: HomeRange }) {
+export function RangeCard({ position, range }: { position: number; range: HomeRange }) {
   return (
     // The <Link> is the (stationary) hover target; the lift lives on the inner card so its moving edge never
     // slides out from under the cursor and flickers the hover on/off.
@@ -11,6 +12,7 @@ export function RangeCard({ range }: { range: HomeRange }) {
       to="/{-$locale}/products"
       search={{ range: range.slug }}
       resetScroll={false}
+      onClick={() => captureEvent('range_card_clicked', { rangeSlug: range.slug, rangeName: range.name, position })}
       className="group block no-underline"
     >
       <div className="flex h-full flex-col border border-line bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[translate,box-shadow,border-color] duration-[450ms] ease-in-out group-hover:-translate-y-1.5 group-hover:border-gold group-hover:shadow-[0_18px_40px_rgba(0,0,0,0.16)]">

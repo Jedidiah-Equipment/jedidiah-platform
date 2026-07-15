@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
-import { captureEvent } from '../../../lib/analytics.js';
+import { captureEvent, captureEventForNavigation } from '../../../lib/analytics.js';
 import { seoHead, truncateDescription } from '../../../lib/seo.js';
 import { messagesForLocale, useMessages } from '../../../messages/index.js';
 import { getProductDetail } from '../../../server/catalog/product-detail.js';
@@ -236,6 +236,7 @@ function Hero({ detail }: { detail: ProductDetail }) {
             </Link>
             <a
               href={`tel:${contactNumberE164()}`}
+              onClick={() => captureEventForNavigation('phone_link_clicked', { placement: 'product_detail' })}
               className="flex items-center border-2 border-ink bg-transparent px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-ink hover:text-white"
             >
               {m.productDetail.callUs}
@@ -386,8 +387,12 @@ function ProductDetailPage() {
   const { detail } = Route.useLoaderData();
 
   useEffect(() => {
-    captureEvent('product_viewed', { modelCode: detail.modelCode, range: detail.rangeName });
-  }, [detail.modelCode, detail.rangeName]);
+    captureEvent('product_viewed', {
+      modelCode: detail.modelCode,
+      range: detail.rangeName,
+      variant: detail.variant,
+    });
+  }, [detail.modelCode, detail.rangeName, detail.variant]);
 
   return (
     <main className="bg-sand">

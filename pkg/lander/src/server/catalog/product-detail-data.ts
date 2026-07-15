@@ -22,6 +22,7 @@ export type ProductDetail = {
   modelCode: string;
   rangeName: string;
   rangeSlug: string;
+  variant: string | null;
   tagline: string;
   description: string;
   imageUrl: string;
@@ -90,6 +91,8 @@ export async function loadProductDetail(db: Db, modelCode: string, locale: Local
     modelCode: fullProduct.modelCode,
     rangeName: localizeFields({ name: rangeName }, range?.translations, locale).name,
     rangeSlug: toRangeSlug(rangeName),
+    // Analytics uses the Canonical Text slug so one Variant remains one reporting value across Locales.
+    variant: toVariantSlug(range?.variants.find((variant) => variant.id === fullProduct.variantId)?.name),
     tagline: localized.category ?? '',
     description: localized.description ?? '',
     imageUrl: imageUrl(`/images/products/${fullProduct.id}`, fullProduct.images.primary?.updatedAt),
@@ -112,6 +115,10 @@ export async function loadProductDetail(db: Db, modelCode: string, locale: Local
     brochureHref: isBrochureReady(fullProduct) ? brochureHref(fullProduct.id, locale) : null,
     related,
   };
+}
+
+function toVariantSlug(name: string | undefined): string | null {
+  return name ? toRangeSlug(name) : null;
 }
 
 function brochureHref(productId: string, locale: Locale): string {

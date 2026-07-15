@@ -1,4 +1,4 @@
-import { productAssemblies, productRanges, products } from '@pkg/db';
+import { productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db';
 import { expect } from 'vitest';
 import { translationEnvelope } from '../../test/catalog-translation.js';
 import { test } from '../../test/tester.js';
@@ -61,6 +61,7 @@ async function insertProduct(
     images?: Partial<Record<string, ProductImageRef>>;
     brochureEnabled?: boolean;
     landerEnabled?: boolean;
+    variantId?: string | null;
     translations?: typeof products.$inferInsert.translations;
   },
 ) {
@@ -215,6 +216,26 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
     { value: '14 t', label: 'Capacity' },
     { value: 'Monocoque', label: 'Body' },
   ]);
+});
+
+test('loadProductDetail includes the Product Variant as a stable canonical slug', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, `Crosshaul ${suffix} Range`);
+  const [variant] = await db
+    .insert(productRangeVariants)
+    .values({ rangeId: range.id, name: `Silage Grain ${suffix}`, displayOrder: 0 })
+    .returning();
+  if (!variant) throw new Error('variant insert did not return a row');
+  const product = await insertProduct(db, range.id, {
+    name: `CH14 Tipping Trailer ${suffix}`,
+    modelCode: `CH14-${suffix}`,
+    variantId: variant.id,
+  });
+  await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
+
+  const detail = await loadProductDetail(db, product.modelCode, 'af');
+
+  expect(detail?.variant).toBe(`silage-grain-${suffix}`);
 });
 
 test('loadProductDetail returns null for an unknown model code', async ({ db }) => {

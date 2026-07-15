@@ -1,7 +1,36 @@
 import { describe, expect, test } from 'vitest';
 
 import type { CatalogGroup } from '../../../server/catalog/products-data.js';
-import { resolveProductsCatalogView } from './index.js';
+import { catalogFilterChangeProperties, resolveProductsCatalogView } from './index.js';
+
+describe('catalogFilterChangeProperties', () => {
+  test('returns no event properties when the filters have not changed', () => {
+    expect(
+      catalogFilterChangeProperties(
+        { range: 'trailers', variant: 'wide-body' },
+        { range: 'trailers', variant: 'wide-body' },
+      ),
+    ).toBeNull();
+  });
+
+  test('reports the previous and new filters when a selection changes', () => {
+    expect(catalogFilterChangeProperties({ range: 'trailers', variant: 'wide-body' }, { range: 'tanks' })).toEqual({
+      range: 'tanks',
+      variant: null,
+      previousRange: 'trailers',
+      previousVariant: 'wide-body',
+    });
+  });
+
+  test('represents cleared filters as null', () => {
+    expect(catalogFilterChangeProperties({ range: 'trailers' }, {})).toEqual({
+      range: null,
+      variant: null,
+      previousRange: 'trailers',
+      previousVariant: null,
+    });
+  });
+});
 
 describe('resolveProductsCatalogView', () => {
   test('filters a selected Range to a selected Variant and hides unassigned Products', () => {

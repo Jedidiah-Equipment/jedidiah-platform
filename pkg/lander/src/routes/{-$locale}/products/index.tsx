@@ -5,6 +5,7 @@ import { PageHero } from '../../../components/page-hero.js';
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
 import { VariantFilterBar } from '../../../components/variant-filter-bar.js';
+import { type AnalyticsEventProperties, captureEvent } from '../../../lib/analytics.js';
 import { seoHead } from '../../../lib/seo.js';
 import { messagesForLocale, useMessages } from '../../../messages/index.js';
 import { getProductsCatalog } from '../../../server/catalog/products.js';
@@ -17,6 +18,35 @@ type ProductsCatalogView = {
   activeVariant: CatalogVariant | undefined;
   visibleGroups: CatalogGroup[];
 };
+
+export function catalogFilterChangeProperties(
+  previous: ProductsSearch,
+  current: ProductsSearch,
+): AnalyticsEventProperties<'catalog_filter_changed'> | null {
+  if (previous.range === current.range && previous.variant === current.variant) {
+    return null;
+  }
+
+  return {
+    range: current.range ?? null,
+    variant: current.variant ?? null,
+    previousRange: previous.range ?? null,
+    previousVariant: previous.variant ?? null,
+  };
+}
+
+function useCatalogFilterAnalytics(search: ProductsSearch): void {
+  const previousSearch = useRef<ProductsSearch>(search);
+
+  useEffect(() => {
+    const properties = catalogFilterChangeProperties(previousSearch.current, search);
+    previousSearch.current = search;
+
+    if (properties) {
+      captureEvent('catalog_filter_changed', properties);
+    }
+  }, [search]);
+}
 
 export function useProductsFilterScroll(
   target: RefObject<HTMLDivElement | null>,
@@ -186,7 +216,17 @@ function FilterBar({
   );
 }
 
-function ProductGroup({ group }: { group: CatalogGroup }) {
+function ProductGroup({
+  group,
+  positionOffset,
+  range,
+  variant,
+}: {
+  group: CatalogGroup;
+  positionOffset: number;
+  range: string | null;
+  variant: string | null;
+}) {
   const m = useMessages();
 
   return (
@@ -201,8 +241,19 @@ function ProductGroup({ group }: { group: CatalogGroup }) {
         </span>
       </div>
       <div className="grid grid-cols-3 gap-6 max-nav:grid-cols-2 max-xs:grid-cols-1">
-        {group.products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+        {group.products.map((product, index) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            onClick={() =>
+              captureEvent('product_card_clicked', {
+                modelCode: product.modelCode,
+                position: positionOffset + index,
+                range,
+                variant,
+              })
+            }
+          />
         ))}
       </div>
     </div>
@@ -215,9 +266,11 @@ function ProductsPage() {
   const filterBar = useRef<HTMLDivElement>(null);
   const restoredWindowScroll = useElementScrollRestoration({ getElement: () => window });
   const alignFilterBar = useProductsFilterScroll(filterBar, search, restoredWindowScroll !== undefined);
+  useCatalogFilterAnalytics(search);
 
   const groups = catalog.groups;
   const { activeGroup, activeSlug, activeVariant, visibleGroups } = resolveProductsCatalogView(groups, search);
+  let positionOffset = 0;
 
   return (
     <main className="bg-sand">
@@ -232,9 +285,20 @@ function ProductsPage() {
       />
       <SandWatermarkSection variant="products-catalog" className="pt-16 pb-24 max-nav:pt-12 max-nav:pb-18">
         <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
-          {visibleGroups.map((group) => (
-            <ProductGroup key={group.id} group={group} />
-          ))}
+          {visibleGroups.map((group) => {
+            const groupPositionOffset = positionOffset;
+            positionOffset += group.products.length;
+
+            return (
+              <ProductGroup
+                key={group.id}
+                group={group}
+                positionOffset={groupPositionOffset}
+                range={activeSlug ?? null}
+                variant={activeVariant?.slug ?? null}
+              />
+            );
+          })}
         </div>
       </SandWatermarkSection>
     </main>

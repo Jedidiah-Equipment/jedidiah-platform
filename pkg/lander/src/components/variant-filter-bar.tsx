@@ -163,6 +163,7 @@ function OverflowChipRow({ chips }: { chips: VariantChip[] }) {
           }}
           to="/{-$locale}/products"
           search={chip.search}
+          resetScroll={false}
           className={`${CHIP_CLASS} ${chip.active ? CHIP_ACTIVE : CHIP_IDLE}`}
         >
           {chip.label}
@@ -226,6 +227,7 @@ function MoreMenu({
           key={chip.key}
           to="/{-$locale}/products"
           search={chip.search}
+          resetScroll={false}
           role="menuitem"
           onClick={() => onOpenChange(false)}
           className={`${CHIP_CLASS} block ${chip.active ? CHIP_ACTIVE : CHIP_IDLE}`}

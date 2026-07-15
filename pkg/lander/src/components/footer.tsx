@@ -67,6 +67,7 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
                   key={range.slug}
                   to="/{-$locale}/products"
                   search={{ range: range.slug }}
+                  resetScroll={false}
                   className={footerLinkClass}
                 >
                   {range.label}

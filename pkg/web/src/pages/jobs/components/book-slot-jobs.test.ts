@@ -7,7 +7,16 @@ describe('getDefaultSlotDurationDays', () => {
     expect(
       getDefaultSlotDurationDays({
         productBuildTimeDays: 12,
-        scheduleState: { active: 0, done: 0, endDate: null, scheduled: 0, startDate: null, total: 0 },
+        scheduleState: {
+          active: 0,
+          done: 0,
+          endDate: null,
+          firstWorkDay: null,
+          lastWorkDay: null,
+          scheduled: 0,
+          startDate: null,
+          total: 0,
+        },
       }),
     ).toBe(12);
   });
@@ -16,7 +25,16 @@ describe('getDefaultSlotDurationDays', () => {
     expect(
       getDefaultSlotDurationDays({
         productBuildTimeDays: 12,
-        scheduleState: { active: 0, done: 0, endDate: null, scheduled: 1, startDate: null, total: 1 },
+        scheduleState: {
+          active: 0,
+          done: 0,
+          endDate: null,
+          firstWorkDay: null,
+          lastWorkDay: null,
+          scheduled: 1,
+          startDate: null,
+          total: 1,
+        },
       }),
     ).toBe(1);
   });
@@ -25,7 +43,16 @@ describe('getDefaultSlotDurationDays', () => {
     expect(
       getDefaultSlotDurationDays({
         productBuildTimeDays: null,
-        scheduleState: { active: 0, done: 0, endDate: null, scheduled: 0, startDate: null, total: 0 },
+        scheduleState: {
+          active: 0,
+          done: 0,
+          endDate: null,
+          firstWorkDay: null,
+          lastWorkDay: null,
+          scheduled: 0,
+          startDate: null,
+          total: 0,
+        },
       }),
     ).toBe(1);
   });
@@ -67,6 +94,8 @@ function scheduleState(overrides: Partial<{ active: number; done: number; schedu
     active: 0,
     done: 0,
     endDate: null,
+    firstWorkDay: null,
+    lastWorkDay: null,
     scheduled: 0,
     startDate: null,
     total: 0,

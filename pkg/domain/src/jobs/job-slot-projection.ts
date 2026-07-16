@@ -13,6 +13,10 @@ export type ProjectableJobSlot = {
 
 export type ProjectedSlot<TSlot extends ProjectableJobSlot> = TSlot & {
   endDate: DateOnlyIso;
+  /** Inclusive first working day — the label answer; `startDate` can open on an off-day. */
+  firstWorkDay: DateOnlyIso;
+  /** Inclusive last working day — the label answer; the half-open `endDate` is the day after it. */
+  lastWorkDay: DateOnlyIso;
   startDate: DateOnlyIso;
 };
 
@@ -45,6 +49,7 @@ export function projectJobSlots<TSlot extends ProjectableJobSlot>({
         ...slot,
         startDate,
         endDate,
+        ...labelWorkDays(startDate, endDate, resolvedWorkingCalendar),
       };
     });
 
@@ -71,6 +76,28 @@ export function addJobSlotDuration(
   }
 
   return cursor;
+}
+
+export type SlotLabelWorkDays = {
+  firstWorkDay: DateOnlyIso;
+  lastWorkDay: DateOnlyIso;
+};
+
+/**
+ * The inclusive working days a projected span covers, for date labels. A span opens on the previous
+ * Slot's boundary, which can be an off-day, so the first working day snaps forward. The half-open
+ * `endDate` always sits one day past the last consumed working day, so the last working day is simply
+ * the day before it — a span never carries trailing closure days the way it can carry leading ones.
+ */
+export function labelWorkDays(
+  startDate: DateOnlyIso,
+  endDate: DateOnlyIso,
+  workingCalendar: WorkingCalendar,
+): SlotLabelWorkDays {
+  return {
+    firstWorkDay: firstWorkingDayOnOrAfter(startDate, workingCalendar),
+    lastWorkDay: addDateOnlyDays(endDate, -1),
+  };
 }
 
 export type SlotCalendarDays = {

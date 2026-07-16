@@ -232,7 +232,7 @@ function RouteStop({ stop }: { stop: JobRouteStopCard }) {
 
         <View className="mt-3 flex-row items-center justify-between">
           <Text className="text-[10px] text-muted-foreground" mono>
-            {formatDate(stop.startDate, 'd MMM')} – {formatDate(stop.lastWorkDay, 'd MMM')}
+            {formatDate(stop.firstWorkDay, 'd MMM')} – {formatDate(stop.lastWorkDay, 'd MMM')}
           </Text>
           <Text className={`text-[10px] ${tone.text}`} mono>
             {routeDaysLabel(stop)}
@@ -253,7 +253,7 @@ function routeDaysLabel(stop: JobRouteStopCard): string {
     return `${stop.remainingWorkDays} ${stop.remainingWorkDays === 1 ? 'working day' : 'working days'} left`;
   }
 
-  return `Starts ${formatDate(stop.startDate, 'd MMM')}`;
+  return `Starts ${formatDate(stop.firstWorkDay, 'd MMM')}`;
 }
 
 /** Right pane: status chips, work card, progress, facts, feedback, documents, and assemblies. */

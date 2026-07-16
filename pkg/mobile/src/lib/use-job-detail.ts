@@ -25,7 +25,8 @@ export type JobRouteStopCard = JobRouteStop & {
   bayName: string;
   department: Department;
   operator: BayOperator | null;
-  startDate: DateOnlyIso;
+  /** Inclusive first working day — the Slot's queue span can open on an off-day. */
+  firstWorkDay: DateOnlyIso;
 };
 
 export type JobDetailState =
@@ -96,7 +97,7 @@ export function useJobDetail(jobId: string): JobDetailState {
           bayName: bay.name,
           department: bay.department,
           operator: bay.currentOperator,
-          startDate: slot.startDate,
+          firstWorkDay: slot.firstWorkDay,
         });
       }
     }

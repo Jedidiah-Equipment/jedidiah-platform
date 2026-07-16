@@ -10,7 +10,16 @@ test('renders nothing when schedule state was not requested', () => {
 test('shows a single "Not scheduled" warning badge when the Job has no Work Slots', () => {
   const markup = renderToStaticMarkup(
     <JobScheduleStateBadges
-      scheduleState={{ done: 0, active: 0, endDate: null, scheduled: 0, startDate: null, total: 0 }}
+      scheduleState={{
+        done: 0,
+        active: 0,
+        endDate: null,
+        firstWorkDay: null,
+        lastWorkDay: null,
+        scheduled: 0,
+        startDate: null,
+        total: 0,
+      }}
     />,
   );
 
@@ -23,7 +32,16 @@ test('shows a single "Not scheduled" warning badge when the Job has no Work Slot
 test('renders one colored pill for a single non-zero state', () => {
   const markup = renderToStaticMarkup(
     <JobScheduleStateBadges
-      scheduleState={{ done: 0, active: 3, endDate: null, scheduled: 0, startDate: null, total: 3 }}
+      scheduleState={{
+        done: 0,
+        active: 3,
+        endDate: null,
+        firstWorkDay: null,
+        lastWorkDay: null,
+        scheduled: 0,
+        startDate: null,
+        total: 3,
+      }}
     />,
   );
 
@@ -37,7 +55,16 @@ test('renders one colored pill for a single non-zero state', () => {
 test('renders a pill per non-zero state for a mixed Job, omitting zero counts', () => {
   const markup = renderToStaticMarkup(
     <JobScheduleStateBadges
-      scheduleState={{ done: 1, active: 1, endDate: null, scheduled: 2, startDate: null, total: 4 }}
+      scheduleState={{
+        done: 1,
+        active: 1,
+        endDate: null,
+        firstWorkDay: null,
+        lastWorkDay: null,
+        scheduled: 2,
+        startDate: null,
+        total: 4,
+      }}
     />,
   );
 
@@ -53,7 +80,16 @@ test('renders a pill per non-zero state for a mixed Job, omitting zero counts', 
 test('renders only the done pill for an all-done Job', () => {
   const markup = renderToStaticMarkup(
     <JobScheduleStateBadges
-      scheduleState={{ done: 5, active: 0, endDate: null, scheduled: 0, startDate: null, total: 5 }}
+      scheduleState={{
+        done: 5,
+        active: 0,
+        endDate: null,
+        firstWorkDay: null,
+        lastWorkDay: null,
+        scheduled: 0,
+        startDate: null,
+        total: 5,
+      }}
     />,
   );
 

@@ -9,6 +9,7 @@ import {
   UUID,
 } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
+import { addDateOnlyDays } from '../formatting/date-only.js';
 import {
   foldJobScheduleStates,
   getBoardJobIds,
@@ -31,9 +32,11 @@ const day = (value: string) => DateOnlyIso.parse(value);
 function workSlot({
   bayId = BAY_1,
   endDate,
+  firstWorkDay,
   jobCode = 1,
   jobId = JOB_1,
   jobUnfinished = false,
+  lastWorkDay,
   sequence,
   slotId,
   startDate,
@@ -41,9 +44,11 @@ function workSlot({
 }: {
   bayId?: UUID;
   endDate: string;
+  firstWorkDay?: string;
   jobCode?: number;
   jobId?: UUID;
   jobUnfinished?: boolean;
+  lastWorkDay?: string;
   sequence: number;
   slotId: string;
   startDate: string;
@@ -54,6 +59,7 @@ function workSlot({
     createdAt: NOW,
     durationDays: SlotDurationDays.parse(1),
     endDate: day(endDate),
+    ...labelDays({ endDate, firstWorkDay, lastWorkDay, startDate }),
     id: UUID.parse(slotId),
     jobCode: JobCode.parse(jobCode),
     jobId,
@@ -67,9 +73,29 @@ function workSlot({
   };
 }
 
+/** Label dates default to an empty-calendar span; tests pass them explicitly to model off-days. */
+function labelDays({
+  endDate,
+  firstWorkDay,
+  lastWorkDay,
+  startDate,
+}: {
+  endDate: string;
+  firstWorkDay?: string | undefined;
+  lastWorkDay?: string | undefined;
+  startDate: string;
+}) {
+  return {
+    firstWorkDay: day(firstWorkDay ?? startDate),
+    lastWorkDay: lastWorkDay ? day(lastWorkDay) : addDateOnlyDays(day(endDate), -1),
+  };
+}
+
 function idleSlot({
   bayId = BAY_1,
   endDate,
+  firstWorkDay,
+  lastWorkDay,
   sequence,
   slotId,
   startDate,
@@ -77,6 +103,8 @@ function idleSlot({
 }: {
   bayId?: UUID;
   endDate: string;
+  firstWorkDay?: string;
+  lastWorkDay?: string;
   sequence: number;
   slotId: string;
   startDate: string;
@@ -87,6 +115,7 @@ function idleSlot({
     createdAt: NOW,
     durationDays: SlotDurationDays.parse(1),
     endDate: day(endDate),
+    ...labelDays({ endDate, firstWorkDay, lastWorkDay, startDate }),
     id: UUID.parse(slotId),
     jobId: null,
     kind: 'idle',
@@ -399,6 +428,8 @@ describe('foldJobScheduleStates', () => {
       active: 1,
       done: 1,
       endDate: '2026-06-20',
+      firstWorkDay: '2026-06-01',
+      lastWorkDay: '2026-06-19',
       scheduled: 1,
       startDate: '2026-06-01',
       total: 3,
@@ -407,9 +438,45 @@ describe('foldJobScheduleStates', () => {
       active: 0,
       done: 0,
       endDate: null,
+      firstWorkDay: null,
+      lastWorkDay: null,
       scheduled: 0,
       startDate: null,
       total: 0,
+    });
+  });
+
+  it('folds the earliest first working day and latest last working day across bays', () => {
+    // The Job's earliest Slot opens on a Saturday and its latest Slot ends the Friday before a
+    // weekend boundary; the label window is the working days, not the raw queue span.
+    const bay = baySchedule({
+      slots: [
+        workSlot({
+          endDate: '2026-06-10',
+          firstWorkDay: '2026-06-08',
+          jobId: JOB_1,
+          sequence: 1,
+          slotId: '00000000-0000-4000-8000-000000000045',
+          startDate: '2026-06-06',
+          state: 'active',
+        }),
+        workSlot({
+          endDate: '2026-06-13',
+          jobId: JOB_1,
+          lastWorkDay: '2026-06-12',
+          sequence: 2,
+          slotId: '00000000-0000-4000-8000-000000000046',
+          startDate: '2026-06-10',
+          state: 'scheduled',
+        }),
+      ],
+    });
+
+    expect(foldJobScheduleStates([bay], [JOB_1]).get(JOB_1)).toMatchObject({
+      startDate: '2026-06-06',
+      firstWorkDay: '2026-06-08',
+      endDate: '2026-06-13',
+      lastWorkDay: '2026-06-12',
     });
   });
 });

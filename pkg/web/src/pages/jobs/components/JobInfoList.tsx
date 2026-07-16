@@ -17,17 +17,19 @@ export const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ l
 );
 
 // Slot Start/End plus its calendar-day breakdown, shared by the Job Sheet and Bay slot hover card.
+// Start/End label the Slot's working days; the breakdown below them accounts for the whole span,
+// so a Slot opening on an off-day shows a later Start than its leading closure days imply.
 export const SlotDayBreakdownRows: React.FC<{
   dayBreakdown: SlotCalendarDays;
-  endDate: DateOnlyIso;
-  startDate: DateOnlyIso;
-}> = ({ dayBreakdown, endDate, startDate }) => {
+  firstWorkDay: DateOnlyIso;
+  lastWorkDay: DateOnlyIso;
+}> = ({ dayBreakdown, firstWorkDay, lastWorkDay }) => {
   const totalDays = dayBreakdown.workingDays + dayBreakdown.closureDays;
 
   return (
     <>
-      <InfoRow label="Start" value={formatDate(startDate, 'short')} />
-      <InfoRow label="End" value={formatDate(endDate, 'short')} />
+      <InfoRow label="Start" value={formatDate(firstWorkDay, 'short')} />
+      <InfoRow label="End" value={formatDate(lastWorkDay, 'short')} />
       <InfoRow label="Total days" value={`${totalDays} (incl. off)`} />
       <InfoRow label="Working days" value={dayBreakdown.workingDays} />
       {dayBreakdown.overtimeDays > 0 ? (

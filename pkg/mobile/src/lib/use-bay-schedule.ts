@@ -21,8 +21,8 @@ export type BayQueueActiveJob = ActiveJobProgress & {
   productThumbnailDataUrl: string | null;
   productSerialNumber: string | null;
   customerCompanyName: string | null;
-  /** Slot start, for the progress bar's start-month caption. */
-  startDate: DateOnlyIso;
+  /** Slot's first working day, for the progress bar's start-month caption. */
+  firstWorkDay: DateOnlyIso;
 };
 
 /**
@@ -46,8 +46,9 @@ export type BaySlotDetail = {
   isNext: boolean;
   /** Working days left — only the in-progress Slot has one. */
   remainingWorkDays: number | null;
-  startDate: DateOnlyIso;
-  /** Inclusive last working day (endDate − 1), matching the list pane's range labels. */
+  /** Inclusive first working day, matching the list pane's range labels. */
+  firstWorkDay: DateOnlyIso;
+  /** Inclusive last working day, matching the list pane's range labels. */
   lastWorkDay: DateOnlyIso;
   workDays: number;
 };
@@ -58,8 +59,9 @@ export type BayQueueUpcomingSlot = {
   jobCode: string;
   jobDisplayName: string;
   productThumbnailDataUrl: string | null;
-  startDate: DateOnlyIso;
-  /** The last booked working day (the day before the half-open `endDate`). */
+  /** The first booked working day; the Slot's queue span can open on an off-day. */
+  firstWorkDay: DateOnlyIso;
+  /** The last booked working day. */
   lastWorkDay: DateOnlyIso;
   workDays: number;
   /** The soonest upcoming Slot — highlighted as 'next' in the timeline. */
@@ -114,7 +116,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
             productThumbnailDataUrl: activeJob.productThumbnailDataUrl,
             productSerialNumber: activeJob.productSerialNumber,
             customerCompanyName: activeJob.customerCompanyName,
-            startDate: activeSlot.startDate,
+            firstWorkDay: activeSlot.firstWorkDay,
           }
         : null;
 
@@ -145,7 +147,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
         status,
         isNext,
         remainingWorkDays: remaining,
-        startDate: slot.startDate,
+        firstWorkDay: slot.firstWorkDay,
         lastWorkDay,
         workDays,
       };
@@ -165,7 +167,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
         jobCode: detail.jobCode,
         jobDisplayName: detail.jobDisplayName,
         productThumbnailDataUrl: detail.productThumbnailDataUrl,
-        startDate: detail.startDate,
+        firstWorkDay: detail.firstWorkDay,
         lastWorkDay: detail.lastWorkDay,
         workDays: detail.workDays,
         isNext: index === 0,

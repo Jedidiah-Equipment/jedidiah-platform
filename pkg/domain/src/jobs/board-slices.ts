@@ -80,7 +80,19 @@ export function foldJobScheduleStates(
   jobIds: readonly UUID[],
 ): Map<UUID, JobScheduleState> {
   const states = new Map<UUID, JobScheduleState>(
-    jobIds.map((jobId) => [jobId, { active: 0, done: 0, endDate: null, scheduled: 0, startDate: null, total: 0 }]),
+    jobIds.map((jobId) => [
+      jobId,
+      {
+        active: 0,
+        done: 0,
+        endDate: null,
+        firstWorkDay: null,
+        lastWorkDay: null,
+        scheduled: 0,
+        startDate: null,
+        total: 0,
+      },
+    ]),
   );
 
   for (const bay of bays) {
@@ -94,6 +106,10 @@ export function foldJobScheduleStates(
       // Earliest Slot start / latest Slot end across every Bay the Job spans.
       state.startDate = state.startDate === null || slot.startDate < state.startDate ? slot.startDate : state.startDate;
       state.endDate = state.endDate === null || slot.endDate > state.endDate ? slot.endDate : state.endDate;
+      state.firstWorkDay =
+        state.firstWorkDay === null || slot.firstWorkDay < state.firstWorkDay ? slot.firstWorkDay : state.firstWorkDay;
+      state.lastWorkDay =
+        state.lastWorkDay === null || slot.lastWorkDay > state.lastWorkDay ? slot.lastWorkDay : state.lastWorkDay;
     }
   }
 

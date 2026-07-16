@@ -1,9 +1,11 @@
+import { addDateOnlyDays } from '@pkg/domain';
 import type { DateOnlyIso } from '@pkg/schema';
 
 export type MaintainedHorizonWarning = {
   bayId: string;
   maintainedThrough: DateOnlyIso;
-  queueEndDate: DateOnlyIso;
+  /** Inclusive last working day of the queue — the label date, not the half-open queue end. */
+  queueLastWorkDay: DateOnlyIso;
 };
 
 type MaintainedHorizonBay = {
@@ -32,9 +34,7 @@ export function getMaintainedHorizonWarnings({
   }
 
   return bays.flatMap((bay) => {
-    const queueEndDate = bay.nextAvailableDate;
-
-    if (queueEndDate <= maintainedThrough) {
+    if (bay.nextAvailableDate <= maintainedThrough) {
       return [];
     }
 
@@ -42,7 +42,9 @@ export function getMaintainedHorizonWarnings({
       {
         bayId: bay.id,
         maintainedThrough,
-        queueEndDate,
+        // The queue end is the last Slot's half-open `endDate`, so the day before it is that
+        // Slot's last working day.
+        queueLastWorkDay: addDateOnlyDays(bay.nextAvailableDate, -1),
       },
     ];
   });

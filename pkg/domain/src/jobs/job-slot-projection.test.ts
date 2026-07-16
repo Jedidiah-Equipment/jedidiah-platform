@@ -224,6 +224,107 @@ describe('projectJobSlots', () => {
   });
 });
 
+describe('projectJobSlots label dates', () => {
+  it('snaps a slot starting on an off-day forward to its first working day', () => {
+    const projection = projectJobSlots({
+      scheduleOrigin,
+      slots: [
+        slot({ durationDays: 1, id: 'slot-1', sequence: 1 }),
+        slot({ durationDays: 3, id: 'slot-2', sequence: 2 }),
+      ],
+      workingCalendar: {
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      },
+    });
+
+    // slot-2's queue span opens on Saturday, but work only starts Monday and ends Wednesday.
+    expect(projection.slots.map(({ id, firstWorkDay, lastWorkDay }) => ({ id, firstWorkDay, lastWorkDay }))).toEqual([
+      { id: 'slot-1', firstWorkDay: '2026-06-05', lastWorkDay: '2026-06-05' },
+      { id: 'slot-2', firstWorkDay: '2026-06-08', lastWorkDay: '2026-06-10' },
+    ]);
+  });
+
+  it('collapses label dates onto one day for a single-day slot', () => {
+    const projection = projectJobSlots({
+      scheduleOrigin,
+      slots: [slot({ durationDays: 1, id: 'slot-1', sequence: 1 })],
+    });
+
+    expect(projection.slots[0]).toMatchObject({
+      firstWorkDay: '2026-06-05',
+      lastWorkDay: '2026-06-05',
+    });
+  });
+
+  it('snaps forward past an off-day schedule origin', () => {
+    const projection = projectJobSlots({
+      scheduleOrigin: day('2026-06-06'),
+      slots: [slot({ id: 'slot-1', sequence: 1 })],
+      workingCalendar: {
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      },
+    });
+
+    expect(projection.slots[0]).toMatchObject({
+      startDate: '2026-06-06',
+      firstWorkDay: '2026-06-08',
+      lastWorkDay: '2026-06-08',
+    });
+  });
+
+  it('counts a bay work exception on an org off-day as a labelled working day', () => {
+    const projection = projectJobSlots({
+      scheduleOrigin: day('2026-06-05'),
+      slots: [slot({ durationDays: 3, id: 'slot-1', sequence: 1 })],
+      workingCalendar: {
+        bayExceptions: new Map([['2026-06-06', 'work']]),
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      },
+    });
+
+    expect(projection.slots[0]).toMatchObject({
+      firstWorkDay: '2026-06-05',
+      lastWorkDay: '2026-06-08',
+    });
+  });
+
+  it('snaps past a bay off exception that closes the slot start', () => {
+    const projection = projectJobSlots({
+      scheduleOrigin,
+      slots: [slot({ durationDays: 2, id: 'slot-1', sequence: 1 })],
+      workingCalendar: {
+        bayExceptions: new Map([['2026-06-05', 'off']]),
+      },
+    });
+
+    expect(projection.slots[0]).toMatchObject({
+      startDate: '2026-06-05',
+      firstWorkDay: '2026-06-06',
+      lastWorkDay: '2026-06-07',
+    });
+  });
+
+  it('labels idle slots the same way as work slots', () => {
+    const projection = projectJobSlots({
+      scheduleOrigin,
+      slots: [
+        slot({ durationDays: 1, id: 'slot-a', kind: 'work', sequence: 1 }),
+        slot({ durationDays: 2, id: 'slot-b', kind: 'idle', sequence: 2 }),
+      ],
+      workingCalendar: {
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      },
+    });
+
+    expect(projection.slots[1]).toMatchObject({
+      kind: 'idle',
+      startDate: '2026-06-06',
+      firstWorkDay: '2026-06-08',
+      lastWorkDay: '2026-06-09',
+    });
+  });
+});
+
 describe('summarizeSlotCalendarDays', () => {
   it('counts every day as working with an empty calendar', () => {
     expect(summarizeSlotCalendarDays(day('2026-06-05'), day('2026-06-09'))).toEqual({

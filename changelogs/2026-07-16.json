@@ -1,0 +1,48 @@
+{
+  "releasedAt": "2026-07-16T16:10:32.615Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Scan release updates more easily",
+          "description": "Changelog updates are now clearer and easier to browse."
+        },
+        {
+          "title": "Upload purchase order documents",
+          "description": "Attach purchase order documents directly to jobs for convenient access."
+        },
+        {
+          "title": "See accurate working-day dates",
+          "description": "Job slots and schedule windows now show their first and last working days, avoiding misleading weekend and end dates."
+        },
+        {
+          "title": "Open the assistant from the sidebar",
+          "description": "The assistant is now easier to find and access from the main sidebar."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Connect with us on Facebook",
+          "description": "Use the new Facebook links to visit Jedidiah on social media."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "View custom line items with assemblies",
+          "description": "Custom line items now appear alongside assemblies so job details are more complete."
+        },
+        {
+          "title": "See accurate working-day dates",
+          "description": "Job slots and schedule windows now show their first and last working days, avoiding misleading weekend and end dates."
+        }
+      ]
+    }
+  ]
+}

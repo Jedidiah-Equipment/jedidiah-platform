@@ -1,7 +1,6 @@
 import type { DateOnlyIso, Department, ProjectedBayQueue, ProjectedJobSlot, UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { addDateOnlyDays } from '../formatting/date-only.js';
 import {
   byBayDepartmentPipeline,
   computeBayLoadToday,
@@ -15,6 +14,7 @@ import {
   listEnabledBays,
   listUpcomingWorkSlots,
 } from './board-derivations.js';
+import { labelWorkDays } from './job-slot-projection.js';
 import type { WorkingCalendar } from './working-calendar.js';
 
 const id = (value: string) => value as UUID;
@@ -88,9 +88,11 @@ function buildIdleSlot(
 
 /** Label dates default to an empty-calendar span; tests pass them explicitly to model off-days. */
 function labelDays(input: { endDate: string; firstWorkDay?: string; lastWorkDay?: string; startDate: string }) {
+  const defaults = labelWorkDays(day(input.startDate), day(input.endDate), {});
+
   return {
-    firstWorkDay: day(input.firstWorkDay ?? input.startDate),
-    lastWorkDay: input.lastWorkDay ? day(input.lastWorkDay) : addDateOnlyDays(day(input.endDate), -1),
+    firstWorkDay: input.firstWorkDay ? day(input.firstWorkDay) : defaults.firstWorkDay,
+    lastWorkDay: input.lastWorkDay ? day(input.lastWorkDay) : defaults.lastWorkDay,
   };
 }
 

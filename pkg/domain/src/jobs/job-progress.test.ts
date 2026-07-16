@@ -1,9 +1,9 @@
 import { DateOnlyIso, UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { addDateOnlyDays } from '../formatting/date-only.js';
 import { deriveJobProgress, deriveJobRouteStop, isJobScheduleComplete, type JobWorkSlotEntry } from './job-progress.js';
-import { lastWorkingDayOnOrBefore, type WorkingCalendar } from './working-calendar.js';
+import { labelWorkDays } from './job-slot-projection.js';
+import type { WorkingCalendar } from './working-calendar.js';
 
 const day = (value: string) => DateOnlyIso.parse(value);
 const uuid = (value: string) => UUID.parse(value);
@@ -45,7 +45,7 @@ const entry = (
     bayId,
     startDate: day(startDate),
     endDate: day(endDate),
-    lastWorkDay: lastWorkingDayOnOrBefore(addDateOnlyDays(day(endDate), -1), workingCalendar),
+    lastWorkDay: labelWorkDays(day(startDate), day(endDate), workingCalendar).lastWorkDay,
     state: stateFor(startDate, endDate),
   },
   workingCalendar,

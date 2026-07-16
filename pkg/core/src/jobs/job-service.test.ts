@@ -15,6 +15,7 @@ import {
   productAssemblies,
   productSerialSequences,
   products,
+  quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
   supplier,
@@ -110,6 +111,49 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('createJob', () => {
+  test('returns quote line items in their configured order on Job detail', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+    await context.db.insert(quoteLineItems).values([
+      {
+        id: '00000000-0000-4000-8000-000000000102',
+        name: 'Commissioning',
+        position: 1,
+        quantity: 1,
+        quoteId: quote.id,
+        unitPrice: 500,
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000101',
+        name: 'Custom hydraulic hose',
+        position: 0,
+        quantity: 2,
+        quoteId: quote.id,
+        unitPrice: 125,
+      },
+    ]);
+
+    const created = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+    const job = await getJob({ db: context.db, id: created.id });
+
+    expect(job.lineItems).toEqual([
+      {
+        id: '00000000-0000-4000-8000-000000000101',
+        name: 'Custom hydraulic hose',
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000102',
+        name: 'Commissioning',
+      },
+    ]);
+  });
+
   test('creates one quote-backed job with CFO rows, audit, and a locked quote', async ({ context }) => {
     const quote = await createQuote(context.db, {
       productId: context.catalog.product.id,

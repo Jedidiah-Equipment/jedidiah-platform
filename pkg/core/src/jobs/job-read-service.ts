@@ -55,6 +55,7 @@ import {
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
+import { getLineItemsByQuoteId } from '../quotes/quote-line-items.js';
 import {
   findBoardBayRows,
   findBoardBayRowsForJobs,
@@ -536,9 +537,10 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
     throw new JobNotFoundError(id);
   }
 
-  const [cfo, documents, schedule] = await Promise.all([
+  const [cfo, documents, lineItems, schedule] = await Promise.all([
     listJobCfo({ db, jobId: row.id }),
     listJobDocumentRows({ db, jobId: row.id }),
+    listJobQuoteLineItems({ db, quoteId: row.quoteId }),
     getJobSchedule({ db, jobId: row.id }),
   ]);
 
@@ -546,8 +548,21 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
     ...mapJobSummary(row),
     cfo,
     documents,
+    lineItems,
     schedule,
   };
+}
+
+async function listJobQuoteLineItems({
+  db,
+  quoteId,
+}: {
+  db: Db | DatabaseTransaction;
+  quoteId: UUID;
+}): Promise<JobDetail['lineItems']> {
+  const lineItemsByQuoteId = await getLineItemsByQuoteId({ db, quoteIds: [quoteId] });
+
+  return (lineItemsByQuoteId.get(quoteId) ?? []).map(({ id, name }) => ({ id, name }));
 }
 
 export async function getJobDocuments({

@@ -1,48 +1,48 @@
-import type { JobDetail } from '@pkg/schema';
 import { View } from 'react-native';
-
 import { JobSectionCard } from '@/components/bays/JobSectionCard';
+import {
+  getJobAssemblyAndLineItemRows,
+  type JobAssemblyAndLineItemRow,
+} from '@/components/bays/job-assembly-and-line-items';
 import { STATUS_TONE } from '@/components/bays/status-chip';
 import { Text } from '@/components/ui/text';
 
-type JobAssembly = JobDetail['cfo'][number];
-
-/** Pill accents per assembly kind; `standard` reuses the shared muted status tone. */
+/** Pill accents per row kind; `standard` reuses the shared muted status tone. */
 const OPTIONAL_TONE = { chip: 'border-primary/30 bg-primary/10', dot: 'bg-primary', text: 'text-primary' };
 
-function kindTone(kind: JobAssembly['kind']) {
+function kindTone(kind: JobAssemblyAndLineItemRow['kind']) {
+  if (kind === 'custom') return STATUS_TONE.next;
   return kind === 'optional' ? OPTIONAL_TONE : STATUS_TONE.muted;
 }
 
 /**
- * The ASSEMBLIES card shared by the Job Slot detail pane (#520) and Job Detail (#615): the job's
- * configured assemblies from the cached `jobs.get` `cfo` snapshot. That snapshot already holds only
- * the optional assemblies selected for this job (never the full catalog); optionals are shown first.
+ * The ASSEMBLIES card shared by Job Slot detail and Job Detail. Custom Quote Line Items lead the
+ * job's frozen configured assemblies; the CFO contains only the selected optionals, not the catalog.
  */
 export function JobAssemblies({ jobId }: { jobId: string }) {
   return (
-    <JobSectionCard<JobAssembly>
+    <JobSectionCard<JobAssemblyAndLineItemRow>
       jobId={jobId}
       noun="assemblies"
-      renderItem={(assembly) => <AssemblyRow assembly={assembly} key={`${assembly.kind}-${assembly.assemblyName}`} />}
-      select={(data) => [...data.cfo].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'optional' ? -1 : 1))}
+      renderItem={(row) => <AssemblyAndLineItemRow key={row.key} row={row} />}
+      select={getJobAssemblyAndLineItemRows}
       title="ASSEMBLIES"
     />
   );
 }
 
-function AssemblyRow({ assembly }: { assembly: JobAssembly }) {
-  const tone = kindTone(assembly.kind);
+function AssemblyAndLineItemRow({ row }: { row: JobAssemblyAndLineItemRow }) {
+  const tone = kindTone(row.kind);
 
   return (
     <View className="flex-row items-center gap-2 border-t border-border py-3">
       <View className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
       <Text className="flex-1 text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
-        {assembly.assemblyName}
+        {row.name}
       </Text>
       <View className={`rounded-full border px-2.5 py-1 ${tone.chip}`}>
         <Text className={`text-[10px] tracking-wide ${tone.text}`} weight="semibold">
-          {assembly.kind === 'optional' ? 'OPTIONAL' : 'STANDARD'}
+          {row.kind.toUpperCase()}
         </Text>
       </View>
     </View>

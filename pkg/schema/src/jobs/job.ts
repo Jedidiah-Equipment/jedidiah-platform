@@ -641,6 +641,12 @@ export const JobListFilters = z
   })
   .default({});
 
+export type JobQuoteLineItem = z.infer<typeof JobQuoteLineItem>;
+export const JobQuoteLineItem = z.object({
+  id: UUID,
+  name: requiredTrimmedText('Line item name is required'),
+});
+
 /** Opt-in list extras that carry a projection cost. */
 export type JobListInclude = z.infer<typeof JobListInclude>;
 export const JobListInclude = z.object({
@@ -649,6 +655,7 @@ export const JobListInclude = z.object({
 
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({
+  lineItems: z.array(JobQuoteLineItem),
   cfo: z.array(
     z.object({
       assemblyName: z.string().trim().min(1),

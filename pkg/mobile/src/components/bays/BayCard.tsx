@@ -40,7 +40,7 @@ function ActiveBody({
     <BoardCard
       daysLeft={active.remainingWorkDays}
       daysLeftColor={accent}
-      endDate={active.lastWorkDay}
+      lastWorkDay={active.lastWorkDay}
       footerLeft={
         <Text className="min-w-0 flex-1 text-[11px] text-muted-foreground" numberOfLines={1}>
           {active.customerCompanyName ?? '—'}

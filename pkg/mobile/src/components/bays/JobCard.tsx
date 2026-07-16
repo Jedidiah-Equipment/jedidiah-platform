@@ -25,7 +25,7 @@ export function JobCard({ job, onPress }: { job: JobListCard; onPress: () => voi
     <BoardCard
       daysLeft={progress.daysLeft}
       daysLeftColor={dayColor}
-      endDate={progress.lastWorkDay}
+      lastWorkDay={progress.lastWorkDay}
       footerLeft={
         <Text className="min-w-0 flex-1 text-[11px] text-muted-foreground" numberOfLines={1}>
           {job.customerCompanyName ?? '—'}

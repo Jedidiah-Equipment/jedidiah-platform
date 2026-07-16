@@ -1,7 +1,12 @@
 import type { DateOnlyIso } from '@pkg/schema';
 
 import { addDateOnlyDays } from '../formatting/date-only.js';
-import { firstWorkingDayOnOrAfter, isWorkingDay, type WorkingCalendar } from './working-calendar.js';
+import {
+  firstWorkingDayOnOrAfter,
+  isWorkingDay,
+  lastWorkingDayOnOrBefore,
+  type WorkingCalendar,
+} from './working-calendar.js';
 
 export const DEFAULT_IDLE_SLOT_LABEL = 'Idle';
 
@@ -84,10 +89,10 @@ export type SlotLabelWorkDays = {
 };
 
 /**
- * The inclusive working days a projected span covers, for date labels. A span opens on the previous
- * Slot's boundary, which can be an off-day, so the first working day snaps forward. The half-open
- * `endDate` always sits one day past the last consumed working day, so the last working day is simply
- * the day before it — a span never carries trailing closure days the way it can carry leading ones.
+ * The inclusive working days a span covers, for date labels. A span opens on the previous Slot's
+ * boundary, which can be an off-day, so the first working day snaps forward. The last working day
+ * walks back from the day before the half-open `endDate`; projection stops the cursor right after
+ * the last consumed working day, so for projected spans the walk is a no-op — it is not assumed.
  */
 export function labelWorkDays(
   startDate: DateOnlyIso,
@@ -96,7 +101,7 @@ export function labelWorkDays(
 ): SlotLabelWorkDays {
   return {
     firstWorkDay: firstWorkingDayOnOrAfter(startDate, workingCalendar),
-    lastWorkDay: addDateOnlyDays(endDate, -1),
+    lastWorkDay: lastWorkingDayOnOrBefore(addDateOnlyDays(endDate, -1), workingCalendar),
   };
 }
 

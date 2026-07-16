@@ -1162,11 +1162,9 @@ describe('jobs.list scheduleState', () => {
     expect(result.items.find((item) => item.id === job.id)?.scheduleState).toEqual({
       active: 1,
       done: 1,
-      endDate: '2026-06-17',
       firstWorkDay: '2026-06-05',
       lastWorkDay: '2026-06-16',
       scheduled: 1,
-      startDate: '2026-06-05',
       total: 3,
     });
   });

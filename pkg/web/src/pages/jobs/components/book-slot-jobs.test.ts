@@ -10,11 +10,9 @@ describe('getDefaultSlotDurationDays', () => {
         scheduleState: {
           active: 0,
           done: 0,
-          endDate: null,
           firstWorkDay: null,
           lastWorkDay: null,
           scheduled: 0,
-          startDate: null,
           total: 0,
         },
       }),
@@ -28,11 +26,9 @@ describe('getDefaultSlotDurationDays', () => {
         scheduleState: {
           active: 0,
           done: 0,
-          endDate: null,
           firstWorkDay: null,
           lastWorkDay: null,
           scheduled: 1,
-          startDate: null,
           total: 1,
         },
       }),
@@ -46,11 +42,9 @@ describe('getDefaultSlotDurationDays', () => {
         scheduleState: {
           active: 0,
           done: 0,
-          endDate: null,
           firstWorkDay: null,
           lastWorkDay: null,
           scheduled: 0,
-          startDate: null,
           total: 0,
         },
       }),
@@ -93,11 +87,9 @@ function scheduleState(overrides: Partial<{ active: number; done: number; schedu
   return {
     active: 0,
     done: 0,
-    endDate: null,
     firstWorkDay: null,
     lastWorkDay: null,
     scheduled: 0,
-    startDate: null,
     total: 0,
     ...overrides,
   };

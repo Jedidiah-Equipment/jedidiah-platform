@@ -1,6 +1,5 @@
 import type { DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
 
-import { addDateOnlyDays } from '../formatting/date-only.js';
 import { countWorkingDaysBetween, type WorkingCalendar } from './working-calendar.js';
 
 /**
@@ -19,7 +18,7 @@ export type ActiveJobProgress = {
   elapsedWorkDays: number;
   /** Elapsed share of the Slot, 0–100, rounded. */
   progressPercent: number;
-  /** The last booked working day (the day before the half-open `endDate`). */
+  /** The last booked working day, as projected. */
   lastWorkDay: DateOnlyIso;
 };
 
@@ -28,7 +27,7 @@ export function deriveActiveJobProgress({
   today,
   workingCalendar = {},
 }: {
-  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate'>;
+  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate' | 'lastWorkDay'>;
   today: DateOnlyIso;
   workingCalendar?: WorkingCalendar;
 }): ActiveJobProgress {
@@ -42,6 +41,6 @@ export function deriveActiveJobProgress({
     remainingWorkDays,
     elapsedWorkDays,
     progressPercent: totalWorkDays === 0 ? 0 : Math.round((elapsedWorkDays / totalWorkDays) * 100),
-    lastWorkDay: addDateOnlyDays(slot.endDate, -1),
+    lastWorkDay: slot.lastWorkDay,
   };
 }

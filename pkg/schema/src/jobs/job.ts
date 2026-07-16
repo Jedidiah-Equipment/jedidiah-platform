@@ -463,11 +463,11 @@ export const Job = z.object({
 /**
  * A Job's Work Slots bucketed by their lifecycle state against plant "today". A Job spans one
  * Slot per Bay, so it can hold several states at once; `total` is the Slot count and `total === 0`
- * marks a Job that is not scheduled anywhere. Also carries the Job's projected schedule window —
- * `startDate` is the earliest Slot start and `endDate` the latest Slot end, with `firstWorkDay` and
- * `lastWorkDay` the matching label dates; all `null` when the Job has no Work Slot. Present only when
- * a list read opts in via `JobListInput.include.scheduleState`; `null` otherwise so callers that do
- * not filter or display schedule state avoid the projection cost.
+ * marks a Job that is not scheduled anywhere. Also carries the Job's projected schedule window as
+ * label dates — `firstWorkDay` is the earliest Slot's first working day and `lastWorkDay` the latest
+ * Slot's last working day, both `null` when the Job has no Work Slot. Present only when a list read
+ * opts in via `JobListInput.include.scheduleState`; `null` otherwise so callers that do not filter
+ * or display schedule state avoid the projection cost.
  */
 export type JobScheduleState = z.infer<typeof JobScheduleState>;
 export const JobScheduleState = z.object({
@@ -475,8 +475,6 @@ export const JobScheduleState = z.object({
   active: z.int().nonnegative(),
   scheduled: z.int().nonnegative(),
   total: z.int().nonnegative(),
-  startDate: DateOnlyIso.nullable(),
-  endDate: DateOnlyIso.nullable(),
   firstWorkDay: DateOnlyIso.nullable(),
   lastWorkDay: DateOnlyIso.nullable(),
 });

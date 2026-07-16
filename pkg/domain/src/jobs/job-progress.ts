@@ -9,7 +9,7 @@ import { countWorkingDaysBetween, type WorkingCalendar } from './working-calenda
  * spanning several Bays must keep them per Slot rather than sharing one calendar.
  */
 export type JobWorkSlotEntry = {
-  slot: Pick<ProjectedWorkJobSlot, 'bayId' | 'startDate' | 'endDate' | 'state'>;
+  slot: Pick<ProjectedWorkJobSlot, 'bayId' | 'startDate' | 'endDate' | 'lastWorkDay' | 'state'>;
   bayName: string;
   workingCalendar: WorkingCalendar;
 };
@@ -131,7 +131,7 @@ export function isJobScheduleComplete(state: Pick<JobScheduleState, 'done' | 'to
 export type JobRouteStop = {
   /** 'done' once the last work day is past, 'active' while the Slot covers today, else 'scheduled'. */
   state: JobRouteStopState;
-  /** Inclusive last working day of the Slot (the day before the half-open `endDate`). */
+  /** Inclusive last working day of the Slot, as projected. */
   lastWorkDay: DateOnlyIso;
   /** Working days the Slot spans, excluding closures. */
   workDays: number;
@@ -151,7 +151,7 @@ export function deriveJobRouteStop({
   today,
   workingCalendar,
 }: {
-  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate' | 'state'>;
+  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate' | 'lastWorkDay' | 'state'>;
   today: DateOnlyIso;
   workingCalendar: WorkingCalendar;
 }): JobRouteStop {

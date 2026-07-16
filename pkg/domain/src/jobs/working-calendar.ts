@@ -36,6 +36,16 @@ export function firstWorkingDayOnOrAfter(date: DateOnlyIso, workingCalendar: Wor
   return cursor;
 }
 
+export function lastWorkingDayOnOrBefore(date: DateOnlyIso, workingCalendar: WorkingCalendar = {}): DateOnlyIso {
+  let cursor = date;
+
+  while (!isWorkingDay(cursor, workingCalendar)) {
+    cursor = addDateOnlyDays(cursor, -1);
+  }
+
+  return cursor;
+}
+
 export function isWorkingDay(date: DateOnlyIso, workingCalendar: WorkingCalendar = {}): boolean {
   const bayException = workingCalendar.bayExceptions?.get(date);
 

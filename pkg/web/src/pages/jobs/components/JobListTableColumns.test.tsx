@@ -30,16 +30,13 @@ describe('Job List table columns', () => {
         productModelCode: 'MDL-1',
         productName: 'Loader Bucket',
         productSerialNumber: 'SN-2026-0042',
-        // The queue span opens on Saturday 06-06 and its half-open end is Saturday 06-20; work
-        // actually runs Monday 06-08 through Friday 06-19.
+        // The queue span opens on a Saturday, but work runs Monday 06-08 through Friday 06-19.
         scheduleState: {
           done: 1,
           active: 1,
-          endDate: '2026-06-20',
           firstWorkDay: '2026-06-08',
           lastWorkDay: '2026-06-19',
           scheduled: 2,
-          startDate: '2026-06-06',
           total: 4,
         },
       }),
@@ -70,11 +67,9 @@ describe('Job List table columns', () => {
         scheduleState: {
           done: 3,
           active: 0,
-          endDate: '2026-06-15',
           firstWorkDay: '2026-06-05',
           lastWorkDay: '2026-06-14',
           scheduled: 0,
-          startDate: '2026-06-05',
           total: 3,
         },
       }),
@@ -95,11 +90,9 @@ describe('Job List table columns', () => {
         scheduleState: {
           done: 0,
           active: 0,
-          endDate: null,
           firstWorkDay: null,
           lastWorkDay: null,
           scheduled: 0,
-          startDate: null,
           total: 0,
         },
       }),

@@ -427,21 +427,17 @@ describe('foldJobScheduleStates', () => {
     expect(states.get(JOB_1)).toEqual({
       active: 1,
       done: 1,
-      endDate: '2026-06-20',
       firstWorkDay: '2026-06-01',
       lastWorkDay: '2026-06-19',
       scheduled: 1,
-      startDate: '2026-06-01',
       total: 3,
     });
     expect(states.get(JOB_3)).toEqual({
       active: 0,
       done: 0,
-      endDate: null,
       firstWorkDay: null,
       lastWorkDay: null,
       scheduled: 0,
-      startDate: null,
       total: 0,
     });
   });
@@ -473,9 +469,7 @@ describe('foldJobScheduleStates', () => {
     });
 
     expect(foldJobScheduleStates([bay], [JOB_1]).get(JOB_1)).toMatchObject({
-      startDate: '2026-06-06',
       firstWorkDay: '2026-06-08',
-      endDate: '2026-06-13',
       lastWorkDay: '2026-06-12',
     });
   });

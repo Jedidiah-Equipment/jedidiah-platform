@@ -17,8 +17,8 @@ export type ChangelogDialogTransition = {
 
 export const initialChangelogDialogState: ChangelogDialogState = { dismissed: false, open: false, pageIndex: 0 };
 
-export function primaryControlLabel(pageIndex: number, count: number): 'Next' | 'Done' {
-  return isLastPage(pageIndex, count) ? 'Done' : 'Next';
+export function primaryControlLabel(pageIndex: number, count: number): 'Next' | 'Got it' {
+  return isLastPage(pageIndex, count) ? 'Got it' : 'Next';
 }
 
 /**

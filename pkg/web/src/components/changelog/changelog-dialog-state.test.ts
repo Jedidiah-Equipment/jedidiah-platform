@@ -22,12 +22,12 @@ describe('primaryControlLabel', () => {
     expect(primaryControlLabel(1, releases.length)).toBe('Next');
   });
 
-  test('becomes "Done" on the last page', () => {
-    expect(primaryControlLabel(2, releases.length)).toBe('Done');
+  test('becomes "Got it" on the last page', () => {
+    expect(primaryControlLabel(2, releases.length)).toBe('Got it');
   });
 
-  test('is "Done" for a single release', () => {
-    expect(primaryControlLabel(0, 1)).toBe('Done');
+  test('is "Got it" for a single release', () => {
+    expect(primaryControlLabel(0, 1)).toBe('Got it');
   });
 });
 

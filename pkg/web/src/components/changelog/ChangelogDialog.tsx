@@ -2,7 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button.js';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -69,26 +69,32 @@ export const ChangelogDialog: React.FC = () => {
       }}
       open={state.open}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col sm:max-w-md">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-5 p-6 sm:max-w-[52rem]">
         <DialogHeader className="shrink-0">
-          <DialogTitle>What's new</DialogTitle>
+          <DialogTitle className="text-xl sm:text-2xl">What's new</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="-mx-4 min-h-0 flex-1 px-4">
-          <ChangelogReleaseView changelog={currentRelease} />
+        <ScrollArea className="-mx-2 min-h-0 flex-1 px-2">
+          <ChangelogReleaseView changelog={currentRelease} key={currentRelease.releasedAt} />
         </ScrollArea>
-        <DialogFooter className="shrink-0 items-center sm:justify-between">
-          <span className="text-xs text-muted-foreground">
-            {safePageIndex + 1} of {changelogs.length}
-          </span>
+        <div className="flex shrink-0 flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {changelogs.length > 1 ? (
+            <span className="text-xs text-muted-foreground">
+              {safePageIndex + 1} of {changelogs.length}
+            </span>
+          ) : (
+            <span />
+          )}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button onClick={() => applyControl('skip')} variant="ghost">
-              Skip
-            </Button>
-            <Button onClick={() => applyControl('primary')}>
+            {changelogs.length > 1 ? (
+              <Button onClick={() => applyControl('skip')} variant="ghost">
+                Mark all as read
+              </Button>
+            ) : null}
+            <Button className="min-w-20" onClick={() => applyControl('primary')} size="lg">
               {primaryControlLabel(safePageIndex, changelogs.length)}
             </Button>
           </div>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

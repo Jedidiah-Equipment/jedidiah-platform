@@ -1,6 +1,5 @@
 import type React from 'react';
 import { AppSidebar } from '@/components/app-shell/AppSidebar.js';
-import { FloatingAssistant } from '@/components/assistant-ui/FloatingAssistant.js';
 import { ChangelogDialog } from '@/components/changelog/ChangelogDialog.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar.js';
@@ -21,7 +20,6 @@ export const AuthenticatedRouteShell: React.FC<AuthenticatedRouteShellProps> = (
         </header>
         <ScrollArea className="min-h-0 flex-1">{children}</ScrollArea>
       </SidebarInset>
-      <FloatingAssistant />
       <ChangelogDialog />
     </SidebarProvider>
   );

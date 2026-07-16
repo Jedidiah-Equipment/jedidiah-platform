@@ -2,23 +2,11 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react';
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk';
 import { type FC, useState } from 'react';
 
-import { authClient } from '@/lib/auth-client.js';
-
 import { createAssistantChatTransport } from './assistant-chat-transport.js';
 import { AssistantDevtools } from './assistant-devtools.js';
 import { AssistantModal } from './assistant-modal.js';
 
-export const FloatingAssistantRuntime: FC = () => {
-  const { data: session } = authClient.useSession();
-
-  if (session?.user.assistantEnabled !== true) {
-    return null;
-  }
-
-  return <EnabledFloatingAssistant />;
-};
-
-const EnabledFloatingAssistant: FC = () => {
+export const SidebarAssistantRuntime: FC = () => {
   // The transport closes over the api origin + credentialed fetch; build it once so it stays stable
   // across renders rather than reconnecting on every render.
   const [transport] = useState(() => createAssistantChatTransport());

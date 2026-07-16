@@ -46,7 +46,7 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
       <FactCard title="SLOT">
         <View className="gap-4">
           <FactRow>
-            <FactField label="SLOT START" value={formatDate(slot.startDate, 'd MMM yyyy')} />
+            <FactField label="SLOT START" value={formatDate(slot.firstWorkDay, 'd MMM yyyy')} />
             <FactField label="SLOT END" value={formatDate(slot.lastWorkDay, 'd MMM yyyy')} />
           </FactRow>
           <FactRow>

@@ -1,5 +1,6 @@
 import {
   addJobSlotDuration,
+  labelWorkDays,
   type SlotCalendarDays,
   segmentSlotCalendarDays,
   summarizeSlotCalendarDays,
@@ -110,6 +111,15 @@ export const BaySlotBar: React.FC<{
   const previewEndDate = useMemo(
     () => (shouldProjectPreview ? addJobSlotDuration(startDate, previewDurationDays, workingCalendar) : endDate),
     [endDate, previewDurationDays, shouldProjectPreview, startDate, workingCalendar],
+  );
+  // Resting slots read the Board builder's shipped label dates; a resize preview has no server
+  // projection yet, so that one path relabels locally from the previewed span.
+  const labelDays = useMemo(
+    () =>
+      shouldProjectPreview
+        ? labelWorkDays(startDate, previewEndDate, workingCalendar)
+        : { firstWorkDay: slot.firstWorkDay, lastWorkDay: slot.lastWorkDay },
+    [previewEndDate, shouldProjectPreview, slot.firstWorkDay, slot.lastWorkDay, startDate, workingCalendar],
   );
   const dayBreakdown = useMemo(
     () => summarizeSlotCalendarDays(startDate, previewEndDate, workingCalendar),
@@ -370,7 +380,11 @@ export const BaySlotBar: React.FC<{
       <HoverCardContent align="start" className="flex w-64 flex-col gap-2" side="top">
         <p className="font-mono font-semibold">{label}</p>
         <InfoList>
-          <SlotDayBreakdownRows dayBreakdown={dayBreakdown} endDate={previewEndDate} startDate={startDate} />
+          <SlotDayBreakdownRows
+            dayBreakdown={dayBreakdown}
+            firstWorkDay={labelDays.firstWorkDay}
+            lastWorkDay={labelDays.lastWorkDay}
+          />
         </InfoList>
       </HoverCardContent>
     </HoverCard>

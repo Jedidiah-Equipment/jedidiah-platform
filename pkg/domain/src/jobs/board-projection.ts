@@ -9,7 +9,7 @@ import type {
 
 import { bayWorkingCalendars } from './bay-working-calendars.js';
 import { type InsertAtDatePlacement, resolveInsertAtDatePlacement } from './job-slot-insert-at-date.js';
-import { addJobSlotDuration, projectJobSlots } from './job-slot-projection.js';
+import { addJobSlotDuration, labelWorkDays, projectJobSlots } from './job-slot-projection.js';
 import { firstWorkingDayOnOrAfter, type WorkingCalendar } from './working-calendar.js';
 
 type OffDayFact = { date: string };
@@ -17,9 +17,12 @@ type CalendarExceptionFact = { date: string; direction: BayCalendarExceptionDire
 
 export type ProjectableBoardWorkSlot = Omit<
   ProjectedWorkJobSlot,
-  'endDate' | 'jobUnfinished' | 'previewSplit' | 'startDate' | 'state'
+  'endDate' | 'firstWorkDay' | 'jobUnfinished' | 'lastWorkDay' | 'previewSplit' | 'startDate' | 'state'
 >;
-export type ProjectableBoardIdleSlot = Omit<ProjectedIdleJobSlot, 'endDate' | 'previewSplit' | 'startDate' | 'state'>;
+export type ProjectableBoardIdleSlot = Omit<
+  ProjectedIdleJobSlot,
+  'endDate' | 'firstWorkDay' | 'lastWorkDay' | 'previewSplit' | 'startDate' | 'state'
+>;
 export type ProjectableBoardSlot = ProjectableBoardWorkSlot | ProjectableBoardIdleSlot;
 
 export type BoardSeed = {
@@ -34,7 +37,9 @@ export type BoardGhost = {
   bayId: string;
   durationDays: number;
   endDate: DateOnlyIso;
+  firstWorkDay: DateOnlyIso;
   id: string;
+  lastWorkDay: DateOnlyIso;
   placementType: BoardPlacementType;
   seedIndex: number;
   startDate: DateOnlyIso;
@@ -187,7 +192,12 @@ type BoardGhostEntry = {
 };
 
 type WorkingEntry = ProjectableRealBoardEntry | BoardGhostEntry;
-type ProjectedWorkingEntry = WorkingEntry & { endDate: DateOnlyIso; startDate: DateOnlyIso };
+type ProjectedWorkingEntry = WorkingEntry & {
+  endDate: DateOnlyIso;
+  firstWorkDay: DateOnlyIso;
+  lastWorkDay: DateOnlyIso;
+  startDate: DateOnlyIso;
+};
 type ProjectedRealBoardEntry = ProjectedWorkingEntry & ProjectableRealBoardEntry;
 
 type GhostEntryMeta = {
@@ -298,14 +308,16 @@ function projectSeededBay({
       isTrailing && projected.ghostMeta.appendStart && projected.ghostMeta.appendStart > projected.startDate
         ? projected.ghostMeta.appendStart
         : projected.startDate;
+    const endDate =
+      clampedStart === projected.startDate
+        ? projected.endDate
+        : addJobSlotDuration(clampedStart, projected.durationDays, workingCalendar);
 
     ghosts.push({
       bayId: projected.ghostMeta.bayId,
       durationDays: projected.durationDays,
-      endDate:
-        clampedStart === projected.startDate
-          ? projected.endDate
-          : addJobSlotDuration(clampedStart, projected.durationDays, workingCalendar),
+      endDate,
+      ...labelWorkDays(clampedStart, endDate, workingCalendar),
       id: boardGhostId(projected.ghostMeta.bayId, projected.ghostMeta.seedIndex),
       placementType: projected.ghostMeta.placementType,
       seedIndex: projected.ghostMeta.seedIndex,

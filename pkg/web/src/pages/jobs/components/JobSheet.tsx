@@ -356,7 +356,7 @@ const ScheduleTimelineItem: React.FC<{
             <OperatorValue operator={slot.operator} />
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate tabular-nums">
-                {formatDate(slot.startDate, 'short')} to {formatDate(slot.endDate, 'short')}
+                {formatDate(slot.firstWorkDay, 'short')} to {formatDate(slot.lastWorkDay, 'short')}
               </span>
               {breakdownNote ? (
                 <span className="truncate text-muted-foreground text-xs tabular-nums">incl. {breakdownNote}</span>

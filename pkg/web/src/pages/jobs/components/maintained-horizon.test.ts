@@ -25,7 +25,23 @@ describe('getMaintainedHorizonWarnings', () => {
       {
         bayId: 'bay-1',
         maintainedThrough: '2026-06-16',
-        queueEndDate: '2026-06-17',
+        queueLastWorkDay: '2026-06-16',
+      },
+    ]);
+  });
+
+  it('reports the queue last working day, not the half-open queue end', () => {
+    // The queue's final Slot works through Friday 06-19 and its half-open end lands on Saturday.
+    expect(
+      getMaintainedHorizonWarnings({
+        bays: [{ id: 'bay-1', nextAvailableDate: day('2026-06-20') }],
+        offDays: [{ date: day('2026-06-16') }],
+      }),
+    ).toEqual([
+      {
+        bayId: 'bay-1',
+        maintainedThrough: '2026-06-16',
+        queueLastWorkDay: '2026-06-19',
       },
     ]);
   });
@@ -55,7 +71,7 @@ describe('getMaintainedHorizonWarnings', () => {
       {
         bayId: 'bay-2',
         maintainedThrough: '2026-06-16',
-        queueEndDate: '2026-06-18',
+        queueLastWorkDay: '2026-06-17',
       },
     ]);
   });

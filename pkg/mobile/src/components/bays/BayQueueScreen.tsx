@@ -269,7 +269,7 @@ function ActiveHero({
         />
       </View>
       <View className="mt-2 flex-row justify-between">
-        <Text className="text-[10px] text-muted-foreground">{formatDate(active.startDate, 'd MMM')}</Text>
+        <Text className="text-[10px] text-muted-foreground">{formatDate(active.firstWorkDay, 'd MMM')}</Text>
         <Text className="text-[10px] text-muted-foreground">
           {active.elapsedWorkDays} of {active.totalWorkDays} work days
         </Text>
@@ -315,7 +315,7 @@ function TimelineItem({
   onSelect: () => void;
 }) {
   const rangeLabel =
-    `${formatDate(slot.startDate, 'd MMM')} – ${formatDate(slot.lastWorkDay, 'd MMM')} · ${slot.workDays} work ${
+    `${formatDate(slot.firstWorkDay, 'd MMM')} – ${formatDate(slot.lastWorkDay, 'd MMM')} · ${slot.workDays} work ${
       slot.workDays === 1 ? 'day' : 'days'
     }`.toUpperCase();
   const labelClass = selected

@@ -94,7 +94,7 @@ export function listUpcomingWorkSlots({
 }
 
 export type WorkSlotSpan = {
-  /** Inclusive last working day — the day before the half-open `endDate`. */
+  /** Inclusive last working day, as projected. */
   lastWorkDay: DateOnlyIso;
   /** Working days the Slot spans, excluding closures. */
   workDays: number;
@@ -109,7 +109,7 @@ export function summarizeWorkSlotSpan({
   workingCalendar: WorkingCalendar;
 }): WorkSlotSpan {
   return {
-    lastWorkDay: addDateOnlyDays(slot.endDate, -1),
+    lastWorkDay: slot.lastWorkDay,
     workDays: countWorkingDaysBetween(slot.startDate, slot.endDate, workingCalendar),
   };
 }

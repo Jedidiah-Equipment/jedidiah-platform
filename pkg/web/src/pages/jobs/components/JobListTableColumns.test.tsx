@@ -30,7 +30,18 @@ describe('Job List table columns', () => {
         productModelCode: 'MDL-1',
         productName: 'Loader Bucket',
         productSerialNumber: 'SN-2026-0042',
-        scheduleState: { done: 1, active: 1, endDate: '2026-06-20', scheduled: 2, startDate: '2026-06-05', total: 4 },
+        // The queue span opens on Saturday 06-06 and its half-open end is Saturday 06-20; work
+        // actually runs Monday 06-08 through Friday 06-19.
+        scheduleState: {
+          done: 1,
+          active: 1,
+          endDate: '2026-06-20',
+          firstWorkDay: '2026-06-08',
+          lastWorkDay: '2026-06-19',
+          scheduled: 2,
+          startDate: '2026-06-06',
+          total: 4,
+        },
       }),
     ]);
 
@@ -44,9 +55,11 @@ describe('Job List table columns', () => {
     expect(html).toContain('1 Active');
     expect(html).toContain('2 Scheduled');
     expect(html).not.toContain('Not scheduled');
-    // Start date / End date columns render the projected window.
-    expect(html).toContain('Jun 5, 2026');
-    expect(html).toContain('Jun 20, 2026');
+    // Start date / End date columns label the working window, not the raw queue span.
+    expect(html).toContain('Jun 8, 2026');
+    expect(html).toContain('Jun 19, 2026');
+    expect(html).not.toContain('Jun 6, 2026');
+    expect(html).not.toContain('Jun 20, 2026');
     // Not every Slot is done, so the Complete column shows no check icon.
     expect(html).not.toContain('tabler-icon-check');
   });
@@ -54,7 +67,16 @@ describe('Job List table columns', () => {
   it('marks a Job complete with a check icon only once every Slot is done', () => {
     const html = renderJobListRows([
       buildJob({
-        scheduleState: { done: 3, active: 0, endDate: '2026-06-15', scheduled: 0, startDate: '2026-06-05', total: 3 },
+        scheduleState: {
+          done: 3,
+          active: 0,
+          endDate: '2026-06-15',
+          firstWorkDay: '2026-06-05',
+          lastWorkDay: '2026-06-14',
+          scheduled: 0,
+          startDate: '2026-06-05',
+          total: 3,
+        },
       }),
     ]);
 
@@ -69,7 +91,18 @@ describe('Job List table columns', () => {
 
   it('renders the "Not scheduled" badge for a Job with no Work Slots', () => {
     const html = renderJobListRows([
-      buildJob({ scheduleState: { done: 0, active: 0, endDate: null, scheduled: 0, startDate: null, total: 0 } }),
+      buildJob({
+        scheduleState: {
+          done: 0,
+          active: 0,
+          endDate: null,
+          firstWorkDay: null,
+          lastWorkDay: null,
+          scheduled: 0,
+          startDate: null,
+          total: 0,
+        },
+      }),
     ]);
 
     expect(html).toContain('Not scheduled');

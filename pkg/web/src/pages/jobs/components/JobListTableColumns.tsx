@@ -114,9 +114,9 @@ export function createJobListColumns({
       },
     },
     {
-      accessorFn: (job) => job.scheduleState?.startDate ?? null,
+      accessorFn: (job) => job.scheduleState?.firstWorkDay ?? null,
       cell: ({ row }) => (
-        <span className="tabular-nums">{formatDate(row.original.scheduleState?.startDate, 'short', '—')}</span>
+        <span className="tabular-nums">{formatDate(row.original.scheduleState?.firstWorkDay, 'short', '—')}</span>
       ),
       enableColumnFilter: false,
       enableSorting: false,
@@ -127,9 +127,9 @@ export function createJobListColumns({
       },
     },
     {
-      accessorFn: (job) => job.scheduleState?.endDate ?? null,
+      accessorFn: (job) => job.scheduleState?.lastWorkDay ?? null,
       cell: ({ row }) => (
-        <span className="tabular-nums">{formatDate(row.original.scheduleState?.endDate, 'short', '—')}</span>
+        <span className="tabular-nums">{formatDate(row.original.scheduleState?.lastWorkDay, 'short', '—')}</span>
       ),
       enableColumnFilter: false,
       enableSorting: false,

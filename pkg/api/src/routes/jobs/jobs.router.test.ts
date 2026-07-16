@@ -1163,6 +1163,8 @@ describe('jobs.list scheduleState', () => {
       active: 1,
       done: 1,
       endDate: '2026-06-17',
+      firstWorkDay: '2026-06-05',
+      lastWorkDay: '2026-06-16',
       scheduled: 1,
       startDate: '2026-06-05',
       total: 3,

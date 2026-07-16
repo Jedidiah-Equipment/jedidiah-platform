@@ -468,7 +468,7 @@ const MaintainedHorizonWarningBadge: React.FC<{
         <p className="font-medium">Unmaintained calendar</p>
         <p className="text-muted-foreground">
           Unmaintained after {formatDate(warning.maintainedThrough, 'MMM d')}; projected tail may be optimistic. Queue
-          ends {formatDate(warning.queueEndDate, 'MMM d')}.
+          ends {formatDate(warning.queueLastWorkDay, 'MMM d')}.
         </p>
       </HoverCardContent>
     </HoverCard>

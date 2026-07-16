@@ -40,6 +40,8 @@ The visual pipeline is fixed: Procurement -> Supply -> Fabrication -> Paint -> A
 
 Slot dates are derived, never stored on Slots. Projection walks a Bay Queue from the Bay's plant business-date origin, consuming `durationDays` as working days and skipping Off-Days. Derived dates are `yyyy-MM-dd` plant business dates and must read the same in every viewer timezone. Africa/Johannesburg is used only at the server boundary to derive plant "today" and new Bay origins.
 
+A Slot's span is half-open `[startDate, endDate)` and tiles its Bay Queue without gaps, so a span can open on an Off-Day and its `endDate` is the day after the last working day. Projection therefore also emits **`firstWorkDay`** and **`lastWorkDay`** — the inclusive working days the Slot actually covers. Geometry (Gantt bars, segments, day breakdowns) reads the raw span; every human-readable date label reads `firstWorkDay`/`lastWorkDay`. A Slot never carries trailing closure days, so `lastWorkDay` is always `endDate` minus one day, while `firstWorkDay` must snap forward past any leading Off-Days.
+
 **Working Calendar** is explicit dated facts. Unmarked dates are working days. **Off-Days** are explicit non-working dates. **Bay Calendar Exceptions** override the org calendar for one Bay: Overtime opens an otherwise-off day; Bay Closure closes an otherwise-working day. Off-Days are stepped over by projection and are not Idle Slots.
 
 **Job Days-Left** is a Job-level horizon, distinct from a single Slot's remaining days: the maximum, over the Job's unfinished Work Slots, of the working days from plant "today" through that Slot's last work day. It answers when the Job is fully off the floor, paced by its last Bay, and counts the working days in any idle gap before a not-yet-started Slot.

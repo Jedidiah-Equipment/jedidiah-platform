@@ -1,4 +1,4 @@
-import { auditEvents, customers, type Db, documents, products, quotes, sql, user } from '@pkg/db';
+import { auditEvents, customers, type Db, documents, jobs, products, quotes, sql, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
@@ -53,6 +53,47 @@ describe('documents.deleteByProduct', () => {
         productId: context.product.id,
       }),
     ).rejects.toThrow('You do not have permission to perform this action.');
+  });
+});
+
+describe('documents.deleteByJob', () => {
+  test('deletes uploaded Purchase Orders through job update access', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await createCustomJob(context.db);
+    const document = await createJobDocument(context.db, job.id, 'purchase_order');
+
+    await caller.documents.deleteByJob({ documentId: document.id, jobId: job.id });
+
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    await expect(context.db.select().from(auditEvents)).resolves.toEqual([
+      expect.objectContaining({
+        action: 'deleted',
+        actorUserId: 'test-user-id',
+        entityId: document.id,
+        entityType: 'document',
+      }),
+    ]);
+  });
+
+  test('rejects deletion of immutable Job documents', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await createCustomJob(context.db);
+    const brochure = await createJobDocument(context.db, job.id, 'brochure');
+
+    await expect(caller.documents.deleteByJob({ documentId: brochure.id, jobId: job.id })).rejects.toMatchObject({
+      appCode: 'document.delete_not_allowed',
+    });
+    await expect(context.db.select().from(documents)).resolves.toEqual([expect.objectContaining({ id: brochure.id })]);
+  });
+
+  test('requires job update permission', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-viewer'));
+    const job = await createCustomJob(context.db);
+    const document = await createJobDocument(context.db, job.id, 'purchase_order');
+
+    await expect(caller.documents.deleteByJob({ documentId: document.id, jobId: job.id })).rejects.toThrow(
+      'You do not have permission to perform this action.',
+    );
   });
 });
 
@@ -191,6 +232,54 @@ async function createQuoteDocument(db: Db, quoteId: string, input: { filename: s
   if (!document) {
     throw new Error('Document insert did not return a row');
   }
+
+  return document;
+}
+
+async function createCustomJob(db: Db) {
+  const [customer] = await db
+    .insert(customers)
+    .values({ companyName: 'Job Document Customer', email: null })
+    .returning({ id: customers.id });
+  if (!customer) throw new Error('Customer insert did not return a row');
+
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId: customer.id,
+      kind: 'custom',
+      productId: null,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      status: 'draft',
+      workTitle: 'Custom fabrication',
+    })
+    .returning({ id: quotes.id });
+  if (!quote) throw new Error('Quote insert did not return a row');
+
+  const [job] = await db.insert(jobs).values({ quoteId: quote.id }).returning({ id: jobs.id });
+  if (!job) throw new Error('Job insert did not return a row');
+
+  return job;
+}
+
+async function createJobDocument(db: Db, jobId: string, type: 'brochure' | 'purchase_order') {
+  const [document] = await db
+    .insert(documents)
+    .values({
+      byteSize: 8,
+      contentType: 'application/pdf',
+      filename: `${type}.pdf`,
+      jobId,
+      metadata: { type },
+      ownerType: 'job',
+      storageKey: `documents/job/${jobId}/${type}.pdf`,
+      uploaderUserId: 'test-user-id',
+    })
+    .returning({ id: documents.id });
+
+  if (!document) throw new Error('Document insert did not return a row');
 
   return document;
 }

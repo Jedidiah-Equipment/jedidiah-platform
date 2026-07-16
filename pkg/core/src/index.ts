@@ -12,6 +12,7 @@ export * from './files/file-errors.js';
 export * from './files/stored-file-service.js';
 export * from './jobs/board-preview-service.js';
 export * from './jobs/job-bay-service.js';
+export * from './jobs/job-document-service.js';
 export * from './jobs/job-errors.js';
 export * from './jobs/job-read-service.js';
 export * from './jobs/job-service.js';

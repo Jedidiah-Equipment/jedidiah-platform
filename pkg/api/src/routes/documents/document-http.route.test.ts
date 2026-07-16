@@ -156,6 +156,64 @@ describe('document HTTP routes', () => {
     expect(row?.metadata).toEqual({ type: 'sop' });
   });
 
+  test('uploads a Job PDF as a Purchase Order regardless of client-supplied type', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const job = await createJobOwner(context.db, context.product.id);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/jobs/${job.id}/documents`,
+      ...buildMultipartUpload({ bytes: pdfBytes(), filename: 'PO-123.pdf', type: 'brochure' }),
+    });
+
+    expect(response.statusCode, response.body).toBe(201);
+    expect(response.json()).toMatchObject({
+      filename: 'PO-123.pdf',
+      jobId: job.id,
+      metadata: { type: 'purchase_order' },
+      ownerType: 'job',
+      sourceProductId: null,
+    });
+  });
+
+  test('rejects non-PDF Job uploads by sniffed content and stores nothing', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const job = await createJobOwner(context.db, context.product.id);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/jobs/${job.id}/documents`,
+      ...buildMultipartUpload({ bytes: pngBytes(), filename: 'Not Really.pdf' }),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      data: { appCode: 'document.content_type_not_allowed' },
+      message: 'Only PDF documents can be uploaded.',
+    });
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  });
+
+  test('requires job update permission before reading multipart content', async ({ context }) => {
+    routeTestState.session = mockSession('job-viewer');
+    const app = await createDocumentApp(new MemoryStorage());
+    const job = await createJobOwner(context.db, context.product.id);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/jobs/${job.id}/documents`,
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      data: { appCode: 'document.forbidden' },
+      message: 'You do not have permission to upload Job documents.',
+    });
+  });
+
   test('rejects a product document upload with a missing type and stores nothing', async ({ context }) => {
     const storage = new MemoryStorage();
     const app = await createDocumentApp(storage);

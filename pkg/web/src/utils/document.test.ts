@@ -7,6 +7,7 @@ import {
   fetchDocumentPreviewBlob,
   getDocumentPreviewKind,
   getReadyProductDocumentUpload,
+  uploadJobPurchaseOrder,
   uploadProductDocument,
 } from './document.js';
 
@@ -117,6 +118,33 @@ describe('document utilities', () => {
     expect(body.get('type')).toBe('sop');
     expect(body.get('file')).toBeInstanceOf(File);
     expect((body.get('file') as File).name).toBe('Standard Procedure.pdf');
+  });
+
+  it('uploads a Job document without sending a client-controlled type', async () => {
+    const file = new File(['%PDF-1.7'], 'PO-123.pdf', { type: 'application/pdf' });
+    const jobDocument = {
+      ...documentSummary,
+      filename: 'PO-123.pdf',
+      jobId: '33333333-3333-4333-8333-333333333333',
+      metadata: { type: 'purchase_order' },
+      ownerType: 'job',
+      productId: null,
+      sourceProductId: null,
+      sourceProductName: null,
+    };
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(jobDocument), { status: 201 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('window', APP_CONFIG);
+
+    await uploadJobPurchaseOrder('33333333-3333-4333-8333-333333333333' as UUID, file);
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('http://localhost:7002/api/jobs/33333333-3333-4333-8333-333333333333/documents');
+    expect(init.method).toBe('POST');
+    const body = init.body as FormData;
+    expect([...body.keys()]).toEqual(['file']);
+    expect((body.get('file') as File).name).toBe('PO-123.pdf');
   });
 
   it('passes the abort signal to preview fetch requests', async () => {

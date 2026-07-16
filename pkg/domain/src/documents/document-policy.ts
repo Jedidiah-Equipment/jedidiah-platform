@@ -1,12 +1,13 @@
 import type { DocumentOwnerType, JobDocumentType } from '@pkg/schema';
-import { ProductDocumentMetadata, QuoteDocumentMetadata } from '@pkg/schema';
+import { JobDocumentMetadata, ProductDocumentMetadata, QuoteDocumentMetadata } from '@pkg/schema';
 import type { ZodType } from 'zod';
 
-export const PRODUCT_DOCUMENT_TYPE_LABELS = {
+export const JOB_DOCUMENT_TYPE_LABELS = {
   bom: 'BOM',
   brochure: 'Brochure',
   general: 'General',
   part_book: 'Part Book',
+  purchase_order: 'Purchase Order',
   sop: 'SOP',
 } as const satisfies Record<JobDocumentType, string>;
 
@@ -42,14 +43,9 @@ export type DocumentPolicyValidationResult =
 
 export const documentPolicies = {
   job: {
-    allowedContentTypes: [
-      DOCUMENT_PDF_CONTENT_TYPE,
-      DOCUMENT_PNG_CONTENT_TYPE,
-      DOCUMENT_JPEG_CONTENT_TYPE,
-      DOCUMENT_WEBP_CONTENT_TYPE,
-    ],
+    allowedContentTypes: [DOCUMENT_PDF_CONTENT_TYPE],
     maxBytes: PRODUCT_DOCUMENT_MAX_BYTES,
-    metadataSchema: ProductDocumentMetadata,
+    metadataSchema: JobDocumentMetadata,
   },
   product: {
     allowedContentTypes: [DOCUMENT_PDF_CONTENT_TYPE],

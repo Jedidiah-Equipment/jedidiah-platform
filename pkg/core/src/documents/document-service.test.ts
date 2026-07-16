@@ -21,7 +21,7 @@ import {
 } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
+import { createJobPurchaseOrder, deleteJobPurchaseOrder } from '../jobs/job-document-service.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { readJobDocument } from '../jobs/job-read-service.js';
 import { ProductNotFoundError } from '../products/product-errors.js';
@@ -37,6 +37,7 @@ import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
+  DocumentDeleteNotAllowedError,
   DocumentNotFoundError,
   DocumentPolicyViolationError,
   DuplicateDocumentFilenameError,
@@ -154,6 +155,90 @@ const test = createTester(async ({ db }) => {
     quoteId: quote.id,
     storage: new InMemoryStorageAdapter(),
   };
+});
+
+describe('Job Purchase Orders', () => {
+  test('uploads multiple PDFs to a Custom Job as source-less Purchase Orders', async ({ context }) => {
+    const job = await createCustomJobOwner(context.db, context.customerId);
+
+    const first = await createJobPurchaseOrder({
+      actorUserId: ACTOR_USER_ID,
+      bytes: pdfBytes(),
+      db: context.db,
+      filename: 'PO-123.pdf',
+      jobId: job.id,
+      storage: context.storage,
+    });
+    const second = await createJobPurchaseOrder({
+      actorUserId: ACTOR_USER_ID,
+      bytes: pdfBytes(),
+      db: context.db,
+      filename: 'PO-124.pdf',
+      jobId: job.id,
+      storage: context.storage,
+    });
+
+    expect([first, second]).toEqual([
+      expect.objectContaining({
+        filename: 'PO-123.pdf',
+        metadata: { type: 'purchase_order' },
+        ownerType: 'job',
+        sourceProductId: null,
+        sourceProductName: null,
+      }),
+      expect.objectContaining({
+        filename: 'PO-124.pdf',
+        metadata: { type: 'purchase_order' },
+        ownerType: 'job',
+        sourceProductId: null,
+        sourceProductName: null,
+      }),
+    ]);
+  });
+
+  test('deletes Purchase Orders but rejects deletion of snapshot documents', async ({ context }) => {
+    const job = await createJobOwner(context.db, context.productId);
+    const purchaseOrder = await createJobPurchaseOrder({
+      actorUserId: ACTOR_USER_ID,
+      bytes: pdfBytes(),
+      db: context.db,
+      filename: 'PO-DELETE.pdf',
+      jobId: job.id,
+      storage: context.storage,
+    });
+    const [snapshot] = await context.db
+      .insert(documents)
+      .values({
+        byteSize: pdfBytes().byteLength,
+        contentType: 'application/pdf',
+        filename: 'Snapshot.pdf',
+        jobId: job.id,
+        metadata: { type: 'part_book' },
+        ownerType: 'job',
+        sourceProductId: context.productId,
+        storageKey: 'documents/product/source/snapshot.pdf',
+        uploaderUserId: ACTOR_USER_ID,
+      })
+      .returning();
+    if (!snapshot) throw new Error('Document insert did not return a row');
+
+    await deleteJobPurchaseOrder({
+      actorUserId: ACTOR_USER_ID,
+      db: context.db,
+      documentId: purchaseOrder.id,
+      jobId: job.id,
+    });
+
+    await expect(
+      deleteJobPurchaseOrder({
+        actorUserId: ACTOR_USER_ID,
+        db: context.db,
+        documentId: snapshot.id,
+        jobId: job.id,
+      }),
+    ).rejects.toBeInstanceOf(DocumentDeleteNotAllowedError);
+    await expect(context.db.select().from(documents)).resolves.toEqual([expect.objectContaining({ id: snapshot.id })]);
+  });
 });
 
 describe('createProductDocument', () => {
@@ -1295,6 +1380,28 @@ async function createJobOwner(db: Parameters<typeof readJobDocument>[0]['db'], p
       quoteId: quote.id,
     })
     .returning();
+  if (!job) throw new Error('Job insert did not return a row');
+
+  return job;
+}
+
+async function createCustomJobOwner(db: Parameters<typeof readJobDocument>[0]['db'], customerId: UUID) {
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId,
+      kind: 'custom',
+      productId: null,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: ACTOR_USER_ID,
+      status: 'draft',
+      workTitle: 'Custom fabrication',
+    })
+    .returning();
+  if (!quote) throw new Error('Quote insert did not return a row');
+
+  const [job] = await db.insert(jobs).values({ quoteId: quote.id }).returning();
   if (!job) throw new Error('Job insert did not return a row');
 
   return job;

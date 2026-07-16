@@ -2,12 +2,23 @@ import type { DocumentPolicyViolationCode } from '@pkg/domain';
 
 export class DuplicateDocumentFilenameError extends Error {
   readonly code = 'document.duplicate_filename';
-  readonly metadata: { filename: string; ownerId: string; ownerType: 'product' | 'quote' };
+  readonly metadata: { filename: string; ownerId: string; ownerType: 'job' | 'product' | 'quote' };
 
-  constructor(input: { filename: string; ownerId: string; ownerType: 'product' | 'quote' }) {
+  constructor(input: { filename: string; ownerId: string; ownerType: 'job' | 'product' | 'quote' }) {
     super(`Document filename already exists for ${input.ownerType}: ${input.filename}`);
     this.name = 'DuplicateDocumentFilenameError';
     this.metadata = input;
+  }
+}
+
+export class DocumentDeleteNotAllowedError extends Error {
+  readonly code = 'document.delete_not_allowed';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super('Only uploaded Purchase Orders can be deleted from a Job.');
+    this.name = 'DocumentDeleteNotAllowedError';
+    this.metadata = { id };
   }
 }
 
@@ -42,6 +53,7 @@ export class DocumentStorageConflictError extends Error {
 }
 
 export type DocumentCoreError =
+  | DocumentDeleteNotAllowedError
   | DocumentNotFoundError
   | DocumentPolicyViolationError
   | DocumentStorageConflictError
@@ -49,6 +61,7 @@ export type DocumentCoreError =
 
 export function isDocumentCoreError(error: unknown): error is DocumentCoreError {
   return (
+    error instanceof DocumentDeleteNotAllowedError ||
     error instanceof DocumentNotFoundError ||
     error instanceof DocumentPolicyViolationError ||
     error instanceof DocumentStorageConflictError ||

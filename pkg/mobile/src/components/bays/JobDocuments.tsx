@@ -1,4 +1,4 @@
-import { formatBytes, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
+import { formatBytes, JOB_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import type { JobDocument } from '@pkg/schema';
 import { IconChevronRight, IconDownload } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
@@ -36,7 +36,7 @@ export function JobDocuments({ jobId }: { jobId: string }) {
 }
 
 function DocumentRow({ document, onOpen }: { document: JobDocument; onOpen: () => void }) {
-  const meta = `${PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type]} · ${formatBytes(document.byteSize)}`;
+  const meta = `${JOB_DOCUMENT_TYPE_LABELS[document.metadata.type]} · ${formatBytes(document.byteSize)}`;
 
   return (
     <Pressable

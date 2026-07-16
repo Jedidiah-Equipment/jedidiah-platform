@@ -3,13 +3,14 @@ import {
   formatDate,
   getJobDisplayName,
   getJobWorkLabel,
-  PRODUCT_DOCUMENT_TYPE_LABELS,
+  JOB_DOCUMENT_TYPE_LABELS,
 } from '@pkg/domain';
 import type { JobDetail, JobDocument, JobUpdateInput, UUID } from '@pkg/schema';
-import { IconInfoCircle, IconMessageCircle } from '@tabler/icons-react';
+import { IconInfoCircle, IconLoader2, IconMessageCircle, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
@@ -18,15 +19,19 @@ import { JobFeedbackList } from '@/components/feedback/JobFeedbackList.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
+import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
+import { Input } from '@/components/ui/input.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useCan } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
+import { JOB_DOCUMENT_ACCEPT, uploadJobPurchaseOrder, validateSelectedFile } from '@/utils/document.js';
 
 import { InfoList, InfoRow } from './JobInfoList.js';
 import { JobEditFormValues, toJobEditFormValues, toJobUpdateInput } from './job-edit-form.js';
@@ -235,14 +240,106 @@ const EditableInfoRow: React.FC<{ children: React.ReactNode; label: string }> = 
 const JobDocumentsTab: React.FC<{
   documents: JobDetail['documents'];
   jobId: UUID;
-}> = ({ documents, jobId }) => (
-  <DocumentCardList
-    documents={documents}
-    emptyMessage="No documents captured."
-    isLoading={false}
-    metadata={jobDocumentMetadata}
-    owner={{ id: jobId, type: 'job' }}
-  />
+}> = ({ documents, jobId }) => {
+  const trpc = useTRPC();
+  const canEditJobs = useCan('job:update').can;
+  const { invalidateJobs } = useQueryInvalidation();
+  const showMutationError = useApiMutationErrorToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => uploadJobPurchaseOrder(jobId, file),
+    onSuccess: async () => {
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      await invalidateJobs();
+      toast.success('Purchase Order uploaded');
+    },
+    onError: (error) => {
+      showMutationError(error, 'Unable to upload Purchase Order.');
+    },
+  });
+  const deleteMutation = useMutation(
+    trpc.documents.deleteByJob.mutationOptions({
+      onSuccess: async () => {
+        await invalidateJobs();
+        toast.success('Purchase Order deleted');
+      },
+      onError: (error) => {
+        showMutationError(error, 'Unable to delete Purchase Order.');
+      },
+    }),
+  );
+
+  return (
+    <DocumentCardList
+      canDelete={(document) => canEditJobs && document.metadata.type === 'purchase_order'}
+      documents={documents}
+      emptyActionMessage="Choose a PDF, then upload the first Purchase Order."
+      emptyMessage="No documents captured."
+      isLoading={false}
+      metadata={jobDocumentMetadata}
+      owner={{ id: jobId, type: 'job' }}
+      rightSection={
+        canEditJobs ? (
+          <JobPurchaseOrderUpload
+            fileInputRef={fileInputRef}
+            isPending={uploadMutation.isPending}
+            selectedFile={selectedFile}
+            onFileChange={setSelectedFile}
+            onSubmit={() => {
+              if (selectedFile) {
+                void uploadMutation.mutateAsync(selectedFile);
+              }
+            }}
+          />
+        ) : undefined
+      }
+      onDelete={(document) => deleteMutation.mutateAsync({ documentId: document.id, jobId })}
+    />
+  );
+};
+
+const JobPurchaseOrderUpload: React.FC<{
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  isPending: boolean;
+  onFileChange: (file: File | null) => void;
+  onSubmit: () => void;
+  selectedFile: File | null;
+}> = ({ fileInputRef, isPending, onFileChange, onSubmit, selectedFile }) => (
+  <form
+    className="flex flex-col gap-2 sm:flex-row sm:items-center"
+    onSubmit={(event) => {
+      event.preventDefault();
+      onSubmit();
+    }}
+  >
+    <Input
+      ref={fileInputRef}
+      accept={JOB_DOCUMENT_ACCEPT}
+      aria-label="Purchase Order PDF"
+      className="max-w-72"
+      disabled={isPending}
+      type="file"
+      onChange={(event) => {
+        const file = validateSelectedFile(event.currentTarget.files?.[0] ?? null, 'job');
+        onFileChange(file);
+        if (event.currentTarget.files?.[0] && !file) {
+          event.currentTarget.value = '';
+        }
+      }}
+    />
+    <Button disabled={!selectedFile || isPending} type="submit">
+      {isPending ? (
+        <IconLoader2 className="animate-spin" data-icon="inline-start" />
+      ) : (
+        <IconUpload data-icon="inline-start" />
+      )}
+      Upload
+    </Button>
+  </form>
 );
 
 type JobScheduleSlot = JobDetail['schedule'][number]['bays'][number]['slots'][number];
@@ -420,10 +517,10 @@ const JobSheetSkeleton = () => (
 
 const jobDocumentMetadata = {
   getSearchText: (document: JobDocument) =>
-    `${PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type]} ${document.sourceProductName ?? ''}`,
+    `${JOB_DOCUMENT_TYPE_LABELS[document.metadata.type]} ${document.sourceProductName ?? ''}`,
   render: (document: JobDocument) => (
     <span>
-      {PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type]}
+      {JOB_DOCUMENT_TYPE_LABELS[document.metadata.type]}
       {document.sourceProductName ? (
         <span className="font-normal text-muted-foreground"> from {document.sourceProductName}</span>
       ) : null}

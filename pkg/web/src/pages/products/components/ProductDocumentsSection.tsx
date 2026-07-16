@@ -1,4 +1,4 @@
-import { hasPermission, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
+import { hasPermission, JOB_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import { type Product, type ProductDocument, ProductDocumentType } from '@pkg/schema';
 import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -25,7 +25,7 @@ import {
 import { ProductBrochurePreview } from './ProductBrochurePreview.js';
 
 const PRODUCT_DOCUMENT_TYPE_OPTIONS = ProductDocumentType.options.map((type) => ({
-  label: PRODUCT_DOCUMENT_TYPE_LABELS[type],
+  label: JOB_DOCUMENT_TYPE_LABELS[type],
   value: type,
 }));
 
@@ -77,8 +77,8 @@ export function ProductDocumentsSection({ product }: ProductDocumentsSectionProp
   );
   const productDocumentMetadata = useMemo(
     () => ({
-      getSearchText: (document: ProductDocument) => PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type],
-      render: (document: ProductDocument) => PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type],
+      getSearchText: (document: ProductDocument) => JOB_DOCUMENT_TYPE_LABELS[document.metadata.type],
+      render: (document: ProductDocument) => JOB_DOCUMENT_TYPE_LABELS[document.metadata.type],
     }),
     [],
   );
@@ -87,7 +87,7 @@ export function ProductDocumentsSection({ product }: ProductDocumentsSectionProp
     <div className="flex flex-col gap-4">
       <ProductBrochurePreview product={product} />
       <DocumentCardList
-        canDelete={canDeleteDocuments}
+        canDelete={() => canDeleteDocuments}
         documents={documentsQuery.data ?? []}
         emptyActionMessage="Choose a file and type, then upload the first Product document."
         emptyMessage="No Product documents yet."

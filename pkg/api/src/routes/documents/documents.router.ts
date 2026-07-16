@@ -1,15 +1,23 @@
 import {
   type DocumentCoreError,
+  deleteJobPurchaseOrder,
   deleteProductDocument,
   getProductDocuments,
   getQuoteDocuments,
   isDocumentCoreError,
+  isJobCoreError,
   isProductCoreError,
   isQuoteCoreError,
+  type JobCoreError,
   type ProductCoreError,
   type QuoteCoreError,
 } from '@pkg/core';
-import { DocumentListByProductInput, DocumentListByQuoteInput, ProductDocumentInput } from '@pkg/schema';
+import {
+  DocumentListByProductInput,
+  DocumentListByQuoteInput,
+  JobDocumentInput,
+  ProductDocumentInput,
+} from '@pkg/schema';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
@@ -35,23 +43,57 @@ export const documentsRouter = router({
         }),
       ),
     ),
+  deleteByJob: authorizedProcedure('job:update')
+    .input(JobDocumentInput)
+    .mutation(({ ctx, input }) =>
+      mapDocumentErrors(() =>
+        deleteJobPurchaseOrder({
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          documentId: input.documentId,
+          jobId: input.jobId,
+        }),
+      ),
+    ),
 });
 
 export async function mapDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapKnownCoreError(
     () =>
       mapKnownCoreError(
-        () => mapKnownCoreError(action, isProductCoreError, mapDocumentProductCoreError),
-        isQuoteCoreError,
-        mapDocumentQuoteCoreError,
+        () =>
+          mapKnownCoreError(
+            () => mapKnownCoreError(action, isProductCoreError, mapDocumentProductCoreError),
+            isQuoteCoreError,
+            mapDocumentQuoteCoreError,
+          ),
+        isJobCoreError,
+        mapDocumentJobCoreError,
       ),
     isDocumentCoreError,
     mapDocumentCoreError,
   );
 }
 
+function mapDocumentJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['code']> {
+  if (error.code === 'job.not_found') {
+    return {
+      appCode: error.code,
+      code: 'NOT_FOUND',
+      message: 'Job not found.',
+    };
+  }
+
+  return {
+    appCode: error.code,
+    code: 'BAD_REQUEST',
+    message: error.message,
+  };
+}
+
 export function mapDocumentCoreError(error: DocumentCoreError): CoreErrorMapping<DocumentCoreError['code']> {
   switch (error.code) {
+    case 'document.delete_not_allowed':
     case 'document.content_type_not_allowed':
     case 'document.file_too_large':
     case 'document.metadata_invalid':

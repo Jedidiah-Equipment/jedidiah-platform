@@ -517,6 +517,22 @@ describe('JobCreateInput', () => {
 });
 
 describe('JobDetail', () => {
+  it('carries the quote line items shown with the Job assemblies', () => {
+    expect(
+      JobDetail.shape.lineItems.parse([
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+          name: 'Custom hydraulic hose',
+        },
+      ]),
+    ).toEqual([
+      {
+        id: '00000000-0000-4000-8000-000000000001',
+        name: 'Custom hydraulic hose',
+      },
+    ]);
+  });
+
   it('carries part units in the CFO projection', () => {
     expect(
       JobDetail.shape.cfo.parse([

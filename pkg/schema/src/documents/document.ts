@@ -30,7 +30,7 @@ export const ProductDocumentMetadata = z.object({
 });
 
 export type JobDocumentType = z.infer<typeof JobDocumentType>;
-export const JobDocumentType = z.enum([...PRODUCT_DOCUMENT_TYPES, 'brochure']);
+export const JobDocumentType = z.enum([...PRODUCT_DOCUMENT_TYPES, 'brochure', 'purchase_order']);
 
 export type JobDocumentMetadata = z.infer<typeof JobDocumentMetadata>;
 export const JobDocumentMetadata = z.object({
@@ -69,8 +69,8 @@ export const JobDocument = DocumentSummary.extend({
   jobId: UUID,
   productId: z.null(),
   quoteId: z.null(),
-  sourceProductId: UUID,
-  sourceProductName: z.string().trim().min(1),
+  sourceProductId: UUID.nullable(),
+  sourceProductName: z.string().trim().min(1).nullable(),
   metadata: JobDocumentMetadata,
 });
 
@@ -108,6 +108,12 @@ export type ProductDocumentInput = z.infer<typeof ProductDocumentInput>;
 export const ProductDocumentInput = z.object({
   documentId: UUID,
   productId: UUID,
+});
+
+export type JobDocumentInput = z.infer<typeof JobDocumentInput>;
+export const JobDocumentInput = z.object({
+  documentId: UUID,
+  jobId: UUID,
 });
 
 export type QuoteDocumentInput = z.infer<typeof QuoteDocumentInput>;

@@ -74,7 +74,7 @@ type DocumentCardListProps<TDocument extends DocumentSummary> = {
   isLoading: boolean;
   metadata: DocumentCardListMetadata<TDocument>;
   owner: DocumentPreviewOwner;
-  canDelete?: boolean;
+  canDelete?: (document: TDocument) => boolean;
   defaultSort?: DocumentCardSortValue;
   onDelete?: (document: TDocument) => Promise<void> | void;
   pageSize?: number;
@@ -82,7 +82,7 @@ type DocumentCardListProps<TDocument extends DocumentSummary> = {
 };
 
 export function DocumentCardList<TDocument extends DocumentSummary>({
-  canDelete = false,
+  canDelete = () => false,
   defaultSort = DEFAULT_DOCUMENT_CARD_SORT,
   documents,
   emptyActionMessage,
@@ -172,7 +172,7 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
             <div className="grid min-w-0 gap-3">
               {visible.documents.map((document) => (
                 <DocumentCard
-                  canDelete={canDelete && Boolean(onDelete)}
+                  canDelete={canDelete(document) && Boolean(onDelete)}
                   document={document}
                   key={document.id}
                   metadata={metadata.render(document)}

@@ -1,10 +1,18 @@
 import { formatBytes, getDocumentPolicy } from '@pkg/domain';
-import { type DocumentSummary, ProductDocument, type ProductDocumentType, type UUID } from '@pkg/schema';
+import {
+  type DocumentOwnerType,
+  type DocumentSummary,
+  JobDocument,
+  ProductDocument,
+  type ProductDocumentType,
+  type UUID,
+} from '@pkg/schema';
 import { toast } from 'sonner';
 
 import { getClientConfig } from '@/lib/app-config.js';
 
 export const PRODUCT_DOCUMENT_ACCEPT = getDocumentPolicy('product').allowedContentTypes.join(',');
+export const JOB_DOCUMENT_ACCEPT = getDocumentPolicy('job').allowedContentTypes.join(',');
 
 export type DocumentPreviewOwner = {
   id: UUID;
@@ -13,10 +21,10 @@ export type DocumentPreviewOwner = {
 
 export type DocumentPreviewKind = 'image' | 'pdf';
 
-export function validateSelectedFile(file: File | null): File | null {
+export function validateSelectedFile(file: File | null, ownerType: DocumentOwnerType = 'product'): File | null {
   if (!file) return null;
 
-  const policy = getDocumentPolicy('product');
+  const policy = getDocumentPolicy(ownerType);
 
   if (file.size > policy.maxBytes) {
     toast.error(`Document must be ${formatBytes(policy.maxBytes)} or smaller.`);
@@ -63,6 +71,23 @@ export async function uploadProductDocument(
   }
 
   return ProductDocument.parse(await response.json());
+}
+
+export async function uploadJobPurchaseOrder(jobId: UUID, file: File): Promise<JobDocument> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/jobs/${jobId}/documents`, {
+    body: formData,
+    credentials: 'include',
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, 'Unable to upload Purchase Order.'));
+  }
+
+  return JobDocument.parse(await response.json());
 }
 
 export async function downloadProductDocument(productId: UUID, document: DocumentSummary): Promise<void> {

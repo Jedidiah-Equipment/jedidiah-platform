@@ -5,6 +5,7 @@ import {
   DOCUMENT_PDF_CONTENT_TYPE,
   DOCUMENT_PNG_CONTENT_TYPE,
   DOCUMENT_WEBP_CONTENT_TYPE,
+  JOB_DOCUMENT_TYPE_LABELS,
   PRODUCT_DOCUMENT_MAX_BYTES,
   sniffDocumentContentType,
   validateDocumentMetadata,
@@ -12,6 +13,29 @@ import {
 } from './document-policy.js';
 
 describe('validateDocumentPolicy', () => {
+  it('allows only PDF content for Job documents', () => {
+    expect(
+      validateDocumentPolicy({
+        byteSize: 100,
+        contentType: DOCUMENT_PDF_CONTENT_TYPE,
+        ownerType: 'job',
+      }),
+    ).toEqual({ ok: true });
+
+    for (const contentType of [DOCUMENT_PNG_CONTENT_TYPE, DOCUMENT_JPEG_CONTENT_TYPE, DOCUMENT_WEBP_CONTENT_TYPE]) {
+      expect(
+        validateDocumentPolicy({
+          byteSize: 100,
+          contentType,
+          ownerType: 'job',
+        }),
+      ).toMatchObject({
+        ok: false,
+        code: 'document.content_type_not_allowed',
+      });
+    }
+  });
+
   it('allows product PDFs through the size boundary', () => {
     expect(
       validateDocumentPolicy({
@@ -86,6 +110,14 @@ describe('validateDocumentPolicy', () => {
 });
 
 describe('validateDocumentMetadata', () => {
+  it('accepts snapshot, Brochure, and Purchase Order metadata for Jobs', () => {
+    for (const type of ['sop', 'part_book', 'bom', 'general', 'brochure', 'purchase_order'] as const) {
+      expect(validateDocumentMetadata({ metadata: { type }, ownerType: 'job' })).toEqual({ ok: true });
+    }
+
+    expect(JOB_DOCUMENT_TYPE_LABELS.purchase_order).toBe('Purchase Order');
+  });
+
   it('accepts each valid product document type', () => {
     for (const type of ['sop', 'part_book', 'bom', 'general'] as const) {
       expect(validateDocumentMetadata({ metadata: { type }, ownerType: 'product' })).toEqual({ ok: true });

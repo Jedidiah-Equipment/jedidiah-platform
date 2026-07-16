@@ -1,4 +1,5 @@
 import {
+  createJobPurchaseOrder,
   createProductDocument,
   isDocumentCoreError,
   isJobCoreError,
@@ -13,7 +14,7 @@ import {
 import { db } from '@pkg/db';
 import { validateDocumentPolicy } from '@pkg/domain';
 import { renderBrochurePdf } from '@pkg/pdf';
-import { DocumentListByProductInput, ProductDocumentInput, QuoteDocumentInput, UUID } from '@pkg/schema';
+import { DocumentListByProductInput, JobDocumentInput, ProductDocumentInput, QuoteDocumentInput } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
@@ -27,10 +28,7 @@ import {
 } from '../http-route-helpers.js';
 import { mapDocumentCoreError } from './documents.router.js';
 
-const JobDocumentRouteInput = z.object({
-  documentId: UUID,
-  jobId: UUID,
-});
+const JobDocumentUploadInput = JobDocumentInput.pick({ jobId: true });
 
 export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: StorageAdapter): Promise<void> {
   app.post('/api/products/:productId/documents', async (request, reply) => {
@@ -134,6 +132,43 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
     }
   });
 
+  app.post('/api/jobs/:jobId/documents', async (request, reply) => {
+    const auth = await requireRouteAuth(request, reply);
+    if (!auth) return;
+
+    try {
+      requirePermission(
+        auth,
+        'job:update',
+        'You do not have permission to upload Job documents.',
+        'document.forbidden',
+      );
+      const params = JobDocumentUploadInput.parse(request.params);
+      const file = await request.file();
+
+      if (!file) {
+        reply.status(400).send({ message: 'Choose a document to upload.' });
+        return;
+      }
+
+      const bytes = await file.toBuffer();
+      const document = await mapHttpDocumentErrors(() =>
+        createJobPurchaseOrder({
+          actorUserId: auth.session.user.id,
+          bytes,
+          db,
+          filename: file.filename,
+          jobId: params.jobId,
+          storage,
+        }),
+      );
+
+      reply.status(201).send(document);
+    } catch (error) {
+      sendDocumentHttpError(reply, error);
+    }
+  });
+
   app.get('/api/jobs/:jobId/documents/:documentId/download', async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
@@ -145,7 +180,7 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
         'You do not have permission to download this document.',
         'document.forbidden',
       );
-      const params = JobDocumentRouteInput.parse(request.params);
+      const params = JobDocumentInput.parse(request.params);
       const result = await mapHttpDocumentErrors(() =>
         readJobDocument({
           db,

@@ -9,7 +9,6 @@ import {
   UUID,
 } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
-import { addDateOnlyDays } from '../formatting/date-only.js';
 import {
   foldJobScheduleStates,
   getBoardJobIds,
@@ -18,6 +17,7 @@ import {
   windowActiveBoard,
 } from './board-slices.js';
 import { JOB_DEPARTMENT_PIPELINE } from './job-department-pipeline.js';
+import { labelWorkDays } from './job-slot-projection.js';
 
 const BAY_1 = UUID.parse('00000000-0000-4000-8000-000000000b01');
 const BAY_2 = UUID.parse('00000000-0000-4000-8000-000000000b02');
@@ -85,9 +85,11 @@ function labelDays({
   lastWorkDay?: string | undefined;
   startDate: string;
 }) {
+  const defaults = labelWorkDays(day(startDate), day(endDate), {});
+
   return {
-    firstWorkDay: day(firstWorkDay ?? startDate),
-    lastWorkDay: lastWorkDay ? day(lastWorkDay) : addDateOnlyDays(day(endDate), -1),
+    firstWorkDay: firstWorkDay ? day(firstWorkDay) : defaults.firstWorkDay,
+    lastWorkDay: lastWorkDay ? day(lastWorkDay) : defaults.lastWorkDay,
   };
 }
 

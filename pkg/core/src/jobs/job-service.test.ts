@@ -2286,11 +2286,9 @@ describe('listJobs scheduleState', () => {
     expect(jobItem?.scheduleState).toEqual({
       active: 1,
       done: 1,
-      endDate: '2026-06-17',
       firstWorkDay: '2026-06-05',
       lastWorkDay: '2026-06-16',
       scheduled: 1,
-      startDate: '2026-06-05',
       total: 3,
     });
 
@@ -2298,11 +2296,9 @@ describe('listJobs scheduleState', () => {
     expect(fillerItem?.scheduleState).toEqual({
       active: 1,
       done: 0,
-      endDate: '2026-06-15',
       firstWorkDay: '2026-06-05',
       lastWorkDay: '2026-06-14',
       scheduled: 0,
-      startDate: '2026-06-05',
       total: 1,
     });
   });
@@ -2315,11 +2311,9 @@ describe('listJobs scheduleState', () => {
     expect(result.items.find((item) => item.id === job.id)?.scheduleState).toEqual({
       active: 0,
       done: 0,
-      endDate: null,
       firstWorkDay: null,
       lastWorkDay: null,
       scheduled: 0,
-      startDate: null,
       total: 0,
     });
   });
@@ -2337,11 +2331,9 @@ describe('listJobs scheduleState', () => {
     expect(result.items.find((item) => item.id === job.id)?.scheduleState).toEqual({
       active: 0,
       done: 1,
-      endDate: '2026-06-07',
       firstWorkDay: '2026-06-05',
       lastWorkDay: '2026-06-06',
       scheduled: 0,
-      startDate: '2026-06-05',
       total: 1,
     });
   });

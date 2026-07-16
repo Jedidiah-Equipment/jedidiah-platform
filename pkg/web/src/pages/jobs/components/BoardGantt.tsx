@@ -115,8 +115,15 @@ export const BoardGantt: React.FC<{
   const offDays = bayCalendars?.offDays ?? [];
   const plantToday = bayCalendars?.today ?? null;
   const horizonWarnings = useMemo(
-    () => new Map(getMaintainedHorizonWarnings({ bays, offDays }).map((warning) => [warning.bayId, warning])),
-    [bays, offDays],
+    () =>
+      new Map(
+        getMaintainedHorizonWarnings({
+          bays,
+          offDays,
+          workingCalendarsByBayId: bayCalendars?.workingCalendarsByBayId ?? EMPTY_WORKING_CALENDARS,
+        }).map((warning) => [warning.bayId, warning]),
+      ),
+    [bays, offDays, bayCalendars?.workingCalendarsByBayId],
   );
   // One scheduling "today" for the whole surface: the view opens on the plant's current day.
   const initialDate = useMemo(() => (plantToday ? fromJobCalendarDateKey(plantToday) : new Date()), [plantToday]);

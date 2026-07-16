@@ -4,7 +4,6 @@ import {
   findActiveWorkSlot,
   getJobDisplayName,
   listUpcomingWorkSlots,
-  summarizeWorkSlotSpan,
 } from '@pkg/domain';
 import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
@@ -133,7 +132,6 @@ export function useBaySchedule(bayId: string): BayQueueState {
       isNext: boolean,
     ): BaySlotDetail => {
       const job = jobsById.get(slot.jobId);
-      const { lastWorkDay, workDays } = summarizeWorkSlotSpan({ slot, workingCalendar });
       const detail: BaySlotDetail = {
         jobId: slot.jobId,
         jobCode: slot.jobCode,
@@ -148,8 +146,10 @@ export function useBaySchedule(bayId: string): BayQueueState {
         isNext,
         remainingWorkDays: remaining,
         firstWorkDay: slot.firstWorkDay,
-        lastWorkDay,
-        workDays,
+        lastWorkDay: slot.lastWorkDay,
+        // Projection consumes exactly `durationDays` working days, so the span's working-day
+        // count is the stored duration.
+        workDays: slot.durationDays,
       };
       slotsById[slot.id] = detail;
 

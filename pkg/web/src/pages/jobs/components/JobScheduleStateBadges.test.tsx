@@ -13,11 +13,11 @@ test('shows a single "Not scheduled" warning badge when the Job has no Work Slot
       scheduleState={{
         done: 0,
         active: 0,
-        endDate: null,
+
         firstWorkDay: null,
         lastWorkDay: null,
         scheduled: 0,
-        startDate: null,
+
         total: 0,
       }}
     />,
@@ -35,11 +35,11 @@ test('renders one colored pill for a single non-zero state', () => {
       scheduleState={{
         done: 0,
         active: 3,
-        endDate: null,
+
         firstWorkDay: null,
         lastWorkDay: null,
         scheduled: 0,
-        startDate: null,
+
         total: 3,
       }}
     />,
@@ -58,11 +58,11 @@ test('renders a pill per non-zero state for a mixed Job, omitting zero counts', 
       scheduleState={{
         done: 1,
         active: 1,
-        endDate: null,
+
         firstWorkDay: null,
         lastWorkDay: null,
         scheduled: 2,
-        startDate: null,
+
         total: 4,
       }}
     />,
@@ -83,11 +83,11 @@ test('renders only the done pill for an all-done Job', () => {
       scheduleState={{
         done: 5,
         active: 0,
-        endDate: null,
+
         firstWorkDay: null,
         lastWorkDay: null,
         scheduled: 0,
-        startDate: null,
+
         total: 5,
       }}
     />,

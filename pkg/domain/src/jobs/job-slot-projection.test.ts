@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addJobSlotDuration,
   DEFAULT_IDLE_SLOT_LABEL,
+  labelWorkDays,
   projectJobSlots,
   segmentSlotCalendarDays,
   summarizeSlotCalendarDays,
@@ -301,6 +302,19 @@ describe('projectJobSlots label dates', () => {
       startDate: '2026-06-05',
       firstWorkDay: '2026-06-06',
       lastWorkDay: '2026-06-07',
+    });
+  });
+
+  it('walks the last work day back when a span ends past an off-day', () => {
+    // Projection never produces such a span (the cursor stops right after the last consumed
+    // working day), but labelWorkDays must not assume its input came from the projection.
+    expect(
+      labelWorkDays(day('2026-06-04'), day('2026-06-08'), {
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      }),
+    ).toEqual({
+      firstWorkDay: '2026-06-04',
+      lastWorkDay: '2026-06-05',
     });
   });
 

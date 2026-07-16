@@ -19,9 +19,9 @@ export function BoardCardFrame({ children, onPress }: { children: ReactNode; onP
 export function BoardCard({
   daysLeft,
   daysLeftColor,
-  endDate,
   footerLeft,
   footerRight,
+  lastWorkDay,
   onPress,
   primaryRow,
   progressPercent,
@@ -29,7 +29,7 @@ export function BoardCard({
 }: {
   daysLeft: number;
   daysLeftColor: string;
-  endDate: string;
+  lastWorkDay: string;
   footerLeft?: ReactNode;
   footerRight?: ReactNode;
   onPress: () => void;
@@ -57,7 +57,7 @@ export function BoardCard({
         <View className="items-end">
           <Text className="text-[10px] uppercase tracking-wide text-muted-foreground">ends</Text>
           <Text className="text-xs text-surface-foreground" numberOfLines={1} weight="semibold">
-            {formatDate(endDate, 'EEE d MMM')}
+            {formatDate(lastWorkDay, 'EEE d MMM')}
           </Text>
         </View>
       </View>

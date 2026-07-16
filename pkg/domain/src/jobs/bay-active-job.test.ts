@@ -10,7 +10,7 @@ const day = (value: string) => DateOnlyIso.parse(value);
 const weekendsOff = {
   orgOffDays: new Set(['2026-06-20', '2026-06-21', '2026-06-27', '2026-06-28', '2026-07-04', '2026-07-05']),
 };
-const slot = { startDate: day('2026-06-16'), endDate: day('2026-07-08') };
+const slot = { startDate: day('2026-06-16'), endDate: day('2026-07-08'), lastWorkDay: day('2026-07-07') };
 
 describe('deriveActiveJobProgress', () => {
   it('splits the Slot into elapsed and remaining work days', () => {
@@ -23,7 +23,7 @@ describe('deriveActiveJobProgress', () => {
     expect(progress.progressPercent).toBe(75);
   });
 
-  it('reports the last booked working day before the half-open end', () => {
+  it('reports the projected last working day', () => {
     const progress = deriveActiveJobProgress({ slot, today: day('2026-06-16'), workingCalendar: weekendsOff });
 
     expect(progress.lastWorkDay).toBe('2026-07-07');
@@ -39,7 +39,7 @@ describe('deriveActiveJobProgress', () => {
 
   it('treats a zero-length Slot as no progress rather than dividing by zero', () => {
     const progress = deriveActiveJobProgress({
-      slot: { startDate: day('2026-06-16'), endDate: day('2026-06-16') },
+      slot: { startDate: day('2026-06-16'), endDate: day('2026-06-16'), lastWorkDay: day('2026-06-15') },
       today: day('2026-06-16'),
     });
 

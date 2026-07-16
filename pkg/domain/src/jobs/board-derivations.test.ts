@@ -14,7 +14,6 @@ import {
   isJobDeliveryAtRisk,
   listEnabledBays,
   listUpcomingWorkSlots,
-  summarizeWorkSlotSpan,
 } from './board-derivations.js';
 import type { WorkingCalendar } from './working-calendar.js';
 
@@ -215,25 +214,6 @@ describe('listUpcomingWorkSlots', () => {
 
     // No active slot excluded, so the covering slot stays in the list.
     expect(listUpcomingWorkSlots({ bay })).toEqual([covering]);
-  });
-});
-
-describe('summarizeWorkSlotSpan', () => {
-  it('returns the inclusive last work day and working-day count', () => {
-    const slot = buildWorkSlot(id('bay-1'), {
-      durationDays: 3,
-      endDate: '2026-06-10',
-      id: 'slot-a',
-      sequence: 1,
-      startDate: '2026-06-05',
-    });
-    // 06-06 and 06-07 are off, so the half-open span 06-05..06-10 has 3 working days.
-    const workingCalendar = { orgOffDays: new Set(['2026-06-06', '2026-06-07']) };
-
-    expect(summarizeWorkSlotSpan({ slot, workingCalendar })).toEqual({
-      lastWorkDay: day('2026-06-09'),
-      workDays: 3,
-    });
   });
 });
 

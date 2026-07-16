@@ -10,7 +10,7 @@ import type {
 
 import { addDateOnlyDays, endOfDateOnlyWeek } from '../formatting/date-only.js';
 import { JOB_DEPARTMENT_PIPELINE } from './job-department-pipeline.js';
-import { countWorkingDaysBetween, isWorkingDay, type WorkingCalendar } from './working-calendar.js';
+import { isWorkingDay, type WorkingCalendar } from './working-calendar.js';
 
 // Pure derivations over projected Bay Queues (`jobs.listBays`), shared by the web shop-floor
 // dashboard widgets and the mobile Bay screens. Disabled Bays are excluded everywhere; callers filter
@@ -93,27 +93,6 @@ export function listUpcomingWorkSlots({
   );
 }
 
-export type WorkSlotSpan = {
-  /** Inclusive last working day, as projected. */
-  lastWorkDay: DateOnlyIso;
-  /** Working days the Slot spans, excluding closures. */
-  workDays: number;
-};
-
-/** A projected Slot's calendar span: its inclusive last working day and total working days. */
-export function summarizeWorkSlotSpan({
-  slot,
-  workingCalendar,
-}: {
-  slot: ProjectedJobSlot;
-  workingCalendar: WorkingCalendar;
-}): WorkSlotSpan {
-  return {
-    lastWorkDay: slot.lastWorkDay,
-    workDays: countWorkingDaysBetween(slot.startDate, slot.endDate, workingCalendar),
-  };
-}
-
 export function getOffDayLabel(offDays: readonly OffDay[], date: DateOnlyIso): string | null {
   return offDays.find((offDay) => offDay.date === date)?.label ?? null;
 }
@@ -170,9 +149,9 @@ export function computeBayRunway({
   };
 }
 
-/** A Job's projected finish: the last Work Slot end date across the given Bays. */
-export function getJobProjectedFinishDates(bays: readonly ProjectedBayQueue[]): Map<UUID, DateOnlyIso> {
-  const finishDates = new Map<UUID, DateOnlyIso>();
+/** Each Job's latest-ending Work Slot across the given Bays. */
+function getLatestWorkSlots(bays: readonly ProjectedBayQueue[]): Map<UUID, ProjectedWorkJobSlot> {
+  const latestSlots = new Map<UUID, ProjectedWorkJobSlot>();
 
   for (const bay of bays) {
     for (const slot of bay.slots) {
@@ -180,15 +159,20 @@ export function getJobProjectedFinishDates(bays: readonly ProjectedBayQueue[]): 
         continue;
       }
 
-      const current = finishDates.get(slot.jobId);
+      const current = latestSlots.get(slot.jobId);
 
-      if (!current || slot.endDate > current) {
-        finishDates.set(slot.jobId, slot.endDate);
+      if (!current || slot.endDate > current.endDate) {
+        latestSlots.set(slot.jobId, slot);
       }
     }
   }
 
-  return finishDates;
+  return latestSlots;
+}
+
+/** A Job's projected finish: the last Work Slot end date across the given Bays. */
+export function getJobProjectedFinishDates(bays: readonly ProjectedBayQueue[]): Map<UUID, DateOnlyIso> {
+  return new Map([...getLatestWorkSlots(bays)].map(([jobId, slot]) => [jobId, slot.endDate]));
 }
 
 export function isJobDeliveryAtRisk({
@@ -221,17 +205,15 @@ export function countActiveJobs({
   let activeJobs = 0;
   let finishingThisWeek = 0;
 
-  for (const [, finishDate] of getJobProjectedFinishDates(bays)) {
+  for (const [, slot] of getLatestWorkSlots(bays)) {
     // Slot spans are half-open, so remaining work means the finish date is after today.
-    if (finishDate <= today) {
+    if (slot.endDate <= today) {
       continue;
     }
 
     activeJobs += 1;
 
-    const lastWorkDay = addDateOnlyDays(finishDate, -1);
-
-    if (lastWorkDay <= weekEnd) {
+    if (slot.lastWorkDay <= weekEnd) {
       finishingThisWeek += 1;
     }
   }

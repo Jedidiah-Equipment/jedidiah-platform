@@ -2,6 +2,7 @@ import {
   auditEvents,
   customers,
   type Db,
+  eq,
   jobBayOperatorAssignments,
   jobBays,
   jobSlots,
@@ -1671,6 +1672,20 @@ describe('jobs.bookSlot with start date', () => {
 
 describe('jobs.previewSchedule', () => {
   const bayId = '00000000-0000-4000-8000-000000000b01';
+
+  test('excludes retained cancelled work from planning previews', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await caller.jobs.bookSlot({ bayId, durationDays: 3, jobId: job.id });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    const preview = await caller.jobs.previewSchedule({ seeds: [{ bayId, durationDays: 1 }] });
+
+    expect(preview.ghosts[0]).toMatchObject({ startDate: '2026-06-05' });
+    expect(getBoardPreviewBay(preview, bayId).slots).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ jobId: job.id })]),
+    );
+  });
 
   test('previews the same append placement that bookSlot commits', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));

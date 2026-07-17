@@ -18,6 +18,7 @@ import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/lib/use-job-detail';
+import { mutedForegroundColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
 type ReadyState = Extract<JobDetailState, { status: 'ready' }>;
@@ -266,9 +267,7 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   // queued, amber/red as the finish nears. A finished Job (null progress) rests on the scheduled green.
   const isCancelled = state.cancelledAt !== null;
   const accent = isCancelled
-    ? resolved === 'dark'
-      ? '#a1a1aa'
-      : '#71717a'
+    ? mutedForegroundColors[resolved]
     : progress
       ? statusDaysLeftColor({ status: progress.status, daysLeft: progress.daysLeft, scheme: resolved })
       : restingStatusColor('scheduled', resolved);

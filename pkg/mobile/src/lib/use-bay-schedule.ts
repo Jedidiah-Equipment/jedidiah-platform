@@ -5,11 +5,10 @@ import {
   getJobDisplayName,
   listUpcomingWorkSlots,
 } from '@pkg/domain';
-import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
+import { type BayOperator, BoardFullHistoryInput, type DateOnlyIso, type ProjectedWorkJobSlot } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { mobileBoardHistoryInput } from './board-history';
 import { useTRPC } from './trpc';
 import { useBayCalendars } from './use-bay-calendars';
 
@@ -95,8 +94,8 @@ export type BayQueueState =
  */
 export function useBaySchedule(bayId: string): BayQueueState {
   const trpc = useTRPC();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(mobileBoardHistoryInput));
-  const bayCalendars = useBayCalendars({ input: mobileBoardHistoryInput });
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(BoardFullHistoryInput));
+  const bayCalendars = useBayCalendars({ input: BoardFullHistoryInput });
 
   return useMemo<BayQueueState>(() => {
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };

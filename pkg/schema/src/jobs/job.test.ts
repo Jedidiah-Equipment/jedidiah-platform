@@ -9,6 +9,7 @@ import {
   BayCalendarException,
   BayCalendarExceptionDirection,
   BayOperatorListResult,
+  BoardFullHistoryInput,
   BoardListInput,
   BoardListResult,
   BoardPreviewInput,
@@ -204,6 +205,7 @@ describe('Working Calendar schemas', () => {
     expect(ToggleOffDayResult.parse({ offDay: null })).toEqual({ offDay: null });
     expect(BoardListInput.parse(undefined)).toEqual({});
     expect(BoardListInput.parse({ from: '2026-06-01' })).toEqual({ from: '2026-06-01' });
+    expect(BoardFullHistoryInput).toEqual({ from: '2000-01-01' });
     expect(
       BoardListResult.parse({
         items: [

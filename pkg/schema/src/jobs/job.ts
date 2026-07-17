@@ -504,6 +504,9 @@ export const BoardListInput = z
   .strict()
   .default({});
 
+/** Requests the server's full supported Board history window; the server clamps the sentinel to its rolling bound. */
+export const BoardFullHistoryInput = BoardListInput.parse({ from: '2000-01-01' });
+
 export const BoardListResult = z.object({
   items: z.array(ProjectedBayQueue),
   /**

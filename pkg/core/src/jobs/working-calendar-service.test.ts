@@ -148,6 +148,26 @@ describe('Bay calendar exceptions', () => {
     ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
   });
 
+  test("allows calendar changes after a cancelled Job's retained slot", async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-01' });
+    const job = await createAcceptedJob(context.db, context.product.id);
+    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 2, jobId: job.id } });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(
+      addBayCalendarException({
+        db: context.db,
+        input: bayExceptionInput({ bayId: bay.id, date: '2026-06-20', direction: 'off', label: 'Future closure' }),
+      }),
+    ).resolves.toMatchObject({ exception: { date: '2026-06-20' } });
+    await expect(
+      removeBayCalendarException({
+        db: context.db,
+        input: removeBayExceptionInput({ bayId: bay.id, date: '2026-06-20' }),
+      }),
+    ).resolves.toMatchObject({ exception: { date: '2026-06-20' } });
+  });
+
   test('inserts, updates, and removes Bay exceptions for authorized schedulers', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
 

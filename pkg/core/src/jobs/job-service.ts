@@ -39,7 +39,7 @@ import {
   ResizeJobSlotResult,
   type UUID,
 } from '@pkg/schema';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -56,13 +56,9 @@ import { snapshotJobBrochureDocument } from '../products/product-brochure-docume
 import { narrowQuoteOffering } from '../quotes/quote-offering.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
-import {
-  JobCancelledError,
-  JobCreateFromQuoteDeniedError,
-  JobNotFoundError,
-  JobSlotNotFoundError,
-} from './job-errors.js';
+import { JobCreateFromQuoteDeniedError, JobNotFoundError, JobSlotNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
+import { assertJobIsMutable, lockMutableJob } from './job-mutation-guards.js';
 import { getJob } from './job-read-service.js';
 import { loadBayWorkingCalendar } from './working-calendar-service.js';
 
@@ -292,15 +288,7 @@ async function applyJobFieldPatch({
   patch: Partial<Pick<JobRow, 'description' | 'invoiceNumber' | 'vinNumber'>>;
 }): Promise<JobUpdateResult> {
   return db.transaction(async (tx) => {
-    const [before] = await tx.select().from(jobs).where(eq(jobs.id, id)).for('update');
-
-    if (!before) {
-      throw new JobNotFoundError(id);
-    }
-
-    if (before.cancelledAt) {
-      throw new JobCancelledError(before.id);
-    }
+    const before = await lockMutableJob(tx, id);
 
     const after = { ...before, ...patch };
     const changes = diffAuditUpdate(jobAuditDescriptor, before, after);
@@ -328,22 +316,7 @@ async function applyJobFieldPatch({
 export async function bookJobSlot({ db, input }: { db: Db; input: BookJobSlotInput }): Promise<BookJobSlotResult> {
   return db.transaction(async (tx) => {
     const plantToday = getPlantDateNow();
-    const [job] = await tx
-      .select({
-        cancelledAt: jobs.cancelledAt,
-        id: jobs.id,
-      })
-      .from(jobs)
-      .where(eq(jobs.id, input.jobId))
-      .for('update');
-
-    if (!job) {
-      throw new JobNotFoundError(input.jobId);
-    }
-
-    if (job.cancelledAt) {
-      throw new JobCancelledError(job.id);
-    }
+    const job = await lockMutableJob(tx, input.jobId);
 
     const queue = await lockBayQueue(tx, input.bayId, { plantToday });
     const slot = await queue.book(
@@ -386,18 +359,46 @@ async function assertTargetSlotJobIsMutable(tx: DatabaseTransaction, slotId: UUI
     return;
   }
 
-  const [job] = await tx
-    .select({ cancelledAt: jobs.cancelledAt, id: jobs.id })
-    .from(jobs)
-    .where(eq(jobs.id, slot.jobId))
-    .for('update');
+  await lockMutableJob(tx, slot.jobId);
+}
 
-  if (!job) {
-    throw new JobNotFoundError(slot.jobId);
+async function assertMoveParticipantsAreMutable(
+  tx: DatabaseTransaction,
+  slotId: UUID,
+  direction: MoveJobSlotInput['direction'],
+): Promise<void> {
+  const [slot] = await tx
+    .select({ bayId: jobSlots.bayId, jobId: jobSlots.jobId, sequence: jobSlots.sequence })
+    .from(jobSlots)
+    .where(eq(jobSlots.id, slotId));
+
+  if (!slot) {
+    throw new JobSlotNotFoundError(slotId);
   }
 
-  if (job.cancelledAt) {
-    throw new JobCancelledError(job.id);
+  const movingLeft = direction === 'left';
+  const [adjacent] = await tx
+    .select({ jobId: jobSlots.jobId })
+    .from(jobSlots)
+    .where(
+      and(
+        eq(jobSlots.bayId, slot.bayId),
+        movingLeft ? lt(jobSlots.sequence, slot.sequence) : gt(jobSlots.sequence, slot.sequence),
+      ),
+    )
+    .orderBy(movingLeft ? desc(jobSlots.sequence) : asc(jobSlots.sequence))
+    .limit(1);
+
+  const jobIds = [...new Set([slot.jobId, adjacent?.jobId].filter((jobId): jobId is UUID => jobId != null))];
+  const jobRows = jobIds.length
+    ? await tx.select({ cancelledAt: jobs.cancelledAt, id: jobs.id }).from(jobs).where(inArray(jobs.id, jobIds))
+    : [];
+  const jobsById = new Map(jobRows.map((job) => [job.id, job]));
+
+  for (const jobId of jobIds) {
+    const job = jobsById.get(jobId);
+    if (!job) throw new JobNotFoundError(jobId);
+    assertJobIsMutable(job);
   }
 }
 
@@ -427,8 +428,9 @@ export async function moveJobSlot({
   input: MoveJobSlotInput;
 }): Promise<MoveJobSlotResult> {
   return db.transaction(async (tx) => {
-    await assertTargetSlotJobIsMutable(tx, input.slotId);
     const queue = await lockBayQueueBySlot(tx, input.slotId);
+    // The Bay lock freezes adjacency; cancellation must cross the same lock before it can commit its queue changes.
+    await assertMoveParticipantsAreMutable(tx, input.slotId, input.direction);
     const { slot, swapped } = await queue.swap(input.slotId, input.direction);
 
     if (swapped) {

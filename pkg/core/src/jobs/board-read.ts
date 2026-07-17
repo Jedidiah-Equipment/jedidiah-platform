@@ -28,7 +28,7 @@ export type BoardBayRow = typeof jobBays.$inferSelect &
   OpenOperatorAssignmentsRow & {
     calendarExceptions: BayCalendarExceptionRow[];
     slots: (typeof jobSlots.$inferSelect & {
-      job: Pick<typeof jobs.$inferSelect, 'code' | 'id'> | null;
+      job: Pick<typeof jobs.$inferSelect, 'cancelledAt' | 'code' | 'id'> | null;
     })[];
   };
 
@@ -61,6 +61,7 @@ export function findBoardBayRows(db: Db | DatabaseTransaction, where?: SQL) {
         with: {
           job: {
             columns: {
+              cancelledAt: true,
               code: true,
               id: true,
             },
@@ -187,4 +188,12 @@ export function mergeBoardBayRows(primaryRows: readonly BoardBayRow[], extraRows
   const primaryIds = new Set(primaryRows.map((row) => row.id));
 
   return [...primaryRows, ...extraRows.filter((row) => !primaryIds.has(row.id))];
+}
+
+/** Planning treats retained cancelled work as history, while the truthful Board keeps those rows intact. */
+export function withoutCancelledJobSlots(rows: readonly BoardBayRow[]): BoardBayRow[] {
+  return rows.map((row) => ({
+    ...row,
+    slots: row.slots.filter((slot) => slot.job?.cancelledAt == null),
+  }));
 }

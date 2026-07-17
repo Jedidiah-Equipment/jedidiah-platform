@@ -18,10 +18,61 @@ import {
   useBaySchedule,
 } from '@/lib/use-bay-schedule';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
+import { mutedForegroundColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
 /** Tablet breakpoint: at/above this width the list and detail panes sit side by side. */
 const WIDE_BREAKPOINT = 760;
+
+const activeHeroClasses = {
+  cancelled: {
+    resting: 'border-muted-foreground/40 bg-surface',
+    selected: 'border-muted-foreground bg-muted',
+  },
+  live: {
+    resting: 'border-status-in-progress/40 bg-surface',
+    selected: 'border-status-in-progress bg-status-in-progress/10',
+  },
+} as const;
+
+const timelineClasses = {
+  default: {
+    resting: {
+      card: 'border-border bg-surface',
+      label: 'text-muted-foreground',
+      node: 'border-muted-foreground bg-background',
+    },
+    selected: {
+      card: 'border-muted-foreground bg-muted',
+      label: 'text-foreground',
+      node: 'border-muted-foreground bg-muted-foreground',
+    },
+  },
+  muted: {
+    resting: {
+      card: 'border-border bg-surface',
+      label: 'text-muted-foreground',
+      node: 'border-muted-foreground bg-background',
+    },
+    selected: {
+      card: 'border-muted-foreground bg-muted',
+      label: 'text-muted-foreground',
+      node: 'border-muted-foreground bg-muted-foreground',
+    },
+  },
+  next: {
+    resting: {
+      card: 'border-status-next/40 bg-surface',
+      label: 'text-status-next-soft',
+      node: 'border-status-next bg-background',
+    },
+    selected: {
+      card: 'border-status-next bg-status-next/10',
+      label: 'text-status-next',
+      node: 'border-status-next bg-status-next',
+    },
+  },
+} as const;
 
 /**
  * A Bay's schedule as one responsive master–detail screen: the shared top bar
@@ -209,11 +260,11 @@ function ActiveHero({
 }) {
   const heroSub = [active.productSerialNumber, active.customerCompanyName].filter(Boolean).join(' · ');
   const { resolved } = useColorMode();
+  const heroTone = active.isCancelled ? 'cancelled' : 'live';
+  const selectionState = selected ? 'selected' : 'resting';
   // The hero is the Job running today, so its countdown/bar use the in-progress accent.
   const accent = active.isCancelled
-    ? resolved === 'dark'
-      ? '#a1a1aa'
-      : '#71717a'
+    ? mutedForegroundColors[resolved]
     : statusDaysLeftColor({ status: 'in-progress', daysLeft: active.remainingWorkDays, scheme: resolved });
 
   return (
@@ -222,15 +273,7 @@ function ActiveHero({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className={`rounded-2xl border-2 p-4 active:opacity-90 ${
-        active.isCancelled
-          ? selected
-            ? 'border-muted-foreground bg-muted'
-            : 'border-muted-foreground/40 bg-surface'
-          : selected
-            ? 'border-status-in-progress bg-status-in-progress/10'
-            : 'border-status-in-progress/40 bg-surface'
-      }`}
+      className={`rounded-2xl border-2 p-4 active:opacity-90 ${activeHeroClasses[heroTone][selectionState]}`}
       onPress={onSelect}
     >
       <View className="flex-row items-start gap-3.5">
@@ -351,17 +394,9 @@ function TimelineItem({
       slot.workDays === 1 ? 'day' : 'days'
     } · ${slot.isCancelled ? 'cancelled' : slot.status === 'done' ? 'done' : 'scheduled'}`.toUpperCase();
   const isMuted = slot.isCancelled || slot.status === 'done';
-  const labelClass = selected
-    ? isMuted
-      ? 'text-muted-foreground'
-      : slot.isNext
-        ? 'text-status-next'
-        : 'text-foreground'
-    : isMuted
-      ? 'text-muted-foreground'
-      : slot.isNext
-        ? 'text-status-next-soft'
-        : 'text-muted-foreground';
+  const tone = isMuted ? 'muted' : slot.isNext ? 'next' : 'default';
+  const selectionState = selected ? 'selected' : 'resting';
+  const classes = timelineClasses[tone][selectionState];
 
   return (
     <Pressable
@@ -371,45 +406,18 @@ function TimelineItem({
       onPress={onSelect}
     >
       {/* Node on the spine — filled in the accent colour when selected, solid ring for 'next', muted otherwise. */}
-      <View
-        className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 ${
-          selected
-            ? isMuted
-              ? 'border-muted-foreground bg-muted-foreground'
-              : slot.isNext
-                ? 'border-status-next bg-status-next'
-                : 'border-muted-foreground bg-muted-foreground'
-            : isMuted
-              ? 'border-muted-foreground bg-background'
-              : slot.isNext
-                ? 'border-status-next bg-background'
-                : 'border-muted-foreground bg-background'
-        }`}
-        style={{ left: 0 }}
-      />
+      <View className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 ${classes.node}`} style={{ left: 0 }} />
       {/* Border is a constant 2px (faded when unselected, full-strength when selected) so the
           selected border reads thicker without changing the box geometry — i.e. no content shift. */}
       <View
-        className={`rounded-2xl border-2 p-3.5 ${
-          selected
-            ? isMuted
-              ? 'border-muted-foreground bg-muted'
-              : slot.isNext
-                ? 'border-status-next bg-status-next/10'
-                : 'border-muted-foreground bg-muted'
-            : isMuted
-              ? 'border-border bg-surface'
-              : slot.isNext
-                ? 'border-status-next/40 bg-surface'
-                : 'border-border bg-surface'
-        }`}
+        className={`rounded-2xl border-2 p-3.5 ${classes.card}`}
         // Indent past the spine/node gutter (replaces the old container padding).
         style={{ marginLeft: 24 }}
       >
         {/* Outer row centers the chevron against the whole card, not just the avatar row. */}
         <View className="flex-row items-center gap-3">
           <View className="min-w-0 flex-1">
-            <Text className={`text-[10px] tracking-wide ${labelClass}`} weight="semibold">
+            <Text className={`text-[10px] tracking-wide ${classes.label}`} weight="semibold">
               {rangeLabel}
             </Text>
             <View className="mt-2.5 flex-row items-center gap-3">

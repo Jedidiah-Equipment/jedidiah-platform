@@ -53,7 +53,7 @@ import {
   setJobBayDisabled,
   unassignJobBayOperator,
 } from './job-bay-service.js';
-import { getJob, listBays, listJobCustomerOptions, listJobs } from './job-read-service.js';
+import { getJob, listBayQueueAvailability, listBays, listJobCustomerOptions, listJobs } from './job-read-service.js';
 import {
   addIdleJobSlot,
   bookJobSlot,
@@ -1998,6 +1998,22 @@ describe('moveJobSlot', () => {
     ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
   });
 
+  test("rejects moving a live slot across a cancelled Job's adjacent slot", async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const liveJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const cancelledJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const liveSlot = await bookJobSlot({
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: liveJob.id },
+    });
+    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 1, jobId: cancelledJob.id } });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, cancelledJob.id));
+
+    await expect(
+      moveJobSlot({ actorUserId, db: context.db, input: { direction: 'right', slotId: liveSlot.slot.id } }),
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: cancelledJob.id } });
+  });
+
   test('moves a middle slot left by swapping with the previous bay slot', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -2412,6 +2428,23 @@ describe('listJobs scheduleState', () => {
     await expect(listBays({ db: context.db })).resolves.toMatchObject({
       jobs: [expect.objectContaining({ cancelledAt: expect.any(String), id: job.id })],
     });
+  });
+
+  test('excludes retained cancelled work from bay planning availability', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-04' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db.insert(jobSlots).values({
+      bayId: bay.id,
+      durationDays: 3,
+      jobId: job.id,
+      kind: 'work',
+      sequence: 1,
+    });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(listBayQueueAvailability({ bayIds: [bay.id], db: context.db })).resolves.toEqual([
+      expect.objectContaining({ bayId: bay.id, nextAvailableDate: '2026-06-04', waitWorkingDays: 0 }),
+    ]);
   });
 
   test("buckets a Job's Work Slots across bays into done/active/scheduled", async ({ context }) => {

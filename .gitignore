@@ -14,3 +14,5 @@ tmp/
 
 # Remote seed snapshot — contains real business data, never commit
 pkg/seed/snapshot/
+# Keep legacy snapshots ignored so existing checkouts cannot accidentally stage them.
+pkg/seed/data/staging-snapshot/

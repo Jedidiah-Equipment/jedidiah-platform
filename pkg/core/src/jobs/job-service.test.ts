@@ -1477,6 +1477,21 @@ describe('bookJobSlot', () => {
     expect(getProjectedBayQueue(schedule, bay.id).slots.map((slot) => slot.jobId)).toEqual([jobId, jobId]);
   });
 
+  test('rejects bookings for cancelled jobs', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(
+      bookJobSlot({
+        db: context.db,
+        input: { bayId: bay.id, durationDays: 1, jobId: job.id },
+      }),
+    ).rejects.toThrow('Cancelled jobs cannot be scheduled.');
+
+    await expect(context.db.select().from(jobSlots).where(eq(jobSlots.jobId, job.id))).resolves.toEqual([]);
+  });
+
   test('allows a job to be booked onto any bay department', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'paint' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);

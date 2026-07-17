@@ -146,6 +146,7 @@ export const jobs = pgTable(
     invoiceNumber: text('invoice_number'),
     vinNumber: text('vin_number'),
     description: text('description'),
+    cancelledAt: timestamp('cancelled_at', { mode: 'date', withTimezone: true }),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },

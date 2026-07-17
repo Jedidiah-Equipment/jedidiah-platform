@@ -35,6 +35,7 @@ describe('getRolePermissions', () => {
       'product_range:create',
       'product_range:read',
       'product_range:update',
+      'quote:cancel',
       'quote:create',
       'quote:read',
       'quote:update',
@@ -165,5 +166,16 @@ describe('job authorization policy', () => {
     expect(hasPermission(viewer, 'job:schedule')).toBe(false);
     expect(hasPermission(sales, 'job:read')).toBe(false);
     expect(hasPermission(sales, 'job:schedule')).toBe(false);
+  });
+});
+
+describe('quote cancellation authorization policy', () => {
+  it('grants cancellation only to administrators', () => {
+    expect(getRolePermissions('admin')).toContain('quote:cancel');
+    expect(getRolePermissions('super-admin')).toContain('quote:cancel');
+
+    for (const role of ['sales', 'procurement-manager', 'job-viewer', 'bay-operator'] as const) {
+      expect(getRolePermissions(role), role).not.toContain('quote:cancel');
+    }
   });
 });

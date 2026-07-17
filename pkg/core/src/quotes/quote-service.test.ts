@@ -36,7 +36,7 @@ import {
   listQuoteSalespeople,
   listQuotes,
 } from './quote-read-service.js';
-import { createQuote as createQuoteService, patchQuote, updateQuote } from './quote-service.js';
+import { cancelQuote, createQuote as createQuoteService, patchQuote, updateQuote } from './quote-service.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -1178,6 +1178,169 @@ describe('patchQuote', () => {
         input: { id: acceptedCustom.id, status: 'sent' },
       }),
     ).rejects.toThrow('Quote is locked because it has been accepted; status cannot be changed.');
+  });
+});
+
+describe('cancelQuote', () => {
+  test('cancels an accepted custom Quote without Job side effects and audits the status change', async ({
+    context,
+  }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Workshop repair', basePrice: 2200 },
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+
+    await cancelQuote({ actorUserId: context.salesPerson.id, db: context.db, id: quote.id });
+
+    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+      job: null,
+      status: 'cancelled',
+    });
+    expect(await context.db.select().from(jobs)).toEqual([]);
+    await expect(
+      context.db
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.entityType, 'quote'), eq(auditEvents.entityId, quote.id)))
+        .orderBy(asc(auditEvents.occurredAt)),
+    ).resolves.toEqual([
+      expect.objectContaining({ action: 'created', actorUserId: context.salesPerson.id }),
+      expect.objectContaining({
+        action: 'updated',
+        actorUserId: context.salesPerson.id,
+        changes: expect.objectContaining({ status: { from: 'accepted', to: 'cancelled' } }),
+      }),
+    ]);
+  });
+
+  test('preserves done work, truncates or removes active work, removes scheduled work, and reflows every Bay', async ({
+    context,
+  }) => {
+    const today = getPlantDateNow();
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    const downstreamQuote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    const [job, downstreamJob] = await context.db
+      .insert(jobs)
+      .values([
+        {
+          description: 'Target build',
+          invoiceNumber: 'INV-912',
+          productId: context.product.id,
+          productSerialNumber: 'QUOTE-SUMMARY-001-26-912',
+          productSerialPrefix: 'QUOTE-SUMMARY-001',
+          productSerialSequence: 912,
+          productSerialYear: 26,
+          quoteId: quote.id,
+          vinNumber: 'VIN-912',
+        },
+        {
+          productId: context.product.id,
+          productSerialNumber: 'QUOTE-SUMMARY-001-26-913',
+          productSerialPrefix: 'QUOTE-SUMMARY-001',
+          productSerialSequence: 913,
+          productSerialYear: 26,
+          quoteId: downstreamQuote.id,
+        },
+      ])
+      .returning();
+
+    if (!job || !downstreamJob) {
+      throw new Error('Job insert did not return required rows');
+    }
+
+    const firstBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000701',
+      name: 'Cancellation Bay A',
+      scheduleOrigin: addDateOnlyDays(today, -3),
+    });
+    const secondBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000702',
+      name: 'Cancellation Bay B',
+      scheduleOrigin: today,
+    });
+    const slotIds = {
+      active: '00000000-0000-4000-8000-000000000712',
+      done: '00000000-0000-4000-8000-000000000711',
+      scheduled: '00000000-0000-4000-8000-000000000713',
+      zeroConsumedActive: '00000000-0000-4000-8000-000000000721',
+      secondScheduled: '00000000-0000-4000-8000-000000000723',
+    } as const;
+    await context.db.insert(jobSlots).values([
+      { id: slotIds.done, bayId: firstBay.id, durationDays: 2, jobId: job.id, kind: 'work', sequence: 1 },
+      { id: slotIds.active, bayId: firstBay.id, durationDays: 3, jobId: job.id, kind: 'work', sequence: 2 },
+      { id: slotIds.scheduled, bayId: firstBay.id, durationDays: 2, jobId: job.id, kind: 'work', sequence: 3 },
+      { bayId: firstBay.id, durationDays: 4, jobId: downstreamJob.id, kind: 'work', sequence: 4 },
+      {
+        id: slotIds.zeroConsumedActive,
+        bayId: secondBay.id,
+        durationDays: 2,
+        jobId: job.id,
+        kind: 'work',
+        sequence: 1,
+      },
+      { bayId: secondBay.id, durationDays: 3, jobId: downstreamJob.id, kind: 'work', sequence: 2 },
+      {
+        id: slotIds.secondScheduled,
+        bayId: secondBay.id,
+        durationDays: 1,
+        jobId: job.id,
+        kind: 'work',
+        sequence: 3,
+      },
+    ]);
+
+    await cancelQuote({ actorUserId: context.salesPerson.id, db: context.db, id: quote.id });
+
+    const [cancelledJob] = await context.db.select().from(jobs).where(eq(jobs.id, job.id));
+    expect(cancelledJob?.cancelledAt).toBeInstanceOf(Date);
+    const remainingSlots = await context.db
+      .select()
+      .from(jobSlots)
+      .orderBy(asc(jobSlots.bayId), asc(jobSlots.sequence));
+    expect(remainingSlots).toEqual([
+      expect.objectContaining({ id: slotIds.done, bayId: firstBay.id, durationDays: 2, sequence: 1 }),
+      expect.objectContaining({ id: slotIds.active, bayId: firstBay.id, durationDays: 1, sequence: 2 }),
+      expect.objectContaining({ bayId: firstBay.id, jobId: downstreamJob.id, sequence: 3 }),
+      expect.objectContaining({ bayId: secondBay.id, jobId: downstreamJob.id, sequence: 1 }),
+    ]);
+    expect(remainingSlots.map((slot) => slot.id)).not.toEqual(
+      expect.arrayContaining([slotIds.scheduled, slotIds.zeroConsumedActive, slotIds.secondScheduled]),
+    );
+
+    const events = await context.db
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.entityId, job.id), eq(auditEvents.entityType, 'job')));
+    expect(events).toEqual([expect.objectContaining({ action: 'deleted', actorUserId: context.salesPerson.id })]);
+  });
+
+  test('rejects cancelling an already-cancelled Quote with a stable code', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'cancelled',
+    });
+
+    await expect(
+      cancelQuote({ actorUserId: context.salesPerson.id, db: context.db, id: quote.id }),
+    ).rejects.toMatchObject({ code: 'quote.already_cancelled' });
   });
 });
 

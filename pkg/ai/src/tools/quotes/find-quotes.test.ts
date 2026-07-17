@@ -78,7 +78,7 @@ describe('findQuotes contract', () => {
           customerCompanyName: 'Acme Mining',
           customerId: CUSTOMER_ID,
           id: QUOTE_ID,
-          job: { jobCode: 'JOB-00001', jobId: JOB_ID },
+          job: { jobCode: 'JOB-00001', jobDescription: 'Demo product build', jobId: JOB_ID },
           kind: 'product',
           plannedDeliveryDate: '2026-08-01',
           product: {

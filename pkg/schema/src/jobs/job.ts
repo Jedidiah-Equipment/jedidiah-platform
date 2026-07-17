@@ -446,6 +446,7 @@ export type Job = z.infer<typeof Job>;
 export const Job = z.object({
   id: UUID,
   code: JobCode,
+  cancelledAt: DateIso.nullable(),
   productId: UUID.nullable(),
   // productSerialNumber is the full frozen serial; prefix, sequence, and year store its component parts.
   productSerialNumber: ProductSerialNumber.nullable(),

@@ -44,6 +44,7 @@ describe('AppPermission', () => {
     expect(AppPermission.parse('product_range:read')).toBe('product_range:read');
     expect(AppPermission.parse('product_range:create')).toBe('product_range:create');
     expect(AppPermission.parse('product_range:update')).toBe('product_range:update');
+    expect(AppPermission.parse('quote:cancel')).toBe('quote:cancel');
     expect(AppPermission.parse('supplier:read')).toBe('supplier:read');
     expect(AppPermission.parse('supplier:update')).toBe('supplier:update');
     expect(AppPermission.parse('feedback:read')).toBe('feedback:read');

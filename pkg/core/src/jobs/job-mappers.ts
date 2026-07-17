@@ -5,6 +5,7 @@ export type JobRow = typeof jobs.$inferSelect;
 
 export function mapJob(row: JobRow): Job {
   return Job.parse({
+    cancelledAt: row.cancelledAt?.toISOString() ?? null,
     code: row.code,
     createdAt: row.createdAt.toISOString(),
     id: row.id,

@@ -1,5 +1,5 @@
 import { customers, type DatabaseTransaction, type Db, jobs, notRemoved, products, quotes, user } from '@pkg/db';
-import { assertQuoteEditable, validateDiscount } from '@pkg/domain';
+import { assertQuoteEditable, getPlantDateNow, validateDiscount } from '@pkg/domain';
 import {
   type AuditChanges,
   type AuthId,
@@ -17,8 +17,10 @@ import { and, eq, inArray } from 'drizzle-orm';
 
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
+import { cancelJobForQuote } from '../jobs/job-service.js';
 import { quoteAuditDescriptor } from './quote-audit.js';
 import {
+  QuoteAlreadyCancelledError,
   QuoteCustomSelectedAssembliesError,
   QuoteDiscountInvalidError,
   QuoteInvalidReferenceError,
@@ -57,6 +59,54 @@ type QuoteCollectionPatch = {
   resolved: ResolvedQuoteSelectedAssemblies;
   selectedAssembliesChanged: boolean;
 };
+
+export async function cancelQuote({ actorUserId, db, id }: { actorUserId: AuthId; db: Db; id: UUID }): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [before] = await tx.select().from(quotes).where(eq(quotes.id, id)).for('update');
+
+    if (!before) {
+      throw new QuoteNotFoundError(id);
+    }
+
+    if (before.status === 'cancelled') {
+      throw new QuoteAlreadyCancelledError();
+    }
+
+    const [lineItems, selectedAssemblies] = await Promise.all([
+      listQuoteLineItems({ quoteId: before.id, tx }),
+      listQuoteSelectedAssemblies({ quoteId: before.id, tx }),
+    ]);
+    const now = new Date();
+    const after = { ...before, status: 'cancelled' as const, statusChangedAt: now, updatedAt: now };
+    const changes = diffAuditUpdate(
+      quoteAuditDescriptor,
+      { row: before, lineItems, selectedAssemblies },
+      { row: after, lineItems, selectedAssemblies },
+    );
+
+    await cancelJobForQuote({ actorUserId, now, plantToday: getPlantDateNow(), quoteId: before.id, tx });
+
+    const [row] = await tx
+      .update(quotes)
+      .set({ status: 'cancelled', statusChangedAt: now, updatedAt: now })
+      .where(eq(quotes.id, before.id))
+      .returning();
+
+    if (!row) {
+      throw new QuoteNotFoundError(id);
+    }
+
+    if (changes) {
+      await recordAuditUpdate({
+        db: tx,
+        descriptor: quoteAuditDescriptor,
+        actorUserId,
+        after: { row, lineItems, selectedAssemblies },
+        changes,
+      });
+    }
+  });
+}
 
 export async function createQuote({
   actorUserId,

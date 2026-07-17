@@ -44,6 +44,7 @@ export const permissionLabels = {
   'product_range:read': 'View product ranges',
   'product_range:update': 'Update product ranges',
   'quote:create': 'Create quotes',
+  'quote:cancel': 'Cancel quotes',
   'quote:read': 'View quotes',
   'quote:update': 'Update quotes',
   'supplier:read': 'View suppliers',
@@ -81,6 +82,7 @@ export const permissionDescriptions = {
   'product_range:read': 'View the admin Product Range management list.',
   'product_range:update': 'Edit existing product catalog Range records.',
   'quote:create': 'Create new sales quotes.',
+  'quote:cancel': 'Cancel locked quotes and cascade-cancel their job and future slots.',
   'quote:read': 'View sales quotes.',
   'quote:update': 'Update sales quote details and decisions.',
   'supplier:read': 'View supplier records.',
@@ -104,7 +106,7 @@ export const authorizationStatement = {
   part: ['read', 'update'],
   product: ['read', 'create', 'update'],
   product_range: ['read', 'create', 'update'],
-  quote: ['read', 'create', 'update'],
+  quote: ['read', 'create', 'update', 'cancel'],
   supplier: ['read', 'update', 'remove'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const;
@@ -124,7 +126,7 @@ const adminAccess = {
   part: ['read', 'update'],
   product: ['read', 'create', 'update'],
   product_range: ['read', 'create', 'update'],
-  quote: ['read', 'create', 'update'],
+  quote: ['read', 'create', 'update', 'cancel'],
   supplier: ['read', 'update', 'remove'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const satisfies RoleAccess;

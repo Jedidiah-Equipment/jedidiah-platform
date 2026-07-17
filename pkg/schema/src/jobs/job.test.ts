@@ -71,6 +71,7 @@ describe('Job', () => {
   it('carries the frozen product serial facts', () => {
     expect(
       Job.parse({
+        cancelledAt: null,
         code: 1,
         createdAt: '2026-06-01T00:00:00.000Z',
         id: '00000000-0000-4000-8000-000000000001',
@@ -86,6 +87,7 @@ describe('Job', () => {
         vinNumber: null,
       }),
     ).toMatchObject({
+      cancelledAt: null,
       code: 'JOB-00001',
       productSerialNumber: 'SG1836260009',
       productSerialPrefix: 'SG1836',
@@ -98,6 +100,7 @@ describe('Job', () => {
   it('accepts productless custom job facts', () => {
     expect(
       Job.parse({
+        cancelledAt: '2026-06-10T12:00:00.000Z',
         code: 2,
         createdAt: '2026-06-01T00:00:00.000Z',
         id: '00000000-0000-4000-8000-000000000001',
@@ -113,6 +116,7 @@ describe('Job', () => {
         vinNumber: null,
       }),
     ).toMatchObject({
+      cancelledAt: '2026-06-10T12:00:00.000Z',
       code: 'JOB-00002',
       productId: null,
       productSerialNumber: null,

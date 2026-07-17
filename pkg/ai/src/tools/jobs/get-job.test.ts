@@ -9,6 +9,7 @@ const CUSTOMER_ID = '00000000-0000-4000-8000-000000000101';
 const QUOTE_ID = '00000000-0000-4000-8000-000000000301';
 
 const job = JobDetail.parse({
+  cancelledAt: null,
   cfo: [],
   code: 'JOB-00001',
   createdAt: '2026-07-10T08:00:00.000Z',

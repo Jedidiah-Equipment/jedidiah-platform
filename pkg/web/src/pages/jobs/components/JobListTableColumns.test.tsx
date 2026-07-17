@@ -180,6 +180,7 @@ function TestJobListTable({
 
 function buildJob(overrides: Partial<Record<keyof JobSummary, unknown>> = {}): JobSummary {
   return JobSummarySchema.parse({
+    cancelledAt: null,
     code: 1,
     createdAt: '2026-06-01T10:00:00.000Z',
     customerCompanyName: 'Acme Mining',

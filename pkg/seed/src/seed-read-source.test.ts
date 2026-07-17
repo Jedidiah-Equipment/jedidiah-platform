@@ -21,28 +21,8 @@ const remoteEnv = {
 } satisfies NodeJS.ProcessEnv;
 
 describe('seed read source selection', () => {
-  it('reads from staging by default', () => {
+  it('reads from production by default', () => {
     const source = resolveSeedReadSource(undefined, remoteEnv);
-
-    expect({ source, storage: readSeedStorageConfig(source.storagePrefix, remoteEnv) }).toEqual({
-      source: {
-        databaseUrl: 'postgres://staging.example.test/app',
-        name: 'staging',
-        storagePrefix: 'STAGING_',
-      },
-      storage: {
-        accessKeyId: 'staging-access-key',
-        bucket: 'staging-bucket',
-        endpoint: 'https://staging-objects.example.test',
-        forcePathStyle: true,
-        region: 'us-east-1',
-        secretAccessKey: 'staging-secret-key',
-      },
-    });
-  });
-
-  it('reads from production when explicitly selected', () => {
-    const source = resolveSeedReadSource('production', remoteEnv);
 
     expect({ source, storage: readSeedStorageConfig(source.storagePrefix, remoteEnv) }).toEqual({
       source: {
@@ -57,6 +37,26 @@ describe('seed read source selection', () => {
         forcePathStyle: false,
         region: 'af-south-1',
         secretAccessKey: 'production-secret-key',
+      },
+    });
+  });
+
+  it('reads from staging when explicitly selected', () => {
+    const source = resolveSeedReadSource('staging', remoteEnv);
+
+    expect({ source, storage: readSeedStorageConfig(source.storagePrefix, remoteEnv) }).toEqual({
+      source: {
+        databaseUrl: 'postgres://staging.example.test/app',
+        name: 'staging',
+        storagePrefix: 'STAGING_',
+      },
+      storage: {
+        accessKeyId: 'staging-access-key',
+        bucket: 'staging-bucket',
+        endpoint: 'https://staging-objects.example.test',
+        forcePathStyle: true,
+        region: 'us-east-1',
+        secretAccessKey: 'staging-secret-key',
       },
     });
   });

@@ -24,7 +24,7 @@ export function resolveSeedReadSource(
   sourceArgument: string | undefined,
   env: NodeJS.ProcessEnv = process.env,
 ): SeedReadSourceConfig {
-  const source = sourceArgument ?? 'staging';
+  const source = sourceArgument ?? 'production';
 
   if (source !== 'production' && source !== 'staging') {
     throw new Error(`Unsupported seed read source "${source}". Expected staging or production.`);

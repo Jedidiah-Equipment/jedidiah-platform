@@ -12,5 +12,5 @@ tmp/
 *.log
 .claude/worktrees/
 
-# Local/staging seed snapshot — contains real business data, never commit
-pkg/seed/data/staging-snapshot/
+# Remote seed snapshot — contains real business data, never commit
+pkg/seed/snapshot/

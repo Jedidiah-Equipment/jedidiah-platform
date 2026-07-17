@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import './load-read-env.js';
 import { createDatabaseClient, type Db } from '@pkg/db';
 import { asc, getTableColumns } from 'drizzle-orm';
+import { resolveSeedReadSource, type SeedReadSource } from './seed-read-source.js';
 import { serializeSnapshotRows } from './snapshot-json.js';
 import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
 import {
@@ -14,21 +15,13 @@ import {
 } from './snapshot-tables.js';
 import { createStorageFromEnv, downloadObject, type SeedStorage } from './storage.js';
 
-function getStagingDatabaseUrl(): string {
-  const stagingDatabaseUrl = process.env.STAGING_DATABASE_URL;
-
-  if (!stagingDatabaseUrl) {
-    throw new Error('STAGING_DATABASE_URL is required to read the staging seed snapshot.');
-  }
-
-  return stagingDatabaseUrl;
-}
-
-export async function readStagingSeedSnapshot(): Promise<void> {
-  const client = createDatabaseClient(getStagingDatabaseUrl());
-  const storage = createStorageFromEnv('STAGING_');
+export async function readSeedSnapshot(sourceArgument?: string): Promise<void> {
+  const source = resolveSeedReadSource(sourceArgument);
+  const client = createDatabaseClient(source.databaseUrl);
+  const storage = createStorageFromEnv(source.storagePrefix);
 
   try {
+    console.info(`[seed:read] Reading ${source.name} snapshot`);
     await mkdir(snapshotDirectory, { recursive: true });
 
     const configs: readonly SnapshotTableConfig[] = snapshotTables;
@@ -41,7 +34,7 @@ export async function readStagingSeedSnapshot(): Promise<void> {
       console.info(`[seed:read] Wrote ${rows.length} ${config.tableName} row(s) to ${destination.pathname}`);
 
       if (config.storageFiles) {
-        const downloaded = await downloadSnapshotObjects(storage, collectStorageFiles(config, rows));
+        const downloaded = await downloadSnapshotObjects(storage, collectStorageFiles(config, rows), source.name);
         console.info(`[seed:read] Downloaded ${downloaded} ${config.tableName} object(s)`);
       }
     }
@@ -51,7 +44,7 @@ export async function readStagingSeedSnapshot(): Promise<void> {
 }
 
 // Reads a table's rows for the snapshot. The common case selects every column; tables that declare
-// omitReadColumns/readOrderColumn/seedRowDefaults select a column subset (skipping columns the staging
+// omitReadColumns/readOrderColumn/seedRowDefaults select a column subset (skipping columns the selected
 // source lacks), order deterministically, and merge in seed defaults for the omitted columns.
 async function readSnapshotRows(db: Db, config: SnapshotTableConfig): Promise<SnapshotRow[]> {
   if (!config.omitReadColumns && !config.readOrderColumn && !config.seedRowDefaults) {
@@ -70,16 +63,20 @@ async function readSnapshotRows(db: Db, config: SnapshotTableConfig): Promise<Sn
   return applyDefaults ? rows.map((row, index) => ({ ...row, ...applyDefaults(row, index) })) : rows;
 }
 
-// Downloads each referenced object from the staging store to disk. Missing keys (dangling references)
+// Downloads each referenced object from the source store to disk. Missing keys (dangling references)
 // are warned about and skipped so one deleted object cannot abort the whole read.
-async function downloadSnapshotObjects(storage: SeedStorage, files: SnapshotStorageFile[]): Promise<number> {
+async function downloadSnapshotObjects(
+  storage: SeedStorage,
+  files: SnapshotStorageFile[],
+  source: SeedReadSource,
+): Promise<number> {
   let downloaded = 0;
 
   for (const file of files) {
     const bytes = await downloadObject(storage, file.storageKey);
 
     if (!bytes) {
-      console.warn(`[seed:read] Missing staging object ${file.storageKey}, skipping`);
+      console.warn(`[seed:read] Missing ${source} object ${file.storageKey}, skipping`);
       continue;
     }
 
@@ -93,5 +90,5 @@ async function downloadSnapshotObjects(storage: SeedStorage, files: SnapshotStor
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  await readStagingSeedSnapshot();
+  await readSeedSnapshot(process.argv[2]);
 }

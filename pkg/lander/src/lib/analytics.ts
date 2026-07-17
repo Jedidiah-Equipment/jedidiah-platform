@@ -22,6 +22,7 @@ export type AnalyticsEventRegistry = {
     variant: string | null;
   };
   product_viewed: { modelCode: string; range: string; variant: string | null };
+  product_shared: { modelCode: string; method: 'native' | 'clipboard' };
   brochure_downloaded: { modelCode: string };
   contact_submitted: { equipment: string };
   contact_submit_failed: { errorCategory: 'network' | 'server' };

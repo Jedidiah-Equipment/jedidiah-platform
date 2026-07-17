@@ -30,6 +30,7 @@ describe('analytics event registry', () => {
       | 'catalog_filter_changed'
       | 'product_card_clicked'
       | 'product_viewed'
+      | 'product_shared'
       | 'brochure_downloaded'
       | 'contact_submitted'
       | 'contact_submit_failed'
@@ -50,6 +51,10 @@ describe('analytics event registry', () => {
       variant: string | null;
       previousRange: string | null;
       previousVariant: string | null;
+    }>();
+    expectTypeOf<AnalyticsEventProperties<'product_shared'>>().toEqualTypeOf<{
+      modelCode: string;
+      method: 'native' | 'clipboard';
     }>();
   });
 });
@@ -98,6 +103,7 @@ function typecheckCaptureEventContract() {
   const captureEvent = null as unknown as typeof CaptureEvent;
 
   captureEvent('brochure_downloaded', { modelCode: 'JM-2400' });
+  captureEvent('product_shared', { modelCode: 'JM-2400', method: 'clipboard' });
   captureEvent('language_switched', { fromLocale: 'en', toLocale: 'af', placement: 'nav' });
 
   // @ts-expect-error brochure downloads require the Product model code

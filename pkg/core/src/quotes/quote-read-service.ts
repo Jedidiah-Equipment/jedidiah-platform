@@ -28,7 +28,7 @@ import {
   UserSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, or, type SQL, sql } from 'drizzle-orm';
 
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
@@ -423,6 +423,8 @@ export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
 
   if (input.filters.statuses.length > 0) {
     conditions.push(inArray(quotes.status, input.filters.statuses));
+  } else {
+    conditions.push(ne(quotes.status, 'cancelled'));
   }
 
   if (input.filters.customerId) {

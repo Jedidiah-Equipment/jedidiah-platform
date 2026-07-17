@@ -1,4 +1,4 @@
-export const snapshotDirectory = new URL('../data/staging-snapshot/', import.meta.url);
+export const snapshotDirectory = new URL('../snapshot/', import.meta.url);
 
 // Downloaded doc-store objects live under an `objects/` subtree, addressed by their bucket-relative
 // storage key (which contains slashes, so it maps onto nested directories). The whole snapshot

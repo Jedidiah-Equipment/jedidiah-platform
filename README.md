@@ -183,7 +183,7 @@ Email/password auth is enabled. Email verification and password reset emails are
 recording/logging the generated email payloads unless `EMAIL_PROVIDER=resend` is configured.
 Seed users use `test123` for local sign-in. Demo user identity lives in `@pkg/domain`
 (`pkg/domain/src/demo.ts`). Local `pnpm db:seed` imports the deterministic snapshot data from
-`pkg/seed/data/staging-snapshot`; remote database reset recreates only the canonical demo users
+`pkg/seed/snapshot`; remote database reset recreates only the canonical demo users
 after migrations.
 
 ## Job workflow notes

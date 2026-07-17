@@ -11,10 +11,10 @@ export type SnapshotTableDefinition = {
   tableName: string;
   timestampColumns: readonly string[];
   writableColumns?: readonly string[];
-  // Columns present in the local schema but absent from the staging source (e.g. a not-yet-deployed
-  // migration); excluded from the staging read so seed:read does not select non-existent columns.
+  // Columns present in the local schema but potentially absent from a remote source (e.g. a
+  // not-yet-deployed migration); excluded so a read never selects non-existent columns.
   omitReadColumns?: readonly string[];
-  // Column (property name) to order the staging read by, so positional seed defaults are deterministic.
+  // Column (property name) to order the source read by, so positional seed defaults are deterministic.
   readOrderColumn?: string;
   // Values merged into each row after reading, keyed by index — used to populate columns omitted above.
   seedRowDefaults?: (row: SnapshotRow, index: number) => SnapshotRow;
@@ -24,8 +24,8 @@ export type SnapshotTableDefinition = {
   // Advances a Postgres sequence to MAX(columnName) after seeding, so app-created rows do not collide
   // with seeded `code` values. Needed for tables whose code column defaults from a pgSequence.
   resetSequence?: { sequenceName: string; columnName: string };
-  // Extracts doc-store object references from a row so seed:read can download the bytes from staging and
-  // seed:write can upload them to the local store. Only for tables with StoredFile-shaped columns.
+  // Extracts doc-store object references from a row so seed:read can download the bytes from its selected
+  // source and seed:write can upload them to the local store. Only for StoredFile-shaped columns.
   storageFiles?: (row: SnapshotRow) => SnapshotStorageFile[];
 };
 
@@ -61,8 +61,8 @@ const standardTimestampColumns = ['createdAt', 'updatedAt'] as const;
 
 export const snapshotTableDefinitions = [
   {
-    // `assistantEnabled` is a not-yet-deployed local migration column absent from the staging source;
-    // omit it from the staging read and derive it from role so seed:read works before it deploys.
+    // `assistantEnabled` may be absent when the selected source lags this checkout; omit it and derive it
+    // from role so seed:read remains compatible across that deployment boundary.
     fileName: 'user.json',
     tableName: 'user',
     timestampColumns: authTimestampColumns,
@@ -97,7 +97,7 @@ export const snapshotTableDefinitions = [
     timestampColumns: ['createdAt', 'updatedAt'],
   },
   {
-    // Never dump staging password hashes into the committed snapshot. The reader omits the column and
+    // Never dump remote password hashes into the local snapshot. The reader omits the column and
     // stores null; the writer fills credential accounts with the shared local seed password on insert.
     fileName: 'account.json',
     tableName: 'account',
@@ -207,8 +207,6 @@ export const snapshotTableDefinitions = [
     timestampColumns: ['createdAt', 'updatedAt'],
   },
 ] as const satisfies readonly SnapshotTableDefinition[];
-
-export const snapshotTableNames = snapshotTableDefinitions.map((table) => table.tableName);
 
 // Extracts the doc-store object references for every row of a table, de-duplicated by storage key.
 // Returns an empty list for tables without a `storageFiles` extractor.

@@ -118,7 +118,7 @@ function Ready({
             refreshControl={<RefreshControl {...refresh} />}
             style={{ borderRightWidth: 1, flex: 42 }}
           >
-            <RoutePane route={state.route} />
+            <RoutePane isCancelled={state.cancelledAt !== null} route={state.route} />
           </ScrollView>
           <ScrollView
             contentContainerClassName="w-full px-4 pb-10 pt-4"
@@ -138,7 +138,7 @@ function Ready({
       <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
         <DetailPane jobId={jobId} state={state} />
         <View className="my-5 h-px bg-border" />
-        <RoutePane route={state.route} />
+        <RoutePane isCancelled={state.cancelledAt !== null} route={state.route} />
       </ScrollView>
     </>
   );
@@ -173,7 +173,7 @@ const ROUTE_DECOR: Record<JobRouteStopState, { card: string; chip: string; node:
 const STATE_LABELS = { active: 'IN PROGRESS', done: 'DONE', scheduled: 'SCHEDULED' } as const;
 
 /** Left pane: the Job's Bays as a vertical timeline, each with its state, dates, and progress. */
-function RoutePane({ route }: { route: JobRouteStopCard[] }) {
+function RoutePane({ isCancelled, route }: { isCancelled: boolean; route: JobRouteStopCard[] }) {
   return (
     <View>
       <View className="mb-4 flex-row items-center justify-between">
@@ -190,16 +190,16 @@ function RoutePane({ route }: { route: JobRouteStopCard[] }) {
             RN applies parent padding to absolute children, which would offset them. */}
         <View className="absolute bottom-2 left-1.5 top-2 w-0.5 bg-border" />
         {route.map((stop) => (
-          <RouteStop key={stop.slotId} stop={stop} />
+          <RouteStop isCancelled={isCancelled} key={stop.slotId} stop={stop} />
         ))}
       </View>
     </View>
   );
 }
 
-function RouteStop({ stop }: { stop: JobRouteStopCard }) {
-  const tone = STATUS_TONE[ROUTE_STATE_TONE[stop.state]];
-  const decor = ROUTE_DECOR[stop.state];
+function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRouteStopCard }) {
+  const tone = STATUS_TONE[isCancelled ? 'muted' : ROUTE_STATE_TONE[stop.state]];
+  const decor = isCancelled ? ROUTE_DECOR.done : ROUTE_DECOR[stop.state];
   const operatorName = stop.operator?.name ?? 'No operator';
 
   return (
@@ -225,7 +225,7 @@ function RouteStop({ stop }: { stop: JobRouteStopCard }) {
           </View>
           <View className={`rounded-full border px-2 py-1 ${decor.chip}`}>
             <Text className={`text-[9px] tracking-wide ${tone.text}`} weight="semibold">
-              {STATE_LABELS[stop.state]}
+              {isCancelled ? 'CANCELLED' : STATE_LABELS[stop.state]}
             </Text>
           </View>
         </View>
@@ -235,7 +235,7 @@ function RouteStop({ stop }: { stop: JobRouteStopCard }) {
             {formatDate(stop.firstWorkDay, 'd MMM')} – {formatDate(stop.lastWorkDay, 'd MMM')}
           </Text>
           <Text className={`text-[10px] ${tone.text}`} mono>
-            {routeDaysLabel(stop)}
+            {routeDaysLabel(stop, isCancelled)}
           </Text>
         </View>
 
@@ -247,7 +247,8 @@ function RouteStop({ stop }: { stop: JobRouteStopCard }) {
   );
 }
 
-function routeDaysLabel(stop: JobRouteStopCard): string {
+function routeDaysLabel(stop: JobRouteStopCard, isCancelled: boolean): string {
+  if (isCancelled) return 'Cancelled';
   if (stop.state === 'done') return 'Completed';
   if (stop.state === 'active') {
     return `${stop.remainingWorkDays} ${stop.remainingWorkDays === 1 ? 'working day' : 'working days'} left`;
@@ -263,16 +264,21 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   const overallPercent = progress?.overallPercent ?? 100;
   // The working-days-left chip + overall bar share the status accent: blue in progress, green when
   // queued, amber/red as the finish nears. A finished Job (null progress) rests on the scheduled green.
-  const accent = progress
-    ? statusDaysLeftColor({ status: progress.status, daysLeft: progress.daysLeft, scheme: resolved })
-    : restingStatusColor('scheduled', resolved);
-  const status = jobStatus(progress);
+  const isCancelled = state.cancelledAt !== null;
+  const accent = isCancelled
+    ? resolved === 'dark'
+      ? '#a1a1aa'
+      : '#71717a'
+    : progress
+      ? statusDaysLeftColor({ status: progress.status, daysLeft: progress.daysLeft, scheme: resolved })
+      : restingStatusColor('scheduled', resolved);
+  const status = isCancelled ? { tone: 'muted' as const, label: 'CANCELLED' } : jobStatus(progress);
 
   return (
     <View className="gap-4">
       <View className="flex-row flex-wrap items-center gap-2">
         <StatusChip label={status.label} tone={status.tone} />
-        {progress ? <DaysLeftChip color={accent} daysLeft={progress.daysLeft} /> : null}
+        {!isCancelled && progress ? <DaysLeftChip color={accent} daysLeft={progress.daysLeft} /> : null}
       </View>
 
       <JobWorkCard

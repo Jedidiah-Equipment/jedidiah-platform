@@ -53,7 +53,7 @@ import {
   setJobBayDisabled,
   unassignJobBayOperator,
 } from './job-bay-service.js';
-import { getJob, listBays, listJobs } from './job-read-service.js';
+import { getJob, listBays, listJobCustomerOptions, listJobs } from './job-read-service.js';
 import {
   addIdleJobSlot,
   bookJobSlot,
@@ -61,6 +61,7 @@ import {
   moveJobSlot,
   removeJobSlot,
   resizeJobSlot,
+  updateJob,
 } from './job-service.js';
 import { addBayCalendarException, toggleOffDay } from './working-calendar-service.js';
 
@@ -1396,6 +1397,21 @@ describe('Job Bay management', () => {
   });
 });
 
+describe('updateJob', () => {
+  test('rejects field updates for cancelled Jobs', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(
+      updateJob({
+        actorUserId,
+        db: context.db,
+        input: { description: 'Should not save', id: job.id, invoiceNumber: null, vinNumber: null },
+      }),
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+  });
+});
+
 describe('bookJobSlot', () => {
   test('appends slots to the back of a bay queue and returns projected dates', async ({ context }) => {
     const bay = await createBay(context.db, {
@@ -1487,7 +1503,7 @@ describe('bookJobSlot', () => {
         db: context.db,
         input: { bayId: bay.id, durationDays: 1, jobId: job.id },
       }),
-    ).rejects.toThrow('Cancelled jobs cannot be scheduled.');
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
 
     await expect(context.db.select().from(jobSlots).where(eq(jobSlots.jobId, job.id))).resolves.toEqual([]);
   });
@@ -1723,6 +1739,23 @@ describe('bookJobSlot', () => {
 });
 
 describe('addIdleJobSlot', () => {
+  test("rejects inserting idle time relative to a cancelled Job's slot", async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const workSlot = await bookJobSlot({
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
+    });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(
+      addIdleJobSlot({
+        db: context.db,
+        input: { durationDays: 1, placement: 'after', targetSlotId: workSlot.slot.id },
+      }),
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+  });
+
   test('inserts one-day idle slots before and after target slots and keeps sequences contiguous', async ({
     context,
   }) => {
@@ -1791,6 +1824,20 @@ describe('addIdleJobSlot', () => {
 });
 
 describe('resizeJobSlot', () => {
+  test("rejects resizing a cancelled Job's slot", async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const slot = await bookJobSlot({
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
+    });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(
+      resizeJobSlot({ db: context.db, input: { durationDays: 2, slotId: slot.slot.id } }),
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+  });
+
   test('updates duration and reflows downstream projected dates only', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
@@ -1935,6 +1982,22 @@ describe('resizeJobSlot', () => {
 });
 
 describe('moveJobSlot', () => {
+  test("rejects moving a cancelled Job's slot", async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const otherJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const slot = await bookJobSlot({
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
+    });
+    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 1, jobId: otherJob.id } });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(
+      moveJobSlot({ actorUserId, db: context.db, input: { direction: 'right', slotId: slot.slot.id } }),
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+  });
+
   test('moves a middle slot left by swapping with the previous bay slot', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -2100,6 +2163,41 @@ describe('moveJobSlot', () => {
 });
 
 describe('removeJobSlot', () => {
+  test("removes a cancelled Job's done and active slots and reflows both Bays", async ({ context }) => {
+    const doneBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-01' });
+    const activeBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-04' });
+    const cancelledJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const downstreamJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const [doneSlot, doneDownstream, activeSlot, activeDownstream] = await context.db
+      .insert(jobSlots)
+      .values([
+        { bayId: doneBay.id, durationDays: 2, jobId: cancelledJob.id, kind: 'work', sequence: 1 },
+        { bayId: doneBay.id, durationDays: 2, jobId: downstreamJob.id, kind: 'work', sequence: 2 },
+        { bayId: activeBay.id, durationDays: 3, jobId: cancelledJob.id, kind: 'work', sequence: 1 },
+        { bayId: activeBay.id, durationDays: 2, jobId: downstreamJob.id, kind: 'work', sequence: 2 },
+      ])
+      .returning();
+    if (!doneSlot || !doneDownstream || !activeSlot || !activeDownstream) {
+      throw new Error('Slot insert did not return every row');
+    }
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, cancelledJob.id));
+
+    await expect(removeJobSlot({ db: context.db, input: { slotId: doneSlot.id } })).resolves.toMatchObject({
+      slot: { id: doneSlot.id },
+    });
+    await expect(removeJobSlot({ db: context.db, input: { slotId: activeSlot.id } })).resolves.toMatchObject({
+      slot: { id: activeSlot.id },
+    });
+
+    const schedule = await listBays({ db: context.db });
+    expect(getProjectedBayQueue(schedule, doneBay.id).slots).toEqual([
+      expect.objectContaining({ id: doneDownstream.id, sequence: 1, startDate: '2026-06-01' }),
+    ]);
+    expect(getProjectedBayQueue(schedule, activeBay.id).slots).toEqual([
+      expect.objectContaining({ id: activeDownstream.id, sequence: 1, startDate: '2026-06-04' }),
+    ]);
+  });
+
   test('removes a middle slot, closes the projected gap, and keeps stored sequences contiguous', async ({
     context,
   }) => {
@@ -2277,6 +2375,45 @@ describe('listJobs scheduleState', () => {
     expect(result.items[0]?.scheduleState).toBeNull();
   });
 
+  test('excludes cancelled Jobs from list reads', async ({ context }) => {
+    const liveJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const cancelledJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, cancelledJob.id));
+
+    const result = await listJobs({ db: context.db, input: listInput() });
+
+    expect(result.items.map((item) => item.id)).toEqual([liveJob.id]);
+    expect(result.total).toBe(1);
+  });
+
+  test('keeps cancelled Jobs readable through detail and Board history', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-04' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db.insert(jobSlots).values({
+      bayId: bay.id,
+      durationDays: 3,
+      jobId: job.id,
+      kind: 'work',
+      sequence: 1,
+    });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(getJob({ db: context.db, id: job.id })).resolves.toMatchObject({
+      cancelledAt: expect.any(String),
+      id: job.id,
+      schedule: expect.arrayContaining([
+        expect.objectContaining({
+          bays: expect.arrayContaining([
+            expect.objectContaining({ slots: [expect.objectContaining({ jobId: job.id, state: 'active' })] }),
+          ]),
+        }),
+      ]),
+    });
+    await expect(listBays({ db: context.db })).resolves.toMatchObject({
+      jobs: [expect.objectContaining({ cancelledAt: expect.any(String), id: job.id })],
+    });
+  });
+
   test("buckets a Job's Work Slots across bays into done/active/scheduled", async ({ context }) => {
     const doneBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
     const activeBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
@@ -2388,6 +2525,22 @@ describe('listJobs scheduleState', () => {
     const result = await listJobs({ db: context.db, input: listInput({ sortBy: 'scheduledSlots' }) });
 
     expect(result.items.map((item) => item.id)).toEqual([unscheduled.id, oneSlot.id, twoSlots.id]);
+  });
+});
+
+describe('listJobCustomerOptions', () => {
+  test('excludes customers whose only Jobs are cancelled', async ({ context }) => {
+    const liveJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const cancelledJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, cancelledJob.id));
+
+    const result = await listJobCustomerOptions({
+      db: context.db,
+      input: { page: 1, pageSize: 0, search: '', sortBy: 'companyName', sortDirection: 'asc' },
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual([liveJob.customerId]);
+    expect(result.total).toBe(1);
   });
 });
 

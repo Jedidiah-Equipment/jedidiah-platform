@@ -3,6 +3,7 @@ import type { DateOnlyIso, JobSummary } from '@pkg/schema';
 import type React from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { Badge } from '@/components/ui/badge.js';
 import { getJobGanttOffsetDistance, getJobGanttWidth } from './job-gantt-geometry.js';
 
 type BaySlotJobCardProps = {
@@ -27,6 +28,11 @@ export const BaySlotJobCard: React.FC<BaySlotJobCardProps> = ({ dayBreakdown, jo
       />
       <div className="flex min-w-0 flex-1 flex-col justify-center leading-tight">
         <span className="truncate font-mono font-semibold text-sm">{jobCode}</span>
+        {job?.cancelledAt ? (
+          <Badge className="w-fit border-muted-foreground/40 text-muted-foreground" variant="outline">
+            Cancelled
+          </Badge>
+        ) : null}
         {job?.productSerialNumber ? (
           <span className="truncate font-mono text-muted-foreground text-xs">{job.productSerialNumber}</span>
         ) : null}

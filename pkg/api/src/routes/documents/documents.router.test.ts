@@ -57,6 +57,18 @@ describe('documents.deleteByProduct', () => {
 });
 
 describe('documents.deleteByJob', () => {
+  test('rejects deleting Purchase Orders from cancelled Jobs with the stable app code', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await createCustomJob(context.db);
+    const document = await createJobDocument(context.db, job.id, 'purchase_order');
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(sql`${jobs.id} = ${job.id}`);
+
+    await expect(caller.documents.deleteByJob({ documentId: document.id, jobId: job.id })).rejects.toMatchObject({
+      appCode: 'job.cancelled',
+      code: 'BAD_REQUEST',
+    });
+  });
+
   test('deletes uploaded Purchase Orders through job update access', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const job = await createCustomJob(context.db);

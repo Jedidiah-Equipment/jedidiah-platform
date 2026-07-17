@@ -9,11 +9,13 @@ import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+import { mobileBoardHistoryInput } from './board-history';
 import { useTRPC } from './trpc';
 import { useBayCalendars } from './use-bay-calendars';
 
 /** The in-progress Work Slot a Bay is running today, projected for the ACTIVE NOW hero. */
 export type BayQueueActiveJob = ActiveJobProgress & {
+  isCancelled: boolean;
   slotId: string;
   jobCode: string;
   jobDisplayName: string;
@@ -30,6 +32,7 @@ export type BayQueueActiveJob = ActiveJobProgress & {
  * `jobs.get`, since the Board join carries only Slot + Job summary fields.
  */
 export type BaySlotDetail = {
+  isCancelled: boolean;
   jobId: string;
   jobCode: string;
   quoteCode: string;
@@ -40,7 +43,7 @@ export type BaySlotDetail = {
   description: string | null;
   bayName: string;
   /** 'in-progress' for the Slot running today, else 'scheduled'. */
-  status: 'in-progress' | 'scheduled';
+  status: 'done' | 'in-progress' | 'scheduled';
   /** The soonest upcoming Slot — its chip and timeline card share the 'next' accent. */
   isNext: boolean;
   /** Working days left — only the in-progress Slot has one. */
@@ -54,6 +57,7 @@ export type BaySlotDetail = {
 
 /** A future Work Slot in the UP NEXT timeline. */
 export type BayQueueUpcomingSlot = {
+  isCancelled: boolean;
   slotId: string;
   jobCode: string;
   jobDisplayName: string;
@@ -65,6 +69,7 @@ export type BayQueueUpcomingSlot = {
   workDays: number;
   /** The soonest upcoming Slot — highlighted as 'next' in the timeline. */
   isNext: boolean;
+  status: 'done' | 'scheduled';
 };
 
 export type BayQueueState =
@@ -75,6 +80,7 @@ export type BayQueueState =
       status: 'ready';
       bay: { id: string; name: string; operator: BayOperator | null };
       active: BayQueueActiveJob | null;
+      history: BayQueueUpcomingSlot[];
       upcoming: BayQueueUpcomingSlot[];
       /** Detail-pane projection for every selectable Slot, keyed by Slot id. */
       slotsById: Record<string, BaySlotDetail>;
@@ -89,8 +95,8 @@ export type BayQueueState =
  */
 export function useBaySchedule(bayId: string): BayQueueState {
   const trpc = useTRPC();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
-  const bayCalendars = useBayCalendars();
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(mobileBoardHistoryInput));
+  const bayCalendars = useBayCalendars({ input: mobileBoardHistoryInput });
 
   return useMemo<BayQueueState>(() => {
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
@@ -109,6 +115,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
       activeSlot && activeJob
         ? {
             ...deriveActiveJobProgress({ slot: activeSlot, today, workingCalendar }),
+            isCancelled: activeJob.cancelledAt !== null,
             slotId: activeSlot.id,
             jobCode: activeSlot.jobCode,
             jobDisplayName: getJobDisplayName(activeJob),
@@ -144,6 +151,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
         bayName: bay.name,
         status,
         isNext,
+        isCancelled: job?.cancelledAt !== null && job?.cancelledAt !== undefined,
         remainingWorkDays: remaining,
         firstWorkDay: slot.firstWorkDay,
         lastWorkDay: slot.lastWorkDay,
@@ -157,9 +165,29 @@ export function useBaySchedule(bayId: string): BayQueueState {
     };
     if (activeSlot && active) addSlotDetail(activeSlot, 'in-progress', active.remainingWorkDays, false);
 
+    const history = bay.slots
+      .filter((slot): slot is ProjectedWorkJobSlot => slot.kind === 'work' && slot.state === 'done')
+      .map<BayQueueUpcomingSlot>((slot) => {
+        const detail = addSlotDetail(slot, 'done', null, false);
+
+        return {
+          firstWorkDay: detail.firstWorkDay,
+          isCancelled: detail.isCancelled,
+          isNext: false,
+          jobCode: detail.jobCode,
+          jobDisplayName: detail.jobDisplayName,
+          lastWorkDay: detail.lastWorkDay,
+          productThumbnailDataUrl: detail.productThumbnailDataUrl,
+          slotId: slot.id,
+          status: 'done',
+          workDays: detail.workDays,
+        };
+      });
+
     // The UP NEXT list reuses each Slot's detail projection, so the working-day
     // span is derived exactly once per Slot.
-    const upcoming = upcomingSlots.map<BayQueueUpcomingSlot>((slot, index) => {
+    const liveUpcomingSlots = upcomingSlots.filter((slot) => jobsById.get(slot.jobId)?.cancelledAt === null);
+    const upcoming = liveUpcomingSlots.map<BayQueueUpcomingSlot>((slot, index) => {
       const detail = addSlotDetail(slot, 'scheduled', null, index === 0);
 
       return {
@@ -171,6 +199,8 @@ export function useBaySchedule(bayId: string): BayQueueState {
         lastWorkDay: detail.lastWorkDay,
         workDays: detail.workDays,
         isNext: index === 0,
+        isCancelled: detail.isCancelled,
+        status: 'scheduled',
       };
     });
 
@@ -178,6 +208,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
       status: 'ready',
       bay: { id: bay.id, name: bay.name, operator: bay.currentOperator },
       active,
+      history,
       upcoming,
       slotsById,
       today,

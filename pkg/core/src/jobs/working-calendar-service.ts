@@ -1,4 +1,12 @@
-import { type DatabaseTransaction, type Db, jobBayCalendarExceptions, jobBays, workingCalendarOffDays } from '@pkg/db';
+import {
+  type DatabaseTransaction,
+  type Db,
+  jobBayCalendarExceptions,
+  jobBays,
+  jobSlots,
+  jobs,
+  workingCalendarOffDays,
+} from '@pkg/db';
 import type { WorkingCalendar } from '@pkg/domain';
 import {
   type AddBayCalendarExceptionInput,
@@ -12,9 +20,9 @@ import {
   ToggleOffDayResult,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNotNull } from 'drizzle-orm';
 
-import { JobBayNotFoundError } from './job-errors.js';
+import { JobBayNotFoundError, JobCancelledError } from './job-errors.js';
 
 export async function toggleOffDay({ db, input }: { db: Db; input: ToggleOffDayInput }): Promise<ToggleOffDayResult> {
   return db.transaction(async (tx) => {
@@ -64,6 +72,8 @@ export async function addBayCalendarException({
       throw new JobBayNotFoundError(input.bayId);
     }
 
+    await assertBayHasNoCancelledJobSlots(tx, bay.id);
+
     const [row] = await tx
       .insert(jobBayCalendarExceptions)
       .values({
@@ -109,6 +119,8 @@ export async function removeBayCalendarException({
       throw new JobBayNotFoundError(input.bayId);
     }
 
+    await assertBayHasNoCancelledJobSlots(tx, bay.id);
+
     const [row] = await tx
       .delete(jobBayCalendarExceptions)
       .where(and(eq(jobBayCalendarExceptions.bayId, bay.id), eq(jobBayCalendarExceptions.date, input.date)))
@@ -121,6 +133,19 @@ export async function removeBayCalendarException({
 
     return RemoveBayCalendarExceptionResult.parse({ exception: row ?? null });
   });
+}
+
+async function assertBayHasNoCancelledJobSlots(tx: DatabaseTransaction, bayId: UUID): Promise<void> {
+  const [cancelledJob] = await tx
+    .select({ id: jobs.id })
+    .from(jobSlots)
+    .innerJoin(jobs, eq(jobSlots.jobId, jobs.id))
+    .where(and(eq(jobSlots.bayId, bayId), isNotNull(jobs.cancelledAt)))
+    .limit(1);
+
+  if (cancelledJob) {
+    throw new JobCancelledError(cancelledJob.id);
+  }
 }
 
 export async function listWorkingCalendarOffDays(db: Db | DatabaseTransaction) {

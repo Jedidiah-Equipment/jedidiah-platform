@@ -55,6 +55,7 @@ describe('getJob contract', () => {
 
     expect(GetJobResponse.parse(response)).toEqual(response);
     expect(response).toMatchObject({
+      cancelledAt: null,
       code: 'JOB-00001',
       description: 'Repair hydraulic leak',
       id: JOB_ID,

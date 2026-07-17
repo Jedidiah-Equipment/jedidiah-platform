@@ -46,7 +46,7 @@ import {
   type SortDirection,
   UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gte, inArray, isNotNull, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -99,7 +99,8 @@ export async function listJobCustomerOptions({
   const jobCustomerIds = db
     .selectDistinct({ customerId: quotes.customerId })
     .from(quotes)
-    .innerJoin(jobs, eq(jobs.quoteId, quotes.id));
+    .innerJoin(jobs, eq(jobs.quoteId, quotes.id))
+    .where(isNull(jobs.cancelledAt));
   const conditions: SQL[] = [inArray(customers.id, jobCustomerIds)];
 
   if (input.search) {
@@ -431,7 +432,7 @@ function jobCustomerFilterCondition(alias: 'filter_customer_quote', customerId: 
 }
 
 function buildJobListWhere(input: JobListInput): SQL | undefined {
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [isNull(jobs.cancelledAt)];
 
   if (input.filters.jobId) {
     conditions.push(eq(jobs.id, input.filters.jobId));
@@ -486,7 +487,7 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     }
   }
 
-  return conditions.length > 0 ? and(...conditions) : undefined;
+  return and(...conditions);
 }
 
 export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<JobDetail> {

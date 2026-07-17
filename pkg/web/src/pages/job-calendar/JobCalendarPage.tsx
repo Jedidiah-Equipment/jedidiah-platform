@@ -1,7 +1,7 @@
 import { hasPermission } from '@pkg/domain';
 import {
   type BayCalendarExceptionDirection,
-  BoardListInput,
+  BoardFullHistoryInput,
   type DateOnlyIso,
   type OffDay,
   type UUID,
@@ -35,14 +35,12 @@ import { OffDayDialog } from './components/OffDayDialog.js';
 import { groupJobCalendarSlotsByDate } from './job-calendar-slots.js';
 import type { BayExceptionChip, BayExceptionDialogState, SelectedCalendarDay } from './types.js';
 
-const jobCalendarHistoryInput = BoardListInput.parse({ from: '2000-01-01' });
-
 export const JobCalendarPage: React.FC = () => {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(jobCalendarHistoryInput));
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(BoardFullHistoryInput));
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const bays = baysQuery.data?.items ?? [];
   const enabledBayIds = useMemo(

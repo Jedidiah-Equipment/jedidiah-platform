@@ -8,6 +8,7 @@ import {
   getBoardBayRowJobIds,
   mergeBoardBayRows,
   toProjectedBoard,
+  withoutCancelledJobSlots,
 } from './board-read.js';
 import { JobBayNotFoundError } from './job-errors.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
@@ -41,7 +42,7 @@ export async function previewBoard({
     db,
     jobIds: getBoardBayRowJobIds(seededRows),
   });
-  const rows = mergeBoardBayRows(seededRows, crossBayRows);
+  const rows = withoutCancelledJobSlots(mergeBoardBayRows(seededRows, crossBayRows));
   const today = getPlantDateNow();
   const { ghosts, placements, queues } = toProjectedBoard(rows, { offDays, seeds: input.seeds, today });
   const seededBayIdSet = new Set<UUID>(seededBayIds);

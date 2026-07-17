@@ -1,27 +1,21 @@
-import {
-  type DatabaseTransaction,
-  type Db,
-  jobBayCalendarExceptions,
-  jobBays,
-  jobSlots,
-  jobs,
-  workingCalendarOffDays,
-} from '@pkg/db';
-import type { WorkingCalendar } from '@pkg/domain';
+import { type DatabaseTransaction, type Db, jobBayCalendarExceptions, jobBays, workingCalendarOffDays } from '@pkg/db';
+import { getPlantDateNow, type WorkingCalendar } from '@pkg/domain';
 import {
   type AddBayCalendarExceptionInput,
   AddBayCalendarExceptionResult,
   BayCalendarException,
   type BayCalendarExceptionDirection,
   OffDay,
+  type ProjectedWorkJobSlot,
   type RemoveBayCalendarExceptionInput,
   RemoveBayCalendarExceptionResult,
   type ToggleOffDayInput,
   ToggleOffDayResult,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, isNotNull } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
+import { findBoardBayRows, toProjectedBoard } from './board-read.js';
 import { JobBayNotFoundError, JobCancelledError } from './job-errors.js';
 
 export async function toggleOffDay({ db, input }: { db: Db; input: ToggleOffDayInput }): Promise<ToggleOffDayResult> {
@@ -72,7 +66,7 @@ export async function addBayCalendarException({
       throw new JobBayNotFoundError(input.bayId);
     }
 
-    await assertBayHasNoCancelledJobSlots(tx, bay.id);
+    const cancelledSlotProjections = await getCancelledSlotProjections(tx, bay.id);
 
     const [row] = await tx
       .insert(jobBayCalendarExceptions)
@@ -101,6 +95,8 @@ export async function addBayCalendarException({
       throw new Error('Bay calendar exception upsert did not return a row');
     }
 
+    await assertCancelledSlotProjectionsUnchanged(tx, bay.id, cancelledSlotProjections);
+
     return AddBayCalendarExceptionResult.parse({ exception: row });
   });
 }
@@ -119,7 +115,7 @@ export async function removeBayCalendarException({
       throw new JobBayNotFoundError(input.bayId);
     }
 
-    await assertBayHasNoCancelledJobSlots(tx, bay.id);
+    const cancelledSlotProjections = await getCancelledSlotProjections(tx, bay.id);
 
     const [row] = await tx
       .delete(jobBayCalendarExceptions)
@@ -131,21 +127,73 @@ export async function removeBayCalendarException({
         label: jobBayCalendarExceptions.label,
       });
 
+    await assertCancelledSlotProjectionsUnchanged(tx, bay.id, cancelledSlotProjections);
+
     return RemoveBayCalendarExceptionResult.parse({ exception: row ?? null });
   });
 }
 
-async function assertBayHasNoCancelledJobSlots(tx: DatabaseTransaction, bayId: UUID): Promise<void> {
-  const [cancelledJob] = await tx
-    .select({ id: jobs.id })
-    .from(jobSlots)
-    .innerJoin(jobs, eq(jobSlots.jobId, jobs.id))
-    .where(and(eq(jobSlots.bayId, bayId), isNotNull(jobs.cancelledAt)))
-    .limit(1);
+type CancelledSlotProjection = Pick<ProjectedWorkJobSlot, 'endDate' | 'firstWorkDay' | 'lastWorkDay' | 'startDate'> & {
+  jobId: UUID;
+};
 
-  if (cancelledJob) {
-    throw new JobCancelledError(cancelledJob.id);
+async function getCancelledSlotProjections(
+  tx: DatabaseTransaction,
+  bayId: UUID,
+): Promise<Map<UUID, CancelledSlotProjection>> {
+  const [offDays, rows] = await Promise.all([
+    listWorkingCalendarOffDays(tx),
+    findBoardBayRows(tx, eq(jobBays.id, bayId)),
+  ]);
+  const cancelledJobIds = new Set(
+    rows.flatMap((row) => row.slots.flatMap((slot) => (slot.job?.cancelledAt ? [slot.job.id] : []))),
+  );
+
+  if (cancelledJobIds.size === 0) {
+    return new Map();
   }
+
+  const [bay] = toProjectedBoard(rows, { offDays, today: getPlantDateNow() }).queues;
+  const projections = new Map<UUID, CancelledSlotProjection>();
+
+  for (const slot of bay?.slots ?? []) {
+    if (slot.kind !== 'work' || !cancelledJobIds.has(slot.jobId)) continue;
+    projections.set(slot.id, {
+      endDate: slot.endDate,
+      firstWorkDay: slot.firstWorkDay,
+      jobId: slot.jobId,
+      lastWorkDay: slot.lastWorkDay,
+      startDate: slot.startDate,
+    });
+  }
+
+  return projections;
+}
+
+async function assertCancelledSlotProjectionsUnchanged(
+  tx: DatabaseTransaction,
+  bayId: UUID,
+  before: ReadonlyMap<UUID, CancelledSlotProjection>,
+): Promise<void> {
+  if (before.size === 0) return;
+
+  const after = await getCancelledSlotProjections(tx, bayId);
+  for (const [slotId, projection] of before) {
+    if (!hasSameProjectionDates(projection, after.get(slotId))) {
+      throw new JobCancelledError(projection.jobId);
+    }
+  }
+}
+
+function hasSameProjectionDates(before: CancelledSlotProjection, after: CancelledSlotProjection | undefined): boolean {
+  if (!after) return false;
+
+  return (
+    before.startDate === after.startDate &&
+    before.endDate === after.endDate &&
+    before.firstWorkDay === after.firstWorkDay &&
+    before.lastWorkDay === after.lastWorkDay
+  );
 }
 
 export async function listWorkingCalendarOffDays(db: Db | DatabaseTransaction) {

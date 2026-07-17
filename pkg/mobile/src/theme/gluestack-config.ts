@@ -4,6 +4,12 @@ import { vars } from 'nativewind';
 import { primaryColorTriplets } from './brand-colors';
 import type { ResolvedColorScheme } from './color-mode';
 
+const mutedForegroundTriplets = { dark: '122 122 130', light: '115 115 115' } as const;
+export const mutedForegroundColors = {
+  dark: `rgb(${mutedForegroundTriplets.dark})`,
+  light: `rgb(${mutedForegroundTriplets.light})`,
+} as const satisfies Record<ResolvedColorScheme, string>;
+
 export const gluestackConfig = {
   dark: vars({
     '--color-background': '10 10 11',
@@ -12,7 +18,7 @@ export const gluestackConfig = {
     '--color-elevated': '46 46 52',
     '--color-foreground': '250 250 250',
     '--color-muted': '27 27 31',
-    '--color-muted-foreground': '122 122 130',
+    '--color-muted-foreground': mutedForegroundTriplets.dark,
     '--color-primary': primaryColorTriplets.dark,
     '--color-primary-foreground': '10 10 10',
     // Status accents derive from the shared hex palette (@pkg/domain) so the chips and the
@@ -31,7 +37,7 @@ export const gluestackConfig = {
     '--color-elevated': '245 245 245',
     '--color-foreground': '10 10 10',
     '--color-muted': '245 245 245',
-    '--color-muted-foreground': '115 115 115',
+    '--color-muted-foreground': mutedForegroundTriplets.light,
     '--color-primary': primaryColorTriplets.light,
     '--color-primary-foreground': '10 10 10',
     '--color-status-in-progress': hexToRgbTriplet(lightStatusColors.inProgress),

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { type DatabaseTransaction, type Db, documents, getUniqueViolationConstraint, jobs } from '@pkg/db';
+import { type Db, documents, getUniqueViolationConstraint } from '@pkg/db';
 import type { AuthId, JobDocument, UUID } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
 import {
@@ -15,7 +15,7 @@ import {
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { JobCancelledError, JobNotFoundError } from './job-errors.js';
+import { lockMutableJob } from './job-mutation-guards.js';
 import { getJobDocuments } from './job-read-service.js';
 
 const JOB_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_job_id_filename_ci_unique';
@@ -36,7 +36,7 @@ export async function createJobPurchaseOrder({
   storage: StorageAdapter;
 }): Promise<JobDocument> {
   return db.transaction(async (tx) => {
-    await assertJobMutable({ jobId, tx });
+    await lockMutableJob(tx, jobId);
     const row = await createDocumentRecord({
       actorUserId,
       db: tx,
@@ -73,7 +73,7 @@ export async function deleteJobPurchaseOrder({
   jobId: UUID;
 }): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertJobMutable({ jobId, tx });
+    await lockMutableJob(tx, jobId);
     const [document] = await tx
       .select(documentBaseSelect)
       .from(documents)
@@ -90,22 +90,6 @@ export async function deleteJobPurchaseOrder({
 
     await deleteDocumentRecord({ actorUserId, db: tx, document });
   });
-}
-
-async function assertJobMutable({ jobId, tx }: { jobId: UUID; tx: DatabaseTransaction }): Promise<void> {
-  const [row] = await tx
-    .select({ cancelledAt: jobs.cancelledAt, id: jobs.id })
-    .from(jobs)
-    .where(eq(jobs.id, jobId))
-    .for('update');
-
-  if (!row) {
-    throw new JobNotFoundError(jobId);
-  }
-
-  if (row.cancelledAt) {
-    throw new JobCancelledError(row.id);
-  }
 }
 
 function mapJobDocumentUniqueViolation(error: unknown, input: { filename: string; jobId: UUID }): Error {

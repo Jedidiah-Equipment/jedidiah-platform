@@ -61,6 +61,7 @@ import {
   findBoardBayRowsForJobs,
   type ProjectedBoardQueues,
   toProjectedBoard,
+  withoutCancelledJobSlots,
 } from './board-read.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
@@ -240,7 +241,7 @@ export async function listBayQueueAvailability({
     findBoardBayRows(db, inArray(jobBays.id, bayIds)),
   ]);
   const today = getPlantDateNow();
-  const { queues, workingCalendarsByBayId } = toProjectedBoard(rows, { offDays, today });
+  const { queues, workingCalendarsByBayId } = toProjectedBoard(withoutCancelledJobSlots(rows), { offDays, today });
 
   return queues.map((schedule) => {
     const workingCalendar = workingCalendarsByBayId.get(schedule.id) ?? {};

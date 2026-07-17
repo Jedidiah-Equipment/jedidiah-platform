@@ -10,10 +10,23 @@ export type SeedStorage = {
   client: S3Client;
 };
 
-// `prefix` selects which env block to read: '' for LOCAL, 'STAGING_' for read, 'PRODUCTION_' for promote.
-export function createStorageFromEnv(prefix: '' | 'STAGING_' | 'PRODUCTION_'): SeedStorage {
+export type SeedStoragePrefix = '' | 'PRODUCTION_' | 'STAGING_';
+
+export type SeedStorageConfig = {
+  accessKeyId: string;
+  bucket: string;
+  endpoint: string;
+  forcePathStyle: boolean;
+  region: string;
+  secretAccessKey: string;
+};
+
+export function readSeedStorageConfig(
+  prefix: SeedStoragePrefix,
+  env: NodeJS.ProcessEnv = process.env,
+): SeedStorageConfig {
   const read = (name: string): string => {
-    const value = process.env[`${prefix}${name}`];
+    const value = env[`${prefix}${name}`];
 
     if (!value) {
       throw new Error(`${prefix}${name} is required to sync doc-store objects.`);
@@ -24,19 +37,33 @@ export function createStorageFromEnv(prefix: '' | 'STAGING_' | 'PRODUCTION_'): S
 
   return {
     bucket: read('DOCUMENT_STORAGE_BUCKET'),
+    accessKeyId: read('DOCUMENT_STORAGE_ACCESS_KEY_ID'),
+    endpoint: read('DOCUMENT_STORAGE_ENDPOINT'),
+    forcePathStyle: EnvBoolean.parse(read('DOCUMENT_STORAGE_FORCE_PATH_STYLE')),
+    region: read('DOCUMENT_STORAGE_REGION'),
+    secretAccessKey: read('DOCUMENT_STORAGE_SECRET_ACCESS_KEY'),
+  };
+}
+
+// `prefix` selects which env block to read: '' for LOCAL, or the explicit remote read/promote source.
+export function createStorageFromEnv(prefix: SeedStoragePrefix): SeedStorage {
+  const config = readSeedStorageConfig(prefix);
+
+  return {
+    bucket: config.bucket,
     client: new S3Client({
       credentials: {
-        accessKeyId: read('DOCUMENT_STORAGE_ACCESS_KEY_ID'),
-        secretAccessKey: read('DOCUMENT_STORAGE_SECRET_ACCESS_KEY'),
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey,
       },
-      endpoint: read('DOCUMENT_STORAGE_ENDPOINT'),
-      forcePathStyle: EnvBoolean.parse(read('DOCUMENT_STORAGE_FORCE_PATH_STYLE')),
-      region: read('DOCUMENT_STORAGE_REGION'),
+      endpoint: config.endpoint,
+      forcePathStyle: config.forcePathStyle,
+      region: config.region,
     }),
   };
 }
 
-// Fetches an object's bytes, returning null when the key is absent (a dangling reference in staging) so
+// Fetches an object's bytes, returning null when the key is absent (a dangling remote reference) so
 // callers can warn and skip rather than abort the whole sync.
 export async function downloadObject(store: SeedStorage, key: string): Promise<Uint8Array | null> {
   try {

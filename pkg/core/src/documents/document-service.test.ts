@@ -158,6 +158,33 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('Job Purchase Orders', () => {
+  test('rejects Purchase Order uploads and deletes for cancelled Jobs', async ({ context }) => {
+    const job = await createCustomJobOwner(context.db, context.customerId);
+    const document = await createJobPurchaseOrder({
+      actorUserId: ACTOR_USER_ID,
+      bytes: pdfBytes(),
+      db: context.db,
+      filename: 'PO-BEFORE-CANCEL.pdf',
+      jobId: job.id,
+      storage: context.storage,
+    });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(
+      createJobPurchaseOrder({
+        actorUserId: ACTOR_USER_ID,
+        bytes: pdfBytes(),
+        db: context.db,
+        filename: 'PO-AFTER-CANCEL.pdf',
+        jobId: job.id,
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+    await expect(
+      deleteJobPurchaseOrder({ actorUserId: ACTOR_USER_ID, db: context.db, documentId: document.id, jobId: job.id }),
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+  });
+
   test('uploads multiple PDFs to a Custom Job as source-less Purchase Orders', async ({ context }) => {
     const job = await createCustomJobOwner(context.db, context.customerId);
 

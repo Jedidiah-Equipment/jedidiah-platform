@@ -1334,8 +1334,8 @@ describe('jobs.bookSlot', () => {
         jobId: job.id,
       }),
     ).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-      message: 'Cancelled jobs cannot be scheduled.',
+      appCode: 'job.cancelled',
+      code: 'BAD_REQUEST',
     });
   });
 
@@ -2216,6 +2216,16 @@ describe('jobs.moveSlot', () => {
 });
 
 describe('jobs.update', () => {
+  test('maps cancelled Job updates to the stable app code', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(sql`${jobs.id} = ${job.id}`);
+
+    await expect(
+      caller.jobs.update({ id: job.id, description: 'Should not save', invoiceNumber: '', vinNumber: '' }),
+    ).rejects.toMatchObject({ appCode: 'job.cancelled', code: 'BAD_REQUEST' });
+  });
+
   test('updates description, invoice number, and VIN, blanking to null, and records one audit event per change', async ({
     context,
   }) => {

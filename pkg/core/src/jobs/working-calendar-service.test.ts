@@ -3,6 +3,7 @@ import {
   type Db,
   jobBayCalendarExceptions,
   jobBays,
+  jobs,
   products,
   quotes,
   user,
@@ -16,6 +17,7 @@ import {
   RemoveBayCalendarExceptionInput,
   ToggleOffDayInput,
 } from '@pkg/schema';
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
@@ -122,6 +124,30 @@ describe('toggleOffDay', () => {
 });
 
 describe('Bay calendar exceptions', () => {
+  test("rejects calendar changes that would reflow a cancelled Job's retained slot", async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const job = await createAcceptedJob(context.db, context.product.id);
+    await addBayCalendarException({
+      db: context.db,
+      input: bayExceptionInput({ bayId: bay.id, date: '2026-06-07', direction: 'off', label: 'Existing closure' }),
+    });
+    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 3, jobId: job.id } });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(
+      addBayCalendarException({
+        db: context.db,
+        input: bayExceptionInput({ bayId: bay.id, date: '2026-06-08', direction: 'off', label: null }),
+      }),
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+    await expect(
+      removeBayCalendarException({
+        db: context.db,
+        input: removeBayExceptionInput({ bayId: bay.id, date: '2026-06-07' }),
+      }),
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+  });
+
   test('inserts, updates, and removes Bay exceptions for authorized schedulers', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
 

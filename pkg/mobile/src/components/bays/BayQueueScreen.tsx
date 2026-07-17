@@ -86,7 +86,7 @@ function Ready({
   // Default selection follows the prototype: the active Job, else the soonest Slot.
   // Derived (not stored) so a schedule refetch or bayId change that drops the picked
   // Slot falls back to the default instead of stranding the detail pane on a stale id.
-  const defaultId = state.active?.slotId ?? state.upcoming.at(0)?.slotId ?? null;
+  const defaultId = state.active?.slotId ?? state.upcoming.at(0)?.slotId ?? state.history.at(-1)?.slotId ?? null;
   const effectiveId = selectedId && slotsById[selectedId] ? selectedId : defaultId;
   const selected = effectiveId ? (slotsById[effectiveId] ?? null) : null;
 
@@ -153,8 +153,8 @@ function ListPane({
   selectedId: string | null;
   onSelect: (slotId: string) => void;
 }) {
-  const { active, upcoming } = state;
-  const isEmpty = !active && upcoming.length === 0;
+  const { active, history, upcoming } = state;
+  const isEmpty = !active && upcoming.length === 0 && history.length === 0;
 
   if (isEmpty) {
     return (
@@ -187,6 +187,13 @@ function ListPane({
           <Timeline onSelect={onSelect} selectedId={selectedId} slots={upcoming} />
         </>
       ) : null}
+
+      {history.length > 0 ? (
+        <>
+          <SectionLabel className="mb-3 mt-6">HISTORY</SectionLabel>
+          <Timeline onSelect={onSelect} selectedId={selectedId} slots={history} />
+        </>
+      ) : null}
     </>
   );
 }
@@ -203,7 +210,11 @@ function ActiveHero({
   const heroSub = [active.productSerialNumber, active.customerCompanyName].filter(Boolean).join(' · ');
   const { resolved } = useColorMode();
   // The hero is the Job running today, so its countdown/bar use the in-progress accent.
-  const accent = statusDaysLeftColor({ status: 'in-progress', daysLeft: active.remainingWorkDays, scheme: resolved });
+  const accent = active.isCancelled
+    ? resolved === 'dark'
+      ? '#a1a1aa'
+      : '#71717a'
+    : statusDaysLeftColor({ status: 'in-progress', daysLeft: active.remainingWorkDays, scheme: resolved });
 
   return (
     // Border is a constant 2px (faded when unselected, full-strength when selected) so the
@@ -212,7 +223,13 @@ function ActiveHero({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       className={`rounded-2xl border-2 p-4 active:opacity-90 ${
-        selected ? 'border-status-in-progress bg-status-in-progress/10' : 'border-status-in-progress/40 bg-surface'
+        active.isCancelled
+          ? selected
+            ? 'border-muted-foreground bg-muted'
+            : 'border-muted-foreground/40 bg-surface'
+          : selected
+            ? 'border-status-in-progress bg-status-in-progress/10'
+            : 'border-status-in-progress/40 bg-surface'
       }`}
       onPress={onSelect}
     >
@@ -224,9 +241,14 @@ function ActiveHero({
         />
         <View className="min-w-0 flex-1">
           <View className="flex-row items-center gap-1.5">
-            <View className="h-1.5 w-1.5 rounded-full bg-status-in-progress" />
-            <Text className="text-[10px] tracking-wide text-status-in-progress" weight="semibold">
-              IN PROGRESS
+            <View
+              className={`h-1.5 w-1.5 rounded-full ${active.isCancelled ? 'bg-muted-foreground' : 'bg-status-in-progress'}`}
+            />
+            <Text
+              className={`text-[10px] tracking-wide ${active.isCancelled ? 'text-muted-foreground' : 'text-status-in-progress'}`}
+              weight="semibold"
+            >
+              {active.isCancelled ? 'CANCELLED' : 'IN PROGRESS'}
             </Text>
           </View>
           <Text className="mt-1 text-xl text-surface-foreground" mono weight="bold">
@@ -246,16 +268,26 @@ function ActiveHero({
       <View className="my-4 h-px bg-border" />
 
       <View className="flex-row items-end justify-between">
-        <View className="flex-row items-baseline gap-2">
-          <Text className="text-5xl leading-[48px]" style={{ color: accent }} weight="bold">
-            {active.remainingWorkDays}
-          </Text>
-          <Text className="text-sm text-muted-foreground" weight="semibold">
-            {active.remainingWorkDays === 1 ? 'working day left' : 'working days left'}
-          </Text>
-        </View>
+        {active.isCancelled ? (
+          <View className="min-w-0 flex-1 pr-4">
+            <Text className="text-sm text-muted-foreground" weight="semibold">
+              Slot retained for schedule history
+            </Text>
+          </View>
+        ) : (
+          <View className="flex-row items-baseline gap-2">
+            <Text className="text-5xl leading-[48px]" style={{ color: accent }} weight="bold">
+              {active.remainingWorkDays}
+            </Text>
+            <Text className="text-sm text-muted-foreground" weight="semibold">
+              {active.remainingWorkDays === 1 ? 'working day left' : 'working days left'}
+            </Text>
+          </View>
+        )}
         <View className="items-end">
-          <Text className="text-[10px] uppercase tracking-wide text-muted-foreground">ends</Text>
+          <Text className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            {active.isCancelled ? 'slot ends' : 'ends'}
+          </Text>
           <Text className="text-xs text-surface-foreground" weight="semibold">
             {formatDate(active.lastWorkDay, 'EEE d MMM')}
           </Text>
@@ -317,14 +349,19 @@ function TimelineItem({
   const rangeLabel =
     `${formatDate(slot.firstWorkDay, 'd MMM')} – ${formatDate(slot.lastWorkDay, 'd MMM')} · ${slot.workDays} work ${
       slot.workDays === 1 ? 'day' : 'days'
-    }`.toUpperCase();
+    } · ${slot.isCancelled ? 'cancelled' : slot.status === 'done' ? 'done' : 'scheduled'}`.toUpperCase();
+  const isMuted = slot.isCancelled || slot.status === 'done';
   const labelClass = selected
-    ? slot.isNext
-      ? 'text-status-next'
-      : 'text-foreground'
-    : slot.isNext
-      ? 'text-status-next-soft'
-      : 'text-muted-foreground';
+    ? isMuted
+      ? 'text-muted-foreground'
+      : slot.isNext
+        ? 'text-status-next'
+        : 'text-foreground'
+    : isMuted
+      ? 'text-muted-foreground'
+      : slot.isNext
+        ? 'text-status-next-soft'
+        : 'text-muted-foreground';
 
   return (
     <Pressable
@@ -337,12 +374,16 @@ function TimelineItem({
       <View
         className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 ${
           selected
-            ? slot.isNext
-              ? 'border-status-next bg-status-next'
-              : 'border-muted-foreground bg-muted-foreground'
-            : slot.isNext
-              ? 'border-status-next bg-background'
-              : 'border-muted-foreground bg-background'
+            ? isMuted
+              ? 'border-muted-foreground bg-muted-foreground'
+              : slot.isNext
+                ? 'border-status-next bg-status-next'
+                : 'border-muted-foreground bg-muted-foreground'
+            : isMuted
+              ? 'border-muted-foreground bg-background'
+              : slot.isNext
+                ? 'border-status-next bg-background'
+                : 'border-muted-foreground bg-background'
         }`}
         style={{ left: 0 }}
       />
@@ -351,12 +392,16 @@ function TimelineItem({
       <View
         className={`rounded-2xl border-2 p-3.5 ${
           selected
-            ? slot.isNext
-              ? 'border-status-next bg-status-next/10'
-              : 'border-muted-foreground bg-muted'
-            : slot.isNext
-              ? 'border-status-next/40 bg-surface'
-              : 'border-border bg-surface'
+            ? isMuted
+              ? 'border-muted-foreground bg-muted'
+              : slot.isNext
+                ? 'border-status-next bg-status-next/10'
+                : 'border-muted-foreground bg-muted'
+            : isMuted
+              ? 'border-border bg-surface'
+              : slot.isNext
+                ? 'border-status-next/40 bg-surface'
+                : 'border-border bg-surface'
         }`}
         // Indent past the spine/node gutter (replaces the old container padding).
         style={{ marginLeft: 24 }}

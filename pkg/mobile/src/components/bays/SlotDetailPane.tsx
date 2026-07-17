@@ -14,10 +14,11 @@ import { useColorMode } from '@/theme/use-color-mode';
  * {@link BaySlotDetail}; documents/assemblies fetch their own `jobs.get` detail.
  */
 export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
-  const isActive = slot.status === 'in-progress';
+  const isActive = slot.status === 'in-progress' && !slot.isCancelled;
+  const isDone = slot.status === 'done' && !slot.isCancelled;
   const { resolved } = useColorMode();
   const daysLeftColor =
-    slot.remainingWorkDays !== null
+    slot.remainingWorkDays !== null && slot.status !== 'done'
       ? statusDaysLeftColor({ status: slot.status, daysLeft: slot.remainingWorkDays, scheme: resolved })
       : null;
 
@@ -27,10 +28,10 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
           SCHEDULED chip matches its timeline card — green for the 'next' Slot, grey otherwise. */}
       <View className="flex-row items-center gap-2">
         <StatusChip
-          label={isActive ? 'IN PROGRESS' : 'SCHEDULED'}
-          tone={isActive ? 'in-progress' : slot.isNext ? 'next' : 'muted'}
+          label={slot.isCancelled ? 'CANCELLED' : isActive ? 'IN PROGRESS' : isDone ? 'DONE' : 'SCHEDULED'}
+          tone={isActive ? 'in-progress' : slot.isCancelled ? 'muted' : slot.isNext ? 'next' : 'muted'}
         />
-        {slot.remainingWorkDays !== null && daysLeftColor ? (
+        {!slot.isCancelled && slot.remainingWorkDays !== null && daysLeftColor ? (
           <DaysLeftChip color={daysLeftColor} daysLeft={slot.remainingWorkDays} />
         ) : null}
       </View>

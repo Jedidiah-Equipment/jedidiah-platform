@@ -212,6 +212,12 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         code: 'FORBIDDEN',
         message: error.message,
       };
+    case 'job.cancelled':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: error.message,
+      };
     case 'job.bay_not_found':
       return {
         appCode: error.code,

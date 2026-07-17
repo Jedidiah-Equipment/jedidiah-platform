@@ -13,6 +13,7 @@ import type { BayOperator, DateOnlyIso, Department, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+import { mobileBoardHistoryInput } from './board-history';
 import { useTRPC } from './trpc';
 import { useAccess } from './use-access';
 import { useBayCalendars } from './use-bay-calendars';
@@ -36,6 +37,7 @@ export type JobDetailState =
   | { status: 'not-found' }
   | {
       status: 'ready';
+      cancelledAt: string | null;
       jobCode: string;
       quoteCode: string;
       jobDisplayName: string;
@@ -66,8 +68,8 @@ export function useJobDetail(jobId: string): JobDetailState {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const canReadJobs = hasPermission(accessQuery.data, 'job:read');
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: canReadJobs }));
-  const bayCalendars = useBayCalendars({ enabled: canReadJobs });
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(mobileBoardHistoryInput, { enabled: canReadJobs }));
+  const bayCalendars = useBayCalendars({ enabled: canReadJobs, input: mobileBoardHistoryInput });
 
   return useMemo<JobDetailState>(() => {
     if (accessQuery.isPending) return { status: 'pending' };
@@ -108,6 +110,7 @@ export function useJobDetail(jobId: string): JobDetailState {
 
     return {
       status: 'ready',
+      cancelledAt: job.cancelledAt,
       jobCode: job.code,
       quoteCode: job.quoteCode,
       jobDisplayName: getJobDisplayName(job),

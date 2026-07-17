@@ -1219,9 +1219,7 @@ describe('cancelQuote', () => {
     ]);
   });
 
-  test('preserves done work, truncates or removes active work, removes scheduled work, and reflows every Bay', async ({
-    context,
-  }) => {
+  test('preserves done and active work, removes scheduled work, and reflows every Bay', async ({ context }) => {
     const today = getPlantDateNow();
     const quote = await createQuote(context.db, {
       customerId: context.customer.id,
@@ -1315,12 +1313,13 @@ describe('cancelQuote', () => {
       .orderBy(asc(jobSlots.bayId), asc(jobSlots.sequence));
     expect(remainingSlots).toEqual([
       expect.objectContaining({ id: slotIds.done, bayId: firstBay.id, durationDays: 2, sequence: 1 }),
-      expect.objectContaining({ id: slotIds.active, bayId: firstBay.id, durationDays: 1, sequence: 2 }),
+      expect.objectContaining({ id: slotIds.active, bayId: firstBay.id, durationDays: 3, sequence: 2 }),
       expect.objectContaining({ bayId: firstBay.id, jobId: downstreamJob.id, sequence: 3 }),
-      expect.objectContaining({ bayId: secondBay.id, jobId: downstreamJob.id, sequence: 1 }),
+      expect.objectContaining({ id: slotIds.zeroConsumedActive, bayId: secondBay.id, durationDays: 2, sequence: 1 }),
+      expect.objectContaining({ bayId: secondBay.id, jobId: downstreamJob.id, sequence: 2 }),
     ]);
     expect(remainingSlots.map((slot) => slot.id)).not.toEqual(
-      expect.arrayContaining([slotIds.scheduled, slotIds.zeroConsumedActive, slotIds.secondScheduled]),
+      expect.arrayContaining([slotIds.scheduled, slotIds.secondScheduled]),
     );
 
     const events = await context.db

@@ -74,7 +74,8 @@ export function useBayList(): UseBayListResult {
     const cards = enabledBays.map<BayListCard>((bay) => {
       const workingCalendar = bayCalendars.workingCalendarsByBayId.get(bay.id) ?? {};
       const slot = findActiveWorkSlot({ bay });
-      const job = slot ? jobsById.get(slot.jobId) : undefined;
+      const candidateJob = slot ? jobsById.get(slot.jobId) : undefined;
+      const job = candidateJob?.cancelledAt === null ? candidateJob : undefined;
 
       return {
         id: bay.id,

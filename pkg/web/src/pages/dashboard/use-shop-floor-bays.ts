@@ -39,11 +39,18 @@ export function useShopFloorBays(): ShopFloorBays {
       return { status: 'pending' };
     }
 
-    const enabledBays = listEnabledBays(baysQuery.data.items);
+    const cancelledJobIds = new Set(baysQuery.data.jobs.filter((job) => job.cancelledAt !== null).map((job) => job.id));
+    // The Board keeps cancelled Slots for history; dashboard widgets are live operational lists, so
+    // remove those Slots at this consumer boundary without changing the truthful Board response.
+    const enabledBays = listEnabledBays(baysQuery.data.items).map((bay) => ({
+      ...bay,
+      slots: bay.slots.filter((slot) => slot.kind === 'idle' || !cancelledJobIds.has(slot.jobId)),
+    }));
+    const liveJobs = baysQuery.data.jobs.filter((job) => job.cancelledAt === null);
 
     return {
       enabledBays,
-      jobsById: new Map(baysQuery.data.jobs.map((job) => [job.id, job])),
+      jobsById: new Map(liveJobs.map((job) => [job.id, job])),
       offDays: bayCalendars.offDays,
       status: 'ready',
       today: bayCalendars.today,

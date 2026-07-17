@@ -133,6 +133,8 @@ export const BaySlotBar: React.FC<{
   const left = getJobGanttOffset(startDate, gantt);
   const width = Math.max(getJobGanttWidth(startDate, previewEndDate, gantt) - SLOT_GAP, 28);
   const isIdle = slot.kind === 'idle';
+  const isCancelled = !isIdle && job?.cancelledAt !== null && job?.cancelledAt !== undefined;
+  const canReplanSlot = canEditSchedule && !isCancelled;
   // During resize preview the server has not seen `previewEndDate`, so that one path still
   // classifies locally; resting slots read the Board builder's shipped state.
   const isActive =
@@ -141,16 +143,22 @@ export const BaySlotBar: React.FC<{
   // off the app's primary yellow), the next slot off the line is green, everything else is
   // the neutral border.
   const tone: 'active' | 'next' | 'default' = isActive ? 'active' : isNext ? 'next' : 'default';
-  const slotBorderClass = {
-    active: scheduleBarToneClass.active,
-    default: 'border-border',
-    next: scheduleBarToneClass.scheduled,
-  }[tone];
+  const slotBorderClass = isCancelled
+    ? 'border-muted-foreground/40'
+    : {
+        active: scheduleBarToneClass.active,
+        default: 'border-border',
+        next: scheduleBarToneClass.scheduled,
+      }[tone];
   // Custom (non-product) jobs carry a persistent brown fill so they stay recognizable across
   // work states; the border keeps encoding state (blue today, green next/overtime, red closure,
   // yellow primary). Tailwind has no brown, so this uses arbitrary hues tuned per theme (a lighter
   // brown on the dark card, a deeper brown on the light card). Idle slots have no job, so no tint.
-  const slotFillClass = !isIdle && job?.quoteKind === 'custom' ? 'bg-[#795548]/35 dark:bg-[#a1887f]/35' : 'bg-card';
+  const slotFillClass = isCancelled
+    ? 'bg-muted/80 text-muted-foreground grayscale'
+    : !isIdle && job?.quoteKind === 'custom'
+      ? 'bg-[#795548]/35 dark:bg-[#a1887f]/35'
+      : 'bg-card';
   const resizeHandleToneClass = {
     active: scheduleResizeHandleToneClass.active,
     default: 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-ring',
@@ -160,7 +168,7 @@ export const BaySlotBar: React.FC<{
   // Center the bar/card vertically within its (taller) bay row.
   const top = rowTop + (gantt.rowHeight - height) / 2;
   const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!canEditSchedule || isScheduleMutationPending) {
+    if (!canReplanSlot || isScheduleMutationPending) {
       return;
     }
 
@@ -235,6 +243,7 @@ export const BaySlotBar: React.FC<{
               render={
                 <div
                   data-gantt-drag-scroll-ignore
+                  data-cancelled={isCancelled || undefined}
                   className={cn(
                     'pointer-events-auto absolute cursor-default overflow-hidden text-xs shadow-sm transition-opacity duration-200',
                     isIdle
@@ -335,23 +344,25 @@ export const BaySlotBar: React.FC<{
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              <button
-                aria-label={`Resize ${label}`}
-                className={cn(
-                  'absolute top-0 right-0 z-30 h-full w-3 cursor-ew-resize border-r-2 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
-                  resizeHandleToneClass,
-                )}
-                disabled={isScheduleMutationPending || isRemoving}
-                onPointerCancel={cancelResize}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={finishResize}
-                type="button"
-              />
+              {canReplanSlot ? (
+                <button
+                  aria-label={`Resize ${label}`}
+                  className={cn(
+                    'absolute top-0 right-0 z-30 h-full w-3 cursor-ew-resize border-r-2 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                    resizeHandleToneClass,
+                  )}
+                  disabled={isScheduleMutationPending || isRemoving}
+                  onPointerCancel={cancelResize}
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={finishResize}
+                  type="button"
+                />
+              ) : null}
             </>
           ) : null}
         </ContextMenuTrigger>
-        {canEditSchedule ? (
+        {canReplanSlot ? (
           <ContextMenuContent>
             <ContextMenuGroup>
               <ContextMenuItem disabled={isScheduleMutationPending || slotIndex === 0} onClick={() => moveSlot('left')}>

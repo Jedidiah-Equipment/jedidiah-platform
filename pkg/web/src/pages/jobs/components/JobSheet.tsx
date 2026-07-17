@@ -79,7 +79,11 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
                 <JobDetailsTab key={jobQuery.data.id} job={jobQuery.data} />
               </TabsContent>
               <TabsContent className="p-4" value="documents">
-                <JobDocumentsTab documents={jobQuery.data.documents} jobId={jobQuery.data.id} />
+                <JobDocumentsTab
+                  documents={jobQuery.data.documents}
+                  jobId={jobQuery.data.id}
+                  readOnly={jobQuery.data.cancelledAt !== null}
+                />
               </TabsContent>
               <TabsContent className="p-4" value="schedule">
                 <JobScheduleTab job={jobQuery.data} />
@@ -101,8 +105,11 @@ const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
         size="lg"
         thumbnailDataUrl={job?.productThumbnailDataUrl}
       />
-      <div className="min-w-0">
-        <SheetTitle className="truncate font-mono text-lg">{job?.code ?? 'Job'}</SheetTitle>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <SheetTitle className="truncate font-mono text-lg">{job?.code ?? 'Job'}</SheetTitle>
+          {job?.cancelledAt ? <Badge variant="destructive">Cancelled</Badge> : null}
+        </div>
         <SheetDescription className="truncate font-mono">{job?.quoteCode ?? 'Loading job...'}</SheetDescription>
       </div>
     </div>
@@ -111,7 +118,7 @@ const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
 
 const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
   const trpc = useTRPC();
-  const canEditJobs = useCan('job:update').can;
+  const canEditJobs = useCan('job:update').can && job.cancelledAt === null;
   const { invalidateJobs } = useQueryInvalidation();
   const updateJobMutation = useMutation(
     trpc.jobs.update.mutationOptions({
@@ -129,7 +136,11 @@ const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
         <ReadOnlyJobDetails job={job} />
       )}
       <Section
-        action={<GiveFeedbackButton subject={{ subjectType: 'job', jobId: job.id }} subjectLabel={job.code} />}
+        action={
+          job.cancelledAt === null ? (
+            <GiveFeedbackButton subject={{ subjectType: 'job', jobId: job.id }} subjectLabel={job.code} />
+          ) : undefined
+        }
         icon={<IconMessageCircle />}
         title="Feedback"
       >
@@ -240,9 +251,10 @@ const EditableInfoRow: React.FC<{ children: React.ReactNode; label: string }> = 
 const JobDocumentsTab: React.FC<{
   documents: JobDetail['documents'];
   jobId: UUID;
-}> = ({ documents, jobId }) => {
+  readOnly: boolean;
+}> = ({ documents, jobId, readOnly }) => {
   const trpc = useTRPC();
-  const canEditJobs = useCan('job:update').can;
+  const canEditJobs = useCan('job:update').can && !readOnly;
   const { invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const fileInputRef = useRef<HTMLInputElement>(null);

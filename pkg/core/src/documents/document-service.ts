@@ -186,7 +186,7 @@ export async function deleteDocumentRecord({
   document,
 }: {
   actorUserId: AuthId;
-  db: Db;
+  db: DocumentDb;
   document: DocumentBaseRow;
 }): Promise<void> {
   await db.transaction(async (tx) => {

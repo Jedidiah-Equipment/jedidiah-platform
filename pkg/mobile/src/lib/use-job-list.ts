@@ -86,7 +86,7 @@ export function useJobList(): JobListResult {
       const progress = deriveJobProgress({ slots, today });
       const job = jobsById.get(jobId);
       // Skip fully-past Jobs (no unfinished Slot) and any Job whose summary failed to resolve.
-      if (!progress || !job) continue;
+      if (!progress || !job || job.cancelledAt !== null) continue;
 
       cards.push({
         jobId,

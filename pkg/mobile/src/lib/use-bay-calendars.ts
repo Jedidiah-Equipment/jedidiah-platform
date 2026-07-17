@@ -1,5 +1,5 @@
 import { bayWorkingCalendars, type WorkingCalendar } from '@pkg/domain';
-import type { BoardListResult } from '@pkg/schema';
+import type { BoardListInput, BoardListResult } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
@@ -11,9 +11,9 @@ export type BayCalendars = {
   workingCalendarsByBayId: Map<string, WorkingCalendar>;
 };
 
-export function useBayCalendars(options: { enabled?: boolean } = {}): BayCalendars | null {
+export function useBayCalendars(options: { enabled?: boolean; input?: BoardListInput } = {}): BayCalendars | null {
   const trpc = useTRPC();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: options.enabled ?? true }));
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(options.input, { enabled: options.enabled ?? true }));
 
   return useMemo(
     () =>

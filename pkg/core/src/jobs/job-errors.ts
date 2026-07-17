@@ -18,6 +18,17 @@ export class JobCreateFromQuoteDeniedError extends Error {
   }
 }
 
+export class JobCancelledError extends Error {
+  readonly code = 'job.cancelled';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super('Cancelled Job cannot be changed.');
+    this.name = 'JobCancelledError';
+    this.metadata = { id };
+  }
+}
+
 export class JobBayNotFoundError extends Error {
   readonly code = 'job.bay_not_found';
   readonly metadata: { id: string };
@@ -106,6 +117,7 @@ export type JobCoreError =
   | JobBayOperatorNotFoundError
   | JobBayOperatorRoleDeniedError
   | JobCreateFromQuoteDeniedError
+  | JobCancelledError
   | JobNotFoundError
   | JobSlotBookingDeniedError
   | JobSlotNotFoundError;
@@ -119,6 +131,7 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobBayOperatorRoleDeniedError ||
     error instanceof JobBayAlreadyAssignedError ||
     error instanceof JobCreateFromQuoteDeniedError ||
+    error instanceof JobCancelledError ||
     error instanceof JobNotFoundError ||
     error instanceof JobSlotBookingDeniedError ||
     error instanceof JobSlotNotFoundError

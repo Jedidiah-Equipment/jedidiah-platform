@@ -1,6 +1,6 @@
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
-import { customers, type Db, documents, jobs, productAssemblies, products, quotes, user } from '@pkg/db';
+import { customers, type Db, documents, jobs, productAssemblies, products, quotes, sql, user } from '@pkg/db';
 import type { UUID } from '@pkg/schema';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
@@ -175,6 +175,26 @@ describe('document HTTP routes', () => {
       ownerType: 'job',
       sourceProductId: null,
     });
+  });
+
+  test('rejects Purchase Order uploads for cancelled Jobs with the stable app code', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const job = await createJobOwner(context.db, context.product.id);
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(sql`${jobs.id} = ${job.id}`);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/jobs/${job.id}/documents`,
+      ...buildMultipartUpload({ bytes: pdfBytes(), filename: 'PO-CANCELLED.pdf' }),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      data: { appCode: 'job.cancelled' },
+      message: 'Cancelled Job cannot be changed.',
+    });
+    expect(storage.objects.size).toBe(0);
   });
 
   test('rejects non-PDF Job uploads by sniffed content and stores nothing', async ({ context }) => {

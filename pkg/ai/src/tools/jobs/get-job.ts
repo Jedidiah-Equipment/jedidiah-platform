@@ -31,6 +31,7 @@ const GetJobDepartmentSchedule = JobDetailDepartmentSchedule.omit({ bays: true }
 
 export type GetJobResponse = z.infer<typeof GetJobResponse>;
 export const GetJobResponse = JobDetail.pick({
+  cancelledAt: true,
   cfo: true,
   code: true,
   createdAt: true,

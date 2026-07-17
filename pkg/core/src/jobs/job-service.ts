@@ -4,13 +4,21 @@ import {
   documents,
   jobCfoAssemblies,
   jobCfoParts,
+  jobSlots,
   jobs,
   productSerialSequences,
   products,
   quoteSelectedAssemblies,
   quotes,
 } from '@pkg/db';
-import { buildCfo, type CfoEntry, canStartJobFromQuote, getPlantDateNow } from '@pkg/domain';
+import {
+  buildCfo,
+  type CfoEntry,
+  canStartJobFromQuote,
+  countWorkingDaysBetween,
+  getPlantDateNow,
+  projectJobSlots,
+} from '@pkg/domain';
 import {
   type AddIdleJobSlotInput,
   AddIdleJobSlotResult,
@@ -18,7 +26,7 @@ import {
   type BookJobSlotInput,
   BookJobSlotResult,
   type BrochurePdfRenderer,
-  type DateOnlyIso,
+  DateOnlyIso,
   formatJobCode,
   formatProductSerialNumber,
   JobCode,
@@ -44,6 +52,7 @@ import {
   defineAuditDescriptor,
   diffAuditUpdate,
   recordAuditCreate,
+  recordAuditDelete,
   recordAuditEvent,
   recordAuditUpdate,
 } from '../audit/audit-service.js';
@@ -57,6 +66,7 @@ import { jobBayAuditDescriptor } from './job-bay-service.js';
 import { JobCreateFromQuoteDeniedError, JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
+import { loadBayWorkingCalendar } from './working-calendar-service.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
 
@@ -160,6 +170,68 @@ export async function createJob({
 
     return getJob({ db: tx, id: job.id });
   });
+}
+
+export async function cancelJobForQuote({
+  actorUserId,
+  now,
+  plantToday,
+  quoteId,
+  tx,
+}: {
+  actorUserId: AuthId;
+  now: Date;
+  plantToday: DateOnlyIso;
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  const [job] = await tx.select().from(jobs).where(eq(jobs.quoteId, quoteId));
+
+  if (!job || job.cancelledAt) {
+    return;
+  }
+
+  const slots = await tx.select().from(jobSlots).where(eq(jobSlots.jobId, job.id));
+  const bayIds = [...new Set(slots.map((slot) => slot.bayId))].sort();
+
+  // Bay locks are taken in a stable order so a multi-Bay cancellation cannot deadlock another
+  // queue mutation that touches the same set of Bays.
+  for (const bayId of bayIds) {
+    const queue = await lockBayQueue(tx, bayId, { plantToday });
+    const [workingCalendar, baySlots] = await Promise.all([
+      loadBayWorkingCalendar(tx, bayId),
+      tx.query.jobSlots.findMany({
+        orderBy: [asc(jobSlots.sequence), asc(jobSlots.id)],
+        where: eq(jobSlots.bayId, bayId),
+      }),
+    ]);
+    const projectedSlots = projectJobSlots({
+      scheduleOrigin: DateOnlyIso.parse(queue.bay.scheduleOrigin),
+      slots: baySlots,
+      workingCalendar,
+    }).slots;
+
+    for (const slot of projectedSlots.filter((slot) => slot.kind === 'work' && slot.jobId === job.id)) {
+      if (slot.endDate <= plantToday) {
+        continue;
+      }
+
+      if (slot.startDate <= plantToday) {
+        const consumedWorkingDays = countWorkingDaysBetween(slot.startDate, plantToday, workingCalendar);
+
+        if (consumedWorkingDays > 0) {
+          await queue.resize(slot.id, consumedWorkingDays);
+        } else {
+          await queue.remove(slot.id);
+        }
+      } else {
+        await queue.remove(slot.id);
+      }
+    }
+  }
+
+  await tx.update(jobs).set({ cancelledAt: now, updatedAt: now }).where(eq(jobs.id, job.id));
+  await recordAuditDelete({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
 }
 
 async function resolveJobBlueprint({

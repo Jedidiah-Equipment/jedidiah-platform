@@ -171,6 +171,7 @@ async function listJobSummariesByIds({
     const batch = jobIds.slice(start, start + JOB_SUMMARY_LOOKUP_BATCH_SIZE);
     const rows = await db.query.jobs.findMany({
       columns: {
+        cancelledAt: true,
         createdAt: true,
         id: true,
         code: true,
@@ -320,6 +321,7 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
 
   const rows = await db.query.jobs.findMany({
     columns: {
+      cancelledAt: true,
       createdAt: true,
       id: true,
       code: true,
@@ -490,6 +492,7 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
 export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<JobDetail> {
   const row = await db.query.jobs.findFirst({
     columns: {
+      cancelledAt: true,
       createdAt: true,
       code: true,
       id: true,

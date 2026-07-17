@@ -56,6 +56,15 @@ export class QuoteLockedError extends Error {
   }
 }
 
+export class QuoteAlreadyCancelledError extends Error {
+  readonly code = 'quote.already_cancelled';
+
+  constructor() {
+    super('Quote has already been cancelled.');
+    this.name = 'QuoteAlreadyCancelledError';
+  }
+}
+
 export class QuoteDocumentGenerationNotAllowedError extends Error {
   readonly code = 'quote.document_generation_not_allowed';
 
@@ -75,6 +84,7 @@ export class QuoteProductBayAvailabilityNotApplicableError extends Error {
 }
 
 export type QuoteCoreError =
+  | QuoteAlreadyCancelledError
   | QuoteCustomSelectedAssembliesError
   | QuoteDocumentGenerationNotAllowedError
   | QuoteProductBayAvailabilityNotApplicableError
@@ -86,6 +96,7 @@ export type QuoteCoreError =
 
 export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
   return (
+    error instanceof QuoteAlreadyCancelledError ||
     error instanceof QuoteDocumentGenerationNotAllowedError ||
     error instanceof QuoteProductBayAvailabilityNotApplicableError ||
     error instanceof QuoteCustomSelectedAssembliesError ||

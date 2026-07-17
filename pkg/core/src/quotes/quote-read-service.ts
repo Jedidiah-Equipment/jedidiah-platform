@@ -246,6 +246,7 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
       jobs: {
         columns: {
           code: true,
+          description: true,
           id: true,
         },
         orderBy: [asc(jobs.code), asc(jobs.id)],
@@ -404,6 +405,7 @@ export async function getJobByQuoteId({
   const rows = await db
     .select({
       jobCode: jobs.code,
+      jobDescription: jobs.description,
       jobId: jobs.id,
       quoteId: jobs.quoteId,
     })

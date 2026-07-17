@@ -6,9 +6,12 @@ import type React from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { useCan } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteForm } from './components/form/QuoteForm.js';
+import { QuoteCancellationAction } from './components/QuoteCancellationAction.js';
 import { QuoteStatusBadge } from './components/QuoteStatusBadge.js';
 
 type QuoteEditPageProps = {
@@ -17,7 +20,9 @@ type QuoteEditPageProps = {
 
 export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
-  const { invalidateQuotes } = useQueryInvalidation();
+  const canCancelQuote = useCan('quote:cancel').can;
+  const { invalidateJobs, invalidateQuotes } = useQueryInvalidation();
+  const showMutationError = useApiMutationErrorToast();
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
   const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions());
   const quote = quoteQuery.data;
@@ -30,10 +35,34 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
       },
     }),
   );
+  const cancelMutation = useMutation(
+    trpc.quotes.cancel.mutationOptions({
+      onError: (error) => {
+        showMutationError(error, 'Unable to cancel quote.');
+      },
+      onSuccess: async () => {
+        await Promise.all([invalidateQuotes(), invalidateJobs()]);
+      },
+    }),
+  );
 
   return (
     <PageLayout
-      actions={quote ? <QuoteStatusBadge size="lg" status={quote.status} /> : undefined}
+      actions={
+        quote ? (
+          <div className="flex items-center gap-2">
+            <QuoteCancellationAction
+              canCancel={canCancelQuote}
+              isPending={cancelMutation.isPending}
+              job={quote.job}
+              kind={quote.kind}
+              onConfirm={() => cancelMutation.mutate({ id: quote.id })}
+              status={quote.status}
+            />
+            <QuoteStatusBadge size="lg" status={quote.status} />
+          </div>
+        ) : undefined
+      }
       description={quote ? getQuoteOfferingName(quote) : 'Edit Quote'}
       size="lg"
       title={quote?.code ?? 'Loading quote...'}

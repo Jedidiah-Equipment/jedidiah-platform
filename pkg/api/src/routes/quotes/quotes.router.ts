@@ -1,4 +1,5 @@
 import {
+  cancelQuote,
   createQuote,
   generateQuoteDocument,
   getQuote,
@@ -94,6 +95,12 @@ export const quotesRouter = router({
       mapQuoteErrors(() => createQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
+  cancel: authorizedProcedure('quote:cancel')
+    .input(z.object({ id: UUID }))
+    .mutation(({ ctx, input }) =>
+      mapQuoteErrors(() => cancelQuote({ actorUserId: ctx.session.user.id, db: ctx.db, id: input.id })),
+    ),
+
   update: authorizedProcedure('quote:update')
     .input(QuoteUpdateInput)
     .mutation(({ ctx, input }) =>
@@ -141,6 +148,7 @@ function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreErr
         message: 'Quote includes an invalid customer, product, or salesperson.',
       };
     case 'quote.offering_invariant':
+    case 'quote.already_cancelled':
     case 'quote.custom_selected_assemblies':
     case 'quote.locked':
     case 'quote.document_generation_not_allowed':

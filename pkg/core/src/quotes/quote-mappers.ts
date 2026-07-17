@@ -35,6 +35,7 @@ export type QuoteListRow = {
 
 export type QuoteLinkedJobRow = {
   jobCode: number;
+  jobDescription: string | null;
   jobId: string;
   quoteId: string | null;
 };
@@ -48,7 +49,7 @@ export type QuoteDetailRow = QuoteRow & {
     typeof customers.$inferSelect,
     'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'thumbnailDataUrl' | 'vatNumber'
   >;
-  jobs: Pick<typeof jobs.$inferSelect, 'code' | 'id'>[];
+  jobs: Pick<typeof jobs.$inferSelect, 'code' | 'description' | 'id'>[];
   product: Pick<
     typeof products.$inferSelect,
     'buildTimeDays' | 'currencyCode' | 'description' | 'modelCode' | 'name' | 'requiresVinNumber' | 'thumbnailDataUrl'
@@ -145,7 +146,13 @@ export function mapQuoteDetail(
     customerPhone: row.customer.phone,
     customerThumbnailDataUrl: row.customer.thumbnailDataUrl,
     customerVatNumber: row.customer.vatNumber,
-    job: row.jobs[0] ? mapQuoteLinkedJob({ jobCode: row.jobs[0].code, jobId: row.jobs[0].id }) : null,
+    job: row.jobs[0]
+      ? mapQuoteLinkedJob({
+          jobCode: row.jobs[0].code,
+          jobDescription: row.jobs[0].description,
+          jobId: row.jobs[0].id,
+        })
+      : null,
     product: mapQuoteDetailProduct(row, productAssembliesForQuote, productBaysForQuote),
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
@@ -195,9 +202,10 @@ function mapQuoteDetailProduct(
   };
 }
 
-export function mapQuoteLinkedJob(job: Pick<QuoteLinkedJobRow, 'jobCode' | 'jobId'>) {
+export function mapQuoteLinkedJob(job: Pick<QuoteLinkedJobRow, 'jobCode' | 'jobDescription' | 'jobId'>) {
   return {
     jobCode: JobCode.parse(job.jobCode),
+    jobDescription: job.jobDescription,
     jobId: job.jobId,
   };
 }

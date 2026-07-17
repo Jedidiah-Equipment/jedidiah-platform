@@ -124,6 +124,57 @@ describe('quotes.create', () => {
     });
   });
 
+  test('allows an administrator to cancel a locked Quote', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const quote = await salesCaller.quotes.create({
+      customer: { type: 'inline', companyName: 'Locked Quote Customer' },
+      notes: null,
+      documentNotes: null,
+      offering: { kind: 'custom', workTitle: 'Locked repair', basePrice: 1500 },
+      salesPersonId: 'test-user-id',
+      status: 'accepted',
+      validUntil: null,
+    });
+
+    await context.createCaller(mockSession('admin')).quotes.cancel({ id: quote.id });
+
+    await expect(salesCaller.quotes.get({ id: quote.id })).resolves.toMatchObject({ status: 'cancelled' });
+  });
+
+  test('rejects a crafted cancellation from a user without quote cancellation permission', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const quote = await salesCaller.quotes.create({
+      customer: { type: 'inline', companyName: 'Sales Guard Customer' },
+      notes: null,
+      documentNotes: null,
+      offering: { kind: 'custom', workTitle: 'Guarded repair', basePrice: 900 },
+      salesPersonId: 'test-user-id',
+      status: 'accepted',
+      validUntil: null,
+    });
+
+    await expect(salesCaller.quotes.cancel({ id: quote.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(salesCaller.quotes.get({ id: quote.id })).resolves.toMatchObject({ status: 'accepted' });
+  });
+
+  test('maps repeated cancellation to a stable bad-request code', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const quote = await salesCaller.quotes.create({
+      customer: { type: 'inline', companyName: 'Already Cancelled Customer' },
+      notes: null,
+      documentNotes: null,
+      offering: productOffering(context.product.id),
+      salesPersonId: 'test-user-id',
+      status: 'cancelled',
+      validUntil: null,
+    });
+
+    await expect(context.createCaller(mockSession('admin')).quotes.cancel({ id: quote.id })).rejects.toMatchObject({
+      appCode: 'quote.already_cancelled',
+      code: 'BAD_REQUEST',
+    });
+  });
+
   test('rejects a negative deposit percent at the input boundary', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 
@@ -800,6 +851,7 @@ describe('quotes.list', () => {
           preferredDeliveryDate: '2026-07-01',
           job: {
             jobCode: job.code,
+            jobDescription: null,
             jobId: job.id,
           },
         },
@@ -1212,6 +1264,7 @@ describe('quotes.upcomingDeliveries', () => {
           id: linkedJobDelivery.id,
           job: {
             jobCode: job.code,
+            jobDescription: null,
             jobId: job.id,
           },
           plannedDeliveryDate: '2026-06-20',

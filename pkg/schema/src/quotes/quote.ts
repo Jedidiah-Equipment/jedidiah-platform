@@ -20,7 +20,7 @@ import {
   CustomerOptionalTextInput,
   CustomerVatNumber,
 } from '../customers/customer.js';
-import { Bay } from '../jobs/job.js';
+import { Bay, JobDescription } from '../jobs/job.js';
 import {
   Assembly,
   ProductBay,
@@ -112,6 +112,7 @@ export const Quote = z.discriminatedUnion('kind', [
 export type QuoteLinkedJob = z.infer<typeof QuoteLinkedJob>;
 export const QuoteLinkedJob = z.object({
   jobCode: JobCode,
+  jobDescription: JobDescription,
   jobId: UUID,
 });
 

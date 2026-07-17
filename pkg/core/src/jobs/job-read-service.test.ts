@@ -91,6 +91,7 @@ function jobRow(): Parameters<typeof mapJobSummary>[0] {
   const now = new Date('2026-05-01T00:00:00.000Z');
 
   return {
+    cancelledAt: null,
     code: 1,
     createdAt: now,
     id: '00000000-0000-4000-8000-000000000001',

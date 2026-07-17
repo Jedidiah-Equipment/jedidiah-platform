@@ -1,8 +1,32 @@
-import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, test } from 'vitest';
+// @vitest-environment jsdom
 
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+
+import { LocaleProvider } from '../../../messages/index.js';
 import type { ProductDetail } from '../../../server/catalog/product-detail-data.js';
-import { AssembliesAndFeatures, Downloads } from './$modelCode.js';
+import { AssembliesAndFeatures, Downloads, ProductShareButton } from './$modelCode.js';
+
+const captureEvent = vi.hoisted(() => vi.fn());
+
+vi.mock('../../../lib/analytics.js', () => ({
+  captureEvent,
+  captureEventForNavigation: vi.fn(),
+}));
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+let root: Root | undefined;
+
+afterEach(async () => {
+  if (root) {
+    await act(async () => root?.unmount());
+  }
+  root = undefined;
+  vi.restoreAllMocks();
+});
 
 describe('Downloads', () => {
   test('opens the generated Product brochure in a new tab', () => {
@@ -15,6 +39,30 @@ describe('Downloads', () => {
     expect(markup).toContain('rel="noreferrer"');
     expect(markup).toContain('<h2');
     expect(markup).toContain('Downloads</h2>');
+  });
+});
+
+describe('ProductShareButton', () => {
+  test('copies the product URL and reports a completed clipboard share', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(window.navigator, 'clipboard', { configurable: true, value: { writeText } });
+    window.history.replaceState({}, '', '/products/CH14');
+    const container = document.createElement('div');
+    root = createRoot(container);
+
+    await act(async () =>
+      root?.render(
+        <LocaleProvider locale="en">
+          <ProductShareButton modelCode="CH14" name="Chaser Bin" />
+        </LocaleProvider>,
+      ),
+    );
+    await act(async () => container.querySelector('button')?.click());
+
+    expect(writeText).toHaveBeenCalledWith('http://localhost:3000/products/CH14');
+    expect(captureEvent).toHaveBeenCalledWith('product_shared', { modelCode: 'CH14', method: 'clipboard' });
+    expect(container.textContent).toContain('Link copied');
   });
 });
 

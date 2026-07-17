@@ -34,6 +34,8 @@ The active Locale is registered as a PostHog super property and is also set as a
 | `product_viewed` | Product detail page is viewed (pre-existing event, enriched) | `modelCode` | string | e.g. `JM-2400` |
 | | | `range` | string | Range name (pre-existing semantics — keep) |
 | | | `variant` | string \| null | Canonical Variant slug; `null` = no Variant |
+| `product_shared` | A Product is successfully shared through the native share sheet or its link is copied | `modelCode` | string | e.g. `JM-2400` |
+| | | `method` | string | `native`, `clipboard` |
 | `brochure_downloaded` | Brochure download link clicked on Product detail (pre-existing, unchanged) | `modelCode` | string | e.g. `JM-2400` |
 | `contact_submitted` | Contact form submitted successfully (pre-existing, unchanged) | `equipment` | string | selected equipment, or the localized "not specified" text |
 | `contact_submit_failed` | Contact form submission fails | `errorCategory` | string | `network`, `server` — never form content |

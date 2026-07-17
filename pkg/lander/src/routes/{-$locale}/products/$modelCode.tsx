@@ -1,7 +1,9 @@
 import { contactNumberE164 } from '@pkg/domain';
 import {
   IconArrowRight,
+  IconCheck,
   IconDownload,
+  IconShare,
   IconSquareCheckFilled,
   IconSquarePlus,
   IconStarFilled,
@@ -201,6 +203,73 @@ function HighlightTiles({ highlights }: { highlights: ProductHighlight[] }) {
   );
 }
 
+type ShareStatus = 'idle' | 'copied' | 'failed';
+
+export function ProductShareButton({ modelCode, name }: { modelCode: string; name: string }) {
+  const m = useMessages();
+  const [status, setStatus] = useState<ShareStatus>('idle');
+
+  useEffect(() => {
+    if (status === 'idle') {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setStatus('idle'), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [status]);
+
+  const handleShare = async () => {
+    const url = window.location.href;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: m.productDetail.shareTitle(name),
+          text: m.productDetail.shareText(name),
+          url,
+        });
+        captureEvent('product_shared', { modelCode, method: 'native' });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      captureEvent('product_shared', { modelCode, method: 'clipboard' });
+      setStatus('copied');
+    } catch {
+      setStatus('failed');
+    }
+  };
+
+  const label =
+    status === 'copied'
+      ? m.productDetail.linkCopied
+      : status === 'failed'
+        ? m.productDetail.shareFailed
+        : m.productDetail.shareProduct;
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleShare()}
+      aria-live="polite"
+      className="flex cursor-pointer items-center gap-2.5 border-2 border-[#cfcac0] bg-transparent px-[24px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-white focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-gold max-xs:col-span-2 max-xs:justify-center"
+    >
+      {status === 'copied' ? (
+        <IconCheck size={20} stroke={2.4} aria-hidden="true" />
+      ) : (
+        <IconShare size={20} stroke={2.2} aria-hidden="true" />
+      )}
+      {label}
+    </button>
+  );
+}
+
 function Hero({ detail }: { detail: ProductDetail }) {
   const m = useMessages();
 
@@ -226,10 +295,10 @@ function Hero({ detail }: { detail: ProductDetail }) {
             <p className="m-0 mb-8 font-body text-[16px] leading-[1.7] text-[#555]">{detail.description}</p>
           ) : null}
 
-          <div className="mt-auto flex flex-wrap gap-3.5">
+          <div className="mt-auto flex flex-wrap gap-3.5 max-xs:grid max-xs:grid-cols-2">
             <Link
               to="/{-$locale}/contact"
-              className="flex items-center gap-3 bg-gold px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-yellow"
+              className="flex items-center gap-3 bg-gold px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-yellow max-xs:justify-center max-xs:px-[18px]"
             >
               {m.productDetail.contactUs}
               <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />
@@ -237,10 +306,11 @@ function Hero({ detail }: { detail: ProductDetail }) {
             <a
               href={`tel:${contactNumberE164()}`}
               onClick={() => captureEventForNavigation('phone_link_clicked', { placement: 'product_detail' })}
-              className="flex items-center border-2 border-ink bg-transparent px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-ink hover:text-white"
+              className="flex items-center border-2 border-ink bg-transparent px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-ink hover:text-white max-xs:justify-center max-xs:px-[18px]"
             >
               {m.productDetail.callUs}
             </a>
+            <ProductShareButton modelCode={detail.modelCode} name={detail.name} />
           </div>
         </div>
       </div>

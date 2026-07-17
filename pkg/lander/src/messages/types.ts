@@ -106,6 +106,11 @@ export type Messages = {
     closeImageDialog: string;
     contactUs: string;
     callUs: string;
+    shareProduct: string;
+    shareTitle: (name: string) => string;
+    shareText: (name: string) => string;
+    linkCopied: string;
+    shareFailed: string;
     downloads: string;
     productBrochure: string;
     keyFeatures: string;

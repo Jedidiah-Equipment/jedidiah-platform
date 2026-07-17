@@ -4,6 +4,7 @@ import {
   type QuoteListInput,
   type QuoteListResult,
   QuoteProductSummaryFacts,
+  QuoteStatus,
   QuoteSummary,
   type UserAccessSummary,
   UUID,
@@ -61,7 +62,8 @@ export const FindQuotesResponse = z.array(z.discriminatedUnion('kind', [FindProd
 
 export function toCoreQuoteListInput(input: FindQuotesInput): QuoteListInput {
   const filters: QuoteListInput['filters'] = {
-    statuses: [],
+    // Assistant lookups are find-before-get queries, so they must remain exhaustive across terminal statuses.
+    statuses: [...QuoteStatus.options],
     ...(input.by === 'code' ? { quoteCode: input.quoteCode } : {}),
     ...(input.by === 'customer' ? { customerId: input.customerId } : {}),
     ...(input.by === 'product' ? { productId: input.productId } : {}),

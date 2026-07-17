@@ -1322,6 +1322,23 @@ describe('jobs.bookSlot', () => {
     });
   });
 
+  test('rejects direct bookings for cancelled jobs', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(sql`${jobs.id} = ${job.id}`);
+
+    await expect(
+      caller.jobs.bookSlot({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        durationDays: 1,
+        jobId: job.id,
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Cancelled jobs cannot be scheduled.',
+    });
+  });
+
   test('listBays returns projected slots after booking', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({

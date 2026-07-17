@@ -63,7 +63,7 @@ import { snapshotJobBrochureDocument } from '../products/product-brochure-docume
 import { narrowQuoteOffering } from '../quotes/quote-offering.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
-import { JobCreateFromQuoteDeniedError, JobNotFoundError } from './job-errors.js';
+import { JobCreateFromQuoteDeniedError, JobNotFoundError, JobSlotBookingDeniedError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 import { loadBayWorkingCalendar } from './working-calendar-service.js';
@@ -185,7 +185,7 @@ export async function cancelJobForQuote({
   quoteId: UUID;
   tx: DatabaseTransaction;
 }): Promise<void> {
-  const [job] = await tx.select().from(jobs).where(eq(jobs.quoteId, quoteId));
+  const [job] = await tx.select().from(jobs).where(eq(jobs.quoteId, quoteId)).for('update');
 
   if (!job || job.cancelledAt) {
     return;
@@ -340,13 +340,19 @@ export async function bookJobSlot({ db, input }: { db: Db; input: BookJobSlotInp
     const plantToday = getPlantDateNow();
     const [job] = await tx
       .select({
+        cancelledAt: jobs.cancelledAt,
         id: jobs.id,
       })
       .from(jobs)
-      .where(eq(jobs.id, input.jobId));
+      .where(eq(jobs.id, input.jobId))
+      .for('update');
 
     if (!job) {
       throw new JobNotFoundError(input.jobId);
+    }
+
+    if (job.cancelledAt) {
+      throw new JobSlotBookingDeniedError('Cancelled jobs cannot be scheduled.');
     }
 
     const queue = await lockBayQueue(tx, input.bayId, { plantToday });

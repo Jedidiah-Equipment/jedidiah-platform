@@ -29,7 +29,7 @@ describe('findQuotes contract', () => {
     const input = FindQuotesInput.parse({ by: 'code', quoteCode: '8' });
 
     expect(toCoreQuoteListInput(input)).toEqual({
-      filters: { quoteCode: 'QUO-00008', statuses: [] },
+      filters: { quoteCode: 'QUO-00008', statuses: ['draft', 'sent', 'accepted', 'rejected', 'cancelled'] },
       page: 1,
       pageSize: 0,
       search: '',
@@ -45,11 +45,17 @@ describe('findQuotes contract', () => {
 
   test.each([
     {
-      expectedFilters: { customerId: CUSTOMER_ID, statuses: [] },
+      expectedFilters: {
+        customerId: CUSTOMER_ID,
+        statuses: ['draft', 'sent', 'accepted', 'rejected', 'cancelled'],
+      },
       input: { by: 'customer', customerId: CUSTOMER_ID } as const,
     },
     {
-      expectedFilters: { productId: PRODUCT_ID, statuses: [] },
+      expectedFilters: {
+        productId: PRODUCT_ID,
+        statuses: ['draft', 'sent', 'accepted', 'rejected', 'cancelled'],
+      },
       input: { by: 'product', productId: PRODUCT_ID } as const,
     },
   ])('maps $input.by selection onto its exact Quote filter', ({ expectedFilters, input }) => {

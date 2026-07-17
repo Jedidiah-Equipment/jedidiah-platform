@@ -25,6 +25,20 @@ const frozenLockedQuoteFields = [
 ];
 
 describe('assertQuoteEditable', () => {
+  it.each(['product', 'custom'] as const)('rejects status changes on cancelled %s quotes', (kind) => {
+    expect(
+      assertQuoteEditable({
+        changedFields: ['status'],
+        hasJob: false,
+        kind,
+        status: 'cancelled',
+      }),
+    ).toEqual({
+      allowed: false,
+      reason: 'Quote is locked because it has been cancelled; status cannot be changed.',
+    });
+  });
+
   it.each([...frozenLockedQuoteFields, ...editableLockedQuoteFields])('allows %s before a quote has a job', (field) => {
     expect(
       assertQuoteEditable({
@@ -113,6 +127,10 @@ describe('assertQuoteEditable', () => {
 });
 
 describe('isQuoteLocked', () => {
+  it.each(['product', 'custom'] as const)('locks cancelled %s quotes', (kind) => {
+    expect(isQuoteLocked({ hasJob: false, kind, status: 'cancelled' })).toBe(true);
+  });
+
   it('locks product quotes only after a job exists', () => {
     expect(isQuoteLocked({ hasJob: false, kind: 'product', status: 'accepted' })).toBe(false);
     expect(isQuoteLocked({ hasJob: true, kind: 'product', status: 'sent' })).toBe(true);

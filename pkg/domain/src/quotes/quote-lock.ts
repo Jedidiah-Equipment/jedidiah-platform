@@ -32,7 +32,12 @@ export function assertQuoteEditable({
     return { allowed: true };
   }
 
-  const lockReason = kind === 'product' ? 'it already has a Job' : 'it has been accepted';
+  const lockReason =
+    status === 'cancelled'
+      ? 'it has been cancelled'
+      : kind === 'product'
+        ? 'it already has a Job'
+        : 'it has been accepted';
 
   for (const field of changedFields) {
     if (!EDITABLE_LOCKED_QUOTE_FIELDS.has(field)) {
@@ -47,5 +52,8 @@ export function assertQuoteEditable({
 }
 
 export function isQuoteLocked({ hasJob, kind, status }: { hasJob: boolean; kind: QuoteKind; status: QuoteStatus }) {
+  // Cancellation is terminal regardless of the quote kind or whether a Job exists.
+  if (status === 'cancelled') return true;
+
   return kind === 'product' ? hasJob : status === 'accepted';
 }

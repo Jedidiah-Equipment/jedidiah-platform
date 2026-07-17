@@ -15,7 +15,15 @@ import {
   workingCalendarOffDays,
 } from '@pkg/db';
 import { addDateOnlyDays, addJobSlotDuration, getPlantDateNow, priceQuote } from '@pkg/domain';
-import { formatJobCode, QuoteCreateInput, type QuoteDetail, type QuoteStatus, QuoteUpdateInput } from '@pkg/schema';
+import {
+  DateIso,
+  DateOnlyIso,
+  formatJobCode,
+  QuoteCreateInput,
+  type QuoteDetail,
+  type QuoteStatus,
+  QuoteUpdateInput,
+} from '@pkg/schema';
 import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -802,6 +810,186 @@ describe('custom quotes', () => {
       quotedBasePrice: { from: 2000, to: 2100 },
       workTitle: { from: 'Audit repair', to: 'Audit repair revised' },
     });
+  });
+});
+
+describe('cancelled quotes', () => {
+  test('updateQuote can cancel an unlocked quote, keeps lock-editable fields writable, and cannot leave cancelled', async ({
+    context,
+  }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+    const cancelled = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(quote, { status: 'cancelled' }),
+    });
+
+    const annotated = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(cancelled, {
+        documentNotes: 'Cancelled document note',
+        notes: 'Cancelled internal note',
+        plannedDeliveryDate: DateOnlyIso.parse('2026-08-01'),
+        preferredDeliveryDate: DateOnlyIso.parse('2026-08-08'),
+        validUntil: DateIso.parse('2026-08-15'),
+      }),
+    });
+
+    expect(annotated).toMatchObject({
+      documentNotes: 'Cancelled document note',
+      notes: 'Cancelled internal note',
+      plannedDeliveryDate: '2026-08-01',
+      preferredDeliveryDate: '2026-08-08',
+      status: 'cancelled',
+      validUntil: '2026-08-15',
+    });
+    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+      id: quote.id,
+      status: 'cancelled',
+    });
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(annotated, { status: 'draft' }),
+      }),
+    ).rejects.toThrow('Quote is locked because it has been cancelled; status cannot be changed.');
+  });
+
+  test('patchQuote can cancel an unlocked quote, keeps lock-editable fields writable, and cannot leave cancelled', async ({
+    context,
+  }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', basePrice: 1800, workTitle: 'Cancelled repair' },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+    const cancelled = await patchQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: { id: quote.id, status: 'cancelled' },
+    });
+
+    const annotated = await patchQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: {
+        documentNotes: 'Cancelled document note',
+        id: quote.id,
+        notes: 'Cancelled internal note',
+        plannedDeliveryDate: DateOnlyIso.parse('2026-08-01'),
+        preferredDeliveryDate: DateOnlyIso.parse('2026-08-08'),
+        validUntil: DateIso.parse('2026-08-15'),
+      },
+    });
+
+    expect(cancelled.status).toBe('cancelled');
+    expect(annotated).toMatchObject({
+      documentNotes: 'Cancelled document note',
+      notes: 'Cancelled internal note',
+      plannedDeliveryDate: '2026-08-01',
+      preferredDeliveryDate: '2026-08-08',
+      status: 'cancelled',
+      validUntil: '2026-08-15',
+    });
+    await expect(
+      patchQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: { id: quote.id, status: 'sent' },
+      }),
+    ).rejects.toThrow('Quote is locked because it has been cancelled; status cannot be changed.');
+  });
+});
+
+describe('listQuotes', () => {
+  test('excludes cancelled quotes when no status filter is applied', async ({ context }) => {
+    const visible = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+    await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'cancelled',
+      }),
+    });
+
+    await expect(
+      listQuotes({
+        db: context.db,
+        input: {
+          filters: { statuses: [] },
+          page: 1,
+          pageSize: 10,
+          search: '',
+          sortBy: 'createdAt',
+          sortDirection: 'asc',
+        },
+      }),
+    ).resolves.toMatchObject({ items: [{ id: visible.id }], total: 1 });
+  });
+
+  test('includes cancelled quotes when the cancelled status filter is applied', async ({ context }) => {
+    const cancelled = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'cancelled',
+      }),
+    });
+    await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    await expect(
+      listQuotes({
+        db: context.db,
+        input: {
+          filters: { statuses: ['cancelled'] },
+          page: 1,
+          pageSize: 10,
+          search: '',
+          sortBy: 'createdAt',
+          sortDirection: 'asc',
+        },
+      }),
+    ).resolves.toMatchObject({ items: [{ id: cancelled.id, status: 'cancelled' }], total: 1 });
   });
 });
 

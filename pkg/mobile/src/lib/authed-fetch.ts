@@ -24,3 +24,11 @@ export function jobDocumentDownloadPath(jobId: string, documentId: string): stri
 export function productDocumentDownloadPath(productId: string, documentId: string): string {
   return `/api/products/${productId}/documents/${documentId}/download`;
 }
+
+/** Stable route id used by the document viewer for an on-demand Product Brochure. */
+export const PRODUCT_BROCHURE_DOCUMENT_ID = 'brochure';
+
+/** URL of the generated Product Brochure preview PDF. */
+export function productBrochurePreviewPath(productId: string): string {
+  return `/api/products/${productId}/brochure-preview`;
+}

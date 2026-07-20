@@ -1,4 +1,4 @@
-import { formatBytes, formatCurrency, formatDate, isLanderReady } from '@pkg/domain';
+import { formatBytes, formatCurrency, formatDate, isBrochureReady, isLanderReady } from '@pkg/domain';
 import type { OptionalAssembly, Product, ProductDocument, StandardAssembly } from '@pkg/schema';
 import { IconCheck, IconChevronLeft, IconDownload, IconEye, IconLink } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -12,7 +12,11 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { landerOrigin } from '@/lib/app-env';
-import { productDocumentDownloadPath } from '@/lib/authed-fetch';
+import {
+  PRODUCT_BROCHURE_DOCUMENT_ID,
+  productBrochurePreviewPath,
+  productDocumentDownloadPath,
+} from '@/lib/authed-fetch';
 import { saveDocument } from '@/lib/document-actions';
 import { landerProductUrls } from '@/lib/product-presentation';
 import { useTRPC } from '@/lib/trpc';
@@ -287,14 +291,17 @@ function formatPriceDelta(price: number, currencyCode: string): string {
 function ProductDocumentsCard({ product }: { product: Product }) {
   const trpc = useTRPC();
   const query = useQuery(trpc.documents.listByProduct.queryOptions({ productId: product.id }));
+  const brochureReady = isBrochureReady(product);
+  const documentCount = (query.data?.length ?? 0) + Number(brochureReady);
 
   return (
-    <SectionCard title={query.isSuccess ? `DOCS · ${query.data.length}` : 'DOCS'}>
+    <SectionCard title={query.isSuccess ? `DOCS · ${documentCount}` : 'DOCS'}>
+      {brochureReady ? <ProductBrochureRow product={product} /> : null}
       {query.isPending ? (
         <Text className="text-sm text-muted-foreground">Loading documents…</Text>
       ) : query.isError ? (
         <Text className="text-sm text-danger">Couldn’t load documents.</Text>
-      ) : query.data.length === 0 ? (
+      ) : query.data.length === 0 && !brochureReady ? (
         <Text className="text-sm text-muted-foreground">No documents for this Product.</Text>
       ) : (
         query.data.map((document) => <ProductDocumentRow document={document} key={document.id} product={product} />)
@@ -303,29 +310,71 @@ function ProductDocumentsCard({ product }: { product: Product }) {
   );
 }
 
+function ProductBrochureRow({ product }: { product: Product }) {
+  const router = useRouter();
+  const filename = `${product.modelCode}-brochure.pdf`;
+  const open = () =>
+    router.push({
+      pathname: '/documents/[documentId]',
+      params: { documentId: PRODUCT_BROCHURE_DOCUMENT_ID, productId: product.id },
+    });
+
+  return (
+    <ProductFileRow
+      downloadPath={productBrochurePreviewPath(product.id)}
+      filename={filename}
+      metadata="Generated Product Brochure"
+      onOpen={open}
+    />
+  );
+}
+
 function ProductDocumentRow({ document, product }: { document: ProductDocument; product: Product }) {
   const router = useRouter();
-  const [downloading, setDownloading] = useState(false);
-  const downloadPath = productDocumentDownloadPath(product.id, document.id);
   const contentType = document.contentType === 'application/pdf' ? 'PDF' : document.contentType;
+  const open = () =>
+    router.push({
+      pathname: '/documents/[documentId]',
+      params: { documentId: document.id, productId: product.id },
+    });
+
+  return (
+    <ProductFileRow
+      contentType={contentType}
+      downloadPath={productDocumentDownloadPath(product.id, document.id)}
+      filename={document.filename}
+      metadata={`${formatBytes(document.byteSize)} · ${formatDate(document.createdAt, 'd MMM yyyy')}`}
+      onOpen={open}
+    />
+  );
+}
+
+function ProductFileRow({
+  contentType = 'PDF',
+  downloadPath,
+  filename,
+  metadata,
+  onOpen,
+}: {
+  contentType?: string;
+  downloadPath: string;
+  filename: string;
+  metadata: string;
+  onOpen: () => void;
+}) {
+  const [downloading, setDownloading] = useState(false);
 
   const download = async () => {
     if (downloading) return;
     setDownloading(true);
     try {
-      await saveDocument({ path: downloadPath, filename: document.filename });
+      await saveDocument({ path: downloadPath, filename });
     } catch (error) {
       Alert.alert('Couldn’t download document', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setDownloading(false);
     }
   };
-
-  const open = () =>
-    router.push({
-      pathname: '/documents/[documentId]',
-      params: { documentId: document.id, productId: product.id },
-    });
 
   return (
     <View className="flex-row items-center gap-2 border-t border-border py-3">
@@ -336,19 +385,19 @@ function ProductDocumentRow({ document, product }: { document: ProductDocument; 
       </View>
       <Pressable
         accessibilityHint="Opens the document viewer"
-        accessibilityLabel={document.filename}
+        accessibilityLabel={filename}
         accessibilityRole="button"
         className="min-w-0 flex-1"
-        onPress={open}
+        onPress={onOpen}
       >
         <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
-          {document.filename}
+          {filename}
         </Text>
         <Text className="mt-1 text-[10px] text-muted-foreground" mono numberOfLines={1}>
-          {formatBytes(document.byteSize)} · {formatDate(document.createdAt, 'd MMM yyyy')}
+          {metadata}
         </Text>
       </Pressable>
-      <DocumentButton icon={IconEye} label="Open document" onPress={open} />
+      <DocumentButton icon={IconEye} label="Open document" onPress={onOpen} />
       <DocumentButton
         busy={downloading}
         icon={IconDownload}

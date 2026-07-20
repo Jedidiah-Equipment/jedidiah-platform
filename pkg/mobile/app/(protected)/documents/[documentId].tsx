@@ -1,4 +1,4 @@
-import { getJobDisplayName } from '@pkg/domain';
+import { getJobDisplayName, isBrochureReady } from '@pkg/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
@@ -6,7 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DocumentViewer } from '@/components/documents/DocumentViewer';
 import { Text } from '@/components/ui/text';
-import { jobDocumentDownloadPath, productDocumentDownloadPath } from '@/lib/authed-fetch';
+import {
+  jobDocumentDownloadPath,
+  PRODUCT_BROCHURE_DOCUMENT_ID,
+  productBrochurePreviewPath,
+  productDocumentDownloadPath,
+} from '@/lib/authed-fetch';
 import { useTRPC } from '@/lib/trpc';
 
 /**
@@ -21,18 +26,30 @@ export default function DocumentViewerRoute() {
     productId?: string;
   }>();
   const trpc = useTRPC();
+  const productContext = Boolean(productId);
+  const brochureContext = productContext && documentId === PRODUCT_BROCHURE_DOCUMENT_ID;
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId ?? '' }, { enabled: Boolean(jobId) }));
   const productQuery = useQuery(
     trpc.products.get.queryOptions({ id: productId ?? '' }, { enabled: Boolean(productId) }),
   );
   const productDocumentsQuery = useQuery(
-    trpc.documents.listByProduct.queryOptions({ productId: productId ?? '' }, { enabled: Boolean(productId) }),
+    trpc.documents.listByProduct.queryOptions(
+      { productId: productId ?? '' },
+      { enabled: Boolean(productId) && !brochureContext },
+    ),
   );
-  const productContext = Boolean(productId);
-  const queryPending = productContext ? productQuery.isPending || productDocumentsQuery.isPending : jobQuery.isPending;
-  const queryError = productContext ? productQuery.isError || productDocumentsQuery.isError : jobQuery.isError;
+  const queryPending = productContext
+    ? productQuery.isPending || (!brochureContext && productDocumentsQuery.isPending)
+    : jobQuery.isPending;
+  const queryError = productContext
+    ? productQuery.isError || (!brochureContext && productDocumentsQuery.isError)
+    : jobQuery.isError;
   const document = productContext
-    ? productDocumentsQuery.data?.find((candidate) => candidate.id === documentId)
+    ? brochureContext
+      ? productQuery.data && isBrochureReady(productQuery.data)
+        ? { filename: `${productQuery.data.modelCode}-brochure.pdf` }
+        : null
+      : productDocumentsQuery.data?.find((candidate) => candidate.id === documentId)
     : jobQuery.data?.documents.find((candidate) => candidate.id === documentId);
   const context = productContext
     ? productQuery.data
@@ -42,7 +59,9 @@ export default function DocumentViewerRoute() {
       ? `${jobQuery.data.code} · ${getJobDisplayName(jobQuery.data)}`
       : null;
   const downloadPath = productContext
-    ? productDocumentDownloadPath(productId ?? '', documentId)
+    ? brochureContext
+      ? productBrochurePreviewPath(productId ?? '')
+      : productDocumentDownloadPath(productId ?? '', documentId)
     : jobDocumentDownloadPath(jobId ?? '', documentId);
 
   // Opened as a deep link / initial route, there's no entry to pop, so fall back

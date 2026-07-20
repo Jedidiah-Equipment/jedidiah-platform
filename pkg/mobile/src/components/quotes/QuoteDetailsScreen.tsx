@@ -14,6 +14,7 @@ import { SelectField } from '@/components/form/fields/SelectField';
 import { createStableRowKeys } from '@/components/form/utils/create-stable-row-keys';
 import { QuoteAssembliesEditor } from '@/components/quotes/QuoteAssembliesEditor';
 import { QuoteCancellationConfirmation } from '@/components/quotes/QuoteCancellationConfirmation';
+import { QuoteDocumentsTab } from '@/components/quotes/QuoteDocumentsTab';
 import { QuotePriorityAlert } from '@/components/quotes/QuotePriorityAlert';
 import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { QuoteSummaryDrawer } from '@/components/quotes/QuoteSummaryDrawer';
@@ -97,6 +98,7 @@ function QuoteEditor({
 }) {
   const router = useRouter();
   const showToast = useAppToast();
+  const [activeTab, setActiveTab] = useState<'details' | 'documents'>('details');
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
   const isLocked = isQuoteLocked({ hasJob: quote.job !== null, kind: quote.kind, status: quote.status });
@@ -146,22 +148,12 @@ function QuoteEditor({
       <View className="border-b border-border px-4 py-3">
         <View className="mx-auto w-full max-w-[1180px] flex-row items-center gap-3">
           <View className="flex-row rounded-xl border border-border bg-muted p-1">
-            <View className="rounded-lg bg-surface px-4 py-2">
-              <Text className="text-xs text-foreground" weight="semibold">
-                Details
-              </Text>
-            </View>
-            <Pressable
-              accessibilityLabel="Documents coming next"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: true }}
-              className="px-4 py-2 opacity-45"
-              disabled
-            >
-              <Text className="text-xs text-muted-foreground" weight="semibold">
-                Documents
-              </Text>
-            </Pressable>
+            <QuoteTabButton active={activeTab === 'details'} label="Details" onPress={() => setActiveTab('details')} />
+            <QuoteTabButton
+              active={activeTab === 'documents'}
+              label="Documents"
+              onPress={() => setActiveTab('documents')}
+            />
           </View>
           <View className="flex-1" />
           <Pressable
@@ -181,282 +173,318 @@ function QuoteEditor({
         <form.AppForm>
           <View className="mx-auto w-full max-w-[760px] gap-4">
             <AutosaveStatus canRetry={canUpdate} onRetry={() => void autosave.retry()} state={autosave.state} />
-            {!canUpdate ? (
-              <InfoBanner message="You have read-only access. Quote fields cannot be changed." />
-            ) : isLocked ? (
-              <InfoBanner message="This Quote is locked. Only notes and delivery dates remain editable." />
-            ) : null}
-            {priorityQuote ? <QuotePriorityAlert quote={priorityQuote} /> : null}
+            {activeTab === 'details' ? (
+              <>
+                {!canUpdate ? (
+                  <InfoBanner message="You have read-only access. Quote fields cannot be changed." />
+                ) : isLocked ? (
+                  <InfoBanner message="This Quote is locked. Only notes and delivery dates remain editable." />
+                ) : null}
+                {priorityQuote ? <QuotePriorityAlert quote={priorityQuote} /> : null}
 
-            <Section title="Quote setup">
-              <View className="gap-4 md:flex-row">
+                <Section title="Quote setup">
+                  <View className="gap-4 md:flex-row">
+                    {quote.kind === 'custom' ? (
+                      <View className="flex-1">
+                        <form.AppField name="workTitle">
+                          {(field) => (
+                            <field.TextField
+                              disabled={setupReadOnly}
+                              label="Work title"
+                              onValueCommit={autosave.commit}
+                            />
+                          )}
+                        </form.AppField>
+                      </View>
+                    ) : null}
+                    <View className="flex-1">
+                      <form.AppField name="salesPersonId">
+                        {(_field) => <SalespersonField disabled={setupReadOnly} onValueCommit={autosave.commit} />}
+                      </form.AppField>
+                    </View>
+                    <View className="flex-1">
+                      <form.AppField name="status">
+                        {(field) => (
+                          <field.SelectField
+                            disabled={setupReadOnly}
+                            label="Status"
+                            onValueCommit={autosave.commit}
+                            onValueSelect={(value) => {
+                              const status = QuoteStatus.parse(value);
+                              if (status !== 'cancelled') return;
+
+                              setCancelConfirmationOpen(true);
+                              return false;
+                            }}
+                            options={STATUS_OPTIONS}
+                          />
+                        )}
+                      </form.AppField>
+                    </View>
+                  </View>
+                </Section>
+
+                <Section title="Dates & delivery">
+                  <View className="gap-4 md:flex-row md:flex-wrap">
+                    <View className="md:min-w-[220px] md:flex-1">
+                      <form.AppField name="preferredDeliveryDate">
+                        {(field) => (
+                          <field.DateField
+                            disabled={!canEdit('preferredDeliveryDate')}
+                            label="Preferred delivery"
+                            onValueCommit={autosave.commit}
+                          />
+                        )}
+                      </form.AppField>
+                    </View>
+                    <View className="md:min-w-[220px] md:flex-1">
+                      <form.AppField name="plannedDeliveryDate">
+                        {(field) => (
+                          <field.DateField
+                            disabled={!canEdit('plannedDeliveryDate')}
+                            label="Planned delivery"
+                            onValueCommit={autosave.commit}
+                          />
+                        )}
+                      </form.AppField>
+                    </View>
+                    <View className="md:min-w-[220px] md:flex-1">
+                      <form.AppField name="validUntil">
+                        {(field) => (
+                          <field.DateField
+                            disabled={!canEdit('validUntil')}
+                            label="Valid until"
+                            onValueCommit={autosave.commit}
+                          />
+                        )}
+                      </form.AppField>
+                    </View>
+                  </View>
+                  <form.Field name="deliveryIncluded">
+                    {(field) => (
+                      <View
+                        className={`flex-row items-center gap-3 rounded-xl py-1 ${setupReadOnly ? 'opacity-55' : ''}`}
+                      >
+                        <Switch
+                          accessibilityLabel="Delivery included in sale price"
+                          isDisabled={setupReadOnly}
+                          onValueChange={(included) => {
+                            field.handleChange(included);
+                            if (included) form.setFieldValue('deliveryPrice', 0);
+                            autosave.commit();
+                          }}
+                          value={field.state.value}
+                        />
+                        <Text className="text-sm text-foreground">Delivery included in sale price</Text>
+                      </View>
+                    )}
+                  </form.Field>
+                  <form.AppField name="deliveryPrice">
+                    {(field) => (
+                      <field.CurrencyField
+                        disabled={setupReadOnly || values.deliveryIncluded}
+                        label="Delivery price"
+                        onValueCommit={autosave.commit}
+                      />
+                    )}
+                  </form.AppField>
+                </Section>
+
+                <Section title="Pricing">
+                  <View className="gap-4 md:flex-row">
+                    <View className="flex-1">
+                      <form.AppField name="discountPercent">
+                        {(field) => (
+                          <field.NumberField
+                            disabled={setupReadOnly}
+                            label="Discount percent"
+                            onValueCommit={autosave.commit}
+                          />
+                        )}
+                      </form.AppField>
+                    </View>
+                    <View className="flex-1">
+                      <form.AppField name="depositPercent">
+                        {(field) => (
+                          <field.NumberField
+                            disabled={setupReadOnly}
+                            label="Deposit percent"
+                            onValueCommit={autosave.commit}
+                          />
+                        )}
+                      </form.AppField>
+                    </View>
+                  </View>
+                </Section>
+
                 {quote.kind === 'custom' ? (
-                  <View className="flex-1">
-                    <form.AppField name="workTitle">
+                  <Section title="Custom work">
+                    <form.AppField name="basePrice">
                       {(field) => (
-                        <field.TextField disabled={setupReadOnly} label="Work title" onValueCommit={autosave.commit} />
+                        <field.CurrencyField
+                          disabled={setupReadOnly}
+                          label="Base price"
+                          onValueCommit={autosave.commit}
+                        />
                       )}
                     </form.AppField>
-                  </View>
+                  </Section>
                 ) : null}
-                <View className="flex-1">
-                  <form.AppField name="salesPersonId">
-                    {(_field) => <SalespersonField disabled={setupReadOnly} onValueCommit={autosave.commit} />}
-                  </form.AppField>
-                </View>
-                <View className="flex-1">
-                  <form.AppField name="status">
-                    {(field) => (
-                      <field.SelectField
-                        disabled={setupReadOnly}
-                        label="Status"
-                        onValueCommit={autosave.commit}
-                        onValueSelect={(value) => {
-                          const status = QuoteStatus.parse(value);
-                          if (status !== 'cancelled') return;
 
-                          setCancelConfirmationOpen(true);
-                          return false;
-                        }}
-                        options={STATUS_OPTIONS}
-                      />
-                    )}
-                  </form.AppField>
-                </View>
-              </View>
-            </Section>
-
-            <Section title="Dates & delivery">
-              <View className="gap-4 md:flex-row md:flex-wrap">
-                <View className="md:min-w-[220px] md:flex-1">
-                  <form.AppField name="preferredDeliveryDate">
-                    {(field) => (
-                      <field.DateField
-                        disabled={!canEdit('preferredDeliveryDate')}
-                        label="Preferred delivery"
-                        onValueCommit={autosave.commit}
-                      />
-                    )}
-                  </form.AppField>
-                </View>
-                <View className="md:min-w-[220px] md:flex-1">
-                  <form.AppField name="plannedDeliveryDate">
-                    {(field) => (
-                      <field.DateField
-                        disabled={!canEdit('plannedDeliveryDate')}
-                        label="Planned delivery"
-                        onValueCommit={autosave.commit}
-                      />
-                    )}
-                  </form.AppField>
-                </View>
-                <View className="md:min-w-[220px] md:flex-1">
-                  <form.AppField name="validUntil">
-                    {(field) => (
-                      <field.DateField
-                        disabled={!canEdit('validUntil')}
-                        label="Valid until"
-                        onValueCommit={autosave.commit}
-                      />
-                    )}
-                  </form.AppField>
-                </View>
-              </View>
-              <form.Field name="deliveryIncluded">
-                {(field) => (
-                  <View className={`flex-row items-center gap-3 rounded-xl py-1 ${setupReadOnly ? 'opacity-55' : ''}`}>
-                    <Switch
-                      accessibilityLabel="Delivery included in sale price"
-                      isDisabled={setupReadOnly}
-                      onValueChange={(included) => {
-                        field.handleChange(included);
-                        if (included) form.setFieldValue('deliveryPrice', 0);
-                        autosave.commit();
-                      }}
-                      value={field.state.value}
-                    />
-                    <Text className="text-sm text-foreground">Delivery included in sale price</Text>
-                  </View>
-                )}
-              </form.Field>
-              <form.AppField name="deliveryPrice">
-                {(field) => (
-                  <field.CurrencyField
-                    disabled={setupReadOnly || values.deliveryIncluded}
-                    label="Delivery price"
-                    onValueCommit={autosave.commit}
-                  />
-                )}
-              </form.AppField>
-            </Section>
-
-            <Section title="Pricing">
-              <View className="gap-4 md:flex-row">
-                <View className="flex-1">
-                  <form.AppField name="discountPercent">
-                    {(field) => (
-                      <field.NumberField
-                        disabled={setupReadOnly}
-                        label="Discount percent"
-                        onValueCommit={autosave.commit}
-                      />
-                    )}
-                  </form.AppField>
-                </View>
-                <View className="flex-1">
-                  <form.AppField name="depositPercent">
-                    {(field) => (
-                      <field.NumberField
-                        disabled={setupReadOnly}
-                        label="Deposit percent"
-                        onValueCommit={autosave.commit}
-                      />
-                    )}
-                  </form.AppField>
-                </View>
-              </View>
-            </Section>
-
-            {quote.kind === 'custom' ? (
-              <Section title="Custom work">
-                <form.AppField name="basePrice">
-                  {(field) => (
-                    <field.CurrencyField disabled={setupReadOnly} label="Base price" onValueCommit={autosave.commit} />
-                  )}
-                </form.AppField>
-              </Section>
-            ) : null}
-
-            <form.Field name="lineItems" mode="array">
-              {(lineItemsField) => (
-                <Section
-                  action={
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityState={{ disabled: setupReadOnly }}
-                      className={`flex-row items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 ${
-                        setupReadOnly ? 'opacity-50' : 'active:bg-surface'
-                      }`}
-                      disabled={setupReadOnly}
-                      onPress={() => {
-                        lineItemsField.pushValue({ name: '', quantity: 1, unitPrice: 0 });
-                        autosave.markChanged();
-                      }}
-                    >
-                      <Icon className="text-primary" icon={IconPlus} size={15} />
-                      <Text className="text-xs text-foreground" weight="semibold">
-                        Add line item
-                      </Text>
-                    </Pressable>
-                  }
-                  title="Line items"
-                >
-                  {lineItemsField.state.value.length === 0 ? (
-                    <View className="rounded-xl border border-dashed border-border px-4 py-7">
-                      <Text className="text-center text-sm text-muted-foreground">No line items.</Text>
-                    </View>
-                  ) : (
-                    <View className="gap-3">
-                      {lineItemsField.state.value.map((lineItem, index) => (
-                        <View
-                          className="gap-3 rounded-xl border border-border bg-muted/10 p-3"
-                          key={getLineItemKey(lineItem)}
+                <form.Field name="lineItems" mode="array">
+                  {(lineItemsField) => (
+                    <Section
+                      action={
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityState={{ disabled: setupReadOnly }}
+                          className={`flex-row items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 ${
+                            setupReadOnly ? 'opacity-50' : 'active:bg-surface'
+                          }`}
+                          disabled={setupReadOnly}
+                          onPress={() => {
+                            lineItemsField.pushValue({ name: '', quantity: 1, unitPrice: 0 });
+                            autosave.markChanged();
+                          }}
                         >
-                          <form.AppField name={`lineItems[${index}].name`}>
-                            {(field) => (
-                              <field.TextField disabled={setupReadOnly} label="Name" onValueCommit={autosave.commit} />
-                            )}
-                          </form.AppField>
-                          <View className="gap-3 md:flex-row">
-                            <View className="flex-1">
-                              <form.AppField name={`lineItems[${index}].quantity`}>
-                                {(field) => (
-                                  <field.NumberField
-                                    disabled={setupReadOnly}
-                                    label="Quantity"
-                                    onValueCommit={autosave.commit}
-                                  />
-                                )}
-                              </form.AppField>
-                            </View>
-                            <View className="flex-1">
-                              <form.AppField name={`lineItems[${index}].unitPrice`}>
-                                {(field) => (
-                                  <field.CurrencyField
-                                    disabled={setupReadOnly}
-                                    label="Unit price"
-                                    onValueCommit={autosave.commit}
-                                  />
-                                )}
-                              </form.AppField>
-                            </View>
-                          </View>
-                          <View className="flex-row items-center justify-between gap-3">
-                            <View>
-                              <Text className="text-xs text-muted-foreground">Total</Text>
-                              <Text className="mt-1 text-sm text-foreground" mono weight="semibold">
-                                {formatCurrency(lineItem.quantity * lineItem.unitPrice, quoteCurrencyCode)}
-                              </Text>
-                            </View>
-                            <Pressable
-                              accessibilityLabel={`Remove line item ${index + 1}`}
-                              accessibilityRole="button"
-                              accessibilityState={{ disabled: setupReadOnly }}
-                              className={`h-10 w-10 items-center justify-center rounded-lg ${
-                                setupReadOnly ? 'opacity-0' : 'active:bg-muted'
-                              }`}
-                              disabled={setupReadOnly}
-                              onPress={() => {
-                                lineItemsField.removeValue(index);
-                                autosave.commit();
-                              }}
-                            >
-                              <Icon className="text-danger" icon={IconTrash} size={17} />
-                            </Pressable>
-                          </View>
+                          <Icon className="text-primary" icon={IconPlus} size={15} />
+                          <Text className="text-xs text-foreground" weight="semibold">
+                            Add line item
+                          </Text>
+                        </Pressable>
+                      }
+                      title="Line items"
+                    >
+                      {lineItemsField.state.value.length === 0 ? (
+                        <View className="rounded-xl border border-dashed border-border px-4 py-7">
+                          <Text className="text-center text-sm text-muted-foreground">No line items.</Text>
                         </View>
-                      ))}
-                    </View>
-                  )}
-                </Section>
-              )}
-            </form.Field>
-
-            <Section title="Internal notes">
-              <form.AppField name="notes">
-                {(field) => (
-                  <field.TextareaField
-                    disabled={!canEdit('notes')}
-                    onValueCommit={autosave.commit}
-                    placeholder="Internal notes about this quote"
-                    rows={4}
-                  />
-                )}
-              </form.AppField>
-            </Section>
-
-            {quote.kind === 'product' && quote.product ? (
-              <Section
-                description="Standard assemblies are included. Optional assemblies add to the quote."
-                title="Assemblies"
-              >
-                <form.Field name="selectedAssemblies">
-                  {(field) => (
-                    <QuoteAssembliesEditor
-                      catalogAssemblies={quote.product?.assemblies ?? []}
-                      currencyCode={quoteCurrencyCode}
-                      initialSelections={quote.selectedAssemblies}
-                      onChange={(nextValue) => {
-                        field.handleChange(nextValue);
-                        autosave.commit();
-                      }}
-                      readOnly={setupReadOnly}
-                      value={field.state.value}
-                    />
+                      ) : (
+                        <View className="gap-3">
+                          {lineItemsField.state.value.map((lineItem, index) => (
+                            <View
+                              className="gap-3 rounded-xl border border-border bg-muted/10 p-3"
+                              key={getLineItemKey(lineItem)}
+                            >
+                              <form.AppField name={`lineItems[${index}].name`}>
+                                {(field) => (
+                                  <field.TextField
+                                    disabled={setupReadOnly}
+                                    label="Name"
+                                    onValueCommit={autosave.commit}
+                                  />
+                                )}
+                              </form.AppField>
+                              <View className="gap-3 md:flex-row">
+                                <View className="flex-1">
+                                  <form.AppField name={`lineItems[${index}].quantity`}>
+                                    {(field) => (
+                                      <field.NumberField
+                                        disabled={setupReadOnly}
+                                        label="Quantity"
+                                        onValueCommit={autosave.commit}
+                                      />
+                                    )}
+                                  </form.AppField>
+                                </View>
+                                <View className="flex-1">
+                                  <form.AppField name={`lineItems[${index}].unitPrice`}>
+                                    {(field) => (
+                                      <field.CurrencyField
+                                        disabled={setupReadOnly}
+                                        label="Unit price"
+                                        onValueCommit={autosave.commit}
+                                      />
+                                    )}
+                                  </form.AppField>
+                                </View>
+                              </View>
+                              <View className="flex-row items-center justify-between gap-3">
+                                <View>
+                                  <Text className="text-xs text-muted-foreground">Total</Text>
+                                  <Text className="mt-1 text-sm text-foreground" mono weight="semibold">
+                                    {formatCurrency(lineItem.quantity * lineItem.unitPrice, quoteCurrencyCode)}
+                                  </Text>
+                                </View>
+                                <Pressable
+                                  accessibilityLabel={`Remove line item ${index + 1}`}
+                                  accessibilityRole="button"
+                                  accessibilityState={{ disabled: setupReadOnly }}
+                                  className={`h-10 w-10 items-center justify-center rounded-lg ${
+                                    setupReadOnly ? 'opacity-0' : 'active:bg-muted'
+                                  }`}
+                                  disabled={setupReadOnly}
+                                  onPress={() => {
+                                    lineItemsField.removeValue(index);
+                                    autosave.commit();
+                                  }}
+                                >
+                                  <Icon className="text-danger" icon={IconTrash} size={17} />
+                                </Pressable>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </Section>
                   )}
                 </form.Field>
-              </Section>
-            ) : null}
+
+                <Section title="Internal notes">
+                  <form.AppField name="notes">
+                    {(field) => (
+                      <field.TextareaField
+                        disabled={!canEdit('notes')}
+                        onValueCommit={autosave.commit}
+                        placeholder="Internal notes about this quote"
+                        rows={4}
+                      />
+                    )}
+                  </form.AppField>
+                </Section>
+
+                {quote.kind === 'product' && quote.product ? (
+                  <Section
+                    description="Standard assemblies are included. Optional assemblies add to the quote."
+                    title="Assemblies"
+                  >
+                    <form.Field name="selectedAssemblies">
+                      {(field) => (
+                        <QuoteAssembliesEditor
+                          catalogAssemblies={quote.product?.assemblies ?? []}
+                          currencyCode={quoteCurrencyCode}
+                          initialSelections={quote.selectedAssemblies}
+                          onChange={(nextValue) => {
+                            field.handleChange(nextValue);
+                            autosave.commit();
+                          }}
+                          readOnly={setupReadOnly}
+                          value={field.state.value}
+                        />
+                      )}
+                    </form.Field>
+                  </Section>
+                ) : null}
+              </>
+            ) : (
+              <QuoteDocumentsTab
+                canUpdate={canUpdate}
+                flushAutosave={autosave.flush}
+                quote={quote}
+                quoteNotesField={
+                  <form.AppField name="documentNotes">
+                    {(field) => (
+                      <field.TextareaField
+                        disabled={!canUpdate}
+                        onValueCommit={autosave.commit}
+                        placeholder="Notes entered here will be included in the quote document."
+                        rows={4}
+                      />
+                    )}
+                  </form.AppField>
+                }
+              />
+            )}
           </View>
         </form.AppForm>
       </ScrollView>
@@ -473,6 +501,21 @@ function QuoteEditor({
         quote={quote}
       />
     </SafeAreaView>
+  );
+}
+
+function QuoteTabButton({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      className={`rounded-lg px-4 py-2 ${active ? 'bg-surface' : ''}`}
+      onPress={onPress}
+    >
+      <Text className={`text-xs ${active ? 'text-foreground' : 'text-muted-foreground'}`} weight="semibold">
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 

@@ -26,6 +26,11 @@ export function productDocumentDownloadPath(productId: string, documentId: strin
   return `/api/products/${productId}/documents/${documentId}/download`;
 }
 
+/** URL of a Quote document's authed, owner-scoped download route. */
+export function quoteDocumentDownloadPath(quoteId: string, documentId: string): string {
+  return `/api/quotes/${quoteId}/documents/${documentId}/download`;
+}
+
 /** URL of the generated Product Brochure preview PDF. */
 export function productBrochurePreviewPath(productId: string): string {
   return `/api/products/${productId}/brochure-preview`;

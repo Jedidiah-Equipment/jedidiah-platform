@@ -48,8 +48,7 @@ export const ListFilterButton = forwardRef<
       {showLabel ? (
         <>
           <Text
-            className={`min-w-0 flex-1 text-xs tracking-wide ${accentClassName}`}
-            mono
+            className={`min-w-0 flex-1 text-sm tracking-wide ${accentClassName}`}
             numberOfLines={1}
             weight="semibold"
           >
@@ -74,7 +73,7 @@ export function SegmentedSortControl<Value extends string>({
 }) {
   return (
     <View className="h-10 min-w-0 flex-row items-center gap-2">
-      <Text className="shrink-0 text-xs tracking-widest text-muted-foreground" mono weight="semibold">
+      <Text className="shrink-0 text-sm tracking-widest text-muted-foreground" weight="semibold">
         SORT
       </Text>
       <View className="h-10 min-w-0 shrink flex-row rounded-xl border border-border bg-surface p-1">
@@ -93,8 +92,7 @@ export function SegmentedSortControl<Value extends string>({
               onPress={() => onChange(option.value)}
             >
               <Text
-                className={`text-xs tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
-                mono
+                className={`text-sm tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
                 numberOfLines={1}
                 weight="semibold"
               >

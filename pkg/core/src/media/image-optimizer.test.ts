@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest';
 import { optimizeImage } from './image-optimizer.js';
 import { IMAGE_TRANSFORMS } from './image-transform.js';
 
-// Build a solid-colour raster of the given size, so tests exercise real sharp encoding without a fixture.
+// Solid-colour rasters exercise the real encoder without binary fixtures.
 function source(width: number, height: number, format: 'png' | 'jpeg'): Promise<Buffer> {
   return sharp({ create: { width, height, channels: 3, background: { r: 10, g: 120, b: 200 } } })
     [format]()
@@ -29,7 +29,16 @@ describe('optimizeImage', () => {
     expect(meta.width).toBe(640);
   });
 
-  test('re-encodes to JPEG at its own smaller width when asked for the og:image format', async () => {
+  test('produces the mobile WebP variant at its smaller target width', async () => {
+    const output = await optimizeImage(await source(1600, 1200, 'jpeg'), 'mobileWebp');
+    const meta = await sharp(output).metadata();
+
+    expect(meta.format).toBe('webp');
+    expect(meta.width).toBe(IMAGE_TRANSFORMS.mobileWebp.maxWidth);
+    expect(meta.height).toBe(480);
+  });
+
+  test('re-encodes to JPEG at its own smaller width for social previews', async () => {
     const output = await optimizeImage(await source(4000, 3000, 'png'), 'jpeg');
     const meta = await sharp(output).metadata();
 

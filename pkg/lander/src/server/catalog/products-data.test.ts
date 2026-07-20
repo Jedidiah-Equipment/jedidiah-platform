@@ -1,8 +1,8 @@
+import { transformSignature } from '@pkg/core';
 import { productAssemblies, productRanges, productRangeVariants, products, sql } from '@pkg/db';
 import { expect } from 'vitest';
 import { translationEnvelope } from '../../test/catalog-translation.js';
 import { test } from '../../test/tester.js';
-import { transformSignature } from '../media/image-transform.js';
 import { loadProductsCatalog, toRangeSlug, toVariantLabels } from './products-data.js';
 
 type Db = Parameters<typeof loadProductsCatalog>[0];

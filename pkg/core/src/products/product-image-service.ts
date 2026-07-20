@@ -1,14 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import { type Db, notRemoved, products } from '@pkg/db';
+import { type Db, notRemoved, products, type StoredFile } from '@pkg/db';
 import { PRODUCT_IMAGE_POLICY } from '@pkg/domain';
 import type { AuthId, Product, ProductImageSlot, UUID } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../audit/audit-service.js';
-import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
+import { readStoredObject, type StorageAdapter, type StoredObject } from '../documents/storage-adapter.js';
 import { FileNotFoundError } from '../files/file-errors.js';
 import { fileExtensionFor, replaceFile } from '../files/stored-file-service.js';
+import { type ImageCacheOptions, type OptimizedImage, readOptimizedImage } from '../media/image-cache.js';
 import { ProductNotFoundError } from './product-errors.js';
 import { getProduct, productAuditDescriptor } from './product-service.js';
 
@@ -93,6 +94,40 @@ export async function readProductImage({
   slot: ProductImageSlot;
   storage: StorageAdapter;
 }): Promise<StoredObject> {
+  const ref = await readProductImageReference({ db, productId, slot });
+
+  return storage.get(ref.storageKey);
+}
+
+export async function readMobileProductImage({
+  cache,
+  db,
+  productId,
+  slot,
+  storage,
+}: {
+  cache: ImageCacheOptions;
+  db: Db;
+  productId: UUID;
+  slot: ProductImageSlot;
+  storage: StorageAdapter;
+}): Promise<OptimizedImage> {
+  const ref = await readProductImageReference({ db, productId, slot });
+
+  return readOptimizedImage(cache, ref.storageKey, 'mobileWebp', () => readStoredObject(storage, ref.storageKey));
+}
+
+// Returns the immutable storage reference without reading its object. Optimized consumers use the key as
+// their cache identity and defer storage.get until the shared image cache reports a miss.
+export async function readProductImageReference({
+  db,
+  productId,
+  slot,
+}: {
+  db: Db;
+  productId: UUID;
+  slot: ProductImageSlot;
+}): Promise<StoredFile> {
   const [row] = await db
     .select({ images: products.images })
     .from(products)
@@ -112,5 +147,5 @@ export async function readProductImage({
     });
   }
 
-  return storage.get(ref.storageKey);
+  return ref;
 }

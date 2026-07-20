@@ -1,4 +1,4 @@
-import type { OptimizedImage } from './image-cache.js';
+import type { OptimizedImage } from '@pkg/core';
 import { PLACEHOLDER_CONTENT_TYPE, PLACEHOLDER_SVG } from './placeholder.js';
 
 // A real image URL always carries the `?v=` file-`updatedAt` token (see products-data `imageUrl`), and a

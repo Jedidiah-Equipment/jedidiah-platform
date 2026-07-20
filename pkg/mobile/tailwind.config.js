@@ -38,6 +38,7 @@ module.exports = {
           foreground: 'rgb(var(--color-muted-foreground) / <alpha-value>)',
         },
         elevated: 'rgb(var(--color-elevated) / <alpha-value>)',
+        'image-backdrop': 'rgb(var(--color-image-backdrop) / <alpha-value>)',
         primary: {
           DEFAULT: 'rgb(var(--color-primary) / <alpha-value>)',
           foreground: 'rgb(var(--color-primary-foreground) / <alpha-value>)',

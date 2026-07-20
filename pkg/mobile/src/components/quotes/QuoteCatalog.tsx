@@ -41,12 +41,14 @@ export function QuoteCatalogHeader({ count }: { count: number | null }) {
 
 export function QuoteCatalogControls({
   canCreate,
+  onCreate,
   onSearchChange,
   onStatusChange,
   search,
   status,
 }: {
   canCreate: boolean;
+  onCreate: () => void;
   onSearchChange: (search: string) => void;
   onStatusChange: (status: QuoteStatusFilter) => void;
   search: string;
@@ -108,9 +110,8 @@ export function QuoteCatalogControls({
         <Pressable
           accessibilityLabel="New quote"
           accessibilityRole="button"
-          accessibilityState={{ disabled: true }}
-          className="h-10 flex-row items-center gap-2 rounded-xl bg-primary px-3 opacity-70"
-          disabled
+          className="h-10 flex-row items-center gap-2 rounded-xl bg-primary px-3 active:opacity-90"
+          onPress={onCreate}
         >
           <Icon className="text-primary-foreground" icon={IconPlus} size={18} strokeWidth={2.5} />
           {isWide ? (

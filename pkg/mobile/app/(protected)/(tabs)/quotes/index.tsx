@@ -2,7 +2,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { NewQuoteModal } from '@/components/quotes/NewQuoteModal';
 import {
   QuoteCatalogControls,
   QuoteCatalogHeader,
@@ -33,6 +33,7 @@ export default function QuotesRoute() {
   const readAccess = useCan('quote:read');
   const createAccess = useCan('quote:create');
   const [search, setSearch] = useState('');
+  const [newQuoteOpen, setNewQuoteOpen] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [status, setStatus] = usePersistedState<QuoteStatusFilter>('jedidiah-quote-status', 'all', isQuoteStatusFilter);
   const [pagination, setPagination] = useState<PaginationState>({ search: debouncedSearch, status, pageCount: 1 });
@@ -123,6 +124,7 @@ export default function QuotesRoute() {
         <View className="gap-4">
           <QuoteCatalogControls
             canCreate={createAccess.can}
+            onCreate={() => setNewQuoteOpen(true)}
             onSearchChange={setSearch}
             onStatusChange={setStatus}
             search={search}
@@ -148,6 +150,7 @@ export default function QuotesRoute() {
           )}
         </View>
       </ScrollView>
+      {newQuoteOpen ? <NewQuoteModal onClose={() => setNewQuoteOpen(false)} /> : null}
     </SafeAreaView>
   );
 }

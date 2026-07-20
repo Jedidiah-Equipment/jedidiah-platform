@@ -16,7 +16,7 @@ export default function ProductDetailRoute() {
   const trpc = useTRPC();
   const access = useCan('product:read');
   const query = useQuery(trpc.products.get.queryOptions({ id: productId }, { enabled: access.can }));
-  const handleBack = () => (router.canGoBack() ? router.back() : router.replace('/products'));
+  const handleBack = () => router.dismissTo('/products');
 
   if (!access.isPending && !access.can) return <Redirect href="/" />;
 

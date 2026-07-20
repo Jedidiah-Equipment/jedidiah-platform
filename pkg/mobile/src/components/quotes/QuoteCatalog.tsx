@@ -70,8 +70,8 @@ export function QuoteCatalogControls({
   };
 
   return (
-    <View className="z-10 h-11 flex-row items-center gap-2">
-      <View className="h-11 min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3">
+    <View className="z-10 h-10 flex-row items-center gap-2">
+      <View className="h-10 min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3">
         <Icon className="text-muted-foreground" icon={IconSearch} size={17} />
         <TextInput
           accessibilityLabel="Search quotes"
@@ -87,7 +87,7 @@ export function QuoteCatalogControls({
         accessibilityLabel={`Filter by status: ${statusLabel}`}
         accessibilityRole="button"
         accessibilityState={{ expanded: menuAnchor !== null }}
-        className={`h-11 flex-row items-center gap-2 rounded-xl border px-3 ${
+        className={`h-10 flex-row items-center gap-2 rounded-xl border px-3 ${
           status === 'all' ? 'border-border bg-surface' : 'border-primary bg-primary/10'
         }`}
         onPress={openMenu}
@@ -109,7 +109,7 @@ export function QuoteCatalogControls({
           accessibilityLabel="New quote"
           accessibilityRole="button"
           accessibilityState={{ disabled: true }}
-          className="h-11 flex-row items-center gap-2 rounded-xl bg-primary px-3 opacity-70"
+          className="h-10 flex-row items-center gap-2 rounded-xl bg-primary px-3 opacity-70"
           disabled
         >
           <Icon className="text-primary-foreground" icon={IconPlus} size={18} strokeWidth={2.5} />

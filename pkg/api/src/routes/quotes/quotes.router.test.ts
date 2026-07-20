@@ -21,6 +21,8 @@ import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
 import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
+const PRODUCT_THUMBNAIL_DATA_URL = 'data:image/webp;base64,aaaa';
+
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
   const product = await createProduct(db);
@@ -742,6 +744,7 @@ describe('quotes.list', () => {
           product: expect.objectContaining({
             modelCode: context.product.modelCode,
             name: context.product.name,
+            thumbnailDataUrl: PRODUCT_THUMBNAIL_DATA_URL,
           }),
         }),
       ],
@@ -1951,6 +1954,7 @@ async function createProduct(db: Db, overrides: Partial<typeof products.$inferIn
       modelCode: 'QUOTE-001',
       name: 'Quote Test Product',
       rangeId,
+      thumbnailDataUrl: PRODUCT_THUMBNAIL_DATA_URL,
       ...overrides,
     })
     .returning();

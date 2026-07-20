@@ -169,6 +169,7 @@ export const QuoteProductSummaryFacts = z.object({
   currencyCode: ProductCurrencyCode,
   modelCode: ProductModelCode,
   name: ProductName,
+  thumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
 export type QuoteProductDetailFacts = z.infer<typeof QuoteProductDetailFacts>;
@@ -177,7 +178,6 @@ export const QuoteProductDetailFacts = QuoteProductSummaryFacts.extend({
   bays: z.array(ProductBay),
   description: ProductDescription,
   requiresVinNumber: ProductRequiresVinNumber,
-  thumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
 const quoteSummaryShape = {

@@ -28,6 +28,7 @@ export type QuoteListRow = {
   productCurrencyCode: string | null;
   productModelCode: string | null;
   productName: string | null;
+  productThumbnailDataUrl: string | null;
   salesPersonEmail: string | null;
   salesPersonName: string | null;
   salesPersonThumbnailDataUrl: string | null;
@@ -177,6 +178,7 @@ function mapQuoteSummaryProduct(row: QuoteListRow): QuoteProductSummaryFacts | n
     currencyCode: ProductCurrencyCode.parse(row.productCurrencyCode),
     modelCode: row.productModelCode,
     name: row.productName,
+    thumbnailDataUrl: row.productThumbnailDataUrl,
   };
 }
 

@@ -150,6 +150,7 @@ function buildPriorityQuote(overrides: Partial<Record<keyof PriorityQuoteType, u
       currencyCode: 'ZAR',
       modelCode: 'MDL-1',
       name: 'Loader Bucket',
+      thumbnailDataUrl: null,
     },
     quotedBasePrice: 100000,
     quotedCurrencyCode: 'ZAR',

@@ -1,7 +1,8 @@
 import type { Product } from '@pkg/schema';
 
 export type ProductSort = 'name' | 'price';
-export type RangeFilter = 'all' | string;
+/** The literal 'all' or a Product Range id. Honestly a string — a literal union would collapse. */
+export type RangeFilter = string;
 
 export function isProductSort(value: unknown): value is ProductSort {
   return value === 'name' || value === 'price';

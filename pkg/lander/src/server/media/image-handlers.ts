@@ -1,7 +1,8 @@
-import { parseImageFormat, readOptimizedImage, readStoredObject, StorageObjectNotFoundError } from '@pkg/core';
+import { readOptimizedImage, readStoredObject, StorageObjectNotFoundError } from '@pkg/core';
 import { getDb } from '../runtime/db.js';
 import { getImageCacheDir } from '../runtime/env.js';
 import { getStorage } from '../runtime/storage.js';
+import { parseImageFormat } from './image-format.js';
 import { imageResponse } from './image-response.js';
 import { type ResolvedImageRef, resolveProductImageRef, resolveRangeImageRef } from './images.js';
 

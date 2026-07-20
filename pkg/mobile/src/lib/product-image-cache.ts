@@ -13,9 +13,3 @@ export function productImageCachePath(cacheDir: string, key: ProductImageKey): s
 
   return `${normalizedCacheDir}product-images/${key.productId}-${key.slot}-${updatedAtMs}.webp`;
 }
-
-export type ProductImageResolution = { kind: 'cached' } | { kind: 'fetch' };
-
-export function resolveProductImage(existsInCache: boolean, _key: ProductImageKey): ProductImageResolution {
-  return existsInCache ? { kind: 'cached' } : { kind: 'fetch' };
-}

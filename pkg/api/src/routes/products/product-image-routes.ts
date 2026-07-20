@@ -5,7 +5,6 @@ import {
   readProductImage,
   replaceProductImage,
   type StorageAdapter,
-  type StoredObject,
 } from '@pkg/core';
 import { db } from '@pkg/db';
 import { ProductImageSlotParams } from '@pkg/schema';
@@ -56,31 +55,21 @@ export function createProductImageRouteConfig(
         storage,
       });
     },
-    read: async ({ rawParams, rawQuery }) => {
+    read: ({ rawParams, rawQuery }) => {
       const params = ProductImageSlotParams.parse(rawParams);
       const query = ProductImageDownloadQuery.parse(rawQuery);
 
       if (query.variant === 'mobile') {
-        const optimized = await readMobileProductImage({
+        return readMobileProductImage({
           cache: imageOptions,
           db,
           productId: params.productId,
           slot: params.slot,
           storage,
         });
-
-        return {
-          body: bytesBody(optimized.body),
-          byteSize: optimized.byteSize,
-          contentType: optimized.contentType,
-        };
       }
 
       return readProductImage({ db, productId: params.productId, slot: params.slot, storage });
     },
   };
-}
-
-async function* bytesBody(bytes: Uint8Array): StoredObject['body'] {
-  yield bytes;
 }

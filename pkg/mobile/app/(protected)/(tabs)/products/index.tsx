@@ -1,6 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { Redirect } from 'expo-router';
-import { useEffect } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -21,19 +19,20 @@ import {
   type RangeFilter,
 } from '@/lib/product-presentation';
 import { useTRPC } from '@/lib/trpc';
-import { useCan } from '@/lib/use-access';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
 
+/** Product catalog list. The products layout owns the permission gate. */
 export default function ProductsRoute() {
   const trpc = useTRPC();
-  const access = useCan('product:read');
-  const products = useQuery(trpc.products.list.queryOptions({ pageSize: 0 }, { enabled: access.can }));
-  const rangeOptions = useQuery(trpc.products.rangeOptions.queryOptions(undefined, { enabled: access.can }));
+  const products = useQuery(trpc.products.list.queryOptions({ pageSize: 0 }));
+  const rangeOptions = useQuery(trpc.products.rangeOptions.queryOptions(undefined));
   const [range, setRange] = usePersistedState<RangeFilter>('jedidiah-product-range', 'all', isRangeFilter);
   const [sort, setSort] = usePersistedState<ProductSort>('jedidiah-product-sort', 'name', isProductSort);
   const refresh = useGlobalRefresh();
   const ranges = rangeOptions.data?.ranges ?? [];
+  // A persisted Range that no longer exists renders as "all"; storage self-heals the
+  // next time the user picks a Range, so no write-back effect is needed.
   const normalizedRange = rangeOptions.isSuccess
     ? normalizeRangeFilter(
         range,
@@ -42,13 +41,7 @@ export default function ProductsRoute() {
     : range;
   const presentedProducts = presentProducts(products.data?.items ?? [], normalizedRange, sort);
 
-  useEffect(() => {
-    if (rangeOptions.isSuccess && normalizedRange !== range) setRange(normalizedRange);
-  }, [normalizedRange, range, rangeOptions.isSuccess, setRange]);
-
-  if (!access.isPending && !access.can) return <Redirect href="/" />;
-
-  const pending = access.isPending || (access.can && (products.isPending || rangeOptions.isPending));
+  const pending = products.isPending || rangeOptions.isPending;
   const count = pending ? null : presentedProducts.length;
 
   return (

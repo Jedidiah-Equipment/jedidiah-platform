@@ -6,17 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DocumentViewer } from '@/components/documents/DocumentViewer';
 import { Text } from '@/components/ui/text';
-import {
-  jobDocumentDownloadPath,
-  PRODUCT_BROCHURE_DOCUMENT_ID,
-  productBrochurePreviewPath,
-  productDocumentDownloadPath,
-} from '@/lib/authed-fetch';
+import { jobDocumentDownloadPath, productBrochurePreviewPath, productDocumentDownloadPath } from '@/lib/authed-fetch';
+import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/lib/product-brochure';
 import { useTRPC } from '@/lib/trpc';
 
 /**
- * Full-screen reader for a Job or Product document. Each context is rebuilt from
- * its own read so deep links need only the document id plus its owner id.
+ * Full-screen reader for a Job or Product document. The owning context is picked
+ * once from the route params; each context component rebuilds its own read so
+ * deep links need only the document id plus its owner id.
  */
 export default function DocumentViewerRoute() {
   const router = useRouter();
@@ -25,63 +22,92 @@ export default function DocumentViewerRoute() {
     jobId?: string;
     productId?: string;
   }>();
-  const trpc = useTRPC();
-  const productContext = Boolean(productId);
-  const brochureContext = productContext && documentId === PRODUCT_BROCHURE_DOCUMENT_ID;
-  const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId ?? '' }, { enabled: Boolean(jobId) }));
-  const productQuery = useQuery(
-    trpc.products.get.queryOptions({ id: productId ?? '' }, { enabled: Boolean(productId) }),
-  );
-  const productDocumentsQuery = useQuery(
-    trpc.documents.listByProduct.queryOptions(
-      { productId: productId ?? '' },
-      { enabled: Boolean(productId) && !brochureContext },
-    ),
-  );
-  const queryPending = productContext
-    ? productQuery.isPending || (!brochureContext && productDocumentsQuery.isPending)
-    : jobQuery.isPending;
-  const queryError = productContext
-    ? productQuery.isError || (!brochureContext && productDocumentsQuery.isError)
-    : jobQuery.isError;
-  const document = productContext
-    ? brochureContext
-      ? productQuery.data && isBrochureReady(productQuery.data)
-        ? { filename: `${productQuery.data.modelCode}-brochure.pdf` }
-        : null
-      : productDocumentsQuery.data?.find((candidate) => candidate.id === documentId)
-    : jobQuery.data?.documents.find((candidate) => candidate.id === documentId);
-  const context = productContext
-    ? productQuery.data
-      ? `${productQuery.data.modelCode} · ${productQuery.data.name}`
-      : null
-    : jobQuery.data
-      ? `${jobQuery.data.code} · ${getJobDisplayName(jobQuery.data)}`
-      : null;
-  const downloadPath = productContext
-    ? brochureContext
-      ? productBrochurePreviewPath(productId ?? '')
-      : productDocumentDownloadPath(productId ?? '', documentId)
-    : jobDocumentDownloadPath(jobId ?? '', documentId);
 
   // Opened as a deep link / initial route, there's no entry to pop, so fall back
   // to the owning tab rather than leaving `router.back()` a dead-end no-op.
-  const handleBack = () => (router.canGoBack() ? router.back() : router.replace(productContext ? '/products' : '/'));
+  const handleBack = () => (router.canGoBack() ? router.back() : router.replace(productId ? '/products' : '/'));
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
-      {!jobId && !productId ? (
-        <Message onBack={handleBack} text="This document link is incomplete." />
-      ) : queryPending ? (
-        <Message text="Loading document…" />
-      ) : queryError ? (
-        <Message onBack={handleBack} text="Couldn’t load this document." />
-      ) : !document || !context ? (
-        <Message onBack={handleBack} text="This document is no longer available." />
+      {productId ? (
+        documentId === PRODUCT_BROCHURE_DOCUMENT_ID ? (
+          <BrochureScreen onBack={handleBack} productId={productId} />
+        ) : (
+          <ProductDocumentScreen documentId={documentId} onBack={handleBack} productId={productId} />
+        )
+      ) : jobId ? (
+        <JobDocumentScreen documentId={documentId} jobId={jobId} onBack={handleBack} />
       ) : (
-        <DocumentViewer context={context} document={document} downloadPath={downloadPath} onBack={handleBack} />
+        <Message onBack={handleBack} text="This document link is incomplete." />
       )}
     </SafeAreaView>
+  );
+}
+
+function JobDocumentScreen({ jobId, documentId, onBack }: { jobId: string; documentId: string; onBack: () => void }) {
+  const trpc = useTRPC();
+  const query = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
+  const document = query.data?.documents.find((candidate) => candidate.id === documentId);
+
+  if (query.isPending) return <Message text="Loading document…" />;
+  if (query.isError) return <Message onBack={onBack} text="Couldn’t load this document." />;
+  if (!document) return <Message onBack={onBack} text="This document is no longer available." />;
+
+  return (
+    <DocumentViewer
+      context={`${query.data.code} · ${getJobDisplayName(query.data)}`}
+      document={document}
+      downloadPath={jobDocumentDownloadPath(jobId, documentId)}
+      onBack={onBack}
+    />
+  );
+}
+
+function ProductDocumentScreen({
+  productId,
+  documentId,
+  onBack,
+}: {
+  productId: string;
+  documentId: string;
+  onBack: () => void;
+}) {
+  const trpc = useTRPC();
+  const productQuery = useQuery(trpc.products.get.queryOptions({ id: productId }));
+  const documentsQuery = useQuery(trpc.documents.listByProduct.queryOptions({ productId }));
+  const document = documentsQuery.data?.find((candidate) => candidate.id === documentId);
+
+  if (productQuery.isPending || documentsQuery.isPending) return <Message text="Loading document…" />;
+  if (productQuery.isError || documentsQuery.isError) {
+    return <Message onBack={onBack} text="Couldn’t load this document." />;
+  }
+  if (!document) return <Message onBack={onBack} text="This document is no longer available." />;
+
+  return (
+    <DocumentViewer
+      context={`${productQuery.data.modelCode} · ${productQuery.data.name}`}
+      document={document}
+      downloadPath={productDocumentDownloadPath(productId, documentId)}
+      onBack={onBack}
+    />
+  );
+}
+
+function BrochureScreen({ productId, onBack }: { productId: string; onBack: () => void }) {
+  const trpc = useTRPC();
+  const query = useQuery(trpc.products.get.queryOptions({ id: productId }));
+
+  if (query.isPending) return <Message text="Loading document…" />;
+  if (query.isError) return <Message onBack={onBack} text="Couldn’t load this document." />;
+  if (!isBrochureReady(query.data)) return <Message onBack={onBack} text="This document is no longer available." />;
+
+  return (
+    <DocumentViewer
+      context={`${query.data.modelCode} · ${query.data.name}`}
+      document={{ filename: productBrochureFilename(query.data.modelCode) }}
+      downloadPath={productBrochurePreviewPath(productId)}
+      onBack={onBack}
+    />
   );
 }
 

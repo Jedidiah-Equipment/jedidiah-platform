@@ -2,7 +2,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { useEffect, useState } from 'react';
 
 import { authedFetch, productImageDownloadPath } from './authed-fetch';
-import { type ProductImageKey, productImageCachePath, resolveProductImage } from './product-image-cache';
+import { type ProductImageKey, productImageCachePath } from './product-image-cache';
 
 export type ProductImageSource = { kind: 'failed' | 'loading' } | { kind: 'ready'; uri: string };
 
@@ -35,7 +35,7 @@ async function resolveProductImageUri(key: ProductImageKey): Promise<string> {
   const cachePath = productImageCachePath(Paths.cache.uri, key);
   const cachedFile = new File(cachePath);
 
-  if (resolveProductImage(cachedFile.exists, key).kind === 'cached') {
+  if (cachedFile.exists) {
     return cachedFile.uri;
   }
 

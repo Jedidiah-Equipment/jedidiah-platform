@@ -6,10 +6,15 @@ import type { AuthId, Product, ProductImageSlot, UUID } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../audit/audit-service.js';
-import { readStoredObject, type StorageAdapter, type StoredObject } from '../documents/storage-adapter.js';
+import {
+  readStoredObject,
+  type StorageAdapter,
+  type StoredObject,
+  storedObjectFromBytes,
+} from '../documents/storage-adapter.js';
 import { FileNotFoundError } from '../files/file-errors.js';
 import { fileExtensionFor, replaceFile } from '../files/stored-file-service.js';
-import { type ImageCacheOptions, type OptimizedImage, readOptimizedImage } from '../media/image-cache.js';
+import { type ImageCacheOptions, readOptimizedImage } from '../media/image-cache.js';
 import { ProductNotFoundError } from './product-errors.js';
 import { getProduct, productAuditDescriptor } from './product-service.js';
 
@@ -111,10 +116,13 @@ export async function readMobileProductImage({
   productId: UUID;
   slot: ProductImageSlot;
   storage: StorageAdapter;
-}): Promise<OptimizedImage> {
+}): Promise<StoredObject> {
   const ref = await readProductImageReference({ db, productId, slot });
+  const optimized = await readOptimizedImage(cache, ref.storageKey, 'mobileWebp', () =>
+    readStoredObject(storage, ref.storageKey),
+  );
 
-  return readOptimizedImage(cache, ref.storageKey, 'mobileWebp', () => readStoredObject(storage, ref.storageKey));
+  return storedObjectFromBytes(optimized.body, optimized.contentType);
 }
 
 // Returns the immutable storage reference without reading its object. Optimized consumers use the key as

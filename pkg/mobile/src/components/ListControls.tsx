@@ -61,7 +61,7 @@ export const ListFilterButton = forwardRef<
   );
 });
 
-/** Shared SORT label and segmented control used by every sortable landing-screen list. */
+/** Shared Sort label and segmented control used by every sortable landing-screen list. */
 export function SegmentedSortControl<Value extends string>({
   options,
   value,
@@ -74,7 +74,7 @@ export function SegmentedSortControl<Value extends string>({
   return (
     <View className="h-10 min-w-0 flex-row items-center gap-2">
       <Text className="shrink-0 text-[13px] tracking-widest text-muted-foreground" weight="semibold">
-        SORT
+        Sort
       </Text>
       <View className="h-10 min-w-0 shrink flex-row rounded-xl border border-border bg-surface p-1">
         {options.map((option) => {

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Redirect } from 'expo-router';
 import { useEffect } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,6 +46,8 @@ export default function ProductsRoute() {
     if (rangeOptions.isSuccess && normalizedRange !== range) setRange(normalizedRange);
   }, [normalizedRange, range, rangeOptions.isSuccess, setRange]);
 
+  if (!access.isPending && !access.can) return <Redirect href="/" />;
+
   const pending = access.isPending || (access.can && (products.isPending || rangeOptions.isPending));
   const count = pending ? null : presentedProducts.length;
 
@@ -58,11 +61,6 @@ export default function ProductsRoute() {
 
         {pending ? (
           <ProductGridSkeleton />
-        ) : !access.can ? (
-          <CatalogMessage
-            detail="Your account doesn’t have Product access. Ask an administrator to update your permissions."
-            title="You don’t have access to Products."
-          />
         ) : products.isError || rangeOptions.isError ? (
           <CatalogMessage
             detail="Pull to retry, or check your connection."

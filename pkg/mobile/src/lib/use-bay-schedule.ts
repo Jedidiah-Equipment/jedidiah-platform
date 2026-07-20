@@ -3,6 +3,7 @@ import {
   deriveActiveJobProgress,
   findActiveWorkSlot,
   getJobDisplayName,
+  hasPermission,
   isJobCancelled,
   listUpcomingWorkSlots,
 } from '@pkg/domain';
@@ -11,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useTRPC } from './trpc';
+import { useAccess } from './use-access';
 import { useBayCalendars } from './use-bay-calendars';
 
 /** The in-progress Work Slot a Bay is running today, projected for the ACTIVE NOW hero. */
@@ -74,6 +76,7 @@ export type BayQueueTimelineSlot = {
 
 export type BayQueueState =
   | { status: 'error'; error: unknown }
+  | { status: 'forbidden' }
   | { status: 'pending' }
   | { status: 'not-found' }
   | {
@@ -95,10 +98,16 @@ export type BayQueueState =
  */
 export function useBaySchedule(bayId: string): BayQueueState {
   const trpc = useTRPC();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
-  const bayCalendars = useBayCalendars();
+  const accessQuery = useAccess();
+  const canReadJobs = hasPermission(accessQuery.data, 'job:read');
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: canReadJobs }));
+  const bayCalendars = useBayCalendars({ enabled: canReadJobs });
 
   return useMemo<BayQueueState>(() => {
+    if (accessQuery.isPending) return { status: 'pending' };
+    if (accessQuery.error && accessQuery.data === undefined) return { status: 'error', error: accessQuery.error };
+    if (!canReadJobs) return { status: 'forbidden' };
+
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
     if (baysQuery.isPending || !bayCalendars) return { status: 'pending' };
 
@@ -217,5 +226,15 @@ export function useBaySchedule(bayId: string): BayQueueState {
       slotsById,
       today,
     };
-  }, [bayCalendars, bayId, baysQuery.data, baysQuery.error, baysQuery.isPending]);
+  }, [
+    accessQuery.data,
+    accessQuery.error,
+    accessQuery.isPending,
+    bayCalendars,
+    bayId,
+    baysQuery.data,
+    baysQuery.error,
+    baysQuery.isPending,
+    canReadJobs,
+  ]);
 }

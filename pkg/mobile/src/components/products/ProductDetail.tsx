@@ -262,7 +262,7 @@ function AssemblyGroup<T extends OptionalAssembly | StandardAssembly>({
 }) {
   return (
     <View>
-      <Text className={`pb-2 ${kind === 'optional' ? 'text-primary' : 'text-muted-foreground'}`} mono>
+      <Text className={`pb-2 leading-6 ${kind === 'optional' ? 'text-primary' : 'text-muted-foreground'}`} mono>
         {title}
       </Text>
       {assemblies.map((assembly) => (

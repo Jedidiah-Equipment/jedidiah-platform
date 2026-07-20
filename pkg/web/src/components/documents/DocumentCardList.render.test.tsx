@@ -11,6 +11,10 @@ vi.mock('@/lib/app-config.js', () => ({
   }),
 }));
 
+vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
+  useApiMutationErrorToast: () => vi.fn(),
+}));
+
 describe('DocumentCardList', () => {
   it('decides the delete affordance for each document', () => {
     const purchaseOrder = buildDocument({

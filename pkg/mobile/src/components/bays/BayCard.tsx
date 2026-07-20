@@ -1,4 +1,4 @@
-import { statusDaysLeftColor } from '@pkg/domain';
+import { jobStatusAccentColor } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
@@ -32,9 +32,7 @@ function ActiveBody({
   onPress: () => void;
 }) {
   const { resolved } = useColorMode();
-  // The active Job is running today, so its countdown/bar use the in-progress accent (blue when
-  // comfortable), turning amber then red as the finish nears.
-  const accent = statusDaysLeftColor({ status: 'in-progress', daysLeft: active.remainingWorkDays, scheme: resolved });
+  const accent = jobStatusAccentColor('in-progress', resolved);
 
   return (
     <BoardCard

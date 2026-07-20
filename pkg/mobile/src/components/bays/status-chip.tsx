@@ -1,9 +1,10 @@
+import type { JobStatusTone } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 
 /** The semantic accent a board status chip, dot, or label carries. */
-export type StatusTone = 'in-progress' | 'next' | 'muted';
+export type StatusTone = JobStatusTone;
 
 /**
  * Tailwind class fragments per status tone — the single source for the chip/dot/label accents the

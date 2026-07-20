@@ -3,11 +3,15 @@ import {
   deriveJobProgress,
   deriveJobRouteStop,
   getJobDisplayName,
+  getNextJobIds,
   hasPermission,
   type JobProgress,
   type JobRouteStop,
+  type JobStatusTone,
   type JobWorkSlotEntry,
   listEnabledBays,
+  listNextWorkSlots,
+  resolveJobStatusTone,
 } from '@pkg/domain';
 import type { BayOperator, DateOnlyIso, Department, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
@@ -27,6 +31,7 @@ export type JobRouteStopCard = JobRouteStop & {
   operator: BayOperator | null;
   /** Inclusive first working day — the Slot's queue span can open on an off-day. */
   firstWorkDay: DateOnlyIso;
+  isNext: boolean;
 };
 
 export type JobDetailState =
@@ -48,6 +53,7 @@ export type JobDetailState =
       route: JobRouteStopCard[];
       /** Shared days-left + overall-progress projection; `null` once the Job has no unfinished Slot. */
       progress: JobProgress | null;
+      tone: JobStatusTone;
       doneCount: number;
       totalCount: number;
       today: DateOnlyIso;
@@ -81,6 +87,9 @@ export function useJobDetail(jobId: string): JobDetailState {
     const { items, jobs, today } = baysQuery.data;
     const bays = listEnabledBays(items).sort(byBayDepartmentPipeline);
     const job = jobs.find((candidate) => candidate.id === jobId);
+    const nextSlots = listNextWorkSlots(bays);
+    const nextJobIds = getNextJobIds(bays);
+    const nextSlotIds = new Set(nextSlots.map((slot) => slot.id));
 
     // Walk the Bays in pipeline order so the route reads procurement → assembly; each Bay's Slots
     // already arrive in queue order. Collect the same entries the shared projection consumes.
@@ -99,6 +108,7 @@ export function useJobDetail(jobId: string): JobDetailState {
           department: bay.department,
           operator: bay.currentOperator,
           firstWorkDay: slot.firstWorkDay,
+          isNext: nextSlotIds.has(slot.id),
         });
       }
     }
@@ -107,6 +117,7 @@ export function useJobDetail(jobId: string): JobDetailState {
     // or its summary failed to resolve — nothing to route.
     if (entries.length === 0 || !job) return { status: 'not-found' };
 
+    const progress = deriveJobProgress({ slots: entries, today });
     return {
       status: 'ready',
       cancelledAt: job.cancelledAt,
@@ -118,7 +129,8 @@ export function useJobDetail(jobId: string): JobDetailState {
       customerCompanyName: job.customerCompanyName,
       description: job.description,
       route,
-      progress: deriveJobProgress({ slots: entries, today }),
+      progress,
+      tone: progress ? resolveJobStatusTone({ isNext: nextJobIds.has(job.id), status: progress.status }) : 'muted',
       doneCount: route.filter((stop) => stop.state === 'done').length,
       totalCount: route.length,
       today,

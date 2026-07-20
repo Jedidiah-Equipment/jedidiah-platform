@@ -9,9 +9,11 @@ import {
   findActiveWorkSlot,
   getBayTodayOccupancy,
   getJobProjectedFinishDates,
+  getNextJobIds,
   getOffDayLabel,
   isJobDeliveryAtRisk,
   listEnabledBays,
+  listNextWorkSlots,
   listUpcomingWorkSlots,
 } from './board-derivations.js';
 import { labelWorkDays } from './job-slot-projection.js';
@@ -216,6 +218,72 @@ describe('listUpcomingWorkSlots', () => {
 
     // No active slot excluded, so the covering slot stays in the list.
     expect(listUpcomingWorkSlots({ bay })).toEqual([covering]);
+  });
+});
+
+describe('getNextJobIds', () => {
+  it('returns the Work Job immediately after the active Slot', () => {
+    const bayId = id('bay-1');
+    const active = buildWorkSlot(bayId, {
+      durationDays: 1,
+      endDate: '2026-06-06',
+      id: 'slot-active',
+      jobId: 'job-active',
+      sequence: 1,
+      startDate: '2026-06-05',
+    });
+    const next = buildWorkSlot(bayId, {
+      durationDays: 2,
+      endDate: '2026-06-08',
+      id: 'slot-next',
+      jobId: 'job-next',
+      sequence: 2,
+      startDate: '2026-06-06',
+    });
+    const later = buildWorkSlot(bayId, {
+      durationDays: 2,
+      endDate: '2026-06-10',
+      id: 'slot-later',
+      jobId: 'job-later',
+      sequence: 3,
+      startDate: '2026-06-08',
+    });
+
+    const bay = buildBay({ id: 'bay-1', slots: [active, next, later] });
+
+    expect(listNextWorkSlots([bay])).toEqual([next]);
+    expect([...getNextJobIds([bay])]).toEqual([id('job-next')]);
+  });
+
+  it('does not skip an immediate Idle Slot to mark a later Work Job as next', () => {
+    const bayId = id('bay-1');
+    const active = buildWorkSlot(bayId, {
+      durationDays: 1,
+      endDate: '2026-06-06',
+      id: 'slot-active',
+      sequence: 1,
+      startDate: '2026-06-05',
+    });
+    const idle = buildIdleSlot(bayId, {
+      durationDays: 1,
+      endDate: '2026-06-07',
+      id: 'slot-idle',
+      sequence: 2,
+      startDate: '2026-06-06',
+    });
+    const later = buildWorkSlot(bayId, {
+      durationDays: 2,
+      endDate: '2026-06-09',
+      id: 'slot-later',
+      jobId: 'job-later',
+      sequence: 3,
+      startDate: '2026-06-07',
+    });
+
+    const bay = buildBay({ id: 'bay-1', slots: [active, idle, later] });
+
+    expect(listNextWorkSlots([bay])).toEqual([]);
+    expect([...getNextJobIds([bay])]).toEqual([]);
   });
 });
 

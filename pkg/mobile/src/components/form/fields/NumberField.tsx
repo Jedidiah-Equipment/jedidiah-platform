@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { TextInput } from '@/components/ui/text-input';
 import { useFieldContext } from '../hooks/form-context';
 import { getFieldErrors } from '../utils/field-errors';
+import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
 export type NumberFieldProps = {
@@ -26,7 +27,7 @@ export function NumberField({ disabled = false, label, onValueCommit, placeholde
   return (
     <FieldShell errors={errors} label={label}>
       <TextInput
-        className={`h-12 ${errors.length > 0 ? 'border-danger' : ''} ${disabled ? 'opacity-55' : ''}`}
+        className={`h-12 ${fieldStateClassNames({ disabled, hasErrors: errors.length > 0 })}`}
         editable={!disabled}
         keyboardType="decimal-pad"
         onBlur={() => {

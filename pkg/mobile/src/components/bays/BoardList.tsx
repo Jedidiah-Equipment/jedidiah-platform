@@ -56,19 +56,20 @@ export function BoardList({
   const isBays = listMode === 'bays';
   const state = isBays ? bayState : jobState;
 
+  let sortControl = null;
+  if (state.status === 'ready') {
+    sortControl = isBays ? (
+      <SegmentedSortControl onChange={setBaySort} options={BAY_SORT_OPTIONS} value={baySort} />
+    ) : (
+      <SegmentedSortControl onChange={setJobSort} options={JOB_SORT_OPTIONS} value={jobSort} />
+    );
+  }
+
   return (
     <View className="gap-4">
       <ListControlRow
         leading={<ListModeControl onToggle={onToggleListMode} title={isBays ? 'Bays' : 'Jobs'} />}
-        trailing={
-          state.status === 'ready' ? (
-            isBays ? (
-              <SegmentedSortControl onChange={setBaySort} options={BAY_SORT_OPTIONS} value={baySort} />
-            ) : (
-              <SegmentedSortControl onChange={setJobSort} options={JOB_SORT_OPTIONS} value={jobSort} />
-            )
-          ) : null
-        }
+        trailing={sortControl}
       />
 
       {state.status === 'forbidden' ? (

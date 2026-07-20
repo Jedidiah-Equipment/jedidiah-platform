@@ -1,4 +1,9 @@
-import { formatCurrency, resolveEffectiveBom } from '@pkg/domain';
+import {
+  formatCurrency,
+  resolveEffectiveBom,
+  resolveSelectedAssemblySnapshots,
+  type SelectedAssemblySnapshot,
+} from '@pkg/domain';
 import type { Assembly, QuoteSelectedAssembly } from '@pkg/schema';
 import { IconX } from '@tabler/icons-react';
 import type React from 'react';
@@ -7,7 +12,7 @@ import { Button } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { cn } from '@/lib/utils.js';
 
-import { type QuoteFormValues, resolveSelectedAssemblySnapshots, type SelectedAssemblySnapshot } from '../types.js';
+import type { QuoteFormValues } from '../types.js';
 
 type QuoteAssembliesSelectorProps = {
   catalogAssemblies: Assembly[];

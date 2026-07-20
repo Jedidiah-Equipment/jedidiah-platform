@@ -1,4 +1,10 @@
-import { departmentLabels, hasPermission } from '@pkg/domain';
+import {
+  canGenerateQuoteDocument,
+  departmentLabels,
+  getDefaultQuoteDocumentLeadTime,
+  hasPermission,
+  resolveQuoteDocumentLeadTime,
+} from '@pkg/domain';
 import type { QuoteDetail, QuoteDocumentGenerationWarning } from '@pkg/schema';
 import { IconFilePlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -23,8 +29,6 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { getDefaultQuoteDocumentLeadTime, resolveQuoteDocumentLeadTime } from '../types.js';
-
 export function GenerateQuoteDocumentDialog({
   flushAutosave,
   onGenerated,
@@ -44,11 +48,11 @@ export function GenerateQuoteDocumentDialog({
   const [leadTime, setLeadTime] = useState(defaultLeadTime);
   const [hasUserEditedLeadTime, setHasUserEditedLeadTime] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const canRunStatus = quote.status === 'draft' || quote.status === 'sent' || quote.status === 'accepted';
   const isCustomQuote = quote.kind === 'custom';
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const hasResolvedProductDocumentFacts = quote.product !== null;
-  const canRun = canUpdateQuote && canRunStatus && (isCustomQuote || hasResolvedProductDocumentFacts);
+  const canRun =
+    canUpdateQuote && canGenerateQuoteDocument({ kind: quote.kind, product: quote.product, status: quote.status });
   const trimmedLeadTime = leadTime.trim();
   const availabilityQuery = useQuery({
     ...trpc.quotes.productBayAvailability.queryOptions({ quoteId: quote.id }),

@@ -1,4 +1,9 @@
-import { formatCurrency, resolveEffectiveBom } from '@pkg/domain';
+import {
+  formatCurrency,
+  resolveEffectiveBom,
+  resolveSelectedAssemblySnapshots,
+  type SelectedAssemblySnapshot,
+} from '@pkg/domain';
 import type { Assembly, QuoteSelectedAssembly } from '@pkg/schema';
 import { IconCheck, IconX } from '@tabler/icons-react-native';
 import type React from 'react';
@@ -6,11 +11,7 @@ import { Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import {
-  type QuoteEditFormValues,
-  resolveSelectedAssemblySnapshots,
-  type SelectedAssemblySnapshot,
-} from '@/lib/quote-presentation';
+import type { QuoteEditFormValues } from '@/lib/quote-presentation';
 
 export function QuoteAssembliesEditor({
   catalogAssemblies,

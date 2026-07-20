@@ -1,5 +1,5 @@
 import { formatBytes, formatDate } from '@pkg/domain';
-import type { QuoteDocument, QuoteKind, QuoteStatus } from '@pkg/schema';
+import type { QuoteDocument } from '@pkg/schema';
 
 export function presentQuoteDocuments(documents: readonly QuoteDocument[], search: string): QuoteDocument[] {
   const normalizedSearch = search.trim().toLocaleLowerCase();
@@ -23,42 +23,4 @@ export function quoteDocumentMetaLine(
 
 export function quoteDocumentCountLabel(count: number): string {
   return `${count} document${count === 1 ? '' : 's'}`;
-}
-
-export function getDefaultQuoteDocumentLeadTime(quote: { product: { buildTimeDays: number } | null }): string {
-  return quote.product === null ? '' : formatQuoteDocumentLeadTime(quote.product.buildTimeDays);
-}
-
-export function resolveQuoteDocumentLeadTime({
-  availability,
-  fallbackLeadTime,
-  hasUserEditedLeadTime,
-  leadTime,
-}: {
-  availability: { defaultLeadTimeWorkingDays: number } | null | undefined;
-  fallbackLeadTime: string;
-  hasUserEditedLeadTime: boolean;
-  leadTime: string;
-}): string {
-  if (hasUserEditedLeadTime) return leadTime;
-  return availability ? formatQuoteDocumentLeadTime(availability.defaultLeadTimeWorkingDays) : fallbackLeadTime;
-}
-
-export function canGenerateQuoteDocument({
-  canUpdate,
-  kind,
-  product,
-  status,
-}: {
-  canUpdate: boolean;
-  kind: QuoteKind;
-  product: { buildTimeDays: number } | null;
-  status: QuoteStatus;
-}): boolean {
-  const canRunStatus = status === 'draft' || status === 'sent' || status === 'accepted';
-  return canUpdate && canRunStatus && (kind === 'custom' || product !== null);
-}
-
-function formatQuoteDocumentLeadTime(days: number): string {
-  return `${days} working days`;
 }

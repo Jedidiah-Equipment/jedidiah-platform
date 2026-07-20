@@ -1,10 +1,10 @@
+import { quoteStatusLabels } from '@pkg/domain';
 import { type Quote, QuoteStatus } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
-
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
@@ -15,7 +15,6 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteCustomerCombobox } from './components/QuoteCustomerCombobox.js';
 import { QuoteProductCombobox } from './components/QuoteProductCombobox.js';
-import { quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { QUOTE_CREATE_DEFAULT_VALUES, QuoteCreateFormValues, toQuoteCreateInput } from './components/types.js';
 
 const ALL_RANGES_SELECT_VALUE = 'all-ranges';

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { type AppTextInputProps, TextInput } from '@/components/ui/text-input';
 import { useFieldContext } from '../hooks/form-context';
 import { getFieldErrors } from '../utils/field-errors';
+import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
 export type TextFieldProps = {
@@ -18,7 +19,7 @@ export function TextField({ className, disabled = false, label, onValueCommit, .
   return (
     <FieldShell errors={errors} label={label}>
       <TextInput
-        className={`h-12 ${errors.length > 0 ? 'border-danger' : ''} ${disabled ? 'opacity-55' : ''} ${className ?? ''}`}
+        className={`h-12 ${fieldStateClassNames({ disabled, hasErrors: errors.length > 0 })} ${className ?? ''}`}
         editable={!disabled}
         onBlur={() => {
           field.handleBlur();

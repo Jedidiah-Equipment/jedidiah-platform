@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useFieldContext } from '../hooks/form-context';
 import { getFieldErrors } from '../utils/field-errors';
+import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
 type SelectFieldOption = {
@@ -52,9 +53,9 @@ export function SelectField({
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ disabled, expanded: open }}
-        className={`h-12 flex-row items-center justify-between gap-3 rounded-xl border bg-surface px-3 ${
-          errors.length > 0 ? 'border-danger' : 'border-border'
-        } ${disabled ? 'opacity-60' : 'active:bg-muted'}`}
+        className={`h-12 flex-row items-center justify-between gap-3 rounded-xl border bg-surface px-3 ${fieldStateClassNames(
+          { disabled, hasErrors: errors.length > 0 },
+        )} ${disabled ? '' : 'active:bg-muted'}`}
         disabled={disabled}
         onPress={() => setOpen((value) => !value)}
       >

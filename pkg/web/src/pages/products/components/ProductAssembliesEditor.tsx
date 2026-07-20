@@ -1,12 +1,11 @@
 import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { formatCurrency } from '@pkg/domain';
+import { createStableRowKeys, formatCurrency } from '@pkg/domain';
 import { type AssemblyInput, AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
-import { createStableRowKeys } from '@/components/form/create-stable-row-keys.js';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
 import { CreatableComboboxField, CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';

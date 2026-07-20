@@ -2,14 +2,11 @@ import { QuoteDetail, type QuoteSummary } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
-  computeQuoteSummary,
   getNextQuotePage,
   getQuoteEditFormValuesValidator,
   isQuoteStatusFilter,
   presentQuotePages,
   quoteMetaLine,
-  quoteStatusColorClassNames,
-  quoteStatusLabels,
   shouldPinPriorityQuotes,
   toQuoteEditFormValues,
   toQuoteUpdateInput,
@@ -104,16 +101,6 @@ function buildQuoteDetail() {
 }
 
 describe('Quote status presentation', () => {
-  it('labels every Quote status the same way as the web list', () => {
-    expect(quoteStatusLabels).toEqual({
-      accepted: 'Accepted',
-      cancelled: 'Cancelled',
-      draft: 'Draft',
-      rejected: 'Rejected',
-      sent: 'Sent',
-    });
-  });
-
   it('accepts only All and the five real statuses as persisted filters', () => {
     for (const value of ['all', 'draft', 'sent', 'accepted', 'rejected', 'cancelled']) {
       expect(isQuoteStatusFilter(value)).toBe(true);
@@ -121,22 +108,6 @@ describe('Quote status presentation', () => {
 
     expect(isQuoteStatusFilter('locked')).toBe(false);
     expect(isQuoteStatusFilter(null)).toBe(false);
-  });
-
-  it('keeps the web status colors, including orange for Cancelled Quotes', () => {
-    expect(quoteStatusColorClassNames).toEqual({
-      accepted: {
-        chip: 'border-emerald-500/50 bg-emerald-500/15',
-        text: 'text-emerald-800 dark:text-emerald-200',
-      },
-      cancelled: {
-        chip: 'border-orange-500/50 bg-orange-500/15',
-        text: 'text-orange-800 dark:text-orange-200',
-      },
-      draft: { chip: 'border-gray-400/50 bg-gray-500/10', text: 'text-gray-700 dark:text-gray-200' },
-      rejected: { chip: 'border-red-500/50 bg-red-500/15', text: 'text-red-800 dark:text-red-200' },
-      sent: { chip: 'border-blue-500/50 bg-blue-500/15', text: 'text-blue-800 dark:text-blue-200' },
-    });
   });
 });
 
@@ -220,48 +191,5 @@ describe('Quote edit presentation', () => {
       lineItems: [{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }],
       selectedAssemblies: [{ type: 'existing', id: SELECTION_ID }],
     });
-  });
-
-  it('matches the web VAT-inclusive live pricing fixture', () => {
-    const quote = buildQuoteDetail();
-    const summary = computeQuoteSummary({
-      quote,
-      values: {
-        ...toQuoteEditFormValues(quote),
-        deliveryIncluded: true,
-        deliveryPrice: 50,
-        discountPercent: 10,
-        lineItems: [{ name: 'Install kit', quantity: 2, unitPrice: 100 }],
-        selectedAssemblies: [{ type: 'catalog', productAssemblyId: ASSEMBLY_ID }],
-      },
-    });
-
-    expect(summary).toMatchObject({
-      basePrice: 1000,
-      currencyCode: 'ZAR',
-      discountAmount: 145,
-      lineItemTotal: 200,
-      selectedAssemblyTotal: 250,
-      subtotal: 1305,
-      total: 1500.75,
-      vatAmount: 195.75,
-      vatPercent: 15,
-    });
-    expect(summary.selectedAssemblies.map((selection) => selection.quotedName)).toEqual(['Optional A']);
-  });
-
-  it('drops stale assembly selections from live pricing', () => {
-    const quote = buildQuoteDetail();
-    const summary = computeQuoteSummary({
-      quote: {
-        ...quote,
-        product: quote.product ? { ...quote.product, assemblies: [] } : null,
-      },
-      values: toQuoteEditFormValues(quote),
-    });
-
-    expect(summary.selectedAssemblies).toEqual([]);
-    expect(summary.selectedAssemblyTotal).toBe(0);
-    expect(summary.subtotal).toBe(1125);
   });
 });

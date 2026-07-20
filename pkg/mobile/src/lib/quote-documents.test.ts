@@ -1,14 +1,7 @@
 import { QuoteDocument } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import {
-  canGenerateQuoteDocument,
-  getDefaultQuoteDocumentLeadTime,
-  presentQuoteDocuments,
-  quoteDocumentCountLabel,
-  quoteDocumentMetaLine,
-  resolveQuoteDocumentLeadTime,
-} from './quote-documents';
+import { presentQuoteDocuments, quoteDocumentCountLabel, quoteDocumentMetaLine } from './quote-documents';
 
 describe('Quote Document presentation', () => {
   it('filters by filename and always shows the newest revision first', () => {
@@ -35,39 +28,6 @@ describe('Quote Document presentation', () => {
     expect(quoteDocumentCountLabel(0)).toBe('0 documents');
     expect(quoteDocumentCountLabel(1)).toBe('1 document');
     expect(quoteDocumentCountLabel(2)).toBe('2 documents');
-  });
-
-  it('uses the web lead-time defaults without overwriting user input', () => {
-    expect(getDefaultQuoteDocumentLeadTime({ product: { buildTimeDays: 14 } })).toBe('14 working days');
-    expect(getDefaultQuoteDocumentLeadTime({ product: null })).toBe('');
-    expect(
-      resolveQuoteDocumentLeadTime({
-        availability: { defaultLeadTimeWorkingDays: 23 },
-        fallbackLeadTime: '14 working days',
-        hasUserEditedLeadTime: false,
-        leadTime: '14 working days',
-      }),
-    ).toBe('23 working days');
-    expect(
-      resolveQuoteDocumentLeadTime({
-        availability: { defaultLeadTimeWorkingDays: 23 },
-        fallbackLeadTime: '14 working days',
-        hasUserEditedLeadTime: true,
-        leadTime: '6–8 weeks',
-      }),
-    ).toBe('6–8 weeks');
-  });
-
-  it('matches the web generation visibility rule', () => {
-    expect(canGenerateQuoteDocument({ canUpdate: false, kind: 'custom', product: null, status: 'draft' })).toBe(false);
-    expect(canGenerateQuoteDocument({ canUpdate: true, kind: 'custom', product: null, status: 'accepted' })).toBe(true);
-    expect(canGenerateQuoteDocument({ canUpdate: true, kind: 'custom', product: null, status: 'rejected' })).toBe(
-      false,
-    );
-    expect(canGenerateQuoteDocument({ canUpdate: true, kind: 'product', product: null, status: 'sent' })).toBe(false);
-    expect(
-      canGenerateQuoteDocument({ canUpdate: true, kind: 'product', product: { buildTimeDays: 14 }, status: 'sent' }),
-    ).toBe(true);
   });
 });
 

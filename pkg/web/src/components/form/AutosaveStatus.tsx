@@ -1,8 +1,7 @@
+import type { AutosaveControllerState } from '@pkg/domain';
 import { IconAlertCircle, IconRotate } from '@tabler/icons-react';
-
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
-import type { AutosaveControllerState } from './utils/autosave-core.js';
 
 type AutosaveStatusProps = {
   state: AutosaveControllerState;

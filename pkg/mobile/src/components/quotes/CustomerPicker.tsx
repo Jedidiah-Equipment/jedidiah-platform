@@ -1,23 +1,18 @@
-import type { Customer } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { FieldShell } from '@/components/form/fields/FieldShell';
 import type { FormFieldError } from '@/components/form/utils/field-errors';
 import { Icon } from '@/components/ui/icon';
+import { PickerDropdown } from '@/components/ui/picker-dropdown';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
+import type { CustomerSelection } from '@/lib/quote-create';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-
-type CustomerOption = Pick<Customer, 'companyName' | 'email' | 'id' | 'thumbnailDataUrl'>;
-
-export type CustomerSelection =
-  | { customer: CustomerOption; type: 'existing' }
-  | { companyName: string; type: 'inline' };
 
 export function CustomerPicker({
   errors,
@@ -79,65 +74,42 @@ export function CustomerPicker({
         value={displayValue}
       />
 
-      {expanded ? (
-        <View className="overflow-hidden rounded-xl border border-border bg-surface" style={{ maxHeight: 220 }}>
-          {customers.isPending ? (
-            <View className="items-center px-3 py-4">
-              <ActivityIndicator size="small" />
+      <PickerDropdown
+        emptyMessage="No customers found."
+        keyOf={(row) => (row.type === 'inline' ? `inline:${row.companyName}` : row.customer.id)}
+        onSelect={(row) => {
+          onSelected(row);
+          setSearch('');
+          setExpanded(false);
+        }}
+        open={expanded}
+        pending={customers.isPending}
+        renderRow={(row) => (
+          <>
+            {row.type === 'inline' ? (
+              <Icon className="text-primary" icon={IconPlus} size={20} />
+            ) : (
+              <Avatar
+                className="h-8 w-8 rounded-lg"
+                name={row.customer.companyName}
+                textClassName="text-[9px]"
+                uri={row.customer.thumbnailDataUrl}
+              />
+            )}
+            <View className="min-w-0 flex-1">
+              <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
+                {row.type === 'inline' ? `Create “${row.companyName}”` : row.customer.companyName}
+              </Text>
+              {row.type === 'existing' && row.customer.email ? (
+                <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+                  {row.customer.email}
+                </Text>
+              ) : null}
             </View>
-          ) : rows.length === 0 ? (
-            <View className="px-3 py-3">
-              <Text className="text-sm text-muted-foreground">No customers found.</Text>
-            </View>
-          ) : (
-            <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>
-              {rows.map((row, index) => {
-                const key = row.type === 'inline' ? `inline:${row.companyName}` : row.customer.id;
-
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    className={`flex-row items-center gap-3 px-3 py-3 active:bg-muted ${
-                      index > 0 ? 'border-t border-border' : ''
-                    }`}
-                    key={key}
-                    onPress={() => {
-                      if (row.type === 'inline') {
-                        onSelected({ companyName: row.companyName, type: 'inline' });
-                      } else {
-                        onSelected({ customer: row.customer, type: 'existing' });
-                      }
-                      setSearch('');
-                      setExpanded(false);
-                    }}
-                  >
-                    {row.type === 'inline' ? (
-                      <Icon className="text-primary" icon={IconPlus} size={20} />
-                    ) : (
-                      <Avatar
-                        className="h-8 w-8 rounded-lg"
-                        name={row.customer.companyName}
-                        textClassName="text-[9px]"
-                        uri={row.customer.thumbnailDataUrl}
-                      />
-                    )}
-                    <View className="min-w-0 flex-1">
-                      <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
-                        {row.type === 'inline' ? `Create “${row.companyName}”` : row.customer.companyName}
-                      </Text>
-                      {row.type === 'existing' && row.customer.email ? (
-                        <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-                          {row.customer.email}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-      ) : null}
+          </>
+        )}
+        rows={rows}
+      />
     </FieldShell>
   );
 }

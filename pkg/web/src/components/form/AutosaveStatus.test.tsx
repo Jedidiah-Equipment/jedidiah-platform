@@ -1,7 +1,6 @@
+import type { AutosaveControllerState } from '@pkg/domain';
 import { describe, expect, it } from 'vitest';
-
 import { AutosaveStatus } from './AutosaveStatus.js';
-import type { AutosaveControllerState } from './utils/autosave-core.js';
 
 function buildState(overrides: Partial<AutosaveControllerState>): AutosaveControllerState {
   return {

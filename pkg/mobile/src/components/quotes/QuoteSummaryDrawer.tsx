@@ -1,17 +1,13 @@
-import { formatCurrency, formatPercent } from '@pkg/domain';
+import { createStableRowKeys, formatCurrency, formatPercent, type QuoteComputedSummary } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { IconX } from '@tabler/icons-react-native';
 import type React from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { createStableRowKeys } from '@/components/form/utils/create-stable-row-keys';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import type { QuoteComputedSummary } from '@/lib/quote-presentation';
-import { gluestackConfig } from '@/theme/gluestack-config';
-import { useColorMode } from '@/theme/use-color-mode';
+import { ThemedModal } from '@/components/ui/themed-modal';
 
 const getSummaryLineItemKey = createStableRowKeys<{ name: string; quantity: number; unitPrice: number }>(
   'quote-summary-line-item',
@@ -28,42 +24,29 @@ export function QuoteSummaryDrawer({
   quote: QuoteDetail;
   summary: QuoteComputedSummary;
 }) {
-  const { resolved } = useColorMode();
-
   return (
-    <Modal animationType="fade" onRequestClose={onClose} transparent visible={open}>
-      <SafeAreaProvider>
-        <View className="flex-1" style={gluestackConfig[resolved]}>
-          <SafeAreaView className="flex-1 flex-row justify-end" edges={['top', 'bottom', 'left', 'right']}>
-            <Pressable
-              accessibilityLabel="Close quote summary"
-              className="absolute inset-0 bg-black/55"
-              onPress={onClose}
-            />
-            <View className="h-full w-[88%] max-w-[340px] border-l border-border bg-background shadow-2xl">
-              <View className="h-16 flex-row items-center justify-between border-b border-border px-4">
-                <Text className="text-[11px] uppercase tracking-[1.5px] text-muted-foreground" mono weight="semibold">
-                  Quote summary
-                </Text>
-                <Pressable
-                  accessibilityLabel="Close"
-                  accessibilityRole="button"
-                  className="h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface active:bg-muted"
-                  onPress={onClose}
-                >
-                  <Icon className="text-muted-foreground" icon={IconX} size={17} />
-                </Pressable>
-              </View>
-              <ScrollView contentContainerClassName="gap-3.5 p-4">
-                <CustomerCard quote={quote} />
-                {quote.kind === 'product' ? <ProductCard quote={quote} /> : null}
-                <TotalCard quote={quote} summary={summary} />
-              </ScrollView>
-            </View>
-          </SafeAreaView>
+    <ThemedModal backdropLabel="Close quote summary" onClose={onClose} open={open} placement="right">
+      <View className="h-full w-[88%] max-w-[340px] border-l border-border bg-background shadow-2xl">
+        <View className="h-16 flex-row items-center justify-between border-b border-border px-4">
+          <Text className="text-[11px] uppercase tracking-[1.5px] text-muted-foreground" mono weight="semibold">
+            Quote summary
+          </Text>
+          <Pressable
+            accessibilityLabel="Close"
+            accessibilityRole="button"
+            className="h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface active:bg-muted"
+            onPress={onClose}
+          >
+            <Icon className="text-muted-foreground" icon={IconX} size={17} />
+          </Pressable>
         </View>
-      </SafeAreaProvider>
-    </Modal>
+        <ScrollView contentContainerClassName="gap-3.5 p-4">
+          <CustomerCard quote={quote} />
+          {quote.kind === 'product' ? <ProductCard quote={quote} /> : null}
+          <TotalCard quote={quote} summary={summary} />
+        </ScrollView>
+      </View>
+    </ThemedModal>
   );
 }
 

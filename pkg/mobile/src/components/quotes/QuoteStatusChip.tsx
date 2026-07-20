@@ -1,8 +1,8 @@
+import { quoteStatusColorClassNames, quoteStatusLabels } from '@pkg/domain';
 import type { QuoteStatus } from '@pkg/schema';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
-import { quoteStatusColorClassNames, quoteStatusLabels } from '@/lib/quote-presentation';
 
 export function QuoteStatusChip({ status }: { status: QuoteStatus }) {
   const classNames = quoteStatusColorClassNames[status];

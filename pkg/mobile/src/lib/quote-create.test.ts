@@ -1,18 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type CustomerSelection,
   clearQuoteKindFields,
-  defaultQuoteSalesPersonId,
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
   toQuoteCreateInput,
 } from './quote-create';
 
+const existingCustomer: CustomerSelection = {
+  customer: {
+    companyName: 'Acme',
+    email: 'buyer@example.com',
+    id: '4ffcb2c6-4e69-4108-a6a5-710accee0b48',
+    thumbnailDataUrl: null,
+  },
+  type: 'existing',
+};
+
 describe('mobile quote creation', () => {
   it('builds the product quote payload and applies schema defaults', () => {
     const input = toQuoteCreateInput({
       ...QUOTE_CREATE_DEFAULT_VALUES,
-      customerId: '4ffcb2c6-4e69-4108-a6a5-710accee0b48',
+      customer: existingCustomer,
       productId: 'f36a4b28-d552-439c-8928-bf6da8aa42b2',
       salesPersonId: 'sales-user',
       status: 'sent',
@@ -40,9 +50,8 @@ describe('mobile quote creation', () => {
   it('builds a custom quote with a minimal inline customer', () => {
     const input = toQuoteCreateInput({
       ...QUOTE_CREATE_DEFAULT_VALUES,
-      basePrice: '25000',
-      customerMode: 'inline',
-      inlineCompanyName: '  Boerdery Bpk  ',
+      basePrice: 25_000,
+      customer: { companyName: '  Boerdery Bpk  ', type: 'inline' },
       kind: 'custom',
       salesPersonId: 'sales-user',
       workTitle: '  On-site repair  ',
@@ -62,22 +71,36 @@ describe('mobile quote creation', () => {
   it('reports conditional fields at their visible controls', () => {
     const productResult = QuoteCreateFormValues.safeParse(QUOTE_CREATE_DEFAULT_VALUES);
     expect(productResult.error?.issues.map(({ message, path }) => ({ message, path }))).toEqual([
-      { message: 'Select or create a customer', path: ['customerId'] },
+      { message: 'Select or create a customer', path: ['customer'] },
       { message: 'Select a product', path: ['productId'] },
       { message: 'Select a salesperson', path: ['salesPersonId'] },
     ]);
 
     const customResult = QuoteCreateFormValues.safeParse({
       ...QUOTE_CREATE_DEFAULT_VALUES,
-      basePrice: '-1',
-      customerMode: 'inline',
+      basePrice: -1,
+      customer: { companyName: '   ', type: 'inline' },
       kind: 'custom',
     });
     expect(customResult.error?.issues.map(({ message, path }) => ({ message, path }))).toEqual([
-      { message: 'Select or create a customer', path: ['customerId'] },
+      { message: 'Select or create a customer', path: ['customer'] },
       { message: 'Work title is required', path: ['workTitle'] },
       { message: 'Must be zero or greater', path: ['basePrice'] },
       { message: 'Select a salesperson', path: ['salesPersonId'] },
+    ]);
+  });
+
+  it('requires a base price for custom quotes', () => {
+    const result = QuoteCreateFormValues.safeParse({
+      ...QUOTE_CREATE_DEFAULT_VALUES,
+      customer: existingCustomer,
+      kind: 'custom',
+      salesPersonId: 'sales-user',
+      workTitle: 'Repair',
+    });
+
+    expect(result.error?.issues.map(({ message, path }) => ({ message, path }))).toEqual([
+      { message: 'Base price is required', path: ['basePrice'] },
     ]);
   });
 
@@ -95,14 +118,9 @@ describe('mobile quote creation', () => {
 
     expect(
       clearQuoteKindFields(
-        { ...QUOTE_CREATE_DEFAULT_VALUES, basePrice: '900', kind: 'custom', workTitle: 'Repair' },
+        { ...QUOTE_CREATE_DEFAULT_VALUES, basePrice: 900, kind: 'custom', workTitle: 'Repair' },
         'product',
       ),
-    ).toMatchObject({ basePrice: '', kind: 'product', workTitle: '' });
-  });
-
-  it('defaults the salesperson to the logged-in user', () => {
-    expect(defaultQuoteSalesPersonId({ id: 'current-user' })).toBe('current-user');
-    expect(defaultQuoteSalesPersonId(null)).toBe('');
+    ).toMatchObject({ basePrice: Number.NaN, kind: 'product', workTitle: '' });
   });
 });

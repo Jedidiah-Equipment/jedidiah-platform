@@ -1,12 +1,12 @@
 import type { Product } from '@pkg/schema';
 
+import { createLiteralGuard } from './use-persisted-state';
+
 export type ProductSort = 'name' | 'price';
 /** The literal 'all' or a Product Range id. Honestly a string — a literal union would collapse. */
 export type RangeFilter = string;
 
-export function isProductSort(value: unknown): value is ProductSort {
-  return value === 'name' || value === 'price';
-}
+export const isProductSort = createLiteralGuard(['name', 'price']);
 
 export function isRangeFilter(value: unknown): value is RangeFilter {
   return typeof value === 'string' && value.length > 0;

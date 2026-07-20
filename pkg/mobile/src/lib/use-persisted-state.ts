@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
+/** Type guard over a fixed set of string literals, for persisted-preference validation. */
+export function createLiteralGuard<const T extends readonly string[]>(values: T) {
+  return (value: unknown): value is T[number] => values.includes(value as T[number]);
+}
+
 function parseStored(stored: string): unknown {
   try {
     return JSON.parse(stored);

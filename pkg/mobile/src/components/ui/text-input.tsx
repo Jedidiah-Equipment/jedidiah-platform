@@ -10,7 +10,7 @@ const PLACEHOLDER_COLOR = { dark: 'rgb(122, 122, 130)', light: 'rgb(115, 115, 11
 
 const TEXT_SIZE_CLASS_NAMES = {
   default: 'text-sm',
-  toolbar: 'text-[13px]',
+  toolbar: 'text-toolbar',
 } as const;
 
 export type AppTextInputProps = TextInputProps & {

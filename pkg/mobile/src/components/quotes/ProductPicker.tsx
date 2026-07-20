@@ -2,12 +2,13 @@ import type { Product } from '@pkg/schema';
 import { IconCheck, IconChevronDown } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { FieldShell } from '@/components/form/fields/FieldShell';
 import type { FormFieldError } from '@/components/form/utils/field-errors';
 import { Icon } from '@/components/ui/icon';
+import { PickerDropdown } from '@/components/ui/picker-dropdown';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useTRPC } from '@/lib/trpc';
@@ -68,41 +69,28 @@ export function ProductPicker({
           <Icon className="text-muted-foreground" icon={IconChevronDown} size={16} />
         </Pressable>
 
-        {rangeExpanded ? (
-          <View className="overflow-hidden rounded-xl border border-border bg-surface" style={{ maxHeight: 220 }}>
-            {ranges.isPending ? (
-              <View className="items-center px-3 py-4">
-                <ActivityIndicator size="small" />
-              </View>
-            ) : (
-              <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>
-                {[{ id: '', name: 'All ranges' }, ...rangeOptions].map((range, index) => {
-                  const active = range.id === rangeId;
-
-                  return (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      className={`flex-row items-center justify-between gap-3 px-3 py-3 active:bg-muted ${
-                        index > 0 ? 'border-t border-border' : ''
-                      }`}
-                      key={range.id || 'all-ranges'}
-                      onPress={() => {
-                        onRangeChange(range.id);
-                        onProductSelected(null);
-                        setSearch('');
-                        setRangeExpanded(false);
-                      }}
-                    >
-                      <Text className={active ? 'text-primary' : 'text-surface-foreground'}>{range.name}</Text>
-                      {active ? <Icon className="text-primary" icon={IconCheck} size={16} /> : null}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </View>
-        ) : null}
+        <PickerDropdown
+          emptyMessage="No ranges available."
+          keyOf={(range) => range.id || 'all-ranges'}
+          onSelect={(range) => {
+            onRangeChange(range.id);
+            onProductSelected(null);
+            setSearch('');
+            setRangeExpanded(false);
+          }}
+          open={rangeExpanded}
+          pending={ranges.isPending}
+          renderRow={(range) => (
+            <>
+              <Text className={`min-w-0 flex-1 ${range.id === rangeId ? 'text-primary' : 'text-surface-foreground'}`}>
+                {range.name}
+              </Text>
+              {range.id === rangeId ? <Icon className="text-primary" icon={IconCheck} size={16} /> : null}
+            </>
+          )}
+          rows={[{ id: '', name: 'All ranges' }, ...rangeOptions]}
+          selectedKey={rangeId || 'all-ranges'}
+        />
       </FieldShell>
 
       <FieldShell errors={errors} label="Product">
@@ -121,51 +109,36 @@ export function ProductPicker({
           value={displayValue}
         />
 
-        {productsExpanded ? (
-          <View className="overflow-hidden rounded-xl border border-border bg-surface" style={{ maxHeight: 220 }}>
-            {products.isPending ? (
-              <View className="items-center px-3 py-4">
-                <ActivityIndicator size="small" />
+        <PickerDropdown
+          emptyMessage="No products found."
+          keyOf={(option) => option.id}
+          onSelect={(option) => {
+            onProductSelected(option);
+            setSearch('');
+            setProductsExpanded(false);
+          }}
+          open={productsExpanded}
+          pending={products.isPending}
+          renderRow={(option) => (
+            <>
+              <Avatar
+                className="h-8 w-8 rounded-lg"
+                name={option.name}
+                textClassName="text-[9px]"
+                uri={option.thumbnailDataUrl}
+              />
+              <View className="min-w-0 flex-1">
+                <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
+                  {option.name}
+                </Text>
+                <Text className="text-xs text-muted-foreground" mono numberOfLines={1}>
+                  {option.modelCode}
+                </Text>
               </View>
-            ) : productOptions.length === 0 ? (
-              <View className="px-3 py-3">
-                <Text className="text-sm text-muted-foreground">No products found.</Text>
-              </View>
-            ) : (
-              <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>
-                {productOptions.map((option, index) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    className={`flex-row items-center gap-3 px-3 py-3 active:bg-muted ${
-                      index > 0 ? 'border-t border-border' : ''
-                    }`}
-                    key={option.id}
-                    onPress={() => {
-                      onProductSelected(option);
-                      setSearch('');
-                      setProductsExpanded(false);
-                    }}
-                  >
-                    <Avatar
-                      className="h-8 w-8 rounded-lg"
-                      name={option.name}
-                      textClassName="text-[9px]"
-                      uri={option.thumbnailDataUrl}
-                    />
-                    <View className="min-w-0 flex-1">
-                      <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
-                        {option.name}
-                      </Text>
-                      <Text className="text-xs text-muted-foreground" mono numberOfLines={1}>
-                        {option.modelCode}
-                      </Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-        ) : null}
+            </>
+          )}
+          rows={productOptions}
+        />
       </FieldShell>
     </View>
   );

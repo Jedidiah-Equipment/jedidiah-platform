@@ -1,5 +1,4 @@
-import { useQueries, useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NewQuoteModal } from '@/components/quotes/NewQuoteModal';
@@ -11,104 +10,33 @@ import {
 } from '@/components/quotes/QuoteCatalog';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
-import {
-  getNextQuotePage,
-  isQuoteStatusFilter,
-  presentQuotePages,
-  type QuoteStatusFilter,
-  shouldPinPriorityQuotes,
-} from '@/lib/quote-presentation';
-import { useTRPC } from '@/lib/trpc';
+import { isQuoteStatusFilter, type QuoteStatusFilter } from '@/lib/quote-presentation';
 import { useCan } from '@/lib/use-access';
+import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
-
-const PAGE_SIZE = 20;
-const SEARCH_DEBOUNCE_MS = 300;
-type PaginationState = { search: string; status: QuoteStatusFilter; pageCount: number };
+import { useQuoteList } from '@/lib/use-quote-list';
 
 /** Quote list. The Quotes layout owns the route-level permission gate. */
 export default function QuotesRoute() {
-  const trpc = useTRPC();
   const readAccess = useCan('quote:read');
   const createAccess = useCan('quote:create');
   const [search, setSearch] = useState('');
   const [newQuoteOpen, setNewQuoteOpen] = useState(false);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debouncedSearch = useDebouncedSearch(search);
   const [status, setStatus] = usePersistedState<QuoteStatusFilter>('jedidiah-quote-status', 'all', isQuoteStatusFilter);
-  const [pagination, setPagination] = useState<PaginationState>({ search: debouncedSearch, status, pageCount: 1 });
-  const loadingNextPage = useRef(false);
-  const paginationMatchesQuery = pagination.search === debouncedSearch && pagination.status === status;
-  const activePageCount = paginationMatchesQuery ? pagination.pageCount : 1;
-  const pinPriorityQuotes = shouldPinPriorityQuotes({ search: debouncedSearch, status });
   const refresh = useGlobalRefresh();
-
-  useEffect(() => {
-    const timeout = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
-
-    return () => clearTimeout(timeout);
-  }, [search]);
-
-  useEffect(() => {
-    setPagination({ search: debouncedSearch, status, pageCount: 1 });
-    loadingNextPage.current = false;
-  }, [debouncedSearch, status]);
-
-  const pageNumbers = useMemo(
-    () => Array.from({ length: activePageCount }, (_, index) => index + 1),
-    [activePageCount],
-  );
-  const listQueries = useQueries({
-    queries: pageNumbers.map((page) =>
-      trpc.quotes.list.queryOptions(
-        {
-          filters: status === 'all' ? undefined : { statuses: [status] },
-          page,
-          pageSize: PAGE_SIZE,
-          search: debouncedSearch || undefined,
-          sortBy: 'createdAt',
-          sortDirection: 'desc',
-        },
-        { enabled: readAccess.can },
-      ),
-    ),
-  });
-  const priorityQuery = useQuery(
-    trpc.quotes.priorityList.queryOptions(undefined, {
-      enabled: readAccess.can && pinPriorityQuotes,
-    }),
-  );
-  const loadedPages = listQueries.flatMap((query) => (query.data ? [query.data] : []));
-  const priorityQuotes = pinPriorityQuotes ? (priorityQuery.data ?? []) : [];
-  const quoteSections = presentQuotePages(loadedPages, priorityQuotes);
-  const displayedQuoteCount = quoteSections.priorityQuotes.length + quoteSections.mainQuotes.length;
-  const total = loadedPages.at(0)?.total ?? null;
-  const lastPage = loadedPages.at(-1);
-  const nextPage = lastPage ? getNextQuotePage(lastPage, loadedPages) : undefined;
-  const lastQuery = listQueries.at(-1);
-  const pending = (pinPriorityQuotes && priorityQuery.isPending) || listQueries.some((query) => query.isPending);
-  const failed = (pinPriorityQuotes && priorityQuery.isError) || listQueries.some((query) => query.isError);
-  const loadingMore = activePageCount > 1 && lastQuery?.isPending === true;
+  const list = useQuoteList({ enabled: readAccess.can, search: debouncedSearch, status });
+  const displayedQuoteCount = list.priorityQuotes.length + list.mainQuotes.length;
   const hasCriteria = search.trim().length > 0 || status !== 'all';
-
-  useEffect(() => {
-    if (!lastQuery?.isPending) loadingNextPage.current = false;
-  }, [lastQuery?.isPending]);
-
-  const loadNextPage = useCallback(() => {
-    if (nextPage === undefined || loadingNextPage.current) return;
-
-    loadingNextPage.current = true;
-    setPagination({ search: debouncedSearch, status, pageCount: nextPage });
-  }, [debouncedSearch, nextPage, status]);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
 
-      if (contentSize.height - contentOffset.y - layoutMeasurement.height < 240) loadNextPage();
+      if (contentSize.height - contentOffset.y - layoutMeasurement.height < 240) list.loadNextPage();
     },
-    [loadNextPage],
+    [list.loadNextPage],
   );
 
   return (
@@ -120,7 +48,7 @@ export default function QuotesRoute() {
         refreshControl={<RefreshControl {...refresh} />}
         scrollEventThrottle={100}
       >
-        <QuoteCatalogHeader count={pending && total === null ? null : total} />
+        <QuoteCatalogHeader count={list.pending && list.total === null ? null : list.total} />
         <View className="gap-4">
           <QuoteCatalogControls
             canCreate={createAccess.can}
@@ -131,9 +59,9 @@ export default function QuotesRoute() {
             status={status}
           />
 
-          {pending && displayedQuoteCount === 0 ? (
+          {list.pending && displayedQuoteCount === 0 ? (
             <QuoteGridSkeleton />
-          ) : failed ? (
+          ) : list.failed ? (
             <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load quotes." />
           ) : displayedQuoteCount === 0 ? (
             <CatalogMessage
@@ -142,8 +70,8 @@ export default function QuotesRoute() {
             />
           ) : (
             <View className="gap-4">
-              <QuoteGrid mainQuotes={quoteSections.mainQuotes} priorityQuotes={quoteSections.priorityQuotes} />
-              {loadingMore ? (
+              <QuoteGrid mainQuotes={list.mainQuotes} priorityQuotes={list.priorityQuotes} />
+              {list.loadingMore ? (
                 <Text className="text-center text-sm text-muted-foreground">Loading more quotes…</Text>
               ) : null}
             </View>

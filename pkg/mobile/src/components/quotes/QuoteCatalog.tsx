@@ -244,17 +244,8 @@ function QuoteCard({ quote, priority, onPress }: { quote: QuoteSummary; priority
         <Text className="min-w-0 flex-1 text-sm text-foreground" numberOfLines={1} weight="semibold">
           {quote.customerCompanyName}
         </Text>
-        <View
-          className={`rounded-md border px-2 py-1 ${
-            quote.kind === 'custom' ? 'border-primary/40 bg-primary/10' : 'border-border bg-muted/50'
-          }`}
-        >
-          <Text
-            className={quote.kind === 'custom' ? 'text-primary' : 'text-muted-foreground'}
-            mono
-            numberOfLines={1}
-            weight="semibold"
-          >
+        <View className="rounded-md border border-border bg-muted/50 px-2 py-1">
+          <Text className="text-muted-foreground" mono numberOfLines={1} weight="semibold">
             {quote.kind.toUpperCase()}
           </Text>
         </View>

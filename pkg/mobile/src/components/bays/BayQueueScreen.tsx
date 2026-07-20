@@ -1,4 +1,4 @@
-import { formatDate, statusDaysLeftColor } from '@pkg/domain';
+import { formatDate, jobStatusAccentColor } from '@pkg/domain';
 import type { BayOperator } from '@pkg/schema';
 import { IconChevronRight } from '@tabler/icons-react-native';
 import { useState } from 'react';
@@ -18,7 +18,6 @@ import {
   useBaySchedule,
 } from '@/lib/use-bay-schedule';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
-import { mutedForegroundColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
 /** Tablet breakpoint: at/above this width the list and detail panes sit side by side. */
@@ -276,9 +275,7 @@ function ActiveHero({
   const heroTone = active.isCancelled ? 'cancelled' : 'live';
   const selectionState = selected ? 'selected' : 'resting';
   // The hero is the Job running today, so its countdown/bar use the in-progress accent.
-  const accent = active.isCancelled
-    ? mutedForegroundColors[resolved]
-    : statusDaysLeftColor({ status: 'in-progress', daysLeft: active.remainingWorkDays, scheme: resolved });
+  const accent = jobStatusAccentColor(active.isCancelled ? 'muted' : 'in-progress', resolved);
 
   return (
     // Border is a constant 2px (faded when unselected, full-strength when selected) so the

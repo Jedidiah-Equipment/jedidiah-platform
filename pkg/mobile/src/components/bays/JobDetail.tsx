@@ -3,8 +3,8 @@ import {
   isJobCancelled,
   type JobProgress,
   type JobRouteStopState,
-  restingStatusColor,
-  statusDaysLeftColor,
+  jobStatusAccentColor,
+  resolveJobStatusTone,
 } from '@pkg/domain';
 import type { ReactNode } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
@@ -19,7 +19,6 @@ import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/lib/use-job-detail';
-import { mutedForegroundColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
 type ReadyState = Extract<JobDetailState, { status: 'ready' }>;
@@ -146,7 +145,7 @@ function Ready({
   );
 }
 
-/** Route state → shared status tone, so the timeline reuses the board's chip/label/bar accents. */
+/** Route state -> status tone for the existing card, node, chip, and label treatment. */
 const ROUTE_STATE_TONE: Record<JobRouteStopState, StatusTone> = {
   active: 'in-progress',
   done: 'muted',
@@ -201,6 +200,13 @@ function RoutePane({ isCancelled, route }: { isCancelled: boolean; route: JobRou
 
 function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRouteStopCard }) {
   const tone = STATUS_TONE[isCancelled ? 'muted' : ROUTE_STATE_TONE[stop.state]];
+  const progressTone = isCancelled
+    ? 'muted'
+    : resolveJobStatusTone({
+        isNext: stop.isNext,
+        status: stop.state === 'active' ? 'in-progress' : 'scheduled',
+      });
+  const progressAppearance = STATUS_TONE[progressTone];
   const decor = isCancelled ? ROUTE_DECOR.done : ROUTE_DECOR[stop.state];
   const operatorName = stop.operator?.name ?? 'No operator';
 
@@ -236,13 +242,16 @@ function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRoute
           <Text className="text-[10px] text-muted-foreground" mono>
             {formatDate(stop.firstWorkDay, 'd MMM')} – {formatDate(stop.lastWorkDay, 'd MMM')}
           </Text>
-          <Text className={`text-[10px] ${tone.text}`} mono>
+          <Text className={`text-[10px] ${progressAppearance.text}`} mono>
             {routeDaysLabel(stop, isCancelled)}
           </Text>
         </View>
 
         <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-          <View className={`h-full rounded-full ${tone.dot}`} style={{ width: `${stop.progressPercent}%` }} />
+          <View
+            className={`h-full rounded-full ${progressAppearance.dot}`}
+            style={{ width: `${stop.progressPercent}%` }}
+          />
         </View>
       </View>
     </View>
@@ -264,14 +273,8 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   const { progress } = state;
   const { resolved } = useColorMode();
   const overallPercent = progress?.overallPercent ?? 100;
-  // The working-days-left chip + overall bar share the status accent: blue in progress, green when
-  // queued, amber/red as the finish nears. A finished Job (null progress) rests on the scheduled green.
   const isCancelled = isJobCancelled(state);
-  const accent = isCancelled
-    ? mutedForegroundColors[resolved]
-    : progress
-      ? statusDaysLeftColor({ status: progress.status, daysLeft: progress.daysLeft, scheme: resolved })
-      : restingStatusColor('scheduled', resolved);
+  const accent = jobStatusAccentColor(isCancelled ? 'muted' : state.tone, resolved);
   const status = isCancelled ? { tone: 'muted' as const, label: 'CANCELLED' } : jobStatus(progress);
 
   return (

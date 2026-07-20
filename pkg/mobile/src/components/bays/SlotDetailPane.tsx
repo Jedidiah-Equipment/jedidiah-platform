@@ -1,4 +1,4 @@
-import { formatDate, statusDaysLeftColor } from '@pkg/domain';
+import { formatDate, jobStatusAccentColor, resolveJobStatusTone } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { JobDetailSections } from '@/components/bays/JobDetailSections';
@@ -19,7 +19,10 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
   const { resolved } = useColorMode();
   const daysLeftColor =
     slot.remainingWorkDays !== null && slot.status !== 'done'
-      ? statusDaysLeftColor({ status: slot.status, daysLeft: slot.remainingWorkDays, scheme: resolved })
+      ? jobStatusAccentColor(
+          resolveJobStatusTone({ isNext: slot.isNext, status: isActive ? 'in-progress' : 'scheduled' }),
+          resolved,
+        )
       : null;
 
   return (

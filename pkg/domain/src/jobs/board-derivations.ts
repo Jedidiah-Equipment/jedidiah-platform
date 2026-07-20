@@ -93,6 +93,27 @@ export function listUpcomingWorkSlots({
   );
 }
 
+/** The immediate next Work Slot on each Bay, matching the planning Gantt's queue semantics. */
+export function listNextWorkSlots(bays: readonly ProjectedBayQueue[]): ProjectedWorkJobSlot[] {
+  const slots: ProjectedWorkJobSlot[] = [];
+
+  for (const bay of bays) {
+    const activeIndex = bay.slots.findIndex((slot) => slot.state === 'active');
+    const nextSlot =
+      activeIndex === -1 ? bay.slots.find((slot) => slot.state === 'scheduled') : bay.slots[activeIndex + 1];
+
+    // An Idle Slot can be next on the Bay; Work Jobs after it must remain neutral.
+    if (nextSlot?.kind === 'work') slots.push(nextSlot);
+  }
+
+  return slots;
+}
+
+/** Job ids represented by the next Work Slot on one or more Bays. */
+export function getNextJobIds(bays: readonly ProjectedBayQueue[]): Set<UUID> {
+  return new Set(listNextWorkSlots(bays).map((slot) => slot.jobId));
+}
+
 export function getOffDayLabel(offDays: readonly OffDay[], date: DateOnlyIso): string | null {
   return offDays.find((offDay) => offDay.date === date)?.label ?? null;
 }

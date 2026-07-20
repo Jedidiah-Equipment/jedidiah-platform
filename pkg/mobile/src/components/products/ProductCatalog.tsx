@@ -1,11 +1,12 @@
 import { formatCurrency } from '@pkg/domain';
 import type { Product, ProductRangeOption } from '@pkg/schema';
-import { IconCheck, IconChevronDown, IconFilter, IconPackage } from '@tabler/icons-react-native';
+import { IconCheck, IconChevronDown, IconFilter } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { BoardGrid } from '@/components/bays/BoardGrid';
-import { ProfileMenuButton } from '@/components/ProfileMenuButton';
+import { ListControlRow, SegmentedSortControl } from '@/components/ListControls';
 import { ProductImage } from '@/components/products/ProductImage';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -19,20 +20,10 @@ const PRODUCT_SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
 
 export function ProductCatalogHeader({ count }: { count: number | null }) {
   return (
-    <View className="relative flex-row items-center gap-3">
-      <View className="h-[42px] w-[42px] items-center justify-center rounded-xl border border-primary">
-        <Icon className="text-primary" icon={IconPackage} size={22} strokeWidth={1.7} />
-      </View>
-      <View className="min-w-0 flex-1">
-        <Text className="text-xl leading-6 text-foreground" weight="bold">
-          Products
-        </Text>
-        <Text className="mt-0.5 text-[11px] text-muted-foreground" mono>
-          {count === null ? 'Loading catalog…' : `${count} ${count === 1 ? 'product' : 'products'}`}
-        </Text>
-      </View>
-      <ProfileMenuButton />
-    </View>
+    <ScreenHeader
+      subtitle={count === null ? 'Loading catalog…' : `${count} ${count === 1 ? 'product' : 'products'}`}
+      title="Products"
+    />
   );
 }
 
@@ -59,81 +50,54 @@ export function ProductCatalogControls({
   };
 
   return (
-    <View className="z-10 flex-row flex-wrap items-start justify-between gap-3">
-      <View className="relative">
-        <Pressable
-          accessibilityLabel="Filter by Product Range"
-          accessibilityRole="button"
-          accessibilityState={{ expanded: rangeOpen }}
-          className={`flex-row items-center gap-2 rounded-xl border px-3 py-2 ${
-            range === 'all' ? 'border-border bg-surface' : 'border-primary bg-primary/10'
-          }`}
-          onPress={() => setRangeOpen((open) => !open)}
-        >
-          <Icon className={range === 'all' ? 'text-muted-foreground' : 'text-primary'} icon={IconFilter} size={15} />
-          <Text
-            className={`text-[11px] tracking-wide ${range === 'all' ? 'text-muted-foreground' : 'text-primary'}`}
-            mono
-            weight="semibold"
+    <ListControlRow
+      leading={
+        <View className="relative max-w-full self-start">
+          <Pressable
+            accessibilityLabel="Filter by Product Range"
+            accessibilityRole="button"
+            accessibilityState={{ expanded: rangeOpen }}
+            className={`h-10 min-w-0 max-w-full flex-row items-center gap-2 rounded-xl border px-3 ${
+              range === 'all' ? 'border-border bg-surface' : 'border-primary bg-primary/10'
+            }`}
+            onPress={() => setRangeOpen((open) => !open)}
           >
-            {rangeLabel}
-          </Text>
-          <Icon
-            className={range === 'all' ? 'text-muted-foreground' : 'text-primary'}
-            icon={IconChevronDown}
-            size={13}
-          />
-        </Pressable>
+            <Icon className={range === 'all' ? 'text-muted-foreground' : 'text-primary'} icon={IconFilter} size={15} />
+            <Text
+              className={`min-w-0 flex-1 text-[11px] tracking-wide ${range === 'all' ? 'text-muted-foreground' : 'text-primary'}`}
+              mono
+              numberOfLines={1}
+              weight="semibold"
+            >
+              {rangeLabel}
+            </Text>
+            <Icon
+              className={range === 'all' ? 'text-muted-foreground' : 'text-primary'}
+              icon={IconChevronDown}
+              size={13}
+            />
+          </Pressable>
 
-        {rangeOpen ? (
-          <View
-            className="absolute left-0 top-12 z-50 w-[240px] rounded-2xl border border-border bg-elevated p-1.5"
-            style={{ elevation: 12 }}
-          >
-            <RangeOption active={range === 'all'} label="All Ranges" onPress={() => selectRange('all')} />
-            {ranges.map((option) => (
-              <RangeOption
-                key={option.id}
-                active={range === option.id}
-                label={option.name}
-                onPress={() => selectRange(option.id)}
-              />
-            ))}
-          </View>
-        ) : null}
-      </View>
-
-      <View className="flex-row items-center gap-3">
-        <Text className="text-[10px] tracking-widest text-muted-foreground" mono weight="semibold">
-          SORT
-        </Text>
-        <View className="flex-row rounded-xl border border-border bg-surface p-1">
-          {PRODUCT_SORT_OPTIONS.map((option) => {
-            const selected = sort === option.value;
-
-            return (
-              <Pressable
-                key={option.value}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                className={`rounded-lg border px-3 py-1.5 ${
-                  selected ? 'border-border bg-elevated' : 'border-transparent'
-                }`}
-                onPress={() => onSortChange(option.value)}
-              >
-                <Text
-                  className={`text-[11px] tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
-                  mono
-                  weight="semibold"
-                >
-                  {option.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {rangeOpen ? (
+            <View
+              className="absolute left-0 top-12 z-50 w-[240px] rounded-2xl border border-border bg-elevated p-1.5"
+              style={{ elevation: 12 }}
+            >
+              <RangeOption active={range === 'all'} label="All Ranges" onPress={() => selectRange('all')} />
+              {ranges.map((option) => (
+                <RangeOption
+                  key={option.id}
+                  active={range === option.id}
+                  label={option.name}
+                  onPress={() => selectRange(option.id)}
+                />
+              ))}
+            </View>
+          ) : null}
         </View>
-      </View>
-    </View>
+      }
+      trailing={<SegmentedSortControl onChange={onSortChange} options={PRODUCT_SORT_OPTIONS} value={sort} />}
+    />
   );
 }
 
@@ -201,10 +165,10 @@ function ProductCard({ product }: { product: Product }) {
       </View>
 
       <View className="p-3.5">
-        <Text className="min-h-10 text-base leading-5 text-foreground" numberOfLines={2} weight="bold">
+        <Text className="text-base leading-5 text-foreground" numberOfLines={2} weight="bold">
           {product.name}
         </Text>
-        <View className="mt-2 min-h-6 flex-row flex-wrap items-center gap-2">
+        <View className="mt-3 min-h-6 flex-row flex-wrap items-center gap-2">
           {product.category ? (
             <View className="rounded-full border border-border bg-muted/50 px-2 py-1">
               <Text className="text-[10px] tracking-wide text-muted-foreground" mono>

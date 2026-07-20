@@ -1,8 +1,8 @@
 import { IconArrowsLeftRight } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
-import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { ListControlRow, SegmentedSortControl } from '@/components/ListControls';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -28,9 +28,6 @@ const SORT_OPTIONS: readonly { label: string; value: BaySort }[] = [
 ];
 
 const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
-// Matches the Bays-only sort control so hiding it for Jobs does not shift the card grid.
-const BOARD_HEADER_ROW_MIN_HEIGHT = 40;
-
 /**
  * The shop-floor board: a responsive grid of Bay or Job cards under a tappable title that flips
  * the two views in place. Both modes read the same cached schedule ({@link useBayList} /
@@ -55,11 +52,14 @@ export function BoardList({
   const state = isBays ? bayState : jobState;
 
   return (
-    <View>
-      <Header
-        onToggle={onToggleListMode}
-        title={isBays ? 'Bays' : 'Jobs'}
-        trailing={isBays && bayState.status === 'ready' ? <SortControl onChange={setSort} sort={sort} /> : null}
+    <View className="gap-4">
+      <ListControlRow
+        leading={<ListModeControl onToggle={onToggleListMode} title={isBays ? 'Bays' : 'Jobs'} />}
+        trailing={
+          isBays && bayState.status === 'ready' ? (
+            <SegmentedSortControl onChange={setSort} options={SORT_OPTIONS} value={sort} />
+          ) : null
+        }
       />
 
       {state.status === 'forbidden' ? (
@@ -107,64 +107,20 @@ export function BoardList({
   );
 }
 
-/** Tappable title that flips Bays ⇄ Jobs in place, with the Bays-only sort control. */
-function Header({ onToggle, title, trailing }: { onToggle: () => void; title: string; trailing: ReactNode }) {
+/** Tappable fixed-height control that flips Bays ⇄ Jobs in place. */
+function ListModeControl({ onToggle, title }: { onToggle: () => void; title: string }) {
   return (
-    <View
-      // flex-wrap so the Bays-only sort control drops to its own line on narrow
-      // widths instead of overflowing the row.
-      className="mb-3.5 flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2"
-      style={{ minHeight: BOARD_HEADER_ROW_MIN_HEIGHT }}
+    <Pressable
+      accessibilityHint="Switches between the Bays and Jobs views"
+      accessibilityRole="button"
+      className="h-10 max-w-full self-start flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3 active:bg-muted"
+      onPress={onToggle}
     >
-      <Pressable
-        accessibilityHint="Switches between the Bays and Jobs views"
-        accessibilityRole="button"
-        className="flex-row items-center gap-2.5 active:opacity-70"
-        onPress={onToggle}
-      >
-        <Text className="text-2xl text-foreground" weight="bold">
-          {title}
-        </Text>
-        <View className="h-6 w-6 items-center justify-center rounded-lg border border-border bg-surface">
-          <Icon className="text-muted-foreground" icon={IconArrowsLeftRight} size={13} />
-        </View>
-      </Pressable>
-      {trailing}
-    </View>
-  );
-}
-
-/** SORT segmented control (Bays only): orders the grid by days-left (default) or Bay name. */
-function SortControl({ sort, onChange }: { sort: BaySort; onChange: (sort: BaySort) => void }) {
-  return (
-    <View className="flex-row items-center gap-3">
-      <Text className="text-[11px] tracking-widest text-muted-foreground" mono weight="semibold">
-        SORT
+      <Text className="min-w-0 shrink text-base text-foreground" numberOfLines={1} weight="bold">
+        {title}
       </Text>
-      <View className="flex-row rounded-xl border border-border bg-surface p-1">
-        {SORT_OPTIONS.map((option) => {
-          const selected = option.value === sort;
-
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              className={`rounded-lg border px-3 py-1.5 ${selected ? 'border-border bg-elevated' : 'border-transparent'}`}
-              onPress={() => onChange(option.value)}
-            >
-              <Text
-                className={`text-[11px] tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
-                mono
-                weight="semibold"
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
+      <Icon className="shrink-0 text-muted-foreground" icon={IconArrowsLeftRight} size={15} />
+    </Pressable>
   );
 }
 

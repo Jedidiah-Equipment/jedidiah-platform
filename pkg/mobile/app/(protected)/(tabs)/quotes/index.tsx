@@ -1,16 +1,11 @@
-import { Redirect } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Text } from '@/components/ui/text';
-import { useCan } from '@/lib/use-access';
 
+/** Quote list placeholder. The Quotes layout owns the permission gate. */
 export default function QuotesRoute() {
-  const access = useCan('quote:read');
-
-  if (!access.isPending && !access.can) return <Redirect href="/" />;
-
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <ScrollView contentContainerClassName="mx-auto w-full max-w-[1180px] gap-5 px-4 pb-8 pt-4">

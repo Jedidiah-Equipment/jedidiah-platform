@@ -1,7 +1,9 @@
 import { createFormHook } from '@tanstack/react-form';
 
 import { CurrencyField } from '../fields/CurrencyField';
+import { DateField } from '../fields/DateField';
 import { MultiSelectField } from '../fields/MultiSelectField';
+import { NumberField } from '../fields/NumberField';
 import { SegmentedField } from '../fields/SegmentedField';
 import { SelectField } from '../fields/SelectField';
 import { TextareaField } from '../fields/TextareaField';
@@ -13,7 +15,9 @@ import { fieldContext, formContext } from './form-context';
 export const { useAppForm, useTypedAppFormContext, withForm } = createFormHook({
   fieldComponents: {
     CurrencyField,
+    DateField,
     MultiSelectField,
+    NumberField,
     SelectField,
     SegmentedField,
     TextField,

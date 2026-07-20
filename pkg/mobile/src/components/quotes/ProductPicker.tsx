@@ -62,7 +62,7 @@ export function ProductPicker({
           className="h-12 flex-row items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3 active:bg-muted"
           onPress={() => setRangeExpanded((value) => !value)}
         >
-          <Text className="text-surface-foreground" numberOfLines={1}>
+          <Text className="text-sm text-surface-foreground" numberOfLines={1}>
             {selectedRange?.name ?? 'All ranges'}
           </Text>
           <Icon className="text-muted-foreground" icon={IconChevronDown} size={16} />

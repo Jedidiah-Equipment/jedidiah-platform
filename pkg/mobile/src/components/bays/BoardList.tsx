@@ -125,7 +125,7 @@ function ListModeControl({ onToggle, title }: { onToggle: () => void; title: str
       className="h-10 max-w-full self-start flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3 active:bg-muted"
       onPress={onToggle}
     >
-      <Text className="min-w-0 shrink text-base text-foreground" numberOfLines={1} weight="bold">
+      <Text className="min-w-0 shrink text-xs text-foreground" numberOfLines={1} weight="bold">
         {title}
       </Text>
       <Icon className="shrink-0 text-muted-foreground" icon={IconArrowsLeftRight} size={15} />

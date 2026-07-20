@@ -18,6 +18,8 @@ export type SelectFieldProps = {
   disabled?: boolean;
   emptyMessage?: string;
   label?: ReactNode;
+  onValueSelect?: (value: string) => boolean | undefined;
+  onValueCommit?: () => void;
   options: readonly SelectFieldOption[];
   placeholder?: string;
 };
@@ -27,6 +29,8 @@ export function SelectField({
   disabled = false,
   emptyMessage = 'No options available.',
   label,
+  onValueSelect,
+  onValueCommit,
   options,
   placeholder = 'Select an option',
 }: SelectFieldProps) {
@@ -36,8 +40,11 @@ export function SelectField({
   const selected = options.find((option) => option.value === field.state.value);
 
   const choose = (value: string) => {
-    field.handleChange(value);
     setOpen(false);
+    if (value === field.state.value || onValueSelect?.(value) === false) return;
+
+    field.handleChange(value);
+    onValueCommit?.();
   };
 
   return (
@@ -51,7 +58,7 @@ export function SelectField({
         disabled={disabled}
         onPress={() => setOpen((value) => !value)}
       >
-        <Text className={selected ? 'text-surface-foreground' : 'text-muted-foreground'} numberOfLines={1}>
+        <Text className={`text-sm ${selected ? 'text-surface-foreground' : 'text-muted-foreground'}`} numberOfLines={1}>
           {selected?.label ?? placeholder}
         </Text>
         <Icon className="text-muted-foreground" icon={IconChevronDown} size={16} />
@@ -77,7 +84,9 @@ export function SelectField({
                   key={option.value}
                   onPress={() => choose(option.value)}
                 >
-                  <Text className={active ? 'text-primary' : 'text-surface-foreground'}>{option.label}</Text>
+                  <Text className={`text-sm ${active ? 'text-primary' : 'text-surface-foreground'}`}>
+                    {option.label}
+                  </Text>
                   {active ? <Icon className="text-primary" icon={IconCheck} size={16} /> : null}
                 </Pressable>
               );

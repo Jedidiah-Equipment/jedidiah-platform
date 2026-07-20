@@ -1,19 +1,13 @@
 import { formatCurrency, formatDate, priceQuote } from '@pkg/domain';
 import { QuoteStatus, type QuoteSummary } from '@pkg/schema';
-import {
-  IconAlertTriangle,
-  IconCheck,
-  IconChevronDown,
-  IconFilter,
-  IconPlus,
-  IconSearch,
-} from '@tabler/icons-react-native';
+import { IconAlertTriangle, IconCheck, IconPlus, IconSearch } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { BoardGrid } from '@/components/bays/BoardGrid';
+import { ListFilterButton } from '@/components/ListControls';
 import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { AnchoredMenu } from '@/components/ui/anchored-menu';
@@ -58,7 +52,6 @@ export function QuoteCatalogControls({
   const filterRef = useRef<View>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ left: number; top: number } | null>(null);
   const statusLabel = status === 'all' ? 'All statuses' : quoteStatusLabels[status];
-  const filterAccentClassName = status === 'all' ? 'text-muted-foreground' : 'text-primary';
 
   const openMenu = () => {
     filterRef.current?.measureInWindow((x, y, width, height) => {
@@ -77,7 +70,7 @@ export function QuoteCatalogControls({
         <Icon className="text-muted-foreground" icon={IconSearch} size={17} />
         <TextInput
           accessibilityLabel="Search quotes"
-          className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-sm"
+          className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-xs"
           onChangeText={onSearchChange}
           placeholder="Search quotes…"
           returnKeyType="search"
@@ -85,26 +78,15 @@ export function QuoteCatalogControls({
         />
       </View>
 
-      <Pressable
+      <ListFilterButton
         accessibilityLabel={`Filter by status: ${statusLabel}`}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: menuAnchor !== null }}
-        className={`h-10 flex-row items-center gap-2 rounded-xl border px-3 ${
-          status === 'all' ? 'border-border bg-surface' : 'border-primary bg-primary/10'
-        }`}
+        active={status !== 'all'}
+        expanded={menuAnchor !== null}
+        label={statusLabel.toUpperCase()}
         onPress={openMenu}
         ref={filterRef}
-      >
-        <Icon className={filterAccentClassName} icon={IconFilter} size={16} />
-        {isWide ? (
-          <>
-            <Text className={filterAccentClassName} mono numberOfLines={1} weight="semibold">
-              {statusLabel.toUpperCase()}
-            </Text>
-            <Icon className={filterAccentClassName} icon={IconChevronDown} size={13} />
-          </>
-        ) : null}
-      </Pressable>
+        showLabel={isWide}
+      />
 
       {canCreate ? (
         <Pressable
@@ -115,7 +97,7 @@ export function QuoteCatalogControls({
         >
           <Icon className="text-primary-foreground" icon={IconPlus} size={18} strokeWidth={2.5} />
           {isWide ? (
-            <Text className="text-primary-foreground" weight="bold">
+            <Text className="text-xs text-primary-foreground" weight="bold">
               New quote
             </Text>
           ) : null}

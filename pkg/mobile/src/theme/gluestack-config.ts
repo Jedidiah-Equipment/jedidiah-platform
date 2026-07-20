@@ -11,6 +11,18 @@ export const mutedForegroundColors = {
   dark: `rgb(${mutedForegroundTriplets.dark})`,
   light: `rgb(${mutedForegroundTriplets.light})`,
 } as const satisfies Record<ResolvedColorScheme, string>;
+export const switchColors = {
+  dark: {
+    offTrack: mutedForegroundColors.dark,
+    onTrack: `rgb(${primaryColorTriplets.dark})`,
+    thumb: 'rgb(250 250 250)',
+  },
+  light: {
+    offTrack: mutedForegroundColors.light,
+    onTrack: `rgb(${primaryColorTriplets.light})`,
+    thumb: 'rgb(255 255 255)',
+  },
+} as const satisfies Record<ResolvedColorScheme, { offTrack: string; onTrack: string; thumb: string }>;
 export const navigationColors = {
   dark: {
     background: `rgb(${backgroundTriplets.dark})`,
@@ -34,6 +46,7 @@ export const gluestackConfig = {
     '--color-background': backgroundTriplets.dark,
     '--color-border': borderColors.dark,
     '--color-danger': '248 113 113',
+    '--color-danger-foreground': '10 10 10',
     '--color-elevated': '46 46 52',
     '--color-foreground': '250 250 250',
     '--color-image-backdrop': '15 15 17',
@@ -54,6 +67,7 @@ export const gluestackConfig = {
     '--color-background': backgroundTriplets.light,
     '--color-border': borderColors.light,
     '--color-danger': '248 113 113',
+    '--color-danger-foreground': '10 10 10',
     '--color-elevated': '245 245 245',
     '--color-foreground': '10 10 10',
     '--color-image-backdrop': '15 15 17',

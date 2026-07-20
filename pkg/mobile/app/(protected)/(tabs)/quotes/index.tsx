@@ -118,31 +118,33 @@ export default function QuotesRoute() {
         scrollEventThrottle={100}
       >
         <QuoteCatalogHeader count={pending && total === null ? null : total} />
-        <QuoteCatalogControls
-          canCreate={createAccess.can}
-          onSearchChange={setSearch}
-          onStatusChange={setStatus}
-          search={search}
-          status={status}
-        />
-
-        {pending && displayedQuoteCount === 0 ? (
-          <QuoteGridSkeleton />
-        ) : failed ? (
-          <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load quotes." />
-        ) : displayedQuoteCount === 0 ? (
-          <CatalogMessage
-            detail={hasCriteria ? 'Try a different search or status.' : 'Create a Quote to see it here.'}
-            title={hasCriteria ? 'No quotes match' : 'No quotes yet'}
+        <View className="gap-4">
+          <QuoteCatalogControls
+            canCreate={createAccess.can}
+            onSearchChange={setSearch}
+            onStatusChange={setStatus}
+            search={search}
+            status={status}
           />
-        ) : (
-          <View className="gap-4">
-            <QuoteGrid mainQuotes={quoteSections.mainQuotes} priorityQuotes={quoteSections.priorityQuotes} />
-            {loadingMore ? (
-              <Text className="text-center text-sm text-muted-foreground">Loading more quotes…</Text>
-            ) : null}
-          </View>
-        )}
+
+          {pending && displayedQuoteCount === 0 ? (
+            <QuoteGridSkeleton />
+          ) : failed ? (
+            <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load quotes." />
+          ) : displayedQuoteCount === 0 ? (
+            <CatalogMessage
+              detail={hasCriteria ? 'Try a different search or status.' : 'Create a Quote to see it here.'}
+              title={hasCriteria ? 'No quotes match' : 'No quotes yet'}
+            />
+          ) : (
+            <View className="gap-4">
+              <QuoteGrid mainQuotes={quoteSections.mainQuotes} priorityQuotes={quoteSections.priorityQuotes} />
+              {loadingMore ? (
+                <Text className="text-center text-sm text-muted-foreground">Loading more quotes…</Text>
+              ) : null}
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

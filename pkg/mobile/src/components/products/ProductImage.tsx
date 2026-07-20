@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
-import { apiBaseUrl } from '@/lib/api-base-url';
-import { sessionCookieHeader } from '@/lib/auth';
+import type { ProductImageKey } from '@/lib/product-image-cache';
+import { useProductImageSource } from '@/lib/product-image-source';
 
 const MOBILE_CARD_IMAGE_SLOTS = [
   'primary',
@@ -19,27 +19,33 @@ type ProductImageProduct = Pick<Product, 'id' | 'images' | 'name'>;
 /** Shared authed Product image surface for catalog cards and future detail headers. */
 export function ProductImage({ product }: { product: ProductImageProduct }) {
   const slot = MOBILE_CARD_IMAGE_SLOTS.find((candidate) => product.images[candidate] !== null);
-  const imageUrl = slot ? `${apiBaseUrl}/api/products/${encodeURIComponent(product.id)}/images/${slot}/download` : null;
+  const image = slot ? product.images[slot] : null;
 
-  if (!imageUrl) return <ProductImagePlaceholder />;
+  if (!slot || !image) return <ProductImagePlaceholder />;
 
-  return <ResolvedProductImage imageUrl={imageUrl} key={imageUrl} productName={product.name} />;
+  const imageKey = { productId: product.id, slot, updatedAt: image.updatedAt } satisfies ProductImageKey;
+  return (
+    <ResolvedProductImage
+      imageKey={imageKey}
+      key={`${imageKey.productId}-${imageKey.slot}-${imageKey.updatedAt}`}
+      productName={product.name}
+    />
+  );
 }
 
-function ResolvedProductImage({ productName, imageUrl }: { productName: string; imageUrl: string }) {
+function ResolvedProductImage({ productName, imageKey }: { productName: string; imageKey: ProductImageKey }) {
+  const source = useProductImageSource(imageKey);
   const [failed, setFailed] = useState(false);
 
-  if (failed) return <ProductImagePlaceholder />;
-
-  const cookie = sessionCookieHeader();
+  if (failed || source.kind !== 'ready') return <ProductImagePlaceholder />;
 
   return (
     <Image
       accessibilityLabel={`${productName} photo`}
       onError={() => setFailed(true)}
       resizeMode="cover"
-      source={{ headers: cookie ? { Cookie: cookie } : undefined, uri: imageUrl }}
-      style={StyleSheet.absoluteFill}
+      source={{ uri: source.uri }}
+      style={styles.image}
     />
   );
 }
@@ -57,3 +63,8 @@ function ProductImagePlaceholder() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  // Explicit dimensions avoid react-native-web falling back to the image's intrinsic size.
+  image: { height: '100%', width: '100%' },
+});

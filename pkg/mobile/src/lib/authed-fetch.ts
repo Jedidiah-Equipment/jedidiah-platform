@@ -1,3 +1,4 @@
+import type { ProductImageSlot } from '@pkg/schema';
 import { apiBaseUrl } from './api-base-url';
 import { sessionCookieHeader } from './auth';
 
@@ -31,4 +32,9 @@ export const PRODUCT_BROCHURE_DOCUMENT_ID = 'brochure';
 /** URL of the generated Product Brochure preview PDF. */
 export function productBrochurePreviewPath(productId: string): string {
   return `/api/products/${productId}/brochure-preview`;
+}
+
+/** URL of the small WebP variant used by Product cards and detail headers. */
+export function productImageDownloadPath(productId: string, slot: ProductImageSlot, updatedAt: string): string {
+  return `/api/products/${encodeURIComponent(productId)}/images/${slot}/download?variant=mobile&updatedAt=${encodeURIComponent(updatedAt)}`;
 }

@@ -1,6 +1,8 @@
-import type { ReactNode } from 'react';
+import { IconChevronDown, IconFilter } from '@tabler/icons-react-native';
+import { forwardRef, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
 export type SegmentedSortOption<Value extends string> = {
@@ -18,6 +20,48 @@ export function ListControlRow({ leading, trailing }: { leading: ReactNode; trai
   );
 }
 
+export const ListFilterButton = forwardRef<
+  View,
+  {
+    accessibilityLabel: string;
+    active: boolean;
+    expanded: boolean;
+    label: string;
+    onPress: () => void;
+    showLabel?: boolean;
+  }
+>(function ListFilterButton({ accessibilityLabel, active, expanded, label, onPress, showLabel = true }, ref) {
+  const accentClassName = active ? 'text-primary' : 'text-muted-foreground';
+
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      className={`h-10 min-w-0 max-w-full flex-row items-center gap-2 rounded-xl border px-3 ${
+        active ? 'border-primary bg-primary/10' : 'border-border bg-surface'
+      }`}
+      onPress={onPress}
+      ref={ref}
+    >
+      <Icon className={accentClassName} icon={IconFilter} size={15} />
+      {showLabel ? (
+        <>
+          <Text
+            className={`min-w-0 flex-1 text-xs tracking-wide ${accentClassName}`}
+            mono
+            numberOfLines={1}
+            weight="semibold"
+          >
+            {label}
+          </Text>
+          <Icon className={accentClassName} icon={IconChevronDown} size={13} />
+        </>
+      ) : null}
+    </Pressable>
+  );
+});
+
 /** Shared SORT label and segmented control used by every sortable landing-screen list. */
 export function SegmentedSortControl<Value extends string>({
   options,
@@ -30,7 +74,7 @@ export function SegmentedSortControl<Value extends string>({
 }) {
   return (
     <View className="h-10 min-w-0 flex-row items-center gap-2">
-      <Text className="shrink-0 text-[10px] tracking-widest text-muted-foreground" mono weight="semibold">
+      <Text className="shrink-0 text-xs tracking-widest text-muted-foreground" mono weight="semibold">
         SORT
       </Text>
       <View className="h-10 min-w-0 shrink flex-row rounded-xl border border-border bg-surface p-1">
@@ -49,7 +93,7 @@ export function SegmentedSortControl<Value extends string>({
               onPress={() => onChange(option.value)}
             >
               <Text
-                className={`text-[11px] tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
+                className={`text-xs tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
                 mono
                 numberOfLines={1}
                 weight="semibold"

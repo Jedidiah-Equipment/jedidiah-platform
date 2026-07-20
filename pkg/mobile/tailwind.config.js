@@ -44,7 +44,10 @@ module.exports = {
           foreground: 'rgb(var(--color-primary-foreground) / <alpha-value>)',
         },
         border: 'var(--color-border)',
-        danger: 'rgb(var(--color-danger) / <alpha-value>)',
+        danger: {
+          DEFAULT: 'rgb(var(--color-danger) / <alpha-value>)',
+          foreground: 'rgb(var(--color-danger-foreground) / <alpha-value>)',
+        },
         status: {
           'in-progress': 'rgb(var(--color-status-in-progress) / <alpha-value>)',
           scheduled: 'rgb(var(--color-status-scheduled) / <alpha-value>)',

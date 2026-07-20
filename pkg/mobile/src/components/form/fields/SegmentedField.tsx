@@ -44,7 +44,7 @@ export function SegmentedField({ label, onValueChange, options }: SegmentedField
               }}
             >
               <Text
-                className={`text-xs ${selected ? 'text-surface-foreground' : 'text-muted-foreground'}`}
+                className={`text-sm ${selected ? 'text-surface-foreground' : 'text-muted-foreground'}`}
                 weight={selected ? 'semibold' : 'regular'}
               >
                 {option.label}

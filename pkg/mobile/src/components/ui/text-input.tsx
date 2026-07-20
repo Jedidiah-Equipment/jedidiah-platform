@@ -23,7 +23,7 @@ export const TextInput = forwardRef<RNTextInputType, AppTextInputProps>(function
 
   return (
     <RNTextInput
-      className={`rounded-xl border border-border bg-surface px-3 py-2.5 font-sans text-base text-surface-foreground ${className ?? ''}`}
+      className={`rounded-xl border border-border bg-surface px-3 py-2.5 font-sans text-sm text-surface-foreground ${className ?? ''}`}
       placeholderTextColor={PLACEHOLDER_COLOR[resolved]}
       ref={ref}
       {...props}

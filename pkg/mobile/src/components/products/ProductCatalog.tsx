@@ -1,11 +1,11 @@
 import { formatCurrency } from '@pkg/domain';
 import type { Product, ProductRangeOption } from '@pkg/schema';
-import { IconCheck, IconChevronDown, IconFilter } from '@tabler/icons-react-native';
+import { IconCheck } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { BoardGrid } from '@/components/bays/BoardGrid';
-import { ListControlRow, SegmentedSortControl } from '@/components/ListControls';
+import { ListControlRow, ListFilterButton, SegmentedSortControl } from '@/components/ListControls';
 import { ProductImage } from '@/components/products/ProductImage';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { AnchoredMenu } from '@/components/ui/anchored-menu';
@@ -62,31 +62,14 @@ export function ProductCatalogControls({
     <ListControlRow
       leading={
         <View className="max-w-full self-start">
-          <Pressable
+          <ListFilterButton
             accessibilityLabel="Filter by Product Range"
-            accessibilityRole="button"
-            accessibilityState={{ expanded: menuAnchor !== null }}
-            className={`h-10 min-w-0 max-w-full flex-row items-center gap-2 rounded-xl border px-3 ${
-              range === 'all' ? 'border-border bg-surface' : 'border-primary bg-primary/10'
-            }`}
+            active={range !== 'all'}
+            expanded={menuAnchor !== null}
+            label={rangeLabel}
             onPress={openMenu}
             ref={buttonRef}
-          >
-            <Icon className={range === 'all' ? 'text-muted-foreground' : 'text-primary'} icon={IconFilter} size={15} />
-            <Text
-              className={`min-w-0 flex-1 text-[11px] tracking-wide ${range === 'all' ? 'text-muted-foreground' : 'text-primary'}`}
-              mono
-              numberOfLines={1}
-              weight="semibold"
-            >
-              {rangeLabel}
-            </Text>
-            <Icon
-              className={range === 'all' ? 'text-muted-foreground' : 'text-primary'}
-              icon={IconChevronDown}
-              size={13}
-            />
-          </Pressable>
+          />
 
           {menuAnchor ? (
             <AnchoredMenu

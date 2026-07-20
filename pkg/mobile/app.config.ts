@@ -33,13 +33,7 @@ export default ({ config }: ConfigContext): AppConfig => {
     // populate `extra.eas.projectId` and `updates.url` on first owner-side setup (see README).
     runtimeVersion: { policy: 'fingerprint' },
     icon: variant.iconConfig.icon,
-    plugins: [
-      'expo-router',
-      'expo-font',
-      '@config-plugins/react-native-pdf',
-      '@config-plugins/react-native-blob-util',
-      '@react-native-community/datetimepicker',
-    ],
+    plugins: ['expo-router', 'expo-font', '@config-plugins/react-native-pdf', '@config-plugins/react-native-blob-util'],
     experiments: {
       typedRoutes: true,
     },

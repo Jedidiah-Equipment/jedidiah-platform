@@ -1,6 +1,6 @@
 import { IconChevronLeft } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
-import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,21 +8,18 @@ import { ProductDetail } from '@/components/products/ProductDetail';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useTRPC } from '@/lib/trpc';
-import { useCan } from '@/lib/use-access';
 
+/** Read-only Product view. The products layout owns the permission gate. */
 export default function ProductDetailRoute() {
   const { productId } = useLocalSearchParams<{ productId: string }>();
   const router = useRouter();
   const trpc = useTRPC();
-  const access = useCan('product:read');
-  const query = useQuery(trpc.products.get.queryOptions({ id: productId }, { enabled: access.can }));
+  const query = useQuery(trpc.products.get.queryOptions({ id: productId }));
   const handleBack = () => router.dismissTo('/products');
-
-  if (!access.isPending && !access.can) return <Redirect href="/" />;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      {access.isPending || query.isPending ? (
+      {query.isPending ? (
         <RouteMessage text="Loading Product…" />
       ) : query.isError ? (
         <RouteMessage onBack={handleBack} text="Couldn’t load this Product." />

@@ -10,16 +10,6 @@ export const IMAGE_TRANSFORMS: Record<ImageTransformName, { maxWidth: number; qu
     mobileWebp: { maxWidth: 640, quality: 80, contentType: 'image/webp' },
   };
 
-export const DEFAULT_IMAGE_FORMAT: ImageTransformName = 'webp';
-// The format for URL-valued head tags (og:image, twitter:image).
-export const OG_IMAGE_FORMAT: ImageTransformName = 'jpeg';
-
-// Forgiving parse for the public route's `?format=` param: anything unrecognized falls back to the
-// default, mirroring how an invalid `?slot=` falls back to `primary` for public crawlers.
-export function parseImageFormat(value: string | null | undefined): ImageTransformName {
-  return value === 'jpeg' ? 'jpeg' : DEFAULT_IMAGE_FORMAT;
-}
-
 export function imageFormatForTransform(transformName: ImageTransformName): 'jpeg' | 'webp' {
   return IMAGE_TRANSFORMS[transformName].contentType === 'image/jpeg' ? 'jpeg' : 'webp';
 }

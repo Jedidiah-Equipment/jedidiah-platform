@@ -43,6 +43,17 @@ export async function readStoredObject(storage: StorageAdapter, key: string): Pr
   return { bytes, byteSize, contentType: object.contentType };
 }
 
+/** Wraps in-memory bytes as a {@link StoredObject}; the inverse of {@link readStoredObject}. */
+export function storedObjectFromBytes(bytes: Uint8Array, contentType: string): StoredObject {
+  return {
+    body: (async function* () {
+      yield bytes;
+    })(),
+    byteSize: bytes.byteLength,
+    contentType,
+  };
+}
+
 export class StorageKeyAlreadyExistsError extends Error {
   constructor(key: string) {
     super(`Storage key already exists: ${key}`);

@@ -1,9 +1,10 @@
-import { listAllProducts, listProductRanges, parseImageFormat, transformSignature } from '@pkg/core';
+import { listAllProducts, listProductRanges, transformSignature } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import { isLanderReady, localizeFields } from '@pkg/domain';
 import type { Product, ProductRangeVariantTranslations, ProductTranslations } from '@pkg/schema';
 
 import type { Locale } from '../../lib/locale.js';
+import { parseImageFormat } from '../media/image-format.js';
 
 export type CatalogProduct = {
   id: string;

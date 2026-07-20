@@ -12,12 +12,9 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { landerOrigin } from '@/lib/app-env';
-import {
-  PRODUCT_BROCHURE_DOCUMENT_ID,
-  productBrochurePreviewPath,
-  productDocumentDownloadPath,
-} from '@/lib/authed-fetch';
+import { productBrochurePreviewPath, productDocumentDownloadPath } from '@/lib/authed-fetch';
 import { saveDocument } from '@/lib/document-actions';
+import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/lib/product-brochure';
 import { landerProductUrls } from '@/lib/product-presentation';
 import { useTRPC } from '@/lib/trpc';
 
@@ -312,7 +309,7 @@ function ProductDocumentsCard({ product }: { product: Product }) {
 
 function ProductBrochureRow({ product }: { product: Product }) {
   const router = useRouter();
-  const filename = `${product.modelCode}-brochure.pdf`;
+  const filename = productBrochureFilename(product.modelCode);
   const open = () =>
     router.push({
       pathname: '/documents/[documentId]',

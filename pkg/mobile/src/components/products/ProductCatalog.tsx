@@ -2,12 +2,13 @@ import { formatCurrency } from '@pkg/domain';
 import type { Product, ProductRangeOption } from '@pkg/schema';
 import { IconCheck, IconChevronDown, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { BoardGrid } from '@/components/bays/BoardGrid';
 import { ListControlRow, SegmentedSortControl } from '@/components/ListControls';
 import { ProductImage } from '@/components/products/ProductImage';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { AnchoredMenu } from '@/components/ui/anchored-menu';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -41,27 +42,35 @@ export function ProductCatalogControls({
   onRangeChange: (range: RangeFilter) => void;
   onSortChange: (sort: ProductSort) => void;
 }) {
-  const [rangeOpen, setRangeOpen] = useState(false);
+  const buttonRef = useRef<View>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ left: number; top: number } | null>(null);
   const rangeLabel =
     range === 'all' ? 'ALL RANGES' : (ranges.find((option) => option.id === range)?.name ?? 'ALL RANGES');
 
+  const openMenu = () => {
+    buttonRef.current?.measureInWindow((x, y, _width, height) => {
+      setMenuAnchor({ left: x, top: y + height + 8 });
+    });
+  };
+
   const selectRange = (next: RangeFilter) => {
     onRangeChange(next);
-    setRangeOpen(false);
+    setMenuAnchor(null);
   };
 
   return (
     <ListControlRow
       leading={
-        <View className="relative max-w-full self-start">
+        <View className="max-w-full self-start">
           <Pressable
             accessibilityLabel="Filter by Product Range"
             accessibilityRole="button"
-            accessibilityState={{ expanded: rangeOpen }}
+            accessibilityState={{ expanded: menuAnchor !== null }}
             className={`h-10 min-w-0 max-w-full flex-row items-center gap-2 rounded-xl border px-3 ${
               range === 'all' ? 'border-border bg-surface' : 'border-primary bg-primary/10'
             }`}
-            onPress={() => setRangeOpen((open) => !open)}
+            onPress={openMenu}
+            ref={buttonRef}
           >
             <Icon className={range === 'all' ? 'text-muted-foreground' : 'text-primary'} icon={IconFilter} size={15} />
             <Text
@@ -79,21 +88,24 @@ export function ProductCatalogControls({
             />
           </Pressable>
 
-          {rangeOpen ? (
-            <View
-              className="absolute left-0 top-12 z-50 w-[240px] rounded-2xl border border-border bg-elevated p-1.5"
-              style={{ elevation: 12 }}
+          {menuAnchor ? (
+            <AnchoredMenu
+              dismissLabel="Dismiss Range filter"
+              onClose={() => setMenuAnchor(null)}
+              style={{ left: menuAnchor.left, top: menuAnchor.top, width: 240 }}
             >
-              <RangeOption active={range === 'all'} label="All Ranges" onPress={() => selectRange('all')} />
-              {ranges.map((option) => (
-                <RangeOption
-                  key={option.id}
-                  active={range === option.id}
-                  label={option.name}
-                  onPress={() => selectRange(option.id)}
-                />
-              ))}
-            </View>
+              <View className="p-1.5">
+                <RangeOption active={range === 'all'} label="All Ranges" onPress={() => selectRange('all')} />
+                {ranges.map((option) => (
+                  <RangeOption
+                    key={option.id}
+                    active={range === option.id}
+                    label={option.name}
+                    onPress={() => selectRange(option.id)}
+                  />
+                ))}
+              </View>
+            </AnchoredMenu>
           ) : null}
         </View>
       }

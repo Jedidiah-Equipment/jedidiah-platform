@@ -52,8 +52,9 @@ function QuoteDetailsData({ id }: { id: UUID }) {
   const priorityQuery = useQuery(trpc.quotes.priorityList.queryOptions(undefined, { enabled: readAccess.can }));
   const updateQuote = useMutation(trpc.quotes.update.mutationOptions());
 
-  if (readAccess.isPending || quoteQuery.isPending) return <StateMessage loading message="Loading quote…" />;
+  if (readAccess.isPending) return <StateMessage loading message="Loading quote…" />;
   if (!readAccess.can) return <StateMessage message="You do not have access to this Quote." />;
+  if (quoteQuery.isPending) return <StateMessage loading message="Loading quote…" />;
   if (quoteQuery.isError || !quoteQuery.data) return <StateMessage message="Unable to load quote." />;
 
   const quote = quoteQuery.data;

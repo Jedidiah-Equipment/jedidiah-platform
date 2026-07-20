@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { TextInput } from '@/components/ui/text-input';
 import { useFieldContext } from '../hooks/form-context';
@@ -15,6 +15,13 @@ export type NumberFieldProps = {
 export function NumberField({ disabled = false, label, onValueCommit, placeholder = '0' }: NumberFieldProps) {
   const field = useFieldContext<number>();
   const errors = getFieldErrors(field.state.meta.errors);
+  const canonicalValue = Number.isFinite(field.state.value) ? String(field.state.value) : '';
+  const [draftValue, setDraftValue] = useState(canonicalValue);
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setDraftValue(canonicalValue);
+  }, [canonicalValue, focused]);
 
   return (
     <FieldShell errors={errors} label={label}>
@@ -23,12 +30,20 @@ export function NumberField({ disabled = false, label, onValueCommit, placeholde
         editable={!disabled}
         keyboardType="decimal-pad"
         onBlur={() => {
+          setFocused(false);
           field.handleBlur();
           onValueCommit?.();
         }}
-        onChangeText={(value) => field.handleChange(value.trim() === '' ? Number.NaN : Number(value))}
+        onChangeText={(value) => {
+          setDraftValue(value);
+          field.handleChange(value.trim() === '' ? Number.NaN : Number(value));
+        }}
+        onFocus={() => {
+          setDraftValue(canonicalValue);
+          setFocused(true);
+        }}
         placeholder={placeholder}
-        value={Number.isFinite(field.state.value) ? String(field.state.value) : ''}
+        value={focused ? draftValue : canonicalValue}
       />
     </FieldShell>
   );

@@ -83,7 +83,7 @@ export function QuoteCatalogControls({
         accessibilityLabel={`Filter by status: ${statusLabel}`}
         active={status !== 'all'}
         expanded={menuAnchor !== null}
-        label={statusLabel.toUpperCase()}
+        label={statusLabel}
         onPress={openMenu}
         ref={filterRef}
         showLabel={isWide}

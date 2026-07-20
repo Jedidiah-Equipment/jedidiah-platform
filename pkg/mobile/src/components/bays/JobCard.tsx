@@ -52,7 +52,7 @@ function JobPrimaryRow({ job }: { job: JobListCard }) {
         <Text className="text-base text-surface-foreground" mono numberOfLines={1} weight="bold">
           {job.jobCode}
         </Text>
-        <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
+        <Text className="mt-0.5 text-[10px] leading-3 text-muted-foreground" numberOfLines={1}>
           {job.jobDisplayName}
         </Text>
       </View>

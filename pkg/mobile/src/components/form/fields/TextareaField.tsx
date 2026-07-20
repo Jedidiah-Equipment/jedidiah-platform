@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { type AppTextInputProps, TextInput } from '@/components/ui/text-input';
 import { useFieldContext } from '../hooks/form-context';
 import { getFieldErrors } from '../utils/field-errors';
+import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
 type TextareaFieldProps = {
@@ -26,7 +27,7 @@ export function TextareaField({
   return (
     <FieldShell errors={errors} label={label}>
       <TextInput
-        className={`${errors.length > 0 ? 'border-danger' : ''} ${disabled ? 'opacity-55' : ''} ${className ?? ''}`}
+        className={`${fieldStateClassNames({ disabled, hasErrors: errors.length > 0 })} ${className ?? ''}`}
         editable={!disabled}
         multiline
         numberOfLines={rows}

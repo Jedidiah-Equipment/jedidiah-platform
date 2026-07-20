@@ -1,5 +1,5 @@
-import { formatCurrency, formatDate, priceQuote } from '@pkg/domain';
-import { QuoteStatus, type QuoteSummary } from '@pkg/schema';
+import { formatCurrency, formatDate, priceQuote, quoteStatusLabels } from '@pkg/domain';
+import type { QuoteSummary } from '@pkg/schema';
 import { IconAlertTriangle, IconCheck, IconPlus, IconSearch } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -15,13 +15,13 @@ import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
-import { type QuoteStatusFilter, quoteMetaLine, quoteStatusLabels } from '@/lib/quote-presentation';
+import { QUOTE_STATUS_OPTIONS, type QuoteStatusFilter, quoteMetaLine } from '@/lib/quote-presentation';
 
 const WIDE_BREAKPOINT = 760;
 const QUOTE_SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
 const STATUS_OPTIONS: readonly { label: string; value: QuoteStatusFilter }[] = [
   { label: 'All statuses', value: 'all' },
-  ...QuoteStatus.options.map((status) => ({ label: quoteStatusLabels[status], value: status })),
+  ...QUOTE_STATUS_OPTIONS,
 ];
 
 export function QuoteCatalogHeader({ count }: { count: number | null }) {
@@ -98,7 +98,7 @@ export function QuoteCatalogControls({
         >
           <Icon className="text-primary-foreground" icon={IconPlus} size={18} strokeWidth={2.5} />
           {isWide ? (
-            <Text className="text-[13px] text-primary-foreground" weight="bold">
+            <Text className="text-toolbar text-primary-foreground" weight="bold">
               New quote
             </Text>
           ) : null}

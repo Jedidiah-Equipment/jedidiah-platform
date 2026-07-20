@@ -1,4 +1,11 @@
-import { EDITABLE_LOCKED_QUOTE_FIELDS, formatCurrency, getQuoteOfferingName, isQuoteLocked } from '@pkg/domain';
+import {
+  computeQuoteSummary,
+  createStableRowKeys,
+  EDITABLE_LOCKED_QUOTE_FIELDS,
+  formatCurrency,
+  getQuoteOfferingName,
+  isQuoteLocked,
+} from '@pkg/domain';
 import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInput, UUID } from '@pkg/schema';
 import { IconChevronLeft, IconLayoutSidebarRight, IconPlus, IconTrash } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
@@ -10,29 +17,26 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAutosaveForm } from '@/components/form';
-import { SelectField } from '@/components/form/fields/SelectField';
-import { createStableRowKeys } from '@/components/form/utils/create-stable-row-keys';
 import { QuoteAssembliesEditor } from '@/components/quotes/QuoteAssembliesEditor';
 import { QuoteCancellationConfirmation } from '@/components/quotes/QuoteCancellationConfirmation';
 import { QuoteDocumentsTab } from '@/components/quotes/QuoteDocumentsTab';
 import { QuotePriorityAlert } from '@/components/quotes/QuotePriorityAlert';
 import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { QuoteSummaryDrawer } from '@/components/quotes/QuoteSummaryDrawer';
+import { SalespersonSelectField } from '@/components/quotes/SalespersonSelectField';
 import { Icon } from '@/components/ui/icon';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import {
-  computeQuoteSummary,
   getQuoteEditFormValuesValidator,
-  quoteStatusLabels,
+  QUOTE_STATUS_OPTIONS,
   toQuoteEditFormValues,
   toQuoteUpdateInput,
 } from '@/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
 
-const STATUS_OPTIONS = QuoteStatus.options.map((status) => ({ label: quoteStatusLabels[status], value: status }));
 const getLineItemKey = createStableRowKeys<{ name: string; quantity: number; unitPrice: number }>('quote-line-item');
 
 export function QuoteDetailsScreen({ quoteId }: { quoteId: string }) {
@@ -199,7 +203,9 @@ function QuoteEditor({
                     ) : null}
                     <View className="flex-1">
                       <form.AppField name="salesPersonId">
-                        {(_field) => <SalespersonField disabled={setupReadOnly} onValueCommit={autosave.commit} />}
+                        {(_field) => (
+                          <SalespersonSelectField disabled={setupReadOnly} onValueCommit={autosave.commit} />
+                        )}
                       </form.AppField>
                     </View>
                     <View className="flex-1">
@@ -216,7 +222,7 @@ function QuoteEditor({
                               setCancelConfirmationOpen(true);
                               return false;
                             }}
-                            options={STATUS_OPTIONS}
+                            options={QUOTE_STATUS_OPTIONS}
                           />
                         )}
                       </form.AppField>
@@ -516,22 +522,6 @@ function QuoteTabButton({ active, label, onPress }: { active: boolean; label: st
         {label}
       </Text>
     </Pressable>
-  );
-}
-
-function SalespersonField({ disabled, onValueCommit }: { disabled: boolean; onValueCommit: () => void }) {
-  const trpc = useTRPC();
-  const salespeople = useQuery(trpc.quotes.salespeople.queryOptions(undefined));
-
-  return (
-    <SelectField
-      disabled={disabled || salespeople.isPending}
-      emptyMessage={salespeople.isError ? 'Couldn’t load salespeople.' : 'No salespeople available.'}
-      label="Salesperson"
-      onValueCommit={onValueCommit}
-      options={(salespeople.data?.users ?? []).map((user) => ({ label: user.name, value: user.id }))}
-      placeholder={salespeople.isPending ? 'Loading salespeople…' : 'Select salesperson'}
-    />
   );
 }
 

@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useFieldContext } from '../hooks/form-context';
 import { getFieldErrors } from '../utils/field-errors';
+import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
 export type CurrencyFieldProps = {
@@ -14,18 +15,25 @@ export type CurrencyFieldProps = {
   placeholder?: string;
 };
 
-/** ZAR amount input that retains its raw string until form validation parses it. */
+/** ZAR amount input; keeps a local draft string while focused, NaN in form state when empty. */
 export function CurrencyField({ disabled = false, label, onValueCommit, placeholder = '0.00' }: CurrencyFieldProps) {
-  const field = useFieldContext<number | string>();
+  const field = useFieldContext<number>();
   const errors = getFieldErrors(field.state.meta.errors);
-  const value = field.state.value;
+  const canonicalValue = Number.isFinite(field.state.value) ? String(field.state.value) : '';
+  const [draftValue, setDraftValue] = useState(canonicalValue);
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setDraftValue(canonicalValue);
+  }, [canonicalValue, focused]);
 
   return (
     <FieldShell errors={errors} label={label}>
       <View
-        className={`h-12 flex-row items-center rounded-xl border bg-surface px-3 ${
-          errors.length > 0 ? 'border-danger' : 'border-border'
-        } ${disabled ? 'opacity-55' : ''}`}
+        className={`h-12 flex-row items-center rounded-xl border bg-surface px-3 ${fieldStateClassNames({
+          disabled,
+          hasErrors: errors.length > 0,
+        })}`}
       >
         <Text className="mr-2 text-sm text-muted-foreground" mono>
           R
@@ -35,16 +43,20 @@ export function CurrencyField({ disabled = false, label, onValueCommit, placehol
           editable={!disabled}
           keyboardType="decimal-pad"
           onBlur={() => {
+            setFocused(false);
             field.handleBlur();
             onValueCommit?.();
           }}
-          onChangeText={(nextValue) =>
-            field.handleChange(
-              typeof value === 'number' ? (nextValue === '' ? Number.NaN : Number(nextValue)) : nextValue,
-            )
-          }
+          onChangeText={(value) => {
+            setDraftValue(value);
+            field.handleChange(value.trim() === '' ? Number.NaN : Number(value));
+          }}
+          onFocus={() => {
+            setDraftValue(canonicalValue);
+            setFocused(true);
+          }}
           placeholder={placeholder}
-          value={typeof value === 'number' ? (Number.isFinite(value) ? String(value) : '') : value}
+          value={focused ? draftValue : canonicalValue}
         />
       </View>
     </FieldShell>

@@ -12,6 +12,7 @@ import {
   computeQuoteLineItemAmount,
   formatCurrency,
   formatPercent,
+  isQuoteDocumentGenerationAllowed,
   priceQuoteWithCatalog,
 } from '@pkg/domain';
 import { mergePdfBytes } from '@pkg/pdf';
@@ -342,7 +343,7 @@ function formatQuoteDocumentLineItemDescription(item: Pick<QuoteLineItemRow, 'na
 }
 
 function assertQuoteDocumentGenerationAllowed(quote: Pick<QuoteRow, 'status'>): void {
-  if (quote.status === 'rejected' || quote.status === 'cancelled') {
+  if (!isQuoteDocumentGenerationAllowed(quote.status)) {
     throw new QuoteDocumentGenerationNotAllowedError(
       'Quote Documents can only be generated for draft, sent, or accepted Quotes.',
     );

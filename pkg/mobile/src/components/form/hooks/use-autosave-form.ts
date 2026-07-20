@@ -1,7 +1,7 @@
+import { createAutosaveController } from '@pkg/domain';
 import { useCallback, useRef, useSyncExternalStore } from 'react';
 import type { z } from 'zod';
 
-import { createAutosaveController } from '../utils/autosave-core';
 import { useAppForm } from './use-app-form';
 
 type UseAutosaveFormOptions<TValues extends Record<string, unknown>, TInput, TResult> = {

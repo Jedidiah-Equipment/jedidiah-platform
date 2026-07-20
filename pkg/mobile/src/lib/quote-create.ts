@@ -1,5 +1,6 @@
 import {
   AuthId,
+  Customer,
   CustomerCompanyName,
   Price,
   QuoteCreateInput,
@@ -11,13 +12,19 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-const CustomerMode = z.enum(['existing', 'inline']);
+const CustomerOption = Customer.pick({ companyName: true, email: true, id: true, thumbnailDataUrl: true });
+export type CustomerOption = z.infer<typeof CustomerOption>;
+
+/** The picker's selection is the single source of truth for the customer being quoted. */
+export type CustomerSelection = z.infer<typeof CustomerSelection>;
+const CustomerSelection = z.discriminatedUnion('type', [
+  z.object({ customer: CustomerOption, type: z.literal('existing') }),
+  z.object({ companyName: z.string(), type: z.literal('inline') }),
+]);
 
 const QuoteCreateFormValuesShape = z.object({
-  basePrice: z.string(),
-  customerId: z.string(),
-  customerMode: CustomerMode,
-  inlineCompanyName: z.string(),
+  basePrice: z.union([z.number(), z.nan()]),
+  customer: CustomerSelection.nullable(),
   kind: QuoteKind,
   productId: z.string(),
   rangeId: z.string(),
@@ -30,12 +37,12 @@ export type QuoteCreateFormValues = z.infer<typeof QuoteCreateFormValuesShape>;
 
 export const QuoteCreateFormValues = QuoteCreateFormValuesShape.superRefine((value, context) => {
   const customerIsValid =
-    value.customerMode === 'existing'
-      ? UUID.safeParse(value.customerId).success
-      : CustomerCompanyName.safeParse(value.inlineCompanyName).success;
+    value.customer?.type === 'existing'
+      ? UUID.safeParse(value.customer.customer.id).success
+      : CustomerCompanyName.safeParse(value.customer?.companyName).success;
 
   if (!customerIsValid) {
-    context.addIssue({ code: 'custom', message: 'Select or create a customer', path: ['customerId'] });
+    context.addIssue({ code: 'custom', message: 'Select or create a customer', path: ['customer'] });
   }
 
   if (value.kind === 'product') {
@@ -48,9 +55,15 @@ export const QuoteCreateFormValues = QuoteCreateFormValuesShape.superRefine((val
       context.addIssue({ code: 'custom', message: workTitleResult.error.issues[0]?.message, path: ['workTitle'] });
     }
 
-    const parsedBasePrice = parseBasePrice(value.basePrice);
-    if (!parsedBasePrice.success) {
-      context.addIssue({ code: 'custom', message: parsedBasePrice.message, path: ['basePrice'] });
+    const basePriceResult = Price.safeParse(value.basePrice);
+    if (!basePriceResult.success) {
+      context.addIssue({
+        code: 'custom',
+        message: Number.isNaN(value.basePrice)
+          ? 'Base price is required'
+          : (basePriceResult.error.issues[0]?.message ?? 'Enter a valid base price'),
+        path: ['basePrice'],
+      });
     }
   }
 
@@ -60,10 +73,8 @@ export const QuoteCreateFormValues = QuoteCreateFormValuesShape.superRefine((val
 });
 
 export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
-  basePrice: '',
-  customerId: '',
-  customerMode: 'existing',
-  inlineCompanyName: '',
+  basePrice: Number.NaN,
+  customer: null,
   kind: 'product',
   productId: '',
   rangeId: '',
@@ -77,12 +88,8 @@ export function clearQuoteKindFields(
   kind: QuoteCreateFormValues['kind'],
 ): QuoteCreateFormValues {
   return kind === 'product'
-    ? { ...values, basePrice: '', kind, workTitle: '' }
+    ? { ...values, basePrice: Number.NaN, kind, workTitle: '' }
     : { ...values, kind, productId: '', rangeId: '' };
-}
-
-export function defaultQuoteSalesPersonId(user: { id: string } | null | undefined): string {
-  return user?.id ?? '';
 }
 
 /**
@@ -92,26 +99,14 @@ export function defaultQuoteSalesPersonId(user: { id: string } | null | undefine
 export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInputValue {
   return QuoteCreateInput.parse({
     customer:
-      value.customerMode === 'existing'
-        ? { type: 'existing', customerId: value.customerId }
-        : { type: 'inline', companyName: value.inlineCompanyName },
+      value.customer?.type === 'existing'
+        ? { type: 'existing', customerId: value.customer.customer.id }
+        : { type: 'inline', companyName: value.customer?.companyName ?? '' },
     offering:
       value.kind === 'product'
         ? { kind: 'product', productId: value.productId }
-        : { kind: 'custom', basePrice: Number(value.basePrice), workTitle: value.workTitle },
+        : { kind: 'custom', basePrice: value.basePrice, workTitle: value.workTitle },
     salesPersonId: value.salesPersonId,
     status: value.status,
   });
-}
-
-function parseBasePrice(value: string): { success: true; value: number } | { message: string; success: false } {
-  if (value.trim() === '') return { message: 'Base price is required', success: false };
-
-  const number = Number(value);
-  if (!Number.isFinite(number)) return { message: 'Enter a valid base price', success: false };
-
-  const result = Price.safeParse(number);
-  return result.success
-    ? { success: true, value: result.data }
-    : { message: result.error.issues[0]?.message ?? 'Enter a valid base price', success: false };
 }

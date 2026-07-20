@@ -1,11 +1,9 @@
+import { quoteStatusLabels } from '@pkg/domain';
 import type { QuoteStatusSummary } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
-
-import { quoteStatusLabels } from '../../quotes/components/QuoteStatusBadge.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
 const quoteStatusColors = {

@@ -1,12 +1,9 @@
-import { IconCalendar, IconX } from '@tabler/icons-react-native';
 import type { ChangeEvent, ReactNode } from 'react';
 import { useRef } from 'react';
-import { Pressable, View } from 'react-native';
 
-import { Icon } from '@/components/ui/icon';
-import { Text } from '@/components/ui/text';
 import { useFieldContext } from '../hooks/form-context';
 import { getFieldErrors } from '../utils/field-errors';
+import { DateFieldTrigger } from './DateFieldTrigger';
 import { FieldShell } from './FieldShell';
 
 export type DateFieldProps = {
@@ -32,36 +29,18 @@ export function DateField({ disabled = false, label, onValueCommit, placeholder 
 
   return (
     <FieldShell errors={errors} label={label}>
-      <View className="flex-row gap-2">
-        <Pressable
-          accessibilityLabel={String(label)}
-          accessibilityRole="button"
-          accessibilityState={{ disabled }}
-          className={`h-12 min-w-0 flex-1 flex-row items-center justify-between rounded-xl border bg-surface px-3 ${
-            errors.length > 0 ? 'border-danger' : 'border-border'
-          } ${disabled ? 'opacity-55' : 'active:bg-muted'}`}
-          disabled={disabled}
-          onPress={openPicker}
-        >
-          <Text className={`text-sm ${value ? 'text-surface-foreground' : 'text-muted-foreground'}`}>
-            {value || placeholder}
-          </Text>
-          <Icon className="text-muted-foreground" icon={IconCalendar} size={17} />
-        </Pressable>
-        {value && !disabled ? (
-          <Pressable
-            accessibilityLabel={`Clear ${String(label)}`}
-            accessibilityRole="button"
-            className="h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
-            onPress={() => {
-              field.handleChange('');
-              onValueCommit?.();
-            }}
-          >
-            <Icon className="text-muted-foreground" icon={IconX} size={17} />
-          </Pressable>
-        ) : null}
-      </View>
+      <DateFieldTrigger
+        disabled={disabled}
+        hasErrors={errors.length > 0}
+        label={label}
+        onClear={() => {
+          field.handleChange('');
+          onValueCommit?.();
+        }}
+        onOpen={openPicker}
+        placeholder={placeholder}
+        value={value}
+      />
       <input
         aria-hidden
         disabled={disabled}

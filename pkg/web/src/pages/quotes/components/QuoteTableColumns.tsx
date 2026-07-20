@@ -1,4 +1,11 @@
-import { formatCurrency, formatPercent, getQuoteOfferingName, getQuoteOfferingSubtitle, priceQuote } from '@pkg/domain';
+import {
+  formatCurrency,
+  formatPercent,
+  getQuoteOfferingName,
+  getQuoteOfferingSubtitle,
+  priceQuote,
+  quoteStatusLabels,
+} from '@pkg/domain';
 import { type PriorityQuote, QuoteKind, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -9,7 +16,7 @@ import { Badge } from '@/components/ui/badge.js';
 import { cn } from '@/lib/utils.js';
 
 import { QuoteLinkedJob } from './QuoteLinkedJob.js';
-import { QuoteStatusBadge, quoteStatusLabels } from './QuoteStatusBadge.js';
+import { QuoteStatusBadge } from './QuoteStatusBadge.js';
 
 type FilterOption = {
   label: string;

@@ -1,8 +1,6 @@
-import { formatCurrency } from '@pkg/domain';
+import { createStableRowKeys, formatCurrency } from '@pkg/domain';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
-
-import { createStableRowKeys } from '@/components/form/create-stable-row-keys.js';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi } from '@/components/form/types.js';
 import { Button } from '@/components/ui/button.js';

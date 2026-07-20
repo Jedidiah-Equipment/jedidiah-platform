@@ -1,11 +1,10 @@
+import { createAutosaveController } from '@pkg/domain';
 import { useBlocker } from '@tanstack/react-router';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import type { z } from 'zod';
-
 import { getApiMutationErrorMessage } from '@/lib/api-errors.js';
-import { createAutosaveController } from '../utils/autosave-core.js';
 import { useAppForm } from './use-app-form.js';
 
 type AutosaveTrigger = 'blur' | 'change' | 'none';

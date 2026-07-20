@@ -1,12 +1,10 @@
 import type { BayListCard } from './use-bay-list';
+import { createLiteralGuard } from './use-persisted-state';
 
 /** Client-side ordering for the Bay grid: by the active Job's days-left, or by Bay name. */
 export type BaySort = 'days-left' | 'name';
 
-/** Guards a persisted/unknown value as a {@link BaySort} (module-level so it stays a stable ref). */
-export function isBaySort(value: unknown): value is BaySort {
-  return value === 'days-left' || value === 'name';
-}
+export const isBaySort = createLiteralGuard(['days-left', 'name']);
 
 /**
  * Orders the Bay cards client-side. 'days-left' surfaces the most urgent active Jobs first

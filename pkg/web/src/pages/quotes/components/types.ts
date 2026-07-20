@@ -1,6 +1,5 @@
-import { computeAdditionalDeliveryPrice, priceQuoteWithCatalog } from '@pkg/domain';
+import { computeAdditionalDeliveryPrice } from '@pkg/domain';
 import {
-  type Assembly,
   AuthId,
   CustomerCompanyName,
   DateIsoString,
@@ -17,8 +16,6 @@ import {
   QuoteLineItemName,
   QuoteLineItemQuantity,
   QuoteNotes,
-  type QuoteProductBayAvailabilityResult,
-  type QuoteSelectedAssembly,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
   QuoteUpdateInput,
@@ -129,74 +126,6 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   status: 'draft',
   workTitle: '',
 };
-
-export type QuoteComputedSummary = {
-  currencyCode: string;
-  deliveryIncluded: boolean;
-  deliveryPrice: number;
-  discountAmount: number;
-  discountPercent: number;
-  lineItems: QuoteFormValues['lineItems'];
-  lineItemTotal: number;
-  basePrice: number;
-  selectedAssemblies: SelectedAssemblySnapshot[];
-  selectedAssemblyTotal: number;
-  subtotal: number;
-  total: number;
-  vatAmount: number;
-  vatPercent: number;
-};
-
-export function computeQuoteSummary({
-  quote,
-  values,
-}: {
-  quote: QuoteDetail;
-  values: QuoteFormValues;
-}): QuoteComputedSummary {
-  const catalogAssemblies = quote.product?.assemblies ?? [];
-  const currencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
-  const deliveryPrice = computeAdditionalDeliveryPrice(values);
-  const quotedBasePrice = quote.kind === 'custom' ? values.basePrice : quote.quotedBasePrice;
-  const selectedSnapshots =
-    quote.kind === 'custom'
-      ? []
-      : resolveSelectedAssemblySnapshots({
-          catalogAssemblies,
-          formSelections: values.selectedAssemblies,
-          initialSelections: quote.selectedAssemblies,
-        });
-  // Stale selections drop from the on-screen pricing preview, and live ones list in catalog
-  // display order — the same order the generated Quote Document uses.
-  const pricing = priceQuoteWithCatalog(
-    {
-      deliveryIncluded: values.deliveryIncluded,
-      deliveryPrice,
-      discountPercent: values.discountPercent,
-      lineItems: values.lineItems,
-      quotedBasePrice,
-      selectedAssemblies: selectedSnapshots,
-    },
-    catalogAssemblies,
-  );
-
-  return {
-    deliveryIncluded: values.deliveryIncluded,
-    deliveryPrice,
-    discountAmount: pricing.discountAmount,
-    discountPercent: values.discountPercent,
-    basePrice: quotedBasePrice,
-    currencyCode,
-    lineItems: values.lineItems,
-    lineItemTotal: pricing.lineItemTotal,
-    selectedAssemblies: [...pricing.liveSelections],
-    selectedAssemblyTotal: pricing.selectedAssemblyTotal,
-    subtotal: pricing.subtotal,
-    total: pricing.total,
-    vatAmount: pricing.vatAmount,
-    vatPercent: pricing.vatPercent,
-  };
-}
 
 /**
  * Schema → form. Builds the browser form state from an existing quote. Nullable schema fields
@@ -332,80 +261,4 @@ function refineQuoteOfferingSelection(
       path: ['basePrice'],
     });
   }
-}
-
-export function getDefaultQuoteDocumentLeadTime(quote: Pick<QuoteDetail, 'product'>): string {
-  return quote.product === null ? '' : formatQuoteDocumentLeadTime(quote.product.buildTimeDays);
-}
-
-export function formatQuoteDocumentLeadTime(days: number): string {
-  return `${days} working days`;
-}
-
-export function getDefaultQuoteDocumentLeadTimeFromAvailability(
-  availability: Pick<QuoteProductBayAvailabilityResult, 'defaultLeadTimeWorkingDays'>,
-): string {
-  return formatQuoteDocumentLeadTime(availability.defaultLeadTimeWorkingDays);
-}
-
-export function resolveQuoteDocumentLeadTime({
-  availability,
-  fallbackLeadTime,
-  hasUserEditedLeadTime,
-  leadTime,
-}: {
-  availability: Pick<QuoteProductBayAvailabilityResult, 'defaultLeadTimeWorkingDays'> | null | undefined;
-  fallbackLeadTime: string;
-  hasUserEditedLeadTime: boolean;
-  leadTime: string;
-}): string {
-  if (hasUserEditedLeadTime) {
-    return leadTime;
-  }
-
-  return availability ? getDefaultQuoteDocumentLeadTimeFromAvailability(availability) : fallbackLeadTime;
-}
-
-export type SelectedAssemblySnapshot = {
-  id: UUID;
-  productAssemblyId: UUID | null;
-  quotedName: string;
-  quotedPrice: number;
-};
-
-/**
- * Resolves the form's assembly selections against the product catalog and the quote's existing
- * selections into display snapshots, dropping selections that no longer resolve.
- */
-export function resolveSelectedAssemblySnapshots({
-  catalogAssemblies,
-  formSelections,
-  initialSelections,
-}: {
-  catalogAssemblies: Assembly[];
-  formSelections: QuoteFormValues['selectedAssemblies'];
-  initialSelections: QuoteSelectedAssembly[];
-}): SelectedAssemblySnapshot[] {
-  return formSelections
-    .map((selection): SelectedAssemblySnapshot | null => {
-      if (selection.type === 'existing') {
-        return initialSelections.find((item) => item.id === selection.id) ?? null;
-      }
-
-      const assembly = catalogAssemblies.find(
-        (item) => item.id === selection.productAssemblyId && item.kind === 'optional',
-      );
-
-      if (assembly?.kind !== 'optional') {
-        return null;
-      }
-
-      return {
-        id: selection.productAssemblyId,
-        productAssemblyId: assembly.id,
-        quotedName: assembly.name,
-        quotedPrice: assembly.price,
-      };
-    })
-    .filter((selection): selection is SelectedAssemblySnapshot => Boolean(selection));
 }

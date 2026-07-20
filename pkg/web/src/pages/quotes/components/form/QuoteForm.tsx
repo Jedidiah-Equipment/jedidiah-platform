@@ -1,4 +1,4 @@
-import { formatDate, isQuoteLocked } from '@pkg/domain';
+import { computeQuoteSummary, formatDate, isQuoteLocked, quoteStatusLabels } from '@pkg/domain';
 import {
   type PriorityQuote,
   type QuoteDetail,
@@ -29,8 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.j
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useCan } from '@/hooks/use-access.js';
 
-import { quoteStatusLabels } from '../QuoteStatusBadge.js';
-import { computeQuoteSummary, getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput } from '../types.js';
+import { getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput } from '../types.js';
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
 import { QuoteDocumentsSection } from './QuoteDocumentsSection.js';
 import { QuoteFormSection } from './QuoteFormSection.js';

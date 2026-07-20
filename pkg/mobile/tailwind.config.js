@@ -14,6 +14,10 @@ module.exports = {
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
+      // List-toolbar text size shared by search inputs, filter buttons, and sort controls.
+      fontSize: {
+        toolbar: '13px',
+      },
       // Geist (same app font as web — pkg/domain/fonts/geist-sans). Each weight is
       // its own family because RN can't synthesize real weights from one face;
       // they are loaded via `useFonts` in app/_layout.tsx.

@@ -168,7 +168,8 @@ function DocumentViewerState({
 }) {
   if (isPending) return <Message text="Loading document…" />;
   if (isError) return <Message onBack={onBack} text="Couldn’t load this document." />;
-  if (!document || !context) return <Message onBack={onBack} text="This document is no longer available." />;
+  if (context === null) return <Message onBack={onBack} text="Couldn’t load this document." />;
+  if (!document) return <Message onBack={onBack} text="This document is no longer available." />;
 
   return <DocumentViewer context={context} document={document} downloadPath={downloadPath} onBack={onBack} />;
 }

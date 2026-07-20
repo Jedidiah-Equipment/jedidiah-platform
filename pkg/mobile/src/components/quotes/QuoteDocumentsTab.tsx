@@ -1,3 +1,4 @@
+import { canGenerateQuoteDocument } from '@pkg/domain';
 import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from '@pkg/schema';
 import {
   IconChevronDown,
@@ -19,12 +20,7 @@ import { TextInput } from '@/components/ui/text-input';
 import { useAppToast } from '@/components/ui/toast';
 import { quoteDocumentDownloadPath } from '@/lib/authed-fetch';
 import { saveDocument } from '@/lib/document-actions';
-import {
-  canGenerateQuoteDocument,
-  presentQuoteDocuments,
-  quoteDocumentCountLabel,
-  quoteDocumentMetaLine,
-} from '@/lib/quote-documents';
+import { presentQuoteDocuments, quoteDocumentCountLabel, quoteDocumentMetaLine } from '@/lib/quote-documents';
 import { useTRPC } from '@/lib/trpc';
 
 export function QuoteDocumentsTab({
@@ -47,12 +43,8 @@ export function QuoteDocumentsTab({
   const [generationWarnings, setGenerationWarnings] = useState<QuoteDocumentGenerationWarning[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const documents = useMemo(() => presentQuoteDocuments(query.data ?? [], search), [query.data, search]);
-  const showGenerate = canGenerateQuoteDocument({
-    canUpdate,
-    kind: quote.kind,
-    product: quote.product,
-    status: quote.status,
-  });
+  const showGenerate =
+    canUpdate && canGenerateQuoteDocument({ kind: quote.kind, product: quote.product, status: quote.status });
 
   const openDocument = (document: QuoteDocument) => {
     router.push({
@@ -95,7 +87,7 @@ export function QuoteDocumentsTab({
             onPress={() => setGenerateOpen(true)}
           >
             <Icon className="text-primary" icon={IconFilePlus} size={17} />
-            <Text className="text-[13px] text-foreground" weight="semibold">
+            <Text className="text-toolbar text-foreground" weight="semibold">
               Generate Quote Document
             </Text>
           </Pressable>
@@ -155,7 +147,7 @@ export function QuoteDocumentsTab({
           </View>
         ) : documents.length === 0 ? (
           <View className="mt-2 rounded-xl border border-dashed border-border px-5 py-7">
-            <Text className="text-center text-[13px] text-muted-foreground">
+            <Text className="text-center text-toolbar text-muted-foreground">
               {search.trim()
                 ? 'No documents match your search.'
                 : 'No documents yet. Generate the quote document to get started.'}

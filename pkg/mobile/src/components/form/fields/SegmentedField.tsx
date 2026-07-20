@@ -13,7 +13,7 @@ type SegmentedFieldOption = {
 
 export type SegmentedFieldProps = {
   label?: ReactNode;
-  onValueChange?: (value: string) => void;
+  onValueCommit?: (value: string) => void;
   options: readonly SegmentedFieldOption[];
 };
 
@@ -22,7 +22,7 @@ export type SegmentedFieldProps = {
  * values — the native idiom for web's dropdown `SelectField`. Reuses the visual
  * pattern of the theme toggle in ProfileMenu.
  */
-export function SegmentedField({ label, onValueChange, options }: SegmentedFieldProps) {
+export function SegmentedField({ label, onValueCommit, options }: SegmentedFieldProps) {
   const field = useFieldContext<string>();
   const errors = getFieldErrors(field.state.meta.errors);
 
@@ -39,8 +39,8 @@ export function SegmentedField({ label, onValueChange, options }: SegmentedField
               className={`flex-1 items-center rounded-lg py-2 ${selected ? 'bg-surface' : ''}`}
               key={option.value}
               onPress={() => {
-                onValueChange?.(option.value);
                 field.handleChange(option.value);
+                onValueCommit?.(option.value);
               }}
             >
               <Text

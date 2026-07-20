@@ -1,17 +1,21 @@
-import { formatCurrency, formatPercent, getQuoteOfferingName } from '@pkg/domain';
+import {
+  createStableRowKeys,
+  formatCurrency,
+  formatPercent,
+  getQuoteOfferingName,
+  type QuoteComputedSummary,
+} from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { IconClock, IconMail, IconMapPin, IconPackage, IconPhone, IconReceipt2 } from '@tabler/icons-react';
 import type React from 'react';
-
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
-import { createStableRowKeys } from '@/components/form/create-stable-row-keys.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
 import { StartJobLink } from '../StartJobLink.js';
-import type { QuoteComputedSummary, QuoteFormValues } from '../types.js';
+import type { QuoteFormValues } from '../types.js';
 
 type QuoteLineItemFormInput = QuoteFormValues['lineItems'][number];
 const getSummaryLineItemKey = createStableRowKeys<QuoteLineItemFormInput>('quote-summary-line-item');

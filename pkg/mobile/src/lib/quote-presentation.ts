@@ -1,6 +1,5 @@
-import { computeAdditionalDeliveryPrice, priceQuoteWithCatalog } from '@pkg/domain';
+import { quoteStatusLabels } from '@pkg/domain';
 import {
-  type Assembly,
   AuthId,
   DateIsoString,
   DateOnlyIsoString,
@@ -14,7 +13,6 @@ import {
   QuoteLineItemName,
   QuoteLineItemQuantity,
   QuoteNotes,
-  type QuoteSelectedAssembly,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
   type QuoteSummary,
@@ -26,21 +24,10 @@ import { z } from 'zod';
 
 export type QuoteStatusFilter = 'all' | QuoteSummary['status'];
 
-export const quoteStatusLabels = {
-  accepted: 'Accepted',
-  cancelled: 'Cancelled',
-  draft: 'Draft',
-  rejected: 'Rejected',
-  sent: 'Sent',
-} as const satisfies Record<QuoteSummary['status'], string>;
-
-export const quoteStatusColorClassNames = {
-  accepted: { chip: 'border-emerald-500/50 bg-emerald-500/15', text: 'text-emerald-800 dark:text-emerald-200' },
-  cancelled: { chip: 'border-orange-500/50 bg-orange-500/15', text: 'text-orange-800 dark:text-orange-200' },
-  draft: { chip: 'border-gray-400/50 bg-gray-500/10', text: 'text-gray-700 dark:text-gray-200' },
-  rejected: { chip: 'border-red-500/50 bg-red-500/15', text: 'text-red-800 dark:text-red-200' },
-  sent: { chip: 'border-blue-500/50 bg-blue-500/15', text: 'text-blue-800 dark:text-blue-200' },
-} as const satisfies Record<QuoteSummary['status'], { chip: string; text: string }>;
+export const QUOTE_STATUS_OPTIONS = QuoteStatus.options.map((status) => ({
+  label: quoteStatusLabels[status],
+  value: status,
+}));
 
 export function isQuoteStatusFilter(value: unknown): value is QuoteStatusFilter {
   return value === 'all' || QuoteStatus.safeParse(value).success;
@@ -189,104 +176,4 @@ export function toQuoteUpdateInput({
     status: values.status,
     validUntil: values.validUntil || null,
   });
-}
-
-export type SelectedAssemblySnapshot = Pick<
-  QuoteSelectedAssembly,
-  'id' | 'productAssemblyId' | 'quotedName' | 'quotedPrice'
->;
-
-export type QuoteComputedSummary = {
-  basePrice: number;
-  currencyCode: string;
-  deliveryIncluded: boolean;
-  deliveryPrice: number;
-  discountAmount: number;
-  discountPercent: number;
-  lineItems: QuoteEditFormValues['lineItems'];
-  lineItemTotal: number;
-  selectedAssemblies: SelectedAssemblySnapshot[];
-  selectedAssemblyTotal: number;
-  subtotal: number;
-  total: number;
-  vatAmount: number;
-  vatPercent: number;
-};
-
-export function computeQuoteSummary({
-  quote,
-  values,
-}: {
-  quote: QuoteDetail;
-  values: QuoteEditFormValues;
-}): QuoteComputedSummary {
-  const catalogAssemblies = quote.product?.assemblies ?? [];
-  const deliveryPrice = computeAdditionalDeliveryPrice(values);
-  const basePrice = quote.kind === 'custom' ? values.basePrice : quote.quotedBasePrice;
-  const selectedAssemblies =
-    quote.kind === 'custom'
-      ? []
-      : resolveSelectedAssemblySnapshots({
-          catalogAssemblies,
-          formSelections: values.selectedAssemblies,
-          initialSelections: quote.selectedAssemblies,
-        });
-  const pricing = priceQuoteWithCatalog(
-    {
-      deliveryIncluded: values.deliveryIncluded,
-      deliveryPrice,
-      discountPercent: values.discountPercent,
-      lineItems: values.lineItems,
-      quotedBasePrice: basePrice,
-      selectedAssemblies,
-    },
-    catalogAssemblies,
-  );
-
-  return {
-    basePrice,
-    currencyCode: quote.product?.currencyCode ?? quote.quotedCurrencyCode,
-    deliveryIncluded: values.deliveryIncluded,
-    deliveryPrice,
-    discountAmount: pricing.discountAmount,
-    discountPercent: values.discountPercent,
-    lineItems: values.lineItems,
-    lineItemTotal: pricing.lineItemTotal,
-    selectedAssemblies: [...pricing.liveSelections],
-    selectedAssemblyTotal: pricing.selectedAssemblyTotal,
-    subtotal: pricing.subtotal,
-    total: pricing.total,
-    vatAmount: pricing.vatAmount,
-    vatPercent: pricing.vatPercent,
-  };
-}
-
-export function resolveSelectedAssemblySnapshots({
-  catalogAssemblies,
-  formSelections,
-  initialSelections,
-}: {
-  catalogAssemblies: readonly Assembly[];
-  formSelections: QuoteEditFormValues['selectedAssemblies'];
-  initialSelections: readonly QuoteSelectedAssembly[];
-}): SelectedAssemblySnapshot[] {
-  return formSelections
-    .map((selection): SelectedAssemblySnapshot | null => {
-      if (selection.type === 'existing') {
-        return initialSelections.find((item) => item.id === selection.id) ?? null;
-      }
-
-      const assembly = catalogAssemblies.find(
-        (item) => item.id === selection.productAssemblyId && item.kind === 'optional',
-      );
-      if (assembly?.kind !== 'optional') return null;
-
-      return {
-        id: assembly.id,
-        productAssemblyId: assembly.id,
-        quotedName: assembly.name,
-        quotedPrice: assembly.price,
-      };
-    })
-    .filter((selection): selection is SelectedAssemblySnapshot => selection !== null);
 }

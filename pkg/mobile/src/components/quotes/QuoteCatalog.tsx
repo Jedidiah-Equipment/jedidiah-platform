@@ -260,13 +260,23 @@ function QuoteCard({ quote, priority, onPress }: { quote: QuoteSummary; priority
         </View>
       </View>
 
-      <View className="mt-3">
-        <Text className="text-sm text-foreground" numberOfLines={1} weight="semibold">
-          {title}
-        </Text>
-        <Text className="mt-1 text-[10px] text-muted-foreground" mono numberOfLines={1}>
-          {meta}
-        </Text>
+      <View className="mt-3 flex-row items-center gap-2.5">
+        {quote.kind === 'product' ? (
+          <Avatar
+            className="h-[30px] w-[30px] rounded-lg"
+            name={title}
+            textClassName="text-[10px]"
+            uri={quote.product?.thumbnailDataUrl}
+          />
+        ) : null}
+        <View className="min-w-0 flex-1">
+          <Text className="text-sm text-foreground" numberOfLines={1} weight="semibold">
+            {title}
+          </Text>
+          <Text className="mt-1 text-[10px] text-muted-foreground" mono numberOfLines={1}>
+            {meta}
+          </Text>
+        </View>
       </View>
 
       <View className="mt-3.5 flex-row items-center justify-between gap-3 border-t border-border pt-3.5">

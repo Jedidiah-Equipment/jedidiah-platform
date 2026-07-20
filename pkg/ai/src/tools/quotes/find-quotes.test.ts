@@ -86,6 +86,7 @@ describe('findQuotes contract', () => {
             currencyCode: 'ZAR',
             modelCode: 'DEMO-001',
             name: 'Demo Product',
+            thumbnailDataUrl: 'data:image/webp;base64,aaaa',
           },
           productId: PRODUCT_ID,
           quotedBasePrice: 1000,
@@ -123,6 +124,7 @@ describe('findQuotes contract', () => {
         product: `/products/${PRODUCT_ID}/edit`,
       },
     });
+    expect(response[0]?.product).not.toHaveProperty('thumbnailDataUrl');
     expect(response[1]).toMatchObject({
       kind: 'custom',
       links: {

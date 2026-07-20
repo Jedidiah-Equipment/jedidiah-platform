@@ -14,6 +14,9 @@ import { z } from 'zod';
 import type { AiContext } from '@/context.js';
 import { createQuoteLinks, QuoteLinks } from '@/tools/quotes/quote-response.js';
 
+// Inline thumbnails belong to UI cards, but their data URLs would bloat assistant tool context.
+const FindQuoteProduct = QuoteProductSummaryFacts.omit({ thumbnailDataUrl: true });
+
 export type FindQuotesInput = z.infer<typeof FindQuotesInput>;
 export const FindQuotesInput = z.discriminatedUnion('by', [
   z.object({ by: z.literal('code'), quoteCode: QuoteCodeInput }).strict(),
@@ -37,7 +40,7 @@ const FindProductQuote = QuoteSummary.options[0]
     status: true,
     workTitle: true,
   })
-  .extend({ links: QuoteLinks, product: QuoteProductSummaryFacts });
+  .extend({ links: QuoteLinks, product: FindQuoteProduct });
 
 const FindCustomQuote = QuoteSummary.options[1]
   .pick({

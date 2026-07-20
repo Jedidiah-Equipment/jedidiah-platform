@@ -19,7 +19,9 @@
 </style>
 </helmet>
 
-<div ref="{{ setRoot }}" style="position:relative;height:100%;width:100%;overflow:hidden;background:#0A0A0B;color:#FAFAFA;font-family:'Space Grotesk',system-ui,sans-serif;">
+<div ref="{{ setRoot }}" style="position:relative;height:100%;width:100%;overflow:hidden;background:#0A0A0B;color:#FAFAFA;font-family:'Space Grotesk',system-ui,sans-serif;display:flex;flex-direction:column;">
+
+  <div style="flex:1;min-height:0;position:relative;overflow:hidden;">
 
   <!-- ===================== LOGIN ===================== -->
   <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
@@ -56,12 +58,13 @@
   <sc-if value="{{ isBayList }}" hint-placeholder-val="{{ true }}">
     <div data-screen-label="Bay List" style="height:100%;overflow-y:auto;">
       <div style="max-width:1180px;margin:0 auto;padding:18px 18px 32px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;position:relative;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;position:relative;">
           <div style="width:42px;height:42px;border-radius:11px;border:1.5px solid #F2E40A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#F2E40A" stroke-width="1.7"></circle><circle cx="12" cy="12" r="3" fill="#F2E40A"></circle></svg>
           </div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:20px;font-weight:700;letter-spacing:-0.4px;line-height:1.1;">Jedidiah<span style="color:#F2E40A;">Ops</span></div>
+            <div style="font-size:20px;font-weight:700;letter-spacing:-0.4px;line-height:1.1;">Schedule</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:1px;">{{ listCount }}</div>
           </div>
           <div onClick="{{ toggleMenu }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#9A9AA2"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
@@ -82,13 +85,10 @@
           </sc-if>
         </div>
 
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
-          <div onClick="{{ toggleListMode }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-            <div style="font-size:22px;font-weight:700;letter-spacing:-0.4px;">{{ listTitle }}</div>
-            <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:#161618;border:1px solid rgba(255,255,255,0.09);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9A9AA2" stroke-width="2"><path d="M8 7h12M11 4l-3 3 3 3"></path><path d="M16 17H4M13 14l3 3-3 3"></path></svg>
-            </div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;letter-spacing:0.5px;">{{ listCount }}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+          <div onClick="{{ toggleListMode }}" style="display:flex;align-items:center;gap:9px;background:#161618;border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px;cursor:pointer;">
+            <span style="font-size:14px;font-weight:700;letter-spacing:-0.2px;">{{ listTitle }}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9A9AA2" stroke-width="2"><path d="M8 7h12M11 4l-3 3 3 3"></path><path d="M16 17H4M13 14l3 3-3 3"></path></svg>
           </div>
           <sc-if value="{{ isBaysMode }}" hint-placeholder-val="{{ true }}">
             <div style="display:flex;align-items:center;gap:8px;">
@@ -144,9 +144,12 @@
                   <div style="font-size:12.5px;color:#9A9AA2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ j.product }}</div>
                 </div>
               </div>
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">
-                <span style="width:6px;height:6px;border-radius:50%;background:{{ j.curColor }};flex-shrink:0;"></span>
-                <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.5px;color:{{ j.curColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ j.curLabel }}</span>
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);">
+                <img src="{{ j.operatorImg }}" alt="" style="width:30px;height:30px;border-radius:7px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:600;color:#EDEDEF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ j.operatorName }}</div>
+                  <div style="display:flex;align-items:center;gap:5px;margin-top:2px;"><span style="width:5px;height:5px;border-radius:50%;background:{{ j.curColor }};flex-shrink:0;"></span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.4px;color:{{ j.curColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ j.curLabel }}</span></div>
+                </div>
               </div>
               <div style="display:flex;align-items:flex-end;justify-content:space-between;">
                 <div style="display:flex;align-items:baseline;gap:6px;">
@@ -268,6 +271,17 @@
                   <div style="width:40px;height:40px;border-radius:9px;background:rgba(242,228,10,0.1);border:1px solid rgba(242,228,10,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></div>
                   <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;">{{ d.name }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#7A7A82;margin-top:2px;">{{ d.meta }}</div></div>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#56565D" stroke-width="2"><path d="M9 6l6 6-6 6"></path></svg>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:4px;">{{ asmLabel }}</div>
+              <sc-for list="{{ assemblies }}" as="a" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid rgba(255,255,255,0.06);">
+                  <span style="width:7px;height:7px;border-radius:50%;background:{{ a.dotColor }};flex-shrink:0;"></span>
+                  <div style="flex:1;min-width:0;font-size:14px;font-weight:500;color:#EDEDEF;">{{ a.name }}</div>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.5px;color:{{ a.tagColor }};background:{{ a.tagBg }};border:1px solid {{ a.tagBorder }};padding:4px 8px;border-radius:20px;flex-shrink:0;">{{ a.tag }}</span>
                 </div>
               </sc-for>
             </div>
@@ -397,6 +411,17 @@
               </div>
 
               <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:4px;">{{ asmLabel }}</div>
+                <sc-for list="{{ assemblies }}" as="a" hint-placeholder-count="5">
+                  <div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid rgba(255,255,255,0.06);">
+                    <span style="width:7px;height:7px;border-radius:50%;background:{{ a.dotColor }};flex-shrink:0;"></span>
+                    <div style="flex:1;min-width:0;font-size:14px;font-weight:500;color:#EDEDEF;">{{ a.name }}</div>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.5px;color:{{ a.tagColor }};background:{{ a.tagBg }};border:1px solid {{ a.tagBorder }};padding:4px 8px;border-radius:20px;flex-shrink:0;">{{ a.tag }}</span>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
                 <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:14px;">JOB</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                   <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">JOB CODE</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ jd.code }}</div></div>
@@ -411,6 +436,516 @@
           </div>
 
         </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== PRODUCTS (list) ===================== -->
+  <sc-if value="{{ isProducts }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Products" style="height:100%;overflow-y:auto;">
+      <div style="max-width:1180px;margin:0 auto;padding:18px 18px 32px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;position:relative;">
+          <div style="width:42px;height:42px;border-radius:11px;border:1.5px solid #F2E40A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="1.7"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><path d="M3.27 6.96L12 12.01l8.73-5.05"></path><path d="M12 22.08V12"></path></svg>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:20px;font-weight:700;letter-spacing:-0.4px;line-height:1.1;">Products</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:1px;">{{ prodCount }}</div>
+          </div>
+          <div onClick="{{ toggleMenu }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#9A9AA2"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+          </div>
+          <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:48px;right:0;width:212px;background:#1B1B1F;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,0.65);overflow:hidden;z-index:50;">
+              <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.07);">
+                <img src="{{ managerImg }}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                <div style="min-width:0;"><div style="font-size:13px;font-weight:600;line-height:1.2;">{{ managerName }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ managerEmail }}</div></div>
+              </div>
+              <div style="padding:6px;">
+                <div onClick="{{ logout }}" style="display:flex;align-items:center;gap:11px;padding:11px;border-radius:9px;font-size:14px;font-weight:500;color:#F87171;cursor:pointer;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+                  Log out
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;position:relative;">
+          <div style="position:relative;">
+            <div onClick="{{ toggleProdFilter }}" style="display:flex;align-items:center;gap:8px;background:{{ filterBtnBg }};border:1px solid {{ filterBtnBorder }};border-radius:10px;padding:8px 12px;cursor:pointer;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ filterIconColor }}" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path></svg>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.4px;color:{{ filterIconColor }};">{{ prodRangeLabel }}</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{{ filterIconColor }}" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>
+            </div>
+            <sc-if value="{{ prodFilterOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;top:44px;left:0;width:220px;background:#1B1B1F;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,0.65);overflow:hidden;z-index:50;padding:6px;">
+                <sc-for list="{{ prodRanges }}" as="r" hint-placeholder-count="5">
+                  <div onClick="{{ r.select }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border-radius:9px;font-size:13.5px;font-weight:500;color:{{ r.rowColor }};cursor:pointer;">
+                    <span>{{ r.name }}</span>
+                    <sc-if value="{{ r.active }}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="2.2"><path d="M20 6L9 17l-5-5"></path></svg></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:#56565D;">SORT</span>
+            <div style="display:flex;align-items:center;gap:2px;background:#161618;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:3px;">
+              <div onClick="{{ sortProdName }}" style="{{ sortProdNameStyle }}">NAME</div>
+              <div onClick="{{ sortProdPrice }}" style="{{ sortProdPriceStyle }}">PRICE</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;">
+          <sc-for list="{{ productCards }}" as="p" hint-placeholder-count="6">
+            <div onClick="{{ p.open }}" style="background:#141416;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;cursor:pointer;">
+              <div style="position:relative;height:132px;background:#0F0F11;">
+                <img src="{{ p.thumb }}" alt="" style="width:100%;height:100%;object-fit:cover;">
+                <span style="position:absolute;top:10px;left:10px;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.5px;color:#EDEDEF;background:rgba(10,10,11,0.72);border:1px solid rgba(255,255,255,0.12);padding:4px 8px;border-radius:7px;">{{ p.modelCode }}</span>
+              </div>
+              <div style="padding:14px;">
+                <div style="font-size:16px;font-weight:700;letter-spacing:-0.2px;line-height:1.2;">{{ p.name }}</div>
+                <div style="display:flex;align-items:center;gap:7px;margin-top:8px;flex-wrap:wrap;">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.4px;color:#9A9AA2;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);padding:4px 8px;border-radius:20px;">{{ p.category }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.4px;color:#7A7A82;">{{ p.range }}</span>
+                </div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:13px;padding-top:13px;border-top:1px solid rgba(255,255,255,0.06);">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:#56565D;">BASE</span>
+                  <span style="font-size:17px;font-weight:700;color:#F2E40A;">{{ p.basePrice }}</span>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== PRODUCT VIEW (read-only) ===================== -->
+  <sc-if value="{{ isProductView }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Product View" style="height:100%;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.07);background:#0A0A0B;position:relative;flex-shrink:0;">
+        <div onClick="{{ productBack }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E5E5E8" stroke-width="2"><path d="M15 6l-6 6 6 6"></path></svg>
+        </div>
+        <img src="{{ prodView.thumb }}" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
+        <div style="flex:1;min-width:0;"><div style="font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ prodView.name }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:1px;">{{ prodView.modelCode }}</div></div>
+        <div onClick="{{ toggleMenu }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#9A9AA2"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+        </div>
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:54px;right:14px;width:212px;background:#1B1B1F;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,0.65);overflow:hidden;z-index:50;">
+            <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.07);">
+              <img src="{{ managerImg }}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+              <div style="min-width:0;"><div style="font-size:13px;font-weight:600;line-height:1.2;">{{ managerName }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ managerEmail }}</div></div>
+            </div>
+            <div style="padding:6px;">
+              <div onClick="{{ logout }}" style="display:flex;align-items:center;gap:11px;padding:11px;border-radius:9px;font-size:14px;font-weight:500;color:#F87171;cursor:pointer;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+                Log out
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="flex:1;min-height:0;overflow-y:auto;padding:18px 18px 28px;">
+        <div style="display:flex;flex-direction:column;gap:16px;max-width:720px;margin:0 auto;">
+
+          <div style="display:flex;align-items:center;gap:14px;background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;">
+            <img src="{{ prodView.thumb }}" alt="" style="width:64px;height:64px;border-radius:12px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
+            <div style="min-width:0;">
+              <div style="font-size:18px;font-weight:700;letter-spacing:-0.2px;">{{ prodView.name }}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:3px;">{{ prodView.modelCode }} · {{ prodView.rangeVariant }}</div>
+            </div>
+          </div>
+
+          <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:14px;">DETAILS</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">RANGE</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ prodView.range }}</div></div>
+              <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">RANGE VARIANT</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ prodView.rangeVariant }}</div></div>
+              <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">MODEL CODE</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ prodView.modelCode }}</div></div>
+              <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">CATEGORY</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ prodView.category }}</div></div>
+              <div style="grid-column:1 / -1;"><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">BASE PRICE</div><div style="font-size:20px;color:#F2E40A;font-weight:700;">{{ prodView.basePrice }}</div></div>
+              <div style="grid-column:1 / -1;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">WEBSITE LINK</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <div onClick="{{ copyEn }}" style="display:flex;align-items:center;gap:10px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:10px 12px;cursor:pointer;">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:0.5px;color:#9A9AA2;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);padding:3px 6px;border-radius:6px;flex-shrink:0;">EN</span>
+                    <span style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#C9C9CE;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ prodView.websiteEn }}</span>
+                    <sc-if value="{{ enCopied }}" hint-placeholder-val="{{ false }}">
+                      <span style="display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#5FCF87;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5FCF87" stroke-width="2.2"><path d="M20 6L9 17l-5-5"></path></svg>COPIED</span>
+                    </sc-if>
+                    <sc-if value="{{ enNotCopied }}" hint-placeholder-val="{{ true }}">
+                      <span style="display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#F2E40A;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="1.8"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>COPY</span>
+                    </sc-if>
+                  </div>
+                  <div onClick="{{ copyAf }}" style="display:flex;align-items:center;gap:10px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:10px 12px;cursor:pointer;">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:0.5px;color:#9A9AA2;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);padding:3px 6px;border-radius:6px;flex-shrink:0;">AF</span>
+                    <span style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#C9C9CE;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ prodView.websiteAf }}</span>
+                    <sc-if value="{{ afCopied }}" hint-placeholder-val="{{ false }}">
+                      <span style="display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#5FCF87;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5FCF87" stroke-width="2.2"><path d="M20 6L9 17l-5-5"></path></svg>COPIED</span>
+                    </sc-if>
+                    <sc-if value="{{ afNotCopied }}" hint-placeholder-val="{{ true }}">
+                      <span style="display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#F2E40A;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="1.8"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>COPY</span>
+                    </sc-if>
+                  </div>
+                </div>
+              </div>
+              <div style="grid-column:1 / -1;"><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">DESCRIPTION</div><div style="font-size:14px;color:#C9C9CE;line-height:1.6;text-wrap:pretty;">{{ prodView.description }}</div></div>
+            </div>
+          </div>
+
+          <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:12px;">{{ prodView.asmLabel }}</div>
+
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:1px;color:#F2E40A;margin-bottom:2px;">{{ prodView.optLabel }}</div>
+            <sc-for list="{{ prodOptional }}" as="a" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid rgba(255,255,255,0.06);">
+                <span style="width:7px;height:7px;border-radius:50%;background:#F2E40A;flex-shrink:0;"></span>
+                <div style="flex:1;min-width:0;font-size:14px;font-weight:500;color:#EDEDEF;">{{ a.name }}</div>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#F2E40A;flex-shrink:0;">{{ a.price }}</span>
+              </div>
+            </sc-for>
+
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:1px;color:#8A8A90;margin:18px 0 2px;">{{ prodView.stdLabel }}</div>
+            <sc-for list="{{ prodStandard }}" as="a" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid rgba(255,255,255,0.06);">
+                <span style="width:7px;height:7px;border-radius:50%;background:#5A5A62;flex-shrink:0;"></span>
+                <div style="flex:1;min-width:0;font-size:14px;font-weight:500;color:#EDEDEF;">{{ a.name }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:6px;">{{ prodView.docsLabel }}</div>
+            <sc-for list="{{ docs }}" as="d" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:13px;padding:13px 0;border-top:1px solid rgba(255,255,255,0.06);">
+                <div style="width:42px;height:42px;border-radius:9px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:600;letter-spacing:0.5px;color:#F87171;">PDF</div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ d.name }}</div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:3px;flex-wrap:wrap;">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.3px;color:#9A9AA2;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);padding:2px 7px;border-radius:6px;">{{ d.type }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;">{{ d.size }} · {{ d.uploaded }}</span>
+                  </div>
+                </div>
+                <div onClick="{{ d.open }}" style="width:36px;height:36px;border-radius:9px;background:#1F1F23;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C9C9CE" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </div>
+                <div style="width:36px;height:36px;border-radius:9px;background:#1F1F23;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A9AA2" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== QUOTES (list) ===================== -->
+  <sc-if value="{{ isQuotes }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Quotes" style="height:100%;overflow-y:auto;">
+      <div style="max-width:1180px;margin:0 auto;padding:18px 18px 32px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;position:relative;">
+          <div style="width:42px;height:42px;border-radius:11px;border:1.5px solid #F2E40A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8M8 17h5"></path></svg>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:20px;font-weight:700;letter-spacing:-0.4px;line-height:1.1;">Quotes</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:1px;">{{ quoteCount }}</div>
+          </div>
+          <div onClick="{{ toggleMenu }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#9A9AA2"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+          </div>
+          <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:48px;right:0;width:212px;background:#1B1B1F;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,0.65);overflow:hidden;z-index:50;">
+              <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.07);">
+                <img src="{{ managerImg }}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                <div style="min-width:0;"><div style="font-size:13px;font-weight:600;line-height:1.2;">{{ managerName }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ managerEmail }}</div></div>
+              </div>
+              <div style="padding:6px;">
+                <div onClick="{{ logout }}" style="display:flex;align-items:center;gap:11px;padding:11px;border-radius:9px;font-size:14px;font-weight:500;color:#F87171;cursor:pointer;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+                  Log out
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;background:#141416;border:1px solid rgba(255,255,255,0.09);border-radius:11px;padding:0 13px;height:44px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg>
+            <input onInput="{{ setQuoteSearch }}" placeholder="Search quotes…" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:#EDEDEF;font-family:'Space Grotesk',sans-serif;font-size:14px;">
+          </div>
+          <div style="position:relative;flex-shrink:0;">
+            <div onClick="{{ toggleQuoteStatus }}" style="display:flex;align-items:center;gap:8px;background:{{ qFilterBtnBg }};border:1px solid {{ qFilterBtnBorder }};border-radius:11px;padding:0 13px;height:44px;cursor:pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ qFilterIconColor }}" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path></svg>
+              <span style="display:{{ qFilterLabelDisplay }};align-items:center;gap:8px;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.4px;color:{{ qFilterIconColor }};">{{ quoteStatusLabel }}</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{{ qFilterIconColor }}" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></span>
+            </div>
+            <sc-if value="{{ quoteStatusOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;top:50px;right:0;width:200px;background:#1B1B1F;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,0.65);overflow:hidden;z-index:50;padding:6px;">
+                <sc-for list="{{ quoteStatuses }}" as="st" hint-placeholder-count="3">
+                  <div onClick="{{ st.select }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border-radius:9px;font-size:13.5px;font-weight:500;color:{{ st.rowColor }};cursor:pointer;">
+                    <span>{{ st.name }}</span>
+                    <sc-if value="{{ st.active }}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="2.2"><path d="M20 6L9 17l-5-5"></path></svg></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <div onClick="{{ openNewQuote }}" style="display:flex;align-items:center;gap:7px;background:#F2E40A;color:#0A0A0B;border-radius:11px;padding:0 14px;height:44px;font-weight:700;font-size:14px;cursor:pointer;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="2.6"><path d="M12 5v14M5 12h14"></path></svg>
+            <span style="display:{{ qNewLabelDisplay }};">New quote</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">
+          <sc-for list="{{ quoteCardsF }}" as="q" hint-placeholder-count="6">
+            <div onClick="{{ q.open }}" style="background:#141416;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px;cursor:pointer;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+                <div style="min-width:0;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;letter-spacing:-0.2px;color:#EDEDEF;">{{ q.code }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;margin-top:3px;">{{ q.created }}</div>
+                </div>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.4px;color:{{ q.statusColor }};background:{{ q.statusBg }};border:1px solid {{ q.statusBorder }};padding:4px 9px;border-radius:20px;flex-shrink:0;">{{ q.status }}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:9px;margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,0.06);">
+                <div style="width:30px;height:30px;border-radius:8px;background:#26262B;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#C9C9CE;flex-shrink:0;">{{ q.custInit }}</div>
+                <div style="flex:1;min-width:0;font-size:14.5px;font-weight:600;color:#EDEDEF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ q.customer }}</div>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:0.5px;color:{{ q.kindColor }};background:{{ q.kindBg }};border:1px solid {{ q.kindBorder }};padding:3px 7px;border-radius:6px;flex-shrink:0;">{{ q.kind }}</span>
+              </div>
+              <div style="margin-top:12px;">
+                <div style="font-size:14px;font-weight:600;color:#EDEDEF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ q.productName }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ q.productMeta }}</div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;padding-top:13px;border-top:1px solid rgba(255,255,255,0.06);">
+                <span style="font-size:17px;font-weight:700;color:#F2E40A;">{{ q.total }}</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <sc-if value="{{ q.hasJob }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#F2E40A;background:rgba(242,228,10,0.1);border:1px solid rgba(242,228,10,0.3);padding:3px 7px;border-radius:6px;">{{ q.job }}</span>
+                  </sc-if>
+                  <img src="{{ q.salesImg }}" alt="{{ q.salesName }}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);">
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== QUOTE VIEW (edit) ===================== -->
+  <sc-if value="{{ isQuoteView }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Quote View" style="height:100%;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.07);background:#0A0A0B;position:relative;flex-shrink:0;">
+        <div onClick="{{ quoteBack }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E5E5E8" stroke-width="2"><path d="M15 6l-6 6 6 6"></path></svg>
+        </div>
+        <div style="flex:1;min-width:0;"><div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ quoteView.code }}</div><div style="font-size:12.5px;color:#9A9AA2;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ quoteView.sub }}</div></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.4px;color:{{ quoteView.statusColor }};background:{{ quoteView.statusBg }};border:1px solid {{ quoteView.statusBorder }};padding:5px 10px;border-radius:20px;flex-shrink:0;">{{ quoteView.status }}</span>
+        <div onClick="{{ toggleMenu }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#9A9AA2"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+        </div>
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:54px;right:14px;width:212px;background:#1B1B1F;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,0.65);overflow:hidden;z-index:50;">
+            <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.07);">
+              <img src="{{ managerImg }}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+              <div style="min-width:0;"><div style="font-size:13px;font-weight:600;line-height:1.2;">{{ managerName }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ managerEmail }}</div></div>
+            </div>
+            <div style="padding:6px;">
+              <div onClick="{{ logout }}" style="display:flex;align-items:center;gap:11px;padding:11px;border-radius:9px;font-size:14px;font-weight:500;color:#F87171;cursor:pointer;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+                Log out
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
+        <div style="display:flex;gap:4px;background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:11px;padding:3px;">
+          <div onClick="{{ showDetailsTab }}" style="{{ qTabDetails }}">Details</div>
+          <div onClick="{{ showDocsTab }}" style="{{ qTabDocs }}">Documents</div>
+        </div>
+        <div style="flex:1;"></div>
+        <div onClick="{{ openAside }}" style="display:flex;align-items:center;gap:7px;background:#161618;border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px;cursor:pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M14 3v18"></path></svg>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.5px;color:#E5E5E8;">SUMMARY</span>
+        </div>
+      </div>
+
+      <div style="flex:1;min-height:0;overflow-y:auto;padding:18px 18px 28px;">
+        <div style="max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px;">
+
+          <sc-if value="{{ isQuoteDetails }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <!-- Quote setup -->
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:14px;">QUOTE SETUP</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">SALESPERSON</div><div style="height:46px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;justify-content:space-between;padding:0 13px;"><span style="font-size:14px;color:#EDEDEF;">{{ quoteView.salesName }}</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div></div>
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">STATUS</div><div style="height:46px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;justify-content:space-between;padding:0 13px;"><span style="font-size:14px;color:#EDEDEF;">{{ quoteView.status }}</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div></div>
+                </div>
+              </div>
+
+              <!-- Dates and delivery -->
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:14px;">DATES &amp; DELIVERY</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;">
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">PREFERRED DELIVERY</div><div style="height:46px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;padding:0 13px;"><sc-if value="{{ quoteView.hasPreferred }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px;color:#EDEDEF;">{{ quoteView.preferredDate }}</span></sc-if><sc-if value="{{ quoteView.hasPreferred }}" hint-placeholder-val="{{ false }}"></sc-if></div></div>
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">PLANNED DELIVERY</div><div style="height:46px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;padding:0 13px;"><span style="font-size:14px;color:#5A5A62;">Select date</span></div></div>
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">VALID UNTIL</div><div style="height:46px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;padding:0 13px;"><span style="font-size:14px;color:#5A5A62;">Select date</span></div></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;margin-top:14px;flex-wrap:wrap;">
+                  <div onClick="{{ quoteView.toggleDelivery }}" style="display:flex;align-items:center;gap:9px;cursor:pointer;">
+                    <div style="width:20px;height:20px;border-radius:6px;background:{{ quoteView.delChkBg }};border:1.5px solid {{ quoteView.delChkBorder }};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="3" style="opacity:{{ quoteView.delChkOpacity }};"><path d="M20 6L9 17l-5-5"></path></svg></div>
+                    <span style="font-size:13.5px;color:#EDEDEF;">Delivery included in sale price</span>
+                  </div>
+                  <div style="flex:1;min-width:150px;"><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">DELIVERY PRICE</div><div style="height:46px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;padding:0 13px;"><span style="font-size:14px;color:#EDEDEF;">{{ quoteView.deliveryPrice }}</span></div></div>
+                </div>
+              </div>
+
+              <!-- Pricing -->
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:14px;">PRICING</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">DISCOUNT PERCENT</div><div style="height:46px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;padding:0 13px;"><span style="font-size:14px;color:#EDEDEF;">{{ quoteView.discountPct }}</span></div></div>
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">DEPOSIT PERCENT</div><div style="height:46px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;padding:0 13px;"><span style="font-size:14px;color:#EDEDEF;">{{ quoteView.depositPct }}</span></div></div>
+                </div>
+              </div>
+
+              <!-- Custom base price (custom kind only) -->
+              <sc-if value="{{ quoteView.isCustom }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:14px;">CUSTOM WORK</div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+                    <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">WORK TITLE</div><div style="height:46px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;padding:0 13px;"><span style="font-size:14px;color:#EDEDEF;">{{ quoteView.workTitle }}</span></div></div>
+                    <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:6px;">BASE PRICE</div><div style="height:46px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;padding:0 13px;"><span style="font-size:14px;color:#EDEDEF;">{{ quoteView.basePriceLabel }}</span></div></div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <!-- Line items -->
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;">LINE ITEMS</div>
+                  <div style="display:flex;align-items:center;gap:7px;background:#1F1F23;border:1px solid rgba(255,255,255,0.09);border-radius:9px;padding:7px 11px;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="2.4"><path d="M12 5v14M5 12h14"></path></svg><span style="font-size:12.5px;font-weight:600;color:#E5E5E8;">Add line item</span></div>
+                </div>
+                <div style="border:1px dashed rgba(255,255,255,0.12);border-radius:11px;padding:22px;text-align:center;font-size:13px;color:#6B6B73;">No line items.</div>
+              </div>
+
+              <!-- Internal notes -->
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:12px;">INTERNAL NOTES</div>
+                <div style="min-height:84px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);padding:12px 13px;font-size:13.5px;color:#C9C9CE;line-height:1.55;">{{ quoteView.internalNotes }}</div>
+              </div>
+
+              <!-- Assemblies (product only) -->
+              <sc-if value="{{ quoteView.isProduct }}" hint-placeholder-val="{{ true }}">
+                <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:4px;">ASSEMBLIES</div>
+                  <div style="font-size:12px;color:#7A7A82;margin-bottom:16px;">Standard assemblies are included. Optional assemblies add to the quote.</div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;">
+                    <div>
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:1px;color:#8A8A90;margin-bottom:9px;">STANDARD</div>
+                      <div style="display:flex;flex-direction:column;gap:8px;">
+                        <sc-for list="{{ standardList }}" as="a" hint-placeholder-count="6">
+                          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0F0F11;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:11px 13px;">
+                            <span style="font-size:13.5px;color:{{ a.nameColor }};text-decoration:{{ a.deco }};">{{ a.name }}</span>
+                            <sc-if value="{{ a.overridden }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.5px;color:#7A7A82;flex-shrink:0;">Overridden</span></sc-if>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <div>
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:1px;color:#F2E40A;margin-bottom:9px;">OPTIONAL</div>
+                      <div style="display:flex;flex-direction:column;gap:8px;">
+                        <sc-for list="{{ optionalList }}" as="a" hint-placeholder-count="6">
+                          <div onClick="{{ a.toggle }}" style="display:flex;align-items:center;gap:11px;background:{{ a.rowBg }};border:1px solid {{ a.rowBorder }};border-radius:10px;padding:11px 13px;cursor:pointer;">
+                            <div style="width:19px;height:19px;border-radius:5px;background:{{ a.boxBg }};border:1.5px solid {{ a.boxBorder }};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="3" style="opacity:{{ a.checkOpacity }};"><path d="M20 6L9 17l-5-5"></path></svg></div>
+                            <span style="flex:1;min-width:0;font-size:13.5px;color:#EDEDEF;">{{ a.name }}</span>
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#C9C9CE;flex-shrink:0;">{{ a.price }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isQuoteDocs }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:12px;">QUOTE NOTES</div>
+                <div style="min-height:84px;border-radius:11px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);padding:12px 13px;font-size:13.5px;color:#C9C9CE;line-height:1.55;">{{ quoteView.quoteNotes }}</div>
+              </div>
+
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="min-width:0;"><div style="font-size:15px;font-weight:700;">Quote Document</div><div style="font-size:12.5px;color:#7A7A82;margin-top:3px;">Ready to generate from saved quote details.</div></div>
+                <div style="display:flex;align-items:center;gap:8px;background:#1F1F23;border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:10px 14px;cursor:pointer;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M12 18v-6M9 15h6"></path></svg><span style="font-size:13px;font-weight:600;color:#E5E5E8;">Generate Quote Document</span></div>
+              </div>
+
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                  <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;background:#0F0F11;border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:0 12px;height:40px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg>
+                    <input placeholder="Search documents…" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:#EDEDEF;font-family:'Space Grotesk',sans-serif;font-size:13px;">
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9A9AA2;flex-shrink:0;">Uploaded newest<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div>
+                </div>
+                <sc-if value="{{ quoteView.hasDocs }}" hint-placeholder-val="{{ true }}">
+                  <sc-for list="{{ quoteView.docs }}" as="d" hint-placeholder-count="2">
+                    <div style="display:flex;align-items:center;gap:13px;padding:14px 0;border-top:1px solid rgba(255,255,255,0.06);">
+                      <div style="width:42px;height:42px;border-radius:9px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:600;letter-spacing:0.5px;color:#F87171;">PDF</div>
+                      <div style="flex:1;min-width:0;">
+                        <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ d.name }}</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9A9AA2;margin-top:2px;">{{ d.rev }}</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#7A7A82;margin-top:4px;">{{ d.size }} · {{ d.uploader }} · {{ d.uploaded }}</div>
+                      </div>
+                      <div onClick="{{ d.open }}" style="width:36px;height:36px;border-radius:9px;background:#1F1F23;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C9C9CE" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+                      <div style="width:36px;height:36px;border-radius:9px;background:#1F1F23;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A9AA2" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg></div>
+                    </div>
+                  </sc-for>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#7A7A82;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);">{{ quoteView.docCount }}</div>
+                </sc-if>
+                <sc-if value="{{ quoteView.hasDocs }}" hint-placeholder-val="{{ false }}"></sc-if>
+                <sc-if value="{{ quoteView.hasNoDocs }}" hint-placeholder-val="{{ false }}">
+                  <div style="border:1px dashed rgba(255,255,255,0.12);border-radius:11px;padding:26px;text-align:center;font-size:13px;color:#6B6B73;margin-top:6px;">No documents yet. Generate the quote document to get started.</div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  </div><!-- /content wrapper -->
+
+  <!-- ===================== BOTTOM TOOLBAR ===================== -->
+  <sc-if value="{{ showToolbar }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-shrink:0;border-top:1px solid rgba(255,255,255,0.08);background:#0C0C0E;">
+      <div onClick="{{ goSchedule }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 13px;cursor:pointer;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ schedColor }}" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.6px;color:{{ schedColor }};">SCHEDULE</span>
+      </div>
+      <div onClick="{{ goQuotes }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 13px;cursor:pointer;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ quotesColor }}" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8M8 17h5"></path></svg>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.6px;color:{{ quotesColor }};">QUOTES</span>
+      </div>
+      <div onClick="{{ goProducts }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 13px;cursor:pointer;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ prodColor }}" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><path d="M3.27 6.96L12 12.01l8.73-5.05"></path><path d="M12 22.08V12"></path></svg>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.6px;color:{{ prodColor }};">PRODUCTS</span>
       </div>
     </div>
   </sc-if>
@@ -457,9 +992,137 @@
     </div>
   </sc-if>
 
+  <!-- ===================== QUOTE SUMMARY (drawer) ===================== -->
+  <sc-if value="{{ asideOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:90;display:flex;justify-content:flex-end;">
+      <div onClick="{{ closeAside }}" style="position:absolute;inset:0;background:rgba(0,0,0,0.55);"></div>
+      <div style="position:relative;width:340px;max-width:88%;height:100%;background:#0C0C0E;border-left:1px solid rgba(255,255,255,0.1);box-shadow:-24px 0 60px rgba(0,0,0,0.5);display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#8A8A90;">QUOTE SUMMARY</span>
+          <div onClick="{{ closeAside }}" style="width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9C9CE" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></div>
+        </div>
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;">
+
+          <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:15px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
+              <div style="min-width:0;"><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:1px;color:#7A7A82;margin-bottom:4px;">CUSTOMER</div><div style="font-size:16px;font-weight:700;">{{ quoteView.customer }}</div></div>
+              <div style="width:38px;height:38px;border-radius:10px;background:#26262B;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:#C9C9CE;flex-shrink:0;">{{ quoteView.custInit }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:11px;">
+              <div style="display:flex;align-items:center;gap:11px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="1.8" style="flex-shrink:0;"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M22 7l-10 5L2 7"></path></svg><div style="min-width:0;"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.5px;color:#56565D;">EMAIL</div><div style="font-size:13px;color:#C9C9CE;margin-top:1px;">{{ quoteView.email }}</div></div></div>
+              <div style="display:flex;align-items:center;gap:11px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="1.8" style="flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg><div style="min-width:0;"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.5px;color:#56565D;">CONTACT</div><div style="font-size:13px;color:#C9C9CE;margin-top:1px;">{{ quoteView.contactName }}</div></div></div>
+              <div style="display:flex;align-items:center;gap:11px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="1.8" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path></svg><div style="min-width:0;"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.5px;color:#56565D;">VAT</div><div style="font-size:13px;color:#C9C9CE;margin-top:1px;">{{ quoteView.vat }}</div></div></div>
+              <div style="display:flex;align-items:center;gap:11px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="1.8" style="flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg><div style="min-width:0;"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.5px;color:#56565D;">ADDRESS</div><div style="font-size:13px;color:#C9C9CE;margin-top:1px;">{{ quoteView.address }}</div></div></div>
+            </div>
+          </div>
+
+          <sc-if value="{{ quoteView.isProduct }}" hint-placeholder-val="{{ true }}">
+            <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:15px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
+                <div style="min-width:0;"><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:1px;color:#7A7A82;margin-bottom:4px;">PRODUCT</div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:700;">{{ quoteView.productName }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.4px;color:#9A9AA2;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);padding:3px 7px;border-radius:6px;">{{ quoteView.productCode }}</span></div></div>
+                <img src="{{ quoteView.thumb }}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+                <div style="background:#0F0F11;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 11px;"><div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:0.5px;color:#56565D;">BASE PRICE</div><div style="font-size:13.5px;font-weight:600;color:#EDEDEF;margin-top:3px;">{{ quoteView.productBasePrice }}</div></div>
+                <div style="background:#0F0F11;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 11px;"><div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:0.5px;color:#56565D;">BUILD</div><div style="font-size:13.5px;font-weight:600;color:#EDEDEF;margin-top:3px;">{{ quoteView.buildFull }}</div></div>
+                <div style="background:#0F0F11;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 11px;"><div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:0.5px;color:#56565D;">STANDARD</div><div style="font-size:13.5px;font-weight:600;color:#EDEDEF;margin-top:3px;">{{ quoteView.stdCount }}</div></div>
+                <div style="background:#0F0F11;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 11px;"><div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:0.5px;color:#56565D;">OPTIONAL</div><div style="font-size:13.5px;font-weight:600;color:#EDEDEF;margin-top:3px;">{{ quoteView.optTotal }}</div></div>
+              </div>
+              <div style="font-size:12.5px;color:#9A9AA2;line-height:1.55;text-wrap:pretty;">{{ quoteView.productDesc }}</div>
+            </div>
+          </sc-if>
+
+          <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:15px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:1px;color:#7A7A82;margin-bottom:4px;">QUOTE TOTAL</div>
+            <div style="font-size:24px;font-weight:700;color:#F2E40A;letter-spacing:-0.4px;margin-bottom:14px;">{{ quoteView.total }}</div>
+            <div style="display:flex;flex-direction:column;gap:9px;font-size:13px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;"><span style="color:#9A9AA2;">{{ quoteView.priceRowLabel }}</span><span style="color:#EDEDEF;font-weight:500;">{{ quoteView.productPriceLabel }}</span></div>
+              <sc-if value="{{ quoteView.hasOpt }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;justify-content:space-between;"><span style="color:#9A9AA2;">Optional assemblies</span><span style="color:#EDEDEF;font-weight:500;">{{ quoteView.optSum }}</span></div>
+                <div style="display:flex;flex-direction:column;gap:6px;padding-left:11px;border-left:2px solid rgba(255,255,255,0.09);">
+                  <sc-for list="{{ quoteView.selOptLines }}" as="o" hint-placeholder-count="2">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;"><span style="color:#7A7A82;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ o.name }}</span><span style="color:#9A9AA2;flex-shrink:0;">{{ o.price }}</span></div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ quoteView.hasDiscount }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;justify-content:space-between;"><span style="color:#9A9AA2;">Less discount ({{ quoteView.discountLabel }})</span><span style="color:#EDEDEF;font-weight:500;">{{ quoteView.discountAmt }}</span></div>
+              </sc-if>
+              <sc-if value="{{ quoteView.hasDelivery }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;justify-content:space-between;"><span style="color:#9A9AA2;">Delivery</span><span style="color:#EDEDEF;font-weight:500;">{{ quoteView.deliveryAmt }}</span></div>
+              </sc-if>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;padding-top:11px;border-top:1px solid rgba(255,255,255,0.09);"><span style="font-weight:700;font-size:14px;">Total</span><span style="font-weight:700;font-size:14px;">{{ quoteView.total }}</span></div>
+            </div>
+            <sc-if value="{{ quoteView.hasJob }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,0.06);"><span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.5px;color:#7A7A82;">LINKED JOB</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#F2E40A;background:rgba(242,228,10,0.1);border:1px solid rgba(242,228,10,0.3);padding:3px 8px;border-radius:6px;">{{ quoteView.job }}</span></div>
+            </sc-if>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== NEW QUOTE (modal) ===================== -->
+  <sc-if value="{{ newQuoteOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div onClick="{{ closeNewQuote }}" style="position:absolute;inset:0;background:rgba(0,0,0,0.6);"></div>
+      <div style="position:relative;width:100%;max-width:400px;max-height:92%;overflow-y:auto;background:#141416;border:1px solid rgba(255,255,255,0.1);border-radius:20px;box-shadow:0 30px 70px rgba(0,0,0,0.6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 4px;">
+          <div style="font-size:19px;font-weight:700;letter-spacing:-0.3px;">New quote</div>
+          <div onClick="{{ closeNewQuote }}" style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9A9AA2" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></div>
+        </div>
+        <div style="padding:12px 20px 4px;display:flex;flex-direction:column;gap:15px;">
+          <div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:7px;">Customer</div>
+            <div style="height:48px;border-radius:12px;background:#0F0F11;border:1.5px solid rgba(255,255,255,0.16);display:flex;align-items:center;justify-content:space-between;padding:0 14px;"><span style="font-size:14px;color:#5A5A62;">Search or create customer</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:7px;">Kind</div>
+            <div onClick="{{ toggleNewKind }}" style="height:48px;border-radius:12px;background:#0F0F11;border:1.5px solid rgba(255,255,255,0.16);display:flex;align-items:center;justify-content:space-between;padding:0 14px;cursor:pointer;"><span style="font-size:15px;color:#EDEDEF;font-weight:500;">{{ newQuoteKind }}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div>
+          </div>
+
+          <sc-if value="{{ isNewProduct }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div style="font-size:14px;font-weight:600;margin-bottom:7px;">Range</div>
+              <div style="height:48px;border-radius:12px;background:#161618;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;padding:0 14px;"><span style="font-size:14px;color:#EDEDEF;">All ranges</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div>
+            </div>
+            <div>
+              <div style="font-size:14px;font-weight:600;margin-bottom:7px;">Product</div>
+              <div style="height:48px;border-radius:12px;background:#161618;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;padding:0 14px;"><span style="font-size:14px;color:#5A5A62;">Search products</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isNewCustom }}" hint-placeholder-val="{{ false }}">
+            <div>
+              <div style="font-size:14px;font-weight:600;margin-bottom:7px;">Work title</div>
+              <input placeholder="e.g. On-site repair" style="width:100%;height:48px;border-radius:12px;background:#161618;border:1px solid rgba(255,255,255,0.1);padding:0 14px;color:#EDEDEF;font-family:'Space Grotesk',sans-serif;font-size:14px;outline:none;box-sizing:border-box;">
+            </div>
+            <div>
+              <div style="font-size:14px;font-weight:600;margin-bottom:7px;">Base price</div>
+              <div style="height:48px;border-radius:12px;background:#161618;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;gap:8px;padding:0 14px;"><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#7A7A82;">R</span><input placeholder="0.00" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:#EDEDEF;font-family:'Space Grotesk',sans-serif;font-size:14px;"></div>
+            </div>
+          </sc-if>
+
+          <div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:7px;">Salesperson</div>
+            <div style="height:48px;border-radius:12px;background:#161618;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;padding:0 14px;"><span style="font-size:14px;color:#5A5A62;">Select salesperson</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:7px;">Status</div>
+            <div style="height:48px;border-radius:12px;background:#161618;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;padding:0 14px;"><span style="font-size:14px;color:#EDEDEF;">Draft</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:16px 20px 20px;margin-top:8px;border-top:1px solid rgba(255,255,255,0.07);">
+          <div onClick="{{ closeNewQuote }}" style="padding:11px 20px;border-radius:11px;background:#1F1F23;border:1px solid rgba(255,255,255,0.09);font-size:14px;font-weight:600;color:#E5E5E8;cursor:pointer;">Cancel</div>
+          <div onClick="{{ closeNewQuote }}" style="padding:11px 24px;border-radius:11px;background:#F2E40A;color:#0A0A0B;font-size:14px;font-weight:700;cursor:pointer;">Save</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 412, &quot;height&quot;: 880}, &quot;startScreen&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;login&quot;, &quot;bayList&quot;, &quot;jobs&quot;], &quot;default&quot;: &quot;login&quot;, &quot;tsType&quot;: &quot;string&quot;}, &quot;startBay&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 0, &quot;min&quot;: 0, &quot;max&quot;: 5, &quot;tsType&quot;: &quot;number&quot;}, &quot;selectedVariant&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;fill&quot;, &quot;bar&quot;, &quot;glow&quot;], &quot;default&quot;: &quot;bar&quot;, &quot;tsType&quot;: &quot;string&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 412, &quot;height&quot;: 880}, &quot;startScreen&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;login&quot;, &quot;bayList&quot;, &quot;jobs&quot;, &quot;products&quot;], &quot;default&quot;: &quot;login&quot;, &quot;tsType&quot;: &quot;string&quot;}, &quot;startBay&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 0, &quot;min&quot;: 0, &quot;max&quot;: 5, &quot;tsType&quot;: &quot;number&quot;}, &quot;selectedVariant&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;fill&quot;, &quot;bar&quot;, &quot;glow&quot;], &quot;default&quot;: &quot;bar&quot;, &quot;tsType&quot;: &quot;string&quot;}}">
 class Component extends DCLogic {
   setRoot = (el) => {
     this.rootEl = el;
@@ -483,11 +1146,25 @@ class Component extends DCLogic {
     listMode: 'bays',
     jobId: 0,
     jobIndex: 0,
+    productIndex: 0,
     jobDetailOpen: false,
     docOpen: false,
     docIndex: 0,
     menuOpen: false,
-    baySort: 'days'
+    baySort: 'days',
+    prodSort: 'name',
+    prodRange: 'All ranges',
+    prodFilterOpen: false,
+    quoteIndex: 0,
+    quoteTab: 'details',
+    asideOpen: false,
+    newQuoteOpen: false,
+    newQuoteKind: 'Product',
+    quoteSearch: '',
+    quoteStatus: 'All statuses',
+    quoteStatusOpen: false,
+    optSel: {},
+    delInc: {}
   };
 
   operators = [
@@ -501,6 +1178,8 @@ class Component extends DCLogic {
 
   bays = this.makeBays();
   jobs = this.makeJobs();
+  products = this.makeProducts();
+  quotes = this.makeQuotes();
 
   docs(tag) {
     return [
@@ -510,8 +1189,170 @@ class Component extends DCLogic {
     ];
   }
 
+  assemblies() {
+    return [
+      { name: 'Main Chassis Frame', optional: false },
+      { name: 'Axle & Suspension Set', optional: false },
+      { name: 'Drawbar Assembly', optional: false },
+      { name: 'Hydraulic Tipping Ram', optional: false },
+      { name: 'Floor & Side Panels', optional: false },
+      { name: 'Rollover Tarp Kit', optional: true },
+      { name: 'LED Light Bar', optional: true },
+      { name: 'Spare Wheel & Carrier', optional: true }
+    ];
+  }
+
   productImg(product) {
     return 'assets/products/trailer.jpg';
+  }
+
+  stdAssemblies() {
+    return [
+      { name: 'Grain chute', parts: 6 },
+      { name: 'Bugle eye hitch', parts: 1 },
+      { name: 'Park jack', parts: 1 },
+      { name: 'Sprung drawbar', parts: 1 },
+      { name: 'Hydraulic brakes', parts: 3 },
+      { name: '560-60 R22.5 Floatation tyres', parts: 1 },
+      { name: 'Walking beam suspension with Henred axles', parts: 1 },
+      { name: 'Trunnion tip cylinder', parts: 1 },
+      { name: 'Rear brake & indicator lights', parts: 1 },
+      { name: 'Front & rear mudflaps', parts: 2 },
+      { name: 'Hydraulic rear door & ladder', parts: 0 },
+      { name: 'Jedidiah yellow paint finish', parts: 0 }
+    ];
+  }
+
+  optAssemblies() {
+    return [
+      { name: 'Multi hitch with 32mm articulating ball hitch', parts: 0, price: 'R 8 500.00', replaces: 'Replaces Bugle eye hitch' },
+      { name: 'Quick turn cup drawbar for hauler tractor', parts: 0, price: 'R 1.00', replaces: 'Replaces Sprung drawbar' },
+      { name: 'Rigid cup drawbar', parts: 0, price: 'R 1.00', replaces: 'Replaces 2 assemblies' },
+      { name: 'Silage extensions', parts: 0, price: 'R 64 000.00', replaces: 'Replaces none' }
+    ];
+  }
+
+  productDocs() {
+    return [
+      { name: 'ASSEMBLY SOP REV1.pdf', type: 'SOP', size: '2.4 MB', uploader: 'Reinhard Zellhuber', uploaded: 'Jun 10th, 11:06:16', pagePlaceholder: 'ASSEMBLY PROCEDURE' },
+      { name: 'DECAL ORDER LIST REV1.pdf', type: 'SOP', size: '146.0 KB', uploader: 'Reinhard Zellhuber', uploaded: 'Jun 10th, 11:06:24', pagePlaceholder: 'DECAL SCHEDULE' },
+      { name: 'MALE TRAILER PLUG WIRING.pdf', type: 'SOP', size: '201.7 KB', uploader: 'Reinhard Zellhuber', uploaded: 'Jun 10th, 11:06:32', pagePlaceholder: 'WIRING DIAGRAM' },
+      { name: 'PARTS BOOK REV 1.pdf', type: 'Part Book', size: '2.7 MB', uploader: 'Reinhard Zellhuber', uploaded: 'Jun 10th, 11:08:29', pagePlaceholder: 'EXPLODED ASSEMBLY DIAGRAM' },
+      { name: 'PRE - ASSEMBLY SOP REV1.pdf', type: 'SOP', size: '1.3 MB', uploader: 'Reinhard Zellhuber', uploaded: 'Jun 10th, 11:06:44', pagePlaceholder: 'PRE-ASSEMBLY PROCEDURE' },
+      { name: 'V2 SG1836 BOM.pdf', type: 'BOM', size: '340.8 KB', uploader: 'Reinhard Zellhuber', uploaded: 'Jul 7th, 15:55:12', pagePlaceholder: 'COMPONENT SCHEDULE' }
+    ];
+  }
+
+  makeProducts() {
+    const products = [
+      { name: '2500L Fire Fighter', modelCode: 'FF2500', range: 'Recharge tankers', rangeVariant: 'Fire fighter', category: 'Fire fighter', basePrice: 'R 168 000.00',
+        description: 'The FF2500 2500 L Fire Fighter is built with a robust, heavy-duty design to provide reliable fire suppression and emergency water delivery in demanding agricultural and rural environments. Engineered for rapid response, it is ideal for veld fire control, property protection, and emergency water supply.' },
+      { name: 'Silage Grain 18 36', modelCode: 'SG1836', range: 'Silage trailers', rangeVariant: 'Grain', category: 'Silage', basePrice: 'R 385 000.00',
+        description: 'The Silage Grain 18 36 is a high-volume tandem-axle trailer engineered for silage and grain cartage. Its walking-beam suspension and hydraulic tip deliver dependable performance across heavy harvest cycles.' },
+      { name: 'Silage Grain 24 48', modelCode: 'SG2448', range: 'Silage trailers', rangeVariant: 'Grain', category: 'Silage', basePrice: 'R 465 000.00',
+        description: 'The Silage Grain 24 48 offers maximum payload capacity for large-scale operations, pairing a reinforced chassis with a smooth trunnion tip cylinder for fast, controlled offloading.' },
+      { name: 'Tipper Body 6m', modelCode: 'TB6M', range: 'Tipper trailers', rangeVariant: 'Tipper', category: 'Tipper', basePrice: 'R 148 000.00',
+        description: 'The Tipper Body 6m is a compact, durable tipping trailer suited to construction and mixed-farm haulage. Simple hydraulics and a hard-wearing floor keep maintenance low.' },
+      { name: 'Tipper Body 8m', modelCode: 'TB8M', range: 'Tipper trailers', rangeVariant: 'Tipper', category: 'Tipper', basePrice: 'R 182 000.00',
+        description: 'The Tipper Body 8m extends payload length for bulk material transport while retaining a low tare weight and rapid tipping cycle for high daily throughput.' },
+      { name: 'Land Roller 7m Folding', modelCode: 'LR7F', range: 'Land rollers', rangeVariant: 'Folding', category: 'Tillage', basePrice: 'R 214 000.00',
+        description: 'The Land Roller 7m Folding consolidates seedbeds and presses stones for smoother harvesting. Hydraulic folding brings the working width down to a road-legal transport profile.' },
+      { name: 'Land Roller 9m Folding', modelCode: 'LR9F', range: 'Land rollers', rangeVariant: 'Folding', category: 'Tillage', basePrice: 'R 268 000.00',
+        description: 'The Land Roller 9m Folding covers more ground per pass with a three-section folding frame, delivering even consolidation across large fields with minimal downtime.' }
+    ];
+    products.forEach(p => {
+      p.thumb = 'assets/products/trailer.jpg';
+      p.standard = this.stdAssemblies();
+      p.optional = this.optAssemblies();
+      p.documents = this.productDocs();
+    });
+    return products;
+  }
+
+  fmt(n) {
+    const neg = n < 0; n = Math.abs(Math.round(n * 100) / 100);
+    const p = n.toFixed(2).split('.');
+    p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return (neg ? '-R ' : 'R ') + p[0] + '.' + p[1];
+  }
+
+  quoteOptCatalog() {
+    return [
+      { name: 'Multi hitch with 32mm articulating ball hitch', price: 8500 },
+      { name: 'Quick turn cup drawbar for hauler tractor', price: 1 },
+      { name: 'Rigid cup drawbar', price: 1 },
+      { name: 'Silage extensions', price: 64000 },
+      { name: 'Tractor spray mudflaps', price: 2780 },
+      { name: 'Air brakes', price: 1 },
+      { name: 'Black rims', price: 1 }
+    ];
+  }
+  quoteStdCatalog() {
+    return ['Grain chute', 'Bugle eye hitch', 'Park jack', 'Sprung drawbar',
+      { name: 'Hydraulic brakes', overridden: true },
+      '560-60 R22.5 Floatation tyres', 'Walking beam suspension with Henred axles',
+      'Trunnion tip cylinder', 'Rear brake & indicator lights', 'Front & rear mudflaps',
+      'Hydraulic rear door & ladder', 'Jedidiah yellow paint finish'
+    ].map(x => typeof x === 'string' ? { name: x } : x);
+  }
+
+  makeQuotes() {
+    const sp = {
+      dean: { name: 'Dean van Niekerk', img: 'assets/operators/operator.jpg' },
+      dewald: { name: 'Dewald Van Niekerk', img: 'assets/operators/operator.jpg' },
+      reinhard: { name: 'Reinhard Zellhuber', img: 'assets/operators/operator.jpg' },
+      jed: { name: 'Jed van Niekerk', img: 'assets/operators/operator.jpg' }
+    };
+    const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+    const desc = "SG1836 plus Crosshaul silage and grain trailers feature a robust construction designed and developed to work in any demanding conditions. Whether you're moving grain at high volume through harvest or hauling silage across heavy ground, the frame and running gear are engineered to last.";
+    const P = (o) => Object.assign({
+      kind: 'Product', discountPct: 0, depositPct: 0, deliveryPrice: 15000, deliveryIncluded: true,
+      defaultOpts: [], preferredDate: '', plannedDate: '', validUntil: '',
+      contactName: '', email: '', vat: '', address: '',
+      productThumb: 'assets/products/trailer.jpg', productDesc: desc,
+      stdCount: 12, optTotal: 7, job: '', quoteNotes: '', internalNotes: '', docs: []
+    }, o);
+    const revDocs = (code) => [
+      { name: code + '-rev-2.pdf', rev: 'Rev 2', size: '4.2 MB', uploader: 'Dean van Niekerk', uploaded: 'Jul 14th, 12:31:44', type: 'PDF', pagePlaceholder: 'QUOTE DOCUMENT' },
+      { name: code + '-rev-1.pdf', rev: 'Rev 1', size: '4.2 MB', uploader: 'Dean van Niekerk', uploaded: 'Jul 14th, 11:44:42', type: 'PDF', pagePlaceholder: 'QUOTE DOCUMENT' }
+    ];
+    const quotes = [
+      P({ code: 'QUO-00028', created: 'Created 2d ago', kind: 'Custom', customer: 'Jed Fab', sales: sp.reinhard,
+        workTitle: '17.07.2026 jobs', basePrice: 0, status: 'Draft' }),
+      P({ code: 'QUO-00027', created: 'Created 5d ago', customer: 'Andile Mdzunga', sales: sp.dewald,
+        productName: 'General purpose 4 ton', productCode: 'GP408', buildDays: '14d build', buildFull: '14 days',
+        productPrice: 197999, defaultOpts: [5, 6], status: 'Draft', productRange: 'General purpose', productVariant: 'GP' }),
+      P({ code: 'QUO-00026', created: 'Created 5d ago', customer: 'Riverside Farm', sales: sp.dean,
+        productName: 'Silage grain 18 ton', productCode: 'SG1836', buildDays: '22d build', buildFull: '22 days',
+        productPrice: 595000, defaultOpts: [5, 6], discountPct: 10, deliveryIncluded: false,
+        preferredDate: 'Aug 8, 2026', status: 'Draft', contactName: 'Tony Jones', productRange: 'Silage trailers', productVariant: 'Grain',
+        quoteNotes: 'Silage extensions discussed but excluded from this quote.', docs: revDocs('QUO-00026') }),
+      P({ code: 'QUO-00025', created: 'Created Jul 10, 2026', customer: 'fsds', sales: sp.dean,
+        productName: 'General purpose 4 ton', productCode: 'GP408', buildDays: '14d build', buildFull: '14 days',
+        productPrice: 197999, defaultOpts: [5, 6], status: 'Accepted', productRange: 'General purpose', productVariant: 'GP' }),
+      P({ code: 'QUO-00024', created: 'Created Jul 10, 2026', customer: 'fsds', sales: sp.dewald,
+        productName: 'Land roller 3m', productCode: 'L3', buildDays: '10d build', buildFull: '10 days',
+        productPrice: 1, status: 'Draft', productRange: 'Land rollers', productVariant: 'Rigid' }),
+      P({ code: 'QUO-00023', created: 'Created Jul 10, 2026', customer: 'Craig Stokes', sales: sp.jed,
+        productName: 'Agri lowbed 6 ton', productCode: 'AL6', buildDays: '14d build', buildFull: '14 days',
+        productPrice: 186140, defaultOpts: [5], discountPct: 10, status: 'Accepted', job: 'JOB-00013', productRange: 'Lowbeds', productVariant: 'Standard' }),
+      P({ code: 'QUO-00022', created: 'Created Jul 9, 2026', customer: 'Waterside Farm', sales: sp.dean,
+        productName: 'Silage grain 18 ton', productCode: 'SG1836', buildDays: '22d build', buildFull: '22 days',
+        productPrice: 595000, defaultOpts: [5, 6], discountPct: 10, status: 'Accepted', job: 'JOB-00014',
+        preferredDate: 'Aug 9, 2026', productRange: 'Silage trailers', productVariant: 'Grain', docs: revDocs('QUO-00022') }),
+      P({ code: 'QUO-00021', created: 'Created Jul 9, 2026', customer: 'Craig Stokes', sales: sp.reinhard,
+        productName: 'Silage grain 18 ton', productCode: 'SG1836', buildDays: '22d build', buildFull: '22 days',
+        productPrice: 595000, defaultOpts: [4, 5, 6], discountPct: 10, status: 'Draft',
+        preferredDate: 'Jul 9, 2026', productRange: 'Silage trailers', productVariant: 'Grain' }),
+      P({ code: 'QUO-00020', created: 'Created Jul 9, 2026', customer: 'Brett Green', sales: sp.reinhard,
+        productName: 'Dresden no till', productCode: 'NT3.4', buildDays: '30d build', buildFull: '30 days',
+        productPrice: 1100000, status: 'Draft', productRange: 'Planters', productVariant: 'No till' }),
+      P({ code: 'QUO-00019', created: 'Created Jul 8, 2026', customer: 'Craig Stokes', sales: sp.reinhard,
+        productName: 'Speed spike - 4', productCode: 'SS4', buildDays: '1d build', buildFull: '1 day',
+        productPrice: 1, status: 'Draft', productRange: 'Tillage', productVariant: 'Spike' })
+    ];
+    quotes.forEach(q => { q.custInit = initials(q.customer); });
+    return quotes;
   }
 
   makeBays() {
@@ -553,7 +1394,7 @@ class Component extends DCLogic {
     ];
     bays.forEach((b, i) => {
       b.operator = this.operators[i % this.operators.length];
-      b.jobs.forEach(j => { j.bay = b.name; j.docs = this.docs(j.serial); j.img = this.productImg(j.product); });
+      b.jobs.forEach(j => { j.bay = b.name; j.docs = this.docs(j.serial); j.assemblies = this.assemblies(); j.img = this.productImg(j.product); });
     });
     return bays;
   }
@@ -611,6 +1452,7 @@ class Component extends DCLogic {
     jobs.forEach(j => {
       j.img = this.productImg(j.product);
       j.docs = this.docs(j.serial);
+      j.assemblies = this.assemblies();
       j.stages.forEach(st => { const b = this.bays.find(bb => bb.name === st.bay); st.operator = b ? b.operator : this.operators[0]; });
     });
     return jobs;
@@ -623,6 +1465,33 @@ class Component extends DCLogic {
   selectJob(i) { this.setState(st => ({ jobIndex: i, jobDetailOpen: st.isWide ? st.jobDetailOpen : true, docOpen: false })); }
   openDoc(i) { this.setState({ docOpen: true, docIndex: i }); }
   openJob(i) { this.setState({ screen: 'jobDetail', jobId: i, docOpen: false, menuOpen: false }); }
+  openProduct(i) { this.setState({ screen: 'productView', productIndex: i, docOpen: false, menuOpen: false }); }
+  goProducts() { this.setState({ screen: 'products', docOpen: false, menuOpen: false }); }
+  goSchedule() { this.setState({ screen: 'bayList', docOpen: false, menuOpen: false }); }
+  goQuotes() { this.setState({ screen: 'quotes', docOpen: false, menuOpen: false, newQuoteOpen: false, asideOpen: false }); }
+  openQuote(i) { this.setState({ screen: 'quoteView', quoteIndex: i, quoteTab: 'details', asideOpen: false, docOpen: false, menuOpen: false }); }
+  toggleOpt(code, idx) {
+    this.setState(st => {
+      const q = this.quotes.find(x => x.code === code);
+      const cur = ((st.optSel[code] || q.defaultOpts) || []).slice();
+      const at = cur.indexOf(idx);
+      if (at >= 0) cur.splice(at, 1); else cur.push(idx);
+      return { optSel: Object.assign({}, st.optSel, { [code]: cur }) };
+    });
+  }
+  toggleDelivery(code) {
+    this.setState(st => {
+      const q = this.quotes.find(x => x.code === code);
+      const cur = (code in st.delInc) ? st.delInc[code] : q.deliveryIncluded;
+      return { delInc: Object.assign({}, st.delInc, { [code]: !cur }) };
+    });
+  }
+  copyLink(url, lang) {
+    if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {});
+    this.setState({ linkCopied: lang });
+    clearTimeout(this._copyT);
+    this._copyT = setTimeout(() => this.setState({ linkCopied: false }), 1600);
+  }
 
   shortCust(c) { return c.replace(/ \(Pty\) Ltd$/, ''); }
   dayColor(d) { return d <= 2 ? '#F87171' : (d <= 5 ? '#FBBF24' : '#5FCF87'); }
@@ -700,21 +1569,44 @@ class Component extends DCLogic {
       statusBorder: isActive ? 'rgba(59,130,246,0.3)' : 'rgba(251,191,36,0.3)'
     });
 
-    const docCtxJob = s.screen === 'jobDetail' ? (this.jobs[s.jobId] || this.jobs[0]) : selJob;
-    const docs = docCtxJob.docs.map((dd, idx) => Object.assign({}, dd, { open: () => this.openDoc(idx) }));
-    const rawDoc = docCtxJob.docs[s.docIndex] || docCtxJob.docs[0];
-    const doc = Object.assign({}, rawDoc, { context: docCtxJob.code + ' · ' + docCtxJob.product, pageTitle: docCtxJob.product.toUpperCase() });
+    const product = this.products[s.productIndex] || this.products[0];
+    let docListRaw, docCtxName, docCtxSub;
+    if (s.screen === 'productView') { docListRaw = product.documents; docCtxName = product.name; docCtxSub = product.modelCode; }
+    else if (s.screen === 'quoteView') { const qq = this.quotes[s.quoteIndex] || this.quotes[0]; docListRaw = qq.docs.length ? qq.docs : [{ name: '—', pagePlaceholder: 'QUOTE DOCUMENT' }]; docCtxName = qq.code; docCtxSub = qq.kind === 'Custom' ? qq.workTitle : qq.productName; }
+    else { const cj = s.screen === 'jobDetail' ? (this.jobs[s.jobId] || this.jobs[0]) : selJob; docListRaw = cj.docs; docCtxName = cj.code; docCtxSub = cj.product; }
+    const docs = docListRaw.map((dd, idx) => Object.assign({}, dd, { open: () => this.openDoc(idx) }));
+    const rawDoc = docListRaw[s.docIndex] || docListRaw[0];
+    const doc = Object.assign({}, rawDoc, {
+      context: docCtxName + ' · ' + docCtxSub,
+      pageTitle: (s.screen === 'productView' ? product.name : docCtxSub).toUpperCase(),
+      pageTag: rawDoc.pageTag || (rawDoc.type ? (rawDoc.type + ' · ' + docCtxSub) : docCtxSub)
+    });
+
+    // --- assemblies (standard / optional) — job docs context ---
+    const asmCtxJob = s.screen === 'jobDetail' ? (this.jobs[s.jobId] || this.jobs[0]) : selJob;
+    const rawAsm = asmCtxJob.assemblies || [];
+    const assemblies = rawAsm.slice().sort((a, b) => (a.optional === b.optional ? 0 : (a.optional ? 1 : -1))).map(a => ({
+      name: a.name,
+      tag: a.optional ? 'OPTIONAL' : 'STANDARD',
+      tagColor: a.optional ? '#F2E40A' : '#9A9AA2',
+      tagBg: a.optional ? 'rgba(242,228,10,0.1)' : 'rgba(255,255,255,0.04)',
+      tagBorder: a.optional ? 'rgba(242,228,10,0.3)' : 'rgba(255,255,255,0.1)',
+      dotColor: a.optional ? '#F2E40A' : '#5A5A62'
+    }));
+    const asmLabel = 'ASSEMBLIES · ' + rawAsm.length;
 
     // --- job-centric list ---
     const jobList = this.jobs.map((j, i) => {
       const sum = this.jobSummary(j);
       const last = j.stages[j.stages.length - 1];
+      const curStage = j.stages.find(x => x.state === 'In progress') || j.stages.find(x => x.state === 'Scheduled') || last;
       return {
         code: j.code, product: j.product, img: j.img, customer: this.shortCust(j.customer),
         maxDays: sum.maxDays, dayColor: this.dayColor(sum.maxDays),
         endShort: last.end, overallPct: sum.overallPct,
         stageLabel: sum.done + '/' + sum.total + ' BAYS DONE',
         curLabel: sum.curLabel, curColor: sum.curColor,
+        operatorName: curStage.operator.name, operatorImg: curStage.operator.img,
         open: () => this.openJob(i)
       };
     });
@@ -741,6 +1633,122 @@ class Component extends DCLogic {
         };
       })
     };
+
+    // --- products ---
+    const priceNum = (str) => Number(String(str).replace(/[^0-9]/g, '')) || 0;
+    let productCards = this.products.map((p, i) => ({
+      name: p.name, modelCode: p.modelCode, category: p.category, range: p.range, basePrice: p.basePrice, thumb: p.thumb,
+      _price: priceNum(p.basePrice), open: () => this.openProduct(i)
+    }));
+    if (s.prodRange !== 'All ranges') productCards = productCards.filter(p => p.range === s.prodRange);
+    if (s.prodSort === 'price') productCards.sort((a, b) => a._price - b._price);
+    else productCards.sort((a, b) => a.name.localeCompare(b.name));
+    const prodRanges = ['All ranges'].concat(this.products.map(p => p.range).filter((r, i, arr) => arr.indexOf(r) === i));
+    const prodChip = (on) => Object.assign({}, sortChipBase, { background: on ? 'rgba(255,255,255,0.12)' : 'transparent', color: on ? '#FAFAFA' : '#7A7A82' });
+    const partsLabel = (n) => n + (n === 1 ? ' part' : ' parts');
+    const prodStandard = product.standard.map(a => ({ name: a.name, partsLabel: partsLabel(a.parts) }));
+    const prodOptional = product.optional.map(a => ({ name: a.name, partsLabel: partsLabel(a.parts), price: a.price, replaces: a.replaces }));
+    const prodView = {
+      name: product.name, modelCode: product.modelCode, range: product.range, rangeVariant: product.rangeVariant,
+      category: product.category, basePrice: product.basePrice, description: product.description, thumb: product.thumb,
+      websiteEn: 'jedidiah.co.za/en/products/' + product.modelCode.toLowerCase(),
+      websiteAf: 'jedidiah.co.za/af/produkte/' + product.modelCode.toLowerCase(),
+      asmLabel: 'ASSEMBLIES · ' + (product.standard.length + product.optional.length),
+      stdLabel: 'STANDARD · ' + product.standard.length,
+      optLabel: 'OPTIONAL · ' + product.optional.length,
+      docsLabel: 'DOCUMENTS · ' + product.documents.length
+    };
+    // --- quotes ---
+    const optCat = this.quoteOptCatalog();
+    const stdCat = this.quoteStdCatalog();
+    const statusStyle = (st) => st === 'Accepted'
+      ? { color: '#5FCF87', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.32)' }
+      : { color: '#C9C9CE', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.14)' };
+    const quoteTotals = (qq) => {
+      const selIdx = (s.optSel[qq.code] || qq.defaultOpts || []);
+      const delIncl = (qq.code in s.delInc) ? s.delInc[qq.code] : qq.deliveryIncluded;
+      const base = qq.kind === 'Custom' ? (qq.basePrice || 0) : (qq.productPrice || 0);
+      const optSum = qq.kind === 'Custom' ? 0 : selIdx.reduce((t, i) => t + (optCat[i] ? optCat[i].price : 0), 0);
+      const subtotal = base + optSum;
+      const discount = subtotal * (qq.discountPct || 0) / 100;
+      const delivery = delIncl ? 0 : (qq.deliveryPrice || 0);
+      return { selIdx, delIncl, base, optSum, subtotal, discount, delivery, total: subtotal - discount + delivery };
+    };
+    const optWord = (n) => n + (n === 1 ? ' option' : ' options');
+    let quoteCards = this.quotes.map((qq, i) => {
+      const t = quoteTotals(qq);
+      const ss = statusStyle(qq.status);
+      const optN = qq.kind === 'Custom' ? 0 : t.selIdx.length;
+      return {
+        code: qq.code, created: qq.created, kind: qq.kind,
+        kindColor: qq.kind === 'Custom' ? '#F2E40A' : '#9A9AA2',
+        kindBg: qq.kind === 'Custom' ? 'rgba(242,228,10,0.1)' : 'rgba(255,255,255,0.05)',
+        kindBorder: qq.kind === 'Custom' ? 'rgba(242,228,10,0.3)' : 'rgba(255,255,255,0.12)',
+        customer: qq.customer, custInit: qq.custInit, salesName: qq.sales.name, salesImg: qq.sales.img,
+        productName: qq.kind === 'Custom' ? qq.workTitle : qq.productName,
+        productMeta: qq.kind === 'Custom' ? 'Custom work' : (qq.productCode + ' · ' + qq.buildDays + (optN ? (' · ' + optWord(optN)) : '')),
+        total: this.fmt(t.total),
+        status: qq.status, statusColor: ss.color, statusBg: ss.bg, statusBorder: ss.border,
+        job: qq.job, hasJob: !!qq.job, open: () => this.openQuote(i)
+      };
+    });
+    const statusFilterOn = s.quoteStatus && s.quoteStatus !== 'All statuses';
+    let quoteCardsFilt = statusFilterOn ? quoteCards.filter(c => c.status === s.quoteStatus) : quoteCards;
+    const qSearch = (s.quoteSearch || '').trim().toLowerCase();
+    const quoteCardsF = qSearch ? quoteCardsFilt.filter(c => (c.code + ' ' + c.customer + ' ' + c.productName + ' ' + c.salesName).toLowerCase().indexOf(qSearch) >= 0) : quoteCardsFilt;
+    const quoteStatusOptions = ['All statuses', 'Draft', 'Accepted'];
+
+    const q = this.quotes[s.quoteIndex] || this.quotes[0];
+    const qt = quoteTotals(q);
+    const qStatus = statusStyle(q.status);
+    const isCustom = q.kind === 'Custom';
+    const optionalList = isCustom ? [] : optCat.map((o, i) => {
+      const sel = qt.selIdx.indexOf(i) >= 0;
+      return {
+        name: o.name, price: this.fmt(o.price), selected: sel,
+        rowBg: sel ? 'rgba(242,228,10,0.08)' : '#0F0F11', rowBorder: sel ? 'rgba(242,228,10,0.4)' : 'rgba(255,255,255,0.08)',
+        boxBg: sel ? '#F2E40A' : 'transparent', boxBorder: sel ? '#F2E40A' : 'rgba(255,255,255,0.28)',
+        checkOpacity: sel ? '1' : '0', toggle: () => this.toggleOpt(q.code, i)
+      };
+    });
+    const standardList = isCustom ? [] : stdCat.map(a => ({
+      name: a.name, overridden: !!a.overridden,
+      nameColor: a.overridden ? '#6B6B73' : '#EDEDEF', deco: a.overridden ? 'line-through' : 'none'
+    }));
+    const selOptLines = isCustom ? [] : qt.selIdx.slice().sort((a, b) => a - b).map(i => ({ name: optCat[i].name, price: this.fmt(optCat[i].price) }));
+    const quoteDocs = q.docs.map((d, di) => Object.assign({}, d, { open: () => this.openDoc(di) }));
+    const quoteView = {
+      code: q.code, sub: isCustom ? q.workTitle : q.productName,
+      status: q.status, statusColor: qStatus.color, statusBg: qStatus.bg, statusBorder: qStatus.border,
+      isCustom, isProduct: !isCustom, thumb: q.productThumb,
+      salesName: q.sales.name,
+      preferredDate: q.preferredDate, plannedDate: q.plannedDate, validUntil: q.validUntil,
+      hasPreferred: !!q.preferredDate, hasPlanned: !!q.plannedDate, hasValid: !!q.validUntil,
+      delIncl: qt.delIncl,
+      delChkBg: qt.delIncl ? '#F2E40A' : 'transparent', delChkBorder: qt.delIncl ? '#F2E40A' : 'rgba(255,255,255,0.28)', delChkOpacity: qt.delIncl ? '1' : '0',
+      toggleDelivery: () => this.toggleDelivery(q.code),
+      deliveryPrice: this.fmt(q.deliveryPrice || 0),
+      discountPct: (q.discountPct || 0).toFixed(2), depositPct: (q.depositPct || 0).toFixed(2),
+      workTitle: q.workTitle || '', basePriceLabel: this.fmt(isCustom ? (q.basePrice || 0) : (q.productPrice || 0)),
+      internalNotes: q.internalNotes || '', quoteNotes: q.quoteNotes || '',
+      customer: q.customer, custInit: q.custInit,
+      email: q.email || 'Not captured', contactName: q.contactName || 'Not captured', vat: q.vat || 'Not captured', address: q.address || 'Not captured',
+      productName: q.productName || '', productCode: q.productCode || '',
+      productBasePrice: this.fmt(q.productPrice || 0), buildFull: q.buildFull || '',
+      stdCount: q.stdCount || 12, optTotal: q.optTotal || 7, productDesc: q.productDesc || '',
+      total: this.fmt(qt.total), productPriceLabel: this.fmt(q.kind === 'Custom' ? (q.basePrice || 0) : (q.productPrice || 0)),
+      priceRowLabel: isCustom ? 'Base price' : 'Product price',
+      optSum: this.fmt(qt.optSum), hasOpt: selOptLines.length > 0, selOptLines,
+      hasDiscount: qt.discount > 0, discountAmt: this.fmt(qt.discount), discountLabel: (q.discountPct || 0) + '%',
+      hasDelivery: qt.delivery > 0, deliveryAmt: this.fmt(qt.delivery),
+      job: q.job, hasJob: !!q.job,
+      docs: quoteDocs, docCount: q.docs.length + (q.docs.length === 1 ? ' document' : ' documents'), hasDocs: q.docs.length > 0, hasNoDocs: q.docs.length === 0
+    };
+    const tabChip = (on) => ({ padding: '7px 15px', borderRadius: '9px', fontFamily: "'Space Grotesk',sans-serif", fontSize: '13.5px', fontWeight: 600, cursor: 'pointer', background: on ? '#F2E40A' : 'transparent', color: on ? '#0A0A0B' : '#9A9AA2', transition: 'background 0.15s,color 0.15s' });
+
+    const schedActive = ['bayList', 'jobs', 'jobDetail'].indexOf(s.screen) >= 0;
+    const prodActive = ['products', 'productView'].indexOf(s.screen) >= 0;
+    const quotesActive = ['quotes', 'quoteView'].indexOf(s.screen) >= 0;
 
     const detailOpen = s.jobDetailOpen;
     const headerTitle = wide ? bay.name : (detailOpen ? selJob.code : bay.name);
@@ -775,7 +1783,54 @@ class Component extends DCLogic {
       listBorderRight: wide ? '1px solid rgba(255,255,255,0.07)' : 'none',
       detailDisplay: (wide || detailOpen) ? 'block' : 'none',
       detailWidth: wide ? '60%' : '100%',
-      active, upcoming, job, docs, doc,
+      active, upcoming, job, docs, doc, assemblies, asmLabel,
+      isProducts: s.screen === 'products', isProductView: s.screen === 'productView',
+      productCards, prodView, prodStandard, prodOptional,
+      productBack: () => this.setState({ screen: 'products', docOpen: false, menuOpen: false }),
+      showToolbar: s.screen !== 'login',
+      schedActive, prodActive, quotesActive,
+      schedColor: schedActive ? '#F2E40A' : '#7A7A82', prodColor: prodActive ? '#F2E40A' : '#7A7A82',
+      quotesColor: quotesActive ? '#F2E40A' : '#7A7A82',
+      goSchedule: () => this.goSchedule(), goProducts: () => this.goProducts(), goQuotes: () => this.goQuotes(),
+      isQuotes: s.screen === 'quotes', isQuoteView: s.screen === 'quoteView',
+      quoteCount: this.quotes.length + ' quotes',
+      quoteCardsF, quoteView, optionalList, standardList,
+      setQuoteSearch: (e) => this.setState({ quoteSearch: e.target.value }),
+      quoteStatusOpen: s.quoteStatusOpen,
+      toggleQuoteStatus: () => this.setState(st => ({ quoteStatusOpen: !st.quoteStatusOpen, menuOpen: false })),
+      quoteStatusLabel: s.quoteStatus || 'All statuses',
+      quoteStatuses: quoteStatusOptions.map(st => ({ name: st, active: st === (s.quoteStatus || 'All statuses'), rowColor: st === (s.quoteStatus || 'All statuses') ? '#F2E40A' : '#E5E5E8', select: () => this.setState({ quoteStatus: st, quoteStatusOpen: false }) })),
+      qFilterBtnBg: statusFilterOn ? 'rgba(242,228,10,0.1)' : '#141416',
+      qFilterBtnBorder: statusFilterOn ? 'rgba(242,228,10,0.35)' : 'rgba(255,255,255,0.09)',
+      qFilterIconColor: statusFilterOn ? '#F2E40A' : '#9A9AA2',
+      qFilterLabelDisplay: s.isWide ? 'flex' : 'none',
+      qNewLabelDisplay: s.isWide ? 'inline' : 'none',
+      quoteBack: () => this.setState({ screen: 'quotes', docOpen: false, menuOpen: false, asideOpen: false }),
+      isQuoteDetails: s.quoteTab === 'details', isQuoteDocs: s.quoteTab === 'documents',
+      showDetailsTab: () => this.setState({ quoteTab: 'details', menuOpen: false }),
+      showDocsTab: () => this.setState({ quoteTab: 'documents', menuOpen: false }),
+      qTabDetails: tabChip(s.quoteTab === 'details'), qTabDocs: tabChip(s.quoteTab === 'documents'),
+      asideOpen: s.asideOpen, openAside: () => this.setState({ asideOpen: true, menuOpen: false }), closeAside: () => this.setState({ asideOpen: false }),
+      newQuoteOpen: s.newQuoteOpen,
+      openNewQuote: () => this.setState({ newQuoteOpen: true, newQuoteKind: 'Product', menuOpen: false }),
+      closeNewQuote: () => this.setState({ newQuoteOpen: false }),
+      isNewProduct: s.newQuoteKind === 'Product', isNewCustom: s.newQuoteKind === 'Custom',
+      newQuoteKind: s.newQuoteKind, toggleNewKind: () => this.setState(st => ({ newQuoteKind: st.newQuoteKind === 'Product' ? 'Custom' : 'Product' })),
+      prodCount: productCards.length + (productCards.length === 1 ? ' product' : ' products'),
+      prodRanges: prodRanges.map(r => ({ name: r, active: r === s.prodRange, rowColor: r === s.prodRange ? '#F2E40A' : '#E5E5E8', select: () => this.setState({ prodRange: r, prodFilterOpen: false }) })),
+      filterBtnBg: s.prodRange !== 'All ranges' ? 'rgba(242,228,10,0.1)' : '#161618',
+      filterBtnBorder: s.prodRange !== 'All ranges' ? 'rgba(242,228,10,0.35)' : 'rgba(255,255,255,0.09)',
+      filterIconColor: s.prodRange !== 'All ranges' ? '#F2E40A' : '#9A9AA2',
+      prodRangeLabel: s.prodRange,
+      prodFiltered: s.prodRange !== 'All ranges',
+      prodFilterOpen: s.prodFilterOpen,
+      toggleProdFilter: () => this.setState(st => ({ prodFilterOpen: !st.prodFilterOpen, menuOpen: false })),
+      sortProdName: () => this.setState({ prodSort: 'name' }), sortProdPrice: () => this.setState({ prodSort: 'price' }),
+      sortProdNameStyle: prodChip(s.prodSort === 'name'), sortProdPriceStyle: prodChip(s.prodSort === 'price'),
+      enCopied: s.linkCopied === 'en', afCopied: s.linkCopied === 'af',
+      enNotCopied: s.linkCopied !== 'en', afNotCopied: s.linkCopied !== 'af',
+      copyEn: () => this.copyLink('https://jedidiah.co.za/en/products/' + product.modelCode.toLowerCase(), 'en'),
+      copyAf: () => this.copyLink('https://jedidiah.co.za/af/produkte/' + product.modelCode.toLowerCase(), 'af'),
       headerTitle, headerSub, headerBack,
       docOpen: s.docOpen, closeDoc: () => this.setState({ docOpen: false }),
       docPad: '0px', docW: '100%', docH: '100%', docR: '0px'

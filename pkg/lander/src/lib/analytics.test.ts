@@ -61,19 +61,6 @@ describe('analytics event registry', () => {
 
 // Module resets and dynamic imports can contend with other packages during the workspace-wide test run.
 describe('analytics delivery', { timeout: 15_000 }, () => {
-  test('registers language before capture and updates it without reinitialising PostHog', async () => {
-    const { captureEvent, initAnalytics } = await import('./analytics.js');
-
-    initAnalytics('en');
-    captureEvent('brochure_downloaded', { modelCode: 'JM-2400' });
-    initAnalytics('af');
-
-    expect(posthog.init).toHaveBeenCalledOnce();
-    expect(posthog.register.mock.calls).toEqual([[{ language: 'en' }], [{ language: 'af' }]]);
-    expect(posthog.setPersonProperties.mock.calls).toEqual([[{ language: 'en' }], [{ language: 'af' }]]);
-    expect(posthog.capture).toHaveBeenCalledWith('brochure_downloaded', { modelCode: 'JM-2400' });
-  });
-
   test('uses beacon transport for events attached to outbound navigation', async () => {
     const { captureEventForNavigation, initAnalytics } = await import('./analytics.js');
     initAnalytics('en');

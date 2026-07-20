@@ -7,7 +7,7 @@ import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { BoardGrid } from '@/components/bays/BoardGrid';
-import { ListFilterButton, listControlTextStyle } from '@/components/ListControls';
+import { ListFilterButton } from '@/components/ListControls';
 import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { AnchoredMenu } from '@/components/ui/anchored-menu';
@@ -74,7 +74,7 @@ export function QuoteCatalogControls({
           onChangeText={onSearchChange}
           placeholder="Search quotes…"
           returnKeyType="search"
-          style={listControlTextStyle}
+          textSize="toolbar"
           value={search}
         />
       </View>
@@ -98,7 +98,7 @@ export function QuoteCatalogControls({
         >
           <Icon className="text-primary-foreground" icon={IconPlus} size={18} strokeWidth={2.5} />
           {isWide ? (
-            <Text className="text-primary-foreground" style={listControlTextStyle} weight="bold">
+            <Text className="text-[13px] text-primary-foreground" weight="bold">
               New quote
             </Text>
           ) : null}

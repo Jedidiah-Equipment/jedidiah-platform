@@ -1,6 +1,6 @@
 import { IconChevronDown, IconFilter } from '@tabler/icons-react-native';
 import { forwardRef, type ReactNode } from 'react';
-import { Pressable, type TextStyle, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -9,8 +9,6 @@ export type SegmentedSortOption<Value extends string> = {
   label: string;
   value: Value;
 };
-
-export const listControlTextStyle = { fontSize: 13 } satisfies TextStyle;
 
 /** Fixed-height list controls stay on one row; their labels truncate as available width shrinks. */
 export function ListControlRow({ leading, trailing }: { leading: ReactNode; trailing: ReactNode }) {
@@ -50,9 +48,8 @@ export const ListFilterButton = forwardRef<
       {showLabel ? (
         <>
           <Text
-            className={`min-w-0 flex-1 tracking-wide ${accentClassName}`}
+            className={`min-w-0 flex-1 text-[13px] tracking-wide ${accentClassName}`}
             numberOfLines={1}
-            style={listControlTextStyle}
             weight="semibold"
           >
             {label}
@@ -76,7 +73,7 @@ export function SegmentedSortControl<Value extends string>({
 }) {
   return (
     <View className="h-10 min-w-0 flex-row items-center gap-2">
-      <Text className="shrink-0 tracking-widest text-muted-foreground" style={listControlTextStyle} weight="semibold">
+      <Text className="shrink-0 text-[13px] tracking-widest text-muted-foreground" weight="semibold">
         SORT
       </Text>
       <View className="h-10 min-w-0 shrink flex-row rounded-xl border border-border bg-surface p-1">
@@ -95,9 +92,8 @@ export function SegmentedSortControl<Value extends string>({
               onPress={() => onChange(option.value)}
             >
               <Text
-                className={`tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
+                className={`text-[13px] tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
                 numberOfLines={1}
-                style={listControlTextStyle}
                 weight="semibold"
               >
                 {option.label}

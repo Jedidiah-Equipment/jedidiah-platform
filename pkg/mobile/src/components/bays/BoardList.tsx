@@ -2,7 +2,7 @@ import { IconArrowsLeftRight } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
-import { ListControlRow, listControlTextStyle, SegmentedSortControl } from '@/components/ListControls';
+import { ListControlRow, SegmentedSortControl } from '@/components/ListControls';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -125,7 +125,7 @@ function ListModeControl({ onToggle, title }: { onToggle: () => void; title: str
       className="h-10 max-w-full self-start flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3 active:bg-muted"
       onPress={onToggle}
     >
-      <Text className="min-w-0 shrink text-foreground" numberOfLines={1} style={listControlTextStyle} weight="bold">
+      <Text className="min-w-0 shrink text-[13px] text-foreground" numberOfLines={1} weight="bold">
         {title}
       </Text>
       <Icon className="shrink-0 text-muted-foreground" icon={IconArrowsLeftRight} size={15} />

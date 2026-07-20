@@ -12,7 +12,7 @@ export type QuotePricingResult =
       reason: string;
     };
 
-export const QUOTE_DOCUMENT_VAT_PERCENT = 15;
+export const VAT_PERCENT = 15;
 
 export function validateDiscount({ discountPercent }: { discountPercent: number }): QuotePricingResult {
   if (discountPercent < 0) {
@@ -62,15 +62,8 @@ export function computeAdditionalDeliveryPrice({
   return deliveryIncluded ? 0 : deliveryPrice;
 }
 
-export function computeQuoteVatAmount(subtotal: number, vatPercent: number = QUOTE_DOCUMENT_VAT_PERCENT): number {
-  return (subtotal * vatPercent) / 100;
-}
-
-export function computeQuoteTotalIncludingVat(
-  subtotal: number,
-  vatPercent: number = QUOTE_DOCUMENT_VAT_PERCENT,
-): number {
-  return subtotal + computeQuoteVatAmount(subtotal, vatPercent);
+export function computeQuoteVatAmount(subtotal: number, vatPercent: number = VAT_PERCENT): number {
+  return roundCurrency((subtotal * vatPercent) / 100);
 }
 
 function computeQuoteTotal({
@@ -113,17 +106,21 @@ export type QuotePricingFacts = {
 };
 
 /**
- * Quote Pricing: the computed breakdown projected from a Quote's stored pricing facts. Deposit (a
- * payment term) and VAT (a Quote Document concern) are not inputs. `liveSelections` are the
- * selections that contributed to the total, returned as the same objects the caller supplied so
- * each layer keeps its own richer shape.
+ * Quote Pricing: the computed breakdown projected from a Quote's stored pricing facts.
+ * `subtotal` is ex-VAT; `total` is the VAT-inclusive price shown to customers. Deposit (a
+ * payment term) is not an input. `liveSelections` are the selections that contributed to the
+ * total, returned as the same objects the caller supplied so each layer keeps its own richer
+ * shape.
  */
 export type QuotePricing<TSelection> = {
   discountAmount: number;
   lineItemTotal: number;
   liveSelections: readonly TSelection[];
   selectedAssemblyTotal: number;
+  subtotal: number;
   total: number;
+  vatAmount: number;
+  vatPercent: number;
 };
 
 function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }>(
@@ -133,13 +130,18 @@ function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }
   const selectedAssemblyPrices = liveSelections.map((selection) => selection.quotedPrice);
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
   const lineItemTotal = computeQuoteLineItemsTotal(facts.lineItems ?? []);
+  const subtotal = computeQuoteTotal({ ...facts, selectedAssemblyPrices });
+  const vatAmount = computeQuoteVatAmount(subtotal);
 
   return {
     discountAmount: computeQuoteDiscountAmount({ ...facts, selectedAssemblyPrices }),
     lineItemTotal,
     liveSelections,
     selectedAssemblyTotal,
-    total: computeQuoteTotal({ ...facts, selectedAssemblyPrices }),
+    subtotal,
+    total: subtotal + vatAmount,
+    vatAmount,
+    vatPercent: VAT_PERCENT,
   };
 }
 

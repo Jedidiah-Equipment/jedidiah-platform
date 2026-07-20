@@ -174,6 +174,10 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
       selectedAssemblies: selections,
     });
 
-    expect(captured.model?.subtotal).toBe(persisted.total);
+    expect(captured.model).toMatchObject({
+      subtotal: persisted.subtotal,
+      total: persisted.total,
+      vatAmount: persisted.vatAmount,
+    });
   });
 });

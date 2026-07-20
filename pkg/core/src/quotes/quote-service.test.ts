@@ -1085,12 +1085,14 @@ describe('patchQuote', () => {
 
     const readBack = await getQuote({ db: context.db, id: quote.id });
 
-    // base 1000 + assembly 500 + line items 250 = 1750; 10% discount = 175; + delivery 350 = 1925.
+    // base 1000 + assembly 500 + line items 250 = 1750; 10% discount = 175; + delivery 350 = 1925 ex-VAT.
     expect(priceQuote(readBack)).toMatchObject({
       discountAmount: 175,
       lineItemTotal: 250,
       selectedAssemblyTotal: 500,
-      total: 1925,
+      subtotal: 1925,
+      total: 2213.75,
+      vatAmount: 288.75,
     });
   });
 

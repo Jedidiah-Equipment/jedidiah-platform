@@ -314,7 +314,10 @@ describe('computeQuoteSummary', () => {
     expect(summary.lineItemTotal).toBe(200);
     expect(summary.selectedAssemblyTotal).toBe(250);
     expect(summary.discountAmount).toBe(145);
-    expect(summary.total).toBe(1305);
+    expect(summary.subtotal).toBe(1305);
+    expect(summary.vatAmount).toBe(195.75);
+    expect(summary.vatPercent).toBe(15);
+    expect(summary.total).toBe(1500.75);
     expect(summary.selectedAssemblies).toEqual([
       { id: PRODUCT_ASSEMBLY_ID, productAssemblyId: PRODUCT_ASSEMBLY_ID, quotedName: 'Optional A', quotedPrice: 250 },
     ]);
@@ -342,7 +345,8 @@ describe('computeQuoteSummary', () => {
     });
 
     expect(summary.selectedAssemblyTotal).toBe(-250);
-    expect(summary.total).toBe(750);
+    expect(summary.subtotal).toBe(750);
+    expect(summary.total).toBe(862.5);
     expect(summary.selectedAssemblies).toEqual([
       {
         id: PRODUCT_ASSEMBLY_ID,
@@ -393,7 +397,8 @@ describe('computeQuoteSummary', () => {
 
     expect(summary.selectedAssemblies).toEqual([]);
     expect(summary.selectedAssemblyTotal).toBe(0);
-    expect(summary.total).toBe(1000);
+    expect(summary.subtotal).toBe(1000);
+    expect(summary.total).toBe(1150);
   });
 
   it('uses entered base price and no assemblies for custom quotes', () => {
@@ -414,7 +419,8 @@ describe('computeQuoteSummary', () => {
     expect(summary.deliveryPrice).toBe(500);
     expect(summary.lineItemTotal).toBe(300);
     expect(summary.selectedAssemblies).toEqual([]);
-    expect(summary.total).toBe(3160);
+    expect(summary.subtotal).toBe(3160);
+    expect(summary.total).toBe(3634);
   });
 });
 

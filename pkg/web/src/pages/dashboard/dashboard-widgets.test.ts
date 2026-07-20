@@ -100,7 +100,11 @@ describe('dashboardWidgets', () => {
     const staleSentWidget = dashboardWidgets.find((widget) => widget.id === 'stale-sent-quotes');
     const awaitingJobCreationWidget = dashboardWidgets.find((widget) => widget.id === 'awaiting-job-creation');
 
-    expect(openPipelineWidget).toMatchObject({ requires: 'quote:read', size: 'xs', title: 'Open pipeline (sent)' });
+    expect(openPipelineWidget).toMatchObject({
+      requires: 'quote:read',
+      size: 'xs',
+      title: 'Open pipeline (sent, excl. VAT)',
+    });
     expect(winRateWidget).toMatchObject({ requires: 'quote:read', size: 'xs', title: 'Win rate (90d)' });
     expect(quoteFlowWidget).toMatchObject({ requires: 'quote:read', size: 'md', title: 'Quote flow' });
     expect(staleSentWidget).toMatchObject({ requires: 'quote:read', size: 'sm', title: 'Stale sent quotes' });

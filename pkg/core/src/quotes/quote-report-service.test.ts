@@ -303,11 +303,11 @@ describe('listStaleSentQuotes', () => {
     expect(result.items[0]).toMatchObject({
       customerCompanyName: 'Acme Mining',
       sentDaysAgo: 15,
-      totalValue: 3100,
+      totalValue: 3565,
     });
     expect(result.items[1]).toMatchObject({
       sentDaysAgo: 3,
-      totalValue: 1500,
+      totalValue: 1725,
     });
   });
 
@@ -333,7 +333,7 @@ describe('listStaleSentQuotes', () => {
       expect.objectContaining({
         id: customQuote.id,
         sentDaysAgo: 15,
-        totalValue: 1000,
+        totalValue: 1150,
       }),
     ]);
   });

@@ -140,7 +140,7 @@ export async function summarizeQuotePipeline({
         ...row,
         lineItems: lineItemsByQuoteId.get(row.id) ?? [],
         selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
-      }).total,
+      }).subtotal,
     ]),
   );
   const decisionCountsByStatus = new Map(decisionRows.map((row) => [row.status, Number(row.count)]));

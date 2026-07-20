@@ -141,7 +141,10 @@ export type QuoteComputedSummary = {
   basePrice: number;
   selectedAssemblies: SelectedAssemblySnapshot[];
   selectedAssemblyTotal: number;
+  subtotal: number;
   total: number;
+  vatAmount: number;
+  vatPercent: number;
 };
 
 export function computeQuoteSummary({
@@ -188,7 +191,10 @@ export function computeQuoteSummary({
     lineItemTotal: pricing.lineItemTotal,
     selectedAssemblies: [...pricing.liveSelections],
     selectedAssemblyTotal: pricing.selectedAssemblyTotal,
+    subtotal: pricing.subtotal,
     total: pricing.total,
+    vatAmount: pricing.vatAmount,
+    vatPercent: pricing.vatPercent,
   };
 }
 

@@ -1,6 +1,7 @@
 import { formatCurrency } from '@pkg/domain';
 import type { Product, ProductRangeOption } from '@pkg/schema';
 import { IconCheck, IconChevronDown, IconFilter } from '@tabler/icons-react-native';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { BoardGrid } from '@/components/bays/BoardGrid';
@@ -153,8 +154,16 @@ export function ProductGridSkeleton() {
 }
 
 function ProductCard({ product }: { product: Product }) {
+  const router = useRouter();
+
   return (
-    <View className="overflow-hidden rounded-2xl border border-border bg-surface">
+    <Pressable
+      accessibilityHint="Opens Product details"
+      accessibilityLabel={product.name}
+      accessibilityRole="button"
+      className="overflow-hidden rounded-2xl border border-border bg-surface active:opacity-80"
+      onPress={() => router.push({ pathname: '/products/[productId]', params: { productId: product.id } })}
+    >
       <View className="relative h-[132px] overflow-hidden bg-image-backdrop">
         <ProductImage product={product} />
         <View className="absolute left-2.5 top-2.5 rounded-lg border border-white/10 bg-black/70 px-2 py-1">
@@ -189,6 +198,6 @@ function ProductCard({ product }: { product: Product }) {
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }

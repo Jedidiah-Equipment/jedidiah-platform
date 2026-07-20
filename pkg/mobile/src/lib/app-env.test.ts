@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { resolveAppEnv } from './app-env';
+import { resolveAppEnv, resolveLanderOrigin } from './app-env';
 
 const originalAppEnv = process.env.EXPO_PUBLIC_APP_ENV;
+const originalLanderOrigin = process.env.EXPO_PUBLIC_LANDER_ORIGIN;
 
 afterEach(() => {
   vi.resetModules();
@@ -11,14 +12,24 @@ afterEach(() => {
   } else {
     process.env.EXPO_PUBLIC_APP_ENV = originalAppEnv;
   }
+  if (originalLanderOrigin === undefined) {
+    delete process.env.EXPO_PUBLIC_LANDER_ORIGIN;
+  } else {
+    process.env.EXPO_PUBLIC_LANDER_ORIGIN = originalLanderOrigin;
+  }
 });
 
-async function loadAppEnv(rawValue: string | undefined) {
+async function loadAppEnv(rawValue: string | undefined, rawLanderOrigin?: string) {
   vi.resetModules();
   if (rawValue === undefined) {
     delete process.env.EXPO_PUBLIC_APP_ENV;
   } else {
     process.env.EXPO_PUBLIC_APP_ENV = rawValue;
+  }
+  if (rawLanderOrigin === undefined) {
+    delete process.env.EXPO_PUBLIC_LANDER_ORIGIN;
+  } else {
+    process.env.EXPO_PUBLIC_LANDER_ORIGIN = rawLanderOrigin;
   }
 
   return import('./app-env');
@@ -47,5 +58,16 @@ describe('appEnv', () => {
 
     expect(appEnv).toBe(expectedAppEnv);
     expect(isStagingAppEnv).toBe(expectedIsStaging);
+  });
+});
+
+describe('landerOrigin', () => {
+  it('defaults to the slot-zero local Lander and removes trailing slashes from overrides', async () => {
+    expect(resolveLanderOrigin(undefined)).toBe('http://localhost:7004');
+    expect(resolveLanderOrigin('https://jedidiahequipment.co.za///')).toBe('https://jedidiahequipment.co.za');
+
+    const { landerOrigin } = await loadAppEnv('staging', 'https://preview.example.com/');
+
+    expect(landerOrigin).toBe('https://preview.example.com');
   });
 });

@@ -27,3 +27,9 @@ export function presentProducts(items: readonly Product[], range: RangeFilter, s
     return left.name.localeCompare(right.name);
   });
 }
+
+export function landerProductUrls(origin: string, modelCode: string): { en: string; af: string } {
+  const encoded = encodeURIComponent(modelCode);
+
+  return { en: `${origin}/products/${encoded}`, af: `${origin}/af/products/${encoded}` };
+}

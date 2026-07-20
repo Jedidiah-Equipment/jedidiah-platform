@@ -19,3 +19,8 @@ export async function authedFetch(path: string, init?: RequestInit): Promise<Res
 export function jobDocumentDownloadPath(jobId: string, documentId: string): string {
   return `/api/jobs/${jobId}/documents/${documentId}/download`;
 }
+
+/** URL of a Product document's authed download route. */
+export function productDocumentDownloadPath(productId: string, documentId: string): string {
+  return `/api/products/${productId}/documents/${documentId}/download`;
+}

@@ -1,4 +1,4 @@
-import type { JobDocument } from '@pkg/schema';
+import type { DocumentSummary } from '@pkg/schema';
 import { IconChevronLeft, IconDownload, IconShare, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
@@ -6,7 +6,6 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import { DocumentPage } from '@/components/documents/DocumentPage';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { jobDocumentDownloadPath } from '@/lib/authed-fetch';
 import { type DocumentAction, saveDocument, shareDocument } from '@/lib/document-actions';
 
 /**
@@ -16,13 +15,13 @@ import { type DocumentAction, saveDocument, shareDocument } from '@/lib/document
  * itself is rendered by the platform {@link DocumentPage}.
  */
 export function DocumentViewer({
-  jobId,
+  downloadPath,
   document,
   context,
   onBack,
 }: {
-  jobId: string;
-  document: JobDocument;
+  downloadPath: string;
+  document: Pick<DocumentSummary, 'filename'>;
   /** Sub-label under the title, e.g. `JOB-00009 · Silage Grain 18 36`. */
   context: string;
   onBack: () => void;
@@ -30,7 +29,7 @@ export function DocumentViewer({
   const [busy, setBusy] = useState<null | 'save' | 'share'>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const action: DocumentAction = { path: jobDocumentDownloadPath(jobId, document.id), filename: document.filename };
+  const action: DocumentAction = { path: downloadPath, filename: document.filename };
 
   const run = (kind: 'save' | 'share', act: (a: DocumentAction) => Promise<void>) => async () => {
     if (busy) return;

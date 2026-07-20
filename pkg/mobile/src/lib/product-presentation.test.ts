@@ -1,7 +1,7 @@
 import type { Product } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { isProductSort, normalizeRangeFilter, presentProducts } from './product-presentation';
+import { isProductSort, landerProductUrls, normalizeRangeFilter, presentProducts } from './product-presentation';
 
 function product(id: string, name: string, basePrice: number, rangeId: string): Product {
   return { id, name, basePrice, rangeId } as Product;
@@ -51,5 +51,14 @@ describe('persisted Product controls', () => {
     expect(normalizeRangeFilter('removed-range', ['range-a', 'range-b'])).toBe('all');
     expect(normalizeRangeFilter('range-b', ['range-a', 'range-b'])).toBe('range-b');
     expect(normalizeRangeFilter('all', ['range-a', 'range-b'])).toBe('all');
+  });
+});
+
+describe('landerProductUrls', () => {
+  it('builds canonical English and Afrikaans Product URLs', () => {
+    expect(landerProductUrls('https://jedidiahequipment.co.za', 'FF 5000/XL')).toEqual({
+      en: 'https://jedidiahequipment.co.za/products/FF%205000%2FXL',
+      af: 'https://jedidiahequipment.co.za/af/products/FF%205000%2FXL',
+    });
   });
 });

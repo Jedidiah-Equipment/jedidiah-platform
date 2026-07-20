@@ -45,7 +45,7 @@ export function ProductCatalogControls({
   const buttonRef = useRef<View>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ left: number; top: number } | null>(null);
   const rangeLabel =
-    range === 'all' ? 'ALL RANGES' : (ranges.find((option) => option.id === range)?.name ?? 'ALL RANGES');
+    range === 'all' ? 'All ranges' : (ranges.find((option) => option.id === range)?.name ?? 'All ranges');
 
   const openMenu = () => {
     buttonRef.current?.measureInWindow((x, y, _width, height) => {
@@ -78,7 +78,7 @@ export function ProductCatalogControls({
               style={{ left: menuAnchor.left, top: menuAnchor.top, width: 240 }}
             >
               <View className="p-1.5">
-                <RangeOption active={range === 'all'} label="All Ranges" onPress={() => selectRange('all')} />
+                <RangeOption active={range === 'all'} label="All ranges" onPress={() => selectRange('all')} />
                 {ranges.map((option) => (
                   <RangeOption
                     key={option.id}

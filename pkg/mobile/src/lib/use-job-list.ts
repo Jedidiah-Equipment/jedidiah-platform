@@ -7,7 +7,7 @@ import {
   type JobWorkSlotEntry,
   listEnabledBays,
 } from '@pkg/domain';
-import type { BayOperator, DateOnlyIso, UUID } from '@pkg/schema';
+import type { BayOperator, DateIso, DateOnlyIso, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
@@ -19,6 +19,7 @@ import { useBayCalendars } from './use-bay-calendars';
 export type JobListCard = {
   jobId: string;
   jobCode: string;
+  createdAt: DateIso;
   jobDisplayName: string;
   productThumbnailDataUrl: string | null;
   customerCompanyName: string | null;
@@ -92,6 +93,7 @@ export function useJobList(): JobListResult {
       cards.push({
         jobId,
         jobCode: job.code,
+        createdAt: job.createdAt,
         jobDisplayName: getJobDisplayName(job),
         productThumbnailDataUrl: job.productThumbnailDataUrl,
         customerCompanyName: job.customerCompanyName,

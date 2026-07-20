@@ -1,12 +1,18 @@
 import type { JobListCard } from './use-job-list';
 
-/**
- * Orders the Job grid client-side. There is no sort control in Jobs mode: Jobs always read
- * days-left ascending, so the work coming off the floor soonest sits at the top, tie-broken by
- * Job code for a stable order. Returns a new array.
- */
-export function sortJobCards(cards: readonly JobListCard[]): JobListCard[] {
-  return [...cards].sort(
-    (left, right) => left.progress.daysLeft - right.progress.daysLeft || left.jobCode.localeCompare(right.jobCode),
-  );
+export type JobSort = 'days-left' | 'newest';
+
+export function isJobSort(value: unknown): value is JobSort {
+  return value === 'days-left' || value === 'newest';
+}
+
+/** Orders the Job grid by urgency or creation date, with Job code as a stable tie-breaker. */
+export function sortJobCards(cards: readonly JobListCard[], sort: JobSort): JobListCard[] {
+  const byCode = (left: JobListCard, right: JobListCard) => left.jobCode.localeCompare(right.jobCode);
+
+  if (sort === 'newest') {
+    return [...cards].sort((left, right) => right.createdAt.localeCompare(left.createdAt) || byCode(left, right));
+  }
+
+  return [...cards].sort((left, right) => left.progress.daysLeft - right.progress.daysLeft || byCode(left, right));
 }

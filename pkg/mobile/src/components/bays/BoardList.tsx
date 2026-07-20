@@ -7,7 +7,7 @@ import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import { type BaySort, isBaySort, sortBayCards } from '@/lib/bay-sort';
-import { sortJobCards } from '@/lib/job-sort';
+import { isJobSort, type JobSort, sortJobCards } from '@/lib/job-sort';
 import type { BayListState } from '@/lib/use-bay-list';
 import type { JobListState } from '@/lib/use-job-list';
 import { usePersistedState } from '@/lib/use-persisted-state';
@@ -22,9 +22,13 @@ export function isListMode(value: unknown): value is ListMode {
   return value === 'bays' || value === 'jobs';
 }
 
-const SORT_OPTIONS: readonly { label: string; value: BaySort }[] = [
+const BAY_SORT_OPTIONS: readonly { label: string; value: BaySort }[] = [
   { label: 'DAYS LEFT', value: 'days-left' },
   { label: 'BAY NAME', value: 'name' },
+];
+const JOB_SORT_OPTIONS: readonly { label: string; value: JobSort }[] = [
+  { label: 'DAYS LEFT', value: 'days-left' },
+  { label: 'NEWEST', value: 'newest' },
 ];
 
 const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
@@ -47,7 +51,8 @@ export function BoardList({
   jobState: JobListState;
 }) {
   const router = useRouter();
-  const [sort, setSort] = usePersistedState<BaySort>('jedidiah-bay-sort', 'days-left', isBaySort);
+  const [baySort, setBaySort] = usePersistedState<BaySort>('jedidiah-bay-sort', 'days-left', isBaySort);
+  const [jobSort, setJobSort] = usePersistedState<JobSort>('jedidiah-job-sort', 'days-left', isJobSort);
   const isBays = listMode === 'bays';
   const state = isBays ? bayState : jobState;
 
@@ -56,8 +61,12 @@ export function BoardList({
       <ListControlRow
         leading={<ListModeControl onToggle={onToggleListMode} title={isBays ? 'Bays' : 'Jobs'} />}
         trailing={
-          isBays && bayState.status === 'ready' ? (
-            <SegmentedSortControl onChange={setSort} options={SORT_OPTIONS} value={sort} />
+          state.status === 'ready' ? (
+            isBays ? (
+              <SegmentedSortControl onChange={setBaySort} options={BAY_SORT_OPTIONS} value={baySort} />
+            ) : (
+              <SegmentedSortControl onChange={setJobSort} options={JOB_SORT_OPTIONS} value={jobSort} />
+            )
           ) : null
         }
       />
@@ -77,7 +86,7 @@ export function BoardList({
           <Text className="text-sm text-muted-foreground">No enabled bays yet.</Text>
         ) : (
           <BoardGrid
-            items={sortBayCards(bayState.cards, sort)}
+            items={sortBayCards(bayState.cards, baySort)}
             keyOf={(bay) => bay.id}
             renderItem={(bay) => (
               <BayCard
@@ -92,7 +101,7 @@ export function BoardList({
           <Text className="text-sm text-muted-foreground">No active jobs.</Text>
         ) : (
           <BoardGrid
-            items={sortJobCards(jobState.cards)}
+            items={sortJobCards(jobState.cards, jobSort)}
             keyOf={(job) => job.jobId}
             renderItem={(job) => (
               <JobCard

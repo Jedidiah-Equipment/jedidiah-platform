@@ -15,8 +15,8 @@ import { Text } from '@/components/ui/text';
 import type { ProductSort, RangeFilter } from '@/lib/product-presentation';
 
 const PRODUCT_SORT_OPTIONS: readonly { label: string; value: ProductSort }[] = [
-  { label: 'NAME', value: 'name' },
-  { label: 'PRICE', value: 'price' },
+  { label: 'Name', value: 'name' },
+  { label: 'Price', value: 'price' },
 ];
 const PRODUCT_SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
 

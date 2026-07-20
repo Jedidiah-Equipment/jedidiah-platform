@@ -70,7 +70,7 @@ export function QuoteCatalogControls({
         <Icon className="text-muted-foreground" icon={IconSearch} size={17} />
         <TextInput
           accessibilityLabel="Search quotes"
-          className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-xs"
+          className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-sm"
           onChangeText={onSearchChange}
           placeholder="Search quotes…"
           returnKeyType="search"
@@ -97,7 +97,7 @@ export function QuoteCatalogControls({
         >
           <Icon className="text-primary-foreground" icon={IconPlus} size={18} strokeWidth={2.5} />
           {isWide ? (
-            <Text className="text-xs text-primary-foreground" weight="bold">
+            <Text className="text-sm text-primary-foreground" weight="bold">
               New quote
             </Text>
           ) : null}

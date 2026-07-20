@@ -23,12 +23,12 @@ export function isListMode(value: unknown): value is ListMode {
 }
 
 const BAY_SORT_OPTIONS: readonly { label: string; value: BaySort }[] = [
-  { label: 'DAYS LEFT', value: 'days-left' },
-  { label: 'BAY NAME', value: 'name' },
+  { label: 'Days left', value: 'days-left' },
+  { label: 'Bay name', value: 'name' },
 ];
 const JOB_SORT_OPTIONS: readonly { label: string; value: JobSort }[] = [
-  { label: 'DAYS LEFT', value: 'days-left' },
-  { label: 'NEWEST', value: 'newest' },
+  { label: 'Days left', value: 'days-left' },
+  { label: 'Newest', value: 'newest' },
 ];
 
 const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
@@ -125,7 +125,7 @@ function ListModeControl({ onToggle, title }: { onToggle: () => void; title: str
       className="h-10 max-w-full self-start flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3 active:bg-muted"
       onPress={onToggle}
     >
-      <Text className="min-w-0 shrink text-xs text-foreground" numberOfLines={1} weight="bold">
+      <Text className="min-w-0 shrink text-sm text-foreground" numberOfLines={1} weight="bold">
         {title}
       </Text>
       <Icon className="shrink-0 text-muted-foreground" icon={IconArrowsLeftRight} size={15} />

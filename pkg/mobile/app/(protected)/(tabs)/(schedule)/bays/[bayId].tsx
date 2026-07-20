@@ -13,7 +13,7 @@ export default function BayScheduleRoute() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <BayQueueScreen bayId={bayId} onBack={() => router.back()} />
+      <BayQueueScreen bayId={bayId} onBack={() => router.dismissTo('/')} />
     </SafeAreaView>
   );
 }

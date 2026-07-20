@@ -27,8 +27,9 @@ export default function IndexRoute() {
   const jobList = useJobList();
   const refresh = useGlobalRefresh();
   const bayCount = bayList.state.status === 'ready' ? bayList.state.cards.length : null;
+  const accessFailed = access.error !== null && access.data === undefined;
 
-  if (!access.isPending && !tabs.includes('schedule')) {
+  if (!access.isPending && !accessFailed && !tabs.includes('schedule')) {
     if (tabs.includes('quotes')) return <Redirect href="/quotes" />;
     if (tabs.includes('products')) return <Redirect href="/products" />;
 

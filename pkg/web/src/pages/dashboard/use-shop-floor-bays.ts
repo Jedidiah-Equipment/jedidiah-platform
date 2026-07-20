@@ -1,4 +1,4 @@
-import { listEnabledBays, type WorkingCalendar } from '@pkg/domain';
+import { isJobCancelled, listEnabledBays, type WorkingCalendar } from '@pkg/domain';
 import type { DateOnlyIso, JobSummary, OffDay, ProjectedBayQueue } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -39,14 +39,14 @@ export function useShopFloorBays(): ShopFloorBays {
       return { status: 'pending' };
     }
 
-    const cancelledJobIds = new Set(baysQuery.data.jobs.filter((job) => job.cancelledAt !== null).map((job) => job.id));
+    const cancelledJobIds = new Set(baysQuery.data.jobs.filter(isJobCancelled).map((job) => job.id));
     // The Board keeps cancelled Slots for history; dashboard widgets are live operational lists, so
     // remove those Slots at this consumer boundary without changing the truthful Board response.
     const enabledBays = listEnabledBays(baysQuery.data.items).map((bay) => ({
       ...bay,
       slots: bay.slots.filter((slot) => slot.kind === 'idle' || !cancelledJobIds.has(slot.jobId)),
     }));
-    const liveJobs = baysQuery.data.jobs.filter((job) => job.cancelledAt === null);
+    const liveJobs = baysQuery.data.jobs.filter((job) => !isJobCancelled(job));
 
     return {
       enabledBays,

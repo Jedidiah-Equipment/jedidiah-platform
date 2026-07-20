@@ -27,6 +27,7 @@ import {
 import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
+import { getJob } from '../jobs/job-read-service.js';
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
@@ -1327,6 +1328,18 @@ describe('cancelQuote', () => {
       .from(auditEvents)
       .where(and(eq(auditEvents.entityId, job.id), eq(auditEvents.entityType, 'job')));
     expect(events).toEqual([expect.objectContaining({ action: 'deleted', actorUserId: context.salesPerson.id })]);
+
+    // getJob still resolves the cancelled Job (read-only sheet), and its schedule describes only the
+    // retained done/active Slots — never the removed future Slots — so it offers no cancelled capacity.
+    const detail = await getJob({ db: context.db, id: job.id });
+    const scheduledSlotIds = detail.schedule.flatMap((department) =>
+      department.bays.flatMap((bay) => bay.slots.map((slot) => slot.id)),
+    );
+    expect(scheduledSlotIds).toEqual(
+      expect.arrayContaining([slotIds.done, slotIds.active, slotIds.zeroConsumedActive]),
+    );
+    expect(scheduledSlotIds).not.toContain(slotIds.scheduled);
+    expect(scheduledSlotIds).not.toContain(slotIds.secondScheduled);
   });
 
   test('rejects cancelling an already-cancelled Quote with a stable code', async ({ context }) => {

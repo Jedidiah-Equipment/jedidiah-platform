@@ -1,5 +1,6 @@
 import {
   addJobSlotDuration,
+  isJobCancelled,
   labelWorkDays,
   type SlotCalendarDays,
   segmentSlotCalendarDays,
@@ -133,7 +134,7 @@ export const BaySlotBar: React.FC<{
   const left = getJobGanttOffset(startDate, gantt);
   const width = Math.max(getJobGanttWidth(startDate, previewEndDate, gantt) - SLOT_GAP, 28);
   const isIdle = slot.kind === 'idle';
-  const isCancelled = !isIdle && job?.cancelledAt !== null && job?.cancelledAt !== undefined;
+  const isCancelled = !isIdle && isJobCancelled(job);
   const canReplanSlot = canEditSchedule && !isCancelled;
   // During resize preview the server has not seen `previewEndDate`, so that one path still
   // classifies locally; resting slots read the Board builder's shipped state.

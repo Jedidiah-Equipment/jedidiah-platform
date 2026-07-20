@@ -1,5 +1,6 @@
 import {
   formatDate,
+  isJobCancelled,
   type JobProgress,
   type JobRouteStopState,
   restingStatusColor,
@@ -119,7 +120,7 @@ function Ready({
             refreshControl={<RefreshControl {...refresh} />}
             style={{ borderRightWidth: 1, flex: 42 }}
           >
-            <RoutePane isCancelled={state.cancelledAt !== null} route={state.route} />
+            <RoutePane isCancelled={isJobCancelled(state)} route={state.route} />
           </ScrollView>
           <ScrollView
             contentContainerClassName="w-full px-4 pb-10 pt-4"
@@ -139,7 +140,7 @@ function Ready({
       <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
         <DetailPane jobId={jobId} state={state} />
         <View className="my-5 h-px bg-border" />
-        <RoutePane isCancelled={state.cancelledAt !== null} route={state.route} />
+        <RoutePane isCancelled={isJobCancelled(state)} route={state.route} />
       </ScrollView>
     </>
   );
@@ -265,7 +266,7 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   const overallPercent = progress?.overallPercent ?? 100;
   // The working-days-left chip + overall bar share the status accent: blue in progress, green when
   // queued, amber/red as the finish nears. A finished Job (null progress) rests on the scheduled green.
-  const isCancelled = state.cancelledAt !== null;
+  const isCancelled = isJobCancelled(state);
   const accent = isCancelled
     ? mutedForegroundColors[resolved]
     : progress

@@ -5,6 +5,7 @@ import {
   findActiveWorkSlot,
   getJobDisplayName,
   hasPermission,
+  isJobCancelled,
   listEnabledBays,
 } from '@pkg/domain';
 import type { BayOperator, DateOnlyIso } from '@pkg/schema';
@@ -75,7 +76,7 @@ export function useBayList(): UseBayListResult {
       const workingCalendar = bayCalendars.workingCalendarsByBayId.get(bay.id) ?? {};
       const slot = findActiveWorkSlot({ bay });
       const candidateJob = slot ? jobsById.get(slot.jobId) : undefined;
-      const job = candidateJob?.cancelledAt === null ? candidateJob : undefined;
+      const job = candidateJob && !isJobCancelled(candidateJob) ? candidateJob : undefined;
 
       return {
         id: bay.id,

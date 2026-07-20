@@ -1,4 +1,4 @@
-import { getJobDisplayName, type SlotCalendarDaySegment, type SlotCalendarDays } from '@pkg/domain';
+import { getJobDisplayName, isJobCancelled, type SlotCalendarDaySegment, type SlotCalendarDays } from '@pkg/domain';
 import type { DateOnlyIso, JobSummary } from '@pkg/schema';
 import type React from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
@@ -28,7 +28,7 @@ export const BaySlotJobCard: React.FC<BaySlotJobCardProps> = ({ dayBreakdown, jo
       />
       <div className="flex min-w-0 flex-1 flex-col justify-center leading-tight">
         <span className="truncate font-mono font-semibold text-sm">{jobCode}</span>
-        {job?.cancelledAt ? (
+        {isJobCancelled(job) ? (
           <Badge className="w-fit border-muted-foreground/40 text-muted-foreground" variant="outline">
             Cancelled
           </Badge>

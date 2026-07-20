@@ -1,4 +1,4 @@
-import { addDateOnlyDays } from '@pkg/domain';
+import { addDateOnlyDays, isJobCancelled } from '@pkg/domain';
 import type { JobSummary, ProjectedBayQueue, UUID } from '@pkg/schema';
 
 export type JobCalendarSlotChip = {
@@ -25,7 +25,7 @@ export function groupJobCalendarSlotsByDate(
 
       const chip = {
         bayName: bay.name,
-        cancelled: job.cancelledAt !== null,
+        cancelled: isJobCancelled(job),
         jobCode: slot.jobCode,
         jobId: job.id,
         slotId: slot.id,

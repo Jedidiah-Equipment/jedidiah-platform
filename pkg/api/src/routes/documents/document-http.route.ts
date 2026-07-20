@@ -264,6 +264,12 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
     }
 
     if (isJobCoreError(error)) {
+      // A cancelled Job is a terminal-state conflict, mapped to 400 like the tRPC boundary (and the
+      // QuoteLockedError precedent) so the same appCode carries the same status on every surface.
+      if (error.code === 'job.cancelled') {
+        throw new RouteHttpError({ appCode: error.code, message: error.message, statusCode: 400 });
+      }
+
       throw mapOwnerNotFound(error, { notFoundCode: 'job.not_found', label: 'Job', otherStatus: 403 });
     }
 

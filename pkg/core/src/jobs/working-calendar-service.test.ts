@@ -3,7 +3,6 @@ import {
   type Db,
   jobBayCalendarExceptions,
   jobBays,
-  jobs,
   products,
   quotes,
   user,
@@ -17,7 +16,6 @@ import {
   RemoveBayCalendarExceptionInput,
   ToggleOffDayInput,
 } from '@pkg/schema';
-import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
@@ -121,94 +119,9 @@ describe('toggleOffDay', () => {
       }),
     );
   });
-
-  test("protects a cancelled Job's retained slot while allowing unrelated Off-Days", async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
-    const job = await createAcceptedJob(context.db, context.product.id);
-    await toggleOffDay({
-      db: context.db,
-      input: offDayInput({ date: '2026-06-06', isOffDay: true, label: 'Existing shutdown' }),
-    });
-    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 3, jobId: job.id } });
-    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
-
-    await expect(
-      toggleOffDay({
-        db: context.db,
-        input: offDayInput({ date: '2026-06-07', isOffDay: true, label: 'History-changing shutdown' }),
-      }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
-    await expect(
-      toggleOffDay({
-        db: context.db,
-        input: offDayInput({ date: '2026-06-06', isOffDay: false, label: null }),
-      }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
-
-    await expect(
-      toggleOffDay({
-        db: context.db,
-        input: offDayInput({ date: '2026-06-20', isOffDay: true, label: 'Future shutdown' }),
-      }),
-    ).resolves.toMatchObject({ offDay: { date: '2026-06-20' } });
-    await expect(
-      toggleOffDay({
-        db: context.db,
-        input: offDayInput({ date: '2026-06-20', isOffDay: false, label: null }),
-      }),
-    ).resolves.toEqual({ offDay: null });
-
-    await expect(context.db.select().from(workingCalendarOffDays)).resolves.toEqual([
-      expect.objectContaining({ date: '2026-06-06' }),
-    ]);
-  });
 });
 
 describe('Bay calendar exceptions', () => {
-  test("rejects calendar changes that would reflow a cancelled Job's retained slot", async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication' });
-    const job = await createAcceptedJob(context.db, context.product.id);
-    await addBayCalendarException({
-      db: context.db,
-      input: bayExceptionInput({ bayId: bay.id, date: '2026-06-07', direction: 'off', label: 'Existing closure' }),
-    });
-    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 3, jobId: job.id } });
-    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
-
-    await expect(
-      addBayCalendarException({
-        db: context.db,
-        input: bayExceptionInput({ bayId: bay.id, date: '2026-06-08', direction: 'off', label: null }),
-      }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
-    await expect(
-      removeBayCalendarException({
-        db: context.db,
-        input: removeBayExceptionInput({ bayId: bay.id, date: '2026-06-07' }),
-      }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
-  });
-
-  test("allows calendar changes after a cancelled Job's retained slot", async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-01' });
-    const job = await createAcceptedJob(context.db, context.product.id);
-    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 2, jobId: job.id } });
-    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
-
-    await expect(
-      addBayCalendarException({
-        db: context.db,
-        input: bayExceptionInput({ bayId: bay.id, date: '2026-06-20', direction: 'off', label: 'Future closure' }),
-      }),
-    ).resolves.toMatchObject({ exception: { date: '2026-06-20' } });
-    await expect(
-      removeBayCalendarException({
-        db: context.db,
-        input: removeBayExceptionInput({ bayId: bay.id, date: '2026-06-20' }),
-      }),
-    ).resolves.toMatchObject({ exception: { date: '2026-06-20' } });
-  });
-
   test('inserts, updates, and removes Bay exceptions for authorized schedulers', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
 

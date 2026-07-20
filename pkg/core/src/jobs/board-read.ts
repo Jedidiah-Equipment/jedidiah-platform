@@ -11,6 +11,7 @@ import {
   type BoardGhost,
   type BoardPlacement,
   type BoardSeed,
+  isJobCancelled,
   type ProjectableBoardSlot,
   projectBoard,
   type WorkingCalendar,
@@ -194,6 +195,6 @@ export function mergeBoardBayRows(primaryRows: readonly BoardBayRow[], extraRows
 export function withoutCancelledJobSlots(rows: readonly BoardBayRow[]): BoardBayRow[] {
   return rows.map((row) => ({
     ...row,
-    slots: row.slots.filter((slot) => slot.job?.cancelledAt == null),
+    slots: row.slots.filter((slot) => !isJobCancelled(slot.job)),
   }));
 }

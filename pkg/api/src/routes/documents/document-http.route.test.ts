@@ -189,7 +189,7 @@ describe('document HTTP routes', () => {
       ...buildMultipartUpload({ bytes: pdfBytes(), filename: 'PO-CANCELLED.pdf' }),
     });
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({
       data: { appCode: 'job.cancelled' },
       message: 'Cancelled Job cannot be changed.',

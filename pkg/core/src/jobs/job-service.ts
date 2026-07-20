@@ -11,7 +11,14 @@ import {
   quoteSelectedAssemblies,
   quotes,
 } from '@pkg/db';
-import { buildCfo, type CfoEntry, canStartJobFromQuote, getPlantDateNow, projectJobSlots } from '@pkg/domain';
+import {
+  buildCfo,
+  type CfoEntry,
+  canStartJobFromQuote,
+  getPlantDateNow,
+  isJobCancelled,
+  projectJobSlots,
+} from '@pkg/domain';
 import {
   type AddIdleJobSlotInput,
   AddIdleJobSlotResult,
@@ -181,7 +188,7 @@ export async function cancelJobForQuote({
 }): Promise<void> {
   const [job] = await tx.select().from(jobs).where(eq(jobs.quoteId, quoteId)).for('update');
 
-  if (!job || job.cancelledAt) {
+  if (!job || isJobCancelled(job)) {
     return;
   }
 

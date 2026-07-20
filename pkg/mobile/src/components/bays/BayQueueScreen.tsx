@@ -14,7 +14,7 @@ import { Text } from '@/components/ui/text';
 import {
   type BayQueueActiveJob,
   type BayQueueState,
-  type BayQueueUpcomingSlot,
+  type BayQueueTimelineSlot,
   useBaySchedule,
 } from '@/lib/use-bay-schedule';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
@@ -358,7 +358,7 @@ function Timeline({
   selectedId,
   onSelect,
 }: {
-  slots: BayQueueUpcomingSlot[];
+  slots: BayQueueTimelineSlot[];
   selectedId: string | null;
   onSelect: (slotId: string) => void;
 }) {
@@ -385,7 +385,7 @@ function TimelineItem({
   selected,
   onSelect,
 }: {
-  slot: BayQueueUpcomingSlot;
+  slot: BayQueueTimelineSlot;
   selected: boolean;
   onSelect: () => void;
 }) {

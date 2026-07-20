@@ -23,6 +23,7 @@ export * from './jobs/job-cfo.js';
 export * from './jobs/job-code.js';
 export * from './jobs/job-department-pipeline.js';
 export * from './jobs/job-display.js';
+export * from './jobs/job-lifecycle.js';
 export * from './jobs/job-progress.js';
 export * from './jobs/job-slot-insert-at-date.js';
 export * from './jobs/job-slot-projection.js';

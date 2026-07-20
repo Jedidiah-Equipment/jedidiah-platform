@@ -22,6 +22,10 @@ export function isQuoteStatusFilter(value: unknown): value is QuoteStatusFilter 
   return value === 'all' || QuoteStatus.safeParse(value).success;
 }
 
+export function shouldPinPriorityQuotes({ search, status }: { search: string; status: QuoteStatusFilter }): boolean {
+  return search.trim().length === 0 && status === 'all';
+}
+
 type QuoteMetaFacts =
   | { kind: 'custom' }
   | {

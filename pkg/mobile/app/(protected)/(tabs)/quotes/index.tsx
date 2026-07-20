@@ -16,6 +16,7 @@ import {
   isQuoteStatusFilter,
   presentQuotePages,
   type QuoteStatusFilter,
+  shouldPinPriorityQuotes,
 } from '@/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
@@ -38,6 +39,7 @@ export default function QuotesRoute() {
   const loadingNextPage = useRef(false);
   const paginationMatchesQuery = pagination.search === debouncedSearch && pagination.status === status;
   const activePageCount = paginationMatchesQuery ? pagination.pageCount : 1;
+  const pinPriorityQuotes = shouldPinPriorityQuotes({ search: debouncedSearch, status });
   const refresh = useGlobalRefresh();
 
   useEffect(() => {
@@ -72,19 +74,19 @@ export default function QuotesRoute() {
   });
   const priorityQuery = useQuery(
     trpc.quotes.priorityList.queryOptions(undefined, {
-      enabled: readAccess.can,
+      enabled: readAccess.can && pinPriorityQuotes,
     }),
   );
   const loadedPages = listQueries.flatMap((query) => (query.data ? [query.data] : []));
-  const priorityQuotes = priorityQuery.data ?? [];
+  const priorityQuotes = pinPriorityQuotes ? (priorityQuery.data ?? []) : [];
   const quoteSections = presentQuotePages(loadedPages, priorityQuotes);
   const displayedQuoteCount = quoteSections.priorityQuotes.length + quoteSections.mainQuotes.length;
   const total = loadedPages.at(0)?.total ?? null;
   const lastPage = loadedPages.at(-1);
   const nextPage = lastPage ? getNextQuotePage(lastPage, loadedPages) : undefined;
   const lastQuery = listQueries.at(-1);
-  const pending = priorityQuery.isPending || listQueries.some((query) => query.isPending);
-  const failed = priorityQuery.isError || listQueries.some((query) => query.isError);
+  const pending = (pinPriorityQuotes && priorityQuery.isPending) || listQueries.some((query) => query.isPending);
+  const failed = (pinPriorityQuotes && priorityQuery.isError) || listQueries.some((query) => query.isError);
   const loadingMore = activePageCount > 1 && lastQuery?.isPending === true;
   const hasCriteria = search.trim().length > 0 || status !== 'all';
 

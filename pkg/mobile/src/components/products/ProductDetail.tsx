@@ -10,6 +10,7 @@ import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { ProductImage } from '@/components/products/ProductImage';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { useAppToast } from '@/components/ui/toast';
 import { landerOrigin } from '@/lib/app-env';
 import { productDocumentDownloadPath } from '@/lib/authed-fetch';
 import { saveDocument } from '@/lib/document-actions';
@@ -86,6 +87,7 @@ function ProductIdentity({ product }: { product: Product }) {
 function ProductDetailsCard({ product }: { product: Product }) {
   const urls = landerProductUrls(landerOrigin, product.modelCode);
   const published = isLanderReady(product);
+  const showToast = useAppToast();
   const [copied, setCopied] = useState<'en' | 'af' | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -98,7 +100,7 @@ function ProductDetailsCard({ product }: { product: Product }) {
 
   const copyLink = async (locale: 'en' | 'af') => {
     if (!published) {
-      Alert.alert('Website link unavailable', 'This Product is not published to the website yet.');
+      showToast('error', 'Product is not yet enabled on the website');
       return;
     }
 

@@ -16,7 +16,7 @@ vi.mock('../../../lib/analytics.js', () => ({
   captureEventForNavigation: vi.fn(),
 }));
 
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 let root: Root | undefined;
 

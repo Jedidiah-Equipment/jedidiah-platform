@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   computeQuoteLineItemAmount,
-  computeQuoteTotalIncludingVat,
   computeQuoteVatAmount,
   priceQuote,
   priceQuoteWithCatalog,
+  VAT_PERCENT,
   validateDiscount,
 } from './quote-pricing.js';
 
@@ -53,25 +53,26 @@ describe('computeQuoteLineItemAmount', () => {
   });
 });
 
-describe('quote document VAT helpers', () => {
-  it('computes VAT from a quote document subtotal', () => {
+describe('quote VAT', () => {
+  it('computes VAT at the shared rate', () => {
+    expect(VAT_PERCENT).toBe(15);
     expect(computeQuoteVatAmount(2000)).toBe(300);
-  });
-
-  it('adds VAT to a quote document subtotal', () => {
-    expect(computeQuoteTotalIncludingVat(2000)).toBe(2300);
   });
 });
 
 describe('priceQuote', () => {
   it('subtracts the discount percent from the quoted base price', () => {
-    expect(priceQuote({ quotedBasePrice: 1250, discountPercent: 10, selectedAssemblies: [] }).total).toBe(1125);
+    expect(priceQuote({ quotedBasePrice: 1250, discountPercent: 10, selectedAssemblies: [] })).toMatchObject({
+      subtotal: 1125,
+      total: 1293.75,
+      vatAmount: 168.75,
+    });
   });
 
   it('discounts the product plus selected optional assemblies', () => {
     expect(
       priceQuote({ discountPercent: 10, quotedBasePrice: 1250, selectedAssemblies: selections([300, 150]) }),
-    ).toMatchObject({ discountAmount: 170, selectedAssemblyTotal: 450, total: 1530 });
+    ).toMatchObject({ discountAmount: 170, selectedAssemblyTotal: 450, subtotal: 1530, total: 1759.5 });
   });
 
   it('includes line items in the discountable subtotal', () => {
@@ -85,7 +86,7 @@ describe('priceQuote', () => {
         quotedBasePrice: 1250,
         selectedAssemblies: selections([300, 150]),
       }),
-    ).toMatchObject({ discountAmount: 200, lineItemTotal: 300, total: 1800 });
+    ).toMatchObject({ discountAmount: 200, lineItemTotal: 300, subtotal: 1800, total: 2070 });
   });
 
   it('rounds the derived discount amount to cents', () => {
@@ -96,8 +97,8 @@ describe('priceQuote', () => {
 
   it('subtracts negative optional assembly snapshot prices from the product total', () => {
     expect(
-      priceQuote({ discountPercent: 0, quotedBasePrice: 1250, selectedAssemblies: selections([-300]) }).total,
-    ).toBe(950);
+      priceQuote({ discountPercent: 0, quotedBasePrice: 1250, selectedAssemblies: selections([-300]) }),
+    ).toMatchObject({ subtotal: 950, total: 1092.5 });
   });
 
   it('does not let a negative discountable subtotal produce a negative discount', () => {
@@ -114,8 +115,8 @@ describe('priceQuote', () => {
         discountPercent: 10,
         quotedBasePrice: 1250,
         selectedAssemblies: [],
-      }).total,
-    ).toBe(1125);
+      }),
+    ).toMatchObject({ subtotal: 1125, total: 1293.75 });
   });
 
   it('adds delivery price when delivery is not included in the sale price', () => {
@@ -126,8 +127,8 @@ describe('priceQuote', () => {
         discountPercent: 10,
         quotedBasePrice: 1250,
         selectedAssemblies: [],
-      }).total,
-    ).toBe(1475);
+      }),
+    ).toMatchObject({ subtotal: 1475, total: 1696.25 });
   });
 
   it('keeps the additional delivery charge undiscounted when the commercial subtotal is fully discounted', () => {
@@ -138,8 +139,8 @@ describe('priceQuote', () => {
         discountPercent: 100,
         quotedBasePrice: 100,
         selectedAssemblies: [],
-      }).total,
-    ).toBe(50);
+      }),
+    ).toMatchObject({ subtotal: 50, total: 57.5 });
   });
 
   it('excludes stale selections whose catalog reference is gone', () => {
@@ -153,10 +154,20 @@ describe('priceQuote', () => {
       ],
     });
 
-    expect(pricing.total).toBe(1550);
+    expect(pricing.subtotal).toBe(1550);
+    expect(pricing.total).toBe(1782.5);
     expect(pricing.lineItemTotal).toBe(250);
     expect(pricing.selectedAssemblyTotal).toBe(300);
     expect(pricing.liveSelections).toHaveLength(1);
+  });
+
+  it('cent-rounds VAT so subtotal, VAT, and total reconcile exactly', () => {
+    const pricing = priceQuote({ discountPercent: 0, quotedBasePrice: 100.03, selectedAssemblies: [] });
+
+    expect(pricing.subtotal).toBe(100.03);
+    expect(pricing.vatAmount).toBe(15);
+    expect(pricing.total).toBe(115.03);
+    expect(pricing.total).toBe(pricing.subtotal + pricing.vatAmount);
   });
 });
 
@@ -172,7 +183,8 @@ describe('priceQuoteWithCatalog', () => {
       catalog,
     );
 
-    expect(pricing.total).toBe(1300);
+    expect(pricing.subtotal).toBe(1300);
+    expect(pricing.total).toBe(1495);
     expect(pricing.liveSelections).toEqual([live]);
     expect(pricing.staleSelections).toEqual([unresolved, nulled]);
   });
@@ -205,7 +217,13 @@ describe('priceQuoteWithCatalog', () => {
       catalog,
     );
 
-    expect(pricing).toMatchObject({ discountAmount: 195, lineItemTotal: 250, selectedAssemblyTotal: 450, total: 2105 });
+    expect(pricing).toMatchObject({
+      discountAmount: 195,
+      lineItemTotal: 250,
+      selectedAssemblyTotal: 450,
+      subtotal: 2105,
+      total: 2420.75,
+    });
   });
 
   it('agrees with priceQuote on persisted selections, where staleness is exactly a null reference', () => {

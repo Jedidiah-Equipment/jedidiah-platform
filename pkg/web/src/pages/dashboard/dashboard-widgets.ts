@@ -18,7 +18,7 @@ export const dashboardWidgets = [
     id: 'open-pipeline',
     requires: 'quote:read',
     size: 'xs',
-    title: 'Open pipeline (sent)',
+    title: 'Open pipeline (sent, excl. VAT)',
   },
   {
     Component: WinRateWidget,

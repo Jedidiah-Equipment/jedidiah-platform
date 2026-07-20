@@ -10,8 +10,6 @@ import {
 import {
   computeAdditionalDeliveryPrice,
   computeQuoteLineItemAmount,
-  computeQuoteTotalIncludingVat,
-  computeQuoteVatAmount,
   formatCurrency,
   formatPercent,
   priceQuoteWithCatalog,
@@ -263,9 +261,6 @@ async function getQuoteDocumentModel({
         ]
       : []),
   ];
-  const subtotal = pricing.total;
-  const vatAmount = computeQuoteVatAmount(subtotal);
-
   return {
     customer: quote.customer,
     issueDate: quote.createdAt,
@@ -276,12 +271,12 @@ async function getQuoteDocumentModel({
     quoteCode: formatQuoteCode(quote.code),
     salesPerson: quote.salesPerson,
     staleSelectionNotes: pricing.staleSelections.map((selection) => `${selection.quotedName} unavailable`),
-    subtotal,
-    total: computeQuoteTotalIncludingVat(subtotal),
+    subtotal: pricing.subtotal,
+    total: pricing.total,
     transport: quote.deliveryIncluded
       ? 'Included in sale price'
       : `Additional charge (${formatCurrency(additionalDeliveryPrice, quote.quotedCurrencyCode)})`,
-    vatAmount,
+    vatAmount: pricing.vatAmount,
     currencyCode: quote.quotedCurrencyCode,
   };
 }

@@ -227,7 +227,14 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
         {!summary.deliveryIncluded ? (
           <QuoteSummaryRow label="Delivery" value={formatCurrency(summary.deliveryPrice, summary.currencyCode)} />
         ) : null}
-        <div className="flex items-center justify-between gap-3 border-t pt-2 font-medium">
+        <div className="grid gap-1 border-t pt-2">
+          <QuoteSummaryRow label="Subtotal" value={formatCurrency(summary.subtotal, summary.currencyCode)} />
+          <QuoteSummaryRow
+            label={`VAT (${formatPercent(summary.vatPercent)})`}
+            value={formatCurrency(summary.vatAmount, summary.currencyCode)}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 font-medium">
           <span>Total</span>
           <span>{formatCurrency(summary.total, summary.currencyCode)}</span>
         </div>

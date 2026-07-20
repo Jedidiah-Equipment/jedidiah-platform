@@ -1,4 +1,4 @@
-import { IconCalendarEvent, IconTractor } from '@tabler/icons-react-native';
+import { IconCalendarEvent, IconFileText, IconTractor } from '@tabler/icons-react-native';
 import { Tabs } from 'expo-router';
 
 import { showTabBar, visibleTabs } from '@/lib/app-tabs';
@@ -38,13 +38,23 @@ export default function AppTabsLayout() {
       <Tabs.Screen
         name="(schedule)"
         options={{
+          href: tabs.includes('schedule') ? undefined : null,
           tabBarIcon: ({ color, size }) => <IconCalendarEvent color={color} size={size} strokeWidth={1.8} />,
           title: 'SCHEDULE',
         }}
       />
       <Tabs.Screen
+        name="quotes"
+        options={{
+          href: tabs.includes('quotes') ? undefined : null,
+          tabBarIcon: ({ color, size }) => <IconFileText color={color} size={size} strokeWidth={1.8} />,
+          title: 'QUOTES',
+        }}
+      />
+      <Tabs.Screen
         name="products"
         options={{
+          href: tabs.includes('products') ? undefined : null,
           tabBarIcon: ({ color, size }) => <IconTractor color={color} size={size} strokeWidth={1.8} />,
           title: 'PRODUCTS',
         }}

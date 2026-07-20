@@ -93,6 +93,19 @@ export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () =>
     );
   }
 
+  if (state.status === 'forbidden') {
+    return (
+      <Frame onBack={onBack} operator={null} refresh={refresh} title="Bay schedule">
+        <Text className="text-sm text-foreground" weight="semibold">
+          You don’t have access to this Bay schedule.
+        </Text>
+        <Text className="mt-1 text-sm text-muted-foreground">
+          Your account doesn’t have Job access. Ask an administrator to update your permissions.
+        </Text>
+      </Frame>
+    );
+  }
+
   if (state.status === 'error') {
     return (
       <Frame onBack={onBack} operator={null} refresh={refresh} title="Bay schedule">

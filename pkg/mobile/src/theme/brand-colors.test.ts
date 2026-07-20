@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveLoadingSpinnerColor, resolvePrimaryColorTriplets } from './brand-colors';
+import { resolveLoadingSpinnerColor, resolvePrimaryColorTriplets } from './brand-palette';
 
 describe('resolvePrimaryColorTriplets', () => {
   it('keeps the current yellow primary colors outside staging', () => {

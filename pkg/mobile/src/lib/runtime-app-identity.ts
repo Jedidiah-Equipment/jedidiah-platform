@@ -1,4 +1,5 @@
 const FALLBACK_SCHEME = 'jedidiahops';
+const STAGING_SCHEME = 'jedidiahopsstaging';
 
 type ExpoConfigLike = {
   scheme?: string | string[];
@@ -12,4 +13,8 @@ export function resolveRuntimeScheme(expoConfig: ExpoConfigLike | null | undefin
   }
 
   return scheme || FALLBACK_SCHEME;
+}
+
+export function isStagingRuntimeApp(expoConfig: ExpoConfigLike | null | undefined): boolean {
+  return resolveRuntimeScheme(expoConfig) === STAGING_SCHEME;
 }

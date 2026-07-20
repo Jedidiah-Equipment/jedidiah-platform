@@ -1,25 +1,10 @@
-import { isStagingAppEnv } from '../lib/app-env';
+import Constants from 'expo-constants';
 
-type PrimaryColorTriplets = {
-  light: string;
-  dark: string;
-};
+import { isStagingRuntimeApp } from '../lib/runtime-app-identity';
+import { resolveLoadingSpinnerColor, resolvePrimaryColorTriplets } from './brand-palette';
 
-export function resolvePrimaryColorTriplets(isStaging: boolean): PrimaryColorTriplets {
-  return isStaging
-    ? {
-        light: '236 72 153',
-        dark: '255 107 191',
-      }
-    : {
-        light: '248 211 0',
-        dark: '255 240 0',
-      };
-}
+// Brand identity follows the installed app variant, not whichever API environment it targets.
+const isStagingBrand = isStagingRuntimeApp(Constants.expoConfig);
 
-export function resolveLoadingSpinnerColor(isStaging: boolean): string {
-  return isStaging ? '#ff6bbf' : '#fff000';
-}
-
-export const primaryColorTriplets = resolvePrimaryColorTriplets(isStagingAppEnv);
-export const loadingSpinnerColor = resolveLoadingSpinnerColor(isStagingAppEnv);
+export const primaryColorTriplets = resolvePrimaryColorTriplets(isStagingBrand);
+export const loadingSpinnerColor = resolveLoadingSpinnerColor(isStagingBrand);

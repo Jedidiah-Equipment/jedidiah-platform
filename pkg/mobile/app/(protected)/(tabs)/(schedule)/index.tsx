@@ -2,7 +2,7 @@ import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoardList, isListMode, type ListMode } from '@/components/bays/BoardList';
-import { ProfileHeader } from '@/components/ProfileHeader';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { useBayList } from '@/lib/use-bay-list';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
@@ -20,14 +20,18 @@ export default function IndexRoute() {
   const bayList = useBayList();
   const jobList = useJobList();
   const refresh = useGlobalRefresh();
+  const bayCount = bayList.state.status === 'ready' ? bayList.state.cards.length : null;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <ScrollView
-        contentContainerClassName="w-full gap-6 px-4 pb-8 pt-4"
+        contentContainerClassName="mx-auto w-full max-w-[1180px] gap-5 px-4 pb-8 pt-4"
         refreshControl={<RefreshControl {...refresh} />}
       >
-        <ProfileHeader />
+        <ScreenHeader
+          subtitle={bayCount === null ? 'Loading schedule…' : `${bayCount} ${bayCount === 1 ? 'bay' : 'bays'}`}
+          title="Schedule"
+        />
         <BoardList
           bayState={bayList.state}
           jobState={jobList.state}

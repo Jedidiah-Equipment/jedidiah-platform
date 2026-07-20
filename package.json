@@ -11,7 +11,7 @@
     "dev:kill:all": "sh scripts/kill-dev-services.sh --all",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
+    "test": "turbo run test --concurrency=4",
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "compose:up": "sh scripts/compose-up.sh",

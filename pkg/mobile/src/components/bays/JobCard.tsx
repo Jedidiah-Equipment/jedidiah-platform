@@ -1,4 +1,4 @@
-import { statusDaysLeftColor } from '@pkg/domain';
+import { jobStatusAccentColor } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
@@ -17,9 +17,7 @@ import { BoardCard } from './BoardCard';
 export function JobCard({ job, onPress }: { job: JobListCard; onPress: () => void }) {
   const { progress } = job;
   const { resolved } = useColorMode();
-  // Countdown + bar share the status accent: blue while in progress, green while queued, amber/red
-  // as the finish nears.
-  const dayColor = statusDaysLeftColor({ status: progress.status, daysLeft: progress.daysLeft, scheme: resolved });
+  const dayColor = jobStatusAccentColor(job.tone, resolved);
 
   return (
     <BoardCard

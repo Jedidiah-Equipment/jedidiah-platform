@@ -1,9 +1,11 @@
+import { darkColors, lightColors } from './colors.js';
+
 /**
- * Semantic status + days-left accents shared by the Bay Operator screens.
+ * Semantic status accents shared by the Bay Operator screens.
  *
  * Sourced from the prototype (`docs/design/bay-operator-mobile/project/BayApp.dc.html`):
- * `statusColor` for the in-progress/scheduled pills, `nodeColor`/`labelColor`
- * for the up-next timeline, and `dayColor` for the days-left countdown.
+ * `statusColor` for the in-progress/scheduled pills and `nodeColor`/`labelColor`
+ * for the up-next timeline.
  */
 export type StatusColors = {
   /** Active job ("In progress") accent. */
@@ -31,44 +33,36 @@ export const darkStatusColors = {
   nextSoft: '#5fcf87',
 } as const satisfies StatusColors;
 
-/** Days-left urgency palette: red when imminent, amber when soon. */
-export const DAYS_LEFT_URGENT = '#f87171';
-export const DAYS_LEFT_SOON = '#fbbf24';
-
 const statusColorsByScheme = {
   light: lightStatusColors,
   dark: darkStatusColors,
 } as const satisfies Record<'light' | 'dark', StatusColors>;
 
-/** The work states a days-left figure can carry: a Job running today, or one still queued. */
+const neutralColorsByScheme = {
+  light: lightColors.mutedForeground,
+  dark: darkColors.mutedForeground,
+} as const;
+
+export type JobStatusTone = 'in-progress' | 'next' | 'muted';
 export type WorkProgressStatus = 'in-progress' | 'scheduled';
 
-/**
- * The resting accent for a status with no urgency — the in-progress blue (theme-aware) or the
- * scheduled green. Used directly for a Job with no countdown (e.g. a finished Job) so callers
- * don't reach for a sentinel days-left to coax the comfortable colour out of {@link statusDaysLeftColor}.
- */
-export function restingStatusColor(status: WorkProgressStatus, scheme: 'light' | 'dark'): string {
-  return status === 'in-progress' ? statusColorsByScheme[scheme].inProgress : statusColorsByScheme[scheme].next;
+export function resolveJobStatusTone({
+  isNext,
+  status,
+}: {
+  isNext: boolean;
+  status: WorkProgressStatus;
+}): JobStatusTone {
+  if (status === 'in-progress') return 'in-progress';
+  return isNext ? 'next' : 'muted';
 }
 
 /**
- * Colour for a days-left countdown and its progress bar, by urgency then status: red at `<= 2`,
- * amber at `<= 5`, otherwise the resting status accent. Urgency always wins, so a Job finishing
- * imminently reads red whether it is running or queued. The single source for the bar/number
- * accents — the in-progress blue matches the in-progress status chip.
+ * Canonical Job accent for days-left figures and progress bars: active work is blue, the next Job
+ * is green, and every other state uses the theme's neutral foreground.
  */
-export function statusDaysLeftColor({
-  status,
-  daysLeft,
-  scheme,
-}: {
-  status: WorkProgressStatus;
-  daysLeft: number;
-  scheme: 'light' | 'dark';
-}): string {
-  if (daysLeft <= 2) return DAYS_LEFT_URGENT;
-  if (daysLeft <= 5) return DAYS_LEFT_SOON;
-
-  return restingStatusColor(status, scheme);
+export function jobStatusAccentColor(tone: JobStatusTone, scheme: 'light' | 'dark'): string {
+  if (tone === 'in-progress') return statusColorsByScheme[scheme].inProgress;
+  if (tone === 'next') return statusColorsByScheme[scheme].next;
+  return neutralColorsByScheme[scheme];
 }

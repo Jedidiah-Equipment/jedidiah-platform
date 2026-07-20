@@ -2,15 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { JEDIDIAH_BRAND_YELLOW, JEDIDIAH_BRAND_YELLOW_ON_LIGHT } from '../brand.js';
 import {
-  DAYS_LEFT_SOON,
-  DAYS_LEFT_URGENT,
   darkStatusColors,
   darkTheme,
   hexToRgbTriplet,
+  jobStatusAccentColor,
   lightStatusColors,
   lightTheme,
-  restingStatusColor,
-  statusDaysLeftColor,
+  resolveJobStatusTone,
   themes,
 } from './index.js';
 
@@ -42,37 +40,20 @@ describe('theme tokens', () => {
   });
 });
 
-describe('statusDaysLeftColor', () => {
-  it('is urgent (red) at or below two days, whatever the status', () => {
-    expect(statusDaysLeftColor({ status: 'in-progress', daysLeft: 0, scheme: 'dark' })).toBe(DAYS_LEFT_URGENT);
-    expect(statusDaysLeftColor({ status: 'scheduled', daysLeft: 2, scheme: 'dark' })).toBe(DAYS_LEFT_URGENT);
+describe('jobStatusAccentColor', () => {
+  it('maps the canonical Job tones to blue, green, and theme-neutral', () => {
+    expect(jobStatusAccentColor('in-progress', 'light')).toBe('#3b82f6');
+    expect(jobStatusAccentColor('in-progress', 'dark')).toBe('#60a5fa');
+    expect(jobStatusAccentColor('next', 'light')).toBe('#22c55e');
+    expect(jobStatusAccentColor('next', 'dark')).toBe('#22c55e');
+    expect(jobStatusAccentColor('muted', 'light')).toBe('#737373');
+    expect(jobStatusAccentColor('muted', 'dark')).toBe('#7a7a82');
   });
 
-  it('is soon (amber) between three and five days, whatever the status', () => {
-    expect(statusDaysLeftColor({ status: 'in-progress', daysLeft: 3, scheme: 'dark' })).toBe(DAYS_LEFT_SOON);
-    expect(statusDaysLeftColor({ status: 'scheduled', daysLeft: 5, scheme: 'light' })).toBe(DAYS_LEFT_SOON);
-  });
-
-  it('is the in-progress blue beyond five days, per scheme', () => {
-    expect(statusDaysLeftColor({ status: 'in-progress', daysLeft: 6, scheme: 'light' })).toBe('#3b82f6');
-    expect(statusDaysLeftColor({ status: 'in-progress', daysLeft: 42, scheme: 'dark' })).toBe('#60a5fa');
-  });
-
-  it('is the scheduled green beyond five days', () => {
-    expect(statusDaysLeftColor({ status: 'scheduled', daysLeft: 6, scheme: 'dark' })).toBe('#22c55e');
-    expect(statusDaysLeftColor({ status: 'scheduled', daysLeft: 42, scheme: 'light' })).toBe('#22c55e');
-  });
-});
-
-describe('restingStatusColor', () => {
-  it('is the in-progress blue per scheme, ignoring urgency', () => {
-    expect(restingStatusColor('in-progress', 'light')).toBe('#3b82f6');
-    expect(restingStatusColor('in-progress', 'dark')).toBe('#60a5fa');
-  });
-
-  it('is the scheduled green, the resting accent for a Job with no countdown', () => {
-    expect(restingStatusColor('scheduled', 'light')).toBe('#22c55e');
-    expect(restingStatusColor('scheduled', 'dark')).toBe('#22c55e');
+  it('prioritises in-progress, then next, then neutral', () => {
+    expect(resolveJobStatusTone({ isNext: true, status: 'in-progress' })).toBe('in-progress');
+    expect(resolveJobStatusTone({ isNext: true, status: 'scheduled' })).toBe('next');
+    expect(resolveJobStatusTone({ isNext: false, status: 'scheduled' })).toBe('muted');
   });
 });
 

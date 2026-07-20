@@ -15,6 +15,7 @@ function card(jobCode: string, daysLeft: number, createdAt = '2026-01-01T00:00:0
     customerCompanyName: null,
     operator: null,
     progress: { daysLeft } as JobListCard['progress'],
+    tone: 'muted',
   };
 }
 

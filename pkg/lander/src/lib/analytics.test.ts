@@ -59,7 +59,8 @@ describe('analytics event registry', () => {
   });
 });
 
-describe('analytics delivery', () => {
+// Module resets and dynamic imports can contend with other packages during the workspace-wide test run.
+describe('analytics delivery', { timeout: 15_000 }, () => {
   test('registers language before capture and updates it without reinitialising PostHog', async () => {
     const { captureEvent, initAnalytics } = await import('./analytics.js');
 

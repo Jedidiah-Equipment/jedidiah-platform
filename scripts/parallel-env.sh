@@ -233,7 +233,8 @@ TEST_DATABASE_URL=${db_host}/${TEMPLATE}"
   done
 
   write_managed_block "$ROOT/pkg/mobile/.env.local" "$slot" "RCT_METRO_PORT=${expo_port}
-EXPO_PUBLIC_API_PORT=${api_port}"
+EXPO_PUBLIC_API_PORT=${api_port}
+EXPO_PUBLIC_LANDER_ORIGIN=http://localhost:${lander_port}"
 }
 
 run_compose_down() {

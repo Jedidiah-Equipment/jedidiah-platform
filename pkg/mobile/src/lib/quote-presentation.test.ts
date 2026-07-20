@@ -8,6 +8,7 @@ import {
   quoteMetaLine,
   quoteStatusColorClassNames,
   quoteStatusLabels,
+  shouldPinPriorityQuotes,
 } from './quote-presentation';
 
 describe('Quote status presentation', () => {
@@ -65,6 +66,13 @@ describe('quoteMetaLine', () => {
 
 describe('paged Quote presentation', () => {
   const quote = (id: string) => ({ id }) as QuoteSummary;
+
+  it('pins priority Quotes only on the unfiltered list', () => {
+    expect(shouldPinPriorityQuotes({ search: '', status: 'all' })).toBe(true);
+    expect(shouldPinPriorityQuotes({ search: '  ', status: 'all' })).toBe(true);
+    expect(shouldPinPriorityQuotes({ search: 'QUO-00001', status: 'all' })).toBe(false);
+    expect(shouldPinPriorityQuotes({ search: '', status: 'accepted' })).toBe(false);
+  });
 
   it('keeps priority Quotes pinned and removes their duplicates from loaded pages', () => {
     const sections = presentQuotePages(

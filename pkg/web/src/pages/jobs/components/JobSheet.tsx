@@ -3,6 +3,7 @@ import {
   formatDate,
   getJobDisplayName,
   getJobWorkLabel,
+  isJobCancelled,
   JOB_DOCUMENT_TYPE_LABELS,
 } from '@pkg/domain';
 import type { JobDetail, JobDocument, JobUpdateInput, UUID } from '@pkg/schema';
@@ -82,7 +83,7 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
                 <JobDocumentsTab
                   documents={jobQuery.data.documents}
                   jobId={jobQuery.data.id}
-                  readOnly={jobQuery.data.cancelledAt !== null}
+                  readOnly={isJobCancelled(jobQuery.data)}
                 />
               </TabsContent>
               <TabsContent className="p-4" value="schedule">
@@ -108,7 +109,7 @@ const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           <SheetTitle className="truncate font-mono text-lg">{job?.code ?? 'Job'}</SheetTitle>
-          {job?.cancelledAt ? <Badge variant="destructive">Cancelled</Badge> : null}
+          {isJobCancelled(job) ? <Badge variant="destructive">Cancelled</Badge> : null}
         </div>
         <SheetDescription className="truncate font-mono">{job?.quoteCode ?? 'Loading job...'}</SheetDescription>
       </div>
@@ -118,7 +119,7 @@ const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
 
 const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
   const trpc = useTRPC();
-  const canEditJobs = useCan('job:update').can && job.cancelledAt === null;
+  const canEditJobs = useCan('job:update').can && !isJobCancelled(job);
   const { invalidateJobs } = useQueryInvalidation();
   const updateJobMutation = useMutation(
     trpc.jobs.update.mutationOptions({
@@ -137,7 +138,7 @@ const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
       )}
       <Section
         action={
-          job.cancelledAt === null ? (
+          !isJobCancelled(job) ? (
             <GiveFeedbackButton subject={{ subjectType: 'job', jobId: job.id }} subjectLabel={job.code} />
           ) : undefined
         }

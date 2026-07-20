@@ -9,7 +9,7 @@ import {
   type JobWorkSlotEntry,
   listEnabledBays,
 } from '@pkg/domain';
-import { type BayOperator, BoardFullHistoryInput, type DateOnlyIso, type Department, type UUID } from '@pkg/schema';
+import type { BayOperator, DateOnlyIso, Department, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
@@ -67,8 +67,8 @@ export function useJobDetail(jobId: string): JobDetailState {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const canReadJobs = hasPermission(accessQuery.data, 'job:read');
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(BoardFullHistoryInput, { enabled: canReadJobs }));
-  const bayCalendars = useBayCalendars({ enabled: canReadJobs, input: BoardFullHistoryInput });
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: canReadJobs }));
+  const bayCalendars = useBayCalendars({ enabled: canReadJobs });
 
   return useMemo<JobDetailState>(() => {
     if (accessQuery.isPending) return { status: 'pending' };

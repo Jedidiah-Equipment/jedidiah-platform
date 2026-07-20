@@ -504,8 +504,12 @@ export const BoardListInput = z
   .strict()
   .default({});
 
-/** Requests the server's full supported Board history window; the server clamps the sentinel to its rolling bound. */
-export const BoardFullHistoryInput = BoardListInput.parse({ from: '2000-01-01' });
+/**
+ * Requests the Board's maximum supported history window: the server clamps this floor sentinel to its
+ * rolling ~12-month bound (ADR 0009), so it never re-arms the unbounded read. For the desktop Job
+ * Calendar, the one non-Gantt history consumer; mobile and other surfaces use the bare `listBays()`.
+ */
+export const BoardMaxHistoryInput = BoardListInput.parse({ from: '2000-01-01' });
 
 export const BoardListResult = z.object({
   items: z.array(ProjectedBayQueue),

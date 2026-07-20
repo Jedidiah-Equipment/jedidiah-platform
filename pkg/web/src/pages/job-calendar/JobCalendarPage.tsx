@@ -1,7 +1,7 @@
 import { hasPermission } from '@pkg/domain';
 import {
   type BayCalendarExceptionDirection,
-  BoardFullHistoryInput,
+  BoardMaxHistoryInput,
   type DateOnlyIso,
   type OffDay,
   type UUID,
@@ -40,7 +40,7 @@ export const JobCalendarPage: React.FC = () => {
   const { invalidateJobs } = useQueryInvalidation();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(BoardFullHistoryInput));
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(BoardMaxHistoryInput));
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const bays = baysQuery.data?.items ?? [];
   const enabledBayIds = useMemo(

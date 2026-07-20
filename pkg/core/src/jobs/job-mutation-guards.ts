@@ -1,4 +1,5 @@
 import { type DatabaseTransaction, jobs } from '@pkg/db';
+import { isJobCancelled } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
@@ -17,7 +18,7 @@ export async function lockMutableJob(tx: DatabaseTransaction, jobId: UUID): Prom
 }
 
 export function assertJobIsMutable(job: Pick<JobRow, 'cancelledAt' | 'id'>): void {
-  if (job.cancelledAt) {
+  if (isJobCancelled(job)) {
     throw new JobCancelledError(job.id);
   }
 }

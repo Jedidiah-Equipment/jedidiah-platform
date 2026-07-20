@@ -1,9 +1,10 @@
-import { type JobSummary, JobSummary as JobSummarySchema } from '@pkg/schema';
+import type { JobSummary } from '@pkg/schema';
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { buildJobSummary } from '@/test/job-fixtures.js';
 
 import { createJobListColumns, jobTablePinnedLeftColumns, jobTablePinnedRightColumns } from './JobListTableColumns.js';
 
@@ -23,7 +24,7 @@ describe('Job List table columns', () => {
 
   it('renders the code, customer, product, serial, invoice, and schedule window for a scheduled Job', () => {
     const html = renderJobListRows([
-      buildJob({
+      buildJobSummary({
         code: 42,
         customerCompanyName: 'Acme Mining',
         invoiceNumber: 'INV-0042',
@@ -63,7 +64,7 @@ describe('Job List table columns', () => {
 
   it('marks a Job complete with a check icon only once every Slot is done', () => {
     const html = renderJobListRows([
-      buildJob({
+      buildJobSummary({
         scheduleState: {
           done: 3,
           active: 0,
@@ -79,14 +80,14 @@ describe('Job List table columns', () => {
   });
 
   it('falls back to "Standalone" when a Job has no customer', () => {
-    const html = renderJobListRows([buildJob({ customerCompanyName: null })]);
+    const html = renderJobListRows([buildJobSummary({ customerCompanyName: null })]);
 
     expect(html).toContain('Standalone');
   });
 
   it('renders the "Not scheduled" badge for a Job with no Work Slots', () => {
     const html = renderJobListRows([
-      buildJob({
+      buildJobSummary({
         scheduleState: {
           done: 0,
           active: 0,
@@ -104,7 +105,7 @@ describe('Job List table columns', () => {
 
   it('renders custom job work titles without a product serial', () => {
     const html = renderJobListRows([
-      buildJob({
+      buildJobSummary({
         productId: null,
         productModelCode: null,
         productName: null,
@@ -123,7 +124,7 @@ describe('Job List table columns', () => {
   });
 
   it('exposes server-backed filters and serial sorting controls', () => {
-    const html = renderJobListRows([buildJob()]);
+    const html = renderJobListRows([buildJobSummary()]);
 
     expect(html).toContain('aria-label="Filter Job"');
     expect(html).toContain('aria-label="Filter Customer"');
@@ -136,11 +137,11 @@ describe('Job List table columns', () => {
   });
 
   it('renders invoice numbers as text for Job editors and viewers', () => {
-    const editableHtml = renderJobListRows([buildJob({ invoiceNumber: 'INV-0001' })], {
+    const editableHtml = renderJobListRows([buildJobSummary({ invoiceNumber: 'INV-0001' })], {
       canEditJobs: true,
       canOpenJobs: false,
     });
-    const readOnlyHtml = renderJobListRows([buildJob({ invoiceNumber: 'INV-0001' })]);
+    const readOnlyHtml = renderJobListRows([buildJobSummary({ invoiceNumber: 'INV-0001' })]);
 
     expect(editableHtml).not.toContain('aria-label="Invoice number for JOB-00001"');
     expect(editableHtml).toContain('INV-0001');
@@ -176,35 +177,4 @@ function TestJobListTable({
   });
 
   return <DataTable emptyMessage="No jobs found." hideGlobalFilter table={table} total={rows.length} />;
-}
-
-function buildJob(overrides: Partial<Record<keyof JobSummary, unknown>> = {}): JobSummary {
-  return JobSummarySchema.parse({
-    cancelledAt: null,
-    code: 1,
-    createdAt: '2026-06-01T10:00:00.000Z',
-    customerCompanyName: 'Acme Mining',
-    customerId: '10000000-0000-4000-8000-000000000000',
-    customerThumbnailDataUrl: null,
-    id: '00000000-0000-4000-8000-000000000000',
-    productBuildTimeDays: 12,
-    invoiceNumber: null,
-    productId: '20000000-0000-4000-8000-000000000000',
-    productModelCode: 'MDL-1',
-    productName: 'Loader Bucket',
-    productSerialNumber: 'SN-2026-0001',
-    productSerialPrefix: 'SN',
-    productSerialSequence: 1,
-    productSerialYear: 26,
-    productThumbnailDataUrl: null,
-    quoteCode: 1,
-    quoteKind: 'product',
-    quoteId: '30000000-0000-4000-8000-000000000000',
-    scheduleState: null,
-    updatedAt: '2026-06-01T10:00:00.000Z',
-    vinNumber: null,
-    description: null,
-    workTitle: null,
-    ...overrides,
-  });
 }

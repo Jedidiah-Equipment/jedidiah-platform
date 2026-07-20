@@ -2,6 +2,7 @@ import {
   deriveJobProgress,
   getJobDisplayName,
   hasPermission,
+  isJobCancelled,
   type JobProgress,
   type JobWorkSlotEntry,
   listEnabledBays,
@@ -86,7 +87,7 @@ export function useJobList(): JobListResult {
       const progress = deriveJobProgress({ slots, today });
       const job = jobsById.get(jobId);
       // Skip fully-past Jobs (no unfinished Slot) and any Job whose summary failed to resolve.
-      if (!progress || !job || job.cancelledAt !== null) continue;
+      if (!progress || !job || isJobCancelled(job)) continue;
 
       cards.push({
         jobId,

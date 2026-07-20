@@ -1,0 +1,29 @@
+import type { Product } from '@pkg/schema';
+
+export type ProductSort = 'name' | 'price';
+export type RangeFilter = 'all' | string;
+
+export function isProductSort(value: unknown): value is ProductSort {
+  return value === 'name' || value === 'price';
+}
+
+export function isRangeFilter(value: unknown): value is RangeFilter {
+  return typeof value === 'string' && value.length > 0;
+}
+
+export function normalizeRangeFilter(range: RangeFilter, availableRangeIds: readonly string[]): RangeFilter {
+  return range === 'all' || availableRangeIds.includes(range) ? range : 'all';
+}
+
+export function presentProducts(items: readonly Product[], range: RangeFilter, sort: ProductSort): Product[] {
+  const filtered = range === 'all' ? items : items.filter((product) => product.rangeId === range);
+
+  return [...filtered].sort((left, right) => {
+    if (sort === 'price') {
+      const priceOrder = left.basePrice - right.basePrice;
+      if (priceOrder !== 0) return priceOrder;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+}

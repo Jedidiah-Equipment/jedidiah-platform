@@ -69,7 +69,11 @@ export default function ProtectedLayout() {
 
   return (
     <AuthSessionProvider session={session}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        {/* Keep documents above the tab navigator so the reader remains a full-screen overlay. */}
+        <Stack.Screen name="documents/[documentId]" options={{ presentation: 'fullScreenModal' }} />
+      </Stack>
     </AuthSessionProvider>
   );
 }

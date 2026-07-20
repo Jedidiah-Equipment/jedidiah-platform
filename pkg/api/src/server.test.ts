@@ -30,6 +30,7 @@ const config: ApiConfig = {
   DOCUMENT_STORAGE_FORCE_PATH_STYLE: true,
   DOCUMENT_STORAGE_REGION: 'us-east-1',
   DOCUMENT_STORAGE_SECRET_ACCESS_KEY: 'minioadmin',
+  API_IMAGE_CACHE_DIR: '/tmp/jedidiah-api-image-cache-test',
   OPENAI_API_KEY: 'test-key',
   OPENAI_MODEL: 'gpt-5.5',
   OPENAI_REASONING_EFFORT: 'low',

@@ -1,3 +1,6 @@
+import os from 'node:os';
+import path from 'node:path';
+
 import {
   AI_REASONING_EFFORTS,
   AppEnv,
@@ -57,6 +60,8 @@ export const ApiConfig = z
     DOCUMENT_STORAGE_FORCE_PATH_STYLE: EnvBoolean,
     DOCUMENT_STORAGE_REGION: z.string().min(1),
     DOCUMENT_STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
+    // Ephemeral by default; operators can point this at a persistent mount to keep the cache warm.
+    API_IMAGE_CACHE_DIR: z.string().min(1).default(path.join(os.tmpdir(), 'jedidiah-api-image-cache')),
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_MODEL: z.string().min(1).default('gpt-5.5'),
     OPENAI_REASONING_EFFORT: z.enum(AI_REASONING_EFFORTS).default('low'),

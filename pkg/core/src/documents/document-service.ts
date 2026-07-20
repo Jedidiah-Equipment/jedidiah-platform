@@ -10,7 +10,12 @@ import {
   DocumentPolicyViolationError,
   DocumentStorageConflictError,
 } from './document-errors.js';
-import { type StorageAdapter, StorageKeyAlreadyExistsError, type StoredObject } from './storage-adapter.js';
+import {
+  readStoredObject,
+  type StorageAdapter,
+  StorageKeyAlreadyExistsError,
+  type StoredObject,
+} from './storage-adapter.js';
 
 type DocumentRow = typeof documents.$inferSelect;
 export type DocumentDb = Db | DatabaseTransaction;
@@ -53,24 +58,7 @@ export type ReadDocumentResult = {
 };
 
 export async function readStoredObjectBytes(storage: StorageAdapter, storageKey: string): Promise<Uint8Array> {
-  const object = await storage.get(storageKey);
-  const chunks: Uint8Array[] = [];
-  let byteLength = 0;
-
-  for await (const chunk of object.body) {
-    chunks.push(chunk);
-    byteLength += chunk.byteLength;
-  }
-
-  const bytes = new Uint8Array(byteLength);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return bytes;
+  return (await readStoredObject(storage, storageKey)).bytes;
 }
 
 export const documentBaseSelect = {

@@ -25,7 +25,7 @@ export type EntityFileRouteConfig = {
   // undefined to let it propagate. Keeps entity-specific error knowledge out of this generic registrar.
   mapOwnerError: (error: unknown) => RouteHttpError | undefined;
   noFileMessage: string;
-  read: (args: { rawParams: unknown }) => Promise<StoredObject>;
+  read: (args: { rawParams: unknown; rawQuery: unknown }) => Promise<StoredObject>;
   readForbiddenMessage: string;
   readPermission: AppPermission;
   replace: (args: { actorUserId: string; bytes: Buffer; rawParams: unknown }) => Promise<unknown>;
@@ -73,7 +73,7 @@ function registerEntityFileConfig(app: FastifyInstance, config: EntityFileRouteC
 
     try {
       requirePermission(auth, config.readPermission, config.readForbiddenMessage, 'file.forbidden');
-      const object = await config.read({ rawParams: request.params });
+      const object = await config.read({ rawParams: request.params, rawQuery: request.query });
 
       reply.header('Content-Type', object.contentType);
       reply.header('Content-Length', object.byteSize);

@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
 import { type Db, products, user } from '@pkg/db';
@@ -7,6 +10,8 @@ import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
+
+import type { ProductImageRouteOptions } from './product-image-routes.js';
 
 const routeTestState = vi.hoisted(() => ({
   db: null as unknown,
@@ -61,13 +66,17 @@ const test = createTester(async ({ db }) => {
 });
 
 const openApps: FastifyInstance[] = [];
+const tempDirs: string[] = [];
 
 beforeEach(() => {
   routeTestState.session = mockSession();
 });
 
 afterEach(async () => {
-  await Promise.all(openApps.splice(0).map((app) => app.close()));
+  await Promise.all([
+    ...openApps.splice(0).map((app) => app.close()),
+    ...tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })),
+  ]);
 });
 
 describe('product brochure image HTTP routes', () => {
@@ -175,6 +184,73 @@ describe('product brochure image HTTP routes', () => {
     expect(response.headers['content-length']).toBe('48');
   });
 
+  test('downloads an optimized WebP mobile variant for a raster image', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createApp(storage, { cacheDir: await createCacheDir() });
+    await uploadPrimaryImage(app, context.product.id, validPngBytes());
+
+    const response = await app.inject(`/api/products/${context.product.id}/images/primary/download?variant=mobile`);
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.headers['content-type']).toBe('image/webp');
+    expect(response.rawPayload.subarray(0, 4).toString('ascii')).toBe('RIFF');
+    expect(response.rawPayload.subarray(8, 12).toString('ascii')).toBe('WEBP');
+  });
+
+  test('falls back to original bytes when a mobile variant cannot be optimized', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createApp(storage, { cacheDir: await createCacheDir() });
+    const original = pngBytes(48);
+    await uploadPrimaryImage(app, context.product.id, original);
+
+    const response = await app.inject(`/api/products/${context.product.id}/images/primary/download?variant=mobile`);
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.headers['content-type']).toBe('image/png');
+    expect(response.rawPayload).toEqual(Buffer.from(original));
+  });
+
+  test('serves a repeated mobile variant from disk without reading object storage again', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const optimized = Buffer.from('RIFFxxxxWEBPoptimized-mobile-image', 'ascii');
+    const optimize = vi.fn(async () => optimized);
+    const app = await createApp(storage, { cacheDir: await createCacheDir(), optimize });
+    await uploadPrimaryImage(app, context.product.id, validPngBytes());
+    const url = `/api/products/${context.product.id}/images/primary/download?variant=mobile`;
+
+    const first = await app.inject(url);
+    const second = await app.inject(url);
+
+    expect(first.rawPayload).toEqual(optimized);
+    expect(second.rawPayload).toEqual(optimized);
+    expect(optimize).toHaveBeenCalledTimes(1);
+    expect(storage.getCalls).toBe(1);
+  });
+
+  test('requires authentication for mobile variants', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createApp(storage, { cacheDir: await createCacheDir() });
+    await uploadPrimaryImage(app, context.product.id, validPngBytes());
+    routeTestState.session = null;
+
+    const response = await app.inject(`/api/products/${context.product.id}/images/primary/download?variant=mobile`);
+
+    expect(response.statusCode).toBe(401);
+    expect(storage.getCalls).toBe(0);
+  });
+
+  test('requires Product read permission for mobile variants', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createApp(storage, { cacheDir: await createCacheDir() });
+    await uploadPrimaryImage(app, context.product.id, validPngBytes());
+    routeTestState.session = mockSession('job-viewer');
+
+    const response = await app.inject(`/api/products/${context.product.id}/images/primary/download?variant=mobile`);
+
+    expect(response.statusCode).toBe(403);
+    expect(storage.getCalls).toBe(0);
+  });
+
   test('returns 404 when downloading an empty slot', async ({ context }) => {
     const app = await createApp(new MemoryStorage());
 
@@ -185,17 +261,35 @@ describe('product brochure image HTTP routes', () => {
   });
 });
 
-async function createApp(storage: StorageAdapter) {
+async function createApp(storage: StorageAdapter, imageOptions?: ProductImageRouteOptions) {
   const { registerEntityFileRoutes } = await import('../files/entity-file-http.route.js');
   const { createProductImageRouteConfig } = await import('./product-image-routes.js');
   const app = Fastify();
 
   await app.register(fastifyMultipart);
-  await registerEntityFileRoutes(app, [createProductImageRouteConfig(storage)]);
+  await registerEntityFileRoutes(app, [
+    createProductImageRouteConfig(storage, imageOptions ?? { cacheDir: await createCacheDir() }),
+  ]);
   await app.ready();
   openApps.push(app);
 
   return app;
+}
+
+async function createCacheDir(): Promise<string> {
+  const cacheDir = await mkdtemp(path.join(tmpdir(), 'api-product-image-cache-test-'));
+  tempDirs.push(cacheDir);
+  return cacheDir;
+}
+
+async function uploadPrimaryImage(app: FastifyInstance, productId: string, bytes: Uint8Array): Promise<void> {
+  const response = await app.inject({
+    method: 'POST',
+    url: `/api/products/${productId}/images/primary`,
+    ...buildMultipartUpload({ bytes, filename: 'primary.png' }),
+  });
+
+  expect(response.statusCode, response.body).toBe(200);
 }
 
 async function createProduct(db: Db) {
@@ -225,6 +319,13 @@ function pngBytes(totalLength = 32): Uint8Array {
   bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
   return bytes;
+}
+
+function validPngBytes(): Uint8Array {
+  return Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEUlEQVQImWPgUbLgUbJggFAACoYBmbnuU6QAAAAASUVORK5CYII=',
+    'base64',
+  );
 }
 
 function jpegBytes(totalLength = 24): Uint8Array {
@@ -260,12 +361,14 @@ function buildMultipartUpload(input: { bytes: Uint8Array; filename: string }): {
 
 class MemoryStorage implements StorageAdapter {
   readonly objects = new Map<string, { body: Uint8Array; byteSize: number; contentType: string }>();
+  getCalls = 0;
 
   async deleteObject(key: string): Promise<void> {
     this.objects.delete(key);
   }
 
   async get(key: string): Promise<StoredObject> {
+    this.getCalls += 1;
     const object = this.objects.get(key);
 
     if (!object) {

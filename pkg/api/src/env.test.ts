@@ -56,6 +56,10 @@ describe('API config PostHog validation', () => {
     expect(() => ApiConfig.parse(env)).toThrow();
   });
 
+  it('defaults the optimized image cache to an API-specific temp directory', () => {
+    expect(ApiConfig.parse(baseEnv).API_IMAGE_CACHE_DIR).toContain('jedidiah-api-image-cache');
+  });
+
   it('accepts the production mobile deep-link scheme as a trusted auth origin', () => {
     expect(
       ApiConfig.parse({

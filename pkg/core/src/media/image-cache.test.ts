@@ -11,7 +11,7 @@ import { IMAGE_TRANSFORMS } from './image-transform.js';
 let cacheDir: string;
 
 beforeEach(async () => {
-  cacheDir = await mkdtemp(path.join(tmpdir(), 'lander-image-cache-test-'));
+  cacheDir = await mkdtemp(path.join(tmpdir(), 'core-image-cache-test-'));
 });
 
 afterEach(async () => {
@@ -42,10 +42,9 @@ describe('readOptimizedImage', () => {
 
   test('serves a hit from disk without reloading the source', async () => {
     const key = 'products/a/primary/x.png';
-    const first = loaderFor(await rasterSource());
-    await readOptimizedImage({ cacheDir }, key, 'webp', first);
-
+    await readOptimizedImage({ cacheDir }, key, 'webp', loaderFor(await rasterSource()));
     const second = loaderFor(await rasterSource());
+
     const result = await readOptimizedImage({ cacheDir }, key, 'webp', second);
 
     expect(second).not.toHaveBeenCalled();
@@ -67,7 +66,7 @@ describe('readOptimizedImage', () => {
     expect(a.body).toEqual(b.body);
   });
 
-  test('falls back to the original bytes and does not cache when optimization fails', async () => {
+  test('falls back to original bytes and does not cache when optimization fails', async () => {
     const original = new Uint8Array([1, 2, 3, 4]);
     const load = loaderFor(original, 'image/png');
     const optimize = vi.fn(async () => {
@@ -95,7 +94,7 @@ describe('readOptimizedImage', () => {
     expect((await readdir(cacheDir)).filter((name) => name.endsWith('.webp'))).toHaveLength(2);
   });
 
-  test('produces a JPEG variant with its own cache entry alongside the WebP one', async () => {
+  test('produces separate WebP and JPEG cache entries for one source', async () => {
     const key = 'products/a/primary/x.png';
     const load = loaderFor(await rasterSource());
 
@@ -105,7 +104,6 @@ describe('readOptimizedImage', () => {
     expect(webp.contentType).toBe(IMAGE_TRANSFORMS.webp.contentType);
     expect(jpeg.contentType).toBe(IMAGE_TRANSFORMS.jpeg.contentType);
     expect((await sharp(jpeg.body).metadata()).format).toBe('jpeg');
-
     const files = await readdir(cacheDir);
     expect(files.filter((name) => name.endsWith('.webp'))).toHaveLength(1);
     expect(files.filter((name) => name.endsWith('.jpeg'))).toHaveLength(1);
@@ -113,14 +111,12 @@ describe('readOptimizedImage', () => {
 
   test('serves a pre-existing cache file without invoking the loader', async () => {
     const key = 'products/a/primary/x.png';
-    // Prime the cache by producing the file once, then confirm a fresh call reads it directly.
     await readOptimizedImage({ cacheDir }, key, 'webp', loaderFor(await rasterSource()));
-    const files = await readdir(cacheDir);
-    expect(files).toHaveLength(1);
-
+    expect(await readdir(cacheDir)).toHaveLength(1);
     const load = vi.fn(async (): Promise<LoadedImage> => {
       throw new Error('loader should not run on a hit');
     });
+
     await expect(readOptimizedImage({ cacheDir }, key, 'webp', load)).resolves.toBeDefined();
     expect(load).not.toHaveBeenCalled();
   });

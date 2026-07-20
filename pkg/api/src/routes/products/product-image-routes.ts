@@ -1,12 +1,28 @@
-import { isProductCoreError, readProductImage, replaceProductImage, type StorageAdapter } from '@pkg/core';
+import {
+  type ImageCacheOptions,
+  isProductCoreError,
+  readMobileProductImage,
+  readProductImage,
+  replaceProductImage,
+  type StorageAdapter,
+  type StoredObject,
+} from '@pkg/core';
 import { db } from '@pkg/db';
 import { ProductImageSlotParams } from '@pkg/schema';
+import { z } from 'zod';
 
 import { type EntityFileRouteConfig, RouteHttpError } from '../files/entity-file-http.route.js';
 
 // Product image slots, wired into the generic entity-file registrar. Image uploads use the same
 // permission as editing a Product; previews use Product read access.
-export function createProductImageRouteConfig(storage: StorageAdapter): EntityFileRouteConfig {
+export type ProductImageRouteOptions = ImageCacheOptions;
+
+const ProductImageDownloadQuery = z.object({ variant: z.literal('mobile').optional() });
+
+export function createProductImageRouteConfig(
+  storage: StorageAdapter,
+  imageOptions: ProductImageRouteOptions,
+): EntityFileRouteConfig {
   return {
     uploadPath: '/api/products/:productId/images/:slot',
     downloadPath: '/api/products/:productId/images/:slot/download',
@@ -40,10 +56,31 @@ export function createProductImageRouteConfig(storage: StorageAdapter): EntityFi
         storage,
       });
     },
-    read: ({ rawParams }) => {
+    read: async ({ rawParams, rawQuery }) => {
       const params = ProductImageSlotParams.parse(rawParams);
+      const query = ProductImageDownloadQuery.parse(rawQuery);
+
+      if (query.variant === 'mobile') {
+        const optimized = await readMobileProductImage({
+          cache: imageOptions,
+          db,
+          productId: params.productId,
+          slot: params.slot,
+          storage,
+        });
+
+        return {
+          body: bytesBody(optimized.body),
+          byteSize: optimized.byteSize,
+          contentType: optimized.contentType,
+        };
+      }
 
       return readProductImage({ db, productId: params.productId, slot: params.slot, storage });
     },
   };
+}
+
+async function* bytesBody(bytes: Uint8Array): StoredObject['body'] {
+  yield bytes;
 }

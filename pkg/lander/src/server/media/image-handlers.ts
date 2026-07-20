@@ -1,10 +1,8 @@
-import { StorageObjectNotFoundError } from '@pkg/core';
+import { parseImageFormat, readOptimizedImage, readStoredObject, StorageObjectNotFoundError } from '@pkg/core';
 import { getDb } from '../runtime/db.js';
 import { getImageCacheDir } from '../runtime/env.js';
 import { getStorage } from '../runtime/storage.js';
-import { type LoadedImage, readOptimizedImage } from './image-cache.js';
 import { imageResponse } from './image-response.js';
-import { parseImageFormat } from './image-transform.js';
 import { type ResolvedImageRef, resolveProductImageRef, resolveRangeImageRef } from './images.js';
 
 // Server-only orchestration shared by the public image routes: resolve the image reference, serve an
@@ -37,7 +35,7 @@ async function serve(ref: ResolvedImageRef | null, options: ServeOptions): Promi
       { cacheDir: getImageCacheDir() },
       ref.storageKey,
       parseImageFormat(options.format),
-      () => loadImage(ref),
+      () => readStoredObject(getStorage(), ref.storageKey),
     );
 
     return imageResponse(optimized, options);
@@ -50,19 +48,4 @@ async function serve(ref: ResolvedImageRef | null, options: ServeOptions): Promi
 
     throw error;
   }
-}
-
-async function loadImage(ref: ResolvedImageRef): Promise<LoadedImage> {
-  const object = await getStorage().get(ref.storageKey);
-
-  return { bytes: await collect(object.body), contentType: object.contentType };
-}
-
-async function collect(body: AsyncIterable<Uint8Array>): Promise<Uint8Array> {
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of body) {
-    chunks.push(chunk);
-  }
-
-  return Buffer.concat(chunks);
 }

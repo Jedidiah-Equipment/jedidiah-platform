@@ -1,6 +1,5 @@
+import type { OptimizedImage } from '@pkg/core';
 import { describe, expect, test } from 'vitest';
-
-import type { OptimizedImage } from './image-cache.js';
 import { imageResponse } from './image-response.js';
 
 function optimized(payload: Uint8Array): OptimizedImage {

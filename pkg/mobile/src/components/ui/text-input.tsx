@@ -8,7 +8,15 @@ import { useColorMode } from '@/theme/use-color-mode';
 // `--color-muted-foreground` in theme/gluestack-config.ts).
 const PLACEHOLDER_COLOR = { dark: 'rgb(122, 122, 130)', light: 'rgb(115, 115, 115)' } as const;
 
-export type AppTextInputProps = TextInputProps & { className?: string };
+const TEXT_SIZE_CLASS_NAMES = {
+  default: 'text-sm',
+  toolbar: 'text-[13px]',
+} as const;
+
+export type AppTextInputProps = TextInputProps & {
+  className?: string;
+  textSize?: keyof typeof TEXT_SIZE_CLASS_NAMES;
+};
 
 /**
  * App text input primitive — the first input surface in the mobile app. Defaults
@@ -16,14 +24,14 @@ export type AppTextInputProps = TextInputProps & { className?: string };
  * repeat them, and resolves the placeholder colour from the active scheme.
  */
 export const TextInput = forwardRef<RNTextInputType, AppTextInputProps>(function TextInput(
-  { className, ...props },
+  { className, textSize = 'default', ...props },
   ref,
 ) {
   const { resolved } = useColorMode();
 
   return (
     <RNTextInput
-      className={`rounded-xl border border-border bg-surface px-3 py-2.5 font-sans text-sm text-surface-foreground ${className ?? ''}`}
+      className={`rounded-xl border border-border bg-surface px-3 py-2.5 font-sans text-surface-foreground ${TEXT_SIZE_CLASS_NAMES[textSize]} ${className ?? ''}`}
       placeholderTextColor={PLACEHOLDER_COLOR[resolved]}
       ref={ref}
       {...props}

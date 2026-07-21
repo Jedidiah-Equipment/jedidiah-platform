@@ -41,9 +41,9 @@ export function QuoteSummaryDrawer({
           </Pressable>
         </View>
         <ScrollView contentContainerClassName="gap-3.5 p-4">
+          <TotalCard quote={quote} summary={summary} />
           <CustomerCard quote={quote} />
           {quote.kind === 'product' ? <ProductCard quote={quote} /> : null}
-          <TotalCard quote={quote} summary={summary} />
         </ScrollView>
       </View>
     </ThemedModal>

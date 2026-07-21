@@ -12,6 +12,7 @@ import {
 import {
   computeAdditionalDeliveryPrice,
   computeQuoteLineItemAmount,
+  computeWorkItemTotal,
   formatCurrency,
   formatPercent,
   isQuoteDocumentGenerationAllowed,
@@ -64,13 +65,13 @@ type QuoteRow = typeof quotes.$inferSelect;
 // assemblies, and base description all read, so none of them re-guard `kind`/`productId` downstream.
 type QuoteDocumentSource =
   | { kind: 'product'; productId: UUID; product: NonNullable<QuoteDocumentGenerationRow['product']> }
-  | { kind: 'custom'; workTitle: string };
+  | { hourlyRate: number; kind: 'custom'; workTitle: string };
 
 function resolveQuoteDocumentSource(quote: QuoteDocumentGenerationRow): QuoteDocumentSource {
   const offering = narrowQuoteOffering(quote);
 
   if (offering.kind === 'custom') {
-    return { kind: 'custom', workTitle: offering.workTitle };
+    return { hourlyRate: offering.hourlyRate, kind: 'custom', workTitle: offering.workTitle };
   }
 
   if (!quote.product) {
@@ -225,6 +226,13 @@ async function getQuoteDocumentModel({
     quantity: item.quantity,
     unitPrice: item.unitPrice,
   }));
+  const workItems =
+    source.kind === 'custom'
+      ? quote.workItems.map((item) => ({
+          amount: computeWorkItemTotal({ hourlyRate: source.hourlyRate, hours: item.hours, parts: item.parts }),
+          name: item.name,
+        }))
+      : [];
   const discountAmount = pricing.discountAmount;
   const additionalDeliveryPrice = computeAdditionalDeliveryPrice(quote);
   const lineItems: QuoteDocumentLineItem[] = [
@@ -283,6 +291,7 @@ async function getQuoteDocumentModel({
       : `Additional charge (${formatCurrency(additionalDeliveryPrice, quote.quotedCurrencyCode)})`,
     vatAmount: pricing.vatAmount,
     currencyCode: quote.quotedCurrencyCode,
+    workItems,
   };
 }
 

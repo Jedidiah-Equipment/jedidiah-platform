@@ -1,4 +1,14 @@
-import { customers, productAssemblies, products, quoteLineItems, quoteSelectedAssemblies, quotes, user } from '@pkg/db';
+import {
+  customers,
+  productAssemblies,
+  products,
+  quoteLineItems,
+  quoteSelectedAssemblies,
+  quotes,
+  quoteWorkItemParts,
+  quoteWorkItems,
+  user,
+} from '@pkg/db';
 import { priceQuote } from '@pkg/domain';
 import type { BrochurePdfRenderer, QuoteDocumentModel, QuoteDocumentPdfRenderer } from '@pkg/schema';
 import { describe, expect } from 'vitest';
@@ -131,6 +141,7 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
     ]);
     expect(model.lineItems.find((item) => item.kind === 'discount')?.amount).toBe(-170);
     expect(model.staleSelectionNotes).toEqual(['Removed Winch unavailable']);
+    expect(model.workItems).toEqual([]);
     expect(result.warnings.map((warning) => warning.code)).toEqual(['quote_document.brochure_config_incomplete']);
   });
 
@@ -179,5 +190,73 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
       total: persisted.total,
       vatAmount: persisted.vatAmount,
     });
+  });
+
+  test('projects custom Work Items in position order without exposing their internal breakdown', async ({
+    context,
+  }) => {
+    const [quote] = await context.db
+      .insert(quotes)
+      .values({
+        customerId: context.customer.id,
+        hourlyRate: 850,
+        kind: 'custom',
+        quotedBasePrice: 1_000,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: context.salesPerson.id,
+        status: 'sent',
+        workTitle: 'Hydraulic repair',
+      })
+      .returning();
+
+    if (!quote) throw new Error('Custom quote insert did not return a row');
+
+    const insertedWorkItems = await context.db
+      .insert(quoteWorkItems)
+      .values([
+        { hours: 0, name: 'Included inspection', position: 2, quoteId: quote.id },
+        { hours: 1.5, name: 'Labour-only rebuild', position: 0, quoteId: quote.id },
+        { hours: 0, name: 'Parts-only repair', position: 1, quoteId: quote.id },
+      ])
+      .returning();
+    const partsOnlyItem = insertedWorkItems.find((item) => item.name === 'Parts-only repair');
+    if (!partsOnlyItem) throw new Error('Parts-only Work Item insert did not return a row');
+
+    await context.db.insert(quoteWorkItemParts).values({
+      name: 'Internal seal kit',
+      position: 0,
+      quantity: 2,
+      unitPrice: 125,
+      workItemId: partsOnlyItem.id,
+    });
+
+    const captured: { model: QuoteDocumentModel | null } = { model: null };
+    await generateQuoteDocument({
+      actorUserId,
+      brochureRenderer: unusedBrochureRenderer,
+      db: context.db,
+      input: { leadTime: '14 working days', quoteId: quote.id },
+      pdfRenderer: captureModelRenderer(captured),
+      storage: new InMemoryStorageAdapter(),
+    });
+    const model = captured.model;
+    if (!model) throw new Error('PDF renderer did not receive a document model');
+
+    expect(model.workItems).toEqual([
+      { amount: 1_275, name: 'Labour-only rebuild' },
+      { amount: 250, name: 'Parts-only repair' },
+      { amount: 0, name: 'Included inspection' },
+    ]);
+    expect(model.workItems.map((item) => Object.keys(item).sort())).toEqual([
+      ['amount', 'name'],
+      ['amount', 'name'],
+      ['amount', 'name'],
+    ]);
+    expect(model).toMatchObject({ subtotal: 2_525, total: 2_903.75, vatAmount: 378.75 });
+    const serializedModel = JSON.stringify(model);
+    expect(serializedModel).not.toContain('Internal seal kit');
+    expect(serializedModel).not.toContain('"hourlyRate"');
+    expect(serializedModel).not.toContain('"hours"');
+    expect(serializedModel).not.toContain('"parts"');
   });
 });

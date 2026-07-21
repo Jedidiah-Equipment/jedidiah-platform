@@ -10,6 +10,11 @@ export type QuoteDocumentLineItem = {
   unitPrice: number;
 };
 
+export type QuoteDocumentWorkItem = {
+  amount: number;
+  name: string;
+};
+
 export type QuoteDocumentCustomer = {
   address: string | null;
   companyName: string;
@@ -40,6 +45,7 @@ export type QuoteDocumentModel = {
   total: number;
   transport: string;
   vatAmount: number;
+  workItems: QuoteDocumentWorkItem[];
 };
 
 export type QuoteDocumentCreateInput = {

@@ -8,10 +8,12 @@ import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
+import { quoteWorkItemSummaryRows } from '@/lib/quote-presentation';
 
 const getSummaryLineItemKey = createStableRowKeys<{ name: string; quantity: number; unitPrice: number }>(
   'quote-summary-line-item',
 );
+const getSummaryWorkItemKey = createStableRowKeys<QuoteComputedSummary['workItems'][number]>('quote-summary-work-item');
 
 export function QuoteSummaryDrawer({
   onClose,
@@ -121,6 +123,8 @@ function ProductCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'product' 
 }
 
 function TotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
+  const workItemRows = quoteWorkItemSummaryRows(summary);
+
   return (
     <SummaryCard>
       <CardLabel>Quote total</CardLabel>
@@ -160,6 +164,21 @@ function TotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteCompu
                   label={item.quantity === 1 ? item.name : `${item.quantity} × ${item.name}`}
                   small
                   value={formatCurrency(item.quantity * item.unitPrice, summary.currencyCode)}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+        {workItemRows.length > 0 ? (
+          <View className="gap-2">
+            <SummaryRow label="Work items" value={formatCurrency(summary.workItemTotal, summary.currencyCode)} />
+            <View className="ml-1 gap-1.5 border-l-2 border-border pl-3">
+              {workItemRows.map((row) => (
+                <SummaryRow
+                  key={getSummaryWorkItemKey(row.workItem)}
+                  label={row.name}
+                  small
+                  value={formatCurrency(row.total, summary.currencyCode)}
                 />
               ))}
             </View>

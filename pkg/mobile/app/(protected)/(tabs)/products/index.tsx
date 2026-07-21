@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,6 +28,7 @@ export default function ProductsRoute() {
   const trpc = useTRPC();
   const products = useQuery(trpc.products.list.queryOptions({ pageSize: 0 }));
   const rangeOptions = useQuery(trpc.products.rangeOptions.queryOptions(undefined));
+  const [search, setSearch] = useState('');
   const [range, setRange] = usePersistedState<RangeFilter>('jedidiah-product-range', 'all', isRangeFilter);
   const [sort, setSort] = usePersistedState<ProductSort>('jedidiah-product-sort', 'name', isProductSort);
   const refresh = useGlobalRefresh();
@@ -39,7 +41,7 @@ export default function ProductsRoute() {
         ranges.map((option) => option.id),
       )
     : range;
-  const presentedProducts = presentProducts(products.data?.items ?? [], normalizedRange, sort);
+  const presentedProducts = presentProducts(products.data?.items ?? [], normalizedRange, sort, search);
 
   const pending = products.isPending || rangeOptions.isPending;
   const count = pending ? null : presentedProducts.length;
@@ -48,6 +50,7 @@ export default function ProductsRoute() {
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <ScrollView
         contentContainerClassName="mx-auto w-full max-w-[1180px] gap-5 px-4 pb-8 pt-4"
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl {...refresh} />}
       >
         <ProductCatalogHeader count={count} />
@@ -63,9 +66,11 @@ export default function ProductsRoute() {
           <View className="gap-4">
             <ProductCatalogControls
               onRangeChange={setRange}
+              onSearchChange={setSearch}
               onSortChange={setSort}
               range={normalizedRange}
               ranges={ranges}
+              search={search}
               sort={sort}
             />
             <ProductGrid products={presentedProducts} />

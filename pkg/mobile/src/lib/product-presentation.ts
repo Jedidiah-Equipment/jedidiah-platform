@@ -16,8 +16,20 @@ export function normalizeRangeFilter(range: RangeFilter, availableRangeIds: read
   return range === 'all' || availableRangeIds.includes(range) ? range : 'all';
 }
 
-export function presentProducts(items: readonly Product[], range: RangeFilter, sort: ProductSort): Product[] {
-  const filtered = range === 'all' ? items : items.filter((product) => product.rangeId === range);
+export function presentProducts(
+  items: readonly Product[],
+  range: RangeFilter,
+  sort: ProductSort,
+  search = '',
+): Product[] {
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const filtered = items.filter(
+    (product) =>
+      (range === 'all' || product.rangeId === range) &&
+      (!normalizedSearch ||
+        product.name.toLocaleLowerCase().includes(normalizedSearch) ||
+        product.modelCode.toLocaleLowerCase().includes(normalizedSearch)),
+  );
 
   return [...filtered].sort((left, right) => {
     if (sort === 'price') {

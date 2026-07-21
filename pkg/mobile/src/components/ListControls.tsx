@@ -1,11 +1,13 @@
-import { IconChevronDown, IconFilter, type Icon as TablerIcon } from '@tabler/icons-react-native';
-import { forwardRef, type ReactNode } from 'react';
+import { IconCheck, IconChevronDown, IconSearch, type Icon as TablerIcon } from '@tabler/icons-react-native';
+import { forwardRef, type ReactNode, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { AnchoredMenu } from '@/components/ui/anchored-menu';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { TextInput } from '@/components/ui/text-input';
 
-export type SegmentedSortOption<Value extends string> = {
+export type ListControlOption<Value extends string> = {
   label: string;
   value: Value;
 };
@@ -20,32 +22,103 @@ export function ListControlRow({ leading, trailing }: { leading: ReactNode; trai
   );
 }
 
-export const ListFilterButton = forwardRef<
-  View,
-  {
-    accessibilityLabel: string;
-    active: boolean;
-    expanded: boolean;
-    label: string;
-    onPress: () => void;
-    showLabel?: boolean;
-  }
->(function ListFilterButton({ accessibilityLabel, active, expanded, label, onPress, showLabel = true }, ref) {
+export function ListSearchControl({
+  accessibilityLabel,
+  onChangeText,
+  placeholder,
+  value,
+}: {
+  accessibilityLabel: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  value: string;
+}) {
   return (
-    <ListDropdownButton
-      accessibilityLabel={accessibilityLabel}
-      active={active}
-      expanded={expanded}
-      icon={IconFilter}
-      label={label}
-      onPress={onPress}
-      ref={ref}
-      showLabel={showLabel}
-    />
+    <View className="h-10 min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3">
+      <Icon className="text-muted-foreground" icon={IconSearch} size={17} />
+      <TextInput
+        accessibilityLabel={accessibilityLabel}
+        className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 py-0"
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        returnKeyType="search"
+        textSize="toolbar"
+        value={value}
+      />
+    </View>
   );
-});
+}
 
-export const ListDropdownButton = forwardRef<
+export function ListDropdownControl<Value extends string>({
+  accessibilityLabel,
+  active,
+  dismissLabel,
+  icon,
+  menuWidth = 220,
+  onChange,
+  options,
+  showLabel = false,
+  value,
+}: {
+  accessibilityLabel: string;
+  active: boolean;
+  dismissLabel: string;
+  icon: TablerIcon;
+  menuWidth?: number;
+  onChange: (value: Value) => void;
+  options: readonly ListControlOption<Value>[];
+  showLabel?: boolean;
+  value: Value;
+}) {
+  const buttonRef = useRef<View>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ left: number; top: number } | null>(null);
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? value;
+
+  const openMenu = () => {
+    buttonRef.current?.measureInWindow((x, y, width, height) => {
+      setMenuAnchor({ left: Math.max(8, x + width - menuWidth), top: y + height + 8 });
+    });
+  };
+
+  return (
+    <View className={showLabel ? 'max-w-full shrink' : ''}>
+      <ListDropdownButton
+        accessibilityLabel={`${accessibilityLabel}: ${selectedLabel}`}
+        active={active}
+        expanded={menuAnchor !== null}
+        icon={icon}
+        label={selectedLabel}
+        onPress={openMenu}
+        ref={buttonRef}
+        showLabel={showLabel}
+      />
+
+      {menuAnchor ? (
+        <AnchoredMenu
+          dismissLabel={dismissLabel}
+          onClose={() => setMenuAnchor(null)}
+          style={{ left: menuAnchor.left, top: menuAnchor.top, width: menuWidth }}
+        >
+          <View className="p-1.5">
+            {options.map((option) => (
+              <ListDropdownOption
+                key={option.value}
+                label={option.label}
+                onPress={() => {
+                  onChange(option.value);
+                  setMenuAnchor(null);
+                }}
+                selected={option.value === value}
+              />
+            ))}
+          </View>
+        </AnchoredMenu>
+      ) : null}
+    </View>
+  );
+}
+
+const ListDropdownButton = forwardRef<
   View,
   {
     accessibilityLabel: string;
@@ -54,9 +127,9 @@ export const ListDropdownButton = forwardRef<
     icon: TablerIcon;
     label: string;
     onPress: () => void;
-    showLabel?: boolean;
+    showLabel: boolean;
   }
->(function ListDropdownButton({ accessibilityLabel, active, expanded, icon, label, onPress, showLabel = true }, ref) {
+>(function ListDropdownButton({ accessibilityLabel, active, expanded, icon, label, onPress, showLabel }, ref) {
   const accentClassName = active ? 'text-primary' : 'text-muted-foreground';
 
   return (
@@ -87,47 +160,18 @@ export const ListDropdownButton = forwardRef<
   );
 });
 
-/** Shared Sort label and segmented control used by every sortable landing-screen list. */
-export function SegmentedSortControl<Value extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: readonly SegmentedSortOption<Value>[];
-  value: Value;
-  onChange: (value: Value) => void;
-}) {
+function ListDropdownOption({ label, onPress, selected }: { label: string; onPress: () => void; selected: boolean }) {
   return (
-    <View className="h-10 min-w-0 flex-row items-center gap-2">
-      <Text className="shrink-0 text-toolbar tracking-widest text-muted-foreground" weight="semibold">
-        Sort
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      className="flex-row items-center justify-between gap-3 rounded-xl px-3 py-2.5 active:bg-muted"
+      onPress={onPress}
+    >
+      <Text className={selected ? 'text-primary' : 'text-foreground'} numberOfLines={1} weight="semibold">
+        {label}
       </Text>
-      <View className="h-10 min-w-0 shrink flex-row rounded-xl border border-border bg-surface p-1">
-        {options.map((option) => {
-          const selected = value === option.value;
-
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityLabel={`Sort by ${option.label.toLowerCase()}`}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              className={`min-w-0 shrink self-stretch justify-center rounded-lg border px-3 ${
-                selected ? 'border-border bg-elevated' : 'border-transparent'
-              }`}
-              onPress={() => onChange(option.value)}
-            >
-              <Text
-                className={`text-toolbar tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
-                numberOfLines={1}
-                weight="semibold"
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
+      {selected ? <Icon className="text-primary" icon={IconCheck} size={15} /> : null}
+    </Pressable>
   );
 }

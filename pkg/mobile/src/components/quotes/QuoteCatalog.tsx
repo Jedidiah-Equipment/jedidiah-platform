@@ -1,27 +1,28 @@
-import { formatCurrency, formatDate, priceQuote, quoteStatusLabels } from '@pkg/domain';
+import { formatCurrency, formatDate, priceQuote } from '@pkg/domain';
 import type { QuoteSummary } from '@pkg/schema';
-import { IconAlertTriangle, IconCheck, IconPlus, IconSearch } from '@tabler/icons-react-native';
+import { IconAlertTriangle, IconArrowsSort, IconFilter, IconPlus } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { BoardGrid } from '@/components/bays/BoardGrid';
-import { ListFilterButton } from '@/components/ListControls';
+import { ListControlRow, ListDropdownControl, ListSearchControl } from '@/components/ListControls';
 import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { AnchoredMenu } from '@/components/ui/anchored-menu';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
-import { TextInput } from '@/components/ui/text-input';
-import { QUOTE_STATUS_OPTIONS, type QuoteStatusFilter, quoteMetaLine } from '@/lib/quote-presentation';
+import { QUOTE_STATUS_OPTIONS, type QuoteSort, type QuoteStatusFilter, quoteMetaLine } from '@/lib/quote-presentation';
 
 const WIDE_BREAKPOINT = 760;
 const QUOTE_SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
 const STATUS_OPTIONS: readonly { label: string; value: QuoteStatusFilter }[] = [
   { label: 'All statuses', value: 'all' },
   ...QUOTE_STATUS_OPTIONS,
+];
+const QUOTE_SORT_OPTIONS: readonly { label: string; value: QuoteSort }[] = [
+  { label: 'Newest', value: 'newest' },
+  { label: 'Oldest', value: 'oldest' },
 ];
 
 export function QuoteCatalogHeader({ count }: { count: number | null }) {
@@ -37,109 +38,71 @@ export function QuoteCatalogControls({
   canCreate,
   onCreate,
   onSearchChange,
+  onSortChange,
   onStatusChange,
   search,
+  sort,
   status,
 }: {
   canCreate: boolean;
   onCreate: () => void;
   onSearchChange: (search: string) => void;
+  onSortChange: (sort: QuoteSort) => void;
   onStatusChange: (status: QuoteStatusFilter) => void;
   search: string;
+  sort: QuoteSort;
   status: QuoteStatusFilter;
 }) {
   const isWide = useWindowDimensions().width >= WIDE_BREAKPOINT;
-  const filterRef = useRef<View>(null);
-  const [menuAnchor, setMenuAnchor] = useState<{ left: number; top: number } | null>(null);
-  const statusLabel = status === 'all' ? 'All statuses' : quoteStatusLabels[status];
-
-  const openMenu = () => {
-    filterRef.current?.measureInWindow((x, y, width, height) => {
-      setMenuAnchor({ left: Math.max(8, x + width - 220), top: y + height + 8 });
-    });
-  };
-
-  const selectStatus = (next: QuoteStatusFilter) => {
-    onStatusChange(next);
-    setMenuAnchor(null);
-  };
 
   return (
-    <View className="z-10 h-10 flex-row items-center gap-2">
-      <View className="h-10 min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3">
-        <Icon className="text-muted-foreground" icon={IconSearch} size={17} />
-        <TextInput
+    <ListControlRow
+      leading={
+        <ListSearchControl
           accessibilityLabel="Search quotes"
-          className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 py-0"
           onChangeText={onSearchChange}
           placeholder="Search quotes…"
-          returnKeyType="search"
-          textSize="toolbar"
           value={search}
         />
-      </View>
-
-      <ListFilterButton
-        accessibilityLabel={`Filter by status: ${statusLabel}`}
-        active={status !== 'all'}
-        expanded={menuAnchor !== null}
-        label={statusLabel}
-        onPress={openMenu}
-        ref={filterRef}
-        showLabel={isWide}
-      />
-
-      {canCreate ? (
-        <Pressable
-          accessibilityLabel="New quote"
-          accessibilityRole="button"
-          className="h-10 flex-row items-center gap-2 rounded-xl bg-primary px-3 active:opacity-90"
-          onPress={onCreate}
-        >
-          <Icon className="text-primary-foreground" icon={IconPlus} size={18} strokeWidth={2.5} />
-          {isWide ? (
-            <Text className="text-toolbar text-primary-foreground" weight="bold">
-              New quote
-            </Text>
+      }
+      trailing={
+        <View className="flex-row items-center gap-2">
+          <ListDropdownControl
+            accessibilityLabel="Filter quotes by status"
+            active={status !== 'all'}
+            dismissLabel="Dismiss Quote status filter"
+            icon={IconFilter}
+            onChange={onStatusChange}
+            options={STATUS_OPTIONS}
+            value={status}
+          />
+          <ListDropdownControl
+            accessibilityLabel="Sort quotes"
+            active={sort !== 'newest'}
+            dismissLabel="Dismiss Quote sort"
+            icon={IconArrowsSort}
+            onChange={onSortChange}
+            options={QUOTE_SORT_OPTIONS}
+            value={sort}
+          />
+          {canCreate ? (
+            <Pressable
+              accessibilityLabel="New quote"
+              accessibilityRole="button"
+              className="h-10 flex-row items-center gap-2 rounded-xl bg-primary px-3 active:opacity-90"
+              onPress={onCreate}
+            >
+              <Icon className="text-primary-foreground" icon={IconPlus} size={18} strokeWidth={2.5} />
+              {isWide ? (
+                <Text className="text-toolbar text-primary-foreground" weight="bold">
+                  New quote
+                </Text>
+              ) : null}
+            </Pressable>
           ) : null}
-        </Pressable>
-      ) : null}
-
-      {menuAnchor ? (
-        <AnchoredMenu
-          dismissLabel="Dismiss Quote status filter"
-          onClose={() => setMenuAnchor(null)}
-          style={{ left: menuAnchor.left, top: menuAnchor.top, width: 220 }}
-        >
-          <View className="p-1.5">
-            {STATUS_OPTIONS.map((option) => (
-              <StatusOption
-                key={option.value}
-                active={status === option.value}
-                label={option.label}
-                onPress={() => selectStatus(option.value)}
-              />
-            ))}
-          </View>
-        </AnchoredMenu>
-      ) : null}
-    </View>
-  );
-}
-
-function StatusOption({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      className="flex-row items-center justify-between gap-3 rounded-xl px-3 py-2.5 active:bg-muted"
-      onPress={onPress}
-    >
-      <Text className={active ? 'text-primary' : 'text-foreground'} weight="semibold">
-        {label}
-      </Text>
-      {active ? <Icon className="text-primary" icon={IconCheck} size={15} /> : null}
-    </Pressable>
+        </View>
+      }
+    />
   );
 }
 

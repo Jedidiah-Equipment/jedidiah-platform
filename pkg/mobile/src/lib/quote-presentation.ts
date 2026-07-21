@@ -23,6 +23,7 @@ import {
 import { z } from 'zod';
 
 export type QuoteStatusFilter = 'all' | QuoteSummary['status'];
+export type QuoteSort = 'newest' | 'oldest';
 
 export const QUOTE_STATUS_OPTIONS = QuoteStatus.options.map((status) => ({
   label: quoteStatusLabels[status],
@@ -31,6 +32,14 @@ export const QUOTE_STATUS_OPTIONS = QuoteStatus.options.map((status) => ({
 
 export function isQuoteStatusFilter(value: unknown): value is QuoteStatusFilter {
   return value === 'all' || QuoteStatus.safeParse(value).success;
+}
+
+export function isQuoteSort(value: unknown): value is QuoteSort {
+  return value === 'newest' || value === 'oldest';
+}
+
+export function quoteSortDirection(sort: QuoteSort): 'asc' | 'desc' {
+  return sort === 'newest' ? 'desc' : 'asc';
 }
 
 export function shouldPinPriorityQuotes({ search, status }: { search: string; status: QuoteStatusFilter }): boolean {

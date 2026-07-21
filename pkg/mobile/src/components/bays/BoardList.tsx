@@ -1,8 +1,8 @@
-import { IconArrowsLeftRight } from '@tabler/icons-react-native';
+import { IconArrowsLeftRight, IconArrowsSort } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
-import { ListControlRow, SegmentedSortControl } from '@/components/ListControls';
+import { ListControlRow, ListDropdownControl } from '@/components/ListControls';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -37,7 +37,7 @@ const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
  * the two views in place. Both modes read the same cached schedule ({@link useBayList} /
  * {@link useJobList}), so toggling is instant with no refetch. The data + pull-to-refresh live in
  * the screen; this stays a pure render of the two list states. Owns the loading skeleton, empty,
- * forbidden, and error states, plus the Bays-only sort control.
+ * forbidden, and error states, plus the mode-specific sort control.
  */
 export function BoardList({
   listMode,
@@ -59,9 +59,25 @@ export function BoardList({
   let sortControl = null;
   if (state.status === 'ready') {
     sortControl = isBays ? (
-      <SegmentedSortControl onChange={setBaySort} options={BAY_SORT_OPTIONS} value={baySort} />
+      <ListDropdownControl
+        accessibilityLabel="Sort bays"
+        active={baySort !== 'days-left'}
+        dismissLabel="Dismiss Bay sort"
+        icon={IconArrowsSort}
+        onChange={setBaySort}
+        options={BAY_SORT_OPTIONS}
+        value={baySort}
+      />
     ) : (
-      <SegmentedSortControl onChange={setJobSort} options={JOB_SORT_OPTIONS} value={jobSort} />
+      <ListDropdownControl
+        accessibilityLabel="Sort jobs"
+        active={jobSort !== 'days-left'}
+        dismissLabel="Dismiss Job sort"
+        icon={IconArrowsSort}
+        onChange={setJobSort}
+        options={JOB_SORT_OPTIONS}
+        value={jobSort}
+      />
     );
   }
 

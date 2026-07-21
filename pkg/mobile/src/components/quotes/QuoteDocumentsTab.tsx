@@ -1,7 +1,8 @@
 import { canGenerateQuoteDocument } from '@pkg/domain';
 import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from '@pkg/schema';
 import {
-  IconChevronDown,
+  IconArrowsSort,
+  IconCheck,
   IconDownload,
   IconEye,
   IconFilePlus,
@@ -10,18 +11,30 @@ import {
 } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
+import { ListDropdownButton } from '@/components/ListControls';
 import { GenerateQuoteDocumentModal } from '@/components/quotes/GenerateQuoteDocumentModal';
+import { AnchoredMenu } from '@/components/ui/anchored-menu';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useAppToast } from '@/components/ui/toast';
 import { quoteDocumentDownloadPath } from '@/lib/authed-fetch';
 import { saveDocument } from '@/lib/document-actions';
-import { presentQuoteDocuments, quoteDocumentCountLabel, quoteDocumentMetaLine } from '@/lib/quote-documents';
+import {
+  presentQuoteDocuments,
+  type QuoteDocumentSort,
+  quoteDocumentCountLabel,
+  quoteDocumentMetaLine,
+} from '@/lib/quote-documents';
 import { useTRPC } from '@/lib/trpc';
+
+const DOCUMENT_SORT_OPTIONS: readonly { label: string; value: QuoteDocumentSort }[] = [
+  { label: 'Uploaded newest', value: 'uploaded-newest' },
+  { label: 'Uploaded oldest', value: 'uploaded-oldest' },
+];
 
 export function QuoteDocumentsTab({
   canUpdate,
@@ -38,13 +51,28 @@ export function QuoteDocumentsTab({
   const query = useQuery(trpc.documents.listByQuote.queryOptions({ quoteId: quote.id }));
   const router = useRouter();
   const showToast = useAppToast();
+  const sortButtonRef = useRef<View>(null);
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<QuoteDocumentSort>('uploaded-newest');
+  const [sortMenuAnchor, setSortMenuAnchor] = useState<{ left: number; top: number } | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generationWarnings, setGenerationWarnings] = useState<QuoteDocumentGenerationWarning[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const documents = useMemo(() => presentQuoteDocuments(query.data ?? [], search), [query.data, search]);
+  const documents = useMemo(() => presentQuoteDocuments(query.data ?? [], search, sort), [query.data, search, sort]);
+  const sortLabel = DOCUMENT_SORT_OPTIONS.find((option) => option.value === sort)?.label ?? 'Uploaded newest';
   const showGenerate =
     canUpdate && canGenerateQuoteDocument({ kind: quote.kind, product: quote.product, status: quote.status });
+
+  const openSortMenu = () => {
+    sortButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setSortMenuAnchor({ left: Math.max(8, x + width - 220), top: y + height + 8 });
+    });
+  };
+
+  const selectSort = (next: QuoteDocumentSort) => {
+    setSort(next);
+    setSortMenuAnchor(null);
+  };
 
   const openDocument = (document: QuoteDocument) => {
     router.push({
@@ -120,12 +148,36 @@ export function QuoteDocumentsTab({
               value={search}
             />
           </View>
-          <View className="flex-row items-center gap-1.5">
-            <Text className="text-[10px] text-muted-foreground" mono>
-              Uploaded newest
-            </Text>
-            <Icon className="text-muted-foreground" icon={IconChevronDown} size={14} />
+          <View className="max-w-[220px] shrink">
+            <ListDropdownButton
+              accessibilityLabel={`Sort documents: ${sortLabel}`}
+              active={sort !== 'uploaded-newest'}
+              expanded={sortMenuAnchor !== null}
+              icon={IconArrowsSort}
+              label={sortLabel}
+              onPress={openSortMenu}
+              ref={sortButtonRef}
+            />
           </View>
+
+          {sortMenuAnchor ? (
+            <AnchoredMenu
+              dismissLabel="Dismiss document sort"
+              onClose={() => setSortMenuAnchor(null)}
+              style={{ left: sortMenuAnchor.left, top: sortMenuAnchor.top, width: 220 }}
+            >
+              <View className="p-1.5">
+                {DOCUMENT_SORT_OPTIONS.map((option) => (
+                  <DocumentSortOption
+                    key={option.value}
+                    active={sort === option.value}
+                    label={option.label}
+                    onPress={() => selectSort(option.value)}
+                  />
+                ))}
+              </View>
+            </AnchoredMenu>
+          ) : null}
         </View>
 
         {query.isPending ? (
@@ -180,6 +232,22 @@ export function QuoteDocumentsTab({
         quote={quote}
       />
     </View>
+  );
+}
+
+function DocumentSortOption({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      className="flex-row items-center justify-between gap-3 rounded-xl px-3 py-2.5 active:bg-muted"
+      onPress={onPress}
+    >
+      <Text className={active ? 'text-primary' : 'text-foreground'} numberOfLines={1} weight="semibold">
+        {label}
+      </Text>
+      {active ? <Icon className="text-primary" icon={IconCheck} size={15} /> : null}
+    </Pressable>
   );
 }
 

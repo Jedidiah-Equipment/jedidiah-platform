@@ -1,4 +1,4 @@
-import { IconChevronDown, IconFilter } from '@tabler/icons-react-native';
+import { IconChevronDown, IconFilter, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { forwardRef, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -31,6 +31,32 @@ export const ListFilterButton = forwardRef<
     showLabel?: boolean;
   }
 >(function ListFilterButton({ accessibilityLabel, active, expanded, label, onPress, showLabel = true }, ref) {
+  return (
+    <ListDropdownButton
+      accessibilityLabel={accessibilityLabel}
+      active={active}
+      expanded={expanded}
+      icon={IconFilter}
+      label={label}
+      onPress={onPress}
+      ref={ref}
+      showLabel={showLabel}
+    />
+  );
+});
+
+export const ListDropdownButton = forwardRef<
+  View,
+  {
+    accessibilityLabel: string;
+    active: boolean;
+    expanded: boolean;
+    icon: TablerIcon;
+    label: string;
+    onPress: () => void;
+    showLabel?: boolean;
+  }
+>(function ListDropdownButton({ accessibilityLabel, active, expanded, icon, label, onPress, showLabel = true }, ref) {
   const accentClassName = active ? 'text-primary' : 'text-muted-foreground';
 
   return (
@@ -44,7 +70,7 @@ export const ListFilterButton = forwardRef<
       onPress={onPress}
       ref={ref}
     >
-      <Icon className={accentClassName} icon={IconFilter} size={15} />
+      <Icon className={accentClassName} icon={icon} size={15} />
       {showLabel ? (
         <>
           <Text

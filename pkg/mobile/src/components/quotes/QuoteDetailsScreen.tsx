@@ -561,18 +561,16 @@ function AutosaveStatus({
   onRetry: () => void;
   state: { errorMessage: string | null; hasUnsavedChanges: boolean; status: string };
 }) {
-  if (state.status === 'idle' && !state.hasUnsavedChanges) return null;
+  if (state.status === 'saved' || (state.status === 'idle' && !state.hasUnsavedChanges)) return null;
 
   const label =
     state.status === 'saving'
       ? 'Saving…'
-      : state.status === 'saved'
-        ? 'Saved'
-        : state.status === 'invalid'
-          ? 'Fix highlighted fields'
-          : state.status === 'error'
-            ? 'Save failed'
-            : 'Unsaved changes';
+      : state.status === 'invalid'
+        ? 'Fix highlighted fields'
+        : state.status === 'error'
+          ? 'Save failed'
+          : 'Unsaved changes';
 
   return (
     <View className="flex-row items-center justify-end gap-2">

@@ -6,6 +6,8 @@ import { View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { gluestackConfig } from '@/theme/gluestack-config';
+import { useColorMode } from '@/theme/use-color-mode';
 
 // gluestack animates each toast's mount/unmount through a Motion view inside an
 // AnimatePresence; hand it the Legend Motion primitives the hook expects. The
@@ -40,16 +42,21 @@ export function useAppToast() {
 
 function ToastCard({ message, nativeID, tone }: { message: string; nativeID: string; tone: ToastTone }) {
   const { accent, icon } = TONE[tone];
+  const { resolved } = useColorMode();
 
   return (
-    <View
-      className="mx-4 mt-2 flex-row items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 shadow-lg"
-      nativeID={`toast-${nativeID}`}
-    >
-      <Icon className={accent} icon={icon} size={20} />
-      <Text className="flex-1 text-sm text-surface-foreground" weight="semibold">
-        {message}
-      </Text>
+    // Toasts render through an overlay outside the themed view, so restore the
+    // active variables at the overlay boundary before resolving semantic colours.
+    <View style={gluestackConfig[resolved]}>
+      <View
+        className="mx-4 mt-2 flex-row items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 shadow-lg"
+        nativeID={`toast-${nativeID}`}
+      >
+        <Icon className={accent} icon={icon} size={20} />
+        <Text className="flex-1 text-sm text-surface-foreground" weight="semibold">
+          {message}
+        </Text>
+      </View>
     </View>
   );
 }

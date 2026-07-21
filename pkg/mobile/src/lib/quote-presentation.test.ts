@@ -10,6 +10,7 @@ import {
   presentQuotePages,
   quoteMetaLine,
   quoteSortDirection,
+  quoteWorkItemSummaryRows,
   shouldPinPriorityQuotes,
   toQuoteEditFormValues,
   toQuoteUpdateInput,
@@ -21,6 +22,8 @@ const PRODUCT_ID = '550e8400-e29b-41d4-a716-446655440002';
 const ASSEMBLY_ID = '550e8400-e29b-41d4-a716-446655440003';
 const SELECTION_ID = '550e8400-e29b-41d4-a716-446655440004';
 const LINE_ITEM_ID = '550e8400-e29b-41d4-a716-446655440005';
+const WORK_ITEM_ID = '550e8400-e29b-41d4-a716-446655440006';
+const WORK_ITEM_PART_ID = '550e8400-e29b-41d4-a716-446655440007';
 
 function buildQuoteDetail() {
   return QuoteDetail.parse({
@@ -208,7 +211,7 @@ describe('Quote edit presentation', () => {
     });
   });
 
-  it('round-trips a custom quote hourly rate and seeds product edit state from the shared default', () => {
+  it('round-trips custom work items with nested parts and seeds product edit state from the shared defaults', () => {
     const productQuote = buildQuoteDetail();
     expect(toQuoteEditFormValues(productQuote).hourlyRate).toBe(DEFAULT_CUSTOM_HOURLY_RATE);
 
@@ -220,19 +223,92 @@ describe('Quote edit presentation', () => {
       product: null,
       productId: null,
       selectedAssemblies: [],
-      workItems: [],
+      workItems: [
+        {
+          id: WORK_ITEM_ID,
+          quoteId: QUOTE_ID,
+          name: 'Rebuild pump',
+          hours: 1.5,
+          parts: [
+            {
+              id: WORK_ITEM_PART_ID,
+              workItemId: WORK_ITEM_ID,
+              name: 'Seal kit',
+              quantity: 2,
+              unitPrice: 125,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
       workTitle: 'Hydraulic repair',
     });
     const values = toQuoteEditFormValues(customQuote);
 
     expect(values.hourlyRate).toBe(925);
+    expect(values.workItems).toEqual([
+      {
+        name: 'Rebuild pump',
+        hours: 1.5,
+        parts: [{ name: 'Seal kit', quantity: 2, unitPrice: 125 }],
+      },
+    ]);
+    expect(
+      quoteWorkItemSummaryRows({ hourlyRate: values.hourlyRate, workItems: values.workItems }).map(
+        ({ name, total }) => ({ name, total }),
+      ),
+    ).toEqual([{ name: 'Rebuild pump', total: 1637.5 }]);
     const input = toQuoteUpdateInput({ id: customQuote.id, kind: customQuote.kind, values });
     expect(input.offering).toEqual({
       basePrice: 1000,
       hourlyRate: 925,
       kind: 'custom',
+      workItems: [
+        {
+          name: 'Rebuild pump',
+          hours: 1.5,
+          parts: [{ name: 'Seal kit', quantity: 2, unitPrice: 125 }],
+        },
+      ],
       workTitle: 'Hydraulic repair',
     });
     expect(input).not.toHaveProperty('lineItems');
+  });
+
+  it('validates custom work-item names, hours, part quantities, and prices at their nested fields', () => {
+    const values = toQuoteEditFormValues(
+      QuoteDetail.parse({
+        ...buildQuoteDetail(),
+        hourlyRate: 925,
+        kind: 'custom',
+        lineItems: [],
+        product: null,
+        productId: null,
+        selectedAssemblies: [],
+        workItems: [],
+        workTitle: 'Hydraulic repair',
+      }),
+    );
+    const result = getQuoteEditFormValuesValidator('custom').safeParse({
+      ...values,
+      workItems: [
+        {
+          name: ' ',
+          hours: -1,
+          parts: [{ name: '', quantity: 0, unitPrice: -1 }],
+        },
+      ],
+    });
+
+    expect(result.error?.issues.map((issue) => issue.path)).toEqual([
+      ['workItems', 0, 'hours'],
+      ['workItems', 0, 'name'],
+      ['workItems', 0, 'parts', 0, 'name'],
+      ['workItems', 0, 'parts', 0, 'quantity'],
+      ['workItems', 0, 'parts', 0, 'unitPrice'],
+    ]);
   });
 });

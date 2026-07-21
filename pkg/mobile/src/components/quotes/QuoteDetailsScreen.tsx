@@ -1,5 +1,6 @@
 import {
   computeQuoteSummary,
+  computeWorkItemTotal,
   createStableRowKeys,
   EDITABLE_LOCKED_QUOTE_FIELDS,
   formatCurrency,
@@ -12,7 +13,7 @@ import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,6 +32,7 @@ import { useAppToast } from '@/components/ui/toast';
 import {
   getQuoteEditFormValuesValidator,
   QUOTE_STATUS_OPTIONS,
+  type QuoteEditFormValues,
   toQuoteEditFormValues,
   toQuoteUpdateInput,
 } from '@/lib/quote-presentation';
@@ -38,6 +40,8 @@ import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
 
 const getLineItemKey = createStableRowKeys<{ name: string; quantity: number; unitPrice: number }>('quote-line-item');
+type QuoteWorkItemFormValue = QuoteEditFormValues['workItems'][number];
+type QuoteWorkItemRowKey = { key: string; partKeys: string[] };
 
 export function QuoteDetailsScreen({ quoteId }: { quoteId: string }) {
   const parsedId = UUID.safeParse(quoteId);
@@ -120,13 +124,8 @@ function QuoteEditor({
     validator,
   });
   const values = useStore(form.store, (state) => state.values);
-  // Mobile does not edit work items yet, but their persisted totals must remain visible while other
-  // custom-quote fields are edited. The mobile work-items editor owns replacing this bridge.
-  const summary = useMemo(
-    () =>
-      computeQuoteSummary({ quote, values: { ...values, workItems: quote.kind === 'custom' ? quote.workItems : [] } }),
-    [quote, values],
-  );
+  const workItemRowKeys = useQuoteWorkItemRowKeys(values.workItems);
+  const summary = useMemo(() => computeQuoteSummary({ quote, values }), [quote, values]);
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const canEdit = (field: string) => canUpdate && (!isLocked || EDITABLE_LOCKED_QUOTE_FIELDS.has(field));
   const setupReadOnly = !canUpdate || isLocked;
@@ -453,6 +452,202 @@ function QuoteEditor({
                   </form.Field>
                 ) : null}
 
+                {quote.kind === 'custom' ? (
+                  <form.Field name="workItems" mode="array">
+                    {(workItemsField) => (
+                      <Section
+                        action={
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityState={{ disabled: setupReadOnly }}
+                            className={`flex-row items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 ${
+                              setupReadOnly ? 'opacity-50' : 'active:bg-surface'
+                            }`}
+                            disabled={setupReadOnly}
+                            onPress={() => {
+                              workItemRowKeys.appendWorkItem();
+                              workItemsField.pushValue({ hours: 0, name: '', parts: [] });
+                              autosave.markChanged();
+                            }}
+                          >
+                            <Icon className="text-primary" icon={IconPlus} size={15} />
+                            <Text className="text-xs text-foreground" weight="semibold">
+                              Add work item
+                            </Text>
+                          </Pressable>
+                        }
+                        title="Work items"
+                      >
+                        {workItemsField.state.value.length === 0 ? (
+                          <View className="rounded-xl border border-dashed border-border px-4 py-7">
+                            <Text className="text-center text-sm text-muted-foreground">No work items.</Text>
+                          </View>
+                        ) : (
+                          <View className="gap-3">
+                            {workItemsField.state.value.map((workItem, workItemIndex) => (
+                              <View
+                                className="gap-4 rounded-xl border border-border bg-muted/10 p-3"
+                                key={workItemRowKeys.workItemKey(workItemIndex)}
+                              >
+                                <form.AppField name={`workItems[${workItemIndex}].name`}>
+                                  {(field) => (
+                                    <field.TextField
+                                      disabled={setupReadOnly}
+                                      label="Work item"
+                                      onValueCommit={autosave.commit}
+                                    />
+                                  )}
+                                </form.AppField>
+                                <View className="gap-3 md:flex-row">
+                                  <View className="flex-1">
+                                    <form.AppField name={`workItems[${workItemIndex}].hours`}>
+                                      {(field) => (
+                                        <field.NumberField
+                                          disabled={setupReadOnly}
+                                          label="Hours"
+                                          onValueCommit={autosave.commit}
+                                        />
+                                      )}
+                                    </form.AppField>
+                                  </View>
+                                  <View className="flex-1 justify-end rounded-xl border border-border bg-surface px-3 py-2.5">
+                                    <Text className="text-xs text-muted-foreground">Item total</Text>
+                                    <Text className="mt-1 text-sm text-foreground" mono weight="semibold">
+                                      {formatCurrency(
+                                        getWorkItemTotal({ hourlyRate: values.hourlyRate, workItem }),
+                                        quoteCurrencyCode,
+                                      )}
+                                    </Text>
+                                  </View>
+                                </View>
+
+                                <form.Field name={`workItems[${workItemIndex}].parts`} mode="array">
+                                  {(partsField) => (
+                                    <View className="gap-3 border-l-2 border-border pl-3">
+                                      <View className="flex-row items-center justify-between gap-3">
+                                        <Text className="text-sm text-foreground" weight="semibold">
+                                          Parts
+                                        </Text>
+                                        <Pressable
+                                          accessibilityRole="button"
+                                          accessibilityState={{ disabled: setupReadOnly }}
+                                          className={`flex-row items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 ${
+                                            setupReadOnly ? 'opacity-50' : 'active:bg-muted'
+                                          }`}
+                                          disabled={setupReadOnly}
+                                          onPress={() => {
+                                            workItemRowKeys.appendPart(workItemIndex);
+                                            partsField.pushValue({ name: '', quantity: 1, unitPrice: 0 });
+                                            autosave.markChanged();
+                                          }}
+                                        >
+                                          <Icon className="text-primary" icon={IconPlus} size={14} />
+                                          <Text className="text-xs text-foreground" weight="semibold">
+                                            Add part
+                                          </Text>
+                                        </Pressable>
+                                      </View>
+                                      {partsField.state.value.length === 0 ? (
+                                        <Text className="text-xs text-muted-foreground">No parts.</Text>
+                                      ) : (
+                                        <View className="gap-3">
+                                          {partsField.state.value.map((_, partIndex) => (
+                                            <View
+                                              className="gap-3 rounded-xl border border-border bg-surface p-3"
+                                              key={workItemRowKeys.partKey(workItemIndex, partIndex)}
+                                            >
+                                              <form.AppField
+                                                name={`workItems[${workItemIndex}].parts[${partIndex}].name`}
+                                              >
+                                                {(field) => (
+                                                  <field.TextField
+                                                    disabled={setupReadOnly}
+                                                    label="Part name"
+                                                    onValueCommit={autosave.commit}
+                                                  />
+                                                )}
+                                              </form.AppField>
+                                              <View className="gap-3 md:flex-row">
+                                                <View className="flex-1">
+                                                  <form.AppField
+                                                    name={`workItems[${workItemIndex}].parts[${partIndex}].quantity`}
+                                                  >
+                                                    {(field) => (
+                                                      <field.NumberField
+                                                        disabled={setupReadOnly}
+                                                        label="Quantity"
+                                                        onValueCommit={autosave.commit}
+                                                      />
+                                                    )}
+                                                  </form.AppField>
+                                                </View>
+                                                <View className="flex-1">
+                                                  <form.AppField
+                                                    name={`workItems[${workItemIndex}].parts[${partIndex}].unitPrice`}
+                                                  >
+                                                    {(field) => (
+                                                      <field.CurrencyField
+                                                        disabled={setupReadOnly}
+                                                        label="Unit price"
+                                                        onValueCommit={autosave.commit}
+                                                      />
+                                                    )}
+                                                  </form.AppField>
+                                                </View>
+                                              </View>
+                                              <View className="items-end">
+                                                <Pressable
+                                                  accessibilityLabel={`Remove part ${partIndex + 1} from work item ${workItemIndex + 1}`}
+                                                  accessibilityRole="button"
+                                                  accessibilityState={{ disabled: setupReadOnly }}
+                                                  className={`h-10 w-10 items-center justify-center rounded-lg ${
+                                                    setupReadOnly ? 'opacity-0' : 'active:bg-muted'
+                                                  }`}
+                                                  disabled={setupReadOnly}
+                                                  onPress={() => {
+                                                    workItemRowKeys.removePart(workItemIndex, partIndex);
+                                                    partsField.removeValue(partIndex);
+                                                    autosave.commit();
+                                                  }}
+                                                >
+                                                  <Icon className="text-danger" icon={IconTrash} size={17} />
+                                                </Pressable>
+                                              </View>
+                                            </View>
+                                          ))}
+                                        </View>
+                                      )}
+                                    </View>
+                                  )}
+                                </form.Field>
+
+                                <View className="items-end border-t border-border pt-2">
+                                  <Pressable
+                                    accessibilityLabel={`Remove work item ${workItemIndex + 1}`}
+                                    accessibilityRole="button"
+                                    accessibilityState={{ disabled: setupReadOnly }}
+                                    className={`h-10 w-10 items-center justify-center rounded-lg ${
+                                      setupReadOnly ? 'opacity-0' : 'active:bg-muted'
+                                    }`}
+                                    disabled={setupReadOnly}
+                                    onPress={() => {
+                                      workItemRowKeys.removeWorkItem(workItemIndex);
+                                      workItemsField.removeValue(workItemIndex);
+                                      autosave.commit();
+                                    }}
+                                  >
+                                    <Icon className="text-danger" icon={IconTrash} size={17} />
+                                  </Pressable>
+                                </View>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                      </Section>
+                    )}
+                  </form.Field>
+                ) : null}
+
                 <Section title="Internal notes">
                   <form.AppField name="notes">
                     {(field) => (
@@ -525,6 +720,63 @@ function QuoteEditor({
       />
     </SafeAreaView>
   );
+}
+
+function useQuoteWorkItemRowKeys(workItems: QuoteEditFormValues['workItems']) {
+  const nextKey = useRef(0);
+  const rows = useRef<QuoteWorkItemRowKey[]>([]);
+  const createKey = (prefix: string) => {
+    const key = `${prefix}-${nextKey.current}`;
+    nextKey.current += 1;
+    return key;
+  };
+
+  // TanStack Form replaces ancestor objects during nested edits, so keys must follow array operations instead of identity.
+  while (rows.current.length < workItems.length) {
+    const workItemIndex = rows.current.length;
+    rows.current.push({
+      key: createKey('quote-work-item'),
+      partKeys: workItems[workItemIndex]?.parts.map(() => createKey('quote-work-item-part')) ?? [],
+    });
+  }
+  rows.current.length = workItems.length;
+  for (const [workItemIndex, workItem] of workItems.entries()) {
+    const partKeys = rows.current[workItemIndex]?.partKeys;
+    if (!partKeys) continue;
+    while (partKeys.length < workItem.parts.length) partKeys.push(createKey('quote-work-item-part'));
+    partKeys.length = workItem.parts.length;
+  }
+
+  return {
+    appendPart: (workItemIndex: number) => {
+      rows.current[workItemIndex]?.partKeys.push(createKey('quote-work-item-part'));
+    },
+    appendWorkItem: () => {
+      rows.current.push({ key: createKey('quote-work-item'), partKeys: [] });
+    },
+    partKey: (workItemIndex: number, partIndex: number) =>
+      rows.current[workItemIndex]?.partKeys[partIndex] ?? `quote-work-item-part-fallback-${workItemIndex}-${partIndex}`,
+    removePart: (workItemIndex: number, partIndex: number) => {
+      rows.current[workItemIndex]?.partKeys.splice(partIndex, 1);
+    },
+    removeWorkItem: (workItemIndex: number) => {
+      rows.current.splice(workItemIndex, 1);
+    },
+    workItemKey: (workItemIndex: number) =>
+      rows.current[workItemIndex]?.key ?? `quote-work-item-fallback-${workItemIndex}`,
+  };
+}
+
+function getWorkItemTotal({ hourlyRate, workItem }: { hourlyRate: number; workItem: QuoteWorkItemFormValue }): number {
+  if (
+    !Number.isFinite(hourlyRate) ||
+    !Number.isFinite(workItem.hours) ||
+    workItem.parts.some((part) => !Number.isFinite(part.quantity) || !Number.isFinite(part.unitPrice))
+  ) {
+    return 0;
+  }
+
+  return computeWorkItemTotal({ hourlyRate, hours: workItem.hours, parts: workItem.parts });
 }
 
 function QuoteTabButton({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {

@@ -216,19 +216,23 @@ describe('Quote edit presentation', () => {
       ...productQuote,
       hourlyRate: 925,
       kind: 'custom',
+      lineItems: [],
       product: null,
       productId: null,
       selectedAssemblies: [],
+      workItems: [],
       workTitle: 'Hydraulic repair',
     });
     const values = toQuoteEditFormValues(customQuote);
 
     expect(values.hourlyRate).toBe(925);
-    expect(toQuoteUpdateInput({ id: customQuote.id, kind: customQuote.kind, values }).offering).toEqual({
+    const input = toQuoteUpdateInput({ id: customQuote.id, kind: customQuote.kind, values });
+    expect(input.offering).toEqual({
       basePrice: 1000,
       hourlyRate: 925,
       kind: 'custom',
       workTitle: 'Hydraulic repair',
     });
+    expect(input).not.toHaveProperty('lineItems');
   });
 });

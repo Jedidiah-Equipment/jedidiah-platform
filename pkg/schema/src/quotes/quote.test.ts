@@ -9,6 +9,7 @@ import {
   QuoteProductBayAvailabilityResult,
   QuoteSummary,
   QuoteUpdateInput,
+  QuoteWorkItemInput,
   UpcomingDeliveryQuotesResult,
 } from './quote.js';
 
@@ -86,6 +87,36 @@ describe('QuoteCreateInput', () => {
     ).toMatchObject({
       offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500.5, hourlyRate: 850.25 },
     });
+  });
+
+  it('accepts work items only on custom offerings and rejects custom line items', () => {
+    expect(
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: {
+          kind: 'custom',
+          workTitle: 'Hydraulic repair',
+          basePrice: 2500,
+          hourlyRate: 850,
+          workItems: [{ name: 'Strip pump', hours: '1.33', parts: [] }],
+        },
+      }),
+    ).toMatchObject({
+      offering: { kind: 'custom', workItems: [{ name: 'Strip pump', hours: 1.33, parts: [] }] },
+    });
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: { ...baseCreateInput.offering, workItems: [] },
+      }),
+    ).toThrow();
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        lineItems: [{ name: 'Travel', quantity: 1, unitPrice: 100 }],
+        offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500, hourlyRate: 850 },
+      }),
+    ).toThrow('Line items are only allowed on Product Quotes');
   });
 
   it('requires a non-negative hourly rate for custom offerings and rejects it on product offerings', () => {
@@ -179,6 +210,37 @@ describe('QuoteLineItemInput', () => {
   });
 });
 
+describe('QuoteWorkItemInput', () => {
+  it('trims names, coerces numbers, and supports name-only zero-cost work', () => {
+    expect(
+      QuoteWorkItemInput.parse({
+        name: '  Strip pump  ',
+        hours: '1.33',
+        parts: [{ name: '  Seal kit  ', quantity: '2', unitPrice: '125.50' }],
+      }),
+    ).toEqual({
+      name: 'Strip pump',
+      hours: 1.33,
+      parts: [{ name: 'Seal kit', quantity: 2, unitPrice: 125.5 }],
+    });
+    expect(QuoteWorkItemInput.parse({ name: 'Inspection' })).toEqual({ name: 'Inspection', hours: 0, parts: [] });
+  });
+
+  it('rejects empty names, negative hours, invalid part quantities, and negative part prices', () => {
+    expect(() => QuoteWorkItemInput.parse({ name: ' ', hours: 0 })).toThrow();
+    expect(() => QuoteWorkItemInput.parse({ name: 'Inspection', hours: -1 })).toThrow();
+    expect(() =>
+      QuoteWorkItemInput.parse({ name: 'Inspection', parts: [{ name: ' ', quantity: 1, unitPrice: 0 }] }),
+    ).toThrow();
+    expect(() =>
+      QuoteWorkItemInput.parse({ name: 'Inspection', parts: [{ name: 'Seal', quantity: 0, unitPrice: 0 }] }),
+    ).toThrow();
+    expect(() =>
+      QuoteWorkItemInput.parse({ name: 'Inspection', parts: [{ name: 'Seal', quantity: 1, unitPrice: -1 }] }),
+    ).toThrow();
+  });
+});
+
 describe('QuoteUpdateInput', () => {
   it('parses a product offering update', () => {
     expect(QuoteUpdateInput.parse(baseUpdateInput())).toMatchObject({
@@ -267,6 +329,7 @@ describe('QuoteDetail', () => {
       salesPersonName: null,
       salesPersonThumbnailDataUrl: null,
       lineItems: [],
+      workItems: [],
       selectedAssemblies: [],
       status: 'accepted',
       statusChangedAt: '2026-01-01T00:00:00.000Z',

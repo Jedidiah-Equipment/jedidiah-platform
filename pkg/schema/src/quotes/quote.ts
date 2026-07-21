@@ -167,6 +167,54 @@ export const QuoteLineItemInput = z.object({
   unitPrice: z.coerce.number().pipe(Price),
 });
 
+export type QuoteWorkItemName = z.infer<typeof QuoteWorkItemName>;
+export const QuoteWorkItemName = requiredTrimmedText('Work item name is required');
+
+export type QuoteWorkItemHours = z.infer<typeof QuoteWorkItemHours>;
+export const QuoteWorkItemHours = z.number().min(0, 'Must be zero or greater');
+
+export type QuoteWorkItemPartName = z.infer<typeof QuoteWorkItemPartName>;
+export const QuoteWorkItemPartName = requiredTrimmedText('Part name is required');
+
+export type QuoteWorkItemPartQuantity = z.infer<typeof QuoteWorkItemPartQuantity>;
+export const QuoteWorkItemPartQuantity = z.number().int().min(1, 'Must be 1 or greater');
+
+export type QuoteWorkItemPart = z.infer<typeof QuoteWorkItemPart>;
+export const QuoteWorkItemPart = z.object({
+  id: UUID,
+  workItemId: UUID,
+  name: QuoteWorkItemPartName,
+  quantity: QuoteWorkItemPartQuantity,
+  unitPrice: Price,
+  createdAt: DateIso,
+  updatedAt: DateIso,
+});
+
+export type QuoteWorkItemPartInput = z.infer<typeof QuoteWorkItemPartInput>;
+export const QuoteWorkItemPartInput = z.object({
+  name: QuoteWorkItemPartName,
+  quantity: z.coerce.number().pipe(QuoteWorkItemPartQuantity).default(1),
+  unitPrice: z.coerce.number().pipe(Price).default(0),
+});
+
+export type QuoteWorkItem = z.infer<typeof QuoteWorkItem>;
+export const QuoteWorkItem = z.object({
+  id: UUID,
+  quoteId: UUID,
+  name: QuoteWorkItemName,
+  hours: QuoteWorkItemHours,
+  parts: z.array(QuoteWorkItemPart),
+  createdAt: DateIso,
+  updatedAt: DateIso,
+});
+
+export type QuoteWorkItemInput = z.infer<typeof QuoteWorkItemInput>;
+export const QuoteWorkItemInput = z.object({
+  name: QuoteWorkItemName,
+  hours: z.coerce.number().pipe(QuoteWorkItemHours).default(0),
+  parts: z.array(QuoteWorkItemPartInput).default([]),
+});
+
 export type QuoteProductSummaryFacts = z.infer<typeof QuoteProductSummaryFacts>;
 export const QuoteProductSummaryFacts = z.object({
   buildTimeDays: ProductBuildTimeDays,
@@ -196,10 +244,12 @@ const quoteSummaryShape = {
   selectedAssemblies: z.array(QuoteSelectedAssembly),
 };
 
+const quoteCustomCollectionsShape = { workItems: z.array(QuoteWorkItem) };
+
 export type QuoteSummary = z.infer<typeof QuoteSummary>;
 export const QuoteSummary = z.discriminatedUnion('kind', [
   z.object({ ...quoteBaseShape, ...quoteProductOfferingShape, ...quoteSummaryShape }),
-  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteSummaryShape }),
+  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteSummaryShape, ...quoteCustomCollectionsShape }),
 ]);
 
 export type PriorityQuote = z.infer<typeof PriorityQuote>;
@@ -210,13 +260,30 @@ export const PriorityQuote = z.discriminatedUnion('kind', [
     ...quoteSummaryShape,
     earliestDeliveryDate: DateOnlyIso,
   }),
-  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteSummaryShape, earliestDeliveryDate: DateOnlyIso }),
+  z.object({
+    ...quoteBaseShape,
+    ...quoteCustomOfferingShape,
+    ...quoteSummaryShape,
+    ...quoteCustomCollectionsShape,
+    earliestDeliveryDate: DateOnlyIso,
+  }),
 ]);
 
 export type UpcomingDeliveryQuote = z.infer<typeof UpcomingDeliveryQuote>;
 export const UpcomingDeliveryQuote = z.discriminatedUnion('kind', [
-  z.object({ ...quoteBaseShape, ...quoteProductOfferingShape, ...quoteSummaryShape, plannedDeliveryDate: DateOnlyIso }),
-  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteSummaryShape, plannedDeliveryDate: DateOnlyIso }),
+  z.object({
+    ...quoteBaseShape,
+    ...quoteProductOfferingShape,
+    ...quoteSummaryShape,
+    plannedDeliveryDate: DateOnlyIso,
+  }),
+  z.object({
+    ...quoteBaseShape,
+    ...quoteCustomOfferingShape,
+    ...quoteSummaryShape,
+    ...quoteCustomCollectionsShape,
+    plannedDeliveryDate: DateOnlyIso,
+  }),
 ]);
 
 export type UpcomingDeliveryQuotesResult = z.infer<typeof UpcomingDeliveryQuotesResult>;
@@ -239,7 +306,7 @@ const quoteDetailShape = {
 export type QuoteDetail = z.infer<typeof QuoteDetail>;
 export const QuoteDetail = z.discriminatedUnion('kind', [
   z.object({ ...quoteBaseShape, ...quoteProductOfferingShape, ...quoteDetailShape }),
-  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteDetailShape }),
+  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteDetailShape, ...quoteCustomCollectionsShape }),
 ]);
 
 export type QuoteCustomerInput = z.infer<typeof QuoteCustomerInput>;
@@ -269,6 +336,7 @@ export const QuoteOfferingInput = z.discriminatedUnion('kind', [
     workTitle: QuoteWorkTitle,
     basePrice: z.coerce.number().pipe(Price),
     hourlyRate: z.coerce.number().pipe(QuoteHourlyRate),
+    workItems: z.array(QuoteWorkItemInput).default([]),
   }),
 ]);
 
@@ -298,6 +366,19 @@ function validateQuoteDeliveryPricing(
   }
 }
 
+function validateQuoteKindCollections(
+  input: { lineItems?: readonly QuoteLineItemInput[] | undefined; offering: { kind: QuoteKind } },
+  context: z.RefinementCtx,
+) {
+  if (input.offering.kind === 'custom' && input.lineItems && input.lineItems.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Line items are only allowed on Product Quotes',
+      path: ['lineItems'],
+    });
+  }
+}
+
 export type QuoteCreateInput = z.infer<typeof QuoteCreateInput>;
 export const QuoteCreateInput = z
   .object({
@@ -317,7 +398,8 @@ export const QuoteCreateInput = z
     lineItems: z.array(QuoteLineItemInput).default([]),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
-  .superRefine(validateQuoteDeliveryPricing);
+  .superRefine(validateQuoteDeliveryPricing)
+  .superRefine(validateQuoteKindCollections);
 
 export type QuoteUpdateOfferingInput = z.infer<typeof QuoteUpdateOfferingInput>;
 export const QuoteUpdateOfferingInput = z.discriminatedUnion('kind', [
@@ -329,6 +411,7 @@ export const QuoteUpdateOfferingInput = z.discriminatedUnion('kind', [
     workTitle: QuoteWorkTitle,
     basePrice: z.coerce.number().pipe(Price),
     hourlyRate: z.coerce.number().pipe(QuoteHourlyRate),
+    workItems: z.array(QuoteWorkItemInput).optional(),
   }),
 ]);
 
@@ -352,7 +435,8 @@ export const QuoteUpdateInput = z
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
   })
   .strict()
-  .superRefine(validateQuoteDeliveryPricing);
+  .superRefine(validateQuoteDeliveryPricing)
+  .superRefine(validateQuoteKindCollections);
 
 // Partial field update. Every field except `id` is optional; `undefined` means "leave the
 // current value untouched". The merge over the current row happens under the row lock in core, so a

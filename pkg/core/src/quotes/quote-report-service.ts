@@ -114,6 +114,7 @@ export async function summarizeQuotePipeline({
         deliveryIncluded: quotes.deliveryIncluded,
         deliveryPrice: quotes.deliveryPrice,
         discountPercent: quotes.discountPercent,
+        hourlyRate: quotes.hourlyRate,
         id: quotes.id,
         quotedBasePrice: quotes.quotedBasePrice,
         statusChangedAt: quotes.statusChangedAt,
@@ -129,7 +130,7 @@ export async function summarizeQuotePipeline({
       .where(and(inArray(quotes.status, ['accepted', 'rejected']), gte(quotes.statusChangedAt, decisionWindowStart)))
       .groupBy(quotes.status),
   ]);
-  const { lineItemsByQuoteId, selectedAssembliesByQuoteId } = await loadQuoteAssociations({
+  const { lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
     db,
     quoteIds: sentRows.map((row) => row.id),
   });
@@ -140,6 +141,7 @@ export async function summarizeQuotePipeline({
         ...row,
         lineItems: lineItemsByQuoteId.get(row.id) ?? [],
         selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
+        workItems: workItemsByQuoteId.get(row.id) ?? [],
       }).subtotal,
     ]),
   );
@@ -174,6 +176,7 @@ export async function listStaleSentQuotes({
       deliveryIncluded: quotes.deliveryIncluded,
       deliveryPrice: quotes.deliveryPrice,
       discountPercent: quotes.discountPercent,
+      hourlyRate: quotes.hourlyRate,
       id: quotes.id,
       quotedBasePrice: quotes.quotedBasePrice,
       quotedCurrencyCode: quotes.quotedCurrencyCode,
@@ -184,7 +187,7 @@ export async function listStaleSentQuotes({
     .where(eq(quotes.status, 'sent'))
     .orderBy(asc(quotes.statusChangedAt), asc(quotes.id))
     .limit(limit);
-  const { lineItemsByQuoteId, selectedAssembliesByQuoteId } = await loadQuoteAssociations({
+  const { lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
     db,
     quoteIds: rows.map((row) => row.id),
   });
@@ -203,6 +206,7 @@ export async function listStaleSentQuotes({
         ...row,
         lineItems: lineItemsByQuoteId.get(row.id) ?? [],
         selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
+        workItems: workItemsByQuoteId.get(row.id) ?? [],
       }).total,
     })),
   });

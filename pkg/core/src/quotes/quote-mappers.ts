@@ -7,16 +7,17 @@ import {
   type ProductBay,
   ProductCurrencyCode,
   Quote,
-  type QuoteDetail,
+  QuoteDetail,
   type QuoteProductDetailFacts,
   type QuoteProductSummaryFacts,
-  type QuoteSummary,
+  QuoteSummary,
   UpcomingDeliveryQuote,
 } from '@pkg/schema';
 
 import { mapQuoteLineItem, type QuoteLineItemRow } from './quote-line-items.js';
 import { narrowQuoteOffering } from './quote-offering.js';
 import { mapQuoteSelectedAssembly, type QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
+import { mapQuoteWorkItem, type QuoteWorkItemRow } from './quote-work-items.js';
 
 export type QuoteRow = typeof quotes.$inferSelect;
 
@@ -58,6 +59,7 @@ export type QuoteDetailRow = QuoteRow & {
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'image' | 'name'> | null;
   lineItems: QuoteLineItemRow[];
   selectedAssemblies: QuoteSelectedAssemblyRow[];
+  workItems: QuoteWorkItemRow[];
 };
 
 export function mapQuote(row: QuoteRow) {
@@ -90,8 +92,9 @@ export function mapQuoteSummary(
   job: QuoteLinkedJobRow | null,
   lineItems: readonly QuoteLineItemRow[],
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
+  workItems: readonly QuoteWorkItemRow[],
 ): QuoteSummary {
-  return {
+  return QuoteSummary.parse({
     ...mapQuote(row.quote),
     customerCompanyName: row.customerCompanyName,
     customerThumbnailDataUrl: row.customerThumbnailDataUrl,
@@ -102,7 +105,8 @@ export function mapQuoteSummary(
     salesPersonThumbnailDataUrl: row.salesPersonThumbnailDataUrl,
     lineItems: lineItems.map(mapQuoteLineItem),
     selectedAssemblies: selectedAssemblies.map(mapQuoteSelectedAssembly),
-  };
+    workItems: workItems.map(mapQuoteWorkItem),
+  });
 }
 
 export function mapPriorityQuote(
@@ -110,9 +114,10 @@ export function mapPriorityQuote(
   job: QuoteLinkedJobRow | null,
   lineItems: readonly QuoteLineItemRow[],
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
+  workItems: readonly QuoteWorkItemRow[],
 ): PriorityQuote {
   return {
-    ...mapQuoteSummary(row, job, lineItems, selectedAssemblies),
+    ...mapQuoteSummary(row, job, lineItems, selectedAssemblies, workItems),
     earliestDeliveryDate: DateOnlyIso.parse(row.earliestDeliveryDate),
   };
 }
@@ -122,8 +127,9 @@ export function mapUpcomingDeliveryQuote(
   job: QuoteLinkedJobRow | null,
   lineItems: readonly QuoteLineItemRow[],
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
+  workItems: readonly QuoteWorkItemRow[],
 ): UpcomingDeliveryQuote {
-  const summary = mapQuoteSummary(row, job, lineItems, selectedAssemblies);
+  const summary = mapQuoteSummary(row, job, lineItems, selectedAssemblies, workItems);
 
   // Spread narrows `plannedDeliveryDate` from nullable to required, which the discriminated-union
   // return type only correlates through a parse.
@@ -138,7 +144,7 @@ export function mapQuoteDetail(
   productAssembliesForQuote: Assembly[],
   productBaysForQuote: ProductBay[],
 ): QuoteDetail {
-  return {
+  return QuoteDetail.parse({
     ...mapQuote(row),
     customerAddress: row.customer.address,
     customerCompanyName: row.customer.companyName,
@@ -160,7 +166,8 @@ export function mapQuoteDetail(
     salesPersonThumbnailDataUrl: row.salesPerson?.image ?? null,
     lineItems: row.lineItems.map(mapQuoteLineItem),
     selectedAssemblies: row.selectedAssemblies.map(mapQuoteSelectedAssembly),
-  };
+    workItems: row.workItems.map(mapQuoteWorkItem),
+  });
 }
 
 function mapQuoteSummaryProduct(row: QuoteListRow): QuoteProductSummaryFacts | null {

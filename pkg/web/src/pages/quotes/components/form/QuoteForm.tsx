@@ -35,6 +35,7 @@ import { QuoteDocumentsSection } from './QuoteDocumentsSection.js';
 import { QuoteFormSection } from './QuoteFormSection.js';
 import { QuoteAddLineItemButton, QuoteLineItemsEditor } from './QuoteLineItemsEditor.js';
 import { QuoteRightPanel } from './QuoteRightPanel.js';
+import { QuoteAddWorkItemButton, QuoteWorkItemsEditor } from './QuoteWorkItemsEditor.js';
 
 type QuoteFormProps = {
   onSave: (value: QuoteUpdateInput) => Promise<unknown>;
@@ -243,22 +244,46 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                     </div>
                   </QuoteFormSection>
 
-                  <form.Field name="lineItems" mode="array">
-                    {(lineItemsField) => (
-                      <QuoteFormSection
-                        action={<QuoteAddLineItemButton lineItemsField={lineItemsField} readOnly={isLocked} />}
-                        icon={IconListDetails}
-                        title="Line items"
-                      >
-                        <QuoteLineItemsEditor
-                          currencyCode={quoteCurrencyCode}
-                          lineItemsField={lineItemsField}
-                          onRemoveLineItem={autosave.commit}
-                          readOnly={isLocked}
-                        />
-                      </QuoteFormSection>
-                    )}
-                  </form.Field>
+                  {isCustom ? (
+                    <form.Subscribe selector={(state) => state.values.hourlyRate}>
+                      {(hourlyRate) => (
+                        <form.Field name="workItems" mode="array">
+                          {(workItemsField) => (
+                            <QuoteFormSection
+                              action={<QuoteAddWorkItemButton readOnly={isLocked} workItemsField={workItemsField} />}
+                              icon={IconListDetails}
+                              title="Work items"
+                            >
+                              <QuoteWorkItemsEditor
+                                currencyCode={quoteCurrencyCode}
+                                hourlyRate={hourlyRate}
+                                onRemoveWorkItem={autosave.commit}
+                                readOnly={isLocked}
+                                workItemsField={workItemsField}
+                              />
+                            </QuoteFormSection>
+                          )}
+                        </form.Field>
+                      )}
+                    </form.Subscribe>
+                  ) : (
+                    <form.Field name="lineItems" mode="array">
+                      {(lineItemsField) => (
+                        <QuoteFormSection
+                          action={<QuoteAddLineItemButton lineItemsField={lineItemsField} readOnly={isLocked} />}
+                          icon={IconListDetails}
+                          title="Line items"
+                        >
+                          <QuoteLineItemsEditor
+                            currencyCode={quoteCurrencyCode}
+                            lineItemsField={lineItemsField}
+                            onRemoveLineItem={autosave.commit}
+                            readOnly={isLocked}
+                          />
+                        </QuoteFormSection>
+                      )}
+                    </form.Field>
+                  )}
 
                   <QuoteFormSection icon={IconNotes} title="Internal notes">
                     <form.AppField name="notes">{(field) => <field.TextareaField rows={4} />}</form.AppField>

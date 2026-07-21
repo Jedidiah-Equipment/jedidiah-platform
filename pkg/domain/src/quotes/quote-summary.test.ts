@@ -98,8 +98,10 @@ function buildFormValues(overrides: Partial<QuoteSummaryFormValues> = {}): Quote
     deliveryIncluded: true,
     deliveryPrice: 0,
     discountPercent: 10,
+    hourlyRate: 850,
     lineItems: [],
     selectedAssemblies: [],
+    workItems: [],
     ...overrides,
   };
 }
@@ -203,6 +205,7 @@ describe('computeQuoteSummary', () => {
       kind: 'custom',
       product: null,
       productId: null,
+      workItems: [],
       workTitle: 'Hydraulic repair',
     });
     const summary = computeQuoteSummary({
@@ -212,17 +215,28 @@ describe('computeQuoteSummary', () => {
         deliveryIncluded: false,
         deliveryPrice: 500,
         discountPercent: 5,
-        lineItems: [{ name: 'Travel', quantity: 2, unitPrice: 150 }],
+        hourlyRate: 900,
+        lineItems: [],
         selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
+        workItems: [
+          {
+            name: 'Travel',
+            hours: 1,
+            parts: [{ name: 'Fuel', quantity: 2, unitPrice: 150 }],
+          },
+        ],
       }),
     });
 
     expect(summary.basePrice).toBe(2500);
     expect(summary.deliveryPrice).toBe(500);
-    expect(summary.lineItemTotal).toBe(300);
+    expect(summary.lineItemTotal).toBe(0);
+    expect(summary.hourlyRate).toBe(900);
+    expect(summary.workItemTotal).toBe(1200);
+    expect(summary.workItems).toHaveLength(1);
     expect(summary.selectedAssemblies).toEqual([]);
-    expect(summary.subtotal).toBe(3160);
-    expect(summary.total).toBe(3634);
+    expect(summary.subtotal).toBe(4015);
+    expect(summary.total).toBe(4617.25);
   });
 });
 

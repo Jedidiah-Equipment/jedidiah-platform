@@ -4,6 +4,9 @@ import { describe, expect, it } from 'vitest';
 import {
   computeQuoteLineItemAmount,
   computeQuoteVatAmount,
+  computeWorkItemLabourCost,
+  computeWorkItemPartAmount,
+  computeWorkItemTotal,
   priceQuote,
   priceQuoteWithCatalog,
   VAT_PERCENT,
@@ -53,6 +56,22 @@ describe('computeQuoteLineItemAmount', () => {
   });
 });
 
+describe('work item pricing', () => {
+  it('cent-rounds labour before adding parts', () => {
+    expect(computeWorkItemLabourCost({ hourlyRate: 850.33, hours: 1.333 })).toBe(1133.49);
+  });
+
+  it('computes freeform part amounts from quantity and unit price', () => {
+    expect(computeWorkItemPartAmount({ quantity: 3, unitPrice: 125.5 })).toBe(376.5);
+  });
+
+  it('supports labour-only, parts-only, and zero-cost work items', () => {
+    expect(computeWorkItemTotal({ hourlyRate: 850, hours: 1.5, parts: [] })).toBe(1275);
+    expect(computeWorkItemTotal({ hourlyRate: 850, hours: 0, parts: [{ quantity: 2, unitPrice: 125 }] })).toBe(250);
+    expect(computeWorkItemTotal({ hourlyRate: 850, hours: 0, parts: [] })).toBe(0);
+  });
+});
+
 describe('quote VAT', () => {
   it('computes VAT at the shared rate', () => {
     expect(VAT_PERCENT).toBe(15);
@@ -87,6 +106,30 @@ describe('priceQuote', () => {
         selectedAssemblies: selections([300, 150]),
       }),
     ).toMatchObject({ discountAmount: 200, lineItemTotal: 300, subtotal: 1800, total: 2070 });
+  });
+
+  it('includes work items in the discountable subtotal with base price, discount, and VAT', () => {
+    const pricing = priceQuote({
+      discountPercent: 10,
+      hourlyRate: 850,
+      quotedBasePrice: 1000,
+      selectedAssemblies: [],
+      workItems: [
+        {
+          hours: 1.33,
+          parts: [{ quantity: 2, unitPrice: 125 }],
+        },
+      ],
+    });
+
+    expect(pricing).toMatchObject({
+      discountAmount: 238.05,
+      lineItemTotal: 0,
+      subtotal: 2142.45,
+      vatAmount: 321.37,
+      workItemTotal: 1380.5,
+    });
+    expect(pricing.total).toBeCloseTo(2463.82);
   });
 
   it('rounds the derived discount amount to cents', () => {

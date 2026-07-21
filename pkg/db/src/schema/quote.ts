@@ -120,6 +120,48 @@ export const quoteLineItems = pgTable(
   ],
 );
 
+export const quoteWorkItems = pgTable(
+  'quote_work_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    quoteId: uuid('quote_id')
+      .notNull()
+      .references(() => quotes.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    position: integer('position').notNull().default(0),
+    hours: numeric('hours', { mode: 'number', precision: 8, scale: 2 }).notNull().default(0),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check('quote_work_items_name_nonempty', sql`length(trim(${table.name})) > 0`),
+    check('quote_work_items_position_nonnegative', sql`${table.position} >= 0`),
+    check('quote_work_items_hours_nonnegative', sql`${table.hours} >= 0`),
+  ],
+);
+
+export const quoteWorkItemParts = pgTable(
+  'quote_work_item_parts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workItemId: uuid('work_item_id')
+      .notNull()
+      .references(() => quoteWorkItems.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    position: integer('position').notNull().default(0),
+    quantity: integer('quantity').notNull().default(1),
+    unitPrice: numeric('unit_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check('quote_work_item_parts_name_nonempty', sql`length(trim(${table.name})) > 0`),
+    check('quote_work_item_parts_position_nonnegative', sql`${table.position} >= 0`),
+    check('quote_work_item_parts_quantity_positive', sql`${table.quantity} >= 1`),
+    check('quote_work_item_parts_unit_price_nonnegative', sql`${table.unitPrice} >= 0`),
+  ],
+);
+
 export const quotesRelations = relations(quotes, ({ many, one }) => ({
   customer: one(customers, {
     fields: [quotes.customerId],
@@ -136,12 +178,28 @@ export const quotesRelations = relations(quotes, ({ many, one }) => ({
   }),
   lineItems: many(quoteLineItems),
   selectedAssemblies: many(quoteSelectedAssemblies),
+  workItems: many(quoteWorkItems),
 }));
 
 export const quoteLineItemsRelations = relations(quoteLineItems, ({ one }) => ({
   quote: one(quotes, {
     fields: [quoteLineItems.quoteId],
     references: [quotes.id],
+  }),
+}));
+
+export const quoteWorkItemsRelations = relations(quoteWorkItems, ({ many, one }) => ({
+  parts: many(quoteWorkItemParts),
+  quote: one(quotes, {
+    fields: [quoteWorkItems.quoteId],
+    references: [quotes.id],
+  }),
+}));
+
+export const quoteWorkItemPartsRelations = relations(quoteWorkItemParts, ({ one }) => ({
+  workItem: one(quoteWorkItems, {
+    fields: [quoteWorkItemParts.workItemId],
+    references: [quoteWorkItems.id],
   }),
 }));
 

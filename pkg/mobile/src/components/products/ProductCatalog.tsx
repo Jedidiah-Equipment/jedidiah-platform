@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { BoardGrid } from '@/components/bays/BoardGrid';
-import { ListControlRow, ListFilterButton, SegmentedSortControl } from '@/components/ListControls';
+import { ListFilterButton, SegmentedSortControl } from '@/components/ListControls';
 import { ProductImage } from '@/components/products/ProductImage';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { AnchoredMenu } from '@/components/ui/anchored-menu';
@@ -59,41 +59,42 @@ export function ProductCatalogControls({
   };
 
   return (
-    <ListControlRow
-      leading={
-        <View className="max-w-full self-start">
-          <ListFilterButton
-            accessibilityLabel="Filter by Product Range"
-            active={range !== 'all'}
-            expanded={menuAnchor !== null}
-            label={rangeLabel}
-            onPress={openMenu}
-            ref={buttonRef}
-          />
+    <View className="z-10 flex-row flex-wrap items-center justify-between gap-2">
+      {/* Keep the current Range visible; if Sort cannot share the row, it wraps instead of
+          collapsing this label down to the two fixed-width icons. */}
+      <View className="min-w-[132px] max-w-full shrink self-start">
+        <ListFilterButton
+          accessibilityLabel="Filter by Product Range"
+          active={range !== 'all'}
+          expanded={menuAnchor !== null}
+          label={rangeLabel}
+          onPress={openMenu}
+          ref={buttonRef}
+        />
 
-          {menuAnchor ? (
-            <AnchoredMenu
-              dismissLabel="Dismiss Range filter"
-              onClose={() => setMenuAnchor(null)}
-              style={{ left: menuAnchor.left, top: menuAnchor.top, width: 240 }}
-            >
-              <View className="p-1.5">
-                <RangeOption active={range === 'all'} label="All ranges" onPress={() => selectRange('all')} />
-                {ranges.map((option) => (
-                  <RangeOption
-                    key={option.id}
-                    active={range === option.id}
-                    label={option.name}
-                    onPress={() => selectRange(option.id)}
-                  />
-                ))}
-              </View>
-            </AnchoredMenu>
-          ) : null}
-        </View>
-      }
-      trailing={<SegmentedSortControl onChange={onSortChange} options={PRODUCT_SORT_OPTIONS} value={sort} />}
-    />
+        {menuAnchor ? (
+          <AnchoredMenu
+            dismissLabel="Dismiss Range filter"
+            onClose={() => setMenuAnchor(null)}
+            style={{ left: menuAnchor.left, top: menuAnchor.top, width: 240 }}
+          >
+            <View className="p-1.5">
+              <RangeOption active={range === 'all'} label="All ranges" onPress={() => selectRange('all')} />
+              {ranges.map((option) => (
+                <RangeOption
+                  key={option.id}
+                  active={range === option.id}
+                  label={option.name}
+                  onPress={() => selectRange(option.id)}
+                />
+              ))}
+            </View>
+          </AnchoredMenu>
+        ) : null}
+      </View>
+
+      <SegmentedSortControl onChange={onSortChange} options={PRODUCT_SORT_OPTIONS} value={sort} />
+    </View>
   );
 }
 

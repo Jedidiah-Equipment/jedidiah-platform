@@ -26,15 +26,22 @@ export function ListSearchControl({
   accessibilityLabel,
   onChangeText,
   placeholder,
+  tone = 'surface',
   value,
 }: {
   accessibilityLabel: string;
   onChangeText: (value: string) => void;
   placeholder: string;
+  /** 'background' when the control sits on an already-surfaced card. */
+  tone?: 'surface' | 'background';
   value: string;
 }) {
   return (
-    <View className="h-10 min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3">
+    <View
+      className={`h-10 min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-border px-3 ${
+        tone === 'background' ? 'bg-background' : 'bg-surface'
+      }`}
+    >
       <Icon className="text-muted-foreground" icon={IconSearch} size={17} />
       <TextInput
         accessibilityLabel={accessibilityLabel}
@@ -51,7 +58,7 @@ export function ListSearchControl({
 
 export function ListDropdownControl<Value extends string>({
   accessibilityLabel,
-  active,
+  defaultValue,
   dismissLabel,
   icon,
   menuWidth = 220,
@@ -61,7 +68,8 @@ export function ListDropdownControl<Value extends string>({
   value,
 }: {
   accessibilityLabel: string;
-  active: boolean;
+  /** Non-default selections render in the active (primary) style. */
+  defaultValue: Value;
   dismissLabel: string;
   icon: TablerIcon;
   menuWidth?: number;
@@ -72,6 +80,7 @@ export function ListDropdownControl<Value extends string>({
 }) {
   const buttonRef = useRef<View>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ left: number; top: number } | null>(null);
+  const active = value !== defaultValue;
   const selectedLabel = options.find((option) => option.value === value)?.label ?? value;
 
   const openMenu = () => {

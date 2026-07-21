@@ -46,7 +46,7 @@ export function useQuoteList({
   const paginationMatchesQuery =
     pagination.search === search && pagination.sort === sort && pagination.status === status;
   const activePageCount = paginationMatchesQuery ? pagination.pageCount : 1;
-  const pinPriorityQuotes = shouldPinPriorityQuotes({ search, status });
+  const pinPriorityQuotes = shouldPinPriorityQuotes({ search, sort, status });
 
   useEffect(() => {
     setPagination({ search, sort, status, pageCount: 1 });

@@ -3,6 +3,7 @@ import { Image, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { isStagingRuntimeApp } from '@/lib/runtime-app-identity';
+import { resolveAppIconTileColor } from '@/theme/brand-palette';
 import { useColorMode } from '@/theme/use-color-mode';
 
 // Expo needs local static asset paths; these mirror the shared source in @pkg/domain/assets/brand.
@@ -57,7 +58,7 @@ export function AppIcon({ size }: { size: number }) {
     <View
       accessible={false}
       style={{
-        backgroundColor: isStaging ? '#ec4899' : '#fff000',
+        backgroundColor: resolveAppIconTileColor(isStaging),
         borderRadius: size / 4,
         height: size,
         overflow: 'hidden',

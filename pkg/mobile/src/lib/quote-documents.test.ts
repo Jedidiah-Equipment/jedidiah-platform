@@ -11,11 +11,15 @@ describe('Quote Document presentation', () => {
       buildDocument({ createdAt: '2026-07-19T08:00:00.000Z', filename: 'QUO-00001-rev-2.pdf', revision: 2 }),
     ];
 
-    expect(presentQuoteDocuments(documents, '').map((document) => document.metadata.revision)).toEqual([3, 2, 1]);
+    expect(
+      presentQuoteDocuments(documents, '', 'uploaded-newest').map((document) => document.metadata.revision),
+    ).toEqual([3, 2, 1]);
     expect(
       presentQuoteDocuments(documents, '', 'uploaded-oldest').map((document) => document.metadata.revision),
     ).toEqual([1, 2, 3]);
-    expect(presentQuoteDocuments(documents, ' REV-2 ').map((document) => document.metadata.revision)).toEqual([2]);
+    expect(
+      presentQuoteDocuments(documents, ' REV-2 ', 'uploaded-newest').map((document) => document.metadata.revision),
+    ).toEqual([2]);
   });
 
   it('formats the revision, file facts, and count for the list', () => {

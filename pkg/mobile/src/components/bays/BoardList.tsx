@@ -2,7 +2,7 @@ import { IconArrowsLeftRight, IconArrowsSort } from '@tabler/icons-react-native'
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
-import { ListControlRow, ListDropdownControl } from '@/components/ListControls';
+import { type ListControlOption, ListControlRow, ListDropdownControl } from '@/components/ListControls';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -22,11 +22,11 @@ export function isListMode(value: unknown): value is ListMode {
   return value === 'bays' || value === 'jobs';
 }
 
-const BAY_SORT_OPTIONS: readonly { label: string; value: BaySort }[] = [
+const BAY_SORT_OPTIONS: readonly ListControlOption<BaySort>[] = [
   { label: 'Days left', value: 'days-left' },
   { label: 'Bay name', value: 'name' },
 ];
-const JOB_SORT_OPTIONS: readonly { label: string; value: JobSort }[] = [
+const JOB_SORT_OPTIONS: readonly ListControlOption<JobSort>[] = [
   { label: 'Days left', value: 'days-left' },
   { label: 'Newest', value: 'newest' },
 ];
@@ -61,7 +61,7 @@ export function BoardList({
     sortControl = isBays ? (
       <ListDropdownControl
         accessibilityLabel="Sort bays"
-        active={baySort !== 'days-left'}
+        defaultValue="days-left"
         dismissLabel="Dismiss Bay sort"
         icon={IconArrowsSort}
         onChange={setBaySort}
@@ -71,7 +71,7 @@ export function BoardList({
     ) : (
       <ListDropdownControl
         accessibilityLabel="Sort jobs"
-        active={jobSort !== 'days-left'}
+        defaultValue="days-left"
         dismissLabel="Dismiss Job sort"
         icon={IconArrowsSort}
         onChange={setJobSort}

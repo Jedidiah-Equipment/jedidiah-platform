@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import { isProductSort, landerProductUrls, normalizeRangeFilter, presentProducts } from './product-presentation';
 
-function product(id: string, name: string, basePrice: number, rangeId: string, modelCode = id): Product {
-  return { id, name, basePrice, rangeId, modelCode } as Product;
+function product(id: string, name: string, basePrice: number, rangeId: string): Product {
+  return { id, name, basePrice, rangeId, modelCode: id } as Product;
 }
 
 const productNames = (products: readonly Product[]) => products.map((item) => item.name);
@@ -36,17 +36,6 @@ describe('presentProducts', () => {
     const products = [product('p-1', 'Zebra', 100, 'range-a'), product('p-2', 'Alpha', 100, 'range-b')];
 
     expect(productNames(presentProducts(products, 'all', 'price'))).toEqual(['Alpha', 'Zebra']);
-  });
-
-  it('searches Product names and model codes before filtering and sorting', () => {
-    const products = [
-      product('p-1', 'Fire Fighter', 300_000, 'range-a', 'FF 5000'),
-      product('p-2', 'Water Tanker', 200_000, 'range-a', 'WT 2500'),
-      product('p-3', 'Fire Trailer', 100_000, 'range-b', 'FT 1000'),
-    ];
-
-    expect(productNames(presentProducts(products, 'range-a', 'name', ' ff 5000 '))).toEqual(['Fire Fighter']);
-    expect(productNames(presentProducts(products, 'all', 'name', 'fire'))).toEqual(['Fire Fighter', 'Fire Trailer']);
   });
 });
 

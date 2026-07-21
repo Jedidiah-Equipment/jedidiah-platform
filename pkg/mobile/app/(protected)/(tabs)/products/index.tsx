@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,15 +20,23 @@ import {
   type RangeFilter,
 } from '@/lib/product-presentation';
 import { useTRPC } from '@/lib/trpc';
+import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
 
 /** Product catalog list. The products layout owns the permission gate. */
 export default function ProductsRoute() {
   const trpc = useTRPC();
-  const products = useQuery(trpc.products.list.queryOptions({ pageSize: 0 }));
-  const rangeOptions = useQuery(trpc.products.rangeOptions.queryOptions(undefined));
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedSearch(search);
+  // keepPreviousData holds the grid (and the mounted search box) steady while a new search loads.
+  const products = useQuery(
+    trpc.products.list.queryOptions(
+      { pageSize: 0, search: debouncedSearch || undefined },
+      { placeholderData: keepPreviousData },
+    ),
+  );
+  const rangeOptions = useQuery(trpc.products.rangeOptions.queryOptions(undefined));
   const [range, setRange] = usePersistedState<RangeFilter>('jedidiah-product-range', 'all', isRangeFilter);
   const [sort, setSort] = usePersistedState<ProductSort>('jedidiah-product-sort', 'name', isProductSort);
   const refresh = useGlobalRefresh();
@@ -41,7 +49,7 @@ export default function ProductsRoute() {
         ranges.map((option) => option.id),
       )
     : range;
-  const presentedProducts = presentProducts(products.data?.items ?? [], normalizedRange, sort, search);
+  const presentedProducts = presentProducts(products.data?.items ?? [], normalizedRange, sort);
 
   const pending = products.isPending || rangeOptions.isPending;
   const count = pending ? null : presentedProducts.length;

@@ -6,7 +6,12 @@ import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { BoardGrid } from '@/components/bays/BoardGrid';
-import { ListControlRow, ListDropdownControl, ListSearchControl } from '@/components/ListControls';
+import {
+  type ListControlOption,
+  ListControlRow,
+  ListDropdownControl,
+  ListSearchControl,
+} from '@/components/ListControls';
 import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Icon } from '@/components/ui/icon';
@@ -16,11 +21,11 @@ import { QUOTE_STATUS_OPTIONS, type QuoteSort, type QuoteStatusFilter, quoteMeta
 
 const WIDE_BREAKPOINT = 760;
 const QUOTE_SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
-const STATUS_OPTIONS: readonly { label: string; value: QuoteStatusFilter }[] = [
+const STATUS_OPTIONS: readonly ListControlOption<QuoteStatusFilter>[] = [
   { label: 'All statuses', value: 'all' },
   ...QUOTE_STATUS_OPTIONS,
 ];
-const QUOTE_SORT_OPTIONS: readonly { label: string; value: QuoteSort }[] = [
+const QUOTE_SORT_OPTIONS: readonly ListControlOption<QuoteSort>[] = [
   { label: 'Newest', value: 'newest' },
   { label: 'Oldest', value: 'oldest' },
 ];
@@ -69,7 +74,7 @@ export function QuoteCatalogControls({
         <View className="flex-row items-center gap-2">
           <ListDropdownControl
             accessibilityLabel="Filter quotes by status"
-            active={status !== 'all'}
+            defaultValue="all"
             dismissLabel="Dismiss Quote status filter"
             icon={IconFilter}
             onChange={onStatusChange}
@@ -78,7 +83,7 @@ export function QuoteCatalogControls({
           />
           <ListDropdownControl
             accessibilityLabel="Sort quotes"
-            active={sort !== 'newest'}
+            defaultValue="newest"
             dismissLabel="Dismiss Quote sort"
             icon={IconArrowsSort}
             onChange={onSortChange}

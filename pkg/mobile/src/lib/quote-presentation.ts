@@ -42,8 +42,17 @@ export function quoteSortDirection(sort: QuoteSort): 'asc' | 'desc' {
   return sort === 'newest' ? 'desc' : 'asc';
 }
 
-export function shouldPinPriorityQuotes({ search, status }: { search: string; status: QuoteStatusFilter }): boolean {
-  return search.trim().length === 0 && status === 'all';
+/** Pinning atop an explicitly re-sorted list would contradict the user's chosen order. */
+export function shouldPinPriorityQuotes({
+  search,
+  sort,
+  status,
+}: {
+  search: string;
+  sort: QuoteSort;
+  status: QuoteStatusFilter;
+}): boolean {
+  return search.trim().length === 0 && status === 'all' && sort === 'newest';
 }
 
 type QuoteMetaFacts =

@@ -1,17 +1,25 @@
 import { formatBytes, formatDate } from '@pkg/domain';
 import type { QuoteDocument } from '@pkg/schema';
 
-export function presentQuoteDocuments(documents: readonly QuoteDocument[], search: string): QuoteDocument[] {
+export type QuoteDocumentSort = 'uploaded-newest' | 'uploaded-oldest';
+
+export function presentQuoteDocuments(
+  documents: readonly QuoteDocument[],
+  search: string,
+  sort: QuoteDocumentSort = 'uploaded-newest',
+): QuoteDocument[] {
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const filtered = normalizedSearch
     ? documents.filter((document) => document.filename.toLocaleLowerCase().includes(normalizedSearch))
     : documents;
 
-  return [...filtered].sort(
-    (left, right) =>
-      new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime() ||
-      right.metadata.revision - left.metadata.revision,
-  );
+  return [...filtered].sort((left, right) => {
+    const oldestFirst =
+      new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime() ||
+      left.metadata.revision - right.metadata.revision;
+
+    return sort === 'uploaded-oldest' ? oldestFirst : -oldestFirst;
+  });
 }
 
 export function quoteDocumentMetaLine(

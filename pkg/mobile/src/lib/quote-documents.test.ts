@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { presentQuoteDocuments, quoteDocumentCountLabel, quoteDocumentMetaLine } from './quote-documents';
 
 describe('Quote Document presentation', () => {
-  it('filters by filename and always shows the newest revision first', () => {
+  it('filters by filename and sorts by upload date', () => {
     const documents = [
       buildDocument({ createdAt: '2026-07-18T08:00:00.000Z', filename: 'QUO-00001-rev-1.pdf', revision: 1 }),
       buildDocument({ createdAt: '2026-07-20T08:00:00.000Z', filename: 'QUO-00001-rev-3.pdf', revision: 3 }),
@@ -12,6 +12,9 @@ describe('Quote Document presentation', () => {
     ];
 
     expect(presentQuoteDocuments(documents, '').map((document) => document.metadata.revision)).toEqual([3, 2, 1]);
+    expect(
+      presentQuoteDocuments(documents, '', 'uploaded-oldest').map((document) => document.metadata.revision),
+    ).toEqual([1, 2, 3]);
     expect(presentQuoteDocuments(documents, ' REV-2 ').map((document) => document.metadata.revision)).toEqual([2]);
   });
 

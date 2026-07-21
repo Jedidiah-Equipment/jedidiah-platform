@@ -334,6 +334,15 @@ function QuoteEditor({
                         />
                       )}
                     </form.AppField>
+                    <form.AppField name="hourlyRate">
+                      {(field) => (
+                        <field.CurrencyField
+                          disabled={setupReadOnly}
+                          label="Hourly rate"
+                          onValueCommit={autosave.commit}
+                        />
+                      )}
+                    </form.AppField>
                   </Section>
                 ) : null}
 

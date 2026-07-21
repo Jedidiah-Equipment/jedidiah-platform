@@ -1,3 +1,4 @@
+import { DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
 import { QuoteDetail, type QuoteSummary } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
@@ -204,6 +205,30 @@ describe('Quote edit presentation', () => {
       documentNotes: null,
       lineItems: [{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }],
       selectedAssemblies: [{ type: 'existing', id: SELECTION_ID }],
+    });
+  });
+
+  it('round-trips a custom quote hourly rate and seeds product edit state from the shared default', () => {
+    const productQuote = buildQuoteDetail();
+    expect(toQuoteEditFormValues(productQuote).hourlyRate).toBe(DEFAULT_CUSTOM_HOURLY_RATE);
+
+    const customQuote = QuoteDetail.parse({
+      ...productQuote,
+      hourlyRate: 925,
+      kind: 'custom',
+      product: null,
+      productId: null,
+      selectedAssemblies: [],
+      workTitle: 'Hydraulic repair',
+    });
+    const values = toQuoteEditFormValues(customQuote);
+
+    expect(values.hourlyRate).toBe(925);
+    expect(toQuoteUpdateInput({ id: customQuote.id, kind: customQuote.kind, values }).offering).toEqual({
+      basePrice: 1000,
+      hourlyRate: 925,
+      kind: 'custom',
+      workTitle: 'Hydraulic repair',
     });
   });
 });

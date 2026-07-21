@@ -1,4 +1,4 @@
-import { computeAdditionalDeliveryPrice } from '@pkg/domain';
+import { computeAdditionalDeliveryPrice, DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
 import {
   AuthId,
   CustomerCompanyName,
@@ -11,6 +11,7 @@ import {
   type QuoteDetail,
   QuoteDiscountPercent,
   QuoteDocumentNotes,
+  QuoteHourlyRate,
   QuoteKind,
   type QuoteLineItem,
   QuoteLineItemName,
@@ -35,11 +36,13 @@ const QuoteLineItemFormInput = z.object({
 });
 
 const QuoteCreateBasePrice = z.union([Price, z.nan()]);
+const QuoteCreateHourlyRate = z.union([QuoteHourlyRate, z.nan()]);
 
 const QuoteCreateFormValuesShape = z.object({
   customerId: z.string(),
   customerMode: CustomerMode,
   basePrice: QuoteCreateBasePrice,
+  hourlyRate: QuoteCreateHourlyRate,
   inlineCompanyName: z.string(),
   kind: QuoteKind,
   productId: z.string(),
@@ -61,6 +64,7 @@ export const QuoteFormValues = z
     deliveryPrice: Price,
     discountPercent: QuoteDiscountPercent,
     basePrice: Price,
+    hourlyRate: QuoteHourlyRate,
     notes: emptyStringOr(QuoteNotes),
     documentNotes: emptyStringOr(QuoteDocumentNotes),
     lineItems: z.array(QuoteLineItemFormInput),
@@ -102,6 +106,7 @@ export const emptyQuoteFormValues: QuoteFormValues = {
   deliveryPrice: 0,
   discountPercent: 0,
   basePrice: 0,
+  hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
   notes: '',
   documentNotes: '',
   lineItems: [],
@@ -116,6 +121,7 @@ export const emptyQuoteFormValues: QuoteFormValues = {
 
 export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   basePrice: 0,
+  hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
   customerId: '',
   customerMode: 'existing',
   inlineCompanyName: '',
@@ -134,6 +140,7 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
 export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
   return {
     basePrice: initialQuote.quotedBasePrice,
+    hourlyRate: initialQuote.kind === 'custom' ? initialQuote.hourlyRate : DEFAULT_CUSTOM_HOURLY_RATE,
     depositPercent: initialQuote.depositPercent,
     deliveryIncluded: initialQuote.deliveryIncluded,
     deliveryPrice: initialQuote.deliveryPrice,
@@ -168,7 +175,12 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
     offering:
       value.kind === 'product'
         ? { kind: 'product', productId: value.productId }
-        : { kind: 'custom', basePrice: value.basePrice, workTitle: value.workTitle },
+        : {
+            kind: 'custom',
+            basePrice: value.basePrice,
+            hourlyRate: value.hourlyRate,
+            workTitle: value.workTitle,
+          },
     salesPersonId: value.salesPersonId,
     status: value.status,
   });
@@ -188,7 +200,12 @@ export function toQuoteUpdateInput({
     offering:
       kind === 'product'
         ? { kind: 'product' }
-        : { kind: 'custom', basePrice: value.basePrice, workTitle: value.workTitle },
+        : {
+            kind: 'custom',
+            basePrice: value.basePrice,
+            hourlyRate: value.hourlyRate,
+            workTitle: value.workTitle,
+          },
     deliveryIncluded: value.deliveryIncluded,
     deliveryPrice: computeAdditionalDeliveryPrice(value),
     depositPercent: value.depositPercent,
@@ -235,7 +252,7 @@ function refineQuoteCustomerSelection(
 }
 
 function refineQuoteOfferingSelection(
-  value: Pick<QuoteCreateFormSelectionValues, 'basePrice' | 'kind' | 'productId' | 'workTitle'>,
+  value: Pick<QuoteCreateFormSelectionValues, 'basePrice' | 'hourlyRate' | 'kind' | 'productId' | 'workTitle'>,
   context: z.RefinementCtx,
 ) {
   if (value.kind === 'product' && !UUID.safeParse(value.productId).success) {
@@ -259,6 +276,14 @@ function refineQuoteOfferingSelection(
       code: 'custom',
       message: 'Base price is required',
       path: ['basePrice'],
+    });
+  }
+
+  if (value.kind === 'custom' && !QuoteHourlyRate.safeParse(value.hourlyRate).success) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Hourly rate is required',
+      path: ['hourlyRate'],
     });
   }
 }

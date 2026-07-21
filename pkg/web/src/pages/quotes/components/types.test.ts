@@ -1,3 +1,4 @@
+import { DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
 import { QuoteDetail, QuoteUpdateInput } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
@@ -112,6 +113,7 @@ function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): 
     customerId: CUSTOMER_ID,
     customerMode: 'existing',
     basePrice: 0,
+    hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
     inlineCompanyName: '',
     kind: 'product',
     productId: PRODUCT_ID,
@@ -130,6 +132,7 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
     deliveryPrice: 0,
     discountPercent: 10,
     basePrice: 1000,
+    hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
     notes: 'Some notes',
     documentNotes: '30 days',
     lineItems: [],
@@ -154,9 +157,24 @@ describe('toQuoteFormValues', () => {
     expect(values.validUntil).toBe('2026-01-01');
     expect(values.status).toBe('sent');
     expect(values.basePrice).toBe(1000);
+    expect(values.hourlyRate).toBe(DEFAULT_CUSTOM_HOURLY_RATE);
     expect(values.workTitle).toBe('');
     expect(values.lineItems).toEqual([{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }]);
     expect(values.selectedAssemblies).toEqual([{ type: 'existing', id: SELECTION_ID }]);
+  });
+
+  it('maps a custom quote hourly rate into form state', () => {
+    const values = toQuoteFormValues(
+      buildQuoteDetail({
+        hourlyRate: 925,
+        kind: 'custom',
+        product: null,
+        productId: null,
+        workTitle: 'Hydraulic repair',
+      }),
+    );
+
+    expect(values.hourlyRate).toBe(925);
   });
 
   it('collapses nullable schema fields to empty strings', () => {
@@ -185,6 +203,7 @@ describe('QuoteCreateFormValues', () => {
       customerId: '',
       customerMode: 'existing',
       basePrice: 0,
+      hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
       inlineCompanyName: '',
       kind: 'product',
       productId: '',
@@ -271,10 +290,21 @@ describe('toQuoteCreateInput', () => {
 
   it('builds the custom offering from work title and base price', () => {
     const input = toQuoteCreateInput(
-      buildCreateFormValues({ kind: 'custom', productId: '', workTitle: 'Hydraulic repair', basePrice: 2500 }),
+      buildCreateFormValues({
+        kind: 'custom',
+        productId: '',
+        workTitle: 'Hydraulic repair',
+        basePrice: 2500,
+        hourlyRate: 925,
+      }),
     );
 
-    expect(input.offering).toEqual({ kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500 });
+    expect(input.offering).toEqual({
+      kind: 'custom',
+      workTitle: 'Hydraulic repair',
+      basePrice: 2500,
+      hourlyRate: 925,
+    });
   });
 
   it('ignores the create-dialog Range filter in create submissions', () => {
@@ -341,10 +371,15 @@ describe('toQuoteUpdateInput', () => {
     const input = toQuoteUpdateInput({
       id: QUOTE_ID,
       kind: 'custom',
-      value: buildFormValues({ basePrice: 2500, workTitle: 'Hydraulic repair' }),
+      value: buildFormValues({ basePrice: 2500, hourlyRate: 975, workTitle: 'Hydraulic repair' }),
     });
 
-    expect(input.offering).toEqual({ kind: 'custom', basePrice: 2500, workTitle: 'Hydraulic repair' });
+    expect(input.offering).toEqual({
+      kind: 'custom',
+      basePrice: 2500,
+      hourlyRate: 975,
+      workTitle: 'Hydraulic repair',
+    });
     expect(() =>
       toQuoteUpdateInput({
         id: QUOTE_ID,

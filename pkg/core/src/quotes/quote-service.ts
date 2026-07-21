@@ -39,6 +39,7 @@ import {
 } from './quote-selected-assemblies.js';
 
 type QuoteOfferingRow = {
+  hourlyRate: number | null;
   kind: QuoteKind;
   productId: UUID | null;
   quotedBasePrice: number;
@@ -131,6 +132,7 @@ export async function createQuote({
         deliveryIncluded: input.deliveryIncluded,
         deliveryPrice: input.deliveryPrice,
         discountPercent: input.discountPercent,
+        hourlyRate: offering.hourlyRate,
         kind: offering.kind,
         notes: input.notes,
         documentNotes: input.documentNotes,
@@ -213,6 +215,7 @@ export async function updateQuote({
       deliveryIncluded: input.deliveryIncluded,
       deliveryPrice: input.deliveryPrice,
       discountPercent: input.discountPercent,
+      hourlyRate: input.offering.kind === 'custom' ? input.offering.hourlyRate : before.hourlyRate,
       kind: before.kind,
       notes: input.notes,
       documentNotes: input.documentNotes,
@@ -572,6 +575,7 @@ async function resolveQuoteOffering({
     assertNoCustomSelectedAssemblies(input);
 
     return {
+      hourlyRate: input.offering.hourlyRate,
       kind: 'custom',
       productId: null,
       quotedBasePrice: input.offering.basePrice,
@@ -596,6 +600,7 @@ async function resolveQuoteOffering({
   }
 
   return {
+    hourlyRate: null,
     kind: 'product',
     productId: product.id,
     quotedBasePrice: product.basePrice,

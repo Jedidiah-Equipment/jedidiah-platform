@@ -2933,6 +2933,7 @@ async function createCustomQuote(
     .insert(quotes)
     .values({
       customerId: customer.id,
+      hourlyRate: 850,
       kind: 'custom',
       productId: null,
       quotedBasePrice: 2_500,
@@ -2958,7 +2959,12 @@ function quoteUpdateInput(quote: typeof quotes.$inferSelect) {
     documentNotes: quote.documentNotes,
     offering:
       quote.kind === 'custom'
-        ? { kind: quote.kind, basePrice: quote.quotedBasePrice, workTitle: quote.workTitle ?? '' }
+        ? {
+            kind: quote.kind,
+            basePrice: quote.quotedBasePrice,
+            hourlyRate: quote.hourlyRate ?? 850,
+            workTitle: quote.workTitle ?? '',
+          }
         : { kind: quote.kind },
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,

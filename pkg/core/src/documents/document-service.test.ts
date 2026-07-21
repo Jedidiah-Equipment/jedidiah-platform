@@ -786,6 +786,7 @@ describe('generateQuoteDocument', () => {
         depositPercent: 25,
         discountPercent: 10,
         documentNotes: 'Install during shutdown.',
+        hourlyRate: 850,
         kind: 'custom',
         productId: null,
         quotedBasePrice: 2_000,
@@ -1417,6 +1418,7 @@ async function createCustomJobOwner(db: Parameters<typeof readJobDocument>[0]['d
     .insert(quotes)
     .values({
       customerId,
+      hourlyRate: 850,
       kind: 'custom',
       productId: null,
       quotedBasePrice: 1_000,

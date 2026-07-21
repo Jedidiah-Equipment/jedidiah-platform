@@ -259,6 +259,7 @@ async function createCustomJob(db: Db) {
     .insert(quotes)
     .values({
       customerId: customer.id,
+      hourlyRate: 850,
       kind: 'custom',
       productId: null,
       quotedBasePrice: 1_000,

@@ -8,8 +8,11 @@ import { useColorMode } from '@/theme/use-color-mode';
 // `--color-muted-foreground` in theme/gluestack-config.ts).
 const PLACEHOLDER_COLOR = { dark: 'rgb(122, 122, 130)', light: 'rgb(115, 115, 115)' } as const;
 
+// Font size only — no line height. iOS bottom-aligns TextInput glyphs inside any
+// lineHeight taller than the font, so single-line inputs must not set one; multiline
+// inputs get their leading back below since they are top-aligned anyway.
 const TEXT_SIZE_CLASS_NAMES = {
-  default: 'text-sm',
+  default: 'text-[14px]',
   toolbar: 'text-toolbar',
 } as const;
 
@@ -31,7 +34,7 @@ export const TextInput = forwardRef<RNTextInputType, AppTextInputProps>(function
 
   return (
     <RNTextInput
-      className={`rounded-xl border border-border bg-surface px-3 py-2.5 font-sans text-surface-foreground ${TEXT_SIZE_CLASS_NAMES[textSize]} ${className ?? ''}`}
+      className={`rounded-xl border border-border bg-surface px-3 py-2.5 font-sans text-surface-foreground ${TEXT_SIZE_CLASS_NAMES[textSize]} ${props.multiline ? 'leading-5' : ''} ${className ?? ''}`}
       placeholderTextColor={PLACEHOLDER_COLOR[resolved]}
       ref={ref}
       {...props}

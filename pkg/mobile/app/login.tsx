@@ -79,7 +79,7 @@ export default function LoginScreen() {
                 <TextInput
                   autoCapitalize="none"
                   autoComplete="email"
-                  className="min-h-[52px] rounded-lg border border-border bg-surface px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
+                  className="min-h-[52px] rounded-lg border border-border bg-surface px-4 font-sans text-[16px] text-foreground placeholder:text-muted-foreground"
                   editable={!isSubmitting}
                   keyboardType="email-address"
                   onChangeText={setEmail}
@@ -103,7 +103,7 @@ export default function LoginScreen() {
                   <TextInput
                     autoCapitalize="none"
                     autoComplete="password"
-                    className="flex-1 px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
+                    className="flex-1 px-4 font-sans text-[16px] text-foreground placeholder:text-muted-foreground"
                     editable={!isSubmitting}
                     onChangeText={setPassword}
                     onSubmitEditing={handleSignIn}

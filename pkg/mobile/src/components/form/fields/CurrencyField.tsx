@@ -42,6 +42,7 @@ export function CurrencyField({ disabled = false, label, onValueCommit, placehol
           className="h-11 min-w-0 flex-1 border-0 bg-transparent px-0 py-0"
           editable={!disabled}
           keyboardType="decimal-pad"
+          mono
           onBlur={() => {
             setFocused(false);
             field.handleBlur();

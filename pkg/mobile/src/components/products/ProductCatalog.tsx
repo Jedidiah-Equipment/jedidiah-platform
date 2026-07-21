@@ -1,15 +1,12 @@
 import { formatCurrency } from '@pkg/domain';
 import type { Product, ProductRangeOption } from '@pkg/schema';
-import { IconCheck } from '@tabler/icons-react-native';
+import { IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { BoardGrid } from '@/components/bays/BoardGrid';
-import { ListFilterButton, SegmentedSortControl } from '@/components/ListControls';
+import { ListControlRow, ListDropdownControl, ListSearchControl } from '@/components/ListControls';
 import { ProductImage } from '@/components/products/ProductImage';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { AnchoredMenu } from '@/components/ui/anchored-menu';
-import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import type { ProductSort, RangeFilter } from '@/lib/product-presentation';
@@ -32,91 +29,65 @@ export function ProductCatalogHeader({ count }: { count: number | null }) {
 export function ProductCatalogControls({
   ranges,
   range,
+  search,
   sort,
   onRangeChange,
+  onSearchChange,
   onSortChange,
 }: {
   ranges: readonly ProductRangeOption[];
   range: RangeFilter;
+  search: string;
   sort: ProductSort;
   onRangeChange: (range: RangeFilter) => void;
+  onSearchChange: (search: string) => void;
   onSortChange: (sort: ProductSort) => void;
 }) {
-  const buttonRef = useRef<View>(null);
-  const [menuAnchor, setMenuAnchor] = useState<{ left: number; top: number } | null>(null);
-  const rangeLabel =
-    range === 'all' ? 'All ranges' : (ranges.find((option) => option.id === range)?.name ?? 'All ranges');
-
-  const openMenu = () => {
-    buttonRef.current?.measureInWindow((x, y, _width, height) => {
-      setMenuAnchor({ left: x, top: y + height + 8 });
-    });
-  };
-
-  const selectRange = (next: RangeFilter) => {
-    onRangeChange(next);
-    setMenuAnchor(null);
-  };
+  const rangeOptions: readonly { label: string; value: RangeFilter }[] = [
+    { label: 'All ranges', value: 'all' },
+    ...ranges.map((option) => ({ label: option.name, value: option.id })),
+  ];
 
   return (
-    <View className="z-10 flex-row flex-wrap items-center justify-between gap-2">
-      {/* Keep the current Range visible; if Sort cannot share the row, it wraps instead of
-          collapsing this label down to the two fixed-width icons. */}
-      <View className="min-w-[132px] max-w-full shrink self-start">
-        <ListFilterButton
-          accessibilityLabel="Filter by Product Range"
-          active={range !== 'all'}
-          expanded={menuAnchor !== null}
-          label={rangeLabel}
-          onPress={openMenu}
-          ref={buttonRef}
+    <ListControlRow
+      leading={
+        <ListSearchControl
+          accessibilityLabel="Search products"
+          onChangeText={onSearchChange}
+          placeholder="Search products…"
+          value={search}
         />
-
-        {menuAnchor ? (
-          <AnchoredMenu
-            dismissLabel="Dismiss Range filter"
-            onClose={() => setMenuAnchor(null)}
-            style={{ left: menuAnchor.left, top: menuAnchor.top, width: 240 }}
-          >
-            <View className="p-1.5">
-              <RangeOption active={range === 'all'} label="All ranges" onPress={() => selectRange('all')} />
-              {ranges.map((option) => (
-                <RangeOption
-                  key={option.id}
-                  active={range === option.id}
-                  label={option.name}
-                  onPress={() => selectRange(option.id)}
-                />
-              ))}
-            </View>
-          </AnchoredMenu>
-        ) : null}
-      </View>
-
-      <SegmentedSortControl onChange={onSortChange} options={PRODUCT_SORT_OPTIONS} value={sort} />
-    </View>
-  );
-}
-
-function RangeOption({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      className="flex-row items-center justify-between gap-3 rounded-xl px-3 py-2.5 active:bg-muted"
-      onPress={onPress}
-    >
-      <Text className={active ? 'text-primary' : 'text-foreground'} numberOfLines={1} weight="semibold">
-        {label}
-      </Text>
-      {active ? <Icon className="text-primary" icon={IconCheck} size={15} /> : null}
-    </Pressable>
+      }
+      trailing={
+        <View className="flex-row items-center gap-2">
+          <ListDropdownControl
+            accessibilityLabel="Filter products by range"
+            active={range !== 'all'}
+            dismissLabel="Dismiss Product Range filter"
+            icon={IconFilter}
+            menuWidth={240}
+            onChange={onRangeChange}
+            options={rangeOptions}
+            value={range}
+          />
+          <ListDropdownControl
+            accessibilityLabel="Sort products"
+            active={sort !== 'name'}
+            dismissLabel="Dismiss Product sort"
+            icon={IconArrowsSort}
+            onChange={onSortChange}
+            options={PRODUCT_SORT_OPTIONS}
+            value={sort}
+          />
+        </View>
+      }
+    />
   );
 }
 
 export function ProductGrid({ products }: { products: readonly Product[] }) {
   if (products.length === 0) {
-    return <Text className="text-sm text-muted-foreground">No Products match this Range.</Text>;
+    return <Text className="text-sm text-muted-foreground">No Products match the current search and filter.</Text>;
   }
 
   return (

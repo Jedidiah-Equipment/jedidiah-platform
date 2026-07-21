@@ -5,27 +5,31 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   getNextQuotePage,
   presentQuotePages,
+  type QuoteSort,
   type QuoteStatusFilter,
+  quoteSortDirection,
   shouldPinPriorityQuotes,
 } from '@/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
 
 const PAGE_SIZE = 20;
 
-type PaginationState = { search: string; status: QuoteStatusFilter; pageCount: number };
+type PaginationState = { search: string; sort: QuoteSort; status: QuoteStatusFilter; pageCount: number };
 
 /**
  * Numbered-page infinite list over `quotes.list` (the endpoint is page-based, so
  * `useInfiniteQuery`'s cursor contract does not apply), with priority quotes pinned on the
- * unfiltered view. Pagination resets whenever the search or status criteria change.
+ * unfiltered view. Pagination resets whenever the search, status, or sort criteria change.
  */
 export function useQuoteList({
   enabled,
   search,
+  sort,
   status,
 }: {
   enabled: boolean;
   search: string;
+  sort: QuoteSort;
   status: QuoteStatusFilter;
 }): {
   failed: boolean;
@@ -37,16 +41,17 @@ export function useQuoteList({
   total: number | null;
 } {
   const trpc = useTRPC();
-  const [pagination, setPagination] = useState<PaginationState>({ search, status, pageCount: 1 });
+  const [pagination, setPagination] = useState<PaginationState>({ search, sort, status, pageCount: 1 });
   const loadingNextPage = useRef(false);
-  const paginationMatchesQuery = pagination.search === search && pagination.status === status;
+  const paginationMatchesQuery =
+    pagination.search === search && pagination.sort === sort && pagination.status === status;
   const activePageCount = paginationMatchesQuery ? pagination.pageCount : 1;
   const pinPriorityQuotes = shouldPinPriorityQuotes({ search, status });
 
   useEffect(() => {
-    setPagination({ search, status, pageCount: 1 });
+    setPagination({ search, sort, status, pageCount: 1 });
     loadingNextPage.current = false;
-  }, [search, status]);
+  }, [search, sort, status]);
 
   const pageNumbers = useMemo(
     () => Array.from({ length: activePageCount }, (_, index) => index + 1),
@@ -61,7 +66,7 @@ export function useQuoteList({
           pageSize: PAGE_SIZE,
           search: search || undefined,
           sortBy: 'createdAt',
-          sortDirection: 'desc',
+          sortDirection: quoteSortDirection(sort),
         },
         { enabled },
       ),
@@ -84,8 +89,8 @@ export function useQuoteList({
     if (nextPage === undefined || loadingNextPage.current) return;
 
     loadingNextPage.current = true;
-    setPagination({ search, status, pageCount: nextPage });
-  }, [nextPage, search, status]);
+    setPagination({ search, sort, status, pageCount: nextPage });
+  }, [nextPage, search, sort, status]);
 
   return {
     failed: (pinPriorityQuotes && priorityQuery.isError) || listQueries.some((query) => query.isError),

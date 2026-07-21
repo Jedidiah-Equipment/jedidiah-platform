@@ -10,7 +10,7 @@ import {
 } from '@/components/quotes/QuoteCatalog';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
-import { isQuoteStatusFilter, type QuoteStatusFilter } from '@/lib/quote-presentation';
+import { isQuoteSort, isQuoteStatusFilter, type QuoteSort, type QuoteStatusFilter } from '@/lib/quote-presentation';
 import { useCan } from '@/lib/use-access';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
@@ -25,8 +25,9 @@ export default function QuotesRoute() {
   const [newQuoteOpen, setNewQuoteOpen] = useState(false);
   const debouncedSearch = useDebouncedSearch(search);
   const [status, setStatus] = usePersistedState<QuoteStatusFilter>('jedidiah-quote-status', 'all', isQuoteStatusFilter);
+  const [sort, setSort] = usePersistedState<QuoteSort>('jedidiah-quote-sort', 'newest', isQuoteSort);
   const refresh = useGlobalRefresh();
-  const list = useQuoteList({ enabled: readAccess.can, search: debouncedSearch, status });
+  const list = useQuoteList({ enabled: readAccess.can, search: debouncedSearch, sort, status });
   const displayedQuoteCount = list.priorityQuotes.length + list.mainQuotes.length;
   const hasCriteria = search.trim().length > 0 || status !== 'all';
 
@@ -54,8 +55,10 @@ export default function QuotesRoute() {
             canCreate={createAccess.can}
             onCreate={() => setNewQuoteOpen(true)}
             onSearchChange={setSearch}
+            onSortChange={setSort}
             onStatusChange={setStatus}
             search={search}
+            sort={sort}
             status={status}
           />
 

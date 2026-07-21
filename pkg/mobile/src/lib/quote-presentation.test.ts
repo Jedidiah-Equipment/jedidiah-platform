@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import {
   getNextQuotePage,
   getQuoteEditFormValuesValidator,
+  isQuoteSort,
   isQuoteStatusFilter,
   presentQuotePages,
   quoteMetaLine,
+  quoteSortDirection,
   shouldPinPriorityQuotes,
   toQuoteEditFormValues,
   toQuoteUpdateInput,
@@ -108,6 +110,17 @@ describe('Quote status presentation', () => {
 
     expect(isQuoteStatusFilter('locked')).toBe(false);
     expect(isQuoteStatusFilter(null)).toBe(false);
+  });
+});
+
+describe('Quote sort presentation', () => {
+  it('accepts persisted sort values and maps them to server ordering', () => {
+    expect(isQuoteSort('newest')).toBe(true);
+    expect(isQuoteSort('oldest')).toBe(true);
+    expect(isQuoteSort('createdAt')).toBe(false);
+    expect(isQuoteSort(null)).toBe(false);
+    expect(quoteSortDirection('newest')).toBe('desc');
+    expect(quoteSortDirection('oldest')).toBe('asc');
   });
 });
 

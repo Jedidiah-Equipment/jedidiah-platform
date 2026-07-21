@@ -13,9 +13,6 @@ import {
   QuoteDocumentNotes,
   QuoteHourlyRate,
   QuoteKind,
-  type QuoteLineItem,
-  QuoteLineItemName,
-  QuoteLineItemQuantity,
   QuoteNotes,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
@@ -33,12 +30,6 @@ import { z } from 'zod';
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 export const CustomerMode = z.enum(['existing', 'inline']);
-
-const QuoteLineItemFormInput = z.object({
-  name: QuoteLineItemName,
-  quantity: QuoteLineItemQuantity,
-  unitPrice: Price,
-});
 
 const QuoteWorkItemPartFormInput = z.object({
   name: QuoteWorkItemPartName,
@@ -84,7 +75,6 @@ export const QuoteFormValues = z
     hourlyRate: QuoteHourlyRate,
     notes: emptyStringOr(QuoteNotes),
     documentNotes: emptyStringOr(QuoteDocumentNotes),
-    lineItems: z.array(QuoteLineItemFormInput),
     plannedDeliveryDate: emptyStringOr(DateOnlyIsoString),
     preferredDeliveryDate: emptyStringOr(DateOnlyIsoString),
     salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
@@ -116,13 +106,6 @@ export function getQuoteFormValuesValidator(kind: QuoteKind) {
       });
     }
 
-    if (kind === 'custom' && value.lineItems.length > 0) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Line items are only allowed on Product Quotes',
-        path: ['lineItems'],
-      });
-    }
     if (kind === 'product' && value.workItems.length > 0) {
       context.addIssue({
         code: 'custom',
@@ -142,7 +125,6 @@ export const emptyQuoteFormValues: QuoteFormValues = {
   hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
   notes: '',
   documentNotes: '',
-  lineItems: [],
   plannedDeliveryDate: '',
   preferredDeliveryDate: '',
   salesPersonId: '',
@@ -181,7 +163,6 @@ export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
     discountPercent: initialQuote.discountPercent,
     notes: initialQuote.notes ?? '',
     documentNotes: initialQuote.documentNotes ?? '',
-    lineItems: initialQuote.kind === 'product' ? initialQuote.lineItems.map(toQuoteLineItemInput) : [],
     plannedDeliveryDate: initialQuote.plannedDeliveryDate ?? '',
     preferredDeliveryDate: initialQuote.preferredDeliveryDate ?? '',
     salesPersonId: initialQuote.salesPersonId,
@@ -248,7 +229,6 @@ export function toQuoteUpdateInput({
     discountPercent: value.discountPercent,
     notes: value.notes,
     documentNotes: value.documentNotes,
-    ...(kind === 'product' ? { lineItems: value.lineItems } : {}),
     plannedDeliveryDate: value.plannedDeliveryDate || null,
     preferredDeliveryDate: value.preferredDeliveryDate || null,
     salesPersonId: value.salesPersonId,
@@ -256,14 +236,6 @@ export function toQuoteUpdateInput({
     status: value.status,
     validUntil: value.validUntil || null,
   });
-}
-
-function toQuoteLineItemInput(lineItem: QuoteLineItem): z.infer<typeof QuoteLineItemFormInput> {
-  return {
-    name: lineItem.name,
-    quantity: lineItem.quantity,
-    unitPrice: lineItem.unitPrice,
-  };
 }
 
 function toQuoteWorkItemInput(workItem: QuoteWorkItem): z.infer<typeof QuoteWorkItemFormInput> {

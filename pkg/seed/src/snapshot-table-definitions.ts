@@ -1,3 +1,4 @@
+import { DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
 import type { PgTable } from 'drizzle-orm/pg-core';
 
 export type SnapshotRow = Record<string, unknown>;
@@ -169,16 +170,13 @@ export const snapshotTableDefinitions = [
   },
   {
     // `valid_until`/`preferred_delivery_date`/`planned_delivery_date` are calendar-date string columns,
-    // so they stay strings rather than revived Dates.
+    // so they stay strings rather than revived Dates. The fallback keeps committed snapshots from
+    // before hourly rates seedable; a captured per-Quote value still wins in the writer merge.
     fileName: 'quote.json',
     tableName: 'quote',
     timestampColumns: ['createdAt', 'statusChangedAt', 'updatedAt'],
+    seedRowDefaults: (row) => ({ hourlyRate: row.kind === 'custom' ? DEFAULT_CUSTOM_HOURLY_RATE : null }),
     resetSequence: { sequenceName: 'quote_code_seq', columnName: 'code' },
-  },
-  {
-    fileName: 'quote_line_items.json',
-    tableName: 'quote_line_items',
-    timestampColumns: standardTimestampColumns,
   },
   {
     fileName: 'quote_selected_assemblies.json',

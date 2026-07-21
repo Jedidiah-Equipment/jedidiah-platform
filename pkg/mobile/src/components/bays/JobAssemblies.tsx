@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { JobSectionCard } from '@/components/bays/JobSectionCard';
-import { getJobAssemblyAndWorkRows, type JobAssemblyAndWorkRow } from '@/components/bays/job-assembly-and-line-items';
+import { getJobAssemblyAndWorkRows, type JobAssemblyAndWorkRow } from '@/components/bays/job-assembly-and-work-rows';
 import { STATUS_TONE } from '@/components/bays/status-chip';
 import { Text } from '@/components/ui/text';
 

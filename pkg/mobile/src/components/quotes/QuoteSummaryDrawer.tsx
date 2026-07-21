@@ -10,9 +10,6 @@ import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
 import { quoteWorkItemSummaryRows } from '@/lib/quote-presentation';
 
-const getSummaryLineItemKey = createStableRowKeys<{ name: string; quantity: number; unitPrice: number }>(
-  'quote-summary-line-item',
-);
 const getSummaryWorkItemKey = createStableRowKeys<QuoteComputedSummary['workItems'][number]>('quote-summary-work-item');
 
 export function QuoteSummaryDrawer({
@@ -149,21 +146,6 @@ function TotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteCompu
                   label={assembly.quotedName}
                   small
                   value={formatCurrency(assembly.quotedPrice, summary.currencyCode)}
-                />
-              ))}
-            </View>
-          </View>
-        ) : null}
-        {summary.lineItems.length > 0 ? (
-          <View className="gap-2">
-            <SummaryRow label="Line items" value={formatCurrency(summary.lineItemTotal, summary.currencyCode)} />
-            <View className="ml-1 gap-1.5 border-l-2 border-border pl-3">
-              {summary.lineItems.map((item) => (
-                <SummaryRow
-                  key={getSummaryLineItemKey(item)}
-                  label={item.quantity === 1 ? item.name : `${item.quantity} × ${item.name}`}
-                  small
-                  value={formatCurrency(item.quantity * item.unitPrice, summary.currencyCode)}
                 />
               ))}
             </View>

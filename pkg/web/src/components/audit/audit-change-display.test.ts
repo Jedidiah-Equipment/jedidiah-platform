@@ -115,7 +115,6 @@ describe('audit change display helpers', () => {
 
   it('labels collection element keys as "Prefix: element"', () => {
     expect(getAuditFieldLabel('assembly:Bugle eye hitch')).toBe('Assembly: Bugle eye hitch');
-    expect(getAuditFieldLabel('lineItem:Transport crate')).toBe('Line item: Transport crate');
     expect(getAuditFieldLabel('selectedAssembly:Air brakes')).toBe('Selected assembly: Air brakes');
   });
 

@@ -6,7 +6,7 @@ import { pdfBorder, pdfColors, pdfLineHeight, pdfSpacing } from './pdf-theme.js'
 import { QuoteDocumentBottomBlock } from './QuoteDocumentBottomBlock.js';
 import { QuoteDocumentHeader } from './QuoteDocumentHeader.js';
 import { QuoteDocumentInfoPanels } from './QuoteDocumentInfoPanels.js';
-import { QuoteDocumentLineItemsTable } from './QuoteDocumentLineItemsTable.js';
+import { QuoteDocumentPricingTable } from './QuoteDocumentPricingTable.js';
 
 type QuoteDocumentPdfProps = {
   document: QuoteDocumentModel;
@@ -49,7 +49,7 @@ export function QuoteDocumentPdf({ document }: QuoteDocumentPdfProps) {
         <View style={styles.sheet}>
           <QuoteDocumentHeader document={document} />
           <QuoteDocumentInfoPanels document={document} />
-          <QuoteDocumentLineItemsTable document={document} />
+          <QuoteDocumentPricingTable document={document} />
           <QuoteDocumentBottomBlock document={document} />
 
           <Text style={styles.footerNote}>

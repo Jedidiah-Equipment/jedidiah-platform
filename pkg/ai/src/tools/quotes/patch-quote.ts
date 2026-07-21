@@ -5,11 +5,8 @@ import {
   type QuotePatchInput as CoreQuotePatchInputType,
   DateIsoString,
   DateOnlyIsoString,
-  Price,
   type QuoteDetail,
   QuoteDocumentNotes,
-  QuoteLineItemName,
-  QuoteLineItemQuantity,
   QuoteNotes,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
@@ -26,24 +23,12 @@ import {
   toQuoteDetailResponse,
 } from '@/tools/quotes/quote-response.js';
 
-const PatchQuoteLineItemInput = z
-  .object({
-    name: QuoteLineItemName,
-    quantity: QuoteLineItemQuantity.default(1),
-    unitPrice: Price,
-  })
-  .strict();
-
 // Provider tool schemas are JSON-only, so compose non-transforming schema leaves and normalize in the mapper.
 export type PatchQuoteInput = z.infer<typeof PatchQuoteInput>;
 export const PatchQuoteInput = z
   .object({
     documentNotes: QuoteDocumentNotes.optional(),
     id: UUID,
-    lineItems: z
-      .array(PatchQuoteLineItemInput)
-      .optional()
-      .describe('Complete replacement list. Omit to keep all current Quote Line Items; use [] to clear them.'),
     notes: QuoteNotes.optional(),
     plannedDeliveryDate: DateOnlyIsoString.nullable().optional(),
     preferredDeliveryDate: DateOnlyIsoString.nullable().optional(),
@@ -71,10 +56,10 @@ export function toPatchQuoteResponse(quote: QuoteDetail, access: UserAccessSumma
 export const patchQuoteDefinition = {
   name: 'patchQuote',
   description: [
-    'Patch one Quote, changing only explicitly provided fields: status, salesperson, delivery dates, valid-until, notes, line items, or selected assemblies.',
+    'Patch one Quote, changing only explicitly provided fields: status, salesperson, delivery dates, valid-until, notes, or selected assemblies.',
     'Use findQuotes first when the Quote UUID is not already known.',
     'Do not change status to accepted or rejected unless the user explicitly requested that exact decision.',
-    'When lineItems or selectedAssemblies are provided, they replace the complete collection; use getQuote first to preserve entries the user did not ask to remove.',
+    'When selectedAssemblies are provided, they replace the complete collection; use getQuote first to preserve entries the user did not ask to remove.',
     'Offering and quote-level pricing fields remain excluded and must be edited in the Quote form.',
     'Omitted fields remain unchanged; null clears a nullable date or note.',
   ].join('\n'),

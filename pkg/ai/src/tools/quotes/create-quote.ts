@@ -14,8 +14,6 @@ import {
   type QuoteDetail,
   QuoteDiscountPercent,
   QuoteDocumentNotes,
-  QuoteLineItemName,
-  QuoteLineItemQuantity,
   QuoteNotes,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
@@ -52,14 +50,6 @@ const CreateQuoteOfferingInput = z.discriminatedUnion('kind', [
   z.object({ basePrice: Price, kind: z.literal('custom'), workTitle: QuoteWorkTitle }).strict(),
 ]);
 
-const CreateQuoteLineItemInput = z
-  .object({
-    name: QuoteLineItemName,
-    quantity: QuoteLineItemQuantity.default(1),
-    unitPrice: Price,
-  })
-  .strict();
-
 // Provider tool schemas are JSON-only, so compose non-transforming schema leaves and normalize in the mapper.
 export type CreateQuoteInput = z.infer<typeof CreateQuoteInput>;
 export const CreateQuoteInput = z
@@ -77,7 +67,6 @@ export const CreateQuoteInput = z
     depositPercent: QuoteDepositPercent.default(0),
     discountPercent: QuoteDiscountPercent.default(0),
     documentNotes: QuoteDocumentNotes.default(null),
-    lineItems: z.array(CreateQuoteLineItemInput).default([]),
     notes: QuoteNotes.default(null),
     offering: CreateQuoteOfferingInput.describe(
       'A Product offering requires a Product UUID from findProducts. A Custom offering requires a Work Title and base price.',

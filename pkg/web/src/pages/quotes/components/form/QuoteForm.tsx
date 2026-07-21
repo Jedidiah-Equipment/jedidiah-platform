@@ -33,7 +33,6 @@ import { getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput } fr
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
 import { QuoteDocumentsSection } from './QuoteDocumentsSection.js';
 import { QuoteFormSection } from './QuoteFormSection.js';
-import { QuoteAddLineItemButton, QuoteLineItemsEditor } from './QuoteLineItemsEditor.js';
 import { QuoteRightPanel } from './QuoteRightPanel.js';
 import { QuoteAddWorkItemButton, QuoteWorkItemsEditor } from './QuoteWorkItemsEditor.js';
 
@@ -266,24 +265,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         </form.Field>
                       )}
                     </form.Subscribe>
-                  ) : (
-                    <form.Field name="lineItems" mode="array">
-                      {(lineItemsField) => (
-                        <QuoteFormSection
-                          action={<QuoteAddLineItemButton lineItemsField={lineItemsField} readOnly={isLocked} />}
-                          icon={IconListDetails}
-                          title="Line items"
-                        >
-                          <QuoteLineItemsEditor
-                            currencyCode={quoteCurrencyCode}
-                            lineItemsField={lineItemsField}
-                            onRemoveLineItem={autosave.commit}
-                            readOnly={isLocked}
-                          />
-                        </QuoteFormSection>
-                      )}
-                    </form.Field>
-                  )}
+                  ) : null}
 
                   <QuoteFormSection icon={IconNotes} title="Internal notes">
                     <form.AppField name="notes">{(field) => <field.TextareaField rows={4} />}</form.AppField>

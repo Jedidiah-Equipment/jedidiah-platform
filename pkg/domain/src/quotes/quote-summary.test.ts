@@ -8,7 +8,6 @@ const CUSTOMER_ID = '550e8400-e29b-41d4-a716-446655440001';
 const PRODUCT_ID = '550e8400-e29b-41d4-a716-446655440002';
 const SELECTION_ID = '550e8400-e29b-41d4-a716-446655440010';
 const PRODUCT_ASSEMBLY_ID = '550e8400-e29b-41d4-a716-446655440011';
-const LINE_ITEM_ID = '550e8400-e29b-41d4-a716-446655440012';
 
 const optionalAssembly: Assembly = {
   id: PRODUCT_ASSEMBLY_ID,
@@ -66,17 +65,6 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     salesPersonEmail: 'sales@example.com',
     salesPersonName: 'Sales Person',
     salesPersonThumbnailDataUrl: null,
-    lineItems: [
-      {
-        id: LINE_ITEM_ID,
-        quoteId: QUOTE_ID,
-        name: 'Hydraulic hose',
-        quantity: 2,
-        unitPrice: 125,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      },
-    ],
     selectedAssemblies: [
       {
         id: SELECTION_ID,
@@ -99,7 +87,6 @@ function buildFormValues(overrides: Partial<QuoteSummaryFormValues> = {}): Quote
     deliveryPrice: 0,
     discountPercent: 10,
     hourlyRate: 850,
-    lineItems: [],
     selectedAssemblies: [],
     workItems: [],
     ...overrides,
@@ -124,20 +111,18 @@ describe('computeQuoteSummary', () => {
         deliveryIncluded: true,
         deliveryPrice: 50,
         discountPercent: 10,
-        lineItems: [{ name: 'Install kit', quantity: 2, unitPrice: 100 }],
         selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
       }),
     });
 
     expect(summary.basePrice).toBe(1000);
     expect(summary.currencyCode).toBe('ZAR');
-    expect(summary.lineItemTotal).toBe(200);
     expect(summary.selectedAssemblyTotal).toBe(250);
-    expect(summary.discountAmount).toBe(145);
-    expect(summary.subtotal).toBe(1305);
-    expect(summary.vatAmount).toBe(195.75);
+    expect(summary.discountAmount).toBe(125);
+    expect(summary.subtotal).toBe(1125);
+    expect(summary.vatAmount).toBe(168.75);
     expect(summary.vatPercent).toBe(15);
-    expect(summary.total).toBe(1500.75);
+    expect(summary.total).toBe(1293.75);
     expect(summary.selectedAssemblies).toEqual([
       { id: PRODUCT_ASSEMBLY_ID, productAssemblyId: PRODUCT_ASSEMBLY_ID, quotedName: 'Optional A', quotedPrice: 250 },
     ]);
@@ -216,7 +201,6 @@ describe('computeQuoteSummary', () => {
         deliveryPrice: 500,
         discountPercent: 5,
         hourlyRate: 900,
-        lineItems: [],
         selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
         workItems: [
           {
@@ -230,7 +214,6 @@ describe('computeQuoteSummary', () => {
 
     expect(summary.basePrice).toBe(2500);
     expect(summary.deliveryPrice).toBe(500);
-    expect(summary.lineItemTotal).toBe(0);
     expect(summary.hourlyRate).toBe(900);
     expect(summary.workItemTotal).toBe(1200);
     expect(summary.workItems).toHaveLength(1);

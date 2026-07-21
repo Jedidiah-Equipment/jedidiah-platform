@@ -39,7 +39,7 @@ describe('CustomJobWorkItems', () => {
         <CustomJobWorkItems
           job={{
             quoteKind: 'product',
-            workRows: [{ id: '00000000-0000-4000-8000-000000000101', name: 'Existing product quote line item' }],
+            workRows: [],
           }}
         />,
       ),

@@ -24,7 +24,7 @@ export const getQuoteDefinition = {
   description: [
     'Get the full details for one Product Quote or Custom Quote by UUID.',
     'Use after findQuotes identifies the Quote the user means.',
-    'Returns pricing, status, dates, Customer and offering details, line items, selected assemblies, and relationship links without thumbnail data.',
+    'Returns pricing, status, dates, Customer and offering details, selected assemblies, Work Items, and relationship links without thumbnail data.',
   ].join('\n'),
   inputSchema: GetQuoteInput,
   outputSchema: GetQuoteResponse,

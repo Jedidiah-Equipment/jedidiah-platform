@@ -130,7 +130,7 @@ export async function summarizeQuotePipeline({
       .where(and(inArray(quotes.status, ['accepted', 'rejected']), gte(quotes.statusChangedAt, decisionWindowStart)))
       .groupBy(quotes.status),
   ]);
-  const { lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
+  const { selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
     db,
     quoteIds: sentRows.map((row) => row.id),
   });
@@ -139,7 +139,6 @@ export async function summarizeQuotePipeline({
       row.id,
       priceQuote({
         ...row,
-        lineItems: lineItemsByQuoteId.get(row.id) ?? [],
         selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
         workItems: workItemsByQuoteId.get(row.id) ?? [],
       }).subtotal,
@@ -187,7 +186,7 @@ export async function listStaleSentQuotes({
     .where(eq(quotes.status, 'sent'))
     .orderBy(asc(quotes.statusChangedAt), asc(quotes.id))
     .limit(limit);
-  const { lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
+  const { selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
     db,
     quoteIds: rows.map((row) => row.id),
   });
@@ -204,7 +203,6 @@ export async function listStaleSentQuotes({
       statusChangedAt: row.statusChangedAt.toISOString(),
       totalValue: priceQuote({
         ...row,
-        lineItems: lineItemsByQuoteId.get(row.id) ?? [],
         selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
         workItems: workItemsByQuoteId.get(row.id) ?? [],
       }).total,

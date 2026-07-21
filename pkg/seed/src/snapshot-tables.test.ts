@@ -41,7 +41,6 @@ describe('snapshot table registry', () => {
       'assembly_parts',
       'assembly_overrides',
       'quote',
-      'quote_line_items',
       'quote_selected_assemblies',
       'job',
       'job_cfo_assembly',
@@ -75,13 +74,17 @@ describe('snapshot table registry', () => {
       'assembly_parts.json',
       'assembly_overrides.json',
       'quote.json',
-      'quote_line_items.json',
       'quote_selected_assemblies.json',
       'job.json',
       'job_cfo_assembly.json',
       'job_cfo_part.json',
       'job_slot.json',
     ]);
+  });
+
+  it('backfills hourly rates when loading snapshots captured before the field existed', () => {
+    expect(configFor('quote').seedRowDefaults?.({ kind: 'custom' }, 0)).toEqual({ hourlyRate: 850 });
+    expect(configFor('quote').seedRowDefaults?.({ kind: 'product' }, 0)).toEqual({ hourlyRate: null });
   });
 
   it('projects generated assembly override columns out before import', () => {

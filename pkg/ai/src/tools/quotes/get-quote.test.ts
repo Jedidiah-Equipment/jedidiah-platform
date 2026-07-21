@@ -27,7 +27,6 @@ const quote = QuoteDetail.parse({
   id: QUOTE_ID,
   job: null,
   kind: 'product',
-  lineItems: [],
   notes: 'Internal note',
   plannedDeliveryDate: '2026-08-01',
   preferredDeliveryDate: '2026-07-20',

@@ -1,7 +1,6 @@
 import {
   computeQuoteSummary,
   computeWorkItemTotal,
-  createStableRowKeys,
   EDITABLE_LOCKED_QUOTE_FIELDS,
   formatCurrency,
   getQuoteOfferingName,
@@ -39,7 +38,6 @@ import {
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
 
-const getLineItemKey = createStableRowKeys<{ name: string; quantity: number; unitPrice: number }>('quote-line-item');
 type QuoteWorkItemFormValue = QuoteEditFormValues['workItems'][number];
 type QuoteWorkItemRowKey = { key: string; partKeys: string[] };
 
@@ -349,107 +347,6 @@ function QuoteEditor({
                       )}
                     </form.AppField>
                   </Section>
-                ) : null}
-
-                {quote.kind === 'product' ? (
-                  <form.Field name="lineItems" mode="array">
-                    {(lineItemsField) => (
-                      <Section
-                        action={
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityState={{ disabled: setupReadOnly }}
-                            className={`flex-row items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 ${
-                              setupReadOnly ? 'opacity-50' : 'active:bg-surface'
-                            }`}
-                            disabled={setupReadOnly}
-                            onPress={() => {
-                              lineItemsField.pushValue({ name: '', quantity: 1, unitPrice: 0 });
-                              autosave.markChanged();
-                            }}
-                          >
-                            <Icon className="text-primary" icon={IconPlus} size={15} />
-                            <Text className="text-xs text-foreground" weight="semibold">
-                              Add line item
-                            </Text>
-                          </Pressable>
-                        }
-                        title="Line items"
-                      >
-                        {lineItemsField.state.value.length === 0 ? (
-                          <View className="rounded-xl border border-dashed border-border px-4 py-7">
-                            <Text className="text-center text-sm text-muted-foreground">No line items.</Text>
-                          </View>
-                        ) : (
-                          <View className="gap-3">
-                            {lineItemsField.state.value.map((lineItem, index) => (
-                              <View
-                                className="gap-3 rounded-xl border border-border bg-muted/10 p-3"
-                                key={getLineItemKey(lineItem)}
-                              >
-                                <form.AppField name={`lineItems[${index}].name`}>
-                                  {(field) => (
-                                    <field.TextField
-                                      disabled={setupReadOnly}
-                                      label="Name"
-                                      onValueCommit={autosave.commit}
-                                    />
-                                  )}
-                                </form.AppField>
-                                <View className="gap-3 md:flex-row">
-                                  <View className="flex-1">
-                                    <form.AppField name={`lineItems[${index}].quantity`}>
-                                      {(field) => (
-                                        <field.NumberField
-                                          disabled={setupReadOnly}
-                                          label="Quantity"
-                                          onValueCommit={autosave.commit}
-                                        />
-                                      )}
-                                    </form.AppField>
-                                  </View>
-                                  <View className="flex-1">
-                                    <form.AppField name={`lineItems[${index}].unitPrice`}>
-                                      {(field) => (
-                                        <field.CurrencyField
-                                          disabled={setupReadOnly}
-                                          label="Unit price"
-                                          onValueCommit={autosave.commit}
-                                        />
-                                      )}
-                                    </form.AppField>
-                                  </View>
-                                </View>
-                                <View className="flex-row items-center justify-between gap-3">
-                                  <View>
-                                    <Text className="text-xs text-muted-foreground">Total</Text>
-                                    <Text className="mt-1 text-sm text-foreground" mono weight="semibold">
-                                      {formatCurrency(lineItem.quantity * lineItem.unitPrice, quoteCurrencyCode)}
-                                    </Text>
-                                  </View>
-                                  <Pressable
-                                    accessibilityLabel={`Remove line item ${index + 1}`}
-                                    accessibilityRole="button"
-                                    accessibilityState={{ disabled: setupReadOnly }}
-                                    className={`h-10 w-10 items-center justify-center rounded-lg ${
-                                      setupReadOnly ? 'opacity-0' : 'active:bg-muted'
-                                    }`}
-                                    disabled={setupReadOnly}
-                                    onPress={() => {
-                                      lineItemsField.removeValue(index);
-                                      autosave.commit();
-                                    }}
-                                  >
-                                    <Icon className="text-danger" icon={IconTrash} size={17} />
-                                  </Pressable>
-                                </View>
-                              </View>
-                            ))}
-                          </View>
-                        )}
-                      </Section>
-                    )}
-                  </form.Field>
                 ) : null}
 
                 {quote.kind === 'custom' ? (

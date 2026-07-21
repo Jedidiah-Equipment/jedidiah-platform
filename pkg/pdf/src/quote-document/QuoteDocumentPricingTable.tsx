@@ -1,21 +1,21 @@
 import { formatCurrency } from '@pkg/domain';
-import type { QuoteDocumentLineItem, QuoteDocumentModel, QuoteDocumentWorkItem } from '@pkg/schema';
+import type { QuoteDocumentModel, QuoteDocumentPricingRow, QuoteDocumentWorkItem } from '@pkg/schema';
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
 import { pdfStyles } from './pdf-styles.js';
 import { pdfBorder, pdfColors, pdfSpacing } from './pdf-theme.js';
 
-type QuoteDocumentLineItemsTableProps = {
+type QuoteDocumentPricingTableProps = {
   document: QuoteDocumentModel;
 };
 
-const getLineItemKey = (() => {
-  const keys = new WeakMap<QuoteDocumentLineItem, string>();
+const getPricingRowKey = (() => {
+  const keys = new WeakMap<QuoteDocumentPricingRow, string>();
   let nextKey = 0;
 
-  return (item: QuoteDocumentLineItem) => {
+  return (item: QuoteDocumentPricingRow) => {
     let key = keys.get(item);
     if (key === undefined) {
-      key = `quote-document-line-item-${nextKey}`;
+      key = `quote-document-pricing-row-${nextKey}`;
       nextKey += 1;
       keys.set(item, key);
     }
@@ -90,30 +90,21 @@ const styles = StyleSheet.create({
   },
 });
 
-export function QuoteDocumentLineItemsTable({ document }: QuoteDocumentLineItemsTableProps) {
-  const baseItem = document.lineItems.find((item) => item.kind === 'base');
-  const optionalItems = document.lineItems.filter((item) => item.kind === 'optional');
-  const lineItems = document.lineItems.filter((item) => item.kind === 'lineItem');
+export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTableProps) {
+  const baseRow = document.pricingRows.find((row) => row.kind === 'base');
+  const optionalRows = document.pricingRows.filter((row) => row.kind === 'optional');
   const workItems = quoteDocumentWorkItemRows(document);
-  const adjustmentItems = document.lineItems.filter((item) => item.kind === 'charge' || item.kind === 'discount');
+  const adjustmentRows = document.pricingRows.filter((row) => row.kind === 'charge' || row.kind === 'discount');
 
   return (
     <View style={styles.table}>
       <TableHeader />
-      {baseItem ? <LineItemRow item={baseItem} product /> : null}
-      {optionalItems.length > 0 ? (
+      {baseRow ? <PricingRow row={baseRow} product /> : null}
+      {optionalRows.length > 0 ? (
         <>
           <SectionRow label="Optional Extras" />
-          {optionalItems.map((item) => (
-            <LineItemRow item={item} key={getLineItemKey(item)} />
-          ))}
-        </>
-      ) : null}
-      {lineItems.length > 0 ? (
-        <>
-          <SectionRow label="Line Items" />
-          {lineItems.map((item) => (
-            <LineItemRow item={item} key={getLineItemKey(item)} />
+          {optionalRows.map((row) => (
+            <PricingRow key={getPricingRowKey(row)} row={row} />
           ))}
         </>
       ) : null}
@@ -125,8 +116,8 @@ export function QuoteDocumentLineItemsTable({ document }: QuoteDocumentLineItems
           ))}
         </>
       ) : null}
-      {adjustmentItems.map((item) => (
-        <LineItemRow item={item} key={getLineItemKey(item)} />
+      {adjustmentRows.map((row) => (
+        <PricingRow key={getPricingRowKey(row)} row={row} />
       ))}
       {document.staleSelectionNotes.length > 0 ? (
         <View style={styles.noticeRow}>
@@ -240,15 +231,15 @@ function SectionRow({ label }: { label: string }) {
   );
 }
 
-function LineItemRow({ item, product = false }: { item: QuoteDocumentLineItem; product?: boolean }) {
-  const unitPrice = formatCurrency(item.unitPrice);
-  const subtotal = formatCurrency(item.amount);
+function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDocumentPricingRow }) {
+  const unitPrice = formatCurrency(row.unitPrice);
+  const subtotal = formatCurrency(row.amount);
 
   return (
     <View style={pdfStyles.flexRow}>
-      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{item.quantity}</Text>
+      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{row.quantity}</Text>
       <View style={[pdfStyles.flex1, pdfStyles.textBody, styles.tableCell]}>
-        {item.descriptionLines.map((line) => (
+        {row.descriptionLines.map((line) => (
           <Text key={line} style={product ? [pdfStyles.fontBold, pdfStyles.uppercase] : [pdfStyles.uppercase]}>
             {line}
           </Text>

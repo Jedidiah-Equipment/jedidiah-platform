@@ -28,4 +28,19 @@ CREATE TABLE "quote_work_items" (
 --> statement-breakpoint
 ALTER TABLE "quote_work_item_parts" ADD CONSTRAINT "quote_work_item_parts_work_item_id_quote_work_items_id_fk" FOREIGN KEY ("work_item_id") REFERENCES "public"."quote_work_items"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quote_work_items" ADD CONSTRAINT "quote_work_items_quote_id_quote_id_fk" FOREIGN KEY ("quote_id") REFERENCES "public"."quote"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- Production is intentionally held before 0080/0081 until this corrected migration ships. An environment
+-- that applied the earlier main-branch version must be rebuilt or restored because Drizzle will not rerun it.
+-- Reuse each source row's UUID so the following statement can attach its price without a temporary mapping table.
+INSERT INTO "quote_work_items" ("id", "quote_id", "name", "position", "hours", "created_at", "updated_at")
+SELECT li."id", li."quote_id", li."name", li."position", 0, li."created_at", li."updated_at"
+FROM "quote_line_items" li
+INNER JOIN "quote" q ON q."id" = li."quote_id"
+WHERE q."kind" = 'custom';
+--> statement-breakpoint
+INSERT INTO "quote_work_item_parts" ("work_item_id", "name", "position", "quantity", "unit_price", "created_at", "updated_at")
+SELECT li."id", li."name", 0, li."quantity", li."unit_price", li."created_at", li."updated_at"
+FROM "quote_line_items" li
+INNER JOIN "quote" q ON q."id" = li."quote_id"
+WHERE q."kind" = 'custom';
+--> statement-breakpoint
 DELETE FROM "quote_line_items" WHERE "quote_id" IN (SELECT "id" FROM "quote" WHERE "kind" = 'custom');

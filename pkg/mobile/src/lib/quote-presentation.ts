@@ -16,8 +16,6 @@ import {
   QuoteDocumentNotes,
   QuoteHourlyRate,
   type QuoteKind,
-  QuoteLineItemName,
-  QuoteLineItemQuantity,
   QuoteNotes,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
@@ -103,12 +101,6 @@ export function getNextQuotePage<T>(
   return loaded < lastPage.total ? pages.length + 1 : undefined;
 }
 
-const QuoteEditLineItem = z.object({
-  name: QuoteLineItemName,
-  quantity: QuoteLineItemQuantity,
-  unitPrice: Price,
-});
-
 const QuoteEditWorkItemPart = z.object({
   name: QuoteWorkItemPartName,
   quantity: QuoteWorkItemPartQuantity,
@@ -131,7 +123,6 @@ export const QuoteEditFormValues = z
     discountPercent: QuoteDiscountPercent,
     documentNotes: z.string(),
     hourlyRate: QuoteHourlyRate,
-    lineItems: z.array(QuoteEditLineItem),
     notes: z.string(),
     plannedDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
     preferredDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
@@ -178,10 +169,6 @@ export function toQuoteEditFormValues(quote: QuoteDetail): QuoteEditFormValues {
     discountPercent: quote.discountPercent,
     documentNotes: quote.documentNotes ?? '',
     hourlyRate: quote.kind === 'custom' ? quote.hourlyRate : DEFAULT_CUSTOM_HOURLY_RATE,
-    lineItems:
-      quote.kind === 'product'
-        ? quote.lineItems.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice }))
-        : [],
     notes: quote.notes ?? '',
     plannedDeliveryDate: quote.plannedDeliveryDate ?? '',
     preferredDeliveryDate: quote.preferredDeliveryDate ?? '',
@@ -227,7 +214,6 @@ export function toQuoteUpdateInput({
     depositPercent: values.depositPercent,
     discountPercent: values.discountPercent,
     documentNotes: values.documentNotes,
-    ...(kind === 'product' ? { lineItems: values.lineItems } : {}),
     notes: values.notes,
     plannedDeliveryDate: values.plannedDeliveryDate || null,
     preferredDeliveryDate: values.preferredDeliveryDate || null,

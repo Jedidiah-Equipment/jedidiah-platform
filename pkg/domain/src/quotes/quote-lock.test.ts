@@ -15,7 +15,6 @@ const frozenLockedQuoteFields = [
   'deliveryIncluded',
   'deliveryPrice',
   'discountPercent',
-  'lineItems',
   'productId',
   'quotedBasePrice',
   'salesPersonId',

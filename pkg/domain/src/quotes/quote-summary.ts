@@ -8,7 +8,6 @@ import type {
 
 import { computeAdditionalDeliveryPrice, priceQuoteWithCatalog } from './quote-pricing.js';
 
-export type QuoteSummaryLineItem = { name: string; quantity: number; unitPrice: number };
 export type QuoteSummaryWorkItem = QuoteWorkItemInput;
 
 /** The slice of edit-form state the live pricing summary depends on. */
@@ -18,7 +17,6 @@ export type QuoteSummaryFormValues = {
   deliveryPrice: number;
   discountPercent: number;
   hourlyRate: number;
-  lineItems: QuoteSummaryLineItem[];
   selectedAssemblies: QuoteSelectedAssemblyInput[];
   workItems: QuoteSummaryWorkItem[];
 };
@@ -36,8 +34,6 @@ export type QuoteComputedSummary = {
   discountAmount: number;
   discountPercent: number;
   hourlyRate: number | null;
-  lineItems: QuoteSummaryLineItem[];
-  lineItemTotal: number;
   selectedAssemblies: SelectedAssemblySnapshot[];
   selectedAssemblyTotal: number;
   subtotal: number;
@@ -112,7 +108,6 @@ export function computeQuoteSummary({
       deliveryPrice,
       discountPercent: values.discountPercent,
       hourlyRate,
-      lineItems: quote.kind === 'product' ? values.lineItems : [],
       quotedBasePrice: basePrice,
       selectedAssemblies,
       workItems: quote.kind === 'custom' ? values.workItems : [],
@@ -128,8 +123,6 @@ export function computeQuoteSummary({
     discountAmount: pricing.discountAmount,
     discountPercent: values.discountPercent,
     hourlyRate,
-    lineItems: quote.kind === 'product' ? values.lineItems : [],
-    lineItemTotal: pricing.lineItemTotal,
     selectedAssemblies: [...pricing.liveSelections],
     selectedAssemblyTotal: pricing.selectedAssemblyTotal,
     subtotal: pricing.subtotal,

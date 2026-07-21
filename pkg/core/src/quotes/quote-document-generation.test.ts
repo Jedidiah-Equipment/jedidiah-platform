@@ -2,7 +2,6 @@ import {
   customers,
   productAssemblies,
   products,
-  quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
   quoteWorkItemParts,
@@ -112,10 +111,6 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
       { productAssemblyId: context.firstOptional.id, quotedName: 'Heavy Axle', quotedPrice: 300, quoteId: quote.id },
       { productAssemblyId: null, quotedName: 'Removed Winch', quotedPrice: 999, quoteId: quote.id },
     ]);
-    await context.db
-      .insert(quoteLineItems)
-      .values([{ name: 'Site training', quantity: 2, unitPrice: 125, quoteId: quote.id }]);
-
     const captured: { model: QuoteDocumentModel | null } = { model: null };
     const result = await generateQuoteDocument({
       actorUserId,
@@ -131,15 +126,15 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
       throw new Error('PDF renderer did not receive a document model');
     }
 
-    // base 1000 + assemblies 450 + line items 250 = 1700; 10% discount = 170; + delivery 350 = 1880.
-    expect(model.subtotal).toBe(1880);
-    expect(model.vatAmount).toBe(282);
-    expect(model.total).toBe(2162);
-    expect(model.lineItems.filter((item) => item.kind === 'optional').map((item) => item.descriptionLines)).toEqual([
+    // base 1000 + assemblies 450 = 1450; 10% discount = 145; + delivery 350 = 1655.
+    expect(model.subtotal).toBe(1655);
+    expect(model.vatAmount).toBe(248.25);
+    expect(model.total).toBe(1903.25);
+    expect(model.pricingRows.filter((row) => row.kind === 'optional').map((row) => row.descriptionLines)).toEqual([
       ['Heavy Axle'],
       ['Long Range Tank'],
     ]);
-    expect(model.lineItems.find((item) => item.kind === 'discount')?.amount).toBe(-170);
+    expect(model.pricingRows.find((row) => row.kind === 'discount')?.amount).toBe(-145);
     expect(model.staleSelectionNotes).toEqual(['Removed Winch unavailable']);
     expect(model.workItems).toEqual([]);
     expect(result.warnings.map((warning) => warning.code)).toEqual(['quote_document.brochure_config_incomplete']);

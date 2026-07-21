@@ -1,7 +1,7 @@
 import type { JobDetail } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { getJobAssemblyAndWorkRows } from './job-assembly-and-line-items';
+import { getJobAssemblyAndWorkRows } from './job-assembly-and-work-rows';
 
 describe('getJobAssemblyAndWorkRows', () => {
   it('shows name-only work items first in position order, followed by optional and standard assemblies', () => {
@@ -36,25 +36,17 @@ describe('getJobAssemblyAndWorkRows', () => {
     ]);
   });
 
-  it('keeps product Quote line items as the same custom rows', () => {
+  it('shows only CFO assemblies for product Jobs', () => {
     expect(
       getJobAssemblyAndWorkRows({
-        cfo: [],
-        workRows: [
-          { id: '00000000-0000-4000-8000-000000000201', name: 'Custom hydraulic hose' },
-          { id: '00000000-0000-4000-8000-000000000202', name: 'Commissioning' },
-        ],
+        cfo: [{ assemblyName: 'Standard chassis', kind: 'standard', parts: [] }],
+        workRows: [],
       }),
     ).toEqual([
       {
-        key: 'custom-00000000-0000-4000-8000-000000000201',
-        kind: 'custom',
-        name: 'Custom hydraulic hose',
-      },
-      {
-        key: 'custom-00000000-0000-4000-8000-000000000202',
-        kind: 'custom',
-        name: 'Commissioning',
+        key: 'standard-Standard chassis',
+        kind: 'standard',
+        name: 'Standard chassis',
       },
     ]);
   });

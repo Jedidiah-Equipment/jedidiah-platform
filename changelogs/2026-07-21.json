@@ -1,0 +1,52 @@
+{
+  "releasedAt": "2026-07-21T09:41:51.850Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Cancel locked quotes and jobs",
+          "description": "Eligible quotes can now be permanently cancelled. Linked jobs are cancelled too, with future bookings removed while completed schedule history remains available."
+        },
+        {
+          "title": "View VAT-inclusive quote totals",
+          "description": "Quote totals now clearly separate the subtotal and VAT, with the final total including VAT across quotes, documents, dashboards, and reports."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Share product pages",
+          "description": "Share a product using your device’s share menu, or copy its link when native sharing is unavailable."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Browse the product catalog",
+          "description": "Use the new Products tab to search, filter, and sort equipment, then view product details, assemblies, images, brochures, and other documents. Optimized image caching makes repeat browsing faster."
+        },
+        {
+          "title": "Create and manage quotes",
+          "description": "Users with quote access can now search, filter, sort, create, review, edit, and cancel quotes from the mobile app. Quote details autosave and include pricing, delivery, assemblies, notes, priority information, and VAT-inclusive summaries."
+        },
+        {
+          "title": "Manage quote documents",
+          "description": "Generate quote PDFs, search previous revisions, preview them, and download them directly from a quote."
+        },
+        {
+          "title": "Sort active jobs",
+          "description": "Sort the Jobs view by days remaining or newest first, with your preference remembered."
+        },
+        {
+          "title": "Keep cancelled work out of active schedules",
+          "description": "Cancelled jobs no longer appear as current or upcoming work, while completed schedule history remains available for reference."
+        }
+      ]
+    }
+  ]
+}

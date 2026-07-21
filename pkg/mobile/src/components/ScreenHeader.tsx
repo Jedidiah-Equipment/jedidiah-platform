@@ -8,7 +8,9 @@ import { Text } from '@/components/ui/text';
 export function ScreenHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <View className="h-12 flex-row items-center gap-3">
-      <View className="h-10 w-10 shrink-0 overflow-hidden rounded-xl">
+      {/* No rem-sized wrapper: NativeWind rem is 14px on native (16px on web), so an
+          h-10/w-10 box is 35pt and clips the 40pt icon. AppIcon sizes and clips itself. */}
+      <View className="shrink-0">
         <AppIcon size={40} />
       </View>
       <View className="min-w-0 flex-1">

@@ -1,4 +1,5 @@
 import {
+  computeWorkItemTotal,
   createStableRowKeys,
   formatCurrency,
   formatPercent,
@@ -18,7 +19,9 @@ import { StartJobLink } from '../StartJobLink.js';
 import type { QuoteFormValues } from '../types.js';
 
 type QuoteLineItemFormInput = QuoteFormValues['lineItems'][number];
+type QuoteWorkItemFormInput = QuoteFormValues['workItems'][number];
 const getSummaryLineItemKey = createStableRowKeys<QuoteLineItemFormInput>('quote-summary-line-item');
+const getSummaryWorkItemKey = createStableRowKeys<QuoteWorkItemFormInput>('quote-summary-work-item');
 
 export function QuoteRightPanel({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
   return (
@@ -146,7 +149,7 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
   );
 }
 
-function QuoteCustomWorkCard({ quote }: { quote: QuoteDetail }) {
+function QuoteCustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'custom' }> }) {
   const workTitle = getQuoteOfferingName(quote);
 
   return (
@@ -170,7 +173,7 @@ function QuoteCustomWorkCard({ quote }: { quote: QuoteDetail }) {
             label="Base price"
             value={formatCurrency(quote.quotedBasePrice, quote.quotedCurrencyCode)}
           />
-          <QuoteMiniMetric icon={<IconPackage />} label="Line items" value={String(quote.lineItems.length)} />
+          <QuoteMiniMetric icon={<IconPackage />} label="Work items" value={String(quote.workItems.length)} />
         </div>
       </CardContent>
     </Card>
@@ -224,6 +227,22 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
             </div>
           </div>
         ) : null}
+        {summary.workItems.length > 0 ? (
+          <div className="grid gap-1">
+            <QuoteSummaryRow label="Work items" value={formatCurrency(summary.workItemTotal, summary.currencyCode)} />
+            <div className="grid gap-1 border-l pl-3">
+              {summary.workItems.map((item) => (
+                <QuoteSummaryRow
+                  className="text-xs"
+                  key={getSummaryWorkItemKey(item)}
+                  label={item.name}
+                  value={formatCurrency(getSummaryWorkItemTotal(summary, item), summary.currencyCode)}
+                  valueClassName="text-muted-foreground"
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
         <QuoteSummaryRow
           label="Less discount"
           value={`${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)})`}
@@ -250,6 +269,14 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
 
 function formatLineItemLabel(item: QuoteLineItemFormInput): string {
   return item.quantity === 1 ? item.name : `${item.quantity} x ${item.name}`;
+}
+
+function getSummaryWorkItemTotal(summary: QuoteComputedSummary, item: QuoteWorkItemFormInput): number {
+  return computeWorkItemTotal({
+    hourlyRate: summary.hourlyRate ?? 0,
+    hours: item.hours,
+    parts: item.parts,
+  });
 }
 
 function QuotePanelFact({

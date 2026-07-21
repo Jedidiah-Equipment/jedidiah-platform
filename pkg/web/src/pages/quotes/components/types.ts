@@ -20,6 +20,11 @@ import {
   QuoteSelectedAssemblyInput,
   QuoteStatus,
   QuoteUpdateInput,
+  type QuoteWorkItem,
+  QuoteWorkItemHours,
+  QuoteWorkItemName,
+  QuoteWorkItemPartName,
+  QuoteWorkItemPartQuantity,
   QuoteWorkTitle,
   UUID,
 } from '@pkg/schema';
@@ -33,6 +38,18 @@ const QuoteLineItemFormInput = z.object({
   name: QuoteLineItemName,
   quantity: QuoteLineItemQuantity,
   unitPrice: Price,
+});
+
+const QuoteWorkItemPartFormInput = z.object({
+  name: QuoteWorkItemPartName,
+  quantity: QuoteWorkItemPartQuantity,
+  unitPrice: Price,
+});
+
+const QuoteWorkItemFormInput = z.object({
+  hours: QuoteWorkItemHours,
+  name: QuoteWorkItemName,
+  parts: z.array(QuoteWorkItemPartFormInput),
 });
 
 const QuoteCreateBasePrice = z.union([Price, z.nan()]);
@@ -75,6 +92,7 @@ export const QuoteFormValues = z
     status: QuoteStatus,
     validUntil: emptyStringOr(DateIsoString),
     workTitle: z.string(),
+    workItems: z.array(QuoteWorkItemFormInput),
   })
   .strict();
 
@@ -97,6 +115,21 @@ export function getQuoteFormValuesValidator(kind: QuoteKind) {
         path: ['workTitle'],
       });
     }
+
+    if (kind === 'custom' && value.lineItems.length > 0) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Line items are only allowed on Product Quotes',
+        path: ['lineItems'],
+      });
+    }
+    if (kind === 'product' && value.workItems.length > 0) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Work items are only allowed on Custom Quotes',
+        path: ['workItems'],
+      });
+    }
   });
 }
 
@@ -117,6 +150,7 @@ export const emptyQuoteFormValues: QuoteFormValues = {
   status: 'draft',
   validUntil: '',
   workTitle: '',
+  workItems: [],
 };
 
 export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
@@ -147,7 +181,7 @@ export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
     discountPercent: initialQuote.discountPercent,
     notes: initialQuote.notes ?? '',
     documentNotes: initialQuote.documentNotes ?? '',
-    lineItems: initialQuote.lineItems.map(toQuoteLineItemInput),
+    lineItems: initialQuote.kind === 'product' ? initialQuote.lineItems.map(toQuoteLineItemInput) : [],
     plannedDeliveryDate: initialQuote.plannedDeliveryDate ?? '',
     preferredDeliveryDate: initialQuote.preferredDeliveryDate ?? '',
     salesPersonId: initialQuote.salesPersonId,
@@ -157,6 +191,7 @@ export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
     status: initialQuote.status,
     validUntil: initialQuote.validUntil ?? '',
     workTitle: initialQuote.workTitle ?? '',
+    workItems: initialQuote.kind === 'custom' ? initialQuote.workItems.map(toQuoteWorkItemInput) : [],
   };
 }
 
@@ -205,6 +240,7 @@ export function toQuoteUpdateInput({
             basePrice: value.basePrice,
             hourlyRate: value.hourlyRate,
             workTitle: value.workTitle,
+            workItems: value.workItems,
           },
     deliveryIncluded: value.deliveryIncluded,
     deliveryPrice: computeAdditionalDeliveryPrice(value),
@@ -212,7 +248,7 @@ export function toQuoteUpdateInput({
     discountPercent: value.discountPercent,
     notes: value.notes,
     documentNotes: value.documentNotes,
-    lineItems: value.lineItems,
+    ...(kind === 'product' ? { lineItems: value.lineItems } : {}),
     plannedDeliveryDate: value.plannedDeliveryDate || null,
     preferredDeliveryDate: value.preferredDeliveryDate || null,
     salesPersonId: value.salesPersonId,
@@ -227,6 +263,14 @@ function toQuoteLineItemInput(lineItem: QuoteLineItem): z.infer<typeof QuoteLine
     name: lineItem.name,
     quantity: lineItem.quantity,
     unitPrice: lineItem.unitPrice,
+  };
+}
+
+function toQuoteWorkItemInput(workItem: QuoteWorkItem): z.infer<typeof QuoteWorkItemFormInput> {
+  return {
+    hours: workItem.hours,
+    name: workItem.name,
+    parts: workItem.parts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice })),
   };
 }
 

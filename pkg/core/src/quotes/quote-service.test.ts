@@ -520,7 +520,7 @@ describe('quote line items', () => {
 });
 
 describe('custom quotes', () => {
-  test('creates a custom quote with entered base price, work title, line items, and no product facts', async ({
+  test('creates a custom quote with entered commercial facts, work items, and no product facts', async ({
     context,
   }) => {
     const created = await createQuoteService({
@@ -528,12 +528,18 @@ describe('custom quotes', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500, hourlyRate: 850 },
-        lineItems: [{ name: 'Travel', quantity: 2, unitPrice: 150 }],
+        offering: {
+          kind: 'custom',
+          workTitle: 'Hydraulic repair',
+          basePrice: 2500,
+          hourlyRate: 850,
+          workItems: [{ name: 'Travel', hours: 0, parts: [{ name: 'Fuel', quantity: 2, unitPrice: 150 }] }],
+        },
         salesPersonId: context.salesPerson.id,
         status: 'sent',
       }),
     });
+    if (created.kind !== 'custom') throw new Error('Expected a Custom Quote');
 
     expect(created).toMatchObject({
       kind: 'custom',
@@ -544,7 +550,10 @@ describe('custom quotes', () => {
       selectedAssemblies: [],
       workTitle: 'Hydraulic repair',
     });
-    expect(created.lineItems).toMatchObject([{ name: 'Travel', quantity: 2, unitPrice: 150 }]);
+    expect(created.lineItems).toEqual([]);
+    expect(created.workItems).toMatchObject([
+      { name: 'Travel', hours: 0, parts: [{ name: 'Fuel', quantity: 2, unitPrice: 150 }] },
+    ]);
   });
 
   test('rejects selected assemblies on custom quote create and update', async ({ context }) => {
@@ -609,10 +618,16 @@ describe('custom quotes', () => {
       db: context.db,
       input: buildQuoteUpdateInput(customQuote, {
         discountPercent: 5,
-        offering: { kind: 'custom', basePrice: 1750, hourlyRate: 900, workTitle: 'Draft repair revised' },
-        lineItems: [{ name: 'Travel', quantity: 1, unitPrice: 200 }],
+        offering: {
+          kind: 'custom',
+          basePrice: 1750,
+          hourlyRate: 900,
+          workTitle: 'Draft repair revised',
+          workItems: [{ name: 'Travel', hours: 1, parts: [] }],
+        },
       }),
     });
+    if (updated.kind !== 'custom') throw new Error('Expected a Custom Quote');
 
     expect(updated).toMatchObject({
       discountPercent: 5,
@@ -620,7 +635,7 @@ describe('custom quotes', () => {
       quotedBasePrice: 1750,
       workTitle: 'Draft repair revised',
     });
-    expect(updated.lineItems).toMatchObject([{ name: 'Travel', quantity: 1, unitPrice: 200 }]);
+    expect(updated.workItems).toMatchObject([{ name: 'Travel', hours: 1, parts: [] }]);
   });
 
   test('rejects clearing a custom quote work title at the update input boundary', async ({ context }) => {
@@ -1615,13 +1630,22 @@ function buildQuoteUpdateInput(quote: QuoteDetail, overrides: Partial<QuoteUpdat
             basePrice: quote.quotedBasePrice,
             hourlyRate: quote.hourlyRate,
             workTitle: quote.workTitle,
+            workItems: quote.workItems.map(({ hours, name, parts }) => ({
+              hours,
+              name,
+              parts: parts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice })),
+            })),
           }
         : { kind: 'product' },
-    lineItems: quote.lineItems.map((item) => ({
-      name: item.name,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-    })),
+    ...(quote.kind === 'product'
+      ? {
+          lineItems: quote.lineItems.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+          })),
+        }
+      : {}),
     notes: quote.notes,
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,

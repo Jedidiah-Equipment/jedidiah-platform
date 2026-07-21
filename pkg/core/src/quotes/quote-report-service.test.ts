@@ -1,4 +1,13 @@
-import { customers, type Db, products, quoteLineItems, quotes, user } from '@pkg/db';
+import {
+  customers,
+  type Db,
+  products,
+  quoteLineItems,
+  quotes,
+  quoteWorkItemParts,
+  quoteWorkItems,
+  user,
+} from '@pkg/db';
 import type { QuoteStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -223,9 +232,14 @@ describe('summarizeQuotePipeline', () => {
       workTitle: 'Pipeline repair',
     });
     if (!customQuote) throw new Error('Expected custom sent quote row');
+    const [workItem] = await context.db
+      .insert(quoteWorkItems)
+      .values({ name: 'Travel', hours: 0, quoteId: customQuote.id })
+      .returning();
+    if (!workItem) throw new Error('Expected custom work item row');
     await context.db
-      .insert(quoteLineItems)
-      .values({ name: 'Travel', quantity: 1, quoteId: customQuote.id, unitPrice: 100 });
+      .insert(quoteWorkItemParts)
+      .values({ name: 'Fuel', quantity: 1, unitPrice: 100, workItemId: workItem.id });
 
     await expect(summarizeQuotePipeline({ clock: fixedClock, db: context.db })).resolves.toMatchObject({
       newlySent30dValue: 1220,
@@ -323,9 +337,14 @@ describe('listStaleSentQuotes', () => {
       workTitle: 'Stale repair',
     });
     if (!customQuote) throw new Error('Expected custom sent quote row');
+    const [workItem] = await context.db
+      .insert(quoteWorkItems)
+      .values({ name: 'Travel', hours: 0, quoteId: customQuote.id })
+      .returning();
+    if (!workItem) throw new Error('Expected custom work item row');
     await context.db
-      .insert(quoteLineItems)
-      .values({ name: 'Travel', quantity: 2, quoteId: customQuote.id, unitPrice: 50 });
+      .insert(quoteWorkItemParts)
+      .values({ name: 'Fuel', quantity: 2, unitPrice: 50, workItemId: workItem.id });
 
     const result = await listStaleSentQuotes({ clock: fixedClock, db: context.db });
 

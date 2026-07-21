@@ -9,6 +9,8 @@ import {
   quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
+  quoteWorkItemParts,
+  quoteWorkItems,
   user,
   withPagination,
 } from '@pkg/db';
@@ -48,6 +50,7 @@ import {
 } from './quote-mappers.js';
 import { narrowQuoteOffering } from './quote-offering.js';
 import { getSelectedAssembliesByQuoteId, type QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
+import { getWorkItemsByQuoteId, type QuoteWorkItemRow } from './quote-work-items.js';
 
 const PRIORITY_QUOTE_WINDOW_MONTHS = 2;
 const UPCOMING_DELIVERY_WINDOW_DAYS = 30;
@@ -92,11 +95,12 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     .where(where);
 
   const [rows, [totalRow]] = await Promise.all([rowsQuery, totalQuery]);
-  const { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId } = await loadQuoteAssociations({
-    db,
-    includeJobs: true,
-    quoteIds: rows.map((row) => row.quote.id),
-  });
+  const { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } =
+    await loadQuoteAssociations({
+      db,
+      includeJobs: true,
+      quoteIds: rows.map((row) => row.quote.id),
+    });
 
   return {
     items: rows.map((row) =>
@@ -105,6 +109,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
         jobByQuoteId.get(row.quote.id) ?? null,
         lineItemsByQuoteId.get(row.quote.id) ?? [],
         selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
+        workItemsByQuoteId.get(row.quote.id) ?? [],
       ),
     ),
     sortBy: input.sortBy,
@@ -156,11 +161,12 @@ export async function listPriorityQuotes({
     )
     .orderBy(asc(earliestDeliveryDate), asc(quotes.code), asc(quotes.id));
 
-  const { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId } = await loadQuoteAssociations({
-    db,
-    includeJobs: true,
-    quoteIds: rows.map((row) => row.quote.id),
-  });
+  const { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } =
+    await loadQuoteAssociations({
+      db,
+      includeJobs: true,
+      quoteIds: rows.map((row) => row.quote.id),
+    });
 
   return rows.map((row) =>
     mapPriorityQuote(
@@ -168,6 +174,7 @@ export async function listPriorityQuotes({
       jobByQuoteId.get(row.quote.id) ?? null,
       lineItemsByQuoteId.get(row.quote.id) ?? [],
       selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
+      workItemsByQuoteId.get(row.quote.id) ?? [],
     ),
   );
 }
@@ -211,11 +218,12 @@ export async function listUpcomingDeliveryQuotes({
     )
     .orderBy(asc(quotes.plannedDeliveryDate), asc(quotes.code), asc(quotes.id));
 
-  const { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId } = await loadQuoteAssociations({
-    db,
-    includeJobs: true,
-    quoteIds: rows.map((row) => row.quote.id),
-  });
+  const { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } =
+    await loadQuoteAssociations({
+      db,
+      includeJobs: true,
+      quoteIds: rows.map((row) => row.quote.id),
+    });
 
   return UpcomingDeliveryQuotesResult.parse({
     items: rows.map((row) =>
@@ -224,6 +232,7 @@ export async function listUpcomingDeliveryQuotes({
         jobByQuoteId.get(row.quote.id) ?? null,
         lineItemsByQuoteId.get(row.quote.id) ?? [],
         selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
+        workItemsByQuoteId.get(row.quote.id) ?? [],
       ),
     ),
     today,
@@ -277,6 +286,14 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
       },
       selectedAssemblies: {
         orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
+      },
+      workItems: {
+        orderBy: [asc(quoteWorkItems.position), asc(quoteWorkItems.createdAt), asc(quoteWorkItems.id)],
+        with: {
+          parts: {
+            orderBy: [asc(quoteWorkItemParts.position), asc(quoteWorkItemParts.createdAt), asc(quoteWorkItemParts.id)],
+          },
+        },
       },
     },
   });
@@ -384,14 +401,16 @@ export async function loadQuoteAssociations({
   jobByQuoteId: Map<UUID, QuoteLinkedJobRow>;
   lineItemsByQuoteId: Map<UUID, QuoteLineItemRow[]>;
   selectedAssembliesByQuoteId: Map<UUID, QuoteSelectedAssemblyRow[]>;
+  workItemsByQuoteId: Map<UUID, QuoteWorkItemRow[]>;
 }> {
-  const [lineItemsByQuoteId, selectedAssembliesByQuoteId, jobByQuoteId] = await Promise.all([
+  const [lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId, jobByQuoteId] = await Promise.all([
     getLineItemsByQuoteId({ db, quoteIds }),
     getSelectedAssembliesByQuoteId({ db, quoteIds }),
+    getWorkItemsByQuoteId({ db, quoteIds }),
     includeJobs ? getJobByQuoteId({ db, quoteIds }) : Promise.resolve(new Map<UUID, QuoteLinkedJobRow>()),
   ]);
 
-  return { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId };
+  return { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId };
 }
 
 export async function getJobByQuoteId({

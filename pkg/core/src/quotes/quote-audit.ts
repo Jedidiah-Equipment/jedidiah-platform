@@ -7,10 +7,16 @@ import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
 type QuoteLineItemAuditItem = Pick<QuoteLineItemRow, 'name' | 'quantity' | 'unitPrice'>;
+type QuoteWorkItemAuditItem = {
+  hours: number;
+  name: string;
+  parts: readonly { name: string; quantity: number; unitPrice: number }[];
+};
 type QuoteAuditInput = {
   row: QuoteRow;
   lineItems: readonly QuoteLineItemAuditItem[];
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[];
+  workItems: readonly QuoteWorkItemAuditItem[];
 };
 
 // `code` is the summary label, not an audited field, so it lives in `label`. Line items and selected
@@ -42,7 +48,7 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
     status: row.status,
     validUntil: row.validUntil,
   }),
-  toCollections: ({ lineItems, selectedAssemblies }) => ({
+  toCollections: ({ lineItems, selectedAssemblies, workItems }) => ({
     // Line items have no stable audited id; same-name items pair in position order in the diff, so
     // the projection must not re-sort them.
     lineItem: toQuoteLineItemAuditRecord(lineItems).map((lineItem) => ({
@@ -54,6 +60,15 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
       key: selection.productAssemblyId ?? selection.quotedName,
       label: selection.quotedName,
       value: selection,
+    })),
+    workItem: workItems.map((workItem) => ({
+      key: workItem.name,
+      label: workItem.name,
+      value: {
+        hours: workItem.hours,
+        name: workItem.name,
+        parts: workItem.parts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice })),
+      },
     })),
   }),
 });

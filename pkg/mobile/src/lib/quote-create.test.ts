@@ -71,6 +71,7 @@ describe('mobile quote creation', () => {
       basePrice: 25_000,
       hourlyRate: 975,
       kind: 'custom',
+      workItems: [],
       workTitle: 'On-site repair',
     });
   });

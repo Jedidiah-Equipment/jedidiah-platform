@@ -156,7 +156,10 @@ export function toQuoteEditFormValues(quote: QuoteDetail): QuoteEditFormValues {
     discountPercent: quote.discountPercent,
     documentNotes: quote.documentNotes ?? '',
     hourlyRate: quote.kind === 'custom' ? quote.hourlyRate : DEFAULT_CUSTOM_HOURLY_RATE,
-    lineItems: quote.lineItems.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice })),
+    lineItems:
+      quote.kind === 'product'
+        ? quote.lineItems.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice }))
+        : [],
     notes: quote.notes ?? '',
     plannedDeliveryDate: quote.plannedDeliveryDate ?? '',
     preferredDeliveryDate: quote.preferredDeliveryDate ?? '',
@@ -193,7 +196,7 @@ export function toQuoteUpdateInput({
     depositPercent: values.depositPercent,
     discountPercent: values.discountPercent,
     documentNotes: values.documentNotes,
-    lineItems: values.lineItems,
+    ...(kind === 'product' ? { lineItems: values.lineItems } : {}),
     notes: values.notes,
     plannedDeliveryDate: values.plannedDeliveryDate || null,
     preferredDeliveryDate: values.preferredDeliveryDate || null,

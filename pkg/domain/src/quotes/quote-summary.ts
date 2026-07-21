@@ -1,8 +1,15 @@
-import type { Assembly, QuoteDetail, QuoteSelectedAssembly, QuoteSelectedAssemblyInput } from '@pkg/schema';
+import type {
+  Assembly,
+  QuoteDetail,
+  QuoteSelectedAssembly,
+  QuoteSelectedAssemblyInput,
+  QuoteWorkItemInput,
+} from '@pkg/schema';
 
 import { computeAdditionalDeliveryPrice, priceQuoteWithCatalog } from './quote-pricing.js';
 
 export type QuoteSummaryLineItem = { name: string; quantity: number; unitPrice: number };
+export type QuoteSummaryWorkItem = QuoteWorkItemInput;
 
 /** The slice of edit-form state the live pricing summary depends on. */
 export type QuoteSummaryFormValues = {
@@ -10,8 +17,10 @@ export type QuoteSummaryFormValues = {
   deliveryIncluded: boolean;
   deliveryPrice: number;
   discountPercent: number;
+  hourlyRate: number;
   lineItems: QuoteSummaryLineItem[];
   selectedAssemblies: QuoteSelectedAssemblyInput[];
+  workItems: QuoteSummaryWorkItem[];
 };
 
 export type SelectedAssemblySnapshot = Pick<
@@ -26,6 +35,7 @@ export type QuoteComputedSummary = {
   deliveryPrice: number;
   discountAmount: number;
   discountPercent: number;
+  hourlyRate: number | null;
   lineItems: QuoteSummaryLineItem[];
   lineItemTotal: number;
   selectedAssemblies: SelectedAssemblySnapshot[];
@@ -34,6 +44,8 @@ export type QuoteComputedSummary = {
   total: number;
   vatAmount: number;
   vatPercent: number;
+  workItems: QuoteSummaryWorkItem[];
+  workItemTotal: number;
 };
 
 /**
@@ -85,6 +97,7 @@ export function computeQuoteSummary({
   const catalogAssemblies = quote.product?.assemblies ?? [];
   const deliveryPrice = computeAdditionalDeliveryPrice(values);
   const basePrice = quote.kind === 'custom' ? values.basePrice : quote.quotedBasePrice;
+  const hourlyRate = quote.kind === 'custom' ? values.hourlyRate : null;
   const selectedAssemblies =
     quote.kind === 'custom'
       ? []
@@ -98,9 +111,11 @@ export function computeQuoteSummary({
       deliveryIncluded: values.deliveryIncluded,
       deliveryPrice,
       discountPercent: values.discountPercent,
-      lineItems: values.lineItems,
+      hourlyRate,
+      lineItems: quote.kind === 'product' ? values.lineItems : [],
       quotedBasePrice: basePrice,
       selectedAssemblies,
+      workItems: quote.kind === 'custom' ? values.workItems : [],
     },
     catalogAssemblies,
   );
@@ -112,7 +127,8 @@ export function computeQuoteSummary({
     deliveryPrice,
     discountAmount: pricing.discountAmount,
     discountPercent: values.discountPercent,
-    lineItems: values.lineItems,
+    hourlyRate,
+    lineItems: quote.kind === 'product' ? values.lineItems : [],
     lineItemTotal: pricing.lineItemTotal,
     selectedAssemblies: [...pricing.liveSelections],
     selectedAssemblyTotal: pricing.selectedAssemblyTotal,
@@ -120,5 +136,7 @@ export function computeQuoteSummary({
     total: pricing.total,
     vatAmount: pricing.vatAmount,
     vatPercent: pricing.vatPercent,
+    workItems: quote.kind === 'custom' ? values.workItems : [],
+    workItemTotal: pricing.workItemTotal,
   };
 }

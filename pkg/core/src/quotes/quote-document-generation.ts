@@ -5,6 +5,8 @@ import {
   quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
+  quoteWorkItemParts,
+  quoteWorkItems,
   type user,
 } from '@pkg/db';
 import {
@@ -42,6 +44,7 @@ import {
 import type { QuoteLineItemRow } from './quote-line-items.js';
 import { narrowQuoteOffering } from './quote-offering.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
+import type { QuoteWorkItemRow } from './quote-work-items.js';
 
 type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
   customer: Pick<
@@ -52,6 +55,7 @@ type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name' | 'phoneNumber'> | null;
   lineItems: QuoteLineItemRow[];
   selectedAssemblies: QuoteSelectedAssemblyRow[];
+  workItems: QuoteWorkItemRow[];
 };
 
 type QuoteRow = typeof quotes.$inferSelect;
@@ -323,6 +327,14 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
       },
       lineItems: {
         orderBy: [asc(quoteLineItems.position), asc(quoteLineItems.createdAt), asc(quoteLineItems.id)],
+      },
+      workItems: {
+        orderBy: [asc(quoteWorkItems.position), asc(quoteWorkItems.createdAt), asc(quoteWorkItems.id)],
+        with: {
+          parts: {
+            orderBy: [asc(quoteWorkItemParts.position), asc(quoteWorkItemParts.createdAt), asc(quoteWorkItemParts.id)],
+          },
+        },
       },
     },
   });

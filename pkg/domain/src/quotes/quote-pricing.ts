@@ -15,6 +15,9 @@ export type QuotePricingResult =
 export const VAT_PERCENT = 15;
 export const DEFAULT_CUSTOM_HOURLY_RATE = 850;
 
+type WorkItemPartPricingInput = { quantity: number; unitPrice: number };
+type WorkItemPricingInput = { hours: number; parts: readonly WorkItemPartPricingInput[] };
+
 export function validateDiscount({ discountPercent }: { discountPercent: number }): QuotePricingResult {
   if (discountPercent < 0) {
     return deny('Discount must be zero or greater.');
@@ -29,18 +32,23 @@ export function validateDiscount({ discountPercent }: { discountPercent: number 
 
 function computeQuoteDiscountAmount({
   discountPercent,
+  hourlyRate,
   lineItems = [],
   quotedBasePrice,
   selectedAssemblyPrices = [],
+  workItems = [],
 }: {
   discountPercent: number;
+  hourlyRate?: number | null | undefined;
   lineItems?: readonly { quantity: number; unitPrice: number }[];
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
+  workItems?: readonly WorkItemPricingInput[];
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
   const lineItemTotal = computeQuoteLineItemsTotal(lineItems);
-  const discountableSubtotal = Math.max(0, quotedBasePrice + selectedAssemblyTotal + lineItemTotal);
+  const workItemTotal = computeQuoteWorkItemsTotal({ hourlyRate, workItems });
+  const discountableSubtotal = Math.max(0, quotedBasePrice + selectedAssemblyTotal + lineItemTotal + workItemTotal);
 
   return roundCurrency(discountableSubtotal * (discountPercent / 100));
 }
@@ -51,6 +59,34 @@ function computeQuoteLineItemsTotal(lineItems: readonly { quantity: number; unit
 
 export function computeQuoteLineItemAmount(item: { quantity: number; unitPrice: number }): number {
   return item.quantity * item.unitPrice;
+}
+
+export function computeWorkItemLabourCost(input: { hourlyRate: number; hours: number }): number {
+  return roundCurrency(input.hourlyRate * input.hours);
+}
+
+export function computeWorkItemPartAmount(part: WorkItemPartPricingInput): number {
+  return part.quantity * part.unitPrice;
+}
+
+export function computeWorkItemTotal(input: {
+  hourlyRate: number;
+  hours: number;
+  parts: readonly WorkItemPartPricingInput[];
+}): number {
+  return (
+    computeWorkItemLabourCost(input) + input.parts.reduce((total, part) => total + computeWorkItemPartAmount(part), 0)
+  );
+}
+
+function computeQuoteWorkItemsTotal({
+  hourlyRate,
+  workItems,
+}: {
+  hourlyRate: number | null | undefined;
+  workItems: readonly WorkItemPricingInput[];
+}): number {
+  return workItems.reduce((total, item) => total + computeWorkItemTotal({ ...item, hourlyRate: hourlyRate ?? 0 }), 0);
 }
 
 export function computeAdditionalDeliveryPrice({
@@ -71,28 +107,35 @@ function computeQuoteTotal({
   deliveryIncluded = true,
   deliveryPrice = 0,
   discountPercent,
+  hourlyRate,
   lineItems = [],
   quotedBasePrice,
   selectedAssemblyPrices = [],
+  workItems = [],
 }: {
   deliveryIncluded?: boolean;
   deliveryPrice?: number;
   discountPercent: number;
+  hourlyRate?: number | null | undefined;
   lineItems?: readonly { quantity: number; unitPrice: number }[];
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
+  workItems?: readonly WorkItemPricingInput[];
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
   const lineItemTotal = computeQuoteLineItemsTotal(lineItems);
+  const workItemTotal = computeQuoteWorkItemsTotal({ hourlyRate, workItems });
   const discountAmount = computeQuoteDiscountAmount({
     discountPercent,
+    hourlyRate,
     lineItems,
     quotedBasePrice,
     selectedAssemblyPrices,
+    workItems,
   });
 
   return (
-    Math.max(0, quotedBasePrice + selectedAssemblyTotal + lineItemTotal - discountAmount) +
+    Math.max(0, quotedBasePrice + selectedAssemblyTotal + lineItemTotal + workItemTotal - discountAmount) +
     computeAdditionalDeliveryPrice({ deliveryIncluded, deliveryPrice })
   );
 }
@@ -102,8 +145,10 @@ export type QuotePricingFacts = {
   deliveryIncluded?: boolean;
   deliveryPrice?: number;
   discountPercent: number;
+  hourlyRate?: number | null | undefined;
   lineItems?: readonly { quantity: number; unitPrice: number }[];
   quotedBasePrice: number;
+  workItems?: readonly WorkItemPricingInput[];
 };
 
 /**
@@ -122,6 +167,7 @@ export type QuotePricing<TSelection> = {
   total: number;
   vatAmount: number;
   vatPercent: number;
+  workItemTotal: number;
 };
 
 function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }>(
@@ -131,6 +177,10 @@ function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }
   const selectedAssemblyPrices = liveSelections.map((selection) => selection.quotedPrice);
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
   const lineItemTotal = computeQuoteLineItemsTotal(facts.lineItems ?? []);
+  const workItemTotal = computeQuoteWorkItemsTotal({
+    hourlyRate: facts.hourlyRate,
+    workItems: facts.workItems ?? [],
+  });
   const subtotal = computeQuoteTotal({ ...facts, selectedAssemblyPrices });
   const vatAmount = computeQuoteVatAmount(subtotal);
 
@@ -143,6 +193,7 @@ function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }
     total: subtotal + vatAmount,
     vatAmount,
     vatPercent: VAT_PERCENT,
+    workItemTotal,
   };
 }
 

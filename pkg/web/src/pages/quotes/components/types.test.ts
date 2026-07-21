@@ -20,6 +20,8 @@ const RANGE_ID = '550e8400-e29b-41d4-a716-446655440004';
 const SELECTION_ID = '550e8400-e29b-41d4-a716-446655440010';
 const PRODUCT_ASSEMBLY_ID = '550e8400-e29b-41d4-a716-446655440011';
 const LINE_ITEM_ID = '550e8400-e29b-41d4-a716-446655440012';
+const WORK_ITEM_ID = '550e8400-e29b-41d4-a716-446655440013';
+const WORK_ITEM_PART_ID = '550e8400-e29b-41d4-a716-446655440014';
 
 function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail {
   return QuoteDetail.parse({
@@ -143,6 +145,7 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
     status: 'sent',
     validUntil: '2026-01-01',
     workTitle: '',
+    workItems: [],
     ...overrides,
   };
 }
@@ -163,18 +166,48 @@ describe('toQuoteFormValues', () => {
     expect(values.selectedAssemblies).toEqual([{ type: 'existing', id: SELECTION_ID }]);
   });
 
-  it('maps a custom quote hourly rate into form state', () => {
+  it('maps custom quote commercial facts and nested work items into form state', () => {
     const values = toQuoteFormValues(
       buildQuoteDetail({
         hourlyRate: 925,
         kind: 'custom',
+        lineItems: [],
         product: null,
         productId: null,
+        workItems: [
+          {
+            id: WORK_ITEM_ID,
+            quoteId: QUOTE_ID,
+            name: 'Strip pump',
+            hours: 1.5,
+            parts: [
+              {
+                id: WORK_ITEM_PART_ID,
+                workItemId: WORK_ITEM_ID,
+                name: 'Seal kit',
+                quantity: 2,
+                unitPrice: 125,
+                createdAt: '2026-01-01T00:00:00.000Z',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+              },
+            ],
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
         workTitle: 'Hydraulic repair',
       }),
     );
 
     expect(values.hourlyRate).toBe(925);
+    expect(values.lineItems).toEqual([]);
+    expect(values.workItems).toEqual([
+      {
+        hours: 1.5,
+        name: 'Strip pump',
+        parts: [{ name: 'Seal kit', quantity: 2, unitPrice: 125 }],
+      },
+    ]);
   });
 
   it('collapses nullable schema fields to empty strings', () => {
@@ -304,6 +337,7 @@ describe('toQuoteCreateInput', () => {
       workTitle: 'Hydraulic repair',
       basePrice: 2500,
       hourlyRate: 925,
+      workItems: [],
     });
   });
 
@@ -371,7 +405,12 @@ describe('toQuoteUpdateInput', () => {
     const input = toQuoteUpdateInput({
       id: QUOTE_ID,
       kind: 'custom',
-      value: buildFormValues({ basePrice: 2500, hourlyRate: 975, workTitle: 'Hydraulic repair' }),
+      value: buildFormValues({
+        basePrice: 2500,
+        hourlyRate: 975,
+        workTitle: 'Hydraulic repair',
+        workItems: [{ name: 'Strip pump', hours: 1.5, parts: [] }],
+      }),
     });
 
     expect(input.offering).toEqual({
@@ -379,7 +418,9 @@ describe('toQuoteUpdateInput', () => {
       basePrice: 2500,
       hourlyRate: 975,
       workTitle: 'Hydraulic repair',
+      workItems: [{ name: 'Strip pump', hours: 1.5, parts: [] }],
     });
+    expect(input).not.toHaveProperty('lineItems');
     expect(() =>
       toQuoteUpdateInput({
         id: QUOTE_ID,

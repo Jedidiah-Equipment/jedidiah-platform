@@ -1,17 +1,17 @@
 import type { JobDetail } from '@pkg/schema';
 
-export type JobAssemblyAndLineItemRow = {
+export type JobAssemblyAndWorkRow = {
   key: string;
   kind: JobDetail['cfo'][number]['kind'] | 'custom';
   name: string;
 };
 
-export function getJobAssemblyAndLineItemRows({
+export function getJobAssemblyAndWorkRows({
   cfo,
-  lineItems,
-}: Pick<JobDetail, 'cfo' | 'lineItems'>): JobAssemblyAndLineItemRow[] {
-  const customRows = lineItems.map(
-    (item): JobAssemblyAndLineItemRow => ({
+  workRows,
+}: Pick<JobDetail, 'cfo' | 'workRows'>): JobAssemblyAndWorkRow[] {
+  const customRows = workRows.map(
+    (item): JobAssemblyAndWorkRow => ({
       key: `custom-${item.id}`,
       kind: 'custom',
       name: item.name,
@@ -21,7 +21,7 @@ export function getJobAssemblyAndLineItemRows({
     cfo
       .filter((assembly) => assembly.kind === kind)
       .map(
-        (assembly): JobAssemblyAndLineItemRow => ({
+        (assembly): JobAssemblyAndWorkRow => ({
           key: `${kind}-${assembly.assemblyName}`,
           kind,
           name: assembly.assemblyName,

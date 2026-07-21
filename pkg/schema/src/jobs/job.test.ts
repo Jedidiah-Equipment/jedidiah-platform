@@ -523,18 +523,18 @@ describe('JobCreateInput', () => {
 });
 
 describe('JobDetail', () => {
-  it('carries the quote line items shown with the Job assemblies', () => {
+  it('carries the name-only work rows shown with the Job assemblies', () => {
     expect(
-      JobDetail.shape.lineItems.parse([
+      JobDetail.shape.workRows.parse([
         {
           id: '00000000-0000-4000-8000-000000000001',
-          name: 'Custom hydraulic hose',
+          name: 'Strip pump assembly',
         },
       ]),
     ).toEqual([
       {
         id: '00000000-0000-4000-8000-000000000001',
-        name: 'Custom hydraulic hose',
+        name: 'Strip pump assembly',
       },
     ]);
   });

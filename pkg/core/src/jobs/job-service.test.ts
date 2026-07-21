@@ -18,6 +18,8 @@ import {
   quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
+  quoteWorkItemParts,
+  quoteWorkItems,
   supplier,
   user,
 } from '@pkg/db';
@@ -112,7 +114,7 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('createJob', () => {
-  test('returns quote line items in their configured order on Job detail', async ({ context }) => {
+  test('returns product quote line items in their configured order as Job work items', async ({ context }) => {
     const quote = await createQuote(context.db, {
       productId: context.catalog.product.id,
       status: 'accepted',
@@ -143,7 +145,7 @@ describe('createJob', () => {
     });
     const job = await getJob({ db: context.db, id: created.id });
 
-    expect(job.lineItems).toEqual([
+    expect(job.workRows).toEqual([
       {
         id: '00000000-0000-4000-8000-000000000101',
         name: 'Custom hydraulic hose',
@@ -152,6 +154,103 @@ describe('createJob', () => {
         id: '00000000-0000-4000-8000-000000000102',
         name: 'Commissioning',
       },
+    ]);
+  });
+
+  test('reads custom Work Item names live in position order and freezes them when the Quote locks', async ({
+    context,
+  }) => {
+    const quote = await createCustomQuote(context.db, {
+      status: 'draft',
+      workTitle: 'Pump skid rebuild',
+    });
+    await context.db.insert(quoteWorkItems).values([
+      {
+        id: '00000000-0000-4000-8000-000000000202',
+        hours: 3,
+        name: 'Reassemble pump',
+        position: 1,
+        quoteId: quote.id,
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000201',
+        hours: 1.5,
+        name: 'Strip pump assembly',
+        position: 0,
+        quoteId: quote.id,
+      },
+    ]);
+    await context.db.insert(quoteWorkItemParts).values({
+      name: 'Internal seal kit',
+      position: 0,
+      quantity: 1,
+      unitPrice: 250,
+      workItemId: '00000000-0000-4000-8000-000000000201',
+    });
+    const created = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+    const draftUpdateInput = quoteUpdateInput(quote);
+    if (draftUpdateInput.offering.kind !== 'custom') throw new Error('Expected a Custom Quote update input');
+
+    expect((await getJob({ db: context.db, id: created.id })).workRows).toEqual([
+      { id: '00000000-0000-4000-8000-000000000201', name: 'Strip pump assembly' },
+      { id: '00000000-0000-4000-8000-000000000202', name: 'Reassemble pump' },
+    ]);
+
+    await updateQuote({
+      actorUserId,
+      db: context.db,
+      input: QuoteUpdateInput.parse({
+        ...draftUpdateInput,
+        offering: {
+          ...draftUpdateInput.offering,
+          workItems: [
+            { hours: 0, name: 'Inspect replacement pump', parts: [] },
+            { hours: 2, name: 'Install replacement pump', parts: [] },
+          ],
+        },
+      }),
+    });
+    const editedWorkRows = (await getJob({ db: context.db, id: created.id })).workRows;
+
+    expect(editedWorkRows.map(({ name }) => name)).toEqual(['Inspect replacement pump', 'Install replacement pump']);
+    expect(editedWorkRows.every((item) => Object.keys(item).sort().join(',') === 'id,name')).toBe(true);
+
+    await updateQuote({
+      actorUserId,
+      db: context.db,
+      input: QuoteUpdateInput.parse({
+        ...draftUpdateInput,
+        offering: {
+          ...draftUpdateInput.offering,
+          workItems: [
+            { hours: 0, name: 'Inspect replacement pump', parts: [] },
+            { hours: 2, name: 'Install replacement pump', parts: [] },
+          ],
+        },
+        status: 'accepted',
+      }),
+    });
+    await expect(
+      updateQuote({
+        actorUserId,
+        db: context.db,
+        input: QuoteUpdateInput.parse({
+          ...draftUpdateInput,
+          offering: {
+            ...draftUpdateInput.offering,
+            workItems: [{ hours: 1, name: 'Should not replace locked work', parts: [] }],
+          },
+          status: 'accepted',
+        }),
+      }),
+    ).rejects.toThrow('Quote is locked because it has been accepted; workItems cannot be changed.');
+    expect((await getJob({ db: context.db, id: created.id })).workRows.map(({ name }) => name)).toEqual([
+      'Inspect replacement pump',
+      'Install replacement pump',
     ]);
   });
 

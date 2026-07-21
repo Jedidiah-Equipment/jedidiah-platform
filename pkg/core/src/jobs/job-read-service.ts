@@ -13,6 +13,7 @@ import {
   parts,
   products,
   quotes,
+  quoteWorkItems,
   user,
 } from '@pkg/db';
 import {
@@ -69,8 +70,12 @@ import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'buildTimeDays' | 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
+type CustomQuoteWorkRow = Pick<typeof quoteWorkItems.$inferSelect, 'id' | 'name'>;
 type QuoteRow = Pick<typeof quotes.$inferSelect, 'code' | 'kind' | 'workTitle'> & {
   customer: CustomerRow;
+};
+type JobDetailQuoteRow = QuoteRow & {
+  workItems: CustomQuoteWorkRow[];
 };
 
 type JobWithProductRow = JobRow & {
@@ -533,6 +538,13 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
               thumbnailDataUrl: true,
             },
           },
+          workItems: {
+            columns: {
+              id: true,
+              name: true,
+            },
+            orderBy: [asc(quoteWorkItems.position), asc(quoteWorkItems.createdAt), asc(quoteWorkItems.id)],
+          },
         },
       },
     },
@@ -542,10 +554,10 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
     throw new JobNotFoundError(id);
   }
 
-  const [cfo, documents, lineItems, schedule] = await Promise.all([
+  const [cfo, documents, workRows, schedule] = await Promise.all([
     listJobCfo({ db, jobId: row.id }),
     listJobDocumentRows({ db, jobId: row.id }),
-    listJobQuoteLineItems({ db, quoteId: row.quoteId }),
+    listJobWorkRows({ db, quote: row.quote, quoteId: row.quoteId }),
     getJobSchedule({ db, jobId: row.id }),
   ]);
 
@@ -553,18 +565,22 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
     ...mapJobSummary(row),
     cfo,
     documents,
-    lineItems,
     schedule,
+    workRows,
   };
 }
 
-async function listJobQuoteLineItems({
+async function listJobWorkRows({
   db,
+  quote,
   quoteId,
 }: {
   db: Db | DatabaseTransaction;
+  quote: Pick<JobDetailQuoteRow, 'kind' | 'workItems'>;
   quoteId: UUID;
-}): Promise<JobDetail['lineItems']> {
+}): Promise<JobDetail['workRows']> {
+  if (quote.kind === 'custom') return quote.workItems;
+
   const lineItemsByQuoteId = await getLineItemsByQuoteId({ db, quoteIds: [quoteId] });
 
   return (lineItemsByQuoteId.get(quoteId) ?? []).map(({ id, name }) => ({ id, name }));

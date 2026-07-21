@@ -19,7 +19,6 @@ const job = JobDetail.parse({
   description: 'Repair hydraulic leak',
   documents: [],
   id: JOB_ID,
-  lineItems: [],
   productBuildTimeDays: null,
   invoiceNumber: 'INV-1001',
   productId: null,
@@ -40,6 +39,10 @@ const job = JobDetail.parse({
   scheduleState: null,
   updatedAt: '2026-07-10T09:00:00.000Z',
   vinNumber: null,
+  workRows: [
+    { id: '00000000-0000-4000-8000-000000000501', name: 'Strip pump assembly' },
+    { id: '00000000-0000-4000-8000-000000000502', name: 'Install replacement pump' },
+  ],
   workTitle: 'Hydraulic repair',
 });
 
@@ -72,6 +75,7 @@ describe('getJob contract', () => {
         { department: 'paint' },
         { department: 'assembly' },
       ],
+      workRows: [{ name: 'Strip pump assembly' }, { name: 'Install replacement pump' }],
       workTitle: 'Hydraulic repair',
     });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');

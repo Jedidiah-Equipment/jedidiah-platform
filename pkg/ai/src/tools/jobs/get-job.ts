@@ -51,6 +51,7 @@ export const GetJobResponse = JobDetail.pick({
   scheduleState: true,
   updatedAt: true,
   vinNumber: true,
+  workRows: true,
   workTitle: true,
 }).extend({
   links: JobLinks,

@@ -65,14 +65,9 @@ export function AppIcon({ size }: { size: number }) {
         width: size,
       }}
     >
-      {/* The scarab is geometrically centered in the source asset, but its lower visual
-          weight reads low at header size. Keep the tile fixed and nudge only its artwork. */}
-      <Image
-        accessible={false}
-        resizeMode="contain"
-        source={source}
-        style={{ height: size, transform: [{ translateY: -size * 0.03 }], width: size }}
-      />
+      {/* The scarab is centered to within 1px in the 1024px source assets; render the
+          full-bleed square as-is — any nudge here reads as an offset at Retina scale. */}
+      <Image accessible={false} resizeMode="contain" source={source} style={{ height: size, width: size }} />
     </View>
   );
 }

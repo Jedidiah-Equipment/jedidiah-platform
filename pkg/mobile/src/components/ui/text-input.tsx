@@ -1,5 +1,10 @@
 import { forwardRef } from 'react';
-import { TextInput as RNTextInput, type TextInput as RNTextInputType, type TextInputProps } from 'react-native';
+import {
+  Platform,
+  TextInput as RNTextInput,
+  type TextInput as RNTextInputType,
+  type TextInputProps,
+} from 'react-native';
 
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -7,6 +12,7 @@ import { useColorMode } from '@/theme/use-color-mode';
 // class, so resolve the muted-foreground triplet per scheme (mirrors
 // `--color-muted-foreground` in theme/gluestack-config.ts).
 const PLACEHOLDER_COLOR = { dark: 'rgb(122, 122, 130)', light: 'rgb(115, 115, 115)' } as const;
+const MONO_FONT_FAMILY = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
 const TEXT_SIZE_CLASS_NAMES = {
   default: 'text-sm',
@@ -15,6 +21,7 @@ const TEXT_SIZE_CLASS_NAMES = {
 
 export type AppTextInputProps = TextInputProps & {
   className?: string;
+  mono?: boolean;
   textSize?: keyof typeof TEXT_SIZE_CLASS_NAMES;
 };
 
@@ -24,7 +31,7 @@ export type AppTextInputProps = TextInputProps & {
  * repeat them, and resolves the placeholder colour from the active scheme.
  */
 export const TextInput = forwardRef<RNTextInputType, AppTextInputProps>(function TextInput(
-  { className, textSize = 'default', ...props },
+  { className, mono = false, style, textSize = 'default', ...props },
   ref,
 ) {
   const { resolved } = useColorMode();
@@ -34,6 +41,7 @@ export const TextInput = forwardRef<RNTextInputType, AppTextInputProps>(function
       className={`rounded-xl border border-border bg-surface px-3 py-2.5 font-sans text-surface-foreground ${TEXT_SIZE_CLASS_NAMES[textSize]} ${className ?? ''}`}
       placeholderTextColor={PLACEHOLDER_COLOR[resolved]}
       ref={ref}
+      style={mono ? [{ fontFamily: MONO_FONT_FAMILY }, style] : style}
       {...props}
     />
   );

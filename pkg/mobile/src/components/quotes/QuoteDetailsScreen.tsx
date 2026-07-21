@@ -561,24 +561,16 @@ function AutosaveStatus({
   onRetry: () => void;
   state: { errorMessage: string | null; hasUnsavedChanges: boolean; status: string };
 }) {
-  if (state.status === 'saved' || (state.status === 'idle' && !state.hasUnsavedChanges)) return null;
-
-  const label =
-    state.status === 'saving'
-      ? 'Saving…'
-      : state.status === 'invalid'
-        ? 'Fix highlighted fields'
-        : state.status === 'error'
-          ? 'Save failed'
-          : 'Unsaved changes';
+  // Transient states (saving/unsaved/invalid) render nothing — the row appearing and
+  // disappearing pushed the form down on every edit. Only a failed save surfaces.
+  if (state.status !== 'error') return null;
 
   return (
     <View className="flex-row items-center justify-end gap-2">
-      {state.status === 'saving' ? <ActivityIndicator size="small" /> : null}
-      <Text className={`text-xs ${state.status === 'error' ? 'text-danger' : 'text-muted-foreground'}`} mono>
-        {label}
+      <Text className="text-xs text-danger" mono>
+        Save failed
       </Text>
-      {state.status === 'error' && canRetry ? (
+      {canRetry ? (
         <Pressable accessibilityRole="button" className="rounded-lg border border-border px-2 py-1" onPress={onRetry}>
           <Text className="text-xs text-foreground" weight="semibold">
             Retry

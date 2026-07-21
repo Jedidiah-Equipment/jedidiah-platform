@@ -50,15 +50,29 @@ export function AppLogoMark({ size }: { size: number }) {
 
 /** Uses the icon selected by the native build identity, independent of API environment. */
 export function AppIcon({ size }: { size: number }) {
-  const source = isStagingRuntimeApp(Constants.expoConfig) ? stagingAppIcon : productionAppIcon;
+  const isStaging = isStagingRuntimeApp(Constants.expoConfig);
+  const source = isStaging ? stagingAppIcon : productionAppIcon;
 
   return (
-    <Image
+    <View
       accessible={false}
-      resizeMode="contain"
-      source={source}
-      style={{ borderRadius: size / 4, height: size, width: size }}
-    />
+      style={{
+        backgroundColor: isStaging ? '#ec4899' : '#fff000',
+        borderRadius: size / 4,
+        height: size,
+        overflow: 'hidden',
+        width: size,
+      }}
+    >
+      {/* The scarab is geometrically centered in the source asset, but its lower visual
+          weight reads low at header size. Keep the tile fixed and nudge only its artwork. */}
+      <Image
+        accessible={false}
+        resizeMode="contain"
+        source={source}
+        style={{ height: size, transform: [{ translateY: -size * 0.03 }], width: size }}
+      />
+    </View>
   );
 }
 

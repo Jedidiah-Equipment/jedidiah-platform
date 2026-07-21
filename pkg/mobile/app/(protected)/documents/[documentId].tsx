@@ -3,7 +3,7 @@ import type { DocumentSummary } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { DocumentViewer } from '@/components/documents/DocumentViewer';
 import { Text } from '@/components/ui/text';
@@ -49,13 +49,17 @@ export default function DocumentViewerRoute() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
-      {owner ? (
-        <OwnerDocumentScreen documentId={documentId} onBack={handleBack} owner={owner} />
-      ) : (
-        <Message onBack={handleBack} text="This document link is incomplete." />
-      )}
-    </SafeAreaView>
+    // The full-screen modal is a react-native-screens route root, so it must measure
+    // its own insets instead of inheriting the provider frame behind the modal.
+    <SafeAreaProvider>
+      <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
+        {owner ? (
+          <OwnerDocumentScreen documentId={documentId} onBack={handleBack} owner={owner} />
+        ) : (
+          <Message onBack={handleBack} text="This document link is incomplete." />
+        )}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 

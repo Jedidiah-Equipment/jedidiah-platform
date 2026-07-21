@@ -18,3 +18,8 @@ export function resolvePrimaryColorTriplets(isStaging: boolean): PrimaryColorTri
 export function resolveLoadingSpinnerColor(isStaging: boolean): string {
   return isStaging ? '#ff6bbf' : '#fff000';
 }
+
+/** Tile behind the app-icon scarab; mirrors the icon assets' own background fill. */
+export function resolveAppIconTileColor(isStaging: boolean): string {
+  return isStaging ? '#ec4899' : '#fff000';
+}

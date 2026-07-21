@@ -4,14 +4,19 @@ import { IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { BoardGrid } from '@/components/bays/BoardGrid';
-import { ListControlRow, ListDropdownControl, ListSearchControl } from '@/components/ListControls';
+import {
+  type ListControlOption,
+  ListControlRow,
+  ListDropdownControl,
+  ListSearchControl,
+} from '@/components/ListControls';
 import { ProductImage } from '@/components/products/ProductImage';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import type { ProductSort, RangeFilter } from '@/lib/product-presentation';
 
-const PRODUCT_SORT_OPTIONS: readonly { label: string; value: ProductSort }[] = [
+const PRODUCT_SORT_OPTIONS: readonly ListControlOption<ProductSort>[] = [
   { label: 'Name', value: 'name' },
   { label: 'Price', value: 'price' },
 ];
@@ -43,7 +48,7 @@ export function ProductCatalogControls({
   onSearchChange: (search: string) => void;
   onSortChange: (sort: ProductSort) => void;
 }) {
-  const rangeOptions: readonly { label: string; value: RangeFilter }[] = [
+  const rangeOptions: readonly ListControlOption<RangeFilter>[] = [
     { label: 'All ranges', value: 'all' },
     ...ranges.map((option) => ({ label: option.name, value: option.id })),
   ];
@@ -62,7 +67,7 @@ export function ProductCatalogControls({
         <View className="flex-row items-center gap-2">
           <ListDropdownControl
             accessibilityLabel="Filter products by range"
-            active={range !== 'all'}
+            defaultValue="all"
             dismissLabel="Dismiss Product Range filter"
             icon={IconFilter}
             menuWidth={240}
@@ -72,7 +77,7 @@ export function ProductCatalogControls({
           />
           <ListDropdownControl
             accessibilityLabel="Sort products"
-            active={sort !== 'name'}
+            defaultValue="name"
             dismissLabel="Dismiss Product sort"
             icon={IconArrowsSort}
             onChange={onSortChange}

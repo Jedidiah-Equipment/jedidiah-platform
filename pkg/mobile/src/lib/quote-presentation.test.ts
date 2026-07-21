@@ -143,11 +143,12 @@ describe('quoteMetaLine', () => {
 describe('paged Quote presentation', () => {
   const quote = (id: string) => ({ id }) as QuoteSummary;
 
-  it('pins priority Quotes only on the unfiltered list', () => {
-    expect(shouldPinPriorityQuotes({ search: '', status: 'all' })).toBe(true);
-    expect(shouldPinPriorityQuotes({ search: '  ', status: 'all' })).toBe(true);
-    expect(shouldPinPriorityQuotes({ search: 'QUO-00001', status: 'all' })).toBe(false);
-    expect(shouldPinPriorityQuotes({ search: '', status: 'accepted' })).toBe(false);
+  it('pins priority Quotes only on the unfiltered, default-sorted list', () => {
+    expect(shouldPinPriorityQuotes({ search: '', sort: 'newest', status: 'all' })).toBe(true);
+    expect(shouldPinPriorityQuotes({ search: '  ', sort: 'newest', status: 'all' })).toBe(true);
+    expect(shouldPinPriorityQuotes({ search: 'QUO-00001', sort: 'newest', status: 'all' })).toBe(false);
+    expect(shouldPinPriorityQuotes({ search: '', sort: 'newest', status: 'accepted' })).toBe(false);
+    expect(shouldPinPriorityQuotes({ search: '', sort: 'oldest', status: 'all' })).toBe(false);
   });
 
   it('keeps priority Quotes pinned and removes their duplicates from loaded pages', () => {

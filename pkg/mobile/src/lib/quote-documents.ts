@@ -6,7 +6,7 @@ export type QuoteDocumentSort = 'uploaded-newest' | 'uploaded-oldest';
 export function presentQuoteDocuments(
   documents: readonly QuoteDocument[],
   search: string,
-  sort: QuoteDocumentSort = 'uploaded-newest',
+  sort: QuoteDocumentSort,
 ): QuoteDocument[] {
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const filtered = normalizedSearch

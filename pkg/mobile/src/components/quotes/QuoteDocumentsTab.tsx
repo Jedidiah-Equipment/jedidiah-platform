@@ -5,7 +5,6 @@ import {
   IconDownload,
   IconEye,
   IconFilePlus,
-  IconSearch,
   type Icon as TablerIcon,
 } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -13,11 +12,10 @@ import { useRouter } from 'expo-router';
 import { type ReactNode, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
-import { ListDropdownControl } from '@/components/ListControls';
+import { type ListControlOption, ListDropdownControl, ListSearchControl } from '@/components/ListControls';
 import { GenerateQuoteDocumentModal } from '@/components/quotes/GenerateQuoteDocumentModal';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { TextInput } from '@/components/ui/text-input';
 import { useAppToast } from '@/components/ui/toast';
 import { quoteDocumentDownloadPath } from '@/lib/authed-fetch';
 import { saveDocument } from '@/lib/document-actions';
@@ -29,7 +27,7 @@ import {
 } from '@/lib/quote-documents';
 import { useTRPC } from '@/lib/trpc';
 
-const DOCUMENT_SORT_OPTIONS: readonly { label: string; value: QuoteDocumentSort }[] = [
+const DOCUMENT_SORT_OPTIONS: readonly ListControlOption<QuoteDocumentSort>[] = [
   { label: 'Uploaded newest', value: 'uploaded-newest' },
   { label: 'Uploaded oldest', value: 'uploaded-oldest' },
 ];
@@ -121,21 +119,17 @@ export function QuoteDocumentsTab({
 
       <View className="rounded-2xl border border-border bg-surface p-4">
         <View className="mb-1 flex-row items-center gap-3">
-          <View className="h-10 min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-border bg-background px-3">
-            <Icon className="text-muted-foreground" icon={IconSearch} size={16} />
-            <TextInput
-              accessibilityLabel="Search documents"
-              className="h-full flex-1 border-0 bg-transparent px-0 py-0"
-              onChangeText={setSearch}
-              placeholder="Search documents…"
-              textSize="toolbar"
-              value={search}
-            />
-          </View>
+          <ListSearchControl
+            accessibilityLabel="Search documents"
+            onChangeText={setSearch}
+            placeholder="Search documents…"
+            tone="background"
+            value={search}
+          />
           <View className="max-w-[220px] shrink">
             <ListDropdownControl
               accessibilityLabel="Sort documents"
-              active={sort !== 'uploaded-newest'}
+              defaultValue="uploaded-newest"
               dismissLabel="Dismiss document sort"
               icon={IconArrowsSort}
               onChange={setSort}

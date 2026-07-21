@@ -7,6 +7,7 @@ import { resolveSeedReadSource, type SeedReadSource } from './seed-read-source.j
 import { serializeSnapshotRows } from './snapshot-json.js';
 import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
 import {
+  applySeedRowDefaults,
   collectStorageFiles,
   type SnapshotRow,
   type SnapshotStorageFile,
@@ -43,24 +44,62 @@ export async function readSeedSnapshot(sourceArgument?: string): Promise<void> {
   }
 }
 
-// Reads a table's rows for the snapshot. The common case selects every column; tables that declare
-// omitReadColumns/readOrderColumn/seedRowDefaults select a column subset (skipping columns the selected
-// source lacks), order deterministically, and merge in seed defaults for the omitted columns.
+// Reads a table's rows for the snapshot. Optional rollout columns are retried without when the source
+// still has the preceding schema; defaults fill that gap without overwriting values once deployed.
 async function readSnapshotRows(db: Db, config: SnapshotTableConfig): Promise<SnapshotRow[]> {
-  if (!config.omitReadColumns && !config.readOrderColumn && !config.seedRowDefaults) {
+  try {
+    return await readExistingSnapshotTable(db, config);
+  } catch (error) {
+    if (config.optionalReadTable && hasPostgresErrorCode(error, '42P01')) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+async function readExistingSnapshotTable(db: Db, config: SnapshotTableConfig): Promise<SnapshotRow[]> {
+  if (!config.omitReadColumns && !config.optionalReadColumns && !config.readOrderColumn && !config.seedRowDefaults) {
     return (await db.select().from(config.table)) as SnapshotRow[];
   }
 
   const columns = getTableColumns(config.table);
-  const omit = new Set(config.omitReadColumns ?? []);
-  const projection = Object.fromEntries(Object.entries(columns).filter(([name]) => !omit.has(name)));
   const orderColumn = config.readOrderColumn ? columns[config.readOrderColumn] : undefined;
-  const query = db.select(projection).from(config.table);
-  const rows = (await (orderColumn ? query.orderBy(asc(orderColumn)) : query)) as SnapshotRow[];
+  const readRows = async (additionalOmissions: readonly string[] = []): Promise<SnapshotRow[]> => {
+    const omit = new Set([...(config.omitReadColumns ?? []), ...additionalOmissions]);
+    const projection = Object.fromEntries(Object.entries(columns).filter(([name]) => !omit.has(name)));
+    const query = db.select(projection).from(config.table);
 
-  const applyDefaults = config.seedRowDefaults;
+    return (await (orderColumn ? query.orderBy(asc(orderColumn)) : query)) as SnapshotRow[];
+  };
 
-  return applyDefaults ? rows.map((row, index) => ({ ...row, ...applyDefaults(row, index) })) : rows;
+  let rows: SnapshotRow[];
+
+  try {
+    rows = await readRows();
+  } catch (error) {
+    if (!config.optionalReadColumns?.length || !hasPostgresErrorCode(error, '42703')) {
+      throw error;
+    }
+
+    rows = await readRows(config.optionalReadColumns);
+  }
+
+  return config.seedRowDefaults ? rows.map((row, index) => applySeedRowDefaults(config, row, index)) : rows;
+}
+
+function hasPostgresErrorCode(error: unknown, code: string): boolean {
+  let current = error;
+
+  while (current && typeof current === 'object') {
+    if ('code' in current && current.code === code) {
+      return true;
+    }
+
+    current = 'cause' in current ? current.cause : null;
+  }
+
+  return false;
 }
 
 // Downloads each referenced object from the source store to disk. Missing keys (dangling references)

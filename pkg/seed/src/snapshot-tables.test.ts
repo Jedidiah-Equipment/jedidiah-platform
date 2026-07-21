@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applySeedRowDefaults,
   collectStorageFiles,
   projectWritableRow,
   type SnapshotTableConfig,
@@ -41,7 +42,8 @@ describe('snapshot table registry', () => {
       'assembly_parts',
       'assembly_overrides',
       'quote',
-      'quote_line_items',
+      'quote_work_items',
+      'quote_work_item_parts',
       'quote_selected_assemblies',
       'job',
       'job_cfo_assembly',
@@ -75,13 +77,34 @@ describe('snapshot table registry', () => {
       'assembly_parts.json',
       'assembly_overrides.json',
       'quote.json',
-      'quote_line_items.json',
+      'quote_work_items.json',
+      'quote_work_item_parts.json',
       'quote_selected_assemblies.json',
       'job.json',
       'job_cfo_assembly.json',
       'job_cfo_part.json',
       'job_slot.json',
     ]);
+  });
+
+  it('backfills hourly rates when loading snapshots captured before the field existed', () => {
+    expect(configFor('quote').seedRowDefaults?.({ kind: 'custom' }, 0)).toEqual({ hourlyRate: 850 });
+    expect(configFor('quote').seedRowDefaults?.({ kind: 'product' }, 0)).toEqual({ hourlyRate: null });
+    expect(configFor('quote').optionalReadColumns).toEqual(['hourlyRate']);
+  });
+
+  it('keeps captured rollout values ahead of seed fallbacks', () => {
+    const quoteConfig = configFor('quote');
+
+    expect(applySeedRowDefaults(quoteConfig, { kind: 'custom' }, 0)).toMatchObject({ hourlyRate: 850 });
+    expect(applySeedRowDefaults(quoteConfig, { hourlyRate: 975, kind: 'custom' }, 0)).toMatchObject({
+      hourlyRate: 975,
+    });
+  });
+
+  it('keeps rollout Work Item tables optional until the source migration deploys', () => {
+    expect(configFor('quote_work_items').optionalReadTable).toBe(true);
+    expect(configFor('quote_work_item_parts').optionalReadTable).toBe(true);
   });
 
   it('projects generated assembly override columns out before import', () => {
@@ -108,6 +131,10 @@ describe('snapshot table registry', () => {
 
   it('revives nullable supplier soft-delete timestamps', () => {
     expect(configFor('supplier').timestampColumns).toContain('deletedAt');
+  });
+
+  it('revives nullable Job cancellation timestamps', () => {
+    expect(configFor('job').timestampColumns).toContain('cancelledAt');
   });
 
   it('revives nullable catalog soft-delete timestamps', () => {

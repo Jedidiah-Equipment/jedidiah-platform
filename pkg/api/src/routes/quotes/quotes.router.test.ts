@@ -178,7 +178,6 @@ describe('quotes.create', () => {
     });
     if (created.kind !== 'custom') throw new Error('Expected a Custom Quote');
 
-    expect(created.lineItems).toEqual([]);
     expect(created.workItems).toMatchObject([
       {
         name: 'Strip pump',
@@ -204,7 +203,9 @@ describe('quotes.create', () => {
     ]);
   });
 
-  test('rejects collections on the wrong quote kind and invalid work-item names', async ({ context }) => {
+  test('rejects the retired lineItems field, wrong-kind Work Items, and invalid Work Item names', async ({
+    context,
+  }) => {
     const caller = context.createCaller(mockSession('sales'));
     const baseInput = {
       customer: { type: 'inline' as const, companyName: 'Invalid Work Items Customer' },
@@ -219,8 +220,8 @@ describe('quotes.create', () => {
       caller.quotes.create({
         ...baseInput,
         lineItems: [{ name: 'Travel', quantity: 1, unitPrice: 100 }],
-        offering: { kind: 'custom', workTitle: 'Repair', basePrice: 0, hourlyRate: 850 },
-      }),
+        offering: productOffering(context.product.id),
+      } as never),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
     await expect(
       caller.quotes.create({
@@ -239,6 +240,14 @@ describe('quotes.create', () => {
           workItems: [{ name: ' ', hours: 0, parts: [] }],
         },
       }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+
+    const quote = await caller.quotes.create({ ...baseInput, offering: productOffering(context.product.id) });
+    await expect(
+      caller.quotes.update({
+        ...toUpdateInput(quote),
+        lineItems: [{ name: 'Travel', quantity: 1, unitPrice: 100 }],
+      } as never),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
 

@@ -17,9 +17,10 @@ import {
   productRangeVariants,
   productSerialSequences,
   products,
-  quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
+  quoteWorkItemParts,
+  quoteWorkItems,
   supplier,
   user,
   userDepartment,
@@ -29,6 +30,7 @@ import type { PgTable } from 'drizzle-orm/pg-core';
 import { type SnapshotTableConfig, snapshotTableDefinitions } from './snapshot-table-definitions.js';
 
 export {
+  applySeedRowDefaults,
   collectStorageFiles,
   projectWritableRow,
   type SnapshotRow,
@@ -57,8 +59,9 @@ const dbTablesByName = {
   product_serial_sequence: productSerialSequences,
   products,
   quote: quotes,
-  quote_line_items: quoteLineItems,
   quote_selected_assemblies: quoteSelectedAssemblies,
+  quote_work_item_parts: quoteWorkItemParts,
+  quote_work_items: quoteWorkItems,
   supplier,
   user,
   user_department: userDepartment,

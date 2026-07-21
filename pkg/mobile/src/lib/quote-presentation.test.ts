@@ -21,7 +21,6 @@ const CUSTOMER_ID = '550e8400-e29b-41d4-a716-446655440001';
 const PRODUCT_ID = '550e8400-e29b-41d4-a716-446655440002';
 const ASSEMBLY_ID = '550e8400-e29b-41d4-a716-446655440003';
 const SELECTION_ID = '550e8400-e29b-41d4-a716-446655440004';
-const LINE_ITEM_ID = '550e8400-e29b-41d4-a716-446655440005';
 const WORK_ITEM_ID = '550e8400-e29b-41d4-a716-446655440006';
 const WORK_ITEM_PART_ID = '550e8400-e29b-41d4-a716-446655440007';
 
@@ -81,17 +80,6 @@ function buildQuoteDetail() {
     salesPersonEmail: 'sales@example.com',
     salesPersonName: 'Sales Person',
     salesPersonThumbnailDataUrl: null,
-    lineItems: [
-      {
-        id: LINE_ITEM_ID,
-        quoteId: QUOTE_ID,
-        name: 'Hydraulic hose',
-        quantity: 2,
-        unitPrice: 125,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      },
-    ],
     selectedAssemblies: [
       {
         id: SELECTION_ID,
@@ -206,7 +194,6 @@ describe('Quote edit presentation', () => {
       plannedDeliveryDate: '2026-03-01',
       notes: 'Internal note',
       documentNotes: null,
-      lineItems: [{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }],
       selectedAssemblies: [{ type: 'existing', id: SELECTION_ID }],
     });
   });
@@ -219,7 +206,6 @@ describe('Quote edit presentation', () => {
       ...productQuote,
       hourlyRate: 925,
       kind: 'custom',
-      lineItems: [],
       product: null,
       productId: null,
       selectedAssemblies: [],
@@ -275,7 +261,6 @@ describe('Quote edit presentation', () => {
       ],
       workTitle: 'Hydraulic repair',
     });
-    expect(input).not.toHaveProperty('lineItems');
   });
 
   it('validates custom work-item names, hours, part quantities, and prices at their nested fields', () => {
@@ -284,7 +269,6 @@ describe('Quote edit presentation', () => {
         ...buildQuoteDetail(),
         hourlyRate: 925,
         kind: 'custom',
-        lineItems: [],
         product: null,
         productId: null,
         selectedAssemblies: [],

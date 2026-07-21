@@ -15,7 +15,6 @@ import {
   productAssemblies,
   productSerialSequences,
   products,
-  quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
   quoteWorkItemParts,
@@ -114,30 +113,11 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('createJob', () => {
-  test('returns product quote line items in their configured order as Job work items', async ({ context }) => {
+  test('returns no work rows for product Jobs', async ({ context }) => {
     const quote = await createQuote(context.db, {
       productId: context.catalog.product.id,
       status: 'accepted',
     });
-    await context.db.insert(quoteLineItems).values([
-      {
-        id: '00000000-0000-4000-8000-000000000102',
-        name: 'Commissioning',
-        position: 1,
-        quantity: 1,
-        quoteId: quote.id,
-        unitPrice: 500,
-      },
-      {
-        id: '00000000-0000-4000-8000-000000000101',
-        name: 'Custom hydraulic hose',
-        position: 0,
-        quantity: 2,
-        quoteId: quote.id,
-        unitPrice: 125,
-      },
-    ]);
-
     const created = await createJob({
       actorUserId,
       db: context.db,
@@ -145,16 +125,7 @@ describe('createJob', () => {
     });
     const job = await getJob({ db: context.db, id: created.id });
 
-    expect(job.workRows).toEqual([
-      {
-        id: '00000000-0000-4000-8000-000000000101',
-        name: 'Custom hydraulic hose',
-      },
-      {
-        id: '00000000-0000-4000-8000-000000000102',
-        name: 'Commissioning',
-      },
-    ]);
+    expect(job.workRows).toEqual([]);
   });
 
   test('reads custom Work Item names live in position order and freezes them when the Quote locks', async ({

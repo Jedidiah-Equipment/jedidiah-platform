@@ -19,7 +19,6 @@ const BAY_ID = '550e8400-e29b-41d4-a716-446655440003';
 const RANGE_ID = '550e8400-e29b-41d4-a716-446655440004';
 const SELECTION_ID = '550e8400-e29b-41d4-a716-446655440010';
 const PRODUCT_ASSEMBLY_ID = '550e8400-e29b-41d4-a716-446655440011';
-const LINE_ITEM_ID = '550e8400-e29b-41d4-a716-446655440012';
 const WORK_ITEM_ID = '550e8400-e29b-41d4-a716-446655440013';
 const WORK_ITEM_PART_ID = '550e8400-e29b-41d4-a716-446655440014';
 
@@ -84,17 +83,6 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     salesPersonEmail: 'sales@example.com',
     salesPersonName: 'Sales Person',
     salesPersonThumbnailDataUrl: null,
-    lineItems: [
-      {
-        id: LINE_ITEM_ID,
-        quoteId: QUOTE_ID,
-        name: 'Hydraulic hose',
-        quantity: 2,
-        unitPrice: 125,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      },
-    ],
     selectedAssemblies: [
       {
         id: SELECTION_ID,
@@ -137,7 +125,6 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
     hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
     notes: 'Some notes',
     documentNotes: '30 days',
-    lineItems: [],
     plannedDeliveryDate: '2026-03-01',
     preferredDeliveryDate: '2026-02-01',
     salesPersonId: 'auth-user-1',
@@ -162,7 +149,6 @@ describe('toQuoteFormValues', () => {
     expect(values.basePrice).toBe(1000);
     expect(values.hourlyRate).toBe(DEFAULT_CUSTOM_HOURLY_RATE);
     expect(values.workTitle).toBe('');
-    expect(values.lineItems).toEqual([{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }]);
     expect(values.selectedAssemblies).toEqual([{ type: 'existing', id: SELECTION_ID }]);
   });
 
@@ -171,7 +157,6 @@ describe('toQuoteFormValues', () => {
       buildQuoteDetail({
         hourlyRate: 925,
         kind: 'custom',
-        lineItems: [],
         product: null,
         productId: null,
         workItems: [
@@ -200,7 +185,6 @@ describe('toQuoteFormValues', () => {
     );
 
     expect(values.hourlyRate).toBe(925);
-    expect(values.lineItems).toEqual([]);
     expect(values.workItems).toEqual([
       {
         hours: 1.5,
@@ -296,7 +280,6 @@ describe('toQuoteCreateInput', () => {
     expect(input.notes).toBeNull();
     expect(input.documentNotes).toBeNull();
     expect(input.offering).toEqual({ kind: 'product', productId: PRODUCT_ID });
-    expect(input.lineItems).toEqual([]);
     expect(input.selectedAssemblies).toEqual([]);
   });
 
@@ -354,14 +337,13 @@ describe('toQuoteUpdateInput', () => {
     const input = toQuoteUpdateInput({
       id: QUOTE_ID,
       kind: 'product',
-      value: buildFormValues({ lineItems: [{ name: 'Transport crate', quantity: 1, unitPrice: 300 }] }),
+      value: buildFormValues(),
     });
 
     expect(input).toMatchObject({
       id: QUOTE_ID,
       depositPercent: 30,
       offering: { kind: 'product' },
-      lineItems: [{ name: 'Transport crate', quantity: 1, unitPrice: 300 }],
       salesPersonId: 'auth-user-1',
       status: 'sent',
       discountPercent: 10,
@@ -420,7 +402,6 @@ describe('toQuoteUpdateInput', () => {
       workTitle: 'Hydraulic repair',
       workItems: [{ name: 'Strip pump', hours: 1.5, parts: [] }],
     });
-    expect(input).not.toHaveProperty('lineItems');
     expect(() =>
       toQuoteUpdateInput({
         id: QUOTE_ID,

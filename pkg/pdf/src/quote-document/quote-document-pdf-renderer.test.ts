@@ -3,7 +3,7 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getSalesContactLine } from './QuoteDocumentHeader.js';
-import { QuoteDocumentLineItemsTable } from './QuoteDocumentLineItemsTable.js';
+import { QuoteDocumentPricingTable } from './QuoteDocumentPricingTable.js';
 import { renderQuoteDocumentPdf } from './quote-document-pdf-renderer.js';
 
 describe('renderQuoteDocumentPdf', () => {
@@ -26,7 +26,7 @@ describe('renderQuoteDocumentPdf', () => {
         { amount: 0, name: 'Included inspection' },
       ] as unknown as QuoteDocumentModel['workItems'],
     };
-    const renderedText = collectRenderedText(QuoteDocumentLineItemsTable({ document }));
+    const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
 
     expect(renderedText.filter((value) => value === 'Labour-only rebuild')).toHaveLength(1);
     expect(renderedText.filter((value) => value === 'Parts-only repair')).toHaveLength(1);
@@ -91,7 +91,7 @@ function testQuoteDocument(): QuoteDocumentModel {
     },
     issueDate: new Date('2026-06-02T00:00:00.000Z'),
     leadTime: '21 working days',
-    lineItems: [
+    pricingRows: [
       {
         amount: 595_000,
         descriptionLines: ['SG1836 Silage Grain 18 36'],
@@ -113,13 +113,6 @@ function testQuoteDocument(): QuoteDocumentModel {
         quantity: 1,
         unitPrice: 15_000,
       },
-      {
-        amount: 300,
-        descriptionLines: ['2 x Hydraulic hose'],
-        kind: 'lineItem',
-        quantity: 2,
-        unitPrice: 150,
-      },
     ],
     notes: ['Please confirm customer details before order processing.'],
     paymentTerms: '20% deposit',
@@ -130,10 +123,10 @@ function testQuoteDocument(): QuoteDocumentModel {
       phoneNumber: '+27821234567',
     },
     staleSelectionNotes: [],
-    subtotal: 615_300,
-    total: 707_595,
+    subtotal: 615_000,
+    total: 707_250,
     transport: 'Included in sale price',
-    vatAmount: 92_295,
+    vatAmount: 92_250,
     workItems: [],
   };
 }

@@ -2,10 +2,10 @@ import { z } from 'zod';
 import type { UUID } from '../common/uuid.js';
 import type { QuoteDocument } from '../documents/document.js';
 
-export type QuoteDocumentLineItem = {
+export type QuoteDocumentPricingRow = {
   amount: number;
   descriptionLines: string[];
-  kind: 'base' | 'charge' | 'discount' | 'lineItem' | 'optional';
+  kind: 'base' | 'charge' | 'discount' | 'optional';
   quantity: number;
   unitPrice: number;
 };
@@ -35,7 +35,7 @@ export type QuoteDocumentModel = {
   customer: QuoteDocumentCustomer;
   issueDate: Date;
   leadTime: string;
-  lineItems: QuoteDocumentLineItem[];
+  pricingRows: QuoteDocumentPricingRow[];
   notes: string[];
   paymentTerms: string;
   quoteCode: string;

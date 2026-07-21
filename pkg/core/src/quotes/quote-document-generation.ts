@@ -2,7 +2,6 @@ import {
   type customers,
   type Db,
   type products,
-  quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
   quoteWorkItemParts,
@@ -11,7 +10,6 @@ import {
 } from '@pkg/db';
 import {
   computeAdditionalDeliveryPrice,
-  computeQuoteLineItemAmount,
   computeWorkItemTotal,
   formatCurrency,
   formatPercent,
@@ -26,9 +24,9 @@ import {
   type QuoteDocumentGenerationInput,
   type QuoteDocumentGenerationResult,
   type QuoteDocumentGenerationWarning,
-  type QuoteDocumentLineItem,
   type QuoteDocumentModel,
   type QuoteDocumentPdfRenderer,
+  type QuoteDocumentPricingRow,
   type UUID,
 } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
@@ -42,7 +40,6 @@ import {
   QuoteNotFoundError,
   QuoteOfferingInvariantError,
 } from './quote-errors.js';
-import type { QuoteLineItemRow } from './quote-line-items.js';
 import { narrowQuoteOffering } from './quote-offering.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
 import type { QuoteWorkItemRow } from './quote-work-items.js';
@@ -54,7 +51,6 @@ type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
   >;
   product: Pick<typeof products.$inferSelect, 'modelCode' | 'name'> | null;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name' | 'phoneNumber'> | null;
-  lineItems: QuoteLineItemRow[];
   selectedAssemblies: QuoteSelectedAssemblyRow[];
   workItems: QuoteWorkItemRow[];
 };
@@ -212,19 +208,11 @@ async function getQuoteDocumentModel({
   const productAssemblies =
     source.kind === 'product' ? await listAssemblies({ productId: source.productId, tx: db }) : [];
   // Optional rows and their money both come from the catalog-resolved live set, so a selection that
-  // goes stale drops from the PDF rows and the subtotal together. Freeform line items never have
-  // catalog staleness, so they always remain in the discountable subtotal.
+  // goes stale drops from the PDF rows and the subtotal together.
   const pricing = priceQuoteWithCatalog(quote, productAssemblies);
   const selectedOptionalAssemblies = pricing.liveSelections.map((selection) => ({
     amount: selection.quotedPrice,
     label: selection.quotedName,
-  }));
-  const freeformLineItems = quote.lineItems.map((item) => ({
-    amount: computeQuoteLineItemAmount(item),
-    descriptionLines: [formatQuoteDocumentLineItemDescription(item)],
-    kind: 'lineItem' as const,
-    quantity: item.quantity,
-    unitPrice: item.unitPrice,
   }));
   const workItems =
     source.kind === 'custom'
@@ -235,7 +223,7 @@ async function getQuoteDocumentModel({
       : [];
   const discountAmount = pricing.discountAmount;
   const additionalDeliveryPrice = computeAdditionalDeliveryPrice(quote);
-  const lineItems: QuoteDocumentLineItem[] = [
+  const pricingRows: QuoteDocumentPricingRow[] = [
     {
       amount: quote.quotedBasePrice,
       descriptionLines: [getQuoteDocumentBaseDescription(source)],
@@ -250,7 +238,6 @@ async function getQuoteDocumentModel({
       quantity: 1,
       unitPrice: item.amount,
     })),
-    ...freeformLineItems,
     ...(discountAmount > 0
       ? [
           {
@@ -278,7 +265,7 @@ async function getQuoteDocumentModel({
     customer: quote.customer,
     issueDate: quote.createdAt,
     leadTime: input.leadTime,
-    lineItems,
+    pricingRows,
     notes: toDisplayLines(quote.documentNotes),
     paymentTerms: `${formatPercent(quote.depositPercent)} deposit`,
     quoteCode: formatQuoteCode(quote.code),
@@ -334,9 +321,6 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
       selectedAssemblies: {
         orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
       },
-      lineItems: {
-        orderBy: [asc(quoteLineItems.position), asc(quoteLineItems.createdAt), asc(quoteLineItems.id)],
-      },
       workItems: {
         orderBy: [asc(quoteWorkItems.position), asc(quoteWorkItems.createdAt), asc(quoteWorkItems.id)],
         with: {
@@ -357,10 +341,6 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
 
 function getQuoteDocumentBaseDescription(source: QuoteDocumentSource): string {
   return source.kind === 'custom' ? source.workTitle : `${source.product.modelCode} ${source.product.name}`.trim();
-}
-
-function formatQuoteDocumentLineItemDescription(item: Pick<QuoteLineItemRow, 'name' | 'quantity'>): string {
-  return item.quantity === 1 ? item.name : `${item.quantity} x ${item.name}`;
 }
 
 function assertQuoteDocumentGenerationAllowed(quote: Pick<QuoteRow, 'status'>): void {

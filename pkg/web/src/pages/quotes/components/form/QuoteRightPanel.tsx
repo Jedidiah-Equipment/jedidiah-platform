@@ -18,9 +18,7 @@ import { cn } from '@/lib/utils.js';
 import { StartJobLink } from '../StartJobLink.js';
 import type { QuoteFormValues } from '../types.js';
 
-type QuoteLineItemFormInput = QuoteFormValues['lineItems'][number];
 type QuoteWorkItemFormInput = QuoteFormValues['workItems'][number];
-const getSummaryLineItemKey = createStableRowKeys<QuoteLineItemFormInput>('quote-summary-line-item');
 const getSummaryWorkItemKey = createStableRowKeys<QuoteWorkItemFormInput>('quote-summary-work-item');
 
 export function QuoteRightPanel({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
@@ -211,22 +209,6 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
             </div>
           </div>
         ) : null}
-        {summary.lineItems.length > 0 ? (
-          <div className="grid gap-1">
-            <QuoteSummaryRow label="Line items" value={formatCurrency(summary.lineItemTotal, summary.currencyCode)} />
-            <div className="grid gap-1 border-l pl-3">
-              {summary.lineItems.map((item) => (
-                <QuoteSummaryRow
-                  className="text-xs"
-                  key={getSummaryLineItemKey(item)}
-                  label={formatLineItemLabel(item)}
-                  value={formatCurrency(item.quantity * item.unitPrice, summary.currencyCode)}
-                  valueClassName="text-muted-foreground"
-                />
-              ))}
-            </div>
-          </div>
-        ) : null}
         {summary.workItems.length > 0 ? (
           <div className="grid gap-1">
             <QuoteSummaryRow label="Work items" value={formatCurrency(summary.workItemTotal, summary.currencyCode)} />
@@ -265,10 +247,6 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
       </CardContent>
     </Card>
   );
-}
-
-function formatLineItemLabel(item: QuoteLineItemFormInput): string {
-  return item.quantity === 1 ? item.name : `${item.quantity} x ${item.name}`;
 }
 
 function getSummaryWorkItemTotal(summary: QuoteComputedSummary, item: QuoteWorkItemFormInput): number {

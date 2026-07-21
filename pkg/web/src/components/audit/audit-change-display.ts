@@ -37,8 +37,6 @@ const auditFieldLabels: Record<string, string> = {
   jobId: 'Job',
   keyFeature: 'Key feature',
   keyFeatures: 'Key features',
-  lineItem: 'Line item',
-  lineItems: 'Line items',
   member: 'Department membership',
   modelCode: 'Model code',
   name: 'Name',

@@ -5,7 +5,6 @@ import {
   jobs,
   productAssemblies,
   products,
-  quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
   user,
@@ -140,13 +139,6 @@ const test = createTester(async ({ db }) => {
       quotedPrice: 125,
     },
   ]);
-  await db.insert(quoteLineItems).values({
-    name: 'Hydraulic hose',
-    quantity: 2,
-    quoteId: quote.id,
-    unitPrice: 150,
-  });
-
   return {
     customerId: customer.id,
     otherProductId: otherProduct.id,
@@ -599,9 +591,8 @@ describe('generateQuoteDocument', () => {
     const rendered = renderedInputs[0];
     if (!rendered) throw new Error('Expected PDF renderer to receive document model');
     const quoteCode = formatQuoteCode(context.quoteCode);
-    const baseItem = rendered.document.lineItems.find((item) => item.kind === 'base');
-    const optionalItem = rendered.document.lineItems.find((item) => item.kind === 'optional');
-    const lineItem = rendered.document.lineItems.find((item) => item.kind === 'lineItem');
+    const baseRow = rendered.document.pricingRows.find((row) => row.kind === 'base');
+    const optionalRow = rendered.document.pricingRows.find((row) => row.kind === 'optional');
 
     expect(document).toMatchObject({
       contentType: 'application/pdf',
@@ -630,35 +621,28 @@ describe('generateQuoteDocument', () => {
       name: 'Test User',
       phoneNumber: '+27821234567',
     });
-    expect(baseItem).toMatchObject({
+    expect(baseRow).toMatchObject({
       amount: 1_000,
       descriptionLines: ['DOC-TEST Document Test Product'],
       kind: 'base',
       quantity: 1,
       unitPrice: 1_000,
     });
-    expect(optionalItem).toMatchObject({
+    expect(optionalRow).toMatchObject({
       amount: 250,
       descriptionLines: ['Canvas Canopy'],
       kind: 'optional',
       quantity: 1,
       unitPrice: 250,
     });
-    expect(lineItem).toMatchObject({
-      amount: 300,
-      descriptionLines: ['2 x Hydraulic hose'],
-      kind: 'lineItem',
-      quantity: 2,
-      unitPrice: 150,
-    });
     expect(rendered.document.staleSelectionNotes).toEqual(['Deleted Light Bar unavailable']);
     expect(rendered.document.notes).toEqual(['Confirm customer details before order processing.']);
     expect(rendered.document.paymentTerms).toBe('0% deposit');
     expect(rendered.document.transport).toBe('Included in sale price');
     expect(rendered.document.leadTime).toBe('14 working days');
-    expect(rendered.document.subtotal).toBe(1_550);
-    expect(rendered.document.vatAmount).toBe(232.5);
-    expect(rendered.document.total).toBe(1_782.5);
+    expect(rendered.document.subtotal).toBe(1_250);
+    expect(rendered.document.vatAmount).toBe(187.5);
+    expect(rendered.document.total).toBe(1_437.5);
 
     const events = await context.db.select().from(auditEvents);
     expect(events.slice(beforeEvents.length).map((event) => event.entityType)).toEqual(['document']);
@@ -798,13 +782,6 @@ describe('generateQuoteDocument', () => {
       .returning({ code: quotes.code, id: quotes.id });
     if (!quote) throw new Error('Custom quote insert did not return a row');
 
-    await context.db.insert(quoteLineItems).values({
-      name: 'Site measurement',
-      quantity: 2,
-      quoteId: quote.id,
-      unitPrice: 75,
-    });
-
     const renderedInputs: Array<
       Parameters<typeof generateQuoteDocument>[0]['pdfRenderer'] extends (input: infer Input) => unknown ? Input : never
     > = [];
@@ -828,10 +805,9 @@ describe('generateQuoteDocument', () => {
 
     const rendered = renderedInputs[0];
     if (!rendered) throw new Error('Expected PDF renderer to receive document model');
-    const baseItem = rendered.document.lineItems.find((item) => item.kind === 'base');
-    const lineItem = rendered.document.lineItems.find((item) => item.kind === 'lineItem');
-    const discountItem = rendered.document.lineItems.find((item) => item.kind === 'discount');
-    const deliveryItem = rendered.document.lineItems.find((item) => item.kind === 'charge');
+    const baseRow = rendered.document.pricingRows.find((row) => row.kind === 'base');
+    const discountRow = rendered.document.pricingRows.find((row) => row.kind === 'discount');
+    const deliveryRow = rendered.document.pricingRows.find((row) => row.kind === 'charge');
     const read = await readQuoteDocument({
       db: context.db,
       documentId: result.document.id,
@@ -842,29 +818,22 @@ describe('generateQuoteDocument', () => {
 
     expect(result.warnings).toEqual([]);
     expect(rendered.filename).toBe(`${formatQuoteCode(quote.code)}-rev-1.pdf`);
-    expect(baseItem).toMatchObject({
+    expect(baseRow).toMatchObject({
       amount: 2_000,
       descriptionLines: ['Plant shutdown fabrication'],
       kind: 'base',
       quantity: 1,
       unitPrice: 2_000,
     });
-    expect(rendered.document.lineItems.some((item) => item.kind === 'optional')).toBe(false);
-    expect(lineItem).toMatchObject({
-      amount: 150,
-      descriptionLines: ['2 x Site measurement'],
-      kind: 'lineItem',
-      quantity: 2,
-      unitPrice: 75,
-    });
-    expect(discountItem).toMatchObject({
-      amount: -215,
+    expect(rendered.document.pricingRows.some((row) => row.kind === 'optional')).toBe(false);
+    expect(discountRow).toMatchObject({
+      amount: -200,
       descriptionLines: ['Discount (10%)'],
       kind: 'discount',
       quantity: 1,
-      unitPrice: -215,
+      unitPrice: -200,
     });
-    expect(deliveryItem).toMatchObject({
+    expect(deliveryRow).toMatchObject({
       amount: 120,
       descriptionLines: ['Delivery'],
       kind: 'charge',
@@ -875,9 +844,9 @@ describe('generateQuoteDocument', () => {
     expect(rendered.document.paymentTerms).toBe('25% deposit');
     expect(rendered.document.transport).toBe('Additional charge (R 120.00)');
     expect(rendered.document.leadTime).toBe('Customer-confirmed shutdown window');
-    expect(rendered.document.subtotal).toBe(2_055);
-    expect(rendered.document.vatAmount).toBe(308.25);
-    expect(rendered.document.total).toBe(2_363.25);
+    expect(rendered.document.subtotal).toBe(1_920);
+    expect(rendered.document.vatAmount).toBe(288);
+    expect(rendered.document.total).toBe(2_208);
     expect(pageSizes).toEqual([{ height: 300, width: 200 }]);
   });
 

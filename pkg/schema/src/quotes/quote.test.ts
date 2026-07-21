@@ -4,7 +4,6 @@ import {
   PriorityQuote,
   QuoteCreateInput,
   QuoteDetail,
-  QuoteLineItemInput,
   QuoteProductBayAvailabilityInput,
   QuoteProductBayAvailabilityResult,
   QuoteSummary,
@@ -33,7 +32,6 @@ describe('QuoteCreateInput', () => {
     expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({
       depositPercent: 0,
       discountPercent: 0,
-      lineItems: [],
       offering: { kind: 'product', productId: '550e8400-e29b-41d4-a716-446655440000' },
     });
   });
@@ -89,7 +87,7 @@ describe('QuoteCreateInput', () => {
     });
   });
 
-  it('accepts work items only on custom offerings and rejects custom line items', () => {
+  it('accepts work items only on custom offerings and rejects the retired lineItems field', () => {
     expect(
       QuoteCreateInput.parse({
         ...baseCreateInput,
@@ -114,9 +112,9 @@ describe('QuoteCreateInput', () => {
       QuoteCreateInput.parse({
         ...baseCreateInput,
         lineItems: [{ name: 'Travel', quantity: 1, unitPrice: 100 }],
-        offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500, hourlyRate: 850 },
+        offering: baseCreateInput.offering,
       }),
-    ).toThrow('Line items are only allowed on Product Quotes');
+    ).toThrow('Unrecognized key');
   });
 
   it('requires a non-negative hourly rate for custom offerings and rejects it on product offerings', () => {
@@ -191,22 +189,6 @@ describe('QuoteCreateInput', () => {
     expect(() => QuoteCreateInput.parse({ ...baseCreateInput, deliveryIncluded: false, deliveryPrice: 0 })).toThrow(
       'Must be greater than zero when delivery is not included',
     );
-  });
-});
-
-describe('QuoteLineItemInput', () => {
-  it('trims names, coerces numbers, and defaults quantity to one', () => {
-    expect(QuoteLineItemInput.parse({ name: '  Hydraulic hose  ', unitPrice: '125.50' })).toEqual({
-      name: 'Hydraulic hose',
-      quantity: 1,
-      unitPrice: 125.5,
-    });
-  });
-
-  it('rejects blank names, zero quantity, and negative unit prices', () => {
-    expect(() => QuoteLineItemInput.parse({ name: ' ', quantity: 1, unitPrice: 10 })).toThrow();
-    expect(() => QuoteLineItemInput.parse({ name: 'Hydraulic hose', quantity: 0, unitPrice: 10 })).toThrow();
-    expect(() => QuoteLineItemInput.parse({ name: 'Hydraulic hose', quantity: 1, unitPrice: -1 })).toThrow();
   });
 });
 
@@ -291,9 +273,8 @@ describe('QuoteUpdateInput', () => {
   });
 
   it('preserves omitted child collections instead of defaulting them to empty replacements', () => {
-    expect(QuoteUpdateInput.parse(baseUpdateInput())).not.toHaveProperty('lineItems');
     expect(QuoteUpdateInput.parse(baseUpdateInput())).not.toHaveProperty('selectedAssemblies');
-    expect(QuoteUpdateInput.parse({ ...baseUpdateInput(), lineItems: [] })).toMatchObject({ lineItems: [] });
+    expect(() => QuoteUpdateInput.parse({ ...baseUpdateInput(), lineItems: [] })).toThrow('Unrecognized key');
     expect(QuoteUpdateInput.parse({ ...baseUpdateInput(), selectedAssemblies: [] })).toMatchObject({
       selectedAssemblies: [],
     });
@@ -328,7 +309,6 @@ describe('QuoteDetail', () => {
       salesPersonId: 'auth-user-1',
       salesPersonName: null,
       salesPersonThumbnailDataUrl: null,
-      lineItems: [],
       workItems: [],
       selectedAssemblies: [],
       status: 'accepted',
@@ -413,7 +393,6 @@ describe('QuoteDetail', () => {
         salesPersonId: 'auth-user-1',
         salesPersonName: null,
         salesPersonThumbnailDataUrl: null,
-        lineItems: [],
         selectedAssemblies: [],
         status: 'accepted',
         statusChangedAt: '2026-01-01T00:00:00.000Z',
@@ -510,7 +489,6 @@ describe('PriorityQuote', () => {
       salesPersonId: 'auth-user-1',
       salesPersonName: null,
       salesPersonThumbnailDataUrl: null,
-      lineItems: [],
       selectedAssemblies: [],
       status: 'accepted',
       statusChangedAt: '2026-01-01T00:00:00.000Z',
@@ -568,7 +546,6 @@ describe('UpcomingDeliveryQuotesResult', () => {
       salesPersonId: 'auth-user-1',
       salesPersonName: null,
       salesPersonThumbnailDataUrl: null,
-      lineItems: [],
       selectedAssemblies: [],
       status: 'accepted',
       statusChangedAt: '2026-01-01T00:00:00.000Z',

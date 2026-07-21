@@ -14,7 +14,6 @@ import {
   UpcomingDeliveryQuote,
 } from '@pkg/schema';
 
-import { mapQuoteLineItem, type QuoteLineItemRow } from './quote-line-items.js';
 import { narrowQuoteOffering } from './quote-offering.js';
 import { mapQuoteSelectedAssembly, type QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
 import { mapQuoteWorkItem, type QuoteWorkItemRow } from './quote-work-items.js';
@@ -57,7 +56,6 @@ export type QuoteDetailRow = QuoteRow & {
     'buildTimeDays' | 'currencyCode' | 'description' | 'modelCode' | 'name' | 'requiresVinNumber' | 'thumbnailDataUrl'
   > | null;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'image' | 'name'> | null;
-  lineItems: QuoteLineItemRow[];
   selectedAssemblies: QuoteSelectedAssemblyRow[];
   workItems: QuoteWorkItemRow[];
 };
@@ -90,7 +88,6 @@ export function mapQuote(row: QuoteRow) {
 export function mapQuoteSummary(
   row: QuoteListRow,
   job: QuoteLinkedJobRow | null,
-  lineItems: readonly QuoteLineItemRow[],
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
   workItems: readonly QuoteWorkItemRow[],
 ): QuoteSummary {
@@ -103,7 +100,6 @@ export function mapQuoteSummary(
     salesPersonEmail: row.salesPersonEmail,
     salesPersonName: row.salesPersonName,
     salesPersonThumbnailDataUrl: row.salesPersonThumbnailDataUrl,
-    lineItems: lineItems.map(mapQuoteLineItem),
     selectedAssemblies: selectedAssemblies.map(mapQuoteSelectedAssembly),
     workItems: workItems.map(mapQuoteWorkItem),
   });
@@ -112,12 +108,11 @@ export function mapQuoteSummary(
 export function mapPriorityQuote(
   row: PriorityQuoteRow,
   job: QuoteLinkedJobRow | null,
-  lineItems: readonly QuoteLineItemRow[],
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
   workItems: readonly QuoteWorkItemRow[],
 ): PriorityQuote {
   return {
-    ...mapQuoteSummary(row, job, lineItems, selectedAssemblies, workItems),
+    ...mapQuoteSummary(row, job, selectedAssemblies, workItems),
     earliestDeliveryDate: DateOnlyIso.parse(row.earliestDeliveryDate),
   };
 }
@@ -125,11 +120,10 @@ export function mapPriorityQuote(
 export function mapUpcomingDeliveryQuote(
   row: QuoteListRow,
   job: QuoteLinkedJobRow | null,
-  lineItems: readonly QuoteLineItemRow[],
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
   workItems: readonly QuoteWorkItemRow[],
 ): UpcomingDeliveryQuote {
-  const summary = mapQuoteSummary(row, job, lineItems, selectedAssemblies, workItems);
+  const summary = mapQuoteSummary(row, job, selectedAssemblies, workItems);
 
   // Spread narrows `plannedDeliveryDate` from nullable to required, which the discriminated-union
   // return type only correlates through a parse.
@@ -164,7 +158,6 @@ export function mapQuoteDetail(
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
     salesPersonThumbnailDataUrl: row.salesPerson?.image ?? null,
-    lineItems: row.lineItems.map(mapQuoteLineItem),
     selectedAssemblies: row.selectedAssemblies.map(mapQuoteSelectedAssembly),
     workItems: row.workItems.map(mapQuoteWorkItem),
   });

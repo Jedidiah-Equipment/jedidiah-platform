@@ -38,7 +38,6 @@ const quote = QuoteDetail.parse({
   hourlyRate: 850,
   job: null,
   kind: 'custom',
-  lineItems: [],
   notes: 'Updated note',
   plannedDeliveryDate: null,
   preferredDeliveryDate: null,
@@ -74,10 +73,9 @@ function createContext(): AiContext {
 }
 
 describe('patchQuote contract', () => {
-  test('passes named Quote changes, line items, and assemblies to core and returns linked details', async () => {
+  test('passes named Quote changes and assemblies to core and returns linked details', async () => {
     const input = PatchQuoteInput.parse({
       id: QUOTE_ID,
-      lineItems: [{ name: ' Calibration ', quantity: 2, unitPrice: 450 }],
       notes: ' Updated note ',
       plannedDeliveryDate: null,
       selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
@@ -91,7 +89,6 @@ describe('patchQuote contract', () => {
 
     expect(coreInput).toEqual({
       id: QUOTE_ID,
-      lineItems: [{ name: 'Calibration', quantity: 2, unitPrice: 450 }],
       notes: 'Updated note',
       plannedDeliveryDate: null,
       selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],

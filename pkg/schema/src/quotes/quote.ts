@@ -143,30 +143,6 @@ export const QuoteSelectedAssemblyInput = z.discriminatedUnion('type', [
   }),
 ]);
 
-export type QuoteLineItemName = z.infer<typeof QuoteLineItemName>;
-export const QuoteLineItemName = requiredTrimmedText('Line item name is required');
-
-export type QuoteLineItemQuantity = z.infer<typeof QuoteLineItemQuantity>;
-export const QuoteLineItemQuantity = z.number().int().min(1, 'Must be 1 or greater');
-
-export type QuoteLineItem = z.infer<typeof QuoteLineItem>;
-export const QuoteLineItem = z.object({
-  id: UUID,
-  quoteId: UUID,
-  name: QuoteLineItemName,
-  quantity: QuoteLineItemQuantity,
-  unitPrice: Price,
-  createdAt: DateIso,
-  updatedAt: DateIso,
-});
-
-export type QuoteLineItemInput = z.infer<typeof QuoteLineItemInput>;
-export const QuoteLineItemInput = z.object({
-  name: QuoteLineItemName,
-  quantity: z.coerce.number().pipe(QuoteLineItemQuantity).default(1),
-  unitPrice: z.coerce.number().pipe(Price),
-});
-
 export type QuoteWorkItemName = z.infer<typeof QuoteWorkItemName>;
 export const QuoteWorkItemName = requiredTrimmedText('Work item name is required');
 
@@ -240,7 +216,6 @@ const quoteSummaryShape = {
   salesPersonEmail: z.email().nullable(),
   salesPersonName: z.string().trim().min(1).nullable(),
   salesPersonThumbnailDataUrl: NullableThumbnailDataUrl,
-  lineItems: z.array(QuoteLineItem),
   selectedAssemblies: z.array(QuoteSelectedAssembly),
 };
 
@@ -366,19 +341,6 @@ function validateQuoteDeliveryPricing(
   }
 }
 
-function validateQuoteKindCollections(
-  input: { lineItems?: readonly QuoteLineItemInput[] | undefined; offering: { kind: QuoteKind } },
-  context: z.RefinementCtx,
-) {
-  if (input.offering.kind === 'custom' && input.lineItems && input.lineItems.length > 0) {
-    context.addIssue({
-      code: 'custom',
-      message: 'Line items are only allowed on Product Quotes',
-      path: ['lineItems'],
-    });
-  }
-}
-
 export type QuoteCreateInput = z.infer<typeof QuoteCreateInput>;
 export const QuoteCreateInput = z
   .object({
@@ -395,11 +357,10 @@ export const QuoteCreateInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
     documentNotes: QuoteDocumentNotesInput,
-    lineItems: z.array(QuoteLineItemInput).default([]),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
-  .superRefine(validateQuoteDeliveryPricing)
-  .superRefine(validateQuoteKindCollections);
+  .strict()
+  .superRefine(validateQuoteDeliveryPricing);
 
 export type QuoteUpdateOfferingInput = z.infer<typeof QuoteUpdateOfferingInput>;
 export const QuoteUpdateOfferingInput = z.discriminatedUnion('kind', [
@@ -431,12 +392,10 @@ export const QuoteUpdateInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
     documentNotes: QuoteDocumentNotesInput,
-    lineItems: z.array(QuoteLineItemInput).optional(),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
   })
   .strict()
-  .superRefine(validateQuoteDeliveryPricing)
-  .superRefine(validateQuoteKindCollections);
+  .superRefine(validateQuoteDeliveryPricing);
 
 // Partial field update. Every field except `id` is optional; `undefined` means "leave the
 // current value untouched". The merge over the current row happens under the row lock in core, so a
@@ -450,7 +409,6 @@ export const QuotePatchInput = z
     salesPersonId: AuthId.optional(),
     // The `-Optional` text variant preserves `undefined` (keep) instead of defaulting it to `null` (clear).
     documentNotes: nullableTrimmedTextInputOptional(),
-    lineItems: z.array(QuoteLineItemInput).optional(),
     notes: nullableTrimmedTextInputOptional(),
     preferredDeliveryDate: DateOnlyIso.nullable().optional(),
     plannedDeliveryDate: DateOnlyIso.nullable().optional(),

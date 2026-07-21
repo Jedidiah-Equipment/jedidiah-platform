@@ -33,32 +33,21 @@ export function validateDiscount({ discountPercent }: { discountPercent: number 
 function computeQuoteDiscountAmount({
   discountPercent,
   hourlyRate,
-  lineItems = [],
   quotedBasePrice,
   selectedAssemblyPrices = [],
   workItems = [],
 }: {
   discountPercent: number;
   hourlyRate?: number | null | undefined;
-  lineItems?: readonly { quantity: number; unitPrice: number }[];
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
   workItems?: readonly WorkItemPricingInput[];
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
-  const lineItemTotal = computeQuoteLineItemsTotal(lineItems);
   const workItemTotal = computeQuoteWorkItemsTotal({ hourlyRate, workItems });
-  const discountableSubtotal = Math.max(0, quotedBasePrice + selectedAssemblyTotal + lineItemTotal + workItemTotal);
+  const discountableSubtotal = Math.max(0, quotedBasePrice + selectedAssemblyTotal + workItemTotal);
 
   return roundCurrency(discountableSubtotal * (discountPercent / 100));
-}
-
-function computeQuoteLineItemsTotal(lineItems: readonly { quantity: number; unitPrice: number }[]): number {
-  return lineItems.reduce((sum, item) => sum + computeQuoteLineItemAmount(item), 0);
-}
-
-export function computeQuoteLineItemAmount(item: { quantity: number; unitPrice: number }): number {
-  return item.quantity * item.unitPrice;
 }
 
 export function computeWorkItemLabourCost(input: { hourlyRate: number; hours: number }): number {
@@ -108,7 +97,6 @@ function computeQuoteTotal({
   deliveryPrice = 0,
   discountPercent,
   hourlyRate,
-  lineItems = [],
   quotedBasePrice,
   selectedAssemblyPrices = [],
   workItems = [],
@@ -117,25 +105,22 @@ function computeQuoteTotal({
   deliveryPrice?: number;
   discountPercent: number;
   hourlyRate?: number | null | undefined;
-  lineItems?: readonly { quantity: number; unitPrice: number }[];
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
   workItems?: readonly WorkItemPricingInput[];
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
-  const lineItemTotal = computeQuoteLineItemsTotal(lineItems);
   const workItemTotal = computeQuoteWorkItemsTotal({ hourlyRate, workItems });
   const discountAmount = computeQuoteDiscountAmount({
     discountPercent,
     hourlyRate,
-    lineItems,
     quotedBasePrice,
     selectedAssemblyPrices,
     workItems,
   });
 
   return (
-    Math.max(0, quotedBasePrice + selectedAssemblyTotal + lineItemTotal + workItemTotal - discountAmount) +
+    Math.max(0, quotedBasePrice + selectedAssemblyTotal + workItemTotal - discountAmount) +
     computeAdditionalDeliveryPrice({ deliveryIncluded, deliveryPrice })
   );
 }
@@ -146,7 +131,6 @@ export type QuotePricingFacts = {
   deliveryPrice?: number;
   discountPercent: number;
   hourlyRate?: number | null | undefined;
-  lineItems?: readonly { quantity: number; unitPrice: number }[];
   quotedBasePrice: number;
   workItems?: readonly WorkItemPricingInput[];
 };
@@ -160,7 +144,6 @@ export type QuotePricingFacts = {
  */
 export type QuotePricing<TSelection> = {
   discountAmount: number;
-  lineItemTotal: number;
   liveSelections: readonly TSelection[];
   selectedAssemblyTotal: number;
   subtotal: number;
@@ -176,7 +159,6 @@ function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }
 ): QuotePricing<TSelection> {
   const selectedAssemblyPrices = liveSelections.map((selection) => selection.quotedPrice);
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
-  const lineItemTotal = computeQuoteLineItemsTotal(facts.lineItems ?? []);
   const workItemTotal = computeQuoteWorkItemsTotal({
     hourlyRate: facts.hourlyRate,
     workItems: facts.workItems ?? [],
@@ -186,7 +168,6 @@ function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }
 
   return {
     discountAmount: computeQuoteDiscountAmount({ ...facts, selectedAssemblyPrices }),
-    lineItemTotal,
     liveSelections,
     selectedAssemblyTotal,
     subtotal,

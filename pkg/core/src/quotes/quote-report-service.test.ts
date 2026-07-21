@@ -1,13 +1,4 @@
-import {
-  customers,
-  type Db,
-  products,
-  quoteLineItems,
-  quotes,
-  quoteWorkItemParts,
-  quoteWorkItems,
-  user,
-} from '@pkg/db';
+import { customers, type Db, products, quotes, quoteWorkItemParts, quoteWorkItems, user } from '@pkg/db';
 import type { QuoteStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -184,9 +175,6 @@ describe('summarizeQuotePipeline', () => {
       statusChangedAt: zonedInstant('2026-05-06T00:00:00'),
     });
     if (!boundaryQuote) throw new Error('Expected sent quote row');
-    await context.db
-      .insert(quoteLineItems)
-      .values({ name: 'Hydraulic hose', quantity: 2, quoteId: boundaryQuote.id, unitPrice: 100 });
     // Sent just before the window start stays in the open pipeline but not in the newly-sent value.
     await createQuoteRows(context.db, {
       customerId: context.customer.id,
@@ -208,12 +196,11 @@ describe('summarizeQuotePipeline', () => {
 
     const summary = await summarizeQuotePipeline({ clock: fixedClock, db: context.db });
 
-    // 2000 base + 200 line items + 100 delivery - 10% discount on base + line items = 2080,
-    // plus the 500 quote outside the 30d window.
+    // 2000 base + 100 delivery - 10% discount on the base = 1900, plus the 500 quote outside the 30d window.
     expect(summary).toMatchObject({
-      newlySent30dValue: 2080,
+      newlySent30dValue: 1900,
       openSentCount: 2,
-      openSentValue: 2580,
+      openSentValue: 2400,
     });
   });
 
@@ -300,9 +287,6 @@ describe('listStaleSentQuotes', () => {
       statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
     });
     if (!oldestQuote) throw new Error('Expected oldest sent quote row');
-    await context.db
-      .insert(quoteLineItems)
-      .values({ name: 'Hydraulic hose', quantity: 2, quoteId: oldestQuote.id, unitPrice: 25 });
     await createQuoteRows(context.db, {
       customerId: context.customer.id,
       productId: context.product.id,
@@ -317,7 +301,7 @@ describe('listStaleSentQuotes', () => {
     expect(result.items[0]).toMatchObject({
       customerCompanyName: 'Acme Mining',
       sentDaysAgo: 15,
-      totalValue: 3565,
+      totalValue: 3507.5,
     });
     expect(result.items[1]).toMatchObject({
       sentDaysAgo: 3,

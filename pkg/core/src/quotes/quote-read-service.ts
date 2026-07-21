@@ -6,7 +6,6 @@ import {
   getSortOrder,
   jobs,
   products,
-  quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
   quoteWorkItemParts,
@@ -40,7 +39,6 @@ import {
   QuoteNotFoundError,
   QuoteProductBayAvailabilityNotApplicableError,
 } from './quote-errors.js';
-import { getLineItemsByQuoteId, type QuoteLineItemRow } from './quote-line-items.js';
 import {
   mapPriorityQuote,
   mapQuoteDetail,
@@ -95,19 +93,17 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     .where(where);
 
   const [rows, [totalRow]] = await Promise.all([rowsQuery, totalQuery]);
-  const { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } =
-    await loadQuoteAssociations({
-      db,
-      includeJobs: true,
-      quoteIds: rows.map((row) => row.quote.id),
-    });
+  const { jobByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
+    db,
+    includeJobs: true,
+    quoteIds: rows.map((row) => row.quote.id),
+  });
 
   return {
     items: rows.map((row) =>
       mapQuoteSummary(
         row,
         jobByQuoteId.get(row.quote.id) ?? null,
-        lineItemsByQuoteId.get(row.quote.id) ?? [],
         selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
         workItemsByQuoteId.get(row.quote.id) ?? [],
       ),
@@ -161,18 +157,16 @@ export async function listPriorityQuotes({
     )
     .orderBy(asc(earliestDeliveryDate), asc(quotes.code), asc(quotes.id));
 
-  const { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } =
-    await loadQuoteAssociations({
-      db,
-      includeJobs: true,
-      quoteIds: rows.map((row) => row.quote.id),
-    });
+  const { jobByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
+    db,
+    includeJobs: true,
+    quoteIds: rows.map((row) => row.quote.id),
+  });
 
   return rows.map((row) =>
     mapPriorityQuote(
       row,
       jobByQuoteId.get(row.quote.id) ?? null,
-      lineItemsByQuoteId.get(row.quote.id) ?? [],
       selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
       workItemsByQuoteId.get(row.quote.id) ?? [],
     ),
@@ -218,19 +212,17 @@ export async function listUpcomingDeliveryQuotes({
     )
     .orderBy(asc(quotes.plannedDeliveryDate), asc(quotes.code), asc(quotes.id));
 
-  const { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } =
-    await loadQuoteAssociations({
-      db,
-      includeJobs: true,
-      quoteIds: rows.map((row) => row.quote.id),
-    });
+  const { jobByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
+    db,
+    includeJobs: true,
+    quoteIds: rows.map((row) => row.quote.id),
+  });
 
   return UpcomingDeliveryQuotesResult.parse({
     items: rows.map((row) =>
       mapUpcomingDeliveryQuote(
         row,
         jobByQuoteId.get(row.quote.id) ?? null,
-        lineItemsByQuoteId.get(row.quote.id) ?? [],
         selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
         workItemsByQuoteId.get(row.quote.id) ?? [],
       ),
@@ -280,9 +272,6 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
           image: true,
           name: true,
         },
-      },
-      lineItems: {
-        orderBy: [asc(quoteLineItems.position), asc(quoteLineItems.createdAt), asc(quoteLineItems.id)],
       },
       selectedAssemblies: {
         orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
@@ -399,18 +388,16 @@ export async function loadQuoteAssociations({
   quoteIds: readonly UUID[];
 }): Promise<{
   jobByQuoteId: Map<UUID, QuoteLinkedJobRow>;
-  lineItemsByQuoteId: Map<UUID, QuoteLineItemRow[]>;
   selectedAssembliesByQuoteId: Map<UUID, QuoteSelectedAssemblyRow[]>;
   workItemsByQuoteId: Map<UUID, QuoteWorkItemRow[]>;
 }> {
-  const [lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId, jobByQuoteId] = await Promise.all([
-    getLineItemsByQuoteId({ db, quoteIds }),
+  const [selectedAssembliesByQuoteId, workItemsByQuoteId, jobByQuoteId] = await Promise.all([
     getSelectedAssembliesByQuoteId({ db, quoteIds }),
     getWorkItemsByQuoteId({ db, quoteIds }),
     includeJobs ? getJobByQuoteId({ db, quoteIds }) : Promise.resolve(new Map<UUID, QuoteLinkedJobRow>()),
   ]);
 
-  return { jobByQuoteId, lineItemsByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId };
+  return { jobByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId };
 }
 
 export async function getJobByQuoteId({

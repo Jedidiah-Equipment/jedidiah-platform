@@ -6,10 +6,10 @@ import {
   type AuthId,
   type QuoteDocument,
   type QuoteDocumentCreateInput,
-  type QuoteDocumentLineItem,
   QuoteDocumentMetadata,
   type QuoteDocumentModel,
   type QuoteDocumentPdfRenderer,
+  type QuoteDocumentPricingRow,
   QuoteDocument as QuoteDocumentSchema,
   type UUID,
 } from '@pkg/schema';
@@ -34,7 +34,7 @@ import { QuoteNotFoundError } from './quote-errors.js';
 
 const QUOTE_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_quote_id_filename_ci_unique';
 
-export type { QuoteDocumentCreateInput, QuoteDocumentLineItem, QuoteDocumentModel, QuoteDocumentPdfRenderer };
+export type { QuoteDocumentCreateInput, QuoteDocumentModel, QuoteDocumentPdfRenderer, QuoteDocumentPricingRow };
 
 export async function getQuoteDocuments({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<QuoteDocument[]> {
   await assertQuoteExists({ db, quoteId });

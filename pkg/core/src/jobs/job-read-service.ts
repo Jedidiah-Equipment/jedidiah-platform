@@ -56,7 +56,6 @@ import {
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { getLineItemsByQuoteId } from '../quotes/quote-line-items.js';
 import {
   findBoardBayRows,
   findBoardBayRowsForJobs,
@@ -557,7 +556,7 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
   const [cfo, documents, workRows, schedule] = await Promise.all([
     listJobCfo({ db, jobId: row.id }),
     listJobDocumentRows({ db, jobId: row.id }),
-    listJobWorkRows({ db, quote: row.quote, quoteId: row.quoteId }),
+    listJobWorkRows(row.quote),
     getJobSchedule({ db, jobId: row.id }),
   ]);
 
@@ -570,20 +569,8 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
   };
 }
 
-async function listJobWorkRows({
-  db,
-  quote,
-  quoteId,
-}: {
-  db: Db | DatabaseTransaction;
-  quote: Pick<JobDetailQuoteRow, 'kind' | 'workItems'>;
-  quoteId: UUID;
-}): Promise<JobDetail['workRows']> {
-  if (quote.kind === 'custom') return quote.workItems;
-
-  const lineItemsByQuoteId = await getLineItemsByQuoteId({ db, quoteIds: [quoteId] });
-
-  return (lineItemsByQuoteId.get(quoteId) ?? []).map(({ id, name }) => ({ id, name }));
+function listJobWorkRows(quote: Pick<JobDetailQuoteRow, 'kind' | 'workItems'>): JobDetail['workRows'] {
+  return quote.kind === 'custom' ? quote.workItems : [];
 }
 
 export async function getJobDocuments({

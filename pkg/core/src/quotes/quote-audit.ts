@@ -2,11 +2,9 @@ import type { quotes } from '@pkg/db';
 import { formatQuoteCode, QuoteCode } from '@pkg/schema';
 
 import { defineAuditDescriptor } from '../audit/audit-service.js';
-import type { QuoteLineItemRow } from './quote-line-items.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
-type QuoteLineItemAuditItem = Pick<QuoteLineItemRow, 'name' | 'quantity' | 'unitPrice'>;
 type QuoteWorkItemAuditItem = {
   hours: number;
   name: string;
@@ -14,13 +12,12 @@ type QuoteWorkItemAuditItem = {
 };
 type QuoteAuditInput = {
   row: QuoteRow;
-  lineItems: readonly QuoteLineItemAuditItem[];
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[];
   workItems: readonly QuoteWorkItemAuditItem[];
 };
 
-// `code` is the summary label, not an audited field, so it lives in `label`. Line items and selected
-// assemblies audit element-wise (`toCollections`) so only the changed elements are recorded.
+// `code` is the summary label, not an audited field, so it lives in `label`. Collections audit
+// element-wise (`toCollections`) so only the changed elements are recorded.
 export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
   entityType: 'quote',
   noun: 'quote',
@@ -48,14 +45,7 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
     status: row.status,
     validUntil: row.validUntil,
   }),
-  toCollections: ({ lineItems, selectedAssemblies, workItems }) => ({
-    // Line items have no stable audited id; same-name items pair in position order in the diff, so
-    // the projection must not re-sort them.
-    lineItem: toQuoteLineItemAuditRecord(lineItems).map((lineItem) => ({
-      key: lineItem.name,
-      label: lineItem.name,
-      value: lineItem,
-    })),
+  toCollections: ({ selectedAssemblies, workItems }) => ({
     selectedAssembly: toQuoteSelectedAssemblyAuditRecord(selectedAssemblies).map((selection) => ({
       key: selection.productAssemblyId ?? selection.quotedName,
       label: selection.quotedName,
@@ -95,11 +85,4 @@ export function toQuoteSelectedAssemblyAuditRecord(selectedAssemblies: readonly 
         left.quotedName.localeCompare(right.quotedName) ||
         (left.productAssemblyId ?? '').localeCompare(right.productAssemblyId ?? ''),
     );
-}
-
-// Keeps the caller's position order (DB reads are position-ordered, inputs are array-ordered): sorting
-// by a mutable value like unitPrice would mispair same-name duplicates when one item's price crosses
-// another's.
-export function toQuoteLineItemAuditRecord(lineItems: readonly QuoteLineItemAuditItem[]) {
-  return lineItems.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice }));
 }

@@ -1,5 +1,5 @@
 import { formatCurrency } from '@pkg/domain';
-import type { QuoteDocumentLineItem, QuoteDocumentModel } from '@pkg/schema';
+import type { QuoteDocumentLineItem, QuoteDocumentModel, QuoteDocumentWorkItem } from '@pkg/schema';
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
 import { pdfStyles } from './pdf-styles.js';
 import { pdfBorder, pdfColors, pdfSpacing } from './pdf-theme.js';
@@ -16,6 +16,21 @@ const getLineItemKey = (() => {
     let key = keys.get(item);
     if (key === undefined) {
       key = `quote-document-line-item-${nextKey}`;
+      nextKey += 1;
+      keys.set(item, key);
+    }
+    return key;
+  };
+})();
+
+const getWorkItemKey = (() => {
+  const keys = new WeakMap<QuoteDocumentWorkItem, string>();
+  let nextKey = 0;
+
+  return (item: QuoteDocumentWorkItem) => {
+    let key = keys.get(item);
+    if (key === undefined) {
+      key = `quote-document-work-item-${nextKey}`;
       nextKey += 1;
       keys.set(item, key);
     }
@@ -79,6 +94,7 @@ export function QuoteDocumentLineItemsTable({ document }: QuoteDocumentLineItems
   const baseItem = document.lineItems.find((item) => item.kind === 'base');
   const optionalItems = document.lineItems.filter((item) => item.kind === 'optional');
   const lineItems = document.lineItems.filter((item) => item.kind === 'lineItem');
+  const workItems = quoteDocumentWorkItemRows(document);
   const adjustmentItems = document.lineItems.filter((item) => item.kind === 'charge' || item.kind === 'discount');
 
   return (
@@ -101,6 +117,14 @@ export function QuoteDocumentLineItemsTable({ document }: QuoteDocumentLineItems
           ))}
         </>
       ) : null}
+      {workItems.length > 0 ? (
+        <>
+          <SectionRow label="Work Items" />
+          {workItems.map((row) => (
+            <WorkItemRow key={getWorkItemKey(row.workItem)} row={row} />
+          ))}
+        </>
+      ) : null}
       {adjustmentItems.map((item) => (
         <LineItemRow item={item} key={getLineItemKey(item)} />
       ))}
@@ -113,6 +137,21 @@ export function QuoteDocumentLineItemsTable({ document }: QuoteDocumentLineItems
       ) : null}
     </View>
   );
+}
+
+export function quoteDocumentWorkItemRows({
+  currencyCode,
+  workItems,
+}: Pick<QuoteDocumentModel, 'currencyCode' | 'workItems'>): {
+  amount: string;
+  name: string;
+  workItem: QuoteDocumentWorkItem;
+}[] {
+  return workItems.map((workItem) => ({
+    amount: formatCurrency(workItem.amount, currencyCode),
+    name: workItem.name,
+    workItem,
+  }));
 }
 
 function TableHeader() {
@@ -239,6 +278,29 @@ function LineItemRow({ item, product = false }: { item: QuoteDocumentLineItem; p
         ]}
       >
         {subtotal}
+      </Text>
+    </View>
+  );
+}
+
+function WorkItemRow({ row }: { row: ReturnType<typeof quoteDocumentWorkItemRows>[number] }) {
+  return (
+    <View style={pdfStyles.flexRow}>
+      <Text style={[styles.tableCell, styles.qtyCol]} />
+      <Text style={[pdfStyles.flex1, pdfStyles.textBody, pdfStyles.uppercase, styles.tableCell]}>{row.name}</Text>
+      <Text style={[styles.tableCell, styles.priceCol]} />
+      <Text
+        style={[
+          pdfStyles.bgPriceCell,
+          pdfStyles.fontBold,
+          pdfStyles.textBody,
+          pdfStyles.textRight,
+          styles.tableCell,
+          styles.subtotalCol,
+          styles.noRightBorder,
+        ]}
+      >
+        {row.amount}
       </Text>
     </View>
   );

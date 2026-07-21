@@ -1,7 +1,9 @@
 import type { QuoteDocumentModel } from '@pkg/schema';
+import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getSalesContactLine } from './QuoteDocumentHeader.js';
+import { QuoteDocumentLineItemsTable } from './QuoteDocumentLineItemsTable.js';
 import { renderQuoteDocumentPdf } from './quote-document-pdf-renderer.js';
 
 describe('renderQuoteDocumentPdf', () => {
@@ -14,7 +16,43 @@ describe('renderQuoteDocumentPdf', () => {
     expect(bytes.byteLength).toBeGreaterThan(1_000);
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
   });
+
+  test('renders each customer-safe Work Item as one name and total row', () => {
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      workItems: [
+        { amount: 1_275, hourlyRate: 'R 850.00/hour', hours: '1.5 hours', name: 'Labour-only rebuild' },
+        { amount: 250, name: 'Parts-only repair', parts: ['Internal seal kit'] },
+        { amount: 0, name: 'Included inspection' },
+      ] as unknown as QuoteDocumentModel['workItems'],
+    };
+    const renderedText = collectRenderedText(QuoteDocumentLineItemsTable({ document }));
+
+    expect(renderedText.filter((value) => value === 'Labour-only rebuild')).toHaveLength(1);
+    expect(renderedText.filter((value) => value === 'Parts-only repair')).toHaveLength(1);
+    expect(renderedText.filter((value) => value === 'Included inspection')).toHaveLength(1);
+    expect(renderedText).toContain('R 1 275.00');
+    expect(renderedText).toContain('R 250.00');
+    expect(renderedText).toContain('R 0.00');
+    expect(renderedText).not.toContain('1.5 hours');
+    expect(renderedText).not.toContain('R 850.00/hour');
+    expect(renderedText).not.toContain('Internal seal kit');
+  });
 });
+
+function collectRenderedText(node: ReactNode): string[] {
+  if (node === null || node === undefined || typeof node === 'boolean') return [];
+  if (typeof node === 'string' || typeof node === 'number') return [String(node)];
+  if (Array.isArray(node)) return node.flatMap(collectRenderedText);
+  if (!isValidElement(node)) return [];
+  const element = node as ReactElement<{ children?: ReactNode }>;
+
+  if (typeof element.type === 'function') {
+    return collectRenderedText((element.type as (props: typeof element.props) => ReactNode)(element.props));
+  }
+
+  return collectRenderedText(element.props.children);
+}
 
 describe('getSalesContactLine', () => {
   test('omits the phone number when the sales user has no phone number', () => {
@@ -96,5 +134,6 @@ function testQuoteDocument(): QuoteDocumentModel {
     total: 707_595,
     transport: 'Included in sale price',
     vatAmount: 92_295,
+    workItems: [],
   };
 }

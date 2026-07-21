@@ -2,7 +2,7 @@ import { createToastHook } from '@gluestack-ui/toast';
 import { AnimatePresence, Motion } from '@legendapp/motion';
 import { IconAlertTriangle, IconCircleCheck } from '@tabler/icons-react-native';
 import { useCallback } from 'react';
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -43,11 +43,14 @@ export function useAppToast() {
 function ToastCard({ message, nativeID, tone }: { message: string; nativeID: string; tone: ToastTone }) {
   const { accent, icon } = TONE[tone];
   const { resolved } = useColorMode();
+  // The toast overlay centers and shrink-wraps each toast, so a `flex-1` message
+  // measures at zero width on native; pin the card to the window width instead.
+  const { width } = useWindowDimensions();
 
   return (
     // Toasts render through an overlay outside the themed view, so restore the
     // active variables at the overlay boundary before resolving semantic colours.
-    <View style={gluestackConfig[resolved]}>
+    <View style={[gluestackConfig[resolved], { width }]}>
       <View
         className="mx-4 mt-2 flex-row items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 shadow-lg"
         nativeID={`toast-${nativeID}`}

@@ -1,37 +1,34 @@
 import { View } from 'react-native';
 import { JobSectionCard } from '@/components/bays/JobSectionCard';
-import {
-  getJobAssemblyAndLineItemRows,
-  type JobAssemblyAndLineItemRow,
-} from '@/components/bays/job-assembly-and-line-items';
+import { getJobAssemblyAndWorkRows, type JobAssemblyAndWorkRow } from '@/components/bays/job-assembly-and-line-items';
 import { STATUS_TONE } from '@/components/bays/status-chip';
 import { Text } from '@/components/ui/text';
 
 /** Pill accents per row kind; `standard` reuses the shared muted status tone. */
 const OPTIONAL_TONE = { chip: 'border-primary/30 bg-primary/10', dot: 'bg-primary', text: 'text-primary' };
 
-function kindTone(kind: JobAssemblyAndLineItemRow['kind']) {
+function kindTone(kind: JobAssemblyAndWorkRow['kind']) {
   if (kind === 'custom') return STATUS_TONE.next;
   return kind === 'optional' ? OPTIONAL_TONE : STATUS_TONE.muted;
 }
 
 /**
- * The ASSEMBLIES card shared by Job Slot detail and Job Detail. Custom Quote Line Items lead the
+ * The ASSEMBLIES card shared by Job Slot detail and Job Detail. Job Work Items lead the
  * job's frozen configured assemblies; the CFO contains only the selected optionals, not the catalog.
  */
 export function JobAssemblies({ jobId }: { jobId: string }) {
   return (
-    <JobSectionCard<JobAssemblyAndLineItemRow>
+    <JobSectionCard<JobAssemblyAndWorkRow>
       jobId={jobId}
       noun="assemblies"
-      renderItem={(row) => <AssemblyAndLineItemRow key={row.key} row={row} />}
-      select={getJobAssemblyAndLineItemRows}
+      renderItem={(row) => <AssemblyAndWorkItemRow key={row.key} row={row} />}
+      select={getJobAssemblyAndWorkRows}
       title="ASSEMBLIES"
     />
   );
 }
 
-function AssemblyAndLineItemRow({ row }: { row: JobAssemblyAndLineItemRow }) {
+function AssemblyAndWorkItemRow({ row }: { row: JobAssemblyAndWorkRow }) {
   const tone = kindTone(row.kind);
 
   return (

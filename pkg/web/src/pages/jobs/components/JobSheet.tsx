@@ -33,7 +33,7 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { JOB_DOCUMENT_ACCEPT, uploadJobPurchaseOrder, validateSelectedFile } from '@/utils/document.js';
-
+import { CustomJobWorkItems } from './CustomJobWorkItems.js';
 import { InfoList, InfoRow } from './JobInfoList.js';
 import { JobEditFormValues, toJobEditFormValues, toJobUpdateInput } from './job-edit-form.js';
 import { scheduleBadgeToneClass, scheduleBarToneClass, scheduleDotToneClass } from './schedule-state-tone.js';
@@ -136,6 +136,7 @@ const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
       ) : (
         <ReadOnlyJobDetails job={job} />
       )}
+      <CustomJobWorkItems job={job} />
       <Section
         action={
           !isJobCancelled(job) ? (

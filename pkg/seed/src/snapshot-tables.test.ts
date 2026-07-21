@@ -42,6 +42,8 @@ describe('snapshot table registry', () => {
       'assembly_parts',
       'assembly_overrides',
       'quote',
+      'quote_work_items',
+      'quote_work_item_parts',
       'quote_selected_assemblies',
       'job',
       'job_cfo_assembly',
@@ -75,6 +77,8 @@ describe('snapshot table registry', () => {
       'assembly_parts.json',
       'assembly_overrides.json',
       'quote.json',
+      'quote_work_items.json',
+      'quote_work_item_parts.json',
       'quote_selected_assemblies.json',
       'job.json',
       'job_cfo_assembly.json',
@@ -96,6 +100,11 @@ describe('snapshot table registry', () => {
     expect(applySeedRowDefaults(quoteConfig, { hourlyRate: 975, kind: 'custom' }, 0)).toMatchObject({
       hourlyRate: 975,
     });
+  });
+
+  it('keeps rollout Work Item tables optional until the source migration deploys', () => {
+    expect(configFor('quote_work_items').optionalReadTable).toBe(true);
+    expect(configFor('quote_work_item_parts').optionalReadTable).toBe(true);
   });
 
   it('projects generated assembly override columns out before import', () => {

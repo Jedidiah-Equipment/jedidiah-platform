@@ -18,6 +18,9 @@ export type SnapshotTableDefinition = {
   // Rollout columns should be captured once deployed, but retried without when the source still has
   // the preceding schema. `seedRowDefaults` supplies their temporary fallback values.
   optionalReadColumns?: readonly string[];
+  // A newly introduced table may not exist in the selected source yet. Treat only that expected rollout
+  // gap as empty; once deployed, normal snapshot reads and writes preserve its rows.
+  optionalReadTable?: boolean;
   // Column (property name) to order the source read by, so positional seed defaults are deterministic.
   readOrderColumn?: string;
   // Values merged into each row after reading, keyed by index — used to populate columns omitted above.
@@ -181,6 +184,18 @@ export const snapshotTableDefinitions = [
     optionalReadColumns: ['hourlyRate'],
     seedRowDefaults: (row) => ({ hourlyRate: row.kind === 'custom' ? DEFAULT_CUSTOM_HOURLY_RATE : null }),
     resetSequence: { sequenceName: 'quote_code_seq', columnName: 'code' },
+  },
+  {
+    fileName: 'quote_work_items.json',
+    tableName: 'quote_work_items',
+    timestampColumns: standardTimestampColumns,
+    optionalReadTable: true,
+  },
+  {
+    fileName: 'quote_work_item_parts.json',
+    tableName: 'quote_work_item_parts',
+    timestampColumns: standardTimestampColumns,
+    optionalReadTable: true,
   },
   {
     fileName: 'quote_selected_assemblies.json',

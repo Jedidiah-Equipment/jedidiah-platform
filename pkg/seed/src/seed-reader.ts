@@ -47,6 +47,18 @@ export async function readSeedSnapshot(sourceArgument?: string): Promise<void> {
 // Reads a table's rows for the snapshot. Optional rollout columns are retried without when the source
 // still has the preceding schema; defaults fill that gap without overwriting values once deployed.
 async function readSnapshotRows(db: Db, config: SnapshotTableConfig): Promise<SnapshotRow[]> {
+  try {
+    return await readExistingSnapshotTable(db, config);
+  } catch (error) {
+    if (config.optionalReadTable && hasPostgresErrorCode(error, '42P01')) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+async function readExistingSnapshotTable(db: Db, config: SnapshotTableConfig): Promise<SnapshotRow[]> {
   if (!config.omitReadColumns && !config.optionalReadColumns && !config.readOrderColumn && !config.seedRowDefaults) {
     return (await db.select().from(config.table)) as SnapshotRow[];
   }

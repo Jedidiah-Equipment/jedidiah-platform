@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applySeedRowDefaults,
   collectStorageFiles,
   projectWritableRow,
   type SnapshotTableConfig,
@@ -85,6 +86,16 @@ describe('snapshot table registry', () => {
   it('backfills hourly rates when loading snapshots captured before the field existed', () => {
     expect(configFor('quote').seedRowDefaults?.({ kind: 'custom' }, 0)).toEqual({ hourlyRate: 850 });
     expect(configFor('quote').seedRowDefaults?.({ kind: 'product' }, 0)).toEqual({ hourlyRate: null });
+    expect(configFor('quote').optionalReadColumns).toEqual(['hourlyRate']);
+  });
+
+  it('keeps captured rollout values ahead of seed fallbacks', () => {
+    const quoteConfig = configFor('quote');
+
+    expect(applySeedRowDefaults(quoteConfig, { kind: 'custom' }, 0)).toMatchObject({ hourlyRate: 850 });
+    expect(applySeedRowDefaults(quoteConfig, { hourlyRate: 975, kind: 'custom' }, 0)).toMatchObject({
+      hourlyRate: 975,
+    });
   });
 
   it('projects generated assembly override columns out before import', () => {
@@ -111,6 +122,10 @@ describe('snapshot table registry', () => {
 
   it('revives nullable supplier soft-delete timestamps', () => {
     expect(configFor('supplier').timestampColumns).toContain('deletedAt');
+  });
+
+  it('revives nullable Job cancellation timestamps', () => {
+    expect(configFor('job').timestampColumns).toContain('cancelledAt');
   });
 
   it('revives nullable catalog soft-delete timestamps', () => {

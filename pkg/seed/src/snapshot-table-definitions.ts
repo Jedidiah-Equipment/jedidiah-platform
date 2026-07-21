@@ -15,6 +15,9 @@ export type SnapshotTableDefinition = {
   // Columns present in the local schema but potentially absent from a remote source (e.g. a
   // not-yet-deployed migration); excluded so a read never selects non-existent columns.
   omitReadColumns?: readonly string[];
+  // Rollout columns should be captured once deployed, but retried without when the source still has
+  // the preceding schema. `seedRowDefaults` supplies their temporary fallback values.
+  optionalReadColumns?: readonly string[];
   // Column (property name) to order the source read by, so positional seed defaults are deterministic.
   readOrderColumn?: string;
   // Values merged into each row after reading, keyed by index — used to populate columns omitted above.
@@ -175,6 +178,7 @@ export const snapshotTableDefinitions = [
     fileName: 'quote.json',
     tableName: 'quote',
     timestampColumns: ['createdAt', 'statusChangedAt', 'updatedAt'],
+    optionalReadColumns: ['hourlyRate'],
     seedRowDefaults: (row) => ({ hourlyRate: row.kind === 'custom' ? DEFAULT_CUSTOM_HOURLY_RATE : null }),
     resetSequence: { sequenceName: 'quote_code_seq', columnName: 'code' },
   },
@@ -186,7 +190,7 @@ export const snapshotTableDefinitions = [
   {
     fileName: 'job.json',
     tableName: 'job',
-    timestampColumns: standardTimestampColumns,
+    timestampColumns: ['cancelledAt', ...standardTimestampColumns],
     resetSequence: { sequenceName: 'job_code_seq', columnName: 'code' },
   },
   {
@@ -235,4 +239,11 @@ export function projectWritableRow(config: SnapshotTableDefinition, row: Snapsho
   }
 
   return Object.fromEntries(config.writableColumns.map((column) => [column, row[column]]));
+}
+
+export function applySeedRowDefaults(config: SnapshotTableDefinition, row: SnapshotRow, index: number): SnapshotRow {
+  return {
+    ...(config.seedRowDefaults?.(row, index) ?? {}),
+    ...row,
+  };
 }

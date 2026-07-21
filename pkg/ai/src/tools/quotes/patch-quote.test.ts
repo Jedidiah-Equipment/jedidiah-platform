@@ -35,6 +35,7 @@ const quote = QuoteDetail.parse({
   discountPercent: 0,
   documentNotes: null,
   id: QUOTE_ID,
+  hourlyRate: 850,
   job: null,
   kind: 'custom',
   lineItems: [],

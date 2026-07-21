@@ -528,7 +528,7 @@ describe('custom quotes', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500 },
+        offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500, hourlyRate: 850 },
         lineItems: [{ name: 'Travel', quantity: 2, unitPrice: 150 }],
         salesPersonId: context.salesPerson.id,
         status: 'sent',
@@ -554,7 +554,7 @@ describe('custom quotes', () => {
         db: context.db,
         input: QuoteCreateInput.parse({
           customer: { type: 'existing', customerId: context.customer.id },
-          offering: { kind: 'custom', workTitle: 'Pump rebuild', basePrice: 3000 },
+          offering: { kind: 'custom', workTitle: 'Pump rebuild', basePrice: 3000, hourlyRate: 850 },
           salesPersonId: context.salesPerson.id,
           selectedAssemblies: [{ type: 'catalog', productAssemblyId: '00000000-0000-4000-8000-000000000901' }],
           status: 'draft',
@@ -567,7 +567,7 @@ describe('custom quotes', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Pump rebuild', basePrice: 3000 },
+        offering: { kind: 'custom', workTitle: 'Pump rebuild', basePrice: 3000, hourlyRate: 850 },
         salesPersonId: context.salesPerson.id,
         status: 'draft',
       }),
@@ -590,7 +590,7 @@ describe('custom quotes', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Draft repair', basePrice: 1500 },
+        offering: { kind: 'custom', workTitle: 'Draft repair', basePrice: 1500, hourlyRate: 850 },
         salesPersonId: context.salesPerson.id,
         status: 'sent',
       }),
@@ -609,13 +609,14 @@ describe('custom quotes', () => {
       db: context.db,
       input: buildQuoteUpdateInput(customQuote, {
         discountPercent: 5,
-        offering: { kind: 'custom', basePrice: 1750, workTitle: 'Draft repair revised' },
+        offering: { kind: 'custom', basePrice: 1750, hourlyRate: 900, workTitle: 'Draft repair revised' },
         lineItems: [{ name: 'Travel', quantity: 1, unitPrice: 200 }],
       }),
     });
 
     expect(updated).toMatchObject({
       discountPercent: 5,
+      hourlyRate: 900,
       quotedBasePrice: 1750,
       workTitle: 'Draft repair revised',
     });
@@ -628,7 +629,7 @@ describe('custom quotes', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Repair work', basePrice: 1500 },
+        offering: { kind: 'custom', workTitle: 'Repair work', basePrice: 1500, hourlyRate: 850 },
         salesPersonId: context.salesPerson.id,
         status: 'draft',
       }),
@@ -636,7 +637,7 @@ describe('custom quotes', () => {
 
     expect(() =>
       buildQuoteUpdateInput(customQuote, {
-        offering: { kind: 'custom', basePrice: 1500, workTitle: '' },
+        offering: { kind: 'custom', basePrice: 1500, hourlyRate: 850, workTitle: '' },
       }),
     ).toThrow();
   });
@@ -658,7 +659,7 @@ describe('custom quotes', () => {
         actorUserId: context.salesPerson.id,
         db: context.db,
         input: buildQuoteUpdateInput(productQuote, {
-          offering: { kind: 'custom', basePrice: 1500, workTitle: 'Repair work' },
+          offering: { kind: 'custom', basePrice: 1500, hourlyRate: 850, workTitle: 'Repair work' },
         }),
       }),
     ).rejects.toThrow('Quote offering kind cannot be changed.');
@@ -670,7 +671,7 @@ describe('custom quotes', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Accepted repair', basePrice: 2200 },
+        offering: { kind: 'custom', workTitle: 'Accepted repair', basePrice: 2200, hourlyRate: 850 },
         salesPersonId: context.salesPerson.id,
         status: 'accepted',
       }),
@@ -681,7 +682,7 @@ describe('custom quotes', () => {
         actorUserId: context.salesPerson.id,
         db: context.db,
         input: buildQuoteUpdateInput(customQuote, {
-          offering: { kind: 'custom', basePrice: 2300, workTitle: 'Accepted repair' },
+          offering: { kind: 'custom', basePrice: 2300, hourlyRate: 850, workTitle: 'Accepted repair' },
         }),
       }),
     ).rejects.toThrow('Quote is locked because it has been accepted; quotedBasePrice cannot be changed.');
@@ -701,7 +702,7 @@ describe('custom quotes', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Availability-free repair', basePrice: 1800 },
+        offering: { kind: 'custom', workTitle: 'Availability-free repair', basePrice: 1800, hourlyRate: 850 },
         salesPersonId: context.salesPerson.id,
         status: 'draft',
       }),
@@ -721,7 +722,7 @@ describe('custom quotes', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Priority repair', basePrice: 1800 },
+        offering: { kind: 'custom', workTitle: 'Priority repair', basePrice: 1800, hourlyRate: 850 },
         plannedDeliveryDate: '2026-02-15',
         salesPersonId: context.salesPerson.id,
         status: 'accepted',
@@ -742,7 +743,7 @@ describe('custom quotes', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Axle rebuild', basePrice: 1800 },
+        offering: { kind: 'custom', workTitle: 'Axle rebuild', basePrice: 1800, hourlyRate: 850 },
         salesPersonId: context.salesPerson.id,
         status: 'draft',
       }),
@@ -776,13 +777,13 @@ describe('custom quotes', () => {
     });
   });
 
-  test('records custom quote kind, work title, and base price edits in audit events', async ({ context }) => {
+  test('records custom quote commercial facts in audit events', async ({ context }) => {
     const customQuote = await createQuoteService({
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Audit repair', basePrice: 2000 },
+        offering: { kind: 'custom', workTitle: 'Audit repair', basePrice: 2000, hourlyRate: 850 },
         salesPersonId: context.salesPerson.id,
         status: 'draft',
       }),
@@ -792,7 +793,7 @@ describe('custom quotes', () => {
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: buildQuoteUpdateInput(customQuote, {
-        offering: { kind: 'custom', basePrice: 2100, workTitle: 'Audit repair revised' },
+        offering: { kind: 'custom', basePrice: 2100, hourlyRate: 900, workTitle: 'Audit repair revised' },
       }),
     });
 
@@ -804,10 +805,12 @@ describe('custom quotes', () => {
     const updateEvent = events.find((event) => event.action === 'updated');
 
     expect(createEvent?.changes).toMatchObject({
+      hourlyRate: { from: null, to: 850 },
       kind: { from: null, to: 'custom' },
       workTitle: { from: null, to: 'Audit repair' },
     });
     expect(updateEvent?.changes).toMatchObject({
+      hourlyRate: { from: 850, to: 900 },
       quotedBasePrice: { from: 2000, to: 2100 },
       workTitle: { from: 'Audit repair', to: 'Audit repair revised' },
     });
@@ -875,7 +878,7 @@ describe('cancelled quotes', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', basePrice: 1800, workTitle: 'Cancelled repair' },
+        offering: { kind: 'custom', basePrice: 1800, hourlyRate: 850, workTitle: 'Cancelled repair' },
         salesPersonId: context.salesPerson.id,
         status: 'draft',
       }),
@@ -1159,7 +1162,7 @@ describe('patchQuote', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Locked repair', basePrice: 2200 },
+        offering: { kind: 'custom', workTitle: 'Locked repair', basePrice: 2200, hourlyRate: 850 },
         salesPersonId: context.salesPerson.id,
         status: 'accepted',
       }),
@@ -1193,7 +1196,7 @@ describe('cancelQuote', () => {
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Workshop repair', basePrice: 2200 },
+        offering: { kind: 'custom', workTitle: 'Workshop repair', basePrice: 2200, hourlyRate: 850 },
         salesPersonId: context.salesPerson.id,
         status: 'accepted',
       }),
@@ -1607,7 +1610,12 @@ function buildQuoteUpdateInput(quote: QuoteDetail, overrides: Partial<QuoteUpdat
     id: quote.id,
     offering:
       quote.kind === 'custom'
-        ? { kind: 'custom', basePrice: quote.quotedBasePrice, workTitle: quote.workTitle }
+        ? {
+            kind: 'custom',
+            basePrice: quote.quotedBasePrice,
+            hourlyRate: quote.hourlyRate,
+            workTitle: quote.workTitle,
+          }
         : { kind: 'product' },
     lineItems: quote.lineItems.map((item) => ({
       name: item.name,

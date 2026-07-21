@@ -1,3 +1,4 @@
+import { DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
 import {
   AuthId,
   Customer,
@@ -5,6 +6,7 @@ import {
   Price,
   QuoteCreateInput,
   type QuoteCreateInput as QuoteCreateInputValue,
+  QuoteHourlyRate,
   QuoteKind,
   QuoteStatus,
   QuoteWorkTitle,
@@ -25,6 +27,7 @@ const CustomerSelection = z.discriminatedUnion('type', [
 const QuoteCreateFormValuesShape = z.object({
   basePrice: z.union([z.number(), z.nan()]),
   customer: CustomerSelection.nullable(),
+  hourlyRate: z.union([z.number(), z.nan()]),
   kind: QuoteKind,
   productId: z.string(),
   rangeId: z.string(),
@@ -65,6 +68,17 @@ export const QuoteCreateFormValues = QuoteCreateFormValuesShape.superRefine((val
         path: ['basePrice'],
       });
     }
+
+    const hourlyRateResult = QuoteHourlyRate.safeParse(value.hourlyRate);
+    if (!hourlyRateResult.success) {
+      context.addIssue({
+        code: 'custom',
+        message: Number.isNaN(value.hourlyRate)
+          ? 'Hourly rate is required'
+          : (hourlyRateResult.error.issues[0]?.message ?? 'Enter a valid hourly rate'),
+        path: ['hourlyRate'],
+      });
+    }
   }
 
   if (!AuthId.safeParse(value.salesPersonId).success) {
@@ -75,6 +89,7 @@ export const QuoteCreateFormValues = QuoteCreateFormValuesShape.superRefine((val
 export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   basePrice: Number.NaN,
   customer: null,
+  hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
   kind: 'product',
   productId: '',
   rangeId: '',
@@ -88,7 +103,7 @@ export function clearQuoteKindFields(
   kind: QuoteCreateFormValues['kind'],
 ): QuoteCreateFormValues {
   return kind === 'product'
-    ? { ...values, basePrice: Number.NaN, kind, workTitle: '' }
+    ? { ...values, basePrice: Number.NaN, hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE, kind, workTitle: '' }
     : { ...values, kind, productId: '', rangeId: '' };
 }
 
@@ -105,7 +120,12 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
     offering:
       value.kind === 'product'
         ? { kind: 'product', productId: value.productId }
-        : { kind: 'custom', basePrice: value.basePrice, workTitle: value.workTitle },
+        : {
+            kind: 'custom',
+            basePrice: value.basePrice,
+            hourlyRate: value.hourlyRate,
+            workTitle: value.workTitle,
+          },
     salesPersonId: value.salesPersonId,
     status: value.status,
   });

@@ -72,7 +72,7 @@ describe('QuoteCreateInput', () => {
     });
   });
 
-  it('parses a custom offering with a trimmed work title and entered base price', () => {
+  it('parses a custom offering with a trimmed work title, entered base price, and hourly rate', () => {
     expect(
       QuoteCreateInput.parse({
         ...baseCreateInput,
@@ -80,11 +80,33 @@ describe('QuoteCreateInput', () => {
           kind: 'custom',
           workTitle: '  Hydraulic repair  ',
           basePrice: '2500.50',
+          hourlyRate: '850.25',
         },
       }),
     ).toMatchObject({
-      offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500.5 },
+      offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500.5, hourlyRate: 850.25 },
     });
+  });
+
+  it('requires a non-negative hourly rate for custom offerings and rejects it on product offerings', () => {
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500 },
+      }),
+    ).toThrow();
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500, hourlyRate: -1 },
+      }),
+    ).toThrow('Must be zero or greater');
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: { ...baseCreateInput.offering, hourlyRate: 850 },
+      }),
+    ).toThrow();
   });
 
   it('rejects a blank custom work title', () => {
@@ -95,6 +117,7 @@ describe('QuoteCreateInput', () => {
           kind: 'custom',
           workTitle: ' ',
           basePrice: 2500,
+          hourlyRate: 850,
         },
       }),
     ).toThrow();
@@ -163,7 +186,7 @@ describe('QuoteUpdateInput', () => {
     });
   });
 
-  it('parses a custom offering update with a trimmed work title and entered base price', () => {
+  it('parses a custom offering update with a trimmed work title, entered base price, and hourly rate', () => {
     expect(
       QuoteUpdateInput.parse({
         ...baseUpdateInput(),
@@ -171,10 +194,11 @@ describe('QuoteUpdateInput', () => {
           kind: 'custom',
           workTitle: '  Hydraulic repair  ',
           basePrice: '2500.50',
+          hourlyRate: '975.75',
         },
       }),
     ).toMatchObject({
-      offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500.5 },
+      offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500.5, hourlyRate: 975.75 },
     });
   });
 
@@ -186,6 +210,7 @@ describe('QuoteUpdateInput', () => {
           kind: 'custom',
           workTitle: ' ',
           basePrice: 2500,
+          hourlyRate: 850,
         },
       }),
     ).toThrow();
@@ -229,6 +254,7 @@ describe('QuoteDetail', () => {
       id: '550e8400-e29b-41d4-a716-446655440010',
       job: null,
       kind: 'custom',
+      hourlyRate: 850,
       notes: null,
       plannedDeliveryDate: null,
       preferredDeliveryDate: null,

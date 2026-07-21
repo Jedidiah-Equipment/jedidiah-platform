@@ -202,6 +202,18 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                           )}
                         </form.AppField>
                       ) : null}
+                      {isCustom ? (
+                        <form.AppField name="hourlyRate">
+                          {(field) => (
+                            <field.CurrencyField
+                              autoComplete="off"
+                              currencyCode={quoteCurrencyCode}
+                              disabled={isLocked}
+                              label="Hourly rate"
+                            />
+                          )}
+                        </form.AppField>
+                      ) : null}
                       <form.AppField name="discountPercent">
                         {(field) => (
                           <field.NumberField

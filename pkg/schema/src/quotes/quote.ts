@@ -61,6 +61,9 @@ export const QuoteDepositPercent = z.number().min(0, 'Must be zero or greater').
 export type QuoteDiscountPercent = z.infer<typeof QuoteDiscountPercent>;
 export const QuoteDiscountPercent = z.number().min(0, 'Must be zero or greater').max(100, 'Must be 100 or less');
 
+export type QuoteHourlyRate = z.infer<typeof QuoteHourlyRate>;
+export const QuoteHourlyRate = Price;
+
 // The product/custom discriminator is a single wire-flat model: `kind`, `productId`, and `workTitle`
 // stay top-level columns, but each `kind` pins the other two so consumers narrow instead of re-guarding.
 const quoteBaseShape = {
@@ -93,6 +96,7 @@ const quoteProductOfferingShape = {
 
 const quoteCustomOfferingShape = {
   kind: z.literal('custom'),
+  hourlyRate: QuoteHourlyRate,
   productId: z.null(),
   workTitle: QuoteWorkTitle,
 };
@@ -256,14 +260,15 @@ export const QuoteCustomerInput = z.discriminatedUnion('type', [
 
 export type QuoteOfferingInput = z.infer<typeof QuoteOfferingInput>;
 export const QuoteOfferingInput = z.discriminatedUnion('kind', [
-  z.object({
+  z.strictObject({
     kind: z.literal('product'),
     productId: UUID,
   }),
-  z.object({
+  z.strictObject({
     kind: z.literal('custom'),
     workTitle: QuoteWorkTitle,
     basePrice: z.coerce.number().pipe(Price),
+    hourlyRate: z.coerce.number().pipe(QuoteHourlyRate),
   }),
 ]);
 
@@ -316,13 +321,14 @@ export const QuoteCreateInput = z
 
 export type QuoteUpdateOfferingInput = z.infer<typeof QuoteUpdateOfferingInput>;
 export const QuoteUpdateOfferingInput = z.discriminatedUnion('kind', [
-  z.object({
+  z.strictObject({
     kind: z.literal('product'),
   }),
-  z.object({
+  z.strictObject({
     kind: z.literal('custom'),
     workTitle: QuoteWorkTitle,
     basePrice: z.coerce.number().pipe(Price),
+    hourlyRate: z.coerce.number().pipe(QuoteHourlyRate),
   }),
 ]);
 

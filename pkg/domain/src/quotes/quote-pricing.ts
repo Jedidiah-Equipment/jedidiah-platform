@@ -13,6 +13,7 @@ export type QuotePricingResult =
     };
 
 export const VAT_PERCENT = 15;
+export const DEFAULT_CUSTOM_HOURLY_RATE = 850;
 
 export function validateDiscount({ discountPercent }: { discountPercent: number }): QuotePricingResult {
   if (discountPercent < 0) {

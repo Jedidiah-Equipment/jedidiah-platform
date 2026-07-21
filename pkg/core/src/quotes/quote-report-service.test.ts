@@ -398,6 +398,7 @@ async function createQuoteRows(
         deliveryIncluded,
         deliveryPrice,
         discountPercent,
+        hourlyRate: kind === 'custom' ? 850 : null,
         kind,
         productId,
         quotedBasePrice,

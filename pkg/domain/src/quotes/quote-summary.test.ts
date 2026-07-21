@@ -198,7 +198,13 @@ describe('computeQuoteSummary', () => {
   });
 
   it('uses entered base price and no assemblies for custom quotes', () => {
-    const quote = buildQuoteDetail({ kind: 'custom', product: null, productId: null, workTitle: 'Hydraulic repair' });
+    const quote = buildQuoteDetail({
+      hourlyRate: 850,
+      kind: 'custom',
+      product: null,
+      productId: null,
+      workTitle: 'Hydraulic repair',
+    });
     const summary = computeQuoteSummary({
       quote,
       values: buildFormValues({

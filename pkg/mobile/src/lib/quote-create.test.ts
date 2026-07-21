@@ -1,3 +1,4 @@
+import { DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -52,6 +53,7 @@ describe('mobile quote creation', () => {
       ...QUOTE_CREATE_DEFAULT_VALUES,
       basePrice: 25_000,
       customer: { companyName: '  Boerdery Bpk  ', type: 'inline' },
+      hourlyRate: 975,
       kind: 'custom',
       salesPersonId: 'sales-user',
       workTitle: '  On-site repair  ',
@@ -65,7 +67,25 @@ describe('mobile quote creation', () => {
       phone: null,
       type: 'inline',
     });
-    expect(input.offering).toEqual({ basePrice: 25_000, kind: 'custom', workTitle: 'On-site repair' });
+    expect(input.offering).toEqual({
+      basePrice: 25_000,
+      hourlyRate: 975,
+      kind: 'custom',
+      workTitle: 'On-site repair',
+    });
+  });
+
+  it('seeds new custom quotes from the shared default hourly rate without adding it to product payloads', () => {
+    expect(QUOTE_CREATE_DEFAULT_VALUES.hourlyRate).toBe(DEFAULT_CUSTOM_HOURLY_RATE);
+
+    const productInput = toQuoteCreateInput({
+      ...QUOTE_CREATE_DEFAULT_VALUES,
+      customer: existingCustomer,
+      productId: 'f36a4b28-d552-439c-8928-bf6da8aa42b2',
+      salesPersonId: 'sales-user',
+    });
+
+    expect(productInput.offering).not.toHaveProperty('hourlyRate');
   });
 
   it('reports conditional fields at their visible controls', () => {
@@ -118,9 +138,14 @@ describe('mobile quote creation', () => {
 
     expect(
       clearQuoteKindFields(
-        { ...QUOTE_CREATE_DEFAULT_VALUES, basePrice: 900, kind: 'custom', workTitle: 'Repair' },
+        { ...QUOTE_CREATE_DEFAULT_VALUES, basePrice: 900, hourlyRate: 975, kind: 'custom', workTitle: 'Repair' },
         'product',
       ),
-    ).toMatchObject({ basePrice: Number.NaN, kind: 'product', workTitle: '' });
+    ).toMatchObject({
+      basePrice: Number.NaN,
+      hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
+      kind: 'product',
+      workTitle: '',
+    });
   });
 });

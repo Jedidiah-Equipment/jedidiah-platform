@@ -1,4 +1,4 @@
-import { quoteStatusLabels } from '@pkg/domain';
+import { DEFAULT_CUSTOM_HOURLY_RATE, quoteStatusLabels } from '@pkg/domain';
 import {
   AuthId,
   DateIsoString,
@@ -9,6 +9,7 @@ import {
   type QuoteDetail,
   QuoteDiscountPercent,
   QuoteDocumentNotes,
+  QuoteHourlyRate,
   type QuoteKind,
   QuoteLineItemName,
   QuoteLineItemQuantity,
@@ -108,6 +109,7 @@ export const QuoteEditFormValues = z
     depositPercent: QuoteDepositPercent,
     discountPercent: QuoteDiscountPercent,
     documentNotes: z.string(),
+    hourlyRate: QuoteHourlyRate,
     lineItems: z.array(QuoteEditLineItem),
     notes: z.string(),
     plannedDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
@@ -153,6 +155,7 @@ export function toQuoteEditFormValues(quote: QuoteDetail): QuoteEditFormValues {
     depositPercent: quote.depositPercent,
     discountPercent: quote.discountPercent,
     documentNotes: quote.documentNotes ?? '',
+    hourlyRate: quote.kind === 'custom' ? quote.hourlyRate : DEFAULT_CUSTOM_HOURLY_RATE,
     lineItems: quote.lineItems.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice })),
     notes: quote.notes ?? '',
     plannedDeliveryDate: quote.plannedDeliveryDate ?? '',
@@ -179,7 +182,12 @@ export function toQuoteUpdateInput({
     offering:
       kind === 'product'
         ? { kind: 'product' }
-        : { kind: 'custom', basePrice: values.basePrice, workTitle: values.workTitle },
+        : {
+            kind: 'custom',
+            basePrice: values.basePrice,
+            hourlyRate: values.hourlyRate,
+            workTitle: values.workTitle,
+          },
     deliveryIncluded: values.deliveryIncluded,
     deliveryPrice: values.deliveryIncluded ? 0 : values.deliveryPrice,
     depositPercent: values.depositPercent,

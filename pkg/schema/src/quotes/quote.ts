@@ -64,8 +64,8 @@ export const QuoteDiscountPercent = z.number().min(0, 'Must be zero or greater')
 export type QuoteHourlyRate = z.infer<typeof QuoteHourlyRate>;
 export const QuoteHourlyRate = Price;
 
-// The product/custom discriminator is a single wire-flat model: `kind`, `productId`, and `workTitle`
-// stay top-level columns, but each `kind` pins the other two so consumers narrow instead of re-guarding.
+// The product/custom discriminator is a single wire-flat model: `kind`, `productId`, `workTitle`, and
+// `hourlyRate` stay top-level, but each `kind` pins the others so consumers narrow instead of re-guarding.
 const quoteBaseShape = {
   id: UUID,
   code: QuoteCode,

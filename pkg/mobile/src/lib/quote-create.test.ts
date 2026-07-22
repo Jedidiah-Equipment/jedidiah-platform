@@ -30,6 +30,7 @@ describe('mobile quote creation', () => {
     });
 
     expect(input).toEqual({
+      cancellationReason: null,
       customer: { customerId: '4ffcb2c6-4e69-4108-a6a5-710accee0b48', type: 'existing' },
       deliveryIncluded: true,
       deliveryPrice: 0,
@@ -122,6 +123,30 @@ describe('mobile quote creation', () => {
     expect(result.error?.issues.map(({ message, path }) => ({ message, path }))).toEqual([
       { message: 'Base price is required', path: ['basePrice'] },
     ]);
+  });
+
+  it('requires and maps a reason when creating a cancelled quote', () => {
+    const withoutReason = QuoteCreateFormValues.safeParse({
+      ...QUOTE_CREATE_DEFAULT_VALUES,
+      customer: existingCustomer,
+      productId: 'f36a4b28-d552-439c-8928-bf6da8aa42b2',
+      salesPersonId: 'sales-user',
+      status: 'cancelled',
+    });
+    expect(withoutReason.error?.issues).toContainEqual(
+      expect.objectContaining({ message: 'Cancellation reason is required', path: ['cancellationReason'] }),
+    );
+
+    expect(
+      toQuoteCreateInput({
+        ...QUOTE_CREATE_DEFAULT_VALUES,
+        cancellationReason: 'Customer withdrew',
+        customer: existingCustomer,
+        productId: 'f36a4b28-d552-439c-8928-bf6da8aa42b2',
+        salesPersonId: 'sales-user',
+        status: 'cancelled',
+      }),
+    ).toMatchObject({ cancellationReason: 'Customer withdrew', status: 'cancelled' });
   });
 
   it('clears fields belonging to the other quote kind', () => {

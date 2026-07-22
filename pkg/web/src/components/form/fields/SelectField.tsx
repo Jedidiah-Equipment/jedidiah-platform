@@ -17,6 +17,7 @@ export type SelectFieldProps = {
   emptyLabel?: React.ReactNode;
   label: React.ReactNode;
   onValueCommit?: (value: string) => void;
+  onValueSelect?: (value: string) => boolean | undefined;
   options: readonly SelectFieldOption[];
   placeholder?: string;
 };
@@ -26,6 +27,7 @@ export function SelectField({
   emptyLabel,
   label,
   onValueCommit,
+  onValueSelect,
   options,
   placeholder,
 }: SelectFieldProps) {
@@ -43,6 +45,8 @@ export function SelectField({
         disabled={disabled}
         onValueChange={(value) => {
           const nextValue = value === EMPTY_SELECT_VALUE ? '' : (value ?? '');
+          if (nextValue === field.state.value || onValueSelect?.(nextValue) === false) return;
+
           field.handleChange(nextValue);
           onValueCommit?.(nextValue);
         }}

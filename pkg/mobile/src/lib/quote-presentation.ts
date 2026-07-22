@@ -5,6 +5,7 @@ import {
   DateOnlyIsoString,
   getQuoteDeliveryPricingError,
   Price,
+  QuoteCancellationReason,
   QuoteDepositPercent,
   type QuoteDetail,
   QuoteDiscountPercent,
@@ -29,6 +30,11 @@ export const QUOTE_STATUS_OPTIONS = QuoteStatus.options.map((status) => ({
   label: quoteStatusLabels[status],
   value: status,
 }));
+
+export function parseQuoteCancellationReason(value: string): string | null {
+  const result = QuoteCancellationReason.safeParse(value);
+  return result.success ? result.data : null;
+}
 
 export function isQuoteStatusFilter(value: unknown): value is QuoteStatusFilter {
   return value === 'all' || QuoteStatus.safeParse(value).success;
@@ -97,6 +103,7 @@ export type QuoteEditFormValues = z.infer<typeof QuoteEditFormValues>;
 export const QuoteEditFormValues = z
   .object({
     basePrice: Price,
+    cancellationReason: z.string(),
     deliveryIncluded: z.boolean(),
     deliveryPrice: Price,
     depositPercent: QuoteDepositPercent,
@@ -126,6 +133,17 @@ export function getQuoteEditFormValuesValidator(kind: QuoteKind) {
       context.addIssue({ code: 'custom', message: 'Work title is required', path: ['workTitle'] });
     }
 
+    if (values.status === 'cancelled') {
+      const result = QuoteCancellationReason.safeParse(values.cancellationReason);
+      if (!result.success) {
+        context.addIssue({
+          code: 'custom',
+          message: result.error.issues[0]?.message ?? 'Cancellation reason is required',
+          path: ['cancellationReason'],
+        });
+      }
+    }
+
     for (const [field, schema] of [
       ['notes', QuoteNotes],
       ['documentNotes', QuoteDocumentNotes],
@@ -143,6 +161,7 @@ export function getQuoteEditFormValuesValidator(kind: QuoteKind) {
 export function toQuoteEditFormValues(quote: QuoteDetail): QuoteEditFormValues {
   return {
     basePrice: quote.quotedBasePrice,
+    cancellationReason: quote.cancellationReason ?? '',
     ...toQuoteWorkItemFormState(quote),
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
@@ -170,6 +189,7 @@ export function toQuoteUpdateInput({
   values: QuoteEditFormValues;
 }): QuoteUpdateInput {
   return QuoteUpdateInput.parse({
+    cancellationReason: values.status === 'cancelled' ? values.cancellationReason : null,
     id,
     offering:
       kind === 'product'

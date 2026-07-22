@@ -241,6 +241,21 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
               />
             )}
           </form.AppField>
+          <form.Subscribe selector={(state) => state.values.status}>
+            {(status) =>
+              status === 'cancelled' ? (
+                <form.AppField name="cancellationReason">
+                  {(field) => (
+                    <field.TextareaField
+                      label="Cancellation reason"
+                      placeholder="Explain why this quote is being cancelled…"
+                      rows={4}
+                    />
+                  )}
+                </form.AppField>
+              ) : null
+            }
+          </form.Subscribe>
         </div>
       )}
     </CreateEntityDialog>

@@ -100,6 +100,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
 
 function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): QuoteCreateFormValues {
   return {
+    cancellationReason: '',
     customerId: CUSTOMER_ID,
     customerMode: 'existing',
     basePrice: 0,
@@ -117,6 +118,7 @@ function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): 
 
 function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
   return {
+    cancellationReason: '',
     depositPercent: 30,
     deliveryIncluded: true,
     deliveryPrice: 0,
@@ -142,6 +144,7 @@ describe('toQuoteFormValues', () => {
     const values = toQuoteFormValues(buildQuoteDetail());
 
     expect(values.notes).toBe('Some notes');
+    expect(values.cancellationReason).toBe('');
     expect(values.documentNotes).toBe('30 days');
     expect(values.depositPercent).toBe(30);
     expect(values.validUntil).toBe('2026-01-01');
@@ -217,6 +220,7 @@ describe('toQuoteFormValues', () => {
 describe('QuoteCreateFormValues', () => {
   it('contains only the modal fields needed to create a quote shell', () => {
     expect(QUOTE_CREATE_DEFAULT_VALUES).toEqual({
+      cancellationReason: '',
       customerId: '',
       customerMode: 'existing',
       basePrice: 0,
@@ -263,6 +267,15 @@ describe('QuoteCreateFormValues', () => {
       ).success,
     ).toBe(false);
   });
+
+  it('requires a cancellation reason only when creating a cancelled quote', () => {
+    expect(QuoteCreateFormValues.safeParse(buildCreateFormValues({ status: 'cancelled' })).success).toBe(false);
+    expect(
+      QuoteCreateFormValues.safeParse(
+        buildCreateFormValues({ cancellationReason: 'Customer withdrew', status: 'cancelled' }),
+      ).success,
+    ).toBe(true);
+  });
 });
 
 describe('toQuoteCreateInput', () => {
@@ -299,9 +312,12 @@ describe('toQuoteCreateInput', () => {
   });
 
   it('preserves cancelled status in create submissions', () => {
-    const input = toQuoteCreateInput(buildCreateFormValues({ status: 'cancelled' }));
+    const input = toQuoteCreateInput(
+      buildCreateFormValues({ cancellationReason: 'Customer withdrew', status: 'cancelled' }),
+    );
 
     expect(input.status).toBe('cancelled');
+    expect(input.cancellationReason).toBe('Customer withdrew');
   });
 
   it('builds the custom offering from work title and base price', () => {
@@ -377,10 +393,20 @@ describe('toQuoteUpdateInput', () => {
     const input = toQuoteUpdateInput({
       id: QUOTE_ID,
       kind: 'product',
-      value: buildFormValues({ status: 'cancelled' }),
+      value: buildFormValues({ cancellationReason: 'Customer withdrew', status: 'cancelled' }),
     });
 
     expect(input.status).toBe('cancelled');
+    expect(input.cancellationReason).toBe('Customer withdrew');
+  });
+
+  it('maps a cancelled reason into read-only form state and requires it at the edit boundary', () => {
+    const quote = buildQuoteDetail({ cancellationReason: 'Customer withdrew', status: 'cancelled' });
+
+    expect(toQuoteFormValues(quote).cancellationReason).toBe('Customer withdrew');
+    expect(getQuoteFormValuesValidator('product').safeParse(buildFormValues({ status: 'cancelled' })).success).toBe(
+      false,
+    );
   });
 
   it('emits custom quote offering facts without conflating blank work titles with omission', () => {

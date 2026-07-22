@@ -73,6 +73,29 @@ function createContext(): AiContext {
 }
 
 describe('patchQuote contract', () => {
+  test('requires and forwards a reason when patching a Quote to cancelled', () => {
+    expect(() => PatchQuoteInput.parse({ id: QUOTE_ID, status: 'cancelled' })).toThrow(
+      'Cancellation reason is required',
+    );
+    expect(() => PatchQuoteInput.parse({ cancellationReason: '   ', id: QUOTE_ID, status: 'cancelled' })).toThrow(
+      'Cancellation reason is required',
+    );
+
+    expect(
+      toCoreQuotePatchInput(
+        PatchQuoteInput.parse({
+          cancellationReason: '  Customer withdrew the project  ',
+          id: QUOTE_ID,
+          status: 'cancelled',
+        }),
+      ),
+    ).toEqual({
+      cancellationReason: 'Customer withdrew the project',
+      id: QUOTE_ID,
+      status: 'cancelled',
+    });
+  });
+
   test('passes named Quote changes and assemblies to core and returns linked details', async () => {
     const input = PatchQuoteInput.parse({
       id: QUOTE_ID,

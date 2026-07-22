@@ -87,10 +87,16 @@ describe('snapshot table registry', () => {
     ]);
   });
 
-  it('backfills hourly rates when loading snapshots captured before the field existed', () => {
-    expect(configFor('quote').seedRowDefaults?.({ kind: 'custom' }, 0)).toEqual({ hourlyRate: 850 });
-    expect(configFor('quote').seedRowDefaults?.({ kind: 'product' }, 0)).toEqual({ hourlyRate: null });
-    expect(configFor('quote').optionalReadColumns).toEqual(['hourlyRate']);
+  it('backfills rollout quote fields when loading snapshots captured before they existed', () => {
+    expect(configFor('quote').seedRowDefaults?.({ kind: 'custom', status: 'draft' }, 0)).toEqual({
+      cancellationReason: null,
+      hourlyRate: 850,
+    });
+    expect(configFor('quote').seedRowDefaults?.({ kind: 'product', status: 'cancelled' }, 0)).toEqual({
+      cancellationReason: 'Reason not recorded (cancelled before cancellation reasons were required).',
+      hourlyRate: null,
+    });
+    expect(configFor('quote').optionalReadColumns).toEqual(['cancellationReason', 'hourlyRate']);
   });
 
   it('keeps captured rollout values ahead of seed fallbacks', () => {

@@ -5,6 +5,7 @@ import {
   type QuotePatchInput as CoreQuotePatchInputType,
   DateIsoString,
   DateOnlyIsoString,
+  QuoteCancellationReason,
   type QuoteDetail,
   QuoteDocumentNotes,
   QuoteNotes,
@@ -27,6 +28,9 @@ import {
 export type PatchQuoteInput = z.infer<typeof PatchQuoteInput>;
 export const PatchQuoteInput = z
   .object({
+    cancellationReason: QuoteCancellationReason.optional().describe(
+      'Required together with status=cancelled; explain why the Quote is being cancelled.',
+    ),
     documentNotes: QuoteDocumentNotes.optional(),
     id: UUID,
     notes: QuoteNotes.optional(),
@@ -40,7 +44,22 @@ export const PatchQuoteInput = z
     status: QuoteStatus.optional(),
     validUntil: DateIsoString.nullable().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((input, context) => {
+    if (input.status === 'cancelled' && input.cancellationReason === undefined) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Cancellation reason is required',
+        path: ['cancellationReason'],
+      });
+    } else if (input.status !== 'cancelled' && input.cancellationReason !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Cancellation reason is only allowed when cancelling a quote',
+        path: ['cancellationReason'],
+      });
+    }
+  });
 
 export type PatchQuoteResponse = SharedQuoteDetailResponseType;
 export const PatchQuoteResponse = SharedQuoteDetailResponse;
@@ -59,6 +78,7 @@ export const patchQuoteDefinition = {
     'Patch one Quote, changing only explicitly provided fields: status, salesperson, delivery dates, valid-until, notes, or selected assemblies.',
     'Use findQuotes first when the Quote UUID is not already known.',
     'Do not change status to accepted or rejected unless the user explicitly requested that exact decision.',
+    'Changing status to cancelled requires cancellationReason in the same call.',
     'When selectedAssemblies are provided, they replace the complete collection; use getQuote first to preserve entries the user did not ask to remove.',
     'Offering and quote-level pricing fields remain excluded and must be edited in the Quote form.',
     'Omitted fields remain unchanged; null clears a nullable date or note.',

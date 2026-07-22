@@ -62,6 +62,7 @@ export type QuoteDetailRow = QuoteRow & {
 
 export function mapQuote(row: QuoteRow) {
   return Quote.parse({
+    cancellationReason: row.cancellationReason,
     code: row.code,
     createdAt: row.createdAt.toISOString(),
     customerId: row.customerId,

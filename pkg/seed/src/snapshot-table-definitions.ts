@@ -1,4 +1,5 @@
 import { DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
+import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema';
 import type { PgTable } from 'drizzle-orm/pg-core';
 
 export type SnapshotRow = Record<string, unknown>;
@@ -181,8 +182,11 @@ export const snapshotTableDefinitions = [
     fileName: 'quote.json',
     tableName: 'quote',
     timestampColumns: ['createdAt', 'statusChangedAt', 'updatedAt'],
-    optionalReadColumns: ['hourlyRate'],
-    seedRowDefaults: (row) => ({ hourlyRate: row.kind === 'custom' ? DEFAULT_CUSTOM_HOURLY_RATE : null }),
+    optionalReadColumns: ['cancellationReason', 'hourlyRate'],
+    seedRowDefaults: (row) => ({
+      cancellationReason: row.status === 'cancelled' ? LEGACY_QUOTE_CANCELLATION_REASON : null,
+      hourlyRate: row.kind === 'custom' ? DEFAULT_CUSTOM_HOURLY_RATE : null,
+    }),
     resetSequence: { sequenceName: 'quote_code_seq', columnName: 'code' },
   },
   {

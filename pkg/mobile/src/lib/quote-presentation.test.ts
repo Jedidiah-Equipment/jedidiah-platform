@@ -7,6 +7,7 @@ import {
   getQuoteEditFormValuesValidator,
   isQuoteSort,
   isQuoteStatusFilter,
+  parseQuoteCancellationReason,
   presentQuotePages,
   quoteMetaLine,
   quoteSortDirection,
@@ -94,6 +95,12 @@ function buildQuoteDetail() {
 }
 
 describe('Quote status presentation', () => {
+  it('normalizes the cancellation confirmation reason', () => {
+    expect(parseQuoteCancellationReason('')).toBeNull();
+    expect(parseQuoteCancellationReason('   ')).toBeNull();
+    expect(parseQuoteCancellationReason('  Customer withdrew  ')).toBe('Customer withdrew');
+  });
+
   it('accepts only All and the five real statuses as persisted filters', () => {
     for (const value of ['all', 'draft', 'sent', 'accepted', 'rejected', 'cancelled']) {
       expect(isQuoteStatusFilter(value)).toBe(true);
@@ -180,6 +187,7 @@ describe('Quote edit presentation', () => {
     const validation = getQuoteEditFormValuesValidator('product').safeParse(values);
     expect(validation.success, validation.error?.message).toBe(true);
     expect(toQuoteUpdateInput({ id: quote.id, kind: quote.kind, values })).toEqual({
+      cancellationReason: null,
       id: QUOTE_ID,
       offering: { kind: 'product' },
       salesPersonId: 'auth-user-1',
@@ -195,6 +203,28 @@ describe('Quote edit presentation', () => {
       documentNotes: null,
       selectedAssemblies: [{ type: 'existing', id: SELECTION_ID }],
     });
+  });
+
+  it('requires, maps, and preserves a cancellation reason', () => {
+    const quote = buildQuoteDetail();
+    const cancelledValues = {
+      ...toQuoteEditFormValues(quote),
+      cancellationReason: 'Customer withdrew',
+      status: 'cancelled' as const,
+    };
+
+    expect(
+      getQuoteEditFormValuesValidator('product').safeParse({ ...cancelledValues, cancellationReason: '' }).success,
+    ).toBe(false);
+    expect(toQuoteUpdateInput({ id: quote.id, kind: quote.kind, values: cancelledValues })).toMatchObject({
+      cancellationReason: 'Customer withdrew',
+      status: 'cancelled',
+    });
+    expect(
+      toQuoteEditFormValues(
+        QuoteDetail.parse({ ...quote, cancellationReason: 'Customer withdrew', status: 'cancelled' }),
+      ).cancellationReason,
+    ).toBe('Customer withdrew');
   });
 
   it('round-trips custom work items with nested parts and seeds product edit state from the shared defaults', () => {

@@ -950,7 +950,10 @@ describe('generateQuoteDocument', () => {
     for (const status of ['rejected', 'cancelled'] as const) {
       const [updated] = await context.db
         .update(quotes)
-        .set({ status })
+        .set({
+          cancellationReason: status === 'cancelled' ? 'Test cancellation reason' : null,
+          status,
+        })
         .where(eq(quotes.id, context.quoteId))
         .returning({ id: quotes.id });
       if (!updated) throw new Error('Quote update did not return a row');

@@ -4,6 +4,7 @@ import {
   Customer,
   CustomerCompanyName,
   Price,
+  QuoteCancellationReason,
   QuoteCreateInput,
   type QuoteCreateInput as QuoteCreateInputValue,
   QuoteHourlyRate,
@@ -26,6 +27,7 @@ const CustomerSelection = z.discriminatedUnion('type', [
 
 const QuoteCreateFormValuesShape = z.object({
   basePrice: z.union([z.number(), z.nan()]),
+  cancellationReason: z.string(),
   customer: CustomerSelection.nullable(),
   hourlyRate: z.union([z.number(), z.nan()]),
   kind: QuoteKind,
@@ -84,10 +86,22 @@ export const QuoteCreateFormValues = QuoteCreateFormValuesShape.superRefine((val
   if (!AuthId.safeParse(value.salesPersonId).success) {
     context.addIssue({ code: 'custom', message: 'Select a salesperson', path: ['salesPersonId'] });
   }
+
+  if (value.status === 'cancelled') {
+    const result = QuoteCancellationReason.safeParse(value.cancellationReason);
+    if (!result.success) {
+      context.addIssue({
+        code: 'custom',
+        message: result.error.issues[0]?.message ?? 'Cancellation reason is required',
+        path: ['cancellationReason'],
+      });
+    }
+  }
 });
 
 export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   basePrice: Number.NaN,
+  cancellationReason: '',
   customer: null,
   hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
   kind: 'product',
@@ -113,6 +127,7 @@ export function clearQuoteKindFields(
  */
 export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInputValue {
   return QuoteCreateInput.parse({
+    cancellationReason: value.status === 'cancelled' ? value.cancellationReason : null,
     customer:
       value.customer?.type === 'existing'
         ? { type: 'existing', customerId: value.customer.customer.id }

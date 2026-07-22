@@ -58,6 +58,7 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   });
 
   const kind = useStore(form.store, (state) => state.values.kind);
+  const status = useStore(form.store, (state) => state.values.status);
   const salesPersonId = useStore(form.store, (state) => state.values.salesPersonId);
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
@@ -162,6 +163,18 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
           <form.AppField name="status">
             {(field) => <field.SelectField label="Status" options={QUOTE_STATUS_OPTIONS} />}
           </form.AppField>
+
+          {status === 'cancelled' ? (
+            <form.AppField name="cancellationReason">
+              {(field) => (
+                <field.TextareaField
+                  label="Cancellation reason"
+                  placeholder="Explain why this quote is being cancelled"
+                  rows={4}
+                />
+              )}
+            </form.AppField>
+          ) : null}
         </ScrollView>
 
         <View className="flex-row justify-end gap-2.5 border-t border-border px-5 pb-5 pt-4">

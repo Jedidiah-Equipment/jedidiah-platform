@@ -26,6 +26,7 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
   entityId: ({ row }) => row.id,
   label: ({ row }) => row.code,
   toRecord: ({ row }) => ({
+    cancellationReason: row.cancellationReason,
     customerId: row.customerId,
     depositPercent: row.depositPercent,
     deliveryIncluded: row.deliveryIncluded,

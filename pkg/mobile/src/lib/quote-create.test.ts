@@ -30,6 +30,7 @@ describe('mobile quote creation', () => {
     });
 
     expect(input).toEqual({
+      cancellationReason: null,
       customer: { customerId: '4ffcb2c6-4e69-4108-a6a5-710accee0b48', type: 'existing' },
       deliveryIncluded: true,
       deliveryPrice: 0,
@@ -122,6 +123,17 @@ describe('mobile quote creation', () => {
     expect(result.error?.issues.map(({ message, path }) => ({ message, path }))).toEqual([
       { message: 'Base price is required', path: ['basePrice'] },
     ]);
+  });
+
+  it('does not allow creating a quote as cancelled', () => {
+    const result = QuoteCreateFormValues.safeParse({
+      ...QUOTE_CREATE_DEFAULT_VALUES,
+      customer: existingCustomer,
+      productId: 'f36a4b28-d552-439c-8928-bf6da8aa42b2',
+      salesPersonId: 'sales-user',
+      status: 'cancelled',
+    });
+    expect(result.success).toBe(false);
   });
 
   it('clears fields belonging to the other quote kind', () => {

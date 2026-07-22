@@ -1,3 +1,4 @@
+import { quoteStatusLabels } from '@pkg/domain';
 import { IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,9 +19,9 @@ import {
   clearQuoteKindFields,
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
+  QuoteCreateStatus,
   toQuoteCreateInput,
 } from '@/lib/quote-create';
-import { QUOTE_STATUS_OPTIONS } from '@/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
 
 const KIND_OPTIONS = [
@@ -160,7 +161,15 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
           <form.AppField name="salesPersonId">{(_field) => <SalespersonSelectField />}</form.AppField>
 
           <form.AppField name="status">
-            {(field) => <field.SelectField label="Status" options={QUOTE_STATUS_OPTIONS} />}
+            {(field) => (
+              <field.SelectField
+                label="Status"
+                options={QuoteCreateStatus.options.map((status) => ({
+                  label: quoteStatusLabels[status],
+                  value: status,
+                }))}
+              />
+            )}
           </form.AppField>
         </ScrollView>
 

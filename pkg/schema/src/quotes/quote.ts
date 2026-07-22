@@ -37,6 +37,11 @@ import { QuoteKind, QuoteWorkTitle } from './quote-shared.js';
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
 
+export type QuoteCancellationReason = z.infer<typeof QuoteCancellationReason>;
+export const QuoteCancellationReason = requiredTrimmedText('Cancellation reason is required');
+export const LEGACY_QUOTE_CANCELLATION_REASON =
+  'Reason not recorded (cancelled before cancellation reasons were required).';
+
 export { formatQuoteCode, parseQuoteCodeNumber, QuoteCode, QuoteCodeInput } from '../common/public-code.js';
 export { QuoteKind, QuoteWorkTitle } from './quote-shared.js';
 
@@ -67,6 +72,7 @@ export const QuoteHourlyRate = Price;
 // The product/custom discriminator is a single wire-flat model: `kind`, `productId`, `workTitle`, and
 // `hourlyRate` stay top-level, but each `kind` pins the others so consumers narrow instead of re-guarding.
 const quoteBaseShape = {
+  cancellationReason: QuoteCancellationReason.nullable().default(null),
   id: UUID,
   code: QuoteCode,
   customerId: UUID,
@@ -354,9 +360,34 @@ function validateQuoteDeliveryPricing(
   }
 }
 
+function validateQuoteCancellation(
+  input: { cancellationReason?: string | null | undefined; status: QuoteStatus },
+  context: z.RefinementCtx,
+) {
+  if (input.status === 'cancelled') {
+    if (input.cancellationReason == null) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Cancellation reason is required',
+        path: ['cancellationReason'],
+      });
+    }
+    return;
+  }
+
+  if (input.cancellationReason != null) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Cancellation reason is only allowed for cancelled quotes',
+      path: ['cancellationReason'],
+    });
+  }
+}
+
 export type QuoteCreateInput = z.infer<typeof QuoteCreateInput>;
 export const QuoteCreateInput = z
   .object({
+    cancellationReason: QuoteCancellationReason.nullable().default(null),
     customer: QuoteCustomerInput,
     offering: QuoteOfferingInput,
     salesPersonId: AuthId,
@@ -373,7 +404,8 @@ export const QuoteCreateInput = z
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
   .strict()
-  .superRefine(validateQuoteDeliveryPricing);
+  .superRefine(validateQuoteDeliveryPricing)
+  .superRefine(validateQuoteCancellation);
 
 export type QuoteUpdateOfferingInput = z.infer<typeof QuoteUpdateOfferingInput>;
 export const QuoteUpdateOfferingInput = z.discriminatedUnion('kind', [
@@ -392,6 +424,7 @@ export const QuoteUpdateOfferingInput = z.discriminatedUnion('kind', [
 export type QuoteUpdateInput = z.infer<typeof QuoteUpdateInput>;
 export const QuoteUpdateInput = z
   .object({
+    cancellationReason: QuoteCancellationReason.nullable().default(null),
     id: UUID,
     offering: QuoteUpdateOfferingInput,
     salesPersonId: AuthId,
@@ -408,7 +441,8 @@ export const QuoteUpdateInput = z
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
   })
   .strict()
-  .superRefine(validateQuoteDeliveryPricing);
+  .superRefine(validateQuoteDeliveryPricing)
+  .superRefine(validateQuoteCancellation);
 
 // Partial field update. Every field except `id` is optional; `undefined` means "leave the
 // current value untouched". The merge over the current row happens under the row lock in core, so a
@@ -417,6 +451,7 @@ export const QuoteUpdateInput = z
 export type QuotePatchInput = z.infer<typeof QuotePatchInput>;
 export const QuotePatchInput = z
   .object({
+    cancellationReason: QuoteCancellationReason.optional(),
     id: UUID,
     status: QuoteStatus.optional(),
     salesPersonId: AuthId.optional(),
@@ -427,6 +462,34 @@ export const QuotePatchInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().optional(),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
     validUntil: DateIso.nullable().optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.status === 'cancelled') {
+      if (input.cancellationReason === undefined) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Cancellation reason is required',
+          path: ['cancellationReason'],
+        });
+      }
+      return;
+    }
+
+    if (input.cancellationReason !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Cancellation reason is only allowed when cancelling a quote',
+        path: ['cancellationReason'],
+      });
+    }
+  });
+
+export type QuoteCancelInput = z.infer<typeof QuoteCancelInput>;
+export const QuoteCancelInput = z
+  .object({
+    cancellationReason: QuoteCancellationReason,
+    id: UUID,
   })
   .strict();
 

@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   PriorityQuote,
+  QuoteCancelInput,
   QuoteCreateInput,
   QuoteDetail,
+  QuotePatchInput,
   QuoteProductBayAvailabilityInput,
   QuoteProductBayAvailabilityResult,
   QuoteSummary,
@@ -28,6 +30,22 @@ const baseCreateInput = {
 };
 
 describe('QuoteCreateInput', () => {
+  it('requires a trimmed reason exactly when the quote starts cancelled', () => {
+    expect(() => QuoteCreateInput.parse({ ...baseCreateInput, status: 'cancelled' })).toThrow(
+      'Cancellation reason is required',
+    );
+    expect(
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        cancellationReason: '  Customer withdrew the order  ',
+        status: 'cancelled',
+      }),
+    ).toMatchObject({ cancellationReason: 'Customer withdrew the order', status: 'cancelled' });
+    expect(() =>
+      QuoteCreateInput.parse({ ...baseCreateInput, cancellationReason: 'Customer withdrew the order' }),
+    ).toThrow('Cancellation reason is only allowed for cancelled quotes');
+  });
+
   it('defaults discount and deposit percents to zero', () => {
     expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({
       depositPercent: 0,
@@ -224,6 +242,19 @@ describe('QuoteWorkItemInput', () => {
 });
 
 describe('QuoteUpdateInput', () => {
+  it('requires a reason for cancellation and preserves an existing cancelled reason', () => {
+    expect(() => QuoteUpdateInput.parse({ ...baseUpdateInput(), status: 'cancelled' })).toThrow(
+      'Cancellation reason is required',
+    );
+    expect(
+      QuoteUpdateInput.parse({
+        ...baseUpdateInput(),
+        cancellationReason: '  Superseded by a revised quote  ',
+        status: 'cancelled',
+      }),
+    ).toMatchObject({ cancellationReason: 'Superseded by a revised quote', status: 'cancelled' });
+  });
+
   it('parses a product offering update', () => {
     expect(QuoteUpdateInput.parse(baseUpdateInput())).toMatchObject({
       offering: { kind: 'product' },
@@ -277,6 +308,32 @@ describe('QuoteUpdateInput', () => {
     expect(() => QuoteUpdateInput.parse({ ...baseUpdateInput(), lineItems: [] })).toThrow('Unrecognized key');
     expect(QuoteUpdateInput.parse({ ...baseUpdateInput(), selectedAssemblies: [] })).toMatchObject({
       selectedAssemblies: [],
+    });
+  });
+});
+
+describe('Quote cancellation inputs', () => {
+  it('requires cancellation status and reason to be patched together', () => {
+    const id = '550e8400-e29b-41d4-a716-446655440010';
+
+    expect(() => QuotePatchInput.parse({ id, status: 'cancelled' })).toThrow('Cancellation reason is required');
+    expect(() => QuotePatchInput.parse({ id, cancellationReason: 'Customer withdrew' })).toThrow(
+      'Cancellation reason is only allowed when cancelling a quote',
+    );
+    expect(QuotePatchInput.parse({ id, cancellationReason: '  Customer withdrew  ', status: 'cancelled' })).toEqual({
+      id,
+      cancellationReason: 'Customer withdrew',
+      status: 'cancelled',
+    });
+  });
+
+  it('requires and trims the dedicated cancellation reason', () => {
+    const id = '550e8400-e29b-41d4-a716-446655440010';
+
+    expect(() => QuoteCancelInput.parse({ id, cancellationReason: '   ' })).toThrow('Cancellation reason is required');
+    expect(QuoteCancelInput.parse({ id, cancellationReason: '  Budget withdrawn  ' })).toEqual({
+      id,
+      cancellationReason: 'Budget withdrawn',
     });
   });
 });

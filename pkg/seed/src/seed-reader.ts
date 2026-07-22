@@ -58,7 +58,7 @@ async function readSnapshotRows(db: Db, config: SnapshotTableConfig): Promise<Sn
   }
 }
 
-async function readExistingSnapshotTable(db: Db, config: SnapshotTableConfig): Promise<SnapshotRow[]> {
+export async function readExistingSnapshotTable(db: Db, config: SnapshotTableConfig): Promise<SnapshotRow[]> {
   if (!config.omitReadColumns && !config.optionalReadColumns && !config.readOrderColumn && !config.seedRowDefaults) {
     return (await db.select().from(config.table)) as SnapshotRow[];
   }
@@ -73,18 +73,23 @@ async function readExistingSnapshotTable(db: Db, config: SnapshotTableConfig): P
     return (await (orderColumn ? query.orderBy(asc(orderColumn)) : query)) as SnapshotRow[];
   };
 
-  let rows: SnapshotRow[];
+  const optionalReadColumns = config.optionalReadColumns ?? [];
+  let rows: SnapshotRow[] | undefined;
 
-  try {
-    rows = await readRows();
-  } catch (error) {
-    if (!config.optionalReadColumns?.length || !hasPostgresErrorCode(error, '42703')) {
-      throw error;
+  // Rollout columns are newest-first. Retry by progressively omitting them so a source that only lacks
+  // the newest column still preserves values from older rollout columns instead of defaulting them too.
+  for (let omittedCount = 0; omittedCount <= optionalReadColumns.length; omittedCount += 1) {
+    try {
+      rows = await readRows(optionalReadColumns.slice(0, omittedCount));
+      break;
+    } catch (error) {
+      if (omittedCount === optionalReadColumns.length || !hasPostgresErrorCode(error, '42703')) {
+        throw error;
+      }
     }
-
-    rows = await readRows(config.optionalReadColumns);
   }
 
+  if (!rows) throw new Error(`Unable to read snapshot rows for ${config.tableName}`);
   return config.seedRowDefaults ? rows.map((row, index) => applySeedRowDefaults(config, row, index)) : rows;
 }
 

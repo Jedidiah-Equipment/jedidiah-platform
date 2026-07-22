@@ -639,7 +639,10 @@ describe('cancelled quotes', () => {
     const cancelled = await updateQuote({
       actorUserId: context.salesPerson.id,
       db: context.db,
-      input: buildQuoteUpdateInput(quote, { status: 'cancelled' }),
+      input: buildQuoteUpdateInput(quote, {
+        cancellationReason: 'Customer withdrew the project',
+        status: 'cancelled',
+      }),
     });
 
     const annotated = await updateQuote({
@@ -670,9 +673,9 @@ describe('cancelled quotes', () => {
       updateQuote({
         actorUserId: context.salesPerson.id,
         db: context.db,
-        input: buildQuoteUpdateInput(annotated, { status: 'draft' }),
+        input: buildQuoteUpdateInput(annotated, { cancellationReason: null, status: 'draft' }),
       }),
-    ).rejects.toThrow('Quote is locked because it has been cancelled; status cannot be changed.');
+    ).rejects.toThrow('Quote is locked because it has been cancelled; cancellationReason cannot be changed.');
   });
 
   test('patchQuote can cancel an unlocked quote, keeps lock-editable fields writable, and cannot leave cancelled', async ({
@@ -691,7 +694,7 @@ describe('cancelled quotes', () => {
     const cancelled = await patchQuote({
       actorUserId: context.salesPerson.id,
       db: context.db,
-      input: { id: quote.id, status: 'cancelled' },
+      input: { cancellationReason: 'Customer withdrew the repair', id: quote.id, status: 'cancelled' },
     });
 
     const annotated = await patchQuote({
@@ -742,6 +745,7 @@ describe('listQuotes', () => {
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: QuoteCreateInput.parse({
+        cancellationReason: 'Customer withdrew the project',
         customer: { type: 'existing', customerId: context.customer.id },
         offering: { kind: 'product', productId: context.product.id },
         salesPersonId: context.salesPerson.id,
@@ -769,6 +773,7 @@ describe('listQuotes', () => {
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: QuoteCreateInput.parse({
+        cancellationReason: 'Customer withdrew the project',
         customer: { type: 'existing', customerId: context.customer.id },
         offering: { kind: 'product', productId: context.product.id },
         salesPersonId: context.salesPerson.id,
@@ -1003,10 +1008,16 @@ describe('cancelQuote', () => {
       }),
     });
 
-    await cancelQuote({ actorUserId: context.salesPerson.id, db: context.db, id: quote.id });
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancellationReason: 'Customer withdrew the project',
+      db: context.db,
+      id: quote.id,
+    });
 
     await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
       job: null,
+      cancellationReason: 'Customer withdrew the project',
       status: 'cancelled',
     });
     expect(await context.db.select().from(jobs)).toEqual([]);
@@ -1021,7 +1032,10 @@ describe('cancelQuote', () => {
       expect.objectContaining({
         action: 'updated',
         actorUserId: context.salesPerson.id,
-        changes: expect.objectContaining({ status: { from: 'accepted', to: 'cancelled' } }),
+        changes: expect.objectContaining({
+          cancellationReason: { from: null, to: 'Customer withdrew the project' },
+          status: { from: 'accepted', to: 'cancelled' },
+        }),
       }),
     ]);
   });
@@ -1110,7 +1124,12 @@ describe('cancelQuote', () => {
       },
     ]);
 
-    await cancelQuote({ actorUserId: context.salesPerson.id, db: context.db, id: quote.id });
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancellationReason: 'Customer cancelled after production began',
+      db: context.db,
+      id: quote.id,
+    });
 
     const [cancelledJob] = await context.db.select().from(jobs).where(eq(jobs.id, job.id));
     expect(cancelledJob?.cancelledAt).toBeInstanceOf(Date);
@@ -1157,7 +1176,12 @@ describe('cancelQuote', () => {
     });
 
     await expect(
-      cancelQuote({ actorUserId: context.salesPerson.id, db: context.db, id: quote.id }),
+      cancelQuote({
+        actorUserId: context.salesPerson.id,
+        cancellationReason: 'Duplicate cancellation attempt',
+        db: context.db,
+        id: quote.id,
+      }),
     ).rejects.toMatchObject({ code: 'quote.already_cancelled' });
   });
 });
@@ -1357,6 +1381,7 @@ async function createQuote(
   const [quote] = await db
     .insert(quotes)
     .values({
+      cancellationReason: status === 'cancelled' ? 'Test cancellation reason' : null,
       customerId,
       plannedDeliveryDate,
       preferredDeliveryDate,
@@ -1403,6 +1428,7 @@ async function createBay(
 
 function buildQuoteUpdateInput(quote: QuoteDetail, overrides: Partial<QuoteUpdateInput> = {}): QuoteUpdateInput {
   return QuoteUpdateInput.parse({
+    cancellationReason: quote.cancellationReason,
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
     depositPercent: quote.depositPercent,

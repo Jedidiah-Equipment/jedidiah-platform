@@ -6,6 +6,7 @@ import {
   DateOnlyIsoString,
   getQuoteDeliveryPricingError,
   Price,
+  QuoteCancellationReason,
   QuoteCreateInput,
   QuoteDepositPercent,
   type QuoteDetail,
@@ -29,6 +30,7 @@ export const CustomerMode = z.enum(['existing', 'inline']);
 
 const QuoteCreateBasePrice = z.union([Price, z.nan()]);
 const QuoteCreateHourlyRate = z.union([QuoteHourlyRate, z.nan()]);
+export const QuoteCreateStatus = QuoteStatus.exclude(['cancelled']);
 
 const QuoteCreateFormValuesShape = z.object({
   customerId: z.string(),
@@ -40,7 +42,7 @@ const QuoteCreateFormValuesShape = z.object({
   productId: z.string(),
   rangeId: emptyStringOr(UUID),
   salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
-  status: QuoteStatus,
+  status: QuoteCreateStatus,
   workTitle: z.string(),
 });
 type QuoteCreateFormSelectionValues = z.infer<typeof QuoteCreateFormValuesShape>;
@@ -51,6 +53,7 @@ export type QuoteCreateFormValues = z.infer<typeof QuoteCreateFormValues>;
 export type QuoteFormValues = z.infer<typeof QuoteFormValues>;
 export const QuoteFormValues = z
   .object({
+    cancellationReason: z.string(),
     depositPercent: QuoteDepositPercent,
     deliveryIncluded: z.boolean(),
     deliveryPrice: Price,
@@ -97,10 +100,13 @@ export function getQuoteFormValuesValidator(kind: QuoteKind) {
         path: ['workItems'],
       });
     }
+
+    refineQuoteCancellationReason(value, context);
   });
 }
 
 export const emptyQuoteFormValues: QuoteFormValues = {
+  cancellationReason: '',
   depositPercent: 0,
   deliveryIncluded: true,
   deliveryPrice: 0,
@@ -140,6 +146,7 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
 export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
   return {
     basePrice: initialQuote.quotedBasePrice,
+    cancellationReason: initialQuote.cancellationReason ?? '',
     ...toQuoteWorkItemFormState(initialQuote),
     depositPercent: initialQuote.depositPercent,
     deliveryIncluded: initialQuote.deliveryIncluded,
@@ -167,6 +174,7 @@ export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
  */
 export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInput {
   return QuoteCreateInput.parse({
+    cancellationReason: null,
     customer:
       value.customerMode === 'existing'
         ? { type: 'existing', customerId: value.customerId }
@@ -195,6 +203,7 @@ export function toQuoteUpdateInput({
   value: QuoteFormValues;
 }): QuoteUpdateInput {
   return QuoteUpdateInput.parse({
+    cancellationReason: value.status === 'cancelled' ? value.cancellationReason : null,
     id,
     offering:
       kind === 'product'
@@ -275,6 +284,22 @@ function refineQuoteOfferingSelection(
       code: 'custom',
       message: 'Hourly rate is required',
       path: ['hourlyRate'],
+    });
+  }
+}
+
+function refineQuoteCancellationReason(
+  value: { cancellationReason: string; status: QuoteStatus },
+  context: z.RefinementCtx,
+) {
+  if (value.status !== 'cancelled') return;
+
+  const result = QuoteCancellationReason.safeParse(value.cancellationReason);
+  if (!result.success) {
+    context.addIssue({
+      code: 'custom',
+      message: result.error.issues[0]?.message ?? 'Cancellation reason is required',
+      path: ['cancellationReason'],
     });
   }
 }

@@ -24,6 +24,8 @@ const CustomerSelection = z.discriminatedUnion('type', [
   z.object({ companyName: z.string(), type: z.literal('inline') }),
 ]);
 
+export const QuoteCreateStatus = QuoteStatus.exclude(['cancelled']);
+
 const QuoteCreateFormValuesShape = z.object({
   basePrice: z.union([z.number(), z.nan()]),
   customer: CustomerSelection.nullable(),
@@ -32,7 +34,7 @@ const QuoteCreateFormValuesShape = z.object({
   productId: z.string(),
   rangeId: z.string(),
   salesPersonId: z.string(),
-  status: QuoteStatus,
+  status: QuoteCreateStatus,
   workTitle: z.string(),
 });
 
@@ -113,6 +115,7 @@ export function clearQuoteKindFields(
  */
 export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInputValue {
   return QuoteCreateInput.parse({
+    cancellationReason: null,
     customer:
       value.customer?.type === 'existing'
         ? { type: 'existing', customerId: value.customer.customer.id }

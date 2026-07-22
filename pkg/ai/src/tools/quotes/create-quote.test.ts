@@ -81,6 +81,36 @@ function createContext(): AiContext {
 }
 
 describe('createQuote contract', () => {
+  test('requires and forwards a reason when creating a cancelled Quote', () => {
+    expect(() =>
+      CreateQuoteInput.parse({
+        customer: { customerId: CUSTOMER_ID, type: 'existing' },
+        offering: { kind: 'product', productId: PRODUCT_ID },
+        status: 'cancelled',
+      }),
+    ).toThrow('Cancellation reason is required');
+    expect(() =>
+      CreateQuoteInput.parse({
+        cancellationReason: '   ',
+        customer: { customerId: CUSTOMER_ID, type: 'existing' },
+        offering: { kind: 'product', productId: PRODUCT_ID },
+        status: 'cancelled',
+      }),
+    ).toThrow('Cancellation reason is required');
+
+    const input = CreateQuoteInput.parse({
+      cancellationReason: '  Customer withdrew the project  ',
+      customer: { customerId: CUSTOMER_ID, type: 'existing' },
+      offering: { kind: 'product', productId: PRODUCT_ID },
+      status: 'cancelled',
+    });
+
+    expect(toCoreQuoteCreateInput(input, 'test-user-id')).toMatchObject({
+      cancellationReason: 'Customer withdrew the project',
+      status: 'cancelled',
+    });
+  });
+
   test('defaults the hourly rate for a Custom Quote when the tool input omits it', () => {
     const input = CreateQuoteInput.parse({
       customer: { customerId: CUSTOMER_ID, type: 'existing' },

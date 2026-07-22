@@ -34,7 +34,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useCan } from '@/hooks/use-access.js';
-
+import { getQuoteCancellationDialogCopy, QuoteCancellationDialog } from '../QuoteCancellationAction.js';
 import { getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput } from '../types.js';
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
 import { QuoteDocumentsSection } from './QuoteDocumentsSection.js';
@@ -57,6 +57,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
   const salespeopleOptions = useSalesPersonOptions();
   const auditAccess = useCan('audit:read');
   const [generationWarnings, setGenerationWarnings] = useState<QuoteDocumentGenerationWarning[]>([]);
+  const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const quoteAuditFilters = useMemo(
     () => ({
       entityIds: [quote.id],
@@ -76,6 +77,13 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
   return (
     <form.AppForm>
       <form {...formProps} className="grid gap-4">
+        {quote.status === 'cancelled' ? (
+          <Alert>
+            <IconAlertTriangle />
+            <AlertTitle>Cancellation reason</AlertTitle>
+            <AlertDescription>{quote.cancellationReason}</AlertDescription>
+          </Alert>
+        ) : null}
         <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
         <FieldGroup className="gap-6">
           <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -115,6 +123,13 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                             label="Status"
                             disabled={isLocked}
                             onValueCommit={autosave.commit}
+                            onValueSelect={(value) => {
+                              const status = QuoteStatus.parse(value);
+                              if (status !== 'cancelled') return;
+
+                              setCancellationDialogOpen(true);
+                              return false;
+                            }}
                             options={QuoteStatus.options.map((status) => ({
                               label: quoteStatusLabels[status],
                               value: status,
@@ -345,6 +360,18 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
           </div>
         </FieldGroup>
       </form>
+      <QuoteCancellationDialog
+        copy={getQuoteCancellationDialogCopy(quote.job)}
+        isPending={false}
+        onConfirm={(cancellationReason) => {
+          form.setFieldValue('cancellationReason', cancellationReason);
+          form.setFieldValue('status', 'cancelled');
+          setCancellationDialogOpen(false);
+          autosave.commit();
+        }}
+        onOpenChange={setCancellationDialogOpen}
+        open={cancellationDialogOpen}
+      />
     </form.AppForm>
   );
 };

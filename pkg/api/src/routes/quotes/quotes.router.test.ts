@@ -109,6 +109,7 @@ describe('quotes.create', () => {
     const caller = context.createCaller(mockSession('sales'));
 
     const created = await caller.quotes.create({
+      cancellationReason: 'Customer withdrew the order',
       customer: {
         type: 'inline',
         companyName: 'Cancelled Customer',
@@ -122,10 +123,46 @@ describe('quotes.create', () => {
     });
 
     expect(created).toMatchObject({
+      cancellationReason: 'Customer withdrew the order',
       customerCompanyName: 'Cancelled Customer',
       depositPercent: 0,
       discountPercent: 0,
       status: 'cancelled',
+    });
+  });
+
+  test('rejects missing or blank reasons across cancellation inputs', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const quote = await salesCaller.quotes.create({
+      customer: { type: 'inline', companyName: 'Cancellation Validation Customer' },
+      documentNotes: null,
+      notes: null,
+      offering: productOffering(context.product.id),
+      salesPersonId: 'test-user-id',
+      status: 'draft',
+      validUntil: null,
+    });
+
+    await expect(
+      salesCaller.quotes.create({
+        customer: { type: 'inline', companyName: 'Missing Reason Customer' },
+        documentNotes: null,
+        notes: null,
+        offering: productOffering(context.product.id),
+        salesPersonId: 'test-user-id',
+        status: 'cancelled',
+        validUntil: null,
+      } as never),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(
+      salesCaller.quotes.update({ ...toUpdateInput(quote), status: 'cancelled' } as never),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(
+      context.createCaller(mockSession('admin')).quotes.cancel({ cancellationReason: '   ', id: quote.id }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(salesCaller.quotes.get({ id: quote.id })).resolves.toMatchObject({
+      cancellationReason: null,
+      status: 'draft',
     });
   });
 
@@ -293,7 +330,9 @@ describe('quotes.create', () => {
       validUntil: null,
     });
 
-    await context.createCaller(mockSession('admin')).quotes.cancel({ id: quote.id });
+    await context
+      .createCaller(mockSession('admin'))
+      .quotes.cancel({ id: quote.id, cancellationReason: 'Customer withdrew the order' });
 
     await expect(salesCaller.quotes.get({ id: quote.id })).resolves.toMatchObject({ status: 'cancelled' });
   });
@@ -310,13 +349,16 @@ describe('quotes.create', () => {
       validUntil: null,
     });
 
-    await expect(salesCaller.quotes.cancel({ id: quote.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      salesCaller.quotes.cancel({ id: quote.id, cancellationReason: 'Crafted cancellation' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(salesCaller.quotes.get({ id: quote.id })).resolves.toMatchObject({ status: 'accepted' });
   });
 
   test('maps repeated cancellation to a stable bad-request code', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const quote = await salesCaller.quotes.create({
+      cancellationReason: 'Customer withdrew the order',
       customer: { type: 'inline', companyName: 'Already Cancelled Customer' },
       notes: null,
       documentNotes: null,
@@ -326,7 +368,11 @@ describe('quotes.create', () => {
       validUntil: null,
     });
 
-    await expect(context.createCaller(mockSession('admin')).quotes.cancel({ id: quote.id })).rejects.toMatchObject({
+    await expect(
+      context
+        .createCaller(mockSession('admin'))
+        .quotes.cancel({ id: quote.id, cancellationReason: 'Duplicate cancellation attempt' }),
+    ).rejects.toMatchObject({
       appCode: 'quote.already_cancelled',
       code: 'BAD_REQUEST',
     });
@@ -446,6 +492,7 @@ describe('quotes.create', () => {
 
     const updated = await caller.quotes.update({
       ...toUpdateInput(created),
+      cancellationReason: 'Customer withdrew the order',
       notes: 'Editable after sent',
       status: 'cancelled',
     });
@@ -1069,6 +1116,7 @@ describe('quotes.list', () => {
     });
     const cancelledQuote = await salesCaller.quotes.update({
       ...toUpdateInput(createdCancelledQuote),
+      cancellationReason: 'Customer withdrew the order',
       status: 'cancelled',
     });
     const job = await adminCaller.jobs.create({
@@ -1826,6 +1874,7 @@ describe('quotes.generateDocument', () => {
     const created = await createReadyQuote(salesCaller, context.product.id);
     const cancelled = await salesCaller.quotes.update({
       ...toUpdateInput(created),
+      cancellationReason: 'Customer withdrew the order',
       status: 'cancelled',
     });
 
@@ -2024,6 +2073,7 @@ describe('jobs.create with quote links', () => {
     const created = await createReadyQuote(salesCaller, context.product.id);
     const cancelled = await salesCaller.quotes.update({
       ...toUpdateInput(created),
+      cancellationReason: 'Customer withdrew the order',
       status: 'cancelled',
     });
 
@@ -2108,6 +2158,7 @@ async function createNamedQuote(
   },
 ) {
   return caller.quotes.create({
+    cancellationReason: status === 'cancelled' ? 'Test cancellation reason' : null,
     customer: {
       type: 'inline',
       companyName: customerCompanyName,
@@ -2133,6 +2184,7 @@ function productOffering(productId: string) {
 
 function toUpdateInput(quote: QuoteDetail) {
   return {
+    cancellationReason: quote.cancellationReason,
     id: quote.id,
     offering:
       quote.kind === 'custom'

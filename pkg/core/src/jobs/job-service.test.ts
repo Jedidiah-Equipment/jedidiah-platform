@@ -2953,6 +2953,7 @@ async function createQuote(
   const [quote] = await db
     .insert(quotes)
     .values({
+      cancellationReason: status === 'cancelled' ? 'Test cancellation reason' : null,
       customerId: customer.id,
       productId,
       quotedBasePrice: 1_000,
@@ -2997,6 +2998,7 @@ async function createCustomQuote(
   const [quote] = await db
     .insert(quotes)
     .values({
+      cancellationReason: status === 'cancelled' ? 'Test cancellation reason' : null,
       customerId: customer.id,
       hourlyRate: 850,
       kind: 'custom',

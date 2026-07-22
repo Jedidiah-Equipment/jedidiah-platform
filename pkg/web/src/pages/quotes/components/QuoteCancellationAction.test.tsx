@@ -2,7 +2,12 @@ import { QuoteLinkedJob } from '@pkg/schema';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { getQuoteCancellationDialogCopy, QuoteCancellationAction } from './QuoteCancellationAction.js';
+import {
+  getQuoteCancellationDialogCopy,
+  QuoteCancellationAction,
+  QuoteCancellationConfirmButton,
+  QuoteCancellationReasonField,
+} from './QuoteCancellationAction.js';
 
 const job = QuoteLinkedJob.parse({
   jobCode: 'JOB-01042',
@@ -71,5 +76,28 @@ describe('QuoteCancellationAction', () => {
       description: 'This permanently cancels the quote. This cannot be undone.',
       triggerLabel: 'Cancel Quote',
     });
+  });
+
+  it('renders the required reason control and a disabled confirmation while blank', () => {
+    const html = renderToStaticMarkup(
+      <>
+        <QuoteCancellationReasonField disabled={false} onChange={vi.fn()} reason="" />
+        <QuoteCancellationConfirmButton confirmLabel="Cancel Quote" isPending={false} onConfirm={vi.fn()} reason="" />
+      </>,
+    );
+
+    expect(html).toContain('Cancellation reason');
+    expect(html).toContain('<textarea');
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Cancel Quote<\/button>/);
+
+    const validConfirmation = renderToStaticMarkup(
+      <QuoteCancellationConfirmButton
+        confirmLabel="Cancel Quote"
+        isPending={false}
+        onConfirm={vi.fn()}
+        reason="Customer withdrew"
+      />,
+    );
+    expect(validConfirmation).not.toContain('disabled=""');
   });
 });

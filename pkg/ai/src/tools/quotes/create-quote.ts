@@ -11,6 +11,7 @@ import {
   DateIsoString,
   DateOnlyIsoString,
   Price,
+  QuoteCancellationReason,
   QuoteDepositPercent,
   type QuoteDetail,
   QuoteDiscountPercent,
@@ -64,6 +65,9 @@ const CreateQuoteOfferingInput = z.discriminatedUnion('kind', [
 export type CreateQuoteInput = z.infer<typeof CreateQuoteInput>;
 export const CreateQuoteInput = z
   .object({
+    cancellationReason: QuoteCancellationReason.nullable()
+      .default(null)
+      .describe('Required when status is cancelled; explain why the Quote is being cancelled.'),
     customer: CreateQuoteCustomerInput.describe(
       'Use an existing Customer UUID from findCustomers, or inline Customer details to create one with the Quote.',
     ),
@@ -90,7 +94,22 @@ export const CreateQuoteInput = z
     status: QuoteStatus.default('draft'),
     validUntil: DateIsoString.nullable().default(null),
   })
-  .strict();
+  .strict()
+  .superRefine((input, context) => {
+    if (input.status === 'cancelled' && input.cancellationReason == null) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Cancellation reason is required',
+        path: ['cancellationReason'],
+      });
+    } else if (input.status !== 'cancelled' && input.cancellationReason != null) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Cancellation reason is only allowed for cancelled quotes',
+        path: ['cancellationReason'],
+      });
+    }
+  });
 
 export type CreateQuoteResponse = SharedQuoteDetailResponseType;
 export const CreateQuoteResponse = SharedQuoteDetailResponse;
@@ -116,6 +135,7 @@ export const createQuoteDefinition = {
     'Create one Product Quote or Custom Quote when the user explicitly asks for it.',
     'Use findProducts to resolve a Product Quote productId and findCustomers to resolve an existing Customer; use an inline Customer when the company is new.',
     'Omit salesPersonId to assign the acting user. Do not choose another salesperson unless the user explicitly requests it.',
+    'A cancelled Quote always requires cancellationReason; omit it for every other status.',
     'Returns the created Quote details and permission-safe relationship links without thumbnail data.',
   ].join('\n'),
   inputSchema: CreateQuoteInput,

@@ -117,6 +117,7 @@ function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): 
 
 function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
   return {
+    cancellationReason: '',
     depositPercent: 30,
     deliveryIncluded: true,
     deliveryPrice: 0,
@@ -142,6 +143,7 @@ describe('toQuoteFormValues', () => {
     const values = toQuoteFormValues(buildQuoteDetail());
 
     expect(values.notes).toBe('Some notes');
+    expect(values.cancellationReason).toBe('');
     expect(values.documentNotes).toBe('30 days');
     expect(values.depositPercent).toBe(30);
     expect(values.validUntil).toBe('2026-01-01');
@@ -263,6 +265,10 @@ describe('QuoteCreateFormValues', () => {
       ).success,
     ).toBe(false);
   });
+
+  it('does not allow creating a quote as cancelled', () => {
+    expect(QuoteCreateFormValues.safeParse({ ...buildCreateFormValues(), status: 'cancelled' }).success).toBe(false);
+  });
 });
 
 describe('toQuoteCreateInput', () => {
@@ -279,6 +285,7 @@ describe('toQuoteCreateInput', () => {
     expect(input.plannedDeliveryDate).toBeNull();
     expect(input.notes).toBeNull();
     expect(input.documentNotes).toBeNull();
+    expect(input.cancellationReason).toBeNull();
     expect(input.offering).toEqual({ kind: 'product', productId: PRODUCT_ID });
     expect(input.selectedAssemblies).toEqual([]);
   });
@@ -296,12 +303,6 @@ describe('toQuoteCreateInput', () => {
       phone: null,
       address: null,
     });
-  });
-
-  it('preserves cancelled status in create submissions', () => {
-    const input = toQuoteCreateInput(buildCreateFormValues({ status: 'cancelled' }));
-
-    expect(input.status).toBe('cancelled');
   });
 
   it('builds the custom offering from work title and base price', () => {
@@ -377,10 +378,20 @@ describe('toQuoteUpdateInput', () => {
     const input = toQuoteUpdateInput({
       id: QUOTE_ID,
       kind: 'product',
-      value: buildFormValues({ status: 'cancelled' }),
+      value: buildFormValues({ cancellationReason: 'Customer withdrew', status: 'cancelled' }),
     });
 
     expect(input.status).toBe('cancelled');
+    expect(input.cancellationReason).toBe('Customer withdrew');
+  });
+
+  it('maps a cancelled reason into read-only form state and requires it at the edit boundary', () => {
+    const quote = buildQuoteDetail({ cancellationReason: 'Customer withdrew', status: 'cancelled' });
+
+    expect(toQuoteFormValues(quote).cancellationReason).toBe('Customer withdrew');
+    expect(getQuoteFormValuesValidator('product').safeParse(buildFormValues({ status: 'cancelled' })).success).toBe(
+      false,
+    );
   });
 
   it('emits custom quote offering facts without conflating blank work titles with omission', () => {

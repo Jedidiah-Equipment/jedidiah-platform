@@ -395,6 +395,7 @@ async function createQuoteRows(
     .insert(quotes)
     .values(
       statuses.map((status) => ({
+        cancellationReason: status === 'cancelled' ? 'Test cancellation reason' : null,
         customerId,
         ...(createdAt ? { createdAt, updatedAt: createdAt } : {}),
         ...(statusChangedAt ? { statusChangedAt } : {}),

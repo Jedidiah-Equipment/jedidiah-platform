@@ -25,6 +25,7 @@ import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf';
 import {
   CustomerListInput,
   ProductListInput,
+  QuoteCancelInput,
   QuoteCreateInput,
   QuoteDocumentGenerationInput,
   QuoteListInput,
@@ -96,9 +97,9 @@ export const quotesRouter = router({
     ),
 
   cancel: authorizedProcedure('quote:cancel')
-    .input(z.object({ id: UUID }))
+    .input(QuoteCancelInput)
     .mutation(({ ctx, input }) =>
-      mapQuoteErrors(() => cancelQuote({ actorUserId: ctx.session.user.id, db: ctx.db, id: input.id })),
+      mapQuoteErrors(() => cancelQuote({ actorUserId: ctx.session.user.id, db: ctx.db, ...input })),
     ),
 
   update: authorizedProcedure('quote:update')

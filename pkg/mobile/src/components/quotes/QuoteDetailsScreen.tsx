@@ -171,6 +171,9 @@ function QuoteEditor({
             <AutosaveStatus canRetry={canUpdate} onRetry={() => void autosave.retry()} state={autosave.state} />
             {activeTab === 'details' ? (
               <>
+                {quote.status === 'cancelled' ? (
+                  <CancellationReasonBanner cancellationReason={quote.cancellationReason} />
+                ) : null}
                 {!canUpdate ? (
                   <InfoBanner message="You have read-only access. Quote fields cannot be changed." />
                 ) : isLocked ? (
@@ -416,7 +419,8 @@ function QuoteEditor({
       <QuoteSummaryDrawer onClose={() => setSummaryOpen(false)} open={summaryOpen} quote={quote} summary={summary} />
       <QuoteCancellationConfirmation
         onClose={() => setCancelConfirmationOpen(false)}
-        onConfirm={() => {
+        onConfirm={(cancellationReason) => {
+          form.setFieldValue('cancellationReason', cancellationReason);
           form.setFieldValue('status', 'cancelled');
           setCancelConfirmationOpen(false);
           autosave.commit();
@@ -503,6 +507,17 @@ function InfoBanner({ message }: { message: string }) {
   return (
     <View className="rounded-xl border border-border bg-muted px-4 py-3">
       <Text className="text-xs text-muted-foreground">{message}</Text>
+    </View>
+  );
+}
+
+function CancellationReasonBanner({ cancellationReason }: { cancellationReason: string | null }) {
+  return (
+    <View className="gap-1 rounded-xl border border-warning bg-warning/10 px-4 py-3">
+      <Text className="text-xs text-foreground" weight="bold">
+        Cancellation reason
+      </Text>
+      <Text className="text-xs text-muted-foreground">{cancellationReason}</Text>
     </View>
   );
 }

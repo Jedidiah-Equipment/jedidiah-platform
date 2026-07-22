@@ -61,7 +61,17 @@ type QuoteCollectionPatch = {
   workItemsChanged: boolean;
 };
 
-export async function cancelQuote({ actorUserId, db, id }: { actorUserId: AuthId; db: Db; id: UUID }): Promise<void> {
+export async function cancelQuote({
+  actorUserId,
+  cancellationReason,
+  db,
+  id,
+}: {
+  actorUserId: AuthId;
+  cancellationReason: string;
+  db: Db;
+  id: UUID;
+}): Promise<void> {
   await db.transaction(async (tx) => {
     const [before] = await tx.select().from(quotes).where(eq(quotes.id, id)).for('update');
 
@@ -78,7 +88,13 @@ export async function cancelQuote({ actorUserId, db, id }: { actorUserId: AuthId
       listQuoteWorkItems({ quoteId: before.id, tx }),
     ]);
     const now = new Date();
-    const after = { ...before, status: 'cancelled' as const, statusChangedAt: now, updatedAt: now };
+    const after = {
+      ...before,
+      cancellationReason,
+      status: 'cancelled' as const,
+      statusChangedAt: now,
+      updatedAt: now,
+    };
     const changes = diffAuditUpdate(
       quoteAuditDescriptor,
       { row: before, selectedAssemblies, workItems },
@@ -89,7 +105,7 @@ export async function cancelQuote({ actorUserId, db, id }: { actorUserId: AuthId
 
     const [row] = await tx
       .update(quotes)
-      .set({ status: 'cancelled', statusChangedAt: now, updatedAt: now })
+      .set({ cancellationReason, status: 'cancelled', statusChangedAt: now, updatedAt: now })
       .where(eq(quotes.id, before.id))
       .returning();
 
@@ -128,6 +144,7 @@ export async function createQuote({
     const [row] = await tx
       .insert(quotes)
       .values({
+        cancellationReason: input.cancellationReason,
         customerId,
         depositPercent: input.depositPercent,
         deliveryIncluded: input.deliveryIncluded,
@@ -216,6 +233,7 @@ export async function updateQuote({
     await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
 
     const patch = {
+      cancellationReason: input.cancellationReason,
       customerId: before.customerId,
       depositPercent: input.depositPercent,
       deliveryIncluded: input.deliveryIncluded,
@@ -342,6 +360,7 @@ export async function patchQuote({
 
     // `undefined` keeps the current value; an explicit `null` clears a nullable field.
     const patch = {
+      cancellationReason: input.cancellationReason !== undefined ? input.cancellationReason : before.cancellationReason,
       documentNotes: input.documentNotes !== undefined ? input.documentNotes : before.documentNotes,
       notes: input.notes !== undefined ? input.notes : before.notes,
       plannedDeliveryDate:

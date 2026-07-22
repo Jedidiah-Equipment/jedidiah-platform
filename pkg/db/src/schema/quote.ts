@@ -36,6 +36,7 @@ export const quotes = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'restrict' }),
     status: text('status').notNull().default('draft').$type<QuoteStatus>(),
+    cancellationReason: text('cancellation_reason'),
     statusChangedAt: timestamp('status_changed_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     discountPercent: numeric('discount_percent', { mode: 'number', precision: 5, scale: 2 }).notNull().default(0),
     depositPercent: numeric('deposit_percent', { mode: 'number', precision: 5, scale: 2 }).notNull().default(0),
@@ -59,6 +60,17 @@ export const quotes = pgTable(
     check('quote_deposit_percent_not_above_100', sql`${table.depositPercent} <= 100`),
     check('quote_delivery_price_nonnegative', sql`${table.deliveryPrice} >= 0`),
     check('quote_delivery_inclusion_matches_price', sql`${table.deliveryIncluded} = (${table.deliveryPrice} = 0)`),
+    check(
+      'quote_cancellation_reason_shape',
+      sql`(
+        ${table.status} = 'cancelled'
+        and ${table.cancellationReason} is not null
+        and length(trim(${table.cancellationReason})) > 0
+      ) or (
+        ${table.status} <> 'cancelled'
+        and ${table.cancellationReason} is null
+      )`,
+    ),
     check(
       'quote_hourly_rate_shape',
       sql`(

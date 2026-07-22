@@ -189,7 +189,12 @@ describe('quotes.create', () => {
       },
       { name: 'Final inspection', hours: 0, parts: [] },
     ]);
-    expect(priceQuote(created)).toMatchObject({ subtotal: 2430.5, total: 2795.08, workItemTotal: 1430.5 });
+    expect(
+      priceQuote({
+        ...created,
+        workItems: { hourlyRate: created.hourlyRate, items: created.workItems },
+      }),
+    ).toMatchObject({ subtotal: 2430.5, total: 2795.08, workItemTotal: 1430.5 });
     await expect(caller.quotes.get({ id: created.id })).resolves.toMatchObject({ workItems: created.workItems });
     await expect(context.db.select().from(quoteWorkItems).orderBy(quoteWorkItems.position)).resolves.toMatchObject([
       { name: 'Strip pump', position: 0 },

@@ -21,10 +21,10 @@ describe('renderQuoteDocumentPdf', () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
       workItems: [
-        { amount: 1_275, hourlyRate: 'R 850.00/hour', hours: '1.5 hours', name: 'Labour-only rebuild' },
-        { amount: 250, name: 'Parts-only repair', parts: ['Internal seal kit'] },
+        { amount: 1_275, name: 'Labour-only rebuild' },
+        { amount: 250, name: 'Parts-only repair' },
         { amount: 0, name: 'Included inspection' },
-      ] as unknown as QuoteDocumentModel['workItems'],
+      ],
     };
     const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
 
@@ -34,9 +34,6 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText).toContain('R 1 275.00');
     expect(renderedText).toContain('R 250.00');
     expect(renderedText).toContain('R 0.00');
-    expect(renderedText).not.toContain('1.5 hours');
-    expect(renderedText).not.toContain('R 850.00/hour');
-    expect(renderedText).not.toContain('Internal seal kit');
   });
 });
 

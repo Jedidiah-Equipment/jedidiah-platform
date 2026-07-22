@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, priceQuote } from '@pkg/domain';
+import { formatCurrency, formatDate, pricePersistedQuote } from '@pkg/domain';
 import type { QuoteSummary } from '@pkg/schema';
 import { IconAlertTriangle, IconArrowsSort, IconFilter, IconPlus } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
@@ -163,7 +163,7 @@ function QuoteCard({ quote, priority, onPress }: { quote: QuoteSummary; priority
   } else if (quote.product) {
     meta = quoteMetaLine({ kind: 'product', product: quote.product, selectedAssemblies: quote.selectedAssemblies });
   }
-  const total = priceQuote(quote).total;
+  const total = pricePersistedQuote(quote).total;
   const salespersonName = quote.salesPersonName ?? 'Not assigned';
 
   return (

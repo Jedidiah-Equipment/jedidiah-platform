@@ -17,6 +17,7 @@ export const DEFAULT_CUSTOM_HOURLY_RATE = 850;
 
 type WorkItemPartPricingInput = { quantity: number; unitPrice: number };
 type WorkItemPricingInput = { hours: number; parts: readonly WorkItemPartPricingInput[] };
+type WorkItemPricingBundle = { hourlyRate: number; items: readonly WorkItemPricingInput[] };
 
 export function validateDiscount({ discountPercent }: { discountPercent: number }): QuotePricingResult {
   if (discountPercent < 0) {
@@ -32,19 +33,17 @@ export function validateDiscount({ discountPercent }: { discountPercent: number 
 
 function computeQuoteDiscountAmount({
   discountPercent,
-  hourlyRate,
   quotedBasePrice,
   selectedAssemblyPrices = [],
-  workItems = [],
+  workItems,
 }: {
   discountPercent: number;
-  hourlyRate?: number | null | undefined;
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
-  workItems?: readonly WorkItemPricingInput[];
+  workItems?: WorkItemPricingBundle | undefined;
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
-  const workItemTotal = computeQuoteWorkItemsTotal({ hourlyRate, workItems });
+  const workItemTotal = computeQuoteWorkItemsTotal(workItems);
   const discountableSubtotal = Math.max(0, quotedBasePrice + selectedAssemblyTotal + workItemTotal);
 
   return roundCurrency(discountableSubtotal * (discountPercent / 100));
@@ -68,14 +67,13 @@ export function computeWorkItemTotal(input: {
   );
 }
 
-function computeQuoteWorkItemsTotal({
-  hourlyRate,
-  workItems,
-}: {
-  hourlyRate: number | null | undefined;
-  workItems: readonly WorkItemPricingInput[];
-}): number {
-  return workItems.reduce((total, item) => total + computeWorkItemTotal({ ...item, hourlyRate: hourlyRate ?? 0 }), 0);
+function computeQuoteWorkItemsTotal(workItems: WorkItemPricingBundle | undefined): number {
+  if (!workItems) return 0;
+
+  return workItems.items.reduce(
+    (total, item) => total + computeWorkItemTotal({ ...item, hourlyRate: workItems.hourlyRate }),
+    0,
+  );
 }
 
 export function computeAdditionalDeliveryPrice({
@@ -96,24 +94,21 @@ function computeQuoteTotal({
   deliveryIncluded = true,
   deliveryPrice = 0,
   discountPercent,
-  hourlyRate,
   quotedBasePrice,
   selectedAssemblyPrices = [],
-  workItems = [],
+  workItems,
 }: {
   deliveryIncluded?: boolean;
   deliveryPrice?: number;
   discountPercent: number;
-  hourlyRate?: number | null | undefined;
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
-  workItems?: readonly WorkItemPricingInput[];
+  workItems?: WorkItemPricingBundle | undefined;
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
-  const workItemTotal = computeQuoteWorkItemsTotal({ hourlyRate, workItems });
+  const workItemTotal = computeQuoteWorkItemsTotal(workItems);
   const discountAmount = computeQuoteDiscountAmount({
     discountPercent,
-    hourlyRate,
     quotedBasePrice,
     selectedAssemblyPrices,
     workItems,
@@ -130,10 +125,15 @@ export type QuotePricingFacts = {
   deliveryIncluded?: boolean;
   deliveryPrice?: number;
   discountPercent: number;
-  hourlyRate?: number | null | undefined;
   quotedBasePrice: number;
-  workItems?: readonly WorkItemPricingInput[];
+  workItems?: WorkItemPricingBundle | undefined;
 };
+
+type PersistedQuotePricingFacts = Omit<QuotePricingFacts, 'workItems'> &
+  (
+    | { hourlyRate: number; kind: 'custom'; workItems: readonly WorkItemPricingInput[] }
+    | { hourlyRate?: never; kind: 'product'; workItems?: never }
+  );
 
 /**
  * Quote Pricing: the computed breakdown projected from a Quote's stored pricing facts.
@@ -159,10 +159,7 @@ function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }
 ): QuotePricing<TSelection> {
   const selectedAssemblyPrices = liveSelections.map((selection) => selection.quotedPrice);
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
-  const workItemTotal = computeQuoteWorkItemsTotal({
-    hourlyRate: facts.hourlyRate,
-    workItems: facts.workItems ?? [],
-  });
+  const workItemTotal = computeQuoteWorkItemsTotal(facts.workItems);
   const subtotal = computeQuoteTotal({ ...facts, selectedAssemblyPrices });
   const vatAmount = computeQuoteVatAmount(subtotal);
 
@@ -179,10 +176,10 @@ function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }
 }
 
 /**
- * Builds Quote Pricing from a persisted Quote row. A selected Optional Assembly is live when its
+ * Builds Quote Pricing from canonical pricing facts. A selected Optional Assembly is live when its
  * catalog reference survives: Assembly kind is immutable and deletion is `on delete set null`, so a
- * null `productAssemblyId` is the complete stale set for persisted selections and no product
- * catalog is needed to total a stored Quote.
+ * null `productAssemblyId` is the complete stale set and no product catalog is needed to total the
+ * facts.
  */
 export function priceQuote<TSelection extends { productAssemblyId: UUID | null; quotedPrice: number }>(
   quote: QuotePricingFacts & { selectedAssemblies: readonly TSelection[] },
@@ -190,6 +187,20 @@ export function priceQuote<TSelection extends { productAssemblyId: UUID | null; 
   const liveSelections = quote.selectedAssemblies.filter((selection) => selection.productAssemblyId !== null);
 
   return priceQuoteFromLiveSelections(quote, liveSelections);
+}
+
+/** Normalizes a persisted Quote's raw Work Item rows into the canonical pricing facts. */
+export function pricePersistedQuote<TSelection extends { productAssemblyId: UUID | null; quotedPrice: number }>(
+  quote: PersistedQuotePricingFacts & { selectedAssemblies: readonly TSelection[] },
+): QuotePricing<TSelection> {
+  if (quote.kind === 'product') return priceQuote(quote);
+
+  const { hourlyRate, workItems, ...facts } = quote;
+
+  return priceQuote({
+    ...facts,
+    workItems: { hourlyRate, items: workItems },
+  });
 }
 
 /**

@@ -44,4 +44,5 @@ export * from './quotes/quote-lock.js';
 export * from './quotes/quote-pricing.js';
 export * from './quotes/quote-start-job.js';
 export * from './quotes/quote-summary.js';
+export * from './quotes/quote-work-item-form.js';
 export * from './theme/index.js';

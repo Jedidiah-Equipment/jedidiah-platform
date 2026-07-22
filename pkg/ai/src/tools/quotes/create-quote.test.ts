@@ -1,5 +1,5 @@
 import * as quotesCore from '@pkg/core';
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
 import { QuoteDetail } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
@@ -81,6 +81,36 @@ function createContext(): AiContext {
 }
 
 describe('createQuote contract', () => {
+  test('defaults the hourly rate for a Custom Quote when the tool input omits it', () => {
+    const input = CreateQuoteInput.parse({
+      customer: { customerId: CUSTOMER_ID, type: 'existing' },
+      offering: { basePrice: 2500, kind: 'custom', workTitle: 'Workshop repairs' },
+    });
+
+    expect(toCoreQuoteCreateInput(input, 'test-user-id').offering).toEqual({
+      basePrice: 2500,
+      hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
+      kind: 'custom',
+      workItems: [],
+      workTitle: 'Workshop repairs',
+    });
+  });
+
+  test('preserves an explicit Custom Quote hourly rate from the tool input', () => {
+    const input = CreateQuoteInput.parse({
+      customer: { customerId: CUSTOMER_ID, type: 'existing' },
+      offering: { basePrice: 2500, hourlyRate: 975, kind: 'custom', workTitle: 'Workshop repairs' },
+    });
+
+    expect(toCoreQuoteCreateInput(input, 'test-user-id').offering).toEqual({
+      basePrice: 2500,
+      hourlyRate: 975,
+      kind: 'custom',
+      workItems: [],
+      workTitle: 'Workshop repairs',
+    });
+  });
+
   test('defaults and normalizes Quote input, creates it as the actor, and returns linked details', async () => {
     const input = CreateQuoteInput.parse({
       customer: { type: 'inline', companyName: ' Acme Mining ', contactPerson: ' Jane Buyer ', email: null },

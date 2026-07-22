@@ -122,7 +122,6 @@ export async function createQuote({
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
     const offering = await resolveQuoteOffering({ input, tx });
     const workItems = input.offering.kind === 'custom' ? input.offering.workItems : [];
-    assertQuoteCollectionKind({ offering, workItems });
     assertValidDiscount({ discountPercent: input.discountPercent });
     await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
 
@@ -212,8 +211,6 @@ export async function updateQuote({
       selectedAssemblies: input.selectedAssemblies,
       workItems: input.offering.kind === 'custom' ? input.offering.workItems : undefined,
     };
-    assertQuoteCollectionKind({ ...collectionInput, offering: beforeOffering });
-
     assertValidDiscount({ discountPercent: input.discountPercent });
 
     await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
@@ -339,8 +336,6 @@ export async function patchQuote({
     if (beforeOffering.kind === 'custom') {
       assertNoCustomSelectedAssemblies(input);
     }
-    assertQuoteCollectionKind({ ...input, offering: beforeOffering });
-
     if (input.salesPersonId !== undefined && input.salesPersonId !== before.salesPersonId) {
       await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
     }
@@ -641,15 +636,6 @@ function assertNoCustomSelectedAssemblies(
 ): void {
   if ((input.selectedAssemblies?.length ?? 0) > 0) {
     throw new QuoteCustomSelectedAssembliesError('Custom Quotes cannot have Selected Assemblies.');
-  }
-}
-
-function assertQuoteCollectionKind({
-  offering,
-  workItems,
-}: QuoteCollectionPatchInput & { offering: { kind: QuoteKind } }): void {
-  if (offering.kind === 'product' && (workItems?.length ?? 0) > 0) {
-    throw new QuoteInvalidReferenceError('Work items are only allowed on Custom Quotes.');
   }
 }
 

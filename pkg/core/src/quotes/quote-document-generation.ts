@@ -209,7 +209,15 @@ async function getQuoteDocumentModel({
     source.kind === 'product' ? await listAssemblies({ productId: source.productId, tx: db }) : [];
   // Optional rows and their money both come from the catalog-resolved live set, so a selection that
   // goes stale drops from the PDF rows and the subtotal together.
-  const pricing = priceQuoteWithCatalog(quote, productAssemblies);
+  const pricing = priceQuoteWithCatalog(
+    {
+      ...quote,
+      ...(source.kind === 'custom'
+        ? { workItems: { hourlyRate: source.hourlyRate, items: quote.workItems } }
+        : { workItems: undefined }),
+    },
+    productAssemblies,
+  );
   const selectedOptionalAssemblies = pricing.liveSelections.map((selection) => ({
     amount: selection.quotedPrice,
     label: selection.quotedName,

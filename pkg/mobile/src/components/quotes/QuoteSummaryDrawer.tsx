@@ -1,4 +1,10 @@
-import { createStableRowKeys, formatCurrency, formatPercent, type QuoteComputedSummary } from '@pkg/domain';
+import {
+  createStableRowKeys,
+  formatCurrency,
+  formatPercent,
+  type QuoteComputedSummary,
+  quoteWorkItemSummaryRows,
+} from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { IconX } from '@tabler/icons-react-native';
 import type React from 'react';
@@ -8,7 +14,6 @@ import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
-import { quoteWorkItemSummaryRows } from '@/lib/quote-presentation';
 
 const getSummaryWorkItemKey = createStableRowKeys<QuoteComputedSummary['workItems'][number]>('quote-summary-work-item');
 
@@ -120,7 +125,10 @@ function ProductCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'product' 
 }
 
 function TotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
-  const workItemRows = quoteWorkItemSummaryRows(summary);
+  const workItemRows =
+    summary.hourlyRate === null
+      ? []
+      : quoteWorkItemSummaryRows({ hourlyRate: summary.hourlyRate, workItems: summary.workItems });
 
   return (
     <SummaryCard>

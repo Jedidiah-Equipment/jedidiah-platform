@@ -1,4 +1,4 @@
-import { formatCurrency } from '@pkg/domain';
+import { createStableRowKeys, formatCurrency } from '@pkg/domain';
 import type { QuoteDocumentModel, QuoteDocumentPricingRow, QuoteDocumentWorkItem } from '@pkg/schema';
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
 import { pdfStyles } from './pdf-styles.js';
@@ -8,35 +8,8 @@ type QuoteDocumentPricingTableProps = {
   document: QuoteDocumentModel;
 };
 
-const getPricingRowKey = (() => {
-  const keys = new WeakMap<QuoteDocumentPricingRow, string>();
-  let nextKey = 0;
-
-  return (item: QuoteDocumentPricingRow) => {
-    let key = keys.get(item);
-    if (key === undefined) {
-      key = `quote-document-pricing-row-${nextKey}`;
-      nextKey += 1;
-      keys.set(item, key);
-    }
-    return key;
-  };
-})();
-
-const getWorkItemKey = (() => {
-  const keys = new WeakMap<QuoteDocumentWorkItem, string>();
-  let nextKey = 0;
-
-  return (item: QuoteDocumentWorkItem) => {
-    let key = keys.get(item);
-    if (key === undefined) {
-      key = `quote-document-work-item-${nextKey}`;
-      nextKey += 1;
-      keys.set(item, key);
-    }
-    return key;
-  };
-})();
+const getPricingRowKey = createStableRowKeys<QuoteDocumentPricingRow>('quote-document-pricing-row');
+const getWorkItemKey = createStableRowKeys<QuoteDocumentWorkItem>('quote-document-work-item');
 
 const layout = {
   priceColumnWidth: 96,
@@ -130,7 +103,7 @@ export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTabl
   );
 }
 
-export function quoteDocumentWorkItemRows({
+function quoteDocumentWorkItemRows({
   currencyCode,
   workItems,
 }: Pick<QuoteDocumentModel, 'currencyCode' | 'workItems'>): {

@@ -1,4 +1,4 @@
-import { formatCurrency, getQuoteOfferingName, hasPermission, priceQuote } from '@pkg/domain';
+import { formatCurrency, getQuoteOfferingName, hasPermission, pricePersistedQuote } from '@pkg/domain';
 import type { QuoteListInput, QuoteSummary } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -84,7 +84,7 @@ function RecentQuoteRowContent({ canUpdateQuote, quote }: { canUpdateQuote: bool
       </span>
       <span className="text-right">
         <span className="block font-medium tabular-nums">
-          {formatCurrency(priceQuote(quote).total, quote.quotedCurrencyCode)}
+          {formatCurrency(pricePersistedQuote(quote).total, quote.quotedCurrencyCode)}
         </span>
         <span className="block text-muted-foreground text-xs">
           <DateDisplay date={quote.createdAt} />

@@ -35,7 +35,7 @@ export function DocumentPage({ path, filename }: DocumentPageProps) {
     setLocalUri(null);
 
     // Native downloads cannot be cancelled here, so the viewer cache must not collide on filename alone.
-    downloadDocumentToCache({ path, filename, cacheKey: path })
+    downloadDocumentToCache({ contentType: 'application/pdf', path, filename, cacheKey: path })
       .then((uri) => {
         if (!cancelled) setLocalUri(uri);
       })

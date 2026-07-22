@@ -733,6 +733,14 @@ describe('createJob', () => {
   });
 
   test('snapshots product documents onto the job as frozen rows with product provenance', async ({ context }) => {
+    const drawingStorageKey = 'documents/product/source/fabrication-drawings.zip';
+    const drawingBytes = drawingZipBytes();
+    await jobStorage.put({
+      body: drawingBytes,
+      byteSize: drawingBytes.byteLength,
+      contentType: 'application/zip',
+      key: drawingStorageKey,
+    });
     const sourceDocuments = await createProductDocuments(context.db, context.catalog.product.id, [
       {
         filename: 'Part Book.pdf',
@@ -743,6 +751,12 @@ describe('createJob', () => {
         filename: 'SOP.pdf',
         storageKey: 'documents/product/source/sop.pdf',
         type: 'sop',
+      },
+      {
+        contentType: 'application/zip',
+        filename: 'Fabrication Drawings.zip',
+        storageKey: drawingStorageKey,
+        type: 'drawing',
       },
     ]);
     const quote = await createQuote(context.db, {
@@ -758,7 +772,7 @@ describe('createJob', () => {
 
     const snapshotRows = await context.db.select().from(documents).where(eq(documents.jobId, job.id));
 
-    expect(snapshotRows).toHaveLength(2);
+    expect(snapshotRows).toHaveLength(3);
     expect(snapshotRows).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -779,6 +793,17 @@ describe('createJob', () => {
           sourceProductId: context.catalog.product.id,
           storageKey: sourceDocuments[1]?.storageKey,
         }),
+        expect.objectContaining({
+          contentType: 'application/zip',
+          filename: 'Fabrication Drawings.zip',
+          jobId: job.id,
+          metadata: { type: 'drawing' },
+          ownerType: 'job',
+          productId: null,
+          sourceProductId: context.catalog.product.id,
+          storageKey: sourceDocuments[2]?.storageKey,
+          uploaderUserId: actorUserId,
+        }),
       ]),
     );
     expect(job.documents).toEqual(
@@ -797,8 +822,22 @@ describe('createJob', () => {
           sourceProductId: context.catalog.product.id,
           sourceProductName: 'CFO Test Product',
         }),
+        expect.objectContaining({
+          contentType: 'application/zip',
+          filename: 'Fabrication Drawings.zip',
+          metadata: { type: 'drawing' },
+          ownerType: 'job',
+          sourceProductId: context.catalog.product.id,
+          sourceProductName: 'CFO Test Product',
+          uploaderUserId: actorUserId,
+        }),
       ]),
     );
+    expect(jobStorage.objects.get(drawingStorageKey)).toEqual({
+      body: drawingBytes,
+      byteSize: drawingBytes.byteLength,
+      contentType: 'application/zip',
+    });
   });
 
   test('keeps the job document snapshot frozen when a product document is re-classified', async ({ context }) => {
@@ -2851,6 +2890,13 @@ function brochurePngBytes(): Uint8Array {
   );
 }
 
+function drawingZipBytes(): Uint8Array {
+  return Buffer.from(
+    'UEsDBAoAAAAAAMlK9lxYkcrUFAAAABQAAAALABwAZHJhd2luZy50eHRVVAkAA6pvYGqqb2BqdXgLAAEE9QEAAAQUAAAAQ0FEIGRyYXdpbmcgcGFja2FnZQpQSwECHgMKAAAAAADJSvZcWJHK1BQAAAAUAAAACwAYAAAAAAABAAAApIEAAAAAZHJhd2luZy50eHRVVAUAA6pvYGp1eAsAAQT1AQAABBQAAABQSwUGAAAAAAEAAQBRAAAAWQAAAAAA',
+    'base64',
+  );
+}
+
 async function makeBrochureComplete(db: Db, storage: InMemoryStorageAdapter, productId: string) {
   const slots = ['primary', 'technicalDrawing', 'banner'] as const;
   const images: Record<string, { byteSize: number; contentType: string; storageKey: string; updatedAt: string }> = {};
@@ -2892,14 +2938,14 @@ async function readJobBrochure(db: Db, storage: InMemoryStorageAdapter, jobId: s
 async function createProductDocuments(
   db: Db,
   productId: string,
-  inputs: { filename: string; storageKey: string; type?: ProductDocumentType }[],
+  inputs: { contentType?: string; filename: string; storageKey: string; type?: ProductDocumentType }[],
 ) {
   return db
     .insert(documents)
     .values(
       inputs.map((input) => ({
         byteSize: 8,
-        contentType: 'application/pdf',
+        contentType: input.contentType ?? 'application/pdf',
         filename: input.filename,
         metadata: { type: input.type ?? 'part_book' },
         ownerType: 'product' as const,

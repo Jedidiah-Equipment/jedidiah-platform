@@ -17,7 +17,7 @@ export const DocumentContentType = requiredTrimmedText('Content type is required
 export type DocumentByteSize = z.infer<typeof DocumentByteSize>;
 export const DocumentByteSize = z.int().min(0);
 
-const PRODUCT_DOCUMENT_TYPES = ['sop', 'part_book', 'bom', 'general'] as const;
+const PRODUCT_DOCUMENT_TYPES = ['sop', 'part_book', 'bom', 'general', 'drawing'] as const;
 
 // Uploadable Product document types. The Brochure is generated, never uploaded, so it lives in
 // JobDocumentType instead.

@@ -96,7 +96,7 @@ export async function createDocumentRecord({
   const verifiedContentType = sniffDocumentContentType(input.bytes);
 
   if (!verifiedContentType) {
-    const policy = getDocumentPolicy(input.ownerType);
+    const policy = getDocumentPolicy(input.ownerType, input.metadata);
     throw new DocumentPolicyViolationError({
       code: 'document.content_type_not_allowed',
       message: `Uploaded file content does not match an allowed document type: ${policy.allowedContentTypes.join(', ')}.`,
@@ -106,6 +106,7 @@ export async function createDocumentRecord({
   const policyResult = validateDocumentPolicy({
     byteSize,
     contentType: verifiedContentType,
+    metadata: input.metadata,
     ownerType: input.ownerType,
   });
 

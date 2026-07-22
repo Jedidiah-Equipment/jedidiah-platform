@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 import { apiBaseUrl } from './api-base-url';
 import { sessionCookieHeader } from './auth';
+import { getDocumentPlatformType } from './document-content';
 
 /**
  * Download and share actions for the in-app document viewer (#521). This is the
@@ -14,12 +15,11 @@ import { sessionCookieHeader } from './auth';
 export type DocumentAction = {
   /** Authed download route, e.g. `/api/jobs/:jobId/documents/:documentId/download`. */
   path: string;
+  contentType: string;
   filename: string;
   /** Optional discriminator for callers that need more than the display name to identify cache bytes. */
   cacheKey?: string;
 };
-
-const PDF_MIME = 'application/pdf';
 
 // Reduce a value to filesystem-safe characters for a cache filename. We can't
 // percent-encode here: `cacheKey` is a download path, so its `/` would become
@@ -49,12 +49,17 @@ export async function downloadDocumentToCache({ path, filename, cacheKey }: Docu
 /** Open the OS share sheet for the document (downloads it with auth first). */
 export async function shareDocument(action: DocumentAction): Promise<void> {
   const uri = await downloadDocumentToCache(action);
+  const platformType = getDocumentPlatformType(action.contentType);
 
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error('Sharing isn’t available on this device.');
   }
 
-  await Sharing.shareAsync(uri, { mimeType: PDF_MIME, UTI: 'com.adobe.pdf', dialogTitle: action.filename });
+  await Sharing.shareAsync(uri, {
+    mimeType: platformType.mimeType,
+    ...(platformType.uti ? { UTI: platformType.uti } : {}),
+    dialogTitle: action.filename,
+  });
 }
 
 /**
@@ -64,12 +69,17 @@ export async function shareDocument(action: DocumentAction): Promise<void> {
  */
 export async function saveDocument(action: DocumentAction): Promise<void> {
   const uri = await downloadDocumentToCache(action);
+  const platformType = getDocumentPlatformType(action.contentType);
 
   if (Platform.OS !== 'android') {
     if (!(await Sharing.isAvailableAsync())) {
       throw new Error('Saving isn’t available on this device.');
     }
-    await Sharing.shareAsync(uri, { mimeType: PDF_MIME, UTI: 'com.adobe.pdf', dialogTitle: action.filename });
+    await Sharing.shareAsync(uri, {
+      mimeType: platformType.mimeType,
+      ...(platformType.uti ? { UTI: platformType.uti } : {}),
+      dialogTitle: action.filename,
+    });
     return;
   }
 
@@ -82,7 +92,7 @@ export async function saveDocument(action: DocumentAction): Promise<void> {
   const destination = await FileSystem.StorageAccessFramework.createFileAsync(
     permission.directoryUri,
     action.filename,
-    PDF_MIME,
+    platformType.mimeType,
   );
   await FileSystem.writeAsStringAsync(destination, base64, { encoding: 'base64' });
 }

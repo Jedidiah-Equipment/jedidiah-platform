@@ -359,6 +359,60 @@ describe('createProductDocument', () => {
     });
   });
 
+  test('stores ZIP bytes only when classified as a Product drawing', async ({ context }) => {
+    const document = await createProductDocument({
+      actorUserId: ACTOR_USER_ID,
+      db: context.db,
+      input: {
+        bytes: zipBytes(),
+        contentType: 'application/octet-stream',
+        filename: 'Fabrication Drawings.zip',
+        metadata: { type: 'drawing' },
+        productId: context.productId,
+      },
+      storage: context.storage,
+    });
+
+    expect(document).toMatchObject({
+      contentType: 'application/zip',
+      filename: 'Fabrication Drawings.zip',
+      metadata: { type: 'drawing' },
+    });
+    await expect(
+      readProductDocument({
+        db: context.db,
+        documentId: document.id,
+        productId: context.productId,
+        storage: context.storage,
+      }),
+    ).resolves.toMatchObject({
+      document: { contentType: 'application/zip', metadata: { type: 'drawing' } },
+    });
+  });
+
+  test('rejects Product document content that does not match its classification', async ({ context }) => {
+    for (const input of [
+      { bytes: pdfBytes(), filename: 'Drawing.pdf', metadata: { type: 'drawing' as const } },
+      { bytes: zipBytes(), filename: 'Part Book.zip', metadata: { type: 'part_book' as const } },
+    ]) {
+      await expect(
+        createProductDocument({
+          actorUserId: ACTOR_USER_ID,
+          db: context.db,
+          input: {
+            ...input,
+            contentType: 'application/octet-stream',
+            productId: context.productId,
+          },
+          storage: context.storage,
+        }),
+      ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+    }
+
+    await expect(getProductDocuments({ db: context.db, productId: context.productId })).resolves.toEqual([]);
+    expect(context.storage.objects.size).toBe(0);
+  });
+
   test('rejects product images before storing anything', async ({ context }) => {
     await expect(
       createProductDocument({
@@ -1418,6 +1472,13 @@ async function realPdfBytes(pageSizes: Array<[number, number]>): Promise<Uint8Ar
 
 function pngBytes(): Uint8Array {
   return new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+}
+
+function zipBytes(): Uint8Array {
+  return Buffer.from(
+    'UEsDBAoAAAAAAMlK9lxYkcrUFAAAABQAAAALABwAZHJhd2luZy50eHRVVAkAA6pvYGqqb2BqdXgLAAEE9QEAAAQUAAAAQ0FEIGRyYXdpbmcgcGFja2FnZQpQSwECHgMKAAAAAADJSvZcWJHK1BQAAAAUAAAACwAYAAAAAAABAAAApIEAAAAAZHJhd2luZy50eHRVVAUAA6pvYGp1eAsAAQT1AQAABBQAAABQSwUGAAAAAAEAAQBRAAAAWQAAAAAA',
+    'base64',
+  );
 }
 
 async function readAll(body: AsyncIterable<Uint8Array>): Promise<Uint8Array> {

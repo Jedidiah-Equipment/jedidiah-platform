@@ -1,5 +1,6 @@
 import { IconCalendarEvent, IconFileText, IconTractor } from '@tabler/icons-react-native';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { showTabBar, visibleTabs } from '@/lib/app-tabs';
 import { useAccess } from '@/lib/use-access';
@@ -13,6 +14,7 @@ export default function AppTabsLayout() {
   const tabs = visibleTabs(access.data);
   const { resolved } = useColorMode();
   const colors = navigationColors[resolved];
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -28,8 +30,9 @@ export default function AppTabsLayout() {
           ? {
               backgroundColor: colors.tabBarBackground,
               borderTopColor: colors.border,
-              height: 66,
-              paddingBottom: 8,
+              // Explicit tab-bar dimensions bypass React Navigation's automatic inset sizing.
+              height: 66 + insets.bottom,
+              paddingBottom: 8 + insets.bottom,
               paddingTop: 8,
             }
           : { display: 'none' },

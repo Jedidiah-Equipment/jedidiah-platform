@@ -34,7 +34,7 @@ vi.mock('../server/catalog/product-detail.js', () => ({
     imageUrl: '/images/products/product-1',
     ogImageUrl: '/images/products/product-1?format=og',
     galleryImages: [{ imageUrl: '/images/products/product-1', slot: 'primary' }],
-    highlights: [],
+    highlights: [{ label: 'Working Width', value: 'TECHNICAL-VALUE-ONLY' }],
     standardAssemblies: [],
     optionalAssemblies: [],
     keyFeatures: ['Heavy-duty chassis'],
@@ -75,6 +75,11 @@ describe('localized public routes', () => {
     expect(markup).toContain('Kontak Ons');
     expect(markup).toContain('Kernkenmerke');
     expect(markup).toContain('Catalog text stays canonical English for now.');
+    expect(markup.indexOf('Kernkenmerke')).toBeLessThan(
+      markup.lastIndexOf('Catalog text stays canonical English for now.'),
+    );
+    expect(markup).not.toContain('Working Width');
+    expect(markup).not.toContain('TECHNICAL-VALUE-ONLY');
   });
 
   test('keeps the unprefixed public tree in canonical English', async () => {

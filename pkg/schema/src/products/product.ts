@@ -447,7 +447,6 @@ export const BrochureCompleteness = z.object({
 export const LANDER_REQUIRED_FIELDS = [
   'category',
   'keyFeatures',
-  'technicalDetails',
   ...LANDER_IMAGE_SLOTS,
   'description',
   'standardAssembly',

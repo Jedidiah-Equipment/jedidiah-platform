@@ -18,7 +18,7 @@ test('product form usage metadata marks the lander and brochure fields', () => {
     name: ['lander', 'brochure'],
     nameHighlight: ['brochure'],
     rangeId: ['lander', 'brochure'],
-    technicalDetails: ['lander'],
+    technicalDetails: [],
   });
 
   expect(PRODUCT_FIELD_USAGE).not.toHaveProperty('basePrice');

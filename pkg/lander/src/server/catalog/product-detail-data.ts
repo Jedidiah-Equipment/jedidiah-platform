@@ -12,7 +12,6 @@ import {
   toRangeSlug,
 } from './products-data.js';
 
-export type ProductHighlight = { value: string; label: string };
 export type ProductGalleryImage = { imageUrl: string; slot: ProductImageSlot };
 export type ProductGalleryImages = [ProductGalleryImage, ProductGalleryImage, ProductGalleryImage];
 
@@ -30,7 +29,6 @@ export type ProductDetail = {
   // Facebook, LinkedIn) download WebP but refuse to render it as a preview card.
   ogImageUrl: string;
   galleryImages: ProductGalleryImages;
-  highlights: ProductHighlight[];
   standardAssemblies: string[];
   optionalAssemblies: string[];
   keyFeatures: string[];
@@ -63,7 +61,6 @@ export async function loadProductDetail(db: Db, modelCode: string, locale: Local
       description: fullProduct.description,
       keyFeatures: fullProduct.keyFeatures,
       name: fullProduct.name,
-      technicalDetails: fullProduct.technicalDetails,
     },
     fullProduct.translations,
     locale,
@@ -103,12 +100,6 @@ export async function loadProductDetail(db: Db, modelCode: string, locale: Local
       slot,
       imageUrl: productImageUrl(fullProduct.id, slot, fullProduct.images[slot]?.updatedAt),
     })) as ProductGalleryImages,
-    // The hero highlight tiles render the Product's technical details (value is the bold headline, label
-    // the small-caps caption). Lander readiness gates on at least one, so a visible Product always has tiles.
-    highlights: localized.technicalDetails.map((detail) => ({
-      value: detail.value,
-      label: detail.label,
-    })),
     standardAssemblies: assemblyNames('standard'),
     optionalAssemblies: assemblyNames('optional'),
     keyFeatures: localized.keyFeatures,

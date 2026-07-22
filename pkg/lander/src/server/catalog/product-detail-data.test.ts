@@ -156,9 +156,9 @@ test('loadProductDetail selects Afrikaans fields with per-field canonical fallba
     tagline: 'Afrikaanse byskrif',
     description: 'Canonical description.',
     keyFeatures: ['Afrikaanse kenmerk'],
-    highlights: [{ label: 'Kapasiteit', value: '42 m³' }],
     standardAssemblies: ['Hidrouliese agterklap'],
   });
+  expect(detail).not.toHaveProperty('highlights');
 
   expect(await loadProductDetail(db, product.modelCode, 'en')).toMatchObject({
     name: product.name,
@@ -166,7 +166,6 @@ test('loadProductDetail selects Afrikaans fields with per-field canonical fallba
     tagline: 'Canonical tagline',
     description: 'Canonical description.',
     keyFeatures: ['Canonical feature'],
-    highlights: [{ label: 'Capacity', value: '42 m³' }],
     standardAssemblies: ['Hydraulic tailgate'],
   });
 });
@@ -212,10 +211,7 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
     { slot: 'secondary2', imageUrl: `/images/products/${product.id}?slot=secondary2&v=${secondary2V}` },
   ]);
   expect(detail?.keyFeatures).toEqual(['Heavy-duty monocoque body', 'Twin-ram hydraulic tipping']);
-  expect(detail?.highlights).toEqual([
-    { value: '14 t', label: 'Capacity' },
-    { value: 'Monocoque', label: 'Body' },
-  ]);
+  expect(detail).not.toHaveProperty('highlights');
 });
 
 test('loadProductDetail includes the Product Variant as a stable canonical slug', async ({ db }) => {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { translationEnvelopeFixture } from './catalog-translation.test-fixtures.js';
 import {
+  LANDER_REQUIRED_FIELDS,
   PRODUCT_IMAGE_SLOT_SPECS,
   PRODUCT_KEY_FEATURE_MAX_LENGTH,
   PRODUCT_KEY_FEATURES_MAX_COUNT,
@@ -22,6 +23,20 @@ import {
   ProductTranslations,
   ProductUpdateInput,
 } from './product.js';
+
+describe('LANDER_REQUIRED_FIELDS', () => {
+  it('contains only content rendered on the public Product page', () => {
+    expect(LANDER_REQUIRED_FIELDS).toEqual([
+      'category',
+      'keyFeatures',
+      'primary',
+      'secondary1',
+      'secondary2',
+      'description',
+      'standardAssembly',
+    ]);
+  });
+});
 
 const BAY_ID = '00000000-0000-4000-8000-000000000201';
 const RANGE_ID = '00000000-0000-4000-8000-000000000301';

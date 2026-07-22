@@ -22,7 +22,7 @@ export const PRODUCT_FIELD_USAGE = {
   name: LANDER_AND_BROCHURE_USAGE,
   nameHighlight: BROCHURE_USAGE,
   rangeId: LANDER_AND_BROCHURE_USAGE,
-  technicalDetails: LANDER_USAGE,
+  technicalDetails: [],
 } as const;
 
 export const PRODUCT_IMAGE_SLOT_USAGE = {

@@ -7,7 +7,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { LocaleProvider } from '../../../messages/index.js';
 import type { ProductDetail } from '../../../server/catalog/product-detail-data.js';
-import { AssembliesAndFeatures, Downloads, ProductShareButton } from './$modelCode.js';
+import { AssembliesAndDownloads, Downloads, ProductShareButton } from './$modelCode.js';
 
 const captureEvent = vi.hoisted(() => vi.fn());
 
@@ -66,17 +66,17 @@ describe('ProductShareButton', () => {
   });
 });
 
-describe('AssembliesAndFeatures', () => {
-  test('lays out key features and downloads before the assembly columns', () => {
+describe('AssembliesAndDownloads', () => {
+  test('keeps downloads and assembly groups together below the hero', () => {
     const detail = productDetail({
       brochureHref: '/downloads/products/product-1/brochure',
       keyFeatures: ['Heavy-duty chassis'],
       optionalAssemblies: ['Bin extension'],
       standardAssemblies: ['Auger'],
     });
-    const markup = renderToStaticMarkup(<AssembliesAndFeatures detail={detail} />);
+    const markup = renderToStaticMarkup(<AssembliesAndDownloads detail={detail} />);
 
-    expect(markup.indexOf('Key Features')).toBeLessThan(markup.indexOf('Downloads'));
+    expect(markup).not.toContain('Key Features');
     expect(markup.indexOf('Downloads')).toBeLessThan(markup.indexOf('Standard Assemblies'));
     expect(markup.indexOf('Standard Assemblies')).toBeLessThan(markup.indexOf('Optional Assemblies'));
   });
@@ -99,7 +99,6 @@ function productDetail(overrides: Partial<ProductDetail> = {}): ProductDetail {
       { imageUrl: '/images/products/product-1?slot=secondary1', slot: 'secondary1' },
       { imageUrl: '/images/products/product-1?slot=secondary2', slot: 'secondary2' },
     ],
-    highlights: [],
     standardAssemblies: [],
     optionalAssemblies: [],
     keyFeatures: [],

@@ -1,0 +1,47 @@
+{
+  "releasedAt": "2026-07-22T08:00:33.988Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Build detailed custom quotes",
+          "description": "Set an hourly rate and add named work items with labour hours and parts. Totals update automatically, details appear on quote documents, and work item names carry through to job sheets."
+        },
+        {
+          "title": "Keep accepted custom work current",
+          "description": "Update work items and hourly rates after a custom quote has been accepted, keeping the linked job aligned with later changes."
+        },
+        {
+          "title": "Explain quote cancellations",
+          "description": "A reason is now required when cancelling a quote and remains visible on the cancelled quote."
+        },
+        {
+          "title": "Handle ZIP drawing packs",
+          "description": "Upload and download drawings supplied as ZIP files alongside existing document formats."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Build detailed custom quotes",
+          "description": "Set custom hourly rates and manage work items, labour hours, parts, and calculated totals directly from the mobile app. Work item names also carry through to linked jobs."
+        },
+        {
+          "title": "Keep accepted custom work current",
+          "description": "Update work items and hourly rates after a custom quote has been accepted."
+        },
+        {
+          "title": "Explain quote cancellations",
+          "description": "Enter a required reason when cancelling a quote and view it later on the cancelled quote."
+        },
+        {
+          "title": "Download ZIP drawing packs",
+          "description": "ZIP drawings are clearly identified and can be downloaded or shared from product and job documents."
+        }
+      ]
+    }
+  ]
+}

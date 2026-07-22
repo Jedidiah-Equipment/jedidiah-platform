@@ -23,6 +23,8 @@ Expo managed React Native app for JedidiahOps.
 Staging builds use `APP_VARIANT=staging`, package/bundle identifier
 `za.co.jedidiahequipment.ops.staging`, and the EAS `staging` channel. EAS Submit uses the platform
 credentials stored in Expo for the matching Android package or iOS bundle identifier.
+Android submissions send staging builds to Google Play closed testing (`alpha`) and production
+builds to the public production track (`production`).
 
 For JS-only OTA fixes:
 

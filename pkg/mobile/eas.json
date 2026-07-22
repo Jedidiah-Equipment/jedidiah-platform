@@ -36,7 +36,7 @@
   "submit": {
     "staging": {
       "android": {
-        "track": "internal"
+        "track": "alpha"
       },
       "ios": {
         "ascAppId": "6785438770"
@@ -44,7 +44,7 @@
     },
     "production": {
       "android": {
-        "track": "internal"
+        "track": "production"
       },
       "ios": {
         "ascAppId": "6792649297"

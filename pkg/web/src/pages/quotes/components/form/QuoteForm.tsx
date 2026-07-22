@@ -1,4 +1,10 @@
-import { computeQuoteSummary, formatDate, isQuoteLocked, quoteStatusLabels } from '@pkg/domain';
+import {
+  computeQuoteSummary,
+  EDITABLE_LOCKED_QUOTE_FIELDS,
+  formatDate,
+  isQuoteLocked,
+  quoteStatusLabels,
+} from '@pkg/domain';
 import {
   type PriorityQuote,
   type QuoteDetail,
@@ -45,6 +51,7 @@ type QuoteFormProps = {
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
   const isCustom = quote.kind === 'custom';
   const isLocked = isQuoteLocked({ hasJob: quote.job !== null, kind: quote.kind, status: quote.status });
+  const canEdit = (field: string) => !isLocked || EDITABLE_LOCKED_QUOTE_FIELDS.has(field);
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const catalogAssemblies = quote.product?.assemblies ?? [];
   const salespeopleOptions = useSalesPersonOptions();
@@ -208,7 +215,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                             <field.CurrencyField
                               autoComplete="off"
                               currencyCode={quoteCurrencyCode}
-                              disabled={isLocked}
+                              disabled={!canEdit('hourlyRate')}
                               label="Hourly rate"
                             />
                           )}
@@ -249,7 +256,12 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         <form.Field name="workItems" mode="array">
                           {(workItemsField) => (
                             <QuoteFormSection
-                              action={<QuoteAddWorkItemButton readOnly={isLocked} workItemsField={workItemsField} />}
+                              action={
+                                <QuoteAddWorkItemButton
+                                  readOnly={!canEdit('workItems')}
+                                  workItemsField={workItemsField}
+                                />
+                              }
                               icon={IconListDetails}
                               title="Work items"
                             >
@@ -257,7 +269,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                                 currencyCode={quoteCurrencyCode}
                                 hourlyRate={hourlyRate}
                                 onRemoveWorkItem={autosave.commit}
-                                readOnly={isLocked}
+                                readOnly={!canEdit('workItems')}
                                 workItemsField={workItemsField}
                               />
                             </QuoteFormSection>

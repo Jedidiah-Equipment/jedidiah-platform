@@ -128,9 +128,7 @@ describe('createJob', () => {
     expect(job.workRows).toEqual([]);
   });
 
-  test('reads custom Work Item names live in position order and freezes them when the Quote locks', async ({
-    context,
-  }) => {
+  test('reads custom Work Item names live in position order after the Quote is accepted', async ({ context }) => {
     const quote = await createCustomQuote(context.db, {
       status: 'draft',
       workTitle: 'Pump skid rebuild',
@@ -205,23 +203,20 @@ describe('createJob', () => {
         status: 'accepted',
       }),
     });
-    await expect(
-      updateQuote({
-        actorUserId,
-        db: context.db,
-        input: QuoteUpdateInput.parse({
-          ...draftUpdateInput,
-          offering: {
-            ...draftUpdateInput.offering,
-            workItems: [{ hours: 1, name: 'Should not replace locked work', parts: [] }],
-          },
-          status: 'accepted',
-        }),
+    await updateQuote({
+      actorUserId,
+      db: context.db,
+      input: QuoteUpdateInput.parse({
+        ...draftUpdateInput,
+        offering: {
+          ...draftUpdateInput.offering,
+          workItems: [{ hours: 1, name: 'Test installed pump', parts: [] }],
+        },
+        status: 'accepted',
       }),
-    ).rejects.toThrow('Quote is locked because it has been accepted; workItems cannot be changed.');
+    });
     expect((await getJob({ db: context.db, id: created.id })).workRows.map(({ name }) => name)).toEqual([
-      'Inspect replacement pump',
-      'Install replacement pump',
+      'Test installed pump',
     ]);
   });
 

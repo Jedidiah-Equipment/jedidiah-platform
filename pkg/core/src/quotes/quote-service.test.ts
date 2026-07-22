@@ -13,7 +13,7 @@ import {
   user,
   workingCalendarOffDays,
 } from '@pkg/db';
-import { addDateOnlyDays, addJobSlotDuration, getPlantDateNow, priceQuote } from '@pkg/domain';
+import { addDateOnlyDays, addJobSlotDuration, getPlantDateNow, pricePersistedQuote, priceQuote } from '@pkg/domain';
 import {
   DateIso,
   DateOnlyIso,
@@ -447,13 +447,21 @@ describe('custom quotes', () => {
     ).rejects.toThrow('Quote offering kind cannot be changed.');
   });
 
-  test('locks custom commercial fields after acceptance but still allows post-lock notes', async ({ context }) => {
+  test('keeps accepted custom Hourly Rate and Work Items editable while Base Price stays locked', async ({
+    context,
+  }) => {
     const customQuote = await createQuoteService({
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'custom', workTitle: 'Accepted repair', basePrice: 2200, hourlyRate: 850 },
+        offering: {
+          kind: 'custom',
+          workTitle: 'Accepted repair',
+          basePrice: 2200,
+          hourlyRate: 850,
+          workItems: [{ name: 'Inspect pump', hours: 1, parts: [] }],
+        },
         salesPersonId: context.salesPerson.id,
         status: 'accepted',
       }),
@@ -472,10 +480,25 @@ describe('custom quotes', () => {
     const updated = await updateQuote({
       actorUserId: context.salesPerson.id,
       db: context.db,
-      input: buildQuoteUpdateInput(customQuote, { notes: 'Accepted custom follow-up' }),
+      input: buildQuoteUpdateInput(customQuote, {
+        notes: 'Accepted custom follow-up',
+        offering: {
+          kind: 'custom',
+          basePrice: 2200,
+          hourlyRate: 900,
+          workTitle: 'Accepted repair',
+          workItems: [{ name: 'Rebuild pump', hours: 2, parts: [{ name: 'Seal kit', quantity: 1, unitPrice: 100 }] }],
+        },
+      }),
     });
+    if (updated.kind !== 'custom') throw new Error('Expected a Custom Quote');
 
     expect(updated.notes).toBe('Accepted custom follow-up');
+    expect(updated.workItems).toMatchObject([
+      { name: 'Rebuild pump', hours: 2, parts: [{ name: 'Seal kit', quantity: 1, unitPrice: 100 }] },
+    ]);
+    expect(updated.hourlyRate).toBe(900);
+    expect(pricePersistedQuote(updated)).toMatchObject({ subtotal: 4100, total: 4715, workItemTotal: 1900 });
   });
 
   test('rejects product bay availability for custom quotes', async ({ context }) => {

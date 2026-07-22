@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { assertQuoteEditable, isQuoteLocked } from './quote-lock.js';
 
 const editableLockedQuoteFields = [
+  'hourlyRate',
   'notes',
   'documentNotes',
   'plannedDeliveryDate',
   'preferredDeliveryDate',
   'validUntil',
+  'workItems',
 ];
 const frozenLockedQuoteFields = [
   'customerId',
@@ -49,7 +51,7 @@ describe('assertQuoteEditable', () => {
     ).toEqual({ allowed: true });
   });
 
-  it.each(frozenLockedQuoteFields)('rejects %s after a quote has a job', (field) => {
+  it.each(frozenLockedQuoteFields)('rejects %s after a product quote has a job', (field) => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
@@ -120,6 +122,17 @@ describe('assertQuoteEditable', () => {
         hasJob: false,
         kind: 'custom',
         status: 'accepted',
+      }),
+    ).toEqual({ allowed: true });
+  });
+
+  it.each(['hourlyRate', 'workItems'])('allows %s changes after a custom quote is cancelled', (field) => {
+    expect(
+      assertQuoteEditable({
+        changedFields: [field],
+        hasJob: true,
+        kind: 'custom',
+        status: 'cancelled',
       }),
     ).toEqual({ allowed: true });
   });

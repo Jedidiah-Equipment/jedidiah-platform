@@ -1,11 +1,13 @@
 import type { QuoteKind, QuoteStatus } from '@pkg/schema';
 
-export const EDITABLE_LOCKED_QUOTE_FIELDS = new Set([
+export const EDITABLE_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
+  'hourlyRate',
   'notes',
   'documentNotes',
   'plannedDeliveryDate',
   'preferredDeliveryDate',
   'validUntil',
+  'workItems',
 ]);
 
 export type QuoteEditableResult =

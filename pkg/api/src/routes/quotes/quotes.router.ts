@@ -29,6 +29,7 @@ import {
   QuoteCreateInput,
   QuoteDocumentGenerationInput,
   QuoteListInput,
+  QuotePriorityListInput,
   QuoteProductBayAvailabilityInput,
   QuoteUpdateInput,
   UUID,
@@ -44,7 +45,11 @@ export const quotesRouter = router({
     .input(QuoteListInput)
     .query(({ ctx, input }) => listQuotes({ db: ctx.db, input })),
 
-  priorityList: authorizedProcedure('quote:read').query(({ ctx }) => listPriorityQuotes({ db: ctx.db })),
+  priorityList: authorizedProcedure('quote:read')
+    .input(QuotePriorityListInput)
+    .query(({ ctx, input }) =>
+      listPriorityQuotes({ ...(input.customerId ? { customerId: input.customerId } : {}), db: ctx.db }),
+    ),
 
   upcomingDeliveries: authorizedProcedure('quote:read').query(({ ctx }) => listUpcomingDeliveryQuotes({ db: ctx.db })),
 

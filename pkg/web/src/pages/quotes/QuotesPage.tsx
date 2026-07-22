@@ -1,11 +1,11 @@
 import { hasPermission } from '@pkg/domain';
-import { QuoteKind, type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
+import { QuoteKind, type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary, type UUID } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
@@ -30,18 +30,24 @@ import {
 } from './components/QuoteTableColumns.js';
 import { QuoteCreateDialog } from './QuoteCreateDialog.js';
 
-export const useQuoteTableStore = createPersistedDataTableStore({
-  initialState: {
-    sorting: [
-      {
-        desc: true,
-        id: 'createdAt',
-      },
-    ],
-  },
-  persistName: 'quotes-table',
-  persistVersion: 3,
-});
+export const useQuoteTableStore = createQuoteTableStore('quotes-table');
+
+const useCustomerQuoteTableStore = createQuoteTableStore('customer-quotes-table');
+
+function createQuoteTableStore(persistName: string) {
+  return createPersistedDataTableStore({
+    initialState: {
+      sorting: [
+        {
+          desc: true,
+          id: 'createdAt',
+        },
+      ],
+    },
+    persistName,
+    persistVersion: 3,
+  });
+}
 
 const quoteSortOptions: SortOptions<QuoteListInput> = {
   allowedSortIds: QuoteSortBy.options,
@@ -74,7 +80,7 @@ export const QuotesPage: React.FC = () => {
   );
 };
 
-const QuoteTable: React.FC = () => {
+export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const accessQuery = useAccess();
@@ -83,10 +89,14 @@ const QuoteTable: React.FC = () => {
   const customerOptions = useCustomerForQuoteOptions({ pageSize: 0 });
   const salespersonOptions = useSalesPersonOptions();
 
+  const getListInputExtras = useCallback(
+    (columnFilters: ColumnFiltersState) => getQuoteListInputExtras(columnFilters, customerId),
+    [customerId],
+  );
   const tableController = useServerSideTableController({
-    store: useQuoteTableStore,
+    store: customerId ? useCustomerQuoteTableStore : useQuoteTableStore,
     sortOptions: quoteSortOptions,
-    getListInputExtras: getQuoteListInputExtras,
+    getListInputExtras,
   });
   const productFilterValue = getIdFilterValue(tableController.columnFilters, 'productName');
   const productOptions = useProductForQuoteOptions({
@@ -100,7 +110,7 @@ const QuoteTable: React.FC = () => {
       placeholderData: keepPreviousData,
     }),
   );
-  const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions());
+  const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions(customerId ? { customerId } : {}));
   const { items: quotes, total, isLoading } = usePagedQueryResult(quotesQuery);
   const priorityQuotes = priorityQuotesQuery.data ?? [];
   const normalQuoteRows = useMemo(() => quotes.map(createQuoteTableRow), [quotes]);
@@ -122,8 +132,15 @@ const QuoteTable: React.FC = () => {
         customerOptions: customerOptions.selectOptions,
         productOptions: productOptions.selectOptions,
         salespersonOptions: salespersonOptions.selectOptions,
+        showCustomerColumn: !customerId,
       }),
-    [canOpenJobs, customerOptions.selectOptions, productOptions.selectOptions, salespersonOptions.selectOptions],
+    [
+      canOpenJobs,
+      customerId,
+      customerOptions.selectOptions,
+      productOptions.selectOptions,
+      salespersonOptions.selectOptions,
+    ],
   );
 
   const table = useReactTable({
@@ -173,7 +190,7 @@ const QuoteTable: React.FC = () => {
       globalFilterPlaceholder="Search quotes..."
       isLoading={isLoading}
       onRowClick={quoteRowClick}
-      tableClassName="min-w-[1260px]"
+      tableClassName={customerId ? 'min-w-[1084px]' : 'min-w-[1260px]'}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'quote' : 'quotes'}`}
@@ -196,10 +213,10 @@ function getKindFilterValue(columnFilters: ColumnFiltersState) {
   return parsed?.success ? parsed.data : undefined;
 }
 
-function getQuoteListInputExtras(columnFilters: ColumnFiltersState) {
+function getQuoteListInputExtras(columnFilters: ColumnFiltersState, customerId?: UUID) {
   return {
     filters: {
-      customerId: getIdFilterValue(columnFilters, 'customerCompanyName'),
+      customerId: customerId ?? getIdFilterValue(columnFilters, 'customerCompanyName'),
       kind: getKindFilterValue(columnFilters),
       productId: getIdFilterValue(columnFilters, 'productName'),
       salesPersonId: getIdFilterValue(columnFilters, 'salesPersonName'),

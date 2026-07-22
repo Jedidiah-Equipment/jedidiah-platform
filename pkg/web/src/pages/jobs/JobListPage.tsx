@@ -27,18 +27,24 @@ import {
 } from './components/JobListTableColumns.js';
 import { JobSheet } from './components/JobSheet.js';
 
-export const useJobListTableStore = createPersistedDataTableStore({
-  initialState: {
-    sorting: [
-      {
-        desc: false,
-        id: 'scheduledSlots',
-      },
-    ],
-  },
-  persistName: 'jobs-list-table',
-  persistVersion: 2,
-});
+export const useJobListTableStore = createJobListTableStore('jobs-list-table');
+
+const useCustomerJobListTableStore = createJobListTableStore('customer-jobs-list-table');
+
+function createJobListTableStore(persistName: string) {
+  return createPersistedDataTableStore({
+    initialState: {
+      sorting: [
+        {
+          desc: false,
+          id: 'scheduledSlots',
+        },
+      ],
+    },
+    persistName,
+    persistVersion: 2,
+  });
+}
 
 const jobSortOptions: SortOptions<JobListInput> = {
   allowedSortIds: JobSortBy.options,
@@ -65,7 +71,7 @@ export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ se
   );
 };
 
-const JobListTable: React.FC = () => {
+export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const accessQuery = useAccess();
@@ -78,18 +84,18 @@ const JobListTable: React.FC = () => {
       ({
         columnFilters: {
           code: getColumnFilterValue(columnFilters, 'code'),
-          customerId: getColumnFilterValue(columnFilters, 'customer'),
+          customerId: customerId ?? getColumnFilterValue(columnFilters, 'customer'),
           invoiceNumber: getColumnFilterValue(columnFilters, 'invoiceNumber'),
           productSerialNumber: getColumnFilterValue(columnFilters, 'productSerialNumber'),
         },
         filters: { invoicedOnly },
         include: { scheduleState: true },
       }) satisfies Pick<JobListInput, 'columnFilters' | 'filters' | 'include'>,
-    [invoicedOnly],
+    [customerId, invoicedOnly],
   );
 
   const tableController = useServerSideTableController({
-    store: useJobListTableStore,
+    store: customerId ? useCustomerJobListTableStore : useJobListTableStore,
     sortOptions: jobSortOptions,
     getListInputExtras,
   });
@@ -128,8 +134,9 @@ const JobListTable: React.FC = () => {
         canEditJobs,
         canOpenJobs,
         customerOptions,
+        showCustomerColumn: !customerId,
       }),
-    [canEditJobs, canOpenJobs, customerOptions],
+    [canEditJobs, canOpenJobs, customerId, customerOptions],
   );
   const columnPinning = useMemo(
     () => ({
@@ -185,7 +192,7 @@ const JobListTable: React.FC = () => {
           Is Invoiced
         </label>
       }
-      tableClassName="min-w-[1120px]"
+      tableClassName={customerId ? 'min-w-[944px]' : 'min-w-[1120px]'}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`}

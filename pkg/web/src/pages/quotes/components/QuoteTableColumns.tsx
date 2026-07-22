@@ -76,11 +76,13 @@ export function createQuoteTableColumns({
   customerOptions,
   productOptions,
   salespersonOptions,
+  showCustomerColumn,
 }: {
   canOpenJobs: boolean;
   customerOptions: FilterOption[];
   productOptions: FilterOption[];
   salespersonOptions: FilterOption[];
+  showCustomerColumn: boolean;
 }): ColumnDef<QuoteTableRow>[] {
   return [
     {
@@ -108,21 +110,25 @@ export function createQuoteTableColumns({
       },
       size: 112,
     },
-    {
-      accessorFn: (row) => row.quote.customerCompanyName,
-      cell: ({ row }) => <CustomerCell quote={row.original.quote} />,
-      enableColumnFilter: true,
-      enableSorting: true,
-      header: 'Customer',
-      id: 'customerCompanyName',
-      meta: {
-        cellClassName: 'max-w-44 overflow-hidden',
-        filterOptions: customerOptions,
-        filterVariant: 'select',
-        headerClassName: 'min-w-40 max-w-44',
-      },
-      size: 176,
-    },
+    ...(showCustomerColumn
+      ? [
+          {
+            accessorFn: (row: QuoteTableRow) => row.quote.customerCompanyName,
+            cell: ({ row }: { row: { original: QuoteTableRow } }) => <CustomerCell quote={row.original.quote} />,
+            enableColumnFilter: true,
+            enableSorting: true,
+            header: 'Customer',
+            id: 'customerCompanyName',
+            meta: {
+              cellClassName: 'max-w-44 overflow-hidden',
+              filterOptions: customerOptions,
+              filterVariant: 'select',
+              headerClassName: 'min-w-40 max-w-44',
+            },
+            size: 176,
+          } satisfies ColumnDef<QuoteTableRow>,
+        ]
+      : []),
     {
       accessorFn: (row) => row.quote.salesPersonName,
       cell: ({ row }) => <SalesPersonCell isPriority={row.original.kind === 'priority'} quote={row.original.quote} />,

@@ -116,9 +116,11 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
 
 export async function listPriorityQuotes({
   clock = () => new Date(),
+  customerId,
   db,
 }: {
   clock?: () => Date;
+  customerId?: UUID;
   db: Db;
 }): Promise<PriorityQuote[]> {
   const priorityWindowEndDate = getPriorityQuoteWindowEndDate(clock());
@@ -146,6 +148,7 @@ export async function listPriorityQuotes({
     .where(
       and(
         eq(quotes.status, 'accepted'),
+        customerId ? eq(quotes.customerId, customerId) : undefined,
         sql`${earliestDeliveryDate} is not null`,
         sql`${earliestDeliveryDate} <= ${priorityWindowEndDate}::date`,
         sql`not exists (

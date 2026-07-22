@@ -165,7 +165,7 @@ function TestJobListTable({
   rows: JobSummary[];
 }) {
   const table = useReactTable({
-    columns: createJobListColumns({ ...permissions, customerOptions }),
+    columns: createJobListColumns({ ...permissions, customerOptions, showCustomerColumn: true }),
     data: rows,
     getCoreRowModel: getCoreRowModel(),
     state: {

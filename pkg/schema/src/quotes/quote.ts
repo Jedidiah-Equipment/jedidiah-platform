@@ -263,6 +263,13 @@ export const PriorityQuote = z.discriminatedUnion('kind', [
   }),
 ]);
 
+export type QuotePriorityListInput = z.infer<typeof QuotePriorityListInput>;
+export const QuotePriorityListInput = z
+  .object({
+    customerId: UUID.optional(),
+  })
+  .default({});
+
 export type UpcomingDeliveryQuote = z.infer<typeof UpcomingDeliveryQuote>;
 export const UpcomingDeliveryQuote = z.discriminatedUnion('kind', [
   z.object({

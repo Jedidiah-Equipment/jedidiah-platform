@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.j
 import { useCan } from '@/hooks/use-access.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { JobListTable } from '../jobs/JobListPage.js';
+import { QuoteTable } from '../quotes/QuotesPage.js';
 import { CustomerForm } from './components/CustomerForm.js';
 
 type CustomerEditPageProps = {
@@ -48,6 +50,8 @@ type CustomerEditTabsProps = {
 };
 
 const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustomerSave }) => {
+  const canReadJobs = useCan('job:read').can;
+  const canReadQuotes = useCan('quote:read').can;
   const auditAccess = useCan('audit:read');
   const customerAuditFilters = useMemo(
     () => ({
@@ -61,11 +65,23 @@ const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustome
     <Tabs className="w-full" defaultValue="details" size="sm">
       <TabsList variant="default">
         <TabsTrigger value="details">Details</TabsTrigger>
+        {canReadQuotes ? <TabsTrigger value="quotes">Quotes</TabsTrigger> : null}
+        {canReadJobs ? <TabsTrigger value="jobs">Jobs</TabsTrigger> : null}
         {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
       </TabsList>
       <TabsContent className="pt-4" value="details">
         <CustomerForm customer={customer} key={customer.id} onSave={onCustomerSave} />
       </TabsContent>
+      {canReadQuotes ? (
+        <TabsContent className="pt-4" value="quotes">
+          <QuoteTable customerId={customer.id} />
+        </TabsContent>
+      ) : null}
+      {canReadJobs ? (
+        <TabsContent className="pt-4" value="jobs">
+          <JobListTable customerId={customer.id} />
+        </TabsContent>
+      ) : null}
       {auditAccess.can ? (
         <TabsContent className="pt-4" value="audit">
           <AuditTable

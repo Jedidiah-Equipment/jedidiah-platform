@@ -26,10 +26,12 @@ export function createJobListColumns({
   canEditJobs,
   canOpenJobs,
   customerOptions,
+  showCustomerColumn,
 }: {
   canEditJobs: boolean;
   canOpenJobs: boolean;
   customerOptions: JobListColumnOption[];
+  showCustomerColumn: boolean;
 }): ColumnDef<JobSummary>[] {
   return [
     {
@@ -46,20 +48,24 @@ export function createJobListColumns({
       },
       size: 112,
     },
-    {
-      accessorFn: (job) => job.customerCompanyName,
-      cell: ({ row }) => <CustomerCell job={row.original} />,
-      enableColumnFilter: true,
-      enableSorting: false,
-      header: 'Customer',
-      id: 'customer',
-      meta: {
-        cellClassName: 'max-w-52 overflow-hidden',
-        filterOptions: customerOptions,
-        filterVariant: 'select',
-        headerClassName: 'min-w-44',
-      },
-    },
+    ...(showCustomerColumn
+      ? [
+          {
+            accessorFn: (job: JobSummary) => job.customerCompanyName,
+            cell: ({ row }: { row: { original: JobSummary } }) => <CustomerCell job={row.original} />,
+            enableColumnFilter: true,
+            enableSorting: false,
+            header: 'Customer',
+            id: 'customer',
+            meta: {
+              cellClassName: 'max-w-52 overflow-hidden',
+              filterOptions: customerOptions,
+              filterVariant: 'select',
+              headerClassName: 'min-w-44',
+            },
+          } satisfies ColumnDef<JobSummary>,
+        ]
+      : []),
     {
       accessorFn: (job) => getJobDisplayName(job),
       cell: ({ row }) => <ProductCell job={row.original} />,

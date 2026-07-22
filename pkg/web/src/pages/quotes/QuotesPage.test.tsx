@@ -103,6 +103,7 @@ function TestQuoteTable({ rows }: { rows: QuoteTableRow[] }) {
       customerOptions: [],
       productOptions: [],
       salespersonOptions: [],
+      showCustomerColumn: true,
     }),
     data: rows,
     getCoreRowModel: getCoreRowModel(),

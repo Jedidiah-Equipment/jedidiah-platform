@@ -1453,10 +1453,12 @@ describe('quotes.list', () => {
       sortDirection: 'asc',
     });
     const endpointResult = await salesCaller.quotes.priorityList();
+    const customerEndpointResult = await salesCaller.quotes.priorityList({ customerId: overdueAlert.customerId });
 
     expect(matchingNormalListResult.items.map((quote) => quote.code)).toContain(overdueAlert.code);
     expect(result.map((quote) => quote.code)).toContain(overdueAlert.code);
     expect(endpointResult.map((quote) => quote.code)).toContain(overdueAlert.code);
+    expect(customerEndpointResult.map((quote) => quote.code)).toEqual([overdueAlert.code]);
   });
 
   test('keeps list pricing facts based on the frozen quote snapshot when product prices change', async ({

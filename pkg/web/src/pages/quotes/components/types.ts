@@ -30,25 +30,24 @@ export const CustomerMode = z.enum(['existing', 'inline']);
 
 const QuoteCreateBasePrice = z.union([Price, z.nan()]);
 const QuoteCreateHourlyRate = z.union([QuoteHourlyRate, z.nan()]);
+export const QuoteCreateStatus = QuoteStatus.exclude(['cancelled']);
 
 const QuoteCreateFormValuesShape = z.object({
   customerId: z.string(),
   customerMode: CustomerMode,
   basePrice: QuoteCreateBasePrice,
-  cancellationReason: z.string(),
   hourlyRate: QuoteCreateHourlyRate,
   inlineCompanyName: z.string(),
   kind: QuoteKind,
   productId: z.string(),
   rangeId: emptyStringOr(UUID),
   salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
-  status: QuoteStatus,
+  status: QuoteCreateStatus,
   workTitle: z.string(),
 });
 type QuoteCreateFormSelectionValues = z.infer<typeof QuoteCreateFormValuesShape>;
-export const QuoteCreateFormValues = QuoteCreateFormValuesShape.superRefine(refineQuoteCustomerSelection)
-  .superRefine(refineQuoteOfferingSelection)
-  .superRefine(refineQuoteCancellationReason);
+export const QuoteCreateFormValues =
+  QuoteCreateFormValuesShape.superRefine(refineQuoteCustomerSelection).superRefine(refineQuoteOfferingSelection);
 export type QuoteCreateFormValues = z.infer<typeof QuoteCreateFormValues>;
 
 export type QuoteFormValues = z.infer<typeof QuoteFormValues>;
@@ -128,7 +127,6 @@ export const emptyQuoteFormValues: QuoteFormValues = {
 
 export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   basePrice: 0,
-  cancellationReason: '',
   hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
   customerId: '',
   customerMode: 'existing',
@@ -176,7 +174,7 @@ export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
  */
 export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInput {
   return QuoteCreateInput.parse({
-    cancellationReason: value.status === 'cancelled' ? value.cancellationReason : null,
+    cancellationReason: null,
     customer:
       value.customerMode === 'existing'
         ? { type: 'existing', customerId: value.customerId }

@@ -1,5 +1,5 @@
 import { quoteStatusLabels } from '@pkg/domain';
-import { type Quote, QuoteStatus } from '@pkg/schema';
+import type { Quote } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
@@ -15,7 +15,12 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteCustomerCombobox } from './components/QuoteCustomerCombobox.js';
 import { QuoteProductCombobox } from './components/QuoteProductCombobox.js';
-import { QUOTE_CREATE_DEFAULT_VALUES, QuoteCreateFormValues, toQuoteCreateInput } from './components/types.js';
+import {
+  QUOTE_CREATE_DEFAULT_VALUES,
+  QuoteCreateFormValues,
+  QuoteCreateStatus,
+  toQuoteCreateInput,
+} from './components/types.js';
 
 const ALL_RANGES_SELECT_VALUE = 'all-ranges';
 
@@ -234,28 +239,13 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
             {(field) => (
               <field.SelectField
                 label="Status"
-                options={QuoteStatus.options.map((status) => ({
+                options={QuoteCreateStatus.options.map((status) => ({
                   label: quoteStatusLabels[status],
                   value: status,
                 }))}
               />
             )}
           </form.AppField>
-          <form.Subscribe selector={(state) => state.values.status}>
-            {(status) =>
-              status === 'cancelled' ? (
-                <form.AppField name="cancellationReason">
-                  {(field) => (
-                    <field.TextareaField
-                      label="Cancellation reason"
-                      placeholder="Explain why this quote is being cancelled…"
-                      rows={4}
-                    />
-                  )}
-                </form.AppField>
-              ) : null
-            }
-          </form.Subscribe>
         </div>
       )}
     </CreateEntityDialog>

@@ -100,7 +100,6 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
 
 function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): QuoteCreateFormValues {
   return {
-    cancellationReason: '',
     customerId: CUSTOMER_ID,
     customerMode: 'existing',
     basePrice: 0,
@@ -220,7 +219,6 @@ describe('toQuoteFormValues', () => {
 describe('QuoteCreateFormValues', () => {
   it('contains only the modal fields needed to create a quote shell', () => {
     expect(QUOTE_CREATE_DEFAULT_VALUES).toEqual({
-      cancellationReason: '',
       customerId: '',
       customerMode: 'existing',
       basePrice: 0,
@@ -268,13 +266,8 @@ describe('QuoteCreateFormValues', () => {
     ).toBe(false);
   });
 
-  it('requires a cancellation reason only when creating a cancelled quote', () => {
-    expect(QuoteCreateFormValues.safeParse(buildCreateFormValues({ status: 'cancelled' })).success).toBe(false);
-    expect(
-      QuoteCreateFormValues.safeParse(
-        buildCreateFormValues({ cancellationReason: 'Customer withdrew', status: 'cancelled' }),
-      ).success,
-    ).toBe(true);
+  it('does not allow creating a quote as cancelled', () => {
+    expect(QuoteCreateFormValues.safeParse({ ...buildCreateFormValues(), status: 'cancelled' }).success).toBe(false);
   });
 });
 
@@ -292,6 +285,7 @@ describe('toQuoteCreateInput', () => {
     expect(input.plannedDeliveryDate).toBeNull();
     expect(input.notes).toBeNull();
     expect(input.documentNotes).toBeNull();
+    expect(input.cancellationReason).toBeNull();
     expect(input.offering).toEqual({ kind: 'product', productId: PRODUCT_ID });
     expect(input.selectedAssemblies).toEqual([]);
   });
@@ -309,15 +303,6 @@ describe('toQuoteCreateInput', () => {
       phone: null,
       address: null,
     });
-  });
-
-  it('preserves cancelled status in create submissions', () => {
-    const input = toQuoteCreateInput(
-      buildCreateFormValues({ cancellationReason: 'Customer withdrew', status: 'cancelled' }),
-    );
-
-    expect(input.status).toBe('cancelled');
-    expect(input.cancellationReason).toBe('Customer withdrew');
   });
 
   it('builds the custom offering from work title and base price', () => {

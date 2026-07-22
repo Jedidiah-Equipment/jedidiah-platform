@@ -125,28 +125,15 @@ describe('mobile quote creation', () => {
     ]);
   });
 
-  it('requires and maps a reason when creating a cancelled quote', () => {
-    const withoutReason = QuoteCreateFormValues.safeParse({
+  it('does not allow creating a quote as cancelled', () => {
+    const result = QuoteCreateFormValues.safeParse({
       ...QUOTE_CREATE_DEFAULT_VALUES,
       customer: existingCustomer,
       productId: 'f36a4b28-d552-439c-8928-bf6da8aa42b2',
       salesPersonId: 'sales-user',
       status: 'cancelled',
     });
-    expect(withoutReason.error?.issues).toContainEqual(
-      expect.objectContaining({ message: 'Cancellation reason is required', path: ['cancellationReason'] }),
-    );
-
-    expect(
-      toQuoteCreateInput({
-        ...QUOTE_CREATE_DEFAULT_VALUES,
-        cancellationReason: 'Customer withdrew',
-        customer: existingCustomer,
-        productId: 'f36a4b28-d552-439c-8928-bf6da8aa42b2',
-        salesPersonId: 'sales-user',
-        status: 'cancelled',
-      }),
-    ).toMatchObject({ cancellationReason: 'Customer withdrew', status: 'cancelled' });
+    expect(result.success).toBe(false);
   });
 
   it('clears fields belonging to the other quote kind', () => {

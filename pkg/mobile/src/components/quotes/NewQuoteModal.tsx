@@ -1,3 +1,4 @@
+import { quoteStatusLabels } from '@pkg/domain';
 import { IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,9 +19,9 @@ import {
   clearQuoteKindFields,
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
+  QuoteCreateStatus,
   toQuoteCreateInput,
 } from '@/lib/quote-create';
-import { QUOTE_STATUS_OPTIONS } from '@/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
 
 const KIND_OPTIONS = [
@@ -58,7 +59,6 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   });
 
   const kind = useStore(form.store, (state) => state.values.kind);
-  const status = useStore(form.store, (state) => state.values.status);
   const salesPersonId = useStore(form.store, (state) => state.values.salesPersonId);
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
@@ -161,20 +161,16 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
           <form.AppField name="salesPersonId">{(_field) => <SalespersonSelectField />}</form.AppField>
 
           <form.AppField name="status">
-            {(field) => <field.SelectField label="Status" options={QUOTE_STATUS_OPTIONS} />}
+            {(field) => (
+              <field.SelectField
+                label="Status"
+                options={QuoteCreateStatus.options.map((status) => ({
+                  label: quoteStatusLabels[status],
+                  value: status,
+                }))}
+              />
+            )}
           </form.AppField>
-
-          {status === 'cancelled' ? (
-            <form.AppField name="cancellationReason">
-              {(field) => (
-                <field.TextareaField
-                  label="Cancellation reason"
-                  placeholder="Explain why this quote is being cancelled"
-                  rows={4}
-                />
-              )}
-            </form.AppField>
-          ) : null}
         </ScrollView>
 
         <View className="flex-row justify-end gap-2.5 border-t border-border px-5 pb-5 pt-4">

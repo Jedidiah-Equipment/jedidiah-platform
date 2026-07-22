@@ -69,6 +69,7 @@ export function QuoteDocumentsTab({
     setDownloadingId(document.id);
     try {
       await saveDocument({
+        contentType: document.contentType,
         path: quoteDocumentDownloadPath(quote.id, document.id),
         filename: document.filename,
       });

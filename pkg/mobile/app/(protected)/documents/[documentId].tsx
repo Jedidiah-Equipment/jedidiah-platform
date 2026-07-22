@@ -164,7 +164,7 @@ function DocumentViewerState({
   onBack,
 }: {
   context: string | null;
-  document: Pick<DocumentSummary, 'filename'> | null | undefined;
+  document: Pick<DocumentSummary, 'contentType' | 'filename'> | null | undefined;
   downloadPath: string;
   isError: boolean;
   isPending: boolean;
@@ -189,7 +189,7 @@ function BrochureScreen({ productId, onBack }: { productId: string; onBack: () =
   return (
     <DocumentViewer
       context={`${query.data.modelCode} · ${query.data.name}`}
-      document={{ filename: productBrochureFilename(query.data.modelCode) }}
+      document={{ contentType: 'application/pdf', filename: productBrochureFilename(query.data.modelCode) }}
       downloadPath={productBrochurePreviewPath(productId)}
       onBack={onBack}
     />

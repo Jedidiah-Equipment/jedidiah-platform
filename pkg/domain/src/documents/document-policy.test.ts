@@ -5,6 +5,7 @@ import {
   DOCUMENT_PDF_CONTENT_TYPE,
   DOCUMENT_PNG_CONTENT_TYPE,
   DOCUMENT_WEBP_CONTENT_TYPE,
+  DOCUMENT_ZIP_CONTENT_TYPE,
   JOB_DOCUMENT_TYPE_LABELS,
   PRODUCT_DOCUMENT_MAX_BYTES,
   sniffDocumentContentType,
@@ -22,7 +23,12 @@ describe('validateDocumentPolicy', () => {
       }),
     ).toEqual({ ok: true });
 
-    for (const contentType of [DOCUMENT_PNG_CONTENT_TYPE, DOCUMENT_JPEG_CONTENT_TYPE, DOCUMENT_WEBP_CONTENT_TYPE]) {
+    for (const contentType of [
+      DOCUMENT_PNG_CONTENT_TYPE,
+      DOCUMENT_JPEG_CONTENT_TYPE,
+      DOCUMENT_WEBP_CONTENT_TYPE,
+      DOCUMENT_ZIP_CONTENT_TYPE,
+    ]) {
       expect(
         validateDocumentPolicy({
           byteSize: 100,
@@ -44,6 +50,41 @@ describe('validateDocumentPolicy', () => {
         ownerType: 'product',
       }),
     ).toEqual({ ok: true });
+  });
+
+  it('allows ZIP files only for Product drawings', () => {
+    expect(
+      validateDocumentPolicy({
+        byteSize: PRODUCT_DOCUMENT_MAX_BYTES,
+        contentType: DOCUMENT_ZIP_CONTENT_TYPE,
+        metadata: { type: 'drawing' },
+        ownerType: 'product',
+      }),
+    ).toEqual({ ok: true });
+
+    expect(
+      validateDocumentPolicy({
+        byteSize: 100,
+        contentType: DOCUMENT_PDF_CONTENT_TYPE,
+        metadata: { type: 'drawing' },
+        ownerType: 'product',
+      }),
+    ).toMatchObject({
+      ok: false,
+      code: 'document.content_type_not_allowed',
+    });
+
+    expect(
+      validateDocumentPolicy({
+        byteSize: 100,
+        contentType: DOCUMENT_ZIP_CONTENT_TYPE,
+        metadata: { type: 'part_book' },
+        ownerType: 'product',
+      }),
+    ).toMatchObject({
+      ok: false,
+      code: 'document.content_type_not_allowed',
+    });
   });
 
   it('rejects product image documents', () => {
@@ -83,16 +124,18 @@ describe('validateDocumentPolicy', () => {
       }),
     ).toEqual({ ok: true });
 
-    expect(
-      validateDocumentPolicy({
-        byteSize: 100,
-        contentType: DOCUMENT_PNG_CONTENT_TYPE,
-        ownerType: 'quote',
-      }),
-    ).toMatchObject({
-      ok: false,
-      code: 'document.content_type_not_allowed',
-    });
+    for (const contentType of [DOCUMENT_PNG_CONTENT_TYPE, DOCUMENT_ZIP_CONTENT_TYPE]) {
+      expect(
+        validateDocumentPolicy({
+          byteSize: 100,
+          contentType,
+          ownerType: 'quote',
+        }),
+      ).toMatchObject({
+        ok: false,
+        code: 'document.content_type_not_allowed',
+      });
+    }
   });
 
   it('rejects product documents over the size cap', () => {
@@ -111,15 +154,16 @@ describe('validateDocumentPolicy', () => {
 
 describe('validateDocumentMetadata', () => {
   it('accepts snapshot, Brochure, and Purchase Order metadata for Jobs', () => {
-    for (const type of ['sop', 'part_book', 'bom', 'general', 'brochure', 'purchase_order'] as const) {
+    for (const type of ['sop', 'part_book', 'bom', 'general', 'drawing', 'brochure', 'purchase_order'] as const) {
       expect(validateDocumentMetadata({ metadata: { type }, ownerType: 'job' })).toEqual({ ok: true });
     }
 
     expect(JOB_DOCUMENT_TYPE_LABELS.purchase_order).toBe('Purchase Order');
+    expect(JOB_DOCUMENT_TYPE_LABELS.drawing).toBe('Drawing');
   });
 
   it('accepts each valid product document type', () => {
-    for (const type of ['sop', 'part_book', 'bom', 'general'] as const) {
+    for (const type of ['sop', 'part_book', 'bom', 'general', 'drawing'] as const) {
       expect(validateDocumentMetadata({ metadata: { type }, ownerType: 'product' })).toEqual({ ok: true });
     }
   });
@@ -176,9 +220,16 @@ describe('sniffDocumentContentType', () => {
         new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50]),
       ),
     ).toBe(DOCUMENT_WEBP_CONTENT_TYPE);
+    for (const signature of [
+      [0x50, 0x4b, 0x03, 0x04],
+      [0x50, 0x4b, 0x05, 0x06],
+      [0x50, 0x4b, 0x07, 0x08],
+    ]) {
+      expect(sniffDocumentContentType(new Uint8Array(signature))).toBe(DOCUMENT_ZIP_CONTENT_TYPE);
+    }
   });
 
   it('returns null when bytes do not match a supported document type', () => {
-    expect(sniffDocumentContentType(new Uint8Array([0x50, 0x4b, 0x03, 0x04]))).toBeNull();
+    expect(sniffDocumentContentType(new Uint8Array([0x50, 0x4b, 0x01, 0x02]))).toBeNull();
   });
 });

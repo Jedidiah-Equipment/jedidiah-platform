@@ -7,6 +7,7 @@ import {
   fetchDocumentPreviewBlob,
   getDocumentPreviewKind,
   getReadyProductDocumentUpload,
+  PRODUCT_DOCUMENT_ACCEPT,
   uploadJobPurchaseOrder,
   uploadProductDocument,
 } from './document.js';
@@ -90,6 +91,11 @@ describe('document utilities', () => {
 
   it('returns null for unsupported preview content types', () => {
     expect(getDocumentPreviewKind({ contentType: 'text/plain' })).toBeNull();
+    expect(getDocumentPreviewKind({ contentType: 'application/zip' })).toBeNull();
+  });
+
+  it('allows PDF and ZIP files to be selected for Product document uploads', () => {
+    expect(PRODUCT_DOCUMENT_ACCEPT.split(',')).toEqual(['application/pdf', 'application/zip', '.zip']);
   });
 
   it('treats an upload as incomplete until both a file and a type are chosen', () => {

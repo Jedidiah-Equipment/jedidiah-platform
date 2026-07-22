@@ -156,6 +156,58 @@ describe('document HTTP routes', () => {
     expect(row?.metadata).toEqual({ type: 'sop' });
   });
 
+  test('uploads and downloads a Product drawing as a server-verified ZIP file', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+
+    const uploadResponse = await app.inject({
+      method: 'POST',
+      url: `/api/products/${context.product.id}/documents`,
+      ...buildMultipartUpload({
+        bytes: zipBytes(),
+        declaredContentType: 'application/octet-stream',
+        filename: 'Fabrication Drawings.zip',
+        type: 'drawing',
+      }),
+    });
+
+    expect(uploadResponse.statusCode, uploadResponse.body).toBe(201);
+    expect(uploadResponse.json()).toMatchObject({
+      contentType: 'application/zip',
+      filename: 'Fabrication Drawings.zip',
+      metadata: { type: 'drawing' },
+    });
+
+    const documentId = uploadResponse.json().id as string;
+    const downloadResponse = await app.inject(`/api/products/${context.product.id}/documents/${documentId}/download`);
+
+    expect(downloadResponse.statusCode, downloadResponse.body).toBe(200);
+    expect(downloadResponse.headers['content-type']).toBe('application/zip');
+    expect(downloadResponse.rawPayload).toEqual(Buffer.from(zipBytes()));
+  });
+
+  test('rejects ZIP files classified as non-drawings and PDF files classified as drawings', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+
+    for (const input of [
+      { bytes: zipBytes(), filename: 'Part Book.zip', type: 'part_book' },
+      { bytes: pdfBytes(), filename: 'Drawing.pdf', type: 'drawing' },
+    ]) {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/products/${context.product.id}/documents`,
+        ...buildMultipartUpload(input),
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ data: { appCode: 'document.content_type_not_allowed' } });
+    }
+
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  });
+
   test('uploads a Job PDF as a Purchase Order regardless of client-supplied type', async ({ context }) => {
     const storage = new MemoryStorage();
     const app = await createDocumentApp(storage);
@@ -677,7 +729,19 @@ function pngBytes(): Uint8Array {
   return Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 }
 
-function buildMultipartUpload(input: { bytes: Uint8Array; filename: string; type?: string }): {
+function zipBytes(): Uint8Array {
+  return Buffer.from(
+    'UEsDBAoAAAAAAMlK9lxYkcrUFAAAABQAAAALABwAZHJhd2luZy50eHRVVAkAA6pvYGqqb2BqdXgLAAEE9QEAAAQUAAAAQ0FEIGRyYXdpbmcgcGFja2FnZQpQSwECHgMKAAAAAADJSvZcWJHK1BQAAAAUAAAACwAYAAAAAAABAAAApIEAAAAAZHJhd2luZy50eHRVVAUAA6pvYGp1eAsAAQT1AQAABBQAAABQSwUGAAAAAAEAAQBRAAAAWQAAAAAA',
+    'base64',
+  );
+}
+
+function buildMultipartUpload(input: {
+  bytes: Uint8Array;
+  declaredContentType?: string;
+  filename: string;
+  type?: string;
+}): {
   headers: Record<string, string>;
   payload: Buffer;
 } {
@@ -690,7 +754,7 @@ function buildMultipartUpload(input: { bytes: Uint8Array; filename: string; type
   }
 
   pushText(
-    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${input.filename}"\r\nContent-Type: application/pdf\r\n\r\n`,
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${input.filename}"\r\nContent-Type: ${input.declaredContentType ?? 'application/pdf'}\r\n\r\n`,
   );
   chunks.push(Buffer.from(input.bytes));
   pushText(`\r\n--${boundary}--\r\n`);

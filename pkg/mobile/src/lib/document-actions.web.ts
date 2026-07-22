@@ -4,8 +4,6 @@ import type { DocumentAction } from './document-actions';
 
 export type { DocumentAction } from './document-actions';
 
-const PDF_MIME = 'application/pdf';
-
 // On web the browser owns the cookie jar, so `authedFetch` carries the session
 // automatically (credentials: 'include'); no header is read or logged here.
 async function fetchBlobUrl({ path }: DocumentAction): Promise<string> {
@@ -13,8 +11,7 @@ async function fetchBlobUrl({ path }: DocumentAction): Promise<string> {
   if (!response.ok) {
     throw new Error(`Couldn’t download the document (${response.status}).`);
   }
-  const blob = await response.blob();
-  return URL.createObjectURL(blob.slice(0, blob.size, PDF_MIME));
+  return URL.createObjectURL(await response.blob());
 }
 
 // Trigger a browser download via a transient anchor, revoking the object URL after.

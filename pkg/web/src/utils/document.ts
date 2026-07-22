@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 import { getClientConfig } from '@/lib/app-config.js';
 
-export const PRODUCT_DOCUMENT_ACCEPT = getDocumentPolicy('product').allowedContentTypes.join(',');
+export const PRODUCT_DOCUMENT_ACCEPT = [...getDocumentPolicy('product').allowedContentTypes, '.zip'].join(',');
 export const JOB_DOCUMENT_ACCEPT = getDocumentPolicy('job').allowedContentTypes.join(',');
 
 export type DocumentPreviewOwner = {

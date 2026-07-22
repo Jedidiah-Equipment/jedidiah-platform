@@ -1,11 +1,4 @@
-import {
-  DOCUMENT_JPEG_CONTENT_TYPE,
-  DOCUMENT_PDF_CONTENT_TYPE,
-  DOCUMENT_PNG_CONTENT_TYPE,
-  DOCUMENT_WEBP_CONTENT_TYPE,
-  formatBytes,
-  sniffDocumentContentType,
-} from '../documents/document-policy.js';
+import { documentContentTypeLabel, formatBytes, sniffDocumentContentType } from '../documents/document-policy.js';
 
 // Per-feature upload rules for stored files. Compose one of these where an entity owns uploaded files and
 // pass it to {@link validateFile}; the entity decides its allowed formats and size cap. Content-type
@@ -20,13 +13,6 @@ export type FilePolicyViolationCode = 'file.content_type_not_allowed' | 'file.to
 export type FileValidationResult =
   | { ok: true; byteSize: number; contentType: string }
   | { ok: false; code: FilePolicyViolationCode; message: string };
-
-const CONTENT_TYPE_LABELS: Record<string, string> = {
-  [DOCUMENT_PDF_CONTENT_TYPE]: 'PDF',
-  [DOCUMENT_PNG_CONTENT_TYPE]: 'PNG',
-  [DOCUMENT_JPEG_CONTENT_TYPE]: 'JPEG',
-  [DOCUMENT_WEBP_CONTENT_TYPE]: 'WebP',
-};
 
 // Validate uploaded file bytes against a policy: the format is decided by sniffing the magic bytes
 // (not the client-declared content type) and must be in the policy, and the byte length must be within
@@ -65,7 +51,7 @@ export function fileTooLargeMessage(maxBytes: number): string {
 
 // Comma/`or`-joined human label for a set of content types, e.g. "PNG or JPEG".
 export function describeFileContentTypes(contentTypes: readonly string[]): string {
-  const labels = contentTypes.map((contentType) => CONTENT_TYPE_LABELS[contentType] ?? contentType);
+  const labels = contentTypes.map(documentContentTypeLabel);
 
   if (labels.length <= 1) {
     return labels[0] ?? '';

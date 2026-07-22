@@ -7,12 +7,13 @@ import { DocumentPage } from '@/components/documents/DocumentPage';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { type DocumentAction, saveDocument, shareDocument } from '@/lib/document-actions';
+import { canPreviewDocument } from '@/lib/document-content';
 
 /**
  * In-app document reader (#521): the DOCUMENT VIEWER screen from the mockup —
- * header (back, name + context, download, share) above a full-screen PDF page area.
- * Scrolling and pinch-zoom are handled natively, so there is no footer. The page
- * itself is rendered by the platform {@link DocumentPage}.
+ * header (back, name + context, download, share) above a full-screen preview area.
+ * PDFs render through the platform {@link DocumentPage}; download-only formats show
+ * an explicit unavailable state without invoking the PDF renderer.
  */
 export function DocumentViewer({
   downloadPath,
@@ -21,7 +22,7 @@ export function DocumentViewer({
   onBack,
 }: {
   downloadPath: string;
-  document: Pick<DocumentSummary, 'filename'>;
+  document: Pick<DocumentSummary, 'contentType' | 'filename'>;
   /** Sub-label under the title, e.g. `JOB-00009 · Silage Grain 18 36`. */
   context: string;
   onBack: () => void;
@@ -29,7 +30,12 @@ export function DocumentViewer({
   const [busy, setBusy] = useState<null | 'save' | 'share'>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const action: DocumentAction = { path: downloadPath, filename: document.filename };
+  const action: DocumentAction = {
+    contentType: document.contentType,
+    path: downloadPath,
+    filename: document.filename,
+  };
+  const canPreview = canPreviewDocument(document.contentType);
 
   const run = (kind: 'save' | 'share', act: (a: DocumentAction) => Promise<void>) => async () => {
     if (busy) return;
@@ -83,7 +89,18 @@ export function DocumentViewer({
 
       {/* Page area. */}
       <View className="flex-1 bg-muted">
-        <DocumentPage filename={document.filename} path={action.path} />
+        {canPreview ? (
+          <DocumentPage filename={document.filename} path={action.path} />
+        ) : (
+          <View className="flex-1 items-center justify-center gap-2 px-6">
+            <Text className="text-base text-foreground" weight="semibold">
+              Preview unavailable
+            </Text>
+            <Text className="text-center text-sm text-muted-foreground">
+              Download or share this file to open it in another app.
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );

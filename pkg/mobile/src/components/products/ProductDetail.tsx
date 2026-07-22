@@ -1,4 +1,11 @@
-import { formatBytes, formatCurrency, formatDate, isBrochureReady, isLanderReady } from '@pkg/domain';
+import {
+  documentContentTypeLabel,
+  formatBytes,
+  formatCurrency,
+  formatDate,
+  isBrochureReady,
+  isLanderReady,
+} from '@pkg/domain';
 import type { OptionalAssembly, Product, ProductDocument, StandardAssembly } from '@pkg/schema';
 import { IconCheck, IconChevronLeft, IconDownload, IconEye, IconLink } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -11,9 +18,10 @@ import { ProductImage } from '@/components/products/ProductImage';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
+import { useDocumentDownload } from '@/hooks/use-document-download';
 import { landerOrigin } from '@/lib/app-env';
 import { productBrochurePreviewPath, productDocumentDownloadPath } from '@/lib/authed-fetch';
-import { saveDocument } from '@/lib/document-actions';
+import { getDocumentListAction } from '@/lib/document-content';
 import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/lib/product-brochure';
 import { landerProductUrls } from '@/lib/product-presentation';
 import { useTRPC } from '@/lib/trpc';
@@ -318,6 +326,7 @@ function ProductBrochureRow({ product }: { product: Product }) {
 
   return (
     <ProductFileRow
+      contentType="application/pdf"
       downloadPath={productBrochurePreviewPath(product.id)}
       filename={filename}
       metadata="Generated Product Brochure"
@@ -328,7 +337,6 @@ function ProductBrochureRow({ product }: { product: Product }) {
 
 function ProductDocumentRow({ document, product }: { document: ProductDocument; product: Product }) {
   const router = useRouter();
-  const contentType = document.contentType === 'application/pdf' ? 'PDF' : document.contentType;
   const open = () =>
     router.push({
       pathname: '/documents/[documentId]',
@@ -337,66 +345,63 @@ function ProductDocumentRow({ document, product }: { document: ProductDocument; 
 
   return (
     <ProductFileRow
-      contentType={contentType}
+      contentType={document.contentType}
       downloadPath={productDocumentDownloadPath(product.id, document.id)}
       filename={document.filename}
       metadata={`${formatBytes(document.byteSize)} · ${formatDate(document.createdAt, 'd MMM yyyy')}`}
-      onOpen={open}
+      onOpen={getDocumentListAction(document.contentType) === 'preview' ? open : undefined}
     />
   );
 }
 
 function ProductFileRow({
-  contentType = 'PDF',
+  contentType,
   downloadPath,
   filename,
   metadata,
   onOpen,
 }: {
-  contentType?: string;
+  contentType: string;
   downloadPath: string;
   filename: string;
   metadata: string;
-  onOpen: () => void;
+  onOpen?: () => void;
 }) {
-  const [downloading, setDownloading] = useState(false);
-
-  const download = async () => {
-    if (downloading) return;
-    setDownloading(true);
-    try {
-      await saveDocument({ path: downloadPath, filename });
-    } catch (error) {
-      Alert.alert('Couldn’t download document', error instanceof Error ? error.message : 'Please try again.');
-    } finally {
-      setDownloading(false);
-    }
-  };
+  const { download, isDownloading } = useDocumentDownload({ contentType, filename, path: downloadPath });
+  const details = (
+    <>
+      <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
+        {filename}
+      </Text>
+      <Text className="mt-1 text-[10px] text-muted-foreground" mono numberOfLines={1}>
+        {metadata}
+      </Text>
+    </>
+  );
 
   return (
     <View className="flex-row items-center gap-2 border-t border-border py-3">
       <View className="h-10 w-10 items-center justify-center rounded-lg border border-danger/25 bg-danger/10">
         <Text className="text-[9px] text-danger" mono weight="semibold">
-          {contentType}
+          {documentContentTypeLabel(contentType)}
         </Text>
       </View>
-      <Pressable
-        accessibilityHint="Opens the document viewer"
-        accessibilityLabel={filename}
-        accessibilityRole="button"
-        className="min-w-0 flex-1"
-        onPress={onOpen}
-      >
-        <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
-          {filename}
-        </Text>
-        <Text className="mt-1 text-[10px] text-muted-foreground" mono numberOfLines={1}>
-          {metadata}
-        </Text>
-      </Pressable>
-      <DocumentButton icon={IconEye} label="Open document" onPress={onOpen} />
+      {onOpen ? (
+        <Pressable
+          accessibilityHint="Opens the document viewer"
+          accessibilityLabel={filename}
+          accessibilityRole="button"
+          className="min-w-0 flex-1"
+          onPress={onOpen}
+        >
+          {details}
+        </Pressable>
+      ) : (
+        <View className="min-w-0 flex-1">{details}</View>
+      )}
+      {onOpen ? <DocumentButton icon={IconEye} label="Open document" onPress={onOpen} /> : null}
       <DocumentButton
-        busy={downloading}
+        busy={isDownloading}
         icon={IconDownload}
         label="Download document"
         onPress={() => void download()}

@@ -45,6 +45,30 @@ describe('DocumentCardList', () => {
     expect(markup).toContain('aria-label="Delete PO-123.pdf"');
     expect(markup).not.toContain('aria-label="Delete Brochure.pdf"');
   });
+
+  it('renders ZIP documents as download-only', () => {
+    const drawing = buildDocument({
+      contentType: 'application/zip',
+      filename: 'Fabrication Drawings.zip',
+      metadata: { type: 'drawing' },
+    });
+    const queryClient = new QueryClient();
+    const markup = renderToStaticMarkup(
+      <QueryClientProvider client={queryClient}>
+        <DocumentCardList
+          documents={[drawing]}
+          emptyMessage="No documents."
+          isLoading={false}
+          metadata={{ getSearchText: () => 'Drawing', render: () => 'Drawing' }}
+          owner={{ id: '33333333-3333-4333-8333-333333333333', type: 'job' }}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(markup).toContain('title="ZIP"');
+    expect(markup).toContain('aria-label="Download Fabrication Drawings.zip"');
+    expect(markup).not.toContain('aria-label="Preview Fabrication Drawings.zip"');
+  });
 });
 
 function buildDocument(

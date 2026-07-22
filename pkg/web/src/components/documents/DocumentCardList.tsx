@@ -1,5 +1,5 @@
 import { useElementSize } from '@mantine/hooks';
-import { formatBytes, formatDate } from '@pkg/domain';
+import { DOCUMENT_ZIP_CONTENT_TYPE, documentContentTypeLabel, formatBytes, formatDate } from '@pkg/domain';
 import type { DocumentSummary } from '@pkg/schema';
 import {
   IconDownload,
@@ -7,6 +7,7 @@ import {
   IconFileTypeJpg,
   IconFileTypePdf,
   IconFileTypePng,
+  IconFileTypeZip,
   IconFileUnknown,
   IconLoader2,
   IconPhoto,
@@ -42,7 +43,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { cn } from '@/lib/utils.js';
-import { type DocumentPreviewOwner, downloadDocument } from '@/utils/document.js';
+import { type DocumentPreviewOwner, downloadDocument, getDocumentPreviewKind } from '@/utils/document.js';
 import {
   DEFAULT_DOCUMENT_CARD_PAGE_SIZE,
   DEFAULT_DOCUMENT_CARD_SORT,
@@ -259,6 +260,7 @@ function DocumentCard<TDocument extends DocumentSummary>({
   onPreviewDocument: (document: TDocument) => void;
 }) {
   const fileKind = getDocumentFileKind(document);
+  const canPreview = getDocumentPreviewKind(document) !== null;
 
   return (
     <Card className="min-w-0" size="sm">
@@ -278,15 +280,17 @@ function DocumentCard<TDocument extends DocumentSummary>({
         </div>
         <CardAction span="title">
           <div className="flex items-center gap-1">
-            <Button
-              aria-label={`Preview ${document.filename}`}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-              onClick={() => onPreviewDocument(document)}
-            >
-              <IconEye />
-            </Button>
+            {canPreview ? (
+              <Button
+                aria-label={`Preview ${document.filename}`}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+                onClick={() => onPreviewDocument(document)}
+              >
+                <IconEye />
+              </Button>
+            ) : null}
             <DownloadDocumentButton document={document} owner={owner} />
             {canDelete && onDelete ? <DeleteDocumentButton document={document} onDelete={onDelete} /> : null}
           </div>
@@ -418,6 +422,14 @@ function getDocumentFileKind(document: Pick<DocumentSummary, 'contentType'>): {
 
   if (contentType === 'image/jpeg') {
     return { Icon: IconFileTypeJpg, iconChromeClassName: 'bg-blue-500/10 text-blue-400', label: 'JPEG' };
+  }
+
+  if (contentType === DOCUMENT_ZIP_CONTENT_TYPE) {
+    return {
+      Icon: IconFileTypeZip,
+      iconChromeClassName: 'bg-amber-500/10 text-amber-400',
+      label: documentContentTypeLabel(contentType),
+    };
   }
 
   if (contentType.startsWith('image/')) {

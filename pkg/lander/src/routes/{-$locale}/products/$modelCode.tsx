@@ -185,13 +185,13 @@ function HeroKeyFeatures({ features }: { features: string[] }) {
         <span className="h-[3px] w-8 bg-gold" aria-hidden="true" />
         {m.productDetail.keyFeatures}
       </h2>
-      <ul className="m-0 grid list-none grid-cols-2 gap-px border border-line bg-line p-0 max-xs:grid-cols-1">
+      <ul className="m-0 list-none border-y border-line p-0">
         {features.map((feature) => (
-          <li key={feature} className="flex items-start gap-3 bg-cream px-4 py-3.5">
-            <span className="mt-0.5 flex size-5 flex-none items-center justify-center bg-gold text-ink">
+          <li key={feature} className="flex items-center gap-3.5 border-b border-line px-1 py-3.5 last:border-b-0">
+            <span className="flex size-6 flex-none items-center justify-center bg-gold text-ink">
               <IconCheck size={14} stroke={2.8} aria-hidden="true" />
             </span>
-            <span className="font-body text-[15px] font-medium leading-[1.45] text-[#333]">{feature}</span>
+            <span className="font-body text-[16px] font-semibold leading-[1.4] text-[#333]">{feature}</span>
           </li>
         ))}
       </ul>
@@ -254,7 +254,7 @@ export function ProductShareButton({ modelCode, name }: { modelCode: string; nam
       type="button"
       onClick={() => void handleShare()}
       aria-live="polite"
-      className="flex cursor-pointer items-center gap-2.5 border-2 border-[#cfcac0] bg-transparent px-[24px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-white focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-gold max-xs:col-span-2 max-xs:justify-center"
+      className="col-span-2 flex cursor-pointer items-center justify-center gap-2.5 border-2 border-[#cfcac0] bg-transparent px-[24px] py-[15px] font-display text-[17px] font-bold uppercase tracking-[1.5px] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-white focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-gold"
     >
       {status === 'copied' ? (
         <IconCheck size={20} stroke={2.4} aria-hidden="true" />
@@ -266,15 +266,39 @@ export function ProductShareButton({ modelCode, name }: { modelCode: string; nam
   );
 }
 
-function Hero({ detail }: { detail: ProductDetail }) {
+function ProductActions({ detail }: { detail: ProductDetail }) {
   const m = useMessages();
 
   return (
-    <section className="border-b border-line bg-white">
-      <div className="mx-auto grid max-w-[1320px] grid-cols-[1.05fr_1fr] gap-14 px-12 pt-12 pb-14 max-nav:grid-cols-1 max-nav:gap-8 max-nav:px-5 max-nav:pt-8 max-nav:pb-10">
-        <Gallery images={detail.galleryImages} name={detail.name} />
+    <div className="grid grid-cols-2 gap-3.5">
+      <Link
+        to="/{-$locale}/contact"
+        className="flex items-center justify-center gap-3 bg-gold px-[22px] py-[15px] font-display text-[17px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-yellow max-xs:px-[14px]"
+      >
+        {m.productDetail.contactUs}
+        <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />
+      </Link>
+      <a
+        href={`tel:${contactNumberE164()}`}
+        onClick={() => captureEventForNavigation('phone_link_clicked', { placement: 'product_detail' })}
+        className="flex items-center justify-center border-2 border-ink bg-transparent px-[22px] py-[15px] font-display text-[17px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-ink hover:text-white max-xs:px-[14px]"
+      >
+        {m.productDetail.callUs}
+      </a>
+      <ProductShareButton modelCode={detail.modelCode} name={detail.name} />
+    </div>
+  );
+}
 
-        <div className="flex flex-col">
+function Hero({ detail }: { detail: ProductDetail }) {
+  return (
+    <section className="border-b border-line bg-white">
+      <div className="mx-auto grid max-w-[1320px] grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] grid-rows-[auto_auto] gap-x-12 gap-y-6 px-12 pt-12 pb-14 max-nav:grid-cols-1 max-nav:grid-rows-none max-nav:gap-8 max-nav:px-5 max-nav:pt-8 max-nav:pb-10">
+        <div className="col-start-1 row-start-1">
+          <Gallery images={detail.galleryImages} name={detail.name} />
+        </div>
+
+        <div className="col-start-2 row-start-1 row-span-2 flex flex-col max-nav:col-start-1 max-nav:row-start-2 max-nav:row-span-1">
           <span className="self-start bg-gold px-3.5 py-1.5 font-display text-[13px] font-bold uppercase tracking-[2px] text-ink">
             {detail.rangeName}
           </span>
@@ -288,26 +312,12 @@ function Hero({ detail }: { detail: ProductDetail }) {
           {detail.keyFeatures.length > 0 ? <HeroKeyFeatures features={detail.keyFeatures} /> : null}
 
           {detail.description ? (
-            <p className="m-0 mb-8 font-body text-[16px] leading-[1.7] text-[#555]">{detail.description}</p>
+            <p className="m-0 font-body text-[16px] leading-[1.7] text-[#555]">{detail.description}</p>
           ) : null}
+        </div>
 
-          <div className="mt-auto flex flex-wrap gap-3.5 max-xs:grid max-xs:grid-cols-2">
-            <Link
-              to="/{-$locale}/contact"
-              className="flex items-center gap-3 bg-gold px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-yellow max-xs:justify-center max-xs:px-[18px]"
-            >
-              {m.productDetail.contactUs}
-              <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />
-            </Link>
-            <a
-              href={`tel:${contactNumberE164()}`}
-              onClick={() => captureEventForNavigation('phone_link_clicked', { placement: 'product_detail' })}
-              className="flex items-center border-2 border-ink bg-transparent px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-ink hover:text-white max-xs:justify-center max-xs:px-[18px]"
-            >
-              {m.productDetail.callUs}
-            </a>
-            <ProductShareButton modelCode={detail.modelCode} name={detail.name} />
-          </div>
+        <div className="col-start-1 row-start-2 max-nav:row-start-3">
+          <ProductActions detail={detail} />
         </div>
       </div>
     </section>

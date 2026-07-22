@@ -174,7 +174,13 @@ function QuoteEditor({
                 {!canUpdate ? (
                   <InfoBanner message="You have read-only access. Quote fields cannot be changed." />
                 ) : isLocked ? (
-                  <InfoBanner message="This Quote is locked. Only notes and delivery dates remain editable." />
+                  <InfoBanner
+                    message={
+                      canEdit('workItems')
+                        ? 'This Quote is locked. Work items, hourly rate, notes, and delivery dates remain editable.'
+                        : 'This Quote is locked. Only notes and delivery dates remain editable.'
+                    }
+                  />
                 ) : null}
                 {priorityQuote ? <QuotePriorityAlert quote={priorityQuote} /> : null}
 
@@ -329,7 +335,7 @@ function QuoteEditor({
                     <form.AppField name="hourlyRate">
                       {(field) => (
                         <field.CurrencyField
-                          disabled={setupReadOnly}
+                          disabled={!canEdit('hourlyRate')}
                           label="Hourly rate"
                           onValueCommit={autosave.commit}
                         />
@@ -344,7 +350,7 @@ function QuoteEditor({
                     currencyCode={quoteCurrencyCode}
                     form={form}
                     hourlyRate={values.hourlyRate}
-                    setupReadOnly={setupReadOnly}
+                    readOnly={!canEdit('workItems')}
                   />
                 ) : null}
 

@@ -16,7 +16,7 @@ type QuoteWorkItemsEditorProps = {
   currencyCode: string;
   form: QuoteEditAutosaveForm['form'];
   hourlyRate: number;
-  setupReadOnly: boolean;
+  readOnly: boolean;
 };
 
 type QuoteWorkItemFormValue = QuoteEditFormValues['workItems'][number];
@@ -29,7 +29,7 @@ export function QuoteWorkItemsEditor({
   currencyCode,
   form,
   hourlyRate,
-  setupReadOnly,
+  readOnly,
 }: QuoteWorkItemsEditorProps) {
   return (
     <form.Field name="workItems" mode="array">
@@ -38,11 +38,11 @@ export function QuoteWorkItemsEditor({
           action={
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: setupReadOnly }}
+              accessibilityState={{ disabled: readOnly }}
               className={`flex-row items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 ${
-                setupReadOnly ? 'opacity-50' : 'active:bg-surface'
+                readOnly ? 'opacity-50' : 'active:bg-surface'
               }`}
-              disabled={setupReadOnly}
+              disabled={readOnly}
               onPress={() => {
                 workItemsField.pushValue({ hours: 0, name: '', parts: [] });
                 autosave.markChanged();
@@ -65,14 +65,14 @@ export function QuoteWorkItemsEditor({
                 <View className="gap-4 rounded-xl border border-border bg-muted/10 p-3" key={getWorkItemKey(workItem)}>
                   <form.AppField name={`workItems[${workItemIndex}].name`}>
                     {(field) => (
-                      <field.TextField disabled={setupReadOnly} label="Work item" onValueCommit={autosave.commit} />
+                      <field.TextField disabled={readOnly} label="Work item" onValueCommit={autosave.commit} />
                     )}
                   </form.AppField>
                   <View className="gap-3 md:flex-row">
                     <View className="flex-1">
                       <form.AppField name={`workItems[${workItemIndex}].hours`}>
                         {(field) => (
-                          <field.NumberField disabled={setupReadOnly} label="Hours" onValueCommit={autosave.commit} />
+                          <field.NumberField disabled={readOnly} label="Hours" onValueCommit={autosave.commit} />
                         )}
                       </form.AppField>
                     </View>
@@ -93,11 +93,11 @@ export function QuoteWorkItemsEditor({
                           </Text>
                           <Pressable
                             accessibilityRole="button"
-                            accessibilityState={{ disabled: setupReadOnly }}
+                            accessibilityState={{ disabled: readOnly }}
                             className={`flex-row items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 ${
-                              setupReadOnly ? 'opacity-50' : 'active:bg-muted'
+                              readOnly ? 'opacity-50' : 'active:bg-muted'
                             }`}
-                            disabled={setupReadOnly}
+                            disabled={readOnly}
                             onPress={() => {
                               partsField.pushValue({ name: '', quantity: 1, unitPrice: 0 });
                               autosave.markChanged();
@@ -121,7 +121,7 @@ export function QuoteWorkItemsEditor({
                                 <form.AppField name={`workItems[${workItemIndex}].parts[${partIndex}].name`}>
                                   {(field) => (
                                     <field.TextField
-                                      disabled={setupReadOnly}
+                                      disabled={readOnly}
                                       label="Part name"
                                       onValueCommit={autosave.commit}
                                     />
@@ -132,7 +132,7 @@ export function QuoteWorkItemsEditor({
                                     <form.AppField name={`workItems[${workItemIndex}].parts[${partIndex}].quantity`}>
                                       {(field) => (
                                         <field.NumberField
-                                          disabled={setupReadOnly}
+                                          disabled={readOnly}
                                           label="Quantity"
                                           onValueCommit={autosave.commit}
                                         />
@@ -143,7 +143,7 @@ export function QuoteWorkItemsEditor({
                                     <form.AppField name={`workItems[${workItemIndex}].parts[${partIndex}].unitPrice`}>
                                       {(field) => (
                                         <field.CurrencyField
-                                          disabled={setupReadOnly}
+                                          disabled={readOnly}
                                           label="Unit price"
                                           onValueCommit={autosave.commit}
                                         />
@@ -155,11 +155,11 @@ export function QuoteWorkItemsEditor({
                                   <Pressable
                                     accessibilityLabel={`Remove part ${partIndex + 1} from work item ${workItemIndex + 1}`}
                                     accessibilityRole="button"
-                                    accessibilityState={{ disabled: setupReadOnly }}
+                                    accessibilityState={{ disabled: readOnly }}
                                     className={`h-10 w-10 items-center justify-center rounded-lg ${
-                                      setupReadOnly ? 'opacity-0' : 'active:bg-muted'
+                                      readOnly ? 'opacity-0' : 'active:bg-muted'
                                     }`}
-                                    disabled={setupReadOnly}
+                                    disabled={readOnly}
                                     onPress={() => {
                                       partsField.removeValue(partIndex);
                                       autosave.commit();
@@ -180,11 +180,11 @@ export function QuoteWorkItemsEditor({
                     <Pressable
                       accessibilityLabel={`Remove work item ${workItemIndex + 1}`}
                       accessibilityRole="button"
-                      accessibilityState={{ disabled: setupReadOnly }}
+                      accessibilityState={{ disabled: readOnly }}
                       className={`h-10 w-10 items-center justify-center rounded-lg ${
-                        setupReadOnly ? 'opacity-0' : 'active:bg-muted'
+                        readOnly ? 'opacity-0' : 'active:bg-muted'
                       }`}
-                      disabled={setupReadOnly}
+                      disabled={readOnly}
                       onPress={() => {
                         workItemsField.removeValue(workItemIndex);
                         autosave.commit();

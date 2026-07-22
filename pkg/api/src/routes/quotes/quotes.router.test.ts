@@ -16,7 +16,7 @@ import {
   sql,
   user,
 } from '@pkg/db';
-import { priceQuote } from '@pkg/domain';
+import { pricePersistedQuote, priceQuote } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 
@@ -614,9 +614,10 @@ describe('quotes.create', () => {
 });
 
 describe('quotes.update', () => {
-  test('replaces work items on drafts and freezes them after acceptance', async ({ context }) => {
-    const caller = context.createCaller(mockSession('sales'));
-    const created = await caller.quotes.create({
+  test('edits and reprices Work Items after acceptance and Job creation', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const created = await salesCaller.quotes.create({
       customer: { type: 'inline', companyName: 'Work Item Lock Customer' },
       notes: null,
       documentNotes: null,
@@ -633,7 +634,7 @@ describe('quotes.update', () => {
     });
     if (created.kind !== 'custom') throw new Error('Expected a Custom Quote');
 
-    const updated = await caller.quotes.update({
+    const updated = await salesCaller.quotes.update({
       ...toUpdateInput(created),
       offering: {
         kind: 'custom',
@@ -648,63 +649,74 @@ describe('quotes.update', () => {
       { name: 'Rebuild', hours: 2, parts: [{ name: 'Seal', quantity: 1, unitPrice: 100 }] },
     ]);
 
-    const accepted = await caller.quotes.update({ ...toUpdateInput(updated), status: 'accepted' });
+    const accepted = await salesCaller.quotes.update({ ...toUpdateInput(updated), status: 'accepted' });
     if (accepted.kind !== 'custom') throw new Error('Expected a Custom Quote');
-    const notesUpdated = await caller.quotes.update({
+    await adminCaller.jobs.create({ quoteId: accepted.id });
+    const notesUpdated = await salesCaller.quotes.update({
       ...toUpdateInput(accepted),
       notes: 'Allowed after acceptance',
     });
     if (notesUpdated.kind !== 'custom') throw new Error('Expected a Custom Quote');
     expect(notesUpdated.workItems).toEqual(accepted.workItems);
 
-    await expect(
-      caller.quotes.update({
-        ...toUpdateInput(notesUpdated),
-        offering: {
-          kind: 'custom',
-          basePrice: notesUpdated.quotedBasePrice,
-          hourlyRate: notesUpdated.hourlyRate,
-          workTitle: notesUpdated.workTitle,
-          workItems: [],
-        },
-      }),
-    ).rejects.toMatchObject({
-      code: 'BAD_REQUEST',
-      message: 'Quote is locked because it has been accepted; workItems cannot be changed.',
+    const workItemsUpdated = await salesCaller.quotes.update({
+      ...toUpdateInput(notesUpdated),
+      offering: {
+        kind: 'custom',
+        basePrice: notesUpdated.quotedBasePrice,
+        hourlyRate: notesUpdated.hourlyRate,
+        workTitle: notesUpdated.workTitle,
+        workItems: [{ name: 'Commission', hours: 3, parts: [{ name: 'Oil', quantity: 2, unitPrice: 75 }] }],
+      },
     });
+    if (workItemsUpdated.kind !== 'custom') throw new Error('Expected a Custom Quote');
+
+    const readBack = await salesCaller.quotes.get({ id: workItemsUpdated.id });
+    if (readBack.kind !== 'custom') throw new Error('Expected a Custom Quote');
+    expect(readBack.workItems).toMatchObject([
+      { name: 'Commission', hours: 3, parts: [{ name: 'Oil', quantity: 2, unitPrice: 75 }] },
+    ]);
+    expect(pricePersistedQuote(readBack)).toMatchObject({ subtotal: 2700, total: 3105, workItemTotal: 2700 });
   });
 
-  test('allows hourly-rate edits on drafts and rejects them after a custom quote is accepted', async ({ context }) => {
-    const caller = context.createCaller(mockSession('sales'));
-    const created = await caller.quotes.create({
+  test('allows hourly-rate edits after a custom quote is accepted and its Job starts', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const created = await salesCaller.quotes.create({
       customer: { type: 'inline', companyName: 'Rate Lock Customer' },
       notes: null,
       documentNotes: null,
-      offering: { kind: 'custom', workTitle: 'Rate lock repair', basePrice: 1500, hourlyRate: 850 },
+      offering: {
+        kind: 'custom',
+        workTitle: 'Rate lock repair',
+        basePrice: 1500,
+        hourlyRate: 850,
+        workItems: [{ name: 'Repair', hours: 2, parts: [] }],
+      },
       salesPersonId: 'test-user-id',
       status: 'draft',
       validUntil: null,
     });
     if (created.kind !== 'custom') throw new Error('Expected a Custom Quote');
 
-    const updated = await caller.quotes.update({
+    const updated = await salesCaller.quotes.update({
       ...toUpdateInput(created),
       offering: { kind: 'custom', workTitle: created.workTitle, basePrice: 1500, hourlyRate: 975 },
     });
     if (updated.kind !== 'custom') throw new Error('Expected a Custom Quote');
     expect(updated.hourlyRate).toBe(975);
 
-    const accepted = await caller.quotes.update({ ...toUpdateInput(updated), status: 'accepted' });
+    const accepted = await salesCaller.quotes.update({ ...toUpdateInput(updated), status: 'accepted' });
     if (accepted.kind !== 'custom') throw new Error('Expected a Custom Quote');
-    await expect(
-      caller.quotes.update({
-        ...toUpdateInput(accepted),
-        offering: { kind: 'custom', workTitle: accepted.workTitle, basePrice: 1500, hourlyRate: 1000 },
-      }),
-    ).rejects.toMatchObject({
-      code: 'BAD_REQUEST',
-      message: 'Quote is locked because it has been accepted; hourlyRate cannot be changed.',
+    await adminCaller.jobs.create({ quoteId: accepted.id });
+
+    const rateUpdated = await salesCaller.quotes.update({
+      ...toUpdateInput(accepted),
+      offering: { kind: 'custom', workTitle: accepted.workTitle, basePrice: 1500, hourlyRate: 1000 },
     });
+    if (rateUpdated.kind !== 'custom') throw new Error('Expected a Custom Quote');
+    expect(rateUpdated.hourlyRate).toBe(1000);
+    expect(pricePersistedQuote(rateUpdated)).toMatchObject({ subtotal: 3500, total: 4025, workItemTotal: 2000 });
   });
 
   test('updates editable draft fields without changing the quote identity', async ({ context }) => {

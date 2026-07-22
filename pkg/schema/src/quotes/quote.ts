@@ -191,6 +191,19 @@ export const QuoteWorkItemInput = z.object({
   parts: z.array(QuoteWorkItemPartInput).default([]),
 });
 
+const QuoteWorkItemPartFormValue = z.object({
+  name: QuoteWorkItemPartName,
+  quantity: QuoteWorkItemPartQuantity,
+  unitPrice: Price,
+});
+
+export type QuoteWorkItemFormValue = z.infer<typeof QuoteWorkItemFormValue>;
+export const QuoteWorkItemFormValue = z.object({
+  hours: QuoteWorkItemHours,
+  name: QuoteWorkItemName,
+  parts: z.array(QuoteWorkItemPartFormValue),
+});
+
 export type QuoteProductSummaryFacts = z.infer<typeof QuoteProductSummaryFacts>;
 export const QuoteProductSummaryFacts = z.object({
   buildTimeDays: ProductBuildTimeDays,

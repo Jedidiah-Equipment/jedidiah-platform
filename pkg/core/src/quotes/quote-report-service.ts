@@ -3,7 +3,7 @@ import {
   addDateOnlyDays,
   diffDateOnlyDays,
   JOHANNESBURG_TIME_ZONE,
-  priceQuote,
+  pricePersistedQuote,
   startOfDateOnlyWeek,
   toPlantDateOnly,
   zonedDateStartToUtcInstant,
@@ -28,6 +28,21 @@ const QUOTE_WEEKLY_FLOW_WEEK_COUNT = 12;
 const QUOTE_NEWLY_SENT_WINDOW_DAYS = 30;
 const QUOTE_DECISION_WINDOW_DAYS = 90;
 const STALE_SENT_QUOTE_LIMIT = 8;
+
+type ReportQuotePricingRow = {
+  deliveryIncluded: boolean;
+  deliveryPrice: number;
+  discountPercent: number;
+  hourlyRate: number | null;
+  kind: 'custom' | 'product';
+  quotedBasePrice: number;
+};
+
+type ReportQuotePricingSelection = { productAssemblyId: UUID | null; quotedPrice: number };
+type ReportQuotePricingWorkItem = {
+  hours: number;
+  parts: readonly { quantity: number; unitPrice: number }[];
+};
 
 export async function summarizeQuotesByStatus({ db }: { db: Db }): Promise<QuoteStatusSummary> {
   const rows = await db
@@ -116,6 +131,7 @@ export async function summarizeQuotePipeline({
         discountPercent: quotes.discountPercent,
         hourlyRate: quotes.hourlyRate,
         id: quotes.id,
+        kind: quotes.kind,
         quotedBasePrice: quotes.quotedBasePrice,
         statusChangedAt: quotes.statusChangedAt,
       })
@@ -137,8 +153,8 @@ export async function summarizeQuotePipeline({
   const totalsByQuoteId = new Map(
     sentRows.map((row) => [
       row.id,
-      priceQuote({
-        ...row,
+      priceReportQuote({
+        row,
         selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
         workItems: workItemsByQuoteId.get(row.id) ?? [],
       }).subtotal,
@@ -177,6 +193,7 @@ export async function listStaleSentQuotes({
       discountPercent: quotes.discountPercent,
       hourlyRate: quotes.hourlyRate,
       id: quotes.id,
+      kind: quotes.kind,
       quotedBasePrice: quotes.quotedBasePrice,
       quotedCurrencyCode: quotes.quotedCurrencyCode,
       statusChangedAt: quotes.statusChangedAt,
@@ -201,13 +218,38 @@ export async function listStaleSentQuotes({
       id: row.id,
       sentDaysAgo: Math.max(0, diffDateOnlyDays(today, toPlantDateOnly(row.statusChangedAt))),
       statusChangedAt: row.statusChangedAt.toISOString(),
-      totalValue: priceQuote({
-        ...row,
+      totalValue: priceReportQuote({
+        row,
         selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
         workItems: workItemsByQuoteId.get(row.id) ?? [],
       }).total,
     })),
   });
+}
+
+function priceReportQuote({
+  row,
+  selectedAssemblies,
+  workItems,
+}: {
+  row: ReportQuotePricingRow;
+  selectedAssemblies: readonly ReportQuotePricingSelection[];
+  workItems: readonly ReportQuotePricingWorkItem[];
+}) {
+  const commonFacts = {
+    deliveryIncluded: row.deliveryIncluded,
+    deliveryPrice: row.deliveryPrice,
+    discountPercent: row.discountPercent,
+    quotedBasePrice: row.quotedBasePrice,
+    selectedAssemblies,
+  };
+
+  if (row.kind === 'product') return pricePersistedQuote({ ...commonFacts, kind: 'product' });
+
+  // A Custom Quote without its persisted rate is corrupt and must never be silently underpriced.
+  if (row.hourlyRate === null) throw new Error('Custom Quote is missing its hourly rate');
+
+  return pricePersistedQuote({ ...commonFacts, hourlyRate: row.hourlyRate, kind: 'custom', workItems });
 }
 
 function getPlantWeekRange({ now, weekCount }: { now: Date; weekCount: number }) {

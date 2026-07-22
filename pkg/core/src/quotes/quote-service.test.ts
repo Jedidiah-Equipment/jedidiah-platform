@@ -865,6 +865,7 @@ describe('patchQuote', () => {
     });
 
     const readBack = await getQuote({ db: context.db, id: quote.id });
+    if (readBack.kind !== 'product') throw new Error('Expected Product Quote');
 
     // base 1000 + assembly 500 = 1500; 10% discount = 150; + delivery 350 = 1700 ex-VAT.
     expect(priceQuote(readBack)).toMatchObject({

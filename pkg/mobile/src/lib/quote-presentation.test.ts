@@ -1,4 +1,4 @@
-import { DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
+import { DEFAULT_CUSTOM_HOURLY_RATE, quoteWorkItemSummaryRows } from '@pkg/domain';
 import { QuoteDetail, type QuoteSummary } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
@@ -10,7 +10,6 @@ import {
   presentQuotePages,
   quoteMetaLine,
   quoteSortDirection,
-  quoteWorkItemSummaryRows,
   shouldPinPriorityQuotes,
   toQuoteEditFormValues,
   toQuoteUpdateInput,

@@ -6,6 +6,7 @@ import {
   computeWorkItemLabourCost,
   computeWorkItemPartAmount,
   computeWorkItemTotal,
+  pricePersistedQuote,
   priceQuote,
   priceQuoteWithCatalog,
   VAT_PERCENT,
@@ -73,6 +74,25 @@ describe('quote VAT', () => {
 });
 
 describe('priceQuote', () => {
+  it('normalizes persisted Custom Quote work items before pricing', () => {
+    expect(
+      pricePersistedQuote({
+        discountPercent: 0,
+        hourlyRate: 850,
+        kind: 'custom',
+        quotedBasePrice: 100,
+        selectedAssemblies: [],
+        workItems: [{ hours: 1.5, parts: [{ quantity: 2, unitPrice: 125 }] }],
+      }),
+    ).toMatchObject({ subtotal: 1625, total: 1868.75, workItemTotal: 1525 });
+  });
+
+  it('prices persisted Product Quotes without Work Items', () => {
+    expect(
+      pricePersistedQuote({ kind: 'product', discountPercent: 0, quotedBasePrice: 100, selectedAssemblies: [] }),
+    ).toMatchObject({ subtotal: 100, workItemTotal: 0 });
+  });
+
   it('subtracts the discount percent from the quoted base price', () => {
     expect(priceQuote({ quotedBasePrice: 1250, discountPercent: 10, selectedAssemblies: [] })).toMatchObject({
       subtotal: 1125,
@@ -90,15 +110,17 @@ describe('priceQuote', () => {
   it('includes work items in the discountable subtotal with base price, discount, and VAT', () => {
     const pricing = priceQuote({
       discountPercent: 10,
-      hourlyRate: 850,
       quotedBasePrice: 1000,
       selectedAssemblies: [],
-      workItems: [
-        {
-          hours: 1.33,
-          parts: [{ quantity: 2, unitPrice: 125 }],
-        },
-      ],
+      workItems: {
+        hourlyRate: 850,
+        items: [
+          {
+            hours: 1.33,
+            parts: [{ quantity: 2, unitPrice: 125 }],
+          },
+        ],
+      },
     });
 
     expect(pricing).toMatchObject({

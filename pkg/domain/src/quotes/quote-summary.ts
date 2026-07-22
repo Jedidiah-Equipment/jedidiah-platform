@@ -107,10 +107,9 @@ export function computeQuoteSummary({
       deliveryIncluded: values.deliveryIncluded,
       deliveryPrice,
       discountPercent: values.discountPercent,
-      hourlyRate,
       quotedBasePrice: basePrice,
       selectedAssemblies,
-      workItems: quote.kind === 'custom' ? values.workItems : [],
+      workItems: quote.kind === 'custom' ? { hourlyRate: values.hourlyRate, items: values.workItems } : undefined,
     },
     catalogAssemblies,
   );

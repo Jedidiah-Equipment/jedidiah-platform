@@ -1,10 +1,10 @@
 import {
-  computeWorkItemTotal,
   createStableRowKeys,
   formatCurrency,
   formatPercent,
   getQuoteOfferingName,
   type QuoteComputedSummary,
+  quoteWorkItemSummaryRows,
 } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { IconClock, IconMail, IconMapPin, IconPackage, IconPhone, IconReceipt2 } from '@tabler/icons-react';
@@ -179,6 +179,10 @@ function QuoteCustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'c
 }
 
 function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
+  const workItemRows =
+    summary.hourlyRate === null
+      ? []
+      : quoteWorkItemSummaryRows({ hourlyRate: summary.hourlyRate, workItems: summary.workItems });
   return (
     <Card size="sm">
       <CardHeader>
@@ -213,12 +217,12 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
           <div className="grid gap-1">
             <QuoteSummaryRow label="Work items" value={formatCurrency(summary.workItemTotal, summary.currencyCode)} />
             <div className="grid gap-1 border-l pl-3">
-              {summary.workItems.map((item) => (
+              {workItemRows.map((row) => (
                 <QuoteSummaryRow
                   className="text-xs"
-                  key={getSummaryWorkItemKey(item)}
-                  label={item.name}
-                  value={formatCurrency(getSummaryWorkItemTotal(summary, item), summary.currencyCode)}
+                  key={getSummaryWorkItemKey(row.workItem)}
+                  label={row.name}
+                  value={formatCurrency(row.total, summary.currencyCode)}
                   valueClassName="text-muted-foreground"
                 />
               ))}
@@ -247,14 +251,6 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
       </CardContent>
     </Card>
   );
-}
-
-function getSummaryWorkItemTotal(summary: QuoteComputedSummary, item: QuoteWorkItemFormInput): number {
-  return computeWorkItemTotal({
-    hourlyRate: summary.hourlyRate ?? 0,
-    hours: item.hours,
-    parts: item.parts,
-  });
 }
 
 function QuotePanelFact({

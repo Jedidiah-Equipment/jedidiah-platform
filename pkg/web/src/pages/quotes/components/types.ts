@@ -1,4 +1,4 @@
-import { computeAdditionalDeliveryPrice, DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
+import { computeAdditionalDeliveryPrice, DEFAULT_CUSTOM_HOURLY_RATE, toQuoteWorkItemFormState } from '@pkg/domain';
 import {
   AuthId,
   CustomerCompanyName,
@@ -17,11 +17,7 @@ import {
   QuoteSelectedAssemblyInput,
   QuoteStatus,
   QuoteUpdateInput,
-  type QuoteWorkItem,
-  QuoteWorkItemHours,
-  QuoteWorkItemName,
-  QuoteWorkItemPartName,
-  QuoteWorkItemPartQuantity,
+  QuoteWorkItemFormValue,
   QuoteWorkTitle,
   UUID,
 } from '@pkg/schema';
@@ -30,18 +26,6 @@ import { z } from 'zod';
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 export const CustomerMode = z.enum(['existing', 'inline']);
-
-const QuoteWorkItemPartFormInput = z.object({
-  name: QuoteWorkItemPartName,
-  quantity: QuoteWorkItemPartQuantity,
-  unitPrice: Price,
-});
-
-const QuoteWorkItemFormInput = z.object({
-  hours: QuoteWorkItemHours,
-  name: QuoteWorkItemName,
-  parts: z.array(QuoteWorkItemPartFormInput),
-});
 
 const QuoteCreateBasePrice = z.union([Price, z.nan()]);
 const QuoteCreateHourlyRate = z.union([QuoteHourlyRate, z.nan()]);
@@ -82,7 +66,7 @@ export const QuoteFormValues = z
     status: QuoteStatus,
     validUntil: emptyStringOr(DateIsoString),
     workTitle: z.string(),
-    workItems: z.array(QuoteWorkItemFormInput),
+    workItems: z.array(QuoteWorkItemFormValue),
   })
   .strict();
 
@@ -156,7 +140,7 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
 export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
   return {
     basePrice: initialQuote.quotedBasePrice,
-    hourlyRate: initialQuote.kind === 'custom' ? initialQuote.hourlyRate : DEFAULT_CUSTOM_HOURLY_RATE,
+    ...toQuoteWorkItemFormState(initialQuote),
     depositPercent: initialQuote.depositPercent,
     deliveryIncluded: initialQuote.deliveryIncluded,
     deliveryPrice: initialQuote.deliveryPrice,
@@ -172,7 +156,6 @@ export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
     status: initialQuote.status,
     validUntil: initialQuote.validUntil ?? '',
     workTitle: initialQuote.workTitle ?? '',
-    workItems: initialQuote.kind === 'custom' ? initialQuote.workItems.map(toQuoteWorkItemInput) : [],
   };
 }
 
@@ -236,14 +219,6 @@ export function toQuoteUpdateInput({
     status: value.status,
     validUntil: value.validUntil || null,
   });
-}
-
-function toQuoteWorkItemInput(workItem: QuoteWorkItem): z.infer<typeof QuoteWorkItemFormInput> {
-  return {
-    hours: workItem.hours,
-    name: workItem.name,
-    parts: workItem.parts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice })),
-  };
 }
 
 function refineQuoteCustomerSelection(

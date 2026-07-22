@@ -1,4 +1,5 @@
 import * as quotesCore from '@pkg/core';
+import { DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
 import {
   AuthId,
   type AuthId as AuthIdType,
@@ -47,7 +48,16 @@ const CreateQuoteCustomerInput = z.discriminatedUnion('type', [
 
 const CreateQuoteOfferingInput = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('product'), productId: UUID }).strict(),
-  z.object({ basePrice: Price, kind: z.literal('custom'), workTitle: QuoteWorkTitle }).strict(),
+  z
+    .object({
+      basePrice: Price,
+      hourlyRate: Price.optional().describe(
+        `Hourly labour rate. Defaults to ${DEFAULT_CUSTOM_HOURLY_RATE} when omitted.`,
+      ),
+      kind: z.literal('custom'),
+      workTitle: QuoteWorkTitle,
+    })
+    .strict(),
 ]);
 
 // Provider tool schemas are JSON-only, so compose non-transforming schema leaves and normalize in the mapper.
@@ -88,6 +98,10 @@ export const CreateQuoteResponse = SharedQuoteDetailResponse;
 export function toCoreQuoteCreateInput(input: CreateQuoteInput, actorUserId: AuthIdType): CoreQuoteCreateInputType {
   return CoreQuoteCreateInput.parse({
     ...input,
+    offering:
+      input.offering.kind === 'custom'
+        ? { ...input.offering, hourlyRate: input.offering.hourlyRate ?? DEFAULT_CUSTOM_HOURLY_RATE }
+        : input.offering,
     salesPersonId: input.salesPersonId ?? actorUserId,
   });
 }

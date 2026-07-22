@@ -1,9 +1,4 @@
-import {
-  computeWorkItemTotal,
-  DEFAULT_CUSTOM_HOURLY_RATE,
-  type QuoteComputedSummary,
-  quoteStatusLabels,
-} from '@pkg/domain';
+import { quoteStatusLabels, toQuoteWorkItemFormState } from '@pkg/domain';
 import {
   AuthId,
   DateIsoString,
@@ -21,10 +16,7 @@ import {
   QuoteStatus,
   type QuoteSummary,
   QuoteUpdateInput,
-  QuoteWorkItemHours,
-  QuoteWorkItemName,
-  QuoteWorkItemPartName,
-  QuoteWorkItemPartQuantity,
+  QuoteWorkItemFormValue,
   QuoteWorkTitle,
   type UUID,
 } from '@pkg/schema';
@@ -101,18 +93,6 @@ export function getNextQuotePage<T>(
   return loaded < lastPage.total ? pages.length + 1 : undefined;
 }
 
-const QuoteEditWorkItemPart = z.object({
-  name: QuoteWorkItemPartName,
-  quantity: QuoteWorkItemPartQuantity,
-  unitPrice: Price,
-});
-
-const QuoteEditWorkItem = z.object({
-  hours: QuoteWorkItemHours,
-  name: QuoteWorkItemName,
-  parts: z.array(QuoteEditWorkItemPart),
-});
-
 export type QuoteEditFormValues = z.infer<typeof QuoteEditFormValues>;
 export const QuoteEditFormValues = z
   .object({
@@ -131,7 +111,7 @@ export const QuoteEditFormValues = z
     status: QuoteStatus,
     validUntil: z.union([z.literal(''), DateIsoString]),
     workTitle: z.string(),
-    workItems: z.array(QuoteEditWorkItem),
+    workItems: z.array(QuoteWorkItemFormValue),
   })
   .strict();
 
@@ -163,12 +143,12 @@ export function getQuoteEditFormValuesValidator(kind: QuoteKind) {
 export function toQuoteEditFormValues(quote: QuoteDetail): QuoteEditFormValues {
   return {
     basePrice: quote.quotedBasePrice,
+    ...toQuoteWorkItemFormState(quote),
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
     depositPercent: quote.depositPercent,
     discountPercent: quote.discountPercent,
     documentNotes: quote.documentNotes ?? '',
-    hourlyRate: quote.kind === 'custom' ? quote.hourlyRate : DEFAULT_CUSTOM_HOURLY_RATE,
     notes: quote.notes ?? '',
     plannedDeliveryDate: quote.plannedDeliveryDate ?? '',
     preferredDeliveryDate: quote.preferredDeliveryDate ?? '',
@@ -177,14 +157,6 @@ export function toQuoteEditFormValues(quote: QuoteDetail): QuoteEditFormValues {
     status: quote.status,
     validUntil: quote.validUntil ?? '',
     workTitle: quote.workTitle ?? '',
-    workItems:
-      quote.kind === 'custom'
-        ? quote.workItems.map(({ hours, name, parts }) => ({
-            hours,
-            name,
-            parts: parts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice })),
-          }))
-        : [],
   };
 }
 
@@ -222,15 +194,4 @@ export function toQuoteUpdateInput({
     status: values.status,
     validUntil: values.validUntil || null,
   });
-}
-
-export function quoteWorkItemSummaryRows(
-  summary: Pick<QuoteComputedSummary, 'hourlyRate' | 'workItems'>,
-): { name: string; total: number; workItem: QuoteComputedSummary['workItems'][number] }[] {
-  const hourlyRate = summary.hourlyRate ?? 0;
-  return summary.workItems.map((item) => ({
-    name: item.name,
-    total: computeWorkItemTotal({ hourlyRate, hours: item.hours, parts: item.parts }),
-    workItem: item,
-  }));
 }

@@ -1,4 +1,4 @@
-import { computeWorkItemTotal, createStableRowKeys, formatCurrency } from '@pkg/domain';
+import { createStableRowKeys, formatCurrency, getWorkItemFormTotal } from '@pkg/domain';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useTypedAppFormContext } from '@/components/form/index.js';
@@ -62,7 +62,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
               <div className="grid gap-2">
                 <span className="font-medium text-sm leading-snug">Total</span>
                 <span className="flex h-8 items-center rounded-md border bg-background px-2.5 text-sm tabular-nums">
-                  {formatCurrency(getWorkItemTotal({ hourlyRate, workItem }), currencyCode)}
+                  {formatCurrency(getWorkItemFormTotal({ hourlyRate, workItem }), currencyCode)}
                 </span>
               </div>
               <div className="flex items-end justify-end">
@@ -171,15 +171,3 @@ export const QuoteAddWorkItemButton: React.FC<Pick<QuoteWorkItemsEditorProps, 'r
     Add work item
   </Button>
 );
-
-function getWorkItemTotal({ hourlyRate, workItem }: { hourlyRate: number; workItem: QuoteWorkItemFormInput }): number {
-  if (
-    !Number.isFinite(hourlyRate) ||
-    !Number.isFinite(workItem.hours) ||
-    workItem.parts.some((part) => !Number.isFinite(part.quantity) || !Number.isFinite(part.unitPrice))
-  ) {
-    return 0;
-  }
-
-  return computeWorkItemTotal({ hourlyRate, hours: workItem.hours, parts: workItem.parts });
-}

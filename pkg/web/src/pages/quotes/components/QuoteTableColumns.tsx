@@ -3,7 +3,7 @@ import {
   formatPercent,
   getQuoteOfferingName,
   getQuoteOfferingSubtitle,
-  priceQuote,
+  pricePersistedQuote,
   quoteStatusLabels,
 } from '@pkg/domain';
 import { type PriorityQuote, QuoteKind, QuoteStatus, type QuoteSummary } from '@pkg/schema';
@@ -312,7 +312,7 @@ function QuoteKindBadge({ className, kind }: { className?: string; kind: QuoteSu
 }
 
 function CommercialCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {
-  const { discountAmount, total } = priceQuote(quote);
+  const { discountAmount, total } = pricePersistedQuote(quote);
 
   return (
     <div className="flex flex-col items-end gap-0.5">

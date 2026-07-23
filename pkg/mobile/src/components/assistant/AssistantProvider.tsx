@@ -14,7 +14,10 @@ const AssistantContext = createContext<AssistantContextValue | null>(null);
 export function AssistantProvider({ children }: { children: ReactNode }) {
   // This instance outlives the modal route, so dismissing it never aborts or discards the thread.
   const [chat, setChat] = useState(() => createAssistantChat());
-  const reset = useCallback(() => setChat(createAssistantChat()), []);
+  const reset = useCallback(() => {
+    void chat.stop();
+    setChat(createAssistantChat());
+  }, [chat]);
   const value = useMemo(() => ({ chat, reset }), [chat, reset]);
 
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;

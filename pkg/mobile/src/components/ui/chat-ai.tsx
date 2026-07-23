@@ -16,27 +16,27 @@ export function Conversation({ messages }: { messages: UIMessage[] }) {
   const listRef = useRef<FlatList<UIMessage>>(null);
   const renderItem: ListRenderItem<UIMessage> = ({ item }) => <Message message={item} />;
 
-  if (messages.length === 0) {
-    return (
-      <View className="flex-1 items-center justify-center gap-2 px-8">
-        <Text className="text-center text-xl text-foreground" weight="bold">
-          How can I help?
-        </Text>
-        <Text className="text-center text-sm leading-5 text-muted-foreground">
-          Ask about Customers, Products, Quotes, Jobs, or work you have permission to complete.
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <FlatList
       ref={listRef}
-      contentContainerClassName="gap-4 px-4 py-5"
+      // Keep an interactive scroll surface even before the first message so an
+      // empty chat can dismiss the iOS keyboard with a tap or downward drag.
+      alwaysBounceVertical
+      contentContainerClassName={messages.length === 0 ? 'flex-grow px-8' : 'gap-4 px-4 py-5'}
       data={messages}
       keyExtractor={(message) => message.id}
       keyboardDismissMode="interactive"
-      keyboardShouldPersistTaps="handled"
+      keyboardShouldPersistTaps={messages.length === 0 ? 'never' : 'handled'}
+      ListEmptyComponent={
+        <View className="flex-1 items-center justify-center gap-2">
+          <Text className="text-center text-xl text-foreground" weight="bold">
+            How can I help?
+          </Text>
+          <Text className="text-center text-sm leading-5 text-muted-foreground">
+            Ask about Customers, Products, Quotes, Jobs, or work you have permission to complete.
+          </Text>
+        </View>
+      }
       onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
       renderItem={renderItem}
       showsVerticalScrollIndicator={false}

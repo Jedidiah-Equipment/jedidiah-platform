@@ -1,23 +1,26 @@
 import { useChat } from '@ai-sdk/react';
 import { IconPlus, IconX } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
-import { KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAssistant } from '@/components/assistant/AssistantProvider';
 import { Conversation, PromptInput } from '@/components/ui/chat-ai';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { useAssistantKeyboardBottomPadding } from '@/lib/assistant-keyboard';
 
 export default function AssistantRoute() {
   const router = useRouter();
   const { chat, reset } = useAssistant();
   const { clearError, error, messages, regenerate, sendMessage, status, stop } = useChat({ chat });
   const isStreaming = status === 'submitted' || status === 'streaming';
+  const { bottom: safeAreaBottom } = useSafeAreaInsets();
+  const keyboardBottomPadding = useAssistantKeyboardBottomPadding(safeAreaBottom);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+      <View className="flex-1" style={{ paddingBottom: keyboardBottomPadding }}>
         <View className="flex-row items-center gap-3 border-b border-border bg-background px-4 py-3">
           <Pressable
             accessibilityLabel="Close Assistant"
@@ -77,7 +80,7 @@ export default function AssistantRoute() {
             void sendMessage({ text });
           }}
         />
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }

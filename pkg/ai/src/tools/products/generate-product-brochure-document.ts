@@ -1,9 +1,13 @@
 import * as productsCore from '@pkg/core';
-import { DocumentByteSize, DocumentFilename, UUID } from '@pkg/schema';
+import {
+  createProductBrochureDownloadHref,
+  DocumentByteSize,
+  DocumentFilename,
+  InternalAppHref,
+  UUID,
+} from '@pkg/schema';
 import { z } from 'zod';
-
 import type { AiContext } from '@/context.js';
-import { createProductBrochureDownloadHref, InternalAppHref } from '@/entity-links.js';
 import { ProductBrochureDocumentAttachment } from '@/generated-document.js';
 
 export type GenerateProductBrochureDocumentInput = z.infer<typeof GenerateProductBrochureDocumentInput>;

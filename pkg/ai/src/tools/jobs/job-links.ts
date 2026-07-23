@@ -1,14 +1,13 @@
 import { hasPermission } from '@pkg/domain';
-import type { UserAccessSummary } from '@pkg/schema';
-import { z } from 'zod';
-
 import {
   createCustomerAppHref,
   createJobAppHref,
   createProductAppHref,
   createQuoteAppHref,
   InternalAppHref,
-} from '@/entity-links.js';
+  type UserAccessSummary,
+} from '@pkg/schema';
+import { z } from 'zod';
 
 export type JobLinks = z.infer<typeof JobLinks>;
 export const JobLinks = z.object({

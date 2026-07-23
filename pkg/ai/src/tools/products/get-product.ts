@@ -1,9 +1,7 @@
 import * as productsCore from '@pkg/core';
-import { Product, UUID } from '@pkg/schema';
+import { createProductAppHref, InternalAppHref, Product, UUID } from '@pkg/schema';
 import { z } from 'zod';
-
 import type { AiContext } from '@/context.js';
-import { createProductAppHref, InternalAppHref } from '@/entity-links.js';
 
 import { ProductBayResponse } from './product-bay-response.js';
 

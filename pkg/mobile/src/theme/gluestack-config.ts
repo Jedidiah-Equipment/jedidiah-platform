@@ -6,10 +6,20 @@ import type { ResolvedColorScheme } from './color-mode';
 
 const mutedForegroundTriplets = { dark: '122 122 130', light: '115 115 115' } as const;
 const backgroundTriplets = { dark: '10 10 11', light: '247 247 247' } as const;
+const foregroundTriplets = { dark: '250 250 250', light: '10 10 10' } as const;
+const mutedTriplets = { dark: '27 27 31', light: '245 245 245' } as const;
 const borderColors = { dark: 'rgba(255, 255, 255, 0.08)', light: 'rgb(229 229 229)' } as const;
 export const mutedForegroundColors = {
   dark: `rgb(${mutedForegroundTriplets.dark})`,
   light: `rgb(${mutedForegroundTriplets.light})`,
+} as const satisfies Record<ResolvedColorScheme, string>;
+export const foregroundColors = {
+  dark: `rgb(${foregroundTriplets.dark})`,
+  light: `rgb(${foregroundTriplets.light})`,
+} as const satisfies Record<ResolvedColorScheme, string>;
+export const mutedColors = {
+  dark: `rgb(${mutedTriplets.dark})`,
+  light: `rgb(${mutedTriplets.light})`,
 } as const satisfies Record<ResolvedColorScheme, string>;
 export const switchColors = {
   dark: {
@@ -48,9 +58,9 @@ export const gluestackConfig = {
     '--color-danger': '248 113 113',
     '--color-danger-foreground': '10 10 10',
     '--color-elevated': '46 46 52',
-    '--color-foreground': '250 250 250',
+    '--color-foreground': foregroundTriplets.dark,
     '--color-image-backdrop': '15 15 17',
-    '--color-muted': '27 27 31',
+    '--color-muted': mutedTriplets.dark,
     '--color-muted-foreground': mutedForegroundTriplets.dark,
     '--color-primary': primaryColorTriplets.dark,
     '--color-primary-foreground': '10 10 10',
@@ -69,9 +79,9 @@ export const gluestackConfig = {
     '--color-danger': '248 113 113',
     '--color-danger-foreground': '10 10 10',
     '--color-elevated': '245 245 245',
-    '--color-foreground': '10 10 10',
+    '--color-foreground': foregroundTriplets.light,
     '--color-image-backdrop': '15 15 17',
-    '--color-muted': '245 245 245',
+    '--color-muted': mutedTriplets.light,
     '--color-muted-foreground': mutedForegroundTriplets.light,
     '--color-primary': primaryColorTriplets.light,
     '--color-primary-foreground': '10 10 10',

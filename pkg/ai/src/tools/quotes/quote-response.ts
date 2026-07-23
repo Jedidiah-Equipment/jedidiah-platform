@@ -1,14 +1,15 @@
 import { hasPermission } from '@pkg/domain';
-import { QuoteDetail, QuoteProductDetailFacts, type UserAccessSummary } from '@pkg/schema';
-import { z } from 'zod';
-
 import {
   createCustomerAppHref,
   createJobAppHref,
   createProductAppHref,
   createQuoteAppHref,
   InternalAppHref,
-} from '@/entity-links.js';
+  QuoteDetail,
+  QuoteProductDetailFacts,
+  type UserAccessSummary,
+} from '@pkg/schema';
+import { z } from 'zod';
 import { ProductBayResponse } from '@/tools/products/product-bay-response.js';
 
 export type QuoteLinks = z.infer<typeof QuoteLinks>;

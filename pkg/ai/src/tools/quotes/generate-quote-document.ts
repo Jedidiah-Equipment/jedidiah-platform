@@ -1,16 +1,16 @@
 import * as quotesCore from '@pkg/core';
 import {
   QuoteDocumentGenerationInput as CoreQuoteDocumentGenerationInput,
+  createQuoteDocumentDownloadHref,
+  InternalAppHref,
   QuoteDocument,
   QuoteDocumentGenerationWarning,
   QuoteDocumentLeadTime,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
-
 import { requireAiActorId } from '@/actor.js';
 import type { AiContext } from '@/context.js';
-import { createQuoteDocumentDownloadHref, InternalAppHref } from '@/entity-links.js';
 import { QuoteDocumentAttachment } from '@/generated-document.js';
 
 export type GenerateQuoteDocumentInput = z.infer<typeof GenerateQuoteDocumentInput>;

@@ -2,6 +2,7 @@ import { Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AssistantProvider } from '@/components/assistant/AssistantProvider';
 import { useSession } from '@/lib/auth';
 import { AuthSessionProvider } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
@@ -69,11 +70,14 @@ export default function ProtectedLayout() {
 
   return (
     <AuthSessionProvider session={session}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        {/* Keep documents above the tab navigator so the reader remains a full-screen overlay. */}
-        <Stack.Screen name="documents/[documentId]" options={{ presentation: 'fullScreenModal' }} />
-      </Stack>
+      <AssistantProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="assistant" options={{ presentation: 'modal' }} />
+          {/* Keep documents above the tab navigator so the reader remains a full-screen overlay. */}
+          <Stack.Screen name="documents/[documentId]" options={{ presentation: 'fullScreenModal' }} />
+        </Stack>
+      </AssistantProvider>
     </AuthSessionProvider>
   );
 }

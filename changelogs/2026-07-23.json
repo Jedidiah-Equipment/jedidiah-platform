@@ -1,0 +1,36 @@
+{
+  "releasedAt": "2026-07-23T13:46:27.593Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Explore each customer’s work",
+          "description": "Customer pages now include dedicated tabs for quotes and jobs, making it easier to review their activity."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Discover key product features",
+          "description": "The product’s key features now have a clearer, more spacious presentation."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Chat with the Assistant",
+          "description": "Use the Assistant from the mobile app to ask questions and get help on the go."
+        },
+        {
+          "title": "Navigate comfortably on Android",
+          "description": "Content and controls now stay clear of Android’s bottom navigation area."
+        }
+      ]
+    }
+  ]
+}

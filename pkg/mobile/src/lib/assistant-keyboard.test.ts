@@ -5,7 +5,7 @@ vi.mock('react-native', () => ({
   Platform: { OS: 'ios' },
 }));
 
-import { assistantKeyboardBottomPadding } from './assistant-keyboard';
+import { assistantKeyboardBottomPadding, assistantKeyboardInitialBottomPadding } from './assistant-keyboard';
 
 describe('assistantKeyboardBottomPadding', () => {
   test('removes the safe-area padding already applied below the composer', () => {
@@ -18,5 +18,11 @@ describe('assistantKeyboardBottomPadding', () => {
 
   test('does not produce negative padding', () => {
     expect(assistantKeyboardBottomPadding(20, 34, 'ios')).toBe(0);
+  });
+});
+
+describe('assistantKeyboardInitialBottomPadding', () => {
+  test('does not read unavailable native keyboard metrics on web', () => {
+    expect(assistantKeyboardInitialBottomPadding(0, 'web')).toBe(0);
   });
 });

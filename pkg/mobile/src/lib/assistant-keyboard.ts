@@ -10,12 +10,17 @@ export function assistantKeyboardBottomPadding(
   return Math.max(keyboardHeight - coveredSafeArea, 0);
 }
 
+export function assistantKeyboardInitialBottomPadding(safeAreaBottom: number, platform = Platform.OS): number {
+  if (platform === 'web') return 0;
+  return assistantKeyboardBottomPadding(Keyboard.metrics()?.height ?? 0, safeAreaBottom, platform);
+}
+
 export function useAssistantKeyboardBottomPadding(safeAreaBottom: number): number {
-  const [bottomPadding, setBottomPadding] = useState(() =>
-    assistantKeyboardBottomPadding(Keyboard.metrics()?.height ?? 0, safeAreaBottom),
-  );
+  const [bottomPadding, setBottomPadding] = useState(() => assistantKeyboardInitialBottomPadding(safeAreaBottom));
 
   useEffect(() => {
+    if (Platform.OS === 'web') return;
+
     const updatePadding = (event: KeyboardEvent) => {
       // Native keyboard avoidance is unreliable in the iOS modal and Android's
       // edge-to-edge window, so apply the reported keyboard frame directly.

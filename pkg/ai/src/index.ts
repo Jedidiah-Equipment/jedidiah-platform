@@ -1,3 +1,14 @@
+export {
+  createCustomerAppHref,
+  createJobAppHref,
+  createProductAppHref,
+  createProductBrochureDownloadHref,
+  createQuoteAppHref,
+  createQuoteDocumentDownloadHref,
+  InternalAppHref,
+  type ParsedInternalAppHref,
+  parseInternalAppHref,
+} from '@pkg/schema';
 export type { LanguageModel as AiChatModel, UIMessage as AiUiMessage } from 'ai';
 export {
   type StreamAiChatOptions,
@@ -21,14 +32,3 @@ export type {
   AiEmailSender,
   AiSession,
 } from './context.js';
-export {
-  createCustomerAppHref,
-  createJobAppHref,
-  createProductAppHref,
-  createProductBrochureDownloadHref,
-  createQuoteAppHref,
-  createQuoteDocumentDownloadHref,
-  InternalAppHref,
-  type ParsedInternalAppHref,
-  parseInternalAppHref,
-} from './entity-links.js';

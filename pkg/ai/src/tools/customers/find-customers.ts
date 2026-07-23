@@ -1,10 +1,15 @@
 import * as customersCore from '@pkg/core';
 import { hasPermission } from '@pkg/domain';
-import { Customer, CustomerListInput, type CustomerListResult, type UserAccessSummary } from '@pkg/schema';
+import {
+  Customer,
+  CustomerListInput,
+  type CustomerListResult,
+  createCustomerAppHref,
+  InternalAppHref,
+  type UserAccessSummary,
+} from '@pkg/schema';
 import { z } from 'zod';
-
 import type { AiContext } from '@/context.js';
-import { createCustomerAppHref, InternalAppHref } from '@/entity-links.js';
 
 export type FindCustomersInput = z.infer<typeof FindCustomersInput>;
 export const FindCustomersInput = CustomerListInput.pick({ search: true }).strict();

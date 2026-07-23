@@ -9,7 +9,7 @@ import { AssistantMarkdownLink } from '@/components/assistant/assistant-markdown
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { loadingSpinnerColor, primaryColorTriplets } from '@/theme/brand-colors';
-import { navigationColors } from '@/theme/gluestack-config';
+import { foregroundColors, mutedColors, navigationColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
 export function Conversation({ messages }: { messages: UIMessage[] }) {
@@ -59,8 +59,8 @@ export function Message({ message }: { message: UIMessage }) {
 export function MessageResponse({ message }: { message: UIMessage }) {
   const { resolved } = useColorMode();
   const colors = navigationColors[resolved];
-  const foreground = resolved === 'dark' ? 'rgb(250 250 250)' : 'rgb(10 10 10)';
-  const codeBackground = resolved === 'dark' ? 'rgb(27 27 31)' : 'rgb(245 245 245)';
+  const foreground = foregroundColors[resolved];
+  const codeBackground = mutedColors[resolved];
   const markdownStyles = useMemo(
     () =>
       StyleSheet.create({
@@ -159,7 +159,6 @@ export function PromptInput({
         <TextInput
           accessibilityLabel="Message the Assistant"
           className="max-h-32 min-h-10 flex-1 font-sans text-[15px] leading-5 text-foreground"
-          editable={!disabled || isStreaming}
           multiline
           onChangeText={setText}
           onSubmitEditing={handleSubmit}

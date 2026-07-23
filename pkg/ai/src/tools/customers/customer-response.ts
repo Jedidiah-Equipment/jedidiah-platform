@@ -1,7 +1,5 @@
-import { Customer } from '@pkg/schema';
+import { Customer, createCustomerAppHref, InternalAppHref } from '@pkg/schema';
 import { z } from 'zod';
-
-import { createCustomerAppHref, InternalAppHref } from '@/entity-links.js';
 
 export type CustomerResponse = z.infer<typeof CustomerResponse>;
 export const CustomerResponse = Customer.pick({

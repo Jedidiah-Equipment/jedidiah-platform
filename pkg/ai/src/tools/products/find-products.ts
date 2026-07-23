@@ -1,10 +1,15 @@
 import * as productsCore from '@pkg/core';
 import { hasPermission } from '@pkg/domain';
-import { Product, ProductListInput, type ProductListResult, type UserAccessSummary } from '@pkg/schema';
+import {
+  createProductAppHref,
+  InternalAppHref,
+  Product,
+  ProductListInput,
+  type ProductListResult,
+  type UserAccessSummary,
+} from '@pkg/schema';
 import { z } from 'zod';
-
 import type { AiContext } from '@/context.js';
-import { createProductAppHref, InternalAppHref } from '@/entity-links.js';
 
 export type FindProductsInput = z.infer<typeof FindProductsInput>;
 export const FindProductsInput = ProductListInput.pick({

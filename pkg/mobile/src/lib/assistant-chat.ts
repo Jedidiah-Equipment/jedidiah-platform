@@ -3,6 +3,7 @@ import { fetch as expoFetch } from 'expo/fetch';
 
 import { apiBaseUrl } from './api-base-url';
 import { sessionCookieHeader } from './auth';
+import { withSessionCookie } from './authed-fetch';
 
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -31,10 +32,7 @@ export async function assistantChatFetch(
   fetchImpl: FetchLike = expoFetch as FetchLike,
   cookie: string | null = sessionCookieHeader(),
 ): Promise<Response> {
-  const headers = new Headers(init?.headers);
-  if (cookie) headers.set('Cookie', cookie);
-
-  const response = await fetchImpl(input, { ...init, credentials: 'include', headers });
+  const response = await fetchImpl(input, withSessionCookie(init, cookie));
   if (!response.ok) {
     throw new Error(readableAssistantChatError(response.status, await readErrorBody(response)));
   }

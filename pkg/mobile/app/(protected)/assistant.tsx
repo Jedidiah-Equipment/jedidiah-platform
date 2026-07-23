@@ -69,10 +69,13 @@ export default function AssistantRoute() {
         ) : null}
 
         <PromptInput
-          disabled={status !== 'ready'}
+          disabled={isStreaming}
           isStreaming={isStreaming}
           onStop={() => void stop()}
-          onSubmit={(text) => void sendMessage({ text })}
+          onSubmit={(text) => {
+            clearError();
+            void sendMessage({ text });
+          }}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>

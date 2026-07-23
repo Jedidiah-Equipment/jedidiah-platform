@@ -1,5 +1,5 @@
 import { expoClient } from '@better-auth/expo/client';
-import { adminClient } from 'better-auth/client/plugins';
+import { adminClient, inferAdditionalFields } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
@@ -26,6 +26,12 @@ const authClient = createAuthClient({
     }),
     // Mirror the server `admin` plugin so `session.user.role` is typed on device.
     adminClient(),
+    // Mirror the server user fields that the protected mobile tree reads from the session.
+    inferAdditionalFields({
+      user: {
+        assistantEnabled: { type: 'boolean' },
+      },
+    }),
   ],
 });
 

@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { AppIcon } from '@/components/AppLogo';
+import { AssistantEntryButton } from '@/components/assistant/AssistantEntryButton';
 import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { Text } from '@/components/ui/text';
 
@@ -21,6 +22,7 @@ export function ScreenHeader({ title, subtitle }: { title: string; subtitle: str
           {subtitle}
         </Text>
       </View>
+      <AssistantEntryButton />
       <ProfileMenuButton />
     </View>
   );

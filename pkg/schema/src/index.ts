@@ -1,5 +1,6 @@
 export * from './ai/chat.js';
 export * from './ai/chat-input-limits.js';
+export * from './ai/entity-links.js';
 export * from './ai/reasoning-effort.js';
 export * from './audit/audit.js';
 export * from './auth/auth-id.js';

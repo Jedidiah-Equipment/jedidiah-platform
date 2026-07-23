@@ -2,6 +2,7 @@ import { hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 
+import { useAuthSession } from './auth-session';
 import { useTRPC } from './trpc';
 
 /**
@@ -24,4 +25,8 @@ export function useCan(permission: AppPermission) {
     ...accessQuery,
     can: hasPermission(accessQuery.data, permission),
   };
+}
+
+export function useAssistantEnabled(): boolean {
+  return useAuthSession().user.assistantEnabled === true;
 }

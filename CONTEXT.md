@@ -97,6 +97,12 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Internal Notes** is a single mutable free-text field on a Feedback that only super-admins can read or edit.
 
+## Assistant
+
+**Assistant** is the in-app AI chat, enabled per user. It acts strictly as the signed-in user: its capabilities are filtered by that user's permissions, and one capability set applies to the user on every platform — web and mobile run the same Assistant, differing only in presentation. A conversation is ephemeral to the client session and is never shared between devices. Avoid Chatbot, Copilot, or Agent for the domain object.
+
+**App Link** is an internal link the Assistant attaches to an entity it mentions — a Customer, Product, Quote, Job, or downloadable document. App Links use one canonical path shape regardless of platform; each client resolves an activated App Link to its own surface, and a client with no matching surface shows the entity name as plain text rather than a dead or broken link. See ADR 0013.
+
 ## Lander Localization
 
 **Locale** is the language of public Lander presentation, identified by code. English (`en`) is the **Canonical Locale**, served at unprefixed URLs; Afrikaans (`af`) is the first translated Locale, served under a locale-prefixed URL tree. The model is locale-keyed so further Locales are additive. See ADR 0011.

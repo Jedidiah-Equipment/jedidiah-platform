@@ -17,5 +17,7 @@
 - Document viewing uses native base files plus `.web` overrides. Native renders PDFs with
   `react-native-pdf`; web fetches authed blobs for iframe/download behavior.
 - Root `pnpm verify` covers lint/typecheck/test. Expo release checks are explicit package commands
-  such as `pnpm --filter @pkg/mobile doctor` and the Android EAS scripts.
+  such as `pnpm --filter @pkg/mobile doctor`, `ios-eas-submit-production`, and the Android EAS scripts.
+- For staging API simulator work, use `pnpm --filter @pkg/mobile ios:staging-api` or
+  `pnpm --filter @pkg/mobile dev:staging-api`, then verify the installed app opens and talks to staging.
 - Native Android launch requires a local Android SDK and Java runtime.

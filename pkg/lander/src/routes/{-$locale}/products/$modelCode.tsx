@@ -293,7 +293,7 @@ function ProductActions({ detail }: { detail: ProductDetail }) {
 function Hero({ detail }: { detail: ProductDetail }) {
   return (
     <section className="border-b border-line bg-white">
-      <div className="mx-auto grid max-w-[1320px] grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] grid-rows-[auto_auto] gap-x-12 gap-y-6 px-12 pt-12 pb-14 max-nav:grid-cols-1 max-nav:grid-rows-none max-nav:gap-8 max-nav:px-5 max-nav:pt-8 max-nav:pb-10">
+      <div className="mx-auto grid max-w-[1320px] grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] grid-rows-[auto_auto] gap-x-12 gap-y-6 px-12 pt-12 pb-[28.8px] max-nav:grid-cols-1 max-nav:grid-rows-none max-nav:gap-8 max-nav:px-5 max-nav:pt-8 max-nav:pb-6">
         <div className="col-start-1 row-start-1">
           <Gallery images={detail.galleryImages} name={detail.name} />
         </div>
@@ -388,7 +388,7 @@ export function AssembliesAndDownloads({ detail }: { detail: ProductDetail }) {
   const { standardAssemblies, optionalAssemblies } = detail;
 
   return (
-    <SandWatermarkSection variant="product-detail" className="py-[72px] max-nav:py-12">
+    <SandWatermarkSection variant="product-detail" className="pt-[28.8px] pb-[72px] max-nav:pt-6 max-nav:pb-12">
       <div className="mx-auto grid max-w-[1320px] grid-cols-2 items-start gap-x-12 gap-y-11 px-12 min-[1120px]:grid-cols-3 max-nav:grid-cols-1 max-nav:px-5">
         {detail.brochureHref ? (
           <div className="order-3 max-nav:order-none">

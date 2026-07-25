@@ -19,7 +19,6 @@ import {
   ProductName,
   ProductNameHighlight,
   ProductRequiresVinNumber,
-  ProductTechnicalDetails,
   ProductUpdateInput,
   refineProductAssemblies,
   refineProductBays,
@@ -85,8 +84,6 @@ export const ProductFormValues = ProductFormFields.extend({
   assemblies: z.array(ProductAssemblyFormInput).superRefine(refineProductAssemblies),
   // Key-feature lines reuse the schema-owned content + cap rules.
   keyFeatures: ProductKeyFeatures,
-  // Technical-detail rows reuse the schema-owned label/value + cap rules.
-  technicalDetails: ProductTechnicalDetails,
   productBays: z.array(ProductBayFormInput).superRefine(refineProductBays),
 });
 
@@ -108,7 +105,6 @@ export const emptyProductFormValues: ProductFormValues = {
   displayOrder: 0,
   buildTimeDays: NaN,
   keyFeatures: [],
-  technicalDetails: [],
   modelCode: '',
   name: '',
   nameHighlight: '',
@@ -132,7 +128,6 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
     displayOrder: initialProduct?.displayOrder ?? 0,
     buildTimeDays: initialProduct?.buildTimeDays ?? NaN,
     keyFeatures: initialProduct?.keyFeatures ?? [],
-    technicalDetails: initialProduct?.technicalDetails ?? [],
     modelCode: initialProduct?.modelCode ?? '',
     name: initialProduct?.name ?? '',
     nameHighlight: initialProduct?.nameHighlight ?? '',

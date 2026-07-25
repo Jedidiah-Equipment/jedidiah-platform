@@ -36,7 +36,6 @@ function productInput(
     basePrice: 1000,
     category: null,
     keyFeatures: [],
-    technicalDetails: [],
     buildTimeDays: 14,
     currencyCode: 'ZAR',
     description: null,

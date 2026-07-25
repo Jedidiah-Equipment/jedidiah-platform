@@ -32,7 +32,6 @@ describe('catalog translation persistence', () => {
         name: 'Silage Trailer',
         nameHighlight: 'XL',
         rangeId: range.id,
-        technicalDetails: [{ label: 'Capacity', value: '42 m³' }],
         translations: {
           zu: {
             name: envelope('Inqola', 'older'),
@@ -58,6 +57,7 @@ describe('catalog translation persistence', () => {
       },
     });
     if (source?.kind !== 'product') throw new Error('Product translation source missing');
+    expect(source.canonical).not.toHaveProperty('technicalDetails');
 
     const translatedAt = new Date('2026-07-13T10:00:00.000Z');
     await persistCatalogTranslation({
@@ -71,7 +71,6 @@ describe('catalog translation persistence', () => {
         category: 'Kuilvoer',
         description: 'Gebou vir die oes.',
         keyFeatures: ['Hoë kapasiteit'],
-        technicalDetails: [{ label: 'Kapasiteit', value: '42 m³' }],
         assemblies: [{ id: assembly.id, name: 'Hidrouliese agterklap' }],
       },
     });
@@ -115,7 +114,6 @@ describe('catalog translation persistence', () => {
         category: 'Reworded category',
         description: 'Bygewerkte oesteks.',
         keyFeatures: ['Reworded feature'],
-        technicalDetails: [{ label: 'Reworded', value: 'detail' }],
         assemblies: [{ id: assembly.id, name: 'Reworded assembly' }],
       },
     });

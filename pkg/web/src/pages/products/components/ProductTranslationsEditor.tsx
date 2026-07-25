@@ -5,12 +5,10 @@ import { useEffect, useMemo } from 'react';
 
 import {
   CatalogTranslationCanonicalStringList,
-  CatalogTranslationCanonicalTechnicalDetails,
   CatalogTranslationCanonicalText,
   CatalogTranslationFieldFrame,
   CatalogTranslationRevertDialog,
   CatalogTranslationStringListInputs,
-  CatalogTranslationTechnicalDetailsInputs,
 } from '@/components/catalog-translations/CatalogTranslationField.js';
 import { PRODUCT_TRANSLATION_FIELD_LABELS } from '@/components/catalog-translations/catalog-translation-labels.js';
 import {
@@ -214,30 +212,6 @@ const ProductTranslationsForm: React.FC<ProductTranslationsFormProps> = ({
                   <CatalogTranslationStringListInputs
                     canonical={translation.fields.keyFeatures.canonical}
                     fieldLabel="Key features"
-                    isManual={isProductTranslationTargetManual(translation, target)}
-                    onValueChange={field.handleChange}
-                    value={field.state.value}
-                  />
-                </CatalogTranslationFieldFrame>
-              );
-            }}
-          </form.Field>
-          <form.Field name="fields.technicalDetails">
-            {(field) => {
-              const target = { field: 'technicalDetails', kind: 'product' } as const;
-              return (
-                <CatalogTranslationFieldFrame
-                  {...fieldControlProps(target)}
-                  canonical={
-                    <CatalogTranslationCanonicalTechnicalDetails
-                      value={translation.fields.technicalDetails.canonical}
-                    />
-                  }
-                  fieldLabel="Technical details"
-                  state={translation.fields.technicalDetails.state}
-                >
-                  <CatalogTranslationTechnicalDetailsInputs
-                    canonical={translation.fields.technicalDetails.canonical}
                     isManual={isProductTranslationTargetManual(translation, target)}
                     onValueChange={field.handleChange}
                     value={field.state.value}

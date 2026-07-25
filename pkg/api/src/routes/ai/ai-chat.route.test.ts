@@ -38,7 +38,6 @@ const PRODUCT = {
   range: { id: '00000000-0000-4000-8000-000000000002', name: 'Loaders' },
   rangeId: '00000000-0000-4000-8000-000000000002',
   requiresVinNumber: false,
-  technicalDetails: [],
   thumbnailDataUrl: null,
   updatedAt: '2026-07-10T09:00:00.000Z',
   variant: null,

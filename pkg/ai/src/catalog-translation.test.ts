@@ -27,7 +27,6 @@ describe('Afrikaans catalog translation', () => {
           category: 'Kuilvoer en graan',
           description: 'Gebou vir veeleisende oeste.',
           keyFeatures: ['Hoë kapasiteit'],
-          technicalDetails: [{ label: 'Kapasiteit', value: '42 m³' }],
           assemblies: [{ id: ASSEMBLY_ID, name: 'Hidrouliese agterklap' }],
         }),
     });
@@ -41,7 +40,6 @@ describe('Afrikaans catalog translation', () => {
         category: 'Silage and grain',
         description: 'Built for demanding harvests.',
         keyFeatures: ['High capacity'],
-        technicalDetails: [{ label: 'Capacity', value: '42 m³' }],
         assemblies: [{ id: ASSEMBLY_ID, name: 'Hydraulic tailgate' }],
       },
     });
@@ -49,7 +47,6 @@ describe('Afrikaans catalog translation', () => {
     expect(translated).toMatchObject({
       name: 'Kuilvoer-sleepwa',
       keyFeatures: ['Hoë kapasiteit'],
-      technicalDetails: [{ label: 'Kapasiteit', value: '42 m³' }],
       assemblies: [{ id: ASSEMBLY_ID, name: 'Hidrouliese agterklap' }],
     });
     expect(model.doGenerateCalls).toHaveLength(1);
@@ -69,7 +66,6 @@ describe('Afrikaans catalog translation', () => {
       category: null,
       description: null,
       keyFeatures: ['Sterk'],
-      technicalDetails: [],
       assemblies: [{ id: ASSEMBLY_ID, name: 'Raam' }],
     };
     const model = new MockLanguageModelV3({
@@ -93,7 +89,6 @@ describe('Afrikaans catalog translation', () => {
           category: null,
           description: null,
           keyFeatures: ['Strong'],
-          technicalDetails: [],
           assemblies: [{ id: ASSEMBLY_ID, name: 'Frame' }],
         },
       }),

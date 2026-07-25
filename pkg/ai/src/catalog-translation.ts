@@ -90,7 +90,6 @@ function createPrompt(source: unknown, validationError = ''): string {
 
 function validateProductOutput(source: ProductTranslationSource, output: ProductTranslationOutput): string {
   if (output.keyFeatures.length !== source.keyFeatures.length) return 'keyFeatures length changed';
-  if (output.technicalDetails.length !== source.technicalDetails.length) return 'technicalDetails length changed';
   if (output.assemblies.length !== source.assemblies.length) return 'assemblies length changed';
 
   const mismatchedAssemblyIndex = output.assemblies.findIndex(

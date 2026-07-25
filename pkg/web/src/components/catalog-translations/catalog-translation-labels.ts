@@ -10,7 +10,6 @@ export const PRODUCT_TRANSLATION_FIELD_LABELS = {
   keyFeatures: 'Key features',
   name: 'Name',
   nameHighlight: 'Name highlight',
-  technicalDetails: 'Technical details',
 } satisfies Record<keyof CatalogProductTranslation['fields'], string>;
 
 export const PRODUCT_RANGE_TRANSLATION_FIELD_LABELS = {

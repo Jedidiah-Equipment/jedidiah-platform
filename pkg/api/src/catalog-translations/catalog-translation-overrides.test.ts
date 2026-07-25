@@ -46,7 +46,6 @@ const test = createTester(async ({ db }) => {
     keyFeatures: ['High capacity'],
     name: 'Silage Trailer',
     nameHighlight: 'XL',
-    technicalDetails: [{ label: 'Capacity', value: '42 m³' }],
   };
   const [product] = await db
     .insert(products)
@@ -63,7 +62,6 @@ const test = createTester(async ({ db }) => {
           keyFeatures: ['Hoë kapasiteit'],
           name: 'Kuilvoer-sleepwa',
           nameHighlight: 'XL',
-          technicalDetails: [{ label: 'Kapasiteit', value: '42 m³' }],
         }),
       },
     })

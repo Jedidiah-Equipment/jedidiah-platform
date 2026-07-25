@@ -44,7 +44,6 @@ describe('getBrochureDocumentModel', () => {
           keyFeatures: envelope(['Afrikaanse kenmerk']),
           name: envelope('Toetsproduk', 'product-hash'),
           nameHighlight: envelope(null),
-          technicalDetails: envelope([]),
         },
       },
     });
@@ -188,7 +187,6 @@ function brochureProduct(overrides: Partial<Product> = {}): Product {
     range: { id: RANGE_ID, name: 'Test Range' },
     rangeId: RANGE_ID,
     requiresVinNumber: false,
-    technicalDetails: [],
     thumbnailDataUrl: null,
     updatedAt: '2026-07-13T00:00:00.000Z',
     variant: null,

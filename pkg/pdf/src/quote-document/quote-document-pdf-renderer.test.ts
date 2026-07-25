@@ -64,6 +64,30 @@ describe('renderQuoteDocumentPdf', () => {
     expect(flattenStyle(quantityHeader?.props.style)).toMatchObject({ textAlign: 'right' });
     expect(flattenStyle(quantityCell?.props.style)).toMatchObject({ textAlign: 'right' });
   });
+
+  test('keeps each Work Item heading with its first breakdown row across page breaks', () => {
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      workItems: [
+        {
+          amount: 1_275,
+          labour: { amount: 1_275, hourlyRate: 850, hours: 1.5 },
+          name: 'Labour-only rebuild',
+          parts: [],
+        },
+        {
+          amount: 250,
+          labour: null,
+          name: 'Parts-only repair',
+          parts: [{ amount: 250, name: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
+        },
+      ],
+    };
+    const rendered = QuoteDocumentPricingTable({ document });
+
+    expect(findUnbreakableGroup(rendered, ['Labour-only rebuild', 'Labour'])).not.toBeNull();
+    expect(findUnbreakableGroup(rendered, ['Parts-only repair', 'Internal seal kit'])).not.toBeNull();
+  });
 });
 
 function collectRenderedText(node: ReactNode): string[] {
@@ -96,6 +120,39 @@ function findRenderedTextElement(
   const children = Array.isArray(element.props.children) ? element.props.children : [element.props.children];
   for (const child of children) {
     const match = findRenderedTextElement(child, text);
+    if (match) return match;
+  }
+
+  return null;
+}
+
+function findUnbreakableGroup(
+  node: ReactNode,
+  expectedText: string[],
+): ReactElement<{ children?: ReactNode; wrap?: boolean }> | null {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const match = findUnbreakableGroup(child, expectedText);
+      if (match) return match;
+    }
+    return null;
+  }
+  if (!isValidElement(node)) return null;
+  const element = node as ReactElement<{ children?: ReactNode; wrap?: boolean }>;
+
+  const renderedText = collectRenderedText(element.props.children);
+  if (element.props.wrap === false && expectedText.every((text) => renderedText.includes(text))) return element;
+
+  if (typeof element.type === 'function') {
+    return findUnbreakableGroup(
+      (element.type as (props: typeof element.props) => ReactNode)(element.props),
+      expectedText,
+    );
+  }
+
+  const children = Array.isArray(element.props.children) ? element.props.children : [element.props.children];
+  for (const child of children) {
+    const match = findUnbreakableGroup(child, expectedText);
     if (match) return match;
   }
 

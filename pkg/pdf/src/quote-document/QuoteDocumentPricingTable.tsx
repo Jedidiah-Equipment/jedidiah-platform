@@ -286,27 +286,44 @@ function WorkItemGroup({
   currencyCode: string;
   row: ReturnType<typeof quoteDocumentWorkItemRows>[number];
 }) {
+  const breakdownRows = [
+    ...(row.workItem.labour
+      ? [
+          {
+            amount: row.workItem.labour.amount,
+            key: 'labour',
+            label: 'Labour',
+            quantity: row.workItem.labour.hours,
+            unitPrice: row.workItem.labour.hourlyRate,
+          },
+        ]
+      : []),
+    ...row.workItem.parts.map((part) => ({
+      amount: part.amount,
+      key: getWorkItemPartKey(part),
+      label: part.name,
+      quantity: part.quantity,
+      unitPrice: part.unitPrice,
+    })),
+  ];
+  const [firstBreakdownRow, ...remainingBreakdownRows] = breakdownRows;
+  const firstBreakdownProps = firstBreakdownRow
+    ? {
+        amount: firstBreakdownRow.amount,
+        label: firstBreakdownRow.label,
+        quantity: firstBreakdownRow.quantity,
+        unitPrice: firstBreakdownRow.unitPrice,
+      }
+    : null;
+
   return (
     <View>
-      <WorkItemRow row={row} />
-      {row.workItem.labour ? (
-        <WorkItemBreakdownRow
-          amount={row.workItem.labour.amount}
-          currencyCode={currencyCode}
-          label="Labour"
-          quantity={row.workItem.labour.hours}
-          unitPrice={row.workItem.labour.hourlyRate}
-        />
-      ) : null}
-      {row.workItem.parts.map((part) => (
-        <WorkItemBreakdownRow
-          amount={part.amount}
-          currencyCode={currencyCode}
-          key={getWorkItemPartKey(part)}
-          label={part.name}
-          quantity={part.quantity}
-          unitPrice={part.unitPrice}
-        />
+      <View wrap={false}>
+        <WorkItemRow row={row} />
+        {firstBreakdownProps ? <WorkItemBreakdownRow currencyCode={currencyCode} {...firstBreakdownProps} /> : null}
+      </View>
+      {remainingBreakdownRows.map(({ key, ...breakdownRow }) => (
+        <WorkItemBreakdownRow currencyCode={currencyCode} key={key} {...breakdownRow} />
       ))}
     </View>
   );

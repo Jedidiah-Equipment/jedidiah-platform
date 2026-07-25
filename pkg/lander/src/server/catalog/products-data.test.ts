@@ -73,7 +73,6 @@ async function insertProduct(
       landerEnabled: true,
       category: 'Default category',
       keyFeatures: ['Default feature'],
-      technicalDetails: [{ label: 'Working Width', value: '7 m' }],
       description: 'Default description.',
       images: { primary: imageRef('primary'), secondary1: imageRef('secondary1'), secondary2: imageRef('secondary2') },
       ...values,
@@ -115,11 +114,6 @@ test('loadProductsCatalog translates display text while keeping canonical Range 
         category: translationEnvelope('Kuilvoer en graan', 'stale-product-category', translatedAt),
         description: translationEnvelope('Afrikaanse produkbeskrywing.', 'stale-product-description', translatedAt),
         keyFeatures: translationEnvelope(['Afrikaanse kenmerk'], 'stale-product-features', translatedAt),
-        technicalDetails: translationEnvelope(
-          [{ label: 'Kapasiteit', value: '42 m³' }],
-          'stale-product-details',
-          translatedAt,
-        ),
       },
     },
   });

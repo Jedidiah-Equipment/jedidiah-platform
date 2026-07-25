@@ -130,7 +130,6 @@ describe('catalog translation health', () => {
           keyFeatures: [],
           name: 'Vertaalde Produk',
           nameHighlight: null,
-          technicalDetails: [],
         });
       }
       if (request.includes('description')) {
@@ -310,7 +309,6 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
     keyFeatures: [] as string[],
     name: 'Fresh Product',
     nameHighlight: null,
-    technicalDetails: [] as Array<{ label: string; value: string }>,
   };
   await db.insert(products).values([
     {
@@ -335,7 +333,6 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
           keyFeatures: [],
           name: 'Vars Produk',
           nameHighlight: null,
-          technicalDetails: [],
         }),
       },
     },
@@ -354,7 +351,6 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
             keyFeatures: [] as string[],
             name: 'Stale Product',
             nameHighlight: null,
-            technicalDetails: [] as Array<{ label: string; value: string }>,
           },
           {
             category: null,
@@ -362,7 +358,6 @@ async function insertTranslationMatrix(db: Db): Promise<void> {
             keyFeatures: [],
             name: 'Ou Produk',
             nameHighlight: null,
-            technicalDetails: [],
           },
           'outdated',
         ),

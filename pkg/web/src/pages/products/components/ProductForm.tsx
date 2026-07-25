@@ -11,7 +11,6 @@ import { useProductRangeOptions } from '@/hooks/options/use-product-range-option
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 import { ProductBaysEditor } from './ProductBaysEditor.js';
 import { ProductKeyFeaturesEditor } from './ProductKeyFeaturesEditor.js';
-import { ProductTechnicalDetailsEditor } from './ProductTechnicalDetailsEditor.js';
 import { ProductFormValues, toProductFormValues, toProductUpdateInput } from './types.js';
 
 type ProductFormProps = {
@@ -211,14 +210,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ detailsFooter, onSave,
             <form.Field name="keyFeatures" mode="array">
               {(keyFeaturesField) => (
                 <ProductKeyFeaturesEditor keyFeaturesField={keyFeaturesField} onStructuralChange={saveCommittedField} />
-              )}
-            </form.Field>
-            <form.Field name="technicalDetails" mode="array">
-              {(technicalDetailsField) => (
-                <ProductTechnicalDetailsEditor
-                  onStructuralChange={saveCommittedField}
-                  technicalDetailsField={technicalDetailsField}
-                />
               )}
             </form.Field>
             {detailsFooter}

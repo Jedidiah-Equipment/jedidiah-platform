@@ -14,8 +14,8 @@ type EditorTextFieldProps = {
 };
 
 // A single labelled text input wired to a TanStack `Field` render-prop value, with the row's validation errors
-// surfaced inline. Shared by the freeform list editors (key features, technical details) whose array rows are
-// plain text inputs rather than the higher-level `AppField` components.
+// surfaced inline. Shared by freeform list editors whose array rows are plain text inputs rather than the
+// higher-level `AppField` components.
 export const EditorTextField: React.FC<EditorTextFieldProps> = ({ field, label, placeholder, className }) => {
   const errors = getFieldErrors(field.state.meta.errors);
   const isInvalid = errors.length > 0;

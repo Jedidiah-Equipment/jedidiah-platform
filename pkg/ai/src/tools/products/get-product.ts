@@ -27,7 +27,6 @@ export const GetProductResponse = Product.pick({
   nameHighlight: true,
   range: true,
   requiresVinNumber: true,
-  technicalDetails: true,
   updatedAt: true,
   variant: true,
 }).extend({
@@ -63,7 +62,6 @@ export function toGetProductResponse(product: Product): GetProductResponse {
     })),
     range: product.range,
     requiresVinNumber: product.requiresVinNumber,
-    technicalDetails: product.technicalDetails,
     updatedAt: product.updatedAt,
     variant: product.variant,
   });

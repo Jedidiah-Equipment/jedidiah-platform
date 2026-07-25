@@ -77,16 +77,6 @@ function buildTranslation(state: 'fresh' | 'needsReview'): CatalogProductTransla
           value: null,
         },
       },
-      technicalDetails: {
-        canonical: [{ label: 'Capacity', value: '42 m3' }],
-        state,
-        translation: {
-          isManual: state === 'needsReview',
-          sourceHash: 'source-hash',
-          translatedAt: '2026-07-14T12:00:00.000Z',
-          value: [{ label: 'Kapasiteit', value: '42 m3' }],
-        },
-      },
     },
     id: '123e4567-e89b-42d3-a456-426614174000',
   };

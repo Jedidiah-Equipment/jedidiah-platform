@@ -125,7 +125,6 @@ function completeProduct(overrides: Partial<Product> = {}): Product {
     productBays: [],
     category: 'Silage & Grain',
     keyFeatures: ['Heavy-duty steel construction'],
-    technicalDetails: [{ label: 'Working Width', value: '7 m' }],
     images: FULL_IMAGES,
     thumbnailDataUrl: null,
     createdAt: '2026-06-17T00:00:00.000Z',
@@ -166,7 +165,6 @@ describe('isLanderReady / isBrochureReady', () => {
     expect(isLanderReady(completeProduct())).toBe(true);
     expect(isLanderReady(completeProduct({ landerEnabled: false }))).toBe(false);
     expect(isLanderReady(completeProduct({ category: null }))).toBe(false);
-    expect(isLanderReady(completeProduct({ technicalDetails: [] }))).toBe(true);
 
     expect(isBrochureReady(completeProduct())).toBe(true);
     expect(isBrochureReady(completeProduct({ brochureEnabled: false }))).toBe(false);

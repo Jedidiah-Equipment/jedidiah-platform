@@ -57,7 +57,6 @@ async function insertProduct(
     displayOrder?: number;
     category?: string | null;
     keyFeatures?: string[];
-    technicalDetails?: { label: string; value: string }[];
     images?: Partial<Record<string, ProductImageRef>>;
     brochureEnabled?: boolean;
     landerEnabled?: boolean;
@@ -74,7 +73,6 @@ async function insertProduct(
       landerEnabled: true,
       category: 'Default category',
       keyFeatures: ['Default feature'],
-      technicalDetails: [{ label: 'Working Width', value: '7 m' }],
       description: 'Default description.',
       images: landerGalleryImages(),
       ...values,
@@ -120,7 +118,6 @@ test('loadProductDetail selects Afrikaans fields with per-field canonical fallba
     description: 'Canonical description.',
     category: 'Canonical tagline',
     keyFeatures: ['Canonical feature'],
-    technicalDetails: [{ label: 'Capacity', value: '42 m³' }],
     translations: {
       af: {
         name: translationEnvelope(`Kuilvoerwa ${suffix}`, 'stale-product-name', translatedAt),
@@ -128,11 +125,6 @@ test('loadProductDetail selects Afrikaans fields with per-field canonical fallba
         category: translationEnvelope('Afrikaanse byskrif', 'stale-product-category', translatedAt),
         description: translationEnvelope(null, 'stale-product-description', translatedAt),
         keyFeatures: translationEnvelope(['Afrikaanse kenmerk'], 'stale-product-features', translatedAt),
-        technicalDetails: translationEnvelope(
-          [{ label: 'Kapasiteit', value: '42 m³' }],
-          'stale-product-details',
-          translatedAt,
-        ),
       },
     },
   });
@@ -179,10 +171,6 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
     description: 'Flagship 14-ton tipping trailer.',
     category: 'Built for high-volume haulage.',
     keyFeatures: ['Heavy-duty monocoque body', 'Twin-ram hydraulic tipping'],
-    technicalDetails: [
-      { label: 'Capacity', value: '14 t' },
-      { label: 'Body', value: 'Monocoque' },
-    ],
   });
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
 

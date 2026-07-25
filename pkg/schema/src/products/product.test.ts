@@ -7,9 +7,6 @@ import {
   PRODUCT_IMAGE_SLOT_SPECS,
   PRODUCT_KEY_FEATURE_MAX_LENGTH,
   PRODUCT_KEY_FEATURES_MAX_COUNT,
-  PRODUCT_TECHNICAL_DETAIL_LABEL_MAX_LENGTH,
-  PRODUCT_TECHNICAL_DETAIL_VALUE_MAX_LENGTH,
-  PRODUCT_TECHNICAL_DETAILS_MAX_COUNT,
   Product,
   ProductAssembliesInput,
   ProductAssemblyTranslations,
@@ -19,7 +16,6 @@ import {
   ProductKeyFeatures,
   ProductListInput,
   ProductSortBy,
-  ProductTechnicalDetails,
   ProductTranslations,
   ProductUpdateInput,
 } from './product.js';
@@ -43,6 +39,36 @@ const RANGE_ID = '00000000-0000-4000-8000-000000000301';
 const VARIANT_ID = '00000000-0000-4000-8000-000000000302';
 
 describe('ProductCreateInput', () => {
+  it('rejects the removed technical details field from create and update payloads', () => {
+    expect(() =>
+      ProductCreateInput.parse({
+        basePrice: 1,
+        buildTimeDays: 1,
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+        rangeId: RANGE_ID,
+        technicalDetails: [{ label: 'Working Width', value: '7 m' }],
+      }),
+    ).toThrow(/unrecognized key/i);
+
+    expect(() =>
+      ProductUpdateInput.parse({
+        id: '00000000-0000-4000-8000-000000000102',
+        basePrice: 1,
+        buildTimeDays: 1,
+        brochureEnabled: false,
+        currencyCode: 'ZAR',
+        description: null,
+        landerEnabled: false,
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+        rangeId: RANGE_ID,
+        requiresVinNumber: false,
+        technicalDetails: [{ label: 'Working Width', value: '7 m' }],
+      }),
+    ).toThrow(/unrecognized key/i);
+  });
+
   it('normalizes product catalog fields', () => {
     expect(
       ProductCreateInput.parse({
@@ -62,7 +88,6 @@ describe('ProductCreateInput', () => {
       displayOrder: 0,
       buildTimeDays: 14,
       keyFeatures: [],
-      technicalDetails: [],
       modelCode: 'WL-100',
       name: 'Wheel Loader',
       nameHighlight: null,
@@ -441,38 +466,6 @@ describe('ProductKeyFeatures', () => {
     const tooMany = Array.from({ length: PRODUCT_KEY_FEATURES_MAX_COUNT + 1 }, (_, index) => `Feature ${index}`);
 
     expect(() => ProductKeyFeatures.parse(tooMany)).toThrow();
-  });
-});
-
-describe('ProductTechnicalDetails', () => {
-  it('trims label/value pairs and rejects blank halves', () => {
-    expect(ProductTechnicalDetails.parse([{ label: '  Working Width  ', value: '  7 m  ' }])).toEqual([
-      { label: 'Working Width', value: '7 m' },
-    ]);
-    expect(() => ProductTechnicalDetails.parse([{ label: '   ', value: '7 m' }])).toThrow();
-    expect(() => ProductTechnicalDetails.parse([{ label: 'Working Width', value: '   ' }])).toThrow();
-  });
-
-  it('enforces the label and value length caps', () => {
-    expect(() =>
-      ProductTechnicalDetails.parse([
-        { label: 'x'.repeat(PRODUCT_TECHNICAL_DETAIL_LABEL_MAX_LENGTH + 1), value: '7 m' },
-      ]),
-    ).toThrow();
-    expect(() =>
-      ProductTechnicalDetails.parse([
-        { label: 'Working Width', value: 'x'.repeat(PRODUCT_TECHNICAL_DETAIL_VALUE_MAX_LENGTH + 1) },
-      ]),
-    ).toThrow();
-  });
-
-  it('caps the number of technical details', () => {
-    const tooMany = Array.from({ length: PRODUCT_TECHNICAL_DETAILS_MAX_COUNT + 1 }, (_, index) => ({
-      label: `Spec ${index}`,
-      value: `${index}`,
-    }));
-
-    expect(() => ProductTechnicalDetails.parse(tooMany)).toThrow();
   });
 });
 

@@ -46,7 +46,6 @@ export const TranslatableProductFields = z.object({
   category: z.string().nullable(),
   description: z.string().nullable(),
   keyFeatures: z.array(z.string()),
-  technicalDetails: z.array(z.object({ label: z.string(), value: z.string() })),
 });
 
 export type TranslatableAssemblyFields = z.infer<typeof TranslatableAssemblyFields>;
@@ -76,7 +75,6 @@ const ProductTranslationFields = z.object({
   category: catalogTranslationField(TranslatableProductFields.shape.category),
   description: catalogTranslationField(TranslatableProductFields.shape.description),
   keyFeatures: catalogTranslationField(TranslatableProductFields.shape.keyFeatures),
-  technicalDetails: catalogTranslationField(TranslatableProductFields.shape.technicalDetails),
 });
 
 const ProductTranslationFieldPatches = z
@@ -86,7 +84,6 @@ const ProductTranslationFieldPatches = z
     category: catalogTranslationFieldPatch(TranslatableProductFields.shape.category),
     description: catalogTranslationFieldPatch(TranslatableProductFields.shape.description),
     keyFeatures: catalogTranslationFieldPatch(TranslatableProductFields.shape.keyFeatures),
-    technicalDetails: catalogTranslationFieldPatch(TranslatableProductFields.shape.technicalDetails),
   })
   .partial();
 

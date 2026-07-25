@@ -65,7 +65,6 @@ describe('findProducts contract', () => {
           range: { id: RANGE_ID, name: 'Loaders' },
           rangeId: RANGE_ID,
           requiresVinNumber: false,
-          technicalDetails: [{ label: 'Capacity', value: '1.2 t' }],
           thumbnailDataUrl: 'data:image/webp;base64,YQ==',
           updatedAt: '2026-07-10T09:00:00.000Z',
           variant: null,

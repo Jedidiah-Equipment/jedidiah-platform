@@ -12,7 +12,7 @@ import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 const ProductTranslationTargetSchema = z.discriminatedUnion('kind', [
   z.object({
-    field: z.enum(['category', 'description', 'keyFeatures', 'name', 'nameHighlight', 'technicalDetails']),
+    field: z.enum(['category', 'description', 'keyFeatures', 'name', 'nameHighlight']),
     kind: z.literal('product'),
   }),
   z.object({ assemblyId: UUID, kind: z.literal('assembly') }),
@@ -26,7 +26,6 @@ export const ProductTranslationFormValuesSchema = z.object({
     keyFeatures: TranslatableProductFields.shape.keyFeatures,
     name: TranslatableProductFields.shape.name,
     nameHighlight: emptyStringOr(TranslatableProductFields.shape.nameHighlight),
-    technicalDetails: TranslatableProductFields.shape.technicalDetails,
   }),
   // Review intent belongs in the snapshot so unchanged values still trigger autosave.
   reviewedTarget: ProductTranslationTargetSchema.optional(),
@@ -44,7 +43,6 @@ const PRODUCT_TRANSLATION_FIELDS = [
   'category',
   'description',
   'keyFeatures',
-  'technicalDetails',
 ] as const satisfies readonly ProductTranslationField[];
 
 export function toProductTranslationFormValues(translation: CatalogProductTranslation): ProductTranslationFormValues {
@@ -62,10 +60,6 @@ export function toProductTranslationFormValues(translation: CatalogProductTransl
       ),
       name: translation.fields.name.translation?.value ?? '',
       nameHighlight: translation.fields.nameHighlight.translation?.value ?? '',
-      technicalDetails: mirrorTechnicalDetails(
-        translation.fields.technicalDetails.canonical,
-        translation.fields.technicalDetails.translation?.value,
-      ),
     },
   };
 }
@@ -155,8 +149,6 @@ function productFieldPatch(
       return { name: { isManual: true, value: values.name } };
     case 'nameHighlight':
       return { nameHighlight: { isManual: true, value: emptyStringToNull(values.nameHighlight) } };
-    case 'technicalDetails':
-      return { technicalDetails: { isManual: true, value: values.technicalDetails } };
   }
 }
 
@@ -184,16 +176,6 @@ function isReviewedTarget(
 
 function mirrorStringList(canonical: string[], translated: string[] | undefined): string[] {
   return canonical.map((_, index) => translated?.[index] ?? '');
-}
-
-function mirrorTechnicalDetails(
-  canonical: Array<{ label: string; value: string }>,
-  translated: Array<{ label: string; value: string }> | undefined,
-): Array<{ label: string; value: string }> {
-  return canonical.map((_, index) => ({
-    label: translated?.[index]?.label ?? '',
-    value: translated?.[index]?.value ?? '',
-  }));
 }
 
 function emptyStringToNull(value: string): string | null {

@@ -47,7 +47,6 @@ describe('catalog translation runner', () => {
           category: null,
           description: 'Gebou vir die oes.',
           keyFeatures: ['Hoë kapasiteit'],
-          technicalDetails: [],
           assemblies: [{ id: context.assemblyId, name: 'Hidrouliese agterklap' }],
         }),
     });
@@ -113,7 +112,6 @@ describe('catalog translation runner', () => {
               category: null,
               description: 'Gebou vir die oes.',
               keyFeatures: ['Hoë kapasiteit'],
-              technicalDetails: [],
               assemblies: [{ id: context.assemblyId, name: 'Hidrouliese agterklap' }],
             })
           : generatedJson({ name: 'Sleepwaens', description: 'Oestoerusting.' });

@@ -17,10 +17,6 @@ const canonicalProduct = {
   category: 'Silage & Grain',
   description: 'Built for demanding harvests.',
   keyFeatures: ['High capacity', 'Heavy-duty chassis'],
-  technicalDetails: [
-    { label: 'Capacity', value: '42 m³' },
-    { label: 'Axles', value: '2' },
-  ],
   basePrice: 1_000_000,
   images: { primary: 'ignored' },
 };

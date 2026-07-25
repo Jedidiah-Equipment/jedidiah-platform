@@ -69,6 +69,7 @@ describe('products.create', () => {
       rangeId: context.rangeId,
       requiresVinNumber: false,
     });
+    expect(created).not.toHaveProperty('technicalDetails');
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
   });

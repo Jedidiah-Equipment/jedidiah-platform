@@ -116,7 +116,6 @@ const productListColumns = {
   id: true,
   images: true,
   keyFeatures: true,
-  technicalDetails: true,
   buildTimeDays: true,
   modelCode: true,
   name: true,
@@ -209,8 +208,7 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
       label: assembly.name,
       value: assembly,
     })),
-    // keyFeatures/technicalDetails are ordered jsonb arrays; `position` keeps reorders diffable for
-    // the same reason as assembly displayOrder.
+    // Key features are an ordered jsonb array; `position` keeps reorders diffable like assembly displayOrder.
     keyFeature: input.keyFeatures.map((feature, index) => ({
       key: feature,
       label: feature,
@@ -222,11 +220,6 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
       // only a newly added bay labels as its id.
       label: 'bay' in productBay ? productBay.bay.name : undefined,
       value: { bayId: productBay.bayId, defaultWorkingDays: productBay.defaultWorkingDays },
-    })),
-    technicalDetail: input.technicalDetails.map((detail, index) => ({
-      key: detail.label,
-      label: detail.label,
-      value: { label: detail.label, position: index, value: detail.value },
     })),
   }),
 });
@@ -250,7 +243,6 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
     id: row.id,
     images: mapProductImages(row.images),
     keyFeatures: row.keyFeatures,
-    technicalDetails: row.technicalDetails,
     buildTimeDays: row.buildTimeDays,
     modelCode: row.modelCode,
     name: row.name,
@@ -870,7 +862,6 @@ export async function updateProduct({
         description: input.description,
         displayOrder: input.displayOrder ?? before.displayOrder,
         keyFeatures: input.keyFeatures ?? before.keyFeatures,
-        technicalDetails: input.technicalDetails ?? before.technicalDetails,
         buildTimeDays: input.buildTimeDays,
         modelCode: input.modelCode,
         name: input.name,

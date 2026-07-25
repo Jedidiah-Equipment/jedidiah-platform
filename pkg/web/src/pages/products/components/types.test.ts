@@ -73,6 +73,7 @@ describe('toProductFormValues', () => {
     const values = toProductFormValues();
 
     expect(values.name).toBe('');
+    expect(values).not.toHaveProperty('technicalDetails');
     expect(values.modelCode).toBe('');
     expect(values.description).toBe('');
     expect(values.currencyCode).toBe('ZAR');
@@ -192,7 +193,6 @@ describe('toProductCreateInput', () => {
       description: null,
       displayOrder: 20,
       keyFeatures: [],
-      technicalDetails: [],
       modelCode: 'MOD-1',
       name: 'Widget',
       nameHighlight: null,
@@ -254,7 +254,6 @@ describe('toProductMinimalCreateInput', () => {
       description: null,
       displayOrder: 0,
       keyFeatures: [],
-      technicalDetails: [],
       modelCode: 'WL-100',
       name: 'Wheel Loader',
       nameHighlight: null,

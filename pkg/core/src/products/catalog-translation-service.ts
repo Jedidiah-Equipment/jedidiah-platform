@@ -682,7 +682,6 @@ function translatableProductFields(row: typeof products.$inferSelect): Translata
     keyFeatures: row.keyFeatures,
     name: row.name,
     nameHighlight: row.nameHighlight,
-    technicalDetails: row.technicalDetails,
   };
 }
 
@@ -702,7 +701,6 @@ function toCatalogProductTranslation(row: ProductSourceRow): CatalogProductTrans
       keyFeatures: toCatalogTranslationField(canonical.keyFeatures, translation?.keyFeatures),
       name: toCatalogTranslationField(canonical.name, translation?.name),
       nameHighlight: toCatalogTranslationField(canonical.nameHighlight, translation?.nameHighlight),
-      technicalDetails: toCatalogTranslationField(canonical.technicalDetails, translation?.technicalDetails),
     },
     id: row.id,
   };

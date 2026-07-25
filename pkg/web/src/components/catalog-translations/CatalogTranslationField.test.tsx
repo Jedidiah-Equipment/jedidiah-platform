@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { Button } from '@/components/ui/button.js';
 import {
   CatalogTranslationCanonicalStringList,
-  CatalogTranslationCanonicalTechnicalDetails,
   CatalogTranslationCanonicalText,
   CatalogTranslationManualToggle,
   CatalogTranslationRevertDialog,
@@ -20,13 +19,12 @@ describe('CatalogTranslationField', () => {
         <CatalogTranslationCanonicalText value="Gravel" />
         <CatalogTranslationCanonicalText multiline value="English description" />
         <CatalogTranslationCanonicalStringList value={['Feature']} />
-        <CatalogTranslationCanonicalTechnicalDetails value={[{ label: 'Capacity', value: '42 m3' }]} />
       </>,
     );
 
     expect(html).toContain('value="Gravel"');
     expect(html).toContain('<textarea');
-    expect(html.match(/data-slot="input"/g)).toHaveLength(4);
+    expect(html.match(/data-slot="input"/g)).toHaveLength(2);
     expect(html).toMatch(/<textarea[^>]*disabled=""/);
   });
 

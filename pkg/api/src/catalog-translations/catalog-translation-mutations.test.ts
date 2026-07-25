@@ -50,7 +50,6 @@ describe('catalog mutation translation triggers', () => {
         category: null,
         description: 'Jongste beskrywing.',
         keyFeatures: [],
-        technicalDetails: [],
         assemblies: [],
       }),
     );
@@ -212,7 +211,6 @@ function productTranslation(description: string) {
     category: null,
     description,
     keyFeatures: [],
-    technicalDetails: [],
     assemblies: [],
   };
 }

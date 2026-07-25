@@ -46,14 +46,6 @@ const productTranslation = {
       canonical: null,
       state: 'missing',
     },
-    technicalDetails: {
-      canonical: [
-        { label: 'Capacity', value: '42 m3' },
-        { label: 'Axles', value: '2' },
-      ],
-      state: 'needsReview',
-      translation: envelope([{ label: 'Kapasiteit', value: '42 m3' }], true),
-    },
   },
   id: '123e4567-e89b-42d3-a456-426614174000',
 } satisfies CatalogProductTranslation;
@@ -63,10 +55,7 @@ describe('Product translation form mapping', () => {
     const values = toProductTranslationFormValues(productTranslation);
 
     expect(values.fields.keyFeatures).toEqual(['Hoe kapasiteit', '']);
-    expect(values.fields.technicalDetails).toEqual([
-      { label: 'Kapasiteit', value: '42 m3' },
-      { label: '', value: '' },
-    ]);
+    expect(values.fields).not.toHaveProperty('technicalDetails');
   });
 
   it('patches only changed manual fields during autosave', () => {

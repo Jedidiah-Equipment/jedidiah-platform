@@ -41,9 +41,11 @@ describe('Quote Work Item form helpers', () => {
     expect(getWorkItemFormTotal({ hourlyRate: 850, workItem })).toBe(1525);
     expect(quoteWorkItemSummaryRows({ hourlyRate: 850, workItems: [workItem] })).toEqual([
       {
-        labour: { hours: 1.5, hourlyRate: 850, total: 1275 },
+        charges: [
+          { amount: 1275, kind: 'labour', label: 'Labour', part: null, quantity: 1.5, unitPrice: 850 },
+          { amount: 250, kind: 'part', label: 'Seal kit', part: workItem.parts[0], quantity: 2, unitPrice: 125 },
+        ],
         name: 'Strip pump',
-        parts: [{ name: 'Seal kit', part: workItem.parts[0], quantity: 2, total: 250, unitPrice: 125 }],
         total: 1525,
         workItem,
       },

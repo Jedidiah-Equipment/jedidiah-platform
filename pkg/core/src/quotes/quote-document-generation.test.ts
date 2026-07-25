@@ -247,25 +247,23 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
     expect(model.workItems).toEqual([
       {
         amount: 1_275,
-        labour: { amount: 1_275, hourlyRate: 850, hours: 1.5 },
+        charges: [{ amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 }],
         name: 'Labour-only rebuild',
-        parts: [],
       },
       {
         amount: 400,
-        labour: null,
-        name: 'Parts-only repair',
-        parts: [
-          { amount: 150, name: 'Hydraulic oil', quantity: 3, unitPrice: 50 },
-          { amount: 250, name: 'Internal seal kit', quantity: 2, unitPrice: 125 },
+        charges: [
+          { amount: 150, kind: 'part', label: 'Hydraulic oil', quantity: 3, unitPrice: 50 },
+          { amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 },
         ],
+        name: 'Parts-only repair',
       },
-      { amount: 0, labour: null, name: 'Included inspection', parts: [] },
+      { amount: 0, charges: [], name: 'Included inspection' },
     ]);
     expect(model).toMatchObject({ subtotal: 2_675, total: 3_076.25, vatAmount: 401.25 });
     const serializedModel = JSON.stringify(model);
     expect(serializedModel).toContain('Internal seal kit');
-    expect(serializedModel).toContain('"hourlyRate":850');
-    expect(serializedModel).toContain('"hours":1.5');
+    expect(serializedModel).toContain('"unitPrice":850');
+    expect(serializedModel).toContain('"quantity":1.5');
   });
 });

@@ -23,17 +23,15 @@ describe('renderQuoteDocumentPdf', () => {
       workItems: [
         {
           amount: 1_275,
-          labour: { amount: 1_275, hourlyRate: 850, hours: 1.5 },
+          charges: [{ amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 }],
           name: 'Labour-only rebuild',
-          parts: [],
         },
         {
           amount: 250,
-          labour: null,
+          charges: [{ amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
           name: 'Parts-only repair',
-          parts: [{ amount: 250, name: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
         },
-        { amount: 0, labour: null, name: 'Included inspection', parts: [] },
+        { amount: 0, charges: [], name: 'Included inspection' },
       ],
     };
     const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
@@ -71,15 +69,13 @@ describe('renderQuoteDocumentPdf', () => {
       workItems: [
         {
           amount: 1_275,
-          labour: { amount: 1_275, hourlyRate: 850, hours: 1.5 },
+          charges: [{ amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 }],
           name: 'Labour-only rebuild',
-          parts: [],
         },
         {
           amount: 250,
-          labour: null,
+          charges: [{ amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
           name: 'Parts-only repair',
-          parts: [{ amount: 250, name: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
         },
       ],
     };
@@ -90,70 +86,52 @@ describe('renderQuoteDocumentPdf', () => {
   });
 });
 
-function collectRenderedText(node: ReactNode): string[] {
-  if (node === null || node === undefined || typeof node === 'boolean') return [];
-  if (typeof node === 'string' || typeof node === 'number') return [String(node)];
-  if (Array.isArray(node)) return node.flatMap(collectRenderedText);
-  if (!isValidElement(node)) return [];
-  const element = node as ReactElement<{ children?: ReactNode }>;
+type RenderedElement = ReactElement<{ children?: ReactNode; style?: unknown; wrap?: boolean }>;
+
+/**
+ * Walks a rendered tree in document order, invoking function components as it goes so callers see
+ * only the @react-pdf primitives and the text they hold.
+ */
+function* walkRendered(node: ReactNode): Generator<RenderedElement | string> {
+  if (node === null || node === undefined || typeof node === 'boolean') return;
+  if (typeof node === 'string' || typeof node === 'number') {
+    yield String(node);
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const child of node) yield* walkRendered(child);
+    return;
+  }
+  if (!isValidElement(node)) return;
+  const element = node as RenderedElement;
 
   if (typeof element.type === 'function') {
-    return collectRenderedText((element.type as (props: typeof element.props) => ReactNode)(element.props));
+    yield* walkRendered((element.type as (props: typeof element.props) => ReactNode)(element.props));
+    return;
   }
 
-  return collectRenderedText(element.props.children);
+  yield element;
+  yield* walkRendered(element.props.children);
 }
 
-function findRenderedTextElement(
-  node: ReactNode,
-  text: string,
-): ReactElement<{ children?: ReactNode; style?: unknown }> | null {
-  if (!isValidElement(node)) return null;
-  const element = node as ReactElement<{ children?: ReactNode; style?: unknown }>;
+function collectRenderedText(node: ReactNode): string[] {
+  return [...walkRendered(node)].filter((rendered) => typeof rendered === 'string');
+}
 
-  if (typeof element.type === 'function') {
-    return findRenderedTextElement((element.type as (props: typeof element.props) => ReactNode)(element.props), text);
-  }
-
-  if (collectRenderedText(element.props.children).join('') === text) return element;
-
-  const children = Array.isArray(element.props.children) ? element.props.children : [element.props.children];
-  for (const child of children) {
-    const match = findRenderedTextElement(child, text);
-    if (match) return match;
+function findRenderedTextElement(node: ReactNode, text: string): RenderedElement | null {
+  for (const rendered of walkRendered(node)) {
+    if (typeof rendered === 'string') continue;
+    if (collectRenderedText(rendered.props.children).join('') === text) return rendered;
   }
 
   return null;
 }
 
-function findUnbreakableGroup(
-  node: ReactNode,
-  expectedText: string[],
-): ReactElement<{ children?: ReactNode; wrap?: boolean }> | null {
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      const match = findUnbreakableGroup(child, expectedText);
-      if (match) return match;
-    }
-    return null;
-  }
-  if (!isValidElement(node)) return null;
-  const element = node as ReactElement<{ children?: ReactNode; wrap?: boolean }>;
-
-  const renderedText = collectRenderedText(element.props.children);
-  if (element.props.wrap === false && expectedText.every((text) => renderedText.includes(text))) return element;
-
-  if (typeof element.type === 'function') {
-    return findUnbreakableGroup(
-      (element.type as (props: typeof element.props) => ReactNode)(element.props),
-      expectedText,
-    );
-  }
-
-  const children = Array.isArray(element.props.children) ? element.props.children : [element.props.children];
-  for (const child of children) {
-    const match = findUnbreakableGroup(child, expectedText);
-    if (match) return match;
+function findUnbreakableGroup(node: ReactNode, expectedText: string[]): RenderedElement | null {
+  for (const rendered of walkRendered(node)) {
+    if (typeof rendered === 'string' || rendered.props.wrap !== false) continue;
+    const renderedText = collectRenderedText(rendered.props.children);
+    if (expectedText.every((text) => renderedText.includes(text))) return rendered;
   }
 
   return null;

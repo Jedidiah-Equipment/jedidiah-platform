@@ -3,7 +3,7 @@ import type {
   QuoteDocumentModel,
   QuoteDocumentPricingRow,
   QuoteDocumentWorkItem,
-  QuoteDocumentWorkItemPart,
+  QuoteWorkItemCharge,
 } from '@pkg/schema';
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
 import { pdfStyles } from './pdf-styles.js';
@@ -15,7 +15,7 @@ type QuoteDocumentPricingTableProps = {
 
 const getPricingRowKey = createStableRowKeys<QuoteDocumentPricingRow>('quote-document-pricing-row');
 const getWorkItemKey = createStableRowKeys<QuoteDocumentWorkItem>('quote-document-work-item');
-const getWorkItemPartKey = createStableRowKeys<QuoteDocumentWorkItemPart>('quote-document-work-item-part');
+const getWorkItemChargeKey = createStableRowKeys<QuoteWorkItemCharge>('quote-document-work-item-charge');
 
 const layout = {
   priceColumnWidth: 96,
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     color: pdfColors.staleNoticeText,
     padding: pdfSpacing.tableCellX,
   },
-  partDescriptionCell: {
+  chargeDescriptionCell: {
     paddingLeft: pdfSpacing.tableCellX * 2,
   },
 });
@@ -75,7 +75,6 @@ const styles = StyleSheet.create({
 export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTableProps) {
   const baseRow = document.pricingRows.find((row) => row.kind === 'base');
   const optionalRows = document.pricingRows.filter((row) => row.kind === 'optional');
-  const workItems = quoteDocumentWorkItemRows(document);
   const adjustmentRows = document.pricingRows.filter((row) => row.kind === 'charge' || row.kind === 'discount');
 
   return (
@@ -90,11 +89,11 @@ export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTabl
           ))}
         </>
       ) : null}
-      {workItems.length > 0 ? (
+      {document.workItems.length > 0 ? (
         <>
           <SectionRow label="Work Items" />
-          {workItems.map((row) => (
-            <WorkItemGroup currencyCode={document.currencyCode} key={getWorkItemKey(row.workItem)} row={row} />
+          {document.workItems.map((workItem) => (
+            <WorkItemGroup currencyCode={document.currencyCode} key={getWorkItemKey(workItem)} workItem={workItem} />
           ))}
         </>
       ) : null}
@@ -110,21 +109,6 @@ export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTabl
       ) : null}
     </View>
   );
-}
-
-function quoteDocumentWorkItemRows({
-  currencyCode,
-  workItems,
-}: Pick<QuoteDocumentModel, 'currencyCode' | 'workItems'>): {
-  amount: string;
-  name: string;
-  workItem: QuoteDocumentWorkItem;
-}[] {
-  return workItems.map((workItem) => ({
-    amount: formatCurrency(workItem.amount, currencyCode),
-    name: workItem.name,
-    workItem,
-  }));
 }
 
 function TableHeader() {
@@ -256,10 +240,10 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
   );
 }
 
-function WorkItemRow({ row }: { row: ReturnType<typeof quoteDocumentWorkItemRows>[number] }) {
+function WorkItemRow({ amount, name }: { amount: string; name: string }) {
   return (
     <View style={pdfStyles.flexRow}>
-      <Text style={[pdfStyles.flex1, pdfStyles.textBody, pdfStyles.uppercase, styles.tableCell]}>{row.name}</Text>
+      <Text style={[pdfStyles.flex1, pdfStyles.textBody, pdfStyles.uppercase, styles.tableCell]}>{name}</Text>
       <Text style={[styles.tableCell, styles.qtyCol]} />
       <Text style={[styles.tableCell, styles.priceCol]} />
       <Text
@@ -273,75 +257,30 @@ function WorkItemRow({ row }: { row: ReturnType<typeof quoteDocumentWorkItemRows
           styles.noRightBorder,
         ]}
       >
-        {row.amount}
+        {amount}
       </Text>
     </View>
   );
 }
 
-function WorkItemGroup({
-  currencyCode,
-  row,
-}: {
-  currencyCode: string;
-  row: ReturnType<typeof quoteDocumentWorkItemRows>[number];
-}) {
-  const breakdownRows = [
-    ...(row.workItem.labour
-      ? [
-          {
-            amount: row.workItem.labour.amount,
-            key: 'labour',
-            label: 'Labour',
-            quantity: row.workItem.labour.hours,
-            unitPrice: row.workItem.labour.hourlyRate,
-          },
-        ]
-      : []),
-    ...row.workItem.parts.map((part) => ({
-      amount: part.amount,
-      key: getWorkItemPartKey(part),
-      label: part.name,
-      quantity: part.quantity,
-      unitPrice: part.unitPrice,
-    })),
-  ];
-  const [firstBreakdownRow, ...remainingBreakdownRows] = breakdownRows;
-  const firstBreakdownProps = firstBreakdownRow
-    ? {
-        amount: firstBreakdownRow.amount,
-        label: firstBreakdownRow.label,
-        quantity: firstBreakdownRow.quantity,
-        unitPrice: firstBreakdownRow.unitPrice,
-      }
-    : null;
+function WorkItemGroup({ currencyCode, workItem }: { currencyCode: string; workItem: QuoteDocumentWorkItem }) {
+  const [firstCharge, ...remainingCharges] = workItem.charges;
 
   return (
     <View>
+      {/* The heading rides with its first charge so a page break never strands it alone. */}
       <View wrap={false}>
-        <WorkItemRow row={row} />
-        {firstBreakdownProps ? <WorkItemBreakdownRow currencyCode={currencyCode} {...firstBreakdownProps} /> : null}
+        <WorkItemRow amount={formatCurrency(workItem.amount, currencyCode)} name={workItem.name} />
+        {firstCharge ? <WorkItemChargeRow charge={firstCharge} currencyCode={currencyCode} /> : null}
       </View>
-      {remainingBreakdownRows.map(({ key, ...breakdownRow }) => (
-        <WorkItemBreakdownRow currencyCode={currencyCode} key={key} {...breakdownRow} />
+      {remainingCharges.map((charge) => (
+        <WorkItemChargeRow charge={charge} currencyCode={currencyCode} key={getWorkItemChargeKey(charge)} />
       ))}
     </View>
   );
 }
 
-function WorkItemBreakdownRow({
-  amount,
-  currencyCode,
-  label,
-  quantity,
-  unitPrice,
-}: {
-  amount: number;
-  currencyCode: string;
-  label: string;
-  quantity: number;
-  unitPrice: number;
-}) {
+function WorkItemChargeRow({ charge, currencyCode }: { charge: QuoteWorkItemCharge; currencyCode: string }) {
   return (
     <View style={pdfStyles.flexRow}>
       <Text
@@ -351,14 +290,14 @@ function WorkItemBreakdownRow({
           pdfStyles.textBody,
           pdfStyles.uppercase,
           styles.tableCell,
-          styles.partDescriptionCell,
+          styles.chargeDescriptionCell,
         ]}
       >
-        {label}
+        {charge.label}
       </Text>
-      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{quantity}</Text>
+      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{charge.quantity}</Text>
       <Text style={[pdfStyles.textBody, pdfStyles.textRight, styles.tableCell, styles.priceCol]}>
-        {formatCurrency(unitPrice, currencyCode)}
+        {formatCurrency(charge.unitPrice, currencyCode)}
       </Text>
       <Text
         style={[
@@ -370,7 +309,7 @@ function WorkItemBreakdownRow({
           styles.noRightBorder,
         ]}
       >
-        {formatCurrency(amount, currencyCode)}
+        {formatCurrency(charge.amount, currencyCode)}
       </Text>
     </View>
   );

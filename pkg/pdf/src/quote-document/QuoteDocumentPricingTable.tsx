@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     paddingVertical: pdfSpacing.tableCellY,
   },
   qtyCell: {
-    textAlign: 'center',
+    textAlign: 'right',
   },
   qtyCol: {
     width: layout.quantityColumnWidth,
@@ -138,11 +138,10 @@ function TableHeader() {
           pdfStyles.textBodyXs,
           pdfStyles.uppercase,
           styles.tableHeaderCell,
-          styles.qtyCell,
-          styles.qtyCol,
+          pdfStyles.flex1,
         ]}
       >
-        Qty
+        Description
       </Text>
       <Text
         style={[
@@ -152,10 +151,11 @@ function TableHeader() {
           pdfStyles.textBodyXs,
           pdfStyles.uppercase,
           styles.tableHeaderCell,
-          pdfStyles.flex1,
+          styles.qtyCell,
+          styles.qtyCol,
         ]}
       >
-        Description
+        Qty
       </Text>
       <Text
         style={[
@@ -193,7 +193,6 @@ function TableHeader() {
 function SectionRow({ label }: { label: string }) {
   return (
     <View style={pdfStyles.flexRow}>
-      <Text style={[pdfStyles.bgPanel, styles.sectionCell, styles.qtyCol]} />
       <Text
         style={[
           pdfStyles.bgPanel,
@@ -207,6 +206,7 @@ function SectionRow({ label }: { label: string }) {
       >
         {label}
       </Text>
+      <Text style={[pdfStyles.bgPanel, styles.sectionCell, styles.qtyCol]} />
       <Text style={[pdfStyles.bgPanel, styles.sectionCell, styles.priceCol]} />
       <Text style={[pdfStyles.bgPanel, styles.sectionCell, styles.subtotalCol, styles.noRightBorder]} />
     </View>
@@ -219,7 +219,6 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
 
   return (
     <View style={pdfStyles.flexRow}>
-      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{row.quantity}</Text>
       <View style={[pdfStyles.flex1, pdfStyles.textBody, styles.tableCell]}>
         {row.descriptionLines.map((line) => (
           <Text key={line} style={product ? [pdfStyles.fontBold, pdfStyles.uppercase] : [pdfStyles.uppercase]}>
@@ -227,6 +226,7 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
           </Text>
         ))}
       </View>
+      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{row.quantity}</Text>
       <Text
         style={[
           pdfStyles.bgPriceCell,
@@ -259,8 +259,8 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
 function WorkItemRow({ row }: { row: ReturnType<typeof quoteDocumentWorkItemRows>[number] }) {
   return (
     <View style={pdfStyles.flexRow}>
-      <Text style={[styles.tableCell, styles.qtyCol]} />
       <Text style={[pdfStyles.flex1, pdfStyles.textBody, pdfStyles.uppercase, styles.tableCell]}>{row.name}</Text>
+      <Text style={[styles.tableCell, styles.qtyCol]} />
       <Text style={[styles.tableCell, styles.priceCol]} />
       <Text
         style={[
@@ -299,7 +299,6 @@ function WorkItemGroup({
 function WorkItemPartRow({ currencyCode, part }: { currencyCode: string; part: QuoteDocumentWorkItemPart }) {
   return (
     <View style={pdfStyles.flexRow}>
-      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{part.quantity}</Text>
       <Text
         style={[
           pdfStyles.colorMutedDark,
@@ -312,6 +311,7 @@ function WorkItemPartRow({ currencyCode, part }: { currencyCode: string; part: Q
       >
         {part.name}
       </Text>
+      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{part.quantity}</Text>
       <Text style={[pdfStyles.textBody, pdfStyles.textRight, styles.tableCell, styles.priceCol]}>
         {formatCurrency(part.unitPrice, currencyCode)}
       </Text>

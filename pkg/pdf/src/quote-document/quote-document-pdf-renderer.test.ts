@@ -43,6 +43,17 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText.filter((value) => value === 'R 250.00')).toHaveLength(2);
     expect(renderedText).toContain('R 0.00');
   });
+
+  test('places Quantity after Description and right-aligns quantity text', () => {
+    const rendered = QuoteDocumentPricingTable({ document: testQuoteDocument() });
+    const renderedText = collectRenderedText(rendered);
+    const quantityHeader = findRenderedTextElement(rendered, 'Qty');
+    const quantityCell = findRenderedTextElement(rendered, '1');
+
+    expect(renderedText.slice(0, 4)).toEqual(['Description', 'Qty', 'Unit Price', 'Subtotal']);
+    expect(flattenStyle(quantityHeader?.props.style)).toMatchObject({ textAlign: 'right' });
+    expect(flattenStyle(quantityCell?.props.style)).toMatchObject({ textAlign: 'right' });
+  });
 });
 
 function collectRenderedText(node: ReactNode): string[] {
@@ -57,6 +68,33 @@ function collectRenderedText(node: ReactNode): string[] {
   }
 
   return collectRenderedText(element.props.children);
+}
+
+function findRenderedTextElement(
+  node: ReactNode,
+  text: string,
+): ReactElement<{ children?: ReactNode; style?: unknown }> | null {
+  if (!isValidElement(node)) return null;
+  const element = node as ReactElement<{ children?: ReactNode; style?: unknown }>;
+
+  if (typeof element.type === 'function') {
+    return findRenderedTextElement((element.type as (props: typeof element.props) => ReactNode)(element.props), text);
+  }
+
+  if (collectRenderedText(element.props.children).join('') === text) return element;
+
+  const children = Array.isArray(element.props.children) ? element.props.children : [element.props.children];
+  for (const child of children) {
+    const match = findRenderedTextElement(child, text);
+    if (match) return match;
+  }
+
+  return null;
+}
+
+function flattenStyle(style: unknown): Record<string, unknown> {
+  if (Array.isArray(style)) return Object.assign({}, ...style.map(flattenStyle));
+  return style && typeof style === 'object' ? (style as Record<string, unknown>) : {};
 }
 
 describe('getSalesContactLine', () => {

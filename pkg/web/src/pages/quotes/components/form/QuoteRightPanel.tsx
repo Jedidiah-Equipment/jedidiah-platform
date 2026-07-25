@@ -1,12 +1,13 @@
 import {
   createStableRowKeys,
   formatCurrency,
+  formatNumber,
   formatPercent,
   getQuoteOfferingName,
   type QuoteComputedSummary,
   quoteWorkItemSummaryRows,
 } from '@pkg/domain';
-import type { QuoteDetail } from '@pkg/schema';
+import type { QuoteDetail, QuoteWorkItemCharge } from '@pkg/schema';
 import { IconClock, IconMail, IconMapPin, IconPackage, IconPhone, IconReceipt2 } from '@tabler/icons-react';
 import type React from 'react';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
@@ -20,6 +21,8 @@ import type { QuoteFormValues } from '../types.js';
 
 type QuoteWorkItemFormInput = QuoteFormValues['workItems'][number];
 const getSummaryWorkItemKey = createStableRowKeys<QuoteWorkItemFormInput>('quote-summary-work-item');
+const getSummaryWorkItemPartKey =
+  createStableRowKeys<QuoteWorkItemFormInput['parts'][number]>('quote-summary-work-item-part');
 
 export function QuoteRightPanel({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
   return (
@@ -218,13 +221,25 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
             <QuoteSummaryRow label="Work items" value={formatCurrency(summary.workItemTotal, summary.currencyCode)} />
             <div className="grid gap-1 border-l pl-3">
               {workItemRows.map((row) => (
-                <QuoteSummaryRow
-                  className="text-xs"
-                  key={getSummaryWorkItemKey(row.workItem)}
-                  label={row.name}
-                  value={formatCurrency(row.total, summary.currencyCode)}
-                  valueClassName="text-muted-foreground"
-                />
+                <div className="grid gap-1" key={getSummaryWorkItemKey(row.workItem)}>
+                  <QuoteSummaryRow
+                    className="text-xs"
+                    label={row.name}
+                    value={formatCurrency(row.total, summary.currencyCode)}
+                    valueClassName="text-muted-foreground"
+                  />
+                  {row.charges.length > 0 ? (
+                    <div className="grid gap-1 border-l pl-3">
+                      {row.charges.map((charge) => (
+                        <QuoteSummaryChargeRow
+                          charge={charge}
+                          currencyCode={summary.currencyCode}
+                          key={charge.part ? getSummaryWorkItemPartKey(charge.part) : 'labour'}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               ))}
             </div>
           </div>
@@ -301,6 +316,23 @@ function QuoteSummaryRow({ className, label, value, valueClassName }: QuoteSumma
     <div className={cn('flex items-center justify-between gap-3 text-muted-foreground', className)}>
       <span className="min-w-0 truncate">{label}</span>
       <span className={cn('shrink-0 text-foreground', valueClassName)}>{value}</span>
+    </div>
+  );
+}
+
+function QuoteSummaryChargeRow({ charge, currencyCode }: { charge: QuoteWorkItemCharge; currencyCode: string }) {
+  const quantity =
+    charge.kind === 'labour' ? `${formatNumber(charge.quantity, { decimals: 2 })} h` : formatNumber(charge.quantity);
+
+  return (
+    <div className="flex items-center justify-between gap-3 text-xs">
+      <span className="min-w-0">
+        <span className="block truncate text-muted-foreground">{charge.label}</span>
+        <span className="block whitespace-nowrap text-[11px] text-muted-foreground/80">
+          {`${quantity} × ${formatCurrency(charge.unitPrice, currencyCode)}`}
+        </span>
+      </span>
+      <span className="shrink-0 text-muted-foreground">{formatCurrency(charge.amount, currencyCode)}</span>
     </div>
   );
 }

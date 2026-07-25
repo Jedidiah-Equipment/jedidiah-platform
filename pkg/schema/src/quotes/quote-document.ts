@@ -12,7 +12,20 @@ export type QuoteDocumentPricingRow = {
 
 export type QuoteDocumentWorkItem = {
   amount: number;
+  charges: QuoteWorkItemCharge[];
   name: string;
+};
+
+/**
+ * One charge making up a Work Item total: the Work Item's Labour, priced as hours at the Quote's
+ * hourly rate, or one of its Parts. Shared by every surface that shows a Work Item breakdown.
+ */
+export type QuoteWorkItemCharge = {
+  amount: number;
+  kind: 'labour' | 'part';
+  label: string;
+  quantity: number;
+  unitPrice: number;
 };
 
 export type QuoteDocumentCustomer = {

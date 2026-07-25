@@ -1,5 +1,10 @@
 import { createStableRowKeys, formatCurrency } from '@pkg/domain';
-import type { QuoteDocumentModel, QuoteDocumentPricingRow, QuoteDocumentWorkItem } from '@pkg/schema';
+import type {
+  QuoteDocumentModel,
+  QuoteDocumentPricingRow,
+  QuoteDocumentWorkItem,
+  QuoteWorkItemCharge,
+} from '@pkg/schema';
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
 import { pdfStyles } from './pdf-styles.js';
 import { pdfBorder, pdfColors, pdfSpacing } from './pdf-theme.js';
@@ -10,6 +15,7 @@ type QuoteDocumentPricingTableProps = {
 
 const getPricingRowKey = createStableRowKeys<QuoteDocumentPricingRow>('quote-document-pricing-row');
 const getWorkItemKey = createStableRowKeys<QuoteDocumentWorkItem>('quote-document-work-item');
+const getWorkItemChargeKey = createStableRowKeys<QuoteWorkItemCharge>('quote-document-work-item-charge');
 
 const layout = {
   priceColumnWidth: 96,
@@ -38,7 +44,7 @@ const styles = StyleSheet.create({
     paddingVertical: pdfSpacing.tableCellY,
   },
   qtyCell: {
-    textAlign: 'center',
+    textAlign: 'right',
   },
   qtyCol: {
     width: layout.quantityColumnWidth,
@@ -61,12 +67,14 @@ const styles = StyleSheet.create({
     color: pdfColors.staleNoticeText,
     padding: pdfSpacing.tableCellX,
   },
+  chargeDescriptionCell: {
+    paddingLeft: pdfSpacing.tableCellX * 2,
+  },
 });
 
 export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTableProps) {
   const baseRow = document.pricingRows.find((row) => row.kind === 'base');
   const optionalRows = document.pricingRows.filter((row) => row.kind === 'optional');
-  const workItems = quoteDocumentWorkItemRows(document);
   const adjustmentRows = document.pricingRows.filter((row) => row.kind === 'charge' || row.kind === 'discount');
 
   return (
@@ -81,11 +89,11 @@ export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTabl
           ))}
         </>
       ) : null}
-      {workItems.length > 0 ? (
+      {document.workItems.length > 0 ? (
         <>
           <SectionRow label="Work Items" />
-          {workItems.map((row) => (
-            <WorkItemRow key={getWorkItemKey(row.workItem)} row={row} />
+          {document.workItems.map((workItem) => (
+            <WorkItemGroup currencyCode={document.currencyCode} key={getWorkItemKey(workItem)} workItem={workItem} />
           ))}
         </>
       ) : null}
@@ -103,24 +111,22 @@ export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTabl
   );
 }
 
-function quoteDocumentWorkItemRows({
-  currencyCode,
-  workItems,
-}: Pick<QuoteDocumentModel, 'currencyCode' | 'workItems'>): {
-  amount: string;
-  name: string;
-  workItem: QuoteDocumentWorkItem;
-}[] {
-  return workItems.map((workItem) => ({
-    amount: formatCurrency(workItem.amount, currencyCode),
-    name: workItem.name,
-    workItem,
-  }));
-}
-
 function TableHeader() {
   return (
     <View style={pdfStyles.flexRow}>
+      <Text
+        style={[
+          pdfStyles.bgBlack,
+          pdfStyles.colorWhite,
+          pdfStyles.fontBold,
+          pdfStyles.textBodyXs,
+          pdfStyles.uppercase,
+          styles.tableHeaderCell,
+          pdfStyles.flex1,
+        ]}
+      >
+        Description
+      </Text>
       <Text
         style={[
           pdfStyles.bgBlack,
@@ -134,19 +140,6 @@ function TableHeader() {
         ]}
       >
         Qty
-      </Text>
-      <Text
-        style={[
-          pdfStyles.bgBlack,
-          pdfStyles.colorWhite,
-          pdfStyles.fontBold,
-          pdfStyles.textBodyXs,
-          pdfStyles.uppercase,
-          styles.tableHeaderCell,
-          pdfStyles.flex1,
-        ]}
-      >
-        Description
       </Text>
       <Text
         style={[
@@ -184,7 +177,6 @@ function TableHeader() {
 function SectionRow({ label }: { label: string }) {
   return (
     <View style={pdfStyles.flexRow}>
-      <Text style={[pdfStyles.bgPanel, styles.sectionCell, styles.qtyCol]} />
       <Text
         style={[
           pdfStyles.bgPanel,
@@ -198,6 +190,7 @@ function SectionRow({ label }: { label: string }) {
       >
         {label}
       </Text>
+      <Text style={[pdfStyles.bgPanel, styles.sectionCell, styles.qtyCol]} />
       <Text style={[pdfStyles.bgPanel, styles.sectionCell, styles.priceCol]} />
       <Text style={[pdfStyles.bgPanel, styles.sectionCell, styles.subtotalCol, styles.noRightBorder]} />
     </View>
@@ -210,7 +203,6 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
 
   return (
     <View style={pdfStyles.flexRow}>
-      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{row.quantity}</Text>
       <View style={[pdfStyles.flex1, pdfStyles.textBody, styles.tableCell]}>
         {row.descriptionLines.map((line) => (
           <Text key={line} style={product ? [pdfStyles.fontBold, pdfStyles.uppercase] : [pdfStyles.uppercase]}>
@@ -218,6 +210,7 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
           </Text>
         ))}
       </View>
+      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{row.quantity}</Text>
       <Text
         style={[
           pdfStyles.bgPriceCell,
@@ -247,11 +240,11 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
   );
 }
 
-function WorkItemRow({ row }: { row: ReturnType<typeof quoteDocumentWorkItemRows>[number] }) {
+function WorkItemRow({ amount, name }: { amount: string; name: string }) {
   return (
     <View style={pdfStyles.flexRow}>
+      <Text style={[pdfStyles.flex1, pdfStyles.textBody, pdfStyles.uppercase, styles.tableCell]}>{name}</Text>
       <Text style={[styles.tableCell, styles.qtyCol]} />
-      <Text style={[pdfStyles.flex1, pdfStyles.textBody, pdfStyles.uppercase, styles.tableCell]}>{row.name}</Text>
       <Text style={[styles.tableCell, styles.priceCol]} />
       <Text
         style={[
@@ -264,7 +257,59 @@ function WorkItemRow({ row }: { row: ReturnType<typeof quoteDocumentWorkItemRows
           styles.noRightBorder,
         ]}
       >
-        {row.amount}
+        {amount}
+      </Text>
+    </View>
+  );
+}
+
+function WorkItemGroup({ currencyCode, workItem }: { currencyCode: string; workItem: QuoteDocumentWorkItem }) {
+  const [firstCharge, ...remainingCharges] = workItem.charges;
+
+  return (
+    <View>
+      {/* The heading rides with its first charge so a page break never strands it alone. */}
+      <View wrap={false}>
+        <WorkItemRow amount={formatCurrency(workItem.amount, currencyCode)} name={workItem.name} />
+        {firstCharge ? <WorkItemChargeRow charge={firstCharge} currencyCode={currencyCode} /> : null}
+      </View>
+      {remainingCharges.map((charge) => (
+        <WorkItemChargeRow charge={charge} currencyCode={currencyCode} key={getWorkItemChargeKey(charge)} />
+      ))}
+    </View>
+  );
+}
+
+function WorkItemChargeRow({ charge, currencyCode }: { charge: QuoteWorkItemCharge; currencyCode: string }) {
+  return (
+    <View style={pdfStyles.flexRow}>
+      <Text
+        style={[
+          pdfStyles.colorMutedDark,
+          pdfStyles.flex1,
+          pdfStyles.textBody,
+          pdfStyles.uppercase,
+          styles.tableCell,
+          styles.chargeDescriptionCell,
+        ]}
+      >
+        {charge.label}
+      </Text>
+      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{charge.quantity}</Text>
+      <Text style={[pdfStyles.textBody, pdfStyles.textRight, styles.tableCell, styles.priceCol]}>
+        {formatCurrency(charge.unitPrice, currencyCode)}
+      </Text>
+      <Text
+        style={[
+          pdfStyles.bgPriceCell,
+          pdfStyles.textBody,
+          pdfStyles.textRight,
+          styles.tableCell,
+          styles.subtotalCol,
+          styles.noRightBorder,
+        ]}
+      >
+        {formatCurrency(charge.amount, currencyCode)}
       </Text>
     </View>
   );

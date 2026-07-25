@@ -10,11 +10,11 @@ import {
 } from '@pkg/db';
 import {
   computeAdditionalDeliveryPrice,
-  computeWorkItemTotal,
   formatCurrency,
   formatPercent,
   isQuoteDocumentGenerationAllowed,
   priceQuoteWithCatalog,
+  quoteWorkItemSummaryRows,
 } from '@pkg/domain';
 import { mergePdfBytes } from '@pkg/pdf';
 import {
@@ -27,6 +27,7 @@ import {
   type QuoteDocumentModel,
   type QuoteDocumentPdfRenderer,
   type QuoteDocumentPricingRow,
+  type QuoteDocumentWorkItem,
   type UUID,
 } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
@@ -224,10 +225,7 @@ async function getQuoteDocumentModel({
   }));
   const workItems =
     source.kind === 'custom'
-      ? quote.workItems.map((item) => ({
-          amount: computeWorkItemTotal({ hourlyRate: source.hourlyRate, hours: item.hours, parts: item.parts }),
-          name: item.name,
-        }))
+      ? toQuoteDocumentWorkItems({ hourlyRate: source.hourlyRate, workItems: quote.workItems })
       : [];
   const discountAmount = pricing.discountAmount;
   const additionalDeliveryPrice = computeAdditionalDeliveryPrice(quote);
@@ -288,6 +286,28 @@ async function getQuoteDocumentModel({
     currencyCode: quote.quotedCurrencyCode,
     workItems,
   };
+}
+
+function toQuoteDocumentWorkItems({
+  hourlyRate,
+  workItems,
+}: {
+  hourlyRate: number;
+  workItems: readonly QuoteWorkItemRow[];
+}): QuoteDocumentWorkItem[] {
+  return quoteWorkItemSummaryRows({ hourlyRate, workItems }).map((row) => ({
+    amount: row.total,
+    // Charges are copied field by field so the document model carries presentation data alone,
+    // never the Work Item Part rows the summary rows keep for row identity.
+    charges: row.charges.map(({ amount, kind, label, quantity, unitPrice }) => ({
+      amount,
+      kind,
+      label,
+      quantity,
+      unitPrice,
+    })),
+    name: row.name,
+  }));
 }
 
 function toDisplayLines(value: string | null | undefined): string[] {

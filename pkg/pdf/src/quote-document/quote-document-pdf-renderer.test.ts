@@ -17,13 +17,21 @@ describe('renderQuoteDocumentPdf', () => {
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
   });
 
-  test('renders each customer-safe Work Item as one name and total row', () => {
+  test('renders each Work Item with its Parts nested underneath', () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
       workItems: [
-        { amount: 1_275, name: 'Labour-only rebuild' },
-        { amount: 250, name: 'Parts-only repair' },
-        { amount: 0, name: 'Included inspection' },
+        {
+          amount: 1_275,
+          charges: [{ amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 }],
+          name: 'Labour-only rebuild',
+        },
+        {
+          amount: 250,
+          charges: [{ amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
+          name: 'Parts-only repair',
+        },
+        { amount: 0, charges: [], name: 'Included inspection' },
       ],
     };
     const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
@@ -31,24 +39,107 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText.filter((value) => value === 'Labour-only rebuild')).toHaveLength(1);
     expect(renderedText.filter((value) => value === 'Parts-only repair')).toHaveLength(1);
     expect(renderedText.filter((value) => value === 'Included inspection')).toHaveLength(1);
+    expect(renderedText.filter((value) => value === 'Labour')).toHaveLength(1);
+    expect(renderedText.indexOf('Labour')).toBeGreaterThan(renderedText.indexOf('Labour-only rebuild'));
+    expect(renderedText.filter((value) => value === 'Internal seal kit')).toHaveLength(1);
+    expect(renderedText.indexOf('Internal seal kit')).toBeGreaterThan(renderedText.indexOf('Parts-only repair'));
+    expect(renderedText).toContain('1.5');
+    expect(renderedText).toContain('R 850.00');
+    expect(renderedText).toContain('2');
+    expect(renderedText).toContain('R 125.00');
     expect(renderedText).toContain('R 1 275.00');
-    expect(renderedText).toContain('R 250.00');
+    expect(renderedText.filter((value) => value === 'R 250.00')).toHaveLength(2);
     expect(renderedText).toContain('R 0.00');
+  });
+
+  test('places Quantity after Description and right-aligns quantity text', () => {
+    const rendered = QuoteDocumentPricingTable({ document: testQuoteDocument() });
+    const renderedText = collectRenderedText(rendered);
+    const quantityHeader = findRenderedTextElement(rendered, 'Qty');
+    const quantityCell = findRenderedTextElement(rendered, '1');
+
+    expect(renderedText.slice(0, 4)).toEqual(['Description', 'Qty', 'Unit Price', 'Subtotal']);
+    expect(flattenStyle(quantityHeader?.props.style)).toMatchObject({ textAlign: 'right' });
+    expect(flattenStyle(quantityCell?.props.style)).toMatchObject({ textAlign: 'right' });
+  });
+
+  test('keeps each Work Item heading with its first breakdown row across page breaks', () => {
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      workItems: [
+        {
+          amount: 1_275,
+          charges: [{ amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 }],
+          name: 'Labour-only rebuild',
+        },
+        {
+          amount: 250,
+          charges: [{ amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
+          name: 'Parts-only repair',
+        },
+      ],
+    };
+    const rendered = QuoteDocumentPricingTable({ document });
+
+    expect(findUnbreakableGroup(rendered, ['Labour-only rebuild', 'Labour'])).not.toBeNull();
+    expect(findUnbreakableGroup(rendered, ['Parts-only repair', 'Internal seal kit'])).not.toBeNull();
   });
 });
 
-function collectRenderedText(node: ReactNode): string[] {
-  if (node === null || node === undefined || typeof node === 'boolean') return [];
-  if (typeof node === 'string' || typeof node === 'number') return [String(node)];
-  if (Array.isArray(node)) return node.flatMap(collectRenderedText);
-  if (!isValidElement(node)) return [];
-  const element = node as ReactElement<{ children?: ReactNode }>;
+type RenderedElement = ReactElement<{ children?: ReactNode; style?: unknown; wrap?: boolean }>;
+
+/**
+ * Walks a rendered tree in document order, invoking function components as it goes so callers see
+ * only the @react-pdf primitives and the text they hold.
+ */
+function* walkRendered(node: ReactNode): Generator<RenderedElement | string> {
+  if (node === null || node === undefined || typeof node === 'boolean') return;
+  if (typeof node === 'string' || typeof node === 'number') {
+    yield String(node);
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const child of node) yield* walkRendered(child);
+    return;
+  }
+  if (!isValidElement(node)) return;
+  const element = node as RenderedElement;
 
   if (typeof element.type === 'function') {
-    return collectRenderedText((element.type as (props: typeof element.props) => ReactNode)(element.props));
+    yield* walkRendered((element.type as (props: typeof element.props) => ReactNode)(element.props));
+    return;
   }
 
-  return collectRenderedText(element.props.children);
+  yield element;
+  yield* walkRendered(element.props.children);
+}
+
+function collectRenderedText(node: ReactNode): string[] {
+  return [...walkRendered(node)].filter((rendered) => typeof rendered === 'string');
+}
+
+function findRenderedTextElement(node: ReactNode, text: string): RenderedElement | null {
+  for (const rendered of walkRendered(node)) {
+    if (typeof rendered === 'string') continue;
+    if (collectRenderedText(rendered.props.children).join('') === text) return rendered;
+  }
+
+  return null;
+}
+
+function findUnbreakableGroup(node: ReactNode, expectedText: string[]): RenderedElement | null {
+  for (const rendered of walkRendered(node)) {
+    if (typeof rendered === 'string' || rendered.props.wrap !== false) continue;
+    const renderedText = collectRenderedText(rendered.props.children);
+    if (expectedText.every((text) => renderedText.includes(text))) return rendered;
+  }
+
+  return null;
+}
+
+function flattenStyle(style: unknown): Record<string, unknown> {
+  if (Array.isArray(style)) return Object.assign({}, ...style.map(flattenStyle));
+  return style && typeof style === 'object' ? (style as Record<string, unknown>) : {};
 }
 
 describe('getSalesContactLine', () => {

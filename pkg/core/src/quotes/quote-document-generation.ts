@@ -10,6 +10,7 @@ import {
 } from '@pkg/db';
 import {
   computeAdditionalDeliveryPrice,
+  computeWorkItemPartAmount,
   computeWorkItemTotal,
   formatCurrency,
   formatPercent,
@@ -227,6 +228,12 @@ async function getQuoteDocumentModel({
       ? quote.workItems.map((item) => ({
           amount: computeWorkItemTotal({ hourlyRate: source.hourlyRate, hours: item.hours, parts: item.parts }),
           name: item.name,
+          parts: item.parts.map((part) => ({
+            amount: computeWorkItemPartAmount(part),
+            name: part.name,
+            quantity: part.quantity,
+            unitPrice: part.unitPrice,
+          })),
         }))
       : [];
   const discountAmount = pricing.discountAmount;

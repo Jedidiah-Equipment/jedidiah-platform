@@ -17,13 +17,17 @@ describe('renderQuoteDocumentPdf', () => {
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
   });
 
-  test('renders each customer-safe Work Item as one name and total row', () => {
+  test('renders each Work Item with its Parts nested underneath', () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
       workItems: [
-        { amount: 1_275, name: 'Labour-only rebuild' },
-        { amount: 250, name: 'Parts-only repair' },
-        { amount: 0, name: 'Included inspection' },
+        { amount: 1_275, name: 'Labour-only rebuild', parts: [] },
+        {
+          amount: 250,
+          name: 'Parts-only repair',
+          parts: [{ amount: 250, name: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
+        },
+        { amount: 0, name: 'Included inspection', parts: [] },
       ],
     };
     const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
@@ -31,8 +35,12 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText.filter((value) => value === 'Labour-only rebuild')).toHaveLength(1);
     expect(renderedText.filter((value) => value === 'Parts-only repair')).toHaveLength(1);
     expect(renderedText.filter((value) => value === 'Included inspection')).toHaveLength(1);
+    expect(renderedText.filter((value) => value === 'Internal seal kit')).toHaveLength(1);
+    expect(renderedText.indexOf('Internal seal kit')).toBeGreaterThan(renderedText.indexOf('Parts-only repair'));
+    expect(renderedText).toContain('2');
+    expect(renderedText).toContain('R 125.00');
     expect(renderedText).toContain('R 1 275.00');
-    expect(renderedText).toContain('R 250.00');
+    expect(renderedText.filter((value) => value === 'R 250.00')).toHaveLength(2);
     expect(renderedText).toContain('R 0.00');
   });
 });

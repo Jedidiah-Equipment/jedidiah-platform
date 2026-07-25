@@ -187,9 +187,7 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
     });
   });
 
-  test('projects custom Work Items in position order without exposing their internal breakdown', async ({
-    context,
-  }) => {
+  test('projects custom Work Items and their Parts in position order', async ({ context }) => {
     const [quote] = await context.db
       .insert(quotes)
       .values({
@@ -217,13 +215,22 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
     const partsOnlyItem = insertedWorkItems.find((item) => item.name === 'Parts-only repair');
     if (!partsOnlyItem) throw new Error('Parts-only Work Item insert did not return a row');
 
-    await context.db.insert(quoteWorkItemParts).values({
-      name: 'Internal seal kit',
-      position: 0,
-      quantity: 2,
-      unitPrice: 125,
-      workItemId: partsOnlyItem.id,
-    });
+    await context.db.insert(quoteWorkItemParts).values([
+      {
+        name: 'Internal seal kit',
+        position: 1,
+        quantity: 2,
+        unitPrice: 125,
+        workItemId: partsOnlyItem.id,
+      },
+      {
+        name: 'Hydraulic oil',
+        position: 0,
+        quantity: 3,
+        unitPrice: 50,
+        workItemId: partsOnlyItem.id,
+      },
+    ]);
 
     const captured: { model: QuoteDocumentModel | null } = { model: null };
     await generateQuoteDocument({
@@ -238,20 +245,21 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
     if (!model) throw new Error('PDF renderer did not receive a document model');
 
     expect(model.workItems).toEqual([
-      { amount: 1_275, name: 'Labour-only rebuild' },
-      { amount: 250, name: 'Parts-only repair' },
-      { amount: 0, name: 'Included inspection' },
+      { amount: 1_275, name: 'Labour-only rebuild', parts: [] },
+      {
+        amount: 400,
+        name: 'Parts-only repair',
+        parts: [
+          { amount: 150, name: 'Hydraulic oil', quantity: 3, unitPrice: 50 },
+          { amount: 250, name: 'Internal seal kit', quantity: 2, unitPrice: 125 },
+        ],
+      },
+      { amount: 0, name: 'Included inspection', parts: [] },
     ]);
-    expect(model.workItems.map((item) => Object.keys(item).sort())).toEqual([
-      ['amount', 'name'],
-      ['amount', 'name'],
-      ['amount', 'name'],
-    ]);
-    expect(model).toMatchObject({ subtotal: 2_525, total: 2_903.75, vatAmount: 378.75 });
+    expect(model).toMatchObject({ subtotal: 2_675, total: 3_076.25, vatAmount: 401.25 });
     const serializedModel = JSON.stringify(model);
-    expect(serializedModel).not.toContain('Internal seal kit');
+    expect(serializedModel).toContain('Internal seal kit');
     expect(serializedModel).not.toContain('"hourlyRate"');
     expect(serializedModel).not.toContain('"hours"');
-    expect(serializedModel).not.toContain('"parts"');
   });
 });

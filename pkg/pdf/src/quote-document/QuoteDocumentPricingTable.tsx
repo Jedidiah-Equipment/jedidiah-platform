@@ -1,5 +1,10 @@
 import { createStableRowKeys, formatCurrency } from '@pkg/domain';
-import type { QuoteDocumentModel, QuoteDocumentPricingRow, QuoteDocumentWorkItem } from '@pkg/schema';
+import type {
+  QuoteDocumentModel,
+  QuoteDocumentPricingRow,
+  QuoteDocumentWorkItem,
+  QuoteDocumentWorkItemPart,
+} from '@pkg/schema';
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
 import { pdfStyles } from './pdf-styles.js';
 import { pdfBorder, pdfColors, pdfSpacing } from './pdf-theme.js';
@@ -10,6 +15,7 @@ type QuoteDocumentPricingTableProps = {
 
 const getPricingRowKey = createStableRowKeys<QuoteDocumentPricingRow>('quote-document-pricing-row');
 const getWorkItemKey = createStableRowKeys<QuoteDocumentWorkItem>('quote-document-work-item');
+const getWorkItemPartKey = createStableRowKeys<QuoteDocumentWorkItemPart>('quote-document-work-item-part');
 
 const layout = {
   priceColumnWidth: 96,
@@ -61,6 +67,9 @@ const styles = StyleSheet.create({
     color: pdfColors.staleNoticeText,
     padding: pdfSpacing.tableCellX,
   },
+  partDescriptionCell: {
+    paddingLeft: pdfSpacing.tableCellX * 2,
+  },
 });
 
 export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTableProps) {
@@ -85,7 +94,7 @@ export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTabl
         <>
           <SectionRow label="Work Items" />
           {workItems.map((row) => (
-            <WorkItemRow key={getWorkItemKey(row.workItem)} row={row} />
+            <WorkItemGroup currencyCode={document.currencyCode} key={getWorkItemKey(row.workItem)} row={row} />
           ))}
         </>
       ) : null}
@@ -265,6 +274,58 @@ function WorkItemRow({ row }: { row: ReturnType<typeof quoteDocumentWorkItemRows
         ]}
       >
         {row.amount}
+      </Text>
+    </View>
+  );
+}
+
+function WorkItemGroup({
+  currencyCode,
+  row,
+}: {
+  currencyCode: string;
+  row: ReturnType<typeof quoteDocumentWorkItemRows>[number];
+}) {
+  return (
+    <View>
+      <WorkItemRow row={row} />
+      {row.workItem.parts.map((part) => (
+        <WorkItemPartRow currencyCode={currencyCode} key={getWorkItemPartKey(part)} part={part} />
+      ))}
+    </View>
+  );
+}
+
+function WorkItemPartRow({ currencyCode, part }: { currencyCode: string; part: QuoteDocumentWorkItemPart }) {
+  return (
+    <View style={pdfStyles.flexRow}>
+      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{part.quantity}</Text>
+      <Text
+        style={[
+          pdfStyles.colorMutedDark,
+          pdfStyles.flex1,
+          pdfStyles.textBody,
+          pdfStyles.uppercase,
+          styles.tableCell,
+          styles.partDescriptionCell,
+        ]}
+      >
+        {part.name}
+      </Text>
+      <Text style={[pdfStyles.textBody, pdfStyles.textRight, styles.tableCell, styles.priceCol]}>
+        {formatCurrency(part.unitPrice, currencyCode)}
+      </Text>
+      <Text
+        style={[
+          pdfStyles.bgPriceCell,
+          pdfStyles.textBody,
+          pdfStyles.textRight,
+          styles.tableCell,
+          styles.subtotalCol,
+          styles.noRightBorder,
+        ]}
+      >
+        {formatCurrency(part.amount, currencyCode)}
       </Text>
     </View>
   );

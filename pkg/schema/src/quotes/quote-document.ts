@@ -13,6 +13,14 @@ export type QuoteDocumentPricingRow = {
 export type QuoteDocumentWorkItem = {
   amount: number;
   name: string;
+  parts: QuoteDocumentWorkItemPart[];
+};
+
+export type QuoteDocumentWorkItemPart = {
+  amount: number;
+  name: string;
+  quantity: number;
+  unitPrice: number;
 };
 
 export type QuoteDocumentCustomer = {

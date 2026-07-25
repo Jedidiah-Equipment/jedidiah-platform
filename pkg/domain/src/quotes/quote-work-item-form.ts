@@ -1,6 +1,11 @@
 import type { QuoteWorkItemFormValue } from '@pkg/schema';
 
-import { computeWorkItemTotal, DEFAULT_CUSTOM_HOURLY_RATE } from './quote-pricing.js';
+import {
+  computeWorkItemLabourCost,
+  computeWorkItemPartAmount,
+  computeWorkItemTotal,
+  DEFAULT_CUSTOM_HOURLY_RATE,
+} from './quote-pricing.js';
 
 type WorkItemFormSource = {
   hours: number;
@@ -47,9 +52,36 @@ export function quoteWorkItemSummaryRows({
 }: {
   hourlyRate: number;
   workItems: readonly QuoteWorkItemFormValue[];
-}): { name: string; total: number; workItem: QuoteWorkItemFormValue }[] {
+}): {
+  labour: { hourlyRate: number; hours: number; total: number } | null;
+  name: string;
+  parts: {
+    name: string;
+    part: QuoteWorkItemFormValue['parts'][number];
+    quantity: number;
+    total: number;
+    unitPrice: number;
+  }[];
+  total: number;
+  workItem: QuoteWorkItemFormValue;
+}[] {
   return workItems.map((workItem) => ({
+    labour:
+      Number.isFinite(hourlyRate) && Number.isFinite(workItem.hours) && workItem.hours > 0
+        ? {
+            hourlyRate,
+            hours: workItem.hours,
+            total: computeWorkItemLabourCost({ hourlyRate, hours: workItem.hours }),
+          }
+        : null,
     name: workItem.name,
+    parts: workItem.parts.map((part) => ({
+      name: part.name,
+      part,
+      quantity: part.quantity,
+      total: Number.isFinite(part.quantity) && Number.isFinite(part.unitPrice) ? computeWorkItemPartAmount(part) : 0,
+      unitPrice: part.unitPrice,
+    })),
     total: getWorkItemFormTotal({ hourlyRate, workItem }),
     workItem,
   }));

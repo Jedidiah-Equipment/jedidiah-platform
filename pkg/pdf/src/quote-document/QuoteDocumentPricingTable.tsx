@@ -289,14 +289,42 @@ function WorkItemGroup({
   return (
     <View>
       <WorkItemRow row={row} />
+      {row.workItem.labour ? (
+        <WorkItemBreakdownRow
+          amount={row.workItem.labour.amount}
+          currencyCode={currencyCode}
+          label="Labour"
+          quantity={row.workItem.labour.hours}
+          unitPrice={row.workItem.labour.hourlyRate}
+        />
+      ) : null}
       {row.workItem.parts.map((part) => (
-        <WorkItemPartRow currencyCode={currencyCode} key={getWorkItemPartKey(part)} part={part} />
+        <WorkItemBreakdownRow
+          amount={part.amount}
+          currencyCode={currencyCode}
+          key={getWorkItemPartKey(part)}
+          label={part.name}
+          quantity={part.quantity}
+          unitPrice={part.unitPrice}
+        />
       ))}
     </View>
   );
 }
 
-function WorkItemPartRow({ currencyCode, part }: { currencyCode: string; part: QuoteDocumentWorkItemPart }) {
+function WorkItemBreakdownRow({
+  amount,
+  currencyCode,
+  label,
+  quantity,
+  unitPrice,
+}: {
+  amount: number;
+  currencyCode: string;
+  label: string;
+  quantity: number;
+  unitPrice: number;
+}) {
   return (
     <View style={pdfStyles.flexRow}>
       <Text
@@ -309,11 +337,11 @@ function WorkItemPartRow({ currencyCode, part }: { currencyCode: string; part: Q
           styles.partDescriptionCell,
         ]}
       >
-        {part.name}
+        {label}
       </Text>
-      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{part.quantity}</Text>
+      <Text style={[pdfStyles.textBody, styles.tableCell, styles.qtyCell, styles.qtyCol]}>{quantity}</Text>
       <Text style={[pdfStyles.textBody, pdfStyles.textRight, styles.tableCell, styles.priceCol]}>
-        {formatCurrency(part.unitPrice, currencyCode)}
+        {formatCurrency(unitPrice, currencyCode)}
       </Text>
       <Text
         style={[
@@ -325,7 +353,7 @@ function WorkItemPartRow({ currencyCode, part }: { currencyCode: string; part: Q
           styles.noRightBorder,
         ]}
       >
-        {formatCurrency(part.amount, currencyCode)}
+        {formatCurrency(amount, currencyCode)}
       </Text>
     </View>
   );

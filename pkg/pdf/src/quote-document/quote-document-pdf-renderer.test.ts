@@ -21,13 +21,19 @@ describe('renderQuoteDocumentPdf', () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
       workItems: [
-        { amount: 1_275, name: 'Labour-only rebuild', parts: [] },
+        {
+          amount: 1_275,
+          labour: { amount: 1_275, hourlyRate: 850, hours: 1.5 },
+          name: 'Labour-only rebuild',
+          parts: [],
+        },
         {
           amount: 250,
+          labour: null,
           name: 'Parts-only repair',
           parts: [{ amount: 250, name: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
         },
-        { amount: 0, name: 'Included inspection', parts: [] },
+        { amount: 0, labour: null, name: 'Included inspection', parts: [] },
       ],
     };
     const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
@@ -35,8 +41,12 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText.filter((value) => value === 'Labour-only rebuild')).toHaveLength(1);
     expect(renderedText.filter((value) => value === 'Parts-only repair')).toHaveLength(1);
     expect(renderedText.filter((value) => value === 'Included inspection')).toHaveLength(1);
+    expect(renderedText.filter((value) => value === 'Labour')).toHaveLength(1);
+    expect(renderedText.indexOf('Labour')).toBeGreaterThan(renderedText.indexOf('Labour-only rebuild'));
     expect(renderedText.filter((value) => value === 'Internal seal kit')).toHaveLength(1);
     expect(renderedText.indexOf('Internal seal kit')).toBeGreaterThan(renderedText.indexOf('Parts-only repair'));
+    expect(renderedText).toContain('1.5');
+    expect(renderedText).toContain('R 850.00');
     expect(renderedText).toContain('2');
     expect(renderedText).toContain('R 125.00');
     expect(renderedText).toContain('R 1 275.00');

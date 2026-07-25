@@ -40,7 +40,13 @@ describe('Quote Work Item form helpers', () => {
   it('uses the canonical pricing calculation for editor totals and summary rows', () => {
     expect(getWorkItemFormTotal({ hourlyRate: 850, workItem })).toBe(1525);
     expect(quoteWorkItemSummaryRows({ hourlyRate: 850, workItems: [workItem] })).toEqual([
-      { name: 'Strip pump', total: 1525, workItem },
+      {
+        labour: { hours: 1.5, hourlyRate: 850, total: 1275 },
+        name: 'Strip pump',
+        parts: [{ name: 'Seal kit', part: workItem.parts[0], quantity: 2, total: 250, unitPrice: 125 }],
+        total: 1525,
+        workItem,
+      },
     ]);
   });
 });

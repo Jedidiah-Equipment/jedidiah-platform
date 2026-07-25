@@ -245,21 +245,27 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
     if (!model) throw new Error('PDF renderer did not receive a document model');
 
     expect(model.workItems).toEqual([
-      { amount: 1_275, name: 'Labour-only rebuild', parts: [] },
+      {
+        amount: 1_275,
+        labour: { amount: 1_275, hourlyRate: 850, hours: 1.5 },
+        name: 'Labour-only rebuild',
+        parts: [],
+      },
       {
         amount: 400,
+        labour: null,
         name: 'Parts-only repair',
         parts: [
           { amount: 150, name: 'Hydraulic oil', quantity: 3, unitPrice: 50 },
           { amount: 250, name: 'Internal seal kit', quantity: 2, unitPrice: 125 },
         ],
       },
-      { amount: 0, name: 'Included inspection', parts: [] },
+      { amount: 0, labour: null, name: 'Included inspection', parts: [] },
     ]);
     expect(model).toMatchObject({ subtotal: 2_675, total: 3_076.25, vatAmount: 401.25 });
     const serializedModel = JSON.stringify(model);
     expect(serializedModel).toContain('Internal seal kit');
-    expect(serializedModel).not.toContain('"hourlyRate"');
-    expect(serializedModel).not.toContain('"hours"');
+    expect(serializedModel).toContain('"hourlyRate":850');
+    expect(serializedModel).toContain('"hours":1.5');
   });
 });

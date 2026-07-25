@@ -10,6 +10,7 @@ import {
 } from '@pkg/db';
 import {
   computeAdditionalDeliveryPrice,
+  computeWorkItemLabourCost,
   computeWorkItemPartAmount,
   computeWorkItemTotal,
   formatCurrency,
@@ -227,6 +228,14 @@ async function getQuoteDocumentModel({
     source.kind === 'custom'
       ? quote.workItems.map((item) => ({
           amount: computeWorkItemTotal({ hourlyRate: source.hourlyRate, hours: item.hours, parts: item.parts }),
+          labour:
+            item.hours > 0
+              ? {
+                  amount: computeWorkItemLabourCost({ hourlyRate: source.hourlyRate, hours: item.hours }),
+                  hourlyRate: source.hourlyRate,
+                  hours: item.hours,
+                }
+              : null,
           name: item.name,
           parts: item.parts.map((part) => ({
             amount: computeWorkItemPartAmount(part),

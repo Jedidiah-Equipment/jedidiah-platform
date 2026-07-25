@@ -12,8 +12,15 @@ export type QuoteDocumentPricingRow = {
 
 export type QuoteDocumentWorkItem = {
   amount: number;
+  labour: QuoteDocumentWorkItemLabour | null;
   name: string;
   parts: QuoteDocumentWorkItemPart[];
+};
+
+export type QuoteDocumentWorkItemLabour = {
+  amount: number;
+  hourlyRate: number;
+  hours: number;
 };
 
 export type QuoteDocumentWorkItemPart = {

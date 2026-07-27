@@ -5,10 +5,11 @@ ALTER TABLE "quote_work_items" ALTER COLUMN "name" DROP NOT NULL;--> statement-b
 ALTER TABLE "quote_work_items" ADD COLUMN "department" text;--> statement-breakpoint
 ALTER TABLE "quote_work_items" ADD COLUMN "description" text;--> statement-breakpoint
 ALTER TABLE "quote_work_items" ADD COLUMN "hourly_rate" numeric(12, 2) DEFAULT 0 NOT NULL;--> statement-breakpoint
--- Existing Work Items become department-less "Other" items: the name is preserved and the rate they
--- were priced at moves off the Quote and onto each row, so no total moves.
+-- Existing Work Items become department-less "Other" items, which are priced as one unit at a flat
+-- amount rather than as labour. Collapsing the old hours into that amount keeps every total identical
+-- while making the row read correctly in the editors, which hide Hours on a department-less row.
 UPDATE "quote_work_items" AS "wi"
-SET "hourly_rate" = "q"."hourly_rate"
+SET "hourly_rate" = round("wi"."hours" * "q"."hourly_rate", 2), "hours" = 1
 FROM "quote" AS "q"
 WHERE "q"."id" = "wi"."quote_id" AND "q"."hourly_rate" IS NOT NULL;--> statement-breakpoint
 ALTER TABLE "quote" DROP COLUMN "hourly_rate";--> statement-breakpoint

@@ -7,6 +7,7 @@ import {
   products,
   quoteSelectedAssemblies,
   quotes,
+  quoteWorkItems,
   user,
 } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
@@ -824,10 +825,9 @@ describe('generateQuoteDocument', () => {
         depositPercent: 25,
         discountPercent: 10,
         documentNotes: 'Install during shutdown.',
-        hourlyRate: 850,
         kind: 'custom',
         productId: null,
-        quotedBasePrice: 2_000,
+        quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
         status: 'sent',
@@ -835,6 +835,13 @@ describe('generateQuoteDocument', () => {
       })
       .returning({ code: quotes.code, id: quotes.id });
     if (!quote) throw new Error('Custom quote insert did not return a row');
+
+    // Every rand on a Custom Quote comes from its Work Items: R1 100 + R320 + R580 = R2 000.
+    await context.db.insert(quoteWorkItems).values([
+      { department: 'fabrication', hourlyRate: 550, hours: 2, position: 0, quoteId: quote.id },
+      { department: 'assembly', hourlyRate: 320, hours: 1, position: 1, quoteId: quote.id },
+      { hourlyRate: 580, hours: 1, name: 'Sundries', position: 2, quoteId: quote.id },
+    ]);
 
     const renderedInputs: Array<
       Parameters<typeof generateQuoteDocument>[0]['pdfRenderer'] extends (input: infer Input) => unknown ? Input : never
@@ -872,12 +879,13 @@ describe('generateQuoteDocument', () => {
 
     expect(result.warnings).toEqual([]);
     expect(rendered.filename).toBe(`${formatQuoteCode(quote.code)}-rev-1.pdf`);
+    // A Custom Quote carries no Base price, so its base row is the Work Title at zero.
     expect(baseRow).toMatchObject({
-      amount: 2_000,
+      amount: 0,
       descriptionLines: ['Plant shutdown fabrication'],
       kind: 'base',
       quantity: 1,
-      unitPrice: 2_000,
+      unitPrice: 0,
     });
     expect(rendered.document.pricingRows.some((row) => row.kind === 'optional')).toBe(false);
     expect(discountRow).toMatchObject({
@@ -1444,10 +1452,9 @@ async function createCustomJobOwner(db: Parameters<typeof readJobDocument>[0]['d
     .insert(quotes)
     .values({
       customerId,
-      hourlyRate: 850,
       kind: 'custom',
       productId: null,
-      quotedBasePrice: 1_000,
+      quotedBasePrice: 0,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: ACTOR_USER_ID,
       status: 'draft',

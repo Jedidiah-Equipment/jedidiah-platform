@@ -212,7 +212,7 @@ describe('summarizeQuotePipeline', () => {
       discountPercent: 10,
       kind: 'custom',
       productId: null,
-      quotedBasePrice: 1200,
+      quotedBasePrice: 0,
       salesPersonId: context.salesPerson.id,
       statuses: ['sent'],
       statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
@@ -221,17 +221,18 @@ describe('summarizeQuotePipeline', () => {
     if (!customQuote) throw new Error('Expected custom sent quote row');
     const [workItem] = await context.db
       .insert(quoteWorkItems)
-      .values({ name: 'Travel', hours: 0, quoteId: customQuote.id })
+      .values({ department: 'fabrication', hourlyRate: 550, hours: 2, quoteId: customQuote.id })
       .returning();
     if (!workItem) throw new Error('Expected custom work item row');
     await context.db
       .insert(quoteWorkItemParts)
       .values({ name: 'Fuel', quantity: 1, unitPrice: 100, workItemId: workItem.id });
 
+    // 2 x R550 labour + R100 parts, less 10% discount, plus R50 delivery.
     await expect(summarizeQuotePipeline({ clock: fixedClock, db: context.db })).resolves.toMatchObject({
-      newlySent30dValue: 1220,
+      newlySent30dValue: 1130,
       openSentCount: 1,
-      openSentValue: 1220,
+      openSentValue: 1130,
     });
   });
 
@@ -314,7 +315,7 @@ describe('listStaleSentQuotes', () => {
       customerId: context.customer.id,
       kind: 'custom',
       productId: null,
-      quotedBasePrice: 900,
+      quotedBasePrice: 0,
       salesPersonId: context.salesPerson.id,
       statuses: ['sent'],
       statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
@@ -323,7 +324,7 @@ describe('listStaleSentQuotes', () => {
     if (!customQuote) throw new Error('Expected custom sent quote row');
     const [workItem] = await context.db
       .insert(quoteWorkItems)
-      .values({ name: 'Travel', hours: 0, quoteId: customQuote.id })
+      .values({ department: 'assembly', hourlyRate: 320, hours: 3, quoteId: customQuote.id })
       .returning();
     if (!workItem) throw new Error('Expected custom work item row');
     await context.db
@@ -332,11 +333,12 @@ describe('listStaleSentQuotes', () => {
 
     const result = await listStaleSentQuotes({ clock: fixedClock, db: context.db });
 
+    // 3 x R320 labour + R100 parts, plus VAT.
     expect(result.items).toEqual([
       expect.objectContaining({
         id: customQuote.id,
         sentDaysAgo: 15,
-        totalValue: 1150,
+        totalValue: 1219,
       }),
     ]);
   });
@@ -402,7 +404,6 @@ async function createQuoteRows(
         deliveryIncluded,
         deliveryPrice,
         discountPercent,
-        hourlyRate: kind === 'custom' ? 850 : null,
         kind,
         productId,
         quotedBasePrice,

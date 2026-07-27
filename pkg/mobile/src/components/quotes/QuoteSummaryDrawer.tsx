@@ -125,10 +125,7 @@ function ProductCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'product' 
 }
 
 function TotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
-  const workItemRows =
-    summary.hourlyRate === null
-      ? []
-      : quoteWorkItemSummaryRows({ hourlyRate: summary.hourlyRate, workItems: summary.workItems });
+  const workItemRows = quote.kind === 'custom' ? quoteWorkItemSummaryRows({ workItems: summary.workItems }) : [];
 
   return (
     <SummaryCard>

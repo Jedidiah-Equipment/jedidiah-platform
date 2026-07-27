@@ -1,4 +1,3 @@
-import { DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
 import { QuoteDetail, QuoteUpdateInput } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
@@ -102,8 +101,6 @@ function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): 
   return {
     customerId: CUSTOMER_ID,
     customerMode: 'existing',
-    basePrice: 0,
-    hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
     inlineCompanyName: '',
     kind: 'product',
     productId: PRODUCT_ID,
@@ -122,8 +119,6 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
     deliveryIncluded: true,
     deliveryPrice: 0,
     discountPercent: 10,
-    basePrice: 1000,
-    hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
     notes: 'Some notes',
     documentNotes: '30 days',
     plannedDeliveryDate: '2026-03-01',
@@ -148,8 +143,6 @@ describe('toQuoteFormValues', () => {
     expect(values.depositPercent).toBe(30);
     expect(values.validUntil).toBe('2026-01-01');
     expect(values.status).toBe('sent');
-    expect(values.basePrice).toBe(1000);
-    expect(values.hourlyRate).toBe(DEFAULT_CUSTOM_HOURLY_RATE);
     expect(values.workTitle).toBe('');
     expect(values.selectedAssemblies).toEqual([{ type: 'existing', id: SELECTION_ID }]);
   });
@@ -157,7 +150,6 @@ describe('toQuoteFormValues', () => {
   it('maps custom quote commercial facts and nested work items into form state', () => {
     const values = toQuoteFormValues(
       buildQuoteDetail({
-        hourlyRate: 925,
         kind: 'custom',
         product: null,
         productId: null,
@@ -165,7 +157,10 @@ describe('toQuoteFormValues', () => {
           {
             id: WORK_ITEM_ID,
             quoteId: QUOTE_ID,
-            name: 'Strip pump',
+            department: 'fabrication',
+            description: 'Strip pump',
+            hourlyRate: 550,
+            name: null,
             hours: 1.5,
             parts: [
               {
@@ -186,11 +181,13 @@ describe('toQuoteFormValues', () => {
       }),
     );
 
-    expect(values.hourlyRate).toBe(925);
     expect(values.workItems).toEqual([
       {
+        department: 'fabrication',
+        description: 'Strip pump',
+        hourlyRate: 550,
         hours: 1.5,
-        name: 'Strip pump',
+        name: '',
         parts: [{ name: 'Seal kit', quantity: 2, unitPrice: 125 }],
       },
     ]);
@@ -221,8 +218,6 @@ describe('QuoteCreateFormValues', () => {
     expect(QUOTE_CREATE_DEFAULT_VALUES).toEqual({
       customerId: '',
       customerMode: 'existing',
-      basePrice: 0,
-      hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
       inlineCompanyName: '',
       kind: 'product',
       productId: '',
@@ -250,19 +245,13 @@ describe('QuoteCreateFormValues', () => {
 
   it('validates product and custom offering fields by kind', () => {
     expect(QuoteCreateFormValues.safeParse(buildCreateFormValues({ productId: '' })).success).toBe(false);
-    expect(QuoteCreateFormValues.safeParse(buildCreateFormValues({ basePrice: Number.NaN })).success).toBe(true);
     expect(
       QuoteCreateFormValues.safeParse(
-        buildCreateFormValues({ kind: 'custom', productId: '', workTitle: 'Hydraulic repair', basePrice: 2500 }),
+        buildCreateFormValues({ kind: 'custom', productId: '', workTitle: 'Hydraulic repair' }),
       ).success,
     ).toBe(true);
     expect(
       QuoteCreateFormValues.safeParse(buildCreateFormValues({ kind: 'custom', productId: '', workTitle: '' })).success,
-    ).toBe(false);
-    expect(
-      QuoteCreateFormValues.safeParse(
-        buildCreateFormValues({ kind: 'custom', productId: '', workTitle: 'Hydraulic repair', basePrice: Number.NaN }),
-      ).success,
     ).toBe(false);
   });
 
@@ -311,16 +300,12 @@ describe('toQuoteCreateInput', () => {
         kind: 'custom',
         productId: '',
         workTitle: 'Hydraulic repair',
-        basePrice: 2500,
-        hourlyRate: 925,
       }),
     );
 
     expect(input.offering).toEqual({
       kind: 'custom',
       workTitle: 'Hydraulic repair',
-      basePrice: 2500,
-      hourlyRate: 925,
       workItems: [],
     });
   });
@@ -399,25 +384,42 @@ describe('toQuoteUpdateInput', () => {
       id: QUOTE_ID,
       kind: 'custom',
       value: buildFormValues({
-        basePrice: 2500,
-        hourlyRate: 975,
         workTitle: 'Hydraulic repair',
-        workItems: [{ name: 'Strip pump', hours: 1.5, parts: [] }],
+        workItems: [
+          {
+            department: 'fabrication',
+            description: 'Strip pump',
+            hourlyRate: 550,
+            hours: 1.5,
+            name: '',
+            parts: [],
+          },
+          { department: 'other', description: '', hourlyRate: 2500, hours: 1, name: 'Sundries', parts: [] },
+        ],
       }),
     });
 
+    // A departmental Work Item stores no name; the browser's `''` placeholders never reach the API.
     expect(input.offering).toEqual({
       kind: 'custom',
-      basePrice: 2500,
-      hourlyRate: 975,
       workTitle: 'Hydraulic repair',
-      workItems: [{ name: 'Strip pump', hours: 1.5, parts: [] }],
+      workItems: [
+        {
+          department: 'fabrication',
+          description: 'Strip pump',
+          hourlyRate: 550,
+          hours: 1.5,
+          name: null,
+          parts: [],
+        },
+        { department: null, description: null, hourlyRate: 2500, hours: 1, name: 'Sundries', parts: [] },
+      ],
     });
     expect(() =>
       toQuoteUpdateInput({
         id: QUOTE_ID,
         kind: 'custom',
-        value: buildFormValues({ basePrice: 2500, workTitle: '' }),
+        value: buildFormValues({ workTitle: '' }),
       }),
     ).toThrow();
   });

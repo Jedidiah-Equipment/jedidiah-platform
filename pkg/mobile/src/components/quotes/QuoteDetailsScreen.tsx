@@ -27,6 +27,7 @@ import {
   QUOTE_STATUS_OPTIONS,
   toQuoteEditFormValues,
   toQuoteUpdateInput,
+  toQuoteWorkItemInput,
 } from '@/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
@@ -112,7 +113,10 @@ function QuoteEditor({
     validator,
   });
   const values = useStore(form.store, (state) => state.values);
-  const summary = useMemo(() => computeQuoteSummary({ quote, values }), [quote, values]);
+  const summary = useMemo(
+    () => computeQuoteSummary({ quote, values: { ...values, workItems: values.workItems.map(toQuoteWorkItemInput) } }),
+    [quote, values],
+  );
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const canEdit = (field: string) => canUpdate && (!isLocked || EDITABLE_LOCKED_QUOTE_FIELDS.has(field));
   const setupReadOnly = !canUpdate || isLocked;
@@ -325,34 +329,10 @@ function QuoteEditor({
                 </Section>
 
                 {quote.kind === 'custom' ? (
-                  <Section title="Custom work">
-                    <form.AppField name="basePrice">
-                      {(field) => (
-                        <field.CurrencyField
-                          disabled={setupReadOnly}
-                          label="Base price"
-                          onValueCommit={autosave.commit}
-                        />
-                      )}
-                    </form.AppField>
-                    <form.AppField name="hourlyRate">
-                      {(field) => (
-                        <field.CurrencyField
-                          disabled={!canEdit('hourlyRate')}
-                          label="Hourly rate"
-                          onValueCommit={autosave.commit}
-                        />
-                      )}
-                    </form.AppField>
-                  </Section>
-                ) : null}
-
-                {quote.kind === 'custom' ? (
                   <QuoteWorkItemsEditor
                     autosave={autosave}
                     currencyCode={quoteCurrencyCode}
                     form={form}
-                    hourlyRate={values.hourlyRate}
                     readOnly={!canEdit('workItems')}
                   />
                 ) : null}

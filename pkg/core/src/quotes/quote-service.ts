@@ -39,7 +39,6 @@ import {
 import { listQuoteWorkItems, persistQuoteWorkItems, type QuoteWorkItemRow } from './quote-work-items.js';
 
 type QuoteOfferingRow = {
-  hourlyRate: number | null;
   kind: QuoteKind;
   productId: UUID | null;
   quotedBasePrice: number;
@@ -150,7 +149,6 @@ export async function createQuote({
         deliveryIncluded: input.deliveryIncluded,
         deliveryPrice: input.deliveryPrice,
         discountPercent: input.discountPercent,
-        hourlyRate: offering.hourlyRate,
         kind: offering.kind,
         notes: input.notes,
         documentNotes: input.documentNotes,
@@ -239,14 +237,13 @@ export async function updateQuote({
       deliveryIncluded: input.deliveryIncluded,
       deliveryPrice: input.deliveryPrice,
       discountPercent: input.discountPercent,
-      hourlyRate: input.offering.kind === 'custom' ? input.offering.hourlyRate : before.hourlyRate,
       kind: before.kind,
       notes: input.notes,
       documentNotes: input.documentNotes,
       plannedDeliveryDate: input.plannedDeliveryDate,
       preferredDeliveryDate: input.preferredDeliveryDate,
       productId: before.productId,
-      quotedBasePrice: input.offering.kind === 'custom' ? input.offering.basePrice : before.quotedBasePrice,
+      quotedBasePrice: before.quotedBasePrice,
       quotedCurrencyCode: before.quotedCurrencyCode,
       salesPersonId: input.salesPersonId,
       status: input.status,
@@ -551,6 +548,9 @@ function haveQuoteWorkItemsChanged({
     if (
       !current ||
       current.position !== position ||
+      current.department !== item.department ||
+      current.description !== item.description ||
+      current.hourlyRate !== item.hourlyRate ||
       current.name !== item.name ||
       current.hours !== item.hours ||
       current.parts.length !== item.parts.length
@@ -616,10 +616,10 @@ async function resolveQuoteOffering({
     assertNoCustomSelectedAssemblies(input);
 
     return {
-      hourlyRate: input.offering.hourlyRate,
       kind: 'custom',
       productId: null,
-      quotedBasePrice: input.offering.basePrice,
+      // Custom Quotes carry no Base price: every rand comes from their Work Items.
+      quotedBasePrice: 0,
       quotedCurrencyCode: DEFAULT_PRODUCT_CURRENCY_CODE,
       workTitle: input.offering.workTitle,
     };
@@ -641,7 +641,6 @@ async function resolveQuoteOffering({
   }
 
   return {
-    hourlyRate: null,
     kind: 'product',
     productId: product.id,
     quotedBasePrice: product.basePrice,

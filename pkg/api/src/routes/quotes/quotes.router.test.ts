@@ -166,24 +166,73 @@ describe('quotes.create', () => {
     });
   });
 
-  test('persists and reads an explicit hourly rate on a custom quote', async ({ context }) => {
+  test('prices a custom quote that mixes Departments, each Work Item at its own rate', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 
     const created = await caller.quotes.create({
       customer: { type: 'inline', companyName: 'Custom Rate Customer' },
       notes: null,
       documentNotes: null,
-      offering: { kind: 'custom', workTitle: 'Hydraulic rebuild', basePrice: 1500, hourlyRate: 925.5 },
+      offering: {
+        kind: 'custom',
+        workTitle: 'Karat 9 repairs',
+        workItems: [
+          { department: 'fabrication', description: 'Remove, supply and weld', hourlyRate: 550, hours: 56 },
+          { department: 'paint', description: 'Sand, prep and paint', hourlyRate: 375, hours: 10 },
+          { department: 'assembly', description: 'Strip and assemble', hourlyRate: 320, hours: 36 },
+          { hourlyRate: 2500, hours: 1, name: 'Sundries' },
+        ],
+      },
       salesPersonId: 'test-user-id',
       status: 'draft',
       validUntil: null,
     });
+    if (created.kind !== 'custom') throw new Error('Expected a Custom Quote');
 
-    expect(created).toMatchObject({ kind: 'custom', hourlyRate: 925.5 });
-    await expect(caller.quotes.get({ id: created.id })).resolves.toMatchObject({ hourlyRate: 925.5 });
-    await expect(context.db.select({ hourlyRate: quotes.hourlyRate }).from(quotes)).resolves.toEqual([
-      { hourlyRate: 925.5 },
+    // The shop's own quote: R30 800 + R3 750 + R11 520 + R2 500.
+    expect(priceQuote(created)).toMatchObject({ workItemTotal: 48570 });
+    // Base price is pinned to zero on Custom Quotes, so the Work Items are the whole quote.
+    expect(created.quotedBasePrice).toBe(0);
+    expect(created.workItems.map(({ department, hourlyRate, name }) => ({ department, hourlyRate, name }))).toEqual([
+      { department: 'fabrication', hourlyRate: 550, name: null },
+      { department: 'paint', hourlyRate: 375, name: null },
+      { department: 'assembly', hourlyRate: 320, name: null },
+      { department: null, hourlyRate: 2500, name: 'Sundries' },
     ]);
+    await expect(caller.quotes.get({ id: created.id })).resolves.toMatchObject({ workItems: created.workItems });
+  });
+
+  test('rejects a named departmental Work Item and an unnamed Other Work Item', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const baseInput = {
+      customer: { type: 'inline' as const, companyName: 'Work Item Naming Customer' },
+      notes: null,
+      documentNotes: null,
+      salesPersonId: 'test-user-id',
+      status: 'draft' as const,
+      validUntil: null,
+    };
+
+    await expect(
+      caller.quotes.create({
+        ...baseInput,
+        offering: {
+          kind: 'custom',
+          workTitle: 'Naming rules',
+          workItems: [{ department: 'fabrication', hourlyRate: 550, hours: 1, name: 'Should not be named' }],
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(
+      caller.quotes.create({
+        ...baseInput,
+        offering: {
+          kind: 'custom',
+          workTitle: 'Naming rules',
+          workItems: [{ hourlyRate: 2500, hours: 1 }],
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
 
   test('persists ordered custom work items with ordered parts and prices them on read', async ({ context }) => {
@@ -195,11 +244,10 @@ describe('quotes.create', () => {
       offering: {
         kind: 'custom',
         workTitle: 'Hydraulic rebuild',
-        basePrice: 1000,
-        hourlyRate: 850,
         workItems: [
           {
             name: 'Strip pump',
+            hourlyRate: 850,
             hours: 1.33,
             parts: [
               { name: 'Seal kit', quantity: 2, unitPrice: 125 },
@@ -226,12 +274,7 @@ describe('quotes.create', () => {
       },
       { name: 'Final inspection', hours: 0, parts: [] },
     ]);
-    expect(
-      priceQuote({
-        ...created,
-        workItems: { hourlyRate: created.hourlyRate, items: created.workItems },
-      }),
-    ).toMatchObject({ subtotal: 2430.5, total: 2795.08, workItemTotal: 1430.5 });
+    expect(priceQuote(created)).toMatchObject({ subtotal: 1430.5, total: 1645.08, workItemTotal: 1430.5 });
     await expect(caller.quotes.get({ id: created.id })).resolves.toMatchObject({ workItems: created.workItems });
     await expect(context.db.select().from(quoteWorkItems).orderBy(quoteWorkItems.position)).resolves.toMatchObject([
       { name: 'Strip pump', position: 0 },
@@ -277,8 +320,6 @@ describe('quotes.create', () => {
         offering: {
           kind: 'custom',
           workTitle: 'Repair',
-          basePrice: 0,
-          hourlyRate: 850,
           workItems: [{ name: ' ', hours: 0, parts: [] }],
         },
       }),
@@ -293,7 +334,7 @@ describe('quotes.create', () => {
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
 
-  test('rejects a missing custom hourly rate and a product hourly rate at the input boundary', async ({ context }) => {
+  test('rejects a retired base price or quote-level hourly rate at the input boundary', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
     const baseInput = {
       customer: { type: 'inline' as const, companyName: 'Invalid Rate Customer' },
@@ -307,13 +348,13 @@ describe('quotes.create', () => {
     await expect(
       caller.quotes.create({
         ...baseInput,
-        offering: { kind: 'custom', workTitle: 'Missing rate', basePrice: 1500 },
+        offering: { kind: 'custom', workTitle: 'Retired base price', basePrice: 1500 },
       } as never),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
     await expect(
       caller.quotes.create({
         ...baseInput,
-        offering: { ...productOffering(context.product.id), hourlyRate: 850 },
+        offering: { kind: 'custom', workTitle: 'Retired quote rate', hourlyRate: 850 },
       } as never),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
@@ -324,7 +365,7 @@ describe('quotes.create', () => {
       customer: { type: 'inline', companyName: 'Locked Quote Customer' },
       notes: null,
       documentNotes: null,
-      offering: { kind: 'custom', workTitle: 'Locked repair', basePrice: 1500, hourlyRate: 850 },
+      offering: { kind: 'custom', workTitle: 'Locked repair' },
       salesPersonId: 'test-user-id',
       status: 'accepted',
       validUntil: null,
@@ -343,7 +384,7 @@ describe('quotes.create', () => {
       customer: { type: 'inline', companyName: 'Sales Guard Customer' },
       notes: null,
       documentNotes: null,
-      offering: { kind: 'custom', workTitle: 'Guarded repair', basePrice: 900, hourlyRate: 850 },
+      offering: { kind: 'custom', workTitle: 'Guarded repair' },
       salesPersonId: 'test-user-id',
       status: 'accepted',
       validUntil: null,
@@ -671,8 +712,6 @@ describe('quotes.update', () => {
       offering: {
         kind: 'custom',
         workTitle: 'Pump repair',
-        basePrice: 0,
-        hourlyRate: 850,
         workItems: [{ name: 'Inspect', hours: 1, parts: [] }],
       },
       salesPersonId: 'test-user-id',
@@ -685,8 +724,6 @@ describe('quotes.update', () => {
       ...toUpdateInput(created),
       offering: {
         kind: 'custom',
-        basePrice: created.quotedBasePrice,
-        hourlyRate: created.hourlyRate,
         workTitle: created.workTitle,
         workItems: [{ name: 'Rebuild', hours: 2, parts: [{ name: 'Seal', quantity: 1, unitPrice: 100 }] }],
       },
@@ -710,10 +747,10 @@ describe('quotes.update', () => {
       ...toUpdateInput(notesUpdated),
       offering: {
         kind: 'custom',
-        basePrice: notesUpdated.quotedBasePrice,
-        hourlyRate: notesUpdated.hourlyRate,
         workTitle: notesUpdated.workTitle,
-        workItems: [{ name: 'Commission', hours: 3, parts: [{ name: 'Oil', quantity: 2, unitPrice: 75 }] }],
+        workItems: [
+          { name: 'Commission', hourlyRate: 850, hours: 3, parts: [{ name: 'Oil', quantity: 2, unitPrice: 75 }] },
+        ],
       },
     });
     if (workItemsUpdated.kind !== 'custom') throw new Error('Expected a Custom Quote');
@@ -721,7 +758,7 @@ describe('quotes.update', () => {
     const readBack = await salesCaller.quotes.get({ id: workItemsUpdated.id });
     if (readBack.kind !== 'custom') throw new Error('Expected a Custom Quote');
     expect(readBack.workItems).toMatchObject([
-      { name: 'Commission', hours: 3, parts: [{ name: 'Oil', quantity: 2, unitPrice: 75 }] },
+      { name: 'Commission', hourlyRate: 850, hours: 3, parts: [{ name: 'Oil', quantity: 2, unitPrice: 75 }] },
     ]);
     expect(pricePersistedQuote(readBack)).toMatchObject({ subtotal: 2700, total: 3105, workItemTotal: 2700 });
   });
@@ -736,8 +773,6 @@ describe('quotes.update', () => {
       offering: {
         kind: 'custom',
         workTitle: 'Rate lock repair',
-        basePrice: 1500,
-        hourlyRate: 850,
         workItems: [{ name: 'Repair', hours: 2, parts: [] }],
       },
       salesPersonId: 'test-user-id',
@@ -748,22 +783,32 @@ describe('quotes.update', () => {
 
     const updated = await salesCaller.quotes.update({
       ...toUpdateInput(created),
-      offering: { kind: 'custom', workTitle: created.workTitle, basePrice: 1500, hourlyRate: 975 },
+      offering: {
+        kind: 'custom',
+        workTitle: created.workTitle,
+        workItems: [{ department: 'fabrication', hourlyRate: 975, hours: 2 }],
+      },
     });
     if (updated.kind !== 'custom') throw new Error('Expected a Custom Quote');
-    expect(updated.hourlyRate).toBe(975);
+    expect(updated.workItems[0]).toMatchObject({ department: 'fabrication', hourlyRate: 975 });
 
     const accepted = await salesCaller.quotes.update({ ...toUpdateInput(updated), status: 'accepted' });
     if (accepted.kind !== 'custom') throw new Error('Expected a Custom Quote');
     await adminCaller.jobs.create({ quoteId: accepted.id });
 
+    // An edited rate is snapshotted per Work Item, so it stays editable after acceptance without a
+    // rate-card change ever reaching an existing Quote.
     const rateUpdated = await salesCaller.quotes.update({
       ...toUpdateInput(accepted),
-      offering: { kind: 'custom', workTitle: accepted.workTitle, basePrice: 1500, hourlyRate: 1000 },
+      offering: {
+        kind: 'custom',
+        workTitle: accepted.workTitle,
+        workItems: [{ department: 'fabrication', hourlyRate: 1000, hours: 2 }],
+      },
     });
     if (rateUpdated.kind !== 'custom') throw new Error('Expected a Custom Quote');
-    expect(rateUpdated.hourlyRate).toBe(1000);
-    expect(pricePersistedQuote(rateUpdated)).toMatchObject({ subtotal: 3500, total: 4025, workItemTotal: 2000 });
+    expect(rateUpdated.workItems[0]).toMatchObject({ hourlyRate: 1000 });
+    expect(pricePersistedQuote(rateUpdated)).toMatchObject({ subtotal: 2000, total: 2300, workItemTotal: 2000 });
   });
 
   test('updates editable draft fields without changing the quote identity', async ({ context }) => {
@@ -2192,10 +2237,11 @@ function toUpdateInput(quote: QuoteDetail) {
       quote.kind === 'custom'
         ? {
             kind: 'custom' as const,
-            basePrice: quote.quotedBasePrice,
-            hourlyRate: quote.hourlyRate,
             workTitle: quote.workTitle,
-            workItems: quote.workItems.map(({ hours, name, parts }) => ({
+            workItems: quote.workItems.map(({ department, description, hourlyRate, hours, name, parts }) => ({
+              department,
+              description,
+              hourlyRate,
               hours,
               name,
               parts: parts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice })),

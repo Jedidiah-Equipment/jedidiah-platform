@@ -1,4 +1,4 @@
-import type { QuoteKind, QuoteStatus } from '@pkg/schema';
+import type { Department, QuoteKind, QuoteStatus } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
@@ -47,7 +47,6 @@ export const quotes = pgTable(
     plannedDeliveryDate: date('planned_delivery_date', { mode: 'string' }),
     notes: text('notes'),
     documentNotes: text('document_notes'),
-    hourlyRate: numeric('hourly_rate', { mode: 'number', precision: 12, scale: 2 }),
     quotedBasePrice: numeric('quoted_base_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
     quotedCurrencyCode: text('quoted_currency_code').notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
@@ -72,19 +71,11 @@ export const quotes = pgTable(
       )`,
     ),
     check(
-      'quote_hourly_rate_shape',
-      sql`(
-        ${table.kind} = 'custom' and ${table.hourlyRate} is not null and ${table.hourlyRate} >= 0
-      ) or (
-        ${table.kind} = 'product' and ${table.hourlyRate} is null
-      )`,
-    ),
-    check(
       'quote_kind_shape',
       sql`(
         ${table.kind} = 'product' and ${table.productId} is not null and ${table.workTitle} is null
       ) or (
-        ${table.kind} = 'custom' and ${table.productId} is null and ${table.workTitle} is not null and length(trim(${table.workTitle})) > 0
+        ${table.kind} = 'custom' and ${table.productId} is null and ${table.workTitle} is not null and length(trim(${table.workTitle})) > 0 and ${table.quotedBasePrice} = 0
       )`,
     ),
     uniqueIndex('quote_code_unique').on(table.code),
@@ -117,16 +108,35 @@ export const quoteWorkItems = pgTable(
     quoteId: uuid('quote_id')
       .notNull()
       .references(() => quotes.id, { onDelete: 'cascade' }),
-    name: text('name').notNull(),
+    // A departmental Work Item takes its label from the rate card, so `name` is stored only for the
+    // department-less "Other" option. The pairing is enforced by `quote_work_items_name_shape`.
+    name: text('name'),
+    department: text('department').$type<Department>(),
+    description: text('description'),
     position: integer('position').notNull().default(0),
     hours: numeric('hours', { mode: 'number', precision: 8, scale: 2 }).notNull().default(0),
+    hourlyRate: numeric('hourly_rate', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    check('quote_work_items_name_nonempty', sql`length(trim(${table.name})) > 0`),
+    check(
+      'quote_work_items_name_shape',
+      sql`(
+        ${table.department} is null and ${table.name} is not null and length(trim(${table.name})) > 0
+      ) or (
+        ${table.department} is not null and ${table.name} is null
+      )`,
+    ),
+    // Permits the full Department enum even though only rated departments are offered, so quoting a
+    // further department is a rate-card line rather than a migration.
+    check(
+      'quote_work_items_department_value_check',
+      sql`${table.department} is null or ${table.department} in ('procurement', 'supply', 'fabrication', 'paint', 'assembly')`,
+    ),
     check('quote_work_items_position_nonnegative', sql`${table.position} >= 0`),
     check('quote_work_items_hours_nonnegative', sql`${table.hours} >= 0`),
+    check('quote_work_items_hourly_rate_nonnegative', sql`${table.hourlyRate} >= 0`),
   ],
 );
 

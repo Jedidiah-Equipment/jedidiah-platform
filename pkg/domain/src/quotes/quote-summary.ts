@@ -12,11 +12,9 @@ export type QuoteSummaryWorkItem = QuoteWorkItemInput;
 
 /** The slice of edit-form state the live pricing summary depends on. */
 export type QuoteSummaryFormValues = {
-  basePrice: number;
   deliveryIncluded: boolean;
   deliveryPrice: number;
   discountPercent: number;
-  hourlyRate: number;
   selectedAssemblies: QuoteSelectedAssemblyInput[];
   workItems: QuoteSummaryWorkItem[];
 };
@@ -33,7 +31,6 @@ export type QuoteComputedSummary = {
   deliveryPrice: number;
   discountAmount: number;
   discountPercent: number;
-  hourlyRate: number | null;
   selectedAssemblies: SelectedAssemblySnapshot[];
   selectedAssemblyTotal: number;
   subtotal: number;
@@ -92,8 +89,8 @@ export function computeQuoteSummary({
 }): QuoteComputedSummary {
   const catalogAssemblies = quote.product?.assemblies ?? [];
   const deliveryPrice = computeAdditionalDeliveryPrice(values);
-  const basePrice = quote.kind === 'custom' ? values.basePrice : quote.quotedBasePrice;
-  const hourlyRate = quote.kind === 'custom' ? values.hourlyRate : null;
+  // Custom Quotes carry no Base price: every rand comes from the Work Items list.
+  const basePrice = quote.kind === 'custom' ? 0 : quote.quotedBasePrice;
   const selectedAssemblies =
     quote.kind === 'custom'
       ? []
@@ -109,7 +106,7 @@ export function computeQuoteSummary({
       discountPercent: values.discountPercent,
       quotedBasePrice: basePrice,
       selectedAssemblies,
-      workItems: quote.kind === 'custom' ? { hourlyRate: values.hourlyRate, items: values.workItems } : undefined,
+      workItems: quote.kind === 'custom' ? values.workItems : undefined,
     },
     catalogAssemblies,
   );
@@ -121,7 +118,6 @@ export function computeQuoteSummary({
     deliveryPrice,
     discountAmount: pricing.discountAmount,
     discountPercent: values.discountPercent,
-    hourlyRate,
     selectedAssemblies: [...pricing.liveSelections],
     selectedAssemblyTotal: pricing.selectedAssemblyTotal,
     subtotal: pricing.subtotal,

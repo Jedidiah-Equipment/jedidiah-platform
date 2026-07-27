@@ -89,20 +89,13 @@ describe('QuoteCreateInput', () => {
     });
   });
 
-  it('parses a custom offering with a trimmed work title, entered base price, and hourly rate', () => {
+  it('parses a custom offering from a trimmed work title alone', () => {
     expect(
       QuoteCreateInput.parse({
         ...baseCreateInput,
-        offering: {
-          kind: 'custom',
-          workTitle: '  Hydraulic repair  ',
-          basePrice: '2500.50',
-          hourlyRate: '850.25',
-        },
+        offering: { kind: 'custom', workTitle: '  Hydraulic repair  ' },
       }),
-    ).toMatchObject({
-      offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500.5, hourlyRate: 850.25 },
-    });
+    ).toMatchObject({ offering: { kind: 'custom', workTitle: 'Hydraulic repair' } });
   });
 
   it('accepts work items only on custom offerings and rejects the retired lineItems field', () => {
@@ -112,13 +105,14 @@ describe('QuoteCreateInput', () => {
         offering: {
           kind: 'custom',
           workTitle: 'Hydraulic repair',
-          basePrice: 2500,
-          hourlyRate: 850,
-          workItems: [{ name: 'Strip pump', hours: '1.33', parts: [] }],
+          workItems: [{ department: 'fabrication', hourlyRate: '550', hours: '1.33' }],
         },
       }),
     ).toMatchObject({
-      offering: { kind: 'custom', workItems: [{ name: 'Strip pump', hours: 1.33, parts: [] }] },
+      offering: {
+        kind: 'custom',
+        workItems: [{ department: 'fabrication', hourlyRate: 550, hours: 1.33, name: null, parts: [] }],
+      },
     });
     expect(() =>
       QuoteCreateInput.parse({
@@ -135,19 +129,19 @@ describe('QuoteCreateInput', () => {
     ).toThrow('Unrecognized key');
   });
 
-  it('requires a non-negative hourly rate for custom offerings and rejects it on product offerings', () => {
+  it('rejects the retired quote-level base price and hourly rate on either offering', () => {
     expect(() =>
       QuoteCreateInput.parse({
         ...baseCreateInput,
         offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500 },
       }),
-    ).toThrow();
+    ).toThrow('Unrecognized key');
     expect(() =>
       QuoteCreateInput.parse({
         ...baseCreateInput,
-        offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500, hourlyRate: -1 },
+        offering: { kind: 'custom', workTitle: 'Hydraulic repair', hourlyRate: 850 },
       }),
-    ).toThrow('Must be zero or greater');
+    ).toThrow('Unrecognized key');
     expect(() =>
       QuoteCreateInput.parse({
         ...baseCreateInput,
@@ -156,16 +150,24 @@ describe('QuoteCreateInput', () => {
     ).toThrow();
   });
 
-  it('rejects a blank custom work title', () => {
+  it('requires a non-negative rate on a Work Item', () => {
     expect(() =>
       QuoteCreateInput.parse({
         ...baseCreateInput,
         offering: {
           kind: 'custom',
-          workTitle: ' ',
-          basePrice: 2500,
-          hourlyRate: 850,
+          workTitle: 'Hydraulic repair',
+          workItems: [{ department: 'fabrication', hourlyRate: -1 }],
         },
+      }),
+    ).toThrow('Must be zero or greater');
+  });
+
+  it('rejects a blank custom work title', () => {
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: { kind: 'custom', workTitle: ' ' },
       }),
     ).toThrow();
   });
@@ -216,14 +218,25 @@ describe('QuoteWorkItemInput', () => {
       QuoteWorkItemInput.parse({
         name: '  Strip pump  ',
         hours: '1.33',
+        hourlyRate: '550',
         parts: [{ name: '  Seal kit  ', quantity: '2', unitPrice: '125.50' }],
       }),
     ).toEqual({
-      name: 'Strip pump',
+      department: null,
+      description: null,
+      hourlyRate: 550,
       hours: 1.33,
+      name: 'Strip pump',
       parts: [{ name: 'Seal kit', quantity: 2, unitPrice: 125.5 }],
     });
-    expect(QuoteWorkItemInput.parse({ name: 'Inspection' })).toEqual({ name: 'Inspection', hours: 0, parts: [] });
+    expect(QuoteWorkItemInput.parse({ name: 'Inspection' })).toEqual({
+      department: null,
+      description: null,
+      hourlyRate: 0,
+      hours: 0,
+      name: 'Inspection',
+      parts: [],
+    });
   });
 
   it('rejects empty names, negative hours, invalid part quantities, and negative part prices', () => {
@@ -261,32 +274,20 @@ describe('QuoteUpdateInput', () => {
     });
   });
 
-  it('parses a custom offering update with a trimmed work title, entered base price, and hourly rate', () => {
+  it('parses a custom offering update from a trimmed work title alone', () => {
     expect(
       QuoteUpdateInput.parse({
         ...baseUpdateInput(),
-        offering: {
-          kind: 'custom',
-          workTitle: '  Hydraulic repair  ',
-          basePrice: '2500.50',
-          hourlyRate: '975.75',
-        },
+        offering: { kind: 'custom', workTitle: '  Hydraulic repair  ' },
       }),
-    ).toMatchObject({
-      offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500.5, hourlyRate: 975.75 },
-    });
+    ).toMatchObject({ offering: { kind: 'custom', workTitle: 'Hydraulic repair' } });
   });
 
   it('rejects a blank custom work title', () => {
     expect(() =>
       QuoteUpdateInput.parse({
         ...baseUpdateInput(),
-        offering: {
-          kind: 'custom',
-          workTitle: ' ',
-          basePrice: 2500,
-          hourlyRate: 850,
-        },
+        offering: { kind: 'custom', workTitle: ' ' },
       }),
     ).toThrow();
   });

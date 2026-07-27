@@ -13,8 +13,20 @@ describe('getJobAssemblyAndWorkRows', () => {
         { assemblyName: 'Toolbox', kind: 'optional', parts: [] },
       ],
       workRows: [
-        { id: '00000000-0000-4000-8000-000000000101', name: 'Strip pump assembly' },
-        { id: '00000000-0000-4000-8000-000000000102', name: 'Install replacement pump' },
+        {
+          id: '00000000-0000-4000-8000-000000000101',
+          department: 'assembly',
+          description: 'Strip pump assembly',
+          hours: 1.5,
+          name: 'Assembly',
+        },
+        {
+          id: '00000000-0000-4000-8000-000000000102',
+          department: null,
+          description: null,
+          hours: 0,
+          name: 'Install replacement pump',
+        },
       ],
     } satisfies Pick<JobDetail, 'cfo' | 'workRows'>;
 
@@ -22,7 +34,7 @@ describe('getJobAssemblyAndWorkRows', () => {
       {
         key: 'custom-00000000-0000-4000-8000-000000000101',
         kind: 'custom',
-        name: 'Strip pump assembly',
+        name: 'Assembly',
       },
       {
         key: 'custom-00000000-0000-4000-8000-000000000102',

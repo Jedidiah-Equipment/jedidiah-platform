@@ -13,6 +13,8 @@ export type QuoteDocumentPricingRow = {
 export type QuoteDocumentWorkItem = {
   amount: number;
   charges: QuoteWorkItemCharge[];
+  /** The shop's own second line under the heading — what the work actually is. */
+  description: string | null;
   name: string;
 };
 

@@ -11,16 +11,12 @@ import { QuoteOfferingInvariantError } from './quote-errors.js';
  */
 export function narrowQuoteOffering(row: {
   kind: QuoteKind;
-  hourlyRate: number | null;
   productId: string | null;
   workTitle: string | null;
 }): QuoteOffering {
   if (row.kind === 'product') {
     if (row.productId === null) {
       throw new QuoteOfferingInvariantError('Product Quote is missing its Product.');
-    }
-    if (row.hourlyRate !== null) {
-      throw new QuoteOfferingInvariantError('Product Quote cannot have an Hourly Rate.');
     }
 
     return { kind: 'product', productId: row.productId, workTitle: null };
@@ -29,9 +25,6 @@ export function narrowQuoteOffering(row: {
   if (row.workTitle === null) {
     throw new QuoteOfferingInvariantError('Custom Quote is missing its Work Title.');
   }
-  if (row.hourlyRate === null) {
-    throw new QuoteOfferingInvariantError('Custom Quote is missing its Hourly Rate.');
-  }
 
-  return { hourlyRate: row.hourlyRate, kind: 'custom', productId: null, workTitle: row.workTitle };
+  return { kind: 'custom', productId: null, workTitle: row.workTitle };
 }

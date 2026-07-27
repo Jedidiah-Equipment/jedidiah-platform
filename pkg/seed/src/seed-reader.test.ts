@@ -15,7 +15,7 @@ describe('readExistingSnapshotTable', () => {
           return Promise.reject(Object.assign(new Error('column does not exist'), { code: '42703' }));
         }
 
-        return Promise.resolve([{ hourlyRate: 975, kind: 'custom', status: 'draft' }]);
+        return Promise.resolve([{ kind: 'custom', status: 'draft' }]);
       },
     }));
 
@@ -23,7 +23,6 @@ describe('readExistingSnapshotTable', () => {
 
     expect(select).toHaveBeenCalledTimes(2);
     expect(select.mock.calls[1]?.[0]).not.toHaveProperty('cancellationReason');
-    expect(select.mock.calls[1]?.[0]).toHaveProperty('hourlyRate');
-    expect(rows).toEqual([{ cancellationReason: null, hourlyRate: 975, kind: 'custom', status: 'draft' }]);
+    expect(rows).toEqual([{ cancellationReason: null, kind: 'custom', status: 'draft' }]);
   });
 });

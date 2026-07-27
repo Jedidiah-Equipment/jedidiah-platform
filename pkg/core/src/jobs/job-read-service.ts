@@ -18,6 +18,7 @@ import {
 } from '@pkg/db';
 import {
   countWorkingDaysBetween,
+  departmentLabels,
   foldJobScheduleStates,
   getBoardJobIds,
   getPlantDateNow,
@@ -69,7 +70,10 @@ import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'buildTimeDays' | 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
-type CustomQuoteWorkRow = Pick<typeof quoteWorkItems.$inferSelect, 'id' | 'name'>;
+type CustomQuoteWorkRow = Pick<
+  typeof quoteWorkItems.$inferSelect,
+  'department' | 'description' | 'hours' | 'id' | 'name'
+>;
 type QuoteRow = Pick<typeof quotes.$inferSelect, 'code' | 'kind' | 'workTitle'> & {
   customer: CustomerRow;
 };
@@ -539,6 +543,9 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
           },
           workItems: {
             columns: {
+              department: true,
+              description: true,
+              hours: true,
               id: true,
               name: true,
             },
@@ -570,7 +577,17 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
 }
 
 function listJobWorkRows(quote: Pick<JobDetailQuoteRow, 'kind' | 'workItems'>): JobDetail['workRows'] {
-  return quote.kind === 'custom' ? quote.workItems : [];
+  if (quote.kind !== 'custom') return [];
+
+  // The floor reads the internal Department label, not the quote-facing one, so a row points at the
+  // department that actually owns the bay and the people.
+  return quote.workItems.map((workItem) => ({
+    department: workItem.department,
+    description: workItem.description,
+    hours: workItem.hours,
+    id: workItem.id,
+    name: workItem.department ? departmentLabels[workItem.department] : (workItem.name ?? ''),
+  }));
 }
 
 export async function getJobDocuments({

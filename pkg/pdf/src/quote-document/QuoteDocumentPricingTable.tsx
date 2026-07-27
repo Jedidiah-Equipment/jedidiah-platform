@@ -240,10 +240,15 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
   );
 }
 
-function WorkItemRow({ amount, name }: { amount: string; name: string }) {
+function WorkItemRow({ amount, description, name }: { amount: string; description: string | null; name: string }) {
   return (
     <View style={pdfStyles.flexRow}>
-      <Text style={[pdfStyles.flex1, pdfStyles.textBody, pdfStyles.uppercase, styles.tableCell]}>{name}</Text>
+      <View style={[pdfStyles.flex1, styles.tableCell]}>
+        <Text style={[pdfStyles.textBody, pdfStyles.uppercase]}>{name}</Text>
+        {description ? (
+          <Text style={[pdfStyles.colorMutedDark, pdfStyles.textBody, pdfStyles.uppercase]}>{description}</Text>
+        ) : null}
+      </View>
       <Text style={[styles.tableCell, styles.qtyCol]} />
       <Text style={[styles.tableCell, styles.priceCol]} />
       <Text
@@ -270,7 +275,11 @@ function WorkItemGroup({ currencyCode, workItem }: { currencyCode: string; workI
     <View>
       {/* The heading rides with its first charge so a page break never strands it alone. */}
       <View wrap={false}>
-        <WorkItemRow amount={formatCurrency(workItem.amount, currencyCode)} name={workItem.name} />
+        <WorkItemRow
+          amount={formatCurrency(workItem.amount, currencyCode)}
+          description={workItem.description}
+          name={workItem.name}
+        />
         {firstCharge ? <WorkItemChargeRow charge={firstCharge} currencyCode={currencyCode} /> : null}
       </View>
       {remainingCharges.map((charge) => (

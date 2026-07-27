@@ -655,10 +655,18 @@ export const JobListFilters = z
   })
   .default({});
 
+/**
+ * One Work Item as the shop floor sees it. `name` carries the Department's *internal* label — the
+ * floor reads Assembly, not the "Workshop" wording the customer's quote uses — and `hours` is the
+ * quoted estimate, never a record of hours actually worked.
+ */
 export type JobWorkRow = z.infer<typeof JobWorkRow>;
 export const JobWorkRow = z.object({
   id: UUID,
+  department: Department.nullable(),
   name: requiredTrimmedText('Work item name is required'),
+  description: nullableTrimmedText(),
+  hours: z.number().min(0),
 });
 
 /** Opt-in list extras that carry a projection cost. */

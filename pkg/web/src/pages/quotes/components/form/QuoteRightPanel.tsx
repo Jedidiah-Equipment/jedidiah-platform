@@ -17,9 +17,9 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
 import { StartJobLink } from '../StartJobLink.js';
-import type { QuoteFormValues } from '../types.js';
 
-type QuoteWorkItemFormInput = QuoteFormValues['workItems'][number];
+// The summary prices the API-shaped Work Items the form maps into, not the browser shape itself.
+type QuoteWorkItemFormInput = QuoteComputedSummary['workItems'][number];
 const getSummaryWorkItemKey = createStableRowKeys<QuoteWorkItemFormInput>('quote-summary-work-item');
 const getSummaryWorkItemPartKey =
   createStableRowKeys<QuoteWorkItemFormInput['parts'][number]>('quote-summary-work-item-part');
@@ -169,11 +169,6 @@ function QuoteCustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'c
       </CardHeader>
       <CardContent className="grid gap-3">
         <div className="grid grid-cols-2 gap-2">
-          <QuoteMiniMetric
-            icon={<IconReceipt2 />}
-            label="Base price"
-            value={formatCurrency(quote.quotedBasePrice, quote.quotedCurrencyCode)}
-          />
           <QuoteMiniMetric icon={<IconPackage />} label="Work items" value={String(quote.workItems.length)} />
         </div>
       </CardContent>
@@ -182,10 +177,7 @@ function QuoteCustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'c
 }
 
 function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
-  const workItemRows =
-    summary.hourlyRate === null
-      ? []
-      : quoteWorkItemSummaryRows({ hourlyRate: summary.hourlyRate, workItems: summary.workItems });
+  const workItemRows = quote.kind === 'custom' ? quoteWorkItemSummaryRows({ workItems: summary.workItems }) : [];
   return (
     <Card size="sm">
       <CardHeader>
@@ -193,10 +185,9 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
         <CardTitle className="text-2xl tabular-nums">{formatCurrency(summary.total, summary.currencyCode)}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-2">
-        <QuoteSummaryRow
-          label={quote.kind === 'custom' ? 'Base price' : 'Product price'}
-          value={formatCurrency(summary.basePrice, summary.currencyCode)}
-        />
+        {quote.kind === 'product' ? (
+          <QuoteSummaryRow label="Product price" value={formatCurrency(summary.basePrice, summary.currencyCode)} />
+        ) : null}
         {summary.selectedAssemblies.length > 0 ? (
           <div className="grid gap-1">
             <QuoteSummaryRow

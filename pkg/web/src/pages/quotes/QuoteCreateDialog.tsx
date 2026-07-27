@@ -202,26 +202,6 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
                   <form.AppField name="workTitle">
                     {(field) => <field.TextField autoComplete="off" label="Work title" />}
                   </form.AppField>
-                  <form.AppField name="basePrice">
-                    {(field) => (
-                      <field.CurrencyField
-                        autoComplete="off"
-                        currencyCode="ZAR"
-                        label="Base price"
-                        placeholder="R120,000"
-                      />
-                    )}
-                  </form.AppField>
-                  <form.AppField name="hourlyRate">
-                    {(field) => (
-                      <field.CurrencyField
-                        autoComplete="off"
-                        currencyCode="ZAR"
-                        label="Hourly rate"
-                        placeholder="R850"
-                      />
-                    )}
-                  </form.AppField>
                 </div>
               )
             }

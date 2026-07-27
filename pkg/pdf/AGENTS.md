@@ -2,28 +2,31 @@
 
 - Keep PDF changes focused on deterministic renderers and small testable helpers.
 - Use React-PDF APIs for layout; avoid browser-only APIs.
-- Shared brand font assets live in `@pkg/domain/fonts`, with PDF registration in `src/pdf-fonts.ts`.
-- Keep this package's `react` dependency aligned with `@pkg/mobile`; Expo Doctor scans the
-  monorepo and fails on duplicate React installs even though this package is server-side.
+- Shared brand font assets live in `@pkg/domain/fonts`, with PDF registration in `src/pdf-fonts.ts`. After a
+  font change, generate a sample PDF and confirm the embedded font names — fallback is silent.
+- Keep this package's `react` dependency aligned with `@pkg/mobile`. Expo Doctor scans the whole monorepo
+  and fails on duplicate React installs even though this package is server-side.
 
-## Visual QA Flow
+## Visual QA
 
-- For brochure layout changes, render the committed fixture:
-  `pnpm --filter @pkg/pdf render:brochure-fixture`
-- The fixture writes `tmp/pdfs/brochure-fixture.pdf` from the repository root. Keep generated PDFs and PNGs under `tmp/pdfs/`; they are intermediate QA artifacts.
-- If Poppler is available, render pages to PNGs before judging layout:
-  `pdftoppm -png -r 144 tmp/pdfs/brochure-fixture.pdf tmp/pdfs/brochure-fixture`
-- Inspect both rendered pages, especially typography, spacing, margins, footer placement, image cropping, and the standard/optional assembly columns.
-- If Poppler is unavailable, open `tmp/pdfs/brochure-fixture.pdf` locally and state that PNG rendering was skipped.
-- Use real product images when needed without committing them:
-  `BROCHURE_HERO_IMAGE=/path/to/hero.jpg BROCHURE_TECHNICAL_IMAGE=/path/to/technical.png BROCHURE_SECONDARY_IMAGE=/path/to/secondary.jpg pnpm --filter @pkg/pdf render:brochure-fixture`
-- Use `BROCHURE_FIXTURE_VARIANT=sparse|reference|dense` to check how the brochure behaves with different key-feature, assembly, and description sizes.
-- Use `BROCHURE_FIXTURE_LOCALE=en|af` to render either localized brochure variant.
-- Remove generated `tmp/pdfs/` artifacts before finishing unless the user asks to keep them.
+For brochure layout changes, render the committed fixture and look at it — the tests do not catch layout:
 
-## Verification
+```sh
+pnpm --filter @pkg/pdf render:brochure-fixture
+pdftoppm -png -r 144 tmp/pdfs/brochure-fixture.pdf tmp/pdfs/brochure-fixture   # if Poppler is available
+```
 
-- Run focused renderer tests after PDF changes:
-  `pnpm --filter @pkg/pdf test -- src/brochure/brochure-pdf-renderer.test.ts src/quote-document/quote-document-pdf-renderer.test.ts`
-- Run `pnpm --filter @pkg/pdf typecheck`.
-- For font changes, generate a sample PDF and confirm embedded font names if the change could fall back silently.
+- Output goes to `tmp/pdfs/` at the repository root. Remove those artifacts before finishing unless asked
+  to keep them. If Poppler is unavailable, open the PDF and say that PNG rendering was skipped.
+- Inspect every page for typography, spacing, margins, footer placement, image cropping, and the
+  standard/optional assembly columns.
+- `BROCHURE_FIXTURE_VARIANT=sparse|reference|dense` varies key-feature, assembly, and description sizes;
+  `BROCHURE_FIXTURE_LOCALE=en|af` picks the localized variant.
+- `BROCHURE_HERO_IMAGE` / `BROCHURE_TECHNICAL_IMAGE` / `BROCHURE_SECONDARY_IMAGE` point the fixture at real
+  product images without committing them.
+
+Then run the focused renderer tests:
+
+```sh
+pnpm --filter @pkg/pdf test -- src/brochure/brochure-pdf-renderer.test.ts src/quote-document/quote-document-pdf-renderer.test.ts
+```

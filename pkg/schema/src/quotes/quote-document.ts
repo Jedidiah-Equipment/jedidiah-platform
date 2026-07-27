@@ -19,7 +19,7 @@ export type QuoteDocumentWorkItem = {
 };
 
 /**
- * One charge making up a Work Item total: the Work Item's Labour, priced as hours at the Quote's
+ * One charge making up a Work Item total: the Work Item's Labour, priced as hours at its own snapshotted
  * hourly rate, or one of its Parts. Shared by every surface that shows a Work Item breakdown.
  */
 export type QuoteWorkItemCharge = {

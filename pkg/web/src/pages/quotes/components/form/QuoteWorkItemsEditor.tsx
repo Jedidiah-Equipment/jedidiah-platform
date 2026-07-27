@@ -68,58 +68,57 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
       ) : (
         workItems.map((workItem, workItemIndex) => (
           <div className="grid gap-4 rounded-md border bg-muted/10 p-3" key={getWorkItemKey(workItem)}>
-            <div className="grid gap-3 md:grid-cols-[10rem_minmax(0,1fr)_7rem_9rem_10rem_auto]">
-              <quoteForm.AppField name={`workItems[${workItemIndex}].department`}>
-                {(field) => (
-                  <field.SelectField
-                    disabled={readOnly}
-                    label="Department"
-                    onValueCommit={(value) => {
-                      // A departmental row is labour: hours at the Department's rate. Other is a flat
-                      // amount, stored as one unit at that amount — the shape the shop's own quote uses.
-                      // Whichever text field the switch hides is cleared, so nothing the salesperson can
-                      // no longer see reaches the customer's document.
-                      const isOther = value === OTHER_WORK_ITEM_DEPARTMENT;
-                      quoteForm.setFieldValue(`workItems[${workItemIndex}].${isOther ? 'description' : 'name'}`, '');
-                      quoteForm.setFieldValue(
-                        `workItems[${workItemIndex}].hourlyRate`,
-                        isOther ? 0 : workItemDepartmentRate(value as Department),
-                      );
-                      if (isOther) quoteForm.setFieldValue(`workItems[${workItemIndex}].hours`, 1);
-                    }}
-                    options={DEPARTMENT_OPTIONS}
-                  />
-                )}
-              </quoteForm.AppField>
-              {/* The array field only re-renders when the array itself changes, so the Department-dependent
-                  cells subscribe to their own values rather than reading a render-time snapshot. */}
-              <quoteForm.Subscribe selector={(state) => state.values.workItems[workItemIndex]?.department}>
-                {(department) =>
-                  department === OTHER_WORK_ITEM_DEPARTMENT ? (
-                    <quoteForm.AppField name={`workItems[${workItemIndex}].name`}>
-                      {(field) => <field.TextField autoComplete="off" disabled={readOnly} label="Work item" />}
+            {/* One subscription drives the whole row: the array field alone would not re-render when a
+                nested Department changes. An Other line drops the Hours column outright rather than
+                stretching its Amount across it, so the name gets the freed width. */}
+            <quoteForm.Subscribe selector={(state) => state.values.workItems[workItemIndex]?.department}>
+              {(department) => {
+                const isOther = department === OTHER_WORK_ITEM_DEPARTMENT;
+
+                return (
+                  <div
+                    className={cn(
+                      'grid gap-3',
+                      isOther
+                        ? 'md:grid-cols-[8.5rem_minmax(0,1fr)_7.5rem_8.5rem_auto]'
+                        : 'md:grid-cols-[8.5rem_minmax(0,1fr)_5rem_7.5rem_8.5rem_auto]',
+                    )}
+                  >
+                    <quoteForm.AppField name={`workItems[${workItemIndex}].department`}>
+                      {(field) => (
+                        <field.SelectField
+                          disabled={readOnly}
+                          label="Department"
+                          onValueCommit={(value) => {
+                            // A departmental row is labour: hours at the Department's rate. Other is a
+                            // flat amount, held as one unit at that amount — the shape the shop's own
+                            // quote uses. Whichever text field the switch hides is cleared, so nothing
+                            // the salesperson can no longer see reaches the customer's document.
+                            const nextIsOther = value === OTHER_WORK_ITEM_DEPARTMENT;
+                            quoteForm.setFieldValue(
+                              `workItems[${workItemIndex}].${nextIsOther ? 'description' : 'name'}`,
+                              '',
+                            );
+                            quoteForm.setFieldValue(
+                              `workItems[${workItemIndex}].hourlyRate`,
+                              nextIsOther ? 0 : workItemDepartmentRate(value as Department),
+                            );
+                            if (nextIsOther) quoteForm.setFieldValue(`workItems[${workItemIndex}].hours`, 1);
+                          }}
+                          options={DEPARTMENT_OPTIONS}
+                        />
+                      )}
                     </quoteForm.AppField>
-                  ) : (
-                    <quoteForm.AppField name={`workItems[${workItemIndex}].description`}>
-                      {(field) => <field.TextField autoComplete="off" disabled={readOnly} label="Description" />}
-                    </quoteForm.AppField>
-                  )
-                }
-              </quoteForm.Subscribe>
-              {/* Labour is priced as hours x rate; an Other line is a flat amount the salesperson
-                  enters directly, held as one unit at that amount. */}
-              <quoteForm.Subscribe selector={(state) => state.values.workItems[workItemIndex]?.department}>
-                {(department) =>
-                  department === OTHER_WORK_ITEM_DEPARTMENT ? (
-                    <div className="md:col-span-2">
-                      <quoteForm.AppField name={`workItems[${workItemIndex}].hourlyRate`}>
-                        {(field) => (
-                          <field.CurrencyField currencyCode={currencyCode} disabled={readOnly} label="Amount" />
-                        )}
+                    {isOther ? (
+                      <quoteForm.AppField name={`workItems[${workItemIndex}].name`}>
+                        {(field) => <field.TextField autoComplete="off" disabled={readOnly} label="Work item" />}
                       </quoteForm.AppField>
-                    </div>
-                  ) : (
-                    <>
+                    ) : (
+                      <quoteForm.AppField name={`workItems[${workItemIndex}].description`}>
+                        {(field) => <field.TextField autoComplete="off" disabled={readOnly} label="Description" />}
+                      </quoteForm.AppField>
+                    )}
+                    {isOther ? null : (
                       <quoteForm.AppField name={`workItems[${workItemIndex}].hours`}>
                         {(field) => (
                           <field.NumberField
@@ -132,51 +131,57 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                           />
                         )}
                       </quoteForm.AppField>
-                      <quoteForm.AppField name={`workItems[${workItemIndex}].hourlyRate`}>
-                        {(field) => (
-                          <field.CurrencyField currencyCode={currencyCode} disabled={readOnly} label="Rate" />
-                        )}
-                      </quoteForm.AppField>
-                    </>
-                  )
-                }
-              </quoteForm.Subscribe>
-              {/* Mirrors the field primitive's flex column: a grid's auto rows would stretch when a
-                  sibling field grows to show a validation message, dropping this out of line. */}
-              <div className="flex flex-col gap-2">
-                <span className="font-medium text-sm leading-snug">Total</span>
-                <quoteForm.Subscribe selector={(state) => state.values.workItems[workItemIndex]}>
-                  {(currentWorkItem) => (
-                    <span className="flex h-8 shrink-0 items-center rounded-md border bg-background px-2.5 text-sm tabular-nums">
-                      {formatCurrency(
-                        currentWorkItem ? getWorkItemFormTotal({ workItem: toQuoteWorkItemInput(currentWorkItem) }) : 0,
-                        currencyCode,
+                    )}
+                    <quoteForm.AppField name={`workItems[${workItemIndex}].hourlyRate`}>
+                      {(field) => (
+                        <field.CurrencyField
+                          currencyCode={currencyCode}
+                          disabled={readOnly}
+                          label={isOther ? 'Amount' : 'Rate'}
+                        />
                       )}
-                    </span>
-                  )}
-                </quoteForm.Subscribe>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                {/* Reserves the sibling label row so the button stays level with the inputs. */}
-                <span aria-hidden className="invisible font-medium text-sm leading-snug">
-                  Remove
-                </span>
-                <Button
-                  aria-label={`Remove work item ${workItemIndex + 1}`}
-                  className={cn('my-0.5 shrink-0', readOnly ? 'invisible' : '')}
-                  disabled={readOnly}
-                  onClick={() => {
-                    workItemsField.removeValue(workItemIndex);
-                    onRemoveWorkItem();
-                  }}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <IconTrash />
-                </Button>
-              </div>
-            </div>
+                    </quoteForm.AppField>
+                    {/* Mirrors the field primitive's flex column: a grid's auto rows would stretch when a
+                        sibling field grows to show a validation message, dropping this out of line. */}
+                    <div className="flex flex-col gap-2">
+                      <span className="font-medium text-sm leading-snug">Total</span>
+                      <quoteForm.Subscribe selector={(state) => state.values.workItems[workItemIndex]}>
+                        {(currentWorkItem) => (
+                          <span className="flex h-8 shrink-0 items-center rounded-md border bg-background px-2.5 text-sm tabular-nums">
+                            {formatCurrency(
+                              currentWorkItem
+                                ? getWorkItemFormTotal({ workItem: toQuoteWorkItemInput(currentWorkItem) })
+                                : 0,
+                              currencyCode,
+                            )}
+                          </span>
+                        )}
+                      </quoteForm.Subscribe>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      {/* Reserves the sibling label row so the button stays level with the inputs. */}
+                      <span aria-hidden className="invisible font-medium text-sm leading-snug">
+                        Remove
+                      </span>
+                      <Button
+                        aria-label={`Remove work item ${workItemIndex + 1}`}
+                        className={cn('my-0.5 shrink-0', readOnly ? 'invisible' : '')}
+                        disabled={readOnly}
+                        onClick={() => {
+                          workItemsField.removeValue(workItemIndex);
+                          onRemoveWorkItem();
+                        }}
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <IconTrash />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }}
+            </quoteForm.Subscribe>
 
             <quoteForm.Field name={`workItems[${workItemIndex}].parts`} mode="array">
               {(partsField) => (
@@ -199,7 +204,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                   ) : (
                     partsField.state.value.map((part, partIndex) => (
                       <div
-                        className="grid gap-2 md:grid-cols-[minmax(0,1fr)_7rem_10rem_auto]"
+                        className="grid gap-2 md:grid-cols-[minmax(0,1fr)_5rem_8.5rem_auto]"
                         key={getWorkItemPartKey(part)}
                       >
                         <quoteForm.AppField name={`workItems[${workItemIndex}].parts[${partIndex}].name`}>

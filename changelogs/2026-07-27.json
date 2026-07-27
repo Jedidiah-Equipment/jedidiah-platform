@@ -1,0 +1,44 @@
+{
+  "releasedAt": "2026-07-27T12:23:02.961Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Price work by department",
+          "description": "Assign each quote work item to Fabrication, Paint, Workshop, or Other so labour uses the appropriate rate. Job sheets now show the department and estimated hours for each item."
+        },
+        {
+          "title": "Show complete quote breakdowns",
+          "description": "Generated quote PDFs now show the parts and labour included in each work item while keeping related rows together."
+        },
+        {
+          "title": "Keep long quote tables clear",
+          "description": "Column headings now repeat on every page when a quote pricing table spans multiple pages."
+        },
+        {
+          "title": "Simplify product information",
+          "description": "The Technical Details field has been removed from products and related screens."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Improve assembly page spacing",
+          "description": "The assembly section heading now sits closer to its content for a cleaner layout."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Keep the assistant composer visible",
+          "description": "The message composer now stays above the keyboard while you chat with the assistant."
+        }
+      ]
+    }
+  ]
+}

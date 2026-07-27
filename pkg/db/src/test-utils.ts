@@ -6,6 +6,11 @@ import { getDatabaseUrl } from './env.js';
 import { schema } from './schema.js';
 
 const migrationsFolder = new URL('../migrations', import.meta.url).pathname;
+// Default names encode the owner PID so startup cleanup can distinguish dead runs from live workers.
+const ephemeralTestDatabaseNamePattern = /^jedidiah_ephemeral_(\d+)_[a-f0-9]{12}$/;
+const staleDatabaseSweepLockNamespace = 0x4a_45_44;
+const staleDatabaseSweepLockKey = 1;
+const createdEphemeralTestDatabases = new Map<string, string>();
 
 export type EphemeralTestDatabase = {
   databaseName: string;
@@ -69,6 +74,7 @@ export async function createEphemeralTestDatabase({
     const quotedTemplateDatabaseName = quoteIdentifier(templateDatabaseName);
 
     await adminClient.unsafe(`CREATE DATABASE ${quotedDatabaseName} TEMPLATE ${quotedTemplateDatabaseName}`);
+    createdEphemeralTestDatabases.set(databaseName, templateDatabaseUrl);
 
     return {
       databaseName,
@@ -79,6 +85,111 @@ export async function createEphemeralTestDatabase({
   }
 }
 
+export async function dropTrackedTestDatabases(): Promise<void> {
+  const trackedDatabases = [...createdEphemeralTestDatabases];
+  const cleanupResults = await Promise.allSettled(
+    trackedDatabases.map(([databaseName, databaseUrl]) => dropTestDatabase(databaseName, databaseUrl)),
+  );
+  const cleanupErrors = cleanupResults.flatMap((result, index) => {
+    if (result.status === 'fulfilled') {
+      return [];
+    }
+
+    const databaseName = trackedDatabases[index]?.[0] ?? 'unknown';
+    return [new Error(`Failed to drop tracked test database ${databaseName}`, { cause: result.reason })];
+  });
+
+  if (cleanupErrors.length > 0) {
+    throw new AggregateError(cleanupErrors, 'Failed to drop one or more tracked test databases');
+  }
+}
+
+export async function sweepStaleTestDatabases(databaseUrl = getTestTemplateDatabaseUrl()): Promise<void> {
+  const adminClient = createAdminClient(databaseUrl);
+  const cleanupErrors: Error[] = [];
+
+  try {
+    // Turbo starts several DB-backed Vitest projects together; one sweeps while the others continue.
+    const acquiredSweepLock = await tryAcquireStaleDatabaseSweepLock(adminClient);
+    if (!acquiredSweepLock) {
+      return;
+    }
+
+    try {
+      const staleDatabaseNames = await listStaleTestDatabaseNames(adminClient);
+
+      for (const databaseName of staleDatabaseNames) {
+        try {
+          await dropDatabaseIfExists(adminClient, databaseName);
+        } catch (error) {
+          cleanupErrors.push(new Error(`Failed to drop stale test database ${databaseName}`, { cause: error }));
+        }
+      }
+    } finally {
+      await releaseStaleDatabaseSweepLock(adminClient);
+    }
+  } finally {
+    await adminClient.end();
+  }
+
+  if (cleanupErrors.length > 0) {
+    throw new AggregateError(cleanupErrors, 'Failed to drop one or more stale test databases');
+  }
+}
+
+async function listStaleTestDatabaseNames(adminClient: postgres.Sql): Promise<string[]> {
+  const databases = await adminClient<{ databaseName: string }[]>`
+    SELECT datname AS "databaseName"
+    FROM pg_database
+    WHERE datname LIKE 'jedidiah_ephemeral_%'
+  `;
+
+  return databases
+    .filter(({ databaseName }) => {
+      const ownerProcessId = getOwnerProcessId(databaseName);
+      return ownerProcessId !== null && !isProcessAlive(ownerProcessId);
+    })
+    .map(({ databaseName }) => databaseName);
+}
+
+async function tryAcquireStaleDatabaseSweepLock(adminClient: postgres.Sql): Promise<boolean> {
+  const lockResults = await adminClient<{ acquired: boolean }[]>`
+    SELECT pg_try_advisory_lock(
+      ${staleDatabaseSweepLockNamespace}::integer,
+      ${staleDatabaseSweepLockKey}::integer
+    ) AS "acquired"
+  `;
+
+  return lockResults[0]?.acquired ?? false;
+}
+
+async function releaseStaleDatabaseSweepLock(adminClient: postgres.Sql): Promise<void> {
+  await adminClient`
+    SELECT pg_advisory_unlock(
+      ${staleDatabaseSweepLockNamespace}::integer,
+      ${staleDatabaseSweepLockKey}::integer
+    )
+  `;
+}
+
+function getOwnerProcessId(databaseName: string): number | null {
+  const match = ephemeralTestDatabaseNamePattern.exec(databaseName);
+  const ownerProcessId = Number(match?.[1]);
+
+  return Number.isSafeInteger(ownerProcessId) && ownerProcessId > 0 ? ownerProcessId : null;
+}
+
+function isProcessAlive(processId: number): boolean {
+  try {
+    process.kill(processId, 0);
+    return true;
+  } catch (error) {
+    // Only a confirmed missing process is safe to sweep; permission and platform errors stay untouched.
+    // A recycled PID can defer cleanup, but an age override could drop a genuinely live long test run.
+    return (error as NodeJS.ErrnoException).code !== 'ESRCH';
+  }
+}
+
 export async function dropTestDatabase(databaseName: string, databaseUrl = getTestTemplateDatabaseUrl()) {
   const adminClient = createAdminClient(databaseUrl);
 
@@ -86,6 +197,10 @@ export async function dropTestDatabase(databaseName: string, databaseUrl = getTe
     await dropDatabaseIfExists(adminClient, databaseName);
   } finally {
     await adminClient.end();
+  }
+
+  if (createdEphemeralTestDatabases.get(databaseName) === databaseUrl) {
+    createdEphemeralTestDatabases.delete(databaseName);
   }
 }
 

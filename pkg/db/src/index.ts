@@ -23,9 +23,11 @@ export {
   createEphemeralTestDatabase,
   createTestDatabaseName,
   dropTestDatabase,
+  dropTrackedTestDatabases,
   type EphemeralTestDatabase,
   getTestTemplateDatabaseUrl,
   type RecreateTestTemplateDatabaseOptions,
   recreateTestTemplateDatabase,
+  sweepStaleTestDatabases,
 } from './test-utils.js';
 export type { DatabaseTransaction } from './types.js';

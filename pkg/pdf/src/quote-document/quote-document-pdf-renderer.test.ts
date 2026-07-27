@@ -1,8 +1,10 @@
 import type { QuoteDocumentModel } from '@pkg/schema';
-import { isValidElement, type ReactElement, type ReactNode } from 'react';
+import { renderToBuffer } from '@react-pdf/renderer';
+import { cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getSalesContactLine } from './QuoteDocumentHeader.js';
+import { QuoteDocumentPdf } from './QuoteDocumentPdf.js';
 import { QuoteDocumentPricingTable } from './QuoteDocumentPricingTable.js';
 import { renderQuoteDocumentPdf } from './quote-document-pdf-renderer.js';
 
@@ -88,6 +90,25 @@ describe('renderQuoteDocumentPdf', () => {
     expect(flattenStyle(quantityCell?.props.style)).toMatchObject({ textAlign: 'right' });
   });
 
+  test('repeats the column headings on every page the pricing table spans, and only those', async () => {
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      workItems: Array.from({ length: 22 }, (_, index) => ({
+        amount: 850,
+        charges: [{ amount: 850, kind: 'labour' as const, label: 'Labour', quantity: 1, unitPrice: 850 }],
+        description: null,
+        name: `Workshop ${index + 1}`,
+      })),
+    };
+    const pages = await renderPageText(document);
+
+    expect(pages.length).toBeGreaterThan(2);
+    for (const pageText of pages) {
+      const carriesPricingRows = pageText.some((value) => value.startsWith('Workshop '));
+      expect(pageText.filter((value) => value === 'Description')).toHaveLength(carriesPricingRows ? 1 : 0);
+    }
+  });
+
   test('keeps each Work Item heading with its first breakdown row across page breaks', () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
@@ -113,7 +134,7 @@ describe('renderQuoteDocumentPdf', () => {
   });
 });
 
-type RenderedElement = ReactElement<{ children?: ReactNode; style?: unknown; wrap?: boolean }>;
+type RenderedElement = ReactElement<{ children?: ReactNode; fixed?: boolean; style?: unknown; wrap?: boolean }>;
 
 /**
  * Walks a rendered tree in document order, invoking function components as it goes so callers see
@@ -162,6 +183,29 @@ function findUnbreakableGroup(node: ReactNode, expectedText: string[]): Rendered
   }
 
   return null;
+}
+
+type LayoutNode = { children?: LayoutNode[]; type: string; value?: string };
+
+/**
+ * Paginates a document the way the renderer does and reports the text laid out on each page, so a
+ * test can assert on what a reader sees per page rather than on the layout props that get it there.
+ */
+async function renderPageText(document: QuoteDocumentModel): Promise<string[][]> {
+  let layout: LayoutNode | undefined;
+  const onRender = ({ _INTERNAL__LAYOUT__DATA_ }: { _INTERNAL__LAYOUT__DATA_: LayoutNode }) => {
+    layout = _INTERNAL__LAYOUT__DATA_;
+  };
+
+  await renderToBuffer(cloneElement(QuoteDocumentPdf({ document }), { onRender } as never));
+
+  return (layout?.children ?? []).map(collectLayoutText);
+}
+
+function collectLayoutText(node: LayoutNode): string[] {
+  if (node.type === 'TEXT_INSTANCE') return node.value === undefined ? [] : [node.value];
+
+  return (node.children ?? []).flatMap(collectLayoutText);
 }
 
 function flattenStyle(style: unknown): Record<string, unknown> {

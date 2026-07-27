@@ -113,7 +113,8 @@ export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTabl
 
 function TableHeader() {
   return (
-    <View style={pdfStyles.flexRow}>
+    // `fixed` reprints the headings wherever the table continues onto a new page.
+    <View fixed style={pdfStyles.flexRow}>
       <Text
         style={[
           pdfStyles.bgBlack,

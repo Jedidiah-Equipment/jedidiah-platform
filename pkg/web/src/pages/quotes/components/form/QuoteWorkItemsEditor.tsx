@@ -141,11 +141,13 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                   )
                 }
               </quoteForm.Subscribe>
-              <div className="grid gap-2">
+              {/* Mirrors the field primitive's flex column: a grid's auto rows would stretch when a
+                  sibling field grows to show a validation message, dropping this out of line. */}
+              <div className="flex flex-col gap-2">
                 <span className="font-medium text-sm leading-snug">Total</span>
                 <quoteForm.Subscribe selector={(state) => state.values.workItems[workItemIndex]}>
                   {(currentWorkItem) => (
-                    <span className="flex h-8 items-center rounded-md border bg-background px-2.5 text-sm tabular-nums">
+                    <span className="flex h-8 shrink-0 items-center rounded-md border bg-background px-2.5 text-sm tabular-nums">
                       {formatCurrency(
                         currentWorkItem ? getWorkItemFormTotal({ workItem: toQuoteWorkItemInput(currentWorkItem) }) : 0,
                         currencyCode,
@@ -154,10 +156,14 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                   )}
                 </quoteForm.Subscribe>
               </div>
-              <div className="flex items-end justify-end">
+              <div className="flex flex-col items-end gap-2">
+                {/* Reserves the sibling label row so the button stays level with the inputs. */}
+                <span aria-hidden className="invisible font-medium text-sm leading-snug">
+                  Remove
+                </span>
                 <Button
                   aria-label={`Remove work item ${workItemIndex + 1}`}
-                  className={cn('mb-0.5', readOnly ? 'invisible' : '')}
+                  className={cn('my-0.5 shrink-0', readOnly ? 'invisible' : '')}
                   disabled={readOnly}
                   onClick={() => {
                     workItemsField.removeValue(workItemIndex);
@@ -216,10 +222,14 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                             <field.CurrencyField currencyCode={currencyCode} disabled={readOnly} label="Unit price" />
                           )}
                         </quoteForm.AppField>
-                        <div className="flex items-end justify-end">
+                        <div className="flex flex-col items-end gap-2">
+                          {/* Reserves the sibling label row so the button stays level with the inputs. */}
+                          <span aria-hidden className="invisible font-medium text-sm leading-snug">
+                            Remove
+                          </span>
                           <Button
                             aria-label={`Remove part ${partIndex + 1} from work item ${workItemIndex + 1}`}
-                            className={cn('mb-0.5', readOnly ? 'invisible' : '')}
+                            className={cn('my-0.5 shrink-0', readOnly ? 'invisible' : '')}
                             disabled={readOnly}
                             onClick={() => {
                               partsField.removeValue(partIndex);

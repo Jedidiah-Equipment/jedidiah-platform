@@ -6,6 +6,7 @@ export default defineConfig({
   },
   test: {
     exclude: [...configDefaults.exclude, 'dist/**', '.output/**'],
-    setupFiles: ['./src/test/setup.ts'],
+    globalSetup: ['../db/src/test-global-setup.ts'],
+    setupFiles: ['./src/test/setup.ts', '../db/src/test-setup.ts'],
   },
 });

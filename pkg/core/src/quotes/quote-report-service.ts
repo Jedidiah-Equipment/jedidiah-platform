@@ -33,13 +33,13 @@ type ReportQuotePricingRow = {
   deliveryIncluded: boolean;
   deliveryPrice: number;
   discountPercent: number;
-  hourlyRate: number | null;
   kind: 'custom' | 'product';
   quotedBasePrice: number;
 };
 
 type ReportQuotePricingSelection = { productAssemblyId: UUID | null; quotedPrice: number };
 type ReportQuotePricingWorkItem = {
+  hourlyRate: number;
   hours: number;
   parts: readonly { quantity: number; unitPrice: number }[];
 };
@@ -129,7 +129,6 @@ export async function summarizeQuotePipeline({
         deliveryIncluded: quotes.deliveryIncluded,
         deliveryPrice: quotes.deliveryPrice,
         discountPercent: quotes.discountPercent,
-        hourlyRate: quotes.hourlyRate,
         id: quotes.id,
         kind: quotes.kind,
         quotedBasePrice: quotes.quotedBasePrice,
@@ -191,7 +190,6 @@ export async function listStaleSentQuotes({
       deliveryIncluded: quotes.deliveryIncluded,
       deliveryPrice: quotes.deliveryPrice,
       discountPercent: quotes.discountPercent,
-      hourlyRate: quotes.hourlyRate,
       id: quotes.id,
       kind: quotes.kind,
       quotedBasePrice: quotes.quotedBasePrice,
@@ -246,10 +244,7 @@ function priceReportQuote({
 
   if (row.kind === 'product') return pricePersistedQuote({ ...commonFacts, kind: 'product' });
 
-  // A Custom Quote without its persisted rate is corrupt and must never be silently underpriced.
-  if (row.hourlyRate === null) throw new Error('Custom Quote is missing its hourly rate');
-
-  return pricePersistedQuote({ ...commonFacts, hourlyRate: row.hourlyRate, kind: 'custom', workItems });
+  return pricePersistedQuote({ ...commonFacts, kind: 'custom', workItems });
 }
 
 function getPlantWeekRange({ now, weekCount }: { now: Date; weekCount: number }) {

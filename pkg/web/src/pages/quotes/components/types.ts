@@ -1,9 +1,10 @@
-import { computeAdditionalDeliveryPrice, DEFAULT_CUSTOM_HOURLY_RATE, toQuoteWorkItemFormState } from '@pkg/domain';
+import { computeAdditionalDeliveryPrice, toQuoteWorkItemFormState } from '@pkg/domain';
 import {
   AuthId,
   CustomerCompanyName,
   DateIsoString,
   DateOnlyIsoString,
+  Department,
   getQuoteDeliveryPricingError,
   Price,
   QuoteCancellationReason,
@@ -12,13 +13,17 @@ import {
   type QuoteDetail,
   QuoteDiscountPercent,
   QuoteDocumentNotes,
-  QuoteHourlyRate,
   QuoteKind,
   QuoteNotes,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
   QuoteUpdateInput,
-  QuoteWorkItemFormValue,
+  QuoteWorkItemHourlyRate,
+  QuoteWorkItemHours,
+  type QuoteWorkItemInput,
+  QuoteWorkItemName,
+  QuoteWorkItemPartName,
+  QuoteWorkItemPartQuantity,
   QuoteWorkTitle,
   UUID,
 } from '@pkg/schema';
@@ -28,15 +33,42 @@ import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-s
 
 export const CustomerMode = z.enum(['existing', 'inline']);
 
-const QuoteCreateBasePrice = z.union([Price, z.nan()]);
-const QuoteCreateHourlyRate = z.union([QuoteHourlyRate, z.nan()]);
+/** The picker's fourth option. A Work Item with no Department is the only shape that carries a name. */
+export const OTHER_WORK_ITEM_DEPARTMENT = 'other';
+
+const WorkItemDepartmentSelection = z.union([Department, z.literal(OTHER_WORK_ITEM_DEPARTMENT)]);
+
+const QuoteWorkItemPartFormInput = z.object({
+  name: QuoteWorkItemPartName,
+  quantity: QuoteWorkItemPartQuantity,
+  unitPrice: Price,
+});
+
+/**
+ * Browser shape for a Work Item: the nullable `name` and `description` collapse to `''` for
+ * controlled inputs, and a name is required only for the department-less "Other" item — the same
+ * pairing `QuoteWorkItemInput` enforces at the API boundary.
+ */
+const QuoteWorkItemFormInput = z
+  .object({
+    department: WorkItemDepartmentSelection,
+    description: z.string(),
+    hourlyRate: QuoteWorkItemHourlyRate,
+    hours: QuoteWorkItemHours,
+    name: z.string(),
+    parts: z.array(QuoteWorkItemPartFormInput),
+  })
+  .superRefine((value, context) => {
+    if (value.department === OTHER_WORK_ITEM_DEPARTMENT && !QuoteWorkItemName.safeParse(value.name).success) {
+      context.addIssue({ code: 'custom', message: 'Work item name is required', path: ['name'] });
+    }
+  });
+
 export const QuoteCreateStatus = QuoteStatus.exclude(['cancelled']);
 
 const QuoteCreateFormValuesShape = z.object({
   customerId: z.string(),
   customerMode: CustomerMode,
-  basePrice: QuoteCreateBasePrice,
-  hourlyRate: QuoteCreateHourlyRate,
   inlineCompanyName: z.string(),
   kind: QuoteKind,
   productId: z.string(),
@@ -58,8 +90,6 @@ export const QuoteFormValues = z
     deliveryIncluded: z.boolean(),
     deliveryPrice: Price,
     discountPercent: QuoteDiscountPercent,
-    basePrice: Price,
-    hourlyRate: QuoteHourlyRate,
     notes: emptyStringOr(QuoteNotes),
     documentNotes: emptyStringOr(QuoteDocumentNotes),
     plannedDeliveryDate: emptyStringOr(DateOnlyIsoString),
@@ -69,7 +99,7 @@ export const QuoteFormValues = z
     status: QuoteStatus,
     validUntil: emptyStringOr(DateIsoString),
     workTitle: z.string(),
-    workItems: z.array(QuoteWorkItemFormValue),
+    workItems: z.array(QuoteWorkItemFormInput),
   })
   .strict();
 
@@ -111,8 +141,6 @@ export const emptyQuoteFormValues: QuoteFormValues = {
   deliveryIncluded: true,
   deliveryPrice: 0,
   discountPercent: 0,
-  basePrice: 0,
-  hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
   notes: '',
   documentNotes: '',
   plannedDeliveryDate: '',
@@ -126,8 +154,6 @@ export const emptyQuoteFormValues: QuoteFormValues = {
 };
 
 export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
-  basePrice: 0,
-  hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
   customerId: '',
   customerMode: 'existing',
   inlineCompanyName: '',
@@ -145,9 +171,13 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
  */
 export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
   return {
-    basePrice: initialQuote.quotedBasePrice,
     cancellationReason: initialQuote.cancellationReason ?? '',
-    ...toQuoteWorkItemFormState(initialQuote),
+    workItems: toQuoteWorkItemFormState(initialQuote).workItems.map((workItem) => ({
+      ...workItem,
+      department: workItem.department ?? OTHER_WORK_ITEM_DEPARTMENT,
+      description: workItem.description ?? '',
+      name: workItem.name ?? '',
+    })),
     depositPercent: initialQuote.depositPercent,
     deliveryIncluded: initialQuote.deliveryIncluded,
     deliveryPrice: initialQuote.deliveryPrice,
@@ -182,12 +212,7 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
     offering:
       value.kind === 'product'
         ? { kind: 'product', productId: value.productId }
-        : {
-            kind: 'custom',
-            basePrice: value.basePrice,
-            hourlyRate: value.hourlyRate,
-            workTitle: value.workTitle,
-          },
+        : { kind: 'custom', workTitle: value.workTitle },
     salesPersonId: value.salesPersonId,
     status: value.status,
   });
@@ -208,13 +233,7 @@ export function toQuoteUpdateInput({
     offering:
       kind === 'product'
         ? { kind: 'product' }
-        : {
-            kind: 'custom',
-            basePrice: value.basePrice,
-            hourlyRate: value.hourlyRate,
-            workTitle: value.workTitle,
-            workItems: value.workItems,
-          },
+        : { kind: 'custom', workTitle: value.workTitle, workItems: value.workItems.map(toQuoteWorkItemInput) },
     deliveryIncluded: value.deliveryIncluded,
     deliveryPrice: computeAdditionalDeliveryPrice(value),
     depositPercent: value.depositPercent,
@@ -228,6 +247,30 @@ export function toQuoteUpdateInput({
     status: value.status,
     validUntil: value.validUntil || null,
   });
+}
+
+/**
+ * Browser shape → API. A Work Item with a Department stores no name — it is labelled by the
+ * Department — so the browser's `''` placeholder never reaches the server as an empty string.
+ */
+export function toQuoteWorkItemInput(workItem: QuoteFormValues['workItems'][number]): QuoteWorkItemInput {
+  return workItem.department === OTHER_WORK_ITEM_DEPARTMENT
+    ? {
+        department: null,
+        description: workItem.description || null,
+        hourlyRate: workItem.hourlyRate,
+        hours: workItem.hours,
+        name: workItem.name,
+        parts: workItem.parts,
+      }
+    : {
+        department: workItem.department,
+        description: workItem.description || null,
+        hourlyRate: workItem.hourlyRate,
+        hours: workItem.hours,
+        name: null,
+        parts: workItem.parts,
+      };
 }
 
 function refineQuoteCustomerSelection(
@@ -252,7 +295,7 @@ function refineQuoteCustomerSelection(
 }
 
 function refineQuoteOfferingSelection(
-  value: Pick<QuoteCreateFormSelectionValues, 'basePrice' | 'hourlyRate' | 'kind' | 'productId' | 'workTitle'>,
+  value: Pick<QuoteCreateFormSelectionValues, 'kind' | 'productId' | 'workTitle'>,
   context: z.RefinementCtx,
 ) {
   if (value.kind === 'product' && !UUID.safeParse(value.productId).success) {
@@ -268,22 +311,6 @@ function refineQuoteOfferingSelection(
       code: 'custom',
       message: 'Work title is required',
       path: ['workTitle'],
-    });
-  }
-
-  if (value.kind === 'custom' && !Price.safeParse(value.basePrice).success) {
-    context.addIssue({
-      code: 'custom',
-      message: 'Base price is required',
-      path: ['basePrice'],
-    });
-  }
-
-  if (value.kind === 'custom' && !QuoteHourlyRate.safeParse(value.hourlyRate).success) {
-    context.addIssue({
-      code: 'custom',
-      message: 'Hourly rate is required',
-      path: ['hourlyRate'],
     });
   }
 }

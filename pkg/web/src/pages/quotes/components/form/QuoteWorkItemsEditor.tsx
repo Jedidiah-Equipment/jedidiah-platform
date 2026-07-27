@@ -1,23 +1,49 @@
-import { createStableRowKeys, formatCurrency, getWorkItemFormTotal } from '@pkg/domain';
+import {
+  createStableRowKeys,
+  formatCurrency,
+  getWorkItemFormTotal,
+  quoteDepartmentLabels,
+  WORK_ITEM_DEPARTMENTS,
+  workItemDepartmentRate,
+} from '@pkg/domain';
+import type { Department } from '@pkg/schema';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi } from '@/components/form/types.js';
 import { Button } from '@/components/ui/button.js';
 import { cn } from '@/lib/utils.js';
-import { emptyQuoteFormValues, type QuoteFormValues } from '../types.js';
+import {
+  emptyQuoteFormValues,
+  OTHER_WORK_ITEM_DEPARTMENT,
+  type QuoteFormValues,
+  toQuoteWorkItemInput,
+} from '../types.js';
 
 type QuoteWorkItemFormInput = QuoteFormValues['workItems'][number];
 
 type QuoteWorkItemsEditorProps = {
   currencyCode: string;
-  hourlyRate: number;
   onRemoveWorkItem: () => void;
   readOnly: boolean;
   workItemsField: ArrayFieldApi<QuoteWorkItemFormInput>;
 };
 
-const DEFAULT_WORK_ITEM: QuoteWorkItemFormInput = { hours: 0, name: '', parts: [] };
+const DEFAULT_DEPARTMENT = WORK_ITEM_DEPARTMENTS[0] ?? OTHER_WORK_ITEM_DEPARTMENT;
+
+const DEPARTMENT_OPTIONS = [
+  ...WORK_ITEM_DEPARTMENTS.map((department) => ({ label: quoteDepartmentLabels[department], value: department })),
+  { label: 'Other', value: OTHER_WORK_ITEM_DEPARTMENT },
+];
+
+const DEFAULT_WORK_ITEM: QuoteWorkItemFormInput = {
+  department: DEFAULT_DEPARTMENT,
+  description: '',
+  hourlyRate: DEFAULT_DEPARTMENT === OTHER_WORK_ITEM_DEPARTMENT ? 0 : workItemDepartmentRate(DEFAULT_DEPARTMENT),
+  hours: 0,
+  name: '',
+  parts: [],
+};
 const DEFAULT_WORK_ITEM_PART: QuoteWorkItemFormInput['parts'][number] = { name: '', quantity: 1, unitPrice: 0 };
 const getWorkItemKey = createStableRowKeys<QuoteWorkItemFormInput>('quote-work-item');
 const getWorkItemPartKey = createStableRowKeys<QuoteWorkItemFormInput['parts'][number]>('quote-work-item-part');
@@ -28,7 +54,6 @@ function useQuoteForm() {
 
 export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
   currencyCode,
-  hourlyRate,
   onRemoveWorkItem,
   readOnly,
   workItemsField,
@@ -43,27 +68,91 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
       ) : (
         workItems.map((workItem, workItemIndex) => (
           <div className="grid gap-4 rounded-md border bg-muted/10 p-3" key={getWorkItemKey(workItem)}>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_8rem_10rem_auto]">
-              <quoteForm.AppField name={`workItems[${workItemIndex}].name`}>
-                {(field) => <field.TextField autoComplete="off" disabled={readOnly} label="Work item" />}
-              </quoteForm.AppField>
-              <quoteForm.AppField name={`workItems[${workItemIndex}].hours`}>
+            <div className="grid gap-3 md:grid-cols-[10rem_minmax(0,1fr)_7rem_9rem_10rem_auto]">
+              <quoteForm.AppField name={`workItems[${workItemIndex}].department`}>
                 {(field) => (
-                  <field.NumberField
-                    decimals={2}
+                  <field.SelectField
                     disabled={readOnly}
-                    emptyValue={Number.NaN}
-                    label="Hours"
-                    min={0}
-                    step="0.01"
+                    label="Department"
+                    onValueCommit={(value) => {
+                      // A departmental row is labour: hours at the Department's rate. Other is a flat
+                      // amount, stored as one unit at that amount — the shape the shop's own quote uses.
+                      // Whichever text field the switch hides is cleared, so nothing the salesperson can
+                      // no longer see reaches the customer's document.
+                      const isOther = value === OTHER_WORK_ITEM_DEPARTMENT;
+                      quoteForm.setFieldValue(`workItems[${workItemIndex}].${isOther ? 'description' : 'name'}`, '');
+                      quoteForm.setFieldValue(
+                        `workItems[${workItemIndex}].hourlyRate`,
+                        isOther ? 0 : workItemDepartmentRate(value as Department),
+                      );
+                      if (isOther) quoteForm.setFieldValue(`workItems[${workItemIndex}].hours`, 1);
+                    }}
+                    options={DEPARTMENT_OPTIONS}
                   />
                 )}
               </quoteForm.AppField>
+              {/* The array field only re-renders when the array itself changes, so the Department-dependent
+                  cells subscribe to their own values rather than reading a render-time snapshot. */}
+              <quoteForm.Subscribe selector={(state) => state.values.workItems[workItemIndex]?.department}>
+                {(department) =>
+                  department === OTHER_WORK_ITEM_DEPARTMENT ? (
+                    <quoteForm.AppField name={`workItems[${workItemIndex}].name`}>
+                      {(field) => <field.TextField autoComplete="off" disabled={readOnly} label="Work item" />}
+                    </quoteForm.AppField>
+                  ) : (
+                    <quoteForm.AppField name={`workItems[${workItemIndex}].description`}>
+                      {(field) => <field.TextField autoComplete="off" disabled={readOnly} label="Description" />}
+                    </quoteForm.AppField>
+                  )
+                }
+              </quoteForm.Subscribe>
+              {/* Labour is priced as hours x rate; an Other line is a flat amount the salesperson
+                  enters directly, held as one unit at that amount. */}
+              <quoteForm.Subscribe selector={(state) => state.values.workItems[workItemIndex]?.department}>
+                {(department) =>
+                  department === OTHER_WORK_ITEM_DEPARTMENT ? (
+                    <div className="md:col-span-2">
+                      <quoteForm.AppField name={`workItems[${workItemIndex}].hourlyRate`}>
+                        {(field) => (
+                          <field.CurrencyField currencyCode={currencyCode} disabled={readOnly} label="Amount" />
+                        )}
+                      </quoteForm.AppField>
+                    </div>
+                  ) : (
+                    <>
+                      <quoteForm.AppField name={`workItems[${workItemIndex}].hours`}>
+                        {(field) => (
+                          <field.NumberField
+                            decimals={2}
+                            disabled={readOnly}
+                            emptyValue={Number.NaN}
+                            label="Hours"
+                            min={0}
+                            step="0.01"
+                          />
+                        )}
+                      </quoteForm.AppField>
+                      <quoteForm.AppField name={`workItems[${workItemIndex}].hourlyRate`}>
+                        {(field) => (
+                          <field.CurrencyField currencyCode={currencyCode} disabled={readOnly} label="Rate" />
+                        )}
+                      </quoteForm.AppField>
+                    </>
+                  )
+                }
+              </quoteForm.Subscribe>
               <div className="grid gap-2">
                 <span className="font-medium text-sm leading-snug">Total</span>
-                <span className="flex h-8 items-center rounded-md border bg-background px-2.5 text-sm tabular-nums">
-                  {formatCurrency(getWorkItemFormTotal({ hourlyRate, workItem }), currencyCode)}
-                </span>
+                <quoteForm.Subscribe selector={(state) => state.values.workItems[workItemIndex]}>
+                  {(currentWorkItem) => (
+                    <span className="flex h-8 items-center rounded-md border bg-background px-2.5 text-sm tabular-nums">
+                      {formatCurrency(
+                        currentWorkItem ? getWorkItemFormTotal({ workItem: toQuoteWorkItemInput(currentWorkItem) }) : 0,
+                        currencyCode,
+                      )}
+                    </span>
+                  )}
+                </quoteForm.Subscribe>
               </div>
               <div className="flex items-end justify-end">
                 <Button

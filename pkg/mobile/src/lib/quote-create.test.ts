@@ -1,4 +1,3 @@
-import { DEFAULT_CUSTOM_HOURLY_RATE } from '@pkg/domain';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -51,9 +50,7 @@ describe('mobile quote creation', () => {
   it('builds a custom quote with a minimal inline customer', () => {
     const input = toQuoteCreateInput({
       ...QUOTE_CREATE_DEFAULT_VALUES,
-      basePrice: 25_000,
       customer: { companyName: '  Boerdery Bpk  ', type: 'inline' },
-      hourlyRate: 975,
       kind: 'custom',
       salesPersonId: 'sales-user',
       workTitle: '  On-site repair  ',
@@ -68,17 +65,13 @@ describe('mobile quote creation', () => {
       type: 'inline',
     });
     expect(input.offering).toEqual({
-      basePrice: 25_000,
-      hourlyRate: 975,
       kind: 'custom',
       workItems: [],
       workTitle: 'On-site repair',
     });
   });
 
-  it('seeds new custom quotes from the shared default hourly rate without adding it to product payloads', () => {
-    expect(QUOTE_CREATE_DEFAULT_VALUES.hourlyRate).toBe(DEFAULT_CUSTOM_HOURLY_RATE);
-
+  it('keeps pricing off the create payload entirely — it comes from Work Items later', () => {
     const productInput = toQuoteCreateInput({
       ...QUOTE_CREATE_DEFAULT_VALUES,
       customer: existingCustomer,
@@ -87,6 +80,7 @@ describe('mobile quote creation', () => {
     });
 
     expect(productInput.offering).not.toHaveProperty('hourlyRate');
+    expect(productInput.offering).not.toHaveProperty('basePrice');
   });
 
   it('reports conditional fields at their visible controls', () => {
@@ -99,19 +93,17 @@ describe('mobile quote creation', () => {
 
     const customResult = QuoteCreateFormValues.safeParse({
       ...QUOTE_CREATE_DEFAULT_VALUES,
-      basePrice: -1,
       customer: { companyName: '   ', type: 'inline' },
       kind: 'custom',
     });
     expect(customResult.error?.issues.map(({ message, path }) => ({ message, path }))).toEqual([
       { message: 'Select or create a customer', path: ['customer'] },
       { message: 'Work title is required', path: ['workTitle'] },
-      { message: 'Must be zero or greater', path: ['basePrice'] },
       { message: 'Select a salesperson', path: ['salesPersonId'] },
     ]);
   });
 
-  it('requires a base price for custom quotes', () => {
+  it('accepts a custom quote with only a work title — pricing comes from its Work Items', () => {
     const result = QuoteCreateFormValues.safeParse({
       ...QUOTE_CREATE_DEFAULT_VALUES,
       customer: existingCustomer,
@@ -120,9 +112,7 @@ describe('mobile quote creation', () => {
       workTitle: 'Repair',
     });
 
-    expect(result.error?.issues.map(({ message, path }) => ({ message, path }))).toEqual([
-      { message: 'Base price is required', path: ['basePrice'] },
-    ]);
+    expect(result.success).toBe(true);
   });
 
   it('does not allow creating a quote as cancelled', () => {
@@ -149,15 +139,7 @@ describe('mobile quote creation', () => {
     ).toMatchObject({ kind: 'custom', productId: '', rangeId: '' });
 
     expect(
-      clearQuoteKindFields(
-        { ...QUOTE_CREATE_DEFAULT_VALUES, basePrice: 900, hourlyRate: 975, kind: 'custom', workTitle: 'Repair' },
-        'product',
-      ),
-    ).toMatchObject({
-      basePrice: Number.NaN,
-      hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE,
-      kind: 'product',
-      workTitle: '',
-    });
+      clearQuoteKindFields({ ...QUOTE_CREATE_DEFAULT_VALUES, kind: 'custom', workTitle: 'Repair' }, 'product'),
+    ).toMatchObject({ kind: 'product', workTitle: '' });
   });
 });

@@ -4,6 +4,9 @@ import { getWorkItemFormTotal, quoteWorkItemSummaryRows, toQuoteWorkItemFormStat
 
 describe('Quote Work Item form helpers', () => {
   const workItem = {
+    department: null,
+    description: null,
+    hourlyRate: 850,
     hours: 1.5,
     name: 'Strip pump',
     parts: [{ name: 'Seal kit', quantity: 2, unitPrice: 125 }],
@@ -12,7 +15,6 @@ describe('Quote Work Item form helpers', () => {
   it('projects persisted Custom Quote rows into editable form values', () => {
     expect(
       toQuoteWorkItemFormState({
-        hourlyRate: 925,
         kind: 'custom',
         workItems: [
           {
@@ -22,33 +24,75 @@ describe('Quote Work Item form helpers', () => {
           },
         ],
       }),
-    ).toEqual({ hourlyRate: 925, workItems: [workItem] });
-    expect(toQuoteWorkItemFormState({ kind: 'product' })).toEqual({ hourlyRate: 850, workItems: [] });
+    ).toEqual({ workItems: [workItem] });
+    expect(toQuoteWorkItemFormState({ kind: 'product' })).toEqual({ workItems: [] });
   });
 
   it('returns zero while a numeric field contains an incomplete form value', () => {
-    expect(getWorkItemFormTotal({ hourlyRate: Number.NaN, workItem })).toBe(0);
-    expect(getWorkItemFormTotal({ hourlyRate: 850, workItem: { ...workItem, hours: Number.NaN } })).toBe(0);
+    expect(getWorkItemFormTotal({ workItem: { ...workItem, hourlyRate: Number.NaN } })).toBe(0);
+    expect(getWorkItemFormTotal({ workItem: { ...workItem, hours: Number.NaN } })).toBe(0);
     expect(
       getWorkItemFormTotal({
-        hourlyRate: 850,
         workItem: { ...workItem, parts: [{ name: 'Seal kit', quantity: 2, unitPrice: Number.NaN }] },
       }),
     ).toBe(0);
   });
 
   it('uses the canonical pricing calculation for editor totals and summary rows', () => {
-    expect(getWorkItemFormTotal({ hourlyRate: 850, workItem })).toBe(1525);
-    expect(quoteWorkItemSummaryRows({ hourlyRate: 850, workItems: [workItem] })).toEqual([
+    const labourItem = { ...workItem, department: 'fabrication' as const, hourlyRate: 850, name: null };
+
+    expect(getWorkItemFormTotal({ workItem: labourItem })).toBe(1525);
+    expect(quoteWorkItemSummaryRows({ workItems: [labourItem] })).toEqual([
       {
         charges: [
           { amount: 1275, kind: 'labour', label: 'Labour', part: null, quantity: 1.5, unitPrice: 850 },
-          { amount: 250, kind: 'part', label: 'Seal kit', part: workItem.parts[0], quantity: 2, unitPrice: 125 },
+          { amount: 250, kind: 'part', label: 'Seal kit', part: labourItem.parts[0], quantity: 2, unitPrice: 125 },
         ],
-        name: 'Strip pump',
+        description: null,
+        name: 'Fabrication',
         total: 1525,
-        workItem,
+        workItem: labourItem,
       },
     ]);
+  });
+
+  it('reads an Other line as a single flat-amount row, never as labour', () => {
+    const [sundries] = quoteWorkItemSummaryRows({
+      workItems: [{ department: null, description: null, hourlyRate: 2500, hours: 1, name: 'Sundries', parts: [] }],
+    });
+
+    expect(sundries).toMatchObject({ charges: [], name: 'Sundries', total: 2500 });
+  });
+
+  it('names a departmental Work Item from the shop’s quoting label, not its stored name', () => {
+    const rows = quoteWorkItemSummaryRows({
+      workItems: [
+        {
+          department: 'assembly',
+          description: 'Strip and assemble',
+          hourlyRate: 320,
+          hours: 36,
+          name: null,
+          parts: [],
+        },
+        { department: 'paint', description: null, hourlyRate: 375, hours: 10, name: null, parts: [] },
+      ],
+    });
+
+    expect(rows.map((row) => ({ description: row.description, name: row.name, total: row.total }))).toEqual([
+      { description: 'Strip and assemble', name: 'Workshop', total: 11520 },
+      { description: null, name: 'Paintshop', total: 3750 },
+    ]);
+  });
+
+  it('prices each Work Item at its own rate so one Quote can mix Departments', () => {
+    const rows = quoteWorkItemSummaryRows({
+      workItems: [
+        { department: 'fabrication', description: null, hourlyRate: 550, hours: 56, name: null, parts: [] },
+        { department: 'assembly', description: null, hourlyRate: 320, hours: 36, name: null, parts: [] },
+      ],
+    });
+
+    expect(rows.map((row) => row.total)).toEqual([30800, 11520]);
   });
 });

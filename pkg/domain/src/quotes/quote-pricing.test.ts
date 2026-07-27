@@ -74,17 +74,32 @@ describe('quote VAT', () => {
 });
 
 describe('priceQuote', () => {
-  it('normalizes persisted Custom Quote work items before pricing', () => {
+  it('prices persisted Custom Quote work items at each item’s own rate', () => {
     expect(
       pricePersistedQuote({
         discountPercent: 0,
-        hourlyRate: 850,
         kind: 'custom',
-        quotedBasePrice: 100,
+        quotedBasePrice: 0,
         selectedAssemblies: [],
-        workItems: [{ hours: 1.5, parts: [{ quantity: 2, unitPrice: 125 }] }],
+        workItems: [{ hourlyRate: 850, hours: 1.5, parts: [{ quantity: 2, unitPrice: 125 }] }],
       }),
-    ).toMatchObject({ subtotal: 1625, total: 1868.75, workItemTotal: 1525 });
+    ).toMatchObject({ subtotal: 1525, total: 1753.75, workItemTotal: 1525 });
+  });
+
+  it('totals a Custom Quote that mixes Departments at different rates', () => {
+    expect(
+      pricePersistedQuote({
+        discountPercent: 0,
+        kind: 'custom',
+        quotedBasePrice: 0,
+        selectedAssemblies: [],
+        workItems: [
+          { hourlyRate: 550, hours: 56, parts: [] },
+          { hourlyRate: 375, hours: 10, parts: [] },
+          { hourlyRate: 320, hours: 36, parts: [] },
+        ],
+      }),
+    ).toMatchObject({ workItemTotal: 46070 });
   });
 
   it('prices persisted Product Quotes without Work Items', () => {
@@ -112,15 +127,13 @@ describe('priceQuote', () => {
       discountPercent: 10,
       quotedBasePrice: 1000,
       selectedAssemblies: [],
-      workItems: {
-        hourlyRate: 850,
-        items: [
-          {
-            hours: 1.33,
-            parts: [{ quantity: 2, unitPrice: 125 }],
-          },
-        ],
-      },
+      workItems: [
+        {
+          hourlyRate: 850,
+          hours: 1.33,
+          parts: [{ quantity: 2, unitPrice: 125 }],
+        },
+      ],
     });
 
     expect(pricing).toMatchObject({

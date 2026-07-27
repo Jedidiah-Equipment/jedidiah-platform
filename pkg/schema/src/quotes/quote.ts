@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
+import { Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { Price, PriceDelta } from '../common/price.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
@@ -66,11 +67,11 @@ export const QuoteDepositPercent = z.number().min(0, 'Must be zero or greater').
 export type QuoteDiscountPercent = z.infer<typeof QuoteDiscountPercent>;
 export const QuoteDiscountPercent = z.number().min(0, 'Must be zero or greater').max(100, 'Must be 100 or less');
 
-export type QuoteHourlyRate = z.infer<typeof QuoteHourlyRate>;
-export const QuoteHourlyRate = Price;
+export type QuoteWorkItemHourlyRate = z.infer<typeof QuoteWorkItemHourlyRate>;
+export const QuoteWorkItemHourlyRate = Price;
 
-// The product/custom discriminator is a single wire-flat model: `kind`, `productId`, `workTitle`, and
-// `hourlyRate` stay top-level, but each `kind` pins the others so consumers narrow instead of re-guarding.
+// The product/custom discriminator is a single wire-flat model: `kind`, `productId`, and `workTitle`
+// stay top-level, but each `kind` pins the others so consumers narrow instead of re-guarding.
 const quoteBaseShape = {
   cancellationReason: QuoteCancellationReason.nullable().default(null),
   id: UUID,
@@ -102,7 +103,6 @@ const quoteProductOfferingShape = {
 
 const quoteCustomOfferingShape = {
   kind: z.literal('custom'),
-  hourlyRate: QuoteHourlyRate,
   productId: z.null(),
   workTitle: QuoteWorkTitle,
 };
@@ -152,6 +152,42 @@ export const QuoteSelectedAssemblyInput = z.discriminatedUnion('type', [
 export type QuoteWorkItemName = z.infer<typeof QuoteWorkItemName>;
 export const QuoteWorkItemName = requiredTrimmedText('Work item name is required');
 
+export type QuoteWorkItemDescription = z.infer<typeof QuoteWorkItemDescription>;
+export const QuoteWorkItemDescription = nullableTrimmedText();
+
+export type QuoteWorkItemDescriptionInput = z.infer<typeof QuoteWorkItemDescriptionInput>;
+export const QuoteWorkItemDescriptionInput = nullableTrimmedTextInput();
+
+/**
+ * Any Department may be quoted; only those carrying a rate are offered in the picker, and that list
+ * lives with the rate card in `@pkg/domain` rather than here. `null` is the department-less "Other"
+ * Work Item, which is the only shape that carries its own name.
+ */
+export type QuoteWorkItemDepartment = z.infer<typeof QuoteWorkItemDepartment>;
+export const QuoteWorkItemDepartment = Department.nullable();
+
+/**
+ * A departmental Work Item is named by its Department, so it stores no name; an Other Work Item must
+ * carry one. Mirrors the `quote_work_items_name_shape` database constraint.
+ */
+function validateWorkItemNaming(
+  input: { department: Department | null; name: string | null },
+  context: z.RefinementCtx,
+) {
+  if (input.department === null && input.name === null) {
+    context.addIssue({ code: 'custom', message: 'Work item name is required', path: ['name'] });
+    return;
+  }
+
+  if (input.department !== null && input.name !== null) {
+    context.addIssue({
+      code: 'custom',
+      message: 'A work item with a department takes its name from that department',
+      path: ['name'],
+    });
+  }
+}
+
 export type QuoteWorkItemHours = z.infer<typeof QuoteWorkItemHours>;
 export const QuoteWorkItemHours = z.number().min(0, 'Must be zero or greater');
 
@@ -180,22 +216,32 @@ export const QuoteWorkItemPartInput = z.object({
 });
 
 export type QuoteWorkItem = z.infer<typeof QuoteWorkItem>;
-export const QuoteWorkItem = z.object({
-  id: UUID,
-  quoteId: UUID,
-  name: QuoteWorkItemName,
-  hours: QuoteWorkItemHours,
-  parts: z.array(QuoteWorkItemPart),
-  createdAt: DateIso,
-  updatedAt: DateIso,
-});
+export const QuoteWorkItem = z
+  .object({
+    id: UUID,
+    quoteId: UUID,
+    department: QuoteWorkItemDepartment,
+    name: QuoteWorkItemName.nullable(),
+    description: QuoteWorkItemDescription,
+    hours: QuoteWorkItemHours,
+    hourlyRate: QuoteWorkItemHourlyRate,
+    parts: z.array(QuoteWorkItemPart),
+    createdAt: DateIso,
+    updatedAt: DateIso,
+  })
+  .superRefine(validateWorkItemNaming);
 
 export type QuoteWorkItemInput = z.infer<typeof QuoteWorkItemInput>;
-export const QuoteWorkItemInput = z.object({
-  name: QuoteWorkItemName,
-  hours: z.coerce.number().pipe(QuoteWorkItemHours).default(0),
-  parts: z.array(QuoteWorkItemPartInput).default([]),
-});
+export const QuoteWorkItemInput = z
+  .object({
+    department: QuoteWorkItemDepartment.default(null),
+    name: QuoteWorkItemName.nullable().default(null),
+    description: QuoteWorkItemDescriptionInput,
+    hours: z.coerce.number().pipe(QuoteWorkItemHours).default(0),
+    hourlyRate: z.coerce.number().pipe(QuoteWorkItemHourlyRate).default(0),
+    parts: z.array(QuoteWorkItemPartInput).default([]),
+  })
+  .superRefine(validateWorkItemNaming);
 
 const QuoteWorkItemPartFormValue = z.object({
   name: QuoteWorkItemPartName,
@@ -204,11 +250,16 @@ const QuoteWorkItemPartFormValue = z.object({
 });
 
 export type QuoteWorkItemFormValue = z.infer<typeof QuoteWorkItemFormValue>;
-export const QuoteWorkItemFormValue = z.object({
-  hours: QuoteWorkItemHours,
-  name: QuoteWorkItemName,
-  parts: z.array(QuoteWorkItemPartFormValue),
-});
+export const QuoteWorkItemFormValue = z
+  .object({
+    department: QuoteWorkItemDepartment,
+    description: QuoteWorkItemDescription,
+    hours: QuoteWorkItemHours,
+    hourlyRate: QuoteWorkItemHourlyRate,
+    name: QuoteWorkItemName.nullable(),
+    parts: z.array(QuoteWorkItemPartFormValue),
+  })
+  .superRefine(validateWorkItemNaming);
 
 export type QuoteProductSummaryFacts = z.infer<typeof QuoteProductSummaryFacts>;
 export const QuoteProductSummaryFacts = z.object({
@@ -335,8 +386,6 @@ export const QuoteOfferingInput = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('custom'),
     workTitle: QuoteWorkTitle,
-    basePrice: z.coerce.number().pipe(Price),
-    hourlyRate: z.coerce.number().pipe(QuoteHourlyRate),
     workItems: z.array(QuoteWorkItemInput).default([]),
   }),
 ]);
@@ -422,8 +471,6 @@ export const QuoteUpdateOfferingInput = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('custom'),
     workTitle: QuoteWorkTitle,
-    basePrice: z.coerce.number().pipe(Price),
-    hourlyRate: z.coerce.number().pipe(QuoteHourlyRate),
     workItems: z.array(QuoteWorkItemInput).optional(),
   }),
 ]);

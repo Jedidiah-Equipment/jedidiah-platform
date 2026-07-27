@@ -62,13 +62,13 @@ type QuoteRow = typeof quotes.$inferSelect;
 // assemblies, and base description all read, so none of them re-guard `kind`/`productId` downstream.
 type QuoteDocumentSource =
   | { kind: 'product'; productId: UUID; product: NonNullable<QuoteDocumentGenerationRow['product']> }
-  | { hourlyRate: number; kind: 'custom'; workTitle: string };
+  | { kind: 'custom'; workTitle: string };
 
 function resolveQuoteDocumentSource(quote: QuoteDocumentGenerationRow): QuoteDocumentSource {
   const offering = narrowQuoteOffering(quote);
 
   if (offering.kind === 'custom') {
-    return { hourlyRate: offering.hourlyRate, kind: 'custom', workTitle: offering.workTitle };
+    return { kind: 'custom', workTitle: offering.workTitle };
   }
 
   if (!quote.product) {
@@ -213,9 +213,7 @@ async function getQuoteDocumentModel({
   const pricing = priceQuoteWithCatalog(
     {
       ...quote,
-      ...(source.kind === 'custom'
-        ? { workItems: { hourlyRate: source.hourlyRate, items: quote.workItems } }
-        : { workItems: undefined }),
+      ...(source.kind === 'custom' ? { workItems: quote.workItems } : { workItems: undefined }),
     },
     productAssemblies,
   );
@@ -223,10 +221,7 @@ async function getQuoteDocumentModel({
     amount: selection.quotedPrice,
     label: selection.quotedName,
   }));
-  const workItems =
-    source.kind === 'custom'
-      ? toQuoteDocumentWorkItems({ hourlyRate: source.hourlyRate, workItems: quote.workItems })
-      : [];
+  const workItems = source.kind === 'custom' ? toQuoteDocumentWorkItems({ workItems: quote.workItems }) : [];
   const discountAmount = pricing.discountAmount;
   const additionalDeliveryPrice = computeAdditionalDeliveryPrice(quote);
   const pricingRows: QuoteDocumentPricingRow[] = [
@@ -288,14 +283,10 @@ async function getQuoteDocumentModel({
   };
 }
 
-function toQuoteDocumentWorkItems({
-  hourlyRate,
-  workItems,
-}: {
-  hourlyRate: number;
-  workItems: readonly QuoteWorkItemRow[];
-}): QuoteDocumentWorkItem[] {
-  return quoteWorkItemSummaryRows({ hourlyRate, workItems }).map((row) => ({
+function toQuoteDocumentWorkItems({ workItems }: { workItems: readonly QuoteWorkItemRow[] }): QuoteDocumentWorkItem[] {
+  // `name` arrives already resolved to the Department's quote-facing label, so the document never
+  // exposes the internal department vocabulary the shop floor uses.
+  return quoteWorkItemSummaryRows({ workItems }).map((row) => ({
     amount: row.total,
     // Charges are copied field by field so the document model carries presentation data alone,
     // never the Work Item Part rows the summary rows keep for row identity.
@@ -306,6 +297,7 @@ function toQuoteDocumentWorkItems({
       quantity,
       unitPrice,
     })),
+    description: row.description,
     name: row.name,
   }));
 }

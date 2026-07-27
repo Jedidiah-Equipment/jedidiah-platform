@@ -143,8 +143,10 @@ describe('createJob', () => {
       },
       {
         id: '00000000-0000-4000-8000-000000000201',
+        department: 'assembly',
+        description: 'Strip pump assembly',
+        hourlyRate: 320,
         hours: 1.5,
-        name: 'Strip pump assembly',
         position: 0,
         quoteId: quote.id,
       },
@@ -164,9 +166,22 @@ describe('createJob', () => {
     const draftUpdateInput = quoteUpdateInput(quote);
     if (draftUpdateInput.offering.kind !== 'custom') throw new Error('Expected a Custom Quote update input');
 
+    // The floor reads the internal Department label — Assembly, not the quote's "Workshop" wording.
     expect((await getJob({ db: context.db, id: created.id })).workRows).toEqual([
-      { id: '00000000-0000-4000-8000-000000000201', name: 'Strip pump assembly' },
-      { id: '00000000-0000-4000-8000-000000000202', name: 'Reassemble pump' },
+      {
+        id: '00000000-0000-4000-8000-000000000201',
+        department: 'assembly',
+        description: 'Strip pump assembly',
+        hours: 1.5,
+        name: 'Assembly',
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000202',
+        department: null,
+        description: null,
+        hours: 3,
+        name: 'Reassemble pump',
+      },
     ]);
 
     await updateQuote({
@@ -186,7 +201,9 @@ describe('createJob', () => {
     const editedWorkRows = (await getJob({ db: context.db, id: created.id })).workRows;
 
     expect(editedWorkRows.map(({ name }) => name)).toEqual(['Inspect replacement pump', 'Install replacement pump']);
-    expect(editedWorkRows.every((item) => Object.keys(item).sort().join(',') === 'id,name')).toBe(true);
+    expect(
+      editedWorkRows.every((item) => Object.keys(item).sort().join(',') === 'department,description,hours,id,name'),
+    ).toBe(true);
 
     await updateQuote({
       actorUserId,
@@ -3046,10 +3063,9 @@ async function createCustomQuote(
     .values({
       cancellationReason: status === 'cancelled' ? 'Test cancellation reason' : null,
       customerId: customer.id,
-      hourlyRate: 850,
       kind: 'custom',
       productId: null,
-      quotedBasePrice: 2_500,
+      quotedBasePrice: 0,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: actorUserId,
       status,
@@ -3070,15 +3086,7 @@ function quoteUpdateInput(quote: typeof quotes.$inferSelect) {
     id: quote.id,
     notes: quote.notes,
     documentNotes: quote.documentNotes,
-    offering:
-      quote.kind === 'custom'
-        ? {
-            kind: quote.kind,
-            basePrice: quote.quotedBasePrice,
-            hourlyRate: quote.hourlyRate ?? 850,
-            workTitle: quote.workTitle ?? '',
-          }
-        : { kind: quote.kind },
+    offering: quote.kind === 'custom' ? { kind: quote.kind, workTitle: quote.workTitle ?? '' } : { kind: quote.kind },
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,
     salesPersonId: quote.salesPersonId,

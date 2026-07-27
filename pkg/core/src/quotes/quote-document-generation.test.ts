@@ -192,9 +192,8 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
       .insert(quotes)
       .values({
         customerId: context.customer.id,
-        hourlyRate: 850,
         kind: 'custom',
-        quotedBasePrice: 1_000,
+        quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: context.salesPerson.id,
         status: 'sent',
@@ -207,9 +206,16 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
     const insertedWorkItems = await context.db
       .insert(quoteWorkItems)
       .values([
-        { hours: 0, name: 'Included inspection', position: 2, quoteId: quote.id },
-        { hours: 1.5, name: 'Labour-only rebuild', position: 0, quoteId: quote.id },
-        { hours: 0, name: 'Parts-only repair', position: 1, quoteId: quote.id },
+        { hourlyRate: 0, hours: 0, name: 'Included inspection', position: 2, quoteId: quote.id },
+        {
+          department: 'fabrication',
+          description: 'Remove, supply and weld on new parts',
+          hourlyRate: 550,
+          hours: 1.5,
+          position: 0,
+          quoteId: quote.id,
+        },
+        { hourlyRate: 0, hours: 0, name: 'Parts-only repair', position: 1, quoteId: quote.id },
       ])
       .returning();
     const partsOnlyItem = insertedWorkItems.find((item) => item.name === 'Parts-only repair');
@@ -244,11 +250,14 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
     const model = captured.model;
     if (!model) throw new Error('PDF renderer did not receive a document model');
 
+    // A departmental Work Item prints the shop's quoting label, never its stored name or the
+    // internal department wording.
     expect(model.workItems).toEqual([
       {
-        amount: 1_275,
-        charges: [{ amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 }],
-        name: 'Labour-only rebuild',
+        amount: 825,
+        charges: [{ amount: 825, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 550 }],
+        description: 'Remove, supply and weld on new parts',
+        name: 'Fabrication',
       },
       {
         amount: 400,
@@ -256,14 +265,15 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
           { amount: 150, kind: 'part', label: 'Hydraulic oil', quantity: 3, unitPrice: 50 },
           { amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 },
         ],
+        description: null,
         name: 'Parts-only repair',
       },
-      { amount: 0, charges: [], name: 'Included inspection' },
+      { amount: 0, charges: [], description: null, name: 'Included inspection' },
     ]);
-    expect(model).toMatchObject({ subtotal: 2_675, total: 3_076.25, vatAmount: 401.25 });
+    expect(model).toMatchObject({ subtotal: 1_225, total: 1_408.75, vatAmount: 183.75 });
     const serializedModel = JSON.stringify(model);
     expect(serializedModel).toContain('Internal seal kit');
-    expect(serializedModel).toContain('"unitPrice":850');
+    expect(serializedModel).toContain('"unitPrice":550');
     expect(serializedModel).toContain('"quantity":1.5');
   });
 });

@@ -1,20 +1,21 @@
-import type { QuoteWorkItemCharge, QuoteWorkItemFormValue } from '@pkg/schema';
+import type { Department, QuoteWorkItemCharge, QuoteWorkItemFormValue } from '@pkg/schema';
 
-import {
-  computeWorkItemLabourCost,
-  computeWorkItemPartAmount,
-  computeWorkItemTotal,
-  DEFAULT_CUSTOM_HOURLY_RATE,
-} from './quote-pricing.js';
+import { computeWorkItemLabourCost, computeWorkItemPartAmount, computeWorkItemTotal } from './quote-pricing.js';
+import { quoteWorkItemName } from './work-item-departments.js';
 
 export const LABOUR_CHARGE_LABEL = 'Labour';
 
 type WorkItemPartSource = { name: string; quantity: number; unitPrice: number };
-type WorkItemSource = { hours: number; name: string; parts: readonly WorkItemPartSource[] };
-
-type WorkItemFormSource = {
+type WorkItemSource = {
+  department: Department | null;
+  description?: string | null;
+  hourlyRate: number;
   hours: number;
-  name: string;
+  name: string | null;
+  parts: readonly WorkItemPartSource[];
+};
+
+type WorkItemFormSource = Omit<WorkItemSource, 'parts'> & {
   parts: readonly (WorkItemPartSource & Record<string, unknown>)[];
 };
 
@@ -27,19 +28,22 @@ export type QuoteWorkItemChargeRow<TPart> = QuoteWorkItemCharge & { part: TPart 
 /** A Work Item's name and total beside the ordered Charges that make that total up. */
 export type QuoteWorkItemSummaryRow<TWorkItem, TPart> = {
   charges: QuoteWorkItemChargeRow<TPart>[];
+  description: string | null;
   name: string;
   total: number;
   workItem: TWorkItem;
 };
 
 export function toQuoteWorkItemFormState<T extends WorkItemFormSource>(
-  quote: { hourlyRate: number; kind: 'custom'; workItems: readonly T[] } | { kind: 'product' },
-): { hourlyRate: number; workItems: QuoteWorkItemFormValue[] } {
-  if (quote.kind === 'product') return { hourlyRate: DEFAULT_CUSTOM_HOURLY_RATE, workItems: [] };
+  quote: { kind: 'custom'; workItems: readonly T[] } | { kind: 'product' },
+): { workItems: QuoteWorkItemFormValue[] } {
+  if (quote.kind === 'product') return { workItems: [] };
 
   return {
-    hourlyRate: quote.hourlyRate,
-    workItems: quote.workItems.map(({ hours, name, parts }) => ({
+    workItems: quote.workItems.map(({ department, description, hourlyRate, hours, name, parts }) => ({
+      department,
+      description: description ?? null,
+      hourlyRate,
       hours,
       name,
       parts: parts.map(({ name: partName, quantity, unitPrice }) => ({ name: partName, quantity, unitPrice })),
@@ -47,43 +51,42 @@ export function toQuoteWorkItemFormState<T extends WorkItemFormSource>(
   };
 }
 
-export function getWorkItemFormTotal({
-  hourlyRate,
-  workItem,
-}: {
-  hourlyRate: number;
-  workItem: WorkItemSource;
-}): number {
-  if (!hasFiniteLabourPricing({ hourlyRate, hours: workItem.hours }) || !workItem.parts.every(hasFinitePartPricing)) {
+export function getWorkItemFormTotal({ workItem }: { workItem: WorkItemSource }): number {
+  if (!hasFiniteLabourPricing(workItem) || !workItem.parts.every(hasFinitePartPricing)) {
     return 0;
   }
 
-  return computeWorkItemTotal({ hourlyRate, hours: workItem.hours, parts: workItem.parts });
+  return computeWorkItemTotal(workItem);
 }
 
 /**
  * Projects Work Items into the breakdown every surface renders: the Quote Document, the Quote editor
- * aside, and the mobile summary drawer all read these rows, so a Work Item's charges add up to the
- * same total wherever they are shown.
+ * aside, and the mobile summary drawer all read these rows, so a Work Item breaks down the same way
+ * wherever it is shown. `name` resolves here, which is why a Department's quote-facing label reaches
+ * every quote surface from one place.
+ *
+ * `charges` itemise what sits *beneath* the line — labour and Parts. A department-less Other line is
+ * a flat amount rather than labour, so it contributes no charge of its own and reads as a single row;
+ * its `total` still carries the amount.
  */
 export function quoteWorkItemSummaryRows<TWorkItem extends WorkItemSource>({
-  hourlyRate,
   workItems,
 }: {
-  hourlyRate: number;
   workItems: readonly TWorkItem[];
 }): QuoteWorkItemSummaryRow<TWorkItem, TWorkItem['parts'][number]>[] {
   return workItems.map((workItem) => ({
     charges: [
-      ...(hasFiniteLabourPricing({ hourlyRate, hours: workItem.hours }) && workItem.hours > 0
+      // Only a departmental Work Item is labour. An Other line is a flat amount carried as one unit,
+      // so it shows as a single row rather than a heading above a redundant "Labour" charge.
+      ...(workItem.department !== null && hasFiniteLabourPricing(workItem) && workItem.hours > 0
         ? [
             {
-              amount: computeWorkItemLabourCost({ hourlyRate, hours: workItem.hours }),
+              amount: computeWorkItemLabourCost(workItem),
               kind: 'labour' as const,
               label: LABOUR_CHARGE_LABEL,
               part: null,
               quantity: workItem.hours,
-              unitPrice: hourlyRate,
+              unitPrice: workItem.hourlyRate,
             },
           ]
         : []),
@@ -96,8 +99,9 @@ export function quoteWorkItemSummaryRows<TWorkItem extends WorkItemSource>({
         unitPrice: part.unitPrice,
       })),
     ],
-    name: workItem.name,
-    total: getWorkItemFormTotal({ hourlyRate, workItem }),
+    description: workItem.description ?? null,
+    name: quoteWorkItemName(workItem),
+    total: getWorkItemFormTotal({ workItem }),
     workItem,
   }));
 }

@@ -82,11 +82,9 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
 
 function buildFormValues(overrides: Partial<QuoteSummaryFormValues> = {}): QuoteSummaryFormValues {
   return {
-    basePrice: 1000,
     deliveryIncluded: true,
     deliveryPrice: 0,
     discountPercent: 10,
-    hourlyRate: 850,
     selectedAssemblies: [],
     workItems: [],
     ...overrides,
@@ -107,7 +105,6 @@ describe('computeQuoteSummary', () => {
     const summary = computeQuoteSummary({
       quote: buildProductQuote([optionalAssembly]),
       values: buildFormValues({
-        basePrice: 9999,
         deliveryIncluded: true,
         deliveryPrice: 50,
         discountPercent: 10,
@@ -196,30 +193,31 @@ describe('computeQuoteSummary', () => {
     const summary = computeQuoteSummary({
       quote,
       values: buildFormValues({
-        basePrice: 2500,
         deliveryIncluded: false,
         deliveryPrice: 500,
         discountPercent: 5,
-        hourlyRate: 900,
         selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
         workItems: [
           {
-            name: 'Travel',
+            department: null,
+            description: null,
+            hourlyRate: 900,
             hours: 1,
+            name: 'Travel',
             parts: [{ name: 'Fuel', quantity: 2, unitPrice: 150 }],
           },
         ],
       }),
     });
 
-    expect(summary.basePrice).toBe(2500);
+    // Custom Quotes carry no Base price, so the discountable subtotal is the Work Items alone.
+    expect(summary.basePrice).toBe(0);
     expect(summary.deliveryPrice).toBe(500);
-    expect(summary.hourlyRate).toBe(900);
     expect(summary.workItemTotal).toBe(1200);
     expect(summary.workItems).toHaveLength(1);
     expect(summary.selectedAssemblies).toEqual([]);
-    expect(summary.subtotal).toBe(4015);
-    expect(summary.total).toBe(4617.25);
+    expect(summary.subtotal).toBe(1640);
+    expect(summary.total).toBe(1886);
   });
 });
 

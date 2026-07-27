@@ -13,11 +13,10 @@ export type QuotePricingResult =
     };
 
 export const VAT_PERCENT = 15;
-export const DEFAULT_CUSTOM_HOURLY_RATE = 850;
 
 type WorkItemPartPricingInput = { quantity: number; unitPrice: number };
-type WorkItemPricingInput = { hours: number; parts: readonly WorkItemPartPricingInput[] };
-type WorkItemPricingBundle = { hourlyRate: number; items: readonly WorkItemPricingInput[] };
+/** Each Work Item carries the rate it was priced at, so a Quote can mix Departments freely. */
+type WorkItemPricingInput = { hourlyRate: number; hours: number; parts: readonly WorkItemPartPricingInput[] };
 
 export function validateDiscount({ discountPercent }: { discountPercent: number }): QuotePricingResult {
   if (discountPercent < 0) {
@@ -40,7 +39,7 @@ function computeQuoteDiscountAmount({
   discountPercent: number;
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
-  workItems?: WorkItemPricingBundle | undefined;
+  workItems?: readonly WorkItemPricingInput[] | undefined;
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
   const workItemTotal = computeQuoteWorkItemsTotal(workItems);
@@ -67,13 +66,10 @@ export function computeWorkItemTotal(input: {
   );
 }
 
-function computeQuoteWorkItemsTotal(workItems: WorkItemPricingBundle | undefined): number {
+function computeQuoteWorkItemsTotal(workItems: readonly WorkItemPricingInput[] | undefined): number {
   if (!workItems) return 0;
 
-  return workItems.items.reduce(
-    (total, item) => total + computeWorkItemTotal({ ...item, hourlyRate: workItems.hourlyRate }),
-    0,
-  );
+  return workItems.reduce((total, item) => total + computeWorkItemTotal(item), 0);
 }
 
 export function computeAdditionalDeliveryPrice({
@@ -103,7 +99,7 @@ function computeQuoteTotal({
   discountPercent: number;
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
-  workItems?: WorkItemPricingBundle | undefined;
+  workItems?: readonly WorkItemPricingInput[] | undefined;
 }): number {
   const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
   const workItemTotal = computeQuoteWorkItemsTotal(workItems);
@@ -126,14 +122,11 @@ export type QuotePricingFacts = {
   deliveryPrice?: number;
   discountPercent: number;
   quotedBasePrice: number;
-  workItems?: WorkItemPricingBundle | undefined;
+  workItems?: readonly WorkItemPricingInput[] | undefined;
 };
 
 type PersistedQuotePricingFacts = Omit<QuotePricingFacts, 'workItems'> &
-  (
-    | { hourlyRate: number; kind: 'custom'; workItems: readonly WorkItemPricingInput[] }
-    | { hourlyRate?: never; kind: 'product'; workItems?: never }
-  );
+  ({ kind: 'custom'; workItems: readonly WorkItemPricingInput[] } | { kind: 'product'; workItems?: never });
 
 /**
  * Quote Pricing: the computed breakdown projected from a Quote's stored pricing facts.
@@ -189,18 +182,15 @@ export function priceQuote<TSelection extends { productAssemblyId: UUID | null; 
   return priceQuoteFromLiveSelections(quote, liveSelections);
 }
 
-/** Normalizes a persisted Quote's raw Work Item rows into the canonical pricing facts. */
+/**
+ * Prices a persisted Quote, whose Work Item rows already are the canonical pricing facts now that
+ * each row carries its own rate. Kept as the seam persisted callers read so `kind` keeps pinning
+ * whether Work Items may be present at all.
+ */
 export function pricePersistedQuote<TSelection extends { productAssemblyId: UUID | null; quotedPrice: number }>(
   quote: PersistedQuotePricingFacts & { selectedAssemblies: readonly TSelection[] },
 ): QuotePricing<TSelection> {
-  if (quote.kind === 'product') return priceQuote(quote);
-
-  const { hourlyRate, workItems, ...facts } = quote;
-
-  return priceQuote({
-    ...facts,
-    workItems: { hourlyRate, items: workItems },
-  });
+  return priceQuote(quote);
 }
 
 /**

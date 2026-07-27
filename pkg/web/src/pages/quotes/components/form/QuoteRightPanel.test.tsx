@@ -9,8 +9,11 @@ vi.mock('../StartJobLink.js', () => ({ StartJobLink: () => null }));
 
 test('shows labour and Parts beneath each Work Item so the aside breakdown adds up', () => {
   const workItem = {
+    department: 'fabrication' as const,
+    description: 'Strip and rebuild pump',
+    hourlyRate: 850,
     hours: 2,
-    name: 'Strip and rebuild pump',
+    name: null,
     parts: [
       { name: 'Long bolts', quantity: 10, unitPrice: 200 },
       { name: 'Seal kit', quantity: 1, unitPrice: 1_500 },
@@ -29,25 +32,24 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
     job: null,
     kind: 'custom',
     product: null,
-    quotedBasePrice: 5_000,
+    quotedBasePrice: 0,
     quotedCurrencyCode: 'ZAR',
     status: 'sent',
     workItems: [workItem],
     workTitle: 'Hydraulic pump overhaul',
   } as unknown as QuoteDetail;
   const summary: QuoteComputedSummary = {
-    basePrice: 5_000,
+    basePrice: 0,
     currencyCode: 'ZAR',
     deliveryIncluded: true,
     deliveryPrice: 0,
     discountAmount: 0,
     discountPercent: 0,
-    hourlyRate: 850,
     selectedAssemblies: [],
     selectedAssemblyTotal: 0,
-    subtotal: 10_200,
-    total: 11_730,
-    vatAmount: 1_530,
+    subtotal: 5_200,
+    total: 5_980,
+    vatAmount: 780,
     vatPercent: 15,
     workItems: [workItem],
     workItemTotal: 5_200,
@@ -55,7 +57,8 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
 
   const html = renderToStaticMarkup(<QuoteRightPanel quote={quote} summary={summary} />);
 
-  expect(html).toContain('Strip and rebuild pump');
+  // A departmental Work Item is labelled by the shop's quoting wording for its Department.
+  expect(html).toContain('Fabrication');
   expect(html).toContain('Labour');
   expect(html).toContain('2.00 h × R 850.00');
   expect(html).toContain('R 1 700.00');

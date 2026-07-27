@@ -523,20 +523,16 @@ describe('JobCreateInput', () => {
 });
 
 describe('JobDetail', () => {
-  it('carries the name-only work rows shown with the Job assemblies', () => {
-    expect(
-      JobDetail.shape.workRows.parse([
-        {
-          id: '00000000-0000-4000-8000-000000000001',
-          name: 'Strip pump assembly',
-        },
-      ]),
-    ).toEqual([
-      {
-        id: '00000000-0000-4000-8000-000000000001',
-        name: 'Strip pump assembly',
-      },
-    ]);
+  it('carries the Department, description, and estimated hours shown with the Job assemblies', () => {
+    const workRow = {
+      id: '00000000-0000-4000-8000-000000000001',
+      department: 'assembly' as const,
+      description: 'Strip pump assembly',
+      hours: 1.5,
+      name: 'Assembly',
+    };
+
+    expect(JobDetail.shape.workRows.parse([workRow])).toEqual([workRow]);
   });
 
   it('carries part units in the CFO projection', () => {

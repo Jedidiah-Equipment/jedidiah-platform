@@ -1,4 +1,4 @@
-import { DEFAULT_CUSTOM_HOURLY_RATE, quoteWorkItemSummaryRows } from '@pkg/domain';
+import { quoteWorkItemSummaryRows } from '@pkg/domain';
 import { QuoteDetail, type QuoteSummary } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
@@ -14,6 +14,7 @@ import {
   shouldPinPriorityQuotes,
   toQuoteEditFormValues,
   toQuoteUpdateInput,
+  toQuoteWorkItemInput,
 } from './quote-presentation';
 
 const QUOTE_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -227,14 +228,12 @@ describe('Quote edit presentation', () => {
     ).toBe('Customer withdrew');
   });
 
-  it('round-trips custom work items with nested parts and seeds product edit state from the shared defaults', () => {
+  it('round-trips custom work items with nested parts, departments, and per-item rates', () => {
     const productQuote = buildQuoteDetail();
-    expect(toQuoteEditFormValues(productQuote).hourlyRate).toBe(DEFAULT_CUSTOM_HOURLY_RATE);
-
     const customQuote = QuoteDetail.parse({
       ...productQuote,
-      hourlyRate: 925,
       kind: 'custom',
+      quotedBasePrice: 0,
       product: null,
       productId: null,
       selectedAssemblies: [],
@@ -242,7 +241,10 @@ describe('Quote edit presentation', () => {
         {
           id: WORK_ITEM_ID,
           quoteId: QUOTE_ID,
-          name: 'Rebuild pump',
+          department: 'fabrication',
+          description: 'Rebuild pump',
+          hourlyRate: 550,
+          name: null,
           hours: 1.5,
           parts: [
             {
@@ -263,28 +265,33 @@ describe('Quote edit presentation', () => {
     });
     const values = toQuoteEditFormValues(customQuote);
 
-    expect(values.hourlyRate).toBe(925);
     expect(values.workItems).toEqual([
       {
-        name: 'Rebuild pump',
+        department: 'fabrication',
+        description: 'Rebuild pump',
+        hourlyRate: 550,
         hours: 1.5,
+        name: '',
         parts: [{ name: 'Seal kit', quantity: 2, unitPrice: 125 }],
       },
     ]);
+    // 1.5 h x R550 + 2 x R125, labelled by the Department's quote-facing wording.
     expect(
-      quoteWorkItemSummaryRows({ hourlyRate: values.hourlyRate, workItems: values.workItems }).map(
-        ({ name, total }) => ({ name, total }),
-      ),
-    ).toEqual([{ name: 'Rebuild pump', total: 1637.5 }]);
+      quoteWorkItemSummaryRows({ workItems: values.workItems.map(toQuoteWorkItemInput) }).map(({ name, total }) => ({
+        name,
+        total,
+      })),
+    ).toEqual([{ name: 'Fabrication', total: 1075 }]);
     const input = toQuoteUpdateInput({ id: customQuote.id, kind: customQuote.kind, values });
     expect(input.offering).toEqual({
-      basePrice: 1000,
-      hourlyRate: 925,
       kind: 'custom',
       workItems: [
         {
-          name: 'Rebuild pump',
+          department: 'fabrication',
+          description: 'Rebuild pump',
+          hourlyRate: 550,
           hours: 1.5,
+          name: null,
           parts: [{ name: 'Seal kit', quantity: 2, unitPrice: 125 }],
         },
       ],
@@ -296,8 +303,8 @@ describe('Quote edit presentation', () => {
     const values = toQuoteEditFormValues(
       QuoteDetail.parse({
         ...buildQuoteDetail(),
-        hourlyRate: 925,
         kind: 'custom',
+        quotedBasePrice: 0,
         product: null,
         productId: null,
         selectedAssemblies: [],
@@ -309,19 +316,23 @@ describe('Quote edit presentation', () => {
       ...values,
       workItems: [
         {
-          name: ' ',
+          department: 'other',
+          description: '',
+          hourlyRate: -1,
           hours: -1,
+          name: ' ',
           parts: [{ name: '', quantity: 0, unitPrice: -1 }],
         },
       ],
     });
 
     expect(result.error?.issues.map((issue) => issue.path)).toEqual([
+      ['workItems', 0, 'hourlyRate'],
       ['workItems', 0, 'hours'],
-      ['workItems', 0, 'name'],
       ['workItems', 0, 'parts', 0, 'name'],
       ['workItems', 0, 'parts', 0, 'quantity'],
       ['workItems', 0, 'parts', 0, 'unitPrice'],
+      ['workItems', 0, 'name'],
     ]);
   });
 });

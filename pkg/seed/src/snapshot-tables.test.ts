@@ -90,22 +90,22 @@ describe('snapshot table registry', () => {
   it('backfills rollout quote fields when loading snapshots captured before they existed', () => {
     expect(configFor('quote').seedRowDefaults?.({ kind: 'custom', status: 'draft' }, 0)).toEqual({
       cancellationReason: null,
-      hourlyRate: 850,
     });
     expect(configFor('quote').seedRowDefaults?.({ kind: 'product', status: 'cancelled' }, 0)).toEqual({
       cancellationReason: 'Reason not recorded (cancelled before cancellation reasons were required).',
-      hourlyRate: null,
     });
-    expect(configFor('quote').optionalReadColumns).toEqual(['cancellationReason', 'hourlyRate']);
+    expect(configFor('quote').optionalReadColumns).toEqual(['cancellationReason']);
   });
 
   it('keeps captured rollout values ahead of seed fallbacks', () => {
     const quoteConfig = configFor('quote');
 
-    expect(applySeedRowDefaults(quoteConfig, { kind: 'custom' }, 0)).toMatchObject({ hourlyRate: 850 });
-    expect(applySeedRowDefaults(quoteConfig, { hourlyRate: 975, kind: 'custom' }, 0)).toMatchObject({
-      hourlyRate: 975,
+    expect(applySeedRowDefaults(quoteConfig, { kind: 'custom', status: 'cancelled' }, 0)).toMatchObject({
+      cancellationReason: 'Reason not recorded (cancelled before cancellation reasons were required).',
     });
+    expect(
+      applySeedRowDefaults(quoteConfig, { cancellationReason: 'Captured', kind: 'custom', status: 'cancelled' }, 0),
+    ).toMatchObject({ cancellationReason: 'Captured' });
   });
 
   it('keeps rollout Work Item tables optional until the source migration deploys', () => {

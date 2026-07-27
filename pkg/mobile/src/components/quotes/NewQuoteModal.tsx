@@ -75,8 +75,6 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
     if (nextKind !== 'product' && nextKind !== 'custom') return;
 
     const cleared = clearQuoteKindFields(form.store.state.values, nextKind);
-    form.setFieldValue('basePrice', cleared.basePrice);
-    form.setFieldValue('hourlyRate', cleared.hourlyRate);
     form.setFieldValue('productId', cleared.productId);
     form.setFieldValue('rangeId', cleared.rangeId);
     form.setFieldValue('workTitle', cleared.workTitle);
@@ -153,8 +151,6 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
               <form.AppField name="workTitle">
                 {(field) => <field.TextField label="Work title" placeholder="e.g. On-site repair" />}
               </form.AppField>
-              <form.AppField name="basePrice">{(field) => <field.CurrencyField label="Base price" />}</form.AppField>
-              <form.AppField name="hourlyRate">{(field) => <field.CurrencyField label="Hourly rate" />}</form.AppField>
             </View>
           )}
 

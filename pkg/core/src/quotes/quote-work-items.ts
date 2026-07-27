@@ -9,6 +9,9 @@ export type QuoteWorkItemRow = QuoteWorkItemBaseRow & { parts: QuoteWorkItemPart
 export function mapQuoteWorkItem(row: QuoteWorkItemRow): QuoteWorkItem {
   return QuoteWorkItem.parse({
     createdAt: row.createdAt.toISOString(),
+    department: row.department,
+    description: row.description,
+    hourlyRate: row.hourlyRate,
     hours: row.hours,
     id: row.id,
     name: row.name,
@@ -92,7 +95,17 @@ export async function persistQuoteWorkItems({
 
   const insertedWorkItems = await tx
     .insert(quoteWorkItems)
-    .values(workItems.map((item, position) => ({ hours: item.hours, name: item.name, position, quoteId })))
+    .values(
+      workItems.map((item, position) => ({
+        department: item.department,
+        description: item.description,
+        hourlyRate: item.hourlyRate,
+        hours: item.hours,
+        name: item.name,
+        position,
+        quoteId,
+      })),
+    )
     .returning();
   const workItemIdByPosition = new Map(insertedWorkItems.map((row) => [row.position, row.id]));
   const parts = workItems.flatMap((item, workItemPosition) => {

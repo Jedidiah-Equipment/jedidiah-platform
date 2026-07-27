@@ -35,7 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.j
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getQuoteCancellationDialogCopy, QuoteCancellationDialog } from '../QuoteCancellationAction.js';
-import { getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput } from '../types.js';
+import { getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput, toQuoteWorkItemInput } from '../types.js';
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
 import { QuoteDocumentsSection } from './QuoteDocumentsSection.js';
 import { QuoteFormSection } from './QuoteFormSection.js';
@@ -212,30 +212,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
 
                   <QuoteFormSection icon={IconReceipt2} title="Pricing">
                     <div className="grid gap-3 md:grid-cols-2">
-                      {isCustom ? (
-                        <form.AppField name="basePrice">
-                          {(field) => (
-                            <field.CurrencyField
-                              autoComplete="off"
-                              currencyCode={quoteCurrencyCode}
-                              disabled={isLocked}
-                              label="Base price"
-                            />
-                          )}
-                        </form.AppField>
-                      ) : null}
-                      {isCustom ? (
-                        <form.AppField name="hourlyRate">
-                          {(field) => (
-                            <field.CurrencyField
-                              autoComplete="off"
-                              currencyCode={quoteCurrencyCode}
-                              disabled={!canEdit('hourlyRate')}
-                              label="Hourly rate"
-                            />
-                          )}
-                        </form.AppField>
-                      ) : null}
                       <form.AppField name="discountPercent">
                         {(field) => (
                           <field.NumberField
@@ -266,32 +242,24 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                   </QuoteFormSection>
 
                   {isCustom ? (
-                    <form.Subscribe selector={(state) => state.values.hourlyRate}>
-                      {(hourlyRate) => (
-                        <form.Field name="workItems" mode="array">
-                          {(workItemsField) => (
-                            <QuoteFormSection
-                              action={
-                                <QuoteAddWorkItemButton
-                                  readOnly={!canEdit('workItems')}
-                                  workItemsField={workItemsField}
-                                />
-                              }
-                              icon={IconListDetails}
-                              title="Work items"
-                            >
-                              <QuoteWorkItemsEditor
-                                currencyCode={quoteCurrencyCode}
-                                hourlyRate={hourlyRate}
-                                onRemoveWorkItem={autosave.commit}
-                                readOnly={!canEdit('workItems')}
-                                workItemsField={workItemsField}
-                              />
-                            </QuoteFormSection>
-                          )}
-                        </form.Field>
+                    <form.Field name="workItems" mode="array">
+                      {(workItemsField) => (
+                        <QuoteFormSection
+                          action={
+                            <QuoteAddWorkItemButton readOnly={!canEdit('workItems')} workItemsField={workItemsField} />
+                          }
+                          icon={IconListDetails}
+                          title="Work items"
+                        >
+                          <QuoteWorkItemsEditor
+                            currencyCode={quoteCurrencyCode}
+                            onRemoveWorkItem={autosave.commit}
+                            readOnly={!canEdit('workItems')}
+                            workItemsField={workItemsField}
+                          />
+                        </QuoteFormSection>
                       )}
-                    </form.Subscribe>
+                    </form.Field>
                   ) : null}
 
                   <QuoteFormSection icon={IconNotes} title="Internal notes">
@@ -354,7 +322,14 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                 </TabsContent>
               ) : null}
             </Tabs>
-            <form.Subscribe selector={(state) => computeQuoteSummary({ quote, values: state.values })}>
+            <form.Subscribe
+              selector={(state) =>
+                computeQuoteSummary({
+                  quote,
+                  values: { ...state.values, workItems: state.values.workItems.map(toQuoteWorkItemInput) },
+                })
+              }
+            >
               {(summary) => <QuoteRightPanel quote={quote} summary={summary} />}
             </form.Subscribe>
           </div>

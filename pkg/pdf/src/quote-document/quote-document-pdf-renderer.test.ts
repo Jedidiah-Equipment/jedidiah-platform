@@ -24,14 +24,16 @@ describe('renderQuoteDocumentPdf', () => {
         {
           amount: 1_275,
           charges: [{ amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 }],
+          description: null,
           name: 'Labour-only rebuild',
         },
         {
           amount: 250,
           charges: [{ amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
+          description: null,
           name: 'Parts-only repair',
         },
-        { amount: 0, charges: [], name: 'Included inspection' },
+        { amount: 0, charges: [], description: null, name: 'Included inspection' },
       ],
     };
     const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
@@ -52,6 +54,29 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText).toContain('R 0.00');
   });
 
+  test('prints a Work Item description on its own line beneath the name', () => {
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      workItems: [
+        {
+          amount: 30_800,
+          charges: [{ amount: 30_800, kind: 'labour', label: 'Labour', quantity: 56, unitPrice: 550 }],
+          description: 'Remove, supply and weld on new parts',
+          name: 'Fabrication',
+        },
+        { amount: 2_500, charges: [], description: null, name: 'Sundries' },
+      ],
+    };
+    const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
+
+    expect(renderedText.indexOf('Remove, supply and weld on new parts')).toBeGreaterThan(
+      renderedText.indexOf('Fabrication'),
+    );
+    expect(renderedText.indexOf('Remove, supply and weld on new parts')).toBeLessThan(renderedText.indexOf('Labour'));
+    expect(renderedText).toContain('R 550.00');
+    expect(renderedText.filter((value) => value === 'Sundries')).toHaveLength(1);
+  });
+
   test('places Quantity after Description and right-aligns quantity text', () => {
     const rendered = QuoteDocumentPricingTable({ document: testQuoteDocument() });
     const renderedText = collectRenderedText(rendered);
@@ -70,11 +95,13 @@ describe('renderQuoteDocumentPdf', () => {
         {
           amount: 1_275,
           charges: [{ amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 }],
+          description: null,
           name: 'Labour-only rebuild',
         },
         {
           amount: 250,
           charges: [{ amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
+          description: null,
           name: 'Parts-only repair',
         },
       ],

@@ -1,13 +1,17 @@
 import type { quotes } from '@pkg/db';
-import { formatQuoteCode, QuoteCode } from '@pkg/schema';
+import { quoteWorkItemName } from '@pkg/domain';
+import { type Department, formatQuoteCode, QuoteCode } from '@pkg/schema';
 
 import { defineAuditDescriptor } from '../audit/audit-service.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
 type QuoteWorkItemAuditItem = {
+  department: Department | null;
+  description: string | null;
+  hourlyRate: number;
   hours: number;
-  name: string;
+  name: string | null;
   parts: readonly { name: string; quantity: number; unitPrice: number }[];
 };
 type QuoteAuditInput = {
@@ -32,7 +36,6 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
     deliveryIncluded: row.deliveryIncluded,
     deliveryPrice: row.deliveryPrice,
     discountPercent: row.discountPercent,
-    hourlyRate: row.hourlyRate,
     notes: row.notes,
     documentNotes: row.documentNotes,
     kind: row.kind,
@@ -52,10 +55,15 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
       label: selection.quotedName,
       value: selection,
     })),
-    workItem: workItems.map((workItem) => ({
-      key: workItem.name,
-      label: workItem.name,
+    // Departmental Work Items share a label — a Quote may carry two Fabrication rows — so the key
+    // carries position too, which also makes a reorder legible in the audit trail.
+    workItem: workItems.map((workItem, index) => ({
+      key: `${index + 1}. ${quoteWorkItemName(workItem)}`,
+      label: quoteWorkItemName(workItem),
       value: {
+        department: workItem.department,
+        description: workItem.description,
+        hourlyRate: workItem.hourlyRate,
         hours: workItem.hours,
         name: workItem.name,
         parts: workItem.parts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice })),

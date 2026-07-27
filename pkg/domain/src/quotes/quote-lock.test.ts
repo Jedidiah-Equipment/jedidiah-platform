@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { assertQuoteEditable, isQuoteLocked } from './quote-lock.js';
 
 const editableLockedQuoteFields = [
-  'hourlyRate',
   'notes',
   'documentNotes',
   'plannedDeliveryDate',
@@ -126,7 +125,7 @@ describe('assertQuoteEditable', () => {
     ).toEqual({ allowed: true });
   });
 
-  it.each(['hourlyRate', 'workItems'])('allows %s changes after a custom quote is cancelled', (field) => {
+  it.each(editableLockedQuoteFields)('allows %s changes after a custom quote is cancelled', (field) => {
     expect(
       assertQuoteEditable({
         changedFields: [field],

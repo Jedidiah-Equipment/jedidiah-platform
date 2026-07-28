@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { assertQuoteEditable, isQuoteLocked } from './quote-lock.js';
 
 const editableLockedQuoteFields = [
+  'invoiceNumber',
   'notes',
   'documentNotes',
   'plannedDeliveryDate',
@@ -30,6 +31,7 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: ['status'],
         hasJob: false,
+        hasProductUnit: false,
         kind,
         status: 'cancelled',
       }),
@@ -44,6 +46,7 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: [field],
         hasJob: false,
+        hasProductUnit: false,
         kind: 'product',
         status: 'accepted',
       }),
@@ -55,6 +58,7 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: [field],
         hasJob: true,
+        hasProductUnit: false,
         kind: 'product',
         status: 'accepted',
       }),
@@ -69,6 +73,7 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: [field],
         hasJob: true,
+        hasProductUnit: false,
         kind: 'product',
         status: 'accepted',
       }),
@@ -80,6 +85,7 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: ['futureCommercialField'],
         hasJob: true,
+        hasProductUnit: false,
         kind: 'product',
         status: 'accepted',
       }),
@@ -94,6 +100,7 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: [field],
         hasJob: true,
+        hasProductUnit: false,
         kind: 'custom',
         status: 'sent',
       }),
@@ -105,6 +112,7 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: [field],
         hasJob: false,
+        hasProductUnit: false,
         kind: 'custom',
         status: 'accepted',
       }),
@@ -119,6 +127,7 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: [field],
         hasJob: false,
+        hasProductUnit: false,
         kind: 'custom',
         status: 'accepted',
       }),
@@ -130,6 +139,7 @@ describe('assertQuoteEditable', () => {
       assertQuoteEditable({
         changedFields: [field],
         hasJob: true,
+        hasProductUnit: false,
         kind: 'custom',
         status: 'cancelled',
       }),
@@ -139,16 +149,21 @@ describe('assertQuoteEditable', () => {
 
 describe('isQuoteLocked', () => {
   it.each(['product', 'custom'] as const)('locks cancelled %s quotes', (kind) => {
-    expect(isQuoteLocked({ hasJob: false, kind, status: 'cancelled' })).toBe(true);
+    expect(isQuoteLocked({ hasJob: false, hasProductUnit: false, kind, status: 'cancelled' })).toBe(true);
   });
 
   it('locks product quotes only after a job exists', () => {
-    expect(isQuoteLocked({ hasJob: false, kind: 'product', status: 'accepted' })).toBe(false);
-    expect(isQuoteLocked({ hasJob: true, kind: 'product', status: 'sent' })).toBe(true);
+    expect(isQuoteLocked({ hasJob: false, hasProductUnit: false, kind: 'product', status: 'accepted' })).toBe(false);
+    expect(isQuoteLocked({ hasJob: true, hasProductUnit: false, kind: 'product', status: 'sent' })).toBe(true);
+  });
+
+  it('locks allocation quotes on acceptance before a job exists', () => {
+    expect(isQuoteLocked({ hasJob: false, hasProductUnit: true, kind: 'product', status: 'sent' })).toBe(false);
+    expect(isQuoteLocked({ hasJob: false, hasProductUnit: true, kind: 'product', status: 'accepted' })).toBe(true);
   });
 
   it('locks custom quotes only after acceptance', () => {
-    expect(isQuoteLocked({ hasJob: true, kind: 'custom', status: 'sent' })).toBe(false);
-    expect(isQuoteLocked({ hasJob: false, kind: 'custom', status: 'accepted' })).toBe(true);
+    expect(isQuoteLocked({ hasJob: true, hasProductUnit: false, kind: 'custom', status: 'sent' })).toBe(false);
+    expect(isQuoteLocked({ hasJob: false, hasProductUnit: false, kind: 'custom', status: 'accepted' })).toBe(true);
   });
 });

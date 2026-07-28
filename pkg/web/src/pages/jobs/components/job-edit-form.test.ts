@@ -7,10 +7,9 @@ const JOB_ID = '00000000-0000-4000-8000-000000000001';
 
 describe('toJobEditFormValues', () => {
   it('maps null fields to empty strings', () => {
-    expect(toJobEditFormValues({ completedOn: null, description: null, invoiceNumber: null })).toEqual({
+    expect(toJobEditFormValues({ completedOn: null, description: null })).toEqual({
       completedOn: '',
       description: '',
-      invoiceNumber: '',
     });
   });
 
@@ -19,23 +18,20 @@ describe('toJobEditFormValues', () => {
       toJobEditFormValues({
         completedOn: DateOnlyIso.parse('2026-07-01'),
         description: 'Fit the extended tank.',
-        invoiceNumber: 'INV-1001',
       }),
     ).toEqual({
       completedOn: '2026-07-01',
       description: 'Fit the extended tank.',
-      invoiceNumber: 'INV-1001',
     });
   });
 });
 
 describe('toJobUpdateInput', () => {
   it('turns blank inputs into nulls', () => {
-    expect(toJobUpdateInput(JOB_ID, { completedOn: '', description: '', invoiceNumber: '  ' })).toEqual({
+    expect(toJobUpdateInput(JOB_ID, { completedOn: '', description: '' })).toEqual({
       id: JOB_ID,
       completedOn: null,
       description: null,
-      invoiceNumber: null,
     });
   });
 
@@ -44,13 +40,11 @@ describe('toJobUpdateInput', () => {
       toJobUpdateInput(JOB_ID, {
         completedOn: '2026-07-01',
         description: ' Fit the extended tank. ',
-        invoiceNumber: ' INV-1001 ',
       }),
     ).toEqual({
       id: JOB_ID,
       completedOn: '2026-07-01',
       description: 'Fit the extended tank.',
-      invoiceNumber: 'INV-1001',
     });
   });
 });

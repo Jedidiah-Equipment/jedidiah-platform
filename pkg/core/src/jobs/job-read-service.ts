@@ -52,21 +52,7 @@ import {
   type SortDirection,
   UUID,
 } from '@pkg/schema';
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gte,
-  inArray,
-  isNotNull,
-  isNull,
-  lte,
-  or,
-  type SQL,
-  type SQLWrapper,
-  sql,
-} from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lte, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -240,7 +226,6 @@ async function listJobSummariesByIds({
         completedOn: true,
         id: true,
         code: true,
-        invoiceNumber: true,
         productUnitId: true,
         quoteId: true,
         updatedAt: true,
@@ -379,7 +364,6 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
       completedOn: true,
       id: true,
       code: true,
-      invoiceNumber: true,
       productUnitId: true,
       quoteId: true,
       updatedAt: true,
@@ -530,10 +514,6 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     conditions.push(gte(jobs.createdAt, new Date(input.filters.createdAtStart)));
   }
 
-  if (input.filters.invoicedOnly) {
-    conditions.push(isNotNull(jobs.invoiceNumber));
-  }
-
   if (input.filters.incompleteOnly) {
     conditions.push(isNull(jobs.completedOn));
   }
@@ -552,12 +532,6 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
 
   if (input.columnFilters.productSerialNumber) {
     conditions.push(jobProductSerialCondition(input.columnFilters.productSerialNumber));
-  }
-
-  if (input.columnFilters.invoiceNumber) {
-    conditions.push(
-      createEscapedContainsSearchCondition(sql`${jobs.invoiceNumber}`, input.columnFilters.invoiceNumber),
-    );
   }
 
   if (input.columnFilters.code) {
@@ -596,7 +570,6 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
       completedOn: true,
       code: true,
       id: true,
-      invoiceNumber: true,
       productUnitId: true,
       quoteId: true,
       updatedAt: true,

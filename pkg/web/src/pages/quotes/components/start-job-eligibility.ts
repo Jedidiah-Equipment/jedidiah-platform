@@ -1,7 +1,7 @@
 import { canStartJobFromQuote as getStartJobEligibility } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 
-type StartableQuote = Pick<QuoteDetail, 'job' | 'kind' | 'status'>;
+type StartableQuote = Pick<QuoteDetail, 'job' | 'kind' | 'productUnitId' | 'status'>;
 
 export function canStartJobFromQuote(quote: StartableQuote): boolean {
   return resolveStartJobEligibility(quote).allowed;
@@ -26,6 +26,7 @@ export function getStartJobUnavailableMessage(quote: StartableQuote, canCreateJo
 function resolveStartJobEligibility(quote: StartableQuote) {
   return getStartJobEligibility({
     hasJob: quote.job !== null,
+    hasProductUnit: quote.productUnitId !== null,
     kind: quote.kind,
     status: quote.status,
   });

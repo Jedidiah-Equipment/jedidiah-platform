@@ -1171,24 +1171,12 @@ describe('jobs.list scheduleState', () => {
     });
   });
 
-  test('filters Jobs by invoice presence and sorts by scheduled-slot count', async ({ context }) => {
+  test('sorts Jobs by scheduled-slot count', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const unscheduled = await caller.jobs.create({ quoteId: context.quote.id });
     const scheduledQuote = await createAcceptedQuote(context.db, context.product.id);
     const scheduled = await caller.jobs.create({ quoteId: scheduledQuote.id });
     await caller.jobs.bookSlot({ bayId: activeBayId, durationDays: 10, jobId: scheduled.id });
-    await caller.jobs.update({ id: scheduled.id, description: '', invoiceNumber: 'INV-SCHEDULED' });
-
-    await expect(caller.jobs.list({ filters: { invoicedOnly: true } })).resolves.toMatchObject({
-      items: [expect.objectContaining({ id: scheduled.id })],
-      total: 1,
-    });
-    await expect(
-      caller.jobs.list({ columnFilters: { invoiceNumber: 'scheduled' }, filters: {} }),
-    ).resolves.toMatchObject({
-      items: [expect.objectContaining({ id: scheduled.id, invoiceNumber: 'INV-SCHEDULED' })],
-      total: 1,
-    });
 
     const sorted = await caller.jobs.list({ filters: {}, sortBy: 'scheduledSlots', sortDirection: 'asc' });
     expect(sorted.items.map((item) => item.id)).toEqual([unscheduled.id, scheduled.id]);
@@ -1246,7 +1234,7 @@ describe('jobs.list scheduleState', () => {
   test('rejects callers without job:read', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
 
-    await expect(salesCaller.jobs.list({ filters: { invoicedOnly: true } })).rejects.toMatchObject({
+    await expect(salesCaller.jobs.list({ filters: {} })).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });
@@ -2237,14 +2225,13 @@ describe('jobs.update', () => {
     const job = await caller.jobs.create({ quoteId: context.quote.id });
     await context.db.update(jobs).set({ cancelledAt: new Date() }).where(sql`${jobs.id} = ${job.id}`);
 
-    await expect(
-      caller.jobs.update({ id: job.id, description: 'Should not save', invoiceNumber: '' }),
-    ).rejects.toMatchObject({ appCode: 'job.cancelled', code: 'BAD_REQUEST' });
+    await expect(caller.jobs.update({ id: job.id, description: 'Should not save' })).rejects.toMatchObject({
+      appCode: 'job.cancelled',
+      code: 'BAD_REQUEST',
+    });
   });
 
-  test('updates description and invoice number, blanking to null, and records one audit event per change', async ({
-    context,
-  }) => {
+  test('updates and clears description, recording one audit event per change', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
@@ -2254,13 +2241,11 @@ describe('jobs.update', () => {
       caller.jobs.update({
         id: job.id,
         description: 'Fit the extended tank before paint.',
-        invoiceNumber: 'INV-1001',
       }),
     ).resolves.toMatchObject({
       job: {
         id: job.id,
         description: 'Fit the extended tank before paint.',
-        invoiceNumber: 'INV-1001',
       },
     });
 
@@ -2268,13 +2253,11 @@ describe('jobs.update', () => {
       caller.jobs.update({
         id: job.id,
         description: '',
-        invoiceNumber: '',
       }),
     ).resolves.toMatchObject({
       job: {
         id: job.id,
         description: null,
-        invoiceNumber: null,
       },
     });
 
@@ -2291,7 +2274,7 @@ describe('jobs.update', () => {
       quoteId: context.quote.id,
     });
 
-    await caller.jobs.update({ id: job.id, description: '', invoiceNumber: '' });
+    await caller.jobs.update({ id: job.id, description: '' });
 
     const events = await context.db
       .select()
@@ -2310,7 +2293,6 @@ describe('jobs.update', () => {
       context.createCaller(mockSession('job-viewer')).jobs.update({
         id: job.id,
         description: 'Job viewers cannot edit.',
-        invoiceNumber: '',
       }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
@@ -2322,7 +2304,6 @@ describe('jobs.update', () => {
       caller.jobs.update({
         id: '00000000-0000-4000-8000-000000000999',
         description: 'Missing job.',
-        invoiceNumber: '',
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });

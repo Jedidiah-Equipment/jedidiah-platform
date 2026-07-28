@@ -65,6 +65,15 @@ export class QuoteAlreadyCancelledError extends Error {
   }
 }
 
+export class QuoteAllocationConflictError extends Error {
+  readonly code = 'quote.allocation_conflict';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteAllocationConflictError';
+  }
+}
+
 export class QuoteDocumentGenerationNotAllowedError extends Error {
   readonly code = 'quote.document_generation_not_allowed';
 
@@ -85,6 +94,7 @@ export class QuoteProductBayAvailabilityNotApplicableError extends Error {
 
 export type QuoteCoreError =
   | QuoteAlreadyCancelledError
+  | QuoteAllocationConflictError
   | QuoteCustomSelectedAssembliesError
   | QuoteDocumentGenerationNotAllowedError
   | QuoteProductBayAvailabilityNotApplicableError
@@ -97,6 +107,7 @@ export type QuoteCoreError =
 export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
   return (
     error instanceof QuoteAlreadyCancelledError ||
+    error instanceof QuoteAllocationConflictError ||
     error instanceof QuoteDocumentGenerationNotAllowedError ||
     error instanceof QuoteProductBayAvailabilityNotApplicableError ||
     error instanceof QuoteCustomSelectedAssembliesError ||

@@ -1,6 +1,7 @@
 import type { QuoteKind, QuoteStatus } from '@pkg/schema';
 
 export const EDITABLE_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
+  'invoiceNumber',
   'notes',
   'documentNotes',
   'plannedDeliveryDate',
@@ -21,22 +22,24 @@ export type QuoteEditableResult =
 export function assertQuoteEditable({
   changedFields,
   hasJob,
+  hasProductUnit,
   kind,
   status,
 }: {
   changedFields: Iterable<string>;
   hasJob: boolean;
+  hasProductUnit: boolean;
   kind: QuoteKind;
   status: QuoteStatus;
 }): QuoteEditableResult {
-  if (!isQuoteLocked({ hasJob, kind, status })) {
+  if (!isQuoteLocked({ hasJob, hasProductUnit, kind, status })) {
     return { allowed: true };
   }
 
   const lockReason =
     status === 'cancelled'
       ? 'it has been cancelled'
-      : kind === 'product'
+      : kind === 'product' && !hasProductUnit
         ? 'it already has a Job'
         : 'it has been accepted';
 
@@ -52,9 +55,19 @@ export function assertQuoteEditable({
   return { allowed: true };
 }
 
-export function isQuoteLocked({ hasJob, kind, status }: { hasJob: boolean; kind: QuoteKind; status: QuoteStatus }) {
+export function isQuoteLocked({
+  hasJob,
+  hasProductUnit,
+  kind,
+  status,
+}: {
+  hasJob: boolean;
+  hasProductUnit: boolean;
+  kind: QuoteKind;
+  status: QuoteStatus;
+}) {
   // Cancellation is terminal regardless of the quote kind or whether a Job exists.
   if (status === 'cancelled') return true;
 
-  return kind === 'product' ? hasJob : status === 'accepted';
+  return kind === 'product' ? hasJob || (hasProductUnit && status === 'accepted') : status === 'accepted';
 }

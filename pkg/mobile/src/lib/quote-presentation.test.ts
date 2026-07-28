@@ -45,6 +45,7 @@ function buildQuoteDetail() {
     plannedDeliveryDate: null,
     notes: 'Internal note',
     documentNotes: null,
+    invoiceNumber: 'INV-0042',
     quotedBasePrice: 1000,
     quotedCurrencyCode: 'ZAR',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -202,6 +203,7 @@ describe('Quote edit presentation', () => {
       plannedDeliveryDate: '2026-03-01',
       notes: 'Internal note',
       documentNotes: null,
+      invoiceNumber: 'INV-0042',
       selectedAssemblies: [{ type: 'existing', id: SELECTION_ID }],
     });
   });

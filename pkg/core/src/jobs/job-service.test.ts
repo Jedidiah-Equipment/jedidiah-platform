@@ -838,6 +838,29 @@ describe('createJob', () => {
     }
   });
 
+  test('does not create a Build Job for an accepted Allocation Quote', async ({ context }) => {
+    await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id },
+    });
+    const [unit] = await context.db.select({ id: productUnits.id }).from(productUnits);
+    if (!unit) throw new Error('Stock Build test setup did not return a Product Unit');
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      productUnitId: unit.id,
+      status: 'accepted',
+    });
+
+    await expect(
+      createJob({
+        actorUserId,
+        db: context.db,
+        input: { baySeeds: [], quoteId: quote.id },
+      }),
+    ).rejects.toThrow('Allocation Quotes can only start a Rework Job.');
+  });
+
   test('seeds work slots across Bays in input order, including duplicate Bay rows', async ({ context }) => {
     const fabricationBay = await createBay(context.db, { department: 'fabrication' });
     const paintBay = await createBay(context.db, { department: 'paint' });
@@ -1903,7 +1926,7 @@ describe('updateJob', () => {
       updateJob({
         actorUserId,
         db: context.db,
-        input: { completedOn: null, description: 'Should not save', id: job.id, invoiceNumber: null },
+        input: { completedOn: null, description: 'Should not save', id: job.id },
       }),
     ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
   });
@@ -1918,7 +1941,6 @@ describe('updateJob', () => {
         completedOn: DateOnlyIso.parse('2026-05-04'),
         description: null,
         id: job.id,
-        invoiceNumber: null,
       },
     });
 
@@ -1927,7 +1949,7 @@ describe('updateJob', () => {
     const reopened = await updateJob({
       actorUserId,
       db: context.db,
-      input: { completedOn: null, description: null, id: job.id, invoiceNumber: null },
+      input: { completedOn: null, description: null, id: job.id },
     });
 
     expect(reopened.job.completedOn).toBeNull();
@@ -1939,7 +1961,7 @@ describe('updateJob', () => {
     const updated = await updateJob({
       actorUserId,
       db: context.db,
-      input: JobUpdateInput.parse({ id: job.id, description: 'Fit toolbox', invoiceNumber: null }),
+      input: JobUpdateInput.parse({ id: job.id, description: 'Fit toolbox' }),
     });
     const read = await getJob({ db: context.db, id: job.id });
 
@@ -1951,7 +1973,7 @@ describe('updateJob', () => {
 
   test('answers a no-op update with the machine identity too', async ({ context }) => {
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
-    const input = JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null });
+    const input = JobUpdateInput.parse({ id: job.id, description: null });
 
     // Same payload twice: the second changes nothing and takes the early return.
     await updateJob({ actorUserId, db: context.db, input });
@@ -1965,15 +1987,13 @@ describe('updateJob', () => {
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
     await context.db.update(jobs).set({ completedOn: '2026-05-04' }).where(eq(jobs.id, job.id));
 
-    // The payload a client bundle built before `completedOn` shipped still sends.
     const result = await updateJob({
       actorUserId,
       db: context.db,
-      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: 'INV-9' }),
+      input: JobUpdateInput.parse({ id: job.id, description: null }),
     });
 
     expect(result.job.completedOn).toBe('2026-05-04');
-    expect(result.job.invoiceNumber).toBe('INV-9');
   });
 
   test('rejects a completion date after plant today', async ({ context }) => {
@@ -1984,7 +2004,7 @@ describe('updateJob', () => {
       updateJob({
         actorUserId,
         db: context.db,
-        input: { completedOn: tomorrow, description: null, id: job.id, invoiceNumber: null },
+        input: { completedOn: tomorrow, description: null, id: job.id },
       }),
     ).rejects.toMatchObject({ code: 'job.completed_on_in_future' });
   });
@@ -2081,7 +2101,6 @@ describe('sweepJobCompletions', () => {
         completedOn: DateOnlyIso.parse('2026-06-03'),
         description: null,
         id: job.id,
-        invoiceNumber: null,
       },
     });
 
@@ -3205,28 +3224,6 @@ describe('listJobs scheduleState', () => {
     });
   });
 
-  test('filters Jobs by invoice presence and invoice-number text', async ({ context }) => {
-    const invoiced = await createAcceptedJob(context.db, context.catalog.product.id);
-    const otherInvoice = await createAcceptedJob(context.db, context.catalog.product.id);
-    await createAcceptedJob(context.db, context.catalog.product.id);
-    await context.db.update(jobs).set({ invoiceNumber: 'INV-ALPHA' }).where(eq(jobs.id, invoiced.id));
-    await context.db.update(jobs).set({ invoiceNumber: 'INV-BETA' }).where(eq(jobs.id, otherInvoice.id));
-
-    const invoicedResult = await listJobs({
-      db: context.db,
-      input: listInput({ filters: { invoicedOnly: true } }),
-    });
-    const textResult = await listJobs({
-      db: context.db,
-      input: listInput({ columnFilters: { invoiceNumber: 'alpha' } }),
-    });
-
-    expect(invoicedResult.items.map((item) => item.id).sort()).toEqual([invoiced.id, otherInvoice.id].sort());
-    expect(invoicedResult.total).toBe(2);
-    expect(textResult.items.map((item) => item.id)).toEqual([invoiced.id]);
-    expect(textResult.total).toBe(1);
-  });
-
   test('filters Jobs by completion presence and completion-date range', async ({ context }) => {
     const early = await createAcceptedJob(context.db, context.catalog.product.id);
     const late = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -3602,10 +3599,12 @@ async function createQuote(
   db: Db,
   {
     productId,
+    productUnitId,
     selectedAssemblyId,
     status,
   }: {
     productId: string;
+    productUnitId?: string;
     selectedAssemblyId?: string;
     status: QuoteStatus;
   },
@@ -3625,6 +3624,7 @@ async function createQuote(
       cancellationReason: status === 'cancelled' ? 'Test cancellation reason' : null,
       customerId: customer.id,
       productId,
+      productUnitId,
       quotedBasePrice: 1_000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: actorUserId,

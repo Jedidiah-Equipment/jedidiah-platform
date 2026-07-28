@@ -8,6 +8,7 @@ import {
   QuoteCancellationReason,
   type QuoteDetail,
   QuoteDocumentNotes,
+  QuoteInvoiceNumber,
   QuoteNotes,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
@@ -33,6 +34,7 @@ export const PatchQuoteInput = z
     ),
     documentNotes: QuoteDocumentNotes.optional(),
     id: UUID,
+    invoiceNumber: QuoteInvoiceNumber.optional(),
     notes: QuoteNotes.optional(),
     plannedDeliveryDate: DateOnlyIsoString.nullable().optional(),
     preferredDeliveryDate: DateOnlyIsoString.nullable().optional(),
@@ -75,7 +77,7 @@ export function toPatchQuoteResponse(quote: QuoteDetail, access: UserAccessSumma
 export const patchQuoteDefinition = {
   name: 'patchQuote',
   description: [
-    'Patch one Quote, changing only explicitly provided fields: status, salesperson, delivery dates, valid-until, notes, or selected assemblies.',
+    'Patch one Quote, changing only explicitly provided fields: status, salesperson, invoice number, delivery dates, valid-until, notes, or selected assemblies.',
     'Use findQuotes first when the Quote UUID is not already known.',
     'Do not change status to accepted or rejected unless the user explicitly requested that exact decision.',
     'Changing status to cancelled requires cancellationReason in the same call.',

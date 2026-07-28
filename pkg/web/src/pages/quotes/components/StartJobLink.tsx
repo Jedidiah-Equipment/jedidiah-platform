@@ -10,7 +10,7 @@ import { canStartJobFromQuote } from './start-job-eligibility.js';
 
 type StartJobLinkProps = {
   className?: string;
-  quote: Pick<QuoteDetail, 'code' | 'id' | 'job' | 'kind' | 'status'>;
+  quote: Pick<QuoteDetail, 'code' | 'id' | 'job' | 'kind' | 'productUnitId' | 'status'>;
   size?: 'default' | 'icon-sm';
 };
 

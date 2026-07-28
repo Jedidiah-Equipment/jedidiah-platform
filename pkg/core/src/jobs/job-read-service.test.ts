@@ -199,7 +199,6 @@ function jobRow(): Parameters<typeof mapJobSummary>[0] {
     completedOn: null,
     createdAt: now,
     id: '00000000-0000-4000-8000-000000000001',
-    invoiceNumber: null,
     productUnit: productUnitRow(),
     productUnitId: '00000000-0000-4000-8000-000000000003',
     quote: {

@@ -22,12 +22,11 @@ describe('Job List table columns', () => {
     expect(html.match(/sticky/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
 
-  it('renders the code, customer, product, serial, invoice, and schedule window for a scheduled Job', () => {
+  it('renders the code, customer, product, serial, and schedule window for a scheduled Job', () => {
     const html = renderJobListRows([
       buildJobSummary({
         code: 42,
         customerCompanyName: 'Acme Mining',
-        invoiceNumber: 'INV-0042',
         productModelCode: 'MDL-1',
         productName: 'Loader Bucket',
         productSerialNumber: 'SN-2026-0042',
@@ -48,7 +47,6 @@ describe('Job List table columns', () => {
     expect(html).toContain('Loader Bucket');
     expect(html).toContain('MDL-1');
     expect(html).toContain('SN-2026-0042');
-    expect(html).toContain('INV-0042');
     expect(html).toContain('1 Done');
     expect(html).toContain('1 Active');
     expect(html).toContain('2 Scheduled');
@@ -152,7 +150,6 @@ describe('Job List table columns', () => {
     expect(html).toContain('aria-label="Filter Job"');
     expect(html).toContain('aria-label="Filter Customer"');
     expect(html).toContain('aria-label="Filter Serial"');
-    expect(html).toContain('aria-label="Filter Invoice"');
     expect(html).toContain('aria-label="Sort Serial"');
     expect(html).not.toContain('aria-label="Sort Customer"');
     expect(html).not.toContain('aria-label="Sort Start date"');
@@ -169,19 +166,6 @@ describe('Job List table columns', () => {
     });
 
     expect(html).toContain('aria-label="Filter Complete"');
-  });
-
-  it('renders invoice numbers as text for Job editors and viewers', () => {
-    const editableHtml = renderJobListRows([buildJobSummary({ invoiceNumber: 'INV-0001' })], {
-      canEditJobs: true,
-      canOpenJobs: false,
-    });
-    const readOnlyHtml = renderJobListRows([buildJobSummary({ invoiceNumber: 'INV-0001' })]);
-
-    expect(editableHtml).not.toContain('aria-label="Invoice number for JOB-00001"');
-    expect(editableHtml).toContain('INV-0001');
-    expect(readOnlyHtml).not.toContain('aria-label="Invoice number for JOB-00001"');
-    expect(readOnlyHtml).toContain('INV-0001');
   });
 });
 

@@ -2,7 +2,6 @@ import {
   AuthId,
   Customer,
   CustomerCompanyName,
-  Price,
   QuoteCreateInput,
   type QuoteCreateInput as QuoteCreateInputValue,
   QuoteKind,

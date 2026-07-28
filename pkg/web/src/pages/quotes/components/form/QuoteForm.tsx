@@ -50,7 +50,12 @@ type QuoteFormProps = {
 
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
   const isCustom = quote.kind === 'custom';
-  const isLocked = isQuoteLocked({ hasJob: quote.job !== null, kind: quote.kind, status: quote.status });
+  const isLocked = isQuoteLocked({
+    hasJob: quote.job !== null,
+    hasProductUnit: quote.productUnitId !== null,
+    kind: quote.kind,
+    status: quote.status,
+  });
   const canEdit = (field: string) => !isLocked || EDITABLE_LOCKED_QUOTE_FIELDS.has(field);
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const catalogAssemblies = quote.product?.assemblies ?? [];
@@ -154,6 +159,15 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                       </form.AppField>
                       <form.AppField name="validUntil">
                         {(field) => <field.DatePickerField label="Valid until" onValueCommit={autosave.commit} />}
+                      </form.AppField>
+                      <form.AppField name="invoiceNumber">
+                        {(field) => (
+                          <field.TextField
+                            autoComplete="off"
+                            disabled={!canEdit('invoiceNumber')}
+                            label="Invoice number"
+                          />
+                        )}
                       </form.AppField>
                       <form.Field name="deliveryIncluded">
                         {(field) => {

@@ -98,8 +98,8 @@ export async function listProductUnits({
 }
 
 /**
- * The values worth offering as Units-list filters: only Customers that hold a machine right now and
- * only Products that have one. Scoped to Units so Sales can read them without Customer or Product
+ * The values worth offering as Units-list filters: only Customers that hold a Unit right now and only
+ * Products that have one. Scoped to Units so Sales can read them without Customer or Product
  * access, and so the filters can never offer a choice that returns nothing.
  */
 export async function listProductUnitFilterOptions({ db }: { db: Db }): Promise<ProductUnitFilterOptions> {
@@ -135,7 +135,7 @@ export async function getProductUnit({ db, id }: { db: Db; id: UUID }): Promise<
     db.query.jobs.findMany({
       columns: { cancelledAt: true, code: true, completedOn: true, createdAt: true, id: true },
       orderBy: [asc(jobs.createdAt), asc(jobs.id)],
-      where: and(eq(jobs.productUnitId, id), isNull(jobs.cancelledAt)),
+      where: eq(jobs.productUnitId, id),
     }),
     db.query.productUnitOwnershipTransfers.findMany({
       orderBy: [asc(productUnitOwnershipTransfers.occurredOn), asc(productUnitOwnershipTransfers.createdAt)],
@@ -153,7 +153,7 @@ export async function getProductUnit({ db, id }: { db: Db; id: UUID }): Promise<
     ...toSummary(row, owners),
     asBuiltSpec: await loadAsBuiltSpec(
       db,
-      unitJobs.map((job) => job.id),
+      unitJobs.filter((job) => job.cancelledAt === null).map((job) => job.id),
     ),
     jobs: unitJobs.map((job) => ({
       id: job.id,
@@ -176,9 +176,13 @@ export async function getProductUnit({ db, id }: { db: Db; id: UUID }): Promise<
 }
 
 /**
- * What is actually fitted to the machine. Read from the frozen CFO rather than the catalog, so a Unit
+ * What is actually fitted to the Unit. Read from the frozen CFO rather than the catalog, so a Unit
  * keeps showing what it was built with after the Product's Assemblies move on. Build Specs (#1014)
  * become the CFO's source without changing this read.
+ *
+ * Cancelled Jobs are excluded by the caller. Their CFO is a plan, not a record of what was fitted, so
+ * counting it would seed the next sale's Quote with Assemblies the customer never received — a worse
+ * error than omitting part-finished work, which a human can still see on the Unit's Job history.
  */
 async function loadAsBuiltSpec(db: Db, jobIds: string[]): Promise<ProductUnitDetail['asBuiltSpec']> {
   if (jobIds.length === 0) return [];

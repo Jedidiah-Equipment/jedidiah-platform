@@ -4,8 +4,8 @@ import type React from 'react';
 import { Badge } from '@/components/ui/badge.js';
 
 /**
- * A machine nobody owns is Stock — we hold it. That is a derived state of the unit, not a customer,
- * so it reads as its own chip rather than an empty cell or a placeholder company name.
+ * A Unit nobody owns is Stock — we hold it. That is a derived state of the Unit, not a customer, so it
+ * reads as its own chip rather than an empty cell or a placeholder company name.
  */
 export const ProductUnitOwnerCell: React.FC<{ owner: ProductUnitOwner | null }> = ({ owner }) => {
   if (!owner) {

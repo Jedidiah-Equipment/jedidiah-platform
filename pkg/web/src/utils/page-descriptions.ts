@@ -24,7 +24,7 @@ export const quotesPageDescription = 'Sales offers to customers for product buil
 
 export const suppliersPageDescription = 'Procurement directory records for supplier-sourced Parts';
 
-export const unitsPageDescription = 'Physical machines we have built, what is fitted to them, and who owns them now';
+export const unitsPageDescription = 'Product Units we have built, what is fitted to them, and who owns them now';
 
 export const usersPageDescription = 'Sign-in accounts with app roles and department assignments';
 export const feedbackPageDescription = 'Submitted workspace feedback for super-admin review';

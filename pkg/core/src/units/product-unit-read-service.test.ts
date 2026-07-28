@@ -181,13 +181,20 @@ describe('getProductUnit', () => {
     expect(detail.asBuiltSpec.map((assembly) => assembly.name)).toEqual(['Heavy Axle Upgrade', 'Toolbox']);
   });
 
-  test('ignores a cancelled Job, its assemblies, and its missing completion', async ({ context }) => {
+  test('keeps a cancelled Job in the history it belongs to', async ({ context }) => {
     const detail = await getProductUnit({ db: context.db, id: context.seed.rebuiltUnitId });
 
-    // The cancelled build would otherwise strand this machine in build behind a Job that never finishes.
-    expect(detail.jobs).toHaveLength(1);
-    expect(detail.buildState).toBe('on-hand');
+    expect(detail.jobs).toHaveLength(2);
+    expect(detail.jobs.filter((job) => job.cancelledAt !== null)).toHaveLength(1);
+  });
+
+  test('counts nothing a cancelled Job planned as fitted, and reads build state past it', async ({ context }) => {
+    const detail = await getProductUnit({ db: context.db, id: context.seed.rebuiltUnitId });
+
+    // Its CFO is a plan, not a record: charging the next buyer for a Winch never fitted is the worse error.
     expect(detail.asBuiltSpec).toEqual([]);
+    // And the cancelled build must not strand the Unit in build behind a Job that never finishes.
+    expect(detail.buildState).toBe('on-hand');
   });
 
   test('rejects a machine that does not exist', async ({ context }) => {

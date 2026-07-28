@@ -40,7 +40,7 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
     <div className="grid gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>Machine</CardTitle>
+          <CardTitle>Unit</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <DetailField label="Serial">
@@ -63,7 +63,7 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
         </CardHeader>
         <CardContent>
           {unit.asBuiltSpec.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No optional assemblies are fitted to this machine.</p>
+            <p className="text-muted-foreground text-sm">No optional assemblies are fitted to this unit.</p>
           ) : (
             <ul className="grid gap-1 text-sm">
               {unit.asBuiltSpec.map((assembly) => (
@@ -81,7 +81,7 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
         <CardContent>
           {unit.ownershipHistory.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              This machine has never changed hands — we have held it since it was built.
+              This unit has never changed hands — we have held it since it was built.
             </p>
           ) : (
             <ol className="grid gap-3">
@@ -99,7 +99,7 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
         </CardHeader>
         <CardContent>
           {unit.jobs.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No Job is bound to this machine.</p>
+            <p className="text-muted-foreground text-sm">No Job is bound to this unit.</p>
           ) : (
             <ul className="grid gap-2 text-sm">
               {unit.jobs.map((job) => (

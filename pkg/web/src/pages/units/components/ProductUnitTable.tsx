@@ -21,7 +21,7 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { buildStateLabels, ProductUnitBuildStateCell, ProductUnitOwnerCell } from './ProductUnitOwnerCell.js';
 
-/** The machines we hold. Not a Customer, so it needs a filter value of its own. */
+/** The Units we hold. Not a Customer, so it needs a filter value of its own. */
 const STOCK_OWNER_VALUE = 'stock';
 
 type ProductUnitTableProps = {

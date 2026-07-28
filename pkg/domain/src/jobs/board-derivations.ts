@@ -242,6 +242,53 @@ export function countActiveJobs({
   return { activeJobs, finishingThisWeek };
 }
 
+export type ScheduledJob = {
+  bayId: UUID;
+  bayName: string;
+  jobId: UUID;
+  /** Earliest first working day across the Job's Slots — the day work is due to begin. */
+  startDate: DateOnlyIso;
+};
+
+/**
+ * Jobs booked onto a Bay but not yet started: every Work Slot is projected `scheduled`, so a Job with
+ * any `active` or `done` Slot is already underway and drops out, and an unscheduled Job with no Slot
+ * at all never appears. Ordered by the day work is due to begin, earliest first.
+ */
+export function listScheduledJobs({ bays }: { bays: readonly ProjectedBayQueue[] }): ScheduledJob[] {
+  const startedJobIds = new Set<UUID>();
+  const earliestSlots = new Map<UUID, { bay: ProjectedBayQueue; slot: ProjectedWorkJobSlot }>();
+
+  for (const bay of bays) {
+    for (const slot of bay.slots) {
+      if (slot.kind !== 'work') {
+        continue;
+      }
+
+      if (slot.state !== 'scheduled') {
+        startedJobIds.add(slot.jobId);
+        continue;
+      }
+
+      const current = earliestSlots.get(slot.jobId);
+
+      if (!current || slot.firstWorkDay < current.slot.firstWorkDay) {
+        earliestSlots.set(slot.jobId, { bay, slot });
+      }
+    }
+  }
+
+  return [...earliestSlots]
+    .filter(([jobId]) => !startedJobIds.has(jobId))
+    .map(([jobId, { bay, slot }]) => ({
+      bayId: bay.id,
+      bayName: bay.name,
+      jobId,
+      startDate: slot.firstWorkDay,
+    }))
+    .sort((left, right) => left.startDate.localeCompare(right.startDate) || left.jobId.localeCompare(right.jobId));
+}
+
 export type BayLoadToday = {
   freeCount: number;
   idleCount: number;

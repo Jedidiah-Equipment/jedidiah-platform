@@ -6,13 +6,7 @@ import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } fro
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
-import {
-  JobCompletedOn,
-  ProductSerialNumber,
-  ProductSerialPrefix,
-  ProductSerialSequence,
-  ProductSerialYear,
-} from '../jobs/job.js';
+import { JobCompletedOn, ProductSerialNumber } from '../jobs/job.js';
 import { ProductModelCode, ProductName } from '../products/product.js';
 
 export type ProductUnitVinNumber = z.infer<typeof ProductUnitVinNumber>;
@@ -20,24 +14,6 @@ export const ProductUnitVinNumber = nullableTrimmedText();
 
 export type ProductUnitTransferNote = z.infer<typeof ProductUnitTransferNote>;
 export const ProductUnitTransferNote = nullableTrimmedText();
-
-/**
- * One physical machine. It owns the identity a Job used to carry, so the serial survives every later
- * piece of work on the same unit. A Unit is created by its Build Job and never on its own.
- */
-export type ProductUnit = z.infer<typeof ProductUnit>;
-export const ProductUnit = z.object({
-  id: UUID,
-  productId: UUID,
-  // productSerialNumber is the full frozen serial; prefix, sequence, and year store its component parts.
-  productSerialNumber: ProductSerialNumber,
-  productSerialPrefix: ProductSerialPrefix,
-  productSerialSequence: ProductSerialSequence,
-  productSerialYear: ProductSerialYear,
-  vinNumber: ProductUnitVinNumber,
-  createdAt: DateIso,
-  updatedAt: DateIso,
-});
 
 export type ProductUnitOwner = z.infer<typeof ProductUnitOwner>;
 export const ProductUnitOwner = z.object({

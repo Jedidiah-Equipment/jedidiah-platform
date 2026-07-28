@@ -1,9 +1,9 @@
+import { formatDate } from '@pkg/domain';
 import type { ProductUnitDetail, ProductUnitOwnershipTransfer, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 
-import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -112,13 +112,7 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
                     <span className="font-medium">{job.code}</span>
                   )}
                   <span className="text-muted-foreground">
-                    {job.completedOn ? (
-                      <>
-                        Completed <DateDisplay date={job.completedOn} />
-                      </>
-                    ) : (
-                      'In progress'
-                    )}
+                    {job.completedOn ? `Completed ${formatDate(job.completedOn, 'short')}` : 'In progress'}
                   </span>
                   {job.cancelledAt ? <span className="text-muted-foreground">Cancelled</span> : null}
                 </li>
@@ -134,7 +128,7 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
 const OwnershipTransferRow: React.FC<{ transfer: ProductUnitOwnershipTransfer }> = ({ transfer }) => (
   <li className="grid gap-1 border-border border-b pb-3 last:border-b-0 last:pb-0">
     <div className="flex flex-wrap items-center gap-2 text-sm">
-      <DateDisplay date={transfer.occurredOn} />
+      <span className="tabular-nums">{formatDate(transfer.occurredOn, 'short')}</span>
       <span className="text-muted-foreground">
         {transfer.fromCustomer?.companyName ?? 'Stock'} → {transfer.toCustomer?.companyName ?? 'Stock'}
       </span>

@@ -19,7 +19,7 @@ import {
   ProductUnitSummary,
   UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
 
 import { ProductUnitNotFoundError } from './product-unit-errors.js';
 
@@ -37,16 +37,31 @@ const currentOwnerId = sql<string | null>`(
 )`;
 
 /**
- * The Job Completion of the Unit's Build Job — its earliest Job, since a rework can only follow a
- * build. A Unit is On Hand once that date exists, and still In Build before it.
+ * The Job Completion of the Unit's Build Job — its earliest live Job, since a rework can only follow a
+ * build. A Unit is On Hand once that date exists, and still in build before it. Cancelled Jobs are
+ * skipped: a cancelled build never happened, so leaving it in would strand a rebuilt Unit in build
+ * forever behind a Job that will never complete. `id` breaks ties so same-instant Jobs order stably.
  */
 const buildCompletedOn = sql<string | null>`(
   select ${jobs.completedOn}
   from ${jobs}
-  where ${jobs.productUnitId} = ${productUnits.id}
-  order by ${jobs.createdAt} asc
+  where ${jobs.productUnitId} = ${productUnits.id} and ${jobs.cancelledAt} is null
+  order by ${jobs.createdAt} asc, ${jobs.id} asc
   limit 1
 )`;
+
+/** One projection for both reads, so the list and the detail can never drift apart. */
+const productUnitSelection = {
+  buildCompletedOn: buildCompletedOn.as('build_completed_on'),
+  createdAt: productUnits.createdAt,
+  id: productUnits.id,
+  ownerId: currentOwnerId.as('owner_id'),
+  productId: products.id,
+  productModelCode: products.modelCode,
+  productName: products.name,
+  productSerialNumber: productUnits.productSerialNumber,
+  vinNumber: productUnits.vinNumber,
+};
 
 export async function listProductUnits({
   db,
@@ -60,17 +75,7 @@ export async function listProductUnits({
 
   const rows = await withPagination(
     db
-      .select({
-        buildCompletedOn: buildCompletedOn.as('build_completed_on'),
-        createdAt: productUnits.createdAt,
-        id: productUnits.id,
-        ownerId: currentOwnerId.as('owner_id'),
-        productId: products.id,
-        productModelCode: products.modelCode,
-        productName: products.name,
-        productSerialNumber: productUnits.productSerialNumber,
-        vinNumber: productUnits.vinNumber,
-      })
+      .select(productUnitSelection)
       .from(productUnits)
       .leftJoin(products, eq(products.id, productUnits.productId))
       .where(where)
@@ -102,7 +107,7 @@ export async function listProductUnitFilterOptions({ db }: { db: Db }): Promise<
     db
       .selectDistinct({ companyName: customers.companyName, id: customers.id })
       .from(customers)
-      .where(sql`exists (select 1 from ${productUnits} where ${currentOwnerId} = ${customers.id})`)
+      .innerJoin(productUnits, sql`${currentOwnerId} = ${customers.id}`)
       .orderBy(asc(customers.companyName)),
     db
       .selectDistinct({ id: products.id, modelCode: products.modelCode, name: products.name })
@@ -116,17 +121,7 @@ export async function listProductUnitFilterOptions({ db }: { db: Db }): Promise<
 
 export async function getProductUnit({ db, id }: { db: Db; id: UUID }): Promise<ProductUnitDetail> {
   const [row] = await db
-    .select({
-      buildCompletedOn: buildCompletedOn.as('build_completed_on'),
-      createdAt: productUnits.createdAt,
-      id: productUnits.id,
-      ownerId: currentOwnerId.as('owner_id'),
-      productId: products.id,
-      productModelCode: products.modelCode,
-      productName: products.name,
-      productSerialNumber: productUnits.productSerialNumber,
-      vinNumber: productUnits.vinNumber,
-    })
+    .select(productUnitSelection)
     .from(productUnits)
     .leftJoin(products, eq(products.id, productUnits.productId))
     .where(eq(productUnits.id, id));
@@ -140,7 +135,7 @@ export async function getProductUnit({ db, id }: { db: Db; id: UUID }): Promise<
     db.query.jobs.findMany({
       columns: { cancelledAt: true, code: true, completedOn: true, createdAt: true, id: true },
       orderBy: [asc(jobs.createdAt), asc(jobs.id)],
-      where: eq(jobs.productUnitId, id),
+      where: and(eq(jobs.productUnitId, id), isNull(jobs.cancelledAt)),
     }),
     db.query.productUnitOwnershipTransfers.findMany({
       orderBy: [asc(productUnitOwnershipTransfers.occurredOn), asc(productUnitOwnershipTransfers.createdAt)],
@@ -191,15 +186,17 @@ async function loadAsBuiltSpec(db: Db, jobIds: string[]): Promise<ProductUnitDet
   const rows = await db
     .select({ id: jobCfoAssemblies.id, jobId: jobCfoAssemblies.jobId, name: jobCfoAssemblies.assemblyName })
     .from(jobCfoAssemblies)
+    .innerJoin(jobs, eq(jobs.id, jobCfoAssemblies.jobId))
     .where(and(inArray(jobCfoAssemblies.jobId, jobIds), eq(jobCfoAssemblies.kind, 'optional')))
-    .orderBy(asc(jobCfoAssemblies.jobId), asc(jobCfoAssemblies.sequence));
+    // In the order the work happened: the build's assemblies, then each rework's.
+    .orderBy(asc(jobs.createdAt), asc(jobs.id), asc(jobCfoAssemblies.sequence));
 
   return rows.map((row) => ({ id: UUID.parse(row.id), jobId: UUID.parse(row.jobId), name: row.name }));
 }
 
 type OwnersById = Map<string, { id: UUID; companyName: string }>;
 
-/** One batched read for the derived owners on the page, rather than a join per row. */
+/** One batched read for the page's derived owners: the owner id is a subquery, not a joinable column. */
 async function loadOwners(db: Db, ownerIds: (string | null)[]): Promise<OwnersById> {
   const ids = [...new Set(ownerIds.filter((ownerId): ownerId is string => ownerId !== null))];
 
@@ -214,15 +211,11 @@ async function loadOwners(db: Db, ownerIds: (string | null)[]): Promise<OwnersBy
 }
 
 type ProductUnitListRow = {
-  buildCompletedOn: string | null;
-  createdAt: Date;
-  id: string;
-  ownerId: string | null;
-  productId: string | null;
-  productModelCode: string | null;
-  productName: string | null;
-  productSerialNumber: string;
-  vinNumber: string | null;
+  [Key in keyof typeof productUnitSelection]: Key extends 'createdAt'
+    ? Date
+    : Key extends 'buildCompletedOn' | 'ownerId' | 'productId' | 'productModelCode' | 'productName' | 'vinNumber'
+      ? string | null
+      : string;
 };
 
 function toSummary(row: ProductUnitListRow, owners: OwnersById): ProductUnitSummary {

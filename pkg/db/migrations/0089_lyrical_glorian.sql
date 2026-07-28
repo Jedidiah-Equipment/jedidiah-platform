@@ -1,0 +1,1 @@
+CREATE INDEX "job_product_unit_id_idx" ON "job" USING btree ("product_unit_id");

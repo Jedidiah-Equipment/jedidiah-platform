@@ -1,0 +1,2 @@
+ALTER TABLE "job" ALTER COLUMN "quote_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "job" ADD CONSTRAINT "job_product_unit_or_quote_required" CHECK ("job"."product_unit_id" IS NOT NULL OR "job"."quote_id" IS NOT NULL);

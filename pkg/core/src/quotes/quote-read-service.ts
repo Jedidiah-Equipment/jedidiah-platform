@@ -426,7 +426,10 @@ export async function getJobByQuoteId({
   const byQuoteId = new Map<UUID, QuoteLinkedJobRow>();
 
   for (const row of rows) {
-    byQuoteId.set(row.quoteId, row);
+    // The `inArray` filter already excluded quoteless Jobs; the narrowing just satisfies the nullable column.
+    if (row.quoteId) {
+      byQuoteId.set(row.quoteId, row);
+    }
   }
 
   return byQuoteId;

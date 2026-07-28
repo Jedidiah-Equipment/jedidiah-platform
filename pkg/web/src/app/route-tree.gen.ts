@@ -39,6 +39,7 @@ import { Route as AuthedProductRangesIndexRouteImport } from './../routes/_authe
 import { Route as AuthedJobsIndexRouteImport } from './../routes/_authed.jobs.index'
 import { Route as AuthedCustomersIndexRouteImport } from './../routes/_authed.customers.index'
 import { Route as AuthedUnitsIdRouteImport } from './../routes/_authed.units.$id'
+import { Route as AuthedJobsStockBuildRouteImport } from './../routes/_authed.jobs.stock-build'
 import { Route as AuthedJobsListRouteImport } from './../routes/_authed.jobs.list'
 import { Route as AuthedJobsCalendarRouteImport } from './../routes/_authed.jobs.calendar'
 import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
@@ -200,6 +201,11 @@ const AuthedUnitsIdRoute = AuthedUnitsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthedUnitsRoute,
 } as any)
+const AuthedJobsStockBuildRoute = AuthedJobsStockBuildRouteImport.update({
+  id: '/stock-build',
+  path: '/stock-build',
+  getParentRoute: () => AuthedJobsRoute,
+} as any)
 const AuthedJobsListRoute = AuthedJobsListRouteImport.update({
   id: '/list',
   path: '/list',
@@ -272,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/jobs/list': typeof AuthedJobsListRoute
+  '/jobs/stock-build': typeof AuthedJobsStockBuildRoute
   '/units/$id': typeof AuthedUnitsIdRoute
   '/customers/': typeof AuthedCustomersIndexRoute
   '/jobs/': typeof AuthedJobsIndexRoute
@@ -305,6 +312,7 @@ export interface FileRoutesByTo {
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/jobs/list': typeof AuthedJobsListRoute
+  '/jobs/stock-build': typeof AuthedJobsStockBuildRoute
   '/units/$id': typeof AuthedUnitsIdRoute
   '/customers': typeof AuthedCustomersIndexRoute
   '/jobs': typeof AuthedJobsIndexRoute
@@ -347,6 +355,7 @@ export interface FileRoutesById {
   '/_authed/jobs/$id': typeof AuthedJobsIdRoute
   '/_authed/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/_authed/jobs/list': typeof AuthedJobsListRoute
+  '/_authed/jobs/stock-build': typeof AuthedJobsStockBuildRoute
   '/_authed/units/$id': typeof AuthedUnitsIdRoute
   '/_authed/customers/': typeof AuthedCustomersIndexRoute
   '/_authed/jobs/': typeof AuthedJobsIndexRoute
@@ -389,6 +398,7 @@ export interface FileRouteTypes {
     | '/jobs/$id'
     | '/jobs/calendar'
     | '/jobs/list'
+    | '/jobs/stock-build'
     | '/units/$id'
     | '/customers/'
     | '/jobs/'
@@ -422,6 +432,7 @@ export interface FileRouteTypes {
     | '/jobs/$id'
     | '/jobs/calendar'
     | '/jobs/list'
+    | '/jobs/stock-build'
     | '/units/$id'
     | '/customers'
     | '/jobs'
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '/_authed/jobs/$id'
     | '/_authed/jobs/calendar'
     | '/_authed/jobs/list'
+    | '/_authed/jobs/stock-build'
     | '/_authed/units/$id'
     | '/_authed/customers/'
     | '/_authed/jobs/'
@@ -702,6 +714,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedUnitsIdRouteImport
       parentRoute: typeof AuthedUnitsRoute
     }
+    '/_authed/jobs/stock-build': {
+      id: '/_authed/jobs/stock-build'
+      path: '/stock-build'
+      fullPath: '/jobs/stock-build'
+      preLoaderRoute: typeof AuthedJobsStockBuildRouteImport
+      parentRoute: typeof AuthedJobsRoute
+    }
     '/_authed/jobs/list': {
       id: '/_authed/jobs/list'
       path: '/list'
@@ -786,6 +805,7 @@ interface AuthedJobsRouteChildren {
   AuthedJobsIdRoute: typeof AuthedJobsIdRoute
   AuthedJobsCalendarRoute: typeof AuthedJobsCalendarRoute
   AuthedJobsListRoute: typeof AuthedJobsListRoute
+  AuthedJobsStockBuildRoute: typeof AuthedJobsStockBuildRoute
   AuthedJobsIndexRoute: typeof AuthedJobsIndexRoute
 }
 
@@ -793,6 +813,7 @@ const AuthedJobsRouteChildren: AuthedJobsRouteChildren = {
   AuthedJobsIdRoute: AuthedJobsIdRoute,
   AuthedJobsCalendarRoute: AuthedJobsCalendarRoute,
   AuthedJobsListRoute: AuthedJobsListRoute,
+  AuthedJobsStockBuildRoute: AuthedJobsStockBuildRoute,
   AuthedJobsIndexRoute: AuthedJobsIndexRoute,
 }
 

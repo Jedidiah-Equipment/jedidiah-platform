@@ -133,7 +133,8 @@ type JobProductUnitWithOwnershipRow = JobProductUnitRow & {
 
 type JobWithProductRow = JobRow & {
   productUnit: JobProductUnitWithOwnershipRow | null;
-  quote: QuoteRow;
+  // Null on a Stock Build: no sale, so no Quote code, kind, work title, or Customer to read.
+  quote: QuoteRow | null;
 };
 
 type JobDocumentRow = DocumentSummaryRow & {
@@ -659,18 +660,18 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
  */
 function resolveJobCustomerForRow(row: {
   productUnit: JobProductUnitWithOwnershipRow | null;
-  quote: { customer: CustomerRow | null };
+  quote: { customer: CustomerRow | null } | null;
 }): CustomerRow | null {
   return resolveJobCustomer({
     productUnit: row.productUnit
       ? { owner: resolveNewestOwnershipTransfer(row.productUnit.ownershipTransfers)?.toCustomer ?? null }
       : null,
-    quoteCustomer: row.quote.customer,
+    quoteCustomer: row.quote?.customer ?? null,
   });
 }
 
-function listJobWorkRows(quote: Pick<JobDetailQuoteRow, 'kind' | 'workItems'>): JobDetail['workRows'] {
-  if (quote.kind !== 'custom') return [];
+function listJobWorkRows(quote: Pick<JobDetailQuoteRow, 'kind' | 'workItems'> | null): JobDetail['workRows'] {
+  if (quote?.kind !== 'custom') return [];
 
   // The floor reads the internal Department label, not the quote-facing one, so a row points at the
   // department that actually owns the bay and the people.
@@ -891,9 +892,9 @@ export function mapJobSummary(row: JobWithProductRow, scheduleState: JobSchedule
     productModelCode: product?.modelCode ?? null,
     productName: product?.name ?? null,
     productThumbnailDataUrl: product?.thumbnailDataUrl ?? null,
-    quoteCode: QuoteCode.parse(row.quote.code),
-    quoteKind: row.quote.kind,
+    quoteCode: row.quote ? QuoteCode.parse(row.quote.code) : null,
+    quoteKind: row.quote?.kind ?? null,
     scheduleState,
-    workTitle: row.quote.workTitle,
+    workTitle: row.quote?.workTitle ?? null,
   };
 }

@@ -112,7 +112,9 @@ const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
           <SheetTitle className="truncate font-mono text-lg">{job?.code ?? 'Job'}</SheetTitle>
           {isJobCancelled(job) ? <Badge variant="destructive">Cancelled</Badge> : null}
         </div>
-        <SheetDescription className="truncate font-mono">{job?.quoteCode ?? 'Loading job...'}</SheetDescription>
+        <SheetDescription className="truncate font-mono">
+          {job ? (job.quoteCode ?? 'Stock Build') : 'Loading job...'}
+        </SheetDescription>
       </div>
     </div>
   </SheetHeader>
@@ -238,11 +240,12 @@ const ImmutableJobRows: React.FC<{ job: JobDetail }> = ({ job }) => {
 
   return (
     <>
-      <InfoRow label="Quote code" value={job.quoteCode ?? 'Direct job'} />
+      {/* A Stock Build has no sale behind it, so it has no Quote to name. */}
+      <InfoRow label="Quote code" value={job.quoteCode ?? 'Stock Build'} />
       <InfoRow label="Job code" value={job.code} />
       {job.productSerialNumber ? <InfoRow label="Product serial" value={job.productSerialNumber} /> : null}
       {/* VIN belongs to the machine, so it is edited on the Unit and only reported here. */}
-      {job.quoteKind === 'product' ? <InfoRow label="VIN number" value={job.vinNumber ?? 'Not captured'} /> : null}
+      {job.productId ? <InfoRow label="VIN number" value={job.vinNumber ?? 'Not captured'} /> : null}
       <InfoRow label="Customer" value={job.customerCompanyName ?? <StockBadge />} />
       <InfoRow label={getJobWorkLabel(job)} value={displayName} />
       {job.productModelCode ? <InfoRow label="Model" value={job.productModelCode} /> : null}

@@ -18,6 +18,16 @@ export class JobCreateFromQuoteDeniedError extends Error {
   }
 }
 
+/** A Stock Build was asked for against a Product or an Optional Assembly that cannot supply it. */
+export class StockBuildDeniedError extends Error {
+  readonly code = 'job.stock_build_denied';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'StockBuildDeniedError';
+  }
+}
+
 export class JobCancelledError extends Error {
   readonly code = 'job.cancelled';
   readonly metadata: { id: string };
@@ -132,7 +142,8 @@ export type JobCoreError =
   | JobCancelledError
   | JobNotFoundError
   | JobSlotBookingDeniedError
-  | JobSlotNotFoundError;
+  | JobSlotNotFoundError
+  | StockBuildDeniedError;
 
 export function isJobCoreError(error: unknown): error is JobCoreError {
   return (
@@ -147,6 +158,7 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobCancelledError ||
     error instanceof JobNotFoundError ||
     error instanceof JobSlotBookingDeniedError ||
-    error instanceof JobSlotNotFoundError
+    error instanceof JobSlotNotFoundError ||
+    error instanceof StockBuildDeniedError
   );
 }

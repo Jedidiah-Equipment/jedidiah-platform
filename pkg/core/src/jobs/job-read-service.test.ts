@@ -72,7 +72,12 @@ describe('mapJobSummary', () => {
       productUnit: null,
       productUnitId: null,
       quote: {
-        ...base.quote,
+        code: 1,
+        customer: {
+          companyName: 'Test Customer',
+          id: '00000000-0000-4000-8000-000000000004',
+          thumbnailDataUrl: null,
+        },
         kind: 'custom',
         workTitle: 'Pump skid rebuild',
       },
@@ -84,6 +89,23 @@ describe('mapJobSummary', () => {
       productSerialNumber: null,
       quoteKind: 'custom',
       workTitle: 'Pump skid rebuild',
+    });
+  });
+
+  it('reads a Stock Build as Stock, carrying no commercial facts', () => {
+    const base = jobRow();
+    const summary = mapJobSummary({ ...base, productUnit: productUnitRow([]), quote: null, quoteId: null });
+
+    expect(summary).toMatchObject({
+      customerCompanyName: null,
+      customerId: null,
+      // The machine is still fully identified — only the sale is missing.
+      productName: 'Test Product',
+      productSerialNumber: 'MODEL-001260001',
+      quoteCode: null,
+      quoteId: null,
+      quoteKind: null,
+      workTitle: null,
     });
   });
 });

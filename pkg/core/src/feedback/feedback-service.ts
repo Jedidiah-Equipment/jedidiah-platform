@@ -38,7 +38,7 @@ type FeedbackReadRow = FeedbackRow & {
     code: number;
     id: string;
     productUnit: { productSerialNumber: string } | null;
-    quote: { kind: QuoteKind; workTitle: string | null };
+    quote: { kind: QuoteKind; workTitle: string | null } | null;
   } | null;
   quote: { code: number; customer: { companyName: string }; id: string } | null;
   submitter: { email: string; id: string; image: string | null; name: string };
@@ -367,8 +367,8 @@ function mapFeedbackSubject(row: FeedbackReadRow): FeedbackListItem['subject'] {
       code: jobCode,
       productName: null,
       productSerialNumber: row.job.productUnit?.productSerialNumber ?? null,
-      quoteKind: row.job.quote.kind,
-      workTitle: row.job.quote.workTitle,
+      quoteKind: row.job.quote?.kind ?? null,
+      workTitle: row.job.quote?.workTitle ?? null,
     });
 
     return {

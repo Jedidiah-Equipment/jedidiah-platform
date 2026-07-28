@@ -140,9 +140,9 @@ export const jobs = pgTable(
     // The physical machine this Job builds or works on, and the only thing that makes this a Product
     // Job. Null for a Custom Job, which produces no machine. Serial, Product, and VIN live on the Unit.
     productUnitId: uuid('product_unit_id').references(() => productUnits.id, { onDelete: 'restrict' }),
-    quoteId: uuid('quote_id')
-      .notNull()
-      .references(() => quotes.id, { onDelete: 'restrict' }),
+    // Null for a Stock Build, which builds a machine we hold and has no sale behind it. A Custom Job
+    // has no Unit, so the table check below still forces it to carry a Quote.
+    quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'restrict' }),
     invoiceNumber: text('invoice_number'),
     description: text('description'),
     // Plant business date the Job finished. Latches: written once by hand or by the completion sweep,
@@ -157,6 +157,12 @@ export const jobs = pgTable(
     check(
       'job_invoice_number_nonempty',
       sql`${table.invoiceNumber} IS NULL OR length(trim(${table.invoiceNumber})) > 0`,
+    ),
+    // Every Job is either about a machine or about a sale, and usually both: a Stock Build has only a
+    // Unit, a Custom Job only a Quote, and a Job with neither describes no work at all.
+    check(
+      'job_product_unit_or_quote_required',
+      sql`${table.productUnitId} IS NOT NULL OR ${table.quoteId} IS NOT NULL`,
     ),
     // The Unit's build state is a correlated lookup of its Jobs, so this FK is read per Unit row.
     index('job_product_unit_id_idx').on(table.productUnitId),

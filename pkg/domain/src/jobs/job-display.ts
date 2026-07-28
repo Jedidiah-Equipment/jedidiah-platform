@@ -1,7 +1,8 @@
 export type JobDisplaySource = {
   code: string;
   productName: string | null;
-  quoteKind: 'product' | 'custom';
+  /** Null on a Stock Build, which has no Quote — it still builds a Product, so it reads as one. */
+  quoteKind: 'product' | 'custom' | null;
   workTitle: string | null;
 };
 

@@ -1,7 +1,8 @@
 import { hasPermission } from '@pkg/domain';
 import { DateOnlyIso, type JobListInput, JobSortBy, type UUID } from '@pkg/schema';
+import { IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
@@ -13,6 +14,7 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { Button } from '@/components/ui/button.js';
 import { Switch } from '@/components/ui/switch.js';
 import { toSelectOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
@@ -56,9 +58,22 @@ const jobSortOptions: SortOptions<JobListInput> = {
 
 export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ selectedJobId }) => {
   const navigate = useNavigate();
+  const accessQuery = useAccess();
 
   return (
-    <PageLayout description={jobListPageDescription} size="full" title="Job List">
+    <PageLayout
+      actions={
+        hasPermission(accessQuery.data, 'job:create') ? (
+          <Button render={<Link to="/jobs/stock-build" />}>
+            <IconPlus data-icon="inline-start" />
+            New Stock Build
+          </Button>
+        ) : null
+      }
+      description={jobListPageDescription}
+      size="full"
+      title="Job List"
+    >
       <JobListTable />
       {selectedJobId ? (
         <JobSheet

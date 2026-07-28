@@ -25,7 +25,7 @@ import {
   type QuoteWorkItemInput,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
@@ -688,22 +688,12 @@ async function resolveAllocationQuoteSeed({
   productUnitId: UUID;
   tx: DatabaseTransaction;
 }): Promise<QuoteSelectedAssemblyInput[]> {
-  const [[unit], transfers] = await Promise.all([
-    tx
-      .select({ productId: productUnits.productId })
-      .from(productUnits)
-      .where(eq(productUnits.id, productUnitId))
-      .limit(1),
-    tx
-      .select({
-        createdAt: productUnitOwnershipTransfers.createdAt,
-        id: productUnitOwnershipTransfers.id,
-        occurredOn: productUnitOwnershipTransfers.occurredOn,
-        toCustomerId: productUnitOwnershipTransfers.toCustomerId,
-      })
-      .from(productUnitOwnershipTransfers)
-      .where(eq(productUnitOwnershipTransfers.productUnitId, productUnitId)),
-  ]);
+  // Ownership writers lock this same row, making the Stock check and Quote insert one serialized decision.
+  const [unit] = await tx
+    .select({ productId: productUnits.productId })
+    .from(productUnits)
+    .where(eq(productUnits.id, productUnitId))
+    .for('update');
 
   if (!unit) {
     throw new QuoteInvalidReferenceError('Product Unit was not found.');
@@ -711,6 +701,17 @@ async function resolveAllocationQuoteSeed({
   if (unit.productId !== productId) {
     throw new QuoteInvalidReferenceError('Product Unit does not match the Quote Product.');
   }
+
+  const transfers = await tx
+    .select({
+      createdAt: productUnitOwnershipTransfers.createdAt,
+      id: productUnitOwnershipTransfers.id,
+      occurredOn: productUnitOwnershipTransfers.occurredOn,
+      toCustomerId: productUnitOwnershipTransfers.toCustomerId,
+    })
+    .from(productUnitOwnershipTransfers)
+    .where(eq(productUnitOwnershipTransfers.productUnitId, productUnitId));
+
   if (!isProductUnitInStock(transfers)) {
     throw new QuoteInvalidReferenceError('Product Unit is not Stock.');
   }
@@ -721,7 +722,7 @@ async function resolveAllocationQuoteSeed({
     })
     .from(jobBuildSpecAssemblies)
     .innerJoin(jobs, eq(jobs.id, jobBuildSpecAssemblies.jobId))
-    .where(and(eq(jobs.productUnitId, productUnitId), sql`${jobs.cancelledAt} is null`))
+    .where(and(eq(jobs.productUnitId, productUnitId), isNull(jobs.cancelledAt)))
     .orderBy(asc(jobs.createdAt), asc(jobs.id), asc(jobBuildSpecAssemblies.sequence));
   const liveAssemblyIds = new Set<UUID>();
 

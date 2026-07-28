@@ -500,6 +500,60 @@ describe('allocation quotes', () => {
       }),
     ).rejects.toMatchObject({ cause: { constraint_name: 'quote_product_unit_product_fk' } });
   });
+
+  test('serializes Quote creation with an ownership transfer for the same Unit', async ({ context }) => {
+    const unitId = await createUnit(context.db, context.product.id, 45);
+    let releaseTransfer = () => {};
+    let reportUnitLocked = () => {};
+    const transferMayFinish = new Promise<void>((resolve) => {
+      releaseTransfer = resolve;
+    });
+    const unitLocked = new Promise<void>((resolve) => {
+      reportUnitLocked = resolve;
+    });
+    const transferPromise = context.db.transaction(async (tx) => {
+      await tx.select({ id: productUnits.id }).from(productUnits).where(eq(productUnits.id, unitId)).for('update');
+      reportUnitLocked();
+      await transferMayFinish;
+      await tx.insert(productUnitOwnershipTransfers).values({
+        occurredOn: '2026-07-28',
+        productUnitId: unitId,
+        toCustomerId: context.customer.id,
+      });
+    });
+
+    await unitLocked;
+
+    const quoteResultPromise = createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    }).then(
+      (quote) => ({ quote, status: 'resolved' as const }),
+      (error: unknown) => ({ error, status: 'rejected' as const }),
+    );
+    const statusBeforeTransfer = await Promise.race([
+      quoteResultPromise.then((result) => result.status),
+      new Promise<'blocked'>((resolve) => {
+        setTimeout(() => resolve('blocked'), 500);
+      }),
+    ]);
+
+    releaseTransfer();
+    await transferPromise;
+
+    const quoteResult = await quoteResultPromise;
+    expect(statusBeforeTransfer).toBe('blocked');
+    expect(quoteResult).toMatchObject({
+      error: { message: 'Product Unit is not Stock.' },
+      status: 'rejected',
+    });
+  });
 });
 
 describe('custom quotes', () => {

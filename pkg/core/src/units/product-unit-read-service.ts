@@ -1,6 +1,7 @@
 import {
   createEscapedContainsSearchCondition,
   customers,
+  type DatabaseTransaction,
   type Db,
   getSortOrder,
   jobCfoAssemblies,
@@ -119,7 +120,13 @@ export async function listProductUnitFilterOptions({ db }: { db: Db }): Promise<
   return ProductUnitFilterOptions.parse({ owners, products: ownedProducts });
 }
 
-export async function getProductUnit({ db, id }: { db: Db; id: UUID }): Promise<ProductUnitDetail> {
+export async function getProductUnit({
+  db,
+  id,
+}: {
+  db: Db | DatabaseTransaction;
+  id: UUID;
+}): Promise<ProductUnitDetail> {
   const [row] = await db
     .select(productUnitSelection)
     .from(productUnits)
@@ -184,7 +191,10 @@ export async function getProductUnit({ db, id }: { db: Db; id: UUID }): Promise<
  * counting it would seed the next sale's Quote with Assemblies the customer never received — a worse
  * error than omitting part-finished work, which a human can still see on the Unit's Job history.
  */
-async function loadAsBuiltSpec(db: Db, jobIds: string[]): Promise<ProductUnitDetail['asBuiltSpec']> {
+async function loadAsBuiltSpec(
+  db: Db | DatabaseTransaction,
+  jobIds: string[],
+): Promise<ProductUnitDetail['asBuiltSpec']> {
   if (jobIds.length === 0) return [];
 
   const rows = await db
@@ -201,7 +211,7 @@ async function loadAsBuiltSpec(db: Db, jobIds: string[]): Promise<ProductUnitDet
 type OwnersById = Map<string, { id: UUID; companyName: string }>;
 
 /** One batched read for the page's derived owners: the owner id is a subquery, not a joinable column. */
-async function loadOwners(db: Db, ownerIds: (string | null)[]): Promise<OwnersById> {
+async function loadOwners(db: Db | DatabaseTransaction, ownerIds: (string | null)[]): Promise<OwnersById> {
   const ids = [...new Set(ownerIds.filter((ownerId): ownerId is string => ownerId !== null))];
 
   if (ids.length === 0) return new Map();

@@ -137,19 +137,13 @@ export const jobs = pgTable(
   {
     id: uuid('id').defaultRandom().primaryKey(),
     code: integer('code').notNull().default(sql`nextval('job_code_seq'::regclass)`),
-    productId: uuid('product_id').references(() => products.id, { onDelete: 'restrict' }),
-    // The physical machine this Job builds or works on. Null for a Custom Job, which produces none.
-    // The serial columns below are the expand half of the move onto product_unit and are still written.
+    // The physical machine this Job builds or works on, and the only thing that makes this a Product
+    // Job. Null for a Custom Job, which produces no machine. Serial, Product, and VIN live on the Unit.
     productUnitId: uuid('product_unit_id').references(() => productUnits.id, { onDelete: 'restrict' }),
     quoteId: uuid('quote_id')
       .notNull()
       .references(() => quotes.id, { onDelete: 'restrict' }),
-    productSerialPrefix: text('product_serial_prefix'),
-    productSerialYear: integer('product_serial_year'),
-    productSerialSequence: integer('product_serial_sequence'),
-    productSerialNumber: text('product_serial_number'),
     invoiceNumber: text('invoice_number'),
-    vinNumber: text('vin_number'),
     description: text('description'),
     // Plant business date the Job finished. Latches: written once by hand or by the completion sweep,
     // never recomputed. Distinct from derived schedule completeness, which still drives the Board.
@@ -164,27 +158,9 @@ export const jobs = pgTable(
       'job_invoice_number_nonempty',
       sql`${table.invoiceNumber} IS NULL OR length(trim(${table.invoiceNumber})) > 0`,
     ),
-    check('job_product_serial_prefix_nonempty', sql`length(trim(${table.productSerialPrefix})) > 0`),
-    check('job_product_serial_year_range', sql`${table.productSerialYear} >= 0 AND ${table.productSerialYear} <= 99`),
-    check('job_product_serial_sequence_positive', sql`${table.productSerialSequence} > 0`),
-    check('job_product_serial_number_nonempty', sql`length(trim(${table.productSerialNumber})) > 0`),
-    check(
-      'job_product_serial_shape',
-      sql`(${table.productId} is not null
-            and ${table.productSerialNumber} is not null
-            and ${table.productSerialPrefix} is not null
-            and ${table.productSerialYear} is not null
-            and ${table.productSerialSequence} is not null)
-        or (${table.productId} is null
-            and ${table.productSerialNumber} is null
-            and ${table.productSerialPrefix} is null
-            and ${table.productSerialYear} is null
-            and ${table.productSerialSequence} is null)`,
-    ),
     // The Unit's build state is a correlated lookup of its Jobs, so this FK is read per Unit row.
     index('job_product_unit_id_idx').on(table.productUnitId),
     uniqueIndex('job_code_unique').on(table.code),
-    uniqueIndex('job_product_serial_number_unique').on(table.productSerialNumber),
     uniqueIndex('job_quote_id_unique').on(table.quoteId),
   ],
 );
@@ -289,10 +265,6 @@ export const jobBayCalendarExceptionsRelations = relations(jobBayCalendarExcepti
 }));
 
 export const jobsRelations = relations(jobs, ({ many, one }) => ({
-  product: one(products, {
-    fields: [jobs.productId],
-    references: [products.id],
-  }),
   productUnit: one(productUnits, {
     fields: [jobs.productUnitId],
     references: [productUnits.id],

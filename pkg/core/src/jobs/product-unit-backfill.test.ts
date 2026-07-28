@@ -33,12 +33,78 @@ const DECOY_JOB_ID = '00000000-0000-4000-8000-000000000104';
 // 00:30 the next morning in Africa/Johannesburg: proves the transfer date is a plant business date.
 const SOLD_JOB_CREATED_AT = new Date('2026-05-01T22:30:00.000Z');
 
-const test = createTester(async ({ db }) => ({ db, seed: await seedPreMigrationShape(db) }));
+const test = createTester(async ({ db }) => {
+  await restorePreMigrationJobColumns(db);
 
-async function runBackfill(db: Db): Promise<void> {
-  for (const statement of readMigrationStatements('0088_product_unit_backfill')) {
+  return { db, seed: await seedPreMigrationShape(db) };
+});
+
+async function runMigration(db: Db, tag: string): Promise<void> {
+  for (const statement of readMigrationStatements(tag)) {
     await db.execute(sql.raw(statement));
   }
+}
+
+async function runBackfill(db: Db): Promise<void> {
+  return runMigration(db, '0088_product_unit_backfill');
+}
+
+/**
+ * Puts the identity columns back on `job` so the backfill has something to read. The template database
+ * has every migration applied, including the one that drops them, but the backfill still runs against
+ * the pre-drop shape on the way through — this test is the only thing standing between that one
+ * production run and a machine losing its serial, so it recreates the shape rather than skipping it.
+ */
+async function restorePreMigrationJobColumns(db: Db): Promise<void> {
+  await db.execute(sql`
+    alter table "job"
+      add column "product_id" uuid,
+      add column "product_serial_prefix" text,
+      add column "product_serial_year" integer,
+      add column "product_serial_sequence" integer,
+      add column "product_serial_number" text,
+      add column "vin_number" text
+  `);
+  // Constraint names match the pre-drop schema exactly, so the drop migration can be run over this.
+  await db.execute(sql`
+    alter table "job"
+      add constraint "job_product_id_products_id_fk" foreign key ("product_id") references "products"("id"),
+      add constraint "job_product_serial_prefix_nonempty" check (length(trim("product_serial_prefix")) > 0),
+      add constraint "job_product_serial_year_range" check ("product_serial_year" >= 0 and "product_serial_year" <= 99),
+      add constraint "job_product_serial_sequence_positive" check ("product_serial_sequence" > 0),
+      add constraint "job_product_serial_number_nonempty" check (length(trim("product_serial_number")) > 0),
+      add constraint "job_product_serial_shape" check (
+        ("product_id" is not null
+          and "product_serial_number" is not null
+          and "product_serial_prefix" is not null
+          and "product_serial_year" is not null
+          and "product_serial_sequence" is not null)
+        or ("product_id" is null
+          and "product_serial_number" is null
+          and "product_serial_prefix" is null
+          and "product_serial_year" is null
+          and "product_serial_sequence" is null)
+      )
+  `);
+  await db.execute(sql`create unique index "job_product_serial_number_unique" on "job" ("product_serial_number")`);
+}
+
+/** The identity a Job carried before the extraction: written straight to the restored columns. */
+async function setPreMigrationIdentity(
+  db: Db,
+  jobId: string,
+  identity: { productId: string; sequence: number; serial: string; vin?: string },
+): Promise<void> {
+  await db.execute(sql`
+    update "job"
+    set "product_id" = ${identity.productId},
+        "product_serial_prefix" = 'BF-001',
+        "product_serial_year" = 26,
+        "product_serial_sequence" = ${identity.sequence},
+        "product_serial_number" = ${identity.serial},
+        "vin_number" = ${identity.vin ?? null}
+    where "id" = ${jobId}
+  `);
 }
 
 describe('product unit backfill', () => {
@@ -122,6 +188,21 @@ describe('product unit backfill', () => {
     expect(await readBuildRecord(context.db)).toEqual(before);
   });
 
+  // The whole point of the extraction: the machine's identity outlives the columns it was born in.
+  test('leaves every Unit intact once the Job columns are dropped', async ({ context }) => {
+    await runBackfill(context.db);
+
+    await runMigration(context.db, '0090_drop_job_serial_product_vin');
+
+    const unitRows = await context.db.select().from(productUnits).orderBy(asc(productUnits.productSerialNumber));
+
+    expect(unitRows.map((unit) => [unit.productSerialNumber, unit.vinNumber])).toEqual([
+      ['BF-001260001', 'VIN-RIVERSIDE-1'],
+      ['BF-001260002', null],
+      ['BF-001260003', null],
+    ]);
+  });
+
   test('changes nothing when it runs again', async ({ context }) => {
     await runBackfill(context.db);
     const afterFirstRun = await readBackfilledRows(context.db);
@@ -160,10 +241,8 @@ async function readBuildRecord(db: Db) {
     db.select().from(jobCfoParts).orderBy(asc(jobCfoParts.partId)),
     db.select().from(documents).orderBy(asc(documents.id)),
     db.select().from(jobSlots).orderBy(asc(jobSlots.sequence)),
-    db
-      .select({ code: jobs.code, completedOn: jobs.completedOn, serial: jobs.productSerialNumber })
-      .from(jobs)
-      .orderBy(asc(jobs.code)),
+    // The serial is read raw: it lives on the restored pre-migration column, not on the Drizzle table.
+    db.execute(sql`select "code", "completed_on", "product_serial_number" from "job" order by "code"`),
   ]);
 
   return { cfoAssemblyRows, cfoPartRows, documentRows, jobRows, slotRows };
@@ -254,39 +333,22 @@ async function seedPreMigrationShape(db: Db) {
       completedOn: '2026-05-04',
       createdAt: SOLD_JOB_CREATED_AT,
       id: SOLD_JOB_ID,
-      productId: product.id,
-      productSerialNumber: 'BF-001260001',
-      productSerialPrefix: 'BF-001',
-      productSerialSequence: 1,
-      productSerialYear: 26,
       quoteId: soldQuote.id,
       updatedAt: SOLD_JOB_CREATED_AT,
-      vinNumber: 'VIN-RIVERSIDE-1',
     },
-    {
-      createdAt: now,
-      id: STOCK_JOB_ID,
-      productId: product.id,
-      productSerialNumber: 'BF-001260002',
-      productSerialPrefix: 'BF-001',
-      productSerialSequence: 2,
-      productSerialYear: 26,
-      quoteId: stockQuote.id,
-      updatedAt: now,
-    },
+    { createdAt: now, id: STOCK_JOB_ID, quoteId: stockQuote.id, updatedAt: now },
     { createdAt: now, id: CUSTOM_JOB_ID, quoteId: customQuote.id, updatedAt: now },
-    {
-      createdAt: now,
-      id: DECOY_JOB_ID,
-      productId: product.id,
-      productSerialNumber: 'BF-001260003',
-      productSerialPrefix: 'BF-001',
-      productSerialSequence: 3,
-      productSerialYear: 26,
-      quoteId: decoyQuote.id,
-      updatedAt: now,
-    },
+    { createdAt: now, id: DECOY_JOB_ID, quoteId: decoyQuote.id, updatedAt: now },
   ]);
+
+  await setPreMigrationIdentity(db, SOLD_JOB_ID, {
+    productId: product.id,
+    sequence: 1,
+    serial: 'BF-001260001',
+    vin: 'VIN-RIVERSIDE-1',
+  });
+  await setPreMigrationIdentity(db, STOCK_JOB_ID, { productId: product.id, sequence: 2, serial: 'BF-001260002' });
+  await setPreMigrationIdentity(db, DECOY_JOB_ID, { productId: product.id, sequence: 3, serial: 'BF-001260003' });
 
   const [createdSupplier] = await db
     .insert(supplier)

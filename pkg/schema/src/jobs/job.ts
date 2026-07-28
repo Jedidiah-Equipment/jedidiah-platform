@@ -402,8 +402,12 @@ const ProductSerialNumberString = requiredTrimmedText(
 export type ProductSerialNumber = z.infer<typeof ProductSerialNumber>;
 export const ProductSerialNumber = ProductSerialNumberString;
 
-export type JobVinNumber = z.infer<typeof JobVinNumber>;
-export const JobVinNumber = nullableTrimmedText();
+/**
+ * A machine's VIN. It belongs to the Product Unit, not the Job; it lives beside the serial scalars
+ * because `units/product-unit.ts` already imports those from here and cannot import back.
+ */
+export type ProductUnitVinNumber = z.infer<typeof ProductUnitVinNumber>;
+export const ProductUnitVinNumber = nullableTrimmedText();
 
 export type JobDescription = z.infer<typeof JobDescription>;
 export const JobDescription = nullableTrimmedText();
@@ -455,15 +459,17 @@ export const Job = z.object({
   id: UUID,
   code: JobCode,
   cancelledAt: DateIso.nullable(),
+  // Identity read off the Job's Product Unit, never stored on the Job: null on all of them means a
+  // Custom Job, which builds no machine. productSerialNumber is the full frozen serial; prefix,
+  // sequence, and year store its component parts.
   productId: UUID.nullable(),
-  // productSerialNumber is the full frozen serial; prefix, sequence, and year store its component parts.
   productSerialNumber: ProductSerialNumber.nullable(),
   productSerialPrefix: ProductSerialPrefix.nullable(),
   productSerialSequence: ProductSerialSequence.nullable(),
   productSerialYear: ProductSerialYear.nullable(),
+  vinNumber: ProductUnitVinNumber,
   quoteId: UUID,
   invoiceNumber: JobInvoiceNumber,
-  vinNumber: JobVinNumber,
   description: JobDescription,
   completedOn: JobCompletedOn,
   createdAt: DateIso,
@@ -744,7 +750,6 @@ export const JobUpdateInput = z
     completedOn: JobCompletedOn.optional(),
     description: nullableTrimmedTextInput(),
     invoiceNumber: nullableTrimmedTextInput(),
-    vinNumber: nullableTrimmedTextInput(),
   })
   .strict();
 

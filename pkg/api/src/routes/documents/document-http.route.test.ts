@@ -1,6 +1,17 @@
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
-import { customers, type Db, documents, jobs, productAssemblies, products, quotes, sql, user } from '@pkg/db';
+import {
+  customers,
+  type Db,
+  documents,
+  jobs,
+  productAssemblies,
+  products,
+  productUnits,
+  quotes,
+  sql,
+  user,
+} from '@pkg/db';
 import type { UUID } from '@pkg/schema';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
@@ -633,17 +644,19 @@ async function createJobOwner(db: Db, productId: UUID) {
     .returning({ id: quotes.id });
   if (!quote) throw new Error('Quote insert did not return a row');
 
-  const [job] = await db
-    .insert(jobs)
+  const [unit] = await db
+    .insert(productUnits)
     .values({
       productId,
       productSerialNumber: 'DOC-HTTP260001',
       productSerialPrefix: 'DOC-HTTP',
       productSerialSequence: 1,
       productSerialYear: 26,
-      quoteId: quote.id,
     })
-    .returning({ id: jobs.id });
+    .returning({ id: productUnits.id });
+  if (!unit) throw new Error('Product unit insert did not return a row');
+
+  const [job] = await db.insert(jobs).values({ productUnitId: unit.id, quoteId: quote.id }).returning({ id: jobs.id });
   if (!job) throw new Error('Job insert did not return a row');
 
   return job;

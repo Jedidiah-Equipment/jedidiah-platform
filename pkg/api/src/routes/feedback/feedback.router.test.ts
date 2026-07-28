@@ -7,6 +7,7 @@ import {
   feedbackUser,
   jobs,
   products,
+  productUnits,
   quotes,
   user,
 } from '@pkg/db';
@@ -629,17 +630,22 @@ async function createQuote(db: Db, productId: string) {
 }
 
 async function createJob(db: Db, { productId, quoteId }: { productId: string; quoteId: string }) {
-  const [job] = await db
-    .insert(jobs)
+  const [unit] = await db
+    .insert(productUnits)
     .values({
       productId,
       productSerialNumber: 'FB-26-0001',
       productSerialPrefix: 'FB',
       productSerialSequence: 1,
       productSerialYear: 26,
-      quoteId,
     })
-    .returning();
+    .returning({ id: productUnits.id });
+
+  if (!unit) {
+    throw new Error('Product unit insert did not return a row');
+  }
+
+  const [job] = await db.insert(jobs).values({ productUnitId: unit.id, quoteId }).returning();
 
   if (!job) {
     throw new Error('Job insert did not return a row');

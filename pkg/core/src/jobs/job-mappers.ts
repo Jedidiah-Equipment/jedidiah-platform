@@ -3,7 +3,7 @@ import { Job } from '@pkg/schema';
 
 export type JobRow = typeof jobs.$inferSelect;
 
-/** The identity facts a Job now reads off its machine instead of its own columns. */
+/** The identity facts a Job reads off its machine. A Custom Job has no Unit, so it has none of them. */
 export type JobProductUnitRow = {
   productSerialNumber: string;
   productSerialPrefix: string;
@@ -14,9 +14,8 @@ export type JobProductUnitRow = {
 };
 
 /**
- * A Job's own serial and VIN columns are the expand half of the Product Unit extraction and are still
- * written, but nothing reads them: a Unit-bound Job reports the machine's identity, so a rework and
- * its build agree, and #1013 can drop the columns without changing a single read.
+ * The machine's identity — serial, Product, VIN — belongs to the Product Unit, so a rework and the
+ * build it follows report the same facts about the same machine.
  */
 export function mapJob(row: JobRow, productUnit?: JobProductUnitRow | null): Job {
   const identity = productUnit
@@ -34,7 +33,7 @@ export function mapJob(row: JobRow, productUnit?: JobProductUnitRow | null): Job
         productSerialPrefix: null,
         productSerialSequence: null,
         productSerialYear: null,
-        vinNumber: row.vinNumber,
+        vinNumber: null,
       };
 
   return Job.parse({

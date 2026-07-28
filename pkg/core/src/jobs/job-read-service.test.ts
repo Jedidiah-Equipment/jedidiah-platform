@@ -12,15 +12,8 @@ describe('mapJobSummary', () => {
     expect(summary).toMatchObject({ productBuildTimeDays: 12, productSerialNumber: 'MODEL-001260001' });
   });
 
-  it('reads the serial and product off the machine, not the Job columns', () => {
-    const base = jobRow();
-    const summary = mapJobSummary({
-      ...base,
-      // The Job's own columns are stale leftovers of the expand phase; nothing may read them.
-      productId: '00000000-0000-4000-8000-0000000000ff',
-      productSerialNumber: 'STALE-001',
-      productSerialPrefix: 'STALE',
-    });
+  it('reads the serial and product off the machine', () => {
+    const summary = mapJobSummary(jobRow());
 
     expect(summary).toMatchObject({
       productId: '00000000-0000-4000-8000-000000000002',
@@ -76,12 +69,6 @@ describe('mapJobSummary', () => {
     const base = jobRow();
     const summary = mapJobSummary({
       ...base,
-      product: null,
-      productId: null,
-      productSerialNumber: null,
-      productSerialPrefix: null,
-      productSerialSequence: null,
-      productSerialYear: null,
       productUnit: null,
       productUnitId: null,
       quote: {
@@ -191,17 +178,6 @@ function jobRow(): Parameters<typeof mapJobSummary>[0] {
     createdAt: now,
     id: '00000000-0000-4000-8000-000000000001',
     invoiceNumber: null,
-    product: {
-      buildTimeDays: 12,
-      modelCode: 'MODEL-001',
-      name: 'Test Product',
-      thumbnailDataUrl: null,
-    },
-    productId: '00000000-0000-4000-8000-000000000002',
-    productSerialNumber: 'MODEL-001260001',
-    productSerialPrefix: 'MODEL-001',
-    productSerialSequence: 1,
-    productSerialYear: 26,
     productUnit: productUnitRow(),
     productUnitId: '00000000-0000-4000-8000-000000000003',
     quote: {
@@ -216,7 +192,6 @@ function jobRow(): Parameters<typeof mapJobSummary>[0] {
     },
     quoteId: '00000000-0000-4000-8000-000000000003',
     updatedAt: now,
-    vinNumber: null,
     description: null,
   };
 }

@@ -36,6 +36,7 @@ describe('getRolePermissions', () => {
       'product_range:read',
       'product_range:update',
       'product_unit:read',
+      'product_unit:update',
       'quote:cancel',
       'quote:create',
       'quote:read',
@@ -58,6 +59,17 @@ describe('getRolePermissions', () => {
     expect(getRolePermissions('super-admin')).toEqual([...adminPermissions, 'feedback:read', 'feedback:update'].sort());
     expect(adminPermissions).not.toContain('feedback:read');
     expect(adminPermissions).not.toContain('feedback:update');
+  });
+
+  // Editing a machine's VIN rewrites the identity every later Job, document, and sale inherits, so it
+  // stays with the roles that own Unit identity rather than the ones that merely read Units.
+  it('lets only administrators edit a Product Unit', () => {
+    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'bay-operator'] as const) {
+      expect(getRolePermissions(role), `role ${role}`).not.toContain('product_unit:update');
+    }
+
+    expect(getRolePermissions('admin')).toContain('product_unit:update');
+    expect(getRolePermissions('super-admin')).toContain('product_unit:update');
   });
 
   it('grants procurement permissions to procurement managers', () => {

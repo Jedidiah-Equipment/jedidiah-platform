@@ -269,14 +269,24 @@ describe('createJob', () => {
       vinNumber: null,
     });
     expect(jobRows[0]?.productUnitId).toBe(unitRows[0]?.id);
-    // Expand half of the refactor: the Job columns still carry the serial for every current reader.
-    expect(jobRows[0]).toMatchObject({
-      productSerialNumber: 'CFO-001260001',
-      productSerialPrefix: 'CFO-001',
-      productSerialSequence: 1,
-      productSerialYear: 26,
-    });
+    // The Job carries no serial of its own: it reports the one on the machine it is bound to.
     expect(job.productSerialNumber).toBe('CFO-001260001');
+  });
+
+  // The serial used to be audited as a Job field. It is a fact about the machine, so the machine's own
+  // create event is what keeps a minted serial in the audit trail.
+  test('audits the machine that came into being, naming its serial', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    await createJob({ actorUserId, db: context.db, input: { baySeeds: [], quoteId: quote.id } });
+
+    const [event] = await context.db.select().from(auditEvents).where(eq(auditEvents.entityType, 'product_unit'));
+
+    expect(event).toMatchObject({ action: 'created', actorUserId });
+    expect(event?.summary).toContain('CFO-001260001');
   });
 
   test('writes an initial Ownership Transfer out of Stock to the Quote customer', async ({ context }) => {
@@ -501,10 +511,10 @@ describe('createJob', () => {
     });
     expect(job.cfo).toEqual([]);
     expect(job.documents).toEqual([]);
+    // No machine: a Custom Job produces none, which is exactly what makes it a Custom Job.
     expect(jobRows).toMatchObject([
       {
-        productId: null,
-        productSerialNumber: null,
+        productUnitId: null,
         quoteId: quote.id,
       },
     ]);
@@ -1636,7 +1646,7 @@ describe('updateJob', () => {
       updateJob({
         actorUserId,
         db: context.db,
-        input: { completedOn: null, description: 'Should not save', id: job.id, invoiceNumber: null, vinNumber: null },
+        input: { completedOn: null, description: 'Should not save', id: job.id, invoiceNumber: null },
       }),
     ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
   });
@@ -1652,7 +1662,6 @@ describe('updateJob', () => {
         description: null,
         id: job.id,
         invoiceNumber: null,
-        vinNumber: null,
       },
     });
 
@@ -1661,7 +1670,7 @@ describe('updateJob', () => {
     const reopened = await updateJob({
       actorUserId,
       db: context.db,
-      input: { completedOn: null, description: null, id: job.id, invoiceNumber: null, vinNumber: null },
+      input: { completedOn: null, description: null, id: job.id, invoiceNumber: null },
     });
 
     expect(reopened.job.completedOn).toBeNull();
@@ -1673,7 +1682,7 @@ describe('updateJob', () => {
     const updated = await updateJob({
       actorUserId,
       db: context.db,
-      input: JobUpdateInput.parse({ id: job.id, description: 'Fit toolbox', invoiceNumber: null, vinNumber: null }),
+      input: JobUpdateInput.parse({ id: job.id, description: 'Fit toolbox', invoiceNumber: null }),
     });
     const read = await getJob({ db: context.db, id: job.id });
 
@@ -1685,7 +1694,7 @@ describe('updateJob', () => {
 
   test('answers a no-op update with the machine identity too', async ({ context }) => {
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
-    const input = JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: null });
+    const input = JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null });
 
     // Same payload twice: the second changes nothing and takes the early return.
     await updateJob({ actorUserId, db: context.db, input });
@@ -1693,37 +1702,6 @@ describe('updateJob', () => {
 
     expect(unchanged.job.productSerialNumber).toBe(job.productSerialNumber);
     expect(unchanged.job.productId).toBe(context.catalog.product.id);
-  });
-
-  test('mirrors a VIN edit onto the Product Unit', async ({ context }) => {
-    const job = await createAcceptedJob(context.db, context.catalog.product.id);
-
-    await updateJob({
-      actorUserId,
-      db: context.db,
-      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: 'VIN-EDITED-1' }),
-    });
-
-    const [unit] = await context.db.select().from(productUnits);
-    expect(unit?.vinNumber).toBe('VIN-EDITED-1');
-  });
-
-  test('mirrors a cleared VIN onto the Product Unit', async ({ context }) => {
-    const job = await createAcceptedJob(context.db, context.catalog.product.id);
-    await updateJob({
-      actorUserId,
-      db: context.db,
-      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: 'VIN-EDITED-1' }),
-    });
-
-    await updateJob({
-      actorUserId,
-      db: context.db,
-      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: null }),
-    });
-
-    const [unit] = await context.db.select().from(productUnits);
-    expect(unit?.vinNumber).toBeNull();
   });
 
   test('preserves a stored completion date when the payload omits it', async ({ context }) => {
@@ -1734,7 +1712,7 @@ describe('updateJob', () => {
     const result = await updateJob({
       actorUserId,
       db: context.db,
-      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: 'INV-9', vinNumber: null }),
+      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: 'INV-9' }),
     });
 
     expect(result.job.completedOn).toBe('2026-05-04');
@@ -1749,7 +1727,7 @@ describe('updateJob', () => {
       updateJob({
         actorUserId,
         db: context.db,
-        input: { completedOn: tomorrow, description: null, id: job.id, invoiceNumber: null, vinNumber: null },
+        input: { completedOn: tomorrow, description: null, id: job.id, invoiceNumber: null },
       }),
     ).rejects.toMatchObject({ code: 'job.completed_on_in_future' });
   });
@@ -1847,7 +1825,6 @@ describe('sweepJobCompletions', () => {
         description: null,
         id: job.id,
         invoiceNumber: null,
-        vinNumber: null,
       },
     });
 

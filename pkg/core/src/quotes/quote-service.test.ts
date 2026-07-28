@@ -9,6 +9,7 @@ import {
   productAssemblies,
   productBays,
   products,
+  productUnits,
   quotes,
   user,
   workingCalendarOffDays,
@@ -156,11 +157,7 @@ describe('getQuote', () => {
     const [job] = await context.db
       .insert(jobs)
       .values({
-        productId: context.product.id,
-        productSerialNumber: 'QUOTE-SUMMARY-001-26-001',
-        productSerialPrefix: 'QUOTE-SUMMARY-001',
-        productSerialSequence: 1,
-        productSerialYear: 26,
+        productUnitId: await createUnit(context.db, context.product.id, 1),
         quoteId: quote.id,
       })
       .returning();
@@ -369,14 +366,7 @@ describe('custom quotes', () => {
         status: 'sent',
       }),
     });
-    await context.db.insert(jobs).values({
-      productId: null,
-      productSerialNumber: null,
-      productSerialPrefix: null,
-      productSerialSequence: null,
-      productSerialYear: null,
-      quoteId: customQuote.id,
-    });
+    await context.db.insert(jobs).values({ quoteId: customQuote.id });
 
     const updated = await updateQuote({
       actorUserId: context.salesPerson.id,
@@ -1053,20 +1043,11 @@ describe('cancelQuote', () => {
         {
           description: 'Target build',
           invoiceNumber: 'INV-912',
-          productId: context.product.id,
-          productSerialNumber: 'QUOTE-SUMMARY-001-26-912',
-          productSerialPrefix: 'QUOTE-SUMMARY-001',
-          productSerialSequence: 912,
-          productSerialYear: 26,
+          productUnitId: await createUnit(context.db, context.product.id, 912),
           quoteId: quote.id,
-          vinNumber: 'VIN-912',
         },
         {
-          productId: context.product.id,
-          productSerialNumber: 'QUOTE-SUMMARY-001-26-913',
-          productSerialPrefix: 'QUOTE-SUMMARY-001',
-          productSerialSequence: 913,
-          productSerialYear: 26,
+          productUnitId: await createUnit(context.db, context.product.id, 913),
           quoteId: downstreamQuote.id,
         },
       ])
@@ -1391,6 +1372,26 @@ async function createQuote(
   }
 
   return quote;
+}
+
+/** The machine a Product Job builds. A Job is a Product Job because it has one, so fixtures need one. */
+async function createUnit(db: Db, productId: string, sequence: number) {
+  const [unit] = await db
+    .insert(productUnits)
+    .values({
+      productId,
+      productSerialNumber: `QUOTE-SUMMARY-001-26-${sequence}`,
+      productSerialPrefix: 'QUOTE-SUMMARY-001',
+      productSerialSequence: sequence,
+      productSerialYear: 26,
+    })
+    .returning({ id: productUnits.id });
+
+  if (!unit) {
+    throw new Error('Product unit insert did not return a row');
+  }
+
+  return unit.id;
 }
 
 async function createBay(

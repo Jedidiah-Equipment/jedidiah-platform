@@ -46,7 +46,7 @@ import {
   RemoveJobSlotResult,
   type ResizeJobSlotInput,
   ResizeJobSlotResult,
-  UUID,
+  type UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 
@@ -63,6 +63,7 @@ import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { snapshotJobBrochureDocument } from '../products/product-brochure-document.js';
 import { narrowQuoteOffering } from '../quotes/quote-offering.js';
+import { productUnitAuditDescriptor } from '../units/product-unit-service.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
 import {
@@ -79,7 +80,7 @@ import { loadBayWorkingCalendar } from './working-calendar-service.js';
 type QuoteRow = typeof quotes.$inferSelect;
 
 // A Job's inputs resolved once at the quote boundary. `kind` alone drives every downstream branch: the
-// product variant carries the serial + CFO facts a custom Job never has, so no site re-checks `productId`.
+// product variant carries the serial + CFO facts a custom Job never has, so no site re-derives them.
 type JobBlueprint =
   | {
       kind: 'product';
@@ -101,10 +102,8 @@ export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
     completedOn: row.completedOn,
     description: row.description,
     invoiceNumber: row.invoiceNumber,
-    productId: row.productId,
-    productSerialNumber: row.productSerialNumber,
+    productUnitId: row.productUnitId,
     quoteId: row.quoteId,
-    vinNumber: row.vinNumber,
   }),
 });
 
@@ -135,16 +134,14 @@ export async function createJob({
     const plantToday = getPlantDateNow();
     const blueprint = await resolveJobBlueprint({ plantToday, quoteId: input.quoteId, tx });
 
-    // The physical machine is created before the Job that builds it, so the Job can point at the
-    // Unit that owns its identity. Serial columns are still written alongside for existing readers.
-    const productUnitId = blueprint.kind === 'product' ? await insertProductUnit({ blueprint, tx }) : null;
+    // The physical machine is created before the Job that builds it: the Unit owns the serial, the
+    // Product, and the VIN, and pointing at one is what makes this a Product Job.
+    const productUnitId = blueprint.kind === 'product' ? await insertProductUnit({ actorUserId, blueprint, tx }) : null;
 
     const [job] = await tx
       .insert(jobs)
       .values({
-        productId: blueprint.kind === 'product' ? blueprint.productId : null,
         productUnitId,
-        ...serialColumns(blueprint),
         quoteId: blueprint.quote.id,
       })
       .returning();
@@ -292,12 +289,14 @@ async function loadJobProductUnit({
 }
 
 async function insertProductUnit({
+  actorUserId,
   blueprint,
   tx,
 }: {
+  actorUserId: AuthId;
   blueprint: Extract<JobBlueprint, { kind: 'product' }>;
   tx: DatabaseTransaction;
-}): Promise<UUID> {
+}): Promise<string> {
   const [unit] = await tx
     .insert(productUnits)
     .values({
@@ -307,31 +306,15 @@ async function insertProductUnit({
       productSerialSequence: blueprint.serial.sequence,
       productSerialYear: blueprint.serial.year,
     })
-    .returning({ id: productUnits.id });
+    .returning();
 
   if (!unit) {
     throw new Error('Product unit insert did not return a row');
   }
 
-  return UUID.parse(unit.id);
-}
+  await recordAuditCreate({ db: tx, descriptor: productUnitAuditDescriptor, actorUserId, input: unit });
 
-function serialColumns(blueprint: JobBlueprint) {
-  if (blueprint.kind === 'product') {
-    return {
-      productSerialNumber: blueprint.serial.number,
-      productSerialPrefix: blueprint.serial.prefix,
-      productSerialSequence: blueprint.serial.sequence,
-      productSerialYear: blueprint.serial.year,
-    };
-  }
-
-  return {
-    productSerialNumber: null,
-    productSerialPrefix: null,
-    productSerialSequence: null,
-    productSerialYear: null,
-  };
+  return unit.id;
 }
 
 export async function updateJob({
@@ -359,7 +342,6 @@ export async function updateJob({
       ...(input.completedOn === undefined ? {} : { completedOn: input.completedOn }),
       description: input.description,
       invoiceNumber: input.invoiceNumber,
-      vinNumber: input.vinNumber,
     },
   });
 }
@@ -373,7 +355,7 @@ async function applyJobFieldPatch({
   actorUserId: AuthId;
   db: Db;
   id: UUID;
-  patch: Partial<Pick<JobRow, 'completedOn' | 'description' | 'invoiceNumber' | 'vinNumber'>>;
+  patch: Partial<Pick<JobRow, 'completedOn' | 'description' | 'invoiceNumber'>>;
 }): Promise<JobUpdateResult> {
   return db.transaction(async (tx) => {
     const before = await lockMutableJob(tx, id);
@@ -395,20 +377,8 @@ async function applyJobFieldPatch({
       throw new JobNotFoundError(id);
     }
 
-    // VIN identifies the machine, so it is dual-written to the Unit under the same Job lock for as
-    // long as both columns exist. Without this the Unit keeps its creation-time VIN and every later
-    // edit is lost when the Job column is dropped.
-    if (patch.vinNumber !== undefined && row.productUnitId) {
-      await tx
-        .update(productUnits)
-        .set({ updatedAt: new Date(), vinNumber: row.vinNumber })
-        .where(eq(productUnits.id, row.productUnitId));
-    }
-
     await recordAuditUpdate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, after: row, changes });
 
-    // Read the Unit after the VIN write above, so the response carries the machine's current identity
-    // rather than the Job's own columns — which nothing reads any more and #1013 removes.
     return { job: mapJob(row, await loadJobProductUnit({ productUnitId: row.productUnitId, tx })) };
   });
 }

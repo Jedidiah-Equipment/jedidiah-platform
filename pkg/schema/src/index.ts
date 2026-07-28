@@ -36,3 +36,4 @@ export * from './products/product-range.js';
 export * from './quotes/quote.js';
 export * from './quotes/quote-document.js';
 export * from './suppliers/supplier.js';
+export * from './units/product-unit.js';

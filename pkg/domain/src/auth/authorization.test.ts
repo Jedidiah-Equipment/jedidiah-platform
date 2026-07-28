@@ -35,6 +35,7 @@ describe('getRolePermissions', () => {
       'product_range:create',
       'product_range:read',
       'product_range:update',
+      'product_unit:read',
       'quote:cancel',
       'quote:create',
       'quote:read',
@@ -70,17 +71,24 @@ describe('getRolePermissions', () => {
       'product:create',
       'product:read',
       'product:update',
+      'product_unit:read',
       'supplier:read',
       'supplier:update',
     ]);
   });
 
   it('grants read-only job permissions to job viewers', () => {
-    expect(getRolePermissions('job-viewer')).toEqual(['job:read']);
+    expect(getRolePermissions('job-viewer')).toEqual(['job:read', 'product_unit:read']);
   });
 
   it('grants Quote and email permissions to sales', () => {
-    expect(getRolePermissions('sales')).toEqual(['email:send', 'quote:create', 'quote:read', 'quote:update']);
+    expect(getRolePermissions('sales')).toEqual([
+      'email:send',
+      'product_unit:read',
+      'quote:create',
+      'quote:read',
+      'quote:update',
+    ]);
   });
 
   it('grants no permissions to Bay Operators', () => {
@@ -134,7 +142,7 @@ describe('createUserAccessSummary', () => {
         userId: 'user_123',
       }),
     ).toEqual({
-      permissions: ['email:send', 'quote:create', 'quote:read', 'quote:update'],
+      permissions: ['email:send', 'product_unit:read', 'quote:create', 'quote:read', 'quote:update'],
       role: 'sales',
       userId: 'user_123',
     });

@@ -9,6 +9,7 @@ export const APP_CODE_PREFIXES = [
   'part',
   'product',
   'product_range',
+  'product_unit',
   'quote',
   'supplier',
   'user',

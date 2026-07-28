@@ -41,5 +41,7 @@ export * from './quotes/quote-report-service.js';
 export * from './quotes/quote-service.js';
 export * from './suppliers/supplier-errors.js';
 export * from './suppliers/supplier-service.js';
+export * from './units/product-unit-errors.js';
+export * from './units/product-unit-read-service.js';
 export * from './users/user-errors.js';
 export * from './users/user-service.js';

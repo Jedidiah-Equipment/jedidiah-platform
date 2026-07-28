@@ -78,6 +78,10 @@ export const productUnitsRelations = relations(productUnits, ({ many, one }) => 
 }));
 
 export const productUnitOwnershipTransfersRelations = relations(productUnitOwnershipTransfers, ({ one }) => ({
+  actor: one(user, {
+    fields: [productUnitOwnershipTransfers.actorUserId],
+    references: [user.id],
+  }),
   fromCustomer: one(customers, {
     fields: [productUnitOwnershipTransfers.fromCustomerId],
     references: [customers.id],

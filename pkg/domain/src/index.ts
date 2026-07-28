@@ -24,6 +24,7 @@ export * from './jobs/board-projection.js';
 export * from './jobs/board-slices.js';
 export * from './jobs/job-cfo.js';
 export * from './jobs/job-code.js';
+export * from './jobs/job-customer.js';
 export * from './jobs/job-department-pipeline.js';
 export * from './jobs/job-display.js';
 export * from './jobs/job-lifecycle.js';

@@ -1,6 +1,7 @@
 import type { ProductUnitBuildState, ProductUnitOwner } from '@pkg/schema';
 import type React from 'react';
 
+import { StockBadge } from '@/components/common/StockBadge.js';
 import { Badge } from '@/components/ui/badge.js';
 
 /**
@@ -9,11 +10,7 @@ import { Badge } from '@/components/ui/badge.js';
  */
 export const ProductUnitOwnerCell: React.FC<{ owner: ProductUnitOwner | null }> = ({ owner }) => {
   if (!owner) {
-    return (
-      <Badge className="border-amber-500/50 bg-amber-500/15 text-amber-800 dark:text-amber-200" variant="outline">
-        Stock
-      </Badge>
-    );
+    return <StockBadge />;
   }
 
   return <span className="min-w-0 truncate">{owner.companyName}</span>;

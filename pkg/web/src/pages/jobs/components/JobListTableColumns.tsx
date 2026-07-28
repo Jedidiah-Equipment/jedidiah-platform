@@ -4,6 +4,7 @@ import { IconCheck, IconPencil, IconTimeline } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 
+import { StockBadge } from '@/components/common/StockBadge.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 
@@ -229,7 +230,7 @@ function CompleteCell({ job }: { job: JobSummary }) {
 
 function CustomerCell({ job }: { job: JobSummary }) {
   if (!job.customerCompanyName) {
-    return <span className="text-muted-foreground">Standalone</span>;
+    return <StockBadge />;
   }
 
   return (

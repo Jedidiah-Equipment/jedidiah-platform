@@ -58,7 +58,7 @@ export function JobFactsCard(facts: JobFacts) {
             <FactField label="PRODUCT SERIAL" mono value={facts.productSerialNumber} />
           ) : null}
         </FactRow>
-        <FactField label="CUSTOMER" value={facts.customerCompanyName ?? '—'} />
+        <FactField label="CUSTOMER" value={facts.customerCompanyName ?? 'Stock'} />
       </View>
     </FactCard>
   );

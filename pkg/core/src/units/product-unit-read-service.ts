@@ -19,7 +19,7 @@ import {
   ProductUnitSummary,
   UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 
 import { ProductUnitNotFoundError } from './product-unit-errors.js';
 
@@ -32,7 +32,7 @@ const currentOwnerId = sql<string | null>`(
   select ${productUnitOwnershipTransfers.toCustomerId}
   from ${productUnitOwnershipTransfers}
   where ${productUnitOwnershipTransfers.productUnitId} = ${productUnits.id}
-  order by ${productUnitOwnershipTransfers.occurredOn} desc, ${productUnitOwnershipTransfers.createdAt} desc
+  order by ${productUnitOwnershipTransfers.occurredOn} desc, ${productUnitOwnershipTransfers.createdAt} desc, ${productUnitOwnershipTransfers.id} desc
   limit 1
 )`;
 

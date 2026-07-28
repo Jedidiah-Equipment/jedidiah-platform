@@ -71,7 +71,7 @@ import {
   JobNotFoundError,
   JobSlotNotFoundError,
 } from './job-errors.js';
-import { type JobRow, mapJob } from './job-mappers.js';
+import { type JobProductUnitRow, type JobRow, mapJob } from './job-mappers.js';
 import { assertJobIsMutable, lockMutableJob } from './job-mutation-guards.js';
 import { getJob } from './job-read-service.js';
 import { loadBayWorkingCalendar } from './working-calendar-service.js';
@@ -267,6 +267,30 @@ async function resolveJobBlueprint({
   return { kind: 'product', quote, productId: offering.productId, serial, cfo };
 }
 
+async function loadJobProductUnit({
+  productUnitId,
+  tx,
+}: {
+  productUnitId: string | null;
+  tx: DatabaseTransaction;
+}): Promise<JobProductUnitRow | null> {
+  if (!productUnitId) return null;
+
+  const [unit] = await tx
+    .select({
+      productId: productUnits.productId,
+      productSerialNumber: productUnits.productSerialNumber,
+      productSerialPrefix: productUnits.productSerialPrefix,
+      productSerialSequence: productUnits.productSerialSequence,
+      productSerialYear: productUnits.productSerialYear,
+      vinNumber: productUnits.vinNumber,
+    })
+    .from(productUnits)
+    .where(eq(productUnits.id, productUnitId));
+
+  return unit ? { ...unit, product: { id: unit.productId } } : null;
+}
+
 async function insertProductUnit({
   blueprint,
   tx,
@@ -358,7 +382,7 @@ async function applyJobFieldPatch({
     const changes = diffAuditUpdate(jobAuditDescriptor, before, after);
 
     if (!changes) {
-      return { job: mapJob(before) };
+      return { job: mapJob(before, await loadJobProductUnit({ productUnitId: before.productUnitId, tx })) };
     }
 
     const [row] = await tx
@@ -383,7 +407,9 @@ async function applyJobFieldPatch({
 
     await recordAuditUpdate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, after: row, changes });
 
-    return { job: mapJob(row) };
+    // Read the Unit after the VIN write above, so the response carries the machine's current identity
+    // rather than the Job's own columns — which nothing reads any more and #1013 removes.
+    return { job: mapJob(row, await loadJobProductUnit({ productUnitId: row.productUnitId, tx })) };
   });
 }
 

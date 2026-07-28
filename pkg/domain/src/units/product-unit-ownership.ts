@@ -4,6 +4,8 @@
  * read, so one rule serves every surface.
  */
 export type ProductUnitOwnershipTransferRecency = {
+  /** Final tiebreak, so a Unit's Owner never depends on row order. Must match the SQL ordering. */
+  id: string;
   /** Plant business date the transfer happened — the primary ordering fact. */
   occurredOn: string;
   /**
@@ -21,7 +23,17 @@ export type ProductUnitOwnershipTransferRecency = {
  * hold it. Ownership is never stored — the log is the truth, and a reversal is another row.
  */
 export function resolveProductUnitOwnerId(transfers: readonly ProductUnitOwnershipTransferRecency[]): string | null {
-  let newest: ProductUnitOwnershipTransferRecency | undefined;
+  return resolveNewestOwnershipTransfer(transfers)?.toCustomerId ?? null;
+}
+
+/**
+ * The Transfer that decides who owns a Unit now. Callers that need more than the Customer id — the
+ * company name for a Job list, say — read it off this row, so one ordering rule serves both.
+ */
+export function resolveNewestOwnershipTransfer<TTransfer extends ProductUnitOwnershipTransferRecency>(
+  transfers: readonly TTransfer[],
+): TTransfer | null {
+  let newest: TTransfer | undefined;
 
   for (const transfer of transfers) {
     if (!newest || compareTransferRecency(transfer, newest) > 0) {
@@ -29,7 +41,7 @@ export function resolveProductUnitOwnerId(transfers: readonly ProductUnitOwnersh
     }
   }
 
-  return newest?.toCustomerId ?? null;
+  return newest ?? null;
 }
 
 /** A Unit is Stock when nobody owns it: never sold, or returned to us. */
@@ -48,9 +60,13 @@ function compareTransferRecency(
   const leftCreatedAt = toEpochMs(left.createdAt);
   const rightCreatedAt = toEpochMs(right.createdAt);
 
-  if (leftCreatedAt === rightCreatedAt) return 0;
+  if (leftCreatedAt !== rightCreatedAt) {
+    return leftCreatedAt < rightCreatedAt ? -1 : 1;
+  }
 
-  return leftCreatedAt < rightCreatedAt ? -1 : 1;
+  if (left.id === right.id) return 0;
+
+  return left.id < right.id ? -1 : 1;
 }
 
 function toEpochMs(value: Date | string): number {

@@ -12,6 +12,8 @@ import {
   jobs,
   parts,
   products,
+  productUnitOwnershipTransfers,
+  productUnits,
   quotes,
   quoteWorkItems,
   user,
@@ -24,6 +26,8 @@ import {
   getPlantDateNow,
   parseJobCodeSearch,
   resolveBoardWindowFrom,
+  resolveJobCustomer,
+  resolveNewestOwnershipTransfer,
   sliceJobSchedule,
   summarizeSlotCalendarDays,
   windowActiveBoard,
@@ -48,7 +52,21 @@ import {
   type SortDirection,
   UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, or, type SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  type SQL,
+  type SQLWrapper,
+  sql,
+} from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -65,11 +83,32 @@ import {
   withoutCancelledJobSlots,
 } from './board-read.js';
 import { JobNotFoundError } from './job-errors.js';
-import { type JobRow, mapJob } from './job-mappers.js';
+import { type JobProductUnitRow, type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'buildTimeDays' | 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
+
+// The machine a Job is bound to, and the log that says who owns it now. Every Job read pulls this so
+// the serial, VIN, Product, and Customer all come off the Unit rather than the Job's own columns.
+const productUnitWith = {
+  columns: {
+    productSerialNumber: true,
+    productSerialPrefix: true,
+    productSerialSequence: true,
+    productSerialYear: true,
+    vinNumber: true,
+  },
+  with: {
+    ownershipTransfers: {
+      columns: { createdAt: true, id: true, occurredOn: true, toCustomerId: true },
+      with: { toCustomer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
+    },
+    product: {
+      columns: { buildTimeDays: true, id: true, modelCode: true, name: true, thumbnailDataUrl: true },
+    },
+  },
+} as const;
 type CustomQuoteWorkRow = Pick<
   typeof quoteWorkItems.$inferSelect,
   'department' | 'description' | 'hours' | 'id' | 'name'
@@ -81,8 +120,20 @@ type JobDetailQuoteRow = QuoteRow & {
   workItems: CustomQuoteWorkRow[];
 };
 
+type JobProductUnitWithOwnershipRow = JobProductUnitRow & {
+  ownershipTransfers: {
+    createdAt: Date;
+    id: string;
+    occurredOn: string;
+    toCustomerId: string | null;
+    toCustomer: CustomerRow | null;
+  }[];
+  product: (ProductRow & { id: string }) | null;
+};
+
 type JobWithProductRow = JobRow & {
   product: ProductRow | null;
+  productUnit: JobProductUnitWithOwnershipRow | null;
   quote: QuoteRow;
 };
 
@@ -105,10 +156,13 @@ export async function listJobCustomerOptions({
   db: Db;
   input: JobCustomerOptionListInput;
 }): Promise<JobCustomerOptionListResult> {
+  // The options a Job filter offers must be the Customers that filter would actually match, so they
+  // come from the same rule the list displays: the machine's Owner, or the Quote for a Custom Job.
   const jobCustomerIds = db
-    .selectDistinct({ customerId: quotes.customerId })
-    .from(quotes)
-    .innerJoin(jobs, eq(jobs.quoteId, quotes.id))
+    .selectDistinct({ customerId: jobCustomerIdExpression(quotes.customerId) })
+    .from(jobs)
+    // Left, not inner: a Stock Build has a Unit and no Quote, and must still contribute its Owner.
+    .leftJoin(quotes, eq(jobs.quoteId, quotes.id))
     .where(isNull(jobs.cancelledAt));
   const conditions: SQL[] = [inArray(customers.id, jobCustomerIds)];
 
@@ -208,6 +262,7 @@ async function listJobSummariesByIds({
             thumbnailDataUrl: true,
           },
         },
+        productUnit: productUnitWith,
         quote: {
           columns: {
             code: true,
@@ -362,6 +417,7 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
           thumbnailDataUrl: true,
         },
       },
+      productUnit: productUnitWith,
       quote: {
         columns: {
           code: true,
@@ -433,14 +489,61 @@ function jobQuoteWorkTitleSearchCondition(alias: 'search_quote', search: string)
   )`;
 }
 
+/**
+ * Filtering has to agree with what the list shows, so it follows the same rule the display does: a
+ * Unit-bound Job matches on the machine's newest Ownership Transfer, and a Custom Job on its Quote.
+ * Matching the Quote for a Unit-bound Job would surface machines their first buyer no longer owns.
+ */
 function jobCustomerFilterCondition(alias: 'filter_customer_quote', customerId: UUID): SQL {
   const quote = sql.raw(`"${alias}"`);
+  const quoteCustomerId = sql`(select ${quote}."customer_id" from ${quotes} ${quote} where ${quote}."id" = ${jobs.quoteId})`;
+
+  return sql`${jobCustomerIdExpression(quoteCustomerId)} = ${customerId}`;
+}
+
+/**
+ * Which Customer a Job counts as, in SQL — the same rule `resolveJobCustomer` applies in TypeScript.
+ * A Unit-bound Job resolves to its machine's Owner and to `NULL` when we hold it, which is how Stock
+ * drops out of both the filter and the options it offers; only a Custom Job falls back to its Quote.
+ */
+function jobCustomerIdExpression(quoteCustomerId: SQL | SQLWrapper): SQL<string | null> {
+  return sql`case when ${jobs.productUnitId} is null then ${quoteCustomerId} else ${currentJobOwnerId} end`;
+}
+
+/**
+ * The Customer holding this Job's machine now: the newest Ownership Transfer's destination.
+ *
+ * The inner table's columns are written against an explicit alias rather than through its Drizzle
+ * columns. The relational query API rewrites every Drizzle column reference in a `where` to the outer
+ * Job alias, which would silently turn `transfer.to_customer_id` into `jobs.to_customer_id` — the same
+ * reason the Quote conditions nearby take an alias.
+ */
+const ownerTransferAlias = sql.raw('"owner_transfer"');
+const sortSerialUnitAlias = sql.raw('"sort_unit"');
+const currentJobOwnerId = sql<string | null>`(
+  select ${ownerTransferAlias}."to_customer_id"
+  from ${productUnitOwnershipTransfers} ${ownerTransferAlias}
+  where ${ownerTransferAlias}."product_unit_id" = ${jobs.productUnitId}
+  order by ${ownerTransferAlias}."occurred_on" desc, ${ownerTransferAlias}."created_at" desc, ${ownerTransferAlias}."id" desc
+  limit 1
+)`;
+
+/** The serial the list displays: the machine's, not the Job's own stale column. */
+const jobProductSerialExpression = sql<string | null>`(
+  select ${sortSerialUnitAlias}."product_serial_number"
+  from ${productUnits} ${sortSerialUnitAlias}
+  where ${sortSerialUnitAlias}."id" = ${jobs.productUnitId}
+)`;
+
+/** Serial lives on the machine now, so serial search and filtering read it there. */
+function jobProductSerialCondition(search: string): SQL {
+  const unit = sql.raw('"search_unit"');
 
   return sql`exists (
     select 1
-    from ${quotes} ${quote}
-    where ${quote}."id" = ${jobs.quoteId}
-      and ${quote}."customer_id" = ${customerId}
+    from ${productUnits} ${unit}
+    where ${unit}."id" = ${jobs.productUnitId}
+      and ${createEscapedContainsSearchCondition(sql`${unit}."product_serial_number"`, search)}
   )`;
 }
 
@@ -476,9 +579,7 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   }
 
   if (input.columnFilters.productSerialNumber) {
-    conditions.push(
-      createEscapedContainsSearchCondition(sql`${jobs.productSerialNumber}`, input.columnFilters.productSerialNumber),
-    );
+    conditions.push(jobProductSerialCondition(input.columnFilters.productSerialNumber));
   }
 
   if (input.columnFilters.invoiceNumber) {
@@ -502,7 +603,7 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     const searchWhere = or(
       createEscapedContainsSearchCondition(sql`${jobs.id}::text`, input.search),
       createEscapedContainsSearchCondition(sql`${jobs.code}::text`, input.search),
-      createEscapedContainsSearchCondition(sql`${jobs.productSerialNumber}`, input.search),
+      jobProductSerialCondition(input.search),
       jobQuoteWorkTitleSearchCondition('search_quote', input.search),
       codeSearch === undefined ? undefined : eq(jobs.code, codeSearch),
     );
@@ -545,6 +646,7 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
           thumbnailDataUrl: true,
         },
       },
+      productUnit: productUnitWith,
       quote: {
         columns: {
           code: true,
@@ -592,6 +694,22 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
     schedule,
     workRows,
   };
+}
+
+/**
+ * The one place a read turns stored rows into "who does this Job belong to". A Unit-bound Job follows
+ * its machine's current Owner — `null` means Stock — and a Custom Job follows its Quote.
+ */
+function resolveJobCustomerForRow(row: {
+  productUnit: JobProductUnitWithOwnershipRow | null;
+  quote: { customer: CustomerRow | null };
+}): CustomerRow | null {
+  return resolveJobCustomer({
+    productUnit: row.productUnit
+      ? { owner: resolveNewestOwnershipTransfer(row.productUnit.ownershipTransfers)?.toCustomer ?? null }
+      : null,
+    quoteCustomer: row.quote.customer,
+  });
 }
 
 function listJobWorkRows(quote: Pick<JobDetailQuoteRow, 'kind' | 'workItems'>): JobDetail['workRows'] {
@@ -780,7 +898,7 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     completedOn: sql`${jobs.completedOn}`,
     createdAt: sql`${jobs.createdAt}`,
     id: sql`${jobs.id}`,
-    productSerialNumber: sql`${jobs.productSerialNumber}`,
+    productSerialNumber: jobProductSerialExpression,
     // Total Work Slots per Job; ascending puts the unscheduled (count 0) Jobs first.
     scheduledSlots: sql`(${jobWorkSlotCountSubquery()})`,
   } as const satisfies Record<JobSortBy, SQL>;
@@ -803,17 +921,19 @@ export function getJobSortOrder(sortBy: JobSortBy, sortDirection: SortDirection)
 }
 
 export function mapJobSummary(row: JobWithProductRow, scheduleState: JobScheduleState | null = null): JobSummary {
-  const mappedJob = mapJob(row);
+  const mappedJob = mapJob(row, row.productUnit);
+  const customer = resolveJobCustomerForRow(row);
+  const product = row.productUnit?.product ?? null;
 
   return {
     ...mappedJob,
-    customerCompanyName: row.quote.customer.companyName,
-    customerId: UUID.parse(row.quote.customer.id),
-    customerThumbnailDataUrl: row.quote.customer.thumbnailDataUrl,
-    productBuildTimeDays: row.product?.buildTimeDays ?? null,
-    productModelCode: row.product?.modelCode ?? null,
-    productName: row.product?.name ?? null,
-    productThumbnailDataUrl: row.product?.thumbnailDataUrl ?? null,
+    customerCompanyName: customer?.companyName ?? null,
+    customerId: customer ? UUID.parse(customer.id) : null,
+    customerThumbnailDataUrl: customer?.thumbnailDataUrl ?? null,
+    productBuildTimeDays: product?.buildTimeDays ?? null,
+    productModelCode: product?.modelCode ?? null,
+    productName: product?.name ?? null,
+    productThumbnailDataUrl: product?.thumbnailDataUrl ?? null,
     quoteCode: QuoteCode.parse(row.quote.code),
     quoteKind: row.quote.kind,
     scheduleState,

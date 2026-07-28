@@ -13,8 +13,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { StockBadge } from '@/components/common/StockBadge.js';
 import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
 import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton.js';
 import { JobFeedbackList } from '@/components/feedback/JobFeedbackList.js';
@@ -251,7 +251,7 @@ const ImmutableJobRows: React.FC<{ job: JobDetail }> = ({ job }) => {
       <InfoRow label="Quote code" value={job.quoteCode ?? 'Direct job'} />
       <InfoRow label="Job code" value={job.code} />
       {job.productSerialNumber ? <InfoRow label="Product serial" value={job.productSerialNumber} /> : null}
-      <InfoRow label="Customer" value={job.customerCompanyName ?? 'Customer unavailable'} />
+      <InfoRow label="Customer" value={job.customerCompanyName ?? <StockBadge />} />
       <InfoRow label={getJobWorkLabel(job)} value={displayName} />
       {job.productModelCode ? <InfoRow label="Model" value={job.productModelCode} /> : null}
     </>

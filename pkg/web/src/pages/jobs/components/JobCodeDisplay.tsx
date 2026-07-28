@@ -3,9 +3,9 @@ import type { JobCode, JobListInput, JobSummary, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
-
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
+import { StockBadge } from '@/components/common/StockBadge.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -112,7 +112,7 @@ const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <JobPreviewFact label="Customer" value={job.customerCompanyName ?? 'Standalone'} />
+        <JobPreviewFact label="Customer" value={job.customerCompanyName ?? <StockBadge />} />
         <JobPreviewFact label={getJobWorkLabel(job)} value={displayName} />
         <JobPreviewFact label="Quote" value={job.quoteCode} />
         {job.productSerialNumber ? <JobPreviewFact label="Serial" value={job.productSerialNumber} /> : null}

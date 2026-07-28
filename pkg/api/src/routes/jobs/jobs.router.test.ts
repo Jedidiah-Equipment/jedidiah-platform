@@ -8,6 +8,7 @@ import {
   jobSlots,
   jobs,
   products,
+  productUnits,
   quotes,
   sql,
   user,
@@ -2626,9 +2627,13 @@ async function createAcceptedQuote(db: Db, productId: Product['id'], options: { 
   return quote;
 }
 
+/** Serial lives on the Product Unit now, so the fixture writes it where every read looks. */
 async function setJobSerial(db: Db, jobId: string, serial: string): Promise<void> {
+  const [job] = await db.select({ productUnitId: jobs.productUnitId }).from(jobs).where(sql`${jobs.id} = ${jobId}`);
+  if (!job?.productUnitId) throw new Error(`Job ${jobId} has no Product Unit to carry a serial`);
+
   await db
-    .update(jobs)
+    .update(productUnits)
     .set({ productSerialNumber: serial, updatedAt: new Date('2026-06-05T00:00:00.000Z') })
-    .where(sql`${jobs.id} = ${jobId}`);
+    .where(sql`${productUnits.id} = ${job.productUnitId}`);
 }

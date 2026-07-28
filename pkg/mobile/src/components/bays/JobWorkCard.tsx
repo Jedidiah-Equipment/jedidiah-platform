@@ -28,11 +28,16 @@ export function JobWorkCard({
             {productSerialNumber}
           </Text>
         ) : null}
-        {customerCompanyName ? (
-          <Text className="mt-1 text-sm text-surface-foreground" numberOfLines={1}>
-            {customerCompanyName}
-          </Text>
-        ) : null}
+        <Text
+          className={
+            customerCompanyName
+              ? 'mt-1 text-sm text-surface-foreground'
+              : 'mt-1 text-amber-700 text-sm dark:text-amber-300'
+          }
+          numberOfLines={1}
+        >
+          {customerCompanyName ?? 'Stock'}
+        </Text>
       </View>
     </View>
   );

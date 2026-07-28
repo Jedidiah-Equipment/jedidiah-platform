@@ -100,10 +100,12 @@ describe('Job List table columns', () => {
     expect(html).not.toContain('tabler-icon-check');
   });
 
-  it('falls back to "Standalone" when a Job has no customer', () => {
-    const html = renderJobListRows([buildJobSummary({ customerCompanyName: null })]);
+  // A Job with no Customer is one on a machine we hold, which is a state worth naming rather than a gap.
+  it('reads a Job on a machine we hold as Stock', () => {
+    const html = renderJobListRows([buildJobSummary({ customerCompanyName: null, customerId: null })]);
 
-    expect(html).toContain('Standalone');
+    expect(html).toContain('Stock');
+    expect(html).not.toContain('Standalone');
   });
 
   it('renders the "Not scheduled" badge for a Job with no Work Slots', () => {

@@ -1667,6 +1667,34 @@ describe('updateJob', () => {
     expect(reopened.job.completedOn).toBeNull();
   });
 
+  test('answers an update with the machine identity the reads report', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    const updated = await updateJob({
+      actorUserId,
+      db: context.db,
+      input: JobUpdateInput.parse({ id: job.id, description: 'Fit toolbox', invoiceNumber: null, vinNumber: null }),
+    });
+    const read = await getJob({ db: context.db, id: job.id });
+
+    // A response that null'd the serial would contradict the very next list or detail read.
+    expect(updated.job.productSerialNumber).toBe(read.productSerialNumber);
+    expect(updated.job.productId).toBe(read.productId);
+    expect(updated.job.productSerialNumber).not.toBeNull();
+  });
+
+  test('answers a no-op update with the machine identity too', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const input = JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: null });
+
+    // Same payload twice: the second changes nothing and takes the early return.
+    await updateJob({ actorUserId, db: context.db, input });
+    const unchanged = await updateJob({ actorUserId, db: context.db, input });
+
+    expect(unchanged.job.productSerialNumber).toBe(job.productSerialNumber);
+    expect(unchanged.job.productId).toBe(context.catalog.product.id);
+  });
+
   test('mirrors a VIN edit onto the Product Unit', async ({ context }) => {
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
 

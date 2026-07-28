@@ -63,7 +63,12 @@ import { snapshotJobBrochureDocument } from '../products/product-brochure-docume
 import { narrowQuoteOffering } from '../quotes/quote-offering.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
-import { JobCreateFromQuoteDeniedError, JobNotFoundError, JobSlotNotFoundError } from './job-errors.js';
+import {
+  JobCompletedOnInFutureError,
+  JobCreateFromQuoteDeniedError,
+  JobNotFoundError,
+  JobSlotNotFoundError,
+} from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { assertJobIsMutable, lockMutableJob } from './job-mutation-guards.js';
 import { getJob } from './job-read-service.js';
@@ -91,6 +96,7 @@ export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityId: (row) => row.id,
   label: (row) => row.code,
   toRecord: (row) => ({
+    completedOn: row.completedOn,
     description: row.description,
     invoiceNumber: row.invoiceNumber,
     productId: row.productId,
@@ -271,11 +277,20 @@ export async function updateJob({
   db: Db;
   input: JobUpdateInput;
 }): Promise<JobUpdateResult> {
+  const plantToday = getPlantDateNow();
+
+  if (input.completedOn != null && input.completedOn > plantToday) {
+    throw new JobCompletedOnInFutureError(input.completedOn, plantToday);
+  }
+
   return applyJobFieldPatch({
     actorUserId,
     db,
     id: input.id,
     patch: {
+      // Omitted entirely when the caller did not send the key, so the stored date survives — a
+      // spread `undefined` would still overwrite it in the audit diff.
+      ...(input.completedOn === undefined ? {} : { completedOn: input.completedOn }),
       description: input.description,
       invoiceNumber: input.invoiceNumber,
       vinNumber: input.vinNumber,
@@ -292,7 +307,7 @@ async function applyJobFieldPatch({
   actorUserId: AuthId;
   db: Db;
   id: UUID;
-  patch: Partial<Pick<JobRow, 'description' | 'invoiceNumber' | 'vinNumber'>>;
+  patch: Partial<Pick<JobRow, 'completedOn' | 'description' | 'invoiceNumber' | 'vinNumber'>>;
 }): Promise<JobUpdateResult> {
   return db.transaction(async (tx) => {
     const before = await lockMutableJob(tx, id);

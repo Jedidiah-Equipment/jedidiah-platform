@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import { type JobListInput, JobSortBy, type UUID } from '@pkg/schema';
+import { DateOnlyIso, type JobListInput, JobSortBy, type UUID } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -78,20 +78,28 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
   const canEditJobs = hasPermission(accessQuery.data, 'job:update');
   const [invoicedOnly, setInvoicedOnly] = useState(false);
+  // Off by default, so the Job List opens on live work rather than years of finished Jobs.
+  const [includeCompleted, setIncludeCompleted] = useState(false);
 
   const getListInputExtras = useCallback(
-    (columnFilters: ColumnFiltersState) =>
-      ({
+    (columnFilters: ColumnFiltersState) => {
+      // Only completed Jobs carry a date, so the Complete range is meaningless while they are hidden.
+      const completedOn = includeCompleted ? getDateRangeColumnFilterValue(columnFilters, 'completedOn') : {};
+
+      return {
         columnFilters: {
           code: getColumnFilterValue(columnFilters, 'code'),
+          ...(completedOn.end ? { completedOnEnd: DateOnlyIso.parse(completedOn.end) } : {}),
+          ...(completedOn.start ? { completedOnStart: DateOnlyIso.parse(completedOn.start) } : {}),
           customerId: customerId ?? getColumnFilterValue(columnFilters, 'customer'),
           invoiceNumber: getColumnFilterValue(columnFilters, 'invoiceNumber'),
           productSerialNumber: getColumnFilterValue(columnFilters, 'productSerialNumber'),
         },
-        filters: { invoicedOnly },
+        filters: { incompleteOnly: !includeCompleted, invoicedOnly },
         include: { scheduleState: true },
-      }) satisfies Pick<JobListInput, 'columnFilters' | 'filters' | 'include'>,
-    [customerId, invoicedOnly],
+      } satisfies Pick<JobListInput, 'columnFilters' | 'filters' | 'include'>;
+    },
+    [customerId, includeCompleted, invoicedOnly],
   );
 
   const tableController = useServerSideTableController({
@@ -133,10 +141,11 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
       createJobListColumns({
         canEditJobs,
         canOpenJobs,
+        canFilterCompletedOn: includeCompleted,
         customerOptions,
         showCustomerColumn: !customerId,
       }),
-    [canEditJobs, canOpenJobs, customerId, customerOptions],
+    [canEditJobs, canOpenJobs, customerId, customerOptions, includeCompleted],
   );
   const columnPinning = useMemo(
     () => ({
@@ -174,23 +183,44 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
     tableController.setPageIndex(0);
   };
 
+  const handleIncludeCompletedChange = (checked: boolean) => {
+    setIncludeCompleted(checked);
+    // Hiding completed Jobs also retires the Complete date filter, so a stale range cannot survive
+    // in persisted table state and silently narrow the next look at completed work.
+    if (!checked) {
+      tableController.setColumnFilters((filters) => filters.filter((filter) => filter.id !== 'completedOn'));
+    }
+    tableController.setPageIndex(0);
+  };
+
   return (
     <DataTable
-      emptyMessage={invoicedOnly ? 'No invoiced jobs.' : 'No jobs found.'}
+      emptyMessage={getJobsEmptyMessage({ includeCompleted, invoicedOnly })}
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
       isLoading={isLoading}
       onRowClick={canOpenJobs ? (job) => void navigate({ search: { job: job.id }, to: '/jobs/list' }) : undefined}
       rightSection={
-        <label className="flex items-center gap-2 text-sm font-medium" htmlFor="jobs-is-invoiced">
-          <Switch
-            checked={invoicedOnly}
-            id="jobs-is-invoiced"
-            onCheckedChange={(checked) => handleInvoicedOnlyChange(checked === true)}
-            size="sm"
-          />
-          Is Invoiced
-        </label>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm font-medium" htmlFor="jobs-include-completed">
+            <Switch
+              checked={includeCompleted}
+              id="jobs-include-completed"
+              onCheckedChange={(checked) => handleIncludeCompletedChange(checked === true)}
+              size="sm"
+            />
+            Include Completed
+          </label>
+          <label className="flex items-center gap-2 text-sm font-medium" htmlFor="jobs-is-invoiced">
+            <Switch
+              checked={invoicedOnly}
+              id="jobs-is-invoiced"
+              onCheckedChange={(checked) => handleInvoicedOnlyChange(checked === true)}
+              size="sm"
+            />
+            Is Invoiced
+          </label>
+        </div>
       }
       tableClassName={customerId ? 'min-w-[944px]' : 'min-w-[1120px]'}
       table={table}
@@ -200,6 +230,20 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
   );
 };
 
+function getJobsEmptyMessage({
+  includeCompleted,
+  invoicedOnly,
+}: {
+  includeCompleted: boolean;
+  invoicedOnly: boolean;
+}): string {
+  if (invoicedOnly) {
+    return 'No invoiced jobs.';
+  }
+
+  return includeCompleted ? 'No jobs found.' : 'No open jobs. Turn on Include Completed to see finished work.';
+}
+
 function getColumnFilterValue(
   columnFilters: ColumnFiltersState,
   id: 'code' | 'customer' | 'invoiceNumber' | 'productSerialNumber',
@@ -207,4 +251,22 @@ function getColumnFilterValue(
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;
+}
+
+function getDateRangeColumnFilterValue(
+  columnFilters: ColumnFiltersState,
+  id: 'completedOn',
+): { end?: string; start?: string } {
+  const value = columnFilters.find((filter) => filter.id === id)?.value;
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  const range = value as { end?: unknown; start?: unknown };
+
+  return {
+    ...(typeof range.end === 'string' && range.end ? { end: range.end } : {}),
+    ...(typeof range.start === 'string' && range.start ? { start: range.start } : {}),
+  };
 }

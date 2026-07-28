@@ -12,6 +12,7 @@ const job = JobDetail.parse({
   cancelledAt: null,
   cfo: [],
   code: 'JOB-00001',
+  completedOn: null,
   createdAt: '2026-07-10T08:00:00.000Z',
   customerCompanyName: 'Acme Mining',
   customerId: CUSTOMER_ID,

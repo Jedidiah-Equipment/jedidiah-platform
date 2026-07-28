@@ -3,6 +3,7 @@ import {
   formatDate,
   getJobDisplayName,
   getJobWorkLabel,
+  getPlantDateNow,
   isJobCancelled,
   JOB_DOCUMENT_TYPE_LABELS,
 } from '@pkg/domain';
@@ -202,6 +203,19 @@ const EditableJobDetails: React.FC<{
               </form.AppField>
             </EditableInfoRow>
           ) : null}
+          <EditableInfoRow label="Completed">
+            <form.AppField name="completedOn">
+              {(field) => (
+                <field.DatePickerField
+                  label={<span className="sr-only">Completed</span>}
+                  // A completion date records work already done, so the future is out of reach.
+                  maxValue={getPlantDateNow()}
+                  onValueCommit={autosave.commit}
+                  placeholder="Not completed"
+                />
+              )}
+            </form.AppField>
+          </EditableInfoRow>
         </InfoList>
       </Section>
     </form>
@@ -213,6 +227,7 @@ const ReadOnlyJobDetails: React.FC<{ job: JobDetail }> = ({ job }) => (
     <InfoList className="rounded-none border-0">
       <ImmutableJobRows job={job} />
       <InfoRow label="Invoice number" value={job.invoiceNumber ?? 'Not captured'} />
+      <InfoRow label="Completed" value={job.completedOn ? formatDate(job.completedOn, 'short') : 'Not completed'} />
       <InfoRow
         label="Description"
         value={

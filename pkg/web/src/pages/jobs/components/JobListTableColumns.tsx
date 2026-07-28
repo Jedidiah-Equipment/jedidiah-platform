@@ -1,4 +1,4 @@
-import { formatDate, getJobDisplayName, getJobDisplaySubtitle, isJobScheduleComplete } from '@pkg/domain';
+import { formatDate, getJobDisplayName, getJobDisplaySubtitle } from '@pkg/domain';
 import type { JobSummary } from '@pkg/schema';
 import { IconCheck, IconPencil, IconTimeline } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -19,16 +19,20 @@ type JobListColumnOption = {
 };
 
 /**
- * Job List columns. Start date, End date, and Is Complete stay display-only because they are derived
- * from opt-in `scheduleState` projection, not stored Job columns.
+ * Job List columns. Start date and End date stay display-only because they are derived from opt-in
+ * `scheduleState` projection; Complete reads the stored `completedOn`, so it sorts and filters
+ * server-side. Its filter is offered only when completed Jobs are in the list at all — otherwise
+ * every Complete cell is empty and a date range could only ever return nothing.
  */
 export function createJobListColumns({
   canEditJobs,
+  canFilterCompletedOn,
   canOpenJobs,
   customerOptions,
   showCustomerColumn,
 }: {
   canEditJobs: boolean;
+  canFilterCompletedOn: boolean;
   canOpenJobs: boolean;
   customerOptions: JobListColumnOption[];
   showCustomerColumn: boolean;
@@ -146,14 +150,15 @@ export function createJobListColumns({
       },
     },
     {
-      accessorFn: (job) => (job.scheduleState ? isJobScheduleComplete(job.scheduleState) : false),
+      accessorFn: (job) => job.completedOn,
       cell: ({ row }) => <CompleteCell job={row.original} />,
-      enableColumnFilter: false,
-      enableSorting: false,
+      enableColumnFilter: canFilterCompletedOn,
+      enableSorting: true,
       header: 'Complete',
-      id: 'isComplete',
+      id: 'completedOn',
       meta: {
-        headerClassName: 'min-w-24',
+        filterVariant: 'date-range',
+        headerClassName: 'min-w-28',
       },
     },
     ...(canOpenJobs
@@ -210,14 +215,14 @@ function JobActionsCell({ canEditJobs, job }: { canEditJobs: boolean; job: JobSu
 }
 
 function CompleteCell({ job }: { job: JobSummary }) {
-  if (!job.scheduleState || !isJobScheduleComplete(job.scheduleState)) {
+  if (!job.completedOn) {
     return <span className="text-muted-foreground">—</span>;
   }
 
   return (
-    <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-500">
+    <span className="inline-flex items-center gap-1 text-green-600 tabular-nums dark:text-green-500">
       <IconCheck aria-hidden className="size-4 shrink-0" />
-      <span className="sr-only">Complete</span>
+      {formatDate(job.completedOn, 'short')}
     </span>
   );
 }

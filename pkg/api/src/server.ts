@@ -1,7 +1,7 @@
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import { createOpenAiChatModel } from '@pkg/ai';
-import type { StorageAdapter } from '@pkg/core';
+import { type StorageAdapter, sweepJobCompletions } from '@pkg/core';
 import { db } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
@@ -12,6 +12,7 @@ import { createCatalogTranslationRunner } from './catalog-translations/catalog-t
 import { TranslationScheduler } from './catalog-translations/translation-scheduler.js';
 import { type ApiConfig, getApiConfig } from './env.js';
 import { registerHealthRoutes } from './health.js';
+import { JobCompletionSweeper } from './jobs/job-completion-sweeper.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
 import { registerAiChatRoute } from './routes/ai/ai-chat.route.js';
@@ -40,6 +41,17 @@ export async function buildServer(
       db,
       model: createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_TRANSLATION_MODEL }),
     }),
+  });
+
+  const jobCompletionSweeper = new JobCompletionSweeper({
+    onError: (error) => log.root.error({ error }, 'Job completion sweep failed'),
+    run: async () => {
+      const result = await sweepJobCompletions({ db });
+
+      if (result.completed > 0) {
+        log.root.info(result, 'Job completion sweep stamped Jobs');
+      }
+    },
   });
 
   const app = Fastify({
@@ -96,8 +108,11 @@ export async function buildServer(
 
   app.addHook('onClose', async () => {
     catalogTranslationScheduler.dispose();
+    jobCompletionSweeper.dispose();
     await observability.flush();
   });
+
+  jobCompletionSweeper.start();
 
   return app;
 }

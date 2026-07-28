@@ -146,6 +146,9 @@ export const jobs = pgTable(
     invoiceNumber: text('invoice_number'),
     vinNumber: text('vin_number'),
     description: text('description'),
+    // Plant business date the Job finished. Latches: written once by hand or by the completion sweep,
+    // never recomputed. Distinct from derived schedule completeness, which still drives the Board.
+    completedOn: date('completed_on', { mode: 'string' }),
     cancelledAt: timestamp('cancelled_at', { mode: 'date', withTimezone: true }),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),

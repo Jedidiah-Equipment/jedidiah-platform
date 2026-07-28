@@ -109,6 +109,17 @@ export class JobSlotNotFoundError extends Error {
   }
 }
 
+export class JobCompletedOnInFutureError extends Error {
+  readonly code = 'job.completed_on_in_future';
+  readonly metadata: { completedOn: string; plantToday: string };
+
+  constructor(completedOn: string, plantToday: string) {
+    super('Completion date cannot be in the future.');
+    this.name = 'JobCompletedOnInFutureError';
+    this.metadata = { completedOn, plantToday };
+  }
+}
+
 export type JobCoreError =
   | JobBayAlreadyAssignedError
   | JobBayNotFoundError
@@ -116,6 +127,7 @@ export type JobCoreError =
   | JobBayOperatorAssignmentNotFoundError
   | JobBayOperatorNotFoundError
   | JobBayOperatorRoleDeniedError
+  | JobCompletedOnInFutureError
   | JobCreateFromQuoteDeniedError
   | JobCancelledError
   | JobNotFoundError
@@ -130,6 +142,7 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobBayOperatorNotFoundError ||
     error instanceof JobBayOperatorRoleDeniedError ||
     error instanceof JobBayAlreadyAssignedError ||
+    error instanceof JobCompletedOnInFutureError ||
     error instanceof JobCreateFromQuoteDeniedError ||
     error instanceof JobCancelledError ||
     error instanceof JobNotFoundError ||

@@ -411,6 +411,14 @@ export const JobDescription = nullableTrimmedText();
 export type JobInvoiceNumber = z.infer<typeof JobInvoiceNumber>;
 export const JobInvoiceNumber = nullableTrimmedText();
 
+/**
+ * The plant business date a Job finished, or `null` while it is still open. Latches: once set, by hand
+ * or by the completion sweep, nothing rewrites or clears it automatically. Distinct from derived
+ * schedule completeness, which still owns Board windowing and reacts to Slot changes instantly.
+ */
+export type JobCompletedOn = z.infer<typeof JobCompletedOn>;
+export const JobCompletedOn = DateOnlyIso.nullable();
+
 export function formatProductSerialNumber({
   prefix,
   sequence,
@@ -457,6 +465,7 @@ export const Job = z.object({
   invoiceNumber: JobInvoiceNumber,
   vinNumber: JobVinNumber,
   description: JobDescription,
+  completedOn: JobCompletedOn,
   createdAt: DateIso,
   updatedAt: DateIso,
 });
@@ -616,7 +625,7 @@ export const BoardPreviewResult = z.object({
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
-export const JobSortBy = z.enum(['code', 'createdAt', 'id', 'productSerialNumber', 'scheduledSlots']);
+export const JobSortBy = z.enum(['code', 'completedOn', 'createdAt', 'id', 'productSerialNumber', 'scheduledSlots']);
 
 export type JobCustomerOptionSortBy = z.infer<typeof JobCustomerOptionSortBy>;
 export const JobCustomerOptionSortBy = z.enum(['companyName', 'id']);
@@ -640,6 +649,10 @@ export type JobColumnFilters = z.infer<typeof JobColumnFilters>;
 export const JobColumnFilters = z
   .object({
     code: z.string().trim().optional(),
+    // Inclusive plant business date bounds on the Complete column. Only Jobs with a `completedOn`
+    // can match, so these are meaningful only alongside `filters.incompleteOnly` being off.
+    completedOnEnd: DateOnlyIso.optional(),
+    completedOnStart: DateOnlyIso.optional(),
     customerId: UUID.optional(),
     invoiceNumber: z.string().trim().optional(),
     productSerialNumber: z.string().trim().optional(),
@@ -650,6 +663,8 @@ export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
     createdAtStart: DateIso.optional(),
+    /** Restricts to Jobs with no `completedOn`. Opt-in, so callers that want every Job stay unaffected. */
+    incompleteOnly: z.boolean().optional(),
     invoicedOnly: z.boolean().optional(),
     jobId: UUID.optional(),
   })
@@ -718,6 +733,14 @@ export type JobUpdateInput = z.infer<typeof JobUpdateInput>;
 export const JobUpdateInput = z
   .object({
     id: UUID,
+    /**
+     * Omittable, unlike its full-replacement siblings: `undefined` preserves the stored date and only
+     * an explicit `null` reopens the Job. The text fields have been in every payload since they
+     * existed, so omitting them never happens; `completedOn` is new, so any client bundle built
+     * before it shipped necessarily omits it — and a default of `null` would let a stale browser tab
+     * silently clear a completion date while editing something unrelated.
+     */
+    completedOn: JobCompletedOn.optional(),
     description: nullableTrimmedTextInput(),
     invoiceNumber: nullableTrimmedTextInput(),
     vinNumber: nullableTrimmedTextInput(),

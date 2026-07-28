@@ -371,6 +371,16 @@ async function applyJobFieldPatch({
       throw new JobNotFoundError(id);
     }
 
+    // VIN identifies the machine, so it is dual-written to the Unit under the same Job lock for as
+    // long as both columns exist. Without this the Unit keeps its creation-time VIN and every later
+    // edit is lost when the Job column is dropped.
+    if (patch.vinNumber !== undefined && row.productUnitId) {
+      await tx
+        .update(productUnits)
+        .set({ updatedAt: new Date(), vinNumber: row.vinNumber })
+        .where(eq(productUnits.id, row.productUnitId));
+    }
+
     await recordAuditUpdate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, after: row, changes });
 
     return { job: mapJob(row) };

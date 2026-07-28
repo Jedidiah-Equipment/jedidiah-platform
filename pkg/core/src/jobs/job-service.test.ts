@@ -1667,6 +1667,37 @@ describe('updateJob', () => {
     expect(reopened.job.completedOn).toBeNull();
   });
 
+  test('mirrors a VIN edit onto the Product Unit', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    await updateJob({
+      actorUserId,
+      db: context.db,
+      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: 'VIN-EDITED-1' }),
+    });
+
+    const [unit] = await context.db.select().from(productUnits);
+    expect(unit?.vinNumber).toBe('VIN-EDITED-1');
+  });
+
+  test('mirrors a cleared VIN onto the Product Unit', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await updateJob({
+      actorUserId,
+      db: context.db,
+      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: 'VIN-EDITED-1' }),
+    });
+
+    await updateJob({
+      actorUserId,
+      db: context.db,
+      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: null }),
+    });
+
+    const [unit] = await context.db.select().from(productUnits);
+    expect(unit?.vinNumber).toBeNull();
+  });
+
   test('preserves a stored completion date when the payload omits it', async ({ context }) => {
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
     await context.db.update(jobs).set({ completedOn: '2026-05-04' }).where(eq(jobs.id, job.id));

@@ -159,6 +159,13 @@ export const snapshotTableDefinitions = [
     timestampColumns: ['updatedAt'],
   },
   {
+    // Parents-first: Job references its Unit, so Units must land before Jobs and clean up after them.
+    fileName: 'product_unit.json',
+    tableName: 'product_unit',
+    timestampColumns: ['createdAt', 'updatedAt'],
+    optionalReadTable: true,
+  },
+  {
     fileName: 'product_assemblies.json',
     tableName: 'product_assemblies',
     timestampColumns: standardTimestampColumns,
@@ -207,7 +214,18 @@ export const snapshotTableDefinitions = [
     fileName: 'job.json',
     tableName: 'job',
     timestampColumns: ['cancelledAt', ...standardTimestampColumns],
+    // Captured once the Product Unit migration is deployed; until then the source still has the
+    // preceding schema and the read is retried without it.
+    optionalReadColumns: ['productUnitId'],
+    seedRowDefaults: () => ({ productUnitId: null }),
     resetSequence: { sequenceName: 'job_code_seq', columnName: 'code' },
+  },
+  {
+    // References Units, Customers, Quotes, and Users, so it follows every one of them.
+    fileName: 'product_unit_ownership_transfer.json',
+    tableName: 'product_unit_ownership_transfer',
+    timestampColumns: ['createdAt'],
+    optionalReadTable: true,
   },
   {
     fileName: 'job_cfo_assembly.json',

@@ -164,28 +164,8 @@ async function seedJobs(db: Db) {
   if (!soldUnit || !stockUnit) throw new Error('Product unit insert did not return every row');
 
   await db.insert(jobs).values([
-    {
-      createdAt: now,
-      productId: product.id,
-      productSerialNumber: soldUnit.productSerialNumber,
-      productSerialPrefix: soldUnit.productSerialPrefix,
-      productSerialSequence: soldUnit.productSerialSequence,
-      productSerialYear: soldUnit.productSerialYear,
-      productUnitId: soldUnit.id,
-      quoteId: soldQuote.id,
-      updatedAt: now,
-    },
-    {
-      createdAt: now,
-      productId: product.id,
-      productSerialNumber: stockUnit.productSerialNumber,
-      productSerialPrefix: stockUnit.productSerialPrefix,
-      productSerialSequence: stockUnit.productSerialSequence,
-      productSerialYear: stockUnit.productSerialYear,
-      productUnitId: stockUnit.id,
-      quoteId: stockQuote.id,
-      updatedAt: now,
-    },
+    { createdAt: now, productUnitId: soldUnit.id, quoteId: soldQuote.id, updatedAt: now },
+    { createdAt: now, productUnitId: stockUnit.id, quoteId: stockQuote.id, updatedAt: now },
     { createdAt: now, quoteId: customQuote.id, updatedAt: now },
   ]);
 

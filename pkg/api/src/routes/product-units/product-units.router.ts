@@ -4,8 +4,9 @@ import {
   listProductUnitFilterOptions,
   listProductUnits,
   type ProductUnitCoreError,
+  updateProductUnit,
 } from '@pkg/core';
-import { ProductUnitListInput, UUID } from '@pkg/schema';
+import { ProductUnitListInput, ProductUnitUpdateInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
@@ -23,6 +24,12 @@ export const productUnitsRouter = router({
   get: authorizedProcedure('product_unit:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapProductUnitErrors(() => getProductUnit({ db: ctx.db, id: input.id }))),
+
+  update: authorizedProcedure('product_unit:update')
+    .input(ProductUnitUpdateInput)
+    .mutation(({ ctx, input }) =>
+      mapProductUnitErrors(() => updateProductUnit({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
 });
 
 async function mapProductUnitErrors<T>(action: () => Promise<T>): Promise<T> {

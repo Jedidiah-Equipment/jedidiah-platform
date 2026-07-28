@@ -1,12 +1,4 @@
-import {
-  DateOnlyIsoString,
-  type Job,
-  JobDescription,
-  JobInvoiceNumber,
-  JobUpdateInput,
-  JobVinNumber,
-  type UUID,
-} from '@pkg/schema';
+import { DateOnlyIsoString, type Job, JobDescription, JobInvoiceNumber, JobUpdateInput, type UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';
@@ -16,18 +8,16 @@ export const JobEditFormValues = z.object({
   completedOn: emptyStringOr(DateOnlyIsoString),
   description: emptyStringOr(JobDescription),
   invoiceNumber: emptyStringOr(JobInvoiceNumber),
-  vinNumber: emptyStringOr(JobVinNumber),
 });
 
 /** Schema → form. Text and date inputs use `''` for blanks. */
 export function toJobEditFormValues(
-  job: Pick<Job, 'completedOn' | 'description' | 'invoiceNumber' | 'vinNumber'>,
+  job: Pick<Job, 'completedOn' | 'description' | 'invoiceNumber'>,
 ): JobEditFormValues {
   return {
     completedOn: job.completedOn ?? '',
     description: job.description ?? '',
     invoiceNumber: job.invoiceNumber ?? '',
-    vinNumber: job.vinNumber ?? '',
   };
 }
 
@@ -39,6 +29,5 @@ export function toJobUpdateInput(id: UUID, values: JobEditFormValues): JobUpdate
     completedOn: values.completedOn || null,
     description: values.description,
     invoiceNumber: values.invoiceNumber,
-    vinNumber: values.vinNumber,
   });
 }

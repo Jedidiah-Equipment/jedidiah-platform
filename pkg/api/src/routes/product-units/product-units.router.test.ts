@@ -1,12 +1,17 @@
 import { customers, type Db, jobs, products, productUnitOwnershipTransfers, productUnits, quotes, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
+import { createActorUser } from '@/test/actor-user.js';
 import { createTester } from '@/test/create-tester.js';
 import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000c1';
 
-const test = createTester(async ({ db }) => ({ db, seed: await seedUnit(db) }));
+const test = createTester(async ({ db }) => {
+  await createActorUser(db);
+
+  return { db, seed: await seedUnit(db) };
+});
 
 describe('productUnits.list', () => {
   test('rejects unauthenticated reads', async ({ context }) => {
@@ -55,6 +60,35 @@ describe('productUnits.get', () => {
   test('reports a machine that does not exist as not found', async ({ context }) => {
     await expect(
       context.createCaller(mockSession('admin')).productUnits.get({ id: '00000000-0000-4000-8000-00000000ffff' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
+describe('productUnits.update', () => {
+  test('captures a VIN against the machine', async ({ context }) => {
+    const result = await context
+      .createCaller(mockSession('admin'))
+      .productUnits.update({ id: context.seed.unitId, vinNumber: 'VIN-123' });
+
+    expect(result.unit).toMatchObject({ productSerialNumber: 'RT-001260001', vinNumber: 'VIN-123' });
+  });
+
+  // Reading a Unit is broad — Sales needs stock to be selectable — but asserting what a machine *is*
+  // stays with the roles that own its identity.
+  test('rejects every role that may read Units but not edit them', async ({ context }) => {
+    for (const role of ['sales', 'procurement-manager', 'job-viewer'] as const) {
+      await expect(
+        context.createCaller(mockSession(role)).productUnits.update({ id: context.seed.unitId, vinNumber: 'VIN-123' }),
+        `role ${role}`,
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+  });
+
+  test('reports a machine that does not exist as not found', async ({ context }) => {
+    await expect(
+      context
+        .createCaller(mockSession('admin'))
+        .productUnits.update({ id: '00000000-0000-4000-8000-00000000ffff', vinNumber: 'VIN-123' }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 });
@@ -114,17 +148,7 @@ async function seedUnit(db: Db) {
     .returning();
   if (!unit) throw new Error('Product unit insert did not return a row');
 
-  await db.insert(jobs).values({
-    createdAt: now,
-    productId: range.id,
-    productSerialNumber: unit.productSerialNumber,
-    productSerialPrefix: unit.productSerialPrefix,
-    productSerialSequence: unit.productSerialSequence,
-    productSerialYear: unit.productSerialYear,
-    productUnitId: unit.id,
-    quoteId: quote.id,
-    updatedAt: now,
-  });
+  await db.insert(jobs).values({ createdAt: now, productUnitId: unit.id, quoteId: quote.id, updatedAt: now });
 
   await db.insert(productUnitOwnershipTransfers).values({
     actorUserId: ACTOR_USER_ID,

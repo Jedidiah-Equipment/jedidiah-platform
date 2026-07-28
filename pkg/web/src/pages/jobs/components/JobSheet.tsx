@@ -194,15 +194,6 @@ const EditableJobDetails: React.FC<{
               )}
             </form.AppField>
           </EditableInfoRow>
-          {job.quoteKind === 'product' ? (
-            <EditableInfoRow label="VIN number">
-              <form.AppField name="vinNumber">
-                {(field) => (
-                  <field.TextField aria-label="VIN number" label={<span className="sr-only">VIN number</span>} />
-                )}
-              </form.AppField>
-            </EditableInfoRow>
-          ) : null}
           <EditableInfoRow label="Completed">
             <form.AppField name="completedOn">
               {(field) => (
@@ -238,7 +229,6 @@ const ReadOnlyJobDetails: React.FC<{ job: JobDetail }> = ({ job }) => (
           )
         }
       />
-      {job.quoteKind === 'product' ? <InfoRow label="VIN number" value={job.vinNumber ?? 'Not captured'} /> : null}
     </InfoList>
   </Section>
 );
@@ -251,6 +241,8 @@ const ImmutableJobRows: React.FC<{ job: JobDetail }> = ({ job }) => {
       <InfoRow label="Quote code" value={job.quoteCode ?? 'Direct job'} />
       <InfoRow label="Job code" value={job.code} />
       {job.productSerialNumber ? <InfoRow label="Product serial" value={job.productSerialNumber} /> : null}
+      {/* VIN belongs to the machine, so it is edited on the Unit and only reported here. */}
+      {job.quoteKind === 'product' ? <InfoRow label="VIN number" value={job.vinNumber ?? 'Not captured'} /> : null}
       <InfoRow label="Customer" value={job.customerCompanyName ?? <StockBadge />} />
       <InfoRow label={getJobWorkLabel(job)} value={displayName} />
       {job.productModelCode ? <InfoRow label="Model" value={job.productModelCode} /> : null}

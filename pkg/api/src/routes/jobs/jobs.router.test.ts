@@ -1177,7 +1177,7 @@ describe('jobs.list scheduleState', () => {
     const scheduledQuote = await createAcceptedQuote(context.db, context.product.id);
     const scheduled = await caller.jobs.create({ quoteId: scheduledQuote.id });
     await caller.jobs.bookSlot({ bayId: activeBayId, durationDays: 10, jobId: scheduled.id });
-    await caller.jobs.update({ id: scheduled.id, description: '', invoiceNumber: 'INV-SCHEDULED', vinNumber: '' });
+    await caller.jobs.update({ id: scheduled.id, description: '', invoiceNumber: 'INV-SCHEDULED' });
 
     await expect(caller.jobs.list({ filters: { invoicedOnly: true } })).resolves.toMatchObject({
       items: [expect.objectContaining({ id: scheduled.id })],
@@ -2238,11 +2238,11 @@ describe('jobs.update', () => {
     await context.db.update(jobs).set({ cancelledAt: new Date() }).where(sql`${jobs.id} = ${job.id}`);
 
     await expect(
-      caller.jobs.update({ id: job.id, description: 'Should not save', invoiceNumber: '', vinNumber: '' }),
+      caller.jobs.update({ id: job.id, description: 'Should not save', invoiceNumber: '' }),
     ).rejects.toMatchObject({ appCode: 'job.cancelled', code: 'BAD_REQUEST' });
   });
 
-  test('updates description, invoice number, and VIN, blanking to null, and records one audit event per change', async ({
+  test('updates description and invoice number, blanking to null, and records one audit event per change', async ({
     context,
   }) => {
     const caller = context.createCaller(mockSession('admin'));
@@ -2255,14 +2255,12 @@ describe('jobs.update', () => {
         id: job.id,
         description: 'Fit the extended tank before paint.',
         invoiceNumber: 'INV-1001',
-        vinNumber: 'VIN-123',
       }),
     ).resolves.toMatchObject({
       job: {
         id: job.id,
         description: 'Fit the extended tank before paint.',
         invoiceNumber: 'INV-1001',
-        vinNumber: 'VIN-123',
       },
     });
 
@@ -2271,14 +2269,12 @@ describe('jobs.update', () => {
         id: job.id,
         description: '',
         invoiceNumber: '',
-        vinNumber: 'VIN-123',
       }),
     ).resolves.toMatchObject({
       job: {
         id: job.id,
         description: null,
         invoiceNumber: null,
-        vinNumber: 'VIN-123',
       },
     });
 
@@ -2295,7 +2291,7 @@ describe('jobs.update', () => {
       quoteId: context.quote.id,
     });
 
-    await caller.jobs.update({ id: job.id, description: '', invoiceNumber: '', vinNumber: '' });
+    await caller.jobs.update({ id: job.id, description: '', invoiceNumber: '' });
 
     const events = await context.db
       .select()
@@ -2315,7 +2311,6 @@ describe('jobs.update', () => {
         id: job.id,
         description: 'Job viewers cannot edit.',
         invoiceNumber: '',
-        vinNumber: '',
       }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
@@ -2328,7 +2323,6 @@ describe('jobs.update', () => {
         id: '00000000-0000-4000-8000-000000000999',
         description: 'Missing job.',
         invoiceNumber: '',
-        vinNumber: '',
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });

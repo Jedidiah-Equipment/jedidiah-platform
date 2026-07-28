@@ -89,8 +89,8 @@ import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 type ProductRow = Pick<typeof products.$inferSelect, 'buildTimeDays' | 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
 
-// The machine a Job is bound to, and the log that says who owns it now. Every Job read pulls this so
-// the serial, VIN, Product, and Customer all come off the Unit rather than the Job's own columns.
+// The machine a Job is bound to, and the log that says who owns it now. Every Job read pulls this,
+// because the serial, VIN, Product, and Customer are all facts about the machine, not about the Job.
 const productUnitWith = {
   columns: {
     productSerialNumber: true,
@@ -132,7 +132,6 @@ type JobProductUnitWithOwnershipRow = JobProductUnitRow & {
 };
 
 type JobWithProductRow = JobRow & {
-  product: ProductRow | null;
   productUnit: JobProductUnitWithOwnershipRow | null;
   quote: QuoteRow;
 };
@@ -241,27 +240,13 @@ async function listJobSummariesByIds({
         id: true,
         code: true,
         invoiceNumber: true,
-        productId: true,
-        productSerialNumber: true,
-        productSerialPrefix: true,
-        productSerialSequence: true,
-        productSerialYear: true,
         productUnitId: true,
         quoteId: true,
         updatedAt: true,
-        vinNumber: true,
         description: true,
       },
       where: inArray(jobs.id, batch),
       with: {
-        product: {
-          columns: {
-            buildTimeDays: true,
-            modelCode: true,
-            name: true,
-            thumbnailDataUrl: true,
-          },
-        },
         productUnit: productUnitWith,
         quote: {
           columns: {
@@ -394,29 +379,15 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
       id: true,
       code: true,
       invoiceNumber: true,
-      productId: true,
-      productSerialNumber: true,
-      productSerialPrefix: true,
-      productSerialSequence: true,
-      productSerialYear: true,
       productUnitId: true,
       quoteId: true,
       updatedAt: true,
-      vinNumber: true,
       description: true,
     },
     where,
     orderBy: [orderBy, asc(jobs.id)],
     ...getPaginationQueryOptions(input),
     with: {
-      product: {
-        columns: {
-          buildTimeDays: true,
-          modelCode: true,
-          name: true,
-          thumbnailDataUrl: true,
-        },
-      },
       productUnit: productUnitWith,
       quote: {
         columns: {
@@ -625,27 +596,13 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
       code: true,
       id: true,
       invoiceNumber: true,
-      productId: true,
-      productSerialNumber: true,
-      productSerialPrefix: true,
-      productSerialSequence: true,
-      productSerialYear: true,
       productUnitId: true,
       quoteId: true,
       updatedAt: true,
-      vinNumber: true,
       description: true,
     },
     where: eq(jobs.id, id),
     with: {
-      product: {
-        columns: {
-          buildTimeDays: true,
-          modelCode: true,
-          name: true,
-          thumbnailDataUrl: true,
-        },
-      },
       productUnit: productUnitWith,
       quote: {
         columns: {

@@ -5,6 +5,7 @@ import {
   jobs,
   productAssemblies,
   products,
+  productUnits,
   quoteSelectedAssemblies,
   quotes,
   quoteWorkItems,
@@ -1431,17 +1432,19 @@ async function createJobOwner(db: Parameters<typeof readJobDocument>[0]['db'], p
     .returning();
   if (!quote) throw new Error('Quote insert did not return a row');
 
-  const [job] = await db
-    .insert(jobs)
+  const [unit] = await db
+    .insert(productUnits)
     .values({
       productId,
       productSerialNumber: 'DOC-TEST260001',
       productSerialPrefix: 'DOC-TEST',
       productSerialSequence: 1,
       productSerialYear: 26,
-      quoteId: quote.id,
     })
     .returning();
+  if (!unit) throw new Error('Product unit insert did not return a row');
+
+  const [job] = await db.insert(jobs).values({ productUnitId: unit.id, quoteId: quote.id }).returning();
   if (!job) throw new Error('Job insert did not return a row');
 
   return job;

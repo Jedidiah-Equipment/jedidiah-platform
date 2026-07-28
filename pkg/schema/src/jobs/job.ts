@@ -468,7 +468,8 @@ export const Job = z.object({
   productSerialSequence: ProductSerialSequence.nullable(),
   productSerialYear: ProductSerialYear.nullable(),
   vinNumber: ProductUnitVinNumber,
-  quoteId: UUID,
+  // Null on a Stock Build: it builds a machine we hold, so there is no sale behind it.
+  quoteId: UUID.nullable(),
   invoiceNumber: JobInvoiceNumber,
   description: JobDescription,
   completedOn: JobCompletedOn,
@@ -505,8 +506,9 @@ export const JobSummary = Job.extend({
   productModelCode: z.string().trim().min(1).nullable(),
   productName: z.string().trim().min(1).nullable(),
   productThumbnailDataUrl: NullableThumbnailDataUrl,
-  quoteCode: QuoteCode,
-  quoteKind: QuoteKind,
+  // Null together on a Stock Build, which carries no commercial facts at all.
+  quoteCode: QuoteCode.nullable(),
+  quoteKind: QuoteKind.nullable(),
   scheduleState: JobScheduleState.nullable().default(null),
   workTitle: QuoteWorkTitle.nullable(),
 });
@@ -728,13 +730,38 @@ export const JobBaySeedInput = z
     startDate: DateOnlyIso.optional(),
   })
   .strict();
-export type JobCreateInput = z.infer<typeof JobCreateInput>;
-export const JobCreateInput = z
+/** The ordinary path: a Job sourced by an accepted Quote, which seeds its Build Spec. */
+export type JobCreateFromQuoteInput = z.infer<typeof JobCreateFromQuoteInput>;
+export const JobCreateFromQuoteInput = z
   .object({
     baySeeds: z.array(JobBaySeedInput).default([]),
     quoteId: UUID,
   })
   .strict();
+
+/**
+ * A Stock Build: a machine built for the floor, specced directly rather than seeded from a sale.
+ * `buildSpecAssemblyIds` are the Product's Optional Assemblies to fit, and are the Job's Build Spec.
+ */
+export type StockBuildCreateInput = z.infer<typeof StockBuildCreateInput>;
+export const StockBuildCreateInput = z
+  .object({
+    baySeeds: z.array(JobBaySeedInput).default([]),
+    buildSpecAssemblyIds: z.array(UUID).default([]),
+    productId: UUID,
+  })
+  .strict();
+
+/**
+ * The two shapes a Job is created in. They are told apart by `quoteId` rather than a tag: both are
+ * strict, so no payload satisfies both, and the shape a caller sends already says what it is asking for.
+ */
+export type JobCreateInput = z.infer<typeof JobCreateInput>;
+export const JobCreateInput = z.union([JobCreateFromQuoteInput, StockBuildCreateInput]);
+
+export function isStockBuildCreateInput(input: JobCreateInput): input is StockBuildCreateInput {
+  return 'productId' in input;
+}
 
 export type JobUpdateInput = z.infer<typeof JobUpdateInput>;
 export const JobUpdateInput = z

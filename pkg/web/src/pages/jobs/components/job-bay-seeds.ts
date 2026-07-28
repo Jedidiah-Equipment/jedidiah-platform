@@ -3,7 +3,9 @@ import {
   type Bay,
   type BoardListResult,
   type BoardPlacement,
+  DateOnlyIso,
   DateOnlyIsoString,
+  type JobBaySeedInput,
   JobCreateInput,
   type OffDay,
   type ProductBay,
@@ -14,10 +16,8 @@ import {
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';
-import {
-  describeInsertAtDatePlacement,
-  getInsertAtDatePickerBounds,
-} from '@/pages/jobs/components/book-slot-insert-at-date.js';
+
+import { describeInsertAtDatePlacement, getInsertAtDatePickerBounds } from './book-slot-insert-at-date.js';
 
 export type JobBaySeedFormValues = z.infer<typeof JobBaySeedFormValues>;
 export const JobBaySeedFormValues = z.object({
@@ -114,15 +114,21 @@ export function toJobCreateFormValues({
   };
 }
 
+/**
+ * Seed rows as the API takes them. `job:create` implies `job:schedule` (see appRoleAccess), so seed
+ * dates need no permission stripping; an empty date is the missing-schedule-data append fallback.
+ */
+export function toJobBaySeedInputs(baySeeds: readonly JobBaySeedFormValues[]): JobBaySeedInput[] {
+  return baySeeds.map((seed) => ({
+    bayId: seed.bayId,
+    durationDays: seed.durationDays,
+    ...(seed.startDate ? { startDate: DateOnlyIso.parse(seed.startDate) } : {}),
+  }));
+}
+
 export function toJobCreateInput({ quoteId, value }: { quoteId: UUID; value: JobCreateFormValues }): JobCreateInput {
-  // `job:create` implies `job:schedule` (see appRoleAccess), so seed dates need no
-  // permission stripping; an empty date is the missing-schedule-data append fallback.
   return JobCreateInput.parse({
-    baySeeds: value.baySeeds.map((seed) => ({
-      bayId: seed.bayId,
-      durationDays: seed.durationDays,
-      ...(seed.startDate ? { startDate: seed.startDate } : {}),
-    })),
+    baySeeds: toJobBaySeedInputs(value.baySeeds),
     quoteId,
   });
 }

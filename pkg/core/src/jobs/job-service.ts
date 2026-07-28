@@ -33,6 +33,7 @@ import {
   DateOnlyIso,
   formatJobCode,
   formatProductSerialNumber,
+  isStockBuildCreateInput,
   JobCode,
   type JobCreateInput,
   type JobDetail,
@@ -73,6 +74,7 @@ import {
   JobCreateFromQuoteDeniedError,
   JobNotFoundError,
   JobSlotNotFoundError,
+  StockBuildDeniedError,
 } from './job-errors.js';
 import { type JobProductUnitRow, type JobRow, mapJob } from './job-mappers.js';
 import { assertJobIsMutable, lockMutableJob } from './job-mutation-guards.js';
@@ -81,8 +83,9 @@ import { loadBayWorkingCalendar } from './working-calendar-service.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
 
-// A Job's inputs resolved once at the quote boundary. `kind` alone drives every downstream branch: the
-// product variant carries the serial + Build Spec facts a custom Job never has, so no site re-derives them.
+// A Job's inputs resolved once at the input boundary. `kind` alone drives every downstream branch: the
+// machine-building variants carry the serial + Build Spec facts a custom Job never has, so no site
+// re-derives them, and only `quote` says whether there is a sale behind the work.
 type JobBlueprint =
   | {
       kind: 'product';
@@ -91,7 +94,19 @@ type JobBlueprint =
       serial: Awaited<ReturnType<typeof createProductSerial>>;
       buildSpec: BuildSpecAssembly[];
     }
+  | {
+      kind: 'stock-build';
+      quote: null;
+      productId: UUID;
+      serial: Awaited<ReturnType<typeof createProductSerial>>;
+      buildSpec: BuildSpecAssembly[];
+    }
   | { kind: 'custom'; quote: QuoteRow };
+
+/** The Job kinds that build a machine, and so mint a Unit, a Build Spec, a CFO, and Documents. */
+function buildsProductUnit(blueprint: JobBlueprint): blueprint is Extract<JobBlueprint, { productId: UUID }> {
+  return blueprint.kind !== 'custom';
+}
 
 export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityType: 'job',
@@ -134,17 +149,17 @@ export async function createJob({
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
     const plantToday = getPlantDateNow();
-    const blueprint = await resolveJobBlueprint({ plantToday, quoteId: input.quoteId, tx });
+    const blueprint = await resolveJobBlueprint({ input, plantToday, tx });
 
     // The physical machine is created before the Job that builds it: the Unit owns the serial, the
     // Product, and the VIN, and pointing at one is what makes this a Product Job.
-    const productUnitId = blueprint.kind === 'product' ? await insertProductUnit({ actorUserId, blueprint, tx }) : null;
+    const productUnitId = buildsProductUnit(blueprint) ? await insertProductUnit({ actorUserId, blueprint, tx }) : null;
 
     const [job] = await tx
       .insert(jobs)
       .values({
         productUnitId,
-        quoteId: blueprint.quote.id,
+        quoteId: blueprint.quote?.id ?? null,
       })
       .returning();
 
@@ -152,7 +167,9 @@ export async function createJob({
       throw new Error('Job insert did not return a row');
     }
 
-    if (productUnitId) {
+    // Only a sale attributes the machine to anyone. A Stock Build leaves the log empty, which is
+    // exactly what makes its Unit read as Stock.
+    if (productUnitId && blueprint.quote) {
       await tx.insert(productUnitOwnershipTransfers).values({
         actorUserId,
         occurredOn: plantToday,
@@ -162,9 +179,9 @@ export async function createJob({
       });
     }
 
-    if (blueprint.kind === 'product') {
-      // The Quote's selected Assemblies seed the Job's own Build Spec — one copy at one moment — and
-      // the CFO is then snapshotted from that Build Spec, never from the Quote.
+    if (buildsProductUnit(blueprint)) {
+      // A Quote's selected Assemblies seed the Job's own Build Spec — one copy at one moment — and a
+      // Stock Build enters one directly. Either way the CFO snapshots from that Build Spec.
       await insertJobBuildSpec({ buildSpec: blueprint.buildSpec, jobId: job.id, tx });
       await snapshotJobCfo({ jobId: job.id, productId: blueprint.productId, tx });
     }
@@ -178,7 +195,7 @@ export async function createJob({
       await queue.book({ durationDays: seed.durationDays, jobId: job.id, kind: 'work' }, { startDate: seed.startDate });
     }
 
-    if (blueprint.kind === 'product') {
+    if (buildsProductUnit(blueprint)) {
       // Snapshot documents only after the abort-prone bay seeding succeeds: generating the Brochure
       // writes a PDF to (non-transactional) storage, so a later rollback would orphan that object.
       await snapshotJobDocuments({
@@ -249,15 +266,31 @@ export async function cancelJobForQuote({
 }
 
 async function resolveJobBlueprint({
+  input,
   plantToday,
-  quoteId,
   tx,
 }: {
+  input: JobCreateInput;
   plantToday: DateOnlyIso;
-  quoteId: UUID;
   tx: DatabaseTransaction;
 }): Promise<JobBlueprint> {
-  const { offering, quote } = await validateJobQuoteForCreate({ quoteId, tx });
+  if (isStockBuildCreateInput(input)) {
+    const buildSpec = await resolveStockBuildSpec({
+      assemblyIds: input.buildSpecAssemblyIds,
+      productId: input.productId,
+      tx,
+    });
+
+    return {
+      kind: 'stock-build',
+      quote: null,
+      productId: input.productId,
+      serial: await createProductSerial({ plantToday, productId: input.productId, tx }),
+      buildSpec,
+    };
+  }
+
+  const { offering, quote } = await validateJobQuoteForCreate({ quoteId: input.quoteId, tx });
 
   if (offering.kind === 'custom') {
     return { kind: 'custom', quote };
@@ -267,6 +300,50 @@ async function resolveJobBlueprint({
   const serial = await createProductSerial({ plantToday, productId: offering.productId, tx });
 
   return { kind: 'product', quote, productId: offering.productId, serial, buildSpec };
+}
+
+/**
+ * A Stock Build's Build Spec, resolved from the Optional Assemblies the administrator picked. The name
+ * is snapshotted here for the same reason a Quote's is: the CFO and the As-Built Spec must keep saying
+ * what was fitted after the catalog entry is renamed.
+ */
+async function resolveStockBuildSpec({
+  assemblyIds,
+  productId,
+  tx,
+}: {
+  assemblyIds: readonly UUID[];
+  productId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<BuildSpecAssembly[]> {
+  const [product] = await tx.select({ id: products.id }).from(products).where(eq(products.id, productId)).limit(1);
+
+  if (!product) {
+    throw new StockBuildDeniedError('Product not found.');
+  }
+
+  const uniqueIds = [...new Set(assemblyIds)];
+
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  const optionalAssembliesById = new Map(
+    (await listAssemblies({ productId, tx }))
+      .filter((assembly) => assembly.kind === 'optional')
+      .map((assembly) => [assembly.id, assembly] as const),
+  );
+  const unknown = uniqueIds.filter((assemblyId) => !optionalAssembliesById.has(assemblyId));
+
+  if (unknown.length > 0) {
+    throw new StockBuildDeniedError(`Optional assembly does not belong to this Product: ${unknown.join(', ')}.`);
+  }
+
+  return uniqueIds.map((assemblyId) => ({
+    // Non-null by construction: `unknown` above already rejected every id the catalog does not hold.
+    assemblyName: optionalAssembliesById.get(assemblyId)?.name ?? '',
+    productAssemblyId: assemblyId,
+  }));
 }
 
 async function loadJobProductUnit({
@@ -299,7 +376,7 @@ async function insertProductUnit({
   tx,
 }: {
   actorUserId: AuthId;
-  blueprint: Extract<JobBlueprint, { kind: 'product' }>;
+  blueprint: Extract<JobBlueprint, { productId: UUID }>;
   tx: DatabaseTransaction;
 }): Promise<string> {
   const [unit] = await tx

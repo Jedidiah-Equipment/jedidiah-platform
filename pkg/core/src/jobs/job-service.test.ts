@@ -342,6 +342,177 @@ describe('createJob', () => {
     expect(job.productSerialNumber).toBeNull();
   });
 
+  test('builds for stock with no Quote, minting a Unit that stays unowned', async ({ context }) => {
+    const job = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id },
+    });
+
+    const [unitRows, transferRows, jobRows] = await Promise.all([
+      context.db.select().from(productUnits),
+      context.db.select().from(productUnitOwnershipTransfers),
+      context.db.select().from(jobs),
+    ]);
+
+    expect(jobRows[0]?.quoteId).toBeNull();
+    expect(unitRows).toMatchObject([{ productId: context.catalog.product.id, productSerialNumber: 'CFO-001260001' }]);
+    expect(jobRows[0]?.productUnitId).toBe(unitRows[0]?.id);
+    // No sale, so nothing attributes the machine to anyone: it reads as Stock everywhere.
+    expect(transferRows).toEqual([]);
+    expect(resolveProductUnitOwnerId(transferRows)).toBeNull();
+    expect(job).toMatchObject({
+      customerCompanyName: null,
+      customerId: null,
+      productSerialNumber: 'CFO-001260001',
+      quoteCode: null,
+      quoteId: null,
+      quoteKind: null,
+      workRows: [],
+    });
+  });
+
+  // `job_quote_id_unique` still guards one Job per Quote; a quoteless Job must not trip it, or the
+  // showroom could only ever hold one machine.
+  test('lets the floor hold several Stock Builds at once', async ({ context }) => {
+    const input = { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id };
+
+    await createJob({ actorUserId, db: context.db, input });
+    await createJob({ actorUserId, db: context.db, input });
+
+    await expect(context.db.select().from(productUnits)).resolves.toMatchObject([
+      { productSerialNumber: 'CFO-001260001' },
+      { productSerialNumber: 'CFO-001260002' },
+    ]);
+  });
+
+  test('snapshots a Stock Build CFO from the Build Spec it was specced with', async ({ context }) => {
+    const job = await createJob({
+      actorUserId,
+      db: context.db,
+      input: {
+        baySeeds: [],
+        buildSpecAssemblyIds: [context.catalog.heavyAxle.id],
+        productId: context.catalog.product.id,
+      },
+    });
+
+    await expect(
+      context.db.select().from(jobBuildSpecAssemblies).where(eq(jobBuildSpecAssemblies.jobId, job.id)),
+    ).resolves.toMatchObject([
+      { assemblyName: 'Heavy Axle Upgrade', productAssemblyId: context.catalog.heavyAxle.id, sequence: 0 },
+    ]);
+    // The optional overrides Standard Axle, exactly as it does when a Quote seeds the same selection.
+    expect(job.cfo.map((entry) => [entry.kind, entry.assemblyName])).toEqual([
+      ['standard', 'Standard Chassis'],
+      ['optional', 'Heavy Axle Upgrade'],
+    ]);
+  });
+
+  test('gives a Stock Build the same Documents and Brochure a customer build gets', async ({ context }) => {
+    const storage = new InMemoryStorageAdapter();
+    await makeBrochureComplete(context.db, storage, context.catalog.product.id);
+    await createProductDocuments(context.db, context.catalog.product.id, [
+      { filename: 'Part Book.pdf', storageKey: 'documents/product/source/part-book.pdf', type: 'part_book' },
+    ]);
+
+    const job = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id },
+      storage,
+    });
+
+    expect(job.documents.map((document) => document.filename).sort()).toEqual([
+      'CFO-001-brochure.pdf',
+      'Part Book.pdf',
+    ]);
+  });
+
+  test('books a Stock Build into the Bays it was seeded with', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+
+    const job = await createJob({
+      actorUserId,
+      db: context.db,
+      input: {
+        baySeeds: [{ bayId: bay.id, durationDays: 4 }],
+        buildSpecAssemblyIds: [],
+        productId: context.catalog.product.id,
+      },
+    });
+
+    await expect(context.db.select().from(jobSlots)).resolves.toMatchObject([
+      { bayId: bay.id, durationDays: 4, jobId: job.id, kind: 'work' },
+    ]);
+  });
+
+  test('reads a Stock Build as Stock in the Job list, matching no Customer filter', async ({ context }) => {
+    await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id },
+    });
+
+    const result = await listJobs({
+      db: context.db,
+      input: {
+        columnFilters: {},
+        filters: {},
+        include: {},
+        page: 1,
+        pageSize: 50,
+        search: '',
+        sortBy: 'createdAt',
+        sortDirection: 'asc',
+      },
+    });
+
+    expect(result.items).toMatchObject([{ customerCompanyName: null, customerId: null, quoteCode: null }]);
+    // Stock belongs to no Customer, so it offers none to filter by either.
+    await expect(
+      listJobCustomerOptions({
+        db: context.db,
+        input: { page: 1, pageSize: 0, search: '', sortBy: 'companyName', sortDirection: 'asc' },
+      }),
+    ).resolves.toMatchObject({ items: [] });
+  });
+
+  test('refuses a Stock Build specced with an Optional Assembly from another Product', async ({ context }) => {
+    const otherProduct = await createProduct(context.db, { modelCode: 'OTHER-001', name: 'Other Product' });
+    const [otherAssembly] = await context.db
+      .insert(productAssemblies)
+      .values({ displayOrder: 0, kind: 'optional', name: 'Other Upgrade', price: 100, productId: otherProduct.id })
+      .returning();
+
+    await expect(
+      createJob({
+        actorUserId,
+        db: context.db,
+        input: {
+          baySeeds: [],
+          buildSpecAssemblyIds: [otherAssembly?.id ?? ''],
+          productId: context.catalog.product.id,
+        },
+      }),
+    ).rejects.toThrow('Optional assembly does not belong to this Product');
+
+    await expect(context.db.select().from(jobs)).resolves.toEqual([]);
+    await expect(context.db.select().from(productUnits)).resolves.toEqual([]);
+  });
+
+  test('rejects a Job that is about neither a machine nor a sale', async ({ context }) => {
+    const failure = await context.db
+      .insert(jobs)
+      .values({})
+      .returning()
+      .then(() => null)
+      .catch((error: unknown) => error);
+
+    // Drizzle wraps the driver error, so the constraint that fired is read off the cause.
+    expect(String((failure as { cause?: unknown } | null)?.cause)).toContain('job_product_unit_or_quote_required');
+  });
+
   test('gives each build its own Product Unit', async ({ context }) => {
     const [firstQuote, secondQuote] = await Promise.all([
       createQuote(context.db, { productId: context.catalog.product.id, status: 'accepted' }),

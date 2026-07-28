@@ -2,9 +2,8 @@ import { useDebouncedValue } from '@mantine/hooks';
 import type { UUID } from '@pkg/schema';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
-
+import { EntityCombobox } from '@/components/common/EntityCombobox.js';
 import { type ProductOption, useProductForQuoteOptions } from '@/hooks/options/index.js';
-import { EntityCombobox } from './EntityCombobox.js';
 
 export type QuoteProductChoice = ProductOption;
 

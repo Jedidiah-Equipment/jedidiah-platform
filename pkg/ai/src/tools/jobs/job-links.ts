@@ -18,7 +18,7 @@ export const JobLinks = z.object({
 });
 
 export function createJobLinks(
-  job: { customerId: string | null; id: string; productId: string | null; quoteId: string },
+  job: { customerId: string | null; id: string; productId: string | null; quoteId: string | null },
   access: UserAccessSummary | null,
 ): JobLinks {
   return JobLinks.parse({
@@ -28,6 +28,7 @@ export function createJobLinks(
       ? { customer: createCustomerAppHref(job.customerId) }
       : {}),
     ...(job.productId && hasPermission(access, 'product:read') ? { product: createProductAppHref(job.productId) } : {}),
-    ...(hasPermission(access, 'quote:read') ? { quote: createQuoteAppHref(job.quoteId) } : {}),
+    // A Stock Build has no sale behind it, so there is no Quote to link to.
+    ...(job.quoteId && hasPermission(access, 'quote:read') ? { quote: createQuoteAppHref(job.quoteId) } : {}),
   });
 }

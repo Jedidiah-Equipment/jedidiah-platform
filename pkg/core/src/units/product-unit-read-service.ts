@@ -32,7 +32,7 @@ const currentOwnerId = sql<string | null>`(
   select ${productUnitOwnershipTransfers.toCustomerId}
   from ${productUnitOwnershipTransfers}
   where ${productUnitOwnershipTransfers.productUnitId} = ${productUnits.id}
-  order by ${productUnitOwnershipTransfers.occurredOn} desc, ${productUnitOwnershipTransfers.createdAt} desc
+  order by ${productUnitOwnershipTransfers.occurredOn} desc, ${productUnitOwnershipTransfers.createdAt} desc, ${productUnitOwnershipTransfers.id} desc
   limit 1
 )`;
 

@@ -43,6 +43,7 @@ describe('mapJobSummary', () => {
         ...productUnitRow().ownershipTransfers,
         {
           createdAt: new Date('2026-06-01T00:00:00.000Z'),
+          id: '00000000-0000-4000-8000-00000000000b',
           occurredOn: '2026-06-01',
           toCustomer: {
             companyName: 'Hilltop Transport',
@@ -155,6 +156,7 @@ function productUnitRow(ownershipTransfers?: ProductUnitRow['ownershipTransfers'
     ownershipTransfers: ownershipTransfers ?? [
       {
         createdAt: new Date('2026-05-01T00:00:00.000Z'),
+        id: '00000000-0000-4000-8000-00000000000a',
         occurredOn: '2026-05-01',
         toCustomer: {
           companyName: 'Riverside Farm',

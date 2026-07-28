@@ -37,7 +37,7 @@ type FeedbackReadRow = FeedbackRow & {
   job: {
     code: number;
     id: string;
-    productSerialNumber: string | null;
+    productUnit: { productSerialNumber: string } | null;
     quote: { kind: QuoteKind; workTitle: string | null };
   } | null;
   quote: { code: number; customer: { companyName: string }; id: string } | null;
@@ -253,9 +253,9 @@ const feedbackReadRelations = {
     columns: {
       code: true,
       id: true,
-      productSerialNumber: true,
     },
     with: {
+      productUnit: { columns: { productSerialNumber: true } },
       quote: {
         columns: {
           kind: true,
@@ -366,7 +366,7 @@ function mapFeedbackSubject(row: FeedbackReadRow): FeedbackListItem['subject'] {
     const jobLabel = getJobOptionHint({
       code: jobCode,
       productName: null,
-      productSerialNumber: row.job.productSerialNumber,
+      productSerialNumber: row.job.productUnit?.productSerialNumber ?? null,
       quoteKind: row.job.quote.kind,
       workTitle: row.job.quote.workTitle,
     });

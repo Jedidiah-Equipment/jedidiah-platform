@@ -101,7 +101,7 @@ const productUnitWith = {
   },
   with: {
     ownershipTransfers: {
-      columns: { createdAt: true, occurredOn: true, toCustomerId: true },
+      columns: { createdAt: true, id: true, occurredOn: true, toCustomerId: true },
       with: { toCustomer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
     },
     product: {
@@ -123,6 +123,7 @@ type JobDetailQuoteRow = QuoteRow & {
 type JobProductUnitWithOwnershipRow = JobProductUnitRow & {
   ownershipTransfers: {
     createdAt: Date;
+    id: string;
     occurredOn: string;
     toCustomerId: string | null;
     toCustomer: CustomerRow | null;
@@ -160,7 +161,8 @@ export async function listJobCustomerOptions({
   const jobCustomerIds = db
     .selectDistinct({ customerId: jobCustomerIdExpression(quotes.customerId) })
     .from(jobs)
-    .innerJoin(quotes, eq(jobs.quoteId, quotes.id))
+    // Left, not inner: a Stock Build has a Unit and no Quote, and must still contribute its Owner.
+    .leftJoin(quotes, eq(jobs.quoteId, quotes.id))
     .where(isNull(jobs.cancelledAt));
   const conditions: SQL[] = [inArray(customers.id, jobCustomerIds)];
 
@@ -522,7 +524,7 @@ const currentJobOwnerId = sql<string | null>`(
   select ${ownerTransferAlias}."to_customer_id"
   from ${productUnitOwnershipTransfers} ${ownerTransferAlias}
   where ${ownerTransferAlias}."product_unit_id" = ${jobs.productUnitId}
-  order by ${ownerTransferAlias}."occurred_on" desc, ${ownerTransferAlias}."created_at" desc
+  order by ${ownerTransferAlias}."occurred_on" desc, ${ownerTransferAlias}."created_at" desc, ${ownerTransferAlias}."id" desc
   limit 1
 )`;
 
@@ -921,7 +923,7 @@ export function getJobSortOrder(sortBy: JobSortBy, sortDirection: SortDirection)
 export function mapJobSummary(row: JobWithProductRow, scheduleState: JobScheduleState | null = null): JobSummary {
   const mappedJob = mapJob(row, row.productUnit);
   const customer = resolveJobCustomerForRow(row);
-  const product = row.productUnit?.product ?? row.product;
+  const product = row.productUnit?.product ?? null;
 
   return {
     ...mappedJob,

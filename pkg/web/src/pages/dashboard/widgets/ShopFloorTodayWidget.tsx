@@ -119,7 +119,7 @@ function ShopFloorOccupancyCell({
       <span className="flex min-w-0 items-center gap-2">
         {job ? (
           <EntityThumbnail
-            label={job.customerCompanyName ?? getJobDisplayName(job)}
+            label={job.customerCompanyName ?? 'Stock'}
             size="sm"
             thumbnailDataUrl={job.customerThumbnailDataUrl}
           />

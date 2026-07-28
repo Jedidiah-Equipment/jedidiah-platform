@@ -4,6 +4,8 @@
  * read, so one rule serves every surface.
  */
 export type ProductUnitOwnershipTransferRecency = {
+  /** Final tiebreak, so a Unit's Owner never depends on row order. Must match the SQL ordering. */
+  id: string;
   /** Plant business date the transfer happened — the primary ordering fact. */
   occurredOn: string;
   /**
@@ -58,9 +60,13 @@ function compareTransferRecency(
   const leftCreatedAt = toEpochMs(left.createdAt);
   const rightCreatedAt = toEpochMs(right.createdAt);
 
-  if (leftCreatedAt === rightCreatedAt) return 0;
+  if (leftCreatedAt !== rightCreatedAt) {
+    return leftCreatedAt < rightCreatedAt ? -1 : 1;
+  }
 
-  return leftCreatedAt < rightCreatedAt ? -1 : 1;
+  if (left.id === right.id) return 0;
+
+  return left.id < right.id ? -1 : 1;
 }
 
 function toEpochMs(value: Date | string): number {

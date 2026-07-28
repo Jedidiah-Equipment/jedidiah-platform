@@ -36,6 +36,7 @@ describe('getRolePermissions', () => {
       'product_range:read',
       'product_range:update',
       'product_unit:read',
+      'product_unit:transfer',
       'product_unit:update',
       'quote:cancel',
       'quote:create',
@@ -70,6 +71,17 @@ describe('getRolePermissions', () => {
 
     expect(getRolePermissions('admin')).toContain('product_unit:update');
     expect(getRolePermissions('super-admin')).toContain('product_unit:update');
+  });
+
+  // A hand-recorded Transfer claims who owns a machine with no Quote, price, or salesperson behind it,
+  // so it stays with administrators rather than the roles that merely read Units.
+  it('lets only administrators record an Ownership Transfer by hand', () => {
+    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'bay-operator'] as const) {
+      expect(getRolePermissions(role), `role ${role}`).not.toContain('product_unit:transfer');
+    }
+
+    expect(getRolePermissions('admin')).toContain('product_unit:transfer');
+    expect(getRolePermissions('super-admin')).toContain('product_unit:transfer');
   });
 
   it('grants procurement permissions to procurement managers', () => {

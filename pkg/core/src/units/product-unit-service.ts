@@ -1,9 +1,22 @@
-import { type Db, productUnits } from '@pkg/db';
-import type { AuthId, ProductUnitUpdateInput, ProductUnitUpdateResult } from '@pkg/schema';
+import { customers, type Db, productUnitOwnershipTransfers, productUnits } from '@pkg/db';
+import { getPlantDateNow, resolveNewestOwnershipTransfer } from '@pkg/domain';
+import type {
+  AuthId,
+  ProductUnitTransferInput,
+  ProductUnitTransferResult,
+  ProductUnitUpdateInput,
+  ProductUnitUpdateResult,
+} from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
 import { defineAuditDescriptor, diffAuditUpdate, recordAuditUpdate } from '../audit/audit-service.js';
-import { ProductUnitNotFoundError } from './product-unit-errors.js';
+import { CustomerNotFoundError } from '../customers/customer-errors.js';
+import {
+  ProductUnitNotFoundError,
+  ProductUnitOwnerUnchangedError,
+  ProductUnitTransferBackdatedError,
+  ProductUnitTransferInFutureError,
+} from './product-unit-errors.js';
 import { getProductUnit } from './product-unit-read-service.js';
 
 export type ProductUnitRow = typeof productUnits.$inferSelect;
@@ -56,6 +69,86 @@ export async function updateProductUnit({
 
       await recordAuditUpdate({ db: tx, descriptor: productUnitAuditDescriptor, actorUserId, after, changes });
     }
+
+    return { unit: await getProductUnit({ db: tx, id: input.id }) };
+  });
+}
+
+/**
+ * Records a move we had nothing to do with: a Customer selling the machine on, or handing it back. The
+ * origin is never supplied — it is the Unit's current Owner at the moment the row is written, read
+ * under the Unit's row lock so two concurrent transfers cannot both claim the same origin.
+ *
+ * Nothing commercial is attached: no Quote, no price, no salesperson, so none of this reaches sales
+ * reporting. The row is the audit trail (it stamps its actor and is never edited or deleted), which is
+ * why it is not also written to the audit log.
+ */
+export async function transferProductUnitOwnership({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: ProductUnitTransferInput;
+}): Promise<ProductUnitTransferResult> {
+  return db.transaction(async (tx) => {
+    const [unit] = await tx
+      .select({ id: productUnits.id })
+      .from(productUnits)
+      .where(eq(productUnits.id, input.id))
+      .for('update');
+
+    if (!unit) {
+      throw new ProductUnitNotFoundError(input.id);
+    }
+
+    const plantToday = getPlantDateNow();
+
+    if (input.occurredOn > plantToday) {
+      throw new ProductUnitTransferInFutureError(input.occurredOn, plantToday);
+    }
+
+    const transfers = await tx
+      .select({
+        id: productUnitOwnershipTransfers.id,
+        createdAt: productUnitOwnershipTransfers.createdAt,
+        occurredOn: productUnitOwnershipTransfers.occurredOn,
+        toCustomerId: productUnitOwnershipTransfers.toCustomerId,
+      })
+      .from(productUnitOwnershipTransfers)
+      .where(eq(productUnitOwnershipTransfers.productUnitId, input.id));
+
+    const latest = resolveNewestOwnershipTransfer(transfers);
+    const fromCustomerId = latest?.toCustomerId ?? null;
+
+    if (fromCustomerId === input.toCustomerId) {
+      throw new ProductUnitOwnerUnchangedError(input.id, fromCustomerId);
+    }
+
+    if (latest && input.occurredOn < latest.occurredOn) {
+      throw new ProductUnitTransferBackdatedError(input.occurredOn, latest.occurredOn);
+    }
+
+    if (input.toCustomerId) {
+      const [toCustomer] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.id, input.toCustomerId));
+
+      if (!toCustomer) {
+        throw new CustomerNotFoundError(input.toCustomerId);
+      }
+    }
+
+    await tx.insert(productUnitOwnershipTransfers).values({
+      actorUserId,
+      fromCustomerId,
+      note: input.note,
+      occurredOn: input.occurredOn,
+      productUnitId: input.id,
+      toCustomerId: input.toCustomerId,
+    });
 
     return { unit: await getProductUnit({ db: tx, id: input.id }) };
   });

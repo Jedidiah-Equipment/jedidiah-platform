@@ -15,6 +15,8 @@ import {
   productAssemblies,
   productSerialSequences,
   products,
+  productUnitOwnershipTransfers,
+  productUnits,
   quoteSelectedAssemblies,
   quotes,
   quoteWorkItemParts,
@@ -22,7 +24,7 @@ import {
   supplier,
   user,
 } from '@pkg/db';
-import { addDateOnlyDays, getPlantDateNow } from '@pkg/domain';
+import { addDateOnlyDays, getPlantDateNow, resolveProductUnitOwnerId } from '@pkg/domain';
 import {
   AddBayCalendarExceptionInput,
   type BrochurePdfRenderer,
@@ -238,6 +240,110 @@ describe('createJob', () => {
     expect((await getJob({ db: context.db, id: created.id })).workRows.map(({ name }) => name)).toEqual([
       'Test installed pump',
     ]);
+  });
+
+  test('creates one Product Unit carrying the serial and binds the Job to it', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    const job = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+
+    const [unitRows, jobRows] = await Promise.all([
+      context.db.select().from(productUnits),
+      context.db.select().from(jobs),
+    ]);
+
+    expect(unitRows).toHaveLength(1);
+    expect(unitRows[0]).toMatchObject({
+      productId: context.catalog.product.id,
+      productSerialNumber: 'CFO-001260001',
+      productSerialPrefix: 'CFO-001',
+      productSerialSequence: 1,
+      productSerialYear: 26,
+      vinNumber: null,
+    });
+    expect(jobRows[0]?.productUnitId).toBe(unitRows[0]?.id);
+    // Expand half of the refactor: the Job columns still carry the serial for every current reader.
+    expect(jobRows[0]).toMatchObject({
+      productSerialNumber: 'CFO-001260001',
+      productSerialPrefix: 'CFO-001',
+      productSerialSequence: 1,
+      productSerialYear: 26,
+    });
+    expect(job.productSerialNumber).toBe('CFO-001260001');
+  });
+
+  test('writes an initial Ownership Transfer out of Stock to the Quote customer', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+
+    const [unit] = await context.db.select().from(productUnits);
+    const transfers = await context.db.select().from(productUnitOwnershipTransfers);
+
+    expect(transfers).toHaveLength(1);
+    expect(transfers[0]).toMatchObject({
+      actorUserId,
+      fromCustomerId: null,
+      note: null,
+      occurredOn: '2026-06-05',
+      productUnitId: unit?.id,
+      sourceQuoteId: quote.id,
+      toCustomerId: quote.customerId,
+    });
+    expect(resolveProductUnitOwnerId(transfers)).toBe(quote.customerId);
+  });
+
+  test('creates no Product Unit or Ownership Transfer for a Custom Job', async ({ context }) => {
+    const quote = await createCustomQuote(context.db, {
+      status: 'accepted',
+      workTitle: 'Pump skid rebuild',
+    });
+
+    const job = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+
+    const [unitRows, transferRows, jobRows] = await Promise.all([
+      context.db.select().from(productUnits),
+      context.db.select().from(productUnitOwnershipTransfers),
+      context.db.select().from(jobs),
+    ]);
+
+    expect(unitRows).toEqual([]);
+    expect(transferRows).toEqual([]);
+    expect(jobRows[0]?.productUnitId).toBeNull();
+    expect(job.productSerialNumber).toBeNull();
+  });
+
+  test('gives each build its own Product Unit', async ({ context }) => {
+    const [firstQuote, secondQuote] = await Promise.all([
+      createQuote(context.db, { productId: context.catalog.product.id, status: 'accepted' }),
+      createQuote(context.db, { productId: context.catalog.product.id, status: 'accepted' }),
+    ]);
+
+    await createJob({ actorUserId, db: context.db, input: { baySeeds: [], quoteId: firstQuote.id } });
+    await createJob({ actorUserId, db: context.db, input: { baySeeds: [], quoteId: secondQuote.id } });
+
+    const unitRows = await context.db.select().from(productUnits);
+
+    expect(unitRows.map((unit) => unit.productSerialNumber).sort()).toEqual(['CFO-001260001', 'CFO-001260002']);
+    expect(new Set(unitRows.map((unit) => unit.id)).size).toBe(2);
   });
 
   test('creates one quote-backed job with CFO rows, audit, and a locked quote', async ({ context }) => {
@@ -1559,6 +1665,37 @@ describe('updateJob', () => {
     });
 
     expect(reopened.job.completedOn).toBeNull();
+  });
+
+  test('mirrors a VIN edit onto the Product Unit', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    await updateJob({
+      actorUserId,
+      db: context.db,
+      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: 'VIN-EDITED-1' }),
+    });
+
+    const [unit] = await context.db.select().from(productUnits);
+    expect(unit?.vinNumber).toBe('VIN-EDITED-1');
+  });
+
+  test('mirrors a cleared VIN onto the Product Unit', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await updateJob({
+      actorUserId,
+      db: context.db,
+      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: 'VIN-EDITED-1' }),
+    });
+
+    await updateJob({
+      actorUserId,
+      db: context.db,
+      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: null, vinNumber: null }),
+    });
+
+    const [unit] = await context.db.select().from(productUnits);
+    expect(unit?.vinNumber).toBeNull();
   });
 
   test('preserves a stored completion date when the payload omits it', async ({ context }) => {

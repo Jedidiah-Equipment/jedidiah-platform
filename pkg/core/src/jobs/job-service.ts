@@ -8,6 +8,8 @@ import {
   jobs,
   productSerialSequences,
   products,
+  productUnitOwnershipTransfers,
+  productUnits,
   quoteSelectedAssemblies,
   quotes,
 } from '@pkg/db';
@@ -44,7 +46,7 @@ import {
   RemoveJobSlotResult,
   type ResizeJobSlotInput,
   ResizeJobSlotResult,
-  type UUID,
+  UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 
@@ -133,10 +135,15 @@ export async function createJob({
     const plantToday = getPlantDateNow();
     const blueprint = await resolveJobBlueprint({ plantToday, quoteId: input.quoteId, tx });
 
+    // The physical machine is created before the Job that builds it, so the Job can point at the
+    // Unit that owns its identity. Serial columns are still written alongside for existing readers.
+    const productUnitId = blueprint.kind === 'product' ? await insertProductUnit({ blueprint, tx }) : null;
+
     const [job] = await tx
       .insert(jobs)
       .values({
         productId: blueprint.kind === 'product' ? blueprint.productId : null,
+        productUnitId,
         ...serialColumns(blueprint),
         quoteId: blueprint.quote.id,
       })
@@ -144,6 +151,16 @@ export async function createJob({
 
     if (!job) {
       throw new Error('Job insert did not return a row');
+    }
+
+    if (productUnitId) {
+      await tx.insert(productUnitOwnershipTransfers).values({
+        actorUserId,
+        occurredOn: plantToday,
+        productUnitId,
+        sourceQuoteId: blueprint.quote.id,
+        toCustomerId: blueprint.quote.customerId,
+      });
     }
 
     if (blueprint.kind === 'product') {
@@ -250,6 +267,31 @@ async function resolveJobBlueprint({
   return { kind: 'product', quote, productId: offering.productId, serial, cfo };
 }
 
+async function insertProductUnit({
+  blueprint,
+  tx,
+}: {
+  blueprint: Extract<JobBlueprint, { kind: 'product' }>;
+  tx: DatabaseTransaction;
+}): Promise<UUID> {
+  const [unit] = await tx
+    .insert(productUnits)
+    .values({
+      productId: blueprint.productId,
+      productSerialNumber: blueprint.serial.number,
+      productSerialPrefix: blueprint.serial.prefix,
+      productSerialSequence: blueprint.serial.sequence,
+      productSerialYear: blueprint.serial.year,
+    })
+    .returning({ id: productUnits.id });
+
+  if (!unit) {
+    throw new Error('Product unit insert did not return a row');
+  }
+
+  return UUID.parse(unit.id);
+}
+
 function serialColumns(blueprint: JobBlueprint) {
   if (blueprint.kind === 'product') {
     return {
@@ -327,6 +369,16 @@ async function applyJobFieldPatch({
 
     if (!row) {
       throw new JobNotFoundError(id);
+    }
+
+    // VIN identifies the machine, so it is dual-written to the Unit under the same Job lock for as
+    // long as both columns exist. Without this the Unit keeps its creation-time VIN and every later
+    // edit is lost when the Job column is dropped.
+    if (patch.vinNumber !== undefined && row.productUnitId) {
+      await tx
+        .update(productUnits)
+        .set({ updatedAt: new Date(), vinNumber: row.vinNumber })
+        .where(eq(productUnits.id, row.productUnitId));
     }
 
     await recordAuditUpdate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, after: row, changes });

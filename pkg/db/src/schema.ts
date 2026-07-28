@@ -8,6 +8,7 @@ export * from './schema/job.js';
 export * from './schema/part.js';
 export * from './schema/product.js';
 export * from './schema/product-range.js';
+export * from './schema/product-unit.js';
 export * from './schema/quote.js';
 export * from './schema/stored-file.js';
 export * from './schema/supplier.js';
@@ -22,6 +23,7 @@ import * as jobSchema from './schema/job.js';
 import * as partSchema from './schema/part.js';
 import * as productSchema from './schema/product.js';
 import * as productRangeSchema from './schema/product-range.js';
+import * as productUnitSchema from './schema/product-unit.js';
 import * as quoteSchema from './schema/quote.js';
 import * as supplierSchema from './schema/supplier.js';
 
@@ -36,6 +38,7 @@ export const schema = {
   ...partSchema,
   ...productRangeSchema,
   ...productSchema,
+  ...productUnitSchema,
   ...quoteSchema,
   ...supplierSchema,
 };

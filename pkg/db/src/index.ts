@@ -27,6 +27,7 @@ export {
   type EphemeralTestDatabase,
   getTestTemplateDatabaseUrl,
   type RecreateTestTemplateDatabaseOptions,
+  readMigrationStatements,
   recreateTestTemplateDatabase,
   sweepStaleTestDatabases,
 } from './test-utils.js';

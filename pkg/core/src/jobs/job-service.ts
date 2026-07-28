@@ -2,6 +2,7 @@ import {
   type DatabaseTransaction,
   type Db,
   documents,
+  jobBuildSpecAssemblies,
   jobCfoAssemblies,
   jobCfoParts,
   jobSlots,
@@ -14,6 +15,7 @@ import {
   quotes,
 } from '@pkg/db';
 import {
+  type BuildSpecAssembly,
   buildCfo,
   type CfoEntry,
   canStartJobFromQuote,
@@ -80,14 +82,14 @@ import { loadBayWorkingCalendar } from './working-calendar-service.js';
 type QuoteRow = typeof quotes.$inferSelect;
 
 // A Job's inputs resolved once at the quote boundary. `kind` alone drives every downstream branch: the
-// product variant carries the serial + CFO facts a custom Job never has, so no site re-derives them.
+// product variant carries the serial + Build Spec facts a custom Job never has, so no site re-derives them.
 type JobBlueprint =
   | {
       kind: 'product';
       quote: QuoteRow;
       productId: UUID;
       serial: Awaited<ReturnType<typeof createProductSerial>>;
-      cfo: Awaited<ReturnType<typeof buildJobCfoForQuote>>;
+      buildSpec: BuildSpecAssembly[];
     }
   | { kind: 'custom'; quote: QuoteRow };
 
@@ -161,7 +163,10 @@ export async function createJob({
     }
 
     if (blueprint.kind === 'product') {
-      await insertJobCfo({ cfo: blueprint.cfo, jobId: job.id, tx });
+      // The Quote's selected Assemblies seed the Job's own Build Spec — one copy at one moment — and
+      // the CFO is then snapshotted from that Build Spec, never from the Quote.
+      await insertJobBuildSpec({ buildSpec: blueprint.buildSpec, jobId: job.id, tx });
+      await snapshotJobCfo({ jobId: job.id, productId: blueprint.productId, tx });
     }
 
     // Canonical lock order: concurrent creates seeding the same Bays must not deadlock.
@@ -258,10 +263,10 @@ async function resolveJobBlueprint({
     return { kind: 'custom', quote };
   }
 
-  const cfo = await buildJobCfoForQuote({ productId: offering.productId, quoteId: quote.id, tx });
+  const buildSpec = await loadQuoteBuildSpecSeed({ quoteId: quote.id, tx });
   const serial = await createProductSerial({ plantToday, productId: offering.productId, tx });
 
-  return { kind: 'product', quote, productId: offering.productId, serial, cfo };
+  return { kind: 'product', quote, productId: offering.productId, serial, buildSpec };
 }
 
 async function loadJobProductUnit({
@@ -634,31 +639,79 @@ async function validateJobQuoteForCreate({
   return { offering, quote };
 }
 
-async function buildJobCfoForQuote({
-  productId,
+/**
+ * The Quote's selected Assemblies, as the Build Spec they seed. A copy at one moment, in the Quote's
+ * own selection order — never a live read, exactly like the Work Item Rate Card seeding a rate.
+ */
+async function loadQuoteBuildSpecSeed({
   quoteId,
   tx,
 }: {
-  productId: UUID;
   quoteId: UUID;
   tx: DatabaseTransaction;
-}) {
-  const [catalogAssemblies, selectedRows] = await Promise.all([
+}): Promise<BuildSpecAssembly[]> {
+  return tx
+    .select({
+      assemblyName: quoteSelectedAssemblies.quotedName,
+      productAssemblyId: quoteSelectedAssemblies.productAssemblyId,
+    })
+    .from(quoteSelectedAssemblies)
+    .where(eq(quoteSelectedAssemblies.quoteId, quoteId))
+    .orderBy(asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id));
+}
+
+async function insertJobBuildSpec({
+  buildSpec,
+  jobId,
+  tx,
+}: {
+  buildSpec: readonly BuildSpecAssembly[];
+  jobId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  if (buildSpec.length === 0) {
+    return;
+  }
+
+  await tx.insert(jobBuildSpecAssemblies).values(
+    buildSpec.map((assembly, index) => ({
+      assemblyName: assembly.assemblyName,
+      jobId,
+      productAssemblyId: assembly.productAssemblyId,
+      sequence: index,
+    })),
+  );
+}
+
+/**
+ * The one path that produces a CFO. It reads the Job's Build Spec and the Product's live catalog and
+ * writes the frozen result, so however a Job was specced — seeded from a Quote or entered directly —
+ * its CFO comes from the same source through the same code.
+ *
+ * A stale selection denies Job creation, aborting the enclosing transaction.
+ */
+async function snapshotJobCfo({
+  jobId,
+  productId,
+  tx,
+}: {
+  jobId: UUID;
+  productId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  const [catalogAssemblies, buildSpec] = await Promise.all([
     listAssemblies({ productId, tx }),
     tx
       .select({
-        assemblyName: quoteSelectedAssemblies.quotedName,
-        productAssemblyId: quoteSelectedAssemblies.productAssemblyId,
+        assemblyName: jobBuildSpecAssemblies.assemblyName,
+        productAssemblyId: jobBuildSpecAssemblies.productAssemblyId,
       })
-      .from(quoteSelectedAssemblies)
-      .where(eq(quoteSelectedAssemblies.quoteId, quoteId))
-      .orderBy(asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)),
+      .from(jobBuildSpecAssemblies)
+      .where(eq(jobBuildSpecAssemblies.jobId, jobId))
+      .orderBy(asc(jobBuildSpecAssemblies.sequence)),
   ]);
 
-  const result = buildCfo({
-    catalogAssemblies,
-    selectedAssemblies: selectedRows,
-  });
+  const result = buildCfo({ buildSpec, catalogAssemblies });
 
   if (!result.ok) {
     throw new JobCreateFromQuoteDeniedError(
@@ -666,23 +719,11 @@ async function buildJobCfoForQuote({
     );
   }
 
-  return result.cfo;
-}
-
-async function insertJobCfo({
-  cfo,
-  jobId,
-  tx,
-}: {
-  cfo: Awaited<ReturnType<typeof buildJobCfoForQuote>>;
-  jobId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  // Freeze the build order: standards in catalog display order, then selected optionals in the
+  // Freeze the build order: standards in catalog display order, then specced optionals in the
   // order resolveEffectiveBom produces. Densely sequenced per kind so the CFO read reproduces it.
   const sequenceByKind: Record<CfoEntry['kind'], number> = { optional: 0, standard: 0 };
 
-  for (const assembly of cfo) {
+  for (const assembly of result.cfo) {
     const [cfoAssembly] = await tx
       .insert(jobCfoAssemblies)
       .values({

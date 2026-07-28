@@ -33,8 +33,8 @@ const catalogAssemblies: Assembly[] = [chassis, axle, paint, heavyAxle, ladderRa
 describe('buildCfo', () => {
   it('emits surviving standards plus selected optionals, excluding overridden standards', () => {
     const result = buildCfo({
+      buildSpec: [{ assemblyName: 'Heavy Axle Upgrade', productAssemblyId: HEAVY_AXLE_ID }],
       catalogAssemblies,
-      selectedAssemblies: [{ assemblyName: 'Heavy Axle Upgrade', productAssemblyId: HEAVY_AXLE_ID }],
     });
 
     expect(result).toEqual({
@@ -62,10 +62,10 @@ describe('buildCfo', () => {
     });
   });
 
-  it('uses the quote-selected name rather than the live catalog name for a selected optional', () => {
+  it('uses the Build Spec name rather than the live catalog name for a specced optional', () => {
     const result = buildCfo({
+      buildSpec: [{ assemblyName: 'Heavy Axle Upgrade', productAssemblyId: HEAVY_AXLE_ID }],
       catalogAssemblies: [chassis, axle, paint, { ...heavyAxle, name: 'Renamed Heavy Axle Upgrade' }, ladderRack],
-      selectedAssemblies: [{ assemblyName: 'Heavy Axle Upgrade', productAssemblyId: HEAVY_AXLE_ID }],
     });
 
     expect(result).toMatchObject({
@@ -81,7 +81,7 @@ describe('buildCfo', () => {
   });
 
   it('keeps every standard when nothing is selected', () => {
-    const result = buildCfo({ catalogAssemblies, selectedAssemblies: [] });
+    const result = buildCfo({ buildSpec: [], catalogAssemblies });
 
     expect(result).toEqual({
       ok: true,
@@ -111,11 +111,11 @@ describe('buildCfo', () => {
   it('denies with the offending names when any selection is stale', () => {
     expect(
       buildCfo({
-        catalogAssemblies,
-        selectedAssemblies: [
+        buildSpec: [
           { assemblyName: 'Deleted Winch', productAssemblyId: null },
           { assemblyName: 'Removed Toolbox', productAssemblyId: '00000000-0000-4000-8000-000000000999' },
         ],
+        catalogAssemblies,
       }),
     ).toEqual({
       ok: false,
@@ -124,7 +124,7 @@ describe('buildCfo', () => {
   });
 
   it('returns an empty CFO for an empty-assembly product', () => {
-    expect(buildCfo({ catalogAssemblies: [], selectedAssemblies: [] })).toEqual({ ok: true, cfo: [] });
+    expect(buildCfo({ buildSpec: [], catalogAssemblies: [] })).toEqual({ ok: true, cfo: [] });
   });
 });
 

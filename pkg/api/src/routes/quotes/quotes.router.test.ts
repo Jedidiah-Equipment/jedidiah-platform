@@ -1707,8 +1707,8 @@ describe('quotes.pipelineSummary', () => {
     await expect(salesCaller.quotes.pipelineSummary()).resolves.toEqual({
       accepted90dCount: 1,
       newlySent30dValue: 1000,
-      openSentCount: 1,
-      openSentValue: 1000,
+      openPipelineCount: 1,
+      openPipelineValue: 1000,
       rejected90dCount: 0,
     });
 
@@ -1721,8 +1721,8 @@ describe('quotes.pipelineSummary', () => {
 
     await expect(salesCaller.quotes.pipelineSummary()).resolves.toMatchObject({
       newlySent30dValue: 0,
-      openSentCount: 1,
-      openSentValue: 1000,
+      openPipelineCount: 1,
+      openPipelineValue: 1000,
     });
   });
 });

@@ -632,8 +632,10 @@ export type QuotePipelineSummary = z.infer<typeof QuotePipelineSummary>;
 export const QuotePipelineSummary = z.object({
   accepted90dCount: z.number().int().min(0),
   newlySent30dValue: Price,
-  openSentCount: z.number().int().min(0),
-  openSentValue: Price,
+  /** Sent Quotes plus Jobs with unfinished Work Slots, counting a Quote behind a Job only once. */
+  openPipelineCount: z.number().int().min(0),
+  /** Combined value of everything in {@link openPipelineCount}, excluding VAT. */
+  openPipelineValue: Price,
   rejected90dCount: z.number().int().min(0),
 });
 

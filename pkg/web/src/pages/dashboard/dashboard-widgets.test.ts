@@ -103,7 +103,7 @@ describe('dashboardWidgets', () => {
     expect(openPipelineWidget).toMatchObject({
       requires: 'quote:read',
       size: 'xs',
-      title: 'Open pipeline (sent, excl. VAT)',
+      title: 'Open pipeline (retail, excl. VAT)',
     });
     expect(winRateWidget).toMatchObject({ requires: 'quote:read', size: 'xs', title: 'Win rate (90d)' });
     expect(quoteFlowWidget).toMatchObject({ requires: 'quote:read', size: 'md', title: 'Quote flow' });

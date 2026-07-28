@@ -1,7 +1,8 @@
-import { customers, type Db, quotes } from '@pkg/db';
+import { customers, type Db, jobs, quotes } from '@pkg/db';
 import {
   addDateOnlyDays,
   diffDateOnlyDays,
+  foldJobScheduleStates,
   JOHANNESBURG_TIME_ZONE,
   pricePersistedQuote,
   startOfDateOnlyWeek,
@@ -9,6 +10,7 @@ import {
   zonedDateStartToUtcInstant,
 } from '@pkg/domain';
 import {
+  type DateOnlyIso,
   QuotePipelineSummary,
   QuoteStatus,
   QuoteStatusSummary,
@@ -16,8 +18,10 @@ import {
   StaleSentQuoteList,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 
+import { findBoardBayRows, toProjectedBoard } from '../jobs/board-read.js';
+import { listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
 import { loadQuoteAssociations } from './quote-read-service.js';
 
 // Aggregate Quote reads for the dashboard: counts, sums, and week buckets that project to their own
@@ -36,6 +40,8 @@ type ReportQuotePricingRow = {
   kind: 'custom' | 'product';
   quotedBasePrice: number;
 };
+
+type ReportQuoteRow = ReportQuotePricingRow & { id: UUID };
 
 type ReportQuotePricingSelection = { productAssemblyId: UUID | null; quotedPrice: number };
 type ReportQuotePricingWorkItem = {
@@ -123,7 +129,7 @@ export async function summarizeQuotePipeline({
   const newlySentWindowStart = getPlantWindowStartInstant({ days: QUOTE_NEWLY_SENT_WINDOW_DAYS, now });
   const decisionWindowStart = getPlantWindowStartInstant({ days: QUOTE_DECISION_WINDOW_DAYS, now });
 
-  const [sentRows, decisionRows] = await Promise.all([
+  const [sentRows, decisionRows, unfinishedJobQuoteRows] = await Promise.all([
     db
       .select({
         deliveryIncluded: quotes.deliveryIncluded,
@@ -144,13 +150,18 @@ export async function summarizeQuotePipeline({
       .from(quotes)
       .where(and(inArray(quotes.status, ['accepted', 'rejected']), gte(quotes.statusChangedAt, decisionWindowStart)))
       .groupBy(quotes.status),
+    listUnfinishedJobQuoteRows({ db, today: toPlantDateOnly(now) }),
   ]);
+  // A sent Custom Quote can already carry a Job, so the Quote behind one is only ever counted once.
+  const sentQuoteIds = new Set(sentRows.map((row) => row.id));
+  const openJobRows = unfinishedJobQuoteRows.filter((row) => !sentQuoteIds.has(row.id));
+  const openRows: readonly ReportQuoteRow[] = [...sentRows, ...openJobRows];
   const { selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
     db,
-    quoteIds: sentRows.map((row) => row.id),
+    quoteIds: openRows.map((row) => row.id),
   });
   const totalsByQuoteId = new Map(
-    sentRows.map((row) => [
+    openRows.map((row) => [
       row.id,
       priceReportQuote({
         row,
@@ -167,9 +178,51 @@ export async function summarizeQuotePipeline({
       sentRows.filter((row) => row.statusChangedAt >= newlySentWindowStart),
       totalsByQuoteId,
     ),
-    openSentCount: sentRows.length,
-    openSentValue: sumQuoteTotals(sentRows, totalsByQuoteId),
+    openPipelineCount: openRows.length,
+    openPipelineValue: sumQuoteTotals(openRows, totalsByQuoteId),
     rejected90dCount: decisionCountsByStatus.get('rejected') ?? 0,
+  });
+}
+
+/**
+ * Quote pricing rows for every live Job still carrying work: at least one Work Slot projected `active`
+ * or `scheduled` against plant today. Reads schedule completeness off the Board rather than the Job's
+ * latched `completedOn`, so the pipeline drops a Job the moment its last Slot finishes. Cancelled Jobs
+ * keep their retained Slots on the Board but never carry pipeline value.
+ */
+async function listUnfinishedJobQuoteRows({ db, today }: { db: Db; today: DateOnlyIso }): Promise<ReportQuoteRow[]> {
+  const [jobRows, offDays, bayRows] = await Promise.all([
+    db
+      .select({
+        deliveryIncluded: quotes.deliveryIncluded,
+        deliveryPrice: quotes.deliveryPrice,
+        discountPercent: quotes.discountPercent,
+        id: quotes.id,
+        jobId: jobs.id,
+        kind: quotes.kind,
+        quotedBasePrice: quotes.quotedBasePrice,
+      })
+      .from(jobs)
+      .innerJoin(quotes, eq(jobs.quoteId, quotes.id))
+      .where(isNull(jobs.cancelledAt)),
+    listWorkingCalendarOffDays(db),
+    findBoardBayRows(db),
+  ]);
+
+  if (jobRows.length === 0) {
+    return [];
+  }
+
+  const { queues } = toProjectedBoard(bayRows, { offDays, today });
+  const states = foldJobScheduleStates(
+    queues,
+    jobRows.map((row) => row.jobId),
+  );
+
+  return jobRows.filter((row) => {
+    const state = states.get(row.jobId);
+
+    return state !== undefined && state.active + state.scheduled > 0;
   });
 }
 

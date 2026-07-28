@@ -19,12 +19,12 @@ export const OpenPipelineWidget: React.FC = () => {
     return <StatCardSkeleton />;
   }
 
-  const { newlySent30dValue, openSentCount, openSentValue } = pipelineQuery.data;
+  const { newlySent30dValue, openPipelineCount, openPipelineValue } = pipelineQuery.data;
 
   return (
     <StatCard
-      sublabel={`${formatCurrency(newlySent30dValue, 'ZAR')} newly sent in last 30d · ${openSentCount} open`}
-      value={formatCurrency(openSentValue, 'ZAR')}
+      sublabel={`${formatCurrency(newlySent30dValue, 'ZAR')} newly sent in last 30d · ${openPipelineCount} open`}
+      value={formatCurrency(openPipelineValue, 'ZAR')}
     />
   );
 };

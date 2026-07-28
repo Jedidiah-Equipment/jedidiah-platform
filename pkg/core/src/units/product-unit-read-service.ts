@@ -19,7 +19,7 @@ import {
   ProductUnitSummary,
   UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 
 import { ProductUnitNotFoundError } from './product-unit-errors.js';
 

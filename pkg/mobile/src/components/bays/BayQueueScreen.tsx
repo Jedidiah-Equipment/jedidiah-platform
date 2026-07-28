@@ -270,7 +270,7 @@ function ActiveHero({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const heroSub = [active.productSerialNumber, active.customerCompanyName].filter(Boolean).join(' · ');
+  const heroSub = [active.productSerialNumber, active.customerCompanyName ?? 'Stock'].filter(Boolean).join(' · ');
   const { resolved } = useColorMode();
   const heroTone = active.isCancelled ? 'cancelled' : 'live';
   const selectionState = selected ? 'selected' : 'resting';

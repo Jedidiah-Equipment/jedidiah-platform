@@ -491,8 +491,9 @@ export const JobScheduleState = z.object({
 
 export type JobSummary = z.infer<typeof JobSummary>;
 export const JobSummary = Job.extend({
+  // Null on both means Stock: the Job's machine is one we hold, so it belongs to no Customer.
   customerCompanyName: z.string().trim().min(1).nullable(),
-  customerId: UUID,
+  customerId: UUID.nullable(),
   customerThumbnailDataUrl: NullableThumbnailDataUrl,
   productBuildTimeDays: ProductBuildTimeDays.nullable(),
   productModelCode: z.string().trim().min(1).nullable(),

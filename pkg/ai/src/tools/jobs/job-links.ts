@@ -18,12 +18,15 @@ export const JobLinks = z.object({
 });
 
 export function createJobLinks(
-  job: { customerId: string; id: string; productId: string | null; quoteId: string },
+  job: { customerId: string | null; id: string; productId: string | null; quoteId: string },
   access: UserAccessSummary | null,
 ): JobLinks {
   return JobLinks.parse({
     app: createJobAppHref(job.id),
-    ...(hasPermission(access, 'customer:read') ? { customer: createCustomerAppHref(job.customerId) } : {}),
+    // A Job on a machine we hold has no Customer to link to.
+    ...(job.customerId && hasPermission(access, 'customer:read')
+      ? { customer: createCustomerAppHref(job.customerId) }
+      : {}),
     ...(job.productId && hasPermission(access, 'product:read') ? { product: createProductAppHref(job.productId) } : {}),
     ...(hasPermission(access, 'quote:read') ? { quote: createQuoteAppHref(job.quoteId) } : {}),
   });

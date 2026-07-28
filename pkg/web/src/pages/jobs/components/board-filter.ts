@@ -22,7 +22,8 @@ type FilterableSlotWithStart = FilterableSlot & {
 };
 
 type FilterableJob = {
-  customerId: UUID;
+  /** Null when the Job's machine is one we hold — Stock matches no Customer filter. */
+  customerId: UUID | null;
 };
 
 export function hasActiveBoardFilter(filter: BoardFilter): boolean {

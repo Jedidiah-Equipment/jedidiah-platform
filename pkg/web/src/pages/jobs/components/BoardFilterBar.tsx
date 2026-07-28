@@ -59,7 +59,8 @@ export const BoardFilterBar: React.FC<BoardFilterBarProps> = ({
     const labelsByCustomerId = new Map<UUID, string>();
 
     for (const job of jobs) {
-      if (job.customerCompanyName && !labelsByCustomerId.has(job.customerId)) {
+      // A Job on a machine we hold has no Customer to filter by; it reads as Stock instead.
+      if (job.customerId && job.customerCompanyName && !labelsByCustomerId.has(job.customerId)) {
         labelsByCustomerId.set(job.customerId, job.customerCompanyName);
       }
     }

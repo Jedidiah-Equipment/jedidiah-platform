@@ -21,7 +21,17 @@ export type ProductUnitOwnershipTransferRecency = {
  * hold it. Ownership is never stored — the log is the truth, and a reversal is another row.
  */
 export function resolveProductUnitOwnerId(transfers: readonly ProductUnitOwnershipTransferRecency[]): string | null {
-  let newest: ProductUnitOwnershipTransferRecency | undefined;
+  return resolveNewestOwnershipTransfer(transfers)?.toCustomerId ?? null;
+}
+
+/**
+ * The Transfer that decides who owns a Unit now. Callers that need more than the Customer id — the
+ * company name for a Job list, say — read it off this row, so one ordering rule serves both.
+ */
+export function resolveNewestOwnershipTransfer<TTransfer extends ProductUnitOwnershipTransferRecency>(
+  transfers: readonly TTransfer[],
+): TTransfer | null {
+  let newest: TTransfer | undefined;
 
   for (const transfer of transfers) {
     if (!newest || compareTransferRecency(transfer, newest) > 0) {
@@ -29,7 +39,7 @@ export function resolveProductUnitOwnerId(transfers: readonly ProductUnitOwnersh
     }
   }
 
-  return newest?.toCustomerId ?? null;
+  return newest ?? null;
 }
 
 /** A Unit is Stock when nobody owns it: never sold, or returned to us. */

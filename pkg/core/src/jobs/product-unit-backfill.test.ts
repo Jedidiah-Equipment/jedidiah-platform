@@ -23,12 +23,13 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 
-// The placeholder Customer the backfill must leave unowned. Matched by id, never by name.
+// The placeholder Customer the backfill must leave unowned — the id Dean supplied on 2026-07-28.
 const STOCK_CUSTOMER_ID = '5c32124d-9b97-49f9-8529-3d5d4679c392';
 const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000a1';
 const SOLD_JOB_ID = '00000000-0000-4000-8000-000000000101';
 const STOCK_JOB_ID = '00000000-0000-4000-8000-000000000102';
 const CUSTOM_JOB_ID = '00000000-0000-4000-8000-000000000103';
+const DECOY_JOB_ID = '00000000-0000-4000-8000-000000000104';
 // 00:30 the next morning in Africa/Johannesburg: proves the transfer date is a plant business date.
 const SOLD_JOB_CREATED_AT = new Date('2026-05-01T22:30:00.000Z');
 
@@ -41,13 +42,19 @@ async function runBackfill(db: Db): Promise<void> {
 }
 
 describe('product unit backfill', () => {
+  // Without this the suite passes on a typo'd id: the fixture and the SQL would simply share one
+  // wrong constant, and the machines meant to stay in Stock would be backfilled as owned.
+  test('excludes the Stock Customer id that was actually supplied', () => {
+    expect(readMigrationStatements('0088_product_unit_backfill').join('\n')).toContain(STOCK_CUSTOMER_ID);
+  });
+
   test('extracts one Product Unit per serialled Job and binds the Job to it', async ({ context }) => {
     await runBackfill(context.db);
 
     const unitRows = await context.db.select().from(productUnits).orderBy(asc(productUnits.productSerialNumber));
     const jobRows = await context.db.select().from(jobs).orderBy(asc(jobs.code));
 
-    expect(unitRows).toHaveLength(2);
+    expect(unitRows).toHaveLength(3);
     expect(unitRows[0]).toMatchObject({
       productId: context.seed.productId,
       productSerialNumber: 'BF-001260001',
@@ -67,7 +74,7 @@ describe('product unit backfill', () => {
   test('records who each sold machine was built for, as a plant business date', async ({ context }) => {
     await runBackfill(context.db);
 
-    const transfers = await context.db.select().from(productUnitOwnershipTransfers);
+    const transfers = await transfersForSerial(context.db, 'BF-001260001');
     const [unit] = await context.db
       .select()
       .from(productUnits)
@@ -90,17 +97,21 @@ describe('product unit backfill', () => {
   test('leaves machines built against the Stock Customer unowned', async ({ context }) => {
     await runBackfill(context.db);
 
-    const [stockUnit] = await context.db
-      .select()
-      .from(productUnits)
-      .where(eq(productUnits.productSerialNumber, 'BF-001260002'));
-    const stockTransfers = await context.db
-      .select()
-      .from(productUnitOwnershipTransfers)
-      .where(eq(productUnitOwnershipTransfers.productUnitId, stockUnit?.id ?? ''));
+    const stockTransfers = await transfersForSerial(context.db, 'BF-001260002');
 
     expect(stockTransfers).toEqual([]);
     expect(isProductUnitInStock(stockTransfers)).toBe(true);
+  });
+
+  // A real Customer that happens to be called "Stock" is still a real Customer. This fails the moment
+  // anyone reaches for a name match instead of the supplied id.
+  test('owns a machine built for a different Customer that is also called Stock', async ({ context }) => {
+    await runBackfill(context.db);
+
+    const decoyTransfers = await transfersForSerial(context.db, 'BF-001260003');
+
+    expect(decoyTransfers).toHaveLength(1);
+    expect(resolveProductUnitOwnerId(decoyTransfers)).toBe(context.seed.decoyCustomerId);
   });
 
   test('leaves the build record itself untouched', async ({ context }) => {
@@ -111,23 +122,34 @@ describe('product unit backfill', () => {
     expect(await readBuildRecord(context.db)).toEqual(before);
   });
 
-  test('inserts nothing new when it runs again', async ({ context }) => {
+  test('changes nothing when it runs again', async ({ context }) => {
     await runBackfill(context.db);
-    const afterFirstRun = await readCounts(context.db);
+    const afterFirstRun = await readBackfilledRows(context.db);
 
     await runBackfill(context.db);
 
-    expect(await readCounts(context.db)).toEqual(afterFirstRun);
+    expect(await readBackfilledRows(context.db)).toEqual(afterFirstRun);
   });
 });
 
-async function readCounts(db: Db) {
-  const [unitRows, transferRows] = await Promise.all([
-    db.select().from(productUnits),
-    db.select().from(productUnitOwnershipTransfers),
+async function transfersForSerial(db: Db, serial: string) {
+  const [unit] = await db.select().from(productUnits).where(eq(productUnits.productSerialNumber, serial));
+
+  return db
+    .select()
+    .from(productUnitOwnershipTransfers)
+    .where(eq(productUnitOwnershipTransfers.productUnitId, unit?.id ?? ''));
+}
+
+/** Full rows, not counts: a re-run that rewrote a link or a transfer's contents must fail too. */
+async function readBackfilledRows(db: Db) {
+  const [unitRows, transferRows, jobLinkRows] = await Promise.all([
+    db.select().from(productUnits).orderBy(asc(productUnits.productSerialNumber)),
+    db.select().from(productUnitOwnershipTransfers).orderBy(asc(productUnitOwnershipTransfers.id)),
+    db.select({ code: jobs.code, productUnitId: jobs.productUnitId }).from(jobs).orderBy(asc(jobs.code)),
   ]);
 
-  return { transfers: transferRows.length, units: unitRows.length };
+  return { jobLinkRows, transferRows, unitRows };
 }
 
 /** The facts a botched backfill would take with it: the CFO, the paperwork, the schedule, the date it finished. */
@@ -180,7 +202,11 @@ async function seedPreMigrationShape(db: Db) {
 
   await db.insert(customers).values({ companyName: 'Stock', email: null, id: STOCK_CUSTOMER_ID });
 
-  const [soldQuote, stockQuote, customQuote] = await db
+  // A genuine Customer that shares the placeholder's name. Nothing may treat it as the placeholder.
+  const [decoyCustomer] = await db.insert(customers).values({ companyName: 'Stock', email: null }).returning();
+  if (!decoyCustomer) throw new Error('Decoy customer insert did not return a row');
+
+  const [soldQuote, stockQuote, customQuote, decoyQuote] = await db
     .insert(quotes)
     .values([
       {
@@ -208,9 +234,19 @@ async function seedPreMigrationShape(db: Db) {
         status: 'accepted',
         workTitle: 'Pump skid rebuild',
       },
+      {
+        customerId: decoyCustomer.id,
+        productId: product.id,
+        quotedBasePrice: 1_000,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: ACTOR_USER_ID,
+        status: 'accepted',
+      },
     ])
     .returning();
-  if (!soldQuote || !stockQuote || !customQuote) throw new Error('Quote insert did not return every row');
+  if (!soldQuote || !stockQuote || !customQuote || !decoyQuote) {
+    throw new Error('Quote insert did not return every row');
+  }
 
   // Jobs are written in the pre-migration shape: the serial lives on the Job and no Unit exists yet.
   await db.insert(jobs).values([
@@ -239,6 +275,17 @@ async function seedPreMigrationShape(db: Db) {
       updatedAt: now,
     },
     { createdAt: now, id: CUSTOM_JOB_ID, quoteId: customQuote.id, updatedAt: now },
+    {
+      createdAt: now,
+      id: DECOY_JOB_ID,
+      productId: product.id,
+      productSerialNumber: 'BF-001260003',
+      productSerialPrefix: 'BF-001',
+      productSerialSequence: 3,
+      productSerialYear: 26,
+      quoteId: decoyQuote.id,
+      updatedAt: now,
+    },
   ]);
 
   const [createdSupplier] = await db
@@ -297,6 +344,7 @@ async function seedPreMigrationShape(db: Db) {
 
   return {
     customerId: customer.id,
+    decoyCustomerId: decoyCustomer.id,
     productId: product.id,
     soldQuoteId: soldQuote.id,
   };

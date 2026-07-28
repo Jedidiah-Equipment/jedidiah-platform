@@ -46,7 +46,7 @@ import {
   RemoveJobSlotResult,
   type ResizeJobSlotInput,
   ResizeJobSlotResult,
-  type UUID,
+  UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 
@@ -289,7 +289,7 @@ async function insertProductUnit({
     throw new Error('Product unit insert did not return a row');
   }
 
-  return unit.id as UUID;
+  return UUID.parse(unit.id);
 }
 
 function serialColumns(blueprint: JobBlueprint) {

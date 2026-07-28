@@ -3,7 +3,7 @@
  * pass richer rows (the Unit detail carries the actor and sourcing Quote) and only these fields are
  * read, so one rule serves every surface.
  */
-export type ProductUnitOwnershipTransferOrder = {
+export type ProductUnitOwnershipTransferRecency = {
   /** Plant business date the transfer happened — the primary ordering fact. */
   occurredOn: string;
   /**
@@ -20,8 +20,8 @@ export type ProductUnitOwnershipTransferOrder = {
  * A Product Unit's current Owner: the newest Ownership Transfer's destination, or `null` when we
  * hold it. Ownership is never stored — the log is the truth, and a reversal is another row.
  */
-export function resolveProductUnitOwnerId(transfers: readonly ProductUnitOwnershipTransferOrder[]): string | null {
-  let newest: ProductUnitOwnershipTransferOrder | undefined;
+export function resolveProductUnitOwnerId(transfers: readonly ProductUnitOwnershipTransferRecency[]): string | null {
+  let newest: ProductUnitOwnershipTransferRecency | undefined;
 
   for (const transfer of transfers) {
     if (!newest || compareTransferRecency(transfer, newest) > 0) {
@@ -33,13 +33,13 @@ export function resolveProductUnitOwnerId(transfers: readonly ProductUnitOwnersh
 }
 
 /** A Unit is Stock when nobody owns it: never sold, or returned to us. */
-export function isProductUnitInStock(transfers: readonly ProductUnitOwnershipTransferOrder[]): boolean {
+export function isProductUnitInStock(transfers: readonly ProductUnitOwnershipTransferRecency[]): boolean {
   return resolveProductUnitOwnerId(transfers) === null;
 }
 
 function compareTransferRecency(
-  left: ProductUnitOwnershipTransferOrder,
-  right: ProductUnitOwnershipTransferOrder,
+  left: ProductUnitOwnershipTransferRecency,
+  right: ProductUnitOwnershipTransferRecency,
 ): number {
   if (left.occurredOn !== right.occurredOn) {
     return left.occurredOn < right.occurredOn ? -1 : 1;

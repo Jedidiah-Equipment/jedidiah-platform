@@ -1,9 +1,9 @@
-import { type Db, jobSlots, jobs } from '@pkg/db';
+import { type DatabaseTransaction, type Db, jobBays, jobSlots, jobs } from '@pkg/db';
 import { foldJobScheduleStates, getPlantDateNow, isJobScheduleComplete } from '@pkg/domain';
 import { type DateOnlyIso, UUID } from '@pkg/schema';
-import { and, eq, exists, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, exists, isNull, sql } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditUpdate } from '../audit/audit-service.js';
-import { findBoardBayRows, toProjectedBoard } from './board-read.js';
+import { findBoardBayRows, findBoardBayRowsForJobs, toProjectedBoard } from './board-read.js';
 import { jobAuditDescriptor } from './job-service.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
@@ -60,11 +60,12 @@ export async function sweepJobCompletions({ db }: { db: Db }): Promise<JobComple
   for (const jobId of candidateIds) {
     const state = states.get(jobId);
 
+    // A cheap pre-filter only. The binding decision is re-derived under the Bay locks in the stamp.
     if (!state || !isJobScheduleComplete(state) || state.lastWorkDay === null) {
       continue;
     }
 
-    if (await stampJobCompletion({ completedOn: state.lastWorkDay, db, jobId })) {
+    if (await stampJobCompletion({ db, jobId, today })) {
       completed += 1;
     }
   }
@@ -74,22 +75,25 @@ export async function sweepJobCompletions({ db }: { db: Db }): Promise<JobComple
 
 /**
  * One Job's stamp, in its own transaction so a long backfill never holds a single lock over every row.
- * The `completed_on IS NULL` guard re-checks under the row lock, so a manual completion landing between
- * the projection and the write wins.
+ *
+ * The sweep's projection pass runs outside any lock, so the completion decision is re-derived here
+ * under the locks that serialize Slot mutations before anything is written. Without that, a Slot
+ * booked or resized between the projection and this write would leave a stale `lastWorkDay` latched
+ * onto a Job that is back on the floor — and by design nothing ever clears it again.
+ *
+ * Lock order is Job row then Bay rows, matching `bookJobSlot` and `resizeJobSlot`.
  */
-async function stampJobCompletion({
-  completedOn,
-  db,
-  jobId,
-}: {
-  completedOn: DateOnlyIso;
-  db: Db;
-  jobId: UUID;
-}): Promise<boolean> {
+async function stampJobCompletion({ db, jobId, today }: { db: Db; jobId: UUID; today: DateOnlyIso }): Promise<boolean> {
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(jobs).where(eq(jobs.id, jobId)).for('update');
 
     if (!before || before.completedOn !== null || before.cancelledAt !== null) {
+      return false;
+    }
+
+    const completedOn = await deriveLockedJobCompletionDate({ jobId, today, tx });
+
+    if (completedOn === null) {
       return false;
     }
 
@@ -111,4 +115,45 @@ async function stampJobCompletion({
 
     return true;
   });
+}
+
+/**
+ * The Job's last work day if every Work Slot is still done once its Bay Queues are frozen, else `null`.
+ * Locks each Bay the Job touches in a stable id order — the same row `lockBayQueue` takes — so no
+ * booking, resize, move, or removal can land between this projection and the caller's write.
+ */
+async function deriveLockedJobCompletionDate({
+  jobId,
+  today,
+  tx,
+}: {
+  jobId: UUID;
+  today: DateOnlyIso;
+  tx: DatabaseTransaction;
+}): Promise<DateOnlyIso | null> {
+  const slotBays = await tx
+    .selectDistinct({ bayId: jobSlots.bayId })
+    .from(jobSlots)
+    .where(and(eq(jobSlots.jobId, jobId), eq(jobSlots.kind, 'work')))
+    .orderBy(asc(jobSlots.bayId));
+
+  if (slotBays.length === 0) {
+    return null;
+  }
+
+  for (const { bayId } of slotBays) {
+    await tx.select({ id: jobBays.id }).from(jobBays).where(eq(jobBays.id, bayId)).for('update');
+  }
+
+  const [offDays, bayRows] = await Promise.all([
+    listWorkingCalendarOffDays(tx),
+    findBoardBayRowsForJobs({ db: tx, jobIds: [jobId] }),
+  ]);
+  const state = foldJobScheduleStates(toProjectedBoard(bayRows, { offDays, today }).queues, [jobId]).get(jobId);
+
+  if (!state || !isJobScheduleComplete(state)) {
+    return null;
+  }
+
+  return state.lastWorkDay;
 }

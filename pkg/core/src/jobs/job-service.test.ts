@@ -32,6 +32,7 @@ import {
   JobBayRenameInput,
   type JobCreateInput,
   type JobDetail,
+  JobUpdateInput,
   type PartUnitOfMeasure,
   type ProductDocumentType,
   type QuoteStatus,
@@ -1560,6 +1561,21 @@ describe('updateJob', () => {
     expect(reopened.job.completedOn).toBeNull();
   });
 
+  test('preserves a stored completion date when the payload omits it', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db.update(jobs).set({ completedOn: '2026-05-04' }).where(eq(jobs.id, job.id));
+
+    // The payload a client bundle built before `completedOn` shipped still sends.
+    const result = await updateJob({
+      actorUserId,
+      db: context.db,
+      input: JobUpdateInput.parse({ id: job.id, description: null, invoiceNumber: 'INV-9', vinNumber: null }),
+    });
+
+    expect(result.job.completedOn).toBe('2026-05-04');
+    expect(result.job.invoiceNumber).toBe('INV-9');
+  });
+
   test('rejects a completion date after plant today', async ({ context }) => {
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
     const tomorrow = addDateOnlyDays(getPlantDateNow(), 1);
@@ -1598,6 +1614,37 @@ describe('sweepJobCompletions', () => {
         entityType: 'job',
       }),
     );
+  });
+
+  test('derives the date across every Bay the Job spans, under the Bay locks', async ({ context }) => {
+    const firstBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
+    const secondBay = await createBay(context.db, { department: 'paint', scheduleOrigin: '2026-06-05' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    // [06-05, 06-07) in fabrication and [06-05, 06-09) in paint: the later Bay sets the date.
+    await bookJobSlot({ db: context.db, input: { bayId: firstBay.id, durationDays: 2, jobId: job.id } });
+    await bookJobSlot({ db: context.db, input: { bayId: secondBay.id, durationDays: 4, jobId: job.id } });
+
+    vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
+
+    expect(await sweepJobCompletions({ db: context.db })).toEqual({ completed: 1, considered: 1 });
+
+    const [row] = await context.db.select().from(jobs).where(eq(jobs.id, job.id));
+    expect(row?.completedOn).toBe('2026-06-08');
+  });
+
+  test('leaves a Job whose other Bay is still unfinished alone', async ({ context }) => {
+    const doneBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
+    const openBay = await createBay(context.db, { department: 'paint', scheduleOrigin: '2026-06-05' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await bookJobSlot({ db: context.db, input: { bayId: doneBay.id, durationDays: 2, jobId: job.id } });
+    await bookJobSlot({ db: context.db, input: { bayId: openBay.id, durationDays: 30, jobId: job.id } });
+
+    vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
+
+    expect(await sweepJobCompletions({ db: context.db })).toEqual({ completed: 0, considered: 1 });
+
+    const [row] = await context.db.select().from(jobs).where(eq(jobs.id, job.id));
+    expect(row?.completedOn).toBeNull();
   });
 
   test('leaves a Job with an unfinished Slot alone', async ({ context }) => {

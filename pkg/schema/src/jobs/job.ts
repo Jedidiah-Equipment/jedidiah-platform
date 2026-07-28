@@ -733,8 +733,14 @@ export type JobUpdateInput = z.infer<typeof JobUpdateInput>;
 export const JobUpdateInput = z
   .object({
     id: UUID,
-    // Full replacement, like its siblings: omitting the key clears the date rather than preserving it.
-    completedOn: JobCompletedOn.default(null),
+    /**
+     * Omittable, unlike its full-replacement siblings: `undefined` preserves the stored date and only
+     * an explicit `null` reopens the Job. The text fields have been in every payload since they
+     * existed, so omitting them never happens; `completedOn` is new, so any client bundle built
+     * before it shipped necessarily omits it — and a default of `null` would let a stale browser tab
+     * silently clear a completion date while editing something unrelated.
+     */
+    completedOn: JobCompletedOn.optional(),
     description: nullableTrimmedTextInput(),
     invoiceNumber: nullableTrimmedTextInput(),
     vinNumber: nullableTrimmedTextInput(),

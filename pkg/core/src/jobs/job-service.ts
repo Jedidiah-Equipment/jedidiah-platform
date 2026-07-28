@@ -279,7 +279,7 @@ export async function updateJob({
 }): Promise<JobUpdateResult> {
   const plantToday = getPlantDateNow();
 
-  if (input.completedOn !== null && input.completedOn > plantToday) {
+  if (input.completedOn != null && input.completedOn > plantToday) {
     throw new JobCompletedOnInFutureError(input.completedOn, plantToday);
   }
 
@@ -288,7 +288,9 @@ export async function updateJob({
     db,
     id: input.id,
     patch: {
-      completedOn: input.completedOn,
+      // Omitted entirely when the caller did not send the key, so the stored date survives — a
+      // spread `undefined` would still overwrite it in the audit diff.
+      ...(input.completedOn === undefined ? {} : { completedOn: input.completedOn }),
       description: input.description,
       invoiceNumber: input.invoiceNumber,
       vinNumber: input.vinNumber,

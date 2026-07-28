@@ -14,6 +14,7 @@ import {
   isJobDeliveryAtRisk,
   listEnabledBays,
   listNextWorkSlots,
+  listScheduledJobs,
   listUpcomingWorkSlots,
 } from './board-derivations.js';
 import { labelWorkDays } from './job-slot-projection.js';
@@ -748,6 +749,136 @@ describe('computeBayLoadToday', () => {
       totalCount: 2,
       workingCount: 1,
     });
+  });
+});
+
+describe('listScheduledJobs', () => {
+  it('lists only jobs whose every work slot is still scheduled, earliest start first', () => {
+    const bayId = id('bay-1');
+    const bay = buildBay({
+      id: 'bay-1',
+      name: 'Fab Bay 1',
+      slots: [
+        // Already finished before today.
+        buildWorkSlot(bayId, {
+          durationDays: 1,
+          endDate: '2026-06-03',
+          id: 'slot-done',
+          jobId: 'job-done',
+          sequence: 1,
+          startDate: '2026-06-02',
+        }),
+        // Covers today.
+        buildWorkSlot(bayId, {
+          durationDays: 3,
+          endDate: '2026-06-09',
+          id: 'slot-active',
+          jobId: 'job-active',
+          sequence: 2,
+          startDate: '2026-06-04',
+        }),
+        buildWorkSlot(bayId, {
+          durationDays: 2,
+          endDate: '2026-06-18',
+          id: 'slot-later',
+          jobId: 'job-later',
+          sequence: 4,
+          startDate: '2026-06-16',
+        }),
+        buildWorkSlot(bayId, {
+          durationDays: 2,
+          endDate: '2026-06-12',
+          id: 'slot-sooner',
+          jobId: 'job-sooner',
+          sequence: 3,
+          startDate: '2026-06-10',
+        }),
+        // Idle slots carry no job and never appear.
+        buildIdleSlot(bayId, {
+          durationDays: 1,
+          endDate: '2026-06-20',
+          id: 'slot-idle',
+          sequence: 5,
+          startDate: '2026-06-19',
+        }),
+      ],
+    });
+
+    expect(listScheduledJobs({ bays: [bay] })).toEqual([
+      { bayId, bayName: 'Fab Bay 1', jobId: id('job-sooner'), startDate: day('2026-06-10') },
+      { bayId, bayName: 'Fab Bay 1', jobId: id('job-later'), startDate: day('2026-06-16') },
+    ]);
+  });
+
+  it('drops a job that is already underway in another bay', () => {
+    const scheduledBay = buildBay({
+      id: 'bay-1',
+      slots: [
+        buildWorkSlot(id('bay-1'), {
+          durationDays: 2,
+          endDate: '2026-06-12',
+          id: 'slot-scheduled',
+          jobId: 'job-split',
+          sequence: 1,
+          startDate: '2026-06-10',
+        }),
+      ],
+    });
+    // The same job is on the floor elsewhere, so it is active rather than scheduled.
+    const activeBay = buildBay({
+      id: 'bay-2',
+      slots: [
+        buildWorkSlot(id('bay-2'), {
+          durationDays: 3,
+          endDate: '2026-06-08',
+          id: 'slot-running',
+          jobId: 'job-split',
+          sequence: 1,
+          startDate: '2026-06-04',
+        }),
+      ],
+    });
+
+    expect(listScheduledJobs({ bays: [scheduledBay, activeBay] })).toEqual([]);
+  });
+
+  it('reports the earliest booked slot and its bay for a job scheduled across bays', () => {
+    const lateBay = buildBay({
+      id: 'bay-2',
+      name: 'Paint Bay 2',
+      slots: [
+        buildWorkSlot(id('bay-2'), {
+          durationDays: 2,
+          endDate: '2026-06-20',
+          id: 'slot-late',
+          jobId: 'job-multi',
+          sequence: 1,
+          startDate: '2026-06-18',
+        }),
+      ],
+    });
+    const earlyBay = buildBay({
+      id: 'bay-1',
+      name: 'Fab Bay 1',
+      slots: [
+        buildWorkSlot(id('bay-1'), {
+          durationDays: 2,
+          endDate: '2026-06-12',
+          id: 'slot-early',
+          jobId: 'job-multi',
+          sequence: 1,
+          startDate: '2026-06-10',
+        }),
+      ],
+    });
+
+    expect(listScheduledJobs({ bays: [lateBay, earlyBay] })).toEqual([
+      { bayId: id('bay-1'), bayName: 'Fab Bay 1', jobId: id('job-multi'), startDate: day('2026-06-10') },
+    ]);
+  });
+
+  it('returns nothing when no bay has a booked slot', () => {
+    expect(listScheduledJobs({ bays: [buildBay({ id: 'bay-1' })] })).toEqual([]);
   });
 });
 

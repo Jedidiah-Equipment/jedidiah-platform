@@ -7,10 +7,10 @@ import { OpenPipelineWidget } from './widgets/OpenPipelineWidget.js';
 import { QuoteFlowWidget } from './widgets/QuoteFlowWidget.js';
 import { QuotesByStatusWidget } from './widgets/QuotesByStatusWidget.js';
 import { RecentActivityWidget } from './widgets/RecentActivityWidget.js';
+import { ScheduledJobsWidget } from './widgets/ScheduledJobsWidget.js';
 import { ShopFloorTodayWidget } from './widgets/ShopFloorTodayWidget.js';
 import { StaleSentQuotesWidget } from './widgets/StaleSentQuotesWidget.js';
 import { UpcomingDeliveriesWidget } from './widgets/UpcomingDeliveriesWidget.js';
-import { WinRateWidget } from './widgets/WinRateWidget.js';
 
 export const dashboardWidgets = [
   {
@@ -21,11 +21,11 @@ export const dashboardWidgets = [
     title: 'Open pipeline (retail, excl. VAT)',
   },
   {
-    Component: WinRateWidget,
-    id: 'win-rate',
-    requires: 'quote:read',
+    Component: ScheduledJobsWidget,
+    id: 'scheduled-jobs',
+    requires: 'job:read',
     size: 'xs',
-    title: 'Win rate (90d)',
+    title: 'Scheduled jobs',
   },
   {
     Component: ActiveJobsWidget,

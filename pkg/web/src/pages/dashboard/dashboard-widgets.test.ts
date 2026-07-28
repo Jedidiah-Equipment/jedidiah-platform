@@ -12,7 +12,7 @@ vi.mock('./widgets/BayRunwayWidget.js', () => ({ BayRunwayWidget: () => null }))
 vi.mock('./widgets/ShopFloorTodayWidget.js', () => ({ ShopFloorTodayWidget: () => null }));
 vi.mock('./widgets/QuotesByStatusWidget.js', () => ({ QuotesByStatusWidget: () => null }));
 vi.mock('./widgets/OpenPipelineWidget.js', () => ({ OpenPipelineWidget: () => null }));
-vi.mock('./widgets/WinRateWidget.js', () => ({ WinRateWidget: () => null }));
+vi.mock('./widgets/ScheduledJobsWidget.js', () => ({ ScheduledJobsWidget: () => null }));
 vi.mock('./widgets/QuoteFlowWidget.js', () => ({ QuoteFlowWidget: () => null }));
 vi.mock('./widgets/StaleSentQuotesWidget.js', () => ({ StaleSentQuotesWidget: () => null }));
 vi.mock('./widgets/RecentActivityWidget.js', () => ({ RecentActivityWidget: () => null }));
@@ -95,7 +95,6 @@ describe('dashboardWidgets', () => {
 
   it('registers the sales metrics widgets behind quote read access', () => {
     const openPipelineWidget = dashboardWidgets.find((widget) => widget.id === 'open-pipeline');
-    const winRateWidget = dashboardWidgets.find((widget) => widget.id === 'win-rate');
     const quoteFlowWidget = dashboardWidgets.find((widget) => widget.id === 'quote-flow');
     const staleSentWidget = dashboardWidgets.find((widget) => widget.id === 'stale-sent-quotes');
     const awaitingJobCreationWidget = dashboardWidgets.find((widget) => widget.id === 'awaiting-job-creation');
@@ -105,7 +104,6 @@ describe('dashboardWidgets', () => {
       size: 'xs',
       title: 'Open pipeline (retail, excl. VAT)',
     });
-    expect(winRateWidget).toMatchObject({ requires: 'quote:read', size: 'xs', title: 'Win rate (90d)' });
     expect(quoteFlowWidget).toMatchObject({ requires: 'quote:read', size: 'md', title: 'Quote flow' });
     expect(staleSentWidget).toMatchObject({ requires: 'quote:read', size: 'sm', title: 'Stale sent quotes' });
     expect(awaitingJobCreationWidget).toMatchObject({
@@ -117,6 +115,7 @@ describe('dashboardWidgets', () => {
 
   it('removes the retired widgets from the registry', () => {
     expect(widgetIds(dashboardWidgets)).not.toContain('quotes-created-over-time');
+    expect(widgetIds(dashboardWidgets)).not.toContain('win-rate');
     expect(widgetIds(dashboardWidgets)).not.toContain('recent-quotes');
     expect(widgetIds(dashboardWidgets)).not.toContain('products');
   });
@@ -140,13 +139,7 @@ describe('dashboardWidgets', () => {
   });
 
   it('shows the sales metrics widgets to sales users and hides them from procurement managers', () => {
-    const salesMetricsWidgetIds = [
-      'open-pipeline',
-      'win-rate',
-      'quote-flow',
-      'stale-sent-quotes',
-      'awaiting-job-creation',
-    ];
+    const salesMetricsWidgetIds = ['open-pipeline', 'quote-flow', 'stale-sent-quotes', 'awaiting-job-creation'];
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
     const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
 
@@ -164,15 +157,17 @@ describe('dashboardWidgets', () => {
     const bayRunwayWidget = dashboardWidgets.find((widget) => widget.id === 'bay-runway');
     const activeJobsWidget = dashboardWidgets.find((widget) => widget.id === 'active-jobs');
     const bayLoadWidget = dashboardWidgets.find((widget) => widget.id === 'bay-load-today');
+    const scheduledJobsWidget = dashboardWidgets.find((widget) => widget.id === 'scheduled-jobs');
 
     expect(shopFloorWidget).toMatchObject({ requires: 'job:read', size: 'lg', title: 'Shop floor today' });
     expect(bayRunwayWidget).toMatchObject({ requires: 'job:read', size: 'sm', title: 'Bay runway' });
     expect(activeJobsWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Active jobs' });
     expect(bayLoadWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Bay load today' });
+    expect(scheduledJobsWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Scheduled jobs' });
   });
 
   it('shows the shop-floor band to job viewers and procurement managers and hides it from sales', () => {
-    const shopFloorWidgetIds = ['active-jobs', 'bay-load-today', 'shop-floor-today', 'bay-runway'];
+    const shopFloorWidgetIds = ['active-jobs', 'bay-load-today', 'shop-floor-today', 'bay-runway', 'scheduled-jobs'];
     const jobViewerAccess = createUserAccessSummary({ role: 'job-viewer', userId: 'user-1' });
     const procurementAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });

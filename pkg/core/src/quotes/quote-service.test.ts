@@ -360,6 +360,21 @@ describe('allocation quotes', () => {
         toCustomerId: context.customer.id,
       },
     ]);
+    await expect(
+      context.db
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.entityType, 'product_unit'), eq(auditEvents.entityId, unitId))),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        action: 'updated',
+        actorUserId: context.salesPerson.id,
+        changes: {
+          ownerCustomerId: { from: null, to: context.customer.id },
+          ownershipTransferDate: { from: null, to: getPlantDateNow() },
+        },
+      }),
+    ]);
   });
 
   test('accepts a later Allocation Quote after the Unit returns to Stock', async ({ context }) => {
@@ -1437,6 +1452,26 @@ describe('cancelQuote', () => {
       sourceQuoteId: quote.id,
       toCustomerId: null,
     });
+    await expect(
+      context.db
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.entityType, 'product_unit'), eq(auditEvents.entityId, unitId)))
+        .orderBy(asc(auditEvents.occurredAt), asc(auditEvents.id)),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        changes: {
+          ownerCustomerId: { from: null, to: context.customer.id },
+          ownershipTransferDate: { from: null, to: getPlantDateNow() },
+        },
+      }),
+      expect.objectContaining({
+        changes: {
+          ownerCustomerId: { from: context.customer.id, to: null },
+          ownershipTransferDate: { from: null, to: getPlantDateNow() },
+        },
+      }),
+    ]);
   });
 
   test('cancels an accepted custom Quote without Job side effects and audits the status change', async ({

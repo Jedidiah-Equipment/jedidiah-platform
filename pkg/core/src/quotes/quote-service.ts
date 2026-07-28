@@ -34,9 +34,10 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 
-import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
+import { diffAuditUpdate, recordAuditCreate, recordAuditEvent, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { cancelJobForQuote } from '../jobs/job-service.js';
+import { productUnitAuditDescriptor } from '../units/product-unit-service.js';
 import { quoteAuditDescriptor } from './quote-audit.js';
 import {
   QuoteAllocationConflictError,
@@ -776,13 +777,22 @@ async function transferAllocationQuoteOnAcceptance({
     });
   }
 
+  const occurredOn = getPlantDateNow();
   await tx.insert(productUnitOwnershipTransfers).values({
     actorUserId,
     fromCustomerId: null,
-    occurredOn: getPlantDateNow(),
+    occurredOn,
     productUnitId: unit.id,
     sourceQuoteId: quote.id,
     toCustomerId: quote.customerId,
+  });
+  await recordQuoteOwnershipTransferAudit({
+    actorUserId,
+    fromCustomerId: null,
+    occurredOn,
+    toCustomerId: quote.customerId,
+    tx,
+    unit,
   });
 }
 
@@ -873,6 +883,43 @@ async function returnQuoteProductUnitToStock({
     productUnitId: unit.id,
     sourceQuoteId: quoteId,
     toCustomerId: null,
+  });
+  await recordQuoteOwnershipTransferAudit({
+    actorUserId,
+    fromCustomerId: customerId,
+    occurredOn,
+    toCustomerId: null,
+    tx,
+    unit,
+  });
+}
+
+async function recordQuoteOwnershipTransferAudit({
+  actorUserId,
+  fromCustomerId,
+  occurredOn,
+  toCustomerId,
+  tx,
+  unit,
+}: {
+  actorUserId: AuthId;
+  fromCustomerId: string | null;
+  occurredOn: string;
+  toCustomerId: string | null;
+  tx: DatabaseTransaction;
+  unit: { id: string; productSerialNumber: string };
+}): Promise<void> {
+  await recordAuditEvent({
+    action: 'updated',
+    actorUserId,
+    changes: {
+      ownerCustomerId: { from: fromCustomerId, to: toCustomerId },
+      ownershipTransferDate: { from: null, to: occurredOn },
+    },
+    db: tx,
+    descriptor: productUnitAuditDescriptor,
+    entityId: unit.id,
+    record: { productSerialNumber: unit.productSerialNumber },
   });
 }
 

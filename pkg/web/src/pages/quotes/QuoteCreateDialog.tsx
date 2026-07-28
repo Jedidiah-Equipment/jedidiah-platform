@@ -15,6 +15,7 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteCustomerCombobox } from './components/QuoteCustomerCombobox.js';
 import { QuoteProductCombobox } from './components/QuoteProductCombobox.js';
+import { QuoteProductUnitSelect } from './components/QuoteProductUnitSelect.js';
 import {
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
@@ -188,7 +189,14 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
                         <FieldLabel htmlFor={field.name}>Product</FieldLabel>
                         <QuoteProductCombobox
                           disabled={false}
-                          onSelected={(product) => field.handleChange(product?.id ?? '')}
+                          onSelected={(product) => {
+                            const nextProductId = product?.id ?? '';
+
+                            if (nextProductId !== field.state.value) {
+                              form.setFieldValue('productUnitId', '');
+                            }
+                            field.handleChange(nextProductId);
+                          }}
                           rangeId={rangeId}
                           value={field.state.value}
                         />
@@ -204,6 +212,28 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
                   </form.AppField>
                 </div>
               )
+            }
+          </form.Subscribe>
+          <form.Subscribe selector={(state) => ({ kind: state.values.kind, productId: state.values.productId })}>
+            {({ kind, productId }) =>
+              kind === 'product' ? (
+                <form.Field name="productUnitId">
+                  {(field) => (
+                    <Field>
+                      <FieldLabel htmlFor={field.name}>Product Unit</FieldLabel>
+                      <QuoteProductUnitSelect
+                        id={field.name}
+                        onChange={field.handleChange}
+                        productId={productId}
+                        value={field.state.value}
+                      />
+                      <p className="text-muted-foreground text-xs">
+                        Optional. Only Stock units for the selected Product are offered.
+                      </p>
+                    </Field>
+                  )}
+                </form.Field>
+              ) : null
             }
           </form.Subscribe>
           <form.AppField name="salesPersonId">

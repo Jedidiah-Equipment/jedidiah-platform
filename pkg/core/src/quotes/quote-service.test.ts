@@ -4,11 +4,13 @@ import {
   type Db,
   jobBayCalendarExceptions,
   jobBays,
+  jobBuildSpecAssemblies,
   jobSlots,
   jobs,
   productAssemblies,
   productBays,
   products,
+  productUnitOwnershipTransfers,
   productUnits,
   quotes,
   user,
@@ -281,6 +283,155 @@ describe('quote collections', () => {
         to: { productAssemblyId: optionalAssembly.id, quotedName: 'Bugle eye hitch', quotedPrice: 8500 },
       },
     });
+  });
+});
+
+describe('allocation quotes', () => {
+  test('quotes a held Product Unit, seeds its As-Built Spec at catalog prices, and shows live competitors', async ({
+    context,
+  }) => {
+    const [fittedAssembly, furtherAssembly] = await context.db
+      .insert(productAssemblies)
+      .values([
+        {
+          displayOrder: 0,
+          kind: 'optional',
+          name: 'Heavy Axle Upgrade',
+          price: 500,
+          productId: context.product.id,
+        },
+        {
+          displayOrder: 1,
+          kind: 'optional',
+          name: 'Toolbox',
+          price: 250,
+          productId: context.product.id,
+        },
+      ])
+      .returning();
+    const unitId = await createUnit(context.db, context.product.id, 41);
+    const [buildJob] = await context.db.insert(jobs).values({ productUnitId: unitId }).returning();
+
+    if (!fittedAssembly || !furtherAssembly || !buildJob) {
+      throw new Error('Allocation Quote test setup did not return required rows');
+    }
+
+    await context.db.insert(jobBuildSpecAssemblies).values({
+      assemblyName: fittedAssembly.name,
+      jobId: buildJob.id,
+      productAssemblyId: fittedAssembly.id,
+      sequence: 0,
+    });
+
+    const allocated = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+    const competitor = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        salesPersonId: context.salesPerson.id,
+        status: 'sent',
+      }),
+    });
+    await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        salesPersonId: context.salesPerson.id,
+        status: 'rejected',
+      }),
+    });
+
+    const readBack = await getQuote({ db: context.db, id: allocated.id });
+    if (readBack.kind !== 'product') throw new Error('Expected a Product Quote');
+
+    expect(readBack).toMatchObject({
+      competingAllocationQuotes: [
+        {
+          code: competitor.code,
+          customerCompanyName: context.customer.companyName,
+          id: competitor.id,
+          salesPersonName: context.salesPerson.name,
+          status: 'sent',
+        },
+      ],
+      productUnit: { id: unitId, productSerialNumber: 'QUOTE-SUMMARY-001-26-41' },
+      productUnitId: unitId,
+      selectedAssemblies: [
+        {
+          productAssemblyId: fittedAssembly.id,
+          quotedName: 'Heavy Axle Upgrade',
+          quotedPrice: 500,
+        },
+      ],
+    });
+    expect(priceQuote(readBack)).toMatchObject({ selectedAssemblyTotal: 500, subtotal: 1_500 });
+
+    const withFurtherAssembly = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(readBack, {
+        selectedAssemblies: [
+          ...readBack.selectedAssemblies.map((assembly) => ({ type: 'existing' as const, id: assembly.id })),
+          { type: 'catalog', productAssemblyId: furtherAssembly.id },
+        ],
+      }),
+    });
+    expect(withFurtherAssembly.selectedAssemblies).toHaveLength(2);
+  });
+
+  test('refuses a Unit owned by a Customer or built as another Product', async ({ context }) => {
+    const ownedUnitId = await createUnit(context.db, context.product.id, 42);
+    await context.db.insert(jobs).values({ productUnitId: ownedUnitId });
+    await context.db.insert(productUnitOwnershipTransfers).values({
+      occurredOn: '2026-07-28',
+      productUnitId: ownedUnitId,
+      toCustomerId: context.customer.id,
+    });
+    const otherRangeId = await createProductRangeFixture(context.db);
+    const [otherProduct] = await context.db
+      .insert(products)
+      .values({
+        basePrice: 2_000,
+        buildTimeDays: 10,
+        currencyCode: 'ZAR',
+        modelCode: 'OTHER-ALLOCATION-001',
+        name: 'Other Allocation Product',
+        rangeId: otherRangeId,
+      })
+      .returning();
+
+    if (!otherProduct) throw new Error('Other Product insert did not return a row');
+
+    const otherProductUnitId = await createUnit(context.db, otherProduct.id, 43);
+    await context.db.insert(jobs).values({ productUnitId: otherProductUnitId });
+
+    const createForUnit = (productUnitId: string) =>
+      createQuoteService({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: QuoteCreateInput.parse({
+          customer: { type: 'existing', customerId: context.customer.id },
+          offering: { kind: 'product', productId: context.product.id, productUnitId },
+          salesPersonId: context.salesPerson.id,
+          status: 'draft',
+        }),
+      });
+
+    await expect(createForUnit(ownedUnitId)).rejects.toThrow('Product Unit is not Stock.');
+    await expect(createForUnit(otherProductUnitId)).rejects.toThrow('Product Unit does not match the Quote Product.');
   });
 });
 

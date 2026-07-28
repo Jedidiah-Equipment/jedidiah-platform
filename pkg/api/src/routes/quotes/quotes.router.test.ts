@@ -482,7 +482,7 @@ describe('quotes.create', () => {
       }),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
-      message: 'Quote includes an invalid customer, product, or salesperson.',
+      message: 'Quote includes an invalid Customer, Product, Product Unit, or salesperson.',
     });
   });
 

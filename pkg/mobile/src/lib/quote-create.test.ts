@@ -37,7 +37,11 @@ describe('mobile quote creation', () => {
       discountPercent: 0,
       documentNotes: null,
       notes: null,
-      offering: { kind: 'product', productId: 'f36a4b28-d552-439c-8928-bf6da8aa42b2' },
+      offering: {
+        kind: 'product',
+        productId: 'f36a4b28-d552-439c-8928-bf6da8aa42b2',
+        productUnitId: null,
+      },
       plannedDeliveryDate: null,
       preferredDeliveryDate: null,
       salesPersonId: 'sales-user',

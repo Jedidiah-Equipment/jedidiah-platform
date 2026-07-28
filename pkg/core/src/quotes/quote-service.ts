@@ -1,5 +1,17 @@
-import { customers, type DatabaseTransaction, type Db, jobs, notRemoved, products, quotes, user } from '@pkg/db';
-import { assertQuoteEditable, getPlantDateNow, validateDiscount } from '@pkg/domain';
+import {
+  customers,
+  type DatabaseTransaction,
+  type Db,
+  jobBuildSpecAssemblies,
+  jobs,
+  notRemoved,
+  products,
+  productUnitOwnershipTransfers,
+  productUnits,
+  quotes,
+  user,
+} from '@pkg/db';
+import { assertQuoteEditable, getPlantDateNow, isProductUnitInStock, validateDiscount } from '@pkg/domain';
 import {
   type AuditChanges,
   type AuthId,
@@ -13,7 +25,7 @@ import {
   type QuoteWorkItemInput,
   type UUID,
 } from '@pkg/schema';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
@@ -41,6 +53,7 @@ import { listQuoteWorkItems, persistQuoteWorkItems, type QuoteWorkItemRow } from
 type QuoteOfferingRow = {
   kind: QuoteKind;
   productId: UUID | null;
+  productUnitId: UUID | null;
   quotedBasePrice: number;
   quotedCurrencyCode: string;
   workTitle: string | null;
@@ -155,6 +168,7 @@ export async function createQuote({
         plannedDeliveryDate: input.plannedDeliveryDate,
         preferredDeliveryDate: input.preferredDeliveryDate,
         productId: offering.productId,
+        productUnitId: offering.productUnitId,
         quotedBasePrice: offering.quotedBasePrice,
         quotedCurrencyCode: offering.quotedCurrencyCode,
         salesPersonId: input.salesPersonId,
@@ -169,6 +183,10 @@ export async function createQuote({
     }
 
     const persistedOffering = narrowQuoteOffering(row);
+    const selectedAssemblyInput = mergeAllocationSeed({
+      input: input.selectedAssemblies,
+      seed: offering.allocationSeed,
+    });
     const selectedAssemblies =
       persistedOffering.kind === 'product'
         ? await persistQuoteSelectedAssemblies({
@@ -176,7 +194,7 @@ export async function createQuote({
             resolved: await resolveQuoteSelectedAssemblies({
               productId: persistedOffering.productId,
               quoteId: row.id,
-              selectedAssemblies: input.selectedAssemblies,
+              selectedAssemblies: selectedAssemblyInput,
               tx,
             }),
             tx,
@@ -611,13 +629,15 @@ async function resolveQuoteOffering({
 }: {
   input: Pick<QuoteCreateInput, 'offering' | 'selectedAssemblies'>;
   tx: DatabaseTransaction;
-}): Promise<QuoteOfferingRow> {
+}): Promise<QuoteOfferingRow & { allocationSeed: QuoteSelectedAssemblyInput[] }> {
   if (input.offering.kind === 'custom') {
     assertNoCustomSelectedAssemblies(input);
 
     return {
+      allocationSeed: [],
       kind: 'custom',
       productId: null,
+      productUnitId: null,
       // Custom Quotes carry no Base price: every rand comes from their Work Items.
       quotedBasePrice: 0,
       quotedCurrencyCode: DEFAULT_PRODUCT_CURRENCY_CODE,
@@ -640,13 +660,96 @@ async function resolveQuoteOffering({
     throw new QuoteInvalidReferenceError('Quote product was not found.');
   }
 
+  const allocationSeed = input.offering.productUnitId
+    ? await resolveAllocationQuoteSeed({
+        productId: product.id,
+        productUnitId: input.offering.productUnitId,
+        tx,
+      })
+    : [];
+
   return {
+    allocationSeed,
     kind: 'product',
     productId: product.id,
+    productUnitId: input.offering.productUnitId,
     quotedBasePrice: product.basePrice,
     quotedCurrencyCode: product.currencyCode,
     workTitle: null,
   };
+}
+
+async function resolveAllocationQuoteSeed({
+  productId,
+  productUnitId,
+  tx,
+}: {
+  productId: UUID;
+  productUnitId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<QuoteSelectedAssemblyInput[]> {
+  const [[unit], transfers] = await Promise.all([
+    tx
+      .select({ productId: productUnits.productId })
+      .from(productUnits)
+      .where(eq(productUnits.id, productUnitId))
+      .limit(1),
+    tx
+      .select({
+        createdAt: productUnitOwnershipTransfers.createdAt,
+        id: productUnitOwnershipTransfers.id,
+        occurredOn: productUnitOwnershipTransfers.occurredOn,
+        toCustomerId: productUnitOwnershipTransfers.toCustomerId,
+      })
+      .from(productUnitOwnershipTransfers)
+      .where(eq(productUnitOwnershipTransfers.productUnitId, productUnitId)),
+  ]);
+
+  if (!unit) {
+    throw new QuoteInvalidReferenceError('Product Unit was not found.');
+  }
+  if (unit.productId !== productId) {
+    throw new QuoteInvalidReferenceError('Product Unit does not match the Quote Product.');
+  }
+  if (!isProductUnitInStock(transfers)) {
+    throw new QuoteInvalidReferenceError('Product Unit is not Stock.');
+  }
+
+  const asBuiltRows = await tx
+    .select({
+      productAssemblyId: jobBuildSpecAssemblies.productAssemblyId,
+    })
+    .from(jobBuildSpecAssemblies)
+    .innerJoin(jobs, eq(jobs.id, jobBuildSpecAssemblies.jobId))
+    .where(and(eq(jobs.productUnitId, productUnitId), sql`${jobs.cancelledAt} is null`))
+    .orderBy(asc(jobs.createdAt), asc(jobs.id), asc(jobBuildSpecAssemblies.sequence));
+  const liveAssemblyIds = new Set<UUID>();
+
+  for (const row of asBuiltRows) {
+    if (!row.productAssemblyId) {
+      throw new QuoteInvalidReferenceError("Product Unit's As-Built Spec contains an unavailable Optional Assembly.");
+    }
+    liveAssemblyIds.add(row.productAssemblyId);
+  }
+
+  return [...liveAssemblyIds].map((productAssemblyId) => ({ type: 'catalog', productAssemblyId }));
+}
+
+function mergeAllocationSeed({
+  input,
+  seed,
+}: {
+  input: readonly QuoteSelectedAssemblyInput[];
+  seed: readonly QuoteSelectedAssemblyInput[];
+}): QuoteSelectedAssemblyInput[] {
+  const seededIds = new Set(
+    seed.flatMap((selection) => (selection.type === 'catalog' ? [selection.productAssemblyId] : [])),
+  );
+
+  return [
+    ...seed,
+    ...input.filter((selection) => selection.type !== 'catalog' || !seededIds.has(selection.productAssemblyId)),
+  ];
 }
 
 function assertNoCustomSelectedAssemblies(

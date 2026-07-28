@@ -69,6 +69,7 @@ export const productUnitOwnershipTransfers = pgTable(
 );
 
 export const productUnitsRelations = relations(productUnits, ({ many, one }) => ({
+  allocationQuotes: many(quotes),
   jobs: many(jobs),
   ownershipTransfers: many(productUnitOwnershipTransfers),
   product: one(products, {

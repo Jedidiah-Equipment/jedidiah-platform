@@ -50,8 +50,29 @@ describe('QuoteCreateInput', () => {
     expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({
       depositPercent: 0,
       discountPercent: 0,
-      offering: { kind: 'product', productId: '550e8400-e29b-41d4-a716-446655440000' },
+      offering: {
+        kind: 'product',
+        productId: '550e8400-e29b-41d4-a716-446655440000',
+        productUnitId: null,
+      },
     });
+  });
+
+  it('allows only Product Quotes to allocate a Product Unit', () => {
+    const productUnitId = '550e8400-e29b-41d4-a716-446655440090';
+
+    expect(
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: { ...baseCreateInput.offering, productUnitId },
+      }),
+    ).toMatchObject({ offering: { kind: 'product', productUnitId } });
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: { kind: 'custom', productUnitId, workTitle: 'Hydraulic repair' },
+      }),
+    ).toThrow('Unrecognized key');
   });
 
   it('defaults inline customer contact fields to null and trims provided values', () => {

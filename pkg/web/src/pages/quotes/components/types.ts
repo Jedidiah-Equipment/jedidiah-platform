@@ -72,6 +72,7 @@ const QuoteCreateFormValuesShape = z.object({
   inlineCompanyName: z.string(),
   kind: QuoteKind,
   productId: z.string(),
+  productUnitId: emptyStringOr(UUID),
   rangeId: emptyStringOr(UUID),
   salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
   status: QuoteCreateStatus,
@@ -159,6 +160,7 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   inlineCompanyName: '',
   kind: 'product',
   productId: '',
+  productUnitId: '',
   rangeId: '',
   salesPersonId: '',
   status: 'draft',
@@ -211,7 +213,7 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
         : { type: 'inline', companyName: value.inlineCompanyName },
     offering:
       value.kind === 'product'
-        ? { kind: 'product', productId: value.productId }
+        ? { kind: 'product', productId: value.productId, productUnitId: value.productUnitId || null }
         : { kind: 'custom', workTitle: value.workTitle },
     salesPersonId: value.salesPersonId,
     status: value.status,

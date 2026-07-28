@@ -5,10 +5,20 @@ import {
   formatPercent,
   getQuoteOfferingName,
   type QuoteComputedSummary,
+  quoteStatusLabels,
   quoteWorkItemSummaryRows,
 } from '@pkg/domain';
 import type { QuoteDetail, QuoteWorkItemCharge } from '@pkg/schema';
-import { IconClock, IconMail, IconMapPin, IconPackage, IconPhone, IconReceipt2 } from '@tabler/icons-react';
+import {
+  IconBuildingWarehouse,
+  IconClock,
+  IconMail,
+  IconMapPin,
+  IconPackage,
+  IconPhone,
+  IconReceipt2,
+} from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
@@ -29,8 +39,60 @@ export function QuoteRightPanel({ quote, summary }: { quote: QuoteDetail; summar
     <aside className="order-first grid h-fit gap-4 border-b pb-5 text-sm xl:sticky xl:top-4 xl:order-0 xl:border-b-0 xl:pb-0 xl:pl-5">
       <QuoteCustomerCard quote={quote} />
       <QuoteProductCard quote={quote} />
+      {quote.kind === 'product' && quote.productUnit ? <QuoteAllocationCard quote={quote} /> : null}
       <QuoteTotalCard quote={quote} summary={summary} />
     </aside>
+  );
+}
+
+function QuoteAllocationCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'product' }> }) {
+  if (!quote.productUnit) return null;
+
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardDescription>Allocation Quote</CardDescription>
+        <CardTitle className="min-w-0">
+          <Link
+            className="block truncate underline-offset-4 hover:underline"
+            params={{ id: quote.productUnit.id }}
+            to="/units/$id"
+          >
+            {quote.productUnit.productSerialNumber}
+          </Link>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <QuotePanelFact
+          icon={<IconBuildingWarehouse />}
+          label="Product Unit"
+          value={quote.productUnit.vinNumber ? `VIN ${quote.productUnit.vinNumber}` : 'VIN not captured'}
+          muted={!quote.productUnit.vinNumber}
+        />
+        <Separator />
+        <div className="grid gap-2">
+          <span className="text-muted-foreground text-xs">Other live Quotes for this Unit</span>
+          {quote.competingAllocationQuotes.length === 0 ? (
+            <span className="text-muted-foreground">No competing Quotes.</span>
+          ) : (
+            quote.competingAllocationQuotes.map((competitor) => (
+              <Link
+                className="grid rounded-md border p-2 underline-offset-4 hover:bg-muted hover:underline"
+                key={competitor.id}
+                params={{ id: competitor.id }}
+                to="/quotes/$id/edit"
+              >
+                <span className="font-medium">{competitor.code}</span>
+                <span className="truncate text-muted-foreground text-xs">
+                  {competitor.customerCompanyName} · {competitor.salesPersonName ?? 'Unassigned'} ·{' '}
+                  {quoteStatusLabels[competitor.status]}
+                </span>
+              </Link>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

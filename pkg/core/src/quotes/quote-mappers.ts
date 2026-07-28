@@ -1,6 +1,7 @@
-import type { customers, jobs, products, quotes, user } from '@pkg/db';
+import type { customers, jobs, products, productUnits, quotes, user } from '@pkg/db';
 import {
   type Assembly,
+  type CompetingAllocationQuote,
   DateOnlyIso,
   JobCode,
   type PriorityQuote,
@@ -55,6 +56,7 @@ export type QuoteDetailRow = QuoteRow & {
     typeof products.$inferSelect,
     'buildTimeDays' | 'currencyCode' | 'description' | 'modelCode' | 'name' | 'requiresVinNumber' | 'thumbnailDataUrl'
   > | null;
+  productUnit: Pick<typeof productUnits.$inferSelect, 'id' | 'productSerialNumber' | 'vinNumber'> | null;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'image' | 'name'> | null;
   selectedAssemblies: QuoteSelectedAssemblyRow[];
   workItems: QuoteWorkItemRow[];
@@ -138,6 +140,7 @@ export function mapQuoteDetail(
   row: QuoteDetailRow,
   productAssembliesForQuote: Assembly[],
   productBaysForQuote: ProductBay[],
+  competingAllocationQuotes: CompetingAllocationQuote[],
 ): QuoteDetail {
   return QuoteDetail.parse({
     ...mapQuote(row),
@@ -156,6 +159,8 @@ export function mapQuoteDetail(
         })
       : null,
     product: mapQuoteDetailProduct(row, productAssembliesForQuote, productBaysForQuote),
+    productUnit: row.productUnit,
+    competingAllocationQuotes,
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
     salesPersonThumbnailDataUrl: row.salesPerson?.image ?? null,

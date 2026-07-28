@@ -28,6 +28,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     customerId: CUSTOMER_ID,
     kind: 'product',
     productId: PRODUCT_ID,
+    productUnitId: null,
     salesPersonId: 'auth-user-1',
     status: 'sent',
     statusChangedAt: '2026-01-01T00:00:00.000Z',
@@ -104,6 +105,7 @@ function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): 
     inlineCompanyName: '',
     kind: 'product',
     productId: PRODUCT_ID,
+    productUnitId: '',
     rangeId: '',
     salesPersonId: 'auth-user-1',
     status: 'sent',
@@ -221,6 +223,7 @@ describe('QuoteCreateFormValues', () => {
       inlineCompanyName: '',
       kind: 'product',
       productId: '',
+      productUnitId: '',
       rangeId: '',
       salesPersonId: '',
       status: 'draft',
@@ -275,8 +278,15 @@ describe('toQuoteCreateInput', () => {
     expect(input.notes).toBeNull();
     expect(input.documentNotes).toBeNull();
     expect(input.cancellationReason).toBeNull();
-    expect(input.offering).toEqual({ kind: 'product', productId: PRODUCT_ID });
+    expect(input.offering).toEqual({ kind: 'product', productId: PRODUCT_ID, productUnitId: null });
     expect(input.selectedAssemblies).toEqual([]);
+  });
+
+  it('includes the selected held Product Unit on a Product Quote', () => {
+    const productUnitId = '550e8400-e29b-41d4-a716-446655440090';
+    const input = toQuoteCreateInput(buildCreateFormValues({ productUnitId }));
+
+    expect(input.offering).toEqual({ kind: 'product', productId: PRODUCT_ID, productUnitId });
   });
 
   it('builds the inline-customer union from the company name', () => {
@@ -313,7 +323,7 @@ describe('toQuoteCreateInput', () => {
   it('ignores the create-dialog Range filter in create submissions', () => {
     const input = toQuoteCreateInput(buildCreateFormValues({ rangeId: RANGE_ID }));
 
-    expect(input.offering).toEqual({ kind: 'product', productId: PRODUCT_ID });
+    expect(input.offering).toEqual({ kind: 'product', productId: PRODUCT_ID, productUnitId: null });
     expect(input).not.toHaveProperty('rangeId');
   });
 });

@@ -105,6 +105,7 @@ function ProductCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'product' 
       </View>
       <View className="mt-3 flex-row flex-wrap gap-2">
         <MiniMetric label="Base price" value={formatCurrency(quote.quotedBasePrice, summaryCurrency(quote))} />
+        {quote.productUnit ? <MiniMetric label="Product Unit" value={quote.productUnit.productSerialNumber} /> : null}
         <MiniMetric label="Build" value={quote.product ? `${quote.product.buildTimeDays} days` : '—'} />
         <MiniMetric
           label="Standard"

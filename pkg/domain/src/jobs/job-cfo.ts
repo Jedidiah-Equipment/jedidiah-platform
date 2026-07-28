@@ -9,7 +9,8 @@ export type CfoAssemblyPart = {
   quantity: number;
 };
 
-export type CfoSelectedAssembly = {
+/** One line of a Job's Build Spec: the Optional Assembly it was specced with, under its snapshot name. */
+export type BuildSpecAssembly = {
   assemblyName: string;
   productAssemblyId: UUID | null;
 };
@@ -31,21 +32,22 @@ export type BuildCfoResult =
     };
 
 /**
- * Projects a Quote's Effective Bill of Materials into a parts-level CFO. The override-and-staleness
- * rule lives in {@link resolveEffectiveBom}; this is the Create-Job-from-Quote projection of its
+ * Projects a Job's Build Spec into a parts-level CFO, against the Product's catalog. The
+ * override-and-staleness rule lives in {@link resolveEffectiveBom} — a Build Spec is just another
+ * caller of the selection shape it already accepts; this is the Job-creation projection of its
  * result: any stale selection denies Job creation (naming the offending assemblies), otherwise the
- * CFO is the surviving Standard Assemblies plus the selected Optional Assemblies, each carrying Parts.
+ * CFO is the surviving Standard Assemblies plus the specced Optional Assemblies, each carrying Parts.
  */
 export function buildCfo({
+  buildSpec,
   catalogAssemblies,
-  selectedAssemblies,
 }: {
+  buildSpec: readonly BuildSpecAssembly[];
   catalogAssemblies: readonly Assembly[];
-  selectedAssemblies: readonly CfoSelectedAssembly[];
 }): BuildCfoResult {
   const { overriddenStandardAssemblyIds, selectedOptionalAssemblies, staleSelections } = resolveEffectiveBom({
     catalogAssemblies,
-    selectedAssemblies,
+    selectedAssemblies: buildSpec,
   });
 
   if (staleSelections.length > 0) {

@@ -228,6 +228,13 @@ export const snapshotTableDefinitions = [
     optionalReadTable: true,
   },
   {
+    // References Jobs and Product Assemblies, so it follows both.
+    fileName: 'job_build_spec_assembly.json',
+    tableName: 'job_build_spec_assembly',
+    timestampColumns: [],
+    optionalReadTable: true,
+  },
+  {
     fileName: 'job_cfo_assembly.json',
     tableName: 'job_cfo_assembly',
     timestampColumns: [],

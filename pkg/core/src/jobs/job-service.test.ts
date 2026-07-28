@@ -7,6 +7,7 @@ import {
   documents,
   jobBayOperatorAssignments,
   jobBays,
+  jobBuildSpecAssemblies,
   jobCfoAssemblies,
   jobCfoParts,
   jobSlots,
@@ -446,6 +447,61 @@ describe('createJob', () => {
     ).rejects.toThrow('Quote is locked because it already has a Job; discountPercent cannot be changed.');
   });
 
+  test('seeds the job build spec from the quote selection and snapshots the CFO from it', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      selectedAssemblyId: context.catalog.heavyAxle.id,
+      status: 'accepted',
+    });
+
+    const job = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+
+    const buildSpecRows = await context.db
+      .select()
+      .from(jobBuildSpecAssemblies)
+      .where(eq(jobBuildSpecAssemblies.jobId, job.id));
+
+    expect(buildSpecRows).toMatchObject([
+      { assemblyName: 'Heavy Axle Upgrade', productAssemblyId: context.catalog.heavyAxle.id, sequence: 0 },
+    ]);
+    expect(job.cfo.filter((entry) => entry.kind === 'optional').map((entry) => entry.assemblyName)).toEqual([
+      'Heavy Axle Upgrade',
+    ]);
+
+    // The Build Spec is a copy taken at creation: later edits to the Quote's selection cannot reach it.
+    await context.db.delete(quoteSelectedAssemblies).where(eq(quoteSelectedAssemblies.quoteId, quote.id));
+
+    await expect(
+      context.db.select().from(jobBuildSpecAssemblies).where(eq(jobBuildSpecAssemblies.jobId, job.id)),
+    ).resolves.toMatchObject([{ assemblyName: 'Heavy Axle Upgrade', sequence: 0 }]);
+  });
+
+  test('keeps a build spec entry, under its snapshot name, after its catalog assembly is deleted', async ({
+    context,
+  }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      selectedAssemblyId: context.catalog.heavyAxle.id,
+      status: 'accepted',
+    });
+
+    const job = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+
+    await context.db.delete(productAssemblies).where(eq(productAssemblies.id, context.catalog.heavyAxle.id));
+
+    await expect(
+      context.db.select().from(jobBuildSpecAssemblies).where(eq(jobBuildSpecAssemblies.jobId, job.id)),
+    ).resolves.toMatchObject([{ assemblyName: 'Heavy Axle Upgrade', productAssemblyId: null }]);
+  });
+
   test('creates a bare job with an explicit empty Bay seed list', async ({ context }) => {
     const quote = await createQuote(context.db, {
       productId: context.catalog.product.id,
@@ -490,14 +546,16 @@ describe('createJob', () => {
       storage,
     });
 
-    const [jobRows, cfoAssemblyRows, cfoPartRows, documentRows, serialRows, slotRows] = await Promise.all([
-      context.db.select().from(jobs),
-      context.db.select().from(jobCfoAssemblies),
-      context.db.select().from(jobCfoParts),
-      context.db.select().from(documents).where(eq(documents.jobId, job.id)),
-      context.db.select().from(productSerialSequences),
-      context.db.select().from(jobSlots),
-    ]);
+    const [jobRows, buildSpecRows, cfoAssemblyRows, cfoPartRows, documentRows, serialRows, slotRows] =
+      await Promise.all([
+        context.db.select().from(jobs),
+        context.db.select().from(jobBuildSpecAssemblies),
+        context.db.select().from(jobCfoAssemblies),
+        context.db.select().from(jobCfoParts),
+        context.db.select().from(documents).where(eq(documents.jobId, job.id)),
+        context.db.select().from(productSerialSequences),
+        context.db.select().from(jobSlots),
+      ]);
 
     expect(job).toMatchObject({
       productId: null,
@@ -518,6 +576,7 @@ describe('createJob', () => {
         quoteId: quote.id,
       },
     ]);
+    expect(buildSpecRows).toHaveLength(0);
     expect(cfoAssemblyRows).toHaveLength(0);
     expect(cfoPartRows).toHaveLength(0);
     expect(documentRows).toHaveLength(0);
@@ -836,6 +895,17 @@ describe('createJob', () => {
       'A Standard',
       'B Optional',
       'A Optional',
+    ]);
+
+    // The Build Spec keeps the Quote's own selection order; the CFO applies the catalog's display order.
+    const buildSpecRows = await context.db
+      .select({ assemblyName: jobBuildSpecAssemblies.assemblyName, sequence: jobBuildSpecAssemblies.sequence })
+      .from(jobBuildSpecAssemblies)
+      .where(eq(jobBuildSpecAssemblies.jobId, job.id))
+      .orderBy(asc(jobBuildSpecAssemblies.sequence));
+    expect(buildSpecRows).toEqual([
+      { assemblyName: 'A Optional', sequence: 0 },
+      { assemblyName: 'B Optional', sequence: 1 },
     ]);
 
     const cfoRows = await context.db

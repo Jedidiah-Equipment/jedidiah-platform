@@ -48,6 +48,7 @@ describe('snapshot table registry', () => {
       'quote_selected_assemblies',
       'job',
       'product_unit_ownership_transfer',
+      'job_build_spec_assembly',
       'job_cfo_assembly',
       'job_cfo_part',
       'job_slot',
@@ -85,6 +86,7 @@ describe('snapshot table registry', () => {
       'quote_selected_assemblies.json',
       'job.json',
       'product_unit_ownership_transfer.json',
+      'job_build_spec_assembly.json',
       'job_cfo_assembly.json',
       'job_cfo_part.json',
       'job_slot.json',
@@ -115,6 +117,10 @@ describe('snapshot table registry', () => {
   it('keeps rollout Work Item tables optional until the source migration deploys', () => {
     expect(configFor('quote_work_items').optionalReadTable).toBe(true);
     expect(configFor('quote_work_item_parts').optionalReadTable).toBe(true);
+  });
+
+  it('keeps the rollout Build Spec table optional until the source migration deploys', () => {
+    expect(configFor('job_build_spec_assembly').optionalReadTable).toBe(true);
   });
 
   it('projects generated assembly override columns out before import', () => {

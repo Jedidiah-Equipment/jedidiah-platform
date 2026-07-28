@@ -16,7 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { user } from './auth.js';
 import { parts } from './part.js';
-import { products } from './product.js';
+import { productAssemblies, products } from './product.js';
 import { productUnits } from './product-unit.js';
 import { quotes } from './quote.js';
 
@@ -165,6 +165,25 @@ export const jobs = pgTable(
   ],
 );
 
+// A Job's own selection of Optional Assemblies, and the only source its CFO is snapshotted from.
+// It carries no price: pricing stays a Quote concern.
+export const jobBuildSpecAssemblies = pgTable(
+  'job_build_spec_assembly',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    jobId: uuid('job_id')
+      .notNull()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    productAssemblyId: uuid('product_assembly_id').references(() => productAssemblies.id, { onDelete: 'set null' }),
+    assemblyName: text('assembly_name').notNull(),
+    sequence: integer('sequence').notNull(),
+  },
+  (table) => [
+    check('job_build_spec_assembly_name_nonempty', sql`length(trim(${table.assemblyName})) > 0`),
+    uniqueIndex('job_build_spec_assembly_job_product_assembly_unique').on(table.jobId, table.productAssemblyId),
+  ],
+);
+
 export const jobCfoAssemblies = pgTable(
   'job_cfo_assembly',
   {
@@ -273,8 +292,20 @@ export const jobsRelations = relations(jobs, ({ many, one }) => ({
     fields: [jobs.quoteId],
     references: [quotes.id],
   }),
+  buildSpecAssemblies: many(jobBuildSpecAssemblies),
   cfoAssemblies: many(jobCfoAssemblies),
   slots: many(jobSlots),
+}));
+
+export const jobBuildSpecAssembliesRelations = relations(jobBuildSpecAssemblies, ({ one }) => ({
+  job: one(jobs, {
+    fields: [jobBuildSpecAssemblies.jobId],
+    references: [jobs.id],
+  }),
+  productAssembly: one(productAssemblies, {
+    fields: [jobBuildSpecAssemblies.productAssemblyId],
+    references: [productAssemblies.id],
+  }),
 }));
 
 export const jobSlotsRelations = relations(jobSlots, ({ one }) => ({

@@ -7,6 +7,7 @@ import {
   jobCfoParts,
   jobSlots,
   jobs,
+  notRemoved,
   productSerialSequences,
   products,
   productUnitOwnershipTransfers,
@@ -316,7 +317,13 @@ async function resolveStockBuildSpec({
   productId: UUID;
   tx: DatabaseTransaction;
 }): Promise<BuildSpecAssembly[]> {
-  const [product] = await tx.select({ id: products.id }).from(products).where(eq(products.id, productId)).limit(1);
+  // A removed Product is gone from the picker, so a Stock Build naming one is a stale tab or a
+  // hand-made request — never something we should mint a serial and a machine for.
+  const [product] = await tx
+    .select({ id: products.id })
+    .from(products)
+    .where(and(eq(products.id, productId), notRemoved(products)))
+    .limit(1);
 
   if (!product) {
     throw new StockBuildDeniedError('Product not found.');

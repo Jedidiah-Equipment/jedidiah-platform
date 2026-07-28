@@ -501,6 +501,22 @@ describe('createJob', () => {
     await expect(context.db.select().from(productUnits)).resolves.toEqual([]);
   });
 
+  test('refuses a Stock Build of a removed Product', async ({ context }) => {
+    await context.db.update(products).set({ deletedAt: new Date() }).where(eq(products.id, context.catalog.product.id));
+
+    await expect(
+      createJob({
+        actorUserId,
+        db: context.db,
+        input: { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id },
+      }),
+    ).rejects.toThrow('Product not found.');
+
+    // Nothing was minted: a serial spent on a retired catalog entry could not be taken back.
+    await expect(context.db.select().from(productUnits)).resolves.toEqual([]);
+    await expect(context.db.select().from(productSerialSequences)).resolves.toEqual([]);
+  });
+
   test('rejects a Job that is about neither a machine nor a sale', async ({ context }) => {
     const failure = await context.db
       .insert(jobs)

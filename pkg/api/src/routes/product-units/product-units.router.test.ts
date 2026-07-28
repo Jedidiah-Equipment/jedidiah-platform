@@ -93,6 +93,68 @@ describe('productUnits.update', () => {
   });
 });
 
+describe('productUnits.transfer', () => {
+  test('records a machine sold on to another customer', async ({ context }) => {
+    const result = await context.createCaller(mockSession('admin')).productUnits.transfer({
+      id: context.seed.unitId,
+      note: 'Sold at auction',
+      occurredOn: '2026-06-01',
+      toCustomerId: context.seed.hilltopId,
+    });
+
+    expect(result.unit.owner).toMatchObject({ companyName: 'Hilltop Transport' });
+    expect(result.unit.ownershipHistory).toHaveLength(2);
+  });
+
+  test('returns a machine to stock', async ({ context }) => {
+    const result = await context
+      .createCaller(mockSession('admin'))
+      .productUnits.transfer({ id: context.seed.unitId, occurredOn: '2026-06-01', toCustomerId: null });
+
+    expect(result.unit.owner).toBeNull();
+  });
+
+  // Asserting who owns a machine with no document behind it needs a narrow set of hands.
+  test('rejects every role that may read Units but not transfer them', async ({ context }) => {
+    for (const role of ['sales', 'procurement-manager', 'job-viewer'] as const) {
+      await expect(
+        context
+          .createCaller(mockSession(role))
+          .productUnits.transfer({ id: context.seed.unitId, occurredOn: '2026-06-01', toCustomerId: null }),
+        `role ${role}`,
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+  });
+
+  test('rejects unauthenticated transfers', async ({ context }) => {
+    await expect(
+      context
+        .createAnonCaller()
+        .productUnits.transfer({ id: context.seed.unitId, occurredOn: '2026-06-01', toCustomerId: null }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  test('reports a transfer that asserts no move as a bad request', async ({ context }) => {
+    await expect(
+      context.createCaller(mockSession('admin')).productUnits.transfer({
+        id: context.seed.unitId,
+        occurredOn: '2026-06-01',
+        toCustomerId: context.seed.riversideId,
+      }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  test('reports an unknown customer as not found', async ({ context }) => {
+    await expect(
+      context.createCaller(mockSession('admin')).productUnits.transfer({
+        id: context.seed.unitId,
+        occurredOn: '2026-06-01',
+        toCustomerId: '00000000-0000-4000-8000-00000000fffe',
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
 async function seedUnit(db: Db) {
   const now = new Date('2026-05-01T08:00:00.000Z');
 
@@ -120,8 +182,14 @@ async function seedUnit(db: Db) {
     .returning();
   if (!range) throw new Error('Product insert did not return a row');
 
-  const [customer] = await db.insert(customers).values({ companyName: 'Riverside Farm', email: null }).returning();
-  if (!customer) throw new Error('Customer insert did not return a row');
+  const [customer, hilltop] = await db
+    .insert(customers)
+    .values([
+      { companyName: 'Riverside Farm', email: null },
+      { companyName: 'Hilltop Transport', email: null },
+    ])
+    .returning();
+  if (!customer || !hilltop) throw new Error('Customer insert did not return a row');
 
   const [quote] = await db
     .insert(quotes)
@@ -158,5 +226,5 @@ async function seedUnit(db: Db) {
     toCustomerId: customer.id,
   });
 
-  return { unitId: unit.id };
+  return { hilltopId: hilltop.id, riversideId: customer.id, unitId: unit.id };
 }

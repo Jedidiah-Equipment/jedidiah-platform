@@ -119,3 +119,25 @@ export type ProductUnitUpdateResult = z.infer<typeof ProductUnitUpdateResult>;
 export const ProductUnitUpdateResult = z.object({
   unit: ProductUnitDetail,
 });
+
+/**
+ * A move recorded by hand: a resale between Customers, or a machine handed back to us. It carries no
+ * Quote, price, or salesperson, because we were not part of the transaction — the origin is read off
+ * the Unit's current Owner rather than typed, so the log can only ever be a chain.
+ */
+export type ProductUnitTransferInput = z.infer<typeof ProductUnitTransferInput>;
+export const ProductUnitTransferInput = z
+  .object({
+    id: UUID,
+    /** The Customer taking the machine, or `null` to return it to Stock. */
+    toCustomerId: UUID.nullable(),
+    /** Plant business date the machine actually changed hands, which is rarely today. */
+    occurredOn: DateOnlyIso,
+    note: nullableTrimmedTextInput(),
+  })
+  .strict();
+
+export type ProductUnitTransferResult = z.infer<typeof ProductUnitTransferResult>;
+export const ProductUnitTransferResult = z.object({
+  unit: ProductUnitDetail,
+});

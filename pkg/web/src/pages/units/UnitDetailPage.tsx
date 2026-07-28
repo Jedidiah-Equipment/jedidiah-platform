@@ -1,18 +1,22 @@
 import { formatDate } from '@pkg/domain';
 import type { ProductUnitDetail, ProductUnitOwnershipTransfer, ProductUnitUpdateInput, UUID } from '@pkg/schema';
+import { IconArrowsExchange } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
+import { useState } from 'react';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductUnitBuildStateCell, ProductUnitOwnerCell } from './components/ProductUnitOwnerCell.js';
+import { UnitTransferDialog } from './components/UnitTransferDialog.js';
 import { toProductUnitUpdateInput, toUnitEditFormValues, UnitEditFormValues } from './components/unit-edit-form.js';
 
 type UnitDetailPageProps = {
@@ -39,6 +43,8 @@ export const UnitDetailPage: React.FC<UnitDetailPageProps> = ({ unitId }) => {
 const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
   const canReadJobs = useCan('job:read').can;
   const canUpdateUnit = useCan('product_unit:update').can;
+  const canTransferUnit = useCan('product_unit:transfer').can;
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
 
   return (
     <div className="grid gap-4">
@@ -64,6 +70,14 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
       <Card>
         <CardHeader>
           <CardTitle>Ownership history</CardTitle>
+          {canTransferUnit ? (
+            <CardAction span="title">
+              <Button onClick={() => setIsTransferOpen(true)} type="button" variant="outline">
+                <IconArrowsExchange data-icon="inline-start" />
+                Record transfer
+              </Button>
+            </CardAction>
+          ) : null}
         </CardHeader>
         <CardContent>
           {unit.ownershipHistory.length === 0 ? (
@@ -108,6 +122,10 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
           )}
         </CardContent>
       </Card>
+
+      {canTransferUnit ? (
+        <UnitTransferDialog onOpenChange={setIsTransferOpen} open={isTransferOpen} unit={unit} />
+      ) : null}
     </div>
   );
 };

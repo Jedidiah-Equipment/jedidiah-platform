@@ -41,6 +41,7 @@ export const APP_PERMISSIONS = [
   'product_range:update',
   'product_unit:read',
   'product_unit:update',
+  'product_unit:transfer',
   'quote:read',
   'quote:create',
   'quote:update',

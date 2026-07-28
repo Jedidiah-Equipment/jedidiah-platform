@@ -15,6 +15,7 @@ import {
 } from '@pkg/db';
 import { addDateOnlyDays, parseDateOnlyParts, parseJobCodeSearch, toPlantDateOnly } from '@pkg/domain';
 import {
+  CompetingAllocationQuote,
   DateOnlyIso,
   type PriorityQuote,
   parseQuoteCodeNumber,
@@ -269,6 +270,13 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
           thumbnailDataUrl: true,
         },
       },
+      productUnit: {
+        columns: {
+          id: true,
+          productSerialNumber: true,
+          vinNumber: true,
+        },
+      },
       salesPerson: {
         columns: {
           email: true,
@@ -295,12 +303,43 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
   }
 
   const offering = narrowQuoteOffering(row);
-  const [assemblies, productBaysForQuote] = await Promise.all([
+  const [assemblies, productBaysForQuote, competingAllocationQuotes] = await Promise.all([
     offering.kind === 'product' ? listAssemblies({ tx: db, productId: offering.productId }) : Promise.resolve([]),
     offering.kind === 'product' ? listProductBays({ db, productId: offering.productId }) : Promise.resolve([]),
+    offering.kind === 'product' && offering.productUnitId
+      ? listCompetingAllocationQuotes({ db, quoteId: row.id, productUnitId: offering.productUnitId })
+      : Promise.resolve([]),
   ]);
 
-  return mapQuoteDetail(row, assemblies, productBaysForQuote);
+  return mapQuoteDetail(row, assemblies, productBaysForQuote, competingAllocationQuotes);
+}
+
+async function listCompetingAllocationQuotes({
+  db,
+  productUnitId,
+  quoteId,
+}: {
+  db: Db | DatabaseTransaction;
+  productUnitId: UUID;
+  quoteId: UUID;
+}) {
+  const rows = await db
+    .select({
+      code: quotes.code,
+      customerCompanyName: customers.companyName,
+      id: quotes.id,
+      salesPersonName: user.name,
+      status: quotes.status,
+    })
+    .from(quotes)
+    .innerJoin(customers, eq(customers.id, quotes.customerId))
+    .leftJoin(user, eq(user.id, quotes.salesPersonId))
+    .where(
+      and(eq(quotes.productUnitId, productUnitId), ne(quotes.id, quoteId), inArray(quotes.status, ['draft', 'sent'])),
+    )
+    .orderBy(asc(quotes.code), asc(quotes.id));
+
+  return rows.map((row) => CompetingAllocationQuote.parse(row));
 }
 
 export async function getQuoteProductBayAvailability({

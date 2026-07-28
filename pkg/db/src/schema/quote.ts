@@ -4,6 +4,8 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
+  index,
   integer,
   numeric,
   pgSequence,
@@ -18,6 +20,7 @@ import { user } from './auth.js';
 import { customers } from './customer.js';
 import { jobs } from './job.js';
 import { productAssemblies, products } from './product.js';
+import { productUnits } from './product-unit.js';
 
 export const quoteCodeSequence = pgSequence('quote_code_seq');
 
@@ -32,6 +35,7 @@ export const quotes = pgTable(
     kind: text('kind').notNull().default('product').$type<QuoteKind>(),
     workTitle: text('work_title'),
     productId: uuid('product_id').references(() => products.id, { onDelete: 'restrict' }),
+    productUnitId: uuid('product_unit_id'),
     salesPersonId: text('sales_person_id')
       .notNull()
       .references(() => user.id, { onDelete: 'restrict' }),
@@ -75,9 +79,15 @@ export const quotes = pgTable(
       sql`(
         ${table.kind} = 'product' and ${table.productId} is not null and ${table.workTitle} is null
       ) or (
-        ${table.kind} = 'custom' and ${table.productId} is null and ${table.workTitle} is not null and length(trim(${table.workTitle})) > 0 and ${table.quotedBasePrice} = 0
+        ${table.kind} = 'custom' and ${table.productId} is null and ${table.productUnitId} is null and ${table.workTitle} is not null and length(trim(${table.workTitle})) > 0 and ${table.quotedBasePrice} = 0
       )`,
     ),
+    foreignKey({
+      columns: [table.productUnitId, table.productId],
+      foreignColumns: [productUnits.id, productUnits.productId],
+      name: 'quote_product_unit_product_fk',
+    }).onDelete('restrict'),
+    index('quote_product_unit_live_idx').on(table.productUnitId, table.status),
     uniqueIndex('quote_code_unique').on(table.code),
   ],
 );
@@ -171,6 +181,10 @@ export const quotesRelations = relations(quotes, ({ many, one }) => ({
   product: one(products, {
     fields: [quotes.productId],
     references: [products.id],
+  }),
+  productUnit: one(productUnits, {
+    fields: [quotes.productUnitId],
+    references: [productUnits.id],
   }),
   salesPerson: one(user, {
     fields: [quotes.salesPersonId],

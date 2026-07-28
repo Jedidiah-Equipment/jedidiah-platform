@@ -12,6 +12,7 @@ import { QuoteOfferingInvariantError } from './quote-errors.js';
 export function narrowQuoteOffering(row: {
   kind: QuoteKind;
   productId: string | null;
+  productUnitId: string | null;
   workTitle: string | null;
 }): QuoteOffering {
   if (row.kind === 'product') {
@@ -19,12 +20,12 @@ export function narrowQuoteOffering(row: {
       throw new QuoteOfferingInvariantError('Product Quote is missing its Product.');
     }
 
-    return { kind: 'product', productId: row.productId, workTitle: null };
+    return { kind: 'product', productId: row.productId, productUnitId: row.productUnitId, workTitle: null };
   }
 
   if (row.workTitle === null) {
     throw new QuoteOfferingInvariantError('Custom Quote is missing its Work Title.');
   }
 
-  return { kind: 'custom', productId: null, workTitle: row.workTitle };
+  return { kind: 'custom', productId: null, productUnitId: null, workTitle: row.workTitle };
 }

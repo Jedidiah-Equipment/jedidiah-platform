@@ -21,7 +21,7 @@ import {
   CustomerOptionalTextInput,
   CustomerVatNumber,
 } from '../customers/customer.js';
-import { Bay, JobDescription } from '../jobs/job.js';
+import { Bay, JobDescription, ProductSerialNumber, ProductUnitVinNumber } from '../jobs/job.js';
 import {
   Assembly,
   ProductBay,
@@ -98,12 +98,14 @@ const quoteBaseShape = {
 const quoteProductOfferingShape = {
   kind: z.literal('product'),
   productId: UUID,
+  productUnitId: UUID.nullable().default(null),
   workTitle: z.null(),
 };
 
 const quoteCustomOfferingShape = {
   kind: z.literal('custom'),
   productId: z.null(),
+  productUnitId: z.null().default(null),
   workTitle: QuoteWorkTitle,
 };
 
@@ -278,6 +280,22 @@ export const QuoteProductDetailFacts = QuoteProductSummaryFacts.extend({
   requiresVinNumber: ProductRequiresVinNumber,
 });
 
+export type QuoteProductUnitFacts = z.infer<typeof QuoteProductUnitFacts>;
+export const QuoteProductUnitFacts = z.object({
+  id: UUID,
+  productSerialNumber: ProductSerialNumber,
+  vinNumber: ProductUnitVinNumber,
+});
+
+export type CompetingAllocationQuote = z.infer<typeof CompetingAllocationQuote>;
+export const CompetingAllocationQuote = z.object({
+  code: QuoteCode,
+  customerCompanyName: z.string().trim().min(1),
+  id: UUID,
+  salesPersonName: z.string().trim().min(1).nullable(),
+  status: z.enum(['draft', 'sent']),
+});
+
 const quoteSummaryShape = {
   customerCompanyName: z.string().trim().min(1),
   customerThumbnailDataUrl: NullableThumbnailDataUrl,
@@ -357,7 +375,13 @@ const quoteDetailShape = {
 
 export type QuoteDetail = z.infer<typeof QuoteDetail>;
 export const QuoteDetail = z.discriminatedUnion('kind', [
-  z.object({ ...quoteBaseShape, ...quoteProductOfferingShape, ...quoteDetailShape }),
+  z.object({
+    ...quoteBaseShape,
+    ...quoteProductOfferingShape,
+    ...quoteDetailShape,
+    competingAllocationQuotes: z.array(CompetingAllocationQuote).default([]),
+    productUnit: QuoteProductUnitFacts.nullable().default(null),
+  }),
   z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteDetailShape, ...quoteCustomCollectionsShape }),
 ]);
 
@@ -382,6 +406,7 @@ export const QuoteOfferingInput = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('product'),
     productId: UUID,
+    productUnitId: UUID.nullable().default(null),
   }),
   z.strictObject({
     kind: z.literal('custom'),

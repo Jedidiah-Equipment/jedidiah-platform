@@ -236,11 +236,26 @@ describe('transferProductUnitOwnership', () => {
     ).rejects.toMatchObject({ code: 'product_unit.not_found' });
   });
 
-  // Ownership rows are their own audit trail: actor-stamped and never edited, so they are not logged twice.
-  test('writes no audit event', async ({ context }) => {
-    await transfer(context, { occurredOn: '2026-06-01', toCustomerId: context.seed.riversideId });
+  test('records the ownership change in the workspace audit feed', async ({ context }) => {
+    await transfer(context, {
+      note: 'Told to us by the buyer',
+      occurredOn: '2026-06-01',
+      toCustomerId: context.seed.riversideId,
+    });
 
-    expect(await readAuditEvents(context.db)).toHaveLength(0);
+    expect(await readAuditEvents(context.db)).toEqual([
+      expect.objectContaining({
+        action: 'updated',
+        actorUserId: ACTOR_USER_ID,
+        changes: {
+          ownerCustomerId: { from: null, to: context.seed.riversideId },
+          ownershipTransferDate: { from: null, to: '2026-06-01' },
+          ownershipTransferNote: { from: null, to: 'Told to us by the buyer' },
+        },
+        entityId: context.seed.unitId,
+        summary: 'Updated product unit "VIN-001260001"',
+      }),
+    ]);
   });
 });
 

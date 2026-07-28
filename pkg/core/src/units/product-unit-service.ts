@@ -9,7 +9,7 @@ import type {
 } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
-import { defineAuditDescriptor, diffAuditUpdate, recordAuditUpdate } from '../audit/audit-service.js';
+import { defineAuditDescriptor, diffAuditUpdate, recordAuditEvent, recordAuditUpdate } from '../audit/audit-service.js';
 import { CustomerNotFoundError } from '../customers/customer-errors.js';
 import {
   ProductUnitNotFoundError,
@@ -80,8 +80,8 @@ export async function updateProductUnit({
  * under the Unit's row lock so two concurrent transfers cannot both claim the same origin.
  *
  * Nothing commercial is attached: no Quote, no price, no salesperson, so none of this reaches sales
- * reporting. The row is the audit trail (it stamps its actor and is never edited or deleted), which is
- * why it is not also written to the audit log.
+ * reporting. The append-only row remains the ownership source of truth; the Product Unit audit event
+ * makes this boundary-visible change discoverable in the workspace-wide audit feed.
  */
 export async function transferProductUnitOwnership({
   actorUserId,
@@ -94,7 +94,7 @@ export async function transferProductUnitOwnership({
 }): Promise<ProductUnitTransferResult> {
   return db.transaction(async (tx) => {
     const [unit] = await tx
-      .select({ id: productUnits.id })
+      .select({ id: productUnits.id, productSerialNumber: productUnits.productSerialNumber })
       .from(productUnits)
       .where(eq(productUnits.id, input.id))
       .for('update');
@@ -148,6 +148,20 @@ export async function transferProductUnitOwnership({
       occurredOn: input.occurredOn,
       productUnitId: input.id,
       toCustomerId: input.toCustomerId,
+    });
+
+    await recordAuditEvent({
+      action: 'updated',
+      actorUserId,
+      changes: {
+        ownerCustomerId: { from: fromCustomerId, to: input.toCustomerId },
+        ownershipTransferDate: { from: null, to: input.occurredOn },
+        ...(input.note ? { ownershipTransferNote: { from: null, to: input.note } } : {}),
+      },
+      db: tx,
+      descriptor: productUnitAuditDescriptor,
+      entityId: unit.id,
+      record: { productSerialNumber: unit.productSerialNumber },
     });
 
     return { unit: await getProductUnit({ db: tx, id: input.id }) };

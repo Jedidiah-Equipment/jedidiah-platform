@@ -3,6 +3,7 @@ import { relations, sql } from 'drizzle-orm';
 import {
   check,
   date,
+  index,
   integer,
   pgSequence,
   pgTable,
@@ -180,6 +181,8 @@ export const jobs = pgTable(
             and ${table.productSerialYear} is null
             and ${table.productSerialSequence} is null)`,
     ),
+    // The Unit's build state is a correlated lookup of its Jobs, so this FK is read per Unit row.
+    index('job_product_unit_id_idx').on(table.productUnitId),
     uniqueIndex('job_code_unique').on(table.code),
     uniqueIndex('job_product_serial_number_unique').on(table.productSerialNumber),
     uniqueIndex('job_quote_id_unique').on(table.quoteId),

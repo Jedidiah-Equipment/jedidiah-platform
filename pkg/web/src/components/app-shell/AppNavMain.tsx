@@ -14,6 +14,7 @@ import {
   IconMessageReport,
   IconPackage,
   IconTool,
+  IconTruck,
   IconUsers,
   type TablerIcon,
 } from '@tabler/icons-react';
@@ -98,6 +99,12 @@ const navSections = [
             link: linkOptions({ to: '/jobs/calendar' }),
           },
         ],
+      },
+      {
+        title: 'Units',
+        permission: 'product_unit:read',
+        link: linkOptions({ to: '/units' }),
+        icon: IconTruck,
       },
       {
         title: 'Customers',

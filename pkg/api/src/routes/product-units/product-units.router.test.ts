@@ -1,0 +1,138 @@
+import { customers, type Db, jobs, products, productUnitOwnershipTransfers, productUnits, quotes, user } from '@pkg/db';
+import { describe, expect } from 'vitest';
+import { createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
+import { mockSession } from '@/test/test-utils.js';
+
+const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000c1';
+
+const test = createTester(async ({ db }) => ({ db, seed: await seedUnit(db) }));
+
+describe('productUnits.list', () => {
+  test('rejects unauthenticated reads', async ({ context }) => {
+    await expect(context.createAnonCaller().productUnits.list({})).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  test('rejects roles without product unit access', async ({ context }) => {
+    await expect(context.createCaller(mockSession('bay-operator')).productUnits.list({})).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  // Sales must reach Units because stock has to be selectable on a Quote.
+  test('allows every role granted product unit reads', async ({ context }) => {
+    const roles = ['admin', 'super-admin', 'sales', 'procurement-manager', 'job-viewer'] as const;
+
+    for (const role of roles) {
+      const result = await context.createCaller(mockSession(role)).productUnits.list({});
+
+      expect(
+        result.items.map((item) => item.productSerialNumber),
+        `role ${role}`,
+      ).toEqual(['RT-001260001']);
+    }
+  });
+});
+
+describe('productUnits.get', () => {
+  test('rejects unauthenticated reads', async ({ context }) => {
+    await expect(context.createAnonCaller().productUnits.get({ id: context.seed.unitId })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+  });
+
+  test('returns the machine with its ownership history', async ({ context }) => {
+    const detail = await context.createCaller(mockSession('sales')).productUnits.get({ id: context.seed.unitId });
+
+    expect(detail).toMatchObject({
+      buildState: 'in-build',
+      owner: { companyName: 'Riverside Farm' },
+      productSerialNumber: 'RT-001260001',
+    });
+    expect(detail.ownershipHistory).toHaveLength(1);
+  });
+
+  test('reports a machine that does not exist as not found', async ({ context }) => {
+    await expect(
+      context.createCaller(mockSession('admin')).productUnits.get({ id: '00000000-0000-4000-8000-00000000ffff' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
+async function seedUnit(db: Db) {
+  const now = new Date('2026-05-01T08:00:00.000Z');
+
+  await db.insert(user).values({
+    createdAt: now,
+    email: 'router-units@example.com',
+    emailVerified: true,
+    id: ACTOR_USER_ID,
+    name: 'Router Test User',
+    role: 'sales',
+    updatedAt: now,
+  });
+
+  const [range] = await db
+    .insert(products)
+    .values({
+      basePrice: 1_000,
+      buildTimeDays: 14,
+      currencyCode: 'ZAR',
+      description: null,
+      modelCode: 'RT-001',
+      name: 'Router Test Product',
+      rangeId: await createProductRangeFixture(db),
+    })
+    .returning();
+  if (!range) throw new Error('Product insert did not return a row');
+
+  const [customer] = await db.insert(customers).values({ companyName: 'Riverside Farm', email: null }).returning();
+  if (!customer) throw new Error('Customer insert did not return a row');
+
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId: customer.id,
+      productId: range.id,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: ACTOR_USER_ID,
+      status: 'accepted',
+    })
+    .returning();
+  if (!quote) throw new Error('Quote insert did not return a row');
+
+  const [unit] = await db
+    .insert(productUnits)
+    .values({
+      productId: range.id,
+      productSerialNumber: 'RT-001260001',
+      productSerialPrefix: 'RT-001',
+      productSerialSequence: 1,
+      productSerialYear: 26,
+    })
+    .returning();
+  if (!unit) throw new Error('Product unit insert did not return a row');
+
+  await db.insert(jobs).values({
+    createdAt: now,
+    productId: range.id,
+    productSerialNumber: unit.productSerialNumber,
+    productSerialPrefix: unit.productSerialPrefix,
+    productSerialSequence: unit.productSerialSequence,
+    productSerialYear: unit.productSerialYear,
+    productUnitId: unit.id,
+    quoteId: quote.id,
+    updatedAt: now,
+  });
+
+  await db.insert(productUnitOwnershipTransfers).values({
+    actorUserId: ACTOR_USER_ID,
+    occurredOn: '2026-05-02',
+    productUnitId: unit.id,
+    sourceQuoteId: quote.id,
+    toCustomerId: customer.id,
+  });
+
+  return { unitId: unit.id };
+}

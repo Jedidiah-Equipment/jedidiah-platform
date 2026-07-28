@@ -239,7 +239,7 @@ describe('users.list', () => {
     });
 
     await expect(caller.auth.access()).resolves.toEqual({
-      permissions: ['job:read'],
+      permissions: ['job:read', 'product_unit:read'],
       role: 'job-viewer',
       userId: currentDepartmentUserId,
     });

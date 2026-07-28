@@ -18,6 +18,7 @@ import { Route as ForgotPasswordRouteImport } from './../routes/forgot-password'
 import { Route as AuthedRouteImport } from './../routes/_authed'
 import { Route as IndexRouteImport } from './../routes/index'
 import { Route as AuthedUsersRouteImport } from './../routes/_authed.users'
+import { Route as AuthedUnitsRouteImport } from './../routes/_authed.units'
 import { Route as AuthedSuppliersRouteImport } from './../routes/_authed.suppliers'
 import { Route as AuthedQuotesRouteImport } from './../routes/_authed.quotes'
 import { Route as AuthedProductsRouteImport } from './../routes/_authed.products'
@@ -30,12 +31,14 @@ import { Route as AuthedCustomersRouteImport } from './../routes/_authed.custome
 import { Route as AuthedCatalogTranslationsRouteImport } from './../routes/_authed.catalog-translations'
 import { Route as AuthedBaysRouteImport } from './../routes/_authed.bays'
 import { Route as AuthedAuditRouteImport } from './../routes/_authed.audit'
+import { Route as AuthedUnitsIndexRouteImport } from './../routes/_authed.units.index'
 import { Route as AuthedSuppliersIndexRouteImport } from './../routes/_authed.suppliers.index'
 import { Route as AuthedQuotesIndexRouteImport } from './../routes/_authed.quotes.index'
 import { Route as AuthedProductsIndexRouteImport } from './../routes/_authed.products.index'
 import { Route as AuthedProductRangesIndexRouteImport } from './../routes/_authed.product-ranges.index'
 import { Route as AuthedJobsIndexRouteImport } from './../routes/_authed.jobs.index'
 import { Route as AuthedCustomersIndexRouteImport } from './../routes/_authed.customers.index'
+import { Route as AuthedUnitsIdRouteImport } from './../routes/_authed.units.$id'
 import { Route as AuthedJobsListRouteImport } from './../routes/_authed.jobs.list'
 import { Route as AuthedJobsCalendarRouteImport } from './../routes/_authed.jobs.calendar'
 import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
@@ -88,6 +91,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthedUsersRoute = AuthedUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedUnitsRoute = AuthedUnitsRouteImport.update({
+  id: '/units',
+  path: '/units',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedSuppliersRoute = AuthedSuppliersRouteImport.update({
@@ -151,6 +159,11 @@ const AuthedAuditRoute = AuthedAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedUnitsIndexRoute = AuthedUnitsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthedUnitsRoute,
+} as any)
 const AuthedSuppliersIndexRoute = AuthedSuppliersIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -181,6 +194,11 @@ const AuthedCustomersIndexRoute = AuthedCustomersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthedCustomersRoute,
+} as any)
+const AuthedUnitsIdRoute = AuthedUnitsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthedUnitsRoute,
 } as any)
 const AuthedJobsListRoute = AuthedJobsListRouteImport.update({
   id: '/list',
@@ -249,16 +267,19 @@ export interface FileRoutesByFullPath {
   '/products': typeof AuthedProductsRouteWithChildren
   '/quotes': typeof AuthedQuotesRouteWithChildren
   '/suppliers': typeof AuthedSuppliersRouteWithChildren
+  '/units': typeof AuthedUnitsRouteWithChildren
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/jobs/list': typeof AuthedJobsListRoute
+  '/units/$id': typeof AuthedUnitsIdRoute
   '/customers/': typeof AuthedCustomersIndexRoute
   '/jobs/': typeof AuthedJobsIndexRoute
   '/product-ranges/': typeof AuthedProductRangesIndexRoute
   '/products/': typeof AuthedProductsIndexRoute
   '/quotes/': typeof AuthedQuotesIndexRoute
   '/suppliers/': typeof AuthedSuppliersIndexRoute
+  '/units/': typeof AuthedUnitsIndexRoute
   '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
   '/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
@@ -284,12 +305,14 @@ export interface FileRoutesByTo {
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/jobs/list': typeof AuthedJobsListRoute
+  '/units/$id': typeof AuthedUnitsIdRoute
   '/customers': typeof AuthedCustomersIndexRoute
   '/jobs': typeof AuthedJobsIndexRoute
   '/product-ranges': typeof AuthedProductRangesIndexRoute
   '/products': typeof AuthedProductsIndexRoute
   '/quotes': typeof AuthedQuotesIndexRoute
   '/suppliers': typeof AuthedSuppliersIndexRoute
+  '/units': typeof AuthedUnitsIndexRoute
   '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
   '/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
@@ -319,16 +342,19 @@ export interface FileRoutesById {
   '/_authed/products': typeof AuthedProductsRouteWithChildren
   '/_authed/quotes': typeof AuthedQuotesRouteWithChildren
   '/_authed/suppliers': typeof AuthedSuppliersRouteWithChildren
+  '/_authed/units': typeof AuthedUnitsRouteWithChildren
   '/_authed/users': typeof AuthedUsersRoute
   '/_authed/jobs/$id': typeof AuthedJobsIdRoute
   '/_authed/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/_authed/jobs/list': typeof AuthedJobsListRoute
+  '/_authed/units/$id': typeof AuthedUnitsIdRoute
   '/_authed/customers/': typeof AuthedCustomersIndexRoute
   '/_authed/jobs/': typeof AuthedJobsIndexRoute
   '/_authed/product-ranges/': typeof AuthedProductRangesIndexRoute
   '/_authed/products/': typeof AuthedProductsIndexRoute
   '/_authed/quotes/': typeof AuthedQuotesIndexRoute
   '/_authed/suppliers/': typeof AuthedSuppliersIndexRoute
+  '/_authed/units/': typeof AuthedUnitsIndexRoute
   '/_authed/customers/$id/edit': typeof AuthedCustomersIdEditRoute
   '/_authed/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/_authed/products/$id/edit': typeof AuthedProductsIdEditRoute
@@ -358,16 +384,19 @@ export interface FileRouteTypes {
     | '/products'
     | '/quotes'
     | '/suppliers'
+    | '/units'
     | '/users'
     | '/jobs/$id'
     | '/jobs/calendar'
     | '/jobs/list'
+    | '/units/$id'
     | '/customers/'
     | '/jobs/'
     | '/product-ranges/'
     | '/products/'
     | '/quotes/'
     | '/suppliers/'
+    | '/units/'
     | '/customers/$id/edit'
     | '/product-ranges/$id/edit'
     | '/products/$id/edit'
@@ -393,12 +422,14 @@ export interface FileRouteTypes {
     | '/jobs/$id'
     | '/jobs/calendar'
     | '/jobs/list'
+    | '/units/$id'
     | '/customers'
     | '/jobs'
     | '/product-ranges'
     | '/products'
     | '/quotes'
     | '/suppliers'
+    | '/units'
     | '/customers/$id/edit'
     | '/product-ranges/$id/edit'
     | '/products/$id/edit'
@@ -427,16 +458,19 @@ export interface FileRouteTypes {
     | '/_authed/products'
     | '/_authed/quotes'
     | '/_authed/suppliers'
+    | '/_authed/units'
     | '/_authed/users'
     | '/_authed/jobs/$id'
     | '/_authed/jobs/calendar'
     | '/_authed/jobs/list'
+    | '/_authed/units/$id'
     | '/_authed/customers/'
     | '/_authed/jobs/'
     | '/_authed/product-ranges/'
     | '/_authed/products/'
     | '/_authed/quotes/'
     | '/_authed/suppliers/'
+    | '/_authed/units/'
     | '/_authed/customers/$id/edit'
     | '/_authed/product-ranges/$id/edit'
     | '/_authed/products/$id/edit'
@@ -519,6 +553,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AuthedUsersRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/units': {
+      id: '/_authed/units'
+      path: '/units'
+      fullPath: '/units'
+      preLoaderRoute: typeof AuthedUnitsRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/suppliers': {
@@ -605,6 +646,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAuditRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/units/': {
+      id: '/_authed/units/'
+      path: '/'
+      fullPath: '/units/'
+      preLoaderRoute: typeof AuthedUnitsIndexRouteImport
+      parentRoute: typeof AuthedUnitsRoute
+    }
     '/_authed/suppliers/': {
       id: '/_authed/suppliers/'
       path: '/'
@@ -646,6 +694,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/customers/'
       preLoaderRoute: typeof AuthedCustomersIndexRouteImport
       parentRoute: typeof AuthedCustomersRoute
+    }
+    '/_authed/units/$id': {
+      id: '/_authed/units/$id'
+      path: '/$id'
+      fullPath: '/units/$id'
+      preLoaderRoute: typeof AuthedUnitsIdRouteImport
+      parentRoute: typeof AuthedUnitsRoute
     }
     '/_authed/jobs/list': {
       id: '/_authed/jobs/list'
@@ -802,6 +857,20 @@ const AuthedSuppliersRouteWithChildren = AuthedSuppliersRoute._addFileChildren(
   AuthedSuppliersRouteChildren,
 )
 
+interface AuthedUnitsRouteChildren {
+  AuthedUnitsIdRoute: typeof AuthedUnitsIdRoute
+  AuthedUnitsIndexRoute: typeof AuthedUnitsIndexRoute
+}
+
+const AuthedUnitsRouteChildren: AuthedUnitsRouteChildren = {
+  AuthedUnitsIdRoute: AuthedUnitsIdRoute,
+  AuthedUnitsIndexRoute: AuthedUnitsIndexRoute,
+}
+
+const AuthedUnitsRouteWithChildren = AuthedUnitsRoute._addFileChildren(
+  AuthedUnitsRouteChildren,
+)
+
 interface AuthedRouteChildren {
   AuthedAuditRoute: typeof AuthedAuditRoute
   AuthedBaysRoute: typeof AuthedBaysRoute
@@ -815,6 +884,7 @@ interface AuthedRouteChildren {
   AuthedProductsRoute: typeof AuthedProductsRouteWithChildren
   AuthedQuotesRoute: typeof AuthedQuotesRouteWithChildren
   AuthedSuppliersRoute: typeof AuthedSuppliersRouteWithChildren
+  AuthedUnitsRoute: typeof AuthedUnitsRouteWithChildren
   AuthedUsersRoute: typeof AuthedUsersRoute
 }
 
@@ -831,6 +901,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedProductsRoute: AuthedProductsRouteWithChildren,
   AuthedQuotesRoute: AuthedQuotesRouteWithChildren,
   AuthedSuppliersRoute: AuthedSuppliersRouteWithChildren,
+  AuthedUnitsRoute: AuthedUnitsRouteWithChildren,
   AuthedUsersRoute: AuthedUsersRoute,
 }
 

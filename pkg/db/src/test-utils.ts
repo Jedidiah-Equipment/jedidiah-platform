@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
@@ -254,6 +255,21 @@ async function dropDatabaseIfExists(adminClient: postgres.Sql, databaseName: str
 
   await terminateDatabaseConnections(adminClient, databaseName);
   await adminClient.unsafe(`DROP DATABASE ${quoteIdentifier(databaseName)}`);
+}
+
+/**
+ * The statements of one committed migration, so a test can re-run the SQL that actually ships rather
+ * than a copy of it that can drift. Data-only migrations are the case that needs this: the template
+ * database has already applied them against empty tables, so proving they do the right thing means
+ * seeding the pre-migration shape and running them again.
+ */
+export function readMigrationStatements(tag: string): string[] {
+  const migrationPath = new URL(`../migrations/${tag}.sql`, import.meta.url).pathname;
+
+  return readFileSync(migrationPath, 'utf8')
+    .split('--> statement-breakpoint')
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.length > 0);
 }
 
 function getDatabaseName(databaseUrl: string): string {

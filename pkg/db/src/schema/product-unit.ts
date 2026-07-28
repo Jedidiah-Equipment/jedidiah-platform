@@ -28,6 +28,7 @@ export const productUnits = pgTable(
     check('product_unit_serial_sequence_positive', sql`${table.productSerialSequence} > 0`),
     check('product_unit_serial_number_nonempty', sql`length(trim(${table.productSerialNumber})) > 0`),
     check('product_unit_vin_number_nonempty', sql`${table.vinNumber} IS NULL OR length(trim(${table.vinNumber})) > 0`),
+    uniqueIndex('product_unit_id_product_id_unique').on(table.id, table.productId),
     uniqueIndex('product_unit_serial_number_unique').on(table.productSerialNumber),
   ],
 );

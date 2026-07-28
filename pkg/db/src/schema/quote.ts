@@ -4,6 +4,7 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   index,
   integer,
   numeric,
@@ -34,7 +35,7 @@ export const quotes = pgTable(
     kind: text('kind').notNull().default('product').$type<QuoteKind>(),
     workTitle: text('work_title'),
     productId: uuid('product_id').references(() => products.id, { onDelete: 'restrict' }),
-    productUnitId: uuid('product_unit_id').references(() => productUnits.id, { onDelete: 'restrict' }),
+    productUnitId: uuid('product_unit_id'),
     salesPersonId: text('sales_person_id')
       .notNull()
       .references(() => user.id, { onDelete: 'restrict' }),
@@ -81,6 +82,11 @@ export const quotes = pgTable(
         ${table.kind} = 'custom' and ${table.productId} is null and ${table.productUnitId} is null and ${table.workTitle} is not null and length(trim(${table.workTitle})) > 0 and ${table.quotedBasePrice} = 0
       )`,
     ),
+    foreignKey({
+      columns: [table.productUnitId, table.productId],
+      foreignColumns: [productUnits.id, productUnits.productId],
+      name: 'quote_product_unit_product_fk',
+    }).onDelete('restrict'),
     index('quote_product_unit_live_idx').on(table.productUnitId, table.status),
     uniqueIndex('quote_code_unique').on(table.code),
   ],

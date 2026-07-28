@@ -310,18 +310,39 @@ describe('allocation quotes', () => {
       ])
       .returning();
     const unitId = await createUnit(context.db, context.product.id, 41);
-    const [buildJob] = await context.db.insert(jobs).values({ productUnitId: unitId }).returning();
+    const [buildJob, reworkJob, cancelledJob] = await context.db
+      .insert(jobs)
+      .values([
+        { productUnitId: unitId },
+        { productUnitId: unitId },
+        { cancelledAt: new Date(), productUnitId: unitId },
+      ])
+      .returning();
 
-    if (!fittedAssembly || !furtherAssembly || !buildJob) {
+    if (!fittedAssembly || !furtherAssembly || !buildJob || !reworkJob || !cancelledJob) {
       throw new Error('Allocation Quote test setup did not return required rows');
     }
 
-    await context.db.insert(jobBuildSpecAssemblies).values({
-      assemblyName: fittedAssembly.name,
-      jobId: buildJob.id,
-      productAssemblyId: fittedAssembly.id,
-      sequence: 0,
-    });
+    await context.db.insert(jobBuildSpecAssemblies).values([
+      {
+        assemblyName: fittedAssembly.name,
+        jobId: buildJob.id,
+        productAssemblyId: fittedAssembly.id,
+        sequence: 0,
+      },
+      {
+        assemblyName: fittedAssembly.name,
+        jobId: reworkJob.id,
+        productAssemblyId: fittedAssembly.id,
+        sequence: 0,
+      },
+      {
+        assemblyName: furtherAssembly.name,
+        jobId: cancelledJob.id,
+        productAssemblyId: furtherAssembly.id,
+        sequence: 0,
+      },
+    ]);
 
     const allocated = await createQuoteService({
       actorUserId: context.salesPerson.id,
@@ -390,6 +411,22 @@ describe('allocation quotes', () => {
       }),
     });
     expect(withFurtherAssembly.selectedAssemblies).toHaveLength(2);
+
+    const furtherSelection = withFurtherAssembly.selectedAssemblies.find(
+      (assembly) => assembly.productAssemblyId === furtherAssembly.id,
+    );
+    if (!furtherSelection) throw new Error('Further Assembly selection was not persisted');
+
+    const withoutSeededAssembly = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(withFurtherAssembly, {
+        selectedAssemblies: [{ type: 'existing', id: furtherSelection.id }],
+      }),
+    });
+    expect(withoutSeededAssembly.selectedAssemblies).toMatchObject([
+      { productAssemblyId: furtherAssembly.id, quotedName: 'Toolbox', quotedPrice: 250 },
+    ]);
   });
 
   test('refuses a Unit owned by a Customer or built as another Product', async ({ context }) => {
@@ -432,6 +469,36 @@ describe('allocation quotes', () => {
 
     await expect(createForUnit(ownedUnitId)).rejects.toThrow('Product Unit is not Stock.');
     await expect(createForUnit(otherProductUnitId)).rejects.toThrow('Product Unit does not match the Quote Product.');
+  });
+
+  test('the database rejects a Product Unit built as another Product', async ({ context }) => {
+    const otherRangeId = await createProductRangeFixture(context.db);
+    const [otherProduct] = await context.db
+      .insert(products)
+      .values({
+        basePrice: 2_000,
+        buildTimeDays: 10,
+        currencyCode: 'ZAR',
+        modelCode: 'OTHER-ALLOCATION-DB-001',
+        name: 'Other Allocation Database Product',
+        rangeId: otherRangeId,
+      })
+      .returning();
+
+    if (!otherProduct) throw new Error('Other Product insert did not return a row');
+
+    const otherProductUnitId = await createUnit(context.db, otherProduct.id, 44);
+
+    await expect(
+      context.db.insert(quotes).values({
+        customerId: context.customer.id,
+        productId: context.product.id,
+        productUnitId: otherProductUnitId,
+        quotedBasePrice: context.product.basePrice,
+        quotedCurrencyCode: context.product.currencyCode,
+        salesPersonId: context.salesPerson.id,
+      }),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'quote_product_unit_product_fk' } });
   });
 });
 

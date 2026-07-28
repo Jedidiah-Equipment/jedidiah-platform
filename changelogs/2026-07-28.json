@@ -1,0 +1,22 @@
+{
+  "releasedAt": "2026-07-28T14:48:14.423Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Track job completion dates",
+          "description": "Jobs now record when work was completed, automatically after all scheduled work finishes or manually when needed. Completed jobs are hidden by default but can be included, sorted, and filtered by completion date."
+        },
+        {
+          "title": "See the full open pipeline",
+          "description": "The open pipeline now includes active and scheduled jobs as well as sent quotes, giving a clearer view of upcoming work and value."
+        },
+        {
+          "title": "Plan ahead with scheduled jobs",
+          "description": "The dashboard now shows upcoming jobs in start-date order, including their assigned bay and planned start date."
+        }
+      ]
+    }
+  ]
+}

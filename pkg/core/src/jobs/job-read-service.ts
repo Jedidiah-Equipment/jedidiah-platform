@@ -48,7 +48,7 @@ import {
   type SortDirection,
   UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, or, type SQL, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -183,6 +183,7 @@ async function listJobSummariesByIds({
       columns: {
         cancelledAt: true,
         createdAt: true,
+        completedOn: true,
         id: true,
         code: true,
         invoiceNumber: true,
@@ -333,6 +334,7 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
     columns: {
       cancelledAt: true,
       createdAt: true,
+      completedOn: true,
       id: true,
       code: true,
       invoiceNumber: true,
@@ -455,6 +457,18 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     conditions.push(isNotNull(jobs.invoiceNumber));
   }
 
+  if (input.filters.incompleteOnly) {
+    conditions.push(isNull(jobs.completedOn));
+  }
+
+  if (input.columnFilters.completedOnStart) {
+    conditions.push(gte(jobs.completedOn, input.columnFilters.completedOnStart));
+  }
+
+  if (input.columnFilters.completedOnEnd) {
+    conditions.push(lte(jobs.completedOn, input.columnFilters.completedOnEnd));
+  }
+
   if (input.columnFilters.customerId) {
     conditions.push(jobCustomerFilterCondition('filter_customer_quote', input.columnFilters.customerId));
   }
@@ -504,6 +518,7 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
     columns: {
       cancelledAt: true,
       createdAt: true,
+      completedOn: true,
       code: true,
       id: true,
       invoiceNumber: true,
@@ -759,6 +774,7 @@ async function listJobCfo({ db, jobId }: { db: Db | DatabaseTransaction; jobId: 
 export function getJobSortColumn(sortBy: JobSortBy): SQL {
   const columns = {
     code: sql`${jobs.code}`,
+    completedOn: sql`${jobs.completedOn}`,
     createdAt: sql`${jobs.createdAt}`,
     id: sql`${jobs.id}`,
     productSerialNumber: sql`${jobs.productSerialNumber}`,
@@ -769,8 +785,18 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
   return columns[sortBy];
 }
 
+/**
+ * Sorting by completion date is a question about completed Jobs, so open Jobs sink to the bottom in
+ * both directions. Postgres would otherwise lead the descending sort — the useful one — with every
+ * row that has no date at all.
+ */
+const jobSortByNullsLast = new Set<JobSortBy>(['completedOn']);
+
 export function getJobSortOrder(sortBy: JobSortBy, sortDirection: SortDirection): SQL {
-  return sortDirection === 'desc' ? desc(getJobSortColumn(sortBy)) : asc(getJobSortColumn(sortBy));
+  const column = getJobSortColumn(sortBy);
+  const ordered = sortDirection === 'desc' ? desc(column) : asc(column);
+
+  return jobSortByNullsLast.has(sortBy) ? sql`${ordered} nulls last` : ordered;
 }
 
 export function mapJobSummary(row: JobWithProductRow, scheduleState: JobScheduleState | null = null): JobSummary {

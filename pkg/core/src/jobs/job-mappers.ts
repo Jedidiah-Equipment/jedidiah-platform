@@ -7,6 +7,7 @@ export function mapJob(row: JobRow): Job {
   return Job.parse({
     cancelledAt: row.cancelledAt?.toISOString() ?? null,
     code: row.code,
+    completedOn: row.completedOn,
     createdAt: row.createdAt.toISOString(),
     id: row.id,
     invoiceNumber: row.invoiceNumber,

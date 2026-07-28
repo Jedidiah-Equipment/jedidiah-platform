@@ -5,6 +5,7 @@ export function buildJobSummary(overrides: Partial<Record<keyof JobSummary, unkn
   return JobSummarySchema.parse({
     cancelledAt: null,
     code: 1,
+    completedOn: null,
     createdAt: '2026-06-01T10:00:00.000Z',
     customerCompanyName: 'Acme Mining',
     customerId: '10000000-0000-4000-8000-000000000000',

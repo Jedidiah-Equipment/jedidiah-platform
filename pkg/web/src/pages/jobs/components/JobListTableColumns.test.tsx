@@ -58,13 +58,15 @@ describe('Job List table columns', () => {
     expect(html).toContain('Jun 19, 2026');
     expect(html).not.toContain('Jun 6, 2026');
     expect(html).not.toContain('Jun 20, 2026');
-    // Not every Slot is done, so the Complete column shows no check icon.
+    // The Job carries no stored completion date, so the Complete column shows no check icon.
     expect(html).not.toContain('tabler-icon-check');
   });
 
-  it('marks a Job complete with a check icon only once every Slot is done', () => {
+  it('shows the stored completion date, not derived Slot state', () => {
     const html = renderJobListRows([
       buildJobSummary({
+        completedOn: '2026-06-14',
+        // Every Slot is done, but the column reads `completedOn` — the two agree here only by coincidence.
         scheduleState: {
           done: 3,
           active: 0,
@@ -77,6 +79,25 @@ describe('Job List table columns', () => {
     ]);
 
     expect(html).toContain('tabler-icon-check');
+    expect(html).toContain('Jun 14, 2026');
+  });
+
+  it('leaves the Complete column blank for a Job whose Slots are all done but was never stamped', () => {
+    const html = renderJobListRows([
+      buildJobSummary({
+        completedOn: null,
+        scheduleState: {
+          done: 3,
+          active: 0,
+          firstWorkDay: '2026-06-05',
+          lastWorkDay: '2026-06-14',
+          scheduled: 0,
+          total: 3,
+        },
+      }),
+    ]);
+
+    expect(html).not.toContain('tabler-icon-check');
   });
 
   it('falls back to "Standalone" when a Job has no customer', () => {
@@ -133,7 +154,19 @@ describe('Job List table columns', () => {
     expect(html).toContain('aria-label="Sort Serial"');
     expect(html).not.toContain('aria-label="Sort Customer"');
     expect(html).not.toContain('aria-label="Sort Start date"');
+    expect(html).toContain('aria-label="Sort Complete"');
+    // Completed Jobs are hidden, so every Complete cell is empty and a date range could only return nothing.
     expect(html).not.toContain('aria-label="Filter Complete"');
+  });
+
+  it('offers the Complete date filter once completed Jobs are included', () => {
+    const html = renderJobListRows([buildJobSummary()], {
+      canEditJobs: false,
+      canFilterCompletedOn: true,
+      canOpenJobs: false,
+    });
+
+    expect(html).toContain('aria-label="Filter Complete"');
   });
 
   it('renders invoice numbers as text for Job editors and viewers', () => {
@@ -150,22 +183,23 @@ describe('Job List table columns', () => {
   });
 });
 
+type TestColumnOptions = { canEditJobs: boolean; canFilterCompletedOn?: boolean; canOpenJobs: boolean };
+
 function renderJobListRows(
   rows: JobSummary[],
-  permissions: { canEditJobs: boolean; canOpenJobs: boolean } = { canEditJobs: false, canOpenJobs: false },
+  permissions: TestColumnOptions = { canEditJobs: false, canOpenJobs: false },
 ) {
   return renderToStaticMarkup(<TestJobListTable permissions={permissions} rows={rows} />);
 }
 
-function TestJobListTable({
-  permissions,
-  rows,
-}: {
-  permissions: { canEditJobs: boolean; canOpenJobs: boolean };
-  rows: JobSummary[];
-}) {
+function TestJobListTable({ permissions, rows }: { permissions: TestColumnOptions; rows: JobSummary[] }) {
   const table = useReactTable({
-    columns: createJobListColumns({ ...permissions, customerOptions, showCustomerColumn: true }),
+    columns: createJobListColumns({
+      canFilterCompletedOn: false,
+      ...permissions,
+      customerOptions,
+      showCustomerColumn: true,
+    }),
     data: rows,
     getCoreRowModel: getCoreRowModel(),
     state: {

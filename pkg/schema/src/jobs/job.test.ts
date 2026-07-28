@@ -74,6 +74,7 @@ describe('Job', () => {
       Job.parse({
         cancelledAt: null,
         code: 1,
+        completedOn: null,
         createdAt: '2026-06-01T00:00:00.000Z',
         id: '00000000-0000-4000-8000-000000000001',
         invoiceNumber: null,
@@ -103,6 +104,7 @@ describe('Job', () => {
       Job.parse({
         cancelledAt: '2026-06-10T12:00:00.000Z',
         code: 2,
+        completedOn: null,
         createdAt: '2026-06-01T00:00:00.000Z',
         id: '00000000-0000-4000-8000-000000000001',
         invoiceNumber: null,

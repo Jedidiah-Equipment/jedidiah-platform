@@ -47,3 +47,4 @@ export * from './quotes/quote-summary.js';
 export * from './quotes/quote-work-item-form.js';
 export * from './quotes/work-item-departments.js';
 export * from './theme/index.js';
+export * from './units/product-unit-ownership.js';

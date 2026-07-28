@@ -22,6 +22,7 @@ describe('mapJobSummary', () => {
       productSerialPrefix: null,
       productSerialSequence: null,
       productSerialYear: null,
+      productUnitId: null,
       quote: {
         ...base.quote,
         kind: 'custom',
@@ -108,6 +109,7 @@ function jobRow(): Parameters<typeof mapJobSummary>[0] {
     productSerialPrefix: 'MODEL-001',
     productSerialSequence: 1,
     productSerialYear: 26,
+    productUnitId: '00000000-0000-4000-8000-000000000003',
     quote: {
       code: 1,
       kind: 'product',

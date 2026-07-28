@@ -16,6 +16,7 @@ import {
 import { user } from './auth.js';
 import { parts } from './part.js';
 import { products } from './product.js';
+import { productUnits } from './product-unit.js';
 import { quotes } from './quote.js';
 
 export const jobCodeSequence = pgSequence('job_code_seq');
@@ -136,6 +137,9 @@ export const jobs = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     code: integer('code').notNull().default(sql`nextval('job_code_seq'::regclass)`),
     productId: uuid('product_id').references(() => products.id, { onDelete: 'restrict' }),
+    // The physical machine this Job builds or works on. Null for a Custom Job, which produces none.
+    // The serial columns below are the expand half of the move onto product_unit and are still written.
+    productUnitId: uuid('product_unit_id').references(() => productUnits.id, { onDelete: 'restrict' }),
     quoteId: uuid('quote_id')
       .notNull()
       .references(() => quotes.id, { onDelete: 'restrict' }),
@@ -285,6 +289,10 @@ export const jobsRelations = relations(jobs, ({ many, one }) => ({
   product: one(products, {
     fields: [jobs.productId],
     references: [products.id],
+  }),
+  productUnit: one(productUnits, {
+    fields: [jobs.productUnitId],
+    references: [productUnits.id],
   }),
   quote: one(quotes, {
     fields: [jobs.quoteId],

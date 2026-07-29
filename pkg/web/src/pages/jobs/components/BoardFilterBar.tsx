@@ -28,14 +28,7 @@ type BoardFilterBarProps = {
   jobs: ReadonlyArray<
     Pick<
       JobSummary,
-      | 'id'
-      | 'code'
-      | 'customerCompanyName'
-      | 'customerId'
-      | 'productName'
-      | 'productSerialNumber'
-      | 'quoteKind'
-      | 'workTitle'
+      'id' | 'code' | 'customerCompanyName' | 'customerId' | 'productName' | 'productUnit' | 'quoteKind' | 'workTitle'
     >
   >;
   noMatches: boolean;

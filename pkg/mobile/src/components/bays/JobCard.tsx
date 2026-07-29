@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { BayIdentityLabels } from '@/components/bays/BayIdentityLabels';
+import { CustomerName } from '@/components/CustomerName';
 import { Text } from '@/components/ui/text';
 import type { JobListCard } from '@/lib/use-job-list';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -25,9 +26,7 @@ export function JobCard({ job, onPress }: { job: JobListCard; onPress: () => voi
       daysLeftColor={dayColor}
       lastWorkDay={progress.lastWorkDay}
       footerLeft={
-        <Text className="min-w-0 flex-1 text-[11px] text-muted-foreground" numberOfLines={1}>
-          {job.customerCompanyName ?? 'Stock'}
-        </Text>
+        <CustomerName className="min-w-0 flex-1 text-[11px]" companyName={job.customerCompanyName} numberOfLines={1} />
       }
       footerRight={
         <Text className="text-[11px] uppercase tracking-wide text-muted-foreground" mono weight="semibold">

@@ -9,16 +9,22 @@ describe('mapJobSummary', () => {
   it('maps jobs without stage summaries', () => {
     const summary = mapJobSummary(jobRow());
 
-    expect(summary).toMatchObject({ productBuildTimeDays: 12, productSerialNumber: 'MODEL-001260001' });
+    expect(summary).toMatchObject({
+      productBuildTimeDays: 12,
+      productUnit: { productSerialNumber: 'MODEL-001260001' },
+    });
   });
 
   it('reads the serial and product off the machine', () => {
     const summary = mapJobSummary(jobRow());
 
     expect(summary).toMatchObject({
-      productId: '00000000-0000-4000-8000-000000000002',
       productName: 'Test Product',
-      productSerialNumber: 'MODEL-001260001',
+      productUnit: {
+        id: '00000000-0000-4000-8000-000000000003',
+        productId: '00000000-0000-4000-8000-000000000002',
+        productSerialNumber: 'MODEL-001260001',
+      },
     });
   });
 
@@ -65,7 +71,7 @@ describe('mapJobSummary', () => {
     });
   });
 
-  it('maps custom jobs with nullable product and serial facts', () => {
+  it('maps a Custom Job with no machine at all', () => {
     const base = jobRow();
     const summary = mapJobSummary({
       ...base,
@@ -84,9 +90,8 @@ describe('mapJobSummary', () => {
     });
 
     expect(summary).toMatchObject({
-      productId: null,
       productName: null,
-      productSerialNumber: null,
+      productUnit: null,
       quoteKind: 'custom',
       workTitle: 'Pump skid rebuild',
     });
@@ -101,7 +106,7 @@ describe('mapJobSummary', () => {
       customerId: null,
       // The machine is still fully identified — only the sale is missing.
       productName: 'Test Product',
-      productSerialNumber: 'MODEL-001260001',
+      productUnit: { productSerialNumber: 'MODEL-001260001' },
       quoteCode: null,
       quoteId: null,
       quoteKind: null,
@@ -183,9 +188,6 @@ function productUnitRow(ownershipTransfers?: ProductUnitRow['ownershipTransfers'
       thumbnailDataUrl: null,
     },
     productSerialNumber: 'MODEL-001260001',
-    productSerialPrefix: 'MODEL-001',
-    productSerialSequence: 1,
-    productSerialYear: 26,
     vinNumber: null,
   };
 }

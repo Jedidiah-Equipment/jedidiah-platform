@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { BayIdentityLabels } from '@/components/bays/BayIdentityLabels';
+import { CustomerName } from '@/components/CustomerName';
 import { Text } from '@/components/ui/text';
 import type { BayListCard } from '@/lib/use-bay-list';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -40,9 +41,11 @@ function ActiveBody({
       daysLeftColor={accent}
       lastWorkDay={active.lastWorkDay}
       footerLeft={
-        <Text className="min-w-0 flex-1 text-[11px] text-muted-foreground" numberOfLines={1}>
-          {active.customerCompanyName ?? 'Stock'}
-        </Text>
+        <CustomerName
+          className="min-w-0 flex-1 text-[11px]"
+          companyName={active.customerCompanyName}
+          numberOfLines={1}
+        />
       }
       onPress={onPress}
       primaryRow={<BayPrimaryRow bay={bay} />}

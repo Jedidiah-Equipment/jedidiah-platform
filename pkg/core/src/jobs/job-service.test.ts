@@ -42,7 +42,7 @@ import {
   QuoteUpdateInput,
   ToggleOffDayInput,
 } from '@pkg/schema';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
@@ -272,7 +272,7 @@ describe('createJob', () => {
     });
     expect(jobRows[0]?.productUnitId).toBe(unitRows[0]?.id);
     // The Job carries no serial of its own: it reports the one on the machine it is bound to.
-    expect(job.productSerialNumber).toBe('CFO-001260001');
+    expect(job.productUnit?.productSerialNumber).toBe('CFO-001260001');
   });
 
   // The serial used to be audited as a Job field. It is a fact about the machine, so the machine's own
@@ -285,10 +285,32 @@ describe('createJob', () => {
 
     await createJob({ actorUserId, db: context.db, input: { baySeeds: [], quoteId: quote.id } });
 
-    const [event] = await context.db.select().from(auditEvents).where(eq(auditEvents.entityType, 'product_unit'));
+    const [event] = await context.db
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.entityType, 'product_unit'), eq(auditEvents.action, 'created')));
 
     expect(event).toMatchObject({ action: 'created', actorUserId });
     expect(event?.summary).toContain('CFO-001260001');
+  });
+
+  // A build-to-order sale moves the machine to its buyer, so it is audited like every other ownership
+  // move. It used to write the Transfer row and no event, leaving that one sale invisible in the feed.
+  test('audits the initial ownership move to the Quote customer', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    await createJob({ actorUserId, db: context.db, input: { baySeeds: [], quoteId: quote.id } });
+
+    const [event] = await context.db
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.entityType, 'product_unit'), eq(auditEvents.action, 'updated')));
+
+    expect(event).toMatchObject({ action: 'updated', actorUserId });
+    expect(event?.changes).toMatchObject({ ownerCustomerId: { from: null, to: quote.customerId } });
   });
 
   test('writes an initial Ownership Transfer out of Stock to the Quote customer', async ({ context }) => {
@@ -340,7 +362,7 @@ describe('createJob', () => {
     expect(unitRows).toEqual([]);
     expect(transferRows).toEqual([]);
     expect(jobRows[0]?.productUnitId).toBeNull();
-    expect(job.productSerialNumber).toBeNull();
+    expect(job.productUnit).toBeNull();
   });
 
   test('builds for stock with no Quote, minting a Unit that stays unowned', async ({ context }) => {
@@ -365,7 +387,7 @@ describe('createJob', () => {
     expect(job).toMatchObject({
       customerCompanyName: null,
       customerId: null,
-      productSerialNumber: 'CFO-001260001',
+      productUnit: { productSerialNumber: 'CFO-001260001' },
       quoteCode: null,
       quoteId: null,
       quoteKind: null,
@@ -566,13 +588,13 @@ describe('createJob', () => {
     ]);
 
     expect(job).toMatchObject({
-      productId: context.catalog.product.id,
-      productSerialNumber: 'CFO-001260001',
-      productSerialPrefix: 'CFO-001',
-      productSerialSequence: 1,
-      productSerialYear: 26,
+      productUnit: { productId: context.catalog.product.id, productSerialNumber: 'CFO-001260001' },
       quoteId: quote.id,
     });
+    // The serial's component parts stay on the machine; only the full serial is worth reading back.
+    await expect(context.db.select().from(productUnits)).resolves.toMatchObject([
+      { productSerialPrefix: 'CFO-001', productSerialSequence: 1, productSerialYear: 26 },
+    ]);
     expect(job.cfo).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -746,11 +768,7 @@ describe('createJob', () => {
       ]);
 
     expect(job).toMatchObject({
-      productId: null,
-      productSerialNumber: null,
-      productSerialPrefix: null,
-      productSerialSequence: null,
-      productSerialYear: null,
+      productUnit: null,
       quoteId: quote.id,
       quoteKind: 'custom',
       workTitle: 'Pump skid rebuild',
@@ -885,9 +903,11 @@ describe('createJob', () => {
 
     expect(rework).toMatchObject({
       customerCompanyName: 'CFO Test Customer',
-      productSerialNumber: stockBuild.productSerialNumber,
+      productUnit: {
+        productSerialNumber: stockBuild.productUnit?.productSerialNumber,
+        vinNumber: 'VIN-REWORK-1',
+      },
       quoteId: quote.id,
-      vinNumber: 'VIN-REWORK-1',
     });
     expect(rework.cfo).toEqual([
       {
@@ -1622,9 +1642,9 @@ describe('createJob', () => {
       input: { baySeeds: [], quoteId: otherProductQuote.id },
     });
 
-    expect(firstJob.productSerialNumber).toBe('CFO-001260001');
-    expect(secondJob.productSerialNumber).toBe('CFO-001260002');
-    expect(otherProductJob.productSerialNumber).toBe('ALT-001260001');
+    expect(firstJob.productUnit?.productSerialNumber).toBe('CFO-001260001');
+    expect(secondJob.productUnit?.productSerialNumber).toBe('CFO-001260002');
+    expect(otherProductJob.productUnit?.productSerialNumber).toBe('ALT-001260001');
   });
 
   test('continues product serial sequences across years', async ({ context }) => {
@@ -1654,8 +1674,8 @@ describe('createJob', () => {
       input: { baySeeds: [], quoteId: secondQuote.id },
     });
 
-    expect(firstJob.productSerialNumber).toBe('CFO-001260009');
-    expect(secondJob.productSerialNumber).toBe('CFO-001270010');
+    expect(firstJob.productUnit?.productSerialNumber).toBe('CFO-001260009');
+    expect(secondJob.productUnit?.productSerialNumber).toBe('CFO-001270010');
   });
 });
 
@@ -2068,10 +2088,9 @@ describe('updateJob', () => {
     });
     const read = await getJob({ db: context.db, id: job.id });
 
-    // A response that null'd the serial would contradict the very next list or detail read.
-    expect(updated.job.productSerialNumber).toBe(read.productSerialNumber);
-    expect(updated.job.productId).toBe(read.productId);
-    expect(updated.job.productSerialNumber).not.toBeNull();
+    // A response that null'd the machine would contradict the very next list or detail read.
+    expect(updated.job.productUnit).toEqual(read.productUnit);
+    expect(updated.job.productUnit).not.toBeNull();
   });
 
   test('answers a no-op update with the machine identity too', async ({ context }) => {
@@ -2082,8 +2101,8 @@ describe('updateJob', () => {
     await updateJob({ actorUserId, db: context.db, input });
     const unchanged = await updateJob({ actorUserId, db: context.db, input });
 
-    expect(unchanged.job.productSerialNumber).toBe(job.productSerialNumber);
-    expect(unchanged.job.productId).toBe(context.catalog.product.id);
+    expect(unchanged.job.productUnit?.productSerialNumber).toBe(job.productUnit?.productSerialNumber);
+    expect(unchanged.job.productUnit?.productId).toBe(context.catalog.product.id);
   });
 
   test('preserves a stored completion date when the payload omits it', async ({ context }) => {

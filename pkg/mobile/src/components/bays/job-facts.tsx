@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
+import { CustomerName } from '@/components/CustomerName';
 import { Text } from '@/components/ui/text';
 
 /** A titled detail card, matching the Bay slot and Job detail panes. */
@@ -20,15 +21,24 @@ export function FactRow({ children }: { children: ReactNode }) {
   return <View className="flex-row gap-4">{children}</View>;
 }
 
-/** A labelled value cell. */
-export function FactField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+/** A labelled cell, for values that render as something other than plain text. */
+function FactCell({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View className="min-w-0 flex-1">
       <Text className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Text>
+      {children}
+    </View>
+  );
+}
+
+/** A labelled value cell. */
+export function FactField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <FactCell label={label}>
       <Text className="text-sm text-surface-foreground" mono={mono} weight="semibold">
         {value}
       </Text>
-    </View>
+    </FactCell>
   );
 }
 
@@ -58,7 +68,9 @@ export function JobFactsCard(facts: JobFacts) {
             <FactField label="PRODUCT SERIAL" mono value={facts.productSerialNumber} />
           ) : null}
         </FactRow>
-        <FactField label="CUSTOMER" value={facts.customerCompanyName ?? 'Stock'} />
+        <FactCell label="CUSTOMER">
+          <CustomerName className="text-sm" companyName={facts.customerCompanyName} tone="surface" weight="semibold" />
+        </FactCell>
       </View>
     </FactCard>
   );

@@ -33,8 +33,10 @@ export const BaySlotJobCard: React.FC<BaySlotJobCardProps> = ({ dayBreakdown, jo
             Cancelled
           </Badge>
         ) : null}
-        {job?.productSerialNumber ? (
-          <span className="truncate font-mono text-muted-foreground text-xs">{job.productSerialNumber}</span>
+        {job?.productUnit ? (
+          <span className="truncate font-mono text-muted-foreground text-xs">
+            {job.productUnit.productSerialNumber}
+          </span>
         ) : null}
         {displayName ? <span className="truncate text-muted-foreground text-xs">{displayName}</span> : null}
       </div>

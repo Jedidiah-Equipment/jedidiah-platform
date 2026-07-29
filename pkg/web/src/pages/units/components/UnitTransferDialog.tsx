@@ -6,16 +6,9 @@ import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { EntityCombobox } from '@/components/common/EntityCombobox.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from '@/components/ui/combobox.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { type CustomerOption, useCustomerOptions } from '@/hooks/options/index.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -124,6 +117,15 @@ export const UnitTransferDialog: React.FC<UnitTransferDialogProps> = ({ onOpenCh
   );
 };
 
+const getCustomerLabel = (customer: CustomerOption) => customer.companyName;
+
+const renderCustomerComboboxItem = (customer: CustomerOption) => (
+  <span className="flex min-w-0 flex-col">
+    <span className="truncate">{customer.companyName}</span>
+    {customer.email ? <span className="truncate text-muted-foreground text-xs">{customer.email}</span> : null}
+  </span>
+);
+
 const UnitTransferCustomerCombobox: React.FC<{
   onSelected: (customer: CustomerOption | null) => void;
   value: string;
@@ -134,44 +136,23 @@ const UnitTransferCustomerCombobox: React.FC<{
   const selected = customers.itemsWithSelected.find((customer) => customer.id === value) ?? null;
 
   return (
-    <Combobox
-      filter={null}
-      inputValue={search || (selected?.companyName ?? '')}
-      itemToStringLabel={(customer: CustomerOption) => customer.companyName}
-      itemToStringValue={(customer: CustomerOption) => customer.id}
-      items={customers.itemsWithSelected}
-      onInputValueChange={(nextInputValue, eventDetails) => {
-        if (eventDetails.reason === 'item-press') return;
-
-        setSearch(nextInputValue);
-      }}
-      onValueChange={(customer: CustomerOption | null) => {
+    <EntityCombobox
+      disabled={false}
+      emptyMessage="No customers found"
+      inputId="unit-transfer-customer"
+      inputValue={search}
+      isFetching={customers.isFetching}
+      itemToLabel={getCustomerLabel}
+      onInputValueChange={setSearch}
+      onSelected={(customer) => {
         onSelected(customer);
         setSearch('');
       }}
+      options={customers.itemsWithSelected}
+      placeholder="Search customers"
+      renderItem={renderCustomerComboboxItem}
+      searchPlaceholder="Searching customers..."
       value={selected}
-    >
-      <ComboboxInput
-        className="w-full"
-        id="unit-transfer-customer"
-        placeholder={customers.isFetching ? 'Searching customers...' : 'Search customers'}
-        showClear
-      />
-      <ComboboxContent>
-        <ComboboxEmpty>No customers found</ComboboxEmpty>
-        <ComboboxList>
-          {(customer: CustomerOption) => (
-            <ComboboxItem key={customer.id} value={customer}>
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate">{customer.companyName}</span>
-                {customer.email ? (
-                  <span className="truncate text-muted-foreground text-xs">{customer.email}</span>
-                ) : null}
-              </span>
-            </ComboboxItem>
-          )}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
+    />
   );
 };

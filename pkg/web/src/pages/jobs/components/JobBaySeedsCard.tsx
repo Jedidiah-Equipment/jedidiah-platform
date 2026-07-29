@@ -7,8 +7,7 @@ import { useMemo } from 'react';
 
 import { AddBaySelect, BayRowCard } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import type { DatePickerFieldProps } from '@/components/form/index.js';
-import type { ArrayFieldApi } from '@/components/form/types.js';
+import { type DatePickerFieldProps, withFieldGroup } from '@/components/form/index.js';
 import {
   Card,
   CardAction,
@@ -38,123 +37,145 @@ export type BaySeedStartDateFieldApi = {
   DatePickerField: React.ComponentType<DatePickerFieldProps>;
 };
 
-/**
- * Both Job creation flows — from a Quote and as a Stock Build — seed the same Bay queues in the same
- * way, so the rows, their date bounds, and the split warning live here rather than in either page.
- * The owning form stays outside: it supplies the array field and renders each row's date field, which
- * is what keeps this component free of any one form's value shape.
- */
 type JobBaySeedsCardProps = {
-  baySeedsField: ArrayFieldApi<JobBaySeedFormValues>;
   baysById: Map<UUID, Bay>;
   baysError: unknown;
   enabledBays: Bay[];
   isPending: boolean;
   onShowAllBaysChange: (showAllBays: boolean) => void;
-  renderStartDateField: (
-    index: number,
-    render: (field: BaySeedStartDateFieldApi) => React.ReactNode,
-  ) => React.ReactNode;
-  renderDurationField: (index: number) => React.ReactNode;
   scheduling: BaySeedScheduling | null;
   showAllBays: boolean;
   showAllBaysInputId: string;
 };
 
-export const JobBaySeedsCard: React.FC<JobBaySeedsCardProps> = ({
-  baySeedsField,
-  baysById,
-  baysError,
-  enabledBays,
-  isPending,
-  onShowAllBaysChange,
-  renderDurationField,
-  renderStartDateField,
-  scheduling,
-  showAllBays,
-  showAllBaysInputId,
-}) => {
-  const selectedBayIds = new Set(baySeedsField.state.value.map((row) => row.bayId));
+/**
+ * Both Job creation flows — from a Quote and as a Stock Build — seed the same Bay queues in the same
+ * way, so the rows, their fields, their date bounds, and the split warning live here rather than in
+ * either page. It is a field group over `baySeeds` alone, which is what lets each page mount it
+ * against its own form root without this card knowing that form's value shape.
+ */
+export const JobBaySeedsCard = withFieldGroup({
+  defaultValues: { baySeeds: [] as JobBaySeedFormValues[] },
+  props: {} as JobBaySeedsCardProps,
+  render: function JobBaySeedsCardGroup({
+    baysById,
+    baysError,
+    enabledBays,
+    group,
+    isPending,
+    onShowAllBaysChange,
+    scheduling,
+    showAllBays,
+    showAllBaysInputId,
+  }) {
+    return (
+      <group.Field name="baySeeds" mode="array">
+        {(baySeedsField) => {
+          const selectedBayIds = new Set(baySeedsField.state.value.map((row) => row.bayId));
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Assigned Bays</CardTitle>
-        <CardDescription>Each row books a Work Slot into that Bay's queue when the Job is created.</CardDescription>
-        <CardAction className="col-span-2 col-start-1 row-span-1 row-start-3 mt-2 justify-self-stretch sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
-          <AddBaySelect
-            bays={enabledBays}
-            beforeSelect={
-              <label className="flex shrink-0 items-center gap-2 text-sm font-medium" htmlFor={showAllBaysInputId}>
-                <Switch
-                  checked={showAllBays}
-                  disabled={isPending}
-                  id={showAllBaysInputId}
-                  onCheckedChange={(checked) => onShowAllBaysChange(checked === true)}
-                  size="sm"
-                />
-                Show all Bays
-              </label>
-            }
-            disabled={isPending}
-            excludeBayIds={selectedBayIds}
-            onAdd={(bay) =>
-              baySeedsField.pushValue({
-                bayId: bay.id,
-                // Manually added Bays have no Product Bay estimate; start from a sane booking.
-                durationDays: 5,
-                startDate: getBaySeedDefaultStartDate(scheduling, bay.id),
-              })
-            }
-          />
-        </CardAction>
-      </CardHeader>
-      <CardSeparator />
-      <CardContent>
-        <section className="flex flex-col gap-4">
-          {baysError ? <ErrorMessage error={baysError} fallbackMessage="Unable to load Bays." /> : null}
-          {baySeedsField.state.value.length === 0 ? (
-            <Empty>
-              <EmptyHeader>
-                <EmptyIcon />
-                <EmptyTitle>No Bays selected.</EmptyTitle>
-                <EmptyDescription>Select a Bay from the header to add it to the Job.</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            // Responsive grid: equal-width seed cards align in columns, as many per row as fit.
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,38rem),1fr))] gap-3">
-              {baySeedsField.state.value.map((row, index) => (
-                <BayRowCard
-                  bay={baysById.get(row.bayId)}
-                  key={row.bayId}
-                  onRemove={() => baySeedsField.removeValue(index)}
-                  removeDisabled={isPending}
-                  removeLabel={`Remove Bay seed ${index + 1}`}
-                  showOperator
-                  unavailableHint="Bay must be reselected"
-                >
-                  <div className="flex items-center gap-3 self-center">
-                    {renderStartDateField(index, (startDateField) => (
-                      <BaySeedStartDateControl
-                        bayId={row.bayId}
-                        index={index}
-                        isPending={isPending}
-                        scheduling={scheduling}
-                        startDateField={startDateField}
-                      />
-                    ))}
-                    {renderDurationField(index)}
-                  </div>
-                </BayRowCard>
-              ))}
-            </div>
-          )}
-        </section>
-      </CardContent>
-    </Card>
-  );
-};
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle>Assigned Bays</CardTitle>
+                <CardDescription>
+                  Each row books a Work Slot into that Bay's queue when the Job is created.
+                </CardDescription>
+                <CardAction className="col-span-2 col-start-1 row-span-1 row-start-3 mt-2 justify-self-stretch sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
+                  <AddBaySelect
+                    bays={enabledBays}
+                    beforeSelect={
+                      <label
+                        className="flex shrink-0 items-center gap-2 text-sm font-medium"
+                        htmlFor={showAllBaysInputId}
+                      >
+                        <Switch
+                          checked={showAllBays}
+                          disabled={isPending}
+                          id={showAllBaysInputId}
+                          onCheckedChange={(checked) => onShowAllBaysChange(checked === true)}
+                          size="sm"
+                        />
+                        Show all Bays
+                      </label>
+                    }
+                    disabled={isPending}
+                    excludeBayIds={selectedBayIds}
+                    onAdd={(bay) =>
+                      baySeedsField.pushValue({
+                        bayId: bay.id,
+                        // Manually added Bays have no Product Bay estimate; start from a sane booking.
+                        durationDays: 5,
+                        startDate: getBaySeedDefaultStartDate(scheduling, bay.id),
+                      })
+                    }
+                  />
+                </CardAction>
+              </CardHeader>
+              <CardSeparator />
+              <CardContent>
+                <section className="flex flex-col gap-4">
+                  {baysError ? <ErrorMessage error={baysError} fallbackMessage="Unable to load Bays." /> : null}
+                  {baySeedsField.state.value.length === 0 ? (
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyIcon />
+                        <EmptyTitle>No Bays selected.</EmptyTitle>
+                        <EmptyDescription>Select a Bay from the header to add it to the Job.</EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  ) : (
+                    // Responsive grid: equal-width seed cards align in columns, as many per row as fit.
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,38rem),1fr))] gap-3">
+                      {baySeedsField.state.value.map((row, index) => (
+                        <BayRowCard
+                          bay={baysById.get(row.bayId)}
+                          key={row.bayId}
+                          onRemove={() => baySeedsField.removeValue(index)}
+                          removeDisabled={isPending}
+                          removeLabel={`Remove Bay seed ${index + 1}`}
+                          showOperator
+                          unavailableHint="Bay must be reselected"
+                        >
+                          <div className="flex items-center gap-3 self-center">
+                            <group.AppField name={`baySeeds[${index}].startDate`}>
+                              {(startDateField) => (
+                                <BaySeedStartDateControl
+                                  bayId={row.bayId}
+                                  index={index}
+                                  isPending={isPending}
+                                  scheduling={scheduling}
+                                  startDateField={startDateField}
+                                />
+                              )}
+                            </group.AppField>
+                            <group.AppField name={`baySeeds[${index}].durationDays`}>
+                              {(durationField) => (
+                                <durationField.NumberField
+                                  className="w-20"
+                                  disabled={isPending}
+                                  emptyValue={Number.NaN}
+                                  inputMode="numeric"
+                                  label="Days"
+                                  orientation="horizontal"
+                                  placeholder="1"
+                                  fieldClassName="self-center *:data-[slot=field-label]:flex-none"
+                                />
+                              )}
+                            </group.AppField>
+                          </div>
+                        </BayRowCard>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </CardContent>
+            </Card>
+          );
+        }}
+      </group.Field>
+    );
+  },
+});
 
 const BaySeedStartDateControl: React.FC<{
   bayId: UUID;

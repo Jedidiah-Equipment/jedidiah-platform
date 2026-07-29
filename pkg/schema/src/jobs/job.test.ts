@@ -69,7 +69,7 @@ describe('formatProductSerialNumber', () => {
 });
 
 describe('Job', () => {
-  it('carries the frozen product serial facts', () => {
+  it('carries the machine facts as one Product Unit object', () => {
     expect(
       Job.parse({
         cancelledAt: null,
@@ -77,28 +77,29 @@ describe('Job', () => {
         completedOn: null,
         createdAt: '2026-06-01T00:00:00.000Z',
         id: '00000000-0000-4000-8000-000000000001',
-        productId: '00000000-0000-4000-8000-000000000002',
-        productSerialNumber: 'SG1836260009',
-        productSerialPrefix: 'SG1836',
-        productSerialSequence: 9,
-        productSerialYear: 26,
+        productUnit: {
+          id: '00000000-0000-4000-8000-000000000004',
+          productId: '00000000-0000-4000-8000-000000000002',
+          productSerialNumber: 'SG1836260009',
+          vinNumber: null,
+        },
         quoteId: '00000000-0000-4000-8000-000000000003',
         description: null,
         updatedAt: '2026-06-01T00:00:00.000Z',
-        vinNumber: null,
       }),
     ).toMatchObject({
       cancelledAt: null,
       code: 'JOB-00001',
-      productSerialNumber: 'SG1836260009',
-      productSerialPrefix: 'SG1836',
-      productSerialSequence: 9,
-      productSerialYear: 26,
-      vinNumber: null,
+      productUnit: {
+        id: '00000000-0000-4000-8000-000000000004',
+        productId: '00000000-0000-4000-8000-000000000002',
+        productSerialNumber: 'SG1836260009',
+        vinNumber: null,
+      },
     });
   });
 
-  it('accepts productless custom job facts', () => {
+  it('accepts unitless custom job facts', () => {
     expect(
       Job.parse({
         cancelledAt: '2026-06-10T12:00:00.000Z',
@@ -106,22 +107,37 @@ describe('Job', () => {
         completedOn: null,
         createdAt: '2026-06-01T00:00:00.000Z',
         id: '00000000-0000-4000-8000-000000000001',
-        productId: null,
-        productSerialNumber: null,
-        productSerialPrefix: null,
-        productSerialSequence: null,
-        productSerialYear: null,
+        productUnit: null,
         quoteId: '00000000-0000-4000-8000-000000000003',
         description: null,
         updatedAt: '2026-06-01T00:00:00.000Z',
-        vinNumber: null,
       }),
     ).toMatchObject({
       cancelledAt: '2026-06-10T12:00:00.000Z',
       code: 'JOB-00002',
-      productId: null,
-      productSerialNumber: null,
+      productUnit: null,
     });
+  });
+
+  it('rejects a Product Unit missing the serial it must own', () => {
+    expect(() =>
+      Job.parse({
+        cancelledAt: null,
+        code: 3,
+        completedOn: null,
+        createdAt: '2026-06-01T00:00:00.000Z',
+        id: '00000000-0000-4000-8000-000000000001',
+        productUnit: {
+          id: '00000000-0000-4000-8000-000000000004',
+          productId: '00000000-0000-4000-8000-000000000002',
+          productSerialNumber: null,
+          vinNumber: null,
+        },
+        quoteId: null,
+        description: null,
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      }),
+    ).toThrow();
   });
 });
 

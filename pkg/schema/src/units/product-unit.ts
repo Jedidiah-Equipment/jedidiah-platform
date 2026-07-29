@@ -61,7 +61,8 @@ export const ProductUnitSummary = z.object({
   buildState: ProductUnitBuildState,
   /** `null` means Stock: we hold the machine. */
   owner: ProductUnitOwner.nullable(),
-  product: z.object({ id: UUID, modelCode: ProductModelCode, name: ProductName }).nullable(),
+  /** Never null: a Unit is built as some Product, and the row cannot exist without one. */
+  product: z.object({ id: UUID, modelCode: ProductModelCode, name: ProductName }),
   createdAt: DateIso,
 });
 

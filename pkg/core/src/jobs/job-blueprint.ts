@@ -1,0 +1,359 @@
+import {
+  type DatabaseTransaction,
+  jobs,
+  notRemoved,
+  productSerialSequences,
+  products,
+  quoteSelectedAssemblies,
+  quotes,
+} from '@pkg/db';
+import { type BuildSpecAssembly, canStartJobFromQuote, selectReworkBuildSpec } from '@pkg/domain';
+import {
+  type DateOnlyIso,
+  formatProductSerialNumber,
+  isStockBuildCreateInput,
+  type JobCreateInput,
+  ProductSerialPrefix,
+  ProductSerialSequence,
+  ProductSerialYear,
+  type QuoteKind,
+  type QuoteOffering,
+  type UUID,
+} from '@pkg/schema';
+import { and, asc, eq, sql } from 'drizzle-orm';
+
+import { listAssemblies } from '../products/product-assembly-service.js';
+import { narrowQuoteOffering } from '../quotes/quote-offering.js';
+import { loadAsBuiltSpec } from '../units/product-unit-as-built.js';
+import { JobCreateFromQuoteDeniedError, StockBuildDeniedError } from './job-errors.js';
+
+type QuoteRow = typeof quotes.$inferSelect;
+
+// A Job's inputs resolved once at the input boundary. `kind` alone drives every downstream branch, so
+// no write site re-derives whether this work creates a machine, reuses one, or has no machine at all.
+export type JobBlueprint =
+  | {
+      kind: 'product';
+      quote: QuoteRow;
+      productId: UUID;
+      serial: ProductSerial;
+      buildSpec: BuildSpecAssembly[];
+    }
+  | {
+      kind: 'stock-build';
+      quote: null;
+      productId: UUID;
+      serial: ProductSerial;
+      buildSpec: BuildSpecAssembly[];
+    }
+  | {
+      kind: 'rework';
+      quote: QuoteRow;
+      productId: UUID;
+      productUnitId: UUID;
+      buildSpec: BuildSpecAssembly[];
+    }
+  | { kind: 'custom'; quote: QuoteRow };
+
+type ProductSerial = {
+  number: string;
+  prefix: string;
+  sequence: number;
+  year: number;
+};
+
+/** A Build creates the machine; Rework has product work but must keep the Unit it was quoted against. */
+export function createsProductUnit(
+  blueprint: JobBlueprint,
+): blueprint is Extract<JobBlueprint, { kind: 'product' | 'stock-build' }> {
+  return blueprint.kind === 'product' || blueprint.kind === 'stock-build';
+}
+
+export function hasProductWork(blueprint: JobBlueprint): blueprint is Exclude<JobBlueprint, { kind: 'custom' }> {
+  return blueprint.kind !== 'custom';
+}
+
+export async function resolveJobBlueprint({
+  input,
+  plantToday,
+  tx,
+}: {
+  input: JobCreateInput;
+  plantToday: DateOnlyIso;
+  tx: DatabaseTransaction;
+}): Promise<JobBlueprint> {
+  if (isStockBuildCreateInput(input)) {
+    const product = await loadStockBuildProduct({ productId: input.productId, tx });
+    const buildSpec = await resolveStockBuildSpec({
+      assemblyIds: input.buildSpecAssemblyIds,
+      productId: input.productId,
+      tx,
+    });
+
+    return {
+      kind: 'stock-build',
+      quote: null,
+      productId: input.productId,
+      serial: await createProductSerial({
+        modelCode: product.modelCode,
+        plantToday,
+        productId: input.productId,
+        tx,
+      }),
+      buildSpec,
+    };
+  }
+
+  const { hasJob, offering, quote } = await lockQuoteForJobCreate({ quoteId: input.quoteId, tx });
+
+  if (offering.kind === 'custom') {
+    assertQuoteCanStartJob({ hasJob, hasProductUnit: false, kind: 'custom', reworkRequired: false, quote });
+
+    return { kind: 'custom', quote };
+  }
+
+  const buildSpec = await loadQuoteBuildSpecSeed({ quoteId: quote.id, tx });
+
+  if (offering.productUnitId) {
+    // Whether any Assembly is actually being added decides eligibility, so the Rework Build Spec is
+    // resolved before the decision rather than re-refused after it.
+    const reworkBuildSpec = await loadReworkBuildSpec({
+      productUnitId: offering.productUnitId,
+      quoteBuildSpec: buildSpec,
+      tx,
+    });
+
+    assertQuoteCanStartJob({
+      hasJob,
+      hasProductUnit: true,
+      kind: 'product',
+      reworkRequired: reworkBuildSpec.length > 0,
+      quote,
+    });
+
+    return {
+      buildSpec: reworkBuildSpec,
+      kind: 'rework',
+      productId: offering.productId,
+      productUnitId: offering.productUnitId,
+      quote,
+    };
+  }
+
+  assertQuoteCanStartJob({ hasJob, hasProductUnit: false, kind: 'product', reworkRequired: false, quote });
+
+  const [product] = await tx
+    .select({ modelCode: products.modelCode })
+    .from(products)
+    .where(eq(products.id, offering.productId))
+    .limit(1);
+
+  if (!product) {
+    throw new JobCreateFromQuoteDeniedError('Product not found.');
+  }
+
+  const serial = await createProductSerial({
+    modelCode: product.modelCode,
+    plantToday,
+    productId: offering.productId,
+    tx,
+  });
+
+  return { kind: 'product', quote, productId: offering.productId, serial, buildSpec };
+}
+
+/**
+ * A removed Product is gone from the picker, so a Stock Build naming one is a stale tab or a hand-made
+ * request — never something we should mint a serial and a machine for.
+ */
+async function loadStockBuildProduct({
+  productId,
+  tx,
+}: {
+  productId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<{ modelCode: string }> {
+  const [product] = await tx
+    .select({ modelCode: products.modelCode })
+    .from(products)
+    .where(and(eq(products.id, productId), notRemoved(products)))
+    .limit(1);
+
+  if (!product) {
+    throw new StockBuildDeniedError('Product not found.');
+  }
+
+  return product;
+}
+
+/**
+ * A Stock Build's Build Spec, resolved from the Optional Assemblies the administrator picked. The name
+ * is snapshotted here for the same reason a Quote's is: the CFO and the As-Built Spec must keep saying
+ * what was fitted after the catalog entry is renamed.
+ */
+async function resolveStockBuildSpec({
+  assemblyIds,
+  productId,
+  tx,
+}: {
+  assemblyIds: readonly UUID[];
+  productId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<BuildSpecAssembly[]> {
+  const uniqueIds = [...new Set(assemblyIds)];
+
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  const optionalAssembliesById = new Map(
+    (await listAssemblies({ productId, tx }))
+      .filter((assembly) => assembly.kind === 'optional')
+      .map((assembly) => [assembly.id, assembly] as const),
+  );
+  const unknown = uniqueIds.filter((assemblyId) => !optionalAssembliesById.has(assemblyId));
+
+  if (unknown.length > 0) {
+    throw new StockBuildDeniedError(`Optional assembly does not belong to this Product: ${unknown.join(', ')}.`);
+  }
+
+  return uniqueIds.map((assemblyId) => ({
+    // Non-null by construction: `unknown` above already rejected every id the catalog does not hold.
+    assemblyName: optionalAssembliesById.get(assemblyId)?.name ?? '',
+    productAssemblyId: assemblyId,
+  }));
+}
+
+async function createProductSerial({
+  modelCode,
+  plantToday,
+  productId,
+  tx,
+}: {
+  modelCode: string;
+  plantToday: DateOnlyIso;
+  productId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<ProductSerial> {
+  const now = new Date();
+  const [sequenceRow] = await tx
+    .insert(productSerialSequences)
+    .values({
+      lastSequence: 1,
+      productId,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: productSerialSequences.productId,
+      set: {
+        lastSequence: sql`${productSerialSequences.lastSequence} + 1`,
+        updatedAt: now,
+      },
+    })
+    .returning({
+      lastSequence: productSerialSequences.lastSequence,
+    });
+
+  if (!sequenceRow) {
+    throw new Error('Product serial sequence upsert did not return a row');
+  }
+
+  const prefix = ProductSerialPrefix.parse(modelCode);
+  const year = ProductSerialYear.parse(getPlantDateTwoDigitYear(plantToday));
+  const sequence = ProductSerialSequence.parse(sequenceRow.lastSequence);
+
+  return {
+    number: formatProductSerialNumber({ prefix, sequence, year }),
+    prefix,
+    sequence,
+    year,
+  };
+}
+
+function getPlantDateTwoDigitYear(plantDate: DateOnlyIso): number {
+  return Number.parseInt(plantDate.slice(2, 4), 10);
+}
+
+async function lockQuoteForJobCreate({
+  quoteId,
+  tx,
+}: {
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<{ hasJob: boolean; offering: QuoteOffering; quote: QuoteRow }> {
+  const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
+
+  if (!quote) {
+    throw new JobCreateFromQuoteDeniedError('Quote not found.');
+  }
+
+  const [existingJob] = await tx
+    .select({
+      id: jobs.id,
+    })
+    .from(jobs)
+    .where(eq(jobs.quoteId, quoteId))
+    .limit(1);
+
+  return { hasJob: Boolean(existingJob), offering: narrowQuoteOffering(quote), quote };
+}
+
+/** The one place a Quote's own facts decide whether it may source a Job; the rule itself is domain policy. */
+function assertQuoteCanStartJob({
+  hasJob,
+  hasProductUnit,
+  kind,
+  reworkRequired,
+  quote,
+}: {
+  hasJob: boolean;
+  hasProductUnit: boolean;
+  kind: QuoteKind;
+  reworkRequired: boolean;
+  quote: QuoteRow;
+}): void {
+  const eligibility = canStartJobFromQuote({ hasJob, hasProductUnit, kind, reworkRequired, status: quote.status });
+
+  if (!eligibility.allowed) {
+    throw new JobCreateFromQuoteDeniedError(eligibility.reason);
+  }
+}
+
+/**
+ * The Quote's selected Assemblies, as the Build Spec they seed. A copy at one moment, in the Quote's
+ * own selection order — never a live read, exactly like the Work Item Rate Card seeding a rate.
+ */
+async function loadQuoteBuildSpecSeed({
+  quoteId,
+  tx,
+}: {
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<BuildSpecAssembly[]> {
+  return tx
+    .select({
+      assemblyName: quoteSelectedAssemblies.quotedName,
+      productAssemblyId: quoteSelectedAssemblies.productAssemblyId,
+    })
+    .from(quoteSelectedAssemblies)
+    .where(eq(quoteSelectedAssemblies.quoteId, quoteId))
+    .orderBy(asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id));
+}
+
+async function loadReworkBuildSpec({
+  productUnitId,
+  quoteBuildSpec,
+  tx,
+}: {
+  productUnitId: UUID;
+  quoteBuildSpec: readonly BuildSpecAssembly[];
+  tx: DatabaseTransaction;
+}): Promise<BuildSpecAssembly[]> {
+  // In-progress Rework counts as As-Built, so later Rework cannot claim the same Optional Assembly.
+  const asBuilt = await loadAsBuiltSpec({ db: tx, productUnitId });
+
+  return selectReworkBuildSpec({
+    asBuiltAssemblyIds: asBuilt.flatMap((assembly) => (assembly.productAssemblyId ? [assembly.productAssemblyId] : [])),
+    quoteBuildSpec,
+  });
+}

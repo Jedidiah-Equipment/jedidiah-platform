@@ -23,7 +23,7 @@ async function listCustomerNames(db: Db, overrides: Partial<JobListInput> = {}) 
 describe('job customer resolution', () => {
   test('shows the Owner of the machine, not the Quote that built it', async ({ context }) => {
     const result = await listJobs({ db: context.db, input: listInput() });
-    const sold = result.items.find((job) => job.productSerialNumber === 'JC-001260001');
+    const sold = result.items.find((job) => job.productUnit?.productSerialNumber === 'JC-001260001');
 
     // Built for Riverside on its Quote, since sold on to Hilltop.
     expect(sold?.customerCompanyName).toBe('Hilltop Transport');
@@ -32,7 +32,7 @@ describe('job customer resolution', () => {
 
   test('reads a Job on an unowned machine as Stock', async ({ context }) => {
     const result = await listJobs({ db: context.db, input: listInput() });
-    const stock = result.items.find((job) => job.productSerialNumber === 'JC-001260002');
+    const stock = result.items.find((job) => job.productUnit?.productSerialNumber === 'JC-001260002');
 
     expect(stock).toMatchObject({ customerCompanyName: null, customerId: null, customerThumbnailDataUrl: null });
   });
@@ -66,7 +66,7 @@ describe('job customer resolution', () => {
   test('searches serials through the machine', async ({ context }) => {
     const result = await listJobs({ db: context.db, input: listInput({ search: '260002' }) });
 
-    expect(result.items.map((job) => job.productSerialNumber)).toEqual(['JC-001260002']);
+    expect(result.items.map((job) => job.productUnit?.productSerialNumber ?? null)).toEqual(['JC-001260002']);
   });
 
   test('offers only Customers its own filter can match', async ({ context }) => {

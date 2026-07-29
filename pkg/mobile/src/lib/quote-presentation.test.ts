@@ -208,6 +208,24 @@ describe('Quote edit presentation', () => {
     });
   });
 
+  it('reports a whitespace-only invoice number as a field error and clears a blank one', () => {
+    const quote = buildQuoteDetail();
+    const result = getQuoteEditFormValuesValidator('product').safeParse({
+      ...toQuoteEditFormValues(quote),
+      invoiceNumber: '   ',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([expect.objectContaining({ code: 'custom', path: ['invoiceNumber'] })]);
+    expect(
+      toQuoteUpdateInput({
+        id: quote.id,
+        kind: quote.kind,
+        values: { ...toQuoteEditFormValues(quote), invoiceNumber: '' },
+      }).invoiceNumber,
+    ).toBeNull();
+  });
+
   it('requires, maps, and preserves a cancellation reason', () => {
     const quote = buildQuoteDetail();
     const cancelledValues = {

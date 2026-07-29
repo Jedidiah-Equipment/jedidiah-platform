@@ -1,23 +1,5 @@
-import {
-  customers,
-  type DatabaseTransaction,
-  type Db,
-  jobBuildSpecAssemblies,
-  jobs,
-  notRemoved,
-  products,
-  productUnitOwnershipTransfers,
-  productUnits,
-  quotes,
-  user,
-} from '@pkg/db';
-import {
-  assertQuoteEditable,
-  getPlantDateNow,
-  isProductUnitInStock,
-  resolveNewestOwnershipTransfer,
-  validateDiscount,
-} from '@pkg/domain';
+import { customers, type DatabaseTransaction, type Db, jobs, notRemoved, products, quotes, user } from '@pkg/db';
+import { assertQuoteEditable, getPlantDateNow, validateDiscount } from '@pkg/domain';
 import {
   type AuditChanges,
   type AuthId,
@@ -27,20 +9,23 @@ import {
   type QuoteKind,
   type QuotePatchInput,
   type QuoteSelectedAssemblyInput,
-  type QuoteStatus,
   type QuoteUpdateInput,
   type QuoteWorkItemInput,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
-import { diffAuditUpdate, recordAuditCreate, recordAuditEvent, recordAuditUpdate } from '../audit/audit-service.js';
+import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { cancelJobForQuote } from '../jobs/job-service.js';
-import { productUnitAuditDescriptor } from '../units/product-unit-service.js';
+import {
+  mergeAllocationSeed,
+  resolveAllocationQuoteSeed,
+  returnQuoteProductUnitToStock,
+  transferAllocationQuoteOnAcceptance,
+} from './quote-allocation.js';
 import { quoteAuditDescriptor } from './quote-audit.js';
 import {
-  QuoteAllocationConflictError,
   QuoteAlreadyCancelledError,
   QuoteCustomSelectedAssembliesError,
   QuoteDiscountInvalidError,
@@ -721,294 +706,6 @@ async function resolveQuoteOffering({
     quotedCurrencyCode: product.currencyCode,
     workTitle: null,
   };
-}
-
-async function transferAllocationQuoteOnAcceptance({
-  actorUserId,
-  previousStatus,
-  quote,
-  tx,
-}: {
-  actorUserId: AuthId;
-  previousStatus: QuoteStatus | null;
-  quote: {
-    customerId: string;
-    id: string;
-    productUnitId: string | null;
-    status: QuoteStatus;
-  };
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  if (!quote.productUnitId || quote.status !== 'accepted' || previousStatus === 'accepted') {
-    return;
-  }
-
-  // Every ownership writer locks the Unit, so competing Quote acceptances observe each other's
-  // transfer instead of both deciding from the same stale Stock state.
-  const [unit] = await tx
-    .select({
-      id: productUnits.id,
-      productSerialNumber: productUnits.productSerialNumber,
-    })
-    .from(productUnits)
-    .where(eq(productUnits.id, quote.productUnitId))
-    .for('update');
-
-  if (!unit) {
-    throw new QuoteInvalidReferenceError('Product Unit was not found.');
-  }
-
-  const transfers = await tx
-    .select({
-      createdAt: productUnitOwnershipTransfers.createdAt,
-      id: productUnitOwnershipTransfers.id,
-      occurredOn: productUnitOwnershipTransfers.occurredOn,
-      toCustomerId: productUnitOwnershipTransfers.toCustomerId,
-    })
-    .from(productUnitOwnershipTransfers)
-    .where(eq(productUnitOwnershipTransfers.productUnitId, unit.id));
-  const currentOwnerId = resolveNewestOwnershipTransfer(transfers)?.toCustomerId ?? null;
-
-  if (currentOwnerId) {
-    throw await createQuoteAllocationConflictError({
-      currentOwnerId,
-      productSerialNumber: unit.productSerialNumber,
-      tx,
-    });
-  }
-
-  const occurredOn = getPlantDateNow();
-  await tx.insert(productUnitOwnershipTransfers).values({
-    actorUserId,
-    fromCustomerId: null,
-    occurredOn,
-    productUnitId: unit.id,
-    sourceQuoteId: quote.id,
-    toCustomerId: quote.customerId,
-  });
-  await recordQuoteOwnershipTransferAudit({
-    actorUserId,
-    fromCustomerId: null,
-    occurredOn,
-    toCustomerId: quote.customerId,
-    tx,
-    unit,
-  });
-}
-
-async function createQuoteAllocationConflictError({
-  currentOwnerId,
-  productSerialNumber,
-  tx,
-}: {
-  currentOwnerId: string;
-  productSerialNumber: string;
-  tx: DatabaseTransaction;
-}): Promise<QuoteAllocationConflictError> {
-  const [owner] = await tx
-    .select({ companyName: customers.companyName })
-    .from(customers)
-    .where(eq(customers.id, currentOwnerId));
-  const ownerName = owner?.companyName ?? 'another Customer';
-
-  return new QuoteAllocationConflictError(
-    `Product Unit ${productSerialNumber} is already owned by ${ownerName} and cannot be sold by this Quote.`,
-  );
-}
-
-async function returnQuoteProductUnitToStock({
-  actorUserId,
-  customerId,
-  occurredOn,
-  quoteId,
-  tx,
-}: {
-  actorUserId: AuthId;
-  customerId: string;
-  occurredOn: string;
-  quoteId: string;
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  const [saleTransfer] = await tx
-    .select({ productUnitId: productUnitOwnershipTransfers.productUnitId })
-    .from(productUnitOwnershipTransfers)
-    .where(
-      and(
-        eq(productUnitOwnershipTransfers.sourceQuoteId, quoteId),
-        isNull(productUnitOwnershipTransfers.fromCustomerId),
-        eq(productUnitOwnershipTransfers.toCustomerId, customerId),
-      ),
-    )
-    .limit(1);
-
-  if (!saleTransfer) {
-    return;
-  }
-
-  const [unit] = await tx
-    .select({
-      id: productUnits.id,
-      productSerialNumber: productUnits.productSerialNumber,
-    })
-    .from(productUnits)
-    .where(eq(productUnits.id, saleTransfer.productUnitId))
-    .for('update');
-
-  if (!unit) {
-    throw new QuoteInvalidReferenceError('Product Unit was not found.');
-  }
-
-  const transfers = await tx
-    .select({
-      createdAt: productUnitOwnershipTransfers.createdAt,
-      id: productUnitOwnershipTransfers.id,
-      occurredOn: productUnitOwnershipTransfers.occurredOn,
-      sourceQuoteId: productUnitOwnershipTransfers.sourceQuoteId,
-      toCustomerId: productUnitOwnershipTransfers.toCustomerId,
-    })
-    .from(productUnitOwnershipTransfers)
-    .where(eq(productUnitOwnershipTransfers.productUnitId, unit.id));
-  const current = resolveNewestOwnershipTransfer(transfers);
-
-  if (current?.toCustomerId !== customerId || current.sourceQuoteId !== quoteId) {
-    throw new QuoteAllocationConflictError(
-      `Product Unit ${unit.productSerialNumber} has a later Ownership Transfer and cannot be returned to Stock by cancelling this Quote.`,
-    );
-  }
-
-  await tx.insert(productUnitOwnershipTransfers).values({
-    actorUserId,
-    fromCustomerId: customerId,
-    occurredOn,
-    productUnitId: unit.id,
-    sourceQuoteId: quoteId,
-    toCustomerId: null,
-  });
-  await recordQuoteOwnershipTransferAudit({
-    actorUserId,
-    fromCustomerId: customerId,
-    occurredOn,
-    toCustomerId: null,
-    tx,
-    unit,
-  });
-}
-
-async function recordQuoteOwnershipTransferAudit({
-  actorUserId,
-  fromCustomerId,
-  occurredOn,
-  toCustomerId,
-  tx,
-  unit,
-}: {
-  actorUserId: AuthId;
-  fromCustomerId: string | null;
-  occurredOn: string;
-  toCustomerId: string | null;
-  tx: DatabaseTransaction;
-  unit: { id: string; productSerialNumber: string };
-}): Promise<void> {
-  await recordAuditEvent({
-    action: 'updated',
-    actorUserId,
-    changes: {
-      ownerCustomerId: { from: fromCustomerId, to: toCustomerId },
-      ownershipTransferDate: { from: null, to: occurredOn },
-    },
-    db: tx,
-    descriptor: productUnitAuditDescriptor,
-    entityId: unit.id,
-    record: { productSerialNumber: unit.productSerialNumber },
-  });
-}
-
-async function resolveAllocationQuoteSeed({
-  accepting,
-  productId,
-  productUnitId,
-  tx,
-}: {
-  accepting: boolean;
-  productId: UUID;
-  productUnitId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<QuoteSelectedAssemblyInput[]> {
-  // Ownership writers lock this same row, making the Stock check and Quote insert one serialized decision.
-  const [unit] = await tx
-    .select({
-      productId: productUnits.productId,
-      productSerialNumber: productUnits.productSerialNumber,
-    })
-    .from(productUnits)
-    .where(eq(productUnits.id, productUnitId))
-    .for('update');
-
-  if (!unit) {
-    throw new QuoteInvalidReferenceError('Product Unit was not found.');
-  }
-  if (unit.productId !== productId) {
-    throw new QuoteInvalidReferenceError('Product Unit does not match the Quote Product.');
-  }
-
-  const transfers = await tx
-    .select({
-      createdAt: productUnitOwnershipTransfers.createdAt,
-      id: productUnitOwnershipTransfers.id,
-      occurredOn: productUnitOwnershipTransfers.occurredOn,
-      toCustomerId: productUnitOwnershipTransfers.toCustomerId,
-    })
-    .from(productUnitOwnershipTransfers)
-    .where(eq(productUnitOwnershipTransfers.productUnitId, productUnitId));
-
-  const currentOwnerId = resolveNewestOwnershipTransfer(transfers)?.toCustomerId ?? null;
-
-  if (currentOwnerId && accepting) {
-    throw await createQuoteAllocationConflictError({
-      currentOwnerId,
-      productSerialNumber: unit.productSerialNumber,
-      tx,
-    });
-  }
-  if (!isProductUnitInStock(transfers)) {
-    throw new QuoteInvalidReferenceError('Product Unit is not Stock.');
-  }
-
-  const asBuiltRows = await tx
-    .select({
-      productAssemblyId: jobBuildSpecAssemblies.productAssemblyId,
-    })
-    .from(jobBuildSpecAssemblies)
-    .innerJoin(jobs, eq(jobs.id, jobBuildSpecAssemblies.jobId))
-    .where(and(eq(jobs.productUnitId, productUnitId), isNull(jobs.cancelledAt)))
-    .orderBy(asc(jobs.createdAt), asc(jobs.id), asc(jobBuildSpecAssemblies.sequence));
-  const liveAssemblyIds = new Set<UUID>();
-
-  for (const row of asBuiltRows) {
-    if (!row.productAssemblyId) {
-      throw new QuoteInvalidReferenceError("Product Unit's As-Built Spec contains an unavailable Optional Assembly.");
-    }
-    liveAssemblyIds.add(row.productAssemblyId);
-  }
-
-  return [...liveAssemblyIds].map((productAssemblyId) => ({ type: 'catalog', productAssemblyId }));
-}
-
-function mergeAllocationSeed({
-  input,
-  seed,
-}: {
-  input: readonly QuoteSelectedAssemblyInput[];
-  seed: readonly QuoteSelectedAssemblyInput[];
-}): QuoteSelectedAssemblyInput[] {
-  const seededIds = new Set(
-    seed.flatMap((selection) => (selection.type === 'catalog' ? [selection.productAssemblyId] : [])),
-  );
-
-  return [
-    ...seed,
-    ...input.filter((selection) => selection.type !== 'catalog' || !seededIds.has(selection.productAssemblyId)),
-  ];
 }
 
 function assertNoCustomSelectedAssemblies(

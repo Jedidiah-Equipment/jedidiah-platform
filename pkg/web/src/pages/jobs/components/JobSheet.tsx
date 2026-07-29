@@ -10,6 +10,7 @@ import {
 import type { JobDetail, JobDocument, JobUpdateInput, UUID } from '@pkg/schema';
 import { IconInfoCircle, IconLoader2, IconMessageCircle, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -235,9 +236,18 @@ const ImmutableJobRows: React.FC<{ job: JobDetail }> = ({ job }) => {
       {/* A Stock Build has no sale behind it, so it has no Quote to name. */}
       <InfoRow label="Quote code" value={job.quoteCode ?? 'Stock Build'} />
       <InfoRow label="Job code" value={job.code} />
-      {job.productSerialNumber ? <InfoRow label="Product serial" value={job.productSerialNumber} /> : null}
+      {job.productUnit ? (
+        <InfoRow
+          label="Product serial"
+          value={
+            <Link className="underline-offset-4 hover:underline" params={{ id: job.productUnit.id }} to="/units/$id">
+              {job.productUnit.productSerialNumber}
+            </Link>
+          }
+        />
+      ) : null}
       {/* VIN belongs to the machine, so it is edited on the Unit and only reported here. */}
-      {job.productId ? <InfoRow label="VIN number" value={job.vinNumber ?? 'Not captured'} /> : null}
+      {job.productUnit ? <InfoRow label="VIN number" value={job.productUnit.vinNumber ?? 'Not captured'} /> : null}
       <InfoRow label="Customer" value={job.customerCompanyName ?? <StockBadge />} />
       <InfoRow label={getJobWorkLabel(job)} value={displayName} />
       {job.productModelCode ? <InfoRow label="Model" value={job.productModelCode} /> : null}

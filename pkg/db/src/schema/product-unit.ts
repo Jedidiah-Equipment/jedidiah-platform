@@ -1,4 +1,4 @@
-import { relations, sql } from 'drizzle-orm';
+import { type AnyColumn, relations, type SQL, sql } from 'drizzle-orm';
 import { check, date, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
@@ -68,6 +68,31 @@ export const productUnitOwnershipTransfers = pgTable(
     ),
   ],
 );
+
+/**
+ * The Customer holding a Unit right now, as a correlated subquery: the newest Ownership Transfer's
+ * destination, where `NULL` means Stock. Ownership is never a column, so every read derives it.
+ *
+ * The ordering here is the SQL half of one rule — `resolveNewestOwnershipTransfer` in `@pkg/domain` is
+ * the TypeScript half, and the two must agree or a Unit's Owner changes with the query that asks. Take
+ * the fragment from here rather than writing the `order by` again; drift is invisible until it hands a
+ * machine to the wrong Customer.
+ *
+ * `unitIdExpression` is the outer query's Unit id — `productUnits.id` in a plain select, or a Job's
+ * `productUnitId`. The inner table carries an explicit alias so the relational query API cannot rewrite
+ * its columns onto the outer table.
+ */
+export function currentOwnerCustomerId(unitIdExpression: SQL | AnyColumn): SQL<string | null> {
+  const transfer = sql.raw('"current_owner_transfer"');
+
+  return sql<string | null>`(
+  select ${transfer}."to_customer_id"
+  from ${productUnitOwnershipTransfers} ${transfer}
+  where ${transfer}."product_unit_id" = ${unitIdExpression}
+  order by ${transfer}."occurred_on" desc, ${transfer}."created_at" desc, ${transfer}."id" desc
+  limit 1
+)`;
+}
 
 export const productUnitsRelations = relations(productUnits, ({ many, one }) => ({
   allocationQuotes: many(quotes),

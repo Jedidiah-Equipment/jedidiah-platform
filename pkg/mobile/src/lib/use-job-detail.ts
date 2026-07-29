@@ -125,7 +125,7 @@ export function useJobDetail(jobId: string): JobDetailState {
       // A Stock Build has no Quote; the Customer field already reads Stock, so the code just blanks.
       quoteCode: job.quoteCode ?? '—',
       jobDisplayName: getJobDisplayName(job),
-      productSerialNumber: job.productSerialNumber,
+      productSerialNumber: job.productUnit?.productSerialNumber ?? null,
       productThumbnailDataUrl: job.productThumbnailDataUrl,
       customerCompanyName: job.customerCompanyName,
       description: job.description,

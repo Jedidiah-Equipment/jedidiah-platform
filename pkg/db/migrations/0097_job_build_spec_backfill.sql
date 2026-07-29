@@ -13,6 +13,13 @@
 -- match the insert order the application writes.
 --
 -- Idempotent: a Job that already holds any Build Spec row is skipped entirely.
+--
+-- Only build-to-order Jobs are in range, and that is load-bearing rather than incidental. A Rework Job
+-- must hold only the Assemblies it adds, but its Allocation Quote's selections also carry the As-Built
+-- ones seeded from the Unit, so replaying them here would double-count what the machine already has.
+-- Three things keep Rework out: it postdates this table (#1035 followed #1030), it is refused unless
+-- its Build Spec is non-empty, and that Spec is written in the same transaction as the Job — so every
+-- Rework Job holds a row and the NOT EXISTS guard skips it. Preserve that guard if this is ever re-run.
 
 INSERT INTO "job_build_spec_assembly" (
 	"job_id",

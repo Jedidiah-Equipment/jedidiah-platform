@@ -21,21 +21,15 @@ const statusDenialReasons = {
 
 export function canStartJobFromQuote({
   hasJob,
-  hasProductUnit,
   kind,
   status,
 }: {
   hasJob: boolean;
-  hasProductUnit: boolean;
   kind: QuoteKind;
   status: QuoteStatus;
 }): QuoteStartJobEligibility {
   if (hasJob) {
     return { allowed: false, reason: 'Quote already has a Job.' };
-  }
-
-  if (hasProductUnit && kind === 'product' && status === 'accepted') {
-    return { allowed: true };
   }
 
   if (startableStatuses[kind].has(status)) {

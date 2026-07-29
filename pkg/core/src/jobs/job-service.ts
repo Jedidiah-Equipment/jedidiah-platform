@@ -751,7 +751,6 @@ async function validateJobQuoteForCreate({
     .limit(1);
   const eligibility = canStartJobFromQuote({
     hasJob: Boolean(existingJob),
-    hasProductUnit: quote.productUnitId !== null,
     kind: offering.kind,
     status: quote.status,
   });

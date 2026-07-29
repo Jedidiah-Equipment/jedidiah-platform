@@ -1,6 +1,7 @@
-import { createFileRoute, Link, useElementScrollRestoration } from '@tanstack/react-router';
+import { createFileRoute, useElementScrollRestoration } from '@tanstack/react-router';
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
 
+import { type FilterChip, FilterChipRow } from '../../../components/filter-chip-row.js';
 import { PageHero } from '../../../components/page-hero.js';
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
@@ -143,21 +144,6 @@ function PageHeader() {
   );
 }
 
-function FilterChip({ active, label, search }: { active: boolean; label: string; search: ProductsSearch }) {
-  return (
-    <Link
-      to="/{-$locale}/products"
-      search={search}
-      resetScroll={false}
-      className={`border-[1.5px] px-3.5 py-[9px] font-display text-[15px] font-semibold uppercase tracking-[1px] no-underline transition-colors ${
-        active ? 'border-ink bg-ink text-white' : 'border-[#d6d4ce] bg-white text-ink hover:border-ink'
-      }`}
-    >
-      {label}
-    </Link>
-  );
-}
-
 function FilterBar({
   activeGroup,
   activeSlug,
@@ -177,6 +163,15 @@ function FilterBar({
   const filterGroup = activeGroup ?? (groups.length === 1 ? groups[0] : undefined);
   const showRangeFilter = groups.length > 1;
   const showVariantFilter = !!filterGroup && filterGroup.variants.length > 0;
+  const rangeChips: FilterChip[] = [
+    { key: '__all__', label: m.products.allChip, active: activeSlug === undefined, search: {} },
+    ...groups.map((group) => ({
+      key: group.id,
+      label: group.label,
+      active: activeSlug === group.slug,
+      search: { range: group.slug },
+    })),
+  ];
 
   if (!showRangeFilter && !showVariantFilter) {
     return null;
@@ -191,19 +186,11 @@ function FilterBar({
       />
       <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-header:top-16">
         {showRangeFilter ? (
-          <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
-            <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
+          <div className="mx-auto flex max-w-[1320px] items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
+            <span className="mr-1.5 flex-none font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
               {m.products.filterByRange}
             </span>
-            <FilterChip active={activeSlug === undefined} label={m.products.allChip} search={{}} />
-            {groups.map((group) => (
-              <FilterChip
-                key={group.id}
-                active={activeSlug === group.slug}
-                label={group.label}
-                search={{ range: group.slug }}
-              />
-            ))}
+            <FilterChipRow chips={rangeChips} />
           </div>
         ) : null}
         <VariantFilterBar

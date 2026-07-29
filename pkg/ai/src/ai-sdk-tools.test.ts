@@ -32,6 +32,8 @@ describe('createAiSdkTools', () => {
       'sendEmail',
       'findJobs',
       'getJob',
+      'findProductUnits',
+      'getProductUnit',
     ]);
   });
 
@@ -46,8 +48,15 @@ describe('createAiSdkTools', () => {
       'patchQuote',
       'generateQuoteDocument',
       'sendEmail',
+      'findProductUnits',
+      'getProductUnit',
     ]);
-    expect(Object.keys(createAiSdkTools(createContext('job-viewer')))).toEqual(['findJobs', 'getJob']);
+    expect(Object.keys(createAiSdkTools(createContext('job-viewer')))).toEqual([
+      'findJobs',
+      'getJob',
+      'findProductUnits',
+      'getProductUnit',
+    ]);
     expect(Object.keys(createAiSdkTools(createContextWithPermissions(['quote:create'])))).toEqual([
       'findProducts',
       'generateProductBrochureDocument',

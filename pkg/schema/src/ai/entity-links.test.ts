@@ -5,6 +5,7 @@ import {
   createJobAppHref,
   createProductAppHref,
   createProductBrochureDownloadHref,
+  createProductUnitAppHref,
   createQuoteAppHref,
   createQuoteDocumentDownloadHref,
   InternalAppHref,
@@ -17,6 +18,7 @@ describe('Assistant App Links', () => {
     [createCustomerAppHref('c1'), { kind: 'customer', customerId: 'c1' }],
     [createQuoteAppHref('q1'), { kind: 'quote', quoteId: 'q1' }],
     [createJobAppHref('j1'), { kind: 'job', jobId: 'j1' }],
+    [createProductUnitAppHref('u1'), { kind: 'product-unit', productUnitId: 'u1' }],
     [createQuoteDocumentDownloadHref('q1', 'd1'), { kind: 'quote-document', quoteId: 'q1', documentId: 'd1' }],
     [createProductBrochureDownloadHref('p1'), { kind: 'product-brochure', productId: 'p1' }],
   ])('round-trips the factory href %s through the parser', (href, expected) => {
@@ -29,6 +31,8 @@ describe('Assistant App Links', () => {
     '/quotes/q1',
     '/products/../edit',
     '/quotes/%2e%2e/edit',
+    '/units/u1/edit',
+    '/units/%2e%2e',
     '/api/quotes/q1/documents/../download',
     '/products/p1/edit?from=assistant',
   ])('rejects an unsupported or unsafe href: %s', (href) => {

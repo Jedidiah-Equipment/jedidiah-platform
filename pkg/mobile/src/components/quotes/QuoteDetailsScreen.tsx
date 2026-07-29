@@ -240,6 +240,18 @@ function QuoteEditor({
                   </View>
                 </Section>
 
+                {quote.kind === 'product' && quote.productUnit ? (
+                  <Section
+                    description="This Quote sells a machine we already hold. Allocation is set on web."
+                    title="Allocated Product Unit"
+                  >
+                    <View className="gap-3">
+                      <ReadOnlyFact label="Serial number" value={quote.productUnit.productSerialNumber} />
+                      <ReadOnlyFact label="VIN" value={quote.productUnit.vinNumber} />
+                    </View>
+                  </Section>
+                ) : null}
+
                 <Section title="Dates & delivery">
                   <View className="gap-4 md:flex-row md:flex-wrap">
                     <View className="md:min-w-[220px] md:flex-1">
@@ -466,6 +478,19 @@ function Section({
         {action}
       </View>
       {children}
+    </View>
+  );
+}
+
+function ReadOnlyFact({ label, value }: { label: string; value: string | null }) {
+  return (
+    <View>
+      <Text className="text-[10px] uppercase tracking-wide text-muted-foreground" mono>
+        {label}
+      </Text>
+      <Text className={`mt-0.5 text-sm ${value ? 'text-foreground' : 'text-muted-foreground'}`} mono={Boolean(value)}>
+        {value ?? 'Not captured'}
+      </Text>
     </View>
   );
 }

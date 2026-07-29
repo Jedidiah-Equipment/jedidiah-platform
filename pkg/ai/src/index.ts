@@ -3,6 +3,7 @@ export {
   createJobAppHref,
   createProductAppHref,
   createProductBrochureDownloadHref,
+  createProductUnitAppHref,
   createQuoteAppHref,
   createQuoteDocumentDownloadHref,
   InternalAppHref,

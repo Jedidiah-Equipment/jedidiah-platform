@@ -7,6 +7,7 @@ import { GetQuoteInput, GetQuoteResponse, getQuoteDefinition, toGetQuoteResponse
 const QUOTE_ID = '00000000-0000-4000-8000-000000000301';
 const CUSTOMER_ID = '00000000-0000-4000-8000-000000000101';
 const PRODUCT_ID = '00000000-0000-4000-8000-000000000201';
+const UNIT_ID = '00000000-0000-4000-8000-000000000501';
 
 const quote = QuoteDetail.parse({
   code: 'QUO-00001',
@@ -81,5 +82,20 @@ describe('getQuote contract', () => {
     expect(toGetQuoteResponse(quote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links).toEqual(
       { app: `/quotes/${QUOTE_ID}/edit` },
     );
+  });
+
+  test('links the machine an Allocation Quote is selling', () => {
+    const allocationQuote = QuoteDetail.parse({
+      ...quote,
+      productUnit: { id: UNIT_ID, productSerialNumber: '24-0117', vinNumber: 'VIN-24-0117' },
+      productUnitId: UNIT_ID,
+    });
+
+    expect(
+      toGetQuoteResponse(allocationQuote, createUserAccessSummary({ role: 'admin', userId: 'test-user-id' })).links,
+    ).toMatchObject({ productUnit: `/units/${UNIT_ID}` });
+    expect(
+      toGetQuoteResponse(allocationQuote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links,
+    ).toEqual({ app: `/quotes/${QUOTE_ID}/edit`, productUnit: `/units/${UNIT_ID}` });
   });
 });

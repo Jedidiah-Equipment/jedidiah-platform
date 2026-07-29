@@ -18,6 +18,8 @@ import { findQuotesDefinition } from './tools/quotes/find-quotes.js';
 import { generateQuoteDocumentDefinition } from './tools/quotes/generate-quote-document.js';
 import { getQuoteDefinition } from './tools/quotes/get-quote.js';
 import { patchQuoteDefinition } from './tools/quotes/patch-quote.js';
+import { findProductUnitsDefinition } from './tools/units/find-product-units.js';
+import { getProductUnitDefinition } from './tools/units/get-product-unit.js';
 
 type PermissionedToolDefinition = {
   anyOfPermissions: readonly AppPermission[];
@@ -39,6 +41,8 @@ const AI_TOOL_DEFINITIONS = [
   sendEmailDefinition,
   findJobsDefinition,
   getJobDefinition,
+  findProductUnitsDefinition,
+  getProductUnitDefinition,
 ] as const satisfies readonly PermissionedToolDefinition[];
 
 export type AiToolName = (typeof AI_TOOL_DEFINITIONS)[number]['name'];

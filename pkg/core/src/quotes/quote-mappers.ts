@@ -142,6 +142,7 @@ export function mapQuoteDetail(
   productAssembliesForQuote: Assembly[],
   productBaysForQuote: ProductBay[],
   competingAllocationQuotes: CompetingAllocationQuote[],
+  reworkRequired: boolean,
 ): QuoteDetail {
   return QuoteDetail.parse({
     ...mapQuote(row),
@@ -161,6 +162,7 @@ export function mapQuoteDetail(
       : null,
     product: mapQuoteDetailProduct(row, productAssembliesForQuote, productBaysForQuote),
     productUnit: row.productUnit,
+    reworkRequired,
     competingAllocationQuotes,
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,

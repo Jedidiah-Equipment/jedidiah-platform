@@ -391,6 +391,7 @@ export const QuoteDetail = z.discriminatedUnion('kind', [
     ...quoteDetailShape,
     competingAllocationQuotes: z.array(CompetingAllocationQuote).default([]),
     productUnit: QuoteProductUnitFacts.nullable().default(null),
+    reworkRequired: z.boolean().default(false),
   }),
   z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteDetailShape, ...quoteCustomCollectionsShape }),
 ]);

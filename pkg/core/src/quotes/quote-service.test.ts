@@ -555,6 +555,7 @@ describe('allocation quotes', () => {
       ],
       productUnit: { id: unitId, productSerialNumber: 'QUOTE-SUMMARY-001-26-41' },
       productUnitId: unitId,
+      reworkRequired: false,
       selectedAssemblies: [
         {
           productAssemblyId: fittedAssembly.id,
@@ -576,6 +577,7 @@ describe('allocation quotes', () => {
       }),
     });
     expect(withFurtherAssembly.selectedAssemblies).toHaveLength(2);
+    expect(withFurtherAssembly).toMatchObject({ reworkRequired: true });
 
     const furtherSelection = withFurtherAssembly.selectedAssemblies.find(
       (assembly) => assembly.productAssemblyId === furtherAssembly.id,

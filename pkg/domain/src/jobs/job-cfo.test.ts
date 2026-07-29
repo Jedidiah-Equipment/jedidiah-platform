@@ -1,7 +1,7 @@
 import type { Assembly, AssemblyPart, OptionalAssembly, StandardAssembly, UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { buildCfo } from './job-cfo.js';
+import { buildCfo, buildReworkCfo, selectReworkBuildSpec } from './job-cfo.js';
 
 const PRODUCT_ID = '00000000-0000-4000-8000-000000000001';
 const CHASSIS_ID = '00000000-0000-4000-8000-000000000101';
@@ -29,6 +29,40 @@ const ladderRack = optional(
   [{ partId: '00000000-0000-4000-8000-000000000206', quantity: 1 }],
 );
 const catalogAssemblies: Assembly[] = [chassis, axle, paint, heavyAxle, ladderRack];
+
+describe('selectReworkBuildSpec', () => {
+  it('keeps only Quote assemblies that are not already fitted to the Unit', () => {
+    expect(
+      selectReworkBuildSpec({
+        asBuiltAssemblyIds: [HEAVY_AXLE_ID],
+        quoteBuildSpec: [
+          { assemblyName: 'Heavy Axle Upgrade', productAssemblyId: HEAVY_AXLE_ID },
+          { assemblyName: 'Ladder Rack', productAssemblyId: LADDER_RACK_ID },
+        ],
+      }),
+    ).toEqual([{ assemblyName: 'Ladder Rack', productAssemblyId: LADDER_RACK_ID }]);
+  });
+});
+
+describe('buildReworkCfo', () => {
+  it('covers only the Optional Assemblies being added', () => {
+    expect(
+      buildReworkCfo({
+        buildSpec: [{ assemblyName: 'Heavy Axle Upgrade', productAssemblyId: HEAVY_AXLE_ID }],
+        catalogAssemblies,
+      }),
+    ).toEqual({
+      ok: true,
+      cfo: [
+        {
+          assemblyName: 'Heavy Axle Upgrade',
+          kind: 'optional',
+          parts: [{ partId: '00000000-0000-4000-8000-000000000205', quantity: 1 }],
+        },
+      ],
+    });
+  });
+});
 
 describe('buildCfo', () => {
   it('emits surviving standards plus selected optionals, excluding overridden standards', () => {

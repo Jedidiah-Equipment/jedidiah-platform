@@ -31,6 +31,21 @@ export type BuildCfoResult =
       staleAssemblyNames: string[];
     };
 
+/** The work still to fit: Quote selections minus the Optional Assemblies already on the Unit. */
+export function selectReworkBuildSpec({
+  asBuiltAssemblyIds,
+  quoteBuildSpec,
+}: {
+  asBuiltAssemblyIds: readonly UUID[];
+  quoteBuildSpec: readonly BuildSpecAssembly[];
+}): BuildSpecAssembly[] {
+  const fittedAssemblyIds = new Set(asBuiltAssemblyIds);
+
+  return quoteBuildSpec.filter(
+    (assembly) => assembly.productAssemblyId === null || !fittedAssemblyIds.has(assembly.productAssemblyId),
+  );
+}
+
 /**
  * Projects a Job's Build Spec into a parts-level CFO, against the Product's catalog. The
  * override-and-staleness rule lives in {@link resolveEffectiveBom} — a Build Spec is just another
@@ -64,6 +79,31 @@ export function buildCfo({
         ({ assembly, selection }): CfoEntry => toCfoEntry(assembly, 'optional', selection.assemblyName),
       ),
     ],
+  };
+}
+
+/** A Rework CFO contains only the Optional Assemblies this Job is fitting—never the machine's base BOM. */
+export function buildReworkCfo({
+  buildSpec,
+  catalogAssemblies,
+}: {
+  buildSpec: readonly BuildSpecAssembly[];
+  catalogAssemblies: readonly Assembly[];
+}): BuildCfoResult {
+  const { selectedOptionalAssemblies, staleSelections } = resolveEffectiveBom({
+    catalogAssemblies,
+    selectedAssemblies: buildSpec,
+  });
+
+  if (staleSelections.length > 0) {
+    return { ok: false, staleAssemblyNames: staleSelections.map((selection) => selection.assemblyName) };
+  }
+
+  return {
+    ok: true,
+    cfo: selectedOptionalAssemblies.map(({ assembly, selection }) =>
+      toCfoEntry(assembly, 'optional', selection.assemblyName),
+    ),
   };
 }
 

@@ -18,11 +18,13 @@ import {
 import {
   type BuildSpecAssembly,
   buildCfo,
+  buildReworkCfo,
   type CfoEntry,
   canStartJobFromQuote,
   getPlantDateNow,
   isJobCancelled,
   projectJobSlots,
+  selectReworkBuildSpec,
 } from '@pkg/domain';
 import {
   type AddIdleJobSlotInput,
@@ -50,9 +52,9 @@ import {
   RemoveJobSlotResult,
   type ResizeJobSlotInput,
   ResizeJobSlotResult,
-  type UUID,
+  UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -84,9 +86,8 @@ import { loadBayWorkingCalendar } from './working-calendar-service.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
 
-// A Job's inputs resolved once at the input boundary. `kind` alone drives every downstream branch: the
-// machine-building variants carry the serial + Build Spec facts a custom Job never has, so no site
-// re-derives them, and only `quote` says whether there is a sale behind the work.
+// A Job's inputs resolved once at the input boundary. `kind` alone drives every downstream branch, so
+// no write site re-derives whether this work creates a machine, reuses one, or has no machine at all.
 type JobBlueprint =
   | {
       kind: 'product';
@@ -102,10 +103,23 @@ type JobBlueprint =
       serial: Awaited<ReturnType<typeof createProductSerial>>;
       buildSpec: BuildSpecAssembly[];
     }
+  | {
+      kind: 'rework';
+      quote: QuoteRow;
+      productId: UUID;
+      productUnitId: UUID;
+      buildSpec: BuildSpecAssembly[];
+    }
   | { kind: 'custom'; quote: QuoteRow };
 
-/** The Job kinds that build a machine, and so mint a Unit, a Build Spec, a CFO, and Documents. */
-function buildsProductUnit(blueprint: JobBlueprint): blueprint is Extract<JobBlueprint, { productId: UUID }> {
+/** A Build creates the machine; Rework has product work but must keep the Unit it was quoted against. */
+function createsProductUnit(
+  blueprint: JobBlueprint,
+): blueprint is Extract<JobBlueprint, { kind: 'product' | 'stock-build' }> {
+  return blueprint.kind === 'product' || blueprint.kind === 'stock-build';
+}
+
+function hasProductWork(blueprint: JobBlueprint): blueprint is Exclude<JobBlueprint, { kind: 'custom' }> {
   return blueprint.kind !== 'custom';
 }
 
@@ -151,9 +165,11 @@ export async function createJob({
     const plantToday = getPlantDateNow();
     const blueprint = await resolveJobBlueprint({ input, plantToday, tx });
 
-    // The physical machine is created before the Job that builds it: the Unit owns the serial, the
-    // Product, and the VIN, and pointing at one is what makes this a Product Job.
-    const productUnitId = buildsProductUnit(blueprint) ? await insertProductUnit({ actorUserId, blueprint, tx }) : null;
+    const productUnitId = createsProductUnit(blueprint)
+      ? await insertProductUnit({ actorUserId, blueprint, tx })
+      : blueprint.kind === 'rework'
+        ? blueprint.productUnitId
+        : null;
 
     const [job] = await tx
       .insert(jobs)
@@ -167,9 +183,9 @@ export async function createJob({
       throw new Error('Job insert did not return a row');
     }
 
-    // Only a sale attributes the machine to anyone. A Stock Build leaves the log empty, which is
-    // exactly what makes its Unit read as Stock.
-    if (productUnitId && blueprint.quote) {
+    // A build-to-order sale creates its Unit and initial ownership together. Allocation acceptance
+    // already transferred the existing Unit; Rework must not record that sale a second time.
+    if (productUnitId && blueprint.kind === 'product') {
       await tx.insert(productUnitOwnershipTransfers).values({
         actorUserId,
         occurredOn: plantToday,
@@ -179,11 +195,16 @@ export async function createJob({
       });
     }
 
-    if (buildsProductUnit(blueprint)) {
+    if (hasProductWork(blueprint)) {
       // A Quote's selected Assemblies seed the Job's own Build Spec — one copy at one moment — and a
-      // Stock Build enters one directly. Either way the CFO snapshots from that Build Spec.
+      // Stock Build enters one directly. Rework carries only the difference from the Unit's As-Built Spec.
       await insertJobBuildSpec({ buildSpec: blueprint.buildSpec, jobId: job.id, tx });
-      await snapshotJobCfo({ jobId: job.id, productId: blueprint.productId, tx });
+      await snapshotJobCfo({
+        jobId: job.id,
+        kind: blueprint.kind === 'rework' ? 'rework' : 'build',
+        productId: blueprint.productId,
+        tx,
+      });
     }
 
     // Canonical lock order: concurrent creates seeding the same Bays must not deadlock.
@@ -195,7 +216,7 @@ export async function createJob({
       await queue.book({ durationDays: seed.durationDays, jobId: job.id, kind: 'work' }, { startDate: seed.startDate });
     }
 
-    if (buildsProductUnit(blueprint)) {
+    if (createsProductUnit(blueprint)) {
       // Snapshot documents only after the abort-prone bay seeding succeeds: generating the Brochure
       // writes a PDF to (non-transactional) storage, so a later rollback would orphan that object.
       await snapshotJobDocuments({
@@ -297,6 +318,26 @@ async function resolveJobBlueprint({
   }
 
   const buildSpec = await loadQuoteBuildSpecSeed({ quoteId: quote.id, tx });
+  if (offering.productUnitId) {
+    const reworkBuildSpec = await loadReworkBuildSpec({
+      productUnitId: offering.productUnitId,
+      quoteBuildSpec: buildSpec,
+      tx,
+    });
+
+    if (reworkBuildSpec.length === 0) {
+      throw new JobCreateFromQuoteDeniedError('Allocation Quote has no new Assemblies to fit.');
+    }
+
+    return {
+      buildSpec: reworkBuildSpec,
+      kind: 'rework',
+      productId: offering.productId,
+      productUnitId: offering.productUnitId,
+      quote,
+    };
+  }
+
   const serial = await createProductSerial({ plantToday, productId: offering.productId, tx });
 
   return { kind: 'product', quote, productId: offering.productId, serial, buildSpec };
@@ -382,7 +423,7 @@ async function insertProductUnit({
   tx,
 }: {
   actorUserId: AuthId;
-  blueprint: Extract<JobBlueprint, { productId: UUID }>;
+  blueprint: Extract<JobBlueprint, { kind: 'product' | 'stock-build' }>;
   tx: DatabaseTransaction;
 }): Promise<string> {
   const [unit] = await tx
@@ -743,6 +784,27 @@ async function loadQuoteBuildSpecSeed({
     .orderBy(asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id));
 }
 
+async function loadReworkBuildSpec({
+  productUnitId,
+  quoteBuildSpec,
+  tx,
+}: {
+  productUnitId: UUID;
+  quoteBuildSpec: readonly BuildSpecAssembly[];
+  tx: DatabaseTransaction;
+}): Promise<BuildSpecAssembly[]> {
+  const rows = await tx
+    .select({ productAssemblyId: jobBuildSpecAssemblies.productAssemblyId })
+    .from(jobBuildSpecAssemblies)
+    .innerJoin(jobs, eq(jobs.id, jobBuildSpecAssemblies.jobId))
+    .where(and(eq(jobs.productUnitId, productUnitId), isNull(jobs.cancelledAt)));
+
+  return selectReworkBuildSpec({
+    asBuiltAssemblyIds: rows.flatMap((row) => (row.productAssemblyId ? [UUID.parse(row.productAssemblyId)] : [])),
+    quoteBuildSpec,
+  });
+}
+
 async function insertJobBuildSpec({
   buildSpec,
   jobId,
@@ -768,17 +830,19 @@ async function insertJobBuildSpec({
 
 /**
  * The one path that produces a CFO. It reads the Job's Build Spec and the Product's live catalog and
- * writes the frozen result, so however a Job was specced — seeded from a Quote or entered directly —
- * its CFO comes from the same source through the same code.
+ * writes the frozen result. Builds include the effective base BOM; Rework includes only the Optional
+ * Assemblies in its difference Build Spec.
  *
  * A stale selection denies Job creation, aborting the enclosing transaction.
  */
 async function snapshotJobCfo({
   jobId,
+  kind,
   productId,
   tx,
 }: {
   jobId: UUID;
+  kind: 'build' | 'rework';
   productId: UUID;
   tx: DatabaseTransaction;
 }): Promise<void> {
@@ -794,7 +858,8 @@ async function snapshotJobCfo({
       .orderBy(asc(jobBuildSpecAssemblies.sequence)),
   ]);
 
-  const result = buildCfo({ buildSpec, catalogAssemblies });
+  const result =
+    kind === 'rework' ? buildReworkCfo({ buildSpec, catalogAssemblies }) : buildCfo({ buildSpec, catalogAssemblies });
 
   if (!result.ok) {
     throw new JobCreateFromQuoteDeniedError(

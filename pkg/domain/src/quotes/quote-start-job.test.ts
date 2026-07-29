@@ -29,10 +29,9 @@ describe('canStartJobFromQuote', () => {
     );
   });
 
-  it('rejects allocation quotes from the build-job path', () => {
+  it('allows accepted allocation quotes to start a rework job', () => {
     expect(canStartJobFromQuote({ hasJob: false, hasProductUnit: true, kind: 'product', status: 'accepted' })).toEqual({
-      allowed: false,
-      reason: 'Allocation Quotes can only start a Rework Job.',
+      allowed: true,
     });
   });
 

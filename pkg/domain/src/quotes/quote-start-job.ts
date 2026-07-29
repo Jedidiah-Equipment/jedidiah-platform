@@ -34,10 +34,8 @@ export function canStartJobFromQuote({
     return { allowed: false, reason: 'Quote already has a Job.' };
   }
 
-  // This is the Build Job path. Allocation Quotes may only source Rework Jobs, whose
-  // narrower creation flow owns the comparison against the Unit's As-Built Spec.
-  if (hasProductUnit) {
-    return { allowed: false, reason: 'Allocation Quotes can only start a Rework Job.' };
+  if (hasProductUnit && kind === 'product' && status === 'accepted') {
+    return { allowed: true };
   }
 
   if (startableStatuses[kind].has(status)) {

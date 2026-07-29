@@ -49,6 +49,7 @@ import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
+import { getProductUnit } from '../units/product-unit-read-service.js';
 import {
   assignJobBayOperator,
   createJobBay,
@@ -838,17 +839,118 @@ describe('createJob', () => {
     }
   });
 
-  test('does not create a Build Job for an accepted Allocation Quote', async ({ context }) => {
-    await createJob({
+  test('creates a Rework Job on the allocated Unit for only the Assemblies being added', async ({ context }) => {
+    const stockBuild = await createJob({
       actorUserId,
       db: context.db,
       input: { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id },
+    });
+    const [unit] = await context.db.select().from(productUnits);
+    if (!unit) throw new Error('Stock Build test setup did not return a Product Unit');
+    await context.db.update(productUnits).set({ vinNumber: 'VIN-REWORK-1' }).where(eq(productUnits.id, unit.id));
+
+    const storage = new InMemoryStorageAdapter();
+    await makeBrochureComplete(context.db, storage, context.catalog.product.id);
+    await createProductDocuments(context.db, context.catalog.product.id, [
+      { filename: 'Part Book.pdf', storageKey: 'documents/product/rework-part-book.pdf' },
+    ]);
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      productUnitId: unit.id,
+      selectedAssemblyId: context.catalog.heavyAxle.id,
+      status: 'accepted',
+    });
+    await context.db.insert(productUnitOwnershipTransfers).values({
+      actorUserId,
+      occurredOn: getPlantDateNow(),
+      productUnitId: unit.id,
+      sourceQuoteId: quote.id,
+      toCustomerId: quote.customerId,
+    });
+    const bay = await createBay(context.db, { department: 'assembly' });
+    let rendererCalls = 0;
+    const renderer: BrochurePdfRenderer = async () => {
+      rendererCalls += 1;
+
+      return BROCHURE_PDF_BYTES;
+    };
+
+    const rework = await createJob({
+      actorUserId,
+      brochureRenderer: renderer,
+      db: context.db,
+      input: { baySeeds: [{ bayId: bay.id, durationDays: 2 }], quoteId: quote.id },
+      storage,
+    });
+
+    expect(rework).toMatchObject({
+      customerCompanyName: 'CFO Test Customer',
+      productSerialNumber: stockBuild.productSerialNumber,
+      quoteId: quote.id,
+      vinNumber: 'VIN-REWORK-1',
+    });
+    expect(rework.cfo).toEqual([
+      {
+        assemblyName: 'Heavy Axle Upgrade',
+        kind: 'optional',
+        parts: [
+          expect.objectContaining({
+            partCode: 'PART-HEAVY-AXLE',
+            quantity: 1,
+          }),
+        ],
+      },
+    ]);
+    expect(rework.documents).toEqual([]);
+    expect(rendererCalls).toBe(0);
+    expect(
+      rework.schedule.flatMap((department) => department.bays).find((scheduledBay) => scheduledBay.id === bay.id)
+        ?.slots,
+    ).toHaveLength(1);
+
+    await expect(context.db.select().from(productUnits)).resolves.toHaveLength(1);
+    await expect(context.db.select().from(productUnitOwnershipTransfers)).resolves.toHaveLength(1);
+    await expect(context.db.select().from(productSerialSequences)).resolves.toMatchObject([
+      { lastSequence: 1, productId: context.catalog.product.id },
+    ]);
+    await expect(context.db.select().from(jobs).where(eq(jobs.id, rework.id))).resolves.toMatchObject([
+      { productUnitId: unit.id, quoteId: quote.id },
+    ]);
+    await expect(
+      context.db
+        .select({
+          assemblyName: jobBuildSpecAssemblies.assemblyName,
+          productAssemblyId: jobBuildSpecAssemblies.productAssemblyId,
+        })
+        .from(jobBuildSpecAssemblies)
+        .where(eq(jobBuildSpecAssemblies.jobId, rework.id)),
+    ).resolves.toEqual([
+      {
+        assemblyName: 'Heavy Axle Upgrade',
+        productAssemblyId: context.catalog.heavyAxle.id,
+      },
+    ]);
+
+    const unitAfterRework = await getProductUnit({ db: context.db, id: unit.id });
+    expect(unitAfterRework.asBuiltSpec.map((assembly) => assembly.name)).toEqual(['Heavy Axle Upgrade']);
+  });
+
+  test('does not create Rework when the Allocation Quote adds nothing to the Unit', async ({ context }) => {
+    await createJob({
+      actorUserId,
+      db: context.db,
+      input: {
+        baySeeds: [],
+        buildSpecAssemblyIds: [context.catalog.heavyAxle.id],
+        productId: context.catalog.product.id,
+      },
     });
     const [unit] = await context.db.select({ id: productUnits.id }).from(productUnits);
     if (!unit) throw new Error('Stock Build test setup did not return a Product Unit');
     const quote = await createQuote(context.db, {
       productId: context.catalog.product.id,
       productUnitId: unit.id,
+      selectedAssemblyId: context.catalog.heavyAxle.id,
       status: 'accepted',
     });
 
@@ -858,7 +960,8 @@ describe('createJob', () => {
         db: context.db,
         input: { baySeeds: [], quoteId: quote.id },
       }),
-    ).rejects.toThrow('Allocation Quotes can only start a Rework Job.');
+    ).rejects.toThrow('Allocation Quote has no new Assemblies to fit.');
+    await expect(context.db.select().from(jobs)).resolves.toHaveLength(1);
   });
 
   test('seeds work slots across Bays in input order, including duplicate Bay rows', async ({ context }) => {

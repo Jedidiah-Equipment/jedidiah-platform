@@ -5,6 +5,7 @@ import {
   getQuote,
   getQuoteProductBayAvailability,
   getQuoteProductOption,
+  isProductUnitCoreError,
   isQuoteCoreError,
   listCustomers,
   listPriorityQuotes,
@@ -15,6 +16,7 @@ import {
   listStaleSentQuotes,
   listUpcomingDeliveryQuotes,
   ProductNotFoundError,
+  type ProductUnitCoreError,
   type QuoteCoreError,
   summarizeQuotePipeline,
   summarizeQuotesByStatus,
@@ -98,19 +100,19 @@ export const quotesRouter = router({
   create: authorizedProcedure('quote:create')
     .input(QuoteCreateInput)
     .mutation(({ ctx, input }) =>
-      mapQuoteErrors(() => createQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapQuoteMutationErrors(() => createQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
   cancel: authorizedProcedure('quote:cancel')
     .input(QuoteCancelInput)
     .mutation(({ ctx, input }) =>
-      mapQuoteErrors(() => cancelQuote({ actorUserId: ctx.session.user.id, db: ctx.db, ...input })),
+      mapQuoteMutationErrors(() => cancelQuote({ actorUserId: ctx.session.user.id, db: ctx.db, ...input })),
     ),
 
   update: authorizedProcedure('quote:update')
     .input(QuoteUpdateInput)
     .mutation(({ ctx, input }) =>
-      mapQuoteErrors(() => updateQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapQuoteMutationErrors(() => updateQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
   generateDocument: authorizedProcedure('quote:update')
@@ -131,6 +133,18 @@ export const quotesRouter = router({
 
 async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapKnownCoreError(action, isQuoteCoreError, mapQuoteCoreError);
+}
+
+async function mapQuoteMutationErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapQuoteErrors(() => mapKnownCoreError(action, isProductUnitCoreError, mapProductUnitCoreError));
+}
+
+function mapProductUnitCoreError(error: ProductUnitCoreError): CoreErrorMapping<ProductUnitCoreError['code']> {
+  if (error.code === 'product_unit.not_found') {
+    return { appCode: error.code, code: 'NOT_FOUND', message: 'Product unit not found.' };
+  }
+
+  return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
 }
 
 function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreError['code']> {

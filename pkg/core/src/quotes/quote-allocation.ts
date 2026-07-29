@@ -4,7 +4,7 @@ import type { AuthId, QuoteSelectedAssemblyInput, QuoteStatus, UUID } from '@pkg
 import { and, eq, isNull } from 'drizzle-orm';
 
 import { loadAsBuiltSpec } from '../units/product-unit-as-built.js';
-import { appendOwnershipTransfer, lockProductUnitOwnership } from '../units/product-unit-service.js';
+import { lockUnitForOwnership } from '../units/product-unit-service.js';
 import { QuoteAllocationConflictError, QuoteInvalidReferenceError } from './quote-errors.js';
 
 /**
@@ -38,7 +38,7 @@ export async function transferAllocationQuoteOnAcceptance({
     return;
   }
 
-  const ownership = await lockProductUnitOwnership({ productUnitId: quote.productUnitId, tx });
+  const ownership = await lockUnitForOwnership(tx, quote.productUnitId);
 
   if (!ownership) {
     throw new QuoteInvalidReferenceError('Product Unit was not found.');
@@ -52,14 +52,11 @@ export async function transferAllocationQuoteOnAcceptance({
     });
   }
 
-  await appendOwnershipTransfer({
+  await ownership.record({
     actorUserId,
-    fromCustomerId: null,
     occurredOn: getPlantDateNow(),
     sourceQuoteId: quote.id,
     toCustomerId: quote.customerId,
-    tx,
-    unit: ownership.unit,
   });
 }
 
@@ -99,7 +96,7 @@ export async function returnQuoteProductUnitToStock({
     return;
   }
 
-  const ownership = await lockProductUnitOwnership({ productUnitId: saleTransfer.productUnitId, tx });
+  const ownership = await lockUnitForOwnership(tx, saleTransfer.productUnitId);
 
   if (!ownership) {
     throw new QuoteInvalidReferenceError('Product Unit was not found.');
@@ -113,14 +110,11 @@ export async function returnQuoteProductUnitToStock({
     );
   }
 
-  await appendOwnershipTransfer({
+  await ownership.record({
     actorUserId,
-    fromCustomerId: customerId,
     occurredOn,
     sourceQuoteId: quoteId,
     toCustomerId: null,
-    tx,
-    unit,
   });
 }
 
@@ -141,7 +135,7 @@ export async function resolveAllocationQuoteSeed({
   productUnitId: UUID;
   tx: DatabaseTransaction;
 }): Promise<QuoteSelectedAssemblyInput[]> {
-  const ownership = await lockProductUnitOwnership({ productUnitId, tx });
+  const ownership = await lockUnitForOwnership(tx, productUnitId);
 
   if (!ownership) {
     throw new QuoteInvalidReferenceError('Product Unit was not found.');

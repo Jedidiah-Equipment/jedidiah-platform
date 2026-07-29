@@ -54,10 +54,10 @@ import { documentBaseSelect } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { snapshotJobBrochureDocument } from '../products/product-brochure-document.js';
-import { appendOwnershipTransfer, productUnitAuditDescriptor } from '../units/product-unit-service.js';
+import { createProductUnit } from '../units/product-unit-service.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
-import { createsProductUnit, hasProductWork, type JobBlueprint, resolveJobBlueprint } from './job-blueprint.js';
+import { createsProductUnit, hasProductWork, resolveJobBlueprint } from './job-blueprint.js';
 import {
   JobCompletedOnInFutureError,
   JobCreateFromQuoteDeniedError,
@@ -109,9 +109,21 @@ export async function createJob({
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
     const plantToday = getPlantDateNow();
-    const blueprint = await resolveJobBlueprint({ input, plantToday, tx });
+    const blueprint = await resolveJobBlueprint({ input, tx });
 
-    const productUnit = createsProductUnit(blueprint) ? await insertProductUnit({ actorUserId, blueprint, tx }) : null;
+    const productUnit = createsProductUnit(blueprint)
+      ? await createProductUnit({
+          actorUserId,
+          // Build-to-order creates its sold Unit; Stock Build creates Stock. Allocation acceptance
+          // already transferred an existing Unit, and Rework never reaches this creation path.
+          initialOwner: blueprint.quote
+            ? { customerId: blueprint.quote.customerId, sourceQuoteId: blueprint.quote.id }
+            : null,
+          plantToday,
+          productId: blueprint.productId,
+          tx,
+        })
+      : null;
     const productUnitId = productUnit?.id ?? (blueprint.kind === 'rework' ? blueprint.productUnitId : null);
 
     const [job] = await tx
@@ -124,21 +136,6 @@ export async function createJob({
 
     if (!job) {
       throw new Error('Job insert did not return a row');
-    }
-
-    // A build-to-order sale creates its Unit and initial ownership together. Allocation acceptance
-    // already transferred the existing Unit; Rework must not record that sale a second time. The Unit
-    // is new, so there is no competing owner to lock against — only the log and audit event to write.
-    if (productUnit && blueprint.kind === 'product') {
-      await appendOwnershipTransfer({
-        actorUserId,
-        fromCustomerId: null,
-        occurredOn: plantToday,
-        sourceQuoteId: blueprint.quote.id,
-        toCustomerId: blueprint.quote.customerId,
-        tx,
-        unit: productUnit,
-      });
     }
 
     if (hasProductWork(blueprint)) {
@@ -251,35 +248,6 @@ async function loadJobProductUnit({
     .where(eq(productUnits.id, productUnitId));
 
   return unit ? { ...unit, product: { id: unit.productId } } : null;
-}
-
-async function insertProductUnit({
-  actorUserId,
-  blueprint,
-  tx,
-}: {
-  actorUserId: AuthId;
-  blueprint: Extract<JobBlueprint, { kind: 'product' | 'stock-build' }>;
-  tx: DatabaseTransaction;
-}): Promise<typeof productUnits.$inferSelect> {
-  const [unit] = await tx
-    .insert(productUnits)
-    .values({
-      productId: blueprint.productId,
-      productSerialNumber: blueprint.serial.number,
-      productSerialPrefix: blueprint.serial.prefix,
-      productSerialSequence: blueprint.serial.sequence,
-      productSerialYear: blueprint.serial.year,
-    })
-    .returning();
-
-  if (!unit) {
-    throw new Error('Product unit insert did not return a row');
-  }
-
-  await recordAuditCreate({ db: tx, descriptor: productUnitAuditDescriptor, actorUserId, input: unit });
-
-  return unit;
 }
 
 export async function updateJob({

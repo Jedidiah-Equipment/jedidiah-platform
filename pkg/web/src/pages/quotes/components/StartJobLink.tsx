@@ -10,7 +10,9 @@ import { canStartJobFromQuote } from './start-job-eligibility.js';
 
 type StartJobLinkProps = {
   className?: string;
-  quote: Pick<QuoteDetail, 'code' | 'id' | 'job' | 'kind' | 'productUnitId' | 'status'>;
+  quote: Pick<QuoteDetail, 'code' | 'id' | 'job' | 'kind' | 'productUnitId' | 'status'> & {
+    reworkRequired?: boolean;
+  };
   size?: 'default' | 'icon-sm';
 };
 
@@ -18,6 +20,7 @@ type StartJobLinkProps = {
 export const StartJobLink: React.FC<StartJobLinkProps> = ({ className, quote, size = 'default' }) => {
   const accessQuery = useAccess();
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  const label = quote.productUnitId ? 'Start Rework Job' : 'Start Job';
 
   if (!canCreateJob || !canStartJobFromQuote(quote)) {
     return null;
@@ -25,14 +28,14 @@ export const StartJobLink: React.FC<StartJobLinkProps> = ({ className, quote, si
 
   return (
     <Button
-      aria-label={`Start job from quote ${quote.code}`}
+      aria-label={`${label} from quote ${quote.code}`}
       className={className}
       render={<Link params={{ id: quote.id }} to="/quotes/$id/start-job" />}
       size={size}
       variant={size === 'icon-sm' ? 'outline' : 'default'}
     >
       <IconBriefcase2 data-icon={size === 'icon-sm' ? undefined : 'inline-start'} />
-      {size === 'icon-sm' ? null : 'Start Job'}
+      {size === 'icon-sm' ? null : label}
     </Button>
   );
 };

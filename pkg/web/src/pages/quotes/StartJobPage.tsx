@@ -39,12 +39,17 @@ export const StartJobPage: React.FC<StartJobPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
   const quote = quoteQuery.data;
+  const isRework = quote?.productUnitId != null;
 
   return (
     <PageLayout
-      description="Start a Job from this Quote and optionally seed its Bay schedule. Schedule edits save immediately; this Job's slots are created on submit. Cancel discards only the uncreated Job."
+      description={
+        isRework
+          ? "Start a Rework Job on this Quote's existing Product Unit and optionally seed its Bay schedule. Its Build Spec and CFO cover only the Assemblies being added."
+          : "Start a Job from this Quote and optionally seed its Bay schedule. Schedule edits save immediately; this Job's slots are created on submit. Cancel discards only the uncreated Job."
+      }
       size="full"
-      title={quote ? `Start Job from ${quote.code}` : 'Loading quote...'}
+      title={quote ? `Start ${isRework ? 'Rework Job' : 'Job'} from ${quote.code}` : 'Loading quote...'}
     >
       <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
       {quoteQuery.isPending ? <Skeleton className="h-64 w-full" /> : null}
@@ -60,6 +65,7 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
   const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  const isRework = quote.productUnitId !== null;
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const bayCalendars = useBayCalendars();
@@ -80,7 +86,7 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
         // Jobs first so the schedule is fresh on arrival; the quote refetch happens
         // after navigation so this page never flashes its not-startable state.
         await invalidateJobs();
-        toast.success('Job started');
+        toast.success(isRework ? 'Rework Job started' : 'Job started');
         await navigate({ search: { job: job.id }, to: '/jobs' });
         await invalidateQuotes();
       },
@@ -93,7 +99,7 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
       <Empty>
         <EmptyHeader>
           <EmptyIcon />
-          <EmptyTitle>This quote cannot start a Job.</EmptyTitle>
+          <EmptyTitle>This quote cannot start a {isRework ? 'Rework Job' : 'Job'}.</EmptyTitle>
           <EmptyDescription>{getStartJobUnavailableMessage(quote, canCreateJob)}</EmptyDescription>
         </EmptyHeader>
         <Button render={<Link params={{ id: quote.id }} to="/quotes/$id/edit" />} variant="outline">
@@ -126,7 +132,7 @@ type StartJobFormProps = {
   enabledBays: Bay[];
   isPending: boolean;
   onSubmit: (input: JobCreateInput) => void;
-  quote: Pick<QuoteDetail, 'code' | 'id' | 'product'>;
+  quote: Pick<QuoteDetail, 'code' | 'id' | 'product' | 'productUnitId'>;
   scheduling: BaySeedScheduling | null;
 };
 
@@ -140,6 +146,7 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
   scheduling,
 }) => {
   const [showAllBays, setShowAllBays] = useState(true);
+  const isRework = quote.productUnitId !== null;
   const initialFormValues = useMemo(
     () => toJobCreateFormValues({ productBays: quote.product?.bays ?? [], scheduling }),
     [quote.product, scheduling],
@@ -222,7 +229,7 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
             </Button>
             <Button disabled={isPending || isFormSubmitting || !canSubmit} type="submit">
               {isPending || isFormSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
-              Start Job
+              {isRework ? 'Start Rework Job' : 'Start Job'}
             </Button>
           </div>
         )}

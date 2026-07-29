@@ -4,6 +4,7 @@ import {
   type DatabaseTransaction,
   type Db,
   getSortOrder,
+  jobBuildSpecAssemblies,
   jobs,
   products,
   quoteSelectedAssemblies,
@@ -13,7 +14,13 @@ import {
   user,
   withPagination,
 } from '@pkg/db';
-import { addDateOnlyDays, parseDateOnlyParts, parseJobCodeSearch, toPlantDateOnly } from '@pkg/domain';
+import {
+  addDateOnlyDays,
+  parseDateOnlyParts,
+  parseJobCodeSearch,
+  selectReworkBuildSpec,
+  toPlantDateOnly,
+} from '@pkg/domain';
 import {
   CompetingAllocationQuote,
   DateOnlyIso,
@@ -28,7 +35,7 @@ import {
   UpcomingDeliveryQuotesResult,
   type UserListResult,
   UserSummary,
-  type UUID,
+  UUID,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
 
@@ -304,15 +311,50 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
   }
 
   const offering = narrowQuoteOffering(row);
-  const [assemblies, productBaysForQuote, competingAllocationQuotes] = await Promise.all([
+  const [assemblies, productBaysForQuote, competingAllocationQuotes, reworkRequired] = await Promise.all([
     offering.kind === 'product' ? listAssemblies({ tx: db, productId: offering.productId }) : Promise.resolve([]),
     offering.kind === 'product' ? listProductBays({ db, productId: offering.productId }) : Promise.resolve([]),
     offering.kind === 'product' && offering.productUnitId
       ? listCompetingAllocationQuotes({ db, quoteId: row.id, productUnitId: offering.productUnitId })
       : Promise.resolve([]),
+    offering.kind === 'product' && offering.productUnitId
+      ? allocationQuoteRequiresRework({
+          db,
+          productUnitId: offering.productUnitId,
+          selectedAssemblies: row.selectedAssemblies,
+        })
+      : Promise.resolve(false),
   ]);
 
-  return mapQuoteDetail(row, assemblies, productBaysForQuote, competingAllocationQuotes);
+  return mapQuoteDetail(row, assemblies, productBaysForQuote, competingAllocationQuotes, reworkRequired);
+}
+
+async function allocationQuoteRequiresRework({
+  db,
+  productUnitId,
+  selectedAssemblies,
+}: {
+  db: Db | DatabaseTransaction;
+  productUnitId: UUID;
+  selectedAssemblies: readonly QuoteSelectedAssemblyRow[];
+}): Promise<boolean> {
+  const asBuiltRows = await db
+    .select({ productAssemblyId: jobBuildSpecAssemblies.productAssemblyId })
+    .from(jobBuildSpecAssemblies)
+    .innerJoin(jobs, eq(jobs.id, jobBuildSpecAssemblies.jobId))
+    .where(and(eq(jobs.productUnitId, productUnitId), isNull(jobs.cancelledAt)));
+
+  return (
+    selectReworkBuildSpec({
+      asBuiltAssemblyIds: asBuiltRows.flatMap((row) =>
+        row.productAssemblyId ? [UUID.parse(row.productAssemblyId)] : [],
+      ),
+      quoteBuildSpec: selectedAssemblies.map((assembly) => ({
+        assemblyName: assembly.quotedName,
+        productAssemblyId: assembly.productAssemblyId ? UUID.parse(assembly.productAssemblyId) : null,
+      })),
+    }).length > 0
+  );
 }
 
 async function listCompetingAllocationQuotes({

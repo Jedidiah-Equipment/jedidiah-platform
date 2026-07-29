@@ -31,6 +31,32 @@ export type BuildCfoResult =
       staleAssemblyNames: string[];
     };
 
+type ResolvedBuildSpecCfo =
+  | {
+      ok: true;
+      optionalCfo: CfoEntry[];
+      overriddenStandardAssemblyIds: ReadonlySet<UUID>;
+    }
+  | {
+      ok: false;
+      staleAssemblyNames: string[];
+    };
+
+/** The work still to fit: Quote selections minus the Optional Assemblies already on the Unit. */
+export function selectReworkBuildSpec({
+  asBuiltAssemblyIds,
+  quoteBuildSpec,
+}: {
+  asBuiltAssemblyIds: readonly UUID[];
+  quoteBuildSpec: readonly BuildSpecAssembly[];
+}): BuildSpecAssembly[] {
+  const fittedAssemblyIds = new Set(asBuiltAssemblyIds);
+
+  return quoteBuildSpec.filter(
+    (assembly) => assembly.productAssemblyId === null || !fittedAssemblyIds.has(assembly.productAssemblyId),
+  );
+}
+
 /**
  * Projects a Job's Build Spec into a parts-level CFO, against the Product's catalog. The
  * override-and-staleness rule lives in {@link resolveEffectiveBom} — a Build Spec is just another
@@ -45,6 +71,47 @@ export function buildCfo({
   buildSpec: readonly BuildSpecAssembly[];
   catalogAssemblies: readonly Assembly[];
 }): BuildCfoResult {
+  const resolved = resolveBuildSpecCfo({ buildSpec, catalogAssemblies });
+
+  if (!resolved.ok) {
+    return resolved;
+  }
+
+  return {
+    ok: true,
+    cfo: [
+      ...catalogAssemblies
+        .filter((assembly) => assembly.kind === 'standard' && !resolved.overriddenStandardAssemblyIds.has(assembly.id))
+        .map((assembly): CfoEntry => toCfoEntry(assembly, 'standard')),
+      ...resolved.optionalCfo,
+    ],
+  };
+}
+
+/** A Rework CFO contains only the Optional Assemblies this Job is fitting—never the machine's base BOM. */
+export function buildReworkCfo({
+  buildSpec,
+  catalogAssemblies,
+}: {
+  buildSpec: readonly BuildSpecAssembly[];
+  catalogAssemblies: readonly Assembly[];
+}): BuildCfoResult {
+  const resolved = resolveBuildSpecCfo({ buildSpec, catalogAssemblies });
+
+  if (!resolved.ok) {
+    return resolved;
+  }
+
+  return { ok: true, cfo: resolved.optionalCfo };
+}
+
+function resolveBuildSpecCfo({
+  buildSpec,
+  catalogAssemblies,
+}: {
+  buildSpec: readonly BuildSpecAssembly[];
+  catalogAssemblies: readonly Assembly[];
+}): ResolvedBuildSpecCfo {
   const { overriddenStandardAssemblyIds, selectedOptionalAssemblies, staleSelections } = resolveEffectiveBom({
     catalogAssemblies,
     selectedAssemblies: buildSpec,
@@ -56,14 +123,10 @@ export function buildCfo({
 
   return {
     ok: true,
-    cfo: [
-      ...catalogAssemblies
-        .filter((assembly) => assembly.kind === 'standard' && !overriddenStandardAssemblyIds.has(assembly.id))
-        .map((assembly): CfoEntry => toCfoEntry(assembly, 'standard')),
-      ...selectedOptionalAssemblies.map(
-        ({ assembly, selection }): CfoEntry => toCfoEntry(assembly, 'optional', selection.assemblyName),
-      ),
-    ],
+    optionalCfo: selectedOptionalAssemblies.map(({ assembly, selection }) =>
+      toCfoEntry(assembly, 'optional', selection.assemblyName),
+    ),
+    overriddenStandardAssemblyIds,
   };
 }
 

@@ -73,6 +73,7 @@ export function mapQuote(row: QuoteRow) {
     deliveryPrice: row.deliveryPrice,
     discountPercent: row.discountPercent,
     id: row.id,
+    invoiceNumber: row.invoiceNumber,
     notes: row.notes,
     documentNotes: row.documentNotes,
     plannedDeliveryDate: row.plannedDeliveryDate,

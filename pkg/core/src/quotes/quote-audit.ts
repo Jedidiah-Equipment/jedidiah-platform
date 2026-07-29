@@ -39,6 +39,7 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
     notes: row.notes,
     documentNotes: row.documentNotes,
     kind: row.kind,
+    invoiceNumber: row.invoiceNumber,
     plannedDeliveryDate: row.plannedDeliveryDate,
     preferredDeliveryDate: row.preferredDeliveryDate,
     productId: row.productId,

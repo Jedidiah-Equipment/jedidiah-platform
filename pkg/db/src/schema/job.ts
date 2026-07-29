@@ -143,7 +143,6 @@ export const jobs = pgTable(
     // Null for a Stock Build, which builds a machine we hold and has no sale behind it. A Custom Job
     // has no Unit, so the table check below still forces it to carry a Quote.
     quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'restrict' }),
-    invoiceNumber: text('invoice_number'),
     description: text('description'),
     // Plant business date the Job finished. Latches: written once by hand or by the completion sweep,
     // never recomputed. Distinct from derived schedule completeness, which still drives the Board.
@@ -154,10 +153,6 @@ export const jobs = pgTable(
   },
   (table) => [
     check('job_description_nonempty', sql`${table.description} IS NULL OR length(trim(${table.description})) > 0`),
-    check(
-      'job_invoice_number_nonempty',
-      sql`${table.invoiceNumber} IS NULL OR length(trim(${table.invoiceNumber})) > 0`,
-    ),
     // Every Job is either about a machine or about a sale, and usually both: a Stock Build has only a
     // Unit, a Custom Job only a Quote, and a Job with neither describes no work at all.
     check(

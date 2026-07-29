@@ -51,6 +51,7 @@ export const quotes = pgTable(
     plannedDeliveryDate: date('planned_delivery_date', { mode: 'string' }),
     notes: text('notes'),
     documentNotes: text('document_notes'),
+    invoiceNumber: text('invoice_number'),
     quotedBasePrice: numeric('quoted_base_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
     quotedCurrencyCode: text('quoted_currency_code').notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
@@ -63,6 +64,10 @@ export const quotes = pgTable(
     check('quote_deposit_percent_not_above_100', sql`${table.depositPercent} <= 100`),
     check('quote_delivery_price_nonnegative', sql`${table.deliveryPrice} >= 0`),
     check('quote_delivery_inclusion_matches_price', sql`${table.deliveryIncluded} = (${table.deliveryPrice} = 0)`),
+    check(
+      'quote_invoice_number_nonempty',
+      sql`${table.invoiceNumber} IS NULL OR length(trim(${table.invoiceNumber})) > 0`,
+    ),
     check(
       'quote_cancellation_reason_shape',
       sql`(

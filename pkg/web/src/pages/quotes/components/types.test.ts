@@ -121,6 +121,7 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
     deliveryIncluded: true,
     deliveryPrice: 0,
     discountPercent: 10,
+    invoiceNumber: '',
     notes: 'Some notes',
     documentNotes: '30 days',
     plannedDeliveryDate: '2026-03-01',
@@ -137,12 +138,13 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
 
 describe('toQuoteFormValues', () => {
   it('maps an existing quote into form state', () => {
-    const values = toQuoteFormValues(buildQuoteDetail());
+    const values = toQuoteFormValues(buildQuoteDetail({ invoiceNumber: 'INV-0042' }));
 
     expect(values.notes).toBe('Some notes');
     expect(values.cancellationReason).toBe('');
     expect(values.documentNotes).toBe('30 days');
     expect(values.depositPercent).toBe(30);
+    expect(values.invoiceNumber).toBe('INV-0042');
     expect(values.validUntil).toBe('2026-01-01');
     expect(values.status).toBe('sent');
     expect(values.workTitle).toBe('');
@@ -200,6 +202,7 @@ describe('toQuoteFormValues', () => {
       buildQuoteDetail({
         notes: null,
         documentNotes: null,
+        invoiceNumber: null,
         validUntil: null,
         preferredDeliveryDate: null,
         plannedDeliveryDate: null,
@@ -209,6 +212,7 @@ describe('toQuoteFormValues', () => {
 
     expect(values.notes).toBe('');
     expect(values.documentNotes).toBe('');
+    expect(values.invoiceNumber).toBe('');
     expect(values.validUntil).toBe('');
     expect(values.preferredDeliveryDate).toBe('');
     expect(values.plannedDeliveryDate).toBe('');

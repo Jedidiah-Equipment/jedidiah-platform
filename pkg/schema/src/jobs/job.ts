@@ -412,9 +412,6 @@ export const ProductUnitVinNumber = nullableTrimmedText();
 export type JobDescription = z.infer<typeof JobDescription>;
 export const JobDescription = nullableTrimmedText();
 
-export type JobInvoiceNumber = z.infer<typeof JobInvoiceNumber>;
-export const JobInvoiceNumber = nullableTrimmedText();
-
 /**
  * The plant business date a Job finished, or `null` while it is still open. Latches: once set, by hand
  * or by the completion sweep, nothing rewrites or clears it automatically. Distinct from derived
@@ -470,7 +467,6 @@ export const Job = z.object({
   vinNumber: ProductUnitVinNumber,
   // Null on a Stock Build: it builds a machine we hold, so there is no sale behind it.
   quoteId: UUID.nullable(),
-  invoiceNumber: JobInvoiceNumber,
   description: JobDescription,
   completedOn: JobCompletedOn,
   createdAt: DateIso,
@@ -663,7 +659,6 @@ export const JobColumnFilters = z
     completedOnEnd: DateOnlyIso.optional(),
     completedOnStart: DateOnlyIso.optional(),
     customerId: UUID.optional(),
-    invoiceNumber: z.string().trim().optional(),
     productSerialNumber: z.string().trim().optional(),
   })
   .default({});
@@ -674,7 +669,6 @@ export const JobListFilters = z
     createdAtStart: DateIso.optional(),
     /** Restricts to Jobs with no `completedOn`. Opt-in, so callers that want every Job stay unaffected. */
     incompleteOnly: z.boolean().optional(),
-    invoicedOnly: z.boolean().optional(),
     jobId: UUID.optional(),
   })
   .default({});
@@ -776,7 +770,6 @@ export const JobUpdateInput = z
      */
     completedOn: JobCompletedOn.optional(),
     description: nullableTrimmedTextInput(),
-    invoiceNumber: nullableTrimmedTextInput(),
   })
   .strict();
 

@@ -21,15 +21,23 @@ const statusDenialReasons = {
 
 export function canStartJobFromQuote({
   hasJob,
+  hasProductUnit,
   kind,
   status,
 }: {
   hasJob: boolean;
+  hasProductUnit: boolean;
   kind: QuoteKind;
   status: QuoteStatus;
 }): QuoteStartJobEligibility {
   if (hasJob) {
     return { allowed: false, reason: 'Quote already has a Job.' };
+  }
+
+  // This is the Build Job path. Allocation Quotes may only source Rework Jobs, whose
+  // narrower creation flow owns the comparison against the Unit's As-Built Spec.
+  if (hasProductUnit) {
+    return { allowed: false, reason: 'Allocation Quotes can only start a Rework Job.' };
   }
 
   if (startableStatuses[kind].has(status)) {

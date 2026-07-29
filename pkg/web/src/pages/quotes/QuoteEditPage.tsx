@@ -57,6 +57,7 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
               job={quote.job}
               kind={quote.kind}
               onConfirm={(cancellationReason) => cancelMutation.mutate({ cancellationReason, id: quote.id })}
+              productUnitId={quote.productUnitId}
               status={quote.status}
             />
             <QuoteStatusBadge size="lg" status={quote.status} />

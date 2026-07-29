@@ -9,6 +9,7 @@ import {
   productAssemblies,
   productBays,
   products,
+  productUnits,
   quoteSelectedAssemblies,
   quotes,
   quoteWorkItemParts,
@@ -702,6 +703,40 @@ describe('quotes.create', () => {
 });
 
 describe('quotes.update', () => {
+  test('maps a competing Allocation Quote acceptance to a named conflict', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const [unit] = await context.db
+      .insert(productUnits)
+      .values({
+        productId: context.product.id,
+        productSerialNumber: 'QUOTE-001260042',
+        productSerialPrefix: 'QUOTE-001',
+        productSerialSequence: 42,
+        productSerialYear: 26,
+      })
+      .returning();
+    if (!unit) throw new Error('Product Unit insert did not return a row');
+
+    const createAllocation = (companyName: string) =>
+      caller.quotes.create({
+        customer: { type: 'inline', companyName },
+        notes: null,
+        documentNotes: null,
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unit.id },
+        salesPersonId: 'test-user-id',
+        status: 'sent',
+      });
+    const winner = await createAllocation('Winning Customer');
+    const loser = await createAllocation('Losing Customer');
+
+    await caller.quotes.update({ ...toUpdateInput(winner), status: 'accepted' });
+    await expect(caller.quotes.update({ ...toUpdateInput(loser), status: 'accepted' })).rejects.toMatchObject({
+      appCode: 'quote.allocation_conflict',
+      code: 'CONFLICT',
+      message: expect.stringContaining('QUOTE-001260042 is already owned by Winning Customer'),
+    });
+  });
+
   test('edits and reprices Work Items after acceptance and Job creation', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const adminCaller = context.createCaller(mockSession('admin'));
@@ -2233,6 +2268,7 @@ function toUpdateInput(quote: QuoteDetail) {
   return {
     cancellationReason: quote.cancellationReason,
     id: quote.id,
+    invoiceNumber: quote.invoiceNumber,
     offering:
       quote.kind === 'custom'
         ? {

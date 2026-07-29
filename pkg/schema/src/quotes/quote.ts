@@ -58,6 +58,15 @@ export const QuoteDocumentNotes = nullableTrimmedText();
 export type QuoteDocumentNotesInput = z.infer<typeof QuoteDocumentNotesInput>;
 export const QuoteDocumentNotesInput = nullableTrimmedTextInput();
 
+export type QuoteInvoiceNumber = z.infer<typeof QuoteInvoiceNumber>;
+export const QuoteInvoiceNumber = nullableTrimmedText();
+
+export type QuoteInvoiceNumberInput = z.infer<typeof QuoteInvoiceNumberInput>;
+export const QuoteInvoiceNumberInput = nullableTrimmedTextInput();
+
+export type QuoteInvoiceNumberInputOptional = z.infer<typeof QuoteInvoiceNumberInputOptional>;
+export const QuoteInvoiceNumberInputOptional = nullableTrimmedTextInputOptional();
+
 export type QuoteDocumentLeadTime = z.infer<typeof QuoteDocumentLeadTime>;
 export const QuoteDocumentLeadTime = requiredTrimmedText('Lead time is required');
 
@@ -89,6 +98,7 @@ const quoteBaseShape = {
   plannedDeliveryDate: DateOnlyIso.nullable(),
   notes: QuoteNotes,
   documentNotes: QuoteDocumentNotes,
+  invoiceNumber: QuoteInvoiceNumber.default(null),
   quotedBasePrice: Price,
   quotedCurrencyCode: ProductCurrencyCode,
   createdAt: DateIso,
@@ -482,6 +492,7 @@ export const QuoteCreateInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
     documentNotes: QuoteDocumentNotesInput,
+    invoiceNumber: QuoteInvoiceNumberInput,
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
   .strict()
@@ -517,6 +528,7 @@ export const QuoteUpdateInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
     documentNotes: QuoteDocumentNotesInput,
+    invoiceNumber: QuoteInvoiceNumberInput,
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
   })
   .strict()
@@ -536,6 +548,7 @@ export const QuotePatchInput = z
     salesPersonId: AuthId.optional(),
     // The `-Optional` text variant preserves `undefined` (keep) instead of defaulting it to `null` (clear).
     documentNotes: nullableTrimmedTextInputOptional(),
+    invoiceNumber: QuoteInvoiceNumberInputOptional,
     notes: nullableTrimmedTextInputOptional(),
     preferredDeliveryDate: DateOnlyIso.nullable().optional(),
     plannedDeliveryDate: DateOnlyIso.nullable().optional(),

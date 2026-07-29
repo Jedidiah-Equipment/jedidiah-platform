@@ -11,7 +11,13 @@ import {
   quotes,
   user,
 } from '@pkg/db';
-import { assertQuoteEditable, getPlantDateNow, isProductUnitInStock, validateDiscount } from '@pkg/domain';
+import {
+  assertQuoteEditable,
+  getPlantDateNow,
+  isProductUnitInStock,
+  resolveNewestOwnershipTransfer,
+  validateDiscount,
+} from '@pkg/domain';
 import {
   type AuditChanges,
   type AuthId,
@@ -21,17 +27,20 @@ import {
   type QuoteKind,
   type QuotePatchInput,
   type QuoteSelectedAssemblyInput,
+  type QuoteStatus,
   type QuoteUpdateInput,
   type QuoteWorkItemInput,
   type UUID,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 
-import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
+import { diffAuditUpdate, recordAuditCreate, recordAuditEvent, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { cancelJobForQuote } from '../jobs/job-service.js';
+import { productUnitAuditDescriptor } from '../units/product-unit-service.js';
 import { quoteAuditDescriptor } from './quote-audit.js';
 import {
+  QuoteAllocationConflictError,
   QuoteAlreadyCancelledError,
   QuoteCustomSelectedAssembliesError,
   QuoteDiscountInvalidError,
@@ -113,7 +122,15 @@ export async function cancelQuote({
       { row: after, selectedAssemblies, workItems },
     );
 
-    await cancelJobForQuote({ actorUserId, now, plantToday: getPlantDateNow(), quoteId: before.id, tx });
+    const plantToday = getPlantDateNow();
+    await cancelJobForQuote({ actorUserId, now, plantToday, quoteId: before.id, tx });
+    await returnQuoteProductUnitToStock({
+      actorUserId,
+      customerId: before.customerId,
+      occurredOn: plantToday,
+      quoteId: before.id,
+      tx,
+    });
 
     const [row] = await tx
       .update(quotes)
@@ -163,6 +180,7 @@ export async function createQuote({
         deliveryPrice: input.deliveryPrice,
         discountPercent: input.discountPercent,
         kind: offering.kind,
+        invoiceNumber: input.invoiceNumber,
         notes: input.notes,
         documentNotes: input.documentNotes,
         plannedDeliveryDate: input.plannedDeliveryDate,
@@ -202,6 +220,13 @@ export async function createQuote({
         : [];
     const persistedWorkItems =
       persistedOffering.kind === 'custom' ? await persistQuoteWorkItems({ quoteId: row.id, tx, workItems }) : [];
+
+    await transferAllocationQuoteOnAcceptance({
+      actorUserId,
+      previousStatus: null,
+      quote: row,
+      tx,
+    });
 
     await recordAuditCreate({
       db: tx,
@@ -256,6 +281,7 @@ export async function updateQuote({
       deliveryPrice: input.deliveryPrice,
       discountPercent: input.discountPercent,
       kind: before.kind,
+      invoiceNumber: input.invoiceNumber,
       notes: input.notes,
       documentNotes: input.documentNotes,
       plannedDeliveryDate: input.plannedDeliveryDate,
@@ -297,6 +323,7 @@ export async function updateQuote({
     const editable = assertQuoteEditable({
       changedFields,
       hasJob: await quoteHasJob({ quoteId: before.id, tx }),
+      hasProductUnit: before.productUnitId !== null,
       kind: before.kind,
       status: before.status,
     });
@@ -304,6 +331,13 @@ export async function updateQuote({
     if (!editable.allowed) {
       throw new QuoteLockedError(editable.reason);
     }
+
+    await transferAllocationQuoteOnAcceptance({
+      actorUserId,
+      previousStatus: before.status,
+      quote: after,
+      tx,
+    });
 
     const [row] = await tx
       .update(quotes)
@@ -377,6 +411,7 @@ export async function patchQuote({
     const patch = {
       cancellationReason: input.cancellationReason !== undefined ? input.cancellationReason : before.cancellationReason,
       documentNotes: input.documentNotes !== undefined ? input.documentNotes : before.documentNotes,
+      invoiceNumber: input.invoiceNumber !== undefined ? input.invoiceNumber : before.invoiceNumber,
       notes: input.notes !== undefined ? input.notes : before.notes,
       plannedDeliveryDate:
         input.plannedDeliveryDate !== undefined ? input.plannedDeliveryDate : before.plannedDeliveryDate,
@@ -415,6 +450,7 @@ export async function patchQuote({
     const editable = assertQuoteEditable({
       changedFields,
       hasJob: await quoteHasJob({ quoteId: before.id, tx }),
+      hasProductUnit: before.productUnitId !== null,
       kind: before.kind,
       status: before.status,
     });
@@ -422,6 +458,13 @@ export async function patchQuote({
     if (!editable.allowed) {
       throw new QuoteLockedError(editable.reason);
     }
+
+    await transferAllocationQuoteOnAcceptance({
+      actorUserId,
+      previousStatus: before.status,
+      quote: after,
+      tx,
+    });
 
     const [row] = await tx
       .update(quotes)
@@ -627,7 +670,7 @@ async function resolveQuoteOffering({
   input,
   tx,
 }: {
-  input: Pick<QuoteCreateInput, 'offering' | 'selectedAssemblies'>;
+  input: Pick<QuoteCreateInput, 'offering' | 'selectedAssemblies' | 'status'>;
   tx: DatabaseTransaction;
 }): Promise<QuoteOfferingRow & { allocationSeed: QuoteSelectedAssemblyInput[] }> {
   if (input.offering.kind === 'custom') {
@@ -662,6 +705,7 @@ async function resolveQuoteOffering({
 
   const allocationSeed = input.offering.productUnitId
     ? await resolveAllocationQuoteSeed({
+        accepting: input.status === 'accepted',
         productId: product.id,
         productUnitId: input.offering.productUnitId,
         tx,
@@ -679,18 +723,223 @@ async function resolveQuoteOffering({
   };
 }
 
+async function transferAllocationQuoteOnAcceptance({
+  actorUserId,
+  previousStatus,
+  quote,
+  tx,
+}: {
+  actorUserId: AuthId;
+  previousStatus: QuoteStatus | null;
+  quote: {
+    customerId: string;
+    id: string;
+    productUnitId: string | null;
+    status: QuoteStatus;
+  };
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  if (!quote.productUnitId || quote.status !== 'accepted' || previousStatus === 'accepted') {
+    return;
+  }
+
+  // Every ownership writer locks the Unit, so competing Quote acceptances observe each other's
+  // transfer instead of both deciding from the same stale Stock state.
+  const [unit] = await tx
+    .select({
+      id: productUnits.id,
+      productSerialNumber: productUnits.productSerialNumber,
+    })
+    .from(productUnits)
+    .where(eq(productUnits.id, quote.productUnitId))
+    .for('update');
+
+  if (!unit) {
+    throw new QuoteInvalidReferenceError('Product Unit was not found.');
+  }
+
+  const transfers = await tx
+    .select({
+      createdAt: productUnitOwnershipTransfers.createdAt,
+      id: productUnitOwnershipTransfers.id,
+      occurredOn: productUnitOwnershipTransfers.occurredOn,
+      toCustomerId: productUnitOwnershipTransfers.toCustomerId,
+    })
+    .from(productUnitOwnershipTransfers)
+    .where(eq(productUnitOwnershipTransfers.productUnitId, unit.id));
+  const currentOwnerId = resolveNewestOwnershipTransfer(transfers)?.toCustomerId ?? null;
+
+  if (currentOwnerId) {
+    throw await createQuoteAllocationConflictError({
+      currentOwnerId,
+      productSerialNumber: unit.productSerialNumber,
+      tx,
+    });
+  }
+
+  const occurredOn = getPlantDateNow();
+  await tx.insert(productUnitOwnershipTransfers).values({
+    actorUserId,
+    fromCustomerId: null,
+    occurredOn,
+    productUnitId: unit.id,
+    sourceQuoteId: quote.id,
+    toCustomerId: quote.customerId,
+  });
+  await recordQuoteOwnershipTransferAudit({
+    actorUserId,
+    fromCustomerId: null,
+    occurredOn,
+    toCustomerId: quote.customerId,
+    tx,
+    unit,
+  });
+}
+
+async function createQuoteAllocationConflictError({
+  currentOwnerId,
+  productSerialNumber,
+  tx,
+}: {
+  currentOwnerId: string;
+  productSerialNumber: string;
+  tx: DatabaseTransaction;
+}): Promise<QuoteAllocationConflictError> {
+  const [owner] = await tx
+    .select({ companyName: customers.companyName })
+    .from(customers)
+    .where(eq(customers.id, currentOwnerId));
+  const ownerName = owner?.companyName ?? 'another Customer';
+
+  return new QuoteAllocationConflictError(
+    `Product Unit ${productSerialNumber} is already owned by ${ownerName} and cannot be sold by this Quote.`,
+  );
+}
+
+async function returnQuoteProductUnitToStock({
+  actorUserId,
+  customerId,
+  occurredOn,
+  quoteId,
+  tx,
+}: {
+  actorUserId: AuthId;
+  customerId: string;
+  occurredOn: string;
+  quoteId: string;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  const [saleTransfer] = await tx
+    .select({ productUnitId: productUnitOwnershipTransfers.productUnitId })
+    .from(productUnitOwnershipTransfers)
+    .where(
+      and(
+        eq(productUnitOwnershipTransfers.sourceQuoteId, quoteId),
+        isNull(productUnitOwnershipTransfers.fromCustomerId),
+        eq(productUnitOwnershipTransfers.toCustomerId, customerId),
+      ),
+    )
+    .limit(1);
+
+  if (!saleTransfer) {
+    return;
+  }
+
+  const [unit] = await tx
+    .select({
+      id: productUnits.id,
+      productSerialNumber: productUnits.productSerialNumber,
+    })
+    .from(productUnits)
+    .where(eq(productUnits.id, saleTransfer.productUnitId))
+    .for('update');
+
+  if (!unit) {
+    throw new QuoteInvalidReferenceError('Product Unit was not found.');
+  }
+
+  const transfers = await tx
+    .select({
+      createdAt: productUnitOwnershipTransfers.createdAt,
+      id: productUnitOwnershipTransfers.id,
+      occurredOn: productUnitOwnershipTransfers.occurredOn,
+      sourceQuoteId: productUnitOwnershipTransfers.sourceQuoteId,
+      toCustomerId: productUnitOwnershipTransfers.toCustomerId,
+    })
+    .from(productUnitOwnershipTransfers)
+    .where(eq(productUnitOwnershipTransfers.productUnitId, unit.id));
+  const current = resolveNewestOwnershipTransfer(transfers);
+
+  if (current?.toCustomerId !== customerId || current.sourceQuoteId !== quoteId) {
+    throw new QuoteAllocationConflictError(
+      `Product Unit ${unit.productSerialNumber} has a later Ownership Transfer and cannot be returned to Stock by cancelling this Quote.`,
+    );
+  }
+
+  await tx.insert(productUnitOwnershipTransfers).values({
+    actorUserId,
+    fromCustomerId: customerId,
+    occurredOn,
+    productUnitId: unit.id,
+    sourceQuoteId: quoteId,
+    toCustomerId: null,
+  });
+  await recordQuoteOwnershipTransferAudit({
+    actorUserId,
+    fromCustomerId: customerId,
+    occurredOn,
+    toCustomerId: null,
+    tx,
+    unit,
+  });
+}
+
+async function recordQuoteOwnershipTransferAudit({
+  actorUserId,
+  fromCustomerId,
+  occurredOn,
+  toCustomerId,
+  tx,
+  unit,
+}: {
+  actorUserId: AuthId;
+  fromCustomerId: string | null;
+  occurredOn: string;
+  toCustomerId: string | null;
+  tx: DatabaseTransaction;
+  unit: { id: string; productSerialNumber: string };
+}): Promise<void> {
+  await recordAuditEvent({
+    action: 'updated',
+    actorUserId,
+    changes: {
+      ownerCustomerId: { from: fromCustomerId, to: toCustomerId },
+      ownershipTransferDate: { from: null, to: occurredOn },
+    },
+    db: tx,
+    descriptor: productUnitAuditDescriptor,
+    entityId: unit.id,
+    record: { productSerialNumber: unit.productSerialNumber },
+  });
+}
+
 async function resolveAllocationQuoteSeed({
+  accepting,
   productId,
   productUnitId,
   tx,
 }: {
+  accepting: boolean;
   productId: UUID;
   productUnitId: UUID;
   tx: DatabaseTransaction;
 }): Promise<QuoteSelectedAssemblyInput[]> {
   // Ownership writers lock this same row, making the Stock check and Quote insert one serialized decision.
   const [unit] = await tx
-    .select({ productId: productUnits.productId })
+    .select({
+      productId: productUnits.productId,
+      productSerialNumber: productUnits.productSerialNumber,
+    })
     .from(productUnits)
     .where(eq(productUnits.id, productUnitId))
     .for('update');
@@ -712,6 +961,15 @@ async function resolveAllocationQuoteSeed({
     .from(productUnitOwnershipTransfers)
     .where(eq(productUnitOwnershipTransfers.productUnitId, productUnitId));
 
+  const currentOwnerId = resolveNewestOwnershipTransfer(transfers)?.toCustomerId ?? null;
+
+  if (currentOwnerId && accepting) {
+    throw await createQuoteAllocationConflictError({
+      currentOwnerId,
+      productSerialNumber: unit.productSerialNumber,
+      tx,
+    });
+  }
   if (!isProductUnitInStock(transfers)) {
     throw new QuoteInvalidReferenceError('Product Unit is not Stock.');
   }

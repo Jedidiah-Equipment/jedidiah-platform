@@ -24,6 +24,7 @@ describe('QuoteCancellationAction', () => {
         job={job}
         kind="product"
         onConfirm={vi.fn()}
+        productUnitId={null}
         status="accepted"
       />,
     );
@@ -34,6 +35,7 @@ describe('QuoteCancellationAction', () => {
         job={job}
         kind="product"
         onConfirm={vi.fn()}
+        productUnitId={null}
         status="accepted"
       />,
     );
@@ -44,6 +46,7 @@ describe('QuoteCancellationAction', () => {
         job={null}
         kind="product"
         onConfirm={vi.fn()}
+        productUnitId={null}
         status="sent"
       />,
     );
@@ -54,6 +57,7 @@ describe('QuoteCancellationAction', () => {
         job={null}
         kind="custom"
         onConfirm={vi.fn()}
+        productUnitId={null}
         status="cancelled"
       />,
     );

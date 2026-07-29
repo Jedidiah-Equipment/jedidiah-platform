@@ -119,7 +119,6 @@ export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   toRecord: (row) => ({
     completedOn: row.completedOn,
     description: row.description,
-    invoiceNumber: row.invoiceNumber,
     productUnitId: row.productUnitId,
     quoteId: row.quoteId,
   }),
@@ -430,7 +429,6 @@ export async function updateJob({
       // spread `undefined` would still overwrite it in the audit diff.
       ...(input.completedOn === undefined ? {} : { completedOn: input.completedOn }),
       description: input.description,
-      invoiceNumber: input.invoiceNumber,
     },
   });
 }
@@ -444,7 +442,7 @@ async function applyJobFieldPatch({
   actorUserId: AuthId;
   db: Db;
   id: UUID;
-  patch: Partial<Pick<JobRow, 'completedOn' | 'description' | 'invoiceNumber'>>;
+  patch: Partial<Pick<JobRow, 'completedOn' | 'description'>>;
 }): Promise<JobUpdateResult> {
   return db.transaction(async (tx) => {
     const before = await lockMutableJob(tx, id);
@@ -712,6 +710,7 @@ async function validateJobQuoteForCreate({
     .limit(1);
   const eligibility = canStartJobFromQuote({
     hasJob: Boolean(existingJob),
+    hasProductUnit: quote.productUnitId !== null,
     kind: offering.kind,
     status: quote.status,
   });

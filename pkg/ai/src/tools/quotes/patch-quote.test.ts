@@ -98,6 +98,7 @@ describe('patchQuote contract', () => {
   test('passes named Quote changes and assemblies to core and returns linked details', async () => {
     const input = PatchQuoteInput.parse({
       id: QUOTE_ID,
+      invoiceNumber: ' INV-0042 ',
       notes: ' Updated note ',
       plannedDeliveryDate: null,
       selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
@@ -111,6 +112,7 @@ describe('patchQuote contract', () => {
 
     expect(coreInput).toEqual({
       id: QUOTE_ID,
+      invoiceNumber: 'INV-0042',
       notes: 'Updated note',
       plannedDeliveryDate: null,
       selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],

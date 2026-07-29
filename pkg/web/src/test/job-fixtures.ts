@@ -12,7 +12,6 @@ export function buildJobSummary(overrides: Partial<Record<keyof JobSummary, unkn
     customerThumbnailDataUrl: null,
     description: null,
     id: '00000000-0000-4000-8000-000000000000',
-    invoiceNumber: null,
     productBuildTimeDays: 12,
     productId: '20000000-0000-4000-8000-000000000000',
     productModelCode: 'MDL-1',

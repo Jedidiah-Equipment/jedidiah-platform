@@ -153,6 +153,12 @@ function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreErr
         code: 'BAD_REQUEST',
         message: 'Quote includes an invalid Customer, Product, Product Unit, or salesperson.',
       };
+    case 'quote.allocation_conflict':
+      return {
+        appCode: error.code,
+        code: 'CONFLICT',
+        message: error.message,
+      };
     case 'quote.offering_invariant':
     case 'quote.already_cancelled':
     case 'quote.custom_selected_assemblies':

@@ -42,7 +42,6 @@ export function mapJob(row: JobRow, productUnit?: JobProductUnitRow | null): Job
     completedOn: row.completedOn,
     createdAt: row.createdAt.toISOString(),
     id: row.id,
-    invoiceNumber: row.invoiceNumber,
     ...identity,
     quoteId: row.quoteId,
     updatedAt: row.updatedAt.toISOString(),

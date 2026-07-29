@@ -287,6 +287,171 @@ describe('quote collections', () => {
 });
 
 describe('allocation quotes', () => {
+  test('acceptance transfers the Unit, rejects a competing sale by name, and leaves the loser rejectable', async ({
+    context,
+  }) => {
+    const [otherCustomer] = await context.db
+      .insert(customers)
+      .values({ companyName: 'Beta Farming', email: null })
+      .returning();
+    if (!otherCustomer) throw new Error('Competing Customer insert did not return a row');
+
+    const unitId = await createUnit(context.db, context.product.id, 40);
+    const createAllocationQuote = (customerId: string) =>
+      createQuoteService({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: QuoteCreateInput.parse({
+          customer: { type: 'existing', customerId },
+          offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+          salesPersonId: context.salesPerson.id,
+          status: 'sent',
+        }),
+      });
+    const winner = await createAllocationQuote(context.customer.id);
+    const loser = await createAllocationQuote(otherCustomer.id);
+
+    const accepted = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(winner, { status: 'accepted' }),
+    });
+
+    await expect(
+      createQuoteService({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: QuoteCreateInput.parse({
+          customer: { type: 'existing', customerId: otherCustomer.id },
+          offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+          salesPersonId: context.salesPerson.id,
+          status: 'accepted',
+        }),
+      }),
+    ).rejects.toThrow('QUOTE-SUMMARY-001-26-40 is already owned by Acme Mining');
+
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(loser, { status: 'accepted' }),
+      }),
+    ).rejects.toThrow('QUOTE-SUMMARY-001-26-40 is already owned by Acme Mining');
+
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(loser, { status: 'rejected' }),
+      }),
+    ).resolves.toMatchObject({ id: loser.id, status: 'rejected' });
+
+    await expect(
+      context.db
+        .select()
+        .from(productUnitOwnershipTransfers)
+        .where(eq(productUnitOwnershipTransfers.productUnitId, unitId)),
+    ).resolves.toMatchObject([
+      {
+        actorUserId: context.salesPerson.id,
+        fromCustomerId: null,
+        productUnitId: unitId,
+        sourceQuoteId: accepted.id,
+        toCustomerId: context.customer.id,
+      },
+    ]);
+    await expect(
+      context.db
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.entityType, 'product_unit'), eq(auditEvents.entityId, unitId))),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        action: 'updated',
+        actorUserId: context.salesPerson.id,
+        changes: {
+          ownerCustomerId: { from: null, to: context.customer.id },
+          ownershipTransferDate: { from: null, to: getPlantDateNow() },
+        },
+      }),
+    ]);
+  });
+
+  test('accepts a later Allocation Quote after the Unit returns to Stock', async ({ context }) => {
+    const unitId = await createUnit(context.db, context.product.id, 39);
+    const firstSale = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+    await context.db.insert(productUnitOwnershipTransfers).values({
+      actorUserId: context.salesPerson.id,
+      fromCustomerId: context.customer.id,
+      occurredOn: getPlantDateNow(),
+      productUnitId: unitId,
+      toCustomerId: null,
+    });
+
+    const secondSale = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+
+    const transfers = await context.db
+      .select()
+      .from(productUnitOwnershipTransfers)
+      .where(eq(productUnitOwnershipTransfers.productUnitId, unitId))
+      .orderBy(asc(productUnitOwnershipTransfers.createdAt), asc(productUnitOwnershipTransfers.id));
+
+    expect(transfers).toHaveLength(3);
+    expect(transfers[0]).toMatchObject({ sourceQuoteId: firstSale.id, toCustomerId: context.customer.id });
+    expect(transfers[1]).toMatchObject({ fromCustomerId: context.customer.id, toCustomerId: null });
+    expect(transfers[2]).toMatchObject({ sourceQuoteId: secondSale.id, toCustomerId: context.customer.id });
+  });
+
+  test('keeps Invoice Number editable after an Allocation Quote locks on acceptance', async ({ context }) => {
+    const unitId = await createUnit(context.db, context.product.id, 38);
+    const accepted = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+
+    const invoiced = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteUpdateInput.parse({
+        ...buildQuoteUpdateInput(accepted),
+        invoiceNumber: '  INV-ALLOCATION-38  ',
+      }),
+    });
+
+    expect(invoiced.invoiceNumber).toBe('INV-ALLOCATION-38');
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(invoiced, { discountPercent: 5 }),
+      }),
+    ).rejects.toThrow('Quote is locked because it has been accepted; discountPercent cannot be changed.');
+  });
+
   test('quotes a held Product Unit, seeds its As-Built Spec at catalog prices, and shows live competitors', async ({
     context,
   }) => {
@@ -1249,6 +1414,66 @@ describe('patchQuote', () => {
 });
 
 describe('cancelQuote', () => {
+  test('returns a sold Allocation Quote Unit to Stock without erasing either transfer', async ({ context }) => {
+    const unitId = await createUnit(context.db, context.product.id, 911);
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancellationReason: 'Customer withdrew from the stock sale',
+      db: context.db,
+      id: quote.id,
+    });
+
+    const transfers = await context.db
+      .select()
+      .from(productUnitOwnershipTransfers)
+      .where(eq(productUnitOwnershipTransfers.productUnitId, unitId))
+      .orderBy(asc(productUnitOwnershipTransfers.createdAt), asc(productUnitOwnershipTransfers.id));
+
+    expect(transfers).toHaveLength(2);
+    expect(transfers[0]).toMatchObject({
+      fromCustomerId: null,
+      sourceQuoteId: quote.id,
+      toCustomerId: context.customer.id,
+    });
+    expect(transfers[1]).toMatchObject({
+      actorUserId: context.salesPerson.id,
+      fromCustomerId: context.customer.id,
+      sourceQuoteId: quote.id,
+      toCustomerId: null,
+    });
+    await expect(
+      context.db
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.entityType, 'product_unit'), eq(auditEvents.entityId, unitId)))
+        .orderBy(asc(auditEvents.occurredAt), asc(auditEvents.id)),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        changes: {
+          ownerCustomerId: { from: null, to: context.customer.id },
+          ownershipTransferDate: { from: null, to: getPlantDateNow() },
+        },
+      }),
+      expect.objectContaining({
+        changes: {
+          ownerCustomerId: { from: context.customer.id, to: null },
+          ownershipTransferDate: { from: null, to: getPlantDateNow() },
+        },
+      }),
+    ]);
+  });
+
   test('cancels an accepted custom Quote without Job side effects and audits the status change', async ({
     context,
   }) => {
@@ -1314,7 +1539,6 @@ describe('cancelQuote', () => {
       .values([
         {
           description: 'Target build',
-          invoiceNumber: 'INV-912',
           productUnitId: await createUnit(context.db, context.product.id, 912),
           quoteId: quote.id,
         },
@@ -1328,6 +1552,16 @@ describe('cancelQuote', () => {
     if (!job || !downstreamJob) {
       throw new Error('Job insert did not return required rows');
     }
+    if (!job.productUnitId) {
+      throw new Error('Cancellation test Job did not carry a Product Unit');
+    }
+    await context.db.insert(productUnitOwnershipTransfers).values({
+      actorUserId: context.salesPerson.id,
+      occurredOn: today,
+      productUnitId: job.productUnitId,
+      sourceQuoteId: quote.id,
+      toCustomerId: context.customer.id,
+    });
 
     const firstBay = await createBay(context.db, {
       id: '00000000-0000-4000-8000-000000000701',
@@ -1403,6 +1637,10 @@ describe('cancelQuote', () => {
     // getJob still resolves the cancelled Job (read-only sheet), and its schedule describes only the
     // retained done/active Slots — never the removed future Slots — so it offers no cancelled capacity.
     const detail = await getJob({ db: context.db, id: job.id });
+    expect(detail).toMatchObject({
+      customerCompanyName: null,
+      customerId: null,
+    });
     const scheduledSlotIds = detail.schedule.flatMap((department) =>
       department.bays.flatMap((bay) => bay.slots.map((slot) => slot.id)),
     );
@@ -1411,6 +1649,24 @@ describe('cancelQuote', () => {
     );
     expect(scheduledSlotIds).not.toContain(slotIds.scheduled);
     expect(scheduledSlotIds).not.toContain(slotIds.secondScheduled);
+    await expect(
+      context.db
+        .select()
+        .from(productUnitOwnershipTransfers)
+        .where(eq(productUnitOwnershipTransfers.productUnitId, job.productUnitId))
+        .orderBy(asc(productUnitOwnershipTransfers.createdAt), asc(productUnitOwnershipTransfers.id)),
+    ).resolves.toMatchObject([
+      {
+        fromCustomerId: null,
+        sourceQuoteId: quote.id,
+        toCustomerId: context.customer.id,
+      },
+      {
+        fromCustomerId: context.customer.id,
+        sourceQuoteId: quote.id,
+        toCustomerId: null,
+      },
+    ]);
   });
 
   test('rejects cancelling an already-cancelled Quote with a stable code', async ({ context }) => {
@@ -1433,6 +1689,41 @@ describe('cancelQuote', () => {
 });
 
 describe('listPriorityQuotes', () => {
+  test('excludes accepted Allocation Quotes because a stock sale does not need a Job', async ({ context }) => {
+    const ordinary = await createQuote(context.db, {
+      customerId: context.customer.id,
+      plannedDeliveryDate: '2026-02-01',
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    const unitId = await createUnit(context.db, context.product.id, 914);
+    const allocation = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        plannedDeliveryDate: '2026-02-01',
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+
+    await expect(
+      listPriorityQuotes({
+        clock: () => new Date('2026-01-01T10:00:00.000+02:00'),
+        db: context.db,
+      }),
+    ).resolves.toMatchObject([{ id: ordinary.id }]);
+    await expect(
+      listPriorityQuotes({
+        clock: () => new Date('2026-01-01T10:00:00.000+02:00'),
+        db: context.db,
+      }),
+    ).resolves.not.toEqual(expect.arrayContaining([expect.objectContaining({ id: allocation.id })]));
+  });
+
   test('derives the priority window from the injected plant date', async ({ context }) => {
     const marchEndQuote = await createQuote(context.db, {
       customerId: context.customer.id,
@@ -1701,6 +1992,7 @@ function buildQuoteUpdateInput(quote: QuoteDetail, overrides: Partial<QuoteUpdat
     discountPercent: quote.discountPercent,
     documentNotes: quote.documentNotes,
     id: quote.id,
+    invoiceNumber: quote.invoiceNumber,
     offering:
       quote.kind === 'custom'
         ? {

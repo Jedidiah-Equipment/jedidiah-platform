@@ -30,7 +30,7 @@ import {
   UserSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, ne, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
 
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
@@ -149,6 +149,7 @@ export async function listPriorityQuotes({
     .where(
       and(
         eq(quotes.status, 'accepted'),
+        isNull(quotes.productUnitId),
         customerId ? eq(quotes.customerId, customerId) : undefined,
         sql`${earliestDeliveryDate} is not null`,
         sql`${earliestDeliveryDate} <= ${priorityWindowEndDate}::date`,

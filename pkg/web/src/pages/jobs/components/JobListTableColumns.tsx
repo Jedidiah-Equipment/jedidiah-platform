@@ -99,17 +99,6 @@ export function createJobListColumns({
       },
     },
     {
-      accessorFn: (job) => job.invoiceNumber,
-      cell: ({ row }) => <InvoiceNumberCell job={row.original} />,
-      enableColumnFilter: true,
-      enableSorting: false,
-      header: 'Invoice',
-      id: 'invoiceNumber',
-      meta: {
-        headerClassName: 'min-w-40',
-      },
-    },
-    {
       accessorFn: (job) => job.scheduleState?.total ?? 0,
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1.5">
@@ -180,14 +169,6 @@ export function createJobListColumns({
         ]
       : []),
   ];
-}
-
-function InvoiceNumberCell({ job }: { job: JobSummary }) {
-  return job.invoiceNumber ? (
-    <span className="text-sm">{job.invoiceNumber}</span>
-  ) : (
-    <span className="text-muted-foreground">—</span>
-  );
 }
 
 function JobActionsCell({ canEditJobs, job }: { canEditJobs: boolean; job: JobSummary }) {

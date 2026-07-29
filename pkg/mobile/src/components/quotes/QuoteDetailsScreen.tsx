@@ -98,7 +98,12 @@ function QuoteEditor({
   const [activeTab, setActiveTab] = useState<'details' | 'documents'>('details');
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
-  const isLocked = isQuoteLocked({ hasJob: quote.job !== null, kind: quote.kind, status: quote.status });
+  const isLocked = isQuoteLocked({
+    hasJob: quote.job !== null,
+    hasProductUnit: quote.productUnitId !== null,
+    kind: quote.kind,
+    status: quote.status,
+  });
   const validator = useMemo(() => getQuoteEditFormValuesValidator(quote.kind), [quote.kind]);
   const { autosave, form } = useAutosaveForm({
     defaultValues: toQuoteEditFormValues(quote),
@@ -184,8 +189,8 @@ function QuoteEditor({
                   <InfoBanner
                     message={
                       canEdit('workItems')
-                        ? 'This Quote is locked. Work items, hourly rate, notes, and delivery dates remain editable.'
-                        : 'This Quote is locked. Only notes and delivery dates remain editable.'
+                        ? 'This Quote is locked. Work items, hourly rate, invoice number, notes, and delivery dates remain editable.'
+                        : 'This Quote is locked. Only invoice number, notes, and delivery dates remain editable.'
                     }
                   />
                 ) : null}
@@ -265,6 +270,17 @@ function QuoteEditor({
                           <field.DateField
                             disabled={!canEdit('validUntil')}
                             label="Valid until"
+                            onValueCommit={autosave.commit}
+                          />
+                        )}
+                      </form.AppField>
+                    </View>
+                    <View className="md:min-w-[220px] md:flex-1">
+                      <form.AppField name="invoiceNumber">
+                        {(field) => (
+                          <field.TextField
+                            disabled={!canEdit('invoiceNumber')}
+                            label="Invoice number"
                             onValueCommit={autosave.commit}
                           />
                         )}

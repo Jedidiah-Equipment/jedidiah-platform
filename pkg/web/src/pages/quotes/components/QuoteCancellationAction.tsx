@@ -23,6 +23,7 @@ type QuoteCancellationActionProps = {
   isPending: boolean;
   job: QuoteLinkedJob | null;
   kind: QuoteKind;
+  productUnitId: string | null;
   onConfirm: (cancellationReason: string) => void;
   status: QuoteStatus;
 };
@@ -32,10 +33,15 @@ export const QuoteCancellationAction: React.FC<QuoteCancellationActionProps> = (
   isPending,
   job,
   kind,
+  productUnitId,
   onConfirm,
   status,
 }) => {
-  if (!canCancel || status === 'cancelled' || !isQuoteLocked({ hasJob: job !== null, kind, status })) {
+  if (
+    !canCancel ||
+    status === 'cancelled' ||
+    !isQuoteLocked({ hasJob: job !== null, hasProductUnit: productUnitId !== null, kind, status })
+  ) {
     return null;
   }
 

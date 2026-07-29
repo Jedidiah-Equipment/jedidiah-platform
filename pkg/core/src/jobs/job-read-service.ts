@@ -1,5 +1,6 @@
 import {
   createEscapedContainsSearchCondition,
+  currentOwnerCustomerId,
   customers,
   type DatabaseTransaction,
   type Db,
@@ -12,7 +13,6 @@ import {
   jobs,
   parts,
   products,
-  productUnitOwnershipTransfers,
   productUnits,
   quotes,
   quoteWorkItems,
@@ -80,9 +80,6 @@ type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 't
 const productUnitWith = {
   columns: {
     productSerialNumber: true,
-    productSerialPrefix: true,
-    productSerialSequence: true,
-    productSerialYear: true,
     vinNumber: true,
   },
   with: {
@@ -92,6 +89,20 @@ const productUnitWith = {
     },
     product: {
       columns: { buildTimeDays: true, id: true, modelCode: true, name: true, thumbnailDataUrl: true },
+    },
+  },
+} as const;
+
+// The sale behind a Job, and the Customer that bought it. Null on a Stock Build, which has no sale.
+const jobQuoteWith = {
+  columns: {
+    code: true,
+    kind: true,
+    workTitle: true,
+  },
+  with: {
+    customer: {
+      columns: { companyName: true, id: true, thumbnailDataUrl: true },
     },
   },
 } as const;
@@ -234,22 +245,7 @@ async function listJobSummariesByIds({
       where: inArray(jobs.id, batch),
       with: {
         productUnit: productUnitWith,
-        quote: {
-          columns: {
-            code: true,
-            kind: true,
-            workTitle: true,
-          },
-          with: {
-            customer: {
-              columns: {
-                companyName: true,
-                id: true,
-                thumbnailDataUrl: true,
-              },
-            },
-          },
-        },
+        quote: jobQuoteWith,
       },
     });
 
@@ -374,22 +370,7 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
     ...getPaginationQueryOptions(input),
     with: {
       productUnit: productUnitWith,
-      quote: {
-        columns: {
-          code: true,
-          kind: true,
-          workTitle: true,
-        },
-        with: {
-          customer: {
-            columns: {
-              companyName: true,
-              id: true,
-              thumbnailDataUrl: true,
-            },
-          },
-        },
-      },
+      quote: jobQuoteWith,
     },
   });
 
@@ -467,22 +448,15 @@ function jobCustomerIdExpression(quoteCustomerId: SQL | SQLWrapper): SQL<string 
 }
 
 /**
- * The Customer holding this Job's machine now: the newest Ownership Transfer's destination.
- *
  * The inner table's columns are written against an explicit alias rather than through its Drizzle
  * columns. The relational query API rewrites every Drizzle column reference in a `where` to the outer
- * Job alias, which would silently turn `transfer.to_customer_id` into `jobs.to_customer_id` — the same
- * reason the Quote conditions nearby take an alias.
+ * Job alias, which would silently turn `unit.product_serial_number` into `jobs.product_serial_number` —
+ * the same reason the Quote conditions nearby take an alias.
  */
-const ownerTransferAlias = sql.raw('"owner_transfer"');
 const sortSerialUnitAlias = sql.raw('"sort_unit"');
-const currentJobOwnerId = sql<string | null>`(
-  select ${ownerTransferAlias}."to_customer_id"
-  from ${productUnitOwnershipTransfers} ${ownerTransferAlias}
-  where ${ownerTransferAlias}."product_unit_id" = ${jobs.productUnitId}
-  order by ${ownerTransferAlias}."occurred_on" desc, ${ownerTransferAlias}."created_at" desc, ${ownerTransferAlias}."id" desc
-  limit 1
-)`;
+
+/** The Customer holding this Job's machine now, or `NULL` when we hold it. */
+const currentJobOwnerId = currentOwnerCustomerId(jobs.productUnitId);
 
 /** The serial the list displays: the machine's, not the Job's own stale column. */
 const jobProductSerialExpression = sql<string | null>`(
@@ -578,20 +552,11 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
     where: eq(jobs.id, id),
     with: {
       productUnit: productUnitWith,
+      // The Job sheet also lists the Custom Quote's Work Items, which no list read needs.
       quote: {
-        columns: {
-          code: true,
-          kind: true,
-          workTitle: true,
-        },
+        ...jobQuoteWith,
         with: {
-          customer: {
-            columns: {
-              companyName: true,
-              id: true,
-              thumbnailDataUrl: true,
-            },
-          },
+          ...jobQuoteWith.with,
           workItems: {
             columns: {
               department: true,

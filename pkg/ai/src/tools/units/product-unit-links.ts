@@ -16,15 +16,13 @@ export const ProductUnitLinks = z.object({
 });
 
 export function createProductUnitLinks(
-  unit: { id: string; owner: { id: string } | null; product: { id: string } | null },
+  unit: { id: string; owner: { id: string } | null; product: { id: string } },
   access: UserAccessSummary | null,
 ): ProductUnitLinks {
   return ProductUnitLinks.parse({
     app: createProductUnitAppHref(unit.id),
     // A Unit in Stock has no Owner to link to.
     ...(unit.owner && hasPermission(access, 'customer:read') ? { owner: createCustomerAppHref(unit.owner.id) } : {}),
-    ...(unit.product && hasPermission(access, 'product:read')
-      ? { product: createProductAppHref(unit.product.id) }
-      : {}),
+    ...(hasPermission(access, 'product:read') ? { product: createProductAppHref(unit.product.id) } : {}),
   });
 }

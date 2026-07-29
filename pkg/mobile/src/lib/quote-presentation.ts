@@ -138,7 +138,7 @@ export const QuoteEditFormValues = z
     depositPercent: QuoteDepositPercent,
     discountPercent: QuoteDiscountPercent,
     documentNotes: z.string(),
-    invoiceNumber: z.union([z.literal(''), QuoteInvoiceNumber.unwrap()]),
+    invoiceNumber: z.string(),
     notes: z.string(),
     plannedDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
     preferredDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
@@ -176,6 +176,7 @@ export function getQuoteEditFormValuesValidator(kind: QuoteKind) {
     for (const [field, schema] of [
       ['notes', QuoteNotes],
       ['documentNotes', QuoteDocumentNotes],
+      ['invoiceNumber', QuoteInvoiceNumber],
     ] as const) {
       if (values[field] === '') continue;
 

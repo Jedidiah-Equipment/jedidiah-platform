@@ -129,7 +129,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
             jobCode: activeSlot.jobCode,
             jobDisplayName: getJobDisplayName(activeJob),
             productThumbnailDataUrl: activeJob.productThumbnailDataUrl,
-            productSerialNumber: activeJob.productSerialNumber,
+            productSerialNumber: activeJob.productUnit?.productSerialNumber ?? null,
             customerCompanyName: activeJob.customerCompanyName,
             firstWorkDay: activeSlot.firstWorkDay,
           }
@@ -154,7 +154,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
         quoteCode: job?.quoteCode ?? '—',
         jobDisplayName: job ? getJobDisplayName(job) : slot.jobCode,
         productThumbnailDataUrl: job?.productThumbnailDataUrl ?? null,
-        productSerialNumber: job?.productSerialNumber ?? null,
+        productSerialNumber: job?.productUnit?.productSerialNumber ?? null,
         customerCompanyName: job?.customerCompanyName ?? null,
         description: job?.description ?? null,
         bayName: bay.name,

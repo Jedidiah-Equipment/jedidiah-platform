@@ -1993,7 +1993,7 @@ describe('jobs.create with quote links', () => {
     const jobRows = await context.db.select().from(jobs);
 
     expect(job).toMatchObject({
-      productId: context.product.id,
+      productUnit: { productId: context.product.id },
       quoteId: accepted.id,
     });
     expect(jobRows).toHaveLength(1);
@@ -2183,7 +2183,7 @@ describe('jobs.create with quote links', () => {
     });
 
     expect(job).toMatchObject({
-      productId: context.product.id,
+      productUnit: { productId: context.product.id },
       quoteId: accepted.id,
     });
     await expect(

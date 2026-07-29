@@ -115,7 +115,7 @@ const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => {
         <JobPreviewFact label="Customer" value={job.customerCompanyName ?? <StockBadge />} />
         <JobPreviewFact label={getJobWorkLabel(job)} value={displayName} />
         <JobPreviewFact label="Quote" value={job.quoteCode} />
-        {job.productSerialNumber ? <JobPreviewFact label="Serial" value={job.productSerialNumber} /> : null}
+        {job.productUnit ? <JobPreviewFact label="Serial" value={job.productUnit.productSerialNumber} /> : null}
       </div>
       <div className="rounded-md border p-2">
         <div className="text-xs font-medium text-muted-foreground">Schedule</div>

@@ -366,7 +366,7 @@ function mapFeedbackSubject(row: FeedbackReadRow): FeedbackListItem['subject'] {
     const jobLabel = getJobOptionHint({
       code: jobCode,
       productName: null,
-      productSerialNumber: row.job.productUnit?.productSerialNumber ?? null,
+      productUnit: row.job.productUnit ?? null,
       quoteKind: row.job.quote?.kind ?? null,
       workTitle: row.job.quote?.workTitle ?? null,
     });

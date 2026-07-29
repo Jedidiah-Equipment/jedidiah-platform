@@ -7,6 +7,8 @@ import { GetJobInput, GetJobResponse, getJobDefinition, toGetJobResponse } from 
 const JOB_ID = '00000000-0000-4000-8000-000000000401';
 const CUSTOMER_ID = '00000000-0000-4000-8000-000000000101';
 const QUOTE_ID = '00000000-0000-4000-8000-000000000301';
+const UNIT_ID = '00000000-0000-4000-8000-000000000201';
+const PRODUCT_ID = '00000000-0000-4000-8000-000000000202';
 
 const job = JobDetail.parse({
   cancelledAt: null,
@@ -21,14 +23,10 @@ const job = JobDetail.parse({
   documents: [],
   id: JOB_ID,
   productBuildTimeDays: null,
-  productId: null,
   productModelCode: null,
   productName: null,
-  productSerialNumber: null,
-  productSerialPrefix: null,
-  productSerialSequence: null,
-  productSerialYear: null,
   productThumbnailDataUrl: null,
+  productUnit: null,
   quoteCode: 'QUO-00001',
   quoteId: QUOTE_ID,
   quoteKind: 'custom',
@@ -38,7 +36,6 @@ const job = JobDetail.parse({
   })),
   scheduleState: null,
   updatedAt: '2026-07-10T09:00:00.000Z',
-  vinNumber: null,
   workRows: [
     {
       id: '00000000-0000-4000-8000-000000000501',
@@ -93,5 +90,25 @@ describe('getJob contract', () => {
     expect(
       toGetJobResponse(job, createUserAccessSummary({ role: 'job-viewer', userId: 'test-user-id' })).links,
     ).toEqual({ app: `/jobs/${JOB_ID}` });
+  });
+
+  test('links a Unit-bound Job to the machine it builds', () => {
+    const productJob = JobDetail.parse({
+      ...job,
+      productUnit: {
+        id: UNIT_ID,
+        productId: PRODUCT_ID,
+        productSerialNumber: 'SG1836260009',
+        vinNumber: null,
+      },
+    });
+
+    const response = toGetJobResponse(productJob, createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }));
+
+    expect(response.productUnit).toMatchObject({ id: UNIT_ID, productSerialNumber: 'SG1836260009' });
+    expect(response.links).toMatchObject({
+      product: `/products/${PRODUCT_ID}/edit`,
+      productUnit: `/units/${UNIT_ID}`,
+    });
   });
 });

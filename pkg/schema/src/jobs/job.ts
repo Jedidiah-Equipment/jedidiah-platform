@@ -451,20 +451,26 @@ export const JobDetailDepartmentSchedule = JobDepartmentSchedule.omit({ bays: tr
   bays: z.array(JobScheduleBayQueue),
 });
 
+/**
+ * The machine a Job builds or reworks, read off its Product Unit and never stored on the Job. One
+ * object rather than parallel columns, so a Job cannot carry a serial without a Unit to hang it on.
+ * VIN is nullable because it is captured after the build, not with it.
+ */
+export type JobProductUnitFacts = z.infer<typeof JobProductUnitFacts>;
+export const JobProductUnitFacts = z.object({
+  id: UUID,
+  productId: UUID,
+  productSerialNumber: ProductSerialNumber,
+  vinNumber: ProductUnitVinNumber,
+});
+
 export type Job = z.infer<typeof Job>;
 export const Job = z.object({
   id: UUID,
   code: JobCode,
   cancelledAt: DateIso.nullable(),
-  // Identity read off the Job's Product Unit, never stored on the Job: null on all of them means a
-  // Custom Job, which builds no machine. productSerialNumber is the full frozen serial; prefix,
-  // sequence, and year store its component parts.
-  productId: UUID.nullable(),
-  productSerialNumber: ProductSerialNumber.nullable(),
-  productSerialPrefix: ProductSerialPrefix.nullable(),
-  productSerialSequence: ProductSerialSequence.nullable(),
-  productSerialYear: ProductSerialYear.nullable(),
-  vinNumber: ProductUnitVinNumber,
+  // Null on a Custom Job, which builds no machine.
+  productUnit: JobProductUnitFacts.nullable(),
   // Null on a Stock Build: it builds a machine we hold, so there is no sale behind it.
   quoteId: UUID.nullable(),
   description: JobDescription,

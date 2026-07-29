@@ -83,10 +83,10 @@ export function createJobListColumns({
       },
     },
     {
-      accessorFn: (job) => job.productSerialNumber,
+      accessorFn: (job) => job.productUnit?.productSerialNumber ?? null,
       cell: ({ row }) =>
-        row.original.productSerialNumber ? (
-          <span className="font-mono text-sm tabular-nums">{row.original.productSerialNumber}</span>
+        row.original.productUnit ? (
+          <span className="font-mono text-sm tabular-nums">{row.original.productUnit.productSerialNumber}</span>
         ) : (
           <span className="text-muted-foreground">—</span>
         ),

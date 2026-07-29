@@ -6,6 +6,7 @@ import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { SlotDetailPane } from '@/components/bays/SlotDetailPane';
+import { CustomerName } from '@/components/CustomerName';
 import { ScheduleHeader } from '@/components/ScheduleHeader';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
@@ -270,7 +271,6 @@ function ActiveHero({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const heroSub = [active.productSerialNumber, active.customerCompanyName ?? 'Stock'].filter(Boolean).join(' · ');
   const { resolved } = useColorMode();
   const heroTone = active.isCancelled ? 'cancelled' : 'live';
   const selectionState = selected ? 'selected' : 'resting';
@@ -310,11 +310,10 @@ function ActiveHero({
           <Text className="mt-0.5 text-sm text-surface-foreground" numberOfLines={1}>
             {active.jobDisplayName}
           </Text>
-          {heroSub ? (
-            <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
-              {heroSub}
-            </Text>
-          ) : null}
+          <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
+            {active.productSerialNumber ? `${active.productSerialNumber} · ` : ''}
+            <CustomerName companyName={active.customerCompanyName} />
+          </Text>
         </View>
       </View>
 

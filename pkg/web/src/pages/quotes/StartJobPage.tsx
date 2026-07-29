@@ -1,4 +1,4 @@
-import { hasPermission } from '@pkg/domain';
+import { hasPermission, isReworkQuote } from '@pkg/domain';
 import type { Bay, JobCreateInput, QuoteDetail, UUID } from '@pkg/schema';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -39,7 +39,7 @@ export const StartJobPage: React.FC<StartJobPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
   const quote = quoteQuery.data;
-  const isRework = quote?.productUnitId != null;
+  const isRework = quote !== undefined && isReworkQuote(quote);
 
   return (
     <PageLayout
@@ -65,7 +65,7 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
   const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
-  const isRework = quote.productUnitId !== null;
+  const isRework = isReworkQuote(quote);
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const bayCalendars = useBayCalendars();
@@ -146,7 +146,7 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
   scheduling,
 }) => {
   const [showAllBays, setShowAllBays] = useState(true);
-  const isRework = quote.productUnitId !== null;
+  const isRework = isReworkQuote(quote);
   const initialFormValues = useMemo(
     () => toJobCreateFormValues({ productBays: quote.product?.bays ?? [], scheduling }),
     [quote.product, scheduling],
@@ -171,40 +171,18 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
         void form.handleSubmit();
       }}
     >
-      <form.Field name="baySeeds" mode="array">
-        {(baySeedsField) => (
-          <JobBaySeedsCard
-            baySeedsField={baySeedsField}
-            baysById={baysById}
-            baysError={baysError}
-            enabledBays={enabledBays}
-            isPending={isPending}
-            onShowAllBaysChange={setShowAllBays}
-            renderDurationField={(index) => (
-              <form.AppField name={`baySeeds[${index}].durationDays`}>
-                {(field) => (
-                  <field.NumberField
-                    className="w-20"
-                    disabled={isPending}
-                    emptyValue={Number.NaN}
-                    inputMode="numeric"
-                    label="Days"
-                    orientation="horizontal"
-                    placeholder="1"
-                    fieldClassName="self-center *:data-[slot=field-label]:flex-none"
-                  />
-                )}
-              </form.AppField>
-            )}
-            renderStartDateField={(index, render) => (
-              <form.AppField name={`baySeeds[${index}].startDate`}>{(field) => render(field)}</form.AppField>
-            )}
-            scheduling={scheduling}
-            showAllBays={showAllBays}
-            showAllBaysInputId="start-job-show-all-bays"
-          />
-        )}
-      </form.Field>
+      <JobBaySeedsCard
+        baysById={baysById}
+        baysError={baysError}
+        enabledBays={enabledBays}
+        fields={{ baySeeds: 'baySeeds' }}
+        form={form}
+        isPending={isPending}
+        onShowAllBaysChange={setShowAllBays}
+        scheduling={scheduling}
+        showAllBays={showAllBays}
+        showAllBaysInputId="start-job-show-all-bays"
+      />
       <form.Subscribe selector={(state) => state.values.baySeeds}>
         {(baySeeds) =>
           showAllBays || baySeeds.length > 0 ? (

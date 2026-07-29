@@ -1,4 +1,4 @@
-import { hasPermission } from '@pkg/domain';
+import { hasPermission, isReworkQuote } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { IconBriefcase2 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -6,13 +6,11 @@ import type React from 'react';
 
 import { Button } from '@/components/ui/button.js';
 import { useAccess } from '@/hooks/use-access.js';
-import { canStartJobFromQuote } from './start-job-eligibility.js';
+import { canStartJobFromQuote, type StartableQuote } from './start-job-eligibility.js';
 
 type StartJobLinkProps = {
   className?: string;
-  quote: Pick<QuoteDetail, 'code' | 'id' | 'job' | 'kind' | 'productUnitId' | 'status'> & {
-    reworkRequired?: boolean;
-  };
+  quote: StartableQuote & Pick<QuoteDetail, 'code' | 'id'>;
   size?: 'default' | 'icon-sm';
 };
 
@@ -20,7 +18,7 @@ type StartJobLinkProps = {
 export const StartJobLink: React.FC<StartJobLinkProps> = ({ className, quote, size = 'default' }) => {
   const accessQuery = useAccess();
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
-  const label = quote.productUnitId ? 'Start Rework Job' : 'Start Job';
+  const label = isReworkQuote(quote) ? 'Start Rework Job' : 'Start Job';
 
   if (!canCreateJob || !canStartJobFromQuote(quote)) {
     return null;

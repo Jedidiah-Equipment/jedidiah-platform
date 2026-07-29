@@ -1,10 +1,10 @@
 import {
   createEscapedContainsSearchCondition,
+  currentOwnerCustomerId,
   customers,
   type DatabaseTransaction,
   type Db,
   getSortOrder,
-  jobCfoAssemblies,
   jobs,
   products,
   productUnitOwnershipTransfers,
@@ -22,20 +22,11 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 
+import { loadAsBuiltSpec } from './product-unit-as-built.js';
 import { ProductUnitNotFoundError } from './product-unit-errors.js';
 
-/**
- * The Customer holding a Unit right now: the newest Ownership Transfer's destination. Ownership is
- * never a column, so every read derives it — `NULL` here means Stock, which is why the owner filter
- * has to distinguish "no rows" from "no match".
- */
-const currentOwnerId = sql<string | null>`(
-  select ${productUnitOwnershipTransfers.toCustomerId}
-  from ${productUnitOwnershipTransfers}
-  where ${productUnitOwnershipTransfers.productUnitId} = ${productUnits.id}
-  order by ${productUnitOwnershipTransfers.occurredOn} desc, ${productUnitOwnershipTransfers.createdAt} desc, ${productUnitOwnershipTransfers.id} desc
-  limit 1
-)`;
+/** `NULL` here means Stock, which is why the owner filter has to distinguish "no rows" from "no match". */
+const currentOwnerId = currentOwnerCustomerId(productUnits.id);
 
 /**
  * The Job Completion of the Unit's Build Job — its earliest live Job, since a rework can only follow a
@@ -78,7 +69,7 @@ export async function listProductUnits({
     db
       .select(productUnitSelection)
       .from(productUnits)
-      .leftJoin(products, eq(products.id, productUnits.productId))
+      .innerJoin(products, eq(products.id, productUnits.productId))
       .where(where)
       .orderBy(getSortOrder(sortColumn, input.sortDirection), asc(productUnits.id))
       .$dynamic(),
@@ -130,14 +121,14 @@ export async function getProductUnit({
   const [row] = await db
     .select(productUnitSelection)
     .from(productUnits)
-    .leftJoin(products, eq(products.id, productUnits.productId))
+    .innerJoin(products, eq(products.id, productUnits.productId))
     .where(eq(productUnits.id, id));
 
   if (!row) {
     throw new ProductUnitNotFoundError(id);
   }
 
-  const [owners, unitJobs, transfers] = await Promise.all([
+  const [owners, unitJobs, transfers, asBuiltSpec] = await Promise.all([
     loadOwners(db, [row.ownerId]),
     db.query.jobs.findMany({
       columns: { cancelledAt: true, code: true, completedOn: true, createdAt: true, id: true },
@@ -154,14 +145,12 @@ export async function getProductUnit({
         toCustomer: { columns: { companyName: true, id: true } },
       },
     }),
+    loadAsBuiltSpec({ db, productUnitId: id }),
   ]);
 
   return ProductUnitDetail.parse({
     ...toSummary(row, owners),
-    asBuiltSpec: await loadAsBuiltSpec(
-      db,
-      unitJobs.filter((job) => job.cancelledAt === null).map((job) => job.id),
-    ),
+    asBuiltSpec,
     jobs: unitJobs.map((job) => ({
       id: job.id,
       cancelledAt: job.cancelledAt?.toISOString() ?? null,
@@ -180,32 +169,6 @@ export async function getProductUnit({
       toCustomer: transfer.toCustomer,
     })),
   });
-}
-
-/**
- * What is actually fitted to the Unit. Read from the frozen CFO rather than the catalog, so a Unit
- * keeps showing what it was built with after the Product's Assemblies move on. Build Specs (#1014)
- * become the CFO's source without changing this read.
- *
- * Cancelled Jobs are excluded by the caller. Their CFO is a plan, not a record of what was fitted, so
- * counting it would seed the next sale's Quote with Assemblies the customer never received — a worse
- * error than omitting part-finished work, which a human can still see on the Unit's Job history.
- */
-async function loadAsBuiltSpec(
-  db: Db | DatabaseTransaction,
-  jobIds: string[],
-): Promise<ProductUnitDetail['asBuiltSpec']> {
-  if (jobIds.length === 0) return [];
-
-  const rows = await db
-    .select({ id: jobCfoAssemblies.id, jobId: jobCfoAssemblies.jobId, name: jobCfoAssemblies.assemblyName })
-    .from(jobCfoAssemblies)
-    .innerJoin(jobs, eq(jobs.id, jobCfoAssemblies.jobId))
-    .where(and(inArray(jobCfoAssemblies.jobId, jobIds), eq(jobCfoAssemblies.kind, 'optional')))
-    // In the order the work happened: the build's assemblies, then each rework's.
-    .orderBy(asc(jobs.createdAt), asc(jobs.id), asc(jobCfoAssemblies.sequence));
-
-  return rows.map((row) => ({ id: UUID.parse(row.id), jobId: UUID.parse(row.jobId), name: row.name }));
 }
 
 type OwnersById = Map<string, { id: UUID; companyName: string }>;
@@ -227,7 +190,7 @@ async function loadOwners(db: Db | DatabaseTransaction, ownerIds: (string | null
 type ProductUnitListRow = {
   [Key in keyof typeof productUnitSelection]: Key extends 'createdAt'
     ? Date
-    : Key extends 'buildCompletedOn' | 'ownerId' | 'productId' | 'productModelCode' | 'productName' | 'vinNumber'
+    : Key extends 'buildCompletedOn' | 'ownerId' | 'vinNumber'
       ? string | null
       : string;
 };
@@ -238,10 +201,7 @@ function toSummary(row: ProductUnitListRow, owners: OwnersById): ProductUnitSumm
     buildState: toBuildState(row.buildCompletedOn),
     createdAt: row.createdAt.toISOString(),
     owner: row.ownerId ? (owners.get(row.ownerId) ?? null) : null,
-    product:
-      row.productId && row.productModelCode && row.productName
-        ? { id: row.productId, modelCode: row.productModelCode, name: row.productName }
-        : null,
+    product: { id: row.productId, modelCode: row.productModelCode, name: row.productName },
     productSerialNumber: row.productSerialNumber,
     vinNumber: row.vinNumber,
   });

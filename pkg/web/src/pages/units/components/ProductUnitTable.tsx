@@ -90,16 +90,13 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
         meta: { headerClassName: 'min-w-36' },
       },
       {
-        accessorFn: (unit) => unit.product?.name,
-        cell: ({ row }) =>
-          row.original.product ? (
-            <span className="flex min-w-0 flex-col">
-              <span className="truncate">{row.original.product.name}</span>
-              <span className="truncate text-muted-foreground text-xs">{row.original.product.modelCode}</span>
-            </span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
+        accessorFn: (unit) => unit.product.name,
+        cell: ({ row }) => (
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate">{row.original.product.name}</span>
+            <span className="truncate text-muted-foreground text-xs">{row.original.product.modelCode}</span>
+          </span>
+        ),
         enableColumnFilter: true,
         enableSorting: false,
         header: 'Product',
@@ -195,7 +192,7 @@ function getProductUnitListInputExtras(columnFilters: ColumnFiltersState) {
   return {
     columnFilters: {
       buildState: ProductUnitBuildState.safeParse(buildState).data,
-      owner: owner === STOCK_OWNER_VALUE ? STOCK_OWNER_VALUE : owner,
+      owner,
       productId: getColumnFilterValue(columnFilters, 'product'),
     },
   } satisfies Pick<ProductUnitListInput, 'columnFilters'>;

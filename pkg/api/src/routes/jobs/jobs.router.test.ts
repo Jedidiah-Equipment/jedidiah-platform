@@ -875,12 +875,12 @@ describe('jobs.create', () => {
     });
 
     expect(job).toMatchObject({
-      productId: context.product.id,
-      productSerialNumber: expect.stringMatching(/^JOB-TEST\d{6}$/),
-      productSerialPrefix: 'JOB-TEST',
-      productSerialSequence: 1,
+      productUnit: {
+        productId: context.product.id,
+        productSerialNumber: expect.stringMatching(/^JOB-TEST\d{6}$/),
+        vinNumber: null,
+      },
       quoteId: context.quote.id,
-      vinNumber: null,
     });
     expect(job.schedule.map((item) => item.department)).toEqual([
       'procurement',
@@ -900,7 +900,7 @@ describe('jobs.create', () => {
       .where(sql`${products.id} = ${context.product.id}`);
 
     await expect(caller.jobs.create({ quoteId: context.quote.id })).resolves.toMatchObject({
-      productId: context.product.id,
+      productUnit: { productId: context.product.id },
       quoteId: context.quote.id,
     });
   });
@@ -1098,7 +1098,7 @@ describe('jobs.create', () => {
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
     });
-    const serialNumber = job.productSerialNumber;
+    const serialNumber = job.productUnit?.productSerialNumber;
 
     if (!serialNumber) {
       throw new Error('Product quote job did not mint a product serial number');
@@ -1106,8 +1106,7 @@ describe('jobs.create', () => {
 
     await expect(caller.jobs.get({ id: job.id })).resolves.toMatchObject({
       id: job.id,
-      productSerialNumber: serialNumber,
-      vinNumber: null,
+      productUnit: { productSerialNumber: serialNumber, vinNumber: null },
     });
 
     const result = await caller.jobs.list({
@@ -1122,8 +1121,7 @@ describe('jobs.create', () => {
     expect(result.items).toEqual([
       expect.objectContaining({
         id: job.id,
-        productSerialNumber: serialNumber,
-        vinNumber: null,
+        productUnit: expect.objectContaining({ productSerialNumber: serialNumber, vinNumber: null }),
       }),
     ]);
   });

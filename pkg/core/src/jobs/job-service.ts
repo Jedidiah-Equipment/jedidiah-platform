@@ -7,24 +7,16 @@ import {
   jobCfoParts,
   jobSlots,
   jobs,
-  notRemoved,
-  productSerialSequences,
-  products,
-  productUnitOwnershipTransfers,
   productUnits,
-  quoteSelectedAssemblies,
-  quotes,
 } from '@pkg/db';
 import {
   type BuildSpecAssembly,
   buildCfo,
   buildReworkCfo,
   type CfoEntry,
-  canStartJobFromQuote,
   getPlantDateNow,
   isJobCancelled,
   projectJobSlots,
-  selectReworkBuildSpec,
 } from '@pkg/domain';
 import {
   type AddIdleJobSlotInput,
@@ -35,8 +27,6 @@ import {
   type BrochurePdfRenderer,
   DateOnlyIso,
   formatJobCode,
-  formatProductSerialNumber,
-  isStockBuildCreateInput,
   JobCode,
   type JobCreateInput,
   type JobDetail,
@@ -44,17 +34,13 @@ import {
   type JobUpdateResult,
   type MoveJobSlotInput,
   MoveJobSlotResult,
-  ProductSerialPrefix,
-  ProductSerialSequence,
-  ProductSerialYear,
-  type QuoteOffering,
   type RemoveJobSlotInput,
   RemoveJobSlotResult,
   type ResizeJobSlotInput,
   ResizeJobSlotResult,
-  UUID,
+  type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lt } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -68,60 +54,20 @@ import { documentBaseSelect } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { snapshotJobBrochureDocument } from '../products/product-brochure-document.js';
-import { narrowQuoteOffering } from '../quotes/quote-offering.js';
-import { productUnitAuditDescriptor } from '../units/product-unit-service.js';
+import { appendOwnershipTransfer, productUnitAuditDescriptor } from '../units/product-unit-service.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
+import { createsProductUnit, hasProductWork, type JobBlueprint, resolveJobBlueprint } from './job-blueprint.js';
 import {
   JobCompletedOnInFutureError,
   JobCreateFromQuoteDeniedError,
   JobNotFoundError,
   JobSlotNotFoundError,
-  StockBuildDeniedError,
 } from './job-errors.js';
 import { type JobProductUnitRow, type JobRow, mapJob } from './job-mappers.js';
 import { assertJobIsMutable, lockMutableJob } from './job-mutation-guards.js';
 import { getJob } from './job-read-service.js';
 import { loadBayWorkingCalendar } from './working-calendar-service.js';
-
-type QuoteRow = typeof quotes.$inferSelect;
-
-// A Job's inputs resolved once at the input boundary. `kind` alone drives every downstream branch, so
-// no write site re-derives whether this work creates a machine, reuses one, or has no machine at all.
-type JobBlueprint =
-  | {
-      kind: 'product';
-      quote: QuoteRow;
-      productId: UUID;
-      serial: Awaited<ReturnType<typeof createProductSerial>>;
-      buildSpec: BuildSpecAssembly[];
-    }
-  | {
-      kind: 'stock-build';
-      quote: null;
-      productId: UUID;
-      serial: Awaited<ReturnType<typeof createProductSerial>>;
-      buildSpec: BuildSpecAssembly[];
-    }
-  | {
-      kind: 'rework';
-      quote: QuoteRow;
-      productId: UUID;
-      productUnitId: UUID;
-      buildSpec: BuildSpecAssembly[];
-    }
-  | { kind: 'custom'; quote: QuoteRow };
-
-/** A Build creates the machine; Rework has product work but must keep the Unit it was quoted against. */
-function createsProductUnit(
-  blueprint: JobBlueprint,
-): blueprint is Extract<JobBlueprint, { kind: 'product' | 'stock-build' }> {
-  return blueprint.kind === 'product' || blueprint.kind === 'stock-build';
-}
-
-function hasProductWork(blueprint: JobBlueprint): blueprint is Exclude<JobBlueprint, { kind: 'custom' }> {
-  return blueprint.kind !== 'custom';
-}
 
 export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityType: 'job',
@@ -165,11 +111,8 @@ export async function createJob({
     const plantToday = getPlantDateNow();
     const blueprint = await resolveJobBlueprint({ input, plantToday, tx });
 
-    const productUnitId = createsProductUnit(blueprint)
-      ? await insertProductUnit({ actorUserId, blueprint, tx })
-      : blueprint.kind === 'rework'
-        ? blueprint.productUnitId
-        : null;
+    const productUnit = createsProductUnit(blueprint) ? await insertProductUnit({ actorUserId, blueprint, tx }) : null;
+    const productUnitId = productUnit?.id ?? (blueprint.kind === 'rework' ? blueprint.productUnitId : null);
 
     const [job] = await tx
       .insert(jobs)
@@ -184,14 +127,17 @@ export async function createJob({
     }
 
     // A build-to-order sale creates its Unit and initial ownership together. Allocation acceptance
-    // already transferred the existing Unit; Rework must not record that sale a second time.
-    if (productUnitId && blueprint.kind === 'product') {
-      await tx.insert(productUnitOwnershipTransfers).values({
+    // already transferred the existing Unit; Rework must not record that sale a second time. The Unit
+    // is new, so there is no competing owner to lock against — only the log and audit event to write.
+    if (productUnit && blueprint.kind === 'product') {
+      await appendOwnershipTransfer({
         actorUserId,
+        fromCustomerId: null,
         occurredOn: plantToday,
-        productUnitId,
         sourceQuoteId: blueprint.quote.id,
         toCustomerId: blueprint.quote.customerId,
+        tx,
+        unit: productUnit,
       });
     }
 
@@ -286,113 +232,6 @@ export async function cancelJobForQuote({
   await recordAuditDelete({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
 }
 
-async function resolveJobBlueprint({
-  input,
-  plantToday,
-  tx,
-}: {
-  input: JobCreateInput;
-  plantToday: DateOnlyIso;
-  tx: DatabaseTransaction;
-}): Promise<JobBlueprint> {
-  if (isStockBuildCreateInput(input)) {
-    const buildSpec = await resolveStockBuildSpec({
-      assemblyIds: input.buildSpecAssemblyIds,
-      productId: input.productId,
-      tx,
-    });
-
-    return {
-      kind: 'stock-build',
-      quote: null,
-      productId: input.productId,
-      serial: await createProductSerial({ plantToday, productId: input.productId, tx }),
-      buildSpec,
-    };
-  }
-
-  const { offering, quote } = await validateJobQuoteForCreate({ quoteId: input.quoteId, tx });
-
-  if (offering.kind === 'custom') {
-    return { kind: 'custom', quote };
-  }
-
-  const buildSpec = await loadQuoteBuildSpecSeed({ quoteId: quote.id, tx });
-  if (offering.productUnitId) {
-    const reworkBuildSpec = await loadReworkBuildSpec({
-      productUnitId: offering.productUnitId,
-      quoteBuildSpec: buildSpec,
-      tx,
-    });
-
-    if (reworkBuildSpec.length === 0) {
-      throw new JobCreateFromQuoteDeniedError('Allocation Quote has no new Assemblies to fit.');
-    }
-
-    return {
-      buildSpec: reworkBuildSpec,
-      kind: 'rework',
-      productId: offering.productId,
-      productUnitId: offering.productUnitId,
-      quote,
-    };
-  }
-
-  const serial = await createProductSerial({ plantToday, productId: offering.productId, tx });
-
-  return { kind: 'product', quote, productId: offering.productId, serial, buildSpec };
-}
-
-/**
- * A Stock Build's Build Spec, resolved from the Optional Assemblies the administrator picked. The name
- * is snapshotted here for the same reason a Quote's is: the CFO and the As-Built Spec must keep saying
- * what was fitted after the catalog entry is renamed.
- */
-async function resolveStockBuildSpec({
-  assemblyIds,
-  productId,
-  tx,
-}: {
-  assemblyIds: readonly UUID[];
-  productId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<BuildSpecAssembly[]> {
-  // A removed Product is gone from the picker, so a Stock Build naming one is a stale tab or a
-  // hand-made request — never something we should mint a serial and a machine for.
-  const [product] = await tx
-    .select({ id: products.id })
-    .from(products)
-    .where(and(eq(products.id, productId), notRemoved(products)))
-    .limit(1);
-
-  if (!product) {
-    throw new StockBuildDeniedError('Product not found.');
-  }
-
-  const uniqueIds = [...new Set(assemblyIds)];
-
-  if (uniqueIds.length === 0) {
-    return [];
-  }
-
-  const optionalAssembliesById = new Map(
-    (await listAssemblies({ productId, tx }))
-      .filter((assembly) => assembly.kind === 'optional')
-      .map((assembly) => [assembly.id, assembly] as const),
-  );
-  const unknown = uniqueIds.filter((assemblyId) => !optionalAssembliesById.has(assemblyId));
-
-  if (unknown.length > 0) {
-    throw new StockBuildDeniedError(`Optional assembly does not belong to this Product: ${unknown.join(', ')}.`);
-  }
-
-  return uniqueIds.map((assemblyId) => ({
-    // Non-null by construction: `unknown` above already rejected every id the catalog does not hold.
-    assemblyName: optionalAssembliesById.get(assemblyId)?.name ?? '',
-    productAssemblyId: assemblyId,
-  }));
-}
-
 async function loadJobProductUnit({
   productUnitId,
   tx,
@@ -406,9 +245,6 @@ async function loadJobProductUnit({
     .select({
       productId: productUnits.productId,
       productSerialNumber: productUnits.productSerialNumber,
-      productSerialPrefix: productUnits.productSerialPrefix,
-      productSerialSequence: productUnits.productSerialSequence,
-      productSerialYear: productUnits.productSerialYear,
       vinNumber: productUnits.vinNumber,
     })
     .from(productUnits)
@@ -425,7 +261,7 @@ async function insertProductUnit({
   actorUserId: AuthId;
   blueprint: Extract<JobBlueprint, { kind: 'product' | 'stock-build' }>;
   tx: DatabaseTransaction;
-}): Promise<string> {
+}): Promise<typeof productUnits.$inferSelect> {
   const [unit] = await tx
     .insert(productUnits)
     .values({
@@ -443,7 +279,7 @@ async function insertProductUnit({
 
   await recordAuditCreate({ db: tx, descriptor: productUnitAuditDescriptor, actorUserId, input: unit });
 
-  return unit.id;
+  return unit;
 }
 
 export async function updateJob({
@@ -664,145 +500,6 @@ export async function removeJobSlot({
     const slot = await queue.remove(input.slotId);
 
     return RemoveJobSlotResult.parse({ slot });
-  });
-}
-
-async function createProductSerial({
-  productId,
-  tx,
-  plantToday,
-}: {
-  productId: UUID;
-  tx: DatabaseTransaction;
-  plantToday: DateOnlyIso;
-}) {
-  const now = new Date();
-  const [product] = await tx
-    .select({
-      modelCode: products.modelCode,
-    })
-    .from(products)
-    .where(eq(products.id, productId))
-    .limit(1);
-
-  if (!product) {
-    throw new JobCreateFromQuoteDeniedError('Product not found.');
-  }
-
-  const [sequenceRow] = await tx
-    .insert(productSerialSequences)
-    .values({
-      lastSequence: 1,
-      productId,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: productSerialSequences.productId,
-      set: {
-        lastSequence: sql`${productSerialSequences.lastSequence} + 1`,
-        updatedAt: now,
-      },
-    })
-    .returning({
-      lastSequence: productSerialSequences.lastSequence,
-    });
-
-  if (!sequenceRow) {
-    throw new Error('Product serial sequence upsert did not return a row');
-  }
-
-  const prefix = ProductSerialPrefix.parse(product.modelCode);
-  const year = ProductSerialYear.parse(getPlantDateTwoDigitYear(plantToday));
-  const sequence = ProductSerialSequence.parse(sequenceRow.lastSequence);
-
-  return {
-    number: formatProductSerialNumber({ prefix, sequence, year }),
-    prefix,
-    sequence,
-    year,
-  };
-}
-
-function getPlantDateTwoDigitYear(plantDate: DateOnlyIso): number {
-  return Number.parseInt(plantDate.slice(2, 4), 10);
-}
-
-async function validateJobQuoteForCreate({
-  quoteId,
-  tx,
-}: {
-  quoteId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<{ offering: QuoteOffering; quote: QuoteRow }> {
-  const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
-
-  if (!quote) {
-    throw new JobCreateFromQuoteDeniedError('Quote not found.');
-  }
-
-  const offering = narrowQuoteOffering(quote);
-
-  const [existingJob] = await tx
-    .select({
-      id: jobs.id,
-    })
-    .from(jobs)
-    .where(eq(jobs.quoteId, quoteId))
-    .limit(1);
-  const eligibility = canStartJobFromQuote({
-    hasJob: Boolean(existingJob),
-    kind: offering.kind,
-    status: quote.status,
-  });
-
-  if (!eligibility.allowed) {
-    throw new JobCreateFromQuoteDeniedError(eligibility.reason);
-  }
-
-  return { offering, quote };
-}
-
-/**
- * The Quote's selected Assemblies, as the Build Spec they seed. A copy at one moment, in the Quote's
- * own selection order — never a live read, exactly like the Work Item Rate Card seeding a rate.
- */
-async function loadQuoteBuildSpecSeed({
-  quoteId,
-  tx,
-}: {
-  quoteId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<BuildSpecAssembly[]> {
-  return tx
-    .select({
-      assemblyName: quoteSelectedAssemblies.quotedName,
-      productAssemblyId: quoteSelectedAssemblies.productAssemblyId,
-    })
-    .from(quoteSelectedAssemblies)
-    .where(eq(quoteSelectedAssemblies.quoteId, quoteId))
-    .orderBy(asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id));
-}
-
-async function loadReworkBuildSpec({
-  productUnitId,
-  quoteBuildSpec,
-  tx,
-}: {
-  productUnitId: UUID;
-  quoteBuildSpec: readonly BuildSpecAssembly[];
-  tx: DatabaseTransaction;
-}): Promise<BuildSpecAssembly[]> {
-  // Every live Job claims committed As-Built work, including in-progress Rework, so later Rework
-  // cannot claim the same Optional Assembly again.
-  const rows = await tx
-    .select({ productAssemblyId: jobBuildSpecAssemblies.productAssemblyId })
-    .from(jobBuildSpecAssemblies)
-    .innerJoin(jobs, eq(jobs.id, jobBuildSpecAssemblies.jobId))
-    .where(and(eq(jobs.productUnitId, productUnitId), isNull(jobs.cancelledAt)));
-
-  return selectReworkBuildSpec({
-    asBuiltAssemblyIds: rows.flatMap((row) => (row.productAssemblyId ? [UUID.parse(row.productAssemblyId)] : [])),
-    quoteBuildSpec,
   });
 }
 

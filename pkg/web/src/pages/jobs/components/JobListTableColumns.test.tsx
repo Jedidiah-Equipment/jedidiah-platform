@@ -29,7 +29,12 @@ describe('Job List table columns', () => {
         customerCompanyName: 'Acme Mining',
         productModelCode: 'MDL-1',
         productName: 'Loader Bucket',
-        productSerialNumber: 'SN-2026-0042',
+        productUnit: {
+          id: '40000000-0000-4000-8000-000000000000',
+          productId: '20000000-0000-4000-8000-000000000000',
+          productSerialNumber: 'SN-2026-0042',
+          vinNumber: null,
+        },
         // The queue span opens on a Saturday, but work runs Monday 06-08 through Friday 06-19.
         scheduleState: {
           done: 1,
@@ -127,13 +132,9 @@ describe('Job List table columns', () => {
   it('renders custom job work titles without a product serial', () => {
     const html = renderJobListRows([
       buildJobSummary({
-        productId: null,
         productModelCode: null,
         productName: null,
-        productSerialNumber: null,
-        productSerialPrefix: null,
-        productSerialSequence: null,
-        productSerialYear: null,
+        productUnit: null,
         quoteKind: 'custom',
         workTitle: 'Pump skid rebuild',
       }),

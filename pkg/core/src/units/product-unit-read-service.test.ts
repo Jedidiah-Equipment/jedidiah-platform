@@ -1,6 +1,7 @@
 import {
   customers,
   type Db,
+  jobBuildSpecAssemblies,
   jobCfoAssemblies,
   jobs,
   products,
@@ -331,11 +332,20 @@ async function seedUnits(db: Db) {
   const [soldJob, , , reworkJob, cancelledJob] = jobRows;
   if (!soldJob || !reworkJob || !cancelledJob) throw new Error('Job insert did not return every row');
 
+  // The As-Built Spec is the union of the Jobs' Build Specs, so that is what these seed. The CFO rows
+  // alongside them are what each Job's Build Spec produced, and exist here to prove the read no longer
+  // takes the standard-kind entries or the cancelled build's plan from them.
+  await db.insert(jobBuildSpecAssemblies).values([
+    { assemblyName: 'Heavy Axle Upgrade', jobId: soldJob.id, sequence: 0 },
+    { assemblyName: 'Toolbox', jobId: reworkJob.id, sequence: 0 },
+    // Never fitted: this build was cancelled.
+    { assemblyName: 'Winch', jobId: cancelledJob.id, sequence: 0 },
+  ]);
+
   await db.insert(jobCfoAssemblies).values([
     { assemblyName: 'Standard Chassis', jobId: soldJob.id, kind: 'standard', sequence: 0 },
     { assemblyName: 'Heavy Axle Upgrade', jobId: soldJob.id, kind: 'optional', sequence: 1 },
     { assemblyName: 'Toolbox', jobId: reworkJob.id, kind: 'optional', sequence: 0 },
-    // Never fitted: this build was cancelled.
     { assemblyName: 'Winch', jobId: cancelledJob.id, kind: 'optional', sequence: 0 },
   ]);
 

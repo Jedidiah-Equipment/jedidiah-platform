@@ -148,7 +148,7 @@ const UnitIdentityCard: React.FC<{
       <DetailField label="Serial">
         <span className="font-mono tabular-nums">{unit.productSerialNumber}</span>
       </DetailField>
-      <DetailField label="Product">{unit.product ? unit.product.name : <EmptyValue />}</DetailField>
+      <DetailField label="Product">{unit.product.name}</DetailField>
       {vin}
       <DetailField label="Owner">
         <ProductUnitOwnerCell owner={unit.owner} />

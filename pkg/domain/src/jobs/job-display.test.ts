@@ -67,14 +67,14 @@ describe('job display helpers', () => {
     const productJob = {
       code: 'JOB-00006',
       productName: 'Skid Steer',
-      productSerialNumber: 'SG1836260009',
+      productUnit: { productSerialNumber: 'SG1836260009' },
       quoteKind: 'product' as const,
       workTitle: null,
     };
     const customJob = {
       code: 'JOB-00007',
       productName: null,
-      productSerialNumber: null,
+      productUnit: null,
       quoteKind: 'custom' as const,
       workTitle: 'Pump skid rebuild',
     };

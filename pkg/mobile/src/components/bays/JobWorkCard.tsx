@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { CustomerName } from '@/components/CustomerName';
 import { Text } from '@/components/ui/text';
 
 export type JobWorkCardProps = {
@@ -28,16 +29,7 @@ export function JobWorkCard({
             {productSerialNumber}
           </Text>
         ) : null}
-        <Text
-          className={
-            customerCompanyName
-              ? 'mt-1 text-sm text-surface-foreground'
-              : 'mt-1 text-amber-700 text-sm dark:text-amber-300'
-          }
-          numberOfLines={1}
-        >
-          {customerCompanyName ?? 'Stock'}
-        </Text>
+        <CustomerName className="mt-1 text-sm" companyName={customerCompanyName} numberOfLines={1} tone="surface" />
       </View>
     </View>
   );

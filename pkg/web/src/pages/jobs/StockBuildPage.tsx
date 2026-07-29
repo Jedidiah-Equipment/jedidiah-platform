@@ -1,6 +1,6 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import { hasPermission } from '@pkg/domain';
-import type { Bay, StockBuildCreateInput, UUID } from '@pkg/schema';
+import type { Bay, StockBuildCreateInput } from '@pkg/schema';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -134,7 +134,7 @@ const StockBuildForm: React.FC<StockBuildFormProps> = ({ baysError, enabledBays,
   // The picked Product's full catalog record: its Optional Assemblies are the Build Spec to choose
   // from, and its Product Bays are the Bay seeds, exactly as a Quote-sourced Job gets them.
   const productQuery = useQuery({
-    ...trpc.products.get.queryOptions({ id: productId as UUID }),
+    ...trpc.products.get.queryOptions({ id: productId }),
     enabled: Boolean(productId),
   });
   const product = productQuery.data ?? null;
@@ -201,40 +201,18 @@ const StockBuildForm: React.FC<StockBuildFormProps> = ({ baysError, enabledBays,
           )}
         </CardContent>
       </Card>
-      <form.Field name="baySeeds" mode="array">
-        {(baySeedsField) => (
-          <JobBaySeedsCard
-            baySeedsField={baySeedsField}
-            baysById={getBaySeedBayMap({ enabledBays, productBays: product?.productBays ?? [] })}
-            baysError={baysError}
-            enabledBays={enabledBays}
-            isPending={isPending}
-            onShowAllBaysChange={setShowAllBays}
-            renderDurationField={(index) => (
-              <form.AppField name={`baySeeds[${index}].durationDays`}>
-                {(field) => (
-                  <field.NumberField
-                    className="w-20"
-                    disabled={isPending}
-                    emptyValue={Number.NaN}
-                    inputMode="numeric"
-                    label="Days"
-                    orientation="horizontal"
-                    placeholder="1"
-                    fieldClassName="self-center *:data-[slot=field-label]:flex-none"
-                  />
-                )}
-              </form.AppField>
-            )}
-            renderStartDateField={(index, render) => (
-              <form.AppField name={`baySeeds[${index}].startDate`}>{(field) => render(field)}</form.AppField>
-            )}
-            scheduling={scheduling}
-            showAllBays={showAllBays}
-            showAllBaysInputId="stock-build-show-all-bays"
-          />
-        )}
-      </form.Field>
+      <JobBaySeedsCard
+        baysById={getBaySeedBayMap({ enabledBays, productBays: product?.productBays ?? [] })}
+        baysError={baysError}
+        enabledBays={enabledBays}
+        fields={{ baySeeds: 'baySeeds' }}
+        form={form}
+        isPending={isPending}
+        onShowAllBaysChange={setShowAllBays}
+        scheduling={scheduling}
+        showAllBays={showAllBays}
+        showAllBaysInputId="stock-build-show-all-bays"
+      />
       <form.Subscribe selector={(state) => state.values.baySeeds}>
         {(baySeeds) =>
           showAllBays || baySeeds.length > 0 ? (

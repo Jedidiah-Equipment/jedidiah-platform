@@ -11,7 +11,8 @@ export type JobDisplaySubtitleSource = JobDisplaySource & {
 };
 
 export type JobOptionHintSource = JobDisplaySource & {
-  productSerialNumber: string | null;
+  /** Null on a Custom Job, which builds no machine and so falls back to its display name. */
+  productUnit: { productSerialNumber: string } | null;
 };
 
 export type JobDisplaySubtitle = {
@@ -38,7 +39,7 @@ export function getJobDisplaySubtitle(job: JobDisplaySubtitleSource): JobDisplay
 }
 
 export function getJobOptionHint(job: JobOptionHintSource): string {
-  return job.productSerialNumber ?? getJobDisplayName(job);
+  return job.productUnit?.productSerialNumber ?? getJobDisplayName(job);
 }
 
 export function getJobWorkLabel(job: Pick<JobDisplaySource, 'quoteKind'>): 'Product' | 'Work title' {

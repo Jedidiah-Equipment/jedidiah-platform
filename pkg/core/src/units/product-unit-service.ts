@@ -248,19 +248,21 @@ export async function lockUnitForOwnership(
     latest,
     async record(input) {
       const plantToday = getPlantDateNow();
+      assertOwnershipTransferAllowed({
+        currentOwnerId: ownership.currentOwnerId,
+        latest: ownership.latest,
+        occurredOn: input.occurredOn,
+        plantToday,
+        productUnitId: ownership.unit.id,
+        toCustomerId: input.toCustomerId,
+      });
 
-      if (input.occurredOn > plantToday) {
-        throw new ProductUnitTransferInFutureError(input.occurredOn, plantToday);
-      }
-
-      if (input.toCustomerId === ownership.currentOwnerId) {
-        throw new ProductUnitOwnerUnchangedError(ownership.unit.id, ownership.currentOwnerId);
-      }
-
-      if (ownership.latest && input.occurredOn < ownership.latest.occurredOn) {
-        throw new ProductUnitTransferBackdatedError(input.occurredOn, ownership.latest.occurredOn);
-      }
-
+      // PostgreSQL's default `now()` is transaction-stable. Advance same-day timestamps explicitly so
+      // persisted owner resolution cannot fall through to random UUID ordering after two handle writes.
+      const createdAt =
+        ownership.latest && input.occurredOn === ownership.latest.occurredOn
+          ? new Date(Math.max(Date.now(), ownership.latest.createdAt.getTime() + 1))
+          : undefined;
       const transfer = await appendOwnershipTransfer({
         actorUserId: input.actorUserId,
         fromCustomerId: ownership.currentOwnerId,
@@ -268,6 +270,7 @@ export async function lockUnitForOwnership(
         toCustomerId: input.toCustomerId,
         tx,
         unit: ownership.unit,
+        ...(createdAt ? { createdAt } : {}),
         ...(input.note === undefined ? {} : { note: input.note }),
         ...(input.sourceQuoteId === undefined ? {} : { sourceQuoteId: input.sourceQuoteId }),
       });
@@ -281,12 +284,41 @@ export async function lockUnitForOwnership(
   return ownership;
 }
 
+function assertOwnershipTransferAllowed({
+  currentOwnerId,
+  latest,
+  occurredOn,
+  plantToday,
+  productUnitId,
+  toCustomerId,
+}: {
+  currentOwnerId: string | null;
+  latest: OwnershipTransferRow | null;
+  occurredOn: string;
+  plantToday: DateOnlyIso;
+  productUnitId: string;
+  toCustomerId: string | null;
+}): void {
+  if (occurredOn > plantToday) {
+    throw new ProductUnitTransferInFutureError(occurredOn, plantToday);
+  }
+
+  if (toCustomerId === currentOwnerId) {
+    throw new ProductUnitOwnerUnchangedError(productUnitId, currentOwnerId);
+  }
+
+  if (latest && occurredOn < latest.occurredOn) {
+    throw new ProductUnitTransferBackdatedError(occurredOn, latest.occurredOn);
+  }
+}
+
 /**
  * Appends the Transfer and audit event after the locked handle has applied the invariants every
  * ownership move owes.
  */
 async function appendOwnershipTransfer({
   actorUserId,
+  createdAt,
   fromCustomerId,
   note,
   occurredOn,
@@ -296,6 +328,7 @@ async function appendOwnershipTransfer({
   unit,
 }: {
   actorUserId: AuthId;
+  createdAt?: Date;
   fromCustomerId: string | null;
   note?: string | null;
   occurredOn: string;
@@ -314,6 +347,7 @@ async function appendOwnershipTransfer({
       productUnitId: unit.id,
       sourceQuoteId: sourceQuoteId ?? null,
       toCustomerId,
+      ...(createdAt ? { createdAt } : {}),
     })
     .returning({
       createdAt: productUnitOwnershipTransfers.createdAt,
@@ -404,6 +438,17 @@ export async function transferProductUnitOwnership({
     if (!ownership) {
       throw new ProductUnitNotFoundError(input.id);
     }
+
+    // Preserve the manual API's historical error precedence. `record()` repeats these checks because
+    // every other writer must remain unable to bypass them.
+    assertOwnershipTransferAllowed({
+      currentOwnerId: ownership.currentOwnerId,
+      latest: ownership.latest,
+      occurredOn: input.occurredOn,
+      plantToday: getPlantDateNow(),
+      productUnitId: ownership.unit.id,
+      toCustomerId: input.toCustomerId,
+    });
 
     if (input.toCustomerId) {
       const [toCustomer] = await tx

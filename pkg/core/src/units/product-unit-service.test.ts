@@ -17,6 +17,11 @@ import { listJobs } from '../jobs/job-read-service.js';
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
+  ProductUnitOwnerUnchangedError,
+  ProductUnitTransferBackdatedError,
+  ProductUnitTransferInFutureError,
+} from './product-unit-errors.js';
+import {
   createProductUnit,
   lockUnitForOwnership,
   transferProductUnitOwnership,
@@ -133,7 +138,7 @@ describe('lockUnitForOwnership', () => {
       });
       await ownership.record({
         actorUserId: ACTOR_USER_ID,
-        occurredOn: '2026-07-01',
+        occurredOn: '2026-06-01',
         toCustomerId: context.seed.hilltopId,
       });
     });
@@ -141,13 +146,20 @@ describe('lockUnitForOwnership', () => {
     const transfers = await context.db
       .select()
       .from(productUnitOwnershipTransfers)
-      .where(eq(productUnitOwnershipTransfers.productUnitId, context.seed.unitId))
-      .orderBy(asc(productUnitOwnershipTransfers.occurredOn));
+      .where(eq(productUnitOwnershipTransfers.productUnitId, context.seed.unitId));
+    const first = transfers.find((transfer) => transfer.toCustomerId === context.seed.riversideId);
+    const second = transfers.find((transfer) => transfer.toCustomerId === context.seed.hilltopId);
+    if (!first || !second) throw new Error('Sequential Ownership Transfers were not both recorded');
 
-    expect(transfers.map(({ fromCustomerId, toCustomerId }) => ({ fromCustomerId, toCustomerId }))).toEqual([
-      { fromCustomerId: null, toCustomerId: context.seed.riversideId },
-      { fromCustomerId: context.seed.riversideId, toCustomerId: context.seed.hilltopId },
-    ]);
+    expect(first).toMatchObject({ fromCustomerId: null });
+    expect(second).toMatchObject({ fromCustomerId: context.seed.riversideId });
+    expect(second.createdAt.getTime()).toBeGreaterThan(first.createdAt.getTime());
+
+    const currentOwnerId = await context.db.transaction(async (tx) => {
+      const ownership = await lockUnitForOwnership(tx, context.seed.unitId);
+      return ownership?.currentOwnerId;
+    });
+    expect(currentOwnerId).toBe(context.seed.hilltopId);
   });
 
   test('makes future-date, no-op, and backdate checks unavoidable through record', async ({ context }) => {
@@ -161,14 +173,14 @@ describe('lockUnitForOwnership', () => {
           occurredOn: '2999-01-01',
           toCustomerId: context.seed.riversideId,
         }),
-      ).rejects.toMatchObject({ code: 'product_unit.transfer_in_future' });
+      ).rejects.toBeInstanceOf(ProductUnitTransferInFutureError);
       await expect(
         ownership.record({
           actorUserId: ACTOR_USER_ID,
           occurredOn: '2026-06-01',
           toCustomerId: null,
         }),
-      ).rejects.toMatchObject({ code: 'product_unit.owner_unchanged' });
+      ).rejects.toBeInstanceOf(ProductUnitOwnerUnchangedError);
 
       await ownership.record({
         actorUserId: ACTOR_USER_ID,
@@ -182,7 +194,7 @@ describe('lockUnitForOwnership', () => {
           occurredOn: '2026-05-31',
           toCustomerId: context.seed.hilltopId,
         }),
-      ).rejects.toMatchObject({ code: 'product_unit.transfer_backdated' });
+      ).rejects.toBeInstanceOf(ProductUnitTransferBackdatedError);
     });
   });
 });
@@ -385,6 +397,18 @@ describe('transferProductUnitOwnership', () => {
     await expect(
       transfer(context, { occurredOn: '2026-06-01', toCustomerId: MISSING_CUSTOMER_ID }),
     ).rejects.toMatchObject({ code: 'customer.not_found' });
+  });
+
+  test('reports generic date errors before an unknown destination', async ({ context }) => {
+    await expect(
+      transfer(context, { occurredOn: '2999-01-01', toCustomerId: MISSING_CUSTOMER_ID }),
+    ).rejects.toBeInstanceOf(ProductUnitTransferInFutureError);
+
+    await transfer(context, { occurredOn: '2026-06-01', toCustomerId: context.seed.riversideId });
+
+    await expect(
+      transfer(context, { occurredOn: '2026-05-31', toCustomerId: MISSING_CUSTOMER_ID }),
+    ).rejects.toBeInstanceOf(ProductUnitTransferBackdatedError);
   });
 
   test('reports a machine that does not exist as not found', async ({ context }) => {

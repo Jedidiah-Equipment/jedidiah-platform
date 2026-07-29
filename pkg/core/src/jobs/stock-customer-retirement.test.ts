@@ -4,6 +4,7 @@ import {
   documents,
   feedback,
   jobBays,
+  jobBuildSpecAssemblies,
   jobCfoAssemblies,
   jobCfoParts,
   jobSlots,
@@ -32,24 +33,26 @@ const SHOWROOM_JOB_ID = '00000000-0000-4000-8000-000000000201';
 const BACKFILLED_JOB_ID = '00000000-0000-4000-8000-000000000202';
 const SOLD_JOB_ID = '00000000-0000-4000-8000-000000000203';
 const DECOY_JOB_ID = '00000000-0000-4000-8000-000000000204';
+const RESOLD_JOB_ID = '00000000-0000-4000-8000-000000000205';
+const RETURNED_JOB_ID = '00000000-0000-4000-8000-000000000206';
+const UUID_LITERAL_PATTERN = /'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'/g;
 
 const test = createTester(async ({ db }) => ({ db, seed: await seedPlaceholderShape(db) }));
 
-async function runMigration(db: Db, tag: string): Promise<void> {
-  for (const statement of readMigrationStatements(tag)) {
+async function runCleanup(db: Db): Promise<void> {
+  for (const statement of readMigrationStatements('0096_retire_stock_customer')) {
     await db.execute(sql.raw(statement));
   }
 }
 
-async function runCleanup(db: Db): Promise<void> {
-  return runMigration(db, '0096_retire_stock_customer');
-}
-
 describe('stock customer retirement', () => {
-  // Without this the suite passes on a typo'd id: the fixture and the SQL would share one wrong
-  // constant, and the migration would quietly delete nothing — or the wrong Customer.
-  test('targets the Stock Customer id that was actually supplied', () => {
-    expect(readMigrationStatements('0096_retire_stock_customer').join('\n')).toContain(STOCK_CUSTOMER_ID);
+  // The id is written into every statement, so this asserts on the whole set rather than on one
+  // occurrence: a typo in any single one would otherwise ship, targeting a Customer that does not
+  // exist — or, one character luckier, a real one.
+  test('targets the Stock Customer id that was actually supplied, and only that id', () => {
+    const cleanupSql = readMigrationStatements('0096_retire_stock_customer').join('\n');
+
+    expect(new Set(cleanupSql.match(UUID_LITERAL_PATTERN))).toEqual(new Set([`'${STOCK_CUSTOMER_ID}'`]));
     // The backfill deliberately left this Customer's machines unowned; both steps must mean the same row.
     expect(readMigrationStatements('0088_product_unit_backfill').join('\n')).toContain(STOCK_CUSTOMER_ID);
   });
@@ -79,12 +82,42 @@ describe('stock customer retirement', () => {
     expect(soldJob).toMatchObject({ id: SOLD_JOB_ID, quoteId: context.seed.soldQuoteId });
   });
 
+  // The placeholder was never the owner — we were. A machine that genuinely left the showroom stays
+  // with the Customer who took it, rather than being handed back to Stock along with the fiction.
+  test('keeps a machine sold on out of the showroom with its buyer', async ({ context }) => {
+    await runCleanup(context.db);
+
+    const transfers = await transfersForSerial(context.db, 'SC-001260005');
+
+    expect(transfers).toHaveLength(1);
+    expect(transfers[0]).toMatchObject({ fromCustomerId: null, toCustomerId: context.seed.realCustomerId });
+    expect(resolveProductUnitOwnerId(transfers)).toBe(context.seed.realCustomerId);
+  });
+
+  // A return recorded against the placeholder is a return to us. Deleting the row would leave the
+  // machine reading as still owned by the Customer who handed it back.
+  test('keeps a machine handed back to the showroom in Stock', async ({ context }) => {
+    await runCleanup(context.db);
+
+    const transfers = await transfersForSerial(context.db, 'SC-001260006');
+
+    expect(transfers.map((transfer) => [transfer.fromCustomerId, transfer.toCustomerId])).toEqual([
+      [null, context.seed.realCustomerId],
+      [context.seed.realCustomerId, null],
+    ]);
+    expect(isProductUnitInStock(transfers)).toBe(true);
+  });
+
   test('deletes the placeholder Quotes and leaves every real one', async ({ context }) => {
     await runCleanup(context.db);
 
     const quoteRows = await context.db.select().from(quotes).orderBy(asc(quotes.code));
 
-    expect(quoteRows.map((quote) => quote.id)).toEqual([context.seed.soldQuoteId, context.seed.decoyQuoteId]);
+    expect(quoteRows.map((quote) => quote.id)).toEqual([
+      context.seed.soldQuoteId,
+      context.seed.decoyQuoteId,
+      context.seed.returnedQuoteId,
+    ]);
   });
 
   test('removes the placeholder Customer', async ({ context }) => {
@@ -158,21 +191,47 @@ describe('stock customer retirement', () => {
     const remaining = await context.db.select().from(customers).where(eq(customers.id, STOCK_CUSTOMER_ID));
     expect(remaining).toHaveLength(1);
   });
+
+  // A Custom Job has no Product Unit, so it cannot be left quoteless: every Job needs one or the other.
+  // Nobody should have raised custom work against the placeholder, but if they did, say so.
+  test('refuses to run while a placeholder Quote sources a Job with no machine', async ({ context }) => {
+    const [customQuote] = await context.db
+      .insert(quotes)
+      .values({
+        customerId: STOCK_CUSTOMER_ID,
+        kind: 'custom',
+        quotedBasePrice: 0,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: ACTOR_USER_ID,
+        status: 'accepted',
+        workTitle: 'Pump skid rebuild',
+      })
+      .returning();
+    await context.db.insert(jobs).values({ quoteId: customQuote?.id });
+
+    await expect(runCleanup(context.db)).rejects.toThrow(/no Product Unit/i);
+
+    const remaining = await context.db.select().from(customers).where(eq(customers.id, STOCK_CUSTOMER_ID));
+    expect(remaining).toHaveLength(1);
+  });
 });
 
 async function transfersForSerial(db: Db, serial: string) {
   const [unit] = await db.select().from(productUnits).where(eq(productUnits.productSerialNumber, serial));
+  if (!unit) throw new Error(`No Product Unit carries serial ${serial}`);
 
   return db
     .select()
     .from(productUnitOwnershipTransfers)
-    .where(eq(productUnitOwnershipTransfers.productUnitId, unit?.id ?? ''));
+    .where(eq(productUnitOwnershipTransfers.productUnitId, unit.id))
+    .orderBy(asc(productUnitOwnershipTransfers.occurredOn), asc(productUnitOwnershipTransfers.createdAt));
 }
 
-/** The facts the fiction was hiding: the machine, its CFO, its paperwork, its schedule, its finish date. */
+/** The facts the fiction was hiding: the machine, its Build Spec, CFO, paperwork, schedule, finish date. */
 async function readBuildRecord(db: Db) {
-  const [unitRows, cfoAssemblyRows, cfoPartRows, documentRows, slotRows, jobRows] = await Promise.all([
+  const [unitRows, buildSpecRows, cfoAssemblyRows, cfoPartRows, documentRows, slotRows, jobRows] = await Promise.all([
     db.select().from(productUnits).orderBy(asc(productUnits.productSerialNumber)),
+    db.select().from(jobBuildSpecAssemblies).orderBy(asc(jobBuildSpecAssemblies.sequence)),
     db.select().from(jobCfoAssemblies).orderBy(asc(jobCfoAssemblies.id)),
     db.select().from(jobCfoParts).orderBy(asc(jobCfoParts.partId)),
     db.select().from(documents).orderBy(asc(documents.id)),
@@ -183,7 +242,7 @@ async function readBuildRecord(db: Db) {
       .orderBy(asc(jobs.code)),
   ]);
 
-  return { cfoAssemblyRows, cfoPartRows, documentRows, jobRows, slotRows, unitRows };
+  return { buildSpecRows, cfoAssemblyRows, cfoPartRows, documentRows, jobRows, slotRows, unitRows };
 }
 
 /** Full rows, not counts: a re-run that rewrote a Job link or resurrected a Quote must fail too. */
@@ -240,24 +299,26 @@ async function seedPlaceholderShape(db: Db) {
   const [decoyCustomer] = await db.insert(customers).values({ companyName: 'Stock', email: null }).returning();
   if (!decoyCustomer) throw new Error('Decoy customer insert did not return a row');
 
-  const [showroomUnit, backfilledUnit, soldUnit, decoyUnit] = await db
+  const [showroomUnit, backfilledUnit, soldUnit, decoyUnit, resoldUnit, returnedUnit] = await db
     .insert(productUnits)
     .values(
-      ['SC-001260001', 'SC-001260002', 'SC-001260003', 'SC-001260004'].map((serial, index) => ({
-        productId: product.id,
-        productSerialNumber: serial,
-        productSerialPrefix: 'SC-001',
-        productSerialSequence: index + 1,
-        productSerialYear: 26,
-        vinNumber: null,
-      })),
+      ['SC-001260001', 'SC-001260002', 'SC-001260003', 'SC-001260004', 'SC-001260005', 'SC-001260006'].map(
+        (serial, index) => ({
+          productId: product.id,
+          productSerialNumber: serial,
+          productSerialPrefix: 'SC-001',
+          productSerialSequence: index + 1,
+          productSerialYear: 26,
+          vinNumber: null,
+        }),
+      ),
     )
     .returning();
-  if (!showroomUnit || !backfilledUnit || !soldUnit || !decoyUnit) {
+  if (!showroomUnit || !backfilledUnit || !soldUnit || !decoyUnit || !resoldUnit || !returnedUnit) {
     throw new Error('Product Unit insert did not return every row');
   }
 
-  const [showroomQuote, backfilledQuote, soldQuote, decoyQuote] = await db
+  const [showroomQuote, backfilledQuote, soldQuote, decoyQuote, resoldQuote, returnedQuote] = await db
     .insert(quotes)
     .values([
       {
@@ -292,9 +353,25 @@ async function seedPlaceholderShape(db: Db) {
         salesPersonId: ACTOR_USER_ID,
         status: 'accepted',
       },
+      {
+        customerId: STOCK_CUSTOMER_ID,
+        productId: product.id,
+        quotedBasePrice: 0,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: ACTOR_USER_ID,
+        status: 'accepted',
+      },
+      {
+        customerId: realCustomer.id,
+        productId: product.id,
+        quotedBasePrice: 1_000,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: ACTOR_USER_ID,
+        status: 'accepted',
+      },
     ])
     .returning();
-  if (!showroomQuote || !backfilledQuote || !soldQuote || !decoyQuote) {
+  if (!showroomQuote || !backfilledQuote || !soldQuote || !decoyQuote || !resoldQuote || !returnedQuote) {
     throw new Error('Quote insert did not return every row');
   }
 
@@ -317,6 +394,14 @@ async function seedPlaceholderShape(db: Db) {
     },
     { createdAt: now, id: SOLD_JOB_ID, productUnitId: soldUnit.id, quoteId: soldQuote.id, updatedAt: now },
     { createdAt: now, id: DECOY_JOB_ID, productUnitId: decoyUnit.id, quoteId: decoyQuote.id, updatedAt: now },
+    { createdAt: now, id: RESOLD_JOB_ID, productUnitId: resoldUnit.id, quoteId: resoldQuote.id, updatedAt: now },
+    {
+      createdAt: now,
+      id: RETURNED_JOB_ID,
+      productUnitId: returnedUnit.id,
+      quoteId: returnedQuote.id,
+      updatedAt: now,
+    },
   ]);
 
   await db.insert(productUnitOwnershipTransfers).values([
@@ -338,6 +423,35 @@ async function seedPlaceholderShape(db: Db) {
       productUnitId: decoyUnit.id,
       sourceQuoteId: decoyQuote.id,
       toCustomerId: decoyCustomer.id,
+    },
+    // Built for the showroom, then hand-sold off the floor by an administrator: a real sale, recorded
+    // as leaving the placeholder because that is who the machine appeared to belong to.
+    {
+      occurredOn: '2026-06-01',
+      productUnitId: resoldUnit.id,
+      sourceQuoteId: resoldQuote.id,
+      toCustomerId: STOCK_CUSTOMER_ID,
+    },
+    {
+      actorUserId: ACTOR_USER_ID,
+      fromCustomerId: STOCK_CUSTOMER_ID,
+      occurredOn: '2026-06-20',
+      productUnitId: resoldUnit.id,
+      toCustomerId: realCustomer.id,
+    },
+    // Sold, then handed back and parked on the floor again — the return recorded against the placeholder.
+    {
+      occurredOn: '2026-06-01',
+      productUnitId: returnedUnit.id,
+      sourceQuoteId: returnedQuote.id,
+      toCustomerId: realCustomer.id,
+    },
+    {
+      actorUserId: ACTOR_USER_ID,
+      fromCustomerId: realCustomer.id,
+      occurredOn: '2026-06-20',
+      productUnitId: returnedUnit.id,
+      toCustomerId: STOCK_CUSTOMER_ID,
     },
   ]);
 
@@ -361,6 +475,12 @@ async function seedPlaceholderShape(db: Db) {
     })
     .returning();
   if (!part) throw new Error('Part insert did not return a row');
+
+  // The Build Spec the showroom machine was built to. It seeds from the Quote's selected Assemblies,
+  // which the Quote deletion cascades away — the Job's own copy is what has to come through.
+  await db
+    .insert(jobBuildSpecAssemblies)
+    .values({ assemblyName: 'Heavy Duty Axle', jobId: SHOWROOM_JOB_ID, sequence: 0 });
 
   const [cfoAssembly] = await db
     .insert(jobCfoAssemblies)
@@ -396,10 +516,10 @@ async function seedPlaceholderShape(db: Db) {
   });
 
   return {
-    backfilledQuoteId: backfilledQuote.id,
     decoyCustomerId: decoyCustomer.id,
     decoyQuoteId: decoyQuote.id,
     realCustomerId: realCustomer.id,
+    returnedQuoteId: returnedQuote.id,
     showroomQuoteId: showroomQuote.id,
     soldQuoteId: soldQuote.id,
   };

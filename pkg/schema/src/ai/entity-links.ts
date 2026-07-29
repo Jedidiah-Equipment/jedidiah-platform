@@ -8,6 +8,7 @@ export type ParsedInternalAppHref =
   | { kind: 'customer'; customerId: string }
   | { kind: 'quote'; quoteId: string }
   | { kind: 'job'; jobId: string }
+  | { kind: 'product-unit'; productUnitId: string }
   | { kind: 'quote-document'; quoteId: string; documentId: string }
   | { kind: 'product-brochure'; productId: string };
 
@@ -36,6 +37,13 @@ const HREF_PATTERNS = [
   {
     regex: /^\/jobs\/([^/]+)$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({ kind: 'job', jobId: readCapture(match, 1) }),
+  },
+  {
+    regex: /^\/units\/([^/]+)$/,
+    parse: (match: RegExpExecArray): ParsedInternalAppHref => ({
+      kind: 'product-unit',
+      productUnitId: readCapture(match, 1),
+    }),
   },
   {
     regex: /^\/api\/quotes\/([^/]+)\/documents\/([^/]+)\/download$/,
@@ -68,6 +76,10 @@ export function createQuoteAppHref(quoteId: string): InternalAppHref {
 
 export function createJobAppHref(jobId: string): InternalAppHref {
   return InternalAppHref.parse(`/jobs/${jobId}`);
+}
+
+export function createProductUnitAppHref(productUnitId: string): InternalAppHref {
+  return InternalAppHref.parse(`/units/${productUnitId}`);
 }
 
 export function createQuoteDocumentDownloadHref(quoteId: string, documentId: string): InternalAppHref {

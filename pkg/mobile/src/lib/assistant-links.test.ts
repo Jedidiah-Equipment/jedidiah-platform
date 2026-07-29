@@ -31,6 +31,7 @@ describe('resolveAssistantLink', () => {
 
   test.each([
     '/customers/c1/edit',
+    '/units/u1',
     '/quotes/q1',
     'https://example.com/quotes/q1/edit',
   ])('leaves unsupported or unrecognized hrefs as plain text: %s', (href) => {

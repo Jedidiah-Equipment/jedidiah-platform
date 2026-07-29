@@ -28,7 +28,9 @@ export function resolveAssistantLink(href: string, router: AssistantRouter): (()
           pathname: '/documents/[documentId]',
           params: { documentId: PRODUCT_BROCHURE_DOCUMENT_ID, productId: parsed.productId },
         });
+    // No mobile surface: the Units list and detail stay on web, so these render as plain text.
     case 'customer':
+    case 'product-unit':
       return null;
     default: {
       const exhaustive: never = parsed;

@@ -3,6 +3,7 @@ import {
   createCustomerAppHref,
   createJobAppHref,
   createProductAppHref,
+  createProductUnitAppHref,
   createQuoteAppHref,
   InternalAppHref,
   QuoteDetail,
@@ -18,10 +19,17 @@ export const QuoteLinks = z.object({
   customer: InternalAppHref.optional(),
   job: InternalAppHref.optional(),
   product: InternalAppHref.optional(),
+  productUnit: InternalAppHref.optional(),
 });
 
 export function createQuoteLinks(
-  quote: { customerId: string; id: string; job: { jobId: string } | null; productId: string | null },
+  quote: {
+    customerId: string;
+    id: string;
+    job: { jobId: string } | null;
+    productId: string | null;
+    productUnitId: string | null;
+  },
   access: UserAccessSummary | null,
 ): QuoteLinks {
   return QuoteLinks.parse({
@@ -30,6 +38,10 @@ export function createQuoteLinks(
     ...(quote.job && hasPermission(access, 'job:read') ? { job: createJobAppHref(quote.job.jobId) } : {}),
     ...(quote.productId && hasPermission(access, 'product:read')
       ? { product: createProductAppHref(quote.productId) }
+      : {}),
+    // Only an Allocation Quote sells a machine we already hold, so only it has a Unit to link to.
+    ...(quote.productUnitId && hasPermission(access, 'product_unit:read')
+      ? { productUnit: createProductUnitAppHref(quote.productUnitId) }
       : {}),
   });
 }

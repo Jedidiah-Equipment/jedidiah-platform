@@ -792,6 +792,8 @@ async function loadReworkBuildSpec({
   quoteBuildSpec: readonly BuildSpecAssembly[];
   tx: DatabaseTransaction;
 }): Promise<BuildSpecAssembly[]> {
+  // Every live Job claims committed As-Built work, including in-progress Rework, so later Rework
+  // cannot claim the same Optional Assembly again.
   const rows = await tx
     .select({ productAssemblyId: jobBuildSpecAssemblies.productAssemblyId })
     .from(jobBuildSpecAssemblies)

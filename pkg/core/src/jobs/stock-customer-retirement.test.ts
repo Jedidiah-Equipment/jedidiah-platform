@@ -157,9 +157,10 @@ describe('stock customer retirement', () => {
     expect(await readRetiredShape(context.db)).toEqual(afterFirstRun);
   });
 
-  // Deleting a Quote cascades to its paperwork. The epic confirmed there is none, so anything found
-  // here is a fact nobody knew about — the run stops rather than shredding it.
-  test('refuses to run while a placeholder Quote still carries a Document', async ({ context }) => {
+  // Deleting a Quote cascades to its paperwork. Paperwork raised against a fake buyer is worth nothing,
+  // so the cleanup takes it with the Quote rather than stopping — confirmed by Dean on 2026-07-29 after
+  // staging turned one up. Documents owned by the Job hang off a different column and are unaffected.
+  test('takes a Document attached to a placeholder Quote with it', async ({ context }) => {
     await context.db.insert(documents).values({
       byteSize: 2_048,
       contentType: 'application/pdf',
@@ -171,13 +172,15 @@ describe('stock customer retirement', () => {
       uploaderUserId: ACTOR_USER_ID,
     });
 
-    await expect(runCleanup(context.db)).rejects.toThrow(/attached/i);
+    await runCleanup(context.db);
 
+    const documentRows = await context.db.select().from(documents);
+    expect(documentRows.map((document) => document.filename)).toEqual(['brochure.pdf']);
     const remaining = await context.db.select().from(customers).where(eq(customers.id, STOCK_CUSTOMER_ID));
-    expect(remaining).toHaveLength(1);
+    expect(remaining).toHaveLength(0);
   });
 
-  test('refuses to run while a placeholder Quote still carries Feedback', async ({ context }) => {
+  test('takes Feedback attached to a placeholder Quote with it', async ({ context }) => {
     await context.db.insert(feedback).values({
       kind: 'general',
       quoteId: context.seed.showroomQuoteId,
@@ -186,10 +189,11 @@ describe('stock customer retirement', () => {
       text: 'Someone had something to say about this after all.',
     });
 
-    await expect(runCleanup(context.db)).rejects.toThrow(/attached/i);
+    await runCleanup(context.db);
 
+    expect(await context.db.select().from(feedback)).toEqual([]);
     const remaining = await context.db.select().from(customers).where(eq(customers.id, STOCK_CUSTOMER_ID));
-    expect(remaining).toHaveLength(1);
+    expect(remaining).toHaveLength(0);
   });
 
   // A Custom Job has no Product Unit, so it cannot be left quoteless: every Job needs one or the other.

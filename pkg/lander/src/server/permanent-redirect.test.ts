@@ -1,0 +1,20 @@
+import { describe, expect, test } from 'vitest';
+
+import { permanentRedirectLocation } from './permanent-redirect.js';
+
+describe('permanentRedirectLocation', () => {
+  test.each([
+    [
+      'https://www.jedidiahequipment.co.za/products?range=crosshaul',
+      'https://jedidiahequipment.co.za/products?range=crosshaul',
+    ],
+    [
+      'https://www.jedidiahequipment.co.za/about-us/?source=legacy',
+      'https://jedidiahequipment.co.za/about?source=legacy',
+    ],
+    ['https://jedidiahequipment.co.za/about-us/?source=legacy', '/about'],
+    ['https://jedidiahequipment.co.za/products?range=crosshaul', null],
+  ])('resolves %s to %s', (requestUrl, expectedLocation) => {
+    expect(permanentRedirectLocation(requestUrl)).toBe(expectedLocation);
+  });
+});

@@ -7,36 +7,17 @@
 -- is matched by id on purpose — never by company name, which is editable and which a real Customer may
 -- legitimately share.
 --
--- Nothing about the machines themselves is touched: serial, Build Spec, CFO, Documents, Slots, and
+-- Nothing about the machines themselves is touched: serial, Build Spec, CFO, Job Documents, Slots, and
 -- completion dates all survive. Every statement is idempotent, so re-running this migration changes
 -- nothing.
 
--- Two facts this cleanup cannot repair on its own. Deleting a placeholder Quote cascades to its Quote
--- Documents and Feedback, and the epic confirmed there are none; and a Custom Job has no Unit, so it
--- cannot be left quoteless under job_product_unit_or_quote_required. Either one stops the run with a
--- diagnostic rather than shredding paperwork or dying on a bare foreign-key violation.
+-- One fact this cleanup cannot repair on its own: a Custom Job has no Unit, so it cannot be left
+-- quoteless under job_product_unit_or_quote_required. Stop the run with a diagnostic rather than dying
+-- on a bare check violation.
 DO $$
 DECLARE
-	attached_count integer;
 	quoteless_count integer;
 BEGIN
-	SELECT count(*) INTO attached_count
-	FROM (
-		SELECT 1
-		FROM "documents"
-		INNER JOIN "quote" ON "quote"."id" = "documents"."quote_id"
-		WHERE "quote"."customer_id" = '5c32124d-9b97-49f9-8529-3d5d4679c392'
-		UNION ALL
-		SELECT 1
-		FROM "feedback"
-		INNER JOIN "quote" ON "quote"."id" = "feedback"."quote_id"
-		WHERE "quote"."customer_id" = '5c32124d-9b97-49f9-8529-3d5d4679c392'
-	) AS "attached";
-
-	IF attached_count > 0 THEN
-		RAISE EXCEPTION 'Stock Customer Quotes have % Document(s) or Feedback item(s) attached; deal with them by hand before retiring the Customer', attached_count;
-	END IF;
-
 	SELECT count(*) INTO quoteless_count
 	FROM "job"
 	INNER JOIN "quote" ON "quote"."id" = "job"."quote_id"
@@ -75,7 +56,9 @@ WHERE "quote"."id" = "job"."quote_id"
 	AND "quote"."customer_id" = '5c32124d-9b97-49f9-8529-3d5d4679c392';--> statement-breakpoint
 
 -- Cascades to the placeholder Quotes' selected Assemblies and Work Items, and nulls the sourcing Quote
--- on any Transfer that cited one. Their Documents and Feedback were ruled out by the guard above.
+-- on any Transfer that cited one. Any Documents and Feedback attached to a placeholder Quote cascade
+-- away with it — Dean confirmed on 2026-07-29 that paperwork raised against a fake buyer is worth
+-- nothing. Documents owned by the Job or the Product are on a different owner column and survive.
 DELETE FROM "quote"
 WHERE "customer_id" = '5c32124d-9b97-49f9-8529-3d5d4679c392';--> statement-breakpoint
 

@@ -30,6 +30,7 @@ import {
   recordAuditCreate,
   recordAuditUpdate,
 } from '../audit/audit-service.js';
+import { mutateEntity } from '../audit/mutate-entity.js';
 import { supplierAuditDescriptor } from '../suppliers/supplier-service.js';
 import {
   DuplicatePartCodeError,
@@ -251,16 +252,16 @@ export async function updatePart({
   input: PartUpdateInput;
 }): Promise<Part> {
   try {
-    return await db.transaction(async (tx) => {
-      await assertSupplierExists({ db: tx, supplierId: input.supplierId });
-
-      const [before] = await tx.select().from(parts).where(eq(parts.id, input.id)).for('update');
-
-      if (!before) {
-        throw new PartNotFoundError(input.id);
-      }
-
-      const patch = {
+    return await mutateEntity({
+      actorUserId,
+      assert: (tx) => assertSupplierExists({ db: tx, supplierId: input.supplierId }),
+      db,
+      descriptor: partAuditDescriptor,
+      id: input.id,
+      notFound: () => new PartNotFoundError(input.id),
+      project: (tx, row) => getPart({ db: tx, id: row.id }),
+      // `parts` carries no timestamp columns, so there is no `updatedAt` to touch.
+      set: () => ({
         category: input.category,
         code: input.code,
         description: input.description,
@@ -271,23 +272,8 @@ export async function updatePart({
         supplierCode: input.supplierCode,
         supplierId: input.supplierId,
         unitOfMeasure: input.unitOfMeasure,
-      };
-      const after = { ...before, ...patch };
-      const changes = diffAuditUpdate(partAuditDescriptor, before, after);
-
-      if (!changes) {
-        return getPart({ db: tx, id: before.id });
-      }
-
-      const [row] = await tx.update(parts).set(patch).where(eq(parts.id, input.id)).returning();
-
-      if (!row) {
-        throw new PartNotFoundError(input.id);
-      }
-
-      await recordAuditUpdate({ db: tx, descriptor: partAuditDescriptor, actorUserId, after: row, changes });
-
-      return getPart({ db: tx, id: row.id });
+      }),
+      table: parts,
     });
   } catch (error) {
     throw mapPartUniqueViolation(error, input);

@@ -4,6 +4,7 @@ import {
   JEDIDIAH_FACEBOOK_URL,
   JEDIDIAH_INSTAGRAM_URL,
   JEDIDIAH_LOCATION,
+  JEDIDIAH_WHATSAPP_NUMBER,
 } from '@pkg/domain';
 import {
   IconArrowRight,
@@ -271,7 +272,11 @@ function ContactInfo() {
               <span className="font-body text-[17px] text-white">{formatContactNumber()}</span>
             </span>
           </a>
-          <a href={`mailto:${m.contact.emailAddress}`} className="flex items-start gap-4 no-underline">
+          <a
+            href={`mailto:${m.contact.emailAddress}`}
+            onClick={() => captureEventForNavigation('email_linked_clicked', { placement: 'contact_page' })}
+            className="flex items-start gap-4 no-underline"
+          >
             <MailIcon />
             <span>
               <ContactMethodLabel label={m.contact.emailLabel} />
@@ -282,6 +287,12 @@ function ContactInfo() {
             href={JEDIDIAH_FACEBOOK_URL}
             target="_blank"
             rel="noreferrer"
+            onClick={() =>
+              captureEventForNavigation('social_link_clicked', {
+                platform: 'facebook',
+                placement: 'contact_page',
+              })
+            }
             className="flex items-start gap-4 no-underline"
           >
             <FacebookIcon />
@@ -317,7 +328,7 @@ function ContactInfo() {
           </div>
         </div>
         <a
-          href={`https://wa.me/${contactNumberE164().slice(1)}`}
+          href={`https://wa.me/${contactNumberE164(JEDIDIAH_WHATSAPP_NUMBER).slice(1)}`}
           onClick={() =>
             captureEventForNavigation('social_link_clicked', {
               platform: 'whatsapp',

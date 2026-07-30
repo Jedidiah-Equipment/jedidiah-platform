@@ -104,6 +104,9 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
                 href={JEDIDIAH_FACEBOOK_URL}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() =>
+                  captureEventForNavigation('social_link_clicked', { platform: 'facebook', placement: 'footer' })
+                }
                 className="flex items-center gap-[11px] no-underline"
               >
                 <IconBrandFacebook className="flex-none text-yellow" size={17} aria-hidden="true" />

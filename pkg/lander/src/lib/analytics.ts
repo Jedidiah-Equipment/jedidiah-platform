@@ -26,7 +26,11 @@ export type AnalyticsEventRegistry = {
   brochure_downloaded: { modelCode: string };
   contact_submitted: { equipment: string };
   contact_submit_failed: { errorCategory: 'network' | 'server' };
-  social_link_clicked: { platform: 'instagram' | 'whatsapp'; placement: 'footer' | 'contact_page' };
+  social_link_clicked: {
+    platform: 'facebook' | 'instagram' | 'whatsapp';
+    placement: 'footer' | 'contact_page';
+  };
+  email_linked_clicked: { placement: 'contact_page' };
   phone_link_clicked: { placement: 'nav' | 'footer' | 'contact_page' | 'product_detail' };
   language_switched: { fromLocale: Locale; toLocale: Locale; placement: 'nav' | 'footer' };
 };

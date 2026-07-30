@@ -17,7 +17,7 @@ Use three surfaces, each for a different job:
    rebuilding these as custom insights would create duplicate definitions
    ([Web Analytics](https://posthog.com/docs/web-analytics)).
 2. **`Lander — Growth & Leads` dashboard** for the commercial outcome: successful contact
-   submissions, phone/WhatsApp intent, visitor-to-intent conversion, CTA effectiveness, equipment
+   submissions, phone/email/WhatsApp intent, visitor-to-intent conversion, CTA effectiveness, equipment
    demand, and contact-form reliability.
 3. **`Lander — Product Discovery` dashboard** for what visitors want and where discovery breaks:
    range/card/filter usage, product demand, the catalog-to-product funnel, brochure/share
@@ -29,11 +29,12 @@ intent** series:
 ```text
 contact_submitted
 OR phone_link_clicked
+OR email_linked_clicked
 OR social_link_clicked where platform = whatsapp
 ```
 
 Do not label any of these events as a qualified lead: a form submission can still be spam or
-unqualified, while a phone or WhatsApp click does not prove that a conversation happened. PostHog
+unqualified, while a phone, email, or WhatsApp click does not prove that a conversation happened. PostHog
 Trends and Funnels can combine events inline with logical `OR`, so this does not require a new
 application event. Because this combination is reused across several insights, define it once as
 a PostHog Action named `Lander / Contact intent`; inline combinations remain a fallback
@@ -117,10 +118,10 @@ Create these saved insights in this order.
 | --- | --- | --- | --- |
 | **Lander / Visitors** | `$pageview`, Unique users; `$virt_is_bot = false` | Number, 30d, compare previous period | Reach; Web Analytics remains the canonical detailed traffic view |
 | **Lander / Successful contact submissions** | `contact_submitted`, Total count | Number, 30d, compare | Successful form submissions; qualification is not yet tracked |
-| **Lander / Contact-intent visitors** | Inline-combined `contact_submitted` OR `phone_link_clicked` OR `social_link_clicked` filtered to `platform = whatsapp`; Unique users | Number, 30d, compare | Broad leading indicator without overstating it as a completed lead |
+| **Lander / Contact-intent visitors** | Inline-combined `contact_submitted` OR `phone_link_clicked` OR `email_linked_clicked` OR `social_link_clicked` filtered to `platform = whatsapp`; Unique users | Number, 30d, compare | Broad leading indicator without overstating it as a completed lead |
 | **Lander / Visitor → contact intent** | Funnel: `$pageview` → the inline-combined contact-intent step; sequential; conversion window 1 day | Funnel steps | Site-level conversion rate |
 | **Lander / Traffic and intent trend** | Series A `$pageview` Unique users; series B combined contact intent Unique users | Line, daily; 90d weekly after enough data | Shows whether demand and intent move together |
-| **Lander / Contact channel mix** | Three series: `contact_submitted`; `phone_link_clicked`; `social_link_clicked` filtered `platform = whatsapp`; Total count | Total-value bar | Separates form, phone, and WhatsApp behaviour |
+| **Lander / Contact channel mix** | Four series: `contact_submitted`; `phone_link_clicked`; `email_linked_clicked`; `social_link_clicked` filtered `platform = whatsapp`; Total count | Total-value bar | Separates form, phone, email, and WhatsApp behaviour |
 | **Lander / Contact submissions by equipment** | `contact_submitted`, Total count, breakdown `equipment` | Bar/table | Which equipment is named in successful enquiries |
 | **Lander / Contact page → successful submission** | Funnel: `$pageview` with `$pathname` equal to `/contact` or `/af/contact` → `contact_submitted`; sequential; 1 day | Funnel, breakdown `language` | Form-page conversion |
 | **Lander / Contact-submit failure rate** | A = `contact_submit_failed` Total count; B = `contact_submitted` Total count; formula `100 * A / (A + B)` | Line + number | Technical failure share of recorded submit attempts |

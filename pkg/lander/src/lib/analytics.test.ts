@@ -35,6 +35,7 @@ describe('analytics event registry', () => {
       | 'contact_submitted'
       | 'contact_submit_failed'
       | 'social_link_clicked'
+      | 'email_linked_clicked'
       | 'phone_link_clicked'
       | 'language_switched'
     >();
@@ -59,6 +60,9 @@ describe('analytics event registry', () => {
     expectTypeOf<AnalyticsEventProperties<'social_link_clicked'>>().toEqualTypeOf<{
       platform: 'facebook' | 'instagram' | 'whatsapp';
       placement: 'footer' | 'contact_page';
+    }>();
+    expectTypeOf<AnalyticsEventProperties<'email_linked_clicked'>>().toEqualTypeOf<{
+      placement: 'contact_page';
     }>();
   });
 });

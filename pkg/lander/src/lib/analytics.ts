@@ -30,6 +30,7 @@ export type AnalyticsEventRegistry = {
     platform: 'facebook' | 'instagram' | 'whatsapp';
     placement: 'footer' | 'contact_page';
   };
+  email_linked_clicked: { placement: 'contact_page' };
   phone_link_clicked: { placement: 'nav' | 'footer' | 'contact_page' | 'product_detail' };
   language_switched: { fromLocale: Locale; toLocale: Locale; placement: 'nav' | 'footer' };
 };

@@ -272,7 +272,11 @@ function ContactInfo() {
               <span className="font-body text-[17px] text-white">{formatContactNumber()}</span>
             </span>
           </a>
-          <a href={`mailto:${m.contact.emailAddress}`} className="flex items-start gap-4 no-underline">
+          <a
+            href={`mailto:${m.contact.emailAddress}`}
+            onClick={() => captureEventForNavigation('email_linked_clicked', { placement: 'contact_page' })}
+            className="flex items-start gap-4 no-underline"
+          >
             <MailIcon />
             <span>
               <ContactMethodLabel label={m.contact.emailLabel} />

@@ -41,6 +41,7 @@ The active Locale is registered as a PostHog super property and is also set as a
 | `contact_submit_failed` | Contact form submission fails | `errorCategory` | string | `network`, `server` — never form content |
 | `social_link_clicked` | An outbound social or messaging link is clicked | `platform` | string | `facebook`, `instagram`, `whatsapp` |
 | | | `placement` | string | `footer`, `contact_page` |
+| `email_linked_clicked` | A `mailto:` link is clicked | `placement` | string | `contact_page` |
 | `phone_link_clicked` | A `tel:` link is clicked | `placement` | string | `nav`, `footer`, `contact_page`, `product_detail` |
 | `language_switched` | The language switcher is clicked | `fromLocale` | string | `en`, `af` |
 | | | `toLocale` | string | `en`, `af` |

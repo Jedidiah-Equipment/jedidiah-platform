@@ -324,9 +324,11 @@ export async function recordAuditDelete<TInput>({
 }
 
 /**
- * Emit the update event. The caller computes `changes` first (via {@link diffAuditUpdate}) so it can
- * run its own control flow between the diff and the write — the skip-on-no-change branch and, for
- * Quotes, the Locked Quote gate that reads the changed field set.
+ * Emit the update event. `mutateEntity` (`./mutate-entity.ts`) is the standard audited-write path and
+ * calls this itself; reach for the raw {@link diffAuditUpdate} + `recordAuditUpdate` pair only when the
+ * path must run its own control flow between the diff and the write — the Quote paths, whose Locked
+ * Quote gate reads the changed field set before deciding, and the Job completion sweep, which writes
+ * first and diffs after.
  */
 export async function recordAuditUpdate<TInput>({
   db,

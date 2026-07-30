@@ -1,19 +1,40 @@
-import { customers, type DatabaseTransaction, type Db, productUnitOwnershipTransfers, productUnits } from '@pkg/db';
+import {
+  customers,
+  type DatabaseTransaction,
+  type Db,
+  productSerialSequences,
+  products,
+  productUnitOwnershipTransfers,
+  productUnits,
+} from '@pkg/db';
 import { getPlantDateNow, resolveNewestOwnershipTransfer } from '@pkg/domain';
-import type {
-  AuthId,
-  ProductUnitTransferInput,
-  ProductUnitTransferResult,
-  ProductUnitUpdateInput,
-  ProductUnitUpdateResult,
+import {
+  type AuthId,
+  type DateOnlyIso,
+  formatProductSerialNumber,
+  ProductSerialPrefix,
+  ProductSerialSequence,
+  ProductSerialYear,
+  type ProductUnitTransferInput,
+  type ProductUnitTransferResult,
+  type ProductUnitUpdateInput,
+  type ProductUnitUpdateResult,
+  type UUID,
 } from '@pkg/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
-import { defineAuditDescriptor, diffAuditUpdate, recordAuditEvent, recordAuditUpdate } from '../audit/audit-service.js';
+import {
+  defineAuditDescriptor,
+  diffAuditUpdate,
+  recordAuditCreate,
+  recordAuditEvent,
+  recordAuditUpdate,
+} from '../audit/audit-service.js';
 import { CustomerNotFoundError } from '../customers/customer-errors.js';
 import {
   ProductUnitNotFoundError,
   ProductUnitOwnerUnchangedError,
+  ProductUnitProductNotFoundError,
   ProductUnitTransferBackdatedError,
   ProductUnitTransferInFutureError,
 } from './product-unit-errors.js';
@@ -38,6 +59,128 @@ export const productUnitAuditDescriptor = defineAuditDescriptor<ProductUnitRow>(
   }),
 });
 
+/**
+ * The only way a Product Unit comes into being. It mints the per-Product serial, audits the new
+ * machine, and records initial ownership through the same locked handle used by later Transfers.
+ */
+export async function createProductUnit({
+  actorUserId,
+  initialOwner,
+  plantToday,
+  productId,
+  tx,
+}: {
+  actorUserId: AuthId;
+  initialOwner: { customerId: string; sourceQuoteId: string } | null;
+  plantToday: DateOnlyIso;
+  productId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<ProductUnitRow> {
+  // Soft-removal hides a Product from new catalog choices, but an accepted historical Quote may still
+  // start the promised build. Stock Builds reject removed Products before reaching this interface.
+  const [product] = await tx
+    .select({ modelCode: products.modelCode })
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1);
+
+  if (!product) {
+    throw new ProductUnitProductNotFoundError(productId);
+  }
+
+  const serial = await createProductSerial({ modelCode: product.modelCode, plantToday, productId, tx });
+  const [unit] = await tx
+    .insert(productUnits)
+    .values({
+      productId,
+      productSerialNumber: serial.number,
+      productSerialPrefix: serial.prefix,
+      productSerialSequence: serial.sequence,
+      productSerialYear: serial.year,
+    })
+    .returning();
+
+  if (!unit) {
+    throw new Error('Product unit insert did not return a row');
+  }
+
+  await recordAuditCreate({ db: tx, descriptor: productUnitAuditDescriptor, actorUserId, input: unit });
+
+  if (initialOwner) {
+    const ownership = await lockUnitForOwnership(tx, unit.id);
+
+    if (!ownership) {
+      throw new Error('Newly inserted Product Unit was not found under its ownership lock');
+    }
+
+    await ownership.record({
+      actorUserId,
+      occurredOn: plantToday,
+      sourceQuoteId: initialOwner.sourceQuoteId,
+      toCustomerId: initialOwner.customerId,
+    });
+  }
+
+  return unit;
+}
+
+type ProductSerial = {
+  number: string;
+  prefix: string;
+  sequence: number;
+  year: number;
+};
+
+async function createProductSerial({
+  modelCode,
+  plantToday,
+  productId,
+  tx,
+}: {
+  modelCode: string;
+  plantToday: DateOnlyIso;
+  productId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<ProductSerial> {
+  const now = new Date();
+  const [sequenceRow] = await tx
+    .insert(productSerialSequences)
+    .values({
+      lastSequence: 1,
+      productId,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: productSerialSequences.productId,
+      set: {
+        lastSequence: sql`${productSerialSequences.lastSequence} + 1`,
+        updatedAt: now,
+      },
+    })
+    .returning({
+      lastSequence: productSerialSequences.lastSequence,
+    });
+
+  if (!sequenceRow) {
+    throw new Error('Product serial sequence upsert did not return a row');
+  }
+
+  const prefix = ProductSerialPrefix.parse(modelCode);
+  const year = ProductSerialYear.parse(getPlantDateTwoDigitYear(plantToday));
+  const sequence = ProductSerialSequence.parse(sequenceRow.lastSequence);
+
+  return {
+    number: formatProductSerialNumber({ prefix, sequence, year }),
+    prefix,
+    sequence,
+    year,
+  };
+}
+
+function getPlantDateTwoDigitYear(plantDate: DateOnlyIso): number {
+  return Number.parseInt(plantDate.slice(2, 4), 10);
+}
+
 /** The Unit facts every ownership writer needs: the row it locks, and the serial its audit event names. */
 export type OwnershipUnitRow = { id: string; productSerialNumber: string };
 
@@ -49,24 +192,33 @@ type OwnershipTransferRow = {
   toCustomerId: string | null;
 };
 
-/**
- * Takes the Unit's row lock and reads its ownership log under it, so competing writers observe each
- * other's Transfer instead of both deciding from the same stale state.
- *
- * Returns `null` when the Unit does not exist: the caller raises the boundary error its own surface
- * owes — a Quote reports an invalid reference, the Units API reports a missing Unit.
- */
-export async function lockProductUnitOwnership({
-  productUnitId,
-  tx,
-}: {
-  productUnitId: string;
-  tx: DatabaseTransaction;
-}): Promise<{
+/** The ownership state read under the Unit's row lock, and the only way to append to its log. */
+export type UnitOwnershipHandle = {
   currentOwnerId: string | null;
   latest: OwnershipTransferRow | null;
   unit: OwnershipUnitRow & { productId: string };
-} | null> {
+
+  /**
+   * Appends one Ownership Transfer and its audit event after rejecting future dates, backdates, and
+   * no-ops. The origin comes from the locked state; callers retain their own stronger preconditions.
+   */
+  record(input: {
+    actorUserId: AuthId;
+    note?: string | null;
+    occurredOn: string;
+    sourceQuoteId?: string | null;
+    toCustomerId: string | null;
+  }): Promise<void>;
+};
+
+/**
+ * Takes the Unit's row lock and reads its ownership log under it. Returns null when the Unit does not
+ * exist, leaving the caller to raise the boundary-specific error its own surface owes.
+ */
+export async function lockUnitForOwnership(
+  tx: DatabaseTransaction,
+  productUnitId: string,
+): Promise<UnitOwnershipHandle | null> {
   const [unit] = await tx
     .select({
       id: productUnits.id,
@@ -93,20 +245,82 @@ export async function lockProductUnitOwnership({
     .where(eq(productUnitOwnershipTransfers.productUnitId, productUnitId));
   const latest = resolveNewestOwnershipTransfer(transfers);
 
-  return { currentOwnerId: latest?.toCustomerId ?? null, latest, unit };
+  const ownership: UnitOwnershipHandle = {
+    currentOwnerId: latest?.toCustomerId ?? null,
+    latest,
+    async record(input) {
+      const plantToday = getPlantDateNow();
+      assertOwnershipTransferAllowed({
+        currentOwnerId: ownership.currentOwnerId,
+        latest: ownership.latest,
+        occurredOn: input.occurredOn,
+        plantToday,
+        productUnitId: ownership.unit.id,
+        toCustomerId: input.toCustomerId,
+      });
+
+      // PostgreSQL's default `now()` is transaction-stable. Advance same-day timestamps explicitly so
+      // persisted owner resolution cannot fall through to random UUID ordering after two handle writes.
+      const createdAt =
+        ownership.latest && input.occurredOn === ownership.latest.occurredOn
+          ? new Date(Math.max(Date.now(), ownership.latest.createdAt.getTime() + 1))
+          : undefined;
+      const transfer = await appendOwnershipTransfer({
+        actorUserId: input.actorUserId,
+        fromCustomerId: ownership.currentOwnerId,
+        occurredOn: input.occurredOn,
+        toCustomerId: input.toCustomerId,
+        tx,
+        unit: ownership.unit,
+        ...(createdAt ? { createdAt } : {}),
+        ...(input.note === undefined ? {} : { note: input.note }),
+        ...(input.sourceQuoteId === undefined ? {} : { sourceQuoteId: input.sourceQuoteId }),
+      });
+
+      ownership.currentOwnerId = input.toCustomerId;
+      ownership.latest = transfer;
+    },
+    unit,
+  };
+
+  return ownership;
+}
+
+function assertOwnershipTransferAllowed({
+  currentOwnerId,
+  latest,
+  occurredOn,
+  plantToday,
+  productUnitId,
+  toCustomerId,
+}: {
+  currentOwnerId: string | null;
+  latest: OwnershipTransferRow | null;
+  occurredOn: string;
+  plantToday: DateOnlyIso;
+  productUnitId: string;
+  toCustomerId: string | null;
+}): void {
+  if (occurredOn > plantToday) {
+    throw new ProductUnitTransferInFutureError(occurredOn, plantToday);
+  }
+
+  if (toCustomerId === currentOwnerId) {
+    throw new ProductUnitOwnerUnchangedError(productUnitId, currentOwnerId);
+  }
+
+  if (latest && occurredOn < latest.occurredOn) {
+    throw new ProductUnitTransferBackdatedError(occurredOn, latest.occurredOn);
+  }
 }
 
 /**
- * The only writer of the ownership log. Appends the Transfer and records the Product Unit audit event
- * that makes the change discoverable in the workspace-wide feed.
- *
- * Every ownership move goes through here — a sale, a cancellation reversing one, a resale we were not
- * party to — so the log and the audit trail cannot disagree about who holds a machine. Callers keep
- * only the precondition their own path owes, having read the current owner from
- * `lockProductUnitOwnership` (or, for a Unit created in this same transaction, knowing it has none).
+ * Appends the Transfer and audit event after the locked handle has applied the invariants every
+ * ownership move owes.
  */
-export async function appendOwnershipTransfer({
+async function appendOwnershipTransfer({
   actorUserId,
+  createdAt,
   fromCustomerId,
   note,
   occurredOn,
@@ -116,6 +330,7 @@ export async function appendOwnershipTransfer({
   unit,
 }: {
   actorUserId: AuthId;
+  createdAt?: Date;
   fromCustomerId: string | null;
   note?: string | null;
   occurredOn: string;
@@ -123,16 +338,30 @@ export async function appendOwnershipTransfer({
   toCustomerId: string | null;
   tx: DatabaseTransaction;
   unit: OwnershipUnitRow;
-}): Promise<void> {
-  await tx.insert(productUnitOwnershipTransfers).values({
-    actorUserId,
-    fromCustomerId,
-    note: note ?? null,
-    occurredOn,
-    productUnitId: unit.id,
-    sourceQuoteId: sourceQuoteId ?? null,
-    toCustomerId,
-  });
+}): Promise<OwnershipTransferRow> {
+  const [transfer] = await tx
+    .insert(productUnitOwnershipTransfers)
+    .values({
+      actorUserId,
+      fromCustomerId,
+      note: note ?? null,
+      occurredOn,
+      productUnitId: unit.id,
+      sourceQuoteId: sourceQuoteId ?? null,
+      toCustomerId,
+      ...(createdAt ? { createdAt } : {}),
+    })
+    .returning({
+      createdAt: productUnitOwnershipTransfers.createdAt,
+      id: productUnitOwnershipTransfers.id,
+      occurredOn: productUnitOwnershipTransfers.occurredOn,
+      sourceQuoteId: productUnitOwnershipTransfers.sourceQuoteId,
+      toCustomerId: productUnitOwnershipTransfers.toCustomerId,
+    });
+
+  if (!transfer) {
+    throw new Error('Product Unit Ownership Transfer insert did not return a row');
+  }
 
   await recordAuditEvent({
     action: 'updated',
@@ -147,6 +376,8 @@ export async function appendOwnershipTransfer({
     entityId: unit.id,
     record: { productSerialNumber: unit.productSerialNumber },
   });
+
+  return transfer;
 }
 
 export async function updateProductUnit({
@@ -204,26 +435,22 @@ export async function transferProductUnitOwnership({
   input: ProductUnitTransferInput;
 }): Promise<ProductUnitTransferResult> {
   return db.transaction(async (tx) => {
-    const ownership = await lockProductUnitOwnership({ productUnitId: input.id, tx });
+    const ownership = await lockUnitForOwnership(tx, input.id);
 
     if (!ownership) {
       throw new ProductUnitNotFoundError(input.id);
     }
 
-    const { currentOwnerId, latest, unit } = ownership;
-    const plantToday = getPlantDateNow();
-
-    if (input.occurredOn > plantToday) {
-      throw new ProductUnitTransferInFutureError(input.occurredOn, plantToday);
-    }
-
-    if (currentOwnerId === input.toCustomerId) {
-      throw new ProductUnitOwnerUnchangedError(input.id, currentOwnerId);
-    }
-
-    if (latest && input.occurredOn < latest.occurredOn) {
-      throw new ProductUnitTransferBackdatedError(input.occurredOn, latest.occurredOn);
-    }
+    // Preserve the manual API's historical error precedence. `record()` repeats these checks because
+    // every other writer must remain unable to bypass them.
+    assertOwnershipTransferAllowed({
+      currentOwnerId: ownership.currentOwnerId,
+      latest: ownership.latest,
+      occurredOn: input.occurredOn,
+      plantToday: getPlantDateNow(),
+      productUnitId: ownership.unit.id,
+      toCustomerId: input.toCustomerId,
+    });
 
     if (input.toCustomerId) {
       const [toCustomer] = await tx
@@ -236,14 +463,11 @@ export async function transferProductUnitOwnership({
       }
     }
 
-    await appendOwnershipTransfer({
+    await ownership.record({
       actorUserId,
-      fromCustomerId: currentOwnerId,
       note: input.note,
       occurredOn: input.occurredOn,
       toCustomerId: input.toCustomerId,
-      tx,
-      unit,
     });
 
     return { unit: await getProductUnit({ db: tx, id: input.id }) };

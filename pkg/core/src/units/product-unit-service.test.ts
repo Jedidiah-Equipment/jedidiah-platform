@@ -1,14 +1,37 @@
-import { auditEvents, customers, type Db, jobs, products, productUnits, user } from '@pkg/db';
-import { JobListInput, ProductUnitTransferInput } from '@pkg/schema';
+import {
+  auditEvents,
+  customers,
+  type Db,
+  jobs,
+  productSerialSequences,
+  products,
+  productUnitOwnershipTransfers,
+  productUnits,
+  quotes,
+  user,
+} from '@pkg/db';
+import { DateOnlyIso, JobListInput, ProductUnitTransferInput } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { listJobs } from '../jobs/job-read-service.js';
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
-import { transferProductUnitOwnership, updateProductUnit } from './product-unit-service.js';
+import {
+  ProductUnitOwnerUnchangedError,
+  ProductUnitProductNotFoundError,
+  ProductUnitTransferBackdatedError,
+  ProductUnitTransferInFutureError,
+} from './product-unit-errors.js';
+import {
+  createProductUnit,
+  lockUnitForOwnership,
+  transferProductUnitOwnership,
+  updateProductUnit,
+} from './product-unit-service.js';
 
 const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000e1';
+const MISSING_PRODUCT_ID = '00000000-0000-4000-8000-0000000000ed';
 const MISSING_UNIT_ID = '00000000-0000-4000-8000-0000000000ef';
 const MISSING_CUSTOMER_ID = '00000000-0000-4000-8000-0000000000ee';
 
@@ -21,6 +44,183 @@ async function readAuditEvents(db: Db) {
     .where(eq(auditEvents.entityType, 'product_unit'))
     .orderBy(asc(auditEvents.occurredAt), asc(auditEvents.id));
 }
+
+async function readUpdateAuditEvents(db: Db) {
+  return (await readAuditEvents(db)).filter((event) => event.action === 'updated');
+}
+
+describe('createProductUnit', () => {
+  test('reports a missing Product with a Unit-owned error before spending a serial', async ({ context }) => {
+    const unitCountBefore = await context.db.$count(productUnits);
+    const sequenceCountBefore = await context.db.$count(productSerialSequences);
+
+    await expect(
+      context.db.transaction((tx) =>
+        createProductUnit({
+          actorUserId: ACTOR_USER_ID,
+          initialOwner: null,
+          plantToday: DateOnlyIso.parse('2026-07-29'),
+          productId: MISSING_PRODUCT_ID,
+          tx,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ProductUnitProductNotFoundError);
+
+    await expect(context.db.$count(productUnits)).resolves.toBe(unitCountBefore);
+    await expect(context.db.$count(productSerialSequences)).resolves.toBe(sequenceCountBefore);
+  });
+
+  test('mints consecutive serials per Product with independent sequences', async ({ context }) => {
+    const units = await context.db.transaction(async (tx) => [
+      await createProductUnit({
+        actorUserId: ACTOR_USER_ID,
+        initialOwner: null,
+        plantToday: DateOnlyIso.parse('2026-07-29'),
+        productId: context.seed.serialProductId,
+        tx,
+      }),
+      await createProductUnit({
+        actorUserId: ACTOR_USER_ID,
+        initialOwner: null,
+        plantToday: DateOnlyIso.parse('2026-07-29'),
+        productId: context.seed.serialProductId,
+        tx,
+      }),
+      await createProductUnit({
+        actorUserId: ACTOR_USER_ID,
+        initialOwner: null,
+        plantToday: DateOnlyIso.parse('2026-07-29'),
+        productId: context.seed.otherSerialProductId,
+        tx,
+      }),
+    ]);
+
+    expect(units.map((unit) => unit.productSerialNumber)).toEqual(['SER-A260001', 'SER-A260002', 'SER-B260001']);
+  });
+
+  test('creates Stock without a Transfer and an owned Unit with its initial Transfer', async ({ context }) => {
+    const [stockUnit, ownedUnit] = await context.db.transaction(async (tx) => [
+      await createProductUnit({
+        actorUserId: ACTOR_USER_ID,
+        initialOwner: null,
+        plantToday: DateOnlyIso.parse('2026-07-29'),
+        productId: context.seed.serialProductId,
+        tx,
+      }),
+      await createProductUnit({
+        actorUserId: ACTOR_USER_ID,
+        initialOwner: {
+          customerId: context.seed.riversideId,
+          sourceQuoteId: context.seed.quoteId,
+        },
+        plantToday: DateOnlyIso.parse('2026-07-29'),
+        productId: context.seed.serialProductId,
+        tx,
+      }),
+    ]);
+
+    const transfers = await context.db.select().from(productUnitOwnershipTransfers);
+    expect(transfers).toEqual([
+      expect.objectContaining({
+        fromCustomerId: null,
+        occurredOn: '2026-07-29',
+        productUnitId: ownedUnit.id,
+        sourceQuoteId: context.seed.quoteId,
+        toCustomerId: context.seed.riversideId,
+      }),
+    ]);
+    expect(transfers.some((transfer) => transfer.productUnitId === stockUnit.id)).toBe(false);
+
+    const ownedUnitAuditEvents = (await readAuditEvents(context.db)).filter((event) => event.entityId === ownedUnit.id);
+    expect(ownedUnitAuditEvents).toHaveLength(2);
+    expect(ownedUnitAuditEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ action: 'created' }),
+        expect.objectContaining({
+          action: 'updated',
+          changes: {
+            ownerCustomerId: { from: null, to: context.seed.riversideId },
+            ownershipTransferDate: { from: null, to: '2026-07-29' },
+          },
+        }),
+      ]),
+    );
+  });
+});
+
+describe('lockUnitForOwnership', () => {
+  test('advances one handle so sequential Transfers derive the latest origin', async ({ context }) => {
+    await context.db.transaction(async (tx) => {
+      const ownership = await lockUnitForOwnership(tx, context.seed.unitId);
+      if (!ownership) throw new Error('Seeded Product Unit was not found');
+
+      await ownership.record({
+        actorUserId: ACTOR_USER_ID,
+        occurredOn: '2026-06-01',
+        toCustomerId: context.seed.riversideId,
+      });
+      await ownership.record({
+        actorUserId: ACTOR_USER_ID,
+        occurredOn: '2026-06-01',
+        toCustomerId: context.seed.hilltopId,
+      });
+    });
+
+    const transfers = await context.db
+      .select()
+      .from(productUnitOwnershipTransfers)
+      .where(eq(productUnitOwnershipTransfers.productUnitId, context.seed.unitId));
+    const first = transfers.find((transfer) => transfer.toCustomerId === context.seed.riversideId);
+    const second = transfers.find((transfer) => transfer.toCustomerId === context.seed.hilltopId);
+    if (!first || !second) throw new Error('Sequential Ownership Transfers were not both recorded');
+
+    expect(first).toMatchObject({ fromCustomerId: null });
+    expect(second).toMatchObject({ fromCustomerId: context.seed.riversideId });
+    expect(second.createdAt.getTime()).toBeGreaterThan(first.createdAt.getTime());
+
+    const currentOwnerId = await context.db.transaction(async (tx) => {
+      const ownership = await lockUnitForOwnership(tx, context.seed.unitId);
+      return ownership?.currentOwnerId;
+    });
+    expect(currentOwnerId).toBe(context.seed.hilltopId);
+  });
+
+  test('makes future-date, no-op, and backdate checks unavoidable through record', async ({ context }) => {
+    await context.db.transaction(async (tx) => {
+      const ownership = await lockUnitForOwnership(tx, context.seed.unitId);
+      if (!ownership) throw new Error('Seeded Product Unit was not found');
+
+      await expect(
+        ownership.record({
+          actorUserId: ACTOR_USER_ID,
+          occurredOn: '2999-01-01',
+          toCustomerId: context.seed.riversideId,
+        }),
+      ).rejects.toBeInstanceOf(ProductUnitTransferInFutureError);
+      await expect(
+        ownership.record({
+          actorUserId: ACTOR_USER_ID,
+          occurredOn: '2026-06-01',
+          toCustomerId: null,
+        }),
+      ).rejects.toBeInstanceOf(ProductUnitOwnerUnchangedError);
+
+      await ownership.record({
+        actorUserId: ACTOR_USER_ID,
+        occurredOn: '2026-06-01',
+        toCustomerId: context.seed.riversideId,
+      });
+
+      await expect(
+        ownership.record({
+          actorUserId: ACTOR_USER_ID,
+          occurredOn: '2026-05-31',
+          toCustomerId: context.seed.hilltopId,
+        }),
+      ).rejects.toBeInstanceOf(ProductUnitTransferBackdatedError);
+    });
+  });
+});
 
 describe('updateProductUnit', () => {
   test('captures a VIN against the machine', async ({ context }) => {
@@ -61,7 +261,7 @@ describe('updateProductUnit', () => {
       input: { id: context.seed.unitId, vinNumber: 'VIN-EDITED-1' },
     });
 
-    const events = await readAuditEvents(context.db);
+    const events = await readUpdateAuditEvents(context.db);
 
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
@@ -78,7 +278,7 @@ describe('updateProductUnit', () => {
 
     await updateProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, input });
 
-    expect(await readAuditEvents(context.db)).toHaveLength(1);
+    expect(await readUpdateAuditEvents(context.db)).toHaveLength(1);
   });
 
   test('reports a machine that does not exist as not found', async ({ context }) => {
@@ -222,6 +422,18 @@ describe('transferProductUnitOwnership', () => {
     ).rejects.toMatchObject({ code: 'customer.not_found' });
   });
 
+  test('reports generic date errors before an unknown destination', async ({ context }) => {
+    await expect(
+      transfer(context, { occurredOn: '2999-01-01', toCustomerId: MISSING_CUSTOMER_ID }),
+    ).rejects.toBeInstanceOf(ProductUnitTransferInFutureError);
+
+    await transfer(context, { occurredOn: '2026-06-01', toCustomerId: context.seed.riversideId });
+
+    await expect(
+      transfer(context, { occurredOn: '2026-05-31', toCustomerId: MISSING_CUSTOMER_ID }),
+    ).rejects.toBeInstanceOf(ProductUnitTransferBackdatedError);
+  });
+
   test('reports a machine that does not exist as not found', async ({ context }) => {
     await expect(
       transferProductUnitOwnership({
@@ -243,7 +455,7 @@ describe('transferProductUnitOwnership', () => {
       toCustomerId: context.seed.riversideId,
     });
 
-    expect(await readAuditEvents(context.db)).toEqual([
+    expect(await readUpdateAuditEvents(context.db)).toEqual([
       expect.objectContaining({
         action: 'updated',
         actorUserId: ACTOR_USER_ID,
@@ -287,17 +499,40 @@ async function seedUnit(db: Db) {
     .returning();
   if (!product) throw new Error('Product insert did not return a row');
 
-  const [unit] = await db
-    .insert(productUnits)
-    .values({
-      productId: product.id,
-      productSerialNumber: 'VIN-001260001',
-      productSerialPrefix: 'VIN-001',
-      productSerialSequence: 1,
-      productSerialYear: 26,
-    })
+  const [serialProduct, otherSerialProduct] = await db
+    .insert(products)
+    .values([
+      {
+        basePrice: 1_000,
+        buildTimeDays: 14,
+        currencyCode: 'ZAR',
+        description: null,
+        modelCode: 'SER-A',
+        name: 'Serial Test Product A',
+        rangeId,
+      },
+      {
+        basePrice: 1_000,
+        buildTimeDays: 14,
+        currencyCode: 'ZAR',
+        description: null,
+        modelCode: 'SER-B',
+        name: 'Serial Test Product B',
+        rangeId,
+      },
+    ])
     .returning();
-  if (!unit) throw new Error('Product unit insert did not return a row');
+  if (!serialProduct || !otherSerialProduct) throw new Error('Serial test Product insert did not return every row');
+
+  const unit = await db.transaction((tx) =>
+    createProductUnit({
+      actorUserId: ACTOR_USER_ID,
+      initialOwner: null,
+      plantToday: DateOnlyIso.parse('2026-05-01'),
+      productId: product.id,
+      tx,
+    }),
+  );
 
   // A Stock Build: the machine exists with no Quote and nobody owning it.
   await db.insert(jobs).values({ createdAt: now, productUnitId: unit.id, updatedAt: now });
@@ -311,5 +546,24 @@ async function seedUnit(db: Db) {
     .returning();
   if (!riverside || !hilltop) throw new Error('Customer insert did not return a row');
 
-  return { hilltopId: hilltop.id, riversideId: riverside.id, unitId: unit.id };
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId: riverside.id,
+      productId: serialProduct.id,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: ACTOR_USER_ID,
+    })
+    .returning();
+  if (!quote) throw new Error('Quote insert did not return a row');
+
+  return {
+    hilltopId: hilltop.id,
+    otherSerialProductId: otherSerialProduct.id,
+    quoteId: quote.id,
+    riversideId: riverside.id,
+    serialProductId: serialProduct.id,
+    unitId: unit.id,
+  };
 }

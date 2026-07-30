@@ -1,26 +1,13 @@
-import {
-  type DatabaseTransaction,
-  jobs,
-  notRemoved,
-  productSerialSequences,
-  products,
-  quoteSelectedAssemblies,
-  quotes,
-} from '@pkg/db';
+import { type DatabaseTransaction, jobs, notRemoved, products, quoteSelectedAssemblies, quotes } from '@pkg/db';
 import { type BuildSpecAssembly, canStartJobFromQuote, selectReworkBuildSpec } from '@pkg/domain';
 import {
-  type DateOnlyIso,
-  formatProductSerialNumber,
   isStockBuildCreateInput,
   type JobCreateInput,
-  ProductSerialPrefix,
-  ProductSerialSequence,
-  ProductSerialYear,
   type QuoteKind,
   type QuoteOffering,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { narrowQuoteOffering } from '../quotes/quote-offering.js';
@@ -36,14 +23,12 @@ export type JobBlueprint =
       kind: 'product';
       quote: QuoteRow;
       productId: UUID;
-      serial: ProductSerial;
       buildSpec: BuildSpecAssembly[];
     }
   | {
       kind: 'stock-build';
       quote: null;
       productId: UUID;
-      serial: ProductSerial;
       buildSpec: BuildSpecAssembly[];
     }
   | {
@@ -54,13 +39,6 @@ export type JobBlueprint =
       buildSpec: BuildSpecAssembly[];
     }
   | { kind: 'custom'; quote: QuoteRow };
-
-type ProductSerial = {
-  number: string;
-  prefix: string;
-  sequence: number;
-  year: number;
-};
 
 /** A Build creates the machine; Rework has product work but must keep the Unit it was quoted against. */
 export function createsProductUnit(
@@ -75,15 +53,13 @@ export function hasProductWork(blueprint: JobBlueprint): blueprint is Exclude<Jo
 
 export async function resolveJobBlueprint({
   input,
-  plantToday,
   tx,
 }: {
   input: JobCreateInput;
-  plantToday: DateOnlyIso;
   tx: DatabaseTransaction;
 }): Promise<JobBlueprint> {
   if (isStockBuildCreateInput(input)) {
-    const product = await loadStockBuildProduct({ productId: input.productId, tx });
+    await assertStockBuildProductExists({ productId: input.productId, tx });
     const buildSpec = await resolveStockBuildSpec({
       assemblyIds: input.buildSpecAssemblyIds,
       productId: input.productId,
@@ -94,12 +70,6 @@ export async function resolveJobBlueprint({
       kind: 'stock-build',
       quote: null,
       productId: input.productId,
-      serial: await createProductSerial({
-        modelCode: product.modelCode,
-        plantToday,
-        productId: input.productId,
-        tx,
-      }),
       buildSpec,
     };
   }
@@ -142,39 +112,22 @@ export async function resolveJobBlueprint({
 
   assertQuoteCanStartJob({ hasJob, hasProductUnit: false, kind: 'product', reworkRequired: false, quote });
 
-  const [product] = await tx
-    .select({ modelCode: products.modelCode })
-    .from(products)
-    .where(eq(products.id, offering.productId))
-    .limit(1);
-
-  if (!product) {
-    throw new JobCreateFromQuoteDeniedError('Product not found.');
-  }
-
-  const serial = await createProductSerial({
-    modelCode: product.modelCode,
-    plantToday,
-    productId: offering.productId,
-    tx,
-  });
-
-  return { kind: 'product', quote, productId: offering.productId, serial, buildSpec };
+  return { kind: 'product', quote, productId: offering.productId, buildSpec };
 }
 
 /**
  * A removed Product is gone from the picker, so a Stock Build naming one is a stale tab or a hand-made
  * request — never something we should mint a serial and a machine for.
  */
-async function loadStockBuildProduct({
+async function assertStockBuildProductExists({
   productId,
   tx,
 }: {
   productId: UUID;
   tx: DatabaseTransaction;
-}): Promise<{ modelCode: string }> {
+}): Promise<void> {
   const [product] = await tx
-    .select({ modelCode: products.modelCode })
+    .select({ id: products.id })
     .from(products)
     .where(and(eq(products.id, productId), notRemoved(products)))
     .limit(1);
@@ -182,8 +135,6 @@ async function loadStockBuildProduct({
   if (!product) {
     throw new StockBuildDeniedError('Product not found.');
   }
-
-  return product;
 }
 
 /**
@@ -222,56 +173,6 @@ async function resolveStockBuildSpec({
     assemblyName: optionalAssembliesById.get(assemblyId)?.name ?? '',
     productAssemblyId: assemblyId,
   }));
-}
-
-async function createProductSerial({
-  modelCode,
-  plantToday,
-  productId,
-  tx,
-}: {
-  modelCode: string;
-  plantToday: DateOnlyIso;
-  productId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<ProductSerial> {
-  const now = new Date();
-  const [sequenceRow] = await tx
-    .insert(productSerialSequences)
-    .values({
-      lastSequence: 1,
-      productId,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: productSerialSequences.productId,
-      set: {
-        lastSequence: sql`${productSerialSequences.lastSequence} + 1`,
-        updatedAt: now,
-      },
-    })
-    .returning({
-      lastSequence: productSerialSequences.lastSequence,
-    });
-
-  if (!sequenceRow) {
-    throw new Error('Product serial sequence upsert did not return a row');
-  }
-
-  const prefix = ProductSerialPrefix.parse(modelCode);
-  const year = ProductSerialYear.parse(getPlantDateTwoDigitYear(plantToday));
-  const sequence = ProductSerialSequence.parse(sequenceRow.lastSequence);
-
-  return {
-    number: formatProductSerialNumber({ prefix, sequence, year }),
-    prefix,
-    sequence,
-    year,
-  };
-}
-
-function getPlantDateTwoDigitYear(plantDate: DateOnlyIso): number {
-  return Number.parseInt(plantDate.slice(2, 4), 10);
 }
 
 async function lockQuoteForJobCreate({

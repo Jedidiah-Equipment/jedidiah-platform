@@ -6,17 +6,17 @@ import {
   jobs,
   products,
   productUnitOwnershipTransfers,
-  productUnits,
   quotes,
   user,
 } from '@pkg/db';
-import { ProductUnitListInput } from '@pkg/schema';
+import { DateOnlyIso, ProductUnitListInput } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { ProductUnitNotFoundError } from './product-unit-errors.js';
 import { getProductUnit, listProductUnits } from './product-unit-read-service.js';
+import { createProductUnit, lockUnitForOwnership, updateProductUnit } from './product-unit-service.js';
 
 const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000b1';
 
@@ -160,6 +160,12 @@ describe('getProductUnit', () => {
     expect(detail.ownershipHistory[1]?.actor).toBeNull();
   });
 
+  test('attributes an interface-written return to the person who recorded it', async ({ context }) => {
+    const detail = await getProductUnit({ db: context.db, id: context.seed.rebuiltUnitId });
+
+    expect(detail.ownershipHistory[1]?.actor).toMatchObject({ name: 'Unit Test User' });
+  });
+
   test('lists every Job that touched the machine', async ({ context }) => {
     const detail = await getProductUnit({ db: context.db, id: context.seed.soldUnitId });
 
@@ -267,30 +273,75 @@ async function seedUnits(db: Db) {
     throw new Error('Quote insert did not return every row');
   }
 
-  const unitRows = await db
-    .insert(productUnits)
-    .values([
-      ...[1, 2, 3].map((sequence) => ({
-        productId: product.id,
-        productSerialNumber: `PU-00126000${sequence}`,
-        productSerialPrefix: 'PU-001',
-        productSerialSequence: sequence,
-        productSerialYear: 26,
-        vinNumber: sequence === 1 ? 'VIN-UNIT-1' : null,
-      })),
-      {
-        productId: otherProduct.id,
-        productSerialNumber: 'OT-001260001',
-        productSerialPrefix: 'OT-001',
-        productSerialSequence: 1,
-        productSerialYear: 26,
-      },
-    ])
-    .returning();
+  const unitRows = await db.transaction(async (tx) => {
+    const soldUnit = await createProductUnit({
+      actorUserId: ACTOR_USER_ID,
+      initialOwner: { customerId: customer.id, sourceQuoteId: quote.id },
+      plantToday: DateOnlyIso.parse('2026-05-02'),
+      productId: product.id,
+      tx,
+    });
+    const stockUnit = await createProductUnit({
+      actorUserId: ACTOR_USER_ID,
+      initialOwner: null,
+      plantToday: DateOnlyIso.parse('2026-05-02'),
+      productId: product.id,
+      tx,
+    });
+    const returnedUnit = await createProductUnit({
+      actorUserId: ACTOR_USER_ID,
+      initialOwner: { customerId: customer.id, sourceQuoteId: thirdQuote.id },
+      plantToday: DateOnlyIso.parse('2026-05-02'),
+      productId: product.id,
+      tx,
+    });
+    const rebuiltUnit = await createProductUnit({
+      actorUserId: ACTOR_USER_ID,
+      initialOwner: null,
+      plantToday: DateOnlyIso.parse('2026-05-02'),
+      productId: otherProduct.id,
+      tx,
+    });
+
+    const returnedOwnership = await lockUnitForOwnership(tx, returnedUnit.id);
+    if (!returnedOwnership?.latest) throw new Error('Created sold Product Unit has no Ownership Transfer');
+
+    // Backfill migrations legitimately bypass the application writer and identify the system with a
+    // null actor. Keep that persisted production state covered at the read boundary.
+    await tx.insert(productUnitOwnershipTransfers).values({
+      actorUserId: null,
+      createdAt: new Date(returnedOwnership.latest.createdAt.getTime() + 1),
+      fromCustomerId: customer.id,
+      occurredOn: '2026-05-20',
+      productUnitId: returnedUnit.id,
+      sourceQuoteId: thirdQuote.id,
+      toCustomerId: null,
+    });
+
+    const rebuiltOwnership = await lockUnitForOwnership(tx, rebuiltUnit.id);
+    if (!rebuiltOwnership) throw new Error('Created Product Unit was not found');
+    await rebuiltOwnership.record({
+      actorUserId: ACTOR_USER_ID,
+      occurredOn: '2026-05-02',
+      sourceQuoteId: rebuildQuote.id,
+      toCustomerId: customer.id,
+    });
+    await rebuiltOwnership.record({
+      actorUserId: ACTOR_USER_ID,
+      occurredOn: '2026-05-20',
+      sourceQuoteId: rebuildQuote.id,
+      toCustomerId: null,
+    });
+
+    return [soldUnit, stockUnit, returnedUnit, rebuiltUnit] as const;
+  });
   const [soldUnit, stockUnit, returnedUnit, rebuiltUnit] = unitRows;
-  if (!soldUnit || !stockUnit || !returnedUnit || !rebuiltUnit) {
-    throw new Error('Product unit insert did not return every row');
-  }
+
+  await updateProductUnit({
+    actorUserId: ACTOR_USER_ID,
+    db,
+    input: { id: soldUnit.id, vinNumber: 'VIN-UNIT-1' },
+  });
 
   // Serials are still written to the Job as well: `job_product_serial_shape` holds until #1013.
   const serialColumns = (unit: (typeof unitRows)[number]) => ({
@@ -347,30 +398,6 @@ async function seedUnits(db: Db) {
     { assemblyName: 'Heavy Axle Upgrade', jobId: soldJob.id, kind: 'optional', sequence: 1 },
     { assemblyName: 'Toolbox', jobId: reworkJob.id, kind: 'optional', sequence: 0 },
     { assemblyName: 'Winch', jobId: cancelledJob.id, kind: 'optional', sequence: 0 },
-  ]);
-
-  await db.insert(productUnitOwnershipTransfers).values([
-    {
-      actorUserId: ACTOR_USER_ID,
-      occurredOn: '2026-05-02',
-      productUnitId: soldUnit.id,
-      sourceQuoteId: quote.id,
-      toCustomerId: customer.id,
-    },
-    {
-      actorUserId: ACTOR_USER_ID,
-      occurredOn: '2026-05-02',
-      productUnitId: returnedUnit.id,
-      sourceQuoteId: quote.id,
-      toCustomerId: customer.id,
-    },
-    // Returned to Stock: a later row with no destination, and no person behind it.
-    {
-      fromCustomerId: customer.id,
-      occurredOn: '2026-05-20',
-      productUnitId: returnedUnit.id,
-      toCustomerId: null,
-    },
   ]);
 
   return {

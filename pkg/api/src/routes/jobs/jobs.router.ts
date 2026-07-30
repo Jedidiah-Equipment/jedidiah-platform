@@ -7,6 +7,7 @@ import {
   createJobBay,
   getJob,
   isJobCoreError,
+  isProductUnitCoreError,
   isQuoteCoreError,
   type JobCoreError,
   listBayOperatorAssignmentHistory,
@@ -16,6 +17,7 @@ import {
   listJobCustomerOptions,
   listJobs,
   moveJobSlot,
+  type ProductUnitCoreError,
   previewBoard,
   type QuoteCoreError,
   removeBayCalendarException,
@@ -177,9 +179,23 @@ async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapKnownCoreError(action, isJobCoreError, mapJobCoreError);
 }
 
-// Job creation reads a Quote, so a Quote offering invariant can surface here; map it alongside job errors.
+// Job creation crosses Quote and Product Unit boundaries, so map both feature errors alongside Job errors.
 async function mapCreateJobErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapJobErrors(() => mapKnownCoreError(action, isQuoteCoreError, mapJobQuoteCoreError));
+  return mapJobErrors(() =>
+    mapKnownCoreError(
+      () => mapKnownCoreError(action, isProductUnitCoreError, mapProductUnitCoreError),
+      isQuoteCoreError,
+      mapJobQuoteCoreError,
+    ),
+  );
+}
+
+function mapProductUnitCoreError(error: ProductUnitCoreError): CoreErrorMapping<ProductUnitCoreError['code']> {
+  if (error.code === 'product_unit.not_found') {
+    return { appCode: error.code, code: 'NOT_FOUND', message: 'Product unit not found.' };
+  }
+
+  return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
 }
 
 function mapJobQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreError['code']> {

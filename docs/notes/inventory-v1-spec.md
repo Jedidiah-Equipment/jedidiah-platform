@@ -29,7 +29,7 @@ One append-only movement ledger for all stocked items (#883). SOH is `SUM(delta)
 
 | Movement | Sign | Cost handling |
 |---|---|---|
-| `receipt` | + | unit cost human-confirmed at receiving (defaults from PO line); updates the moving average |
+| `receipt` | + | unit cost defaults from the PO line; confirmed or corrected desk-side by a cost-gated user during invoice reconciliation; updates the moving average |
 | `checkout` | − | stamped with the current moving average at draw time |
 | `return-to-store` | + | reverses at the cost the parts left with |
 | `return-to-supplier` | − | at the original receipt's stamped cost; reason enum; PO-line-linked |
@@ -39,9 +39,9 @@ One append-only movement ledger for all stocked items (#883). SOH is `SUM(delta)
 
 Every movement carries `actor_user_id` — a deliberate departure from the platform's no-attribution convention: on an append-only ledger, the actor is part of the fact.
 
-**Two tracking modes, one storage model.** Perpetual items (parts, Built Parts) use the full vocabulary. Periodic items (raw material) post receipts and `stock-count` adjustments only — no consumption movements at all (Jed's decision): raw-material SOH is a deliberate conservative lower bound, corrected by weekly stocktake. Flipping an item's mode is a field change, not a migration.
+**Two tracking modes, one storage model.** Perpetual items (parts, Built Parts) use the full vocabulary. Periodic items (raw material) post receipts and `stock-count` adjustments only — no consumption movements at all (Jed's decision). Between counts the periodic ledger only ever adds, so **periodic SOH is stale-high — an upper bound on the shelf**, corrected downward by the weekly stocktake; the SOH report labels it "as of last count" so nobody reads it as available stock. (The *costing* side is conservative separately: consumption estimates are deliberately high, §7.) Flipping an item's mode is a field change, not a migration.
 
-**Linear material** (`unitOfMeasure = mm`): stock is a count of pieces bucketed by length. A cut is two movements in one transaction (`−1 @ 6000`, `+1 @ 5000`). Standard purchase length becomes a real field on Part (killing the `category: "6000"` hack). Plate sizes live in part identity; offcuts are deliberately untracked (they belong to the nesting software).
+**Linear material** (`unitOfMeasure = mm`): stock is a count of pieces bucketed by length. On **perpetual** linear items a cut is two movements in one transaction (`−1 @ 6000`, `+1 @ 5000`); on **periodic** raw material cuts are never posted — bucket changes surface at the next stocktake, whose count sheet captures per-length buckets (`13M × 9`, `4.2M × 1`). Standard purchase length becomes a real field on Part (killing the `category: "6000"` hack). Plate sizes live in part identity; offcuts are deliberately untracked (they belong to the nesting software).
 
 **Location** is a free-text `storageLocation` attribute on Part (the `category` pattern) — findability only, never a ledger dimension. No per-location SOH, no transfers.
 
@@ -50,16 +50,16 @@ Every movement carries `actor_user_id` — a deliberate departure from the platf
 ## 3. Stock meets Jobs (#884)
 
 - **Checkout is the only stored allocation-side fact**: `(job, part, lengthMm?, qty, actor, time)`, via barcode. Custom Jobs are valid targets (they have no CFO). The CFO is demand, **never a gate** — over-draw and off-BOM draws warn and post.
-- **Commitment is derived**: `max(0, CFO − drawn)` per part per Job. Appears at Job creation, decays with draws, self-extinguishes. No reservation table.
+- **Commitment is derived**: **zero once the Job (or line) is closed out**, else `max(0, CFO − drawn)` per part per Job. Appears at Job creation, decays with draws, self-extinguishes — and the close-out predicate is what actually releases the remainder of a Job that never drew its full CFO. Closed-out stays zero regardless of later movements; reopening is not a v1 concept. No reservation table.
 - **Free** = `SOH − Σ committed`. **On order** = `Σ(ordered − received)` over open sent PO lines — shown beside free wherever buying is decided, never folded into it. Suggested buy = shortfall − on order.
 - **No hard stops anywhere.** Negative free → procurement's ranked buy list (by earliest Slot date). Negative SOH at scan → count-is-wrong flag. Job creation and Slot booking are never stock-gated.
-- **Close-out**: stores returns a finished Job's leftovers and releases remaining commitment, one motion. Prompted by the **close-out queue** — derived from the Board's `lastWorkDay` projection (final Work Slot ended; drawn stock or commitment remains), surfaced as a permission-gated dashboard widget. A Job leaves the queue only when actually closed. Backstop: stale-commitment report.
+- **Close-out**: stores returns a finished Job's leftovers and releases remaining commitment, one motion. Prompted by the **close-out queue**: Jobs whose **Job Completion (`completedOn`) is set** and which still have drawn stock not returned or commitment not closed, surfaced as a permission-gated dashboard widget. A Job leaves the queue only when actually closed. Backstop: stale-commitment report. *(This supersedes #884's Board-projection trigger, which predated the stored Job Completion feature — completion is latched and human-controllable, so a delayed Job whose `completedOn` was cleared is correctly not offered for close-out, and a manually completed Job appears immediately.)*
 - **Returns re-open commitment** (drawn decreases) — correct for live Jobs; the close-out screen combines return-and-close.
 - **Variance per Job**: drawn vs CFO, priced at stamped draw costs.
 
 ## 4. Purchasing (#885)
 
-A PO is an order on **one Supplier** — never Job-born. Born three ways: seeded from a Job (outstanding commitment with free-stock alongside; ticked parts auto-split into one draft PO per supplier), from the buy list, or from scratch.
+A PO is an order on **one Supplier** — never owned by or scoped to a single Job (there is no per-Job PO entity), though one may be *initiated from* a Job's demand. Born three ways: seeded from a Job (outstanding commitment with free-stock alongside; ticked parts auto-split into one draft PO per supplier), from the buy list, or from scratch.
 
 - **Job links: plural, optional, document-routing.** The generated PO PDF auto-surfaces on linked Jobs' documents tabs; linked Job codes print on the PDF (suppliers echo them on invoices — AI matching hints). Links are never cost attribution — the checkout ledger owns Job cost.
 - **Lifecycle**: `draft` (freely editable) → `sent` (human assertion in v1; procurement sends the PDF themselves) → `partially received` → `received` (computed from receipts, never toggled). Exits: `cancelled` (zero receipts), closed-short. Over-receipt warns.
@@ -73,7 +73,7 @@ A PO is an order on **one Supplier** — never Job-born. Born three ways: seeded
 - **Moving weighted average, per part** — per mm for linear (a bucket's value is `length × avgPerMm × count`; cuts are value-neutral). FIFO rejected (cost layers serve books that live elsewhere; re-derivable from the ledger if ever needed).
 - **A part's cost *is* its ledger cost.** Seeded by `opening-balance` with `unitCost`; updated by every receipt; adjustable via `revaluation`. No stored `costPrice` field. A never-costed part shows **"no cost yet"**, never R0.00. Price history = a query over receipts.
 - **Draws are stamped**: checkout and return rows carry unit cost at draw time — Job costs and variance never drift retroactively.
-- **Price capture, three levels, all v1**: PO line price → human-confirmed at receipt → supplier invoice PDF attached to the PO → **AI invoice extraction, advisory-only** (flags line mismatches; one-click apply is the human confirmation; the ledger is only ever written by a human).
+- **Price capture, three levels, all v1**: the PO line carries the price → the receipt posts with that price by default (the dock confirms **quantities**; the stores role is price-blind by the cost gate, §11) → price confirmation and correction happen **desk-side by a cost-gated user** during invoice reconciliation: supplier invoice PDF attached to the PO, **AI invoice extraction advisory-only** (flags line mismatches; one-click apply is the human confirmation; the ledger is only ever written by a human).
 - **Fabricated sheet-metal parts carry zero material cost** — their material is charged through the raw-material lines; costing them separately would pay for the plate twice.
 - **Currency: ZAR only.** Rare foreign suppliers get a manual conversion at PO entry.
 
@@ -87,7 +87,7 @@ A PO is an order on **one Supplier** — never Job-born. Born three ways: seeded
 
 ## 7. Raw material & the Product's material list (#953)
 
-- Raw material (plate, channel, tube, bar) is periodic: weekly stocktake is the only writer besides receipts. SOH is a conservative lower bound **by design** — label it as such.
+- Raw material (plate, channel, tube, bar) is periodic: weekly stocktake is the only writer besides receipts. Between counts its SOH is **stale-high by design** (nothing records consumption — see §2); the weekly count is what pulls it back to reality, which is why stocktake is load-bearing, not optional.
 - **The Product carries a per-material list**: each line a raw material + decimal consumption per unit, keyed manually from ProNest (2.5 plates of 3mm; 3 × 13M channel). Fields labeled *per unit* (the 36-vs-12 bulk-sheet error class). Full-plus-partial entry is UI sugar.
 - **The estimate shows consumption, never posts it.** The list powers costing (#989) and an **expected-vs-actual drift report** beside the stocktake variance — the honest heir to auto-deduction.
 - ProNest integration stays parked; the stocktake variance report is where "drift proves painful" becomes measurable.
@@ -96,9 +96,11 @@ A PO is an order on **one Supplier** — never Job-born. Born three ways: seeded
 
 ```
 estimate = Σ material lines × ledger cost
-         + Σ bought parts × ledger cost
+         + Σ BOM parts × ledger cost
          + Σ department hours × charge-out rate
 ```
+
+The middle term covers **every part in the effective BOM at its ledger cost**: bought parts at their receipt-fed average; **Built Parts included at their ledger cost** (not exploded — their cost already carries their bought components and honestly excludes fabricated content, §6); fabricated non-BOM parts contribute zero by design (§5).
 
 - **Department labor hours live on the Product** (Fabrication / Paint / Workshop), maintained under `product:update`. Not derived from `product_bays.defaultWorkingDays` — scheduling days are elapsed time, not labor.
 - **The rate card is shared with quote work items** (#996: Fabrication 550 / Paint 375 / Workshop 320) — stored once, two consumers. Charge-out rates knowingly used in v1: the labor line is margin-neutral; the margin signal comes from materials.

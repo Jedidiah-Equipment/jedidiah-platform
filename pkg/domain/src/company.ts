@@ -7,10 +7,10 @@ export const JEDIDIAH_FACEBOOK_URL = 'https://www.facebook.com/jedidiahequipment
 
 export const JEDIDIAH_INSTAGRAM_URL = 'https://www.instagram.com/jedidiahequipment/';
 
-// South African contact number stored as its national significant number (an
-// integer, no leading zero). Format with formatContactNumber for display, or
-// contactNumberE164 for tel/WhatsApp links.
+// South African contact numbers stored as national significant numbers
+// (integers, no leading zero).
 export const JEDIDIAH_CONTACT_NUMBER = 450500545;
+export const JEDIDIAH_WHATSAPP_NUMBER = 824194464;
 
 const SA_COUNTRY_CODE = '27';
 

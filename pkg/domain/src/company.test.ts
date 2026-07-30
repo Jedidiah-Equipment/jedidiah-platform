@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { contactNumberE164, formatContactNumber, JEDIDIAH_CONTACT_NUMBER } from './company.js';
+import {
+  contactNumberE164,
+  formatContactNumber,
+  JEDIDIAH_CONTACT_NUMBER,
+  JEDIDIAH_WHATSAPP_NUMBER,
+} from './company.js';
 
 describe('company contact number', () => {
   it('formats the stored contact number for display', () => {
@@ -10,5 +15,6 @@ describe('company contact number', () => {
 
   it('builds an E.164 string for tel/WhatsApp links', () => {
     expect(contactNumberE164()).toBe('+27450500545');
+    expect(contactNumberE164(JEDIDIAH_WHATSAPP_NUMBER)).toBe('+27824194464');
   });
 });

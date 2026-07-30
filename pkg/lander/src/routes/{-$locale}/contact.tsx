@@ -4,6 +4,7 @@ import {
   JEDIDIAH_FACEBOOK_URL,
   JEDIDIAH_INSTAGRAM_URL,
   JEDIDIAH_LOCATION,
+  JEDIDIAH_WHATSAPP_NUMBER,
 } from '@pkg/domain';
 import {
   IconArrowRight,
@@ -317,7 +318,7 @@ function ContactInfo() {
           </div>
         </div>
         <a
-          href={`https://wa.me/${contactNumberE164().slice(1)}`}
+          href={`https://wa.me/${contactNumberE164(JEDIDIAH_WHATSAPP_NUMBER).slice(1)}`}
           onClick={() =>
             captureEventForNavigation('social_link_clicked', {
               platform: 'whatsapp',

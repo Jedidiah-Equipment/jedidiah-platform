@@ -18,12 +18,8 @@ import type {
 import { Customer } from '@pkg/schema';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
-import {
-  defineAuditDescriptor,
-  diffAuditUpdate,
-  recordAuditCreate,
-  recordAuditUpdate,
-} from '../audit/audit-service.js';
+import { defineAuditDescriptor, recordAuditCreate } from '../audit/audit-service.js';
+import { mutateEntity } from '../audit/mutate-entity.js';
 import { CustomerNotFoundError } from './customer-errors.js';
 
 type CustomerRow = typeof customers.$inferSelect;
@@ -160,14 +156,14 @@ export async function updateCustomer({
   db: Db;
   input: CustomerUpdateInput;
 }): Promise<Customer> {
-  return db.transaction(async (tx) => {
-    const [before] = await tx.select().from(customers).where(eq(customers.id, input.id)).for('update');
-
-    if (!before) {
-      throw new CustomerNotFoundError(input.id);
-    }
-
-    const patch = {
+  return mutateEntity({
+    actorUserId,
+    db,
+    descriptor: customerAuditDescriptor,
+    id: input.id,
+    notFound: () => new CustomerNotFoundError(input.id),
+    project: (_tx, row) => mapCustomer(row),
+    set: () => ({
       address: input.address,
       companyName: input.companyName,
       contactPerson: input.contactPerson,
@@ -175,28 +171,10 @@ export async function updateCustomer({
       notes: input.notes,
       phone: input.phone,
       thumbnailDataUrl: input.thumbnailDataUrl,
+      updatedAt: new Date(),
       vatNumber: input.vatNumber,
-    };
-    const after = { ...before, ...patch };
-    const changes = diffAuditUpdate(customerAuditDescriptor, before, after);
-
-    if (!changes) {
-      return mapCustomer(before);
-    }
-
-    const [row] = await tx
-      .update(customers)
-      .set({ ...patch, updatedAt: new Date() })
-      .where(eq(customers.id, input.id))
-      .returning();
-
-    if (!row) {
-      throw new CustomerNotFoundError(input.id);
-    }
-
-    await recordAuditUpdate({ db: tx, descriptor: customerAuditDescriptor, actorUserId, after: row, changes });
-
-    return mapCustomer(row);
+    }),
+    table: customers,
   });
 }
 
@@ -214,43 +192,25 @@ export async function patchCustomer({
   db: Db;
   input: CustomerPatchInput;
 }): Promise<Customer> {
-  return db.transaction(async (tx) => {
-    const [before] = await tx.select().from(customers).where(eq(customers.id, input.id)).for('update');
-
-    if (!before) {
-      throw new CustomerNotFoundError(input.id);
-    }
-
+  return mutateEntity({
+    actorUserId,
+    db,
+    descriptor: customerAuditDescriptor,
+    id: input.id,
+    notFound: () => new CustomerNotFoundError(input.id),
+    project: (_tx, row) => mapCustomer(row),
     // `undefined` keeps the current value; an explicit `null` clears a nullable field.
-    const patch = {
+    set: (before) => ({
       address: input.address !== undefined ? input.address : before.address,
       companyName: input.companyName ?? before.companyName,
       contactPerson: input.contactPerson !== undefined ? input.contactPerson : before.contactPerson,
       email: input.email !== undefined ? input.email : before.email,
       notes: input.notes !== undefined ? input.notes : before.notes,
       phone: input.phone !== undefined ? input.phone : before.phone,
+      updatedAt: new Date(),
       vatNumber: input.vatNumber !== undefined ? input.vatNumber : before.vatNumber,
-    };
-    const after = { ...before, ...patch };
-    const changes = diffAuditUpdate(customerAuditDescriptor, before, after);
-
-    if (!changes) {
-      return mapCustomer(before);
-    }
-
-    const [row] = await tx
-      .update(customers)
-      .set({ ...patch, updatedAt: new Date() })
-      .where(eq(customers.id, input.id))
-      .returning();
-
-    if (!row) {
-      throw new CustomerNotFoundError(input.id);
-    }
-
-    await recordAuditUpdate({ db: tx, descriptor: customerAuditDescriptor, actorUserId, after: row, changes });
-
-    return mapCustomer(row);
+    }),
+    table: customers,
   });
 }
 

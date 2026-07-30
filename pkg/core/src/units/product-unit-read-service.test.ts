@@ -1,4 +1,14 @@
-import { customers, type Db, jobBuildSpecAssemblies, jobCfoAssemblies, jobs, products, quotes, user } from '@pkg/db';
+import {
+  customers,
+  type Db,
+  jobBuildSpecAssemblies,
+  jobCfoAssemblies,
+  jobs,
+  products,
+  productUnitOwnershipTransfers,
+  quotes,
+  user,
+} from '@pkg/db';
 import { DateOnlyIso, ProductUnitListInput } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -144,8 +154,14 @@ describe('getProductUnit', () => {
     });
   });
 
-  test('attributes the return to the person who recorded it', async ({ context }) => {
+  test('records the system as the actor when nobody entered the transfer', async ({ context }) => {
     const detail = await getProductUnit({ db: context.db, id: context.seed.returnedUnitId });
+
+    expect(detail.ownershipHistory[1]?.actor).toBeNull();
+  });
+
+  test('attributes an interface-written return to the person who recorded it', async ({ context }) => {
+    const detail = await getProductUnit({ db: context.db, id: context.seed.rebuiltUnitId });
 
     expect(detail.ownershipHistory[1]?.actor).toMatchObject({ name: 'Unit Test User' });
   });
@@ -288,11 +304,32 @@ async function seedUnits(db: Db) {
     });
 
     const returnedOwnership = await lockUnitForOwnership(tx, returnedUnit.id);
-    if (!returnedOwnership) throw new Error('Created Product Unit was not found');
-    await returnedOwnership.record({
+    if (!returnedOwnership?.latest) throw new Error('Created sold Product Unit has no Ownership Transfer');
+
+    // Backfill migrations legitimately bypass the application writer and identify the system with a
+    // null actor. Keep that persisted production state covered at the read boundary.
+    await tx.insert(productUnitOwnershipTransfers).values({
+      actorUserId: null,
+      createdAt: new Date(returnedOwnership.latest.createdAt.getTime() + 1),
+      fromCustomerId: customer.id,
+      occurredOn: '2026-05-20',
+      productUnitId: returnedUnit.id,
+      sourceQuoteId: thirdQuote.id,
+      toCustomerId: null,
+    });
+
+    const rebuiltOwnership = await lockUnitForOwnership(tx, rebuiltUnit.id);
+    if (!rebuiltOwnership) throw new Error('Created Product Unit was not found');
+    await rebuiltOwnership.record({
+      actorUserId: ACTOR_USER_ID,
+      occurredOn: '2026-05-02',
+      sourceQuoteId: rebuildQuote.id,
+      toCustomerId: customer.id,
+    });
+    await rebuiltOwnership.record({
       actorUserId: ACTOR_USER_ID,
       occurredOn: '2026-05-20',
-      sourceQuoteId: thirdQuote.id,
+      sourceQuoteId: rebuildQuote.id,
       toCustomerId: null,
     });
 

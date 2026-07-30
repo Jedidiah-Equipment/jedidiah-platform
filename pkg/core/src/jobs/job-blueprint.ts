@@ -59,7 +59,7 @@ export async function resolveJobBlueprint({
   tx: DatabaseTransaction;
 }): Promise<JobBlueprint> {
   if (isStockBuildCreateInput(input)) {
-    await loadStockBuildProduct({ productId: input.productId, tx });
+    await assertStockBuildProductExists({ productId: input.productId, tx });
     const buildSpec = await resolveStockBuildSpec({
       assemblyIds: input.buildSpecAssemblyIds,
       productId: input.productId,
@@ -119,7 +119,13 @@ export async function resolveJobBlueprint({
  * A removed Product is gone from the picker, so a Stock Build naming one is a stale tab or a hand-made
  * request — never something we should mint a serial and a machine for.
  */
-async function loadStockBuildProduct({ productId, tx }: { productId: UUID; tx: DatabaseTransaction }): Promise<void> {
+async function assertStockBuildProductExists({
+  productId,
+  tx,
+}: {
+  productId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<void> {
   const [product] = await tx
     .select({ id: products.id })
     .from(products)

@@ -283,6 +283,12 @@ function ContactInfo() {
             href={JEDIDIAH_FACEBOOK_URL}
             target="_blank"
             rel="noreferrer"
+            onClick={() =>
+              captureEventForNavigation('social_link_clicked', {
+                platform: 'facebook',
+                placement: 'contact_page',
+              })
+            }
             className="flex items-start gap-4 no-underline"
           >
             <FacebookIcon />

@@ -39,7 +39,7 @@ The active Locale is registered as a PostHog super property and is also set as a
 | `brochure_downloaded` | Brochure download link clicked on Product detail (pre-existing, unchanged) | `modelCode` | string | e.g. `JM-2400` |
 | `contact_submitted` | Contact form submitted successfully (pre-existing, unchanged) | `equipment` | string | selected equipment, or the localized "not specified" text |
 | `contact_submit_failed` | Contact form submission fails | `errorCategory` | string | `network`, `server` — never form content |
-| `social_link_clicked` | An outbound social or messaging link is clicked | `platform` | string | `instagram`, `whatsapp` |
+| `social_link_clicked` | An outbound social or messaging link is clicked | `platform` | string | `facebook`, `instagram`, `whatsapp` |
 | | | `placement` | string | `footer`, `contact_page` |
 | `phone_link_clicked` | A `tel:` link is clicked | `placement` | string | `nav`, `footer`, `contact_page`, `product_detail` |
 | `language_switched` | The language switcher is clicked | `fromLocale` | string | `en`, `af` |

@@ -56,6 +56,10 @@ describe('analytics event registry', () => {
       modelCode: string;
       method: 'native' | 'clipboard';
     }>();
+    expectTypeOf<AnalyticsEventProperties<'social_link_clicked'>>().toEqualTypeOf<{
+      platform: 'facebook' | 'instagram' | 'whatsapp';
+      placement: 'footer' | 'contact_page';
+    }>();
   });
 });
 

@@ -19,13 +19,8 @@ import type {
 import { Supplier as SupplierSchema } from '@pkg/schema';
 import { and, asc, eq, isNull, type SQL, sql } from 'drizzle-orm';
 
-import {
-  defineAuditDescriptor,
-  diffAuditUpdate,
-  recordAuditCreate,
-  recordAuditDelete,
-  recordAuditUpdate,
-} from '../audit/audit-service.js';
+import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
+import { mutateEntity } from '../audit/mutate-entity.js';
 import { DuplicateSupplierNameError, SupplierNotFoundError } from './supplier-errors.js';
 
 type SupplierRow = typeof supplier.$inferSelect;
@@ -160,18 +155,15 @@ export async function updateSupplier({
   input: SupplierUpdateInput;
 }): Promise<Supplier> {
   try {
-    return await db.transaction(async (tx) => {
-      const [before] = await tx
-        .select()
-        .from(supplier)
-        .where(and(eq(supplier.id, input.id), isNull(supplier.deletedAt)))
-        .for('update');
-
-      if (!before) {
-        throw new SupplierNotFoundError(input.id);
-      }
-
-      const patch = {
+    return await mutateEntity({
+      actorUserId,
+      db,
+      descriptor: supplierAuditDescriptor,
+      id: input.id,
+      lockWhere: isNull(supplier.deletedAt),
+      notFound: () => new SupplierNotFoundError(input.id),
+      project: (_tx, row) => mapSupplier(row),
+      set: () => ({
         address: input.address,
         companyName: input.companyName,
         contactPerson: input.contactPerson,
@@ -179,27 +171,9 @@ export async function updateSupplier({
         notes: input.notes,
         phone: input.phone,
         thumbnailDataUrl: input.thumbnailDataUrl,
-      };
-      const after = { ...before, ...patch };
-      const changes = diffAuditUpdate(supplierAuditDescriptor, before, after);
-
-      if (!changes) {
-        return mapSupplier(before);
-      }
-
-      const [row] = await tx
-        .update(supplier)
-        .set({ ...patch, updatedAt: new Date() })
-        .where(eq(supplier.id, input.id))
-        .returning();
-
-      if (!row) {
-        throw new SupplierNotFoundError(input.id);
-      }
-
-      await recordAuditUpdate({ db: tx, descriptor: supplierAuditDescriptor, actorUserId, after: row, changes });
-
-      return mapSupplier(row);
+        updatedAt: new Date(),
+      }),
+      table: supplier,
     });
   } catch (error) {
     throw mapSupplierUniqueViolation(error, input);

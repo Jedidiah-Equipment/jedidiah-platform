@@ -15,7 +15,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { ProductRangeVariant as ProductRangeVariantSchema } from '@pkg/schema';
-import { and, asc, eq, max } from 'drizzle-orm';
+import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
 import {
   DuplicateProductRangeVariantNameError,
@@ -50,15 +50,13 @@ export async function createProductRangeVariant({
     return await db.transaction(async (tx) => {
       await assertActiveProductRange({ tx, rangeId: input.rangeId });
 
-      const [{ value: currentMax } = { value: null }] = await tx
-        .select({ value: max(productRangeVariants.displayOrder) })
-        .from(productRangeVariants)
-        .where(and(eq(productRangeVariants.rangeId, input.rangeId), notRemoved(productRangeVariants)));
-      const displayOrder = currentMax === null ? 0 : currentMax + 1;
-
+      // New Variants append to the end of their Range's list. The next slot is computed inside the
+      // INSERT itself, so there is no read-modify-write for a concurrent create to interleave with; a
+      // Range with no Variants starts at 0. The residual collision window is accepted for the same
+      // reason as the Range sibling: creation is admin-only, and a reorder rewrites every position.
       const [row] = await tx
         .insert(productRangeVariants)
-        .values({ ...input, displayOrder })
+        .values({ ...input, displayOrder: nextProductRangeVariantDisplayOrder(input.rangeId) })
         .returning();
 
       if (!row) {
@@ -212,6 +210,18 @@ export async function listProductRangeVariants({
     .orderBy(asc(productRangeVariants.displayOrder), asc(productRangeVariants.id));
 
   return { variants: rows.map(mapProductRangeVariant) };
+}
+
+// The append position as a scalar subquery, so the read and the write are one statement. The inner
+// table carries an explicit alias: without it the reference is ambiguous against the INSERT target.
+function nextProductRangeVariantDisplayOrder(rangeId: UUID): SQL<number> {
+  const variant = sql.raw('"next_display_order_variant"');
+
+  return sql<number>`(
+  select coalesce(max(${variant}."display_order") + 1, 0)
+  from ${productRangeVariants} ${variant}
+  where ${variant}."range_id" = ${rangeId} and ${variant}."deleted_at" is null
+)`;
 }
 
 async function assertActiveProductRange({ tx, rangeId }: { tx: DatabaseTransaction; rangeId: UUID }): Promise<void> {

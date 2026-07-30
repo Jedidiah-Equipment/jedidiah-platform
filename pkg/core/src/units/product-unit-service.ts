@@ -23,13 +23,8 @@ import {
 } from '@pkg/schema';
 import { eq, sql } from 'drizzle-orm';
 
-import {
-  defineAuditDescriptor,
-  diffAuditUpdate,
-  recordAuditCreate,
-  recordAuditEvent,
-  recordAuditUpdate,
-} from '../audit/audit-service.js';
+import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../audit/audit-service.js';
+import { mutateEntity } from '../audit/mutate-entity.js';
 import { CustomerNotFoundError } from '../customers/customer-errors.js';
 import {
   ProductUnitNotFoundError,
@@ -389,30 +384,15 @@ export async function updateProductUnit({
   db: Db;
   input: ProductUnitUpdateInput;
 }): Promise<ProductUnitUpdateResult> {
-  return db.transaction(async (tx) => {
-    const [before] = await tx.select().from(productUnits).where(eq(productUnits.id, input.id)).for('update');
-
-    if (!before) {
-      throw new ProductUnitNotFoundError(input.id);
-    }
-
-    const changes = diffAuditUpdate(productUnitAuditDescriptor, before, { ...before, vinNumber: input.vinNumber });
-
-    if (changes) {
-      const [after] = await tx
-        .update(productUnits)
-        .set({ updatedAt: new Date(), vinNumber: input.vinNumber })
-        .where(eq(productUnits.id, input.id))
-        .returning();
-
-      if (!after) {
-        throw new ProductUnitNotFoundError(input.id);
-      }
-
-      await recordAuditUpdate({ db: tx, descriptor: productUnitAuditDescriptor, actorUserId, after, changes });
-    }
-
-    return { unit: await getProductUnit({ db: tx, id: input.id }) };
+  return mutateEntity({
+    actorUserId,
+    db,
+    descriptor: productUnitAuditDescriptor,
+    id: input.id,
+    notFound: () => new ProductUnitNotFoundError(input.id),
+    project: async (tx, row) => ({ unit: await getProductUnit({ db: tx, id: row.id }) }),
+    set: () => ({ updatedAt: new Date(), vinNumber: input.vinNumber }),
+    table: productUnits,
   });
 }
 

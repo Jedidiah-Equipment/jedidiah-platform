@@ -29,13 +29,8 @@ import {
 } from '@pkg/schema';
 import { and, asc, desc, eq, isNotNull, isNull, type SQL } from 'drizzle-orm';
 
-import {
-  defineAuditDescriptor,
-  diffAuditUpdate,
-  recordAuditCreate,
-  recordAuditEvent,
-  recordAuditUpdate,
-} from '../audit/audit-service.js';
+import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../audit/audit-service.js';
+import { mutateEntity } from '../audit/mutate-entity.js';
 import {
   JobBayAlreadyAssignedError,
   JobBayNotFoundError,
@@ -123,15 +118,18 @@ export async function renameJobBay({
   db: Db;
   input: JobBayRenameInput;
 }): Promise<JobBayRenameResult> {
-  return updateJobBay({
+  return mutateEntity({
     actorUserId,
     db,
+    descriptor: jobBayAuditDescriptor,
     id: input.id,
-    set: {
+    notFound: () => new JobBayNotFoundError(input.id),
+    project: (tx, bay) => projectJobBay(tx, bay, JobBayRenameResult),
+    set: () => ({
       name: input.name,
       updatedAt: new Date(),
-    },
-    result: JobBayRenameResult,
+    }),
+    table: jobBays,
   });
 }
 
@@ -144,15 +142,18 @@ export async function setJobBayDisabled({
   db: Db;
   input: JobBaySetDisabledInput;
 }): Promise<JobBaySetDisabledResult> {
-  return updateJobBay({
+  return mutateEntity({
     actorUserId,
     db,
+    descriptor: jobBayAuditDescriptor,
     id: input.id,
-    set: {
+    notFound: () => new JobBayNotFoundError(input.id),
+    project: (tx, bay) => projectJobBay(tx, bay, JobBaySetDisabledResult),
+    set: () => ({
       disabledAt: input.disabled ? new Date() : null,
       updatedAt: new Date(),
-    },
-    result: JobBaySetDisabledResult,
+    }),
+    table: jobBays,
   });
 }
 
@@ -296,36 +297,14 @@ export async function unassignJobBayOperator({
   });
 }
 
-async function updateJobBay<TResult>({
-  actorUserId,
-  db,
-  id,
-  result,
-  set,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  id: string;
-  result: { parse: (input: { bay: Bay }) => TResult };
-  set: Partial<typeof jobBays.$inferInsert>;
-}): Promise<TResult> {
-  return db.transaction(async (tx) => {
-    const before = await getJobBayForUpdate(tx, id);
-    const [bay] = await tx.update(jobBays).set(set).where(eq(jobBays.id, id)).returning();
+async function projectJobBay<TResult>(
+  tx: DatabaseTransaction,
+  bay: JobBayRow,
+  result: { parse: (input: { bay: Bay }) => TResult },
+): Promise<TResult> {
+  const currentOperator = await getCurrentBayOperatorByBayId(tx, bay.id);
 
-    if (!bay) {
-      throw new Error('Job bay update did not return a row');
-    }
-
-    const changes = diffAuditUpdate(jobBayAuditDescriptor, before, bay);
-    if (changes) {
-      await recordAuditUpdate({ db: tx, descriptor: jobBayAuditDescriptor, actorUserId, after: bay, changes });
-    }
-
-    const currentOperator = await getCurrentBayOperatorByBayId(tx, bay.id);
-
-    return result.parse({ bay: mapJobBay(bay, currentOperator) });
-  });
+  return result.parse({ bay: mapJobBay(bay, currentOperator) });
 }
 
 async function getJobBayForUpdate(tx: DatabaseTransaction, id: string): Promise<JobBayRow> {

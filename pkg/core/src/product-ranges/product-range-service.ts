@@ -24,7 +24,7 @@ import {
   ProductRangeVariantOption as ProductRangeVariantOptionSchema,
   ProductRangeVariant as ProductRangeVariantSchema,
 } from '@pkg/schema';
-import { and, asc, count, eq, max } from 'drizzle-orm';
+import { and, asc, count, eq, type SQL, sql } from 'drizzle-orm';
 
 import {
   DuplicateProductRangeNameError,
@@ -146,17 +146,14 @@ export async function createProductRange({
   input: ProductRangeCreateInput;
 }): Promise<ProductRange> {
   try {
-    // New Ranges append to the end of the list. Compute the next slot from the current max; an empty
-    // table starts at 0.
-    const [{ value: currentMax } = { value: null }] = await db
-      .select({ value: max(productRanges.displayOrder) })
-      .from(productRanges)
-      .where(notRemoved(productRanges));
-    const displayOrder = currentMax === null ? 0 : currentMax + 1;
-
+    // New Ranges append to the end of the list. The next slot is computed inside the INSERT itself, so
+    // there is no read-modify-write for a concurrent create to interleave with; an empty table starts
+    // at 0. Two truly simultaneous creates can still pick the same slot (READ COMMITTED gives each its
+    // own snapshot), which is accepted: creation is admin-only and rare, and reorderProductRanges
+    // rewrites every position, so the next reorder heals a collision.
     const [row] = await db
       .insert(productRanges)
-      .values({ ...input, displayOrder })
+      .values({ ...input, displayOrder: nextProductRangeDisplayOrder() })
       .returning();
 
     if (!row) {
@@ -275,6 +272,18 @@ export async function removeProductRange({ db, id }: { db: Db; id: UUID }): Prom
     const now = new Date();
     await tx.update(productRanges).set({ deletedAt: now, updatedAt: now }).where(eq(productRanges.id, id));
   });
+}
+
+// The append position as a scalar subquery, so the read and the write are one statement. The inner
+// table carries an explicit alias: without it the reference is ambiguous against the INSERT target.
+function nextProductRangeDisplayOrder(): SQL<number> {
+  const range = sql.raw('"next_display_order_range"');
+
+  return sql<number>`(
+  select coalesce(max(${range}."display_order") + 1, 0)
+  from ${productRanges} ${range}
+  where ${range}."deleted_at" is null
+)`;
 }
 
 function mapProductRangeUniqueViolation(error: unknown, input: Pick<ProductRangeCreateInput, 'name'>): Error {

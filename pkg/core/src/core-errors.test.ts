@@ -37,6 +37,7 @@ import {
   QuoteProductBayAvailabilityNotApplicableError,
 } from './quotes/quote-errors.js';
 import { DuplicateSupplierNameError, isSupplierCoreError, SupplierNotFoundError } from './suppliers/supplier-errors.js';
+import { isProductUnitCoreError, ProductUnitProductNotFoundError } from './units/product-unit-errors.js';
 import { isUserCoreError, UserNotFoundError } from './users/user-errors.js';
 
 describe('core error codes and guards', () => {
@@ -104,5 +105,11 @@ describe('core error codes and guards', () => {
     expect(new JobBayNotFoundError('bay-id').code).toBe('job.bay_not_found');
     expect(new JobSlotBookingDeniedError('diagnostic').code).toBe('job.slot_booking_denied');
     expect(isJobCoreError(new JobCreateFromQuoteDeniedError('diagnostic'))).toBe(true);
+  });
+
+  it('identifies product unit core errors', () => {
+    expect(new ProductUnitProductNotFoundError('product-id').code).toBe('product_unit.product_not_found');
+    expect(isProductUnitCoreError(new ProductUnitProductNotFoundError('product-id'))).toBe(true);
+    expect(isProductUnitCoreError(new Error('product_unit.product_not_found'))).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import {
   customers,
   type Db,
   jobs,
+  productSerialSequences,
   products,
   productUnitOwnershipTransfers,
   productUnits,
@@ -18,6 +19,7 @@ import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
   ProductUnitOwnerUnchangedError,
+  ProductUnitProductNotFoundError,
   ProductUnitTransferBackdatedError,
   ProductUnitTransferInFutureError,
 } from './product-unit-errors.js';
@@ -29,6 +31,7 @@ import {
 } from './product-unit-service.js';
 
 const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000e1';
+const MISSING_PRODUCT_ID = '00000000-0000-4000-8000-0000000000ed';
 const MISSING_UNIT_ID = '00000000-0000-4000-8000-0000000000ef';
 const MISSING_CUSTOMER_ID = '00000000-0000-4000-8000-0000000000ee';
 
@@ -47,6 +50,26 @@ async function readUpdateAuditEvents(db: Db) {
 }
 
 describe('createProductUnit', () => {
+  test('reports a missing Product with a Unit-owned error before spending a serial', async ({ context }) => {
+    const unitCountBefore = await context.db.$count(productUnits);
+    const sequenceCountBefore = await context.db.$count(productSerialSequences);
+
+    await expect(
+      context.db.transaction((tx) =>
+        createProductUnit({
+          actorUserId: ACTOR_USER_ID,
+          initialOwner: null,
+          plantToday: DateOnlyIso.parse('2026-07-29'),
+          productId: MISSING_PRODUCT_ID,
+          tx,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ProductUnitProductNotFoundError);
+
+    await expect(context.db.$count(productUnits)).resolves.toBe(unitCountBefore);
+    await expect(context.db.$count(productSerialSequences)).resolves.toBe(sequenceCountBefore);
+  });
+
   test('mints consecutive serials per Product with independent sequences', async ({ context }) => {
     const units = await context.db.transaction(async (tx) => [
       await createProductUnit({

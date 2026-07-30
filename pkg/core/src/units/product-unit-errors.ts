@@ -9,6 +9,17 @@ export class ProductUnitNotFoundError extends Error {
   }
 }
 
+export class ProductUnitProductNotFoundError extends Error {
+  readonly code = 'product_unit.product_not_found';
+  readonly metadata: { productId: string };
+
+  constructor(productId: string) {
+    super('Product not found.');
+    this.name = 'ProductUnitProductNotFoundError';
+    this.metadata = { productId };
+  }
+}
+
 /** A transfer that leaves the machine where it already is asserts no move, and the log records moves. */
 export class ProductUnitOwnerUnchangedError extends Error {
   readonly code = 'product_unit.owner_unchanged';
@@ -50,6 +61,7 @@ export class ProductUnitTransferBackdatedError extends Error {
 export type ProductUnitCoreError =
   | ProductUnitNotFoundError
   | ProductUnitOwnerUnchangedError
+  | ProductUnitProductNotFoundError
   | ProductUnitTransferBackdatedError
   | ProductUnitTransferInFutureError;
 
@@ -57,6 +69,7 @@ export function isProductUnitCoreError(error: unknown): error is ProductUnitCore
   return (
     error instanceof ProductUnitNotFoundError ||
     error instanceof ProductUnitOwnerUnchangedError ||
+    error instanceof ProductUnitProductNotFoundError ||
     error instanceof ProductUnitTransferBackdatedError ||
     error instanceof ProductUnitTransferInFutureError
   );

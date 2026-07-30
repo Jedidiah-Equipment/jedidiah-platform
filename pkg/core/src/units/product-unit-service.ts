@@ -31,10 +31,10 @@ import {
   recordAuditUpdate,
 } from '../audit/audit-service.js';
 import { CustomerNotFoundError } from '../customers/customer-errors.js';
-import { JobCreateFromQuoteDeniedError } from '../jobs/job-errors.js';
 import {
   ProductUnitNotFoundError,
   ProductUnitOwnerUnchangedError,
+  ProductUnitProductNotFoundError,
   ProductUnitTransferBackdatedError,
   ProductUnitTransferInFutureError,
 } from './product-unit-errors.js';
@@ -76,6 +76,8 @@ export async function createProductUnit({
   productId: UUID;
   tx: DatabaseTransaction;
 }): Promise<ProductUnitRow> {
+  // Soft-removal hides a Product from new catalog choices, but an accepted historical Quote may still
+  // start the promised build. Stock Builds reject removed Products before reaching this interface.
   const [product] = await tx
     .select({ modelCode: products.modelCode })
     .from(products)
@@ -83,7 +85,7 @@ export async function createProductUnit({
     .limit(1);
 
   if (!product) {
-    throw new JobCreateFromQuoteDeniedError('Product not found.');
+    throw new ProductUnitProductNotFoundError(productId);
   }
 
   const serial = await createProductSerial({ modelCode: product.modelCode, plantToday, productId, tx });

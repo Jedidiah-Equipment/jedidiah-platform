@@ -12,7 +12,8 @@ import {
 } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 
-import { defineAuditDescriptor, diffAuditUpdate, recordAuditEvent, recordAuditUpdate } from '../audit/audit-service.js';
+import { defineAuditDescriptor, recordAuditEvent } from '../audit/audit-service.js';
+import { mutateEntity } from '../audit/mutate-entity.js';
 import { listOpenBayOperatorAssignmentBayNames } from '../jobs/job-bay-service.js';
 import { UserNotFoundError } from './user-errors.js';
 
@@ -171,33 +172,15 @@ export async function updateUserThumbnail({
   thumbnailDataUrl: NullableThumbnailDataUrl;
   userId: AuthId;
 }): Promise<UserAccount> {
-  return db.transaction(async (tx) => {
-    const [before] = await tx.select().from(user).where(eq(user.id, userId)).for('update');
-
-    if (!before) {
-      throw new UserNotFoundError(userId);
-    }
-
-    const after = { ...before, image: thumbnailDataUrl };
-    const changes = diffAuditUpdate(userAuditDescriptor, before, after);
-
-    if (!changes) {
-      return UserAccount.parse(mapUser({ ...before, departments: [] }));
-    }
-
-    const [row] = await tx
-      .update(user)
-      .set({ image: thumbnailDataUrl, updatedAt: new Date() })
-      .where(eq(user.id, userId))
-      .returning();
-
-    if (!row) {
-      throw new UserNotFoundError(userId);
-    }
-
-    await recordAuditUpdate({ db: tx, descriptor: userAuditDescriptor, actorUserId, after: row, changes });
-
-    return UserAccount.parse(mapUser({ ...row, departments: [] }));
+  return mutateEntity({
+    actorUserId,
+    db,
+    descriptor: userAuditDescriptor,
+    id: userId,
+    notFound: () => new UserNotFoundError(userId),
+    project: (_tx, row) => UserAccount.parse(mapUser({ ...row, departments: [] })),
+    set: () => ({ image: thumbnailDataUrl, updatedAt: new Date() }),
+    table: user,
   });
 }
 

@@ -1,0 +1,64 @@
+{
+  "releasedAt": "2026-07-30T14:12:04.767Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Track every product unit",
+          "description": "Browse machines by serial number, product, owner, or build state, then view each unit’s VIN, fitted assemblies, ownership history, and related jobs."
+        },
+        {
+          "title": "Start stock builds directly",
+          "description": "Create showroom stock builds without a customer quote, including the build specification, serial number, and bay schedule."
+        },
+        {
+          "title": "Allocate stock to customer quotes",
+          "description": "Select an existing stock unit when creating a quote, see competing quotes, and transfer ownership automatically when the sale is accepted."
+        },
+        {
+          "title": "Record ownership changes",
+          "description": "Record transfers between customers and stock, including the effective date and an optional note, without affecting sales figures."
+        },
+        {
+          "title": "Start rework jobs",
+          "description": "Start a rework job when an allocated machine needs changes, keeping the work and build specification tied to the same unit."
+        },
+        {
+          "title": "Ask the assistant about product units",
+          "description": "The assistant can now find machines, report their current owner and history, and link directly to their unit pages."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Browse catalog filters more easily",
+          "description": "Range and variant filters now stay compact on smaller screens, with extra choices collected into a More menu."
+        },
+        {
+          "title": "Reach the correct website automatically",
+          "description": "Links using the www address now redirect cleanly to the main site while preserving the requested page and filters."
+        },
+        {
+          "title": "Contact the WhatsApp team directly",
+          "description": "The contact page now opens the dedicated Jedidiah WhatsApp number."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Review allocated units on quotes",
+          "description": "Product quotes now show the allocated machine’s serial number and VIN, while clearly indicating that allocation is managed on the web app."
+        },
+        {
+          "title": "Update invoice numbers after acceptance",
+          "description": "Invoice numbers can now be added or changed on locked quotes from the mobile app."
+        }
+      ]
+    }
+  ]
+}

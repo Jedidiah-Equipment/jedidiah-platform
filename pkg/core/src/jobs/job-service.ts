@@ -44,12 +44,11 @@ import { and, asc, desc, eq, gt, inArray, lt } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
-  diffAuditUpdate,
   recordAuditCreate,
   recordAuditDelete,
   recordAuditEvent,
-  recordAuditUpdate,
 } from '../audit/audit-service.js';
+import { mutateEntity } from '../audit/mutate-entity.js';
 import { documentBaseSelect } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
@@ -289,29 +288,19 @@ async function applyJobFieldPatch({
   id: UUID;
   patch: Partial<Pick<JobRow, 'completedOn' | 'description'>>;
 }): Promise<JobUpdateResult> {
-  return db.transaction(async (tx) => {
-    const before = await lockMutableJob(tx, id);
-
-    const after = { ...before, ...patch };
-    const changes = diffAuditUpdate(jobAuditDescriptor, before, after);
-
-    if (!changes) {
-      return { job: mapJob(before, await loadJobProductUnit({ productUnitId: before.productUnitId, tx })) };
-    }
-
-    const [row] = await tx
-      .update(jobs)
-      .set({ ...patch, updatedAt: new Date() })
-      .where(eq(jobs.id, id))
-      .returning();
-
-    if (!row) {
-      throw new JobNotFoundError(id);
-    }
-
-    await recordAuditUpdate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, after: row, changes });
-
-    return { job: mapJob(row, await loadJobProductUnit({ productUnitId: row.productUnitId, tx })) };
+  return mutateEntity({
+    actorUserId,
+    // The lock and the not-found are the combinator's; only the cancelled-Job gate is this path's.
+    assert: (_tx, before) => assertJobIsMutable(before),
+    db,
+    descriptor: jobAuditDescriptor,
+    id,
+    notFound: () => new JobNotFoundError(id),
+    project: async (tx, row) => ({
+      job: mapJob(row, await loadJobProductUnit({ productUnitId: row.productUnitId, tx })),
+    }),
+    set: () => ({ ...patch, updatedAt: new Date() }),
+    table: jobs,
   });
 }
 

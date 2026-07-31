@@ -6,7 +6,7 @@ import type React from 'react';
 import { useCallback, useMemo } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
-import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore, type DataTableStore } from '@/components/data-table/store.js';
@@ -139,7 +139,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
       placeholderData: keepPreviousData,
     }),
   );
-  const { items, total } = combineCursorQueryPages(auditQuery.data?.pages);
+  const { items, total } = useCombinedCursorQueryPages(auditQuery.data?.pages);
   const auditEvents = items as AuditEventRow[];
 
   const columns = useMemo<ColumnDef<AuditEventRow>[]>(

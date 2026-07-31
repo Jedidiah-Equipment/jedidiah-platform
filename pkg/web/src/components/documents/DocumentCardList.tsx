@@ -172,7 +172,7 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
         <CardContent className="py-3">
           <DataTableLoadMore
             loadedCount={visible.documents.length}
-            total={visible.total}
+            total={documents.length}
             totalLabel={formatDocumentCount}
           />
         </CardContent>

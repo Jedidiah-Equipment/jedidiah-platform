@@ -10,7 +10,7 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo } from 'react';
-import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
@@ -66,7 +66,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
     }),
   );
   const categoryOptions = usePartCategoryOptions();
-  const { items: parts, total } = combineCursorQueryPages(partsQuery.data?.pages);
+  const { items: parts, total } = useCombinedCursorQueryPages(partsQuery.data?.pages);
 
   const columns = useMemo<ColumnDef<Part>[]>(() => {
     const tableColumns: ColumnDef<Part>[] = [

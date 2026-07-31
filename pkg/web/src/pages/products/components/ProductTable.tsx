@@ -12,7 +12,7 @@ import {
 import type React from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
-import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
@@ -82,7 +82,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
       placeholderData: keepPreviousData,
     }),
   );
-  const { items: products, total } = combineCursorQueryPages(productsQuery.data?.pages);
+  const { items: products, total } = useCombinedCursorQueryPages(productsQuery.data?.pages);
 
   const columns = useMemo<ColumnDef<Product>[]>(() => {
     const tableColumns: ColumnDef<Product>[] = [

@@ -6,7 +6,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
-import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
@@ -111,7 +111,7 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
     }),
   );
   const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions(customerId ? { customerId } : {}));
-  const { items: quotes, total } = combineCursorQueryPages(quotesQuery.data?.pages);
+  const { items: quotes, total } = useCombinedCursorQueryPages(quotesQuery.data?.pages);
   const priorityQuotes = priorityQuotesQuery.data ?? [];
   const normalQuoteRows = useMemo(() => quotes.map(createQuoteTableRow), [quotes]);
   const priorityQuoteRows = useMemo(() => priorityQuotes.map(createPriorityQuoteTableRow), [priorityQuotes]);

@@ -1,5 +1,6 @@
 import type { QuoteSummary } from '@pkg/schema';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 import {
   presentQuotePages,
@@ -54,12 +55,13 @@ export function useQuoteList({
   );
   const pages = listQuery.data?.pages ?? [];
   const sections = presentQuotePages(pages, pinPriorityQuotes ? (priorityQuery.data ?? []) : []);
+  const loadNextPage = useCallback(() => {
+    if (listQuery.hasNextPage && !listQuery.isFetchingNextPage) void listQuery.fetchNextPage();
+  }, [listQuery.fetchNextPage, listQuery.hasNextPage, listQuery.isFetchingNextPage]);
 
   return {
     failed: (pinPriorityQuotes && priorityQuery.isError) || listQuery.isError,
-    loadNextPage: () => {
-      if (listQuery.hasNextPage && !listQuery.isFetchingNextPage) void listQuery.fetchNextPage();
-    },
+    loadNextPage,
     loadingMore: listQuery.isFetchingNextPage,
     mainQuotes: sections.mainQuotes,
     pending: (pinPriorityQuotes && priorityQuery.isPending) || listQuery.isPending,

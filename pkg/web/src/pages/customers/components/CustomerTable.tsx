@@ -5,7 +5,7 @@ import type React from 'react';
 import { useMemo } from 'react';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
-import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
@@ -52,7 +52,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
       placeholderData: keepPreviousData,
     }),
   );
-  const { items: customers, total } = combineCursorQueryPages(customersQuery.data?.pages);
+  const { items: customers, total } = useCombinedCursorQueryPages(customersQuery.data?.pages);
 
   const columns = useMemo<ColumnDef<Customer>[]>(
     () => [

@@ -13,6 +13,7 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -77,13 +78,11 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
 
   const productsQuery = useInfiniteQuery(
     trpc.products.list.infiniteQueryOptions(tableController.listInput, {
-      getNextPageParam: (page) => page.nextCursor,
-      initialCursor: 0,
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-  const products = productsQuery.data?.pages.flatMap((page) => page.items) ?? [];
-  const total = productsQuery.data?.pages.at(-1)?.total ?? 0;
+  const { items: products, total } = combineCursorQueryPages(productsQuery.data?.pages);
 
   const columns = useMemo<ColumnDef<Product>[]>(() => {
     const tableColumns: ColumnDef<Product>[] = [
@@ -191,11 +190,13 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
       errorMessage={getApiQueryErrorMessage(productsQuery.error, 'Unable to load products.')}
       getRowAriaLabel={onEditProduct ? (product) => `Edit ${product.name}` : undefined}
       globalFilterPlaceholder="Search products..."
-      hasNextPage={productsQuery.hasNextPage}
-      isFetchingNextPage={productsQuery.isFetchingNextPage}
       isLoading={productsQuery.isPending}
-      loadedCount={products.length}
-      onLoadMore={() => void productsQuery.fetchNextPage()}
+      loadMore={{
+        hasNextPage: productsQuery.hasNextPage,
+        isFetchingNextPage: productsQuery.isFetchingNextPage,
+        loadedCount: products.length,
+        onLoadMore: () => void productsQuery.fetchNextPage(),
+      }}
       onRowClick={onEditProduct}
       table={table}
       total={total}

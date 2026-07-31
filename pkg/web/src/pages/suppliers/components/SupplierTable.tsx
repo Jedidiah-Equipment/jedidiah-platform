@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -48,13 +49,11 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({ onEditSupplier }) 
 
   const suppliersQuery = useInfiniteQuery(
     trpc.suppliers.list.infiniteQueryOptions(tableController.listInput, {
-      getNextPageParam: (page) => page.nextCursor,
-      initialCursor: 0,
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-  const suppliers = suppliersQuery.data?.pages.flatMap((page) => page.items) ?? [];
-  const total = suppliersQuery.data?.pages.at(-1)?.total ?? 0;
+  const { items: suppliers, total } = combineCursorQueryPages(suppliersQuery.data?.pages);
 
   const columns = useMemo<ColumnDef<Supplier>[]>(() => {
     const tableColumns: ColumnDef<Supplier>[] = [
@@ -138,11 +137,13 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({ onEditSupplier }) 
       errorMessage={getApiQueryErrorMessage(suppliersQuery.error, 'Unable to load suppliers.')}
       getRowAriaLabel={onEditSupplier ? (supplier) => `Edit ${supplier.companyName}` : undefined}
       globalFilterPlaceholder="Search suppliers..."
-      hasNextPage={suppliersQuery.hasNextPage}
-      isFetchingNextPage={suppliersQuery.isFetchingNextPage}
       isLoading={suppliersQuery.isPending}
-      loadedCount={suppliers.length}
-      onLoadMore={() => void suppliersQuery.fetchNextPage()}
+      loadMore={{
+        hasNextPage: suppliersQuery.hasNextPage,
+        isFetchingNextPage: suppliersQuery.isFetchingNextPage,
+        loadedCount: suppliers.length,
+        onLoadMore: () => void suppliersQuery.fetchNextPage(),
+      }}
       onRowClick={onEditSupplier}
       table={table}
       total={total}

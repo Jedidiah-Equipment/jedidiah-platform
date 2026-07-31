@@ -11,6 +11,7 @@ import { useMemo } from 'react';
 
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -50,13 +51,11 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
   const filterOptionsQuery = useQuery(trpc.productUnits.filterOptions.queryOptions());
   const unitsQuery = useInfiniteQuery(
     trpc.productUnits.list.infiniteQueryOptions(tableController.listInput, {
-      getNextPageParam: (page) => page.nextCursor,
-      initialCursor: 0,
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-  const units = unitsQuery.data?.pages.flatMap((page) => page.items) ?? [];
-  const total = unitsQuery.data?.pages.at(-1)?.total ?? 0;
+  const { items: units, total } = combineCursorQueryPages(unitsQuery.data?.pages);
 
   const ownerOptions = useMemo(
     () => [
@@ -165,11 +164,13 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
       errorMessage={getApiQueryErrorMessage(unitsQuery.error, 'Unable to load units.')}
       getRowAriaLabel={(unit) => `Open unit ${unit.productSerialNumber}`}
       globalFilterPlaceholder="Search by serial number..."
-      hasNextPage={unitsQuery.hasNextPage}
-      isFetchingNextPage={unitsQuery.isFetchingNextPage}
       isLoading={unitsQuery.isPending}
-      loadedCount={units.length}
-      onLoadMore={() => void unitsQuery.fetchNextPage()}
+      loadMore={{
+        hasNextPage: unitsQuery.hasNextPage,
+        isFetchingNextPage: unitsQuery.isFetchingNextPage,
+        loadedCount: units.length,
+        onLoadMore: () => void unitsQuery.fetchNextPage(),
+      }}
       onRowClick={onOpenUnit}
       table={table}
       total={total}

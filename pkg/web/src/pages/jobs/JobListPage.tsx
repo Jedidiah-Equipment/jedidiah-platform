@@ -8,6 +8,7 @@ import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -130,13 +131,11 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
 
   const jobsQuery = useInfiniteQuery(
     trpc.jobs.list.infiniteQueryOptions(tableController.listInput, {
-      getNextPageParam: (page) => page.nextCursor,
-      initialCursor: 0,
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-  const jobs = jobsQuery.data?.pages.flatMap((page) => page.items) ?? [];
-  const total = jobsQuery.data?.pages.at(-1)?.total ?? 0;
+  const { items: jobs, total } = combineCursorQueryPages(jobsQuery.data?.pages);
 
   const customerOptions = useMemo(
     () => toSelectOptions(customersQuery.data?.items ?? [], (customer) => customer.companyName),
@@ -193,11 +192,13 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
       emptyMessage={getJobsEmptyMessage({ includeCompleted })}
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
-      hasNextPage={jobsQuery.hasNextPage}
-      isFetchingNextPage={jobsQuery.isFetchingNextPage}
       isLoading={jobsQuery.isPending}
-      loadedCount={jobs.length}
-      onLoadMore={() => void jobsQuery.fetchNextPage()}
+      loadMore={{
+        hasNextPage: jobsQuery.hasNextPage,
+        isFetchingNextPage: jobsQuery.isFetchingNextPage,
+        loadedCount: jobs.length,
+        onLoadMore: () => void jobsQuery.fetchNextPage(),
+      }}
       onRowClick={canOpenJobs ? (job) => void navigate({ search: { job: job.id }, to: '/jobs/list' }) : undefined}
       rightSection={
         <div className="flex items-center gap-4">

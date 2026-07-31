@@ -26,13 +26,15 @@ type DataTableProps<TData> = {
   getRowClassName?: ((item: TData) => string | undefined) | undefined;
   getRowState?: ((item: TData) => 'selected' | undefined) | undefined;
   globalFilterPlaceholder?: string;
-  hasNextPage: boolean;
   hideGlobalFilter?: boolean;
-  isFetchingNextPage: boolean;
   isLoading?: boolean;
-  loadedCount: number;
+  loadMore?: {
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    loadedCount: number;
+    onLoadMore: () => void;
+  };
   loadingRowCount?: number;
-  onLoadMore: () => void;
   onRowClick?: ((item: TData) => void) | undefined;
   rightSection?: React.ReactNode;
   tableClassName?: string;
@@ -49,13 +51,10 @@ export function DataTable<TData>({
   getRowClassName,
   getRowState,
   globalFilterPlaceholder = 'Search...',
-  hasNextPage,
   hideGlobalFilter = false,
-  isFetchingNextPage,
   isLoading = false,
-  loadedCount,
+  loadMore,
   loadingRowCount = 10,
-  onLoadMore,
   onRowClick,
   rightSection,
   table,
@@ -151,10 +150,10 @@ export function DataTable<TData>({
       </div>
 
       <DataTableLoadMore
-        hasNextPage={hasNextPage}
-        isFetchingNextPage={isFetchingNextPage}
-        loadedCount={loadedCount}
-        onLoadMore={onLoadMore}
+        hasNextPage={loadMore?.hasNextPage ?? false}
+        isFetchingNextPage={loadMore?.isFetchingNextPage ?? false}
+        loadedCount={loadMore?.loadedCount ?? rows.length}
+        onLoadMore={loadMore?.onLoadMore}
         total={total}
         totalLabel={totalLabel}
       />

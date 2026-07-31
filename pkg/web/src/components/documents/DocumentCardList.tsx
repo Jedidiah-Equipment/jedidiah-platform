@@ -171,10 +171,7 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
         </CardContent>
         <CardContent className="py-3">
           <DataTableLoadMore
-            hasNextPage={false}
-            isFetchingNextPage={false}
             loadedCount={visible.documents.length}
-            onLoadMore={() => undefined}
             total={visible.total}
             totalLabel={formatDocumentCount}
           />

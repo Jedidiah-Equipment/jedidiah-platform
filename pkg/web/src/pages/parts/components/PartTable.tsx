@@ -12,6 +12,7 @@ import type React from 'react';
 import { useMemo } from 'react';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -61,14 +62,12 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
 
   const partsQuery = useInfiniteQuery(
     trpc.parts.list.infiniteQueryOptions(tableController.listInput, {
-      getNextPageParam: (page) => page.nextCursor,
-      initialCursor: 0,
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
   const categoryOptions = usePartCategoryOptions();
-  const parts = partsQuery.data?.pages.flatMap((page) => page.items) ?? [];
-  const total = partsQuery.data?.pages.at(-1)?.total ?? 0;
+  const { items: parts, total } = combineCursorQueryPages(partsQuery.data?.pages);
 
   const columns = useMemo<ColumnDef<Part>[]>(() => {
     const tableColumns: ColumnDef<Part>[] = [
@@ -190,11 +189,13 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
       errorMessage={getApiQueryErrorMessage(partsQuery.error, 'Unable to load parts.')}
       getRowAriaLabel={onEditPart ? (part) => `Edit ${part.name}` : undefined}
       globalFilterPlaceholder="Search parts..."
-      hasNextPage={partsQuery.hasNextPage}
-      isFetchingNextPage={partsQuery.isFetchingNextPage}
       isLoading={partsQuery.isPending}
-      loadedCount={parts.length}
-      onLoadMore={() => void partsQuery.fetchNextPage()}
+      loadMore={{
+        hasNextPage: partsQuery.hasNextPage,
+        isFetchingNextPage: partsQuery.isFetchingNextPage,
+        loadedCount: parts.length,
+        onLoadMore: () => void partsQuery.fetchNextPage(),
+      }}
       onRowClick={onEditPart}
       rightSection={rightSection}
       table={table}

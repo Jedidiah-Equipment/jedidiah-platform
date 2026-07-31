@@ -132,11 +132,7 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
       errorMessage={errorMessage}
       getRowAriaLabel={onEditUser ? (user) => `Edit ${user.name}` : undefined}
       globalFilterPlaceholder="Search users..."
-      hasNextPage={false}
-      isFetchingNextPage={false}
       isLoading={isLoading}
-      loadedCount={total}
-      onLoadMore={() => undefined}
       onRowClick={onEditUser}
       table={table}
       total={total}

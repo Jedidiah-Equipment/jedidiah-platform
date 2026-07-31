@@ -152,11 +152,7 @@ function FeedbackInboxList({
         getRowAriaLabel={(item) => `Review ${item.subject.label}`}
         getRowState={(item) => (item.id === selectedFeedbackId ? 'selected' : undefined)}
         globalFilterPlaceholder="Search feedback..."
-        hasNextPage={false}
-        isFetchingNextPage={false}
         isLoading={isLoading}
-        loadedCount={total}
-        onLoadMore={() => undefined}
         onRowClick={(item) => onSelectFeedback(item.id)}
         table={table}
         total={total}

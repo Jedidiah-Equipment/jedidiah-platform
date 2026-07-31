@@ -5,6 +5,7 @@ import type React from 'react';
 import { useMemo } from 'react';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
+import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
@@ -47,13 +48,11 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
 
   const customersQuery = useInfiniteQuery(
     trpc.customers.list.infiniteQueryOptions(tableController.listInput, {
-      getNextPageParam: (page) => page.nextCursor,
-      initialCursor: 0,
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-  const customers = customersQuery.data?.pages.flatMap((page) => page.items) ?? [];
-  const total = customersQuery.data?.pages.at(-1)?.total ?? 0;
+  const { items: customers, total } = combineCursorQueryPages(customersQuery.data?.pages);
 
   const columns = useMemo<ColumnDef<Customer>[]>(
     () => [
@@ -143,11 +142,13 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
       errorMessage={getApiQueryErrorMessage(customersQuery.error, 'Unable to load customers.')}
       getRowAriaLabel={(customer) => `Edit ${customer.companyName}`}
       globalFilterPlaceholder="Search customers..."
-      hasNextPage={customersQuery.hasNextPage}
-      isFetchingNextPage={customersQuery.isFetchingNextPage}
       isLoading={customersQuery.isPending}
-      loadedCount={customers.length}
-      onLoadMore={() => void customersQuery.fetchNextPage()}
+      loadMore={{
+        hasNextPage: customersQuery.hasNextPage,
+        isFetchingNextPage: customersQuery.isFetchingNextPage,
+        loadedCount: customers.length,
+        onLoadMore: () => void customersQuery.fetchNextPage(),
+      }}
       onRowClick={onEditCustomer}
       table={table}
       total={total}

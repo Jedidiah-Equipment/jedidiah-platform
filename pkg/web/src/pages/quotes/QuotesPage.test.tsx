@@ -119,11 +119,7 @@ function TestQuoteTable({ rows }: { rows: QuoteTableRow[] }) {
     <DataTable
       emptyMessage="No quotes found."
       getRowClassName={getQuoteTableRowClassName}
-      hasNextPage={false}
       hideGlobalFilter
-      isFetchingNextPage={false}
-      loadedCount={rows.length}
-      onLoadMore={() => undefined}
       table={table}
       total={rows.length}
     />

@@ -7,6 +7,7 @@ import { useCallback, useMemo } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore, type DataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -134,13 +135,12 @@ export const AuditTable: React.FC<AuditTableProps> = ({
 
   const auditQuery = useInfiniteQuery(
     trpc.audit.list.infiniteQueryOptions(tableController.listInput, {
-      getNextPageParam: (page) => page.nextCursor,
-      initialCursor: 0,
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-  const auditEvents = (auditQuery.data?.pages.flatMap((page) => page.items) ?? []) as AuditEventRow[];
-  const total = auditQuery.data?.pages.at(-1)?.total ?? 0;
+  const { items, total } = combineCursorQueryPages(auditQuery.data?.pages);
+  const auditEvents = items as AuditEventRow[];
 
   const columns = useMemo<ColumnDef<AuditEventRow>[]>(
     () => [
@@ -239,12 +239,14 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     <DataTable
       emptyMessage={emptyMessage}
       errorMessage={getApiQueryErrorMessage(auditQuery.error, 'Unable to load audit events.')}
-      hasNextPage={auditQuery.hasNextPage}
       hideGlobalFilter
-      isFetchingNextPage={auditQuery.isFetchingNextPage}
       isLoading={auditQuery.isPending}
-      loadedCount={auditEvents.length}
-      onLoadMore={() => void auditQuery.fetchNextPage()}
+      loadMore={{
+        hasNextPage: auditQuery.hasNextPage,
+        isFetchingNextPage: auditQuery.isFetchingNextPage,
+        loadedCount: auditEvents.length,
+        onLoadMore: () => void auditQuery.fetchNextPage(),
+      }}
       tableClassName="table-fixed"
       table={table}
       total={total}

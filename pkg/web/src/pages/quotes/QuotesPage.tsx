@@ -7,6 +7,7 @@ import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tansta
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { combineCursorQueryPages, cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -105,14 +106,12 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
 
   const quotesQuery = useInfiniteQuery(
     trpc.quotes.list.infiniteQueryOptions(tableController.listInput, {
-      getNextPageParam: (page) => page.nextCursor,
-      initialCursor: 0,
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
   const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions(customerId ? { customerId } : {}));
-  const quotes = quotesQuery.data?.pages.flatMap((page) => page.items) ?? [];
-  const total = quotesQuery.data?.pages.at(-1)?.total ?? 0;
+  const { items: quotes, total } = combineCursorQueryPages(quotesQuery.data?.pages);
   const priorityQuotes = priorityQuotesQuery.data ?? [];
   const normalQuoteRows = useMemo(() => quotes.map(createQuoteTableRow), [quotes]);
   const priorityQuoteRows = useMemo(() => priorityQuotes.map(createPriorityQuoteTableRow), [priorityQuotes]);
@@ -176,11 +175,13 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
       }
       getRowClassName={getQuoteTableRowClassName}
       globalFilterPlaceholder="Search quotes..."
-      hasNextPage={quotesQuery.hasNextPage}
-      isFetchingNextPage={quotesQuery.isFetchingNextPage}
       isLoading={quotesQuery.isPending}
-      loadedCount={quotes.length}
-      onLoadMore={() => void quotesQuery.fetchNextPage()}
+      loadMore={{
+        hasNextPage: quotesQuery.hasNextPage,
+        isFetchingNextPage: quotesQuery.isFetchingNextPage,
+        loadedCount: quotes.length,
+        onLoadMore: () => void quotesQuery.fetchNextPage(),
+      }}
       onRowClick={quoteRowClick}
       tableClassName={customerId ? 'min-w-[1084px]' : 'min-w-[1260px]'}
       table={table}

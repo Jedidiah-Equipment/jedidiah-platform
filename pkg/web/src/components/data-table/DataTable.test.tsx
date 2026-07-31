@@ -77,11 +77,7 @@ function TestDataTable({
   return (
     <DataTable
       emptyMessage="No rows found."
-      hasNextPage={false}
       hideGlobalFilter={hideGlobalFilter}
-      isFetchingNextPage={false}
-      loadedCount={1}
-      onLoadMore={() => undefined}
       table={table}
       total={1}
     />

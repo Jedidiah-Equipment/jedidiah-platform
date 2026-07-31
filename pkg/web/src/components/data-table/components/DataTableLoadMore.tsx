@@ -3,17 +3,17 @@ import type React from 'react';
 import { Button } from '@/components/ui/button.js';
 
 type DataTableLoadMoreProps = {
-  hasNextPage: boolean;
-  isFetchingNextPage: boolean;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
   loadedCount: number;
-  onLoadMore: () => void;
+  onLoadMore?: (() => void) | undefined;
   total: number;
   totalLabel: (total: number) => React.ReactNode;
 };
 
 export function DataTableLoadMore({
-  hasNextPage,
-  isFetchingNextPage,
+  hasNextPage = false,
+  isFetchingNextPage = false,
   loadedCount,
   onLoadMore,
   total,
@@ -24,7 +24,7 @@ export function DataTableLoadMore({
       <div className="text-muted-foreground">
         {loadedCount} of {totalLabel(total)}
       </div>
-      {hasNextPage ? (
+      {hasNextPage && onLoadMore ? (
         <Button disabled={isFetchingNextPage} onClick={onLoadMore} size="sm" variant="outline">
           {isFetchingNextPage ? 'Loading…' : 'Load more'}
         </Button>

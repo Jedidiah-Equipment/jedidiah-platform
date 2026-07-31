@@ -2,11 +2,18 @@
 
 - Read the closest `pkg/*/AGENTS.md` before changing code in that package.
 - Use pnpm scripts. Normal verification is `pnpm verify` (lint + typecheck + build + test).
+- For focused checks, run package scripts with `pnpm --filter @pkg/<dir> <script>`; root `pnpm verify`
+  remains the normal final verification.
 - Do not add CI, deployment, or production infrastructure unless explicitly asked.
 - `CONTEXT.md` holds the domain vocabulary and invariants; `docs/adr/` holds the decisions behind them.
   Search both for the term you need rather than loading either wholesale, and use their terms in issues,
   tests, and planning. If a needed term is missing, or a recommendation conflicts with an ADR, say so
   instead of inventing local vocabulary.
+
+## API
+
+- List inputs use cursor queries. For intentionally unpaged picker reads, use `limit: 0` instead of
+  raising shared caps.
 
 ## Database
 
@@ -16,6 +23,9 @@
   template-schema error. `pnpm db:up` drops the Docker volume and rebuilds the local database from scratch.
 - `pnpm db:seed` loads `pkg/seed/snapshot`; every seeded user signs in with `test123`. Read
   `pkg/seed/AGENTS.md` before regenerating the snapshot.
+- Snapshot reads are package commands (`pnpm --filter @pkg/seed seed:read`, `seed:read:staging`, or
+  `seed:read:production`) and require `pnpm lint:fix` afterward because the writer emits JSON formatting
+  that Biome normalizes.
 
 ## Local environments
 

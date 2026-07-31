@@ -74,12 +74,5 @@ function TestDataTable({
     },
   });
 
-  return (
-    <DataTable
-      emptyMessage="No rows found."
-      hideGlobalFilter={hideGlobalFilter}
-      table={table}
-      total={1}
-    />
-  );
+  return <DataTable emptyMessage="No rows found." hideGlobalFilter={hideGlobalFilter} table={table} total={1} />;
 }

@@ -6,12 +6,7 @@ import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { BoardGrid } from '@/components/bays/BoardGrid';
-import {
-  type ListControlOption,
-  ListControlRow,
-  ListDropdownControl,
-  ListSearchControl,
-} from '@/components/ListControls';
+import { ListControlRow, ListDropdownControl, ListSearchControl } from '@/components/ListControls';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -27,8 +22,6 @@ import {
 // thumbnail, so it stays readable in more columns than a card built around an image.
 const UNIT_CARD_MIN_WIDTH = 260;
 const UNIT_SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
-const BUILD_STATE_OPTIONS: readonly ListControlOption<UnitBuildStateFilter>[] = UNIT_BUILD_STATE_OPTIONS;
-const SORT_OPTIONS: readonly ListControlOption<UnitSort>[] = UNIT_SORT_OPTIONS;
 
 export function UnitCatalogHeader({ count }: { count: number | null }) {
   return (
@@ -72,7 +65,7 @@ export function UnitCatalogControls({
             dismissLabel="Dismiss Unit build state filter"
             icon={IconFilter}
             onChange={onBuildStateChange}
-            options={BUILD_STATE_OPTIONS}
+            options={UNIT_BUILD_STATE_OPTIONS}
             value={buildState}
           />
           <ListDropdownControl
@@ -81,7 +74,7 @@ export function UnitCatalogControls({
             dismissLabel="Dismiss Unit sort"
             icon={IconArrowsSort}
             onChange={onSortChange}
-            options={SORT_OPTIONS}
+            options={UNIT_SORT_OPTIONS}
             value={sort}
           />
         </View>

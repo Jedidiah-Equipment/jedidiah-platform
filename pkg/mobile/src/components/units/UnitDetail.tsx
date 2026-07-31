@@ -17,7 +17,6 @@ export function UnitDetail({ unit, onBack }: { unit: ProductUnitDetail; onBack: 
     <View className="flex-1 bg-background">
       <UnitDetailHeader onBack={onBack} unit={unit} />
       <ScrollView contentContainerClassName="mx-auto w-full max-w-[720px] gap-4 px-4 pb-8 pt-4">
-        <UnitIdentity unit={unit} />
         <UnitFactsCard unit={unit} />
         <UnitAssembliesCard unit={unit} />
         <UnitOwnershipCard unit={unit} />
@@ -59,38 +58,41 @@ function UnitDetailHeader({ unit, onBack }: { unit: ProductUnitDetail; onBack: (
   );
 }
 
-function UnitIdentity({ unit }: { unit: ProductUnitDetail }) {
-  return (
-    <View className="flex-row items-center gap-3.5 rounded-2xl border border-border bg-surface p-3.5">
-      <Avatar
-        className="h-16 w-16 rounded-xl"
-        name={unit.product.name}
-        textClassName="text-sm"
-        uri={unit.product.thumbnailDataUrl}
-      />
-      <View className="min-w-0 flex-1">
-        <Text className="text-lg leading-6 text-surface-foreground" numberOfLines={2} weight="bold">
-          {unit.product.name}
-        </Text>
-        <Text className="mt-1 text-[11px] text-muted-foreground" mono numberOfLines={1}>
-          {unit.product.modelCode}
-        </Text>
-      </View>
-      <UnitBuildStateChip buildState={unit.buildState} owner={unit.owner} />
-    </View>
-  );
-}
-
 function UnitFactsCard({ unit }: { unit: ProductUnitDetail }) {
   return (
     <SectionCard title="UNIT">
       <View className="flex-row flex-wrap gap-x-4 gap-y-4">
-        <DetailFact label="SERIAL" mono value={unit.productSerialNumber} />
+        <DetailFact label="SERIAL">
+          <Text className="text-sm text-surface-foreground" mono numberOfLines={1} weight="semibold">
+            {unit.productSerialNumber}
+          </Text>
+        </DetailFact>
+        <DetailFact label="PRODUCT">
+          <Text className="text-sm text-surface-foreground" numberOfLines={2} weight="semibold">
+            {unit.product.name}
+          </Text>
+          <Text className="mt-0.5 text-[10px] text-muted-foreground" mono numberOfLines={1}>
+            {unit.product.modelCode}
+          </Text>
+        </DetailFact>
         {/* The serial is minted with the Unit and the Product is a fact about the build, so on mobile
             the VIN is read-only too: every identity field here is a record, not an input. */}
-        <DetailFact label="VIN" mono value={unit.vinNumber ?? '—'} />
-        <DetailFact label="OWNER" value={unit.owner?.companyName ?? 'Stock'} />
-        <DetailFact label="CREATED" value={formatDate(unit.createdAt, 'd MMM yyyy')} />
+        <DetailFact label="VIN">
+          <Text className="text-sm text-surface-foreground" mono numberOfLines={1} weight="semibold">
+            {unit.vinNumber ?? '—'}
+          </Text>
+        </DetailFact>
+        <DetailFact label="OWNER">
+          <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
+            {/* A Unit with no Owner is one we hold. */}
+            {unit.owner?.companyName ?? 'Stock'}
+          </Text>
+        </DetailFact>
+        <DetailFact label="BUILD">
+          <View className="flex-row items-start">
+            <UnitBuildStateChip buildState={unit.buildState} owner={unit.owner} />
+          </View>
+        </DetailFact>
       </View>
     </SectionCard>
   );
@@ -171,16 +173,22 @@ function UnitJobsCard({ unit }: { unit: ProductUnitDetail }) {
   );
 }
 
+/** A cancelled Job never ran, so it never also reads as in progress or complete. */
+function jobStatusLine(job: ProductUnitJob): string {
+  if (job.cancelledAt) return 'Cancelled';
+
+  return job.completedOn ? `Completed ${formatDate(job.completedOn, 'd MMM yyyy')}` : 'In progress';
+}
+
 function UnitJobRow({ canOpen, job }: { canOpen: boolean; job: ProductUnitJob }) {
   const router = useRouter();
-  const status = job.completedOn ? `Completed ${formatDate(job.completedOn, 'd MMM yyyy')}` : 'In progress';
   const details = (
     <>
       <Text className="text-sm text-surface-foreground" mono numberOfLines={1} weight="semibold">
         {job.code}
       </Text>
       <Text className="mt-1 text-[10px] text-muted-foreground" mono numberOfLines={1}>
-        {job.cancelledAt ? `Cancelled · ${status}` : status}
+        {jobStatusLine(job)}
       </Text>
     </>
   );
@@ -209,13 +217,11 @@ function UnitJobRow({ canOpen, job }: { canOpen: boolean; job: ProductUnitJob })
   );
 }
 
-function DetailFact({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function DetailFact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View className="min-w-[140px] flex-1 basis-[45%]">
       <FactLabel>{label}</FactLabel>
-      <Text className="mt-1 text-sm text-surface-foreground" mono={mono} weight="semibold">
-        {value}
-      </Text>
+      <View className="mt-1">{children}</View>
     </View>
   );
 }

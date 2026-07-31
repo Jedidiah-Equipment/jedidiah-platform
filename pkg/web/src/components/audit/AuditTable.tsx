@@ -1,4 +1,4 @@
-import { AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
+import { AuditEntityType, AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
 import { IconEye } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -20,12 +20,8 @@ import { useUserOptions } from '@/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { type AuditChangeMap, formatAuditChangesJson, getAuditChangeDisplays } from './audit-change-display.js';
+import { formatAuditChangesJson, getAuditChangeDisplays } from './audit-change-display.js';
 import { type AuditTableFixedFilters, getAuditListInputExtras } from './audit-table-input.js';
-
-type AuditEventRow = Omit<AuditEvent, 'changes'> & {
-  changes: AuditChangeMap | null;
-};
 
 type AuditTableStoreHook = UseBoundStore<StoreApi<DataTableStore>>;
 
@@ -140,9 +136,9 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     }),
   );
   const { items, total } = useCombinedCursorQueryPages(auditQuery.data?.pages);
-  const auditEvents = items as AuditEventRow[];
+  const auditEvents = useMemo(() => items.map((item) => AuditEvent.parse(item)), [items]);
 
-  const columns = useMemo<ColumnDef<AuditEventRow>[]>(
+  const columns = useMemo<ColumnDef<AuditEvent>[]>(
     () => [
       {
         accessorKey: 'occurredAt',
@@ -182,7 +178,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                 filterVariant: 'multi-select',
                 headerClassName: 'w-44 min-w-44',
               },
-            } satisfies ColumnDef<AuditEventRow>,
+            } satisfies ColumnDef<AuditEvent>,
           ]
         : []),
       {
@@ -220,7 +216,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     [showEntityTypeFilter, userOptions.selectOptions],
   );
 
-  const table = useReactTable<AuditEventRow>({
+  const table = useReactTable<AuditEvent>({
     columns,
     data: auditEvents,
     enableSortingRemoval: false,
@@ -256,7 +252,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
 };
 
 type ActorCellProps = {
-  event: AuditEventRow;
+  event: AuditEvent;
 };
 
 const ActorCell: React.FC<ActorCellProps> = ({ event }) => {
@@ -284,7 +280,7 @@ const AuditActionBadge: React.FC<AuditActionBadgeProps> = ({ action }) => (
 );
 
 type ChangesCellProps = {
-  changes: AuditEventRow['changes'];
+  changes: AuditEvent['changes'];
 };
 
 const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes }) => {
@@ -300,7 +296,7 @@ const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes }) => {
 };
 
 type AuditChangesDetailsProps = {
-  changes: NonNullable<AuditEventRow['changes']>;
+  changes: NonNullable<AuditEvent['changes']>;
 };
 
 const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes }) => (
@@ -324,7 +320,7 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes }) =>
 );
 
 type AuditChangesContentProps = {
-  changes: NonNullable<AuditEventRow['changes']>;
+  changes: NonNullable<AuditEvent['changes']>;
 };
 
 export const AuditChangesContent: React.FC<AuditChangesContentProps> = ({ changes }) => {

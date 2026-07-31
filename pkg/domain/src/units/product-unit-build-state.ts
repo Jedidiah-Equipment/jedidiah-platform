@@ -1,4 +1,4 @@
-import type { ProductUnitBuildState, ProductUnitDisplayBuildState } from '@pkg/schema';
+import type { ProductUnitBuildState, ProductUnitDisplayBuildState, ProductUnitOwner } from '@pkg/schema';
 
 /**
  * How a Unit's build reads to a person: Complete is On Hand plus an Owner. The machine has no third
@@ -7,7 +7,7 @@ import type { ProductUnitBuildState, ProductUnitDisplayBuildState } from '@pkg/s
  */
 export function toDisplayBuildState(
   buildState: ProductUnitBuildState,
-  owner: { id: string } | null,
+  owner: ProductUnitOwner | null,
 ): ProductUnitDisplayBuildState {
   return buildState === 'on-hand' && owner ? 'complete' : buildState;
 }

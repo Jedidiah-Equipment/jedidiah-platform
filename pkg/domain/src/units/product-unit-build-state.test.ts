@@ -1,8 +1,9 @@
+import { UUID } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
 import { toDisplayBuildState } from './product-unit-build-state.js';
 
-const owner = { id: '00000000-0000-4000-8000-0000000000c1' };
+const owner = { id: UUID.parse('00000000-0000-4000-8000-0000000000c1'), companyName: 'Riverside Farm' };
 
 describe('toDisplayBuildState', () => {
   test('reads a built machine a Customer owns as Complete', () => {

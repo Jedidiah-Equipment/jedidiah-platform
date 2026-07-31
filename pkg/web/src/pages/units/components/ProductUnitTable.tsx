@@ -1,4 +1,3 @@
-import { toDisplayBuildState } from '@pkg/domain';
 import {
   ProductUnitDisplayBuildState,
   type ProductUnitListInput,
@@ -108,7 +107,7 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
         meta: { filterOptions: ownerOptions, filterVariant: 'select', headerClassName: 'min-w-44' },
       },
       {
-        accessorFn: (unit) => toDisplayBuildState(unit.buildState, unit.owner),
+        accessorFn: (unit) => unit.buildState,
         cell: ({ row }) => (
           <ProductUnitBuildStateCell buildState={row.original.buildState} owner={row.original.owner} />
         ),

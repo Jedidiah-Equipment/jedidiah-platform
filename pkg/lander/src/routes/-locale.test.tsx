@@ -116,7 +116,7 @@ describe('localized public routes', () => {
   });
 
   test('only shows the Range filter when the catalog has multiple Ranges', async () => {
-    productGroups = [catalogGroup('range-one', true)];
+    productGroups = [catalogGroup('range-one', 2)];
 
     try {
       const singleRangeMarkup = renderToStaticMarkup(<RouterProvider router={await routerAt('/products')} />);
@@ -128,6 +128,19 @@ describe('localized public routes', () => {
       expect(singleRangeMarkup).toContain('Filter by variant');
       expect(singleRangeMarkup).toContain('variant-one');
       expect(multipleRangeMarkup).toContain('Filter by range');
+    } finally {
+      productGroups = [];
+    }
+  });
+
+  test('only shows the Variant filter when the selected Range has more than one Variant', async () => {
+    productGroups = [catalogGroup('range-one', 1)];
+
+    try {
+      const markup = renderToStaticMarkup(<RouterProvider router={await routerAt('/products')} />);
+
+      expect(markup).not.toContain('Filter by variant');
+      expect(markup).not.toContain('variant-one');
     } finally {
       productGroups = [];
     }
@@ -179,7 +192,7 @@ describe('localized public routes', () => {
   });
 });
 
-function catalogGroup(id: string, withVariant = false): CatalogGroup {
+function catalogGroup(id: string, variantCount = 0): CatalogGroup {
   return {
     id,
     slug: id,
@@ -187,9 +200,9 @@ function catalogGroup(id: string, withVariant = false): CatalogGroup {
     label: id,
     description: '',
     count: 0,
-    variants: withVariant
-      ? [{ id: 'variant-one', slug: 'variant-one', name: 'variant-one', label: 'variant-one' }]
-      : [],
+    variants: ['variant-one', 'variant-two']
+      .slice(0, variantCount)
+      .map((variant) => ({ id: variant, slug: variant, name: variant, label: variant })),
     products: [],
   };
 }

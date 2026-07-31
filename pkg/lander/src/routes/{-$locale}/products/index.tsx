@@ -5,7 +5,7 @@ import { type FilterChip, FilterChipRow } from '../../../components/filter-chip-
 import { PageHero } from '../../../components/page-hero.js';
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
-import { VariantFilterBar } from '../../../components/variant-filter-bar.js';
+import { hasFilterableVariants, VariantFilterBar } from '../../../components/variant-filter-bar.js';
 import { type AnalyticsEventProperties, captureEvent } from '../../../lib/analytics.js';
 import { seoHead } from '../../../lib/seo.js';
 import { messagesForLocale, useMessages } from '../../../messages/index.js';
@@ -162,7 +162,7 @@ function FilterBar({
   const m = useMessages();
   const filterGroup = activeGroup ?? (groups.length === 1 ? groups[0] : undefined);
   const showRangeFilter = groups.length > 1;
-  const showVariantFilter = !!filterGroup && filterGroup.variants.length > 0;
+  const showVariantFilter = hasFilterableVariants(filterGroup);
   const rangeChips: FilterChip[] = [
     { key: '__all__', label: m.products.allChip, active: activeSlug === undefined, search: {} },
     ...groups.map((group) => ({

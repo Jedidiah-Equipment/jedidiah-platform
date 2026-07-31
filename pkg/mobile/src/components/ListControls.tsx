@@ -36,6 +36,9 @@ export function ListSearchControl({
   tone?: 'surface' | 'background';
   value: string;
 }) {
+  const [focused, setFocused] = useState(false);
+  const showOverlay = !focused && value.length === 0;
+
   return (
     <View
       className={`h-10 min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-border px-3 ${
@@ -43,15 +46,30 @@ export function ListSearchControl({
       }`}
     >
       <Icon className="text-muted-foreground" icon={IconSearch} size={17} />
-      <TextInput
-        accessibilityLabel={accessibilityLabel}
-        className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 py-0"
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        returnKeyType="search"
-        textSize="toolbar"
-        value={value}
-      />
+      <View className="min-w-0 flex-1">
+        <TextInput
+          accessibilityLabel={accessibilityLabel}
+          className="h-10 w-full border-0 bg-transparent px-0 py-0"
+          onBlur={() => setFocused(false)}
+          onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          placeholder={placeholder}
+          returnKeyType="search"
+          textSize="toolbar"
+          value={value}
+          // Hidden behind the overlay, but still the field's accessibility hint.
+          {...(showOverlay ? { placeholderTextColor: 'transparent' } : null)}
+        />
+        {/* A native placeholder clips mid-word; a Text ellipsises, so these can name what is
+            searched. Only while blurred: focused, the native placeholder keeps the caret above it. */}
+        {showOverlay ? (
+          <View aria-hidden className="absolute inset-0 justify-center" pointerEvents="none">
+            <Text className="text-toolbar text-muted-foreground" numberOfLines={1}>
+              {placeholder}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }

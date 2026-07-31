@@ -59,7 +59,7 @@ export function ProductCatalogControls({
         <ListSearchControl
           accessibilityLabel="Search products"
           onChangeText={onSearchChange}
-          placeholder="Search products…"
+          placeholder="Search by name, model code, or description…"
           value={search}
         />
       }

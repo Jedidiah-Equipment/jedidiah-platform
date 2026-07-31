@@ -20,12 +20,12 @@ export function DataTableLoadMore({
   totalLabel,
 }: DataTableLoadMoreProps) {
   return (
-    <div className="flex min-h-8 items-center justify-between gap-3 text-sm">
+    <div className="grid min-h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-sm">
       <div className="text-muted-foreground">
         {loadedCount} of {totalLabel(total)}
       </div>
       {hasNextPage && onLoadMore ? (
-        <Button disabled={isFetchingNextPage} onClick={onLoadMore} size="sm" variant="outline">
+        <Button disabled={isFetchingNextPage} onClick={onLoadMore} size="sm" variant="link">
           {isFetchingNextPage ? 'Loading…' : 'Load more'}
         </Button>
       ) : null}

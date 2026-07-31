@@ -66,7 +66,7 @@ export function QuoteCatalogControls({
         <ListSearchControl
           accessibilityLabel="Search quotes"
           onChangeText={onSearchChange}
-          placeholder="Search quotes…"
+          placeholder="Search by quote code, customer, product, or job…"
           value={search}
         />
       }

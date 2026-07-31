@@ -43,15 +43,24 @@ export function ListSearchControl({
       }`}
     >
       <Icon className="text-muted-foreground" icon={IconSearch} size={17} />
-      <TextInput
-        accessibilityLabel={accessibilityLabel}
-        className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 py-0"
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        returnKeyType="search"
-        textSize="toolbar"
-        value={value}
-      />
+      <View className="min-w-0 flex-1">
+        <TextInput
+          accessibilityLabel={accessibilityLabel}
+          className="h-10 w-full border-0 bg-transparent px-0 py-0"
+          onChangeText={onChangeText}
+          returnKeyType="search"
+          textSize="toolbar"
+          value={value}
+        />
+        {/* A native placeholder clips mid-word; a Text ellipsises, so these can name what is searched. */}
+        {value.length === 0 ? (
+          <View className="absolute inset-0 justify-center" pointerEvents="none">
+            <Text className="text-toolbar text-muted-foreground" numberOfLines={1}>
+              {placeholder}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }

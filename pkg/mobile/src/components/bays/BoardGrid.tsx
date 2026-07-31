@@ -3,8 +3,8 @@ import { type LayoutChangeEvent, View } from 'react-native';
 
 // Mirrors the mockup grids `repeat(auto-fill, minmax(<min>px, 1fr))` with a 14px gap.
 const GAP = 14;
-// The grid fills its container, but a single card never stretches past this — it keeps the
-// tile readable when only one column fits a wide-ish viewport.
+// Cards stop growing past this once the grid has room for more than one column, so a short
+// row reads as a grid rather than one stretched tile. A lone column always fills the width.
 const MAX_CARD_WIDTH = 420;
 
 // Shared minimum width for every board tile, so toggling Bays ⇄ Jobs keeps the same column layout.
@@ -19,7 +19,7 @@ function columnsForWidth(width: number, minCardWidth: number): number {
 
 /**
  * Responsive card grid shared by the Bay and Job boards: measures its own width and reflows
- * phone → tablet, capping each cell at {@link MAX_CARD_WIDTH}. Renders nothing until measured so
+ * phone → tablet, capping multi-column cells at {@link MAX_CARD_WIDTH}. Renders nothing until measured so
  * cells never flash at a wrong width.
  */
 export function BoardGrid<T>({
@@ -36,7 +36,7 @@ export function BoardGrid<T>({
   const [width, setWidth] = useState(0);
   const onLayout = (event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width);
   const columns = columnsForWidth(width, minCardWidth);
-  const cellWidth = Math.min((width - GAP * (columns - 1)) / columns, MAX_CARD_WIDTH);
+  const cellWidth = columns === 1 ? width : Math.min((width - GAP * (columns - 1)) / columns, MAX_CARD_WIDTH);
 
   return (
     <View className="flex-row flex-wrap" onLayout={onLayout} style={{ gap: GAP }}>

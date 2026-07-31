@@ -16,6 +16,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { toSelectOptions } from '@/hooks/options/helpers.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -87,9 +88,16 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
       {
         accessorFn: (unit) => unit.product.name,
         cell: ({ row }) => (
-          <span className="flex min-w-0 flex-col">
-            <span className="truncate">{row.original.product.name}</span>
-            <span className="truncate text-muted-foreground text-xs">{row.original.product.modelCode}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <EntityThumbnail
+              label={row.original.product.modelCode || row.original.product.name}
+              size="sm"
+              thumbnailDataUrl={row.original.product.thumbnailDataUrl}
+            />
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate">{row.original.product.name}</span>
+              <span className="truncate text-muted-foreground text-xs">{row.original.product.modelCode}</span>
+            </span>
           </span>
         ),
         enableColumnFilter: true,

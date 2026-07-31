@@ -53,7 +53,7 @@ export function UnitCatalogControls({
         <ListSearchControl
           accessibilityLabel="Search units"
           onChangeText={onSearchChange}
-          placeholder="Search units…"
+          placeholder="Search by serial, VIN, owner, or product…"
           value={search}
         />
       }

@@ -3,6 +3,7 @@ import type { AppPermission } from '@pkg/schema';
 import {
   IconBriefcase2,
   IconBuilding,
+  IconBuildingWarehouse,
   IconCategory2,
   IconChevronRight,
   IconClipboardList,
@@ -12,9 +13,8 @@ import {
   IconLanguage,
   IconLayoutKanban,
   IconMessageReport,
-  IconPackage,
+  IconPackages,
   IconTool,
-  IconTruck,
   IconUsers,
   type TablerIcon,
 } from '@tabler/icons-react';
@@ -104,7 +104,7 @@ const navSections = [
         title: 'Units',
         permission: 'product_unit:read',
         link: linkOptions({ to: '/units' }),
-        icon: IconTruck,
+        icon: IconBuildingWarehouse,
       },
       {
         title: 'Customers',
@@ -128,7 +128,7 @@ const navSections = [
         title: 'Products',
         permission: 'product:read',
         link: linkOptions({ to: '/products' }),
-        icon: IconPackage,
+        icon: IconPackages,
       },
     ],
   },

@@ -2,6 +2,8 @@ import { IconChevronDown } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
+import { useIsomorphicLayoutEffect } from '../lib/isomorphic-layout-effect.js';
+
 // Smallest gap we leave between the panel and the viewport edge when the right-anchored panel is wider
 // than the space to the left of its trigger.
 const VIEWPORT_GUTTER = 12;
@@ -27,7 +29,9 @@ export function DropdownMenu({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [shift, setShift] = useState(0);
 
-  useEffect(() => {
+  // Measuring in a layout effect keeps the corrected offset inside the first painted frame, so a slow
+  // device cannot paint the panel at its clipped position part-way through the fade-in.
+  useIsomorphicLayoutEffect(() => {
     if (!open) {
       setShift(0);
       return;

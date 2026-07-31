@@ -114,7 +114,11 @@ export function resolveProductsCatalogView(groups: CatalogGroup[], search: Produ
   }
 
   // Variant slugs are only unique inside their Range, so a bare or stale `variant=` never filters anything.
-  const activeVariant = activeGroup.variants.find((variant) => variant.slug === search.variant);
+  // A Range that shows no Variant row has no control to clear a selection with, so a bookmarked `variant=`
+  // degrades to the full Range the same way an unknown slug does rather than stranding a hidden filter.
+  const activeVariant = hasFilterableVariants(activeGroup)
+    ? activeGroup.variants.find((variant) => variant.slug === search.variant)
+    : undefined;
   const filteredProducts = activeVariant
     ? activeGroup.products.filter((product) => product.variantId === activeVariant.id)
     : undefined;

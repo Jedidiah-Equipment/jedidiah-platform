@@ -53,6 +53,10 @@ export const ProductUnitJob = z.object({
 export type ProductUnitBuildState = z.infer<typeof ProductUnitBuildState>;
 export const ProductUnitBuildState = z.enum(['in-build', 'on-hand']);
 
+/** The build states a person sees, folding the Owner in: `complete` is `on-hand` plus an Owner. */
+export type ProductUnitDisplayBuildState = z.infer<typeof ProductUnitDisplayBuildState>;
+export const ProductUnitDisplayBuildState = z.enum(['in-build', 'on-hand', 'complete']);
+
 export type ProductUnitSummary = z.infer<typeof ProductUnitSummary>;
 export const ProductUnitSummary = z.object({
   id: UUID,
@@ -87,7 +91,8 @@ export const ProductUnitSortBy = z.enum(['createdAt', 'id', 'productSerialNumber
 export type ProductUnitColumnFilters = z.infer<typeof ProductUnitColumnFilters>;
 export const ProductUnitColumnFilters = z
   .object({
-    buildState: ProductUnitBuildState.optional(),
+    /** The filter offers exactly the states the list displays, Complete included. */
+    buildState: ProductUnitDisplayBuildState.optional(),
     /** The Customer that holds the machine now, or `stock` for the ones we hold. */
     owner: z.union([UUID, z.literal('stock')]).optional(),
     productId: UUID.optional(),

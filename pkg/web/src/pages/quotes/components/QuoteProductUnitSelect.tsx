@@ -1,9 +1,11 @@
+import { toDisplayBuildState } from '@pkg/domain';
 import { ProductUnitListInput, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { buildStateLabels } from '@/pages/units/components/ProductUnitBuildStateCell.js';
 
 const BUILD_TO_ORDER = 'build-to-order';
 
@@ -50,7 +52,7 @@ export const QuoteProductUnitSelect: React.FC<{
           <SelectItem value={BUILD_TO_ORDER}>Build to order</SelectItem>
           {unitsQuery.data?.items.map((unit) => (
             <SelectItem key={unit.id} value={unit.id}>
-              {unit.productSerialNumber} · {unit.buildState === 'on-hand' ? 'On Hand' : 'In Build'}
+              {unit.productSerialNumber} · {buildStateLabels[toDisplayBuildState(unit.buildState, unit.owner)]}
             </SelectItem>
           ))}
         </SelectGroup>

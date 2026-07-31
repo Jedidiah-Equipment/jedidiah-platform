@@ -21,7 +21,7 @@ import {
   ProductUnitSummary,
   UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import { loadAsBuiltSpec } from './product-unit-as-built.js';
 import { ProductUnitNotFoundError } from './product-unit-errors.js';
@@ -213,11 +213,49 @@ function toBuildState(completedOn: string | null): ProductUnitBuildState {
   return completedOn === null ? 'in-build' : 'on-hand';
 }
 
+/**
+ * The Product a machine was built as, searched where it lives: the Unit row carries only the FK. The
+ * inner table gets an explicit alias because the list query already joins `products` — without one the
+ * subquery would shadow that join rather than stand on its own, and the count read has no join at all.
+ */
+function productSearchCondition(search: string): SQL {
+  const product = sql.raw('"search_product"');
+
+  return sql`exists (
+    select 1
+    from ${products} ${product}
+    where ${product}."id" = ${productUnits.productId}
+      and (${createEscapedContainsSearchCondition(sql`${product}."name"`, search)}
+        or ${createEscapedContainsSearchCondition(sql`${product}."model_code"`, search)})
+  )`;
+}
+
+/** The Customer holding the machine now — the same derived Owner the list displays, not a past one. */
+function ownerSearchCondition(search: string): SQL {
+  const customer = sql.raw('"search_customer"');
+
+  return sql`exists (
+    select 1
+    from ${customers} ${customer}
+    where ${customer}."id" = ${currentOwnerId}
+      and ${createEscapedContainsSearchCondition(sql`${customer}."company_name"`, search)}
+  )`;
+}
+
 function buildProductUnitListWhere(input: ProductUnitListInput): SQL | undefined {
   const conditions: SQL[] = [];
 
   if (input.search) {
-    conditions.push(createEscapedContainsSearchCondition(sql`${productUnits.productSerialNumber}`, input.search));
+    const searchWhere = or(
+      createEscapedContainsSearchCondition(sql`${productUnits.productSerialNumber}`, input.search),
+      createEscapedContainsSearchCondition(sql`${productUnits.vinNumber}`, input.search),
+      productSearchCondition(input.search),
+      ownerSearchCondition(input.search),
+    );
+
+    if (searchWhere) {
+      conditions.push(searchWhere);
+    }
   }
 
   if (input.columnFilters.productId) {
@@ -231,7 +269,9 @@ function buildProductUnitListWhere(input: ProductUnitListInput): SQL | undefined
   }
 
   if (input.columnFilters.buildState === 'on-hand') {
-    conditions.push(sql`${buildCompletedOn} is not null`);
+    conditions.push(sql`${buildCompletedOn} is not null and ${currentOwnerId} is null`);
+  } else if (input.columnFilters.buildState === 'complete') {
+    conditions.push(sql`${buildCompletedOn} is not null and ${currentOwnerId} is not null`);
   } else if (input.columnFilters.buildState === 'in-build') {
     conditions.push(sql`${buildCompletedOn} is null`);
   }

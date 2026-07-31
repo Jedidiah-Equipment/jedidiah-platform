@@ -42,9 +42,11 @@ export function toFindProductUnitsResponse(
 export const findProductUnitsDefinition = {
   name: 'findProductUnits',
   description: [
-    'Search for Product Units — the physical machines — by Product Serial Number, optionally narrowed by build state, Owner, or Product.',
+    'Search for Product Units — the physical machines — by Product Serial Number, VIN, Owner company name, Product name, or Product model code, optionally narrowed by build state, Owner, or Product.',
     'In columnFilters, pass owner "stock" for the machines we hold, or an Owner Customer UUID for the ones a Customer holds.',
+    'The buildState filter takes "in-build" for machines still being built, "on-hand" for built machines we still hold, and "complete" for built machines a Customer owns.',
     'Returns serial number, VIN, build state, Owner, Product, and app links.',
+    'The build state it returns is only "in-build" or "on-hand": an on-hand machine that has an Owner is the one the app calls Complete.',
     'Call getProductUnit with the selected id when the As-Built Spec, Jobs, or ownership history are needed.',
   ].join('\n'),
   inputSchema: FindProductUnitsInput,

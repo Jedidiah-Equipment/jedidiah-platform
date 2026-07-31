@@ -13,6 +13,7 @@ import {
 const UNIT_ID = '00000000-0000-4000-8000-000000000501';
 const CUSTOMER_ID = '00000000-0000-4000-8000-000000000101';
 const PRODUCT_ID = '00000000-0000-4000-8000-000000000201';
+const PRODUCT_THUMBNAIL_DATA_URL = `data:image/jpeg;base64,${'a'.repeat(16)}`;
 
 function createListResult(owner: { id: string; companyName: string } | null): ProductUnitListResult {
   return {
@@ -22,7 +23,12 @@ function createListResult(owner: { id: string; companyName: string } | null): Pr
         buildState: 'on-hand',
         createdAt: '2026-07-10T08:00:00.000Z',
         owner,
-        product: { id: PRODUCT_ID, modelCode: 'CL-120', name: 'Compact Loader' },
+        product: {
+          id: PRODUCT_ID,
+          modelCode: 'CL-120',
+          name: 'Compact Loader',
+          thumbnailDataUrl: PRODUCT_THUMBNAIL_DATA_URL,
+        },
         productSerialNumber: '24-0117',
         vinNumber: 'VIN-24-0117',
       },
@@ -65,6 +71,15 @@ describe('findProductUnits contract', () => {
       owner: `/customers/${CUSTOMER_ID}/edit`,
       product: `/products/${PRODUCT_ID}/edit`,
     });
+  });
+
+  test('leaves the Product thumbnail out of the payload', () => {
+    const response = toFindProductUnitsResponse(
+      createListResult({ companyName: 'Acme Mining', id: CUSTOMER_ID }),
+      createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+    );
+
+    expect(response[0]?.product).toEqual({ id: PRODUCT_ID, modelCode: 'CL-120', name: 'Compact Loader' });
   });
 
   test('omits links the caller cannot open, and the Owner link for a Unit in Stock', () => {

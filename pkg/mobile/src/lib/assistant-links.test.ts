@@ -7,6 +7,7 @@ describe('resolveAssistantLink', () => {
     ['/quotes/q1/edit', { pathname: '/quotes/[quoteId]', params: { quoteId: 'q1' } }],
     ['/products/p1/edit', { pathname: '/products/[productId]', params: { productId: 'p1' } }],
     ['/jobs/j1', { pathname: '/jobs/[jobId]', params: { jobId: 'j1' } }],
+    ['/units/u1', { pathname: '/units/[unitId]', params: { unitId: 'u1' } }],
     [
       '/api/quotes/q1/documents/d1/download',
       { pathname: '/documents/[documentId]', params: { documentId: 'd1', quoteId: 'q1' } },
@@ -31,7 +32,6 @@ describe('resolveAssistantLink', () => {
 
   test.each([
     '/customers/c1/edit',
-    '/units/u1',
     '/quotes/q1',
     'https://example.com/quotes/q1/edit',
   ])('leaves unsupported or unrecognized hrefs as plain text: %s', (href) => {

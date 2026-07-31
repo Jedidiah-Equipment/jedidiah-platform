@@ -9,28 +9,28 @@ describe('visibleTabs', () => {
     expect(visibleTabs(null)).toEqual([]);
   });
 
-  it('shows only Schedule to a Job Viewer', () => {
+  it('shows Schedule and Units to a Job Viewer', () => {
     const access = createUserAccessSummary({ role: 'job-viewer', userId: 'viewer-1' });
 
-    expect(visibleTabs(access)).toEqual(['schedule']);
+    expect(visibleTabs(access)).toEqual(['schedule', 'units']);
   });
 
-  it('shows only Quotes to Sales', () => {
+  it('shows Quotes and Units to Sales', () => {
     const access = createUserAccessSummary({ role: 'sales', userId: 'sales-1' });
 
-    expect(visibleTabs(access)).toEqual(['quotes']);
+    expect(visibleTabs(access)).toEqual(['quotes', 'units']);
   });
 
-  it('shows Schedule and Products to a Procurement Manager', () => {
+  it('shows Schedule, Products, and Units to a Procurement Manager', () => {
     const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'buyer-1' });
 
-    expect(visibleTabs(access)).toEqual(['schedule', 'products']);
+    expect(visibleTabs(access)).toEqual(['schedule', 'products', 'units']);
   });
 
-  it('shows Schedule, Quotes, and Products to an Admin', () => {
+  it('shows every tab to an Admin', () => {
     const access = createUserAccessSummary({ role: 'admin', userId: 'admin-1' });
 
-    expect(visibleTabs(access)).toEqual(['schedule', 'quotes', 'products']);
+    expect(visibleTabs(access)).toEqual(['schedule', 'quotes', 'products', 'units']);
   });
 });
 
@@ -41,6 +41,11 @@ describe('showTabBar', () => {
 
   it('collapses when Schedule is the only visible tab', () => {
     expect(showTabBar(['schedule'])).toBe(false);
+  });
+
+  it('renders once Units joins a single other tab', () => {
+    // Every role reads Units, so the roles that used to see one tab now get a bar.
+    expect(showTabBar(['schedule', 'units'])).toBe(true);
   });
 
   it('renders when Products is also visible', () => {

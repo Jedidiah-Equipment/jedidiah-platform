@@ -1,14 +1,8 @@
-import { toDisplayBuildState } from '@pkg/domain';
+import { productUnitBuildStateLabels, toDisplayBuildState } from '@pkg/domain';
 import type { ProductUnitBuildState, ProductUnitDisplayBuildState, ProductUnitOwner } from '@pkg/schema';
 import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';
-
-export const buildStateLabels: Record<ProductUnitDisplayBuildState, string> = {
-  complete: 'Complete',
-  'in-build': 'In build',
-  'on-hand': 'On hand',
-};
 
 const buildStateBadgeClasses: Record<ProductUnitDisplayBuildState, string> = {
   complete: 'border-slate-500/50 bg-slate-500/15 text-slate-800 dark:text-slate-200',
@@ -24,7 +18,7 @@ export const ProductUnitBuildStateCell: React.FC<{
 
   return (
     <Badge className={buildStateBadgeClasses[displayState]} variant="outline">
-      {buildStateLabels[displayState]}
+      {productUnitBuildStateLabels[displayState]}
     </Badge>
   );
 };

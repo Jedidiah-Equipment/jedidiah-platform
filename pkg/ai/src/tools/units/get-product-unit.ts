@@ -5,12 +5,16 @@ import { z } from 'zod';
 import type { AiContext } from '@/context.js';
 
 import { createProductUnitLinks, ProductUnitLinks } from './product-unit-links.js';
+import { ProductUnitProductResponse } from './product-unit-response.js';
 
 export type GetProductUnitInput = z.infer<typeof GetProductUnitInput>;
 export const GetProductUnitInput = z.object({ id: UUID }).strict();
 
 export type GetProductUnitResponse = z.infer<typeof GetProductUnitResponse>;
-export const GetProductUnitResponse = ProductUnitDetail.extend({ links: ProductUnitLinks });
+export const GetProductUnitResponse = ProductUnitDetail.extend({
+  links: ProductUnitLinks,
+  product: ProductUnitProductResponse,
+});
 
 export function toGetProductUnitResponse(
   unit: ProductUnitDetail,

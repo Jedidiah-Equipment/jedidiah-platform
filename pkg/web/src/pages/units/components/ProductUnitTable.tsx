@@ -1,3 +1,4 @@
+import { productUnitBuildStateLabels } from '@pkg/domain';
 import {
   ProductUnitDisplayBuildState,
   type ProductUnitListInput,
@@ -18,7 +19,7 @@ import type { SortOptions } from '@/components/data-table/table-state.js';
 import { toSelectOptions } from '@/hooks/options/helpers.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { buildStateLabels, ProductUnitBuildStateCell } from './ProductUnitBuildStateCell.js';
+import { ProductUnitBuildStateCell } from './ProductUnitBuildStateCell.js';
 import { ProductUnitOwnerCell } from './ProductUnitOwnerCell.js';
 
 /** The Units we hold. Not a Customer, so it needs a filter value of its own. */
@@ -117,7 +118,7 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
         id: 'buildState',
         meta: {
           filterOptions: ProductUnitDisplayBuildState.options.map((state) => ({
-            label: buildStateLabels[state],
+            label: productUnitBuildStateLabels[state],
             value: state,
           })),
           filterVariant: 'select',

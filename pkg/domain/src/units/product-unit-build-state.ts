@@ -11,3 +11,9 @@ export function toDisplayBuildState(
 ): ProductUnitDisplayBuildState {
   return buildState === 'on-hand' && owner ? 'complete' : buildState;
 }
+
+export const productUnitBuildStateLabels: Record<ProductUnitDisplayBuildState, string> = {
+  complete: 'Complete',
+  'in-build': 'In build',
+  'on-hand': 'On hand',
+};

@@ -10,6 +10,7 @@ import {
   user,
 } from '@pkg/db';
 import { DateOnlyIso, ProductUnitListInput } from '@pkg/schema';
+import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
@@ -88,8 +89,39 @@ describe('listProductUnits', () => {
     });
 
     // The rebuilt machine is On Hand off its live rebuild, not its cancelled first attempt.
-    expect(onHand.items.map((item) => item.productSerialNumber).sort()).toEqual(['OT-001260001', 'PU-001260001']);
+    expect(onHand.items.map((item) => item.productSerialNumber).sort()).toEqual(['OT-001260001']);
     expect(inBuild.items.map((item) => item.productSerialNumber).sort()).toEqual(['PU-001260002', 'PU-001260003']);
+  });
+
+  test('filters to the built machines a Customer owns', async ({ context }) => {
+    const result = await listProductUnits({
+      db: context.db,
+      input: listInput({ columnFilters: { buildState: 'complete' } }),
+    });
+
+    // Complete is On Hand plus an Owner, so the built machine we still hold must not appear here.
+    expect(result.items.map((item) => item.productSerialNumber)).toEqual(['PU-001260001']);
+    expect(result.total).toBe(1);
+  });
+
+  test('leaves an owned machine that is still in build out of both built states', async ({ context }) => {
+    // Ownership moves at the sale, not at the completion, so a build-to-order machine is owned in a Bay.
+    await context.db.insert(productUnitOwnershipTransfers).values({
+      actorUserId: ACTOR_USER_ID,
+      occurredOn: '2026-05-20',
+      productUnitId: context.seed.stockUnitId,
+      toCustomerId: context.seed.customerId,
+    });
+
+    const [inBuild, onHand, complete] = await Promise.all([
+      listProductUnits({ db: context.db, input: listInput({ columnFilters: { buildState: 'in-build' } }) }),
+      listProductUnits({ db: context.db, input: listInput({ columnFilters: { buildState: 'on-hand' } }) }),
+      listProductUnits({ db: context.db, input: listInput({ columnFilters: { buildState: 'complete' } }) }),
+    ]);
+
+    expect(inBuild.items.map((item) => item.productSerialNumber)).toContain('PU-001260002');
+    expect(onHand.items.map((item) => item.productSerialNumber)).not.toContain('PU-001260002');
+    expect(complete.items.map((item) => item.productSerialNumber)).not.toContain('PU-001260002');
   });
 
   test('filters to one product, excluding the others', async ({ context }) => {
@@ -105,6 +137,46 @@ describe('listProductUnits', () => {
     const result = await listProductUnits({ db: context.db, input: listInput({ search: '260002' }) });
 
     expect(result.items.map((item) => item.productSerialNumber)).toEqual(['PU-001260002']);
+  });
+
+  test('searches by VIN', async ({ context }) => {
+    const result = await listProductUnits({ db: context.db, input: listInput({ search: 'VIN-UNIT' }) });
+
+    expect(result.items.map((item) => item.productSerialNumber)).toEqual(['PU-001260001']);
+  });
+
+  test('searches by the Customer holding the machine now, not one that held it before', async ({ context }) => {
+    const result = await listProductUnits({ db: context.db, input: listInput({ search: 'Riverside' }) });
+
+    // The returned and rebuilt machines were Riverside's once and are Stock again, so they must not match.
+    expect(result.items.map((item) => item.productSerialNumber)).toEqual(['PU-001260001']);
+    // The count runs without the list's joins, so it has to agree with the page the search returned.
+    expect(result.total).toBe(1);
+  });
+
+  test('searches by product name', async ({ context }) => {
+    const result = await listProductUnits({ db: context.db, input: listInput({ search: 'Other Test' }) });
+
+    expect(result.items.map((item) => item.productSerialNumber)).toEqual(['OT-001260001']);
+    expect(result.total).toBe(1);
+  });
+
+  test('searches by product model code', async ({ context }) => {
+    // A Unit's serial carries the model code it was built under, so only a later rename tells the two
+    // apart: the machine keeps serial OT-001260001 while its Product answers to the new code.
+    await context.db.update(products).set({ modelCode: 'ZZ-999' }).where(eq(products.id, context.seed.otherProductId));
+
+    const result = await listProductUnits({ db: context.db, input: listInput({ search: 'ZZ-999' }) });
+
+    expect(result.items.map((item) => item.productSerialNumber)).toEqual(['OT-001260001']);
+    expect(result.total).toBe(1);
+  });
+
+  test('finds nothing for a search no machine matches', async ({ context }) => {
+    const result = await listProductUnits({ db: context.db, input: listInput({ search: 'no-such-machine' }) });
+
+    expect(result.items).toEqual([]);
+    expect(result.total).toBe(0);
   });
 
   test('reports the total ahead of the page it returned', async ({ context }) => {

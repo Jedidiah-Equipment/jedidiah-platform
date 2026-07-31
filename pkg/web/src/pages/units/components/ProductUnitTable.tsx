@@ -1,5 +1,5 @@
 import {
-  ProductUnitBuildState,
+  ProductUnitBuildStateFilter,
   type ProductUnitListInput,
   ProductUnitSortBy,
   type ProductUnitSummary,
@@ -18,7 +18,12 @@ import type { SortOptions } from '@/components/data-table/table-state.js';
 import { toSelectOptions } from '@/hooks/options/helpers.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { buildStateLabels, ProductUnitBuildStateCell, ProductUnitOwnerCell } from './ProductUnitOwnerCell.js';
+import {
+  buildStateLabels,
+  ProductUnitBuildStateCell,
+  ProductUnitOwnerCell,
+  toDisplayBuildState,
+} from './ProductUnitOwnerCell.js';
 
 /** The Units we hold. Not a Customer, so it needs a filter value of its own. */
 const STOCK_OWNER_VALUE = 'stock';
@@ -106,14 +111,16 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
         meta: { filterOptions: ownerOptions, filterVariant: 'select', headerClassName: 'min-w-44' },
       },
       {
-        accessorFn: (unit) => unit.buildState,
-        cell: ({ row }) => <ProductUnitBuildStateCell buildState={row.original.buildState} />,
+        accessorFn: (unit) => toDisplayBuildState(unit.buildState, unit.owner),
+        cell: ({ row }) => (
+          <ProductUnitBuildStateCell buildState={row.original.buildState} owner={row.original.owner} />
+        ),
         enableColumnFilter: true,
         enableSorting: false,
         header: 'Build',
         id: 'buildState',
         meta: {
-          filterOptions: ProductUnitBuildState.options.map((state) => ({
+          filterOptions: ProductUnitBuildStateFilter.options.map((state) => ({
             label: buildStateLabels[state],
             value: state,
           })),
@@ -163,7 +170,7 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
       emptyMessage="No units found."
       errorMessage={getApiQueryErrorMessage(unitsQuery.error, 'Unable to load units.')}
       getRowAriaLabel={(unit) => `Open unit ${unit.productSerialNumber}`}
-      globalFilterPlaceholder="Search by serial number..."
+      globalFilterPlaceholder="Search by serial, VIN, owner, or product..."
       isLoading={unitsQuery.isPending}
       paginationMode="cursor"
       loadMore={{
@@ -186,7 +193,7 @@ function getProductUnitListInputExtras(columnFilters: ColumnFiltersState) {
 
   return {
     columnFilters: {
-      buildState: ProductUnitBuildState.safeParse(buildState).data,
+      buildState: ProductUnitBuildStateFilter.safeParse(buildState).data,
       owner,
       productId: getColumnFilterValue(columnFilters, 'product'),
     },

@@ -154,7 +154,7 @@ const UnitIdentityCard: React.FC<{
         <ProductUnitOwnerCell owner={unit.owner} />
       </DetailField>
       <DetailField label="Build">
-        <ProductUnitBuildStateCell buildState={unit.buildState} />
+        <ProductUnitBuildStateCell buildState={unit.buildState} owner={unit.owner} />
       </DetailField>
     </CardContent>
   </Card>

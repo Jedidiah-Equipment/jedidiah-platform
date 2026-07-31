@@ -5,7 +5,7 @@ import { type FilterChip, FilterChipRow } from '../../../components/filter-chip-
 import { PageHero } from '../../../components/page-hero.js';
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
-import { VariantFilterBar } from '../../../components/variant-filter-bar.js';
+import { hasFilterableVariants, VariantFilterBar } from '../../../components/variant-filter-bar.js';
 import { type AnalyticsEventProperties, captureEvent } from '../../../lib/analytics.js';
 import { seoHead } from '../../../lib/seo.js';
 import { messagesForLocale, useMessages } from '../../../messages/index.js';
@@ -114,7 +114,11 @@ export function resolveProductsCatalogView(groups: CatalogGroup[], search: Produ
   }
 
   // Variant slugs are only unique inside their Range, so a bare or stale `variant=` never filters anything.
-  const activeVariant = activeGroup.variants.find((variant) => variant.slug === search.variant);
+  // A Range that shows no Variant row has no control to clear a selection with, so a bookmarked `variant=`
+  // degrades to the full Range the same way an unknown slug does rather than stranding a hidden filter.
+  const activeVariant = hasFilterableVariants(activeGroup)
+    ? activeGroup.variants.find((variant) => variant.slug === search.variant)
+    : undefined;
   const filteredProducts = activeVariant
     ? activeGroup.products.filter((product) => product.variantId === activeVariant.id)
     : undefined;
@@ -162,7 +166,7 @@ function FilterBar({
   const m = useMessages();
   const filterGroup = activeGroup ?? (groups.length === 1 ? groups[0] : undefined);
   const showRangeFilter = groups.length > 1;
-  const showVariantFilter = !!filterGroup && filterGroup.variants.length > 0;
+  const showVariantFilter = hasFilterableVariants(filterGroup);
   const rangeChips: FilterChip[] = [
     { key: '__all__', label: m.products.allChip, active: activeSlug === undefined, search: {} },
     ...groups.map((group) => ({

@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
+import { useIsomorphicLayoutEffect } from '../lib/isomorphic-layout-effect.js';
 import { useMessages } from '../messages/index.js';
 import { DropdownMenu } from './dropdown-menu.js';
 
@@ -20,9 +21,6 @@ const CHIP_IDLE = 'border-[#d6d4ce] bg-white text-ink hover:border-ink';
 // the row overflow when the localized "More" label is wider than expected.
 const CHIP_GAP = 10;
 const MORE_RESERVE = 132;
-
-// React logs a warning when useLayoutEffect runs during SSR, where it cannot measure anything.
-const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 export function FilterChipRow({ chips }: { chips: FilterChip[] }) {
   const rowRef = useRef<HTMLDivElement | null>(null);

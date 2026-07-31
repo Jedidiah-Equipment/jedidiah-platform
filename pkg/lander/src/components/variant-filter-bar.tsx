@@ -4,6 +4,12 @@ import { useMessages } from '../messages/index.js';
 import type { CatalogGroup, CatalogVariant } from '../server/catalog/products-data.js';
 import { type FilterChip, FilterChipRow } from './filter-chip-row.js';
 
+// A lone Variant chip sits beside "All" and selects the Products the Range already shows, so the row only
+// earns its space from two Variants up.
+export function hasFilterableVariants(group: CatalogGroup | undefined): group is CatalogGroup {
+  return !!group && group.variants.length > 1;
+}
+
 export function VariantFilterBar({
   activeGroup,
   activeVariant,
@@ -14,7 +20,7 @@ export function VariantFilterBar({
   onHeightTransitionEnd?: () => void;
 }) {
   const m = useMessages();
-  const hasVariants = !!activeGroup && activeGroup.variants.length > 0;
+  const hasVariants = hasFilterableVariants(activeGroup);
 
   const chips: FilterChip[] = hasVariants
     ? [
@@ -33,9 +39,9 @@ export function VariantFilterBar({
       ]
     : [];
 
-  // Selecting a Range with no Variants slides the row shut rather than snapping it away, so keep the last
-  // populated chip set mounted while it collapses — there is content to slide out even though the current
-  // selection has none.
+  // Selecting a Range with nothing to filter slides the row shut rather than snapping it away, so keep the
+  // last populated chip set mounted while it collapses — there is content to slide out even though the
+  // current selection has none.
   const lastChips = useRef<FilterChip[]>(chips);
   if (hasVariants) {
     lastChips.current = chips;

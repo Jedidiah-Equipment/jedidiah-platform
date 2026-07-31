@@ -62,7 +62,7 @@ describe('resolveProductsCatalogView', () => {
 
     expect(view.activeSlug).toBeUndefined();
     expect(view.activeVariant).toBeUndefined();
-    expect(view.visibleGroups.map((group) => group.id)).toEqual(['range-trailers', 'range-tanks']);
+    expect(view.visibleGroups.map((group) => group.id)).toEqual(['range-trailers', 'range-tanks', 'range-augers']);
   });
 
   test('resolves duplicate Variant slugs only within the selected Range', () => {
@@ -73,6 +73,19 @@ describe('resolveProductsCatalogView', () => {
 
     expect(activeVariant?.id).toBe('tank-wide');
     expect(visibleGroups[0]?.products.map((product) => product.id)).toEqual(['tank-wide-model']);
+  });
+
+  test('ignores a Variant slug for a Range that shows no Variant filter', () => {
+    const { activeVariant, visibleGroups } = resolveProductsCatalogView(groups, {
+      range: 'augers',
+      variant: 'trailed',
+    });
+
+    expect(activeVariant).toBeUndefined();
+    expect(visibleGroups[0]?.products.map((product) => product.id)).toEqual([
+      'auger-trailed-model',
+      'auger-loose-model',
+    ]);
   });
 
   test('resolves same-Range collision-safe Variant slugs independently', () => {
@@ -112,9 +125,28 @@ const groups: CatalogGroup[] = [
     name: 'Tanks',
     label: 'Tanks',
     description: '',
-    count: 1,
-    variants: [{ id: 'tank-wide', name: 'Wide Body', slug: 'wide-body', label: 'Wide Body' }],
-    products: [product({ id: 'tank-wide-model', variantId: 'tank-wide' })],
+    count: 2,
+    variants: [
+      { id: 'tank-wide', name: 'Wide Body', slug: 'wide-body', label: 'Wide Body' },
+      { id: 'tank-narrow', name: 'Narrow Body', slug: 'narrow-body', label: 'Narrow Body' },
+    ],
+    products: [
+      product({ id: 'tank-wide-model', variantId: 'tank-wide' }),
+      product({ id: 'tank-narrow-model', variantId: 'tank-narrow' }),
+    ],
+  },
+  {
+    id: 'range-augers',
+    slug: 'augers',
+    name: 'Augers',
+    label: 'Augers',
+    description: '',
+    count: 2,
+    variants: [{ id: 'auger-trailed', name: 'Trailed', slug: 'trailed', label: 'Trailed' }],
+    products: [
+      product({ id: 'auger-trailed-model', variantId: 'auger-trailed' }),
+      product({ id: 'auger-loose-model', variantId: null }),
+    ],
   },
 ];
 

@@ -3,7 +3,6 @@ import { QuoteDetail, type QuoteSummary } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
-  getNextQuotePage,
   getQuoteEditFormValuesValidator,
   isQuoteSort,
   isQuoteStatusFilter,
@@ -159,20 +158,6 @@ describe('paged Quote presentation', () => {
 
     expect(sections.priorityQuotes.map((item) => item.id)).toEqual(['quote-2']);
     expect(sections.mainQuotes.map((item) => item.id)).toEqual(['quote-1', 'quote-3']);
-  });
-
-  it('loads the next numbered page while fewer items than the server total are loaded', () => {
-    expect(
-      getNextQuotePage({ items: Array.from({ length: 20 }), total: 45 }, [{ items: Array.from({ length: 20 }) }]),
-    ).toBe(2);
-
-    expect(
-      getNextQuotePage({ items: Array.from({ length: 5 }), total: 45 }, [
-        { items: Array.from({ length: 20 }) },
-        { items: Array.from({ length: 20 }) },
-        { items: Array.from({ length: 5 }) },
-      ]),
-    ).toBeUndefined();
   });
 });
 

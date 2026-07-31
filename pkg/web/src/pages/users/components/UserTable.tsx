@@ -4,7 +4,6 @@ import {
   type ColumnDef,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
@@ -13,12 +12,8 @@ import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
-import {
-  useConstrainedPageIndex,
-  useConstrainedTableState,
-} from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
-import { getPageCount, type SortOptions } from '@/components/data-table/table-state.js';
+import { constrainSorting, type SortOptions } from '@/components/data-table/table-state.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 
@@ -44,7 +39,7 @@ export const useUserTableStore = createPersistedDataTableStore({
     ],
   },
   persistName: 'users-table',
-  persistVersion: 2,
+  persistVersion: 3,
 });
 
 const userSortOptions: SortOptions<UserTableSortInput> = {
@@ -55,30 +50,16 @@ const userSortOptions: SortOptions<UserTableSortInput> = {
 };
 
 export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessage, isLoading, onEditUser, users }) => {
-  const {
-    columnFilters,
-    globalFilter,
-    pagination,
-    setColumnFilters,
-    setGlobalFilter,
-    setPageIndex,
-    setPagination,
-    setSorting,
-    sorting,
-  } = useUserTableStore(
+  const { columnFilters, globalFilter, setColumnFilters, setGlobalFilter, setSorting, sorting } = useUserTableStore(
     useShallow((state) => ({
       columnFilters: state.columnFilters,
       globalFilter: state.globalFilter,
-      pagination: state.pagination,
       setColumnFilters: state.setColumnFilters,
       setGlobalFilter: state.setGlobalFilter,
-      setPageIndex: state.setPageIndex,
-      setPagination: state.setPagination,
       setSorting: state.setSorting,
       sorting: state.sorting,
     })),
   );
-
   const columns = useMemo<ColumnDef<UserSummary>[]>(() => {
     const tableColumns: ColumnDef<UserSummary>[] = [
       {
@@ -123,39 +104,27 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
     return tableColumns;
   }, [currentUserId]);
 
-  const tableState = useConstrainedTableState({
-    pagination,
-    sorting,
-    sortOptions: userSortOptions,
-    total: users.length,
-  });
+  const constrainedSorting = useMemo(() => constrainSorting(sorting, userSortOptions), [sorting]);
 
   const table = useReactTable({
-    autoResetPageIndex: false,
     columns,
     data: users,
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     globalFilterFn: userGlobalFilter,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: setPagination,
     onSortingChange: setSorting,
     state: {
       columnFilters,
       globalFilter,
-      pagination: tableState.pagination,
-      sorting: tableState.sorting,
+      sorting: constrainedSorting,
     },
   });
 
   const total = table.getFilteredRowModel().rows.length;
-  const pageCount = getPageCount(total, pagination.pageSize);
-
-  useConstrainedPageIndex({ pageCount, pagination, setPageIndex });
 
   return (
     <DataTable
@@ -163,7 +132,11 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
       errorMessage={errorMessage}
       getRowAriaLabel={onEditUser ? (user) => `Edit ${user.name}` : undefined}
       globalFilterPlaceholder="Search users..."
+      hasNextPage={false}
+      isFetchingNextPage={false}
       isLoading={isLoading}
+      loadedCount={total}
+      onLoadMore={() => undefined}
       onRowClick={onEditUser}
       table={table}
       total={total}

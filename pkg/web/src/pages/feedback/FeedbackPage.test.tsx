@@ -52,7 +52,11 @@ function TestFeedbackTable({
     <DataTable
       emptyMessage="No feedback found."
       getRowState={(item) => (item.id === selectedFeedbackId ? 'selected' : undefined)}
+      hasNextPage={false}
       hideGlobalFilter
+      isFetchingNextPage={false}
+      loadedCount={rows.length}
+      onLoadMore={() => undefined}
       table={table}
       total={rows.length}
     />

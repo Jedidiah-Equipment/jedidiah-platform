@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { DateIso } from '../common/date.js';
-import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
+import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { NullablePhoneNumber } from '../common/phone-number.js';
 import {
   EmailAddress,
@@ -74,7 +74,7 @@ export const SupplierUpdateInput = SupplierCreateInput.extend({
 });
 
 export type SupplierListInput = z.infer<typeof SupplierListInput>;
-export const SupplierListInput = createSearchedSortedPagedQueryInput({
+export const SupplierListInput = createSearchedSortedCursorQueryInput({
   shape: {
     columnFilters: SupplierColumnFilters,
   },
@@ -82,4 +82,4 @@ export const SupplierListInput = createSearchedSortedPagedQueryInput({
 });
 
 export type SupplierListResult = z.infer<typeof SupplierListResult>;
-export const SupplierListResult = createSortedPagedQueryResult(Supplier, SupplierSortBy);
+export const SupplierListResult = createCursorQueryResult(Supplier);

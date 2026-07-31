@@ -7,7 +7,6 @@ import {
   type Db,
   documents,
   getForeignKeyViolationConstraint,
-  getPaginationOffset,
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
@@ -20,6 +19,7 @@ import {
   products,
   type StoredFile,
   user,
+  withPagination,
 } from '@pkg/db';
 import { JOB_DEPARTMENT_PIPELINE, validateDocumentMetadata } from '@pkg/domain';
 import type {
@@ -39,6 +39,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import {
+  getNextCursor,
   Product,
   ProductBay as ProductBaySchema,
   ProductCurrencyCode,
@@ -303,12 +304,12 @@ export async function listProducts({
     db,
     productIds: rows.map((row) => row.id),
   });
+  const items = rows.map((row) => mapProductListRow(row, productBaysByProductId.get(row.id) ?? []));
 
   return {
-    items: rows.map((row) => mapProductListRow(row, productBaysByProductId.get(row.id) ?? [])),
+    items,
+    nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }),
     total,
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
   };
 }
 
@@ -347,7 +348,7 @@ async function listProductsSortedByProductColumn({
 }
 
 // Range-name sorting needs the Range join for order, while Product mapping still depends on the
-// relational read shape above. Page ordered ids first, then hydrate those Products normally.
+// relational read shape above. Fetch ordered ids first, then hydrate those Products normally.
 async function listProductsSortedByRangeName({
   db,
   input,
@@ -357,17 +358,16 @@ async function listProductsSortedByRangeName({
   input: ProductListInput;
   where: SQL;
 }): Promise<[ProductListRow[], number]> {
-  let idQuery = db
-    .select({ id: products.id })
-    .from(products)
-    .innerJoin(productRanges, eq(products.rangeId, productRanges.id))
-    .where(where)
-    .orderBy(getSortOrder(productRanges.name, input.sortDirection), asc(products.name), asc(products.id))
-    .$dynamic();
-
-  if (input.pageSize !== 0) {
-    idQuery = idQuery.limit(input.pageSize).offset(getPaginationOffset(input));
-  }
+  const idQuery = withPagination(
+    db
+      .select({ id: products.id })
+      .from(products)
+      .innerJoin(productRanges, eq(products.rangeId, productRanges.id))
+      .where(where)
+      .orderBy(getSortOrder(productRanges.name, input.sortDirection), asc(products.name), asc(products.id))
+      .$dynamic(),
+    input,
+  );
 
   const [idRows, total] = await Promise.all([idQuery, db.$count(products, where)]);
   const productIds = idRows.map((row) => row.id);
@@ -399,22 +399,21 @@ async function listProductsSortedByVariantName({
   input: ProductListInput;
   where: SQL;
 }): Promise<[ProductListRow[], number]> {
-  let idQuery = db
-    .select({ id: products.id })
-    .from(products)
-    .leftJoin(productRangeVariants, eq(products.variantId, productRangeVariants.id))
-    .where(where)
-    .orderBy(
-      sql`${productRangeVariants.name} IS NULL`,
-      getSortOrder(productRangeVariants.name, input.sortDirection),
-      asc(products.name),
-      asc(products.id),
-    )
-    .$dynamic();
-
-  if (input.pageSize !== 0) {
-    idQuery = idQuery.limit(input.pageSize).offset(getPaginationOffset(input));
-  }
+  const idQuery = withPagination(
+    db
+      .select({ id: products.id })
+      .from(products)
+      .leftJoin(productRangeVariants, eq(products.variantId, productRangeVariants.id))
+      .where(where)
+      .orderBy(
+        sql`${productRangeVariants.name} IS NULL`,
+        getSortOrder(productRangeVariants.name, input.sortDirection),
+        asc(products.name),
+        asc(products.id),
+      )
+      .$dynamic(),
+    input,
+  );
 
   const [idRows, total] = await Promise.all([idQuery, db.$count(products, where)]);
   const productIds = idRows.map((row) => row.id);

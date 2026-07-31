@@ -23,7 +23,7 @@ const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000b1';
 const test = createTester(async ({ db }) => ({ db, seed: await seedUnits(db) }));
 
 function listInput(overrides: Partial<ProductUnitListInput> = {}): ProductUnitListInput {
-  return ProductUnitListInput.parse({ pageSize: 50, ...overrides });
+  return ProductUnitListInput.parse({ limit: 50, ...overrides });
 }
 
 describe('listProductUnits', () => {
@@ -108,7 +108,7 @@ describe('listProductUnits', () => {
   });
 
   test('reports the total ahead of the page it returned', async ({ context }) => {
-    const result = await listProductUnits({ db: context.db, input: listInput({ pageSize: 2 }) });
+    const result = await listProductUnits({ db: context.db, input: listInput({ limit: 2 }) });
 
     expect(result.items).toHaveLength(2);
     expect(result.total).toBe(4);

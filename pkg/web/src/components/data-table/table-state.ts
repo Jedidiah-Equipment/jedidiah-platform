@@ -1,4 +1,4 @@
-import type { PaginationState, SortingState } from '@tanstack/react-table';
+import type { SortingState } from '@tanstack/react-table';
 
 export type SortId<TSortSource extends string | { sortBy: string }> = TSortSource extends string
   ? TSortSource
@@ -15,17 +15,6 @@ export type SortOptions<TSortSource extends string | { sortBy: string }> = {
   allowedSortIds: readonly SortId<TSortSource>[];
   defaultSort: SortState<SortId<TSortSource>>;
 };
-
-export function getPageCount(total: number, pageSize: number): number {
-  return Math.max(1, Math.ceil(total / pageSize));
-}
-
-export function constrainPagination(pagination: PaginationState, pageCount: number): PaginationState {
-  return {
-    ...pagination,
-    pageIndex: Math.min(pagination.pageIndex, Math.max(pageCount - 1, 0)),
-  };
-}
 
 export function getPrimarySort<TSortSource extends string | { sortBy: string }>(
   sorting: SortingState,

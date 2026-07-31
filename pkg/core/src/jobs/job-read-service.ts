@@ -36,6 +36,7 @@ import {
   type BoardListInput,
   type BoardListResult,
   type DateOnlyIso,
+  getNextCursor,
   type JobCustomerOptionListInput,
   type JobCustomerOptionListResult,
   type JobDetail,
@@ -179,12 +180,12 @@ export async function listJobCustomerOptions({
     where,
     ...getPaginationQueryOptions(input),
   });
+  const total = await db.$count(customers, where);
 
   return {
     items: rows,
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
-    total: await db.$count(customers, where),
+    nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }),
+    total,
   };
 }
 
@@ -381,11 +382,11 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
   const scheduleStates = input.include?.scheduleState
     ? await computeJobScheduleStates({ db, jobIds: rows.map((row) => UUID.parse(row.id)) })
     : null;
+  const items = rows.map((row) => mapJobSummary(row, scheduleStates?.get(UUID.parse(row.id)) ?? null));
 
   return {
-    items: rows.map((row) => mapJobSummary(row, scheduleStates?.get(UUID.parse(row.id)) ?? null)),
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
+    items,
+    nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }),
     total,
   };
 }

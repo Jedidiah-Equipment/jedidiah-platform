@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
 import { Department } from '../common/departments.js';
-import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
+import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { Price, PriceDelta } from '../common/price.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import {
@@ -645,7 +645,7 @@ export const QuoteListFilters = z
   });
 
 export type QuoteListInput = z.infer<typeof QuoteListInput>;
-export const QuoteListInput = createSearchedSortedPagedQueryInput({
+export const QuoteListInput = createSearchedSortedCursorQueryInput({
   defaultSortDirection: 'desc',
   shape: {
     filters: QuoteListFilters,
@@ -654,7 +654,7 @@ export const QuoteListInput = createSearchedSortedPagedQueryInput({
 });
 
 export type QuoteListResult = z.infer<typeof QuoteListResult>;
-export const QuoteListResult = createSortedPagedQueryResult(QuoteSummary, QuoteSortBy);
+export const QuoteListResult = createCursorQueryResult(QuoteSummary);
 
 export type QuoteStatusCount = z.infer<typeof QuoteStatusCount>;
 export const QuoteStatusCount = z.object({

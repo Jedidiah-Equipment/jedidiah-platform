@@ -16,7 +16,8 @@ import {
 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { DataTableLoadMore } from '@/components/data-table/components/DataTableLoadMore.js';
 import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
@@ -32,20 +33,12 @@ import {
 } from '@/components/ui/dialog.js';
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Input } from '@/components/ui/input.js';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { cn } from '@/lib/utils.js';
 import { type DocumentPreviewOwner, downloadDocument, getDocumentPreviewKind } from '@/utils/document.js';
 import {
-  DEFAULT_DOCUMENT_CARD_PAGE_SIZE,
   DEFAULT_DOCUMENT_CARD_SORT,
   DOCUMENT_CARD_SORT_OPTIONS,
   type DocumentCardSortValue,
@@ -78,7 +71,6 @@ type DocumentCardListProps<TDocument extends DocumentSummary> = {
   canDelete?: (document: TDocument) => boolean;
   defaultSort?: DocumentCardSortValue;
   onDelete?: (document: TDocument) => Promise<void> | void;
-  pageSize?: number;
   rightSection?: React.ReactNode;
 };
 
@@ -94,32 +86,23 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
   metadata,
   onDelete,
   owner,
-  pageSize = DEFAULT_DOCUMENT_CARD_PAGE_SIZE,
   rightSection,
 }: DocumentCardListProps<TDocument>) {
   const [previewDocument, setPreviewDocument] = useState<TDocument | null>(null);
-  const [pageIndex, setPageIndex] = useState(0);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<DocumentCardSortValue>(defaultSort);
   const { ref: listRef, width } = useElementSize();
   const isCompact = width > 0 && width < DOCUMENT_CARD_COMPACT_WIDTH;
 
   const visible = useMemo(
-    () => getVisibleDocumentCards({ documents, metadata, pageIndex, pageSize, search, sort }),
-    [documents, metadata, pageIndex, pageSize, search, sort],
+    () => getVisibleDocumentCards({ documents, metadata, search, sort }),
+    [documents, metadata, search, sort],
   );
   const selectedSortOption =
     DOCUMENT_CARD_SORT_OPTIONS.find((option) => option.value === sort) ?? DOCUMENT_CARD_SORT_OPTIONS[0];
-  const shouldShowPager = visible.pageCount > 1;
   const hasSearch = search.trim().length > 0;
   const emptyTitle = hasSearch ? emptySearchMessage : emptyMessage;
   const emptyDescription = hasSearch ? 'Try a different search term.' : rightSection ? emptyActionMessage : undefined;
-
-  useEffect(() => {
-    if (visible.pageIndex !== pageIndex) {
-      setPageIndex(visible.pageIndex);
-    }
-  }, [pageIndex, visible.pageIndex]);
 
   return (
     <section className="min-w-0" ref={listRef}>
@@ -133,19 +116,10 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
                 className="h-6 translate-y-px border-0 bg-transparent! pr-0 pl-6 shadow-none focus-visible:border-0 focus-visible:ring-0"
                 placeholder={isCompact ? 'Search...' : 'Search documents...'}
                 value={search}
-                onChange={(event) => {
-                  setSearch(event.currentTarget.value);
-                  setPageIndex(0);
-                }}
+                onChange={(event) => setSearch(event.currentTarget.value)}
               />
             </div>
-            <Select
-              value={sort}
-              onValueChange={(value) => {
-                setSort(parseDocumentCardSortValue(value ?? ''));
-                setPageIndex(0);
-              }}
-            >
+            <Select value={sort} onValueChange={(value) => setSort(parseDocumentCardSortValue(value ?? ''))}>
               <SelectTrigger
                 aria-label="Sort documents"
                 className="h-6 w-fit border-0 bg-transparent! px-0 py-0 shadow-none focus-visible:border-0 focus-visible:ring-0 sm:justify-end"
@@ -195,38 +169,16 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
             </Empty>
           ) : null}
         </CardContent>
-        {shouldShowPager || !isCompact ? (
-          <CardContent className="flex flex-col gap-3 py-3 text-muted-foreground text-sm sm:flex-row sm:items-center sm:justify-between">
-            {!isCompact ? (
-              <span>
-                {formatDocumentFooterCount({ documentCount: documents.length, search, visibleTotal: visible.total })}
-              </span>
-            ) : null}
-            {shouldShowPager ? (
-              <Pagination className="mx-0 w-auto justify-end">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      disabled={visible.pageIndex === 0}
-                      onClick={() => setPageIndex((current) => Math.max(current - 1, 0))}
-                    />
-                  </PaginationItem>
-                  <PaginationItem>
-                    <span className="px-2 text-muted-foreground text-sm">
-                      Page {visible.pageIndex + 1} of {visible.pageCount}
-                    </span>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationNext
-                      disabled={visible.pageIndex >= visible.pageCount - 1}
-                      onClick={() => setPageIndex((current) => Math.min(current + 1, visible.pageCount - 1))}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            ) : null}
-          </CardContent>
-        ) : null}
+        <CardContent className="py-3">
+          <DataTableLoadMore
+            hasNextPage={false}
+            isFetchingNextPage={false}
+            loadedCount={visible.documents.length}
+            onLoadMore={() => undefined}
+            total={visible.total}
+            totalLabel={formatDocumentCount}
+          />
+        </CardContent>
       </Card>
       <DocumentPreviewSheet
         document={previewDocument}
@@ -441,20 +393,4 @@ function getDocumentFileKind(document: Pick<DocumentSummary, 'contentType'>): {
 
 function formatDocumentCount(total: number): string {
   return `${total} ${total === 1 ? 'document' : 'documents'}`;
-}
-
-function formatDocumentFooterCount({
-  documentCount,
-  search,
-  visibleTotal,
-}: {
-  documentCount: number;
-  search: string;
-  visibleTotal: number;
-}): string {
-  if (search.trim()) {
-    return `${visibleTotal} of ${formatDocumentCount(documentCount)}`;
-  }
-
-  return formatDocumentCount(visibleTotal);
 }

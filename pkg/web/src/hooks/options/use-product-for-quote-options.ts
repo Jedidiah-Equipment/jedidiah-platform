@@ -7,7 +7,7 @@ import { mergeSelectedOption, toSelectOptions } from './helpers.js';
 
 type UseProductForQuoteOptionsOptions = {
   includeHistoricalSelected?: boolean;
-  pageSize?: number;
+  limit?: number;
   rangeId?: UUID | '';
   search?: string;
   value?: UUID | '';
@@ -15,15 +15,15 @@ type UseProductForQuoteOptionsOptions = {
 
 const defaultProductListInput = {
   columnFilters: {},
-  page: 1,
+  cursor: 0,
   search: '',
   sortBy: 'name',
   sortDirection: 'asc',
-} as const satisfies Omit<ProductListInput, 'pageSize'>;
+} as const satisfies Omit<ProductListInput, 'limit'>;
 
 export function useProductForQuoteOptions({
   includeHistoricalSelected = false,
-  pageSize = 20,
+  limit = 20,
   rangeId = '',
   search = '',
   value = '',
@@ -33,7 +33,7 @@ export function useProductForQuoteOptions({
   const input = {
     ...defaultProductListInput,
     columnFilters: rangeColumnFilter,
-    pageSize,
+    limit,
     search,
   };
   const productsQuery = useQuery(trpc.quotes.products.queryOptions(input));
@@ -41,7 +41,7 @@ export function useProductForQuoteOptions({
     ...trpc.quotes.products.queryOptions({
       ...defaultProductListInput,
       columnFilters: { id: value, ...rangeColumnFilter },
-      pageSize: 1,
+      limit: 1,
     }),
     enabled: Boolean(value) && !includeHistoricalSelected,
   });

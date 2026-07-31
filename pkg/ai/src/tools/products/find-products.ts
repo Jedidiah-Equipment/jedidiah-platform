@@ -27,8 +27,8 @@ export const FindProductsResponse = z.array(FindProductsItem);
 
 export function toCoreProductListInput(input: FindProductsInput): ProductListInput {
   return {
-    page: 1,
-    pageSize: 0,
+    cursor: 0,
+    limit: 0,
     search: input.search,
     columnFilters: {},
     sortBy: 'name',

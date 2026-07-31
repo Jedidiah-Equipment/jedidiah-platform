@@ -4,7 +4,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area.js';
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { cn } from '@/lib/utils.js';
 import { DataTableHeader } from './components/DataTableHeader.js';
-import { DataTablePagination } from './components/DataTablePagination.js';
+import { DataTableLoadMore } from './components/DataTableLoadMore.js';
 import { DataTableSearch } from './components/DataTableSearch.js';
 import { DataTableSkeletonRows } from './components/DataTableSkeletonRows.js';
 import { getCellClassName, hasActiveFilterValue } from './utils.js';
@@ -26,11 +26,14 @@ type DataTableProps<TData> = {
   getRowClassName?: ((item: TData) => string | undefined) | undefined;
   getRowState?: ((item: TData) => 'selected' | undefined) | undefined;
   globalFilterPlaceholder?: string;
+  hasNextPage: boolean;
   hideGlobalFilter?: boolean;
+  isFetchingNextPage: boolean;
   isLoading?: boolean;
+  loadedCount: number;
   loadingRowCount?: number;
+  onLoadMore: () => void;
   onRowClick?: ((item: TData) => void) | undefined;
-  pageSizeOptions?: number[];
   rightSection?: React.ReactNode;
   tableClassName?: string;
   table: TanStackTable<TData>;
@@ -46,11 +49,14 @@ export function DataTable<TData>({
   getRowClassName,
   getRowState,
   globalFilterPlaceholder = 'Search...',
+  hasNextPage,
   hideGlobalFilter = false,
+  isFetchingNextPage,
   isLoading = false,
+  loadedCount,
   loadingRowCount = 10,
+  onLoadMore,
   onRowClick,
-  pageSizeOptions = [10, 25, 50],
   rightSection,
   table,
   tableClassName,
@@ -63,6 +69,7 @@ export function DataTable<TData>({
     hasActiveFilterValue(tableState.globalFilter) ||
     tableState.columnFilters.some((filter) => hasActiveFilterValue(filter.value));
   const showToolbar = !hideGlobalFilter || rightSection || hasActiveFilters;
+  const rows = table.getRowModel().rows;
 
   return (
     <div className="flex flex-col gap-4">
@@ -114,7 +121,7 @@ export function DataTable<TData>({
             <TableBody>
               {isLoading ? <DataTableSkeletonRows columns={visibleColumns.length} rows={loadingRowCount} /> : null}
 
-              {!isLoading && table.getRowModel().rows.length === 0 ? (
+              {!isLoading && rows.length === 0 ? (
                 <TableRow>
                   <TableCell
                     className="h-24 text-center text-muted-foreground"
@@ -126,18 +133,16 @@ export function DataTable<TData>({
               ) : null}
 
               {!isLoading
-                ? table
-                    .getRowModel()
-                    .rows.map((row) => (
-                      <DataTableRow
-                        getRowAriaLabel={getRowAriaLabel}
-                        getRowClassName={getRowClassName}
-                        getRowState={getRowState}
-                        key={row.id}
-                        onRowClick={onRowClick}
-                        row={row}
-                      />
-                    ))
+                ? rows.map((row) => (
+                    <DataTableRow
+                      getRowAriaLabel={getRowAriaLabel}
+                      getRowClassName={getRowClassName}
+                      getRowState={getRowState}
+                      key={row.id}
+                      onRowClick={onRowClick}
+                      row={row}
+                    />
+                  ))
                 : null}
             </TableBody>
           </table>
@@ -145,7 +150,14 @@ export function DataTable<TData>({
         </ScrollArea>
       </div>
 
-      <DataTablePagination pageSizeOptions={pageSizeOptions} table={table} total={total} totalLabel={totalLabel} />
+      <DataTableLoadMore
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        loadedCount={loadedCount}
+        onLoadMore={onLoadMore}
+        total={total}
+        totalLabel={totalLabel}
+      />
     </div>
   );
 }

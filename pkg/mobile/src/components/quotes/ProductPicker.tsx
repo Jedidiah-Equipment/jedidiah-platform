@@ -40,8 +40,8 @@ export function ProductPicker({
     trpc.quotes.products.queryOptions(
       {
         columnFilters: rangeId ? { rangeId } : {},
-        page: 1,
-        pageSize: 20,
+        cursor: 0,
+        limit: 20,
         search: debouncedSearch,
         sortBy: 'name',
         sortDirection: 'asc',

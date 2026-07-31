@@ -74,8 +74,8 @@ export function toCoreQuoteListInput(input: FindQuotesInput): QuoteListInput {
 
   return {
     filters,
-    page: 1,
-    pageSize: 0,
+    cursor: 0,
+    limit: 0,
     search: '',
     sortBy: 'code',
     sortDirection: 'asc',

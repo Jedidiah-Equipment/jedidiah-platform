@@ -43,8 +43,8 @@ describe('findProductUnits contract', () => {
 
     expect(toCoreProductUnitListInput(input)).toEqual({
       columnFilters: { owner: 'stock' },
-      page: 1,
-      pageSize: 0,
+      cursor: 0,
+      limit: 0,
       search: '24-0117',
       sortBy: 'productSerialNumber',
       sortDirection: 'asc',

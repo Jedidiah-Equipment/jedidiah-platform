@@ -262,7 +262,7 @@ const StockBuildProductCombobox: React.FC<{
 }> = ({ disabled, onSelected, value }) => {
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 250);
-  const products = useProductOptions({ pageSize: 20, search: debouncedSearch, value });
+  const products = useProductOptions({ limit: 20, search: debouncedSearch, value });
   const valueProduct = products.itemsWithSelected.find((product) => product.id === value) ?? null;
 
   return (

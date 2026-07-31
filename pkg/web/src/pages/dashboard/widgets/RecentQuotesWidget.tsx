@@ -15,8 +15,8 @@ const RECENT_QUOTES_LIST_INPUT = {
   filters: {
     statuses: [],
   },
-  page: 1,
-  pageSize: 5,
+  cursor: 0,
+  limit: 5,
   search: '',
   sortBy: 'createdAt',
   sortDirection: 'desc',

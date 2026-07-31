@@ -16,7 +16,7 @@ import type {
   SupplierUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { Supplier as SupplierSchema } from '@pkg/schema';
+import { getNextCursor, Supplier as SupplierSchema } from '@pkg/schema';
 import { and, asc, eq, isNull, type SQL, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
@@ -66,12 +66,12 @@ export async function listSuppliers({ db, input }: { db: Db; input: SupplierList
     ...getPaginationQueryOptions(input),
   });
   const total = await db.$count(supplier, where);
+  const items = rows.map(mapSupplier);
 
   return {
-    items: rows.map(mapSupplier),
+    items,
+    nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }),
     total,
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
   };
 }
 

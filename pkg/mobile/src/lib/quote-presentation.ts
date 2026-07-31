@@ -96,15 +96,6 @@ export function presentQuotePages<T extends { id: string }>(
   return { priorityQuotes: [...priorityQuotes], mainQuotes };
 }
 
-export function getNextQuotePage<T>(
-  lastPage: QuotePage<T> & { total: number },
-  pages: readonly QuotePage<T>[],
-): number | undefined {
-  const loaded = pages.reduce((count, page) => count + page.items.length, 0);
-
-  return loaded < lastPage.total ? pages.length + 1 : undefined;
-}
-
 /** The picker's fourth option. A Work Item with no Department is the only shape that carries a name. */
 export const OTHER_WORK_ITEM_DEPARTMENT = 'other';
 

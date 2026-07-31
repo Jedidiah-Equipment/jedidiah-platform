@@ -2,7 +2,7 @@ import type { SortingState } from '@tanstack/react-table';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { constrainPagination, constrainSorting, getPageCount, getPrimarySort } from './table-state.js';
+import { constrainSorting, getPrimarySort } from './table-state.js';
 
 const TestSortBy = z.enum(['name', 'email', 'role']);
 
@@ -14,23 +14,6 @@ const sortOptions = {
 } as const;
 
 describe('data table state helpers', () => {
-  it('returns at least one page', () => {
-    expect(getPageCount(0, 10)).toBe(1);
-    expect(getPageCount(1, 10)).toBe(1);
-    expect(getPageCount(11, 10)).toBe(2);
-  });
-
-  it('clamps pagination to the available page count', () => {
-    expect(constrainPagination({ pageIndex: 4, pageSize: 10 }, 2)).toEqual({
-      pageIndex: 1,
-      pageSize: 10,
-    });
-    expect(constrainPagination({ pageIndex: 0, pageSize: 25 }, 0)).toEqual({
-      pageIndex: 0,
-      pageSize: 25,
-    });
-  });
-
   it('preserves allowed primary sort ids and direction', () => {
     const sorting: SortingState = [{ id: 'role', desc: true }];
 

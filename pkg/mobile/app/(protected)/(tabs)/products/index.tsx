@@ -32,7 +32,7 @@ export default function ProductsRoute() {
   // keepPreviousData holds the grid (and the mounted search box) steady while a new search loads.
   const products = useQuery(
     trpc.products.list.queryOptions(
-      { pageSize: 0, search: debouncedSearch || undefined },
+      { limit: 0, search: debouncedSearch || undefined },
       { placeholderData: keepPreviousData },
     ),
   );

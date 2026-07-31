@@ -154,8 +154,7 @@ describe('suppliers.list', () => {
 
     expect(supplierNames(result.items)).toEqual(['Acme Supplies', 'Zeta Supplies']);
     expect(result.total).toBe(2);
-    expect(result.sortBy).toBe('companyName');
-    expect(result.sortDirection).toBe('asc');
+    expect(result.nextCursor).toBeNull();
   });
 
   test('pages and sorts suppliers', async ({ context }) => {
@@ -163,8 +162,8 @@ describe('suppliers.list', () => {
     await createSuppliers(caller, ['Alpha', 'Bravo', 'Charlie']);
 
     const result = await caller.suppliers.list({
-      page: 2,
-      pageSize: 2,
+      cursor: 2,
+      limit: 2,
       columnFilters: {},
       search: '',
       sortBy: 'companyName',
@@ -172,6 +171,7 @@ describe('suppliers.list', () => {
     });
 
     expect(supplierNames(result.items)).toEqual(['Charlie']);
+    expect(result.nextCursor).toBeNull();
     expect(result.total).toBe(3);
   });
 
@@ -197,8 +197,8 @@ describe('suppliers.list', () => {
     await createSupplier(caller, 'Cargo Works', { email: 'hello@cargo.example' });
 
     const result = await caller.suppliers.list({
-      page: 1,
-      pageSize: 10,
+      cursor: 0,
+      limit: 10,
       columnFilters: {
         companyName: 'supplies',
       },
@@ -208,8 +208,8 @@ describe('suppliers.list', () => {
     });
 
     expect(supplierNames(result.items)).toEqual(['Acme Supplies', 'Beta Supplies']);
+    expect(result.nextCursor).toBeNull();
     expect(result.total).toBe(2);
-    expect(result.sortBy).toBe('email');
   });
 
   test('combines global search and column filters before paging and counting', async ({ context }) => {
@@ -217,8 +217,8 @@ describe('suppliers.list', () => {
     await createSuppliers(caller, ['Alpha Supplies', 'Bravo Supplies', 'Bravo Parts', 'Charlie Supplies']);
 
     const result = await caller.suppliers.list({
-      page: 1,
-      pageSize: 10,
+      cursor: 0,
+      limit: 10,
       columnFilters: {
         companyName: 'bravo',
       },

@@ -3,25 +3,41 @@ import { z } from 'zod';
 import { SortDirection } from './sort.js';
 import { SearchText } from './text.js';
 
-export type PagedQueryInput = z.infer<typeof PagedQueryInput>;
-export const PagedQueryInput = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(0).max(100).default(10),
+export type CursorQueryInput = z.infer<typeof CursorQueryInput>;
+export const CursorQueryInput = z.object({
+  // Coercion intentionally accepts tRPC's null initial pageParam as the first offset.
+  cursor: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(0).max(100).default(10),
 });
 
-export type PagedQueryResult<TItem> = {
+export type CursorQueryResult<TItem> = {
   items: TItem[];
+  nextCursor: number | null;
   total: number;
 };
 
-export function createPagedQueryResult<ItemSchema extends z.ZodType>(itemSchema: ItemSchema) {
+export function createCursorQueryResult<ItemSchema extends z.ZodType>(itemSchema: ItemSchema) {
   return z.object({
     items: z.array(itemSchema),
+    nextCursor: z.number().int().nonnegative().nullable(),
     total: z.number().int().nonnegative(),
   });
 }
 
-export function createSortedPagedQueryInput<
+export function getNextCursor({
+  count,
+  cursor,
+  total,
+}: {
+  count: number;
+  cursor: number;
+  total: number;
+}): number | null {
+  // An empty result for a stale cursor must terminate instead of repeating forever.
+  return count > 0 && cursor + count < total ? cursor + count : null;
+}
+
+export function createSortedCursorQueryInput<
   SortBySchema extends z.ZodType,
   Shape extends z.core.$ZodLooseShape = Record<string, never>,
 >({
@@ -33,14 +49,14 @@ export function createSortedPagedQueryInput<
   shape: Shape;
   sortBy: SortBySchema;
 }) {
-  return PagedQueryInput.extend({
+  return CursorQueryInput.extend({
     ...shape,
     sortBy,
     sortDirection: SortDirection.default(defaultSortDirection),
   });
 }
 
-export function createSearchedSortedPagedQueryInput<
+export function createSearchedSortedCursorQueryInput<
   SortBySchema extends z.ZodType,
   Shape extends z.core.$ZodLooseShape = Record<string, never>,
 >({
@@ -52,22 +68,12 @@ export function createSearchedSortedPagedQueryInput<
   shape: Shape;
   sortBy: SortBySchema;
 }) {
-  return createSortedPagedQueryInput({
+  return createSortedCursorQueryInput({
     defaultSortDirection,
     shape: {
       ...shape,
       search: SearchText,
     },
     sortBy,
-  });
-}
-
-export function createSortedPagedQueryResult<ItemSchema extends z.ZodType, SortBySchema extends z.ZodEnum>(
-  itemSchema: ItemSchema,
-  sortBy: SortBySchema,
-) {
-  return createPagedQueryResult(itemSchema).extend({
-    sortBy,
-    sortDirection: SortDirection,
   });
 }

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
-import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
+import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
@@ -95,14 +95,14 @@ export const ProductUnitColumnFilters = z
   .default({});
 
 export type ProductUnitListInput = z.infer<typeof ProductUnitListInput>;
-export const ProductUnitListInput = createSearchedSortedPagedQueryInput({
+export const ProductUnitListInput = createSearchedSortedCursorQueryInput({
   defaultSortDirection: 'desc',
   shape: { columnFilters: ProductUnitColumnFilters },
   sortBy: ProductUnitSortBy.default('createdAt'),
 });
 
 export type ProductUnitListResult = z.infer<typeof ProductUnitListResult>;
-export const ProductUnitListResult = createSortedPagedQueryResult(ProductUnitSummary, ProductUnitSortBy);
+export const ProductUnitListResult = createCursorQueryResult(ProductUnitSummary);
 
 /**
  * The machine's identity as a person may edit it. Only the VIN: the serial is minted with the Unit and

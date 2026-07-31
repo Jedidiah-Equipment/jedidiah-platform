@@ -1,14 +1,12 @@
 import { AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
 import { IconEye } from '@tabler/icons-react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
-import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
-import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore, type DataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -134,20 +132,15 @@ export const AuditTable: React.FC<AuditTableProps> = ({
 
   const userOptions = useUserOptions();
 
-  const auditQuery = useQuery(
-    trpc.audit.list.queryOptions(tableController.listInput, {
+  const auditQuery = useInfiniteQuery(
+    trpc.audit.list.infiniteQueryOptions(tableController.listInput, {
+      getNextPageParam: (page) => page.nextCursor,
+      initialCursor: 0,
       placeholderData: keepPreviousData,
     }),
   );
-  const { items: auditEvents, total, isLoading } = usePagedQueryResult<AuditEventRow>(auditQuery);
-
-  const tableState = useConstrainedTableState({
-    pagination: tableController.pagination,
-    setPageIndex: tableController.setPageIndex,
-    sorting: tableController.sorting,
-    sortOptions: auditSortOptions,
-    total,
-  });
+  const auditEvents = (auditQuery.data?.pages.flatMap((page) => page.items) ?? []) as AuditEventRow[];
+  const total = auditQuery.data?.pages.at(-1)?.total ?? 0;
 
   const columns = useMemo<ColumnDef<AuditEventRow>[]>(
     () => [
@@ -233,17 +226,12 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
-    manualPagination: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,
-    onPaginationChange: tableController.setPagination,
     onSortingChange: tableController.setSorting,
-    pageCount: tableState.pageCount,
-    rowCount: total,
     state: {
       columnFilters: tableController.columnFilters,
-      pagination: tableState.pagination,
-      sorting: tableState.sorting,
+      sorting: tableController.sorting,
     },
   });
 
@@ -251,8 +239,12 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     <DataTable
       emptyMessage={emptyMessage}
       errorMessage={getApiQueryErrorMessage(auditQuery.error, 'Unable to load audit events.')}
+      hasNextPage={auditQuery.hasNextPage}
       hideGlobalFilter
-      isLoading={isLoading}
+      isFetchingNextPage={auditQuery.isFetchingNextPage}
+      isLoading={auditQuery.isPending}
+      loadedCount={auditEvents.length}
+      onLoadMore={() => void auditQuery.fetchNextPage()}
       tableClassName="table-fixed"
       table={table}
       total={total}

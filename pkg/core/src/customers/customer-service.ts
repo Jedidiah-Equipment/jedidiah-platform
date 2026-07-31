@@ -15,7 +15,7 @@ import type {
   CustomerUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { Customer } from '@pkg/schema';
+import { Customer, getNextCursor } from '@pkg/schema';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate } from '../audit/audit-service.js';
@@ -67,12 +67,12 @@ export async function listCustomers({ db, input }: { db: Db; input: CustomerList
     ...getPaginationQueryOptions(input),
   });
   const total = await db.$count(customers, where);
+  const items = rows.map(mapCustomer);
 
   return {
-    items: rows.map(mapCustomer),
+    items,
+    nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }),
     total,
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
   };
 }
 

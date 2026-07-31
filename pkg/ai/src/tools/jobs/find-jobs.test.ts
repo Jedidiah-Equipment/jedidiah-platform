@@ -27,8 +27,8 @@ describe('findJobs contract', () => {
     expect(toCoreJobListInput(input)).toEqual({
       columnFilters: {},
       filters: {},
-      page: 1,
-      pageSize: 0,
+      cursor: 0,
+      limit: 0,
       search: 'JOB-1',
       sortBy: 'code',
       sortDirection: 'asc',

@@ -31,8 +31,8 @@ export function CustomerPicker({
   const customers = useQuery(
     trpc.quotes.customers.queryOptions(
       {
-        page: 1,
-        pageSize: 20,
+        cursor: 0,
+        limit: 20,
         search: debouncedSearch,
         sortBy: 'companyName',
         sortDirection: 'asc',

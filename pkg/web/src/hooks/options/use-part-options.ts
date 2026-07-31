@@ -10,18 +10,18 @@ type PartSelectOption = SelectOption & {
 };
 
 type UsePartOptionsOptions = {
-  pageSize?: number;
+  limit?: number;
   sortBy?: PartListInput['sortBy'];
   sortDirection?: PartListInput['sortDirection'];
 };
 
-export function usePartOptions({ pageSize = 20, sortBy = 'name', sortDirection = 'asc' }: UsePartOptionsOptions = {}) {
+export function usePartOptions({ limit = 20, sortBy = 'name', sortDirection = 'asc' }: UsePartOptionsOptions = {}) {
   const trpc = useTRPC();
   const query = useQuery(
     trpc.parts.list.queryOptions({
       columnFilters: {},
-      page: 1,
-      pageSize,
+      cursor: 0,
+      limit,
       sortBy,
       sortDirection,
     }),

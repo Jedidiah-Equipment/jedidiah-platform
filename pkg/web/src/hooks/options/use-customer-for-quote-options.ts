@@ -8,29 +8,29 @@ import type { CustomerOption } from './use-customer-options.js';
 
 type UseCustomerForQuoteOptionsOptions = {
   fallbackCustomer?: CustomerOption | null;
-  pageSize?: number;
+  limit?: number;
   search?: string;
   value?: UUID | '';
 };
 
 const defaultCustomerListInput = {
   columnFilters: {},
-  page: 1,
+  cursor: 0,
   search: '',
   sortBy: 'companyName',
   sortDirection: 'asc',
-} as const satisfies Omit<CustomerListInput, 'pageSize'>;
+} as const satisfies Omit<CustomerListInput, 'limit'>;
 
 export function useCustomerForQuoteOptions({
   fallbackCustomer = null,
-  pageSize = 20,
+  limit = 20,
   search = '',
   value = '',
 }: UseCustomerForQuoteOptionsOptions = {}) {
   const trpc = useTRPC();
   const input = {
     ...defaultCustomerListInput,
-    pageSize,
+    limit,
     search,
   };
   const customersQuery = useQuery(trpc.quotes.customers.queryOptions(input));
@@ -38,7 +38,7 @@ export function useCustomerForQuoteOptions({
     ...trpc.quotes.customers.queryOptions({
       ...defaultCustomerListInput,
       columnFilters: { id: value },
-      pageSize: 1,
+      limit: 1,
     }),
     enabled: Boolean(value),
   });

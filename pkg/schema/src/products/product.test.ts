@@ -396,7 +396,7 @@ describe('ProductListInput', () => {
           rangeId: RANGE_ID,
           variantId: '00000000-0000-4000-8000-000000000103',
         },
-        pageSize: 20,
+        limit: 20,
         sortBy: 'variantName',
       }),
     ).toMatchObject({
@@ -404,7 +404,7 @@ describe('ProductListInput', () => {
         rangeId: RANGE_ID,
         variantId: '00000000-0000-4000-8000-000000000103',
       },
-      pageSize: 20,
+      limit: 20,
       sortBy: 'variantName',
       sortDirection: 'asc',
     });

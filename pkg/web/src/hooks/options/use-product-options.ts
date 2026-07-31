@@ -8,24 +8,24 @@ import { mergeSelectedOption, toSelectOptions } from './helpers.js';
 export type ProductOption = Pick<Product, 'assemblies' | 'basePrice' | 'currencyCode' | 'id' | 'modelCode' | 'name'>;
 
 type UseProductOptionsOptions = {
-  pageSize?: number;
+  limit?: number;
   search?: string;
   value?: UUID | '';
 };
 
 const defaultProductListInput = {
   columnFilters: {},
-  page: 1,
+  cursor: 0,
   search: '',
   sortBy: 'name',
   sortDirection: 'asc',
-} as const satisfies Omit<ProductListInput, 'pageSize'>;
+} as const satisfies Omit<ProductListInput, 'limit'>;
 
-export function useProductOptions({ pageSize = 20, search = '', value = '' }: UseProductOptionsOptions = {}) {
+export function useProductOptions({ limit = 20, search = '', value = '' }: UseProductOptionsOptions = {}) {
   const trpc = useTRPC();
   const input = {
     ...defaultProductListInput,
-    pageSize,
+    limit,
     search,
   };
   const productsQuery = useQuery(trpc.products.list.queryOptions(input));
@@ -33,7 +33,7 @@ export function useProductOptions({ pageSize = 20, search = '', value = '' }: Us
     ...trpc.products.list.queryOptions({
       ...defaultProductListInput,
       columnFilters: { id: value },
-      pageSize: 1,
+      limit: 1,
     }),
     enabled: Boolean(value),
   });

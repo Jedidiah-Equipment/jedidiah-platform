@@ -410,8 +410,8 @@ describe('products.read', () => {
     });
 
     const list = await caller.products.list({
-      page: 1,
-      pageSize: 10,
+      cursor: 0,
+      limit: 10,
     });
 
     expect(list.items).toContainEqual(
@@ -444,13 +444,13 @@ describe('products.read', () => {
     });
 
     const sorted = await caller.products.list({
-      pageSize: 10,
+      limit: 10,
       sortBy: 'rangeName',
       sortDirection: 'desc',
     });
 
     expect(sorted.items.map((product) => product.id)).toEqual([zebraProduct.id, alphaProduct.id]);
-    expect(sorted.sortBy).toBe('rangeName');
+    expect(sorted.nextCursor).toBeNull();
   });
 
   test('supports filtering and sorting products by Variant with nulls last', async ({ context }) => {
@@ -477,7 +477,7 @@ describe('products.read', () => {
     });
 
     const sortedAsc = await caller.products.list({
-      pageSize: 10,
+      limit: 10,
       sortBy: 'variantName',
       sortDirection: 'asc',
     });
@@ -488,7 +488,7 @@ describe('products.read', () => {
     ]);
 
     const sortedDesc = await caller.products.list({
-      pageSize: 10,
+      limit: 10,
       sortBy: 'variantName',
       sortDirection: 'desc',
     });
@@ -497,7 +497,7 @@ describe('products.read', () => {
       alphaProduct.id,
       noVariantProduct.id,
     ]);
-    expect(sortedDesc.sortBy).toBe('variantName');
+    expect(sortedDesc.nextCursor).toBeNull();
   });
 
   test('sorts products by updated date', async ({ context }) => {
@@ -516,7 +516,7 @@ describe('products.read', () => {
 
     const sortedAsc = await caller.products.list({
       columnFilters: { name: 'Updated Sort' },
-      pageSize: 10,
+      limit: 10,
       sortBy: 'updatedAt',
       sortDirection: 'asc',
     });
@@ -524,12 +524,12 @@ describe('products.read', () => {
 
     const sortedDesc = await caller.products.list({
       columnFilters: { name: 'Updated Sort' },
-      pageSize: 10,
+      limit: 10,
       sortBy: 'updatedAt',
       sortDirection: 'desc',
     });
     expect(sortedDesc.items.map((product) => product.id)).toEqual([newerProduct.id, olderProduct.id]);
-    expect(sortedDesc.sortBy).toBe('updatedAt');
+    expect(sortedDesc.nextCursor).toBeNull();
   });
 
   test('sorts products by display order', async ({ context }) => {
@@ -546,14 +546,14 @@ describe('products.read', () => {
 
     const sorted = await caller.products.list({
       columnFilters: { name: 'Display Sort' },
-      pageSize: 10,
+      limit: 10,
       sortBy: 'displayOrder',
       sortDirection: 'asc',
     });
 
     const tiedProductIds = [tiedProductA.id, tiedProductB.id].toSorted();
     expect(sorted.items.map((product) => product.id)).toEqual([...tiedProductIds, laterProduct.id]);
-    expect(sorted.sortBy).toBe('displayOrder');
+    expect(sorted.nextCursor).toBeNull();
   });
 
   test('returns assemblies on get and list', async ({ context }) => {
@@ -582,8 +582,8 @@ describe('products.read', () => {
     });
 
     const list = await caller.products.list({
-      page: 1,
-      pageSize: 10,
+      cursor: 0,
+      limit: 10,
     });
 
     expect(list.items).toContainEqual(

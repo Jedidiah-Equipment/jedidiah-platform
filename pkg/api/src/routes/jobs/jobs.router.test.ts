@@ -1111,8 +1111,8 @@ describe('jobs.create', () => {
 
     const result = await caller.jobs.list({
       filters: {},
-      page: 1,
-      pageSize: 10,
+      cursor: 0,
+      limit: 10,
       search: serialNumber,
       sortBy: 'createdAt',
       sortDirection: 'asc',
@@ -1226,7 +1226,7 @@ describe('jobs.list scheduleState', () => {
       sortDirection: 'desc',
     });
     expect(sorted.items.map((item) => item.id)).toEqual([plainJob.id, percentJob.id]);
-    expect(sorted.sortBy).toBe('productSerialNumber');
+    expect(sorted.nextCursor).toBeNull();
   });
 
   test('rejects callers without job:read', async ({ context }) => {
@@ -1255,8 +1255,8 @@ describe('jobs.customerOptions', () => {
       .returning({ id: customers.id });
 
     const result = await jobViewerCaller.jobs.customerOptions({
-      page: 1,
-      pageSize: 0,
+      cursor: 0,
+      limit: 0,
       search: 'Option Customer',
       sortBy: 'companyName',
       sortDirection: 'asc',

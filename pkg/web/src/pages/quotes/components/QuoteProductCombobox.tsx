@@ -35,7 +35,7 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 250);
   const products = useProductForQuoteOptions({
-    pageSize: 20,
+    limit: 20,
     rangeId,
     search: debouncedSearch,
     value,

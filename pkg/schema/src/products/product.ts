@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { DateIso } from '../common/date.js';
 import { EntityFile } from '../common/file.js';
-import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
+import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { Price, PriceDelta, PriceDeltaInput } from '../common/price.js';
 import {
   nullableTrimmedText,
@@ -548,7 +548,7 @@ export const ProductUpdateInput = z
   .strict();
 
 export type ProductListInput = z.infer<typeof ProductListInput>;
-export const ProductListInput = createSearchedSortedPagedQueryInput({
+export const ProductListInput = createSearchedSortedCursorQueryInput({
   shape: {
     columnFilters: ProductColumnFilters,
   },
@@ -556,7 +556,7 @@ export const ProductListInput = createSearchedSortedPagedQueryInput({
 });
 
 export type ProductListResult = z.infer<typeof ProductListResult>;
-export const ProductListResult = createSortedPagedQueryResult(Product, ProductSortBy);
+export const ProductListResult = createCursorQueryResult(Product);
 
 export type AssemblyNameListResult = z.infer<typeof AssemblyNameListResult>;
 export const AssemblyNameListResult = z.object({

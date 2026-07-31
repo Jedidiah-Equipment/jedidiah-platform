@@ -29,8 +29,8 @@ export const FindCustomersResponse = z.array(FindCustomerItem);
 export function toCoreCustomerListInput(input: FindCustomersInput): CustomerListInput {
   return {
     columnFilters: {},
-    page: 1,
-    pageSize: 0,
+    cursor: 0,
+    limit: 0,
     search: input.search,
     sortBy: 'companyName',
     sortDirection: 'asc',

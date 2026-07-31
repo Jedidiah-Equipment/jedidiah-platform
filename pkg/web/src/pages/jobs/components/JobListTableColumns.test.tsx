@@ -197,5 +197,16 @@ function TestJobListTable({ permissions, rows }: { permissions: TestColumnOption
     },
   });
 
-  return <DataTable emptyMessage="No jobs found." hideGlobalFilter table={table} total={rows.length} />;
+  return (
+    <DataTable
+      emptyMessage="No jobs found."
+      hasNextPage={false}
+      hideGlobalFilter
+      isFetchingNextPage={false}
+      loadedCount={rows.length}
+      onLoadMore={() => undefined}
+      table={table}
+      total={rows.length}
+    />
+  );
 }

@@ -7,24 +7,24 @@ import { toSelectOptions } from './helpers.js';
 
 type UseSupplierOptionsOptions = {
   enabled?: boolean;
-  pageSize?: number;
+  limit?: number;
 };
 
 const defaultSupplierListInput = {
   columnFilters: {},
-  page: 1,
+  cursor: 0,
   search: '',
   sortBy: 'companyName',
   sortDirection: 'asc',
-} as const satisfies Omit<SupplierListInput, 'pageSize'>;
+} as const satisfies Omit<SupplierListInput, 'limit'>;
 
-export function useSupplierOptions({ enabled = true, pageSize = 20 }: UseSupplierOptionsOptions = {}) {
+export function useSupplierOptions({ enabled = true, limit = 20 }: UseSupplierOptionsOptions = {}) {
   const trpc = useTRPC();
   const query = useQuery(
     trpc.suppliers.list.queryOptions(
       {
         ...defaultSupplierListInput,
-        pageSize,
+        limit,
       },
       { enabled },
     ),

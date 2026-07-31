@@ -994,8 +994,8 @@ describe('custom quotes', () => {
         db: context.db,
         input: {
           filters: { kind: 'custom', statuses: [] },
-          page: 1,
-          pageSize: 10,
+          cursor: 0,
+          limit: 10,
           search: 'Axle',
           sortBy: 'productName',
           sortDirection: 'asc',
@@ -1180,8 +1180,8 @@ describe('listQuotes', () => {
         db: context.db,
         input: {
           filters: { statuses: [] },
-          page: 1,
-          pageSize: 10,
+          cursor: 0,
+          limit: 10,
           search: '',
           sortBy: 'createdAt',
           sortDirection: 'asc',
@@ -1218,8 +1218,8 @@ describe('listQuotes', () => {
         db: context.db,
         input: {
           filters: { statuses: ['cancelled'] },
-          page: 1,
-          pageSize: 10,
+          cursor: 0,
+          limit: 10,
           search: '',
           sortBy: 'createdAt',
           sortDirection: 'asc',

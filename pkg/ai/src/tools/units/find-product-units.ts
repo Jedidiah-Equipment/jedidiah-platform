@@ -10,11 +10,15 @@ import { z } from 'zod';
 import type { AiContext } from '@/context.js';
 
 import { createProductUnitLinks, ProductUnitLinks } from './product-unit-links.js';
+import { ProductUnitProductResponse } from './product-unit-response.js';
 
 export type FindProductUnitsInput = z.infer<typeof FindProductUnitsInput>;
 export const FindProductUnitsInput = ProductUnitListInput.pick({ columnFilters: true, search: true }).strict();
 
-const FindProductUnitItem = ProductUnitSummary.extend({ links: ProductUnitLinks });
+const FindProductUnitItem = ProductUnitSummary.extend({
+  links: ProductUnitLinks,
+  product: ProductUnitProductResponse,
+});
 
 export type FindProductUnitsResponse = z.infer<typeof FindProductUnitsResponse>;
 export const FindProductUnitsResponse = z.array(FindProductUnitItem);

@@ -8,6 +8,8 @@ const UNIT_ID = '00000000-0000-4000-8000-000000000501';
 const CUSTOMER_ID = '00000000-0000-4000-8000-000000000101';
 const PRODUCT_ID = '00000000-0000-4000-8000-000000000201';
 const JOB_ID = '00000000-0000-4000-8000-000000000401';
+const PRODUCT_THUMBNAIL_DATA_URL = `data:image/jpeg;base64,${'a'.repeat(16)}`;
+const PRODUCT_RESPONSE = { id: PRODUCT_ID, modelCode: 'CL-120', name: 'Compact Loader' };
 
 const unit = ProductUnitDetail.parse({
   id: UNIT_ID,
@@ -25,7 +27,7 @@ const unit = ProductUnitDetail.parse({
   ],
   owner: { id: CUSTOMER_ID, companyName: 'Acme Mining' },
   ownershipHistory: [],
-  product: { id: PRODUCT_ID, modelCode: 'CL-120', name: 'Compact Loader' },
+  product: { ...PRODUCT_RESPONSE, thumbnailDataUrl: PRODUCT_THUMBNAIL_DATA_URL },
   productSerialNumber: '24-0117',
   vinNumber: 'VIN-24-0117',
 });
@@ -43,6 +45,8 @@ describe('getProductUnit contract', () => {
 
     expect(response).toEqual({
       ...unit,
+      // Everything the machine is, minus the Product thumbnail the assistant has no use for.
+      product: PRODUCT_RESPONSE,
       links: {
         app: `/units/${UNIT_ID}`,
         owner: `/customers/${CUSTOMER_ID}/edit`,

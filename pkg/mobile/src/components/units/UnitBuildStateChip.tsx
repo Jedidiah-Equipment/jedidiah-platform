@@ -1,19 +1,24 @@
 import { productUnitBuildStateColorClassNames, productUnitBuildStateLabels, toDisplayBuildState } from '@pkg/domain';
 import type { ProductUnitBuildState, ProductUnitOwner } from '@pkg/schema';
-import type React from 'react';
+import { View } from 'react-native';
 
-import { Badge } from '@/components/ui/badge.js';
+import { Text } from '@/components/ui/text';
 
-export const ProductUnitBuildStateCell: React.FC<{
+export function UnitBuildStateChip({
+  buildState,
+  owner,
+}: {
   buildState: ProductUnitBuildState;
   owner: ProductUnitOwner | null;
-}> = ({ buildState, owner }) => {
+}) {
   const displayState = toDisplayBuildState(buildState, owner);
   const classNames = productUnitBuildStateColorClassNames[displayState];
 
   return (
-    <Badge className={`${classNames.chip} ${classNames.text}`} variant="outline">
-      {productUnitBuildStateLabels[displayState]}
-    </Badge>
+    <View className={`rounded-full border px-2 py-1 ${classNames.chip}`}>
+      <Text className={`text-[10px] tracking-wide ${classNames.text}`} mono weight="semibold">
+        {productUnitBuildStateLabels[displayState]}
+      </Text>
+    </View>
   );
-};
+}

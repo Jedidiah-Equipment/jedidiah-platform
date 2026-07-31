@@ -10,7 +10,11 @@ const gluestackPlugin = require('@gluestack-ui/nativewind-utils/tailwind-plugin'
  */
 module.exports = {
   darkMode: 'class',
-  content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
+  // `@pkg/domain` is scanned because shared status palettes (Quote status, Product Unit build
+  // state) are authored there so web and native render one set of colours. Their class strings
+  // exist in no file under `app/` or `src/`, and an unscanned literal is silently not generated:
+  // the chip renders with no background and inherited text rather than failing the build.
+  content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}', '../domain/src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
   theme: {
     extend: {

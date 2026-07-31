@@ -1,4 +1,4 @@
-import { IconCalendarEvent, IconFileText, IconTractor } from '@tabler/icons-react-native';
+import { IconCalendarEvent, IconFileText, IconTractor, IconTruck } from '@tabler/icons-react-native';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -60,6 +60,14 @@ export default function AppTabsLayout() {
           href: tabs.includes('products') ? undefined : null,
           tabBarIcon: ({ color, size }) => <IconTractor color={color} size={size} strokeWidth={1.8} />,
           title: 'PRODUCTS',
+        }}
+      />
+      <Tabs.Screen
+        name="units"
+        options={{
+          href: tabs.includes('units') ? undefined : null,
+          tabBarIcon: ({ color, size }) => <IconTruck color={color} size={size} strokeWidth={1.8} />,
+          title: 'UNITS',
         }}
       />
     </Tabs>

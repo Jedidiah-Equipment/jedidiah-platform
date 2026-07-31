@@ -5,6 +5,7 @@ import { DateIso, DateOnlyIso } from '../common/date.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { JobCompletedOn, ProductSerialNumber, ProductUnitVinNumber } from '../jobs/job.js';
 import { ProductModelCode, ProductName } from '../products/product.js';
@@ -66,7 +67,12 @@ export const ProductUnitSummary = z.object({
   /** `null` means Stock: we hold the machine. */
   owner: ProductUnitOwner.nullable(),
   /** Never null: a Unit is built as some Product, and the row cannot exist without one. */
-  product: z.object({ id: UUID, modelCode: ProductModelCode, name: ProductName }),
+  product: z.object({
+    id: UUID,
+    modelCode: ProductModelCode,
+    name: ProductName,
+    thumbnailDataUrl: NullableThumbnailDataUrl,
+  }),
   createdAt: DateIso,
 });
 
@@ -86,7 +92,7 @@ export const ProductUnitFilterOptions = z.object({
 });
 
 export type ProductUnitSortBy = z.infer<typeof ProductUnitSortBy>;
-export const ProductUnitSortBy = z.enum(['createdAt', 'id', 'productSerialNumber']);
+export const ProductUnitSortBy = z.enum(['createdAt', 'id', 'productName', 'productSerialNumber']);
 
 export type ProductUnitColumnFilters = z.infer<typeof ProductUnitColumnFilters>;
 export const ProductUnitColumnFilters = z

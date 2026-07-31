@@ -20,6 +20,7 @@ import { getProductUnit, listProductUnits } from './product-unit-read-service.js
 import { createProductUnit, lockUnitForOwnership, updateProductUnit } from './product-unit-service.js';
 
 const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000b1';
+const PRODUCT_THUMBNAIL_DATA_URL = `data:image/jpeg;base64,${'a'.repeat(16)}`;
 
 const test = createTester(async ({ db }) => ({ db, seed: await seedUnits(db) }));
 
@@ -42,6 +43,34 @@ describe('listProductUnits', () => {
       modelCode: 'PU-001',
       name: 'Unit Test Product',
     });
+  });
+
+  test('carries the Product thumbnail, and null for a Product without one', async ({ context }) => {
+    const result = await listProductUnits({ db: context.db, input: listInput() });
+    const bySerial = new Map(result.items.map((item) => [item.productSerialNumber as string, item]));
+
+    expect(bySerial.get('PU-001260001')?.product.thumbnailDataUrl).toBe(PRODUCT_THUMBNAIL_DATA_URL);
+    expect(bySerial.get('OT-001260001')?.product.thumbnailDataUrl).toBeNull();
+  });
+
+  test('sorts by the name of the Product the machine was built as', async ({ context }) => {
+    const ascending = await listProductUnits({
+      db: context.db,
+      input: listInput({ sortBy: 'productName', sortDirection: 'asc' }),
+    });
+    const descending = await listProductUnits({
+      db: context.db,
+      input: listInput({ sortBy: 'productName', sortDirection: 'desc' }),
+    });
+
+    // 'Other Test Product' sorts ahead of 'Unit Test Product', so its one machine leads the page.
+    expect(ascending.items.map((item) => item.product.name)).toEqual([
+      'Other Test Product',
+      'Unit Test Product',
+      'Unit Test Product',
+      'Unit Test Product',
+    ]);
+    expect(descending.items.at(-1)?.productSerialNumber).toBe('OT-001260001');
   });
 
   test('reads an unsold machine as Stock and a sold one as its owner', async ({ context }) => {
@@ -200,6 +229,12 @@ describe('getProductUnit', () => {
     expect(detail.asBuiltSpec.map((assembly) => assembly.name)).toEqual(['Heavy Axle Upgrade', 'Toolbox']);
   });
 
+  test('carries the Product thumbnail', async ({ context }) => {
+    const detail = await getProductUnit({ db: context.db, id: context.seed.soldUnitId });
+
+    expect(detail.product.thumbnailDataUrl).toBe(PRODUCT_THUMBNAIL_DATA_URL);
+  });
+
   test('lists the machine ownership history oldest first', async ({ context }) => {
     const detail = await getProductUnit({ db: context.db, id: context.seed.returnedUnitId });
 
@@ -308,6 +343,7 @@ async function seedUnits(db: Db) {
         modelCode: 'PU-001',
         name: 'Unit Test Product',
         rangeId,
+        thumbnailDataUrl: PRODUCT_THUMBNAIL_DATA_URL,
       },
       {
         basePrice: 2_000,

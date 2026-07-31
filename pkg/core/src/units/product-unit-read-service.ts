@@ -53,6 +53,7 @@ const productUnitSelection = {
   productModelCode: products.modelCode,
   productName: products.name,
   productSerialNumber: productUnits.productSerialNumber,
+  productThumbnailDataUrl: products.thumbnailDataUrl,
   vinNumber: productUnits.vinNumber,
 };
 
@@ -192,7 +193,7 @@ async function loadOwners(db: Db | DatabaseTransaction, ownerIds: (string | null
 type ProductUnitListRow = {
   [Key in keyof typeof productUnitSelection]: Key extends 'createdAt'
     ? Date
-    : Key extends 'buildCompletedOn' | 'ownerId' | 'vinNumber'
+    : Key extends 'buildCompletedOn' | 'ownerId' | 'productThumbnailDataUrl' | 'vinNumber'
       ? string | null
       : string;
 };
@@ -203,7 +204,12 @@ function toSummary(row: ProductUnitListRow, owners: OwnersById): ProductUnitSumm
     buildState: toBuildState(row.buildCompletedOn),
     createdAt: row.createdAt.toISOString(),
     owner: row.ownerId ? (owners.get(row.ownerId) ?? null) : null,
-    product: { id: row.productId, modelCode: row.productModelCode, name: row.productName },
+    product: {
+      id: row.productId,
+      modelCode: row.productModelCode,
+      name: row.productName,
+      thumbnailDataUrl: row.productThumbnailDataUrl,
+    },
     productSerialNumber: row.productSerialNumber,
     vinNumber: row.vinNumber,
   });
@@ -281,6 +287,7 @@ function buildProductUnitListWhere(input: ProductUnitListInput): SQL | undefined
 
 function getProductUnitSortColumn(sortBy: ProductUnitListInput['sortBy']) {
   if (sortBy === 'id') return productUnits.id;
+  if (sortBy === 'productName') return products.name;
   if (sortBy === 'productSerialNumber') return productUnits.productSerialNumber;
 
   return productUnits.createdAt;

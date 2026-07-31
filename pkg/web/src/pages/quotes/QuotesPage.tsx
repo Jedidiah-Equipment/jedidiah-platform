@@ -1,14 +1,13 @@
 import { hasPermission } from '@pkg/domain';
 import { QuoteKind, type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary, type UUID } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
-import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
-import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -45,7 +44,7 @@ function createQuoteTableStore(persistName: string) {
       ],
     },
     persistName,
-    persistVersion: 3,
+    persistVersion: 4,
   });
 }
 
@@ -86,7 +85,7 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
-  const customerOptions = useCustomerForQuoteOptions({ pageSize: 0 });
+  const customerOptions = useCustomerForQuoteOptions({ limit: 0 });
   const salespersonOptions = useSalesPersonOptions();
 
   const getListInputExtras = useCallback(
@@ -101,29 +100,22 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
   const productFilterValue = getIdFilterValue(tableController.columnFilters, 'productName');
   const productOptions = useProductForQuoteOptions({
     includeHistoricalSelected: true,
-    pageSize: 0,
+    limit: 0,
     value: productFilterValue ?? '',
   });
 
-  const quotesQuery = useQuery(
-    trpc.quotes.list.queryOptions(tableController.listInput, {
+  const quotesQuery = useInfiniteQuery(
+    trpc.quotes.list.infiniteQueryOptions(tableController.listInput, {
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
   const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions(customerId ? { customerId } : {}));
-  const { items: quotes, total, isLoading } = usePagedQueryResult(quotesQuery);
+  const { items: quotes, total } = useCombinedCursorQueryPages(quotesQuery.data?.pages);
   const priorityQuotes = priorityQuotesQuery.data ?? [];
   const normalQuoteRows = useMemo(() => quotes.map(createQuoteTableRow), [quotes]);
   const priorityQuoteRows = useMemo(() => priorityQuotes.map(createPriorityQuoteTableRow), [priorityQuotes]);
   const tableRows = useMemo(() => [...priorityQuoteRows, ...normalQuoteRows], [normalQuoteRows, priorityQuoteRows]);
-
-  const tableState = useConstrainedTableState({
-    pagination: tableController.pagination,
-    setPageIndex: tableController.setPageIndex,
-    sorting: tableController.sorting,
-    sortOptions: quoteSortOptions,
-    total,
-  });
 
   const columns = useMemo(
     () =>
@@ -155,19 +147,14 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
       },
     },
     manualFiltering: true,
-    manualPagination: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,
     onGlobalFilterChange: tableController.setGlobalFilter,
-    onPaginationChange: tableController.setPagination,
     onSortingChange: tableController.setSorting,
-    pageCount: tableState.pageCount,
-    rowCount: total,
     state: {
       columnFilters: tableController.columnFilters,
       globalFilter: tableController.globalFilter,
-      pagination: tableState.pagination,
-      sorting: tableState.sorting,
+      sorting: tableController.sorting,
     },
   });
 
@@ -188,7 +175,14 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
       }
       getRowClassName={getQuoteTableRowClassName}
       globalFilterPlaceholder="Search quotes..."
-      isLoading={isLoading}
+      isLoading={quotesQuery.isPending}
+      paginationMode="cursor"
+      loadMore={{
+        hasNextPage: quotesQuery.hasNextPage,
+        isFetchingNextPage: quotesQuery.isFetchingNextPage,
+        loadedCount: quotes.length,
+        onLoadMore: () => void quotesQuery.fetchNextPage(),
+      }}
       onRowClick={quoteRowClick}
       tableClassName={customerId ? 'min-w-[1084px]' : 'min-w-[1260px]'}
       table={table}

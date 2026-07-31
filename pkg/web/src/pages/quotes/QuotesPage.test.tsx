@@ -120,6 +120,7 @@ function TestQuoteTable({ rows }: { rows: QuoteTableRow[] }) {
       emptyMessage="No quotes found."
       getRowClassName={getQuoteTableRowClassName}
       hideGlobalFilter
+      paginationMode="complete"
       table={table}
       total={rows.length}
     />

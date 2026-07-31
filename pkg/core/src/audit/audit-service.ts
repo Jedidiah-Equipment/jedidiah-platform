@@ -1,7 +1,7 @@
 import { auditEvents, type DatabaseTransaction, type Db, getSortOrder, user, withPagination } from '@pkg/db';
 import type { AuditAction, AuditChanges, AuditEntityType, AuditListInput, AuditListResult } from '@pkg/schema';
-import { AuditEvent } from '@pkg/schema';
-import { and, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
+import { AuditEvent, getNextCursor } from '@pkg/schema';
+import { and, asc, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
 
 export type AuditRecord = Record<string, unknown>;
 
@@ -375,17 +375,17 @@ export async function listAuditEvents({ db, input }: { db: Db; input: AuditListI
       .from(auditEvents)
       .leftJoin(user, eq(auditEvents.actorUserId, user.id))
       .where(where)
-      .orderBy(orderBy)
+      .orderBy(orderBy, asc(auditEvents.id))
       .$dynamic(),
     input,
   );
 
   const [rows, total] = await Promise.all([rowsQuery, db.$count(auditEvents, where)]);
+  const items = rows.map(mapAuditEvent);
 
   return {
-    items: rows.map(mapAuditEvent),
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
+    items,
+    nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }),
     total,
   };
 }

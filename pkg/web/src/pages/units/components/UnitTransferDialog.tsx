@@ -132,7 +132,7 @@ const UnitTransferCustomerCombobox: React.FC<{
 }> = ({ onSelected, value }) => {
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 250);
-  const customers = useCustomerOptions({ pageSize: 20, search: debouncedSearch, value });
+  const customers = useCustomerOptions({ limit: 20, search: debouncedSearch, value });
   const selected = customers.itemsWithSelected.find((customer) => customer.id === value) ?? null;
 
   return (

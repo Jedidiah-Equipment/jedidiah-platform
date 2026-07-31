@@ -5,7 +5,6 @@ import {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
   createLikeSearchPattern,
-  getPaginationOffset,
   getPaginationQueryOptions,
   getSortOrder,
   isUniqueViolation,
@@ -23,23 +22,16 @@ describe('createLikeSearchPattern', () => {
   });
 });
 
-describe('getPaginationOffset', () => {
-  it('calculates a zero-based offset from one-based pagination input', () => {
-    expect(getPaginationOffset({ page: 1, pageSize: 10 })).toBe(0);
-    expect(getPaginationOffset({ page: 3, pageSize: 25 })).toBe(50);
-  });
-});
-
 describe('getPaginationQueryOptions', () => {
   it('shapes limit and offset options for relational queries', () => {
-    expect(getPaginationQueryOptions({ page: 2, pageSize: 15 })).toEqual({
+    expect(getPaginationQueryOptions({ cursor: 30, limit: 15 })).toEqual({
       limit: 15,
-      offset: 15,
+      offset: 30,
     });
   });
 
-  it('omits pagination options when page size is zero', () => {
-    expect(getPaginationQueryOptions({ page: 2, pageSize: 0 })).toEqual({});
+  it('omits pagination options when the limit is zero', () => {
+    expect(getPaginationQueryOptions({ cursor: 30, limit: 0 })).toEqual({});
   });
 });
 

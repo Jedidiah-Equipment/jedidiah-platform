@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
+import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 import { Supplier, SupplierCompanyName } from '../suppliers/supplier.js';
@@ -118,7 +118,7 @@ export const PartBulkImportResult = z.object({
 });
 
 export type PartListInput = z.infer<typeof PartListInput>;
-export const PartListInput = createSearchedSortedPagedQueryInput({
+export const PartListInput = createSearchedSortedCursorQueryInput({
   shape: {
     category: z.string().trim().optional(),
     columnFilters: PartColumnFilters,
@@ -128,7 +128,7 @@ export const PartListInput = createSearchedSortedPagedQueryInput({
 });
 
 export type PartListResult = z.infer<typeof PartListResult>;
-export const PartListResult = createSortedPagedQueryResult(Part, PartSortBy);
+export const PartListResult = createCursorQueryResult(Part);
 
 export type PartCategoryListResult = z.infer<typeof PartCategoryListResult>;
 export const PartCategoryListResult = z.object({

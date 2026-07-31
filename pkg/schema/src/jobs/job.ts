@@ -3,7 +3,7 @@ import { AuthId } from '../auth/auth-id.js';
 import { UserSummary } from '../auth/authorization.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
 import { Department } from '../common/departments.js';
-import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
+import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
@@ -648,13 +648,13 @@ export const JobCustomerOption = z.object({
 });
 
 export type JobCustomerOptionListInput = z.infer<typeof JobCustomerOptionListInput>;
-export const JobCustomerOptionListInput = createSearchedSortedPagedQueryInput({
+export const JobCustomerOptionListInput = createSearchedSortedCursorQueryInput({
   shape: {},
   sortBy: JobCustomerOptionSortBy.default('companyName'),
 });
 
 export type JobCustomerOptionListResult = z.infer<typeof JobCustomerOptionListResult>;
-export const JobCustomerOptionListResult = createSortedPagedQueryResult(JobCustomerOption, JobCustomerOptionSortBy);
+export const JobCustomerOptionListResult = createCursorQueryResult(JobCustomerOption);
 
 export type JobColumnFilters = z.infer<typeof JobColumnFilters>;
 export const JobColumnFilters = z
@@ -785,7 +785,7 @@ export const JobUpdateResult = z.object({
 });
 
 export type JobListInput = z.infer<typeof JobListInput>;
-export const JobListInput = createSearchedSortedPagedQueryInput({
+export const JobListInput = createSearchedSortedCursorQueryInput({
   shape: {
     columnFilters: JobColumnFilters,
     filters: JobListFilters,
@@ -795,4 +795,4 @@ export const JobListInput = createSearchedSortedPagedQueryInput({
 });
 
 export type JobListResult = z.infer<typeof JobListResult>;
-export const JobListResult = createSortedPagedQueryResult(JobSummary, JobSortBy);
+export const JobListResult = createCursorQueryResult(JobSummary);

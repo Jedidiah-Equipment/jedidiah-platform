@@ -1,6 +1,6 @@
 import { formatCurrency } from '@pkg/domain';
 import { type Product, type ProductListInput, ProductSortBy, type UUID } from '@pkg/schema';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,9 +12,8 @@ import {
 import type React from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
-import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
-import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -38,7 +37,7 @@ export const useProductTableStore = createPersistedDataTableStore({
     ],
   },
   persistName: 'products-table',
-  persistVersion: 2,
+  persistVersion: 3,
 });
 
 const productSortOptions: SortOptions<ProductListInput> = {
@@ -77,21 +76,13 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     [tableController.setColumnFilters],
   );
 
-  const productsQuery = useQuery(
-    trpc.products.list.queryOptions(tableController.listInput, {
+  const productsQuery = useInfiniteQuery(
+    trpc.products.list.infiniteQueryOptions(tableController.listInput, {
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-
-  const { items: products, total, isLoading } = usePagedQueryResult(productsQuery);
-
-  const tableState = useConstrainedTableState({
-    pagination: tableController.pagination,
-    setPageIndex: tableController.setPageIndex,
-    sorting: tableController.sorting,
-    sortOptions: productSortOptions,
-    total,
-  });
+  const { items: products, total } = useCombinedCursorQueryPages(productsQuery.data?.pages);
 
   const columns = useMemo<ColumnDef<Product>[]>(() => {
     const tableColumns: ColumnDef<Product>[] = [
@@ -182,19 +173,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
-    manualPagination: true,
     manualSorting: true,
     onColumnFiltersChange: setProductColumnFilters,
     onGlobalFilterChange: tableController.setGlobalFilter,
-    onPaginationChange: tableController.setPagination,
     onSortingChange: tableController.setSorting,
-    pageCount: tableState.pageCount,
-    rowCount: total,
     state: {
       columnFilters: tableController.columnFilters,
       globalFilter: tableController.globalFilter,
-      pagination: tableState.pagination,
-      sorting: tableState.sorting,
+      sorting: tableController.sorting,
     },
   });
 
@@ -204,7 +190,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
       errorMessage={getApiQueryErrorMessage(productsQuery.error, 'Unable to load products.')}
       getRowAriaLabel={onEditProduct ? (product) => `Edit ${product.name}` : undefined}
       globalFilterPlaceholder="Search products..."
-      isLoading={isLoading}
+      isLoading={productsQuery.isPending}
+      paginationMode="cursor"
+      loadMore={{
+        hasNextPage: productsQuery.hasNextPage,
+        isFetchingNextPage: productsQuery.isFetchingNextPage,
+        loadedCount: products.length,
+        onLoadMore: () => void productsQuery.fetchNextPage(),
+      }}
       onRowClick={onEditProduct}
       table={table}
       total={total}

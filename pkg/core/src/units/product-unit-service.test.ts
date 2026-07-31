@@ -370,7 +370,7 @@ describe('transferProductUnitOwnership', () => {
   test('shows the new owner on every Job bound to the machine', async ({ context }) => {
     await transfer(context, { occurredOn: '2026-06-01', toCustomerId: context.seed.riversideId });
 
-    const result = await listJobs({ db: context.db, input: JobListInput.parse({ pageSize: 50 }) });
+    const result = await listJobs({ db: context.db, input: JobListInput.parse({ limit: 50 }) });
 
     expect(result.items.map((job) => job.customerCompanyName)).toEqual(['Riverside Farm']);
   });

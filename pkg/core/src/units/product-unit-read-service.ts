@@ -12,6 +12,7 @@ import {
   withPagination,
 } from '@pkg/db';
 import {
+  getNextCursor,
   type ProductUnitBuildState,
   ProductUnitDetail,
   ProductUnitFilterOptions,
@@ -80,12 +81,13 @@ export async function listProductUnits({
     db,
     rows.map((row) => row.ownerId),
   );
+  const total = await db.$count(productUnits, where);
+  const items = rows.map((row) => toSummary(row, owners));
 
   return {
-    items: rows.map((row) => toSummary(row, owners)),
-    total: await db.$count(productUnits, where),
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
+    items,
+    nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }),
+    total,
   };
 }
 

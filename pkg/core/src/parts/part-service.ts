@@ -21,7 +21,7 @@ import type {
   PartUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { Part as PartSchema } from '@pkg/schema';
+import { getNextCursor, Part as PartSchema } from '@pkg/schema';
 import { and, asc, count, eq, inArray, isNull, or, type SQL, sql } from 'drizzle-orm';
 
 import {
@@ -109,12 +109,12 @@ export async function listParts({ db, input }: { db: Db; input: PartListInput })
     .where(where);
   const [rows, totalRows] = await Promise.all([rowsQuery, totalQuery]);
   const total = totalRows[0]?.value ?? 0;
+  const items = rows.map((row) => mapPart({ ...row.part, supplier: row.supplier }));
 
   return {
-    items: rows.map((row) => mapPart({ ...row.part, supplier: row.supplier })),
+    items,
+    nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }),
     total,
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
   };
 }
 

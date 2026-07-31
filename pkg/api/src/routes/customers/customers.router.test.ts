@@ -152,8 +152,7 @@ describe('customers.list', () => {
 
     expect(customerNames(result.items)).toEqual(['Acme Mining', 'Zeta Mining']);
     expect(result.total).toBe(2);
-    expect(result.sortBy).toBe('companyName');
-    expect(result.sortDirection).toBe('asc');
+    expect(result.nextCursor).toBeNull();
   });
 
   test('pages and sorts customers', async ({ context }) => {
@@ -161,8 +160,8 @@ describe('customers.list', () => {
     await createCustomers(caller, ['Alpha', 'Bravo', 'Charlie']);
 
     const result = await caller.customers.list({
-      page: 2,
-      pageSize: 2,
+      cursor: 2,
+      limit: 2,
       columnFilters: {},
       search: '',
       sortBy: 'companyName',
@@ -170,6 +169,7 @@ describe('customers.list', () => {
     });
 
     expect(customerNames(result.items)).toEqual(['Charlie']);
+    expect(result.nextCursor).toBeNull();
     expect(result.total).toBe(3);
   });
 
@@ -197,8 +197,8 @@ describe('customers.list', () => {
     await createCustomer(caller, 'Cargo Works', { email: 'hello@cargo.example' });
 
     const result = await caller.customers.list({
-      page: 1,
-      pageSize: 10,
+      cursor: 0,
+      limit: 10,
       columnFilters: {
         companyName: 'mining',
         vatNumber: 'VAT-MINING',
@@ -209,8 +209,8 @@ describe('customers.list', () => {
     });
 
     expect(customerNames(result.items)).toEqual(['Acme Mining', 'Beta Mining']);
+    expect(result.nextCursor).toBeNull();
     expect(result.total).toBe(2);
-    expect(result.sortBy).toBe('email');
   });
 
   test('combines global search and column filters before paging and counting', async ({ context }) => {
@@ -218,8 +218,8 @@ describe('customers.list', () => {
     await createCustomers(caller, ['Alpha Mining', 'Bravo Mining', 'Bravo Quarry', 'Charlie Mining']);
 
     const result = await caller.customers.list({
-      page: 1,
-      pageSize: 10,
+      cursor: 0,
+      limit: 10,
       columnFilters: {
         companyName: 'bravo',
       },

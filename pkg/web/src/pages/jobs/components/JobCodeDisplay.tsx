@@ -68,8 +68,8 @@ const JobCodeHoverCard: React.FC<{
         include: {
           scheduleState: true,
         },
-        page: 1,
-        pageSize: 1,
+        cursor: 0,
+        limit: 1,
         search: '',
         sortBy: 'createdAt',
         sortDirection: 'asc',

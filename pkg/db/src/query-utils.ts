@@ -1,4 +1,4 @@
-import type { PagedQueryInput, SortDirection } from '@pkg/schema';
+import type { CursorQueryInput, SortDirection } from '@pkg/schema';
 import { asc, desc, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import type { PgSelect } from 'drizzle-orm/pg-core';
 
@@ -20,19 +20,15 @@ export function createGlobalSearchCondition(search: string, expressions: readonl
   return or(...expressions.map((expression) => createEscapedContainsSearchCondition(expression, search)));
 }
 
-export function getPaginationOffset({ page, pageSize }: PagedQueryInput): number {
-  return (page - 1) * pageSize;
-}
-
-export function getPaginationQueryOptions(pagination: PagedQueryInput): { limit?: number; offset?: number } {
-  if (pagination.pageSize === 0) {
+export function getPaginationQueryOptions({ cursor, limit }: CursorQueryInput): {
+  limit?: number;
+  offset?: number;
+} {
+  if (limit === 0) {
     return {};
   }
 
-  return {
-    limit: pagination.pageSize,
-    offset: getPaginationOffset(pagination),
-  };
+  return { limit, offset: cursor };
 }
 
 export function getSortOrder(expression: SQLWrapper, sortDirection: SortDirection): SQL {
@@ -43,12 +39,12 @@ export function notRemoved(table: { deletedAt: SQLWrapper }): SQL {
   return isNull(table.deletedAt);
 }
 
-export function withPagination<TQuery extends PgSelect>(query: TQuery, pagination: PagedQueryInput): TQuery {
-  if (pagination.pageSize === 0) {
+export function withPagination<TQuery extends PgSelect>(query: TQuery, { cursor, limit }: CursorQueryInput): TQuery {
+  if (limit === 0) {
     return query;
   }
 
-  return query.limit(pagination.pageSize).offset(getPaginationOffset(pagination));
+  return query.limit(limit).offset(cursor);
 }
 
 // PostgreSQL SQLSTATE codes for the integrity violations we translate into domain errors.

@@ -23,7 +23,6 @@ export const DOCUMENT_CARD_SORT_OPTIONS = [
 ] as const satisfies ReadonlyArray<{ label: string; value: DocumentCardSortValue }>;
 
 export const DEFAULT_DOCUMENT_CARD_SORT: DocumentCardSortValue = 'filenameAsc';
-export const DEFAULT_DOCUMENT_CARD_PAGE_SIZE = 10;
 
 export type DocumentCardListMetadataState<TDocument extends DocumentSummary> = {
   getSearchText: (document: TDocument) => string;
@@ -32,37 +31,26 @@ export type DocumentCardListMetadataState<TDocument extends DocumentSummary> = {
 type VisibleDocumentCardsInput<TDocument extends DocumentSummary> = {
   documents: TDocument[];
   metadata: DocumentCardListMetadataState<TDocument>;
-  pageIndex: number;
-  pageSize: number;
   search: string;
   sort: DocumentCardSortValue;
 };
 
 type VisibleDocumentCards<TDocument extends DocumentSummary> = {
   documents: TDocument[];
-  pageCount: number;
-  pageIndex: number;
   total: number;
 };
 
 export function getVisibleDocumentCards<TDocument extends DocumentSummary>({
   documents,
   metadata,
-  pageIndex,
-  pageSize,
   search,
   sort,
 }: VisibleDocumentCardsInput<TDocument>): VisibleDocumentCards<TDocument> {
   const filteredDocuments = filterDocumentCards({ documents, metadata, search });
   const sortedDocuments = sortDocumentCards(filteredDocuments, sort);
-  const pageCount = getDocumentCardPageCount(sortedDocuments.length, pageSize);
-  const constrainedPageIndex = Math.min(pageIndex, Math.max(pageCount - 1, 0));
-  const pageStart = constrainedPageIndex * pageSize;
 
   return {
-    documents: sortedDocuments.slice(pageStart, pageStart + pageSize),
-    pageCount,
-    pageIndex: constrainedPageIndex,
+    documents: sortedDocuments,
     total: sortedDocuments.length,
   };
 }
@@ -88,10 +76,6 @@ export function sortDocumentCards<TDocument extends DocumentSummary>(
   sort: DocumentCardSortValue,
 ): TDocument[] {
   return [...documents].sort((left, right) => compareDocumentCards(left, right, sort));
-}
-
-export function getDocumentCardPageCount(total: number, pageSize: number): number {
-  return Math.max(1, Math.ceil(total / pageSize));
 }
 
 export function getDocumentUploader(document: Pick<DocumentSummary, 'uploaderEmail' | 'uploaderName'>): string {

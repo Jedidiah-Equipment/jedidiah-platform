@@ -28,8 +28,8 @@ describe('findProducts contract', () => {
 
     expect(toCoreProductListInput(input)).toEqual({
       columnFilters: {},
-      page: 1,
-      pageSize: 0,
+      cursor: 0,
+      limit: 0,
       search: 'loader',
       sortBy: 'name',
       sortDirection: 'asc',
@@ -71,8 +71,7 @@ describe('findProducts contract', () => {
           variantId: null,
         },
       ],
-      sortBy: 'name',
-      sortDirection: 'asc',
+      nextCursor: null,
       total: 1,
     });
 

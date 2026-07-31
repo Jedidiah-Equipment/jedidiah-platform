@@ -483,8 +483,8 @@ describe('createJob', () => {
         columnFilters: {},
         filters: {},
         include: {},
-        page: 1,
-        pageSize: 50,
+        cursor: 0,
+        limit: 50,
         search: '',
         sortBy: 'createdAt',
         sortDirection: 'asc',
@@ -496,7 +496,7 @@ describe('createJob', () => {
     await expect(
       listJobCustomerOptions({
         db: context.db,
-        input: { page: 1, pageSize: 0, search: '', sortBy: 'companyName', sortDirection: 'asc' },
+        input: { cursor: 0, limit: 0, search: '', sortBy: 'companyName', sortDirection: 'asc' },
       }),
     ).resolves.toMatchObject({ items: [] });
   });
@@ -3194,8 +3194,8 @@ describe('listJobs scheduleState', () => {
       columnFilters: {},
       filters: {},
       include: {},
-      page: 1,
-      pageSize: 50,
+      cursor: 0,
+      limit: 50,
       search: '',
       sortBy: 'createdAt' as const,
       sortDirection: 'asc' as const,
@@ -3415,7 +3415,7 @@ describe('listJobCustomerOptions', () => {
 
     const result = await listJobCustomerOptions({
       db: context.db,
-      input: { page: 1, pageSize: 0, search: '', sortBy: 'companyName', sortDirection: 'asc' },
+      input: { cursor: 0, limit: 0, search: '', sortBy: 'companyName', sortDirection: 'asc' },
     });
 
     expect(result.items.map((item) => item.id)).toEqual([liveJob.customerId]);

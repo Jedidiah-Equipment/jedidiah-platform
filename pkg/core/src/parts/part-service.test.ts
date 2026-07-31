@@ -51,15 +51,15 @@ describe('listParts', () => {
 
     const lengthParts = await listParts({
       db: context.db,
-      input: PartListInput.parse({ columnFilters: { unitOfMeasure: 'mm' }, pageSize: 0 }),
+      input: PartListInput.parse({ columnFilters: { unitOfMeasure: 'mm' }, limit: 0 }),
     });
     const countedParts = await listParts({
       db: context.db,
-      input: PartListInput.parse({ columnFilters: { unitOfMeasure: 'quantity' }, pageSize: 0 }),
+      input: PartListInput.parse({ columnFilters: { unitOfMeasure: 'quantity' }, limit: 0 }),
     });
     const internallyFabricatedParts = await listParts({
       db: context.db,
-      input: PartListInput.parse({ columnFilters: { isInternallyFabricated: true }, pageSize: 0 }),
+      input: PartListInput.parse({ columnFilters: { isInternallyFabricated: true }, limit: 0 }),
     });
 
     expect(lengthParts.items.map((part) => part.code)).toEqual(['P-200']);
@@ -89,7 +89,7 @@ describe('bulkImportParts', () => {
     });
 
     const suppliers = await context.db.select().from(supplier).orderBy(supplier.companyName);
-    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
     const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
 
     expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
@@ -154,7 +154,7 @@ describe('bulkImportParts', () => {
       },
     });
     const suppliers = await context.db.select().from(supplier);
-    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
     expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
     expect(suppliers).toHaveLength(1);
@@ -181,7 +181,7 @@ describe('bulkImportParts', () => {
         ],
       },
     });
-    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
     const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
 
     expect(result).toEqual({ errors: [], importedCount: 0, updatedCount: 1 });
@@ -236,7 +236,7 @@ describe('bulkImportParts', () => {
         ],
       },
     });
-    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
     expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
     expect(importedParts.items.map((part) => part.code).sort()).toEqual(['P-100', 'P-101']);
@@ -273,7 +273,7 @@ describe('bulkImportParts', () => {
         ],
       },
     });
-    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
     expect(result).toEqual({ errors: [], importedCount: 3, updatedCount: 0 });
     expect(importedParts.items.map((part) => part.code).sort()).toEqual(['FAB1-1', 'FAB1-2', 'FAB1-4']);

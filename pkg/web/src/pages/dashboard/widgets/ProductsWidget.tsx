@@ -12,8 +12,8 @@ import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCa
 
 const PRODUCTS_WIDGET_LIST_INPUT = {
   columnFilters: {},
-  page: 1,
-  pageSize: 5,
+  cursor: 0,
+  limit: 5,
   search: '',
   sortBy: 'createdAt',
   sortDirection: 'desc',

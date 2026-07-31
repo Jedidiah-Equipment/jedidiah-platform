@@ -14,9 +14,7 @@ import {
   type ColumnFiltersState,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
-  type PaginationState,
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
@@ -106,7 +104,6 @@ function FeedbackInboxList({
 }) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [sorting, setSorting] = useState<SortingState>([{ desc: true, id: 'createdAt' }]);
 
   const columns = useMemo<ColumnDef<FeedbackListItem>[]>(() => createFeedbackInboxColumns(), []);
@@ -117,7 +114,6 @@ function FeedbackInboxList({
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     globalFilterFn: feedbackGlobalFilter,
     initialState: {
@@ -127,12 +123,10 @@ function FeedbackInboxList({
     },
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: setPagination,
     onSortingChange: setSorting,
     state: {
       columnFilters,
       globalFilter,
-      pagination,
       sorting,
     },
   });
@@ -160,6 +154,7 @@ function FeedbackInboxList({
         globalFilterPlaceholder="Search feedback..."
         isLoading={isLoading}
         onRowClick={(item) => onSelectFeedback(item.id)}
+        paginationMode="complete"
         table={table}
         total={total}
         totalLabel={(value) => `${value} ${value === 1 ? 'feedback item' : 'feedback items'}`}

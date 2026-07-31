@@ -1,15 +1,13 @@
 import { hasPermission } from '@pkg/domain';
 import { DateOnlyIso, type JobListInput, JobSortBy, type UUID } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
-
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
-import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
-import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -44,7 +42,7 @@ function createJobListTableStore(persistName: string) {
       ],
     },
     persistName,
-    persistVersion: 3,
+    persistVersion: 4,
   });
 }
 
@@ -122,28 +120,21 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
   });
   const customersQuery = useQuery(
     trpc.jobs.customerOptions.queryOptions({
-      page: 1,
-      pageSize: 0,
+      cursor: 0,
+      limit: 0,
       search: '',
       sortBy: 'companyName',
       sortDirection: 'asc',
     }),
   );
 
-  const jobsQuery = useQuery(
-    trpc.jobs.list.queryOptions(tableController.listInput, {
+  const jobsQuery = useInfiniteQuery(
+    trpc.jobs.list.infiniteQueryOptions(tableController.listInput, {
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-  const { items: jobs, total, isLoading } = usePagedQueryResult(jobsQuery);
-
-  const tableState = useConstrainedTableState({
-    pagination: tableController.pagination,
-    setPageIndex: tableController.setPageIndex,
-    sorting: tableController.sorting,
-    sortOptions: jobSortOptions,
-    total,
-  });
+  const { items: jobs, total } = useCombinedCursorQueryPages(jobsQuery.data?.pages);
 
   const customerOptions = useMemo(
     () => toSelectOptions(customersQuery.data?.items ?? [], (customer) => customer.companyName),
@@ -174,20 +165,15 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
-    manualPagination: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,
     onGlobalFilterChange: tableController.setGlobalFilter,
-    onPaginationChange: tableController.setPagination,
     onSortingChange: tableController.setSorting,
-    pageCount: tableState.pageCount,
-    rowCount: total,
     state: {
       columnFilters: tableController.columnFilters,
       globalFilter: tableController.globalFilter,
       columnPinning,
-      pagination: tableState.pagination,
-      sorting: tableState.sorting,
+      sorting: tableController.sorting,
     },
   });
 
@@ -198,7 +184,6 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
     if (!checked) {
       tableController.setColumnFilters((filters) => filters.filter((filter) => filter.id !== 'completedOn'));
     }
-    tableController.setPageIndex(0);
   };
 
   return (
@@ -206,7 +191,14 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
       emptyMessage={getJobsEmptyMessage({ includeCompleted })}
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
-      isLoading={isLoading}
+      isLoading={jobsQuery.isPending}
+      paginationMode="cursor"
+      loadMore={{
+        hasNextPage: jobsQuery.hasNextPage,
+        isFetchingNextPage: jobsQuery.isFetchingNextPage,
+        loadedCount: jobs.length,
+        onLoadMore: () => void jobsQuery.fetchNextPage(),
+      }}
       onRowClick={canOpenJobs ? (job) => void navigate({ search: { job: job.id }, to: '/jobs/list' }) : undefined}
       rightSection={
         <div className="flex items-center gap-4">

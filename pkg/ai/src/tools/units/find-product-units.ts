@@ -22,8 +22,8 @@ export const FindProductUnitsResponse = z.array(FindProductUnitItem);
 export function toCoreProductUnitListInput(input: FindProductUnitsInput): ProductUnitListInput {
   return {
     columnFilters: input.columnFilters,
-    page: 1,
-    pageSize: 0,
+    cursor: 0,
+    limit: 0,
     search: input.search,
     sortBy: 'productSerialNumber',
     sortDirection: 'asc',

@@ -475,8 +475,8 @@ describe('JobColumnFilters', () => {
 describe('JobCustomerOptionListInput', () => {
   it('defaults to company-name sorting', () => {
     expect(JobCustomerOptionListInput.parse({ search: '  Acme  ' })).toMatchObject({
-      page: 1,
-      pageSize: 10,
+      cursor: 0,
+      limit: 10,
       search: 'Acme',
       sortBy: 'companyName',
       sortDirection: 'asc',

@@ -11,6 +11,7 @@ import {
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 import { isQuoteSort, isQuoteStatusFilter, type QuoteSort, type QuoteStatusFilter } from '@/lib/quote-presentation';
+import { isNearVerticalScrollEnd } from '@/lib/scroll-pagination';
 import { useCan } from '@/lib/use-access';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
@@ -33,9 +34,7 @@ export default function QuotesRoute() {
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-
-      if (contentSize.height - contentOffset.y - layoutMeasurement.height < 240) list.loadNextPage();
+      if (isNearVerticalScrollEnd(event.nativeEvent)) list.loadNextPage();
     },
     [list.loadNextPage],
   );

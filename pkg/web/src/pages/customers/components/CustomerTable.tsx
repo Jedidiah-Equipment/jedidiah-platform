@@ -1,13 +1,12 @@
 import { type Customer, type CustomerListInput, CustomerSortBy } from '@pkg/schema';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo } from 'react';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
-import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
-import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -47,21 +46,13 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
     getListInputExtras: getCustomerListInputExtras,
   });
 
-  const customersQuery = useQuery(
-    trpc.customers.list.queryOptions(tableController.listInput, {
+  const customersQuery = useInfiniteQuery(
+    trpc.customers.list.infiniteQueryOptions(tableController.listInput, {
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-
-  const { items: customers, total, isLoading } = usePagedQueryResult(customersQuery);
-
-  const tableState = useConstrainedTableState({
-    pagination: tableController.pagination,
-    setPageIndex: tableController.setPageIndex,
-    sorting: tableController.sorting,
-    sortOptions: customerSortOptions,
-    total,
-  });
+  const { items: customers, total } = useCombinedCursorQueryPages(customersQuery.data?.pages);
 
   const columns = useMemo<ColumnDef<Customer>[]>(
     () => [
@@ -134,19 +125,14 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
-    manualPagination: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,
     onGlobalFilterChange: tableController.setGlobalFilter,
-    onPaginationChange: tableController.setPagination,
     onSortingChange: tableController.setSorting,
-    pageCount: tableState.pageCount,
-    rowCount: total,
     state: {
       columnFilters: tableController.columnFilters,
       globalFilter: tableController.globalFilter,
-      pagination: tableState.pagination,
-      sorting: tableState.sorting,
+      sorting: tableController.sorting,
     },
   });
 
@@ -156,7 +142,14 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
       errorMessage={getApiQueryErrorMessage(customersQuery.error, 'Unable to load customers.')}
       getRowAriaLabel={(customer) => `Edit ${customer.companyName}`}
       globalFilterPlaceholder="Search customers..."
-      isLoading={isLoading}
+      isLoading={customersQuery.isPending}
+      paginationMode="cursor"
+      loadMore={{
+        hasNextPage: customersQuery.hasNextPage,
+        isFetchingNextPage: customersQuery.isFetchingNextPage,
+        loadedCount: customers.length,
+        onLoadMore: () => void customersQuery.fetchNextPage(),
+      }}
       onRowClick={onEditCustomer}
       table={table}
       total={total}

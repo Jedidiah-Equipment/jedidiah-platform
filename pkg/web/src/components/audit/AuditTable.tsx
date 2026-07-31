@@ -1,14 +1,13 @@
-import { AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
+import { AuditChanges, AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
 import { IconEye } from '@tabler/icons-react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
-import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
-import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore, type DataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -21,12 +20,8 @@ import { useUserOptions } from '@/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { type AuditChangeMap, formatAuditChangesJson, getAuditChangeDisplays } from './audit-change-display.js';
+import { formatAuditChangesJson, getAuditChangeDisplays } from './audit-change-display.js';
 import { type AuditTableFixedFilters, getAuditListInputExtras } from './audit-table-input.js';
-
-type AuditEventRow = Omit<AuditEvent, 'changes'> & {
-  changes: AuditChangeMap | null;
-};
 
 type AuditTableStoreHook = UseBoundStore<StoreApi<DataTableStore>>;
 
@@ -134,22 +129,19 @@ export const AuditTable: React.FC<AuditTableProps> = ({
 
   const userOptions = useUserOptions();
 
-  const auditQuery = useQuery(
-    trpc.audit.list.queryOptions(tableController.listInput, {
+  const auditQuery = useInfiniteQuery(
+    trpc.audit.list.infiniteQueryOptions(tableController.listInput, {
+      ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-  const { items: auditEvents, total, isLoading } = usePagedQueryResult<AuditEventRow>(auditQuery);
+  const { items, total } = useCombinedCursorQueryPages(auditQuery.data?.pages);
+  const auditEvents = useMemo<AuditEvent[]>(
+    () => items.map((item) => ({ ...item, changes: AuditChanges.nullable().parse(item.changes) })),
+    [items],
+  );
 
-  const tableState = useConstrainedTableState({
-    pagination: tableController.pagination,
-    setPageIndex: tableController.setPageIndex,
-    sorting: tableController.sorting,
-    sortOptions: auditSortOptions,
-    total,
-  });
-
-  const columns = useMemo<ColumnDef<AuditEventRow>[]>(
+  const columns = useMemo<ColumnDef<AuditEvent>[]>(
     () => [
       {
         accessorKey: 'occurredAt',
@@ -189,7 +181,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                 filterVariant: 'multi-select',
                 headerClassName: 'w-44 min-w-44',
               },
-            } satisfies ColumnDef<AuditEventRow>,
+            } satisfies ColumnDef<AuditEvent>,
           ]
         : []),
       {
@@ -227,23 +219,18 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     [showEntityTypeFilter, userOptions.selectOptions],
   );
 
-  const table = useReactTable<AuditEventRow>({
+  const table = useReactTable<AuditEvent>({
     columns,
     data: auditEvents,
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
-    manualPagination: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,
-    onPaginationChange: tableController.setPagination,
     onSortingChange: tableController.setSorting,
-    pageCount: tableState.pageCount,
-    rowCount: total,
     state: {
       columnFilters: tableController.columnFilters,
-      pagination: tableState.pagination,
-      sorting: tableState.sorting,
+      sorting: tableController.sorting,
     },
   });
 
@@ -252,7 +239,14 @@ export const AuditTable: React.FC<AuditTableProps> = ({
       emptyMessage={emptyMessage}
       errorMessage={getApiQueryErrorMessage(auditQuery.error, 'Unable to load audit events.')}
       hideGlobalFilter
-      isLoading={isLoading}
+      isLoading={auditQuery.isPending}
+      paginationMode="cursor"
+      loadMore={{
+        hasNextPage: auditQuery.hasNextPage,
+        isFetchingNextPage: auditQuery.isFetchingNextPage,
+        loadedCount: auditEvents.length,
+        onLoadMore: () => void auditQuery.fetchNextPage(),
+      }}
       tableClassName="table-fixed"
       table={table}
       total={total}
@@ -262,7 +256,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
 };
 
 type ActorCellProps = {
-  event: AuditEventRow;
+  event: AuditEvent;
 };
 
 const ActorCell: React.FC<ActorCellProps> = ({ event }) => {
@@ -290,7 +284,7 @@ const AuditActionBadge: React.FC<AuditActionBadgeProps> = ({ action }) => (
 );
 
 type ChangesCellProps = {
-  changes: AuditEventRow['changes'];
+  changes: AuditEvent['changes'];
 };
 
 const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes }) => {
@@ -306,7 +300,7 @@ const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes }) => {
 };
 
 type AuditChangesDetailsProps = {
-  changes: NonNullable<AuditEventRow['changes']>;
+  changes: NonNullable<AuditEvent['changes']>;
 };
 
 const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes }) => (
@@ -330,7 +324,7 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes }) =>
 );
 
 type AuditChangesContentProps = {
-  changes: NonNullable<AuditEventRow['changes']>;
+  changes: NonNullable<AuditEvent['changes']>;
 };
 
 export const AuditChangesContent: React.FC<AuditChangesContentProps> = ({ changes }) => {

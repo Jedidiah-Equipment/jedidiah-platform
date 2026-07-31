@@ -24,6 +24,7 @@ import {
 import {
   CompetingAllocationQuote,
   DateOnlyIso,
+  getNextCursor,
   type PriorityQuote,
   parseQuoteCodeNumber,
   type QuoteDetail,
@@ -106,19 +107,20 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     includeJobs: true,
     quoteIds: rows.map((row) => row.quote.id),
   });
+  const total = Number(totalRow?.count ?? 0);
+  const items = rows.map((row) =>
+    mapQuoteSummary(
+      row,
+      jobByQuoteId.get(row.quote.id) ?? null,
+      selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
+      workItemsByQuoteId.get(row.quote.id) ?? [],
+    ),
+  );
 
   return {
-    items: rows.map((row) =>
-      mapQuoteSummary(
-        row,
-        jobByQuoteId.get(row.quote.id) ?? null,
-        selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
-        workItemsByQuoteId.get(row.quote.id) ?? [],
-      ),
-    ),
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
-    total: Number(totalRow?.count ?? 0),
+    items,
+    nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }),
+    total,
   };
 }
 

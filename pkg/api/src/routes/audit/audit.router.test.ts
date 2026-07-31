@@ -48,8 +48,7 @@ describe('audit.list', () => {
     const result = await context.createCaller().audit.list({});
 
     expect(result).toMatchObject({
-      sortBy: 'occurredAt',
-      sortDirection: 'desc',
+      nextCursor: null,
       total: 2,
     });
     expect(result.items.map((event) => event.summary)).toEqual([
@@ -81,16 +80,15 @@ describe('audit.list', () => {
     });
 
     const result = await context.createCaller().audit.list({
-      page: 2,
-      pageSize: 1,
+      cursor: 1,
+      limit: 1,
       sortBy: 'occurredAt',
       sortDirection: 'asc',
     });
 
     expect(result.items.map((event) => event.summary)).toEqual(['Middle event']);
+    expect(result.nextCursor).toBe(2);
     expect(result.total).toBe(3);
-    expect(result.sortBy).toBe('occurredAt');
-    expect(result.sortDirection).toBe('asc');
   });
 
   test('filters audit events', async ({ context }) => {

@@ -17,8 +17,8 @@ const RECENT_ACTIVITY_LIST_INPUT = {
     entityIds: [],
     entityTypes: [],
   },
-  page: 1,
-  pageSize: 8,
+  cursor: 0,
+  limit: 8,
   sortBy: 'occurredAt',
   sortDirection: 'desc',
 } as const satisfies AuditListInput;

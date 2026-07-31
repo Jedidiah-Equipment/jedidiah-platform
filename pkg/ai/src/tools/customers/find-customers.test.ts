@@ -25,8 +25,8 @@ describe('findCustomers contract', () => {
 
     expect(toCoreCustomerListInput(input)).toEqual({
       columnFilters: {},
-      page: 1,
-      pageSize: 0,
+      cursor: 0,
+      limit: 0,
       search: 'acme',
       sortBy: 'companyName',
       sortDirection: 'asc',
@@ -50,8 +50,7 @@ describe('findCustomers contract', () => {
           vatNumber: 'VAT-1',
         },
       ],
-      sortBy: 'companyName',
-      sortDirection: 'asc',
+      nextCursor: null,
       total: 1,
     });
 

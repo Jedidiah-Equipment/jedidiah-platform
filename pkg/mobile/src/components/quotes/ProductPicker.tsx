@@ -1,7 +1,7 @@
 import type { Product } from '@pkg/schema';
 import { IconCheck, IconChevronDown } from '@tabler/icons-react-native';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
@@ -36,23 +36,32 @@ export function ProductPicker({
   const debouncedSearch = useDebouncedSearch(search);
   const ranges = useQuery(trpc.quotes.rangeOptions.queryOptions(undefined));
 
-  const products = useQuery(
-    trpc.quotes.products.queryOptions(
+  const products = useInfiniteQuery(
+    trpc.quotes.products.infiniteQueryOptions(
       {
         columnFilters: rangeId ? { rangeId } : {},
-        page: 1,
-        pageSize: 20,
+        limit: 20,
         search: debouncedSearch,
         sortBy: 'name',
         sortDirection: 'asc',
       },
-      { enabled: productsExpanded },
+      {
+        enabled: productsExpanded,
+        getNextPageParam: (page) => page.nextCursor,
+        initialCursor: 0,
+      },
     ),
   );
   const rangeOptions = ranges.data?.ranges ?? [];
   const selectedRange = rangeOptions.find((range) => range.id === rangeId);
-  const productOptions = products.data?.items ?? [];
+  const productOptions = useMemo(
+    () => products.data?.pages.flatMap((page) => page.items) ?? [],
+    [products.data?.pages],
+  );
   const displayValue = productsExpanded ? search : (product?.name ?? '');
+  const loadMoreProducts = useCallback(() => {
+    if (products.hasNextPage && !products.isFetchingNextPage) void products.fetchNextPage();
+  }, [products.fetchNextPage, products.hasNextPage, products.isFetchingNextPage]);
 
   return (
     <View className="gap-4">
@@ -112,6 +121,8 @@ export function ProductPicker({
         <PickerDropdown
           emptyMessage="No products found."
           keyOf={(option) => option.id}
+          loadingMore={products.isFetchingNextPage}
+          onLoadMore={loadMoreProducts}
           onSelect={(option) => {
             onProductSelected(option);
             setSearch('');

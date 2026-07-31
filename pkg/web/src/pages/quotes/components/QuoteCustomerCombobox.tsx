@@ -63,7 +63,7 @@ export const QuoteCustomerCombobox: React.FC<QuoteCustomerComboboxProps> = ({
   const [debouncedSearch] = useDebouncedValue(search, 250);
   const customers = useCustomerForQuoteOptions({
     fallbackCustomer,
-    pageSize: 20,
+    limit: 20,
     search: debouncedSearch,
     value,
   });

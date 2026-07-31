@@ -17,7 +17,7 @@ type PartFormProps = {
 };
 
 export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, isPending, onSubmit, submitLabel }) => {
-  const supplierOptions = useSupplierOptions({ enabled: !fixedSupplier, pageSize: 0 });
+  const supplierOptions = useSupplierOptions({ enabled: !fixedSupplier, limit: 0 });
   const isSupplierSelectPending = !fixedSupplier && supplierOptions.isPending;
   const categoryOptions = usePartCategoryOptions();
 

@@ -296,7 +296,7 @@ describe('parts.bulkImport', () => {
       updatedCount: 0,
     });
 
-    const importedParts = await caller.parts.list({ pageSize: 0, supplierId: supplier.id });
+    const importedParts = await caller.parts.list({ limit: 0, supplierId: supplier.id });
 
     expect(importedParts.items.map((part) => part.code).sort()).toEqual(['FAB1-1', 'FAB1-2', 'FAB1-4']);
     expect(importedParts.items.every((part) => part.supplierCode === 'NC')).toBe(true);

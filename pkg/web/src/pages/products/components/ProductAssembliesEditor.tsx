@@ -81,7 +81,7 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
 }) => {
   const [expandedAssemblyIds, setExpandedAssemblyIds] = React.useState<Set<string>>(new Set());
 
-  const partOptions = usePartOptions({ pageSize: 0, sortBy: 'category', sortDirection: 'asc' });
+  const partOptions = usePartOptions({ limit: 0, sortBy: 'category', sortDirection: 'asc' });
   const categoryOptions = usePartCategoryOptions();
   const assemblyNameOptions = useAssemblyNameOptions();
   const parts = partOptions.items;

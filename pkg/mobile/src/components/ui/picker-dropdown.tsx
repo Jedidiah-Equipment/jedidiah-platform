@@ -2,6 +2,7 @@ import type React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
+import { isNearVerticalScrollEnd } from '@/lib/scroll-pagination';
 
 /**
  * Expandable option list rendered under a picker input. Row content comes from `renderRow`;
@@ -10,6 +11,8 @@ import { Text } from '@/components/ui/text';
 export function PickerDropdown<T>({
   emptyMessage,
   keyOf,
+  loadingMore = false,
+  onLoadMore,
   onSelect,
   open,
   pending,
@@ -19,6 +22,8 @@ export function PickerDropdown<T>({
 }: {
   emptyMessage: string;
   keyOf: (row: T) => string;
+  loadingMore?: boolean;
+  onLoadMore?: (() => void) | undefined;
   onSelect: (row: T) => void;
   open: boolean;
   pending: boolean;
@@ -39,7 +44,14 @@ export function PickerDropdown<T>({
           <Text className="text-sm text-muted-foreground">{emptyMessage}</Text>
         </View>
       ) : (
-        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
+          onScroll={(event) => {
+            if (onLoadMore && isNearVerticalScrollEnd(event.nativeEvent)) onLoadMore();
+          }}
+          scrollEventThrottle={100}
+        >
           {rows.map((row, index) => (
             <Pressable
               accessibilityRole="button"
@@ -53,6 +65,11 @@ export function PickerDropdown<T>({
               {renderRow(row)}
             </Pressable>
           ))}
+          {loadingMore ? (
+            <View className="items-center border-t border-border px-3 py-3">
+              <ActivityIndicator size="small" />
+            </View>
+          ) : null}
         </ScrollView>
       )}
     </View>

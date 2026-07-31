@@ -90,7 +90,8 @@ describe('PartListInput', () => {
   it('defaults list controls', () => {
     expect(PartListInput.parse({})).toMatchObject({
       columnFilters: {},
-      page: 1,
+      cursor: 0,
+      limit: 10,
       search: '',
       sortBy: 'name',
       sortDirection: 'asc',

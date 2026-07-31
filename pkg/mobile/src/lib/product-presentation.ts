@@ -1,5 +1,3 @@
-import type { Product } from '@pkg/schema';
-
 import { createLiteralGuard } from './use-persisted-state';
 
 export type ProductSort = 'name' | 'price';
@@ -16,18 +14,12 @@ export function normalizeRangeFilter(range: RangeFilter, availableRangeIds: read
   return range === 'all' || availableRangeIds.includes(range) ? range : 'all';
 }
 
-/** Search is server-side (`products.list` input); this only applies the Range filter and sort. */
-export function presentProducts(items: readonly Product[], range: RangeFilter, sort: ProductSort): Product[] {
-  const filtered = items.filter((product) => range === 'all' || product.rangeId === range);
-
-  return [...filtered].sort((left, right) => {
-    if (sort === 'price') {
-      const priceOrder = left.basePrice - right.basePrice;
-      if (priceOrder !== 0) return priceOrder;
-    }
-
-    return left.name.localeCompare(right.name);
-  });
+export function getProductListPresentation(range: RangeFilter, sort: ProductSort) {
+  return {
+    columnFilters: range === 'all' ? {} : { rangeId: range },
+    sortBy: sort === 'price' ? ('basePrice' as const) : ('name' as const),
+    sortDirection: 'asc' as const,
+  };
 }
 
 export function landerProductUrls(origin: string, modelCode: string): { en: string; af: string } {

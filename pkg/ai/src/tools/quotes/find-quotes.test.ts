@@ -30,8 +30,8 @@ describe('findQuotes contract', () => {
 
     expect(toCoreQuoteListInput(input)).toEqual({
       filters: { quoteCode: 'QUO-00008', statuses: ['draft', 'sent', 'accepted', 'rejected', 'cancelled'] },
-      page: 1,
-      pageSize: 0,
+      cursor: 0,
+      limit: 0,
       search: '',
       sortBy: 'code',
       sortDirection: 'asc',
@@ -61,8 +61,8 @@ describe('findQuotes contract', () => {
   ])('maps $input.by selection onto its exact Quote filter', ({ expectedFilters, input }) => {
     expect(toCoreQuoteListInput(FindQuotesInput.parse(input))).toEqual({
       filters: expectedFilters,
-      page: 1,
-      pageSize: 0,
+      cursor: 0,
+      limit: 0,
       search: '',
       sortBy: 'code',
       sortDirection: 'asc',

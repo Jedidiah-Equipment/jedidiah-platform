@@ -4,7 +4,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area.js';
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { cn } from '@/lib/utils.js';
 import { DataTableHeader } from './components/DataTableHeader.js';
-import { DataTablePagination } from './components/DataTablePagination.js';
+import { DataTableLoadMore } from './components/DataTableLoadMore.js';
 import { DataTableSearch } from './components/DataTableSearch.js';
 import { DataTableSkeletonRows } from './components/DataTableSkeletonRows.js';
 import { getCellClassName, hasActiveFilterValue } from './utils.js';
@@ -18,6 +18,13 @@ declare module '@tanstack/react-table' {
   }
 }
 
+type DataTableLoadMoreProps = {
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  loadedCount: number;
+  onLoadMore: () => void;
+};
+
 type DataTableProps<TData> = {
   emptyMessage: string;
   errorMessage?: string | undefined;
@@ -30,13 +37,21 @@ type DataTableProps<TData> = {
   isLoading?: boolean;
   loadingRowCount?: number;
   onRowClick?: ((item: TData) => void) | undefined;
-  pageSizeOptions?: number[];
   rightSection?: React.ReactNode;
   tableClassName?: string;
   table: TanStackTable<TData>;
   total: number;
   totalLabel?: (total: number) => React.ReactNode;
-};
+} & (
+  | {
+      loadMore?: never;
+      paginationMode: 'complete';
+    }
+  | {
+      loadMore: DataTableLoadMoreProps;
+      paginationMode: 'cursor';
+    }
+);
 
 export function DataTable<TData>({
   emptyMessage,
@@ -48,9 +63,10 @@ export function DataTable<TData>({
   globalFilterPlaceholder = 'Search...',
   hideGlobalFilter = false,
   isLoading = false,
+  loadMore,
   loadingRowCount = 10,
   onRowClick,
-  pageSizeOptions = [10, 25, 50],
+  paginationMode,
   rightSection,
   table,
   tableClassName,
@@ -63,9 +79,10 @@ export function DataTable<TData>({
     hasActiveFilterValue(tableState.globalFilter) ||
     tableState.columnFilters.some((filter) => hasActiveFilterValue(filter.value));
   const showToolbar = !hideGlobalFilter || rightSection || hasActiveFilters;
+  const rows = table.getRowModel().rows;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {errorMessage ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {errorMessage}
@@ -114,7 +131,7 @@ export function DataTable<TData>({
             <TableBody>
               {isLoading ? <DataTableSkeletonRows columns={visibleColumns.length} rows={loadingRowCount} /> : null}
 
-              {!isLoading && table.getRowModel().rows.length === 0 ? (
+              {!isLoading && rows.length === 0 ? (
                 <TableRow>
                   <TableCell
                     className="h-24 text-center text-muted-foreground"
@@ -126,18 +143,16 @@ export function DataTable<TData>({
               ) : null}
 
               {!isLoading
-                ? table
-                    .getRowModel()
-                    .rows.map((row) => (
-                      <DataTableRow
-                        getRowAriaLabel={getRowAriaLabel}
-                        getRowClassName={getRowClassName}
-                        getRowState={getRowState}
-                        key={row.id}
-                        onRowClick={onRowClick}
-                        row={row}
-                      />
-                    ))
+                ? rows.map((row) => (
+                    <DataTableRow
+                      getRowAriaLabel={getRowAriaLabel}
+                      getRowClassName={getRowClassName}
+                      getRowState={getRowState}
+                      key={row.id}
+                      onRowClick={onRowClick}
+                      row={row}
+                    />
+                  ))
                 : null}
             </TableBody>
           </table>
@@ -145,7 +160,18 @@ export function DataTable<TData>({
         </ScrollArea>
       </div>
 
-      <DataTablePagination pageSizeOptions={pageSizeOptions} table={table} total={total} totalLabel={totalLabel} />
+      {paginationMode === 'cursor' ? (
+        <DataTableLoadMore
+          hasNextPage={loadMore.hasNextPage}
+          isFetchingNextPage={loadMore.isFetchingNextPage}
+          loadedCount={loadMore.loadedCount}
+          onLoadMore={loadMore.onLoadMore}
+          total={total}
+          totalLabel={totalLabel}
+        />
+      ) : (
+        <DataTableLoadMore loadedCount={rows.length} total={total} totalLabel={totalLabel} />
+      )}
     </div>
   );
 }

@@ -11,7 +11,7 @@ const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000d1';
 const test = createTester(async ({ db }) => ({ db, seed: await seedJobs(db) }));
 
 function listInput(overrides: Partial<JobListInput> = {}): JobListInput {
-  return JobListInput.parse({ pageSize: 50, ...overrides });
+  return JobListInput.parse({ limit: 50, ...overrides });
 }
 
 async function listCustomerNames(db: Db, overrides: Partial<JobListInput> = {}) {
@@ -72,7 +72,7 @@ describe('job customer resolution', () => {
   test('offers only Customers its own filter can match', async ({ context }) => {
     const options = await listJobCustomerOptions({
       db: context.db,
-      input: { page: 1, pageSize: 0, search: '', sortBy: 'companyName', sortDirection: 'asc' },
+      input: { cursor: 0, limit: 0, search: '', sortBy: 'companyName', sortDirection: 'asc' },
     });
 
     // Hilltop owns a machine and Riverside holds the Custom Job; the Stock Quote's customer owns nothing.

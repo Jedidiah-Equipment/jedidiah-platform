@@ -53,6 +53,7 @@ function TestFeedbackTable({
       emptyMessage="No feedback found."
       getRowState={(item) => (item.id === selectedFeedbackId ? 'selected' : undefined)}
       hideGlobalFilter
+      paginationMode="complete"
       table={table}
       total={rows.length}
     />

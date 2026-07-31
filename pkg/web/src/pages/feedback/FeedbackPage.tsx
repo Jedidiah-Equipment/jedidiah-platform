@@ -154,6 +154,7 @@ function FeedbackInboxList({
         globalFilterPlaceholder="Search feedback..."
         isLoading={isLoading}
         onRowClick={(item) => onSelectFeedback(item.id)}
+        paginationMode="complete"
         table={table}
         total={total}
         totalLabel={(value) => `${value} ${value === 1 ? 'feedback item' : 'feedback items'}`}

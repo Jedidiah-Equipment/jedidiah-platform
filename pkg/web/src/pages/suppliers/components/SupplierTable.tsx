@@ -138,6 +138,7 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({ onEditSupplier }) 
       getRowAriaLabel={onEditSupplier ? (supplier) => `Edit ${supplier.companyName}` : undefined}
       globalFilterPlaceholder="Search suppliers..."
       isLoading={suppliersQuery.isPending}
+      paginationMode="cursor"
       loadMore={{
         hasNextPage: suppliersQuery.hasNextPage,
         isFetchingNextPage: suppliersQuery.isFetchingNextPage,

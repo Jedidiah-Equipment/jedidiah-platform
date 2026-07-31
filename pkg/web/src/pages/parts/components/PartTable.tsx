@@ -189,6 +189,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
       getRowAriaLabel={onEditPart ? (part) => `Edit ${part.name}` : undefined}
       globalFilterPlaceholder="Search parts..."
       isLoading={partsQuery.isPending}
+      paginationMode="cursor"
       loadMore={{
         hasNextPage: partsQuery.hasNextPage,
         isFetchingNextPage: partsQuery.isFetchingNextPage,

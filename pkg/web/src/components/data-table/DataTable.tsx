@@ -18,6 +18,13 @@ declare module '@tanstack/react-table' {
   }
 }
 
+type DataTableLoadMoreProps = {
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  loadedCount: number;
+  onLoadMore: () => void;
+};
+
 type DataTableProps<TData> = {
   emptyMessage: string;
   errorMessage?: string | undefined;
@@ -28,12 +35,6 @@ type DataTableProps<TData> = {
   globalFilterPlaceholder?: string;
   hideGlobalFilter?: boolean;
   isLoading?: boolean;
-  loadMore?: {
-    hasNextPage: boolean;
-    isFetchingNextPage: boolean;
-    loadedCount: number;
-    onLoadMore: () => void;
-  };
   loadingRowCount?: number;
   onRowClick?: ((item: TData) => void) | undefined;
   rightSection?: React.ReactNode;
@@ -41,7 +42,16 @@ type DataTableProps<TData> = {
   table: TanStackTable<TData>;
   total: number;
   totalLabel?: (total: number) => React.ReactNode;
-};
+} & (
+  | {
+      loadMore?: never;
+      paginationMode: 'complete';
+    }
+  | {
+      loadMore: DataTableLoadMoreProps;
+      paginationMode: 'cursor';
+    }
+);
 
 export function DataTable<TData>({
   emptyMessage,
@@ -56,6 +66,7 @@ export function DataTable<TData>({
   loadMore,
   loadingRowCount = 10,
   onRowClick,
+  paginationMode,
   rightSection,
   table,
   tableClassName,
@@ -149,14 +160,18 @@ export function DataTable<TData>({
         </ScrollArea>
       </div>
 
-      <DataTableLoadMore
-        hasNextPage={loadMore?.hasNextPage ?? false}
-        isFetchingNextPage={loadMore?.isFetchingNextPage ?? false}
-        loadedCount={loadMore?.loadedCount ?? rows.length}
-        onLoadMore={loadMore?.onLoadMore}
-        total={total}
-        totalLabel={totalLabel}
-      />
+      {paginationMode === 'cursor' ? (
+        <DataTableLoadMore
+          hasNextPage={loadMore.hasNextPage}
+          isFetchingNextPage={loadMore.isFetchingNextPage}
+          loadedCount={loadMore.loadedCount}
+          onLoadMore={loadMore.onLoadMore}
+          total={total}
+          totalLabel={totalLabel}
+        />
+      ) : (
+        <DataTableLoadMore loadedCount={rows.length} total={total} totalLabel={totalLabel} />
+      )}
     </div>
   );
 }

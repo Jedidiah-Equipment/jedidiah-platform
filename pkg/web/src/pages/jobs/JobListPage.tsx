@@ -192,6 +192,7 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
       isLoading={jobsQuery.isPending}
+      paginationMode="cursor"
       loadMore={{
         hasNextPage: jobsQuery.hasNextPage,
         isFetchingNextPage: jobsQuery.isFetchingNextPage,

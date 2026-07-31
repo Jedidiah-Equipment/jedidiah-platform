@@ -165,6 +165,7 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
       getRowAriaLabel={(unit) => `Open unit ${unit.productSerialNumber}`}
       globalFilterPlaceholder="Search by serial number..."
       isLoading={unitsQuery.isPending}
+      paginationMode="cursor"
       loadMore={{
         hasNextPage: unitsQuery.hasNextPage,
         isFetchingNextPage: unitsQuery.isFetchingNextPage,

@@ -134,6 +134,7 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
       globalFilterPlaceholder="Search users..."
       isLoading={isLoading}
       onRowClick={onEditUser}
+      paginationMode="complete"
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'user' : 'users'}`}

@@ -143,6 +143,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
       getRowAriaLabel={(customer) => `Edit ${customer.companyName}`}
       globalFilterPlaceholder="Search customers..."
       isLoading={customersQuery.isPending}
+      paginationMode="cursor"
       loadMore={{
         hasNextPage: customersQuery.hasNextPage,
         isFetchingNextPage: customersQuery.isFetchingNextPage,

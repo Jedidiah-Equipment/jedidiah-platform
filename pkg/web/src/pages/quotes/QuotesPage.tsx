@@ -176,6 +176,7 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
       getRowClassName={getQuoteTableRowClassName}
       globalFilterPlaceholder="Search quotes..."
       isLoading={quotesQuery.isPending}
+      paginationMode="cursor"
       loadMore={{
         hasNextPage: quotesQuery.hasNextPage,
         isFetchingNextPage: quotesQuery.isFetchingNextPage,

@@ -191,6 +191,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
       getRowAriaLabel={onEditProduct ? (product) => `Edit ${product.name}` : undefined}
       globalFilterPlaceholder="Search products..."
       isLoading={productsQuery.isPending}
+      paginationMode="cursor"
       loadMore={{
         hasNextPage: productsQuery.hasNextPage,
         isFetchingNextPage: productsQuery.isFetchingNextPage,

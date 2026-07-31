@@ -1,4 +1,4 @@
-import { AuditEntityType, AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
+import { AuditChanges, AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
 import { IconEye } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -136,7 +136,10 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     }),
   );
   const { items, total } = useCombinedCursorQueryPages(auditQuery.data?.pages);
-  const auditEvents = useMemo(() => items.map((item) => AuditEvent.parse(item)), [items]);
+  const auditEvents = useMemo<AuditEvent[]>(
+    () => items.map((item) => ({ ...item, changes: AuditChanges.nullable().parse(item.changes) })),
+    [items],
+  );
 
   const columns = useMemo<ColumnDef<AuditEvent>[]>(
     () => [
@@ -237,6 +240,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
       errorMessage={getApiQueryErrorMessage(auditQuery.error, 'Unable to load audit events.')}
       hideGlobalFilter
       isLoading={auditQuery.isPending}
+      paginationMode="cursor"
       loadMore={{
         hasNextPage: auditQuery.hasNextPage,
         isFetchingNextPage: auditQuery.isFetchingNextPage,

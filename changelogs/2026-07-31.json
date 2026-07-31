@@ -1,0 +1,44 @@
+{
+  "releasedAt": "2026-07-31T11:35:41.540Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find units faster",
+          "description": "Search units by serial number, VIN, owner, product name, or model code. You can also filter completed builds separately from units that are still on hand."
+        },
+        {
+          "title": "Browse long lists smoothly",
+          "description": "Lists now load more records incrementally, with more reliable results as you continue browsing."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Filter products more easily",
+          "description": "Filter menus now stay within the screen, and products with only one variant no longer show unnecessary variant options."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "View product units on mobile",
+          "description": "Open the new Product Units tab to browse machines and view their serial number, VIN, product, owner, build state, jobs, and other details."
+        },
+        {
+          "title": "Navigate lists more comfortably",
+          "description": "Product lists load incrementally, single-column cards use more of the screen, and search and sorting controls are clearer."
+        },
+        {
+          "title": "Read statuses at a glance",
+          "description": "Build and quote status chips now display their intended colours, and cancelled unit jobs no longer also appear as in progress."
+        }
+      ]
+    }
+  ]
+}

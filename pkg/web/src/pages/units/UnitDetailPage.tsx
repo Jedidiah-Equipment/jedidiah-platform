@@ -15,7 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { ProductUnitBuildStateCell, ProductUnitOwnerCell } from './components/ProductUnitOwnerCell.js';
+import { ProductUnitBuildStateCell } from './components/ProductUnitBuildStateCell.js';
+import { ProductUnitOwnerCell } from './components/ProductUnitOwnerCell.js';
 import { UnitTransferDialog } from './components/UnitTransferDialog.js';
 import { toProductUnitUpdateInput, toUnitEditFormValues, UnitEditFormValues } from './components/unit-edit-form.js';
 

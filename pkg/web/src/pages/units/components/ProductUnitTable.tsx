@@ -1,5 +1,6 @@
+import { toDisplayBuildState } from '@pkg/domain';
 import {
-  ProductUnitBuildStateFilter,
+  ProductUnitDisplayBuildState,
   type ProductUnitListInput,
   ProductUnitSortBy,
   type ProductUnitSummary,
@@ -18,12 +19,8 @@ import type { SortOptions } from '@/components/data-table/table-state.js';
 import { toSelectOptions } from '@/hooks/options/helpers.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import {
-  buildStateLabels,
-  ProductUnitBuildStateCell,
-  ProductUnitOwnerCell,
-  toDisplayBuildState,
-} from './ProductUnitOwnerCell.js';
+import { buildStateLabels, ProductUnitBuildStateCell } from './ProductUnitBuildStateCell.js';
+import { ProductUnitOwnerCell } from './ProductUnitOwnerCell.js';
 
 /** The Units we hold. Not a Customer, so it needs a filter value of its own. */
 const STOCK_OWNER_VALUE = 'stock';
@@ -120,7 +117,7 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
         header: 'Build',
         id: 'buildState',
         meta: {
-          filterOptions: ProductUnitBuildStateFilter.options.map((state) => ({
+          filterOptions: ProductUnitDisplayBuildState.options.map((state) => ({
             label: buildStateLabels[state],
             value: state,
           })),
@@ -193,7 +190,7 @@ function getProductUnitListInputExtras(columnFilters: ColumnFiltersState) {
 
   return {
     columnFilters: {
-      buildState: ProductUnitBuildStateFilter.safeParse(buildState).data,
+      buildState: ProductUnitDisplayBuildState.safeParse(buildState).data,
       owner,
       productId: getColumnFilterValue(columnFilters, 'product'),
     },

@@ -1,10 +1,11 @@
+import { toDisplayBuildState } from '@pkg/domain';
 import { ProductUnitListInput, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { buildStateLabels, toDisplayBuildState } from '@/pages/units/components/ProductUnitOwnerCell.js';
+import { buildStateLabels } from '@/pages/units/components/ProductUnitBuildStateCell.js';
 
 const BUILD_TO_ORDER = 'build-to-order';
 

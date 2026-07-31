@@ -268,7 +268,6 @@ function buildProductUnitListWhere(input: ProductUnitListInput): SQL | undefined
     conditions.push(sql`${currentOwnerId} = ${input.columnFilters.owner}`);
   }
 
-  // `on-hand` is the built machines we still hold, because `complete` takes the ones a Customer owns.
   if (input.columnFilters.buildState === 'on-hand') {
     conditions.push(sql`${buildCompletedOn} is not null and ${currentOwnerId} is null`);
   } else if (input.columnFilters.buildState === 'complete') {

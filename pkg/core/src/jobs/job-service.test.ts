@@ -617,7 +617,7 @@ describe('createJob', () => {
               partCode: 'PART-HEAVY-AXLE',
               partName: 'Heavy Axle',
               quantity: 1,
-              unitOfMeasure: 'quantity',
+              unitOfMeasure: 'piece',
             }),
           ]),
         }),
@@ -3703,7 +3703,7 @@ function partInput(
   supplierId: string,
   code: string,
   name: string,
-  unitOfMeasure: PartUnitOfMeasure = 'quantity',
+  unitOfMeasure: PartUnitOfMeasure = 'piece',
 ): typeof parts.$inferInsert {
   return {
     category: 'Fabrication',
@@ -3711,6 +3711,7 @@ function partInput(
     description: name,
     finish: 'Raw',
     name,
+    standardPurchaseLengthMm: unitOfMeasure === 'mm' ? 6000 : null,
     supplierCode: code,
     supplierId,
     unitOfMeasure,

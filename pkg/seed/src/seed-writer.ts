@@ -6,8 +6,8 @@ import { hashPassword } from 'better-auth/crypto';
 import { deserializeSnapshotRows } from './snapshot-json.js';
 import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
 import {
-  applySeedRowDefaults,
   collectStorageFiles,
+  prepareSnapshotRow,
   projectWritableRow,
   type SnapshotRow,
   type SnapshotTableConfig,
@@ -61,10 +61,9 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
   const snapshots = await Promise.all(
     snapshotTables.map(async (config) => ({
       config,
-      // Merge seedRowDefaults under each row so columns the committed snapshot predates (a not-yet-read
-      // migration column, e.g. user.assistantEnabled) get a derived value; snapshot values still win.
+      // Add rollout defaults beneath captured values, then normalize legacy values for the current schema.
       rows: (await readSnapshotFile(config)).map((row, index) =>
-        applySeedRowDefaults(config, projectWritableRow(config, row), index),
+        prepareSnapshotRow(config, projectWritableRow(config, row), index),
       ),
     })),
   );

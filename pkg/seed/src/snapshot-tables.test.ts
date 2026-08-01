@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  applySeedRowDefaults,
   collectStorageFiles,
+  prepareSnapshotRow,
   projectWritableRow,
   type SnapshotTableConfig,
   snapshotCleanupTables,
@@ -106,12 +106,45 @@ describe('snapshot table registry', () => {
   it('keeps captured rollout values ahead of seed fallbacks', () => {
     const quoteConfig = configFor('quote');
 
-    expect(applySeedRowDefaults(quoteConfig, { kind: 'custom', status: 'cancelled' }, 0)).toMatchObject({
+    expect(prepareSnapshotRow(quoteConfig, { kind: 'custom', status: 'cancelled' }, 0)).toMatchObject({
       cancellationReason: 'Reason not recorded (cancelled before cancellation reasons were required).',
     });
     expect(
-      applySeedRowDefaults(quoteConfig, { cancellationReason: 'Captured', kind: 'custom', status: 'cancelled' }, 0),
+      prepareSnapshotRow(quoteConfig, { cancellationReason: 'Captured', kind: 'custom', status: 'cancelled' }, 0),
     ).toMatchObject({ cancellationReason: 'Captured' });
+  });
+
+  it('normalizes legacy part inventory values while preparing snapshots', () => {
+    const partsConfig = configFor('parts');
+
+    expect(prepareSnapshotRow(partsConfig, { code: 'P-100', unitOfMeasure: 'quantity' }, 0)).toMatchObject({
+      standardPurchaseLengthMm: null,
+      stockTrackingMode: 'perpetual',
+      unitOfMeasure: 'piece',
+    });
+    expect(
+      prepareSnapshotRow(partsConfig, { category: '6000', code: 'SEMP-0001', unitOfMeasure: 'mm' }, 0),
+    ).toMatchObject({
+      category: 'Pipe',
+      standardPurchaseLengthMm: 6000,
+      unitOfMeasure: 'mm',
+    });
+    expect(prepareSnapshotRow(partsConfig, { code: 'LTE-0027', unitOfMeasure: 'mm' }, 0)).toMatchObject({
+      standardPurchaseLengthMm: 1000,
+      unitOfMeasure: 'mm',
+    });
+    expect(
+      prepareSnapshotRow(
+        partsConfig,
+        {
+          category: 'Tube',
+          code: 'SEMP-0001',
+          standardPurchaseLengthMm: 12000,
+          unitOfMeasure: 'mm',
+        },
+        0,
+      ),
+    ).toMatchObject({ category: 'Tube', standardPurchaseLengthMm: 12000 });
   });
 
   it('keeps rollout Work Item tables optional until the source migration deploys', () => {

@@ -4,6 +4,7 @@ export { useCustomerForQuoteOptions } from './use-customer-for-quote-options.js'
 export { type CustomerOption, useCustomerOptions } from './use-customer-options.js';
 export { usePartCategoryOptions } from './use-part-category-options.js';
 export { usePartOptions } from './use-part-options.js';
+export { usePartStorageLocationOptions } from './use-part-storage-location-options.js';
 export { useProductForQuoteOptions } from './use-product-for-quote-options.js';
 export { type ProductOption, useProductOptions } from './use-product-options.js';
 export { useProductRangeForQuoteOptions } from './use-product-range-for-quote-options.js';

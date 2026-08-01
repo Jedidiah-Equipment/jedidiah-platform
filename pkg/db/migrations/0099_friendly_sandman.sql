@@ -1,0 +1,1 @@
+ALTER TABLE "parts" ADD CONSTRAINT "parts_standard_purchase_length_mm_unit_check" CHECK (("parts"."unit_of_measure" = 'mm' AND "parts"."standard_purchase_length_mm" IS NOT NULL) OR ("parts"."unit_of_measure" <> 'mm' AND "parts"."standard_purchase_length_mm" IS NULL));

@@ -17,6 +17,7 @@ export const PART_BULK_IMPORT_COLUMNS = [
   'Name',
   'Unit',
   'Internally Fabricated',
+  'Standard Purchase Length (mm)',
 ] as const;
 
 type PartBulkImportColumnKey =
@@ -27,6 +28,7 @@ type PartBulkImportColumnKey =
   | 'finish'
   | 'isInternallyFabricated'
   | 'name'
+  | 'standardPurchaseLengthMm'
   | 'supplierCode'
   | 'supplierName'
   | 'unitOfMeasure';
@@ -35,6 +37,7 @@ type ColumnDefinition = {
   key: PartBulkImportColumnKey;
   label: (typeof PART_BULK_IMPORT_COLUMNS)[number];
   normalizedHeaders: readonly string[];
+  required?: boolean;
 };
 
 type ParsePartBulkImportCsvOptions = {
@@ -61,6 +64,12 @@ const columnDefinitions: readonly ColumnDefinition[] = [
     label: 'Internally Fabricated',
     normalizedHeaders: ['internallyfabricated', 'internalfabrication', 'internal'],
   },
+  {
+    key: 'standardPurchaseLengthMm',
+    label: 'Standard Purchase Length (mm)',
+    normalizedHeaders: ['standardpurchaselength', 'standardpurchaselengthmm'],
+    required: false,
+  },
 ];
 
 const columnLabelsByKey = new Map<PartBulkImportColumnKey, string>(
@@ -71,9 +80,25 @@ const preservedTechnicalTokens = new Set(['CSK', 'HT', 'SHCS', 'SQ', 'SS', 'UNC'
 const formattedFieldKeys = new Set<PartBulkImportColumnKey>(['category', 'finish', 'name', 'supplierName']);
 const unitOfMeasureValues = new Set<string>(PartUnitOfMeasure.options);
 const unitOfMeasureLabels = new Map<string, PartUnitOfMeasureValue>([
+  ['box', 'box'],
+  ['boxes', 'box'],
+  ['kilogram', 'kg'],
+  ['kilograms', 'kg'],
+  ['liter', 'litre'],
+  ['liters', 'litre'],
+  ['litre', 'litre'],
+  ['litres', 'litre'],
+  ['millimetre', 'mm'],
   ['millimetres', 'mm'],
+  ['millimeter', 'mm'],
   ['millimeters', 'mm'],
-  ['quantity', 'quantity'],
+  ['pair', 'pair'],
+  ['pairs', 'pair'],
+  ['piece', 'piece'],
+  ['pieces', 'piece'],
+  ['quantity', 'piece'],
+  ['set', 'set'],
+  ['sets', 'set'],
 ]);
 const booleanLabels = new Map<string, boolean>([
   ['0', false],
@@ -104,7 +129,9 @@ export function parsePartBulkImportCsv(
     };
   }
 
-  const columnIndexes = options.hasHeader ? getHeaderColumnIndexes(table[0] ?? []) : getPositionColumnIndexes();
+  const columnIndexes = options.hasHeader
+    ? getHeaderColumnIndexes(table[0] ?? [])
+    : { errors: [], indexes: new Map<PartBulkImportColumnKey, number>() };
 
   if (parseErrors.length > 0) {
     return {
@@ -134,8 +161,14 @@ export function parsePartBulkImportCsv(
   dataRows.forEach((dataRow, index) => {
     const rowNumber = options.hasHeader ? index + 2 : index + 1;
 
-    if (!options.hasHeader && dataRow.length !== columnDefinitions.length) {
-      errors.push(`Row ${rowNumber}: Expected ${columnDefinitions.length} columns, found ${dataRow.length}.`);
+    if (
+      !options.hasHeader &&
+      dataRow.length !== columnDefinitions.length &&
+      dataRow.length !== columnDefinitions.length - 1
+    ) {
+      errors.push(
+        `Row ${rowNumber}: Expected ${columnDefinitions.length - 1} or ${columnDefinitions.length} columns, found ${dataRow.length}.`,
+      );
       return;
     }
 
@@ -144,8 +177,9 @@ export function parsePartBulkImportCsv(
       return;
     }
 
+    const rowIndexes = options.hasHeader ? columnIndexes.indexes : getPositionColumnIndexes(dataRow.length).indexes;
     const rowInput = {
-      ...buildRowInput(dataRow, columnIndexes.indexes),
+      ...buildRowInput(dataRow, rowIndexes),
       lineNumber: rowNumber,
     };
     const result = PartBulkImportRow.safeParse(rowInput);
@@ -174,10 +208,13 @@ export function parsePartBulkImportCsv(
   };
 }
 
-function getPositionColumnIndexes(): { errors: string[]; indexes: Map<PartBulkImportColumnKey, number> } {
+function getPositionColumnIndexes(columnCount: number): {
+  errors: string[];
+  indexes: Map<PartBulkImportColumnKey, number>;
+} {
   return {
     errors: [],
-    indexes: new Map(columnDefinitions.map((column, index) => [column.key, index])),
+    indexes: new Map(columnDefinitions.slice(0, columnCount).map((column, index) => [column.key, index])),
   };
 }
 
@@ -193,7 +230,7 @@ function getHeaderColumnIndexes(headers: readonly string[]): {
     const index = normalizedHeaders.findIndex((header) => column.normalizedHeaders.includes(header));
 
     if (index === -1) {
-      errors.push(`Missing required column: ${column.label}.`);
+      if (column.required !== false) errors.push(`Missing required column: ${column.label}.`);
       continue;
     }
 
@@ -206,8 +243,8 @@ function getHeaderColumnIndexes(headers: readonly string[]): {
 function buildRowInput(
   row: readonly string[],
   indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
-): Record<PartBulkImportColumnKey, string | boolean | null> {
-  return {
+): Record<string, string | number | boolean | null> {
+  const input: Record<string, string | number | boolean | null> = {
     category: getFormattedCell(row, indexes, 'category'),
     code: getCell(row, indexes, 'code'),
     description: getCell(row, indexes, 'description'),
@@ -219,6 +256,12 @@ function buildRowInput(
     supplierName: getFormattedCell(row, indexes, 'supplierName'),
     unitOfMeasure: getUnitOfMeasureCell(row, indexes),
   };
+
+  if (indexes.has('standardPurchaseLengthMm')) {
+    input.standardPurchaseLengthMm = getOptionalIntegerCell(row, indexes, 'standardPurchaseLengthMm');
+  }
+
+  return input;
 }
 
 function getCell(
@@ -249,6 +292,18 @@ function getBooleanCell(
   const value = getCell(row, indexes, key).trim();
 
   return booleanLabels.get(value.toLowerCase()) ?? value;
+}
+
+function getOptionalIntegerCell(
+  row: readonly string[],
+  indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
+  key: PartBulkImportColumnKey,
+): number | string | null {
+  const value = getCell(row, indexes, key).trim();
+  if (!value) return null;
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : value;
 }
 
 function getUnitOfMeasureCell(
@@ -301,9 +356,17 @@ function formatWord(word: string): string {
 }
 
 function normalizeHeader(header: string): string {
-  return header.trim().toLowerCase().replaceAll(/\s+/g, '');
+  return header
+    .trim()
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]/g, '');
 }
 
 function getRequiredColumnCount(indexes: ReadonlyMap<PartBulkImportColumnKey, number>): number {
-  return Math.max(...indexes.values()) + 1;
+  const requiredIndexes = columnDefinitions.flatMap((column) => {
+    const index = indexes.get(column.key);
+    return column.required === false || index === undefined ? [] : [index];
+  });
+
+  return Math.max(...requiredIndexes) + 1;
 }

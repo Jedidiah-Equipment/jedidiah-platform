@@ -30,7 +30,7 @@ async function createPart(
     name: 'Bearing',
     supplierCode: 'SUP-100',
     supplierId,
-    unitOfMeasure: 'quantity' as const,
+    unitOfMeasure: 'piece' as const,
     ...overrides,
   });
 }
@@ -52,7 +52,7 @@ describe('parts.create', () => {
         name: 'Bearing',
         supplierCode: 'SUP-100',
         supplierId: '00000000-0000-4000-8000-000000000001',
-        unitOfMeasure: 'quantity',
+        unitOfMeasure: 'piece',
       }),
     ).rejects.toMatchObject({
       code: 'UNAUTHORIZED',
@@ -73,7 +73,7 @@ describe('parts.create', () => {
         name: 'Bearing',
         supplierCode: 'SUP-100',
         supplierId: supplier.id,
-        unitOfMeasure: 'quantity',
+        unitOfMeasure: 'piece',
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -99,7 +99,7 @@ describe('parts.create', () => {
       },
       supplierCode: 'SUP-100',
       supplierId: supplier.id,
-      unitOfMeasure: 'quantity',
+      unitOfMeasure: 'piece',
     });
 
     const events = await listAuditEvents(context.db);
@@ -210,6 +210,7 @@ describe('parts.bulkImport', () => {
           bulkImportRow({
             description: 'Updated main bearing',
             isInternallyFabricated: true,
+            standardPurchaseLengthMm: 6000,
             unitOfMeasure: 'mm',
           }),
         ],
@@ -225,6 +226,7 @@ describe('parts.bulkImport', () => {
     expect(parts.items[0]).toMatchObject({
       description: 'Updated main bearing',
       isInternallyFabricated: true,
+      standardPurchaseLengthMm: 6000,
       unitOfMeasure: 'mm',
     });
   });
@@ -338,10 +340,13 @@ describe('parts.bulkImport', () => {
   });
 });
 
-describe('parts.list and parts.categories', () => {
+describe('parts.list, parts.categories, and parts.locations', () => {
   test('rejects unauthenticated and unauthorized reads', async ({ context }) => {
     await expect(context.createAnonCaller().parts.list({})).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
     await expect(context.createCaller(mockSession('sales')).parts.categories()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(context.createCaller(mockSession('sales')).parts.locations()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });
@@ -363,12 +368,15 @@ describe('parts.list and parts.categories', () => {
       isInternallyFabricated: true,
       name: 'Bolt',
       supplierCode: 'BT-200',
+      standardPurchaseLengthMm: 6000,
+      storageLocation: 'Rack B',
       unitOfMeasure: 'mm',
     });
     await createPart(caller, acme.id, {
       category: 'Bearings',
       code: 'P-300',
       name: 'Roller',
+      storageLocation: 'Rack A',
       supplierCode: 'AC-300',
     });
 
@@ -392,7 +400,9 @@ describe('parts.list and parts.categories', () => {
     });
     const lengthParts = await caller.parts.list({ columnFilters: { unitOfMeasure: 'mm' } });
     const internallyFabricatedParts = await caller.parts.list({ columnFilters: { isInternallyFabricated: true } });
+    const rackParts = await caller.parts.list({ columnFilters: { storageLocation: 'Rack A' } });
     const categories = await caller.parts.categories();
+    const locations = await caller.parts.locations();
 
     expect(partNames(list.items)).toEqual(['Bearing']);
     expect(supplierSearch.items.map((part) => part.code)).toEqual(['P-200']);
@@ -400,7 +410,9 @@ describe('parts.list and parts.categories', () => {
     expect(supplierParts.items.map((part) => part.code)).toEqual(['P-300', 'P-100']);
     expect(lengthParts.items.map((part) => part.code)).toEqual(['P-200']);
     expect(internallyFabricatedParts.items.map((part) => part.code)).toEqual(['P-200']);
+    expect(rackParts.items.map((part) => part.code)).toEqual(['P-300']);
     expect(categories.categories).toEqual(['Bearings', 'Fasteners']);
+    expect(locations.locations).toEqual(['Rack A', 'Rack B']);
   });
 
   test('escapes part list search wildcards', async ({ context }) => {
@@ -468,7 +480,11 @@ describe('parts.update', () => {
       drawingCode: 'DR-100',
       finish: 'Painted',
       isInternallyFabricated: true,
+      minimumStock: 5,
       name: 'Bearing Assembly',
+      standardPurchaseLengthMm: 6000,
+      stockTrackingMode: 'periodic',
+      storageLocation: 'Rack A',
       unitOfMeasure: 'mm',
     });
 
@@ -477,7 +493,11 @@ describe('parts.update', () => {
       finish: 'Painted',
       id: created.id,
       isInternallyFabricated: true,
+      minimumStock: 5,
       name: 'Bearing Assembly',
+      standardPurchaseLengthMm: 6000,
+      stockTrackingMode: 'periodic',
+      storageLocation: 'Rack A',
       unitOfMeasure: 'mm',
     });
 
@@ -504,8 +524,24 @@ describe('parts.update', () => {
           to: 'Bearing Assembly',
         },
         unitOfMeasure: {
-          from: 'quantity',
+          from: 'piece',
           to: 'mm',
+        },
+        minimumStock: {
+          from: null,
+          to: 5,
+        },
+        standardPurchaseLengthMm: {
+          from: null,
+          to: 6000,
+        },
+        stockTrackingMode: {
+          from: 'perpetual',
+          to: 'periodic',
+        },
+        storageLocation: {
+          from: null,
+          to: 'Rack A',
         },
       },
       entityId: created.id,
@@ -529,7 +565,7 @@ describe('parts.update', () => {
         name: 'Bearing',
         supplierCode: 'SUP-100',
         supplierId: supplier.id,
-        unitOfMeasure: 'quantity',
+        unitOfMeasure: 'piece',
       }),
     ).rejects.toMatchObject({
       code: 'NOT_FOUND',
@@ -578,7 +614,7 @@ function bulkImportRow(overrides: Partial<BulkImportRowInput> = {}): BulkImportR
     name: 'Bearing',
     supplierCode: 'SUP-100',
     supplierName: 'Acme Supplies',
-    unitOfMeasure: 'quantity',
+    unitOfMeasure: 'piece',
     ...overrides,
   };
 }

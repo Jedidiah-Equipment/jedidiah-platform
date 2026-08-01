@@ -33,8 +33,8 @@ import type { PgTable } from 'drizzle-orm/pg-core';
 import { type SnapshotTableConfig, snapshotTableDefinitions } from './snapshot-table-definitions.js';
 
 export {
-  applySeedRowDefaults,
   collectStorageFiles,
+  prepareSnapshotRow,
   projectWritableRow,
   type SnapshotRow,
   type SnapshotStorageFile,

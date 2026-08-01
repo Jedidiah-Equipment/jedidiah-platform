@@ -1,14 +1,21 @@
 import {
+  PART_STOCK_TRACKING_MODE_LABELS,
   PART_UNIT_OF_MEASURE_LABELS,
   type Part,
   PartCategory,
   PartCode,
+  PartCreateInput,
   PartDescription,
   PartDrawingCode,
   PartFinish,
+  PartMinimumStock,
   PartName,
+  PartStandardPurchaseLengthMm,
+  PartStockTrackingMode,
+  PartStorageLocation,
   PartSupplierCode,
   PartUnitOfMeasure,
+  refinePartStandardPurchaseLength,
   type UUID,
   UUID as UUIDSchema,
 } from '@pkg/schema';
@@ -16,19 +23,38 @@ import { z } from 'zod';
 
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 
-export type PartFormValues = z.infer<typeof PartFormValues>;
-export const PartFormValues = z.object({
+const PartFormFields = z.object({
   category: PartCategory,
   code: PartCode,
   description: PartDescription,
   drawingCode: emptyStringOr(PartDrawingCode),
   finish: PartFinish,
   isInternallyFabricated: z.boolean(),
+  minimumStock: z.union([PartMinimumStock, z.nan()]),
   name: PartName,
+  standardPurchaseLengthMm: z.union([PartStandardPurchaseLengthMm, z.nan()]),
+  stockTrackingMode: PartStockTrackingMode,
+  storageLocation: emptyStringOr(PartStorageLocation),
   supplierCode: PartSupplierCode,
   supplierId: requiredSelection(UUIDSchema, 'Select a supplier'),
   unitOfMeasure: PartUnitOfMeasure,
 });
+
+export type PartFormValues = z.infer<typeof PartFormValues>;
+export const PartFormValues = PartFormFields.superRefine((values, context) => {
+  refinePartStandardPurchaseLength(
+    {
+      standardPurchaseLengthMm: Number.isNaN(values.standardPurchaseLengthMm) ? null : values.standardPurchaseLengthMm,
+      unitOfMeasure: values.unitOfMeasure,
+    },
+    context,
+  );
+});
+
+export const partStockTrackingModeOptions = PartStockTrackingMode.options.map((value) => ({
+  label: PART_STOCK_TRACKING_MODE_LABELS[value],
+  value,
+}));
 
 export const partUnitOfMeasureOptions = PartUnitOfMeasure.options.map((value) => ({
   label: PART_UNIT_OF_MEASURE_LABELS[value],
@@ -49,9 +75,23 @@ export function toPartFormValues({
     drawingCode: initialPart?.drawingCode ?? '',
     finish: initialPart?.finish ?? '',
     isInternallyFabricated: initialPart?.isInternallyFabricated ?? false,
+    minimumStock: initialPart?.minimumStock ?? NaN,
     name: initialPart?.name ?? '',
+    standardPurchaseLengthMm: initialPart?.standardPurchaseLengthMm ?? NaN,
+    stockTrackingMode: initialPart?.stockTrackingMode ?? 'perpetual',
+    storageLocation: initialPart?.storageLocation ?? '',
     supplierCode: initialPart?.supplierCode ?? '',
     supplierId: fixedSupplierId ?? initialPart?.supplierId ?? '',
-    unitOfMeasure: initialPart?.unitOfMeasure ?? 'quantity',
+    unitOfMeasure: initialPart?.unitOfMeasure ?? 'piece',
   };
+}
+
+export function toPartInput(values: PartFormValues): PartCreateInput {
+  return PartCreateInput.parse({
+    ...values,
+    drawingCode: values.drawingCode || null,
+    minimumStock: Number.isNaN(values.minimumStock) ? null : values.minimumStock,
+    standardPurchaseLengthMm: Number.isNaN(values.standardPurchaseLengthMm) ? null : values.standardPurchaseLengthMm,
+    storageLocation: values.storageLocation || null,
+  });
 }

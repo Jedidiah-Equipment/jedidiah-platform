@@ -25,6 +25,8 @@ export type SnapshotTableDefinition = {
   readOrderColumn?: string;
   // Values merged into each row after reading, keyed by index — used to populate columns omitted above.
   seedRowDefaults?: (row: SnapshotRow, index: number) => SnapshotRow;
+  // Normalizes legacy snapshot values after defaults are applied, both when reading and writing.
+  seedRowTransform?: (row: SnapshotRow, index: number) => SnapshotRow;
   // When true, the writer overwrites each `credential`-provider row's `password` with a hash of the
   // shared local seed password, so every snapshot-seeded user logs in with the same known credential.
   seedCredentialPassword?: boolean;
@@ -65,6 +67,13 @@ const authTimestampColumns = [
 ] as const;
 
 const standardTimestampColumns = ['createdAt', 'updatedAt'] as const;
+// Metre-priced legacy cable/pipe uses a one-metre purchase increment; SEMP keeps its 6 m shop length.
+const legacyPartStandardPurchaseLengthsMm: Readonly<Record<string, number>> = {
+  'CONS-0036': 1000,
+  'LTE-0027': 1000,
+  'LTE-0028': 1000,
+  'SEMP-0001': 6000,
+};
 
 export const snapshotTableDefinitions = [
   {
@@ -127,6 +136,27 @@ export const snapshotTableDefinitions = [
     fileName: 'parts.json',
     tableName: 'parts',
     timestampColumns: [],
+    optionalReadColumns: ['minimumStock', 'standardPurchaseLengthMm', 'stockTrackingMode', 'storageLocation'],
+    seedRowDefaults: (row) => ({
+      minimumStock: null,
+      standardPurchaseLengthMm:
+        typeof row.code === 'string' ? (legacyPartStandardPurchaseLengthsMm[row.code] ?? null) : null,
+      stockTrackingMode: 'perpetual',
+      storageLocation: null,
+    }),
+    seedRowTransform: (row) => {
+      const legacyPurchaseLength =
+        typeof row.code === 'string' ? legacyPartStandardPurchaseLengthsMm[row.code] : undefined;
+
+      return {
+        ...row,
+        ...(row.code === 'SEMP-0001' && row.category === '6000' ? { category: 'Pipe' } : {}),
+        ...(row.standardPurchaseLengthMm == null && legacyPurchaseLength !== undefined
+          ? { standardPurchaseLengthMm: legacyPurchaseLength }
+          : {}),
+        unitOfMeasure: row.unitOfMeasure === 'quantity' ? 'piece' : row.unitOfMeasure,
+      };
+    },
   },
   {
     fileName: 'product_ranges.json',
@@ -282,9 +312,11 @@ export function projectWritableRow(config: SnapshotTableDefinition, row: Snapsho
   return Object.fromEntries(config.writableColumns.map((column) => [column, row[column]]));
 }
 
-export function applySeedRowDefaults(config: SnapshotTableDefinition, row: SnapshotRow, index: number): SnapshotRow {
-  return {
+export function prepareSnapshotRow(config: SnapshotTableDefinition, row: SnapshotRow, index: number): SnapshotRow {
+  const rowWithDefaults = {
     ...(config.seedRowDefaults?.(row, index) ?? {}),
     ...row,
   };
+
+  return config.seedRowTransform?.(rowWithDefaults, index) ?? rowWithDefaults;
 }

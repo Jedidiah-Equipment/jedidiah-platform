@@ -475,7 +475,7 @@ async function seedPlaceholderShape(db: Db) {
       name: 'Chassis Plate',
       supplierCode: 'PART-CHASSIS',
       supplierId: createdSupplier.id,
-      unitOfMeasure: 'quantity',
+      unitOfMeasure: 'piece',
     })
     .returning();
   if (!part) throw new Error('Part insert did not return a row');

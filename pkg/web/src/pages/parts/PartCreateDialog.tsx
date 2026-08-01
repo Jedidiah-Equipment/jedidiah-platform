@@ -11,6 +11,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PartForm } from './components/PartForm.js';
+import { toPartInput } from './components/types.js';
 
 type PartCreateDialogProps = {
   supplier: Pick<Supplier, 'companyName' | 'id'>;
@@ -54,11 +55,12 @@ export const PartCreateDialog: React.FC<PartCreateDialogProps> = ({ supplier, bu
               fixedSupplier={supplier}
               isPending={createPartMutation.isPending}
               onSubmit={(value) =>
-                createPartMutation.mutateAsync({
-                  ...value,
-                  drawingCode: value.drawingCode || null,
-                  supplierId: supplier.id,
-                })
+                createPartMutation.mutateAsync(
+                  toPartInput({
+                    ...value,
+                    supplierId: supplier.id,
+                  }),
+                )
               }
               submitLabel="Create part"
             />

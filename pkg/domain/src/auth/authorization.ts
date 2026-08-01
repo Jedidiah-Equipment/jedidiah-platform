@@ -95,7 +95,7 @@ export const permissionDescriptions = {
   'job_bay:read': 'View durable production Bay configuration.',
   'job_bay:update': 'Create, rename, disable, and re-enable production Bays.',
   'inventory:read': 'View inventory quantities and movement history.',
-  'inventory:move': 'Check stock out and record returns to Stores or suppliers.',
+  'inventory:move': 'Check stock out, return it to stock, or return it to a supplier.',
   'inventory:adjust': 'Post inventory quantity adjustments.',
   'inventory:count': 'Run stocktake sessions and post count results.',
   'inventory:build': 'Build finished Parts from component stock.',
@@ -177,8 +177,11 @@ const adminAccess = {
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const satisfies RoleAccess;
 
-// Invariants: `job:create` implies `job:schedule`, because creation schedules Bay seeds;
-// `purchase_order:receive` implies posting receipt movements, so receiving is never paper-only.
+// Invariant: any role granted `job:create` must also hold `job:schedule` — creating a
+// Job inherently schedules its Bay seeds (picked start dates, ghost previews), so the
+// create surfaces assume scheduling authority rather than gating seed dates separately.
+// Invariant: `purchase_order:receive` implies posting receipt movements, so receiving
+// is never a paper-only action.
 export const appRoleAccess = {
   admin: adminAccess,
   // super-admin is admin plus exclusive Feedback review. Composed by spread so the two can never

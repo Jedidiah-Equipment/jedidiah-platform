@@ -2,7 +2,7 @@ import { PART_UNIT_OF_MEASURE_LABELS, type PartUnitOfMeasure } from '@pkg/schema
 
 export type PartQuantityUnitDisplay = {
   label: string;
-  suffix: string | null;
+  suffix: string;
 };
 
 export function getPartQuantityUnitDisplay(unitOfMeasure: PartUnitOfMeasure | undefined): PartQuantityUnitDisplay {
@@ -26,5 +26,5 @@ export function getPartQuantityUnitDisplay(unitOfMeasure: PartUnitOfMeasure | un
 export function formatPartQuantity(quantity: number, unitOfMeasure: PartUnitOfMeasure): string {
   const unitDisplay = getPartQuantityUnitDisplay(unitOfMeasure);
 
-  return unitDisplay.suffix ? `${quantity} ${unitDisplay.suffix}` : String(quantity);
+  return `${quantity} ${unitDisplay.suffix}`;
 }

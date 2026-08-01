@@ -370,6 +370,7 @@ export async function bulkImportParts({
           suppliersByName.set(importedSupplier.companyName.toLowerCase(), importedSupplier);
         }
 
+        // Bulk CSV owns catalog identity; stock policy/location/minimum default on create and survive updates.
         const partInput = {
           category: row.category,
           code: row.code,

@@ -1395,6 +1395,7 @@ async function createParts(db: Db): Promise<{ bucket: string; hose: string; rock
         description: 'Hydraulic hose',
         finish: 'Rubber',
         name: 'Hydraulic hose',
+        standardPurchaseLengthMm: 6000,
         supplierCode: 'HSE-001',
         supplierId,
         unitOfMeasure: 'mm',

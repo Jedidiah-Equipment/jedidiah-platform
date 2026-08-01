@@ -210,6 +210,7 @@ describe('parts.bulkImport', () => {
           bulkImportRow({
             description: 'Updated main bearing',
             isInternallyFabricated: true,
+            standardPurchaseLengthMm: 6000,
             unitOfMeasure: 'mm',
           }),
         ],
@@ -225,6 +226,7 @@ describe('parts.bulkImport', () => {
     expect(parts.items[0]).toMatchObject({
       description: 'Updated main bearing',
       isInternallyFabricated: true,
+      standardPurchaseLengthMm: 6000,
       unitOfMeasure: 'mm',
     });
   });

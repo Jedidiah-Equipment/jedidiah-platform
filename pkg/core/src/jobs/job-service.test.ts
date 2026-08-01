@@ -3711,6 +3711,7 @@ function partInput(
     description: name,
     finish: 'Raw',
     name,
+    standardPurchaseLengthMm: unitOfMeasure === 'mm' ? 6000 : null,
     supplierCode: code,
     supplierId,
     unitOfMeasure,

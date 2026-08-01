@@ -31,6 +31,10 @@ export const parts = pgTable(
       'parts_standard_purchase_length_mm_positive',
       sql`${table.standardPurchaseLengthMm} IS NULL OR ${table.standardPurchaseLengthMm} > 0`,
     ),
+    check(
+      'parts_standard_purchase_length_mm_unit_check',
+      sql`(${table.unitOfMeasure} = 'mm' AND ${table.standardPurchaseLengthMm} IS NOT NULL) OR (${table.unitOfMeasure} <> 'mm' AND ${table.standardPurchaseLengthMm} IS NULL)`,
+    ),
     check('parts_stock_tracking_mode_check', sql`${table.stockTrackingMode} IN ('perpetual', 'periodic')`),
     check(
       'parts_storage_location_nonempty',

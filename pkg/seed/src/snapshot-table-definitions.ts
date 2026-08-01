@@ -296,7 +296,7 @@ export function projectWritableRow(config: SnapshotTableDefinition, row: Snapsho
   return Object.fromEntries(config.writableColumns.map((column) => [column, row[column]]));
 }
 
-export function applySeedRowDefaults(config: SnapshotTableDefinition, row: SnapshotRow, index: number): SnapshotRow {
+export function prepareSnapshotRow(config: SnapshotTableDefinition, row: SnapshotRow, index: number): SnapshotRow {
   const rowWithDefaults = {
     ...(config.seedRowDefaults?.(row, index) ?? {}),
     ...row,

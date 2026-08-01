@@ -42,6 +42,7 @@ describe('listParts', () => {
             code: 'P-200',
             isInternallyFabricated: true,
             name: 'Linear rail',
+            standardPurchaseLengthMm: 6000,
             supplierCode: 'SUP-200',
             unitOfMeasure: 'mm',
           }),
@@ -147,6 +148,7 @@ describe('bulkImportParts', () => {
             code: 'P-200',
             isInternallyFabricated: true,
             name: 'Bolt',
+            standardPurchaseLengthMm: 6000,
             supplierCode: 'BET-200',
             supplierName: 'Beta Supplies',
             unitOfMeasure: 'mm',
@@ -243,6 +245,7 @@ describe('bulkImportParts', () => {
             finish: 'Painted',
             isInternallyFabricated: true,
             name: 'Bearing Assembly',
+            standardPurchaseLengthMm: 6000,
             unitOfMeasure: 'mm',
           }),
         ],
@@ -257,6 +260,7 @@ describe('bulkImportParts', () => {
       finish: 'Painted',
       isInternallyFabricated: true,
       name: 'Bearing Assembly',
+      standardPurchaseLengthMm: 6000,
       unitOfMeasure: 'mm',
     });
     expect(events.at(-1)).toMatchObject({

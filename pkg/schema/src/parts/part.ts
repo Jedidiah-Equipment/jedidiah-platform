@@ -133,7 +133,10 @@ const PartInputFields = z.object({
   unitOfMeasure: PartUnitOfMeasure,
 });
 
-function refineStandardPurchaseLength(input: z.infer<typeof PartInputFields>, context: z.RefinementCtx): void {
+export function refinePartStandardPurchaseLength(
+  input: Pick<z.infer<typeof PartInputFields>, 'standardPurchaseLengthMm' | 'unitOfMeasure'>,
+  context: z.RefinementCtx,
+): void {
   if (input.unitOfMeasure === 'mm' && input.standardPurchaseLengthMm === null) {
     context.addIssue({
       code: 'custom',
@@ -152,25 +155,36 @@ function refineStandardPurchaseLength(input: z.infer<typeof PartInputFields>, co
 }
 
 export type PartCreateInput = z.infer<typeof PartCreateInput>;
-export const PartCreateInput = PartInputFields.superRefine(refineStandardPurchaseLength);
+export const PartCreateInput = PartInputFields.superRefine(refinePartStandardPurchaseLength);
 
 export type PartUpdateInput = z.infer<typeof PartUpdateInput>;
-export const PartUpdateInput = PartInputFields.extend({ id: UUID }).superRefine(refineStandardPurchaseLength);
+export const PartUpdateInput = PartInputFields.extend({ id: UUID }).superRefine(refinePartStandardPurchaseLength);
 
 export type PartBulkImportRow = z.infer<typeof PartBulkImportRow>;
-export const PartBulkImportRow = z.object({
-  category: PartCategory,
-  code: PartCode,
-  description: PartDescription,
-  drawingCode: PartDrawingCodeInput,
-  finish: PartFinish,
-  isInternallyFabricated: z.boolean(),
-  lineNumber: z.number().int().min(1),
-  name: PartName,
-  supplierCode: PartSupplierCode,
-  supplierName: SupplierCompanyName,
-  unitOfMeasure: PartUnitOfMeasure,
-});
+export const PartBulkImportRow = z
+  .object({
+    category: PartCategory,
+    code: PartCode,
+    description: PartDescription,
+    drawingCode: PartDrawingCodeInput,
+    finish: PartFinish,
+    isInternallyFabricated: z.boolean(),
+    lineNumber: z.number().int().min(1),
+    name: PartName,
+    standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable().optional(),
+    supplierCode: PartSupplierCode,
+    supplierName: SupplierCompanyName,
+    unitOfMeasure: PartUnitOfMeasure,
+  })
+  .superRefine((input, context) =>
+    refinePartStandardPurchaseLength(
+      {
+        standardPurchaseLengthMm: input.standardPurchaseLengthMm ?? null,
+        unitOfMeasure: input.unitOfMeasure,
+      },
+      context,
+    ),
+  );
 
 export type PartBulkImportInput = z.infer<typeof PartBulkImportInput>;
 export const PartBulkImportInput = z.object({

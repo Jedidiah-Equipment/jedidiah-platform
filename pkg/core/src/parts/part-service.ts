@@ -378,6 +378,7 @@ export async function bulkImportParts({
           finish: row.finish,
           isInternallyFabricated: row.isInternallyFabricated,
           name: row.name,
+          standardPurchaseLengthMm: row.standardPurchaseLengthMm ?? null,
           supplierCode: row.supplierCode,
           supplierId: importedSupplier.id,
           unitOfMeasure: row.unitOfMeasure,

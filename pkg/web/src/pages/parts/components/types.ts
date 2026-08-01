@@ -15,6 +15,7 @@ import {
   PartStorageLocation,
   PartSupplierCode,
   PartUnitOfMeasure,
+  refinePartStandardPurchaseLength,
   type UUID,
   UUID as UUIDSchema,
 } from '@pkg/schema';
@@ -41,23 +42,13 @@ const PartFormFields = z.object({
 
 export type PartFormValues = z.infer<typeof PartFormValues>;
 export const PartFormValues = PartFormFields.superRefine((values, context) => {
-  const hasPurchaseLength = !Number.isNaN(values.standardPurchaseLengthMm);
-
-  if (values.unitOfMeasure === 'mm' && !hasPurchaseLength) {
-    context.addIssue({
-      code: 'custom',
-      message: 'Standard purchase length is required for millimetre parts',
-      path: ['standardPurchaseLengthMm'],
-    });
-  }
-
-  if (values.unitOfMeasure !== 'mm' && hasPurchaseLength) {
-    context.addIssue({
-      code: 'custom',
-      message: 'Standard purchase length is only valid for millimetre parts',
-      path: ['standardPurchaseLengthMm'],
-    });
-  }
+  refinePartStandardPurchaseLength(
+    {
+      standardPurchaseLengthMm: Number.isNaN(values.standardPurchaseLengthMm) ? null : values.standardPurchaseLengthMm,
+      unitOfMeasure: values.unitOfMeasure,
+    },
+    context,
+  );
 });
 
 export const partStockTrackingModeOptions = PartStockTrackingMode.options.map((value) => ({

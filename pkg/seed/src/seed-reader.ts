@@ -7,8 +7,8 @@ import { resolveSeedReadSource, type SeedReadSource } from './seed-read-source.j
 import { serializeSnapshotRows } from './snapshot-json.js';
 import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
 import {
-  applySeedRowDefaults,
   collectStorageFiles,
+  prepareSnapshotRow,
   type SnapshotRow,
   type SnapshotStorageFile,
   type SnapshotTableConfig,
@@ -90,7 +90,7 @@ export async function readExistingSnapshotTable(db: Db, config: SnapshotTableCon
   }
 
   if (!rows) throw new Error(`Unable to read snapshot rows for ${config.tableName}`);
-  return config.seedRowDefaults ? rows.map((row, index) => applySeedRowDefaults(config, row, index)) : rows;
+  return rows.map((row, index) => prepareSnapshotRow(config, row, index));
 }
 
 function hasPostgresErrorCode(error: unknown, code: string): boolean {

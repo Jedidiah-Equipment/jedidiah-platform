@@ -95,7 +95,7 @@ export const permissionDescriptions = {
   'job_bay:read': 'View durable production Bay configuration.',
   'job_bay:update': 'Create, rename, disable, and re-enable production Bays.',
   'inventory:read': 'View inventory quantities and movement history.',
-  'inventory:move': 'Move stock between physical locations.',
+  'inventory:move': 'Check stock out and record returns to Stores or suppliers.',
   'inventory:adjust': 'Post inventory quantity adjustments.',
   'inventory:count': 'Run stocktake sessions and post count results.',
   'inventory:build': 'Build finished Parts from component stock.',

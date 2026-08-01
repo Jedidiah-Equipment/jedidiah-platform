@@ -8,10 +8,19 @@ Each role declares its full permission set explicitly; there is no role inherita
 
 - `super-admin`: every `admin` permission plus exclusive `feedback:read` and `feedback:update`. The only role that can read or manage Feedback (see ADR 0008).
 - `admin`: full operational access, including Job creation, Bay scheduling, org calendar updates, Bay administration, and Supplier management. "Full access" no longer means literally every permission — Feedback is deliberately reserved for `super-admin`.
-- `procurement-manager`: Customers, Products, Parts, Suppliers, and Job reads, with no Bay scheduling mutation.
+- `procurement-manager`: full Purchase Order access; inventory read/adjust and cost read/revalue; Customers,
+  Products, Parts, Suppliers, Product Units, and Jobs, with no Bay scheduling mutation.
 - `job-viewer`: Job and Bay schedule reads only.
 - `sales`: Quote create/read/update only.
+- `stores`: Purchase Order read/receive plus physical inventory read/move/adjust/count/build/close-out, with no
+  inventory cost access.
 - `bay-operator`: no app permissions.
+
+Inventory v1 adds the `purchase_order` (read/create/send/amend/receive/close), `inventory`
+(read/move/adjust/count/build/close-out), and `inventory_cost` (read/revalue) resources. Admins receive every new
+permission, while sales, job-viewer, and bay-operator receive none. A single server-side projection rule nulls cost
+fields for callers without `inventory_cost:read`. Granting `purchase_order:receive` always implies authority to post
+the corresponding receipt movements; receiving is not a paper-only action.
 
 Only a `super-admin` may assign or remove the `super-admin` role. Although `admin` holds `user:set-role` (and `user:create`/`user:set-password`) and can manage every other role, it must not be able to grant `super-admin` — otherwise an admin could create or promote an account to read Feedback, defeating the rule that admins cannot see Feedback. Role-assignment enforcement therefore treats `super-admin` as a reserved target: granting it, and removing it from another user, requires the actor to already be a `super-admin`.
 

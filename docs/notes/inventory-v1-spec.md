@@ -39,6 +39,8 @@ One append-only movement ledger for all stocked items (#883). SOH is `SUM(delta)
 
 Every movement carries `actor_user_id` — a deliberate departure from the platform's no-attribution convention: on an append-only ledger, the actor is part of the fact.
 
+**Units of measure** (product feedback, 2026-08-01). `unitOfMeasure` widens from `{quantity, mm}` to three classes: **discrete** — `piece` (migrated from `quantity`), `set`, `box`, `pair`; **linear** — `mm`; **measured** — `kg`, `litre`. The class decides the math: discrete and linear quantities are integers; measured quantities are decimals — so the ledger's `delta` is `numeric`, with integer validation enforced per class (the ledger's deliberate exception to the integer-quantity convention widens by one step). Metres are **display formatting of `mm`**, never a second unit (a 13M channel is `standardPurchaseLength: 13000`, shown as "13 m"). **For discrete and measured parts, the UoM is the counting unit everywhere** — stock, PO lines, BOMs, checkout: if boxes get opened and pieces drawn, the part is `piece` and the PO orders pieces; pack sizes never become a second unit on the same part. **For linear parts, `mm` marks the class, not what `delta` counts**: quantities are always **counts of pieces** bucketed by `lengthMm` (the cut model below), on the ledger and on PO lines alike — `mm` is the dimension lengths and per-mm valuation are expressed in, never the quantity unit.
+
 **Two tracking modes, one storage model.** Perpetual items (parts, Built Parts) use the full vocabulary. Periodic items (raw material) post receipts and `stock-count` adjustments only — no consumption movements at all (Jed's decision). Between counts the periodic ledger only ever adds, so **periodic SOH is stale-high — an upper bound on the shelf**, corrected downward by the weekly stocktake; the SOH report labels it "as of last count" so nobody reads it as available stock. (The *costing* side is conservative separately: consumption estimates are deliberately high, §7.) Flipping an item's mode is a field change, not a migration.
 
 **Linear material** (`unitOfMeasure = mm`): stock is a count of pieces bucketed by length. On **perpetual** linear items a cut is two movements in one transaction (`−1 @ 6000`, `+1 @ 5000`); on **periodic** raw material cuts are never posted — bucket changes surface at the next stocktake, whose count sheet captures per-length buckets (`13M × 9`, `4.2M × 1`). Standard purchase length becomes a real field on Part (killing the `category: "6000"` hack). Plate sizes live in part identity; offcuts are deliberately untracked (they belong to the nesting software).
@@ -65,7 +67,7 @@ A PO is an order on **one Supplier** — never owned by or scoped to a single Jo
 - **Lifecycle**: `draft` (freely editable) → `sent` (human assertion in v1; procurement sends the PDF themselves) → `partially received` → `received` (computed from receipts, never toggled). Exits: `cancelled` (zero receipts), closed-short. Over-receipt warns.
 - **Sent POs take logged amendments** — quantity change (either direction), add line, substitute part; who/when/note; PDF regenerable. The phone call that changes an order is the recorded event. No auto-generated supplementary POs.
 - **Lines**: part, quantity (pieces; standard purchase length for linear), `unitPrice`. Header: optional expected delivery date.
-- **Receiving** receives against open PO lines; refused-at-dock deliveries record nothing; damaged-later goes `return-to-supplier` (`defective`). Credit notes attach one-to-one against the original invoice.
+- **Receiving** receives against open PO lines; refused-at-dock deliveries record nothing; damaged-later goes `return-to-supplier` (`defective`). **Credit notes attach to the PO's document collection** (same infra as the invoice); commercially the supplier credits the original invoice one-to-one, never netting off later orders. The credit-note upload records **which `return-to-supplier` movement(s) it settles** — the reference lives on the document because the movement row is immutable, and it is what the returns-awaiting-credit signal (§12) keys on.
 - Raw material rides POs like everything else; its receipts post movements (the baseline the next stocktake corrects).
 
 ## 5. Costing & valuation (#887)
@@ -132,13 +134,19 @@ The middle term covers **every part in the effective BOM at its ledger cost**: b
 - **Matrix**: admin all; procurement-manager = PO surface + `inventory:read`,`adjust` + `inventory_cost` both; stores = `purchase_order:read`,`receive` + `inventory` read/move/adjust/count/build/close-out, no cost read; sales and job-viewer nothing.
 - **Invariant**: `purchase_order:receive` implies posting receipt movements.
 
-## 12. Reports & signals
+## 12. Reports, signals & the KPI dashboard
 
-Procurement: buy list (negative free, ranked by earliest Slot date, on-order aware) · out-of-stock list · PO-vs-invoiced price variance. Stores: close-out queue widget · negative-SOH flags · stale commitments. Management (cost-gated): SOH valuation · Job drawn-vs-planned variance · stocktake session variance · expected-vs-actual raw-material drift · price history per part · estimated-vs-actual per Job.
+**Every part has a transaction history** — a drill-down from the SOH report showing the part's full movement ledger with running balance, actor, and cost-gated values: the answer to "why is this stock so low/high". Price history per part stays a query over receipts.
+
+Beyond the flow-level reports, inventory ships **KPI dashboard widgets** on the platform's existing permission-gated widget registry, grouped by audience (product ask, 2026-08-01):
+
+- **Stores**: close-out queue (§3) · negative-SOH flags · stale commitments · **parts below minimum** (a `minimumStock` field per part — a Part-form field edited under `part:update` like every other part attribute, no new permission; below-minimum joins the zero-SOH signal) · **stocktake overdue** (no closed session covering a standing scope within its cadence plus grace — **hard-coded v1 constants per §9's two rhythms**: raw material weekly + 2 working days' grace, stores monthly + 5 working days' grace; configurable cadence is deferred).
+- **Procurement**: buy list (negative free, ranked by earliest Slot date, on-order aware) · out-of-stock list · **late POs** (sent, past expected date, open lines) · **supplier returns awaiting credit** (`return-to-supplier` movements **not referenced by any settling credit note** — the per-return reference from §4; a PO-level "has a credit note" test would go blind after the first credit on a multi-return PO) · PO-vs-invoiced price variance.
+- **Management** (cost-gated): SOH valuation · **inventory turns** (perpetual items only — periodic raw material has no consumption events by design, and the tile says so) · **top adjustments and top scrap items** (adjustments grouped by reason, priced) · Job drawn-vs-planned variance · stocktake session variance · expected-vs-actual raw-material drift · estimated-vs-actual per Job.
 
 ## 13. Out of scope for v1
 
-Accounting/GL integration (decided out — ledger preserves data to re-derive) · FX/multi-currency · finished-goods/product inventory (#952/#1009) · offcut tracking (nesting software's domain) · ProNest integration (parked; drift report is the trigger) · per-part reorder minimums above zero · multi-supplier-per-part (would touch PO auto-split) · returns-to-supplier netting (suppliers credit one-to-one) · in-system PO emailing (tracked-as-sent in v1) · mandatory quick-switch PINs · offline tablet operation.
+Accounting/GL integration (decided out — ledger preserves data to re-derive) · FX/multi-currency · finished-goods/product inventory (#952/#1009) · offcut tracking (nesting software's domain) · ProNest integration (parked; drift report is the trigger) · multi-supplier-per-part (would touch PO auto-split) · returns-to-supplier netting (suppliers credit one-to-one) · in-system PO emailing (tracked-as-sent in v1) · mandatory quick-switch PINs · offline tablet operation.
 
 ## 14. Go-live prerequisites (beyond code)
 
@@ -147,4 +155,4 @@ Accounting/GL integration (decided out — ledger preserves data to re-derive) �
 3. **Hardware** — label printer + tablet-compatible Bluetooth scanner (both purchases).
 4. **Labels** — the go-live batch; storemen badge cards from the same printer.
 5. **Accounts** — the Stores Tablet device user + four storemen users; confirm no storeman is also a bay operator (single-role model).
-6. **Product data** — per-material lists and department labor hours keyed for products that should estimate.
+6. **Product data** — per-material lists and department labor hours keyed for products that should estimate; minimum stock levels for parts that should alert.

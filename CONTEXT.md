@@ -88,9 +88,10 @@ App Role owns authorization. Department Membership is descriptive only and must 
 
 - **super-admin**: everything admin can do, plus the exclusive ability to review Corrective Feedback and Internal Notes through the Feedback inbox. The only role that can see Corrective Feedback — admins cannot. Only a super-admin may grant or remove the super-admin role; admins manage every other role but cannot mint a super-admin (which would otherwise be an escalation path to Corrective Feedback).
 - **admin**: full operational access; owns Bay scheduling, calendar updates, Job creation and updates, admin Bay configuration, Suppliers, and Product Unit identity and Ownership Transfers — recording a Transfer by hand is admin-only, since it asserts ownership with no commercial document behind it. Sees General Feedback on subjects it can read, like any subject reader; cannot see Corrective Feedback.
-- **procurement-manager**: Customers, Products, Parts, Suppliers, Product Unit, and Job reads; no scheduling mutation.
+- **procurement-manager**: full Purchase Order access; inventory read/adjust and cost read/revalue; Customers, Products, Parts, Suppliers, Product Unit, and Job reads; no scheduling mutation.
 - **job-viewer**: Job, Product Unit, and Bay schedule reads only.
 - **sales**: Quote create/read/update, Product Unit reads (stock must be selectable on a Quote), and assistant-authored email sending.
+- **stores**: Purchase Order read/receive and physical inventory read/move/adjust/count/build/close-out; cannot read inventory costs.
 - **bay-operator**: no app permissions and cannot sign in unless the role gains permissions later.
 
 Server/API checks are the security boundary. Browser access checks are UX only.

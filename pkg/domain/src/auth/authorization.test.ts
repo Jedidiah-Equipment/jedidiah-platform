@@ -20,6 +20,14 @@ describe('getRolePermissions', () => {
       'customer:read',
       'customer:update',
       'email:send',
+      'inventory:adjust',
+      'inventory:build',
+      'inventory:close-out',
+      'inventory:count',
+      'inventory:move',
+      'inventory:read',
+      'inventory_cost:read',
+      'inventory_cost:revalue',
       'job:create',
       'job:read',
       'job:schedule',
@@ -38,6 +46,12 @@ describe('getRolePermissions', () => {
       'product_unit:read',
       'product_unit:transfer',
       'product_unit:update',
+      'purchase_order:amend',
+      'purchase_order:close',
+      'purchase_order:create',
+      'purchase_order:read',
+      'purchase_order:receive',
+      'purchase_order:send',
       'quote:cancel',
       'quote:create',
       'quote:read',
@@ -65,7 +79,7 @@ describe('getRolePermissions', () => {
   // Editing a machine's VIN rewrites the identity every later Job, document, and sale inherits, so it
   // stays with the roles that own Unit identity rather than the ones that merely read Units.
   it('lets only administrators edit a Product Unit', () => {
-    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'bay-operator'] as const) {
+    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'stores', 'bay-operator'] as const) {
       expect(getRolePermissions(role), `role ${role}`).not.toContain('product_unit:update');
     }
 
@@ -76,7 +90,7 @@ describe('getRolePermissions', () => {
   // A hand-recorded Transfer claims who owns a machine with no Quote, price, or salesperson behind it,
   // so it stays with administrators rather than the roles that merely read Units.
   it('lets only administrators record an Ownership Transfer by hand', () => {
-    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'bay-operator'] as const) {
+    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'stores', 'bay-operator'] as const) {
       expect(getRolePermissions(role), `role ${role}`).not.toContain('product_unit:transfer');
     }
 
@@ -89,6 +103,10 @@ describe('getRolePermissions', () => {
       'customer:create',
       'customer:read',
       'customer:update',
+      'inventory:adjust',
+      'inventory:read',
+      'inventory_cost:read',
+      'inventory_cost:revalue',
       'job:read',
       'part:read',
       'part:update',
@@ -96,6 +114,12 @@ describe('getRolePermissions', () => {
       'product:read',
       'product:update',
       'product_unit:read',
+      'purchase_order:amend',
+      'purchase_order:close',
+      'purchase_order:create',
+      'purchase_order:read',
+      'purchase_order:receive',
+      'purchase_order:send',
       'supplier:read',
       'supplier:update',
     ]);
@@ -112,6 +136,19 @@ describe('getRolePermissions', () => {
       'quote:create',
       'quote:read',
       'quote:update',
+    ]);
+  });
+
+  it('grants physical inventory flows without cost access to Stores', () => {
+    expect(getRolePermissions('stores')).toEqual([
+      'inventory:adjust',
+      'inventory:build',
+      'inventory:close-out',
+      'inventory:count',
+      'inventory:move',
+      'inventory:read',
+      'purchase_order:read',
+      'purchase_order:receive',
     ]);
   });
 
@@ -206,7 +243,7 @@ describe('quote cancellation authorization policy', () => {
     expect(getRolePermissions('admin')).toContain('quote:cancel');
     expect(getRolePermissions('super-admin')).toContain('quote:cancel');
 
-    for (const role of ['sales', 'procurement-manager', 'job-viewer', 'bay-operator'] as const) {
+    for (const role of ['sales', 'procurement-manager', 'job-viewer', 'stores', 'bay-operator'] as const) {
       expect(getRolePermissions(role), role).not.toContain('quote:cancel');
     }
   });

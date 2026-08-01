@@ -1,4 +1,5 @@
 import { appRoleAccess, authorizationStatement } from '@pkg/domain';
+import type { AppRole } from '@pkg/schema';
 import { adminClient, inferAdditionalFields } from 'better-auth/client/plugins';
 import { createAccessControl } from 'better-auth/plugins/access';
 import { createAuthClient } from 'better-auth/react';
@@ -16,7 +17,8 @@ const authRoles = {
   'job-viewer': ac.newRole(appRoleAccess['job-viewer']),
   'procurement-manager': ac.newRole(appRoleAccess['procurement-manager']),
   sales: ac.newRole(appRoleAccess.sales),
-};
+  stores: ac.newRole(appRoleAccess.stores),
+} as const satisfies Record<AppRole, ReturnType<typeof ac.newRole>>;
 
 export const authClient = createAuthClient({
   baseURL: config.authBaseUrl,

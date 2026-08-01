@@ -20,4 +20,14 @@ describe('UserRoleMenuItemContent', () => {
     expect(html).toContain('Bay Operator');
     expect(html).toContain('No sign-in permissions');
   });
+
+  it('renders Stores as a selectable role option with physical inventory access', () => {
+    const html = renderToStaticMarkup(<UserRoleMenuItemContent appRole="stores" />);
+
+    expect(APP_ROLES).toContain('stores');
+    expect(html).toContain('Stores');
+    expect(html).toMatch(/>View inventory<\/span>/);
+    expect(html).toContain('Receive purchase orders');
+    expect(html).not.toContain('View inventory costs');
+  });
 });

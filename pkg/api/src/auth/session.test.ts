@@ -8,6 +8,7 @@ describe('parseBetterAuthRole', () => {
     expect(parseBetterAuthRole('admin')).toBe('admin');
     expect(parseBetterAuthRole('procurement-manager')).toBe('procurement-manager');
     expect(parseBetterAuthRole('job-viewer')).toBe('job-viewer');
+    expect(parseBetterAuthRole('stores')).toBe('stores');
     expect(parseBetterAuthRole('bay-operator')).toBe('bay-operator');
   });
 

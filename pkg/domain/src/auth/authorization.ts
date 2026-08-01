@@ -9,6 +9,7 @@ export const roleLabels = {
   'job-viewer': 'Job Viewer',
   'procurement-manager': 'Procurement manager',
   sales: 'Sales',
+  stores: 'Stores',
 } as const satisfies Record<AppRole, string>;
 
 export const roleDescriptions = {
@@ -18,6 +19,7 @@ export const roleDescriptions = {
   'job-viewer': 'Read-only access to production Jobs.',
   'procurement-manager': 'Manage procurement records and view production Jobs.',
   sales: 'Create, read, and update sales Quotes, and send assistant-authored email.',
+  stores: 'Run physical stock flows without access to inventory costs.',
 } as const satisfies Record<AppRole, string>;
 
 export const permissionLabels = {
@@ -37,6 +39,14 @@ export const permissionLabels = {
   'job:update-calendar': 'Manage job calendar',
   'job_bay:read': 'View Bays',
   'job_bay:update': 'Manage Bays',
+  'inventory:read': 'View inventory',
+  'inventory:move': 'Move inventory',
+  'inventory:adjust': 'Adjust inventory',
+  'inventory:count': 'Count inventory',
+  'inventory:build': 'Build inventory',
+  'inventory:close-out': 'Close out inventory',
+  'inventory_cost:read': 'View inventory costs',
+  'inventory_cost:revalue': 'Revalue inventory',
   'product:create': 'Create products',
   'product:read': 'View products',
   'product:update': 'Update products',
@@ -46,6 +56,12 @@ export const permissionLabels = {
   'product_unit:read': 'View product units',
   'product_unit:update': 'Update product unit identity',
   'product_unit:transfer': 'Record product unit ownership transfers',
+  'purchase_order:read': 'View purchase orders',
+  'purchase_order:create': 'Create purchase orders',
+  'purchase_order:send': 'Send purchase orders',
+  'purchase_order:amend': 'Amend purchase orders',
+  'purchase_order:receive': 'Receive purchase orders',
+  'purchase_order:close': 'Close purchase orders',
   'quote:create': 'Create quotes',
   'quote:cancel': 'Cancel quotes',
   'quote:read': 'View quotes',
@@ -78,6 +94,14 @@ export const permissionDescriptions = {
   'job:update-calendar': 'Manage org-wide production Off-Days.',
   'job_bay:read': 'View durable production Bay configuration.',
   'job_bay:update': 'Create, rename, disable, and re-enable production Bays.',
+  'inventory:read': 'View inventory quantities and movement history.',
+  'inventory:move': 'Move stock between physical locations.',
+  'inventory:adjust': 'Post inventory quantity adjustments.',
+  'inventory:count': 'Run stocktake sessions and post count results.',
+  'inventory:build': 'Build finished Parts from component stock.',
+  'inventory:close-out': 'Return Job leftovers and release remaining commitments.',
+  'inventory_cost:read': 'View inventory costs and valuation data.',
+  'inventory_cost:revalue': 'Revalue on-hand inventory.',
   'product:create': 'Add new product catalog records.',
   'product:read': 'View product catalog records.',
   'product:update': 'Edit existing product catalog records.',
@@ -88,6 +112,12 @@ export const permissionDescriptions = {
   'product_unit:update': "Edit a Product Unit's VIN, which identifies the machine for its whole life.",
   'product_unit:transfer':
     'Record an Ownership Transfer by hand, asserting who holds a machine with no Quote behind it.',
+  'purchase_order:read': 'View supplier Purchase Orders.',
+  'purchase_order:create': 'Create draft Purchase Orders.',
+  'purchase_order:send': 'Send Purchase Orders to suppliers.',
+  'purchase_order:amend': 'Amend Purchase Orders after they have been sent.',
+  'purchase_order:receive': 'Receive stock against Purchase Orders.',
+  'purchase_order:close': 'Close completed Purchase Orders.',
   'quote:create': 'Create new sales quotes.',
   'quote:cancel': 'Cancel locked quotes and cascade-cancel their job and future slots.',
   'quote:read': 'View sales quotes.',
@@ -110,11 +140,14 @@ export const authorizationStatement = {
   feedback: ['read', 'update'],
   job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
   job_bay: ['read', 'update'],
+  inventory: ['read', 'move', 'adjust', 'count', 'build', 'close-out'],
+  inventory_cost: ['read', 'revalue'],
   part: ['read', 'update'],
   product: ['read', 'create', 'update'],
   product_range: ['read', 'create', 'update'],
   // No create action: Units are born from Job creation, never on their own.
   product_unit: ['read', 'update', 'transfer'],
+  purchase_order: ['read', 'create', 'send', 'amend', 'receive', 'close'],
   quote: ['read', 'create', 'update', 'cancel'],
   supplier: ['read', 'update', 'remove'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
@@ -132,18 +165,20 @@ const adminAccess = {
   email: ['send'],
   job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
   job_bay: ['read', 'update'],
+  inventory: ['read', 'move', 'adjust', 'count', 'build', 'close-out'],
+  inventory_cost: ['read', 'revalue'],
   part: ['read', 'update'],
   product: ['read', 'create', 'update'],
   product_range: ['read', 'create', 'update'],
   product_unit: ['read', 'update', 'transfer'],
+  purchase_order: ['read', 'create', 'send', 'amend', 'receive', 'close'],
   quote: ['read', 'create', 'update', 'cancel'],
   supplier: ['read', 'update', 'remove'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const satisfies RoleAccess;
 
-// Invariant: any role granted `job:create` must also hold `job:schedule` — creating a
-// Job inherently schedules its Bay seeds (picked start dates, ghost previews), so the
-// create surfaces assume scheduling authority rather than gating seed dates separately.
+// Invariants: `job:create` implies `job:schedule`, because creation schedules Bay seeds;
+// `purchase_order:receive` implies posting receipt movements, so receiving is never paper-only.
 export const appRoleAccess = {
   admin: adminAccess,
   // super-admin is admin plus exclusive Feedback review. Composed by spread so the two can never
@@ -156,10 +191,13 @@ export const appRoleAccess = {
   },
   'procurement-manager': {
     customer: ['read', 'create', 'update'],
+    inventory: ['read', 'adjust'],
+    inventory_cost: ['read', 'revalue'],
     job: ['read'],
     part: ['read', 'update'],
     product: ['read', 'create', 'update'],
     product_unit: ['read'],
+    purchase_order: ['read', 'create', 'send', 'amend', 'receive', 'close'],
     supplier: ['read', 'update'],
   },
   'job-viewer': {
@@ -171,6 +209,10 @@ export const appRoleAccess = {
     // Sales reads Units because stock has to be selectable on a Quote.
     product_unit: ['read'],
     quote: ['read', 'create', 'update'],
+  },
+  stores: {
+    inventory: ['read', 'move', 'adjust', 'count', 'build', 'close-out'],
+    purchase_order: ['read', 'receive'],
   },
   'bay-operator': {},
 } as const satisfies Record<AppRole, RoleAccess>;

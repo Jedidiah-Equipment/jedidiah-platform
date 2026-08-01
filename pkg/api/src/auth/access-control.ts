@@ -10,6 +10,7 @@ export const authRoles = {
   'job-viewer': ac.newRole(appRoleAccess['job-viewer']),
   'procurement-manager': ac.newRole(appRoleAccess['procurement-manager']),
   sales: ac.newRole(appRoleAccess.sales),
+  stores: ac.newRole(appRoleAccess.stores),
 };
 
 export const defaultAuthRole = DEFAULT_APP_ROLE;

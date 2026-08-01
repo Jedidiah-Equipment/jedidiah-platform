@@ -52,6 +52,35 @@ describe('admin user safety policy', () => {
     ).rejects.toThrow();
   });
 
+  test('assigns the Stores role and allows the user to sign in', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'stores-user@example.com',
+      id: 'stores-user-id',
+      name: 'Stores User',
+      password: DEFAULT_DEMO_USER_PASSWORD,
+      role: 'sales',
+    });
+
+    const result = await context.auth.api.setRole({
+      body: {
+        role: 'stores',
+        userId: 'stores-user-id',
+      },
+      headers,
+    });
+
+    expect(result.user.role).toBe('stores');
+    await expect(
+      context.auth.api.signInEmail({
+        body: {
+          email: 'stores-user@example.com',
+          password: DEFAULT_DEMO_USER_PASSWORD,
+        },
+      }),
+    ).resolves.toMatchObject({ user: { email: 'stores-user@example.com', role: 'stores' } });
+  });
+
   test('rejects demoting the last admin through setRole', async ({ context }) => {
     const admin = mockSession('admin');
     const headers = await createSignedInAdmin(context, admin);

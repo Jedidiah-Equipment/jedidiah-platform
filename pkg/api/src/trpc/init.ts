@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import type { AppPermission } from '@pkg/schema';
+import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 import { initTRPC } from '@trpc/server';
 
 import type { Context } from './context.js';
@@ -58,4 +58,31 @@ export function authorizedProcedure(permission: AppPermission | readonly AppPerm
       },
     });
   });
+}
+
+type InventoryCostProjection<TOutput, TCostField extends keyof TOutput> = Omit<TOutput, TCostField> & {
+  [Field in TCostField]: TOutput[Field] | null;
+};
+
+/** Centralizes the server-side cost gate; projected fields must use the nullable InventoryCost schema. */
+export function projectInventoryCostFields<
+  TCostField extends PropertyKey,
+  TOutput extends Record<TCostField, number | null>,
+>({
+  access,
+  costFields,
+  output,
+}: {
+  access: Pick<UserAccessSummary, 'permissions'> | null | undefined;
+  costFields: readonly TCostField[];
+  output: TOutput;
+}): InventoryCostProjection<TOutput, TCostField> {
+  if (hasPermission(access, 'inventory_cost:read')) {
+    return output;
+  }
+
+  return Object.assign(
+    { ...output },
+    Object.fromEntries(costFields.map((field) => [field, null])),
+  ) as InventoryCostProjection<TOutput, TCostField>;
 }

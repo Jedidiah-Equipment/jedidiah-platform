@@ -67,6 +67,13 @@ const authTimestampColumns = [
 ] as const;
 
 const standardTimestampColumns = ['createdAt', 'updatedAt'] as const;
+// Metre-priced legacy cable/pipe uses a one-metre purchase increment; SEMP keeps its 6 m shop length.
+const legacyPartStandardPurchaseLengthsMm: Readonly<Record<string, number>> = {
+  'CONS-0036': 1000,
+  'LTE-0027': 1000,
+  'LTE-0028': 1000,
+  'SEMP-0001': 6000,
+};
 
 export const snapshotTableDefinitions = [
   {
@@ -132,15 +139,24 @@ export const snapshotTableDefinitions = [
     optionalReadColumns: ['minimumStock', 'standardPurchaseLengthMm', 'stockTrackingMode', 'storageLocation'],
     seedRowDefaults: (row) => ({
       minimumStock: null,
-      standardPurchaseLengthMm: row.code === 'SEMP-0001' ? 6000 : null,
+      standardPurchaseLengthMm:
+        typeof row.code === 'string' ? (legacyPartStandardPurchaseLengthsMm[row.code] ?? null) : null,
       stockTrackingMode: 'perpetual',
       storageLocation: null,
     }),
-    seedRowTransform: (row) => ({
-      ...row,
-      ...(row.code === 'SEMP-0001' ? { category: 'Pipe', standardPurchaseLengthMm: 6000 } : {}),
-      unitOfMeasure: row.unitOfMeasure === 'quantity' ? 'piece' : row.unitOfMeasure,
-    }),
+    seedRowTransform: (row) => {
+      const legacyPurchaseLength =
+        typeof row.code === 'string' ? legacyPartStandardPurchaseLengthsMm[row.code] : undefined;
+
+      return {
+        ...row,
+        ...(row.code === 'SEMP-0001' && row.category === '6000' ? { category: 'Pipe' } : {}),
+        ...(row.standardPurchaseLengthMm == null && legacyPurchaseLength !== undefined
+          ? { standardPurchaseLengthMm: legacyPurchaseLength }
+          : {}),
+        unitOfMeasure: row.unitOfMeasure === 'quantity' ? 'piece' : row.unitOfMeasure,
+      };
+    },
   },
   {
     fileName: 'product_ranges.json',

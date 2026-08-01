@@ -129,6 +129,22 @@ describe('snapshot table registry', () => {
       standardPurchaseLengthMm: 6000,
       unitOfMeasure: 'mm',
     });
+    expect(prepareSnapshotRow(partsConfig, { code: 'LTE-0027', unitOfMeasure: 'mm' }, 0)).toMatchObject({
+      standardPurchaseLengthMm: 1000,
+      unitOfMeasure: 'mm',
+    });
+    expect(
+      prepareSnapshotRow(
+        partsConfig,
+        {
+          category: 'Tube',
+          code: 'SEMP-0001',
+          standardPurchaseLengthMm: 12000,
+          unitOfMeasure: 'mm',
+        },
+        0,
+      ),
+    ).toMatchObject({ category: 'Tube', standardPurchaseLengthMm: 12000 });
   });
 
   it('keeps rollout Work Item tables optional until the source migration deploys', () => {

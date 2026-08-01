@@ -61,6 +61,20 @@ describe('parsePartBulkImportCsv', () => {
     });
   });
 
+  it('isolates malformed headerless rows from later positional rows', () => {
+    const result = parsePartBulkImportCsv(
+      [
+        'P-100,,Main bearing,Acme Supplies,SUP-100,GALV,Bearings,Bearing,piece',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,GALV,Bearings,Bearing,piece,false',
+      ].join('\n'),
+      { hasHeader: false },
+    );
+
+    expect(result.errors).toEqual(['Row 1: Expected 10 or 11 columns, found 9.']);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({ code: 'P-101', isInternallyFabricated: false, lineNumber: 2 });
+  });
+
   it('maps every unit label to its enum value', () => {
     const result = parsePartBulkImportCsv(
       [

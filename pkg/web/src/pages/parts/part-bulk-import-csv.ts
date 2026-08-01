@@ -131,7 +131,7 @@ export function parsePartBulkImportCsv(
 
   const columnIndexes = options.hasHeader
     ? getHeaderColumnIndexes(table[0] ?? [])
-    : getPositionColumnIndexes(table[0]?.length ?? 0);
+    : { errors: [], indexes: new Map<PartBulkImportColumnKey, number>() };
 
   if (parseErrors.length > 0) {
     return {
@@ -177,8 +177,9 @@ export function parsePartBulkImportCsv(
       return;
     }
 
+    const rowIndexes = options.hasHeader ? columnIndexes.indexes : getPositionColumnIndexes(dataRow.length).indexes;
     const rowInput = {
-      ...buildRowInput(dataRow, columnIndexes.indexes),
+      ...buildRowInput(dataRow, rowIndexes),
       lineNumber: rowNumber,
     };
     const result = PartBulkImportRow.safeParse(rowInput);

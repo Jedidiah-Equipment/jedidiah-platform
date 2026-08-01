@@ -4,6 +4,7 @@ import {
   getPart,
   isPartCoreError,
   listPartCategories,
+  listPartStorageLocations,
   listParts,
   type PartCoreError,
   updatePart,
@@ -20,6 +21,8 @@ export const partsRouter = router({
     .query(({ ctx, input }) => listParts({ db: ctx.db, input })),
 
   categories: authorizedProcedure('part:read').query(({ ctx }) => listPartCategories({ db: ctx.db })),
+
+  locations: authorizedProcedure('part:read').query(({ ctx }) => listPartStorageLocations({ db: ctx.db })),
 
   get: authorizedProcedure('part:read')
     .input(z.object({ id: UUID }))

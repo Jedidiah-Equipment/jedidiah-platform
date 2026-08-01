@@ -15,7 +15,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
-import { usePartCategoryOptions } from '@/hooks/options/index.js';
+import { usePartCategoryOptions, usePartStorageLocationOptions } from '@/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -66,6 +66,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
     }),
   );
   const categoryOptions = usePartCategoryOptions();
+  const storageLocationOptions = usePartStorageLocationOptions();
   const { items: parts, total } = useCombinedCursorQueryPages(partsQuery.data?.pages);
 
   const columns = useMemo<ColumnDef<Part>[]>(() => {
@@ -144,6 +145,17 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
         },
       },
       {
+        accessorKey: 'storageLocation',
+        cell: ({ row }) => row.original.storageLocation ?? '-',
+        enableColumnFilter: true,
+        enableSorting: false,
+        header: 'Storage location',
+        meta: {
+          filterOptions: storageLocationOptions.selectOptions,
+          filterVariant: 'select',
+        },
+      },
+      {
         accessorKey: 'category',
         enableColumnFilter: true,
         enableSorting: true,
@@ -163,7 +175,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
     ];
 
     return tableColumns;
-  }, [categoryOptions.selectOptions, supplierId]);
+  }, [categoryOptions.selectOptions, storageLocationOptions.selectOptions, supplierId]);
 
   const table = useReactTable({
     columns,
@@ -212,6 +224,7 @@ function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId?: 
       code: getColumnFilterValue(columnFilters, 'code'),
       isInternallyFabricated: getInternallyFabricatedFilterValue(columnFilters),
       name: getColumnFilterValue(columnFilters, 'name'),
+      storageLocation: getColumnFilterValue(columnFilters, 'storageLocation'),
       supplierCode: getColumnFilterValue(columnFilters, 'supplierCode'),
       supplierName: getColumnFilterValue(columnFilters, 'supplierName'),
       unitOfMeasure: getUnitOfMeasureFilterValue(columnFilters),
@@ -222,7 +235,7 @@ function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId?: 
 
 function getColumnFilterValue(
   columnFilters: ColumnFiltersState,
-  id: 'category' | 'code' | 'name' | 'supplierCode' | 'supplierName',
+  id: 'category' | 'code' | 'name' | 'storageLocation' | 'supplierCode' | 'supplierName',
 ): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import {
-  PART_UNIT_OF_MEASURE_LABELS,
   Part,
   PartBulkImportInput,
   PartBulkImportResult,
@@ -11,6 +10,8 @@ import {
   PartListInput,
   PartSortBy,
   PartUnitOfMeasure,
+  PartUpdateInput,
+  unitClassFor,
 } from './part.js';
 
 describe('PartCreateInput', () => {
@@ -26,6 +27,8 @@ describe('PartCreateInput', () => {
         name: '  Bearing  ',
         supplierCode: '  SUP-100  ',
         supplierId: '00000000-0000-4000-8000-000000000001',
+        standardPurchaseLengthMm: 6000,
+        storageLocation: '  Rack A  ',
         unitOfMeasure: 'mm',
       }),
     ).toEqual({
@@ -38,6 +41,10 @@ describe('PartCreateInput', () => {
       name: 'Bearing',
       supplierCode: 'SUP-100',
       supplierId: '00000000-0000-4000-8000-000000000001',
+      minimumStock: null,
+      standardPurchaseLengthMm: 6000,
+      stockTrackingMode: 'perpetual',
+      storageLocation: 'Rack A',
       unitOfMeasure: 'mm',
     });
   });
@@ -53,11 +60,54 @@ describe('PartCreateInput', () => {
         name: 'Bearing',
         supplierCode: 'SUP-100',
         supplierId: '00000000-0000-4000-8000-000000000001',
-        unitOfMeasure: 'quantity',
+        unitOfMeasure: 'piece',
       }),
     ).toMatchObject({
       isInternallyFabricated: false,
+      minimumStock: null,
+      standardPurchaseLengthMm: null,
+      stockTrackingMode: 'perpetual',
+      storageLocation: null,
     });
+  });
+
+  it('requires a standard purchase length only for millimetre parts', () => {
+    const baseInput = {
+      category: 'Pipe',
+      code: 'SEMP-0001',
+      description: 'Seamless pipe',
+      drawingCode: null,
+      finish: 'A/I',
+      name: '500NB SCH20 Seamless pipe',
+      supplierCode: 'S3693',
+      supplierId: '00000000-0000-4000-8000-000000000001',
+    };
+
+    expect(() => PartCreateInput.parse({ ...baseInput, unitOfMeasure: 'mm' })).toThrow();
+    expect(() =>
+      PartCreateInput.parse({ ...baseInput, standardPurchaseLengthMm: 6000, unitOfMeasure: 'piece' }),
+    ).toThrow();
+    expect(PartCreateInput.parse({ ...baseInput, standardPurchaseLengthMm: 6000, unitOfMeasure: 'mm' })).toMatchObject({
+      standardPurchaseLengthMm: 6000,
+    });
+    expect(PartCreateInput.parse({ ...baseInput, unitOfMeasure: 'piece' })).toMatchObject({
+      standardPurchaseLengthMm: null,
+    });
+    expect(() =>
+      PartUpdateInput.parse({
+        ...baseInput,
+        id: '00000000-0000-4000-8000-000000000002',
+        unitOfMeasure: 'mm',
+      }),
+    ).toThrow();
+    expect(
+      PartUpdateInput.parse({
+        ...baseInput,
+        id: '00000000-0000-4000-8000-000000000002',
+        standardPurchaseLengthMm: 6000,
+        unitOfMeasure: 'mm',
+      }),
+    ).toMatchObject({ standardPurchaseLengthMm: 6000 });
   });
 
   it('requires required part fields', () => {
@@ -70,19 +120,24 @@ describe('PartCreateInput', () => {
         name: ' ',
         supplierCode: ' ',
         supplierId: '00000000-0000-4000-8000-000000000001',
-        unitOfMeasure: 'quantity',
+        unitOfMeasure: 'piece',
       }),
     ).toThrow();
   });
 });
 
 describe('PartUnitOfMeasure', () => {
-  it('accepts quantity and millimetres with shared labels', () => {
-    expect(PartUnitOfMeasure.options).toEqual(['quantity', 'mm']);
-    expect(PART_UNIT_OF_MEASURE_LABELS).toEqual({
-      mm: 'Millimetres',
-      quantity: 'Quantity',
-    });
+  it('derives the inventory class for every supported unit', () => {
+    expect(PartUnitOfMeasure.options).toEqual(['piece', 'set', 'box', 'pair', 'mm', 'kg', 'litre']);
+    expect(PartUnitOfMeasure.options.map((unit) => [unit, unitClassFor(unit)])).toEqual([
+      ['piece', 'discrete'],
+      ['set', 'discrete'],
+      ['box', 'discrete'],
+      ['pair', 'discrete'],
+      ['mm', 'linear'],
+      ['kg', 'measured'],
+      ['litre', 'measured'],
+    ]);
   });
 });
 
@@ -169,7 +224,7 @@ describe('PartBulkImportInput', () => {
             name: 'Bearing',
             supplierCode: 'SUP-100',
             supplierName: 'Acme Supplies',
-            unitOfMeasure: 'quantity',
+            unitOfMeasure: 'piece',
           },
         ],
         supplierId: '00000000-0000-4000-8000-000000000001',

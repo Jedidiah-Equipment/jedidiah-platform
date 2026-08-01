@@ -3,7 +3,7 @@ import { type PartBulkImportRow, PartListInput } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
-import { bulkImportParts, listParts } from './part-service.js';
+import { bulkImportParts, createPart, listPartStorageLocations, listParts, updatePart } from './part-service.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
@@ -25,7 +25,7 @@ function importRow(overrides: Partial<PartBulkImportRow> = {}): PartBulkImportRo
     name: 'Bearing',
     supplierCode: 'SUP-100',
     supplierName: 'Acme Supplies',
-    unitOfMeasure: 'quantity',
+    unitOfMeasure: 'piece',
     ...overrides,
   };
 }
@@ -55,7 +55,7 @@ describe('listParts', () => {
     });
     const countedParts = await listParts({
       db: context.db,
-      input: PartListInput.parse({ columnFilters: { unitOfMeasure: 'quantity' }, limit: 0 }),
+      input: PartListInput.parse({ columnFilters: { unitOfMeasure: 'piece' }, limit: 0 }),
     });
     const internallyFabricatedParts = await listParts({
       db: context.db,
@@ -65,6 +65,73 @@ describe('listParts', () => {
     expect(lengthParts.items.map((part) => part.code)).toEqual(['P-200']);
     expect(countedParts.items.map((part) => part.code)).toEqual(['P-100']);
     expect(internallyFabricatedParts.items.map((part) => part.code)).toEqual(['P-200']);
+  });
+
+  test('filters parts by storage location and lists distinct locations in order', async ({ context }) => {
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', id: '00000000-0000-4000-8000-000000000001' });
+    await Promise.all([
+      createPart({
+        actorUserId,
+        db: context.db,
+        input: partInput({ code: 'P-100', storageLocation: 'Rack B' }),
+      }),
+      createPart({
+        actorUserId,
+        db: context.db,
+        input: partInput({ code: 'P-200', storageLocation: 'Rack A' }),
+      }),
+      createPart({
+        actorUserId,
+        db: context.db,
+        input: partInput({ code: 'P-300', storageLocation: null }),
+      }),
+    ]);
+
+    const filtered = await listParts({
+      db: context.db,
+      input: PartListInput.parse({ columnFilters: { storageLocation: 'Rack A' }, limit: 0 }),
+    });
+    const locations = await listPartStorageLocations({ db: context.db });
+
+    expect(filtered.items.map((part) => part.code)).toEqual(['P-200']);
+    expect(locations).toEqual({ locations: ['Rack A', 'Rack B'] });
+  });
+});
+
+describe('updatePart', () => {
+  test('audits every stock field changed through a part update', async ({ context }) => {
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', id: '00000000-0000-4000-8000-000000000001' });
+    const created = await createPart({ actorUserId, db: context.db, input: partInput() });
+
+    await updatePart({
+      actorUserId,
+      db: context.db,
+      input: {
+        ...created,
+        minimumStock: 5,
+        standardPurchaseLengthMm: 6000,
+        stockTrackingMode: 'periodic',
+        storageLocation: 'Rack A',
+        unitOfMeasure: 'mm',
+      },
+    });
+
+    const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+
+    expect(events.at(-1)).toMatchObject({
+      action: 'updated',
+      changes: {
+        minimumStock: { from: null, to: 5 },
+        standardPurchaseLengthMm: { from: null, to: 6000 },
+        stockTrackingMode: { from: 'perpetual', to: 'periodic' },
+        storageLocation: { from: null, to: 'Rack A' },
+      },
+      entityType: 'part',
+    });
   });
 });
 
@@ -96,7 +163,7 @@ describe('bulkImportParts', () => {
     expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies', 'Beta Supplies']);
     expect(importedParts.items.map((part) => part.code)).toEqual(['P-100', 'P-200']);
     expect(importedParts.items.map((part) => part.isInternallyFabricated)).toEqual([false, true]);
-    expect(importedParts.items.map((part) => part.unitOfMeasure)).toEqual(['quantity', 'mm']);
+    expect(importedParts.items.map((part) => part.unitOfMeasure)).toEqual(['piece', 'mm']);
     expect(events).toMatchObject([
       {
         action: 'created',
@@ -213,7 +280,7 @@ describe('bulkImportParts', () => {
           to: 'Bearing Assembly',
         },
         unitOfMeasure: {
-          from: 'quantity',
+          from: 'piece',
           to: 'mm',
         },
       },
@@ -359,4 +426,24 @@ async function createActorUser(db: Db) {
     role: 'admin',
     updatedAt: now,
   });
+}
+
+function partInput(overrides: Partial<Parameters<typeof createPart>[0]['input']> = {}) {
+  return {
+    category: 'Bearings',
+    code: 'P-100',
+    description: 'Main bearing',
+    drawingCode: null,
+    finish: 'Zinc',
+    isInternallyFabricated: false,
+    minimumStock: null,
+    name: 'Bearing',
+    standardPurchaseLengthMm: null,
+    stockTrackingMode: 'perpetual' as const,
+    storageLocation: null,
+    supplierCode: 'SUP-100',
+    supplierId: '00000000-0000-4000-8000-000000000001',
+    unitOfMeasure: 'piece' as const,
+    ...overrides,
+  };
 }

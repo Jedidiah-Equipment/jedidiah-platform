@@ -18,11 +18,12 @@ import type {
   PartCreateInput,
   PartListInput,
   PartListResult,
+  PartStorageLocationListResult,
   PartUpdateInput,
   UUID,
 } from '@pkg/schema';
 import { getNextCursor, Part as PartSchema } from '@pkg/schema';
-import { and, asc, count, eq, inArray, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -54,7 +55,11 @@ export const partAuditDescriptor = defineAuditDescriptor<PartRow>({
     drawingCode: row.drawingCode,
     finish: row.finish,
     isInternallyFabricated: row.isInternallyFabricated,
+    minimumStock: row.minimumStock,
     name: row.name,
+    standardPurchaseLengthMm: row.standardPurchaseLengthMm,
+    stockTrackingMode: row.stockTrackingMode,
+    storageLocation: row.storageLocation,
     supplierCode: row.supplierCode,
     supplierId: row.supplierId,
     unitOfMeasure: row.unitOfMeasure,
@@ -74,7 +79,11 @@ export function mapPart(row: PartWithSupplierRow): Part {
     finish: row.finish,
     id: row.id,
     isInternallyFabricated: row.isInternallyFabricated,
+    minimumStock: row.minimumStock,
     name: row.name,
+    standardPurchaseLengthMm: row.standardPurchaseLengthMm,
+    stockTrackingMode: row.stockTrackingMode,
+    storageLocation: row.storageLocation,
     supplier: row.supplier,
     supplierCode: row.supplierCode,
     supplierId: row.supplierId,
@@ -126,6 +135,18 @@ export async function listPartCategories({ db }: { db: Db }): Promise<PartCatego
   };
 }
 
+export async function listPartStorageLocations({ db }: { db: Db }): Promise<PartStorageLocationListResult> {
+  const rows = await db
+    .selectDistinct({ location: parts.storageLocation })
+    .from(parts)
+    .where(isNotNull(parts.storageLocation))
+    .orderBy(asc(parts.storageLocation));
+
+  return {
+    locations: rows.flatMap((row) => (row.location === null ? [] : [row.location])),
+  };
+}
+
 function buildPartListWhere(input: PartListInput): SQL | undefined {
   const conditions: SQL[] = [isNull(supplier.deletedAt)];
 
@@ -138,6 +159,7 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
         sql`${parts.drawingCode}`,
         sql`${parts.finish}`,
         sql`${parts.name}`,
+        sql`${parts.storageLocation}`,
         sql`${parts.supplierCode}`,
         sql`${parts.id}::text`,
       ]),
@@ -175,6 +197,10 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
 
   if (input.columnFilters.name) {
     conditions.push(createEscapedContainsSearchCondition(sql`${parts.name}`, input.columnFilters.name));
+  }
+
+  if (input.columnFilters.storageLocation) {
+    conditions.push(eq(parts.storageLocation, input.columnFilters.storageLocation));
   }
 
   if (input.columnFilters.supplierCode) {
@@ -268,7 +294,11 @@ export async function updatePart({
         drawingCode: input.drawingCode,
         finish: input.finish,
         isInternallyFabricated: input.isInternallyFabricated,
+        minimumStock: input.minimumStock,
         name: input.name,
+        standardPurchaseLengthMm: input.standardPurchaseLengthMm,
+        stockTrackingMode: input.stockTrackingMode,
+        storageLocation: input.storageLocation,
         supplierCode: input.supplierCode,
         supplierId: input.supplierId,
         unitOfMeasure: input.unitOfMeasure,

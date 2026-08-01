@@ -25,6 +25,8 @@ export type SnapshotTableDefinition = {
   readOrderColumn?: string;
   // Values merged into each row after reading, keyed by index — used to populate columns omitted above.
   seedRowDefaults?: (row: SnapshotRow, index: number) => SnapshotRow;
+  // Normalizes legacy snapshot values after defaults are applied, both when reading and writing.
+  seedRowTransform?: (row: SnapshotRow, index: number) => SnapshotRow;
   // When true, the writer overwrites each `credential`-provider row's `password` with a hash of the
   // shared local seed password, so every snapshot-seeded user logs in with the same known credential.
   seedCredentialPassword?: boolean;
@@ -127,6 +129,18 @@ export const snapshotTableDefinitions = [
     fileName: 'parts.json',
     tableName: 'parts',
     timestampColumns: [],
+    optionalReadColumns: ['minimumStock', 'standardPurchaseLengthMm', 'stockTrackingMode', 'storageLocation'],
+    seedRowDefaults: (row) => ({
+      minimumStock: null,
+      standardPurchaseLengthMm: row.code === 'SEMP-0001' ? 6000 : null,
+      stockTrackingMode: 'perpetual',
+      storageLocation: null,
+    }),
+    seedRowTransform: (row) => ({
+      ...row,
+      ...(row.code === 'SEMP-0001' ? { category: 'Pipe', standardPurchaseLengthMm: 6000 } : {}),
+      unitOfMeasure: row.unitOfMeasure === 'quantity' ? 'piece' : row.unitOfMeasure,
+    }),
   },
   {
     fileName: 'product_ranges.json',
@@ -283,8 +297,10 @@ export function projectWritableRow(config: SnapshotTableDefinition, row: Snapsho
 }
 
 export function applySeedRowDefaults(config: SnapshotTableDefinition, row: SnapshotRow, index: number): SnapshotRow {
-  return {
+  const rowWithDefaults = {
     ...(config.seedRowDefaults?.(row, index) ?? {}),
     ...row,
   };
+
+  return config.seedRowTransform?.(rowWithDefaults, index) ?? rowWithDefaults;
 }

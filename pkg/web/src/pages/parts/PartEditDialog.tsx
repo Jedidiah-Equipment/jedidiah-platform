@@ -8,6 +8,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PartForm } from './components/PartForm.js';
+import { toPartInput } from './components/types.js';
 
 type PartEditDialogProps = {
   onClose: () => void;
@@ -48,10 +49,11 @@ export const PartEditDialog: React.FC<PartEditDialogProps> = ({ onClose, part, s
             key={part.id}
             onSubmit={(value) =>
               updatePartMutation.mutateAsync({
-                ...value,
-                drawingCode: value.drawingCode || null,
+                ...toPartInput({
+                  ...value,
+                  supplierId: supplier.id,
+                }),
                 id: part.id,
-                supplierId: supplier.id,
               })
             }
             submitLabel="Save part"

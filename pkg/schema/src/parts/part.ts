@@ -29,13 +29,54 @@ export const PartFinish = requiredTrimmedText('Finish is required');
 export type PartCategory = z.infer<typeof PartCategory>;
 export const PartCategory = requiredTrimmedText('Category is required');
 
+export type PartStockTrackingMode = z.infer<typeof PartStockTrackingMode>;
+export const PartStockTrackingMode = z.enum(['perpetual', 'periodic']);
+
+export const PART_STOCK_TRACKING_MODE_LABELS = {
+  periodic: 'Periodic',
+  perpetual: 'Perpetual',
+} as const satisfies Record<PartStockTrackingMode, string>;
+
+export type PartStorageLocation = z.infer<typeof PartStorageLocation>;
+export const PartStorageLocation = nullableTrimmedText();
+
+export type PartStorageLocationInput = z.infer<typeof PartStorageLocationInput>;
+export const PartStorageLocationInput = nullableTrimmedTextInput();
+
+export type PartStandardPurchaseLengthMm = z.infer<typeof PartStandardPurchaseLengthMm>;
+export const PartStandardPurchaseLengthMm = z.int().positive();
+
+export type PartMinimumStock = z.infer<typeof PartMinimumStock>;
+export const PartMinimumStock = z.int().nonnegative();
+
 export type PartUnitOfMeasure = z.infer<typeof PartUnitOfMeasure>;
-export const PartUnitOfMeasure = z.enum(['quantity', 'mm']);
+export const PartUnitOfMeasure = z.enum(['piece', 'set', 'box', 'pair', 'mm', 'kg', 'litre']);
 
 export const PART_UNIT_OF_MEASURE_LABELS = {
+  box: 'Boxes',
+  kg: 'Kilograms',
+  litre: 'Litres',
   mm: 'Millimetres',
-  quantity: 'Quantity',
+  pair: 'Pairs',
+  piece: 'Pieces',
+  set: 'Sets',
 } as const satisfies Record<PartUnitOfMeasure, string>;
+
+export type PartUnitClass = 'discrete' | 'linear' | 'measured';
+
+const PART_UNIT_CLASS = {
+  box: 'discrete',
+  kg: 'measured',
+  litre: 'measured',
+  mm: 'linear',
+  pair: 'discrete',
+  piece: 'discrete',
+  set: 'discrete',
+} as const satisfies Record<PartUnitOfMeasure, PartUnitClass>;
+
+export function unitClassFor(unitOfMeasure: PartUnitOfMeasure): PartUnitClass {
+  return PART_UNIT_CLASS[unitOfMeasure];
+}
 
 export type Part = z.infer<typeof Part>;
 export const Part = z.object({
@@ -46,7 +87,11 @@ export const Part = z.object({
   finish: PartFinish,
   id: UUID,
   isInternallyFabricated: z.boolean(),
+  minimumStock: PartMinimumStock.nullable(),
   name: PartName,
+  standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
+  stockTrackingMode: PartStockTrackingMode,
+  storageLocation: PartStorageLocation,
   supplier: Supplier.pick({ companyName: true, id: true }),
   supplierCode: PartSupplierCode,
   supplierId: UUID,
@@ -64,30 +109,53 @@ export const PartColumnFilters = z
     id: z.string().trim().optional(),
     isInternallyFabricated: z.boolean().optional(),
     name: z.string().trim().optional(),
+    storageLocation: z.string().trim().optional(),
     supplierCode: z.string().trim().optional(),
     supplierName: z.string().trim().optional(),
     unitOfMeasure: PartUnitOfMeasure.optional(),
   })
   .default({});
 
-export type PartCreateInput = z.infer<typeof PartCreateInput>;
-export const PartCreateInput = z.object({
+const PartInputFields = z.object({
   category: PartCategory,
   code: PartCode,
   description: PartDescription,
   drawingCode: PartDrawingCodeInput,
   finish: PartFinish,
   isInternallyFabricated: z.boolean().default(false),
+  minimumStock: PartMinimumStock.nullable().default(null),
   name: PartName,
+  standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable().default(null),
+  stockTrackingMode: PartStockTrackingMode.default('perpetual'),
+  storageLocation: PartStorageLocationInput,
   supplierCode: PartSupplierCode,
   supplierId: UUID,
   unitOfMeasure: PartUnitOfMeasure,
 });
 
+function refineStandardPurchaseLength(input: z.infer<typeof PartInputFields>, context: z.RefinementCtx): void {
+  if (input.unitOfMeasure === 'mm' && input.standardPurchaseLengthMm === null) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Standard purchase length is required for millimetre parts',
+      path: ['standardPurchaseLengthMm'],
+    });
+  }
+
+  if (input.unitOfMeasure !== 'mm' && input.standardPurchaseLengthMm !== null) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Standard purchase length is only valid for millimetre parts',
+      path: ['standardPurchaseLengthMm'],
+    });
+  }
+}
+
+export type PartCreateInput = z.infer<typeof PartCreateInput>;
+export const PartCreateInput = PartInputFields.superRefine(refineStandardPurchaseLength);
+
 export type PartUpdateInput = z.infer<typeof PartUpdateInput>;
-export const PartUpdateInput = PartCreateInput.extend({
-  id: UUID,
-});
+export const PartUpdateInput = PartInputFields.extend({ id: UUID }).superRefine(refineStandardPurchaseLength);
 
 export type PartBulkImportRow = z.infer<typeof PartBulkImportRow>;
 export const PartBulkImportRow = z.object({
@@ -133,4 +201,9 @@ export const PartListResult = createCursorQueryResult(Part);
 export type PartCategoryListResult = z.infer<typeof PartCategoryListResult>;
 export const PartCategoryListResult = z.object({
   categories: z.array(PartCategory),
+});
+
+export type PartStorageLocationListResult = z.infer<typeof PartStorageLocationListResult>;
+export const PartStorageLocationListResult = z.object({
+  locations: z.array(PartStorageLocation.unwrap()),
 });

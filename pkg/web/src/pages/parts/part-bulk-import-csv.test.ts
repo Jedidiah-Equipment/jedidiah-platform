@@ -34,7 +34,7 @@ describe('parsePartBulkImportCsv', () => {
 
   it('parses CSV without a header by column position', () => {
     const result = parsePartBulkImportCsv(
-      'P-100,,Main bearing,Acme Supplies,SUP-100,GALV,Bearings,Bearing,quantity,false',
+      'P-100,,Main bearing,Acme Supplies,SUP-100,GALV,Bearings,Bearing,piece,false',
       {
         hasHeader: false,
       },
@@ -54,31 +54,37 @@ describe('parsePartBulkImportCsv', () => {
           name: 'Bearing',
           supplierCode: 'SUP-100',
           supplierName: 'Acme Supplies',
-          unitOfMeasure: 'quantity',
+          unitOfMeasure: 'piece',
         },
       ],
     });
   });
 
-  it('maps unit labels to enum values', () => {
+  it('maps every unit label to its enum value', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
-        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,Millimetres,no',
+        'P-100,,Part,Acme Supplies,SUP-100,Zinc,Parts,Part,Pieces,no',
+        'P-101,,Part,Acme Supplies,SUP-101,Zinc,Parts,Part,Sets,no',
+        'P-102,,Part,Acme Supplies,SUP-102,Zinc,Parts,Part,Boxes,no',
+        'P-103,,Part,Acme Supplies,SUP-103,Zinc,Parts,Part,Pairs,no',
+        'P-104,,Part,Acme Supplies,SUP-104,Zinc,Parts,Part,Millimetres,no',
+        'P-105,,Part,Acme Supplies,SUP-105,Zinc,Parts,Part,Kilograms,no',
+        'P-106,,Part,Acme Supplies,SUP-106,Zinc,Parts,Part,Litres,no',
       ].join('\n'),
       { hasHeader: true },
     );
 
     expect(result.errors).toEqual([]);
-    expect(result.rows[0]?.unitOfMeasure).toBe('mm');
+    expect(result.rows.map((row) => row.unitOfMeasure)).toEqual(['piece', 'set', 'box', 'pair', 'mm', 'kg', 'litre']);
   });
 
   it('maps internal fabrication labels to boolean values', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
-        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity,1',
-        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,quantity,n',
+        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,piece,1',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,piece,n',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -111,8 +117,8 @@ describe('parsePartBulkImportCsv', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
-        ',,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity,true',
-        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,quantity,false',
+        ',,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,piece,true',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,piece,false',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -129,7 +135,7 @@ describe('parsePartBulkImportCsv', () => {
         name: 'Bearing',
         supplierCode: 'SUP-101',
         supplierName: 'Acme Supplies',
-        unitOfMeasure: 'quantity',
+        unitOfMeasure: 'piece',
       },
     ]);
     expect(result.errors).toContain('Row 2: Code - Part code is required');
@@ -147,8 +153,8 @@ describe('parsePartBulkImportCsv', () => {
 
     expect(result.rows).toEqual([]);
     expect(result.errors).toEqual([
-      'Row 2: Unit - Unit must be one of quantity, mm.',
-      'Row 3: Unit - Unit must be one of quantity, mm.',
+      'Row 2: Unit - Unit must be one of piece, set, box, pair, mm, kg, litre.',
+      'Row 3: Unit - Unit must be one of piece, set, box, pair, mm, kg, litre.',
     ]);
   });
 
@@ -156,8 +162,8 @@ describe('parsePartBulkImportCsv', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
-        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity,',
-        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,quantity,maybe',
+        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,piece,',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,piece,maybe',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -180,7 +186,7 @@ describe('parsePartBulkImportCsv', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
-        'P-100,NC,Description,BOLT & NUT,SUP-100,BLACK,SS LOCK NUT,M10 X 120 HT SHCS BOLT,quantity,yes',
+        'P-100,NC,Description,BOLT & NUT,SUP-100,BLACK,SS LOCK NUT,M10 X 120 HT SHCS BOLT,piece,yes',
         'P-101,NC,Description,BOLT & NUT,SUP-101,GALV,HT UNC BOLT,1/2 X 2 HT UNC BOLT,mm,no',
       ].join('\n'),
       { hasHeader: true },
@@ -200,7 +206,7 @@ describe('parsePartBulkImportCsv', () => {
           name: 'M10 X 120 HT SHCS Bolt',
           supplierCode: 'SUP-100',
           supplierName: 'Bolt & Nut',
-          unitOfMeasure: 'quantity',
+          unitOfMeasure: 'piece',
         },
         {
           category: 'HT UNC Bolt',
@@ -223,7 +229,7 @@ describe('parsePartBulkImportCsv', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
-        'P-100,NC,Description,BOLT & NUT,SUP-100,STAINLESS,FLATWASHER,M10 SPRINGWASHER,quantity,false',
+        'P-100,NC,Description,BOLT & NUT,SUP-100,STAINLESS,FLATWASHER,M10 SPRINGWASHER,piece,false',
       ].join('\n'),
       { hasHeader: true },
     );

@@ -71,9 +71,24 @@ const preservedTechnicalTokens = new Set(['CSK', 'HT', 'SHCS', 'SQ', 'SS', 'UNC'
 const formattedFieldKeys = new Set<PartBulkImportColumnKey>(['category', 'finish', 'name', 'supplierName']);
 const unitOfMeasureValues = new Set<string>(PartUnitOfMeasure.options);
 const unitOfMeasureLabels = new Map<string, PartUnitOfMeasureValue>([
+  ['box', 'box'],
+  ['boxes', 'box'],
+  ['kilogram', 'kg'],
+  ['kilograms', 'kg'],
+  ['liter', 'litre'],
+  ['liters', 'litre'],
+  ['litre', 'litre'],
+  ['litres', 'litre'],
+  ['millimetre', 'mm'],
   ['millimetres', 'mm'],
+  ['millimeter', 'mm'],
   ['millimeters', 'mm'],
-  ['quantity', 'quantity'],
+  ['pair', 'pair'],
+  ['pairs', 'pair'],
+  ['piece', 'piece'],
+  ['pieces', 'piece'],
+  ['set', 'set'],
+  ['sets', 'set'],
 ]);
 const booleanLabels = new Map<string, boolean>([
   ['0', false],

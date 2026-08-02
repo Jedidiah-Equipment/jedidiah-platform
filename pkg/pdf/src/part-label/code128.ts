@@ -6,6 +6,10 @@ const CODE_128_OPTIONS = {
   scale: 4,
 } as const;
 
+const CODE_128_MODULE_WIDTH_MM = 0.254;
+const CODE_128_QUIET_ZONE_MODULES = 10;
+const POINTS_PER_MILLIMETRE = 72 / 25.4;
+
 export function getCode128BarPattern(text: string): string {
   const [encoding] = bwipjs.raw({ ...CODE_128_OPTIONS, text });
 
@@ -16,14 +20,19 @@ export function getCode128BarPattern(text: string): string {
   return encoding.sbs.join('');
 }
 
-export async function renderCode128DataUri(text: string): Promise<string> {
+export async function renderCode128Barcode(text: string): Promise<{ dataUri: string; width: number }> {
+  const moduleCount = [...getCode128BarPattern(text)].reduce((total, width) => total + Number(width), 0);
   const png = await bwipjs.toBuffer({
     ...CODE_128_OPTIONS,
     backgroundcolor: 'FFFFFF',
     barcolor: '000000',
     height: 14,
+    paddingwidth: CODE_128_QUIET_ZONE_MODULES,
     text,
   });
 
-  return `data:image/png;base64,${png.toString('base64')}`;
+  return {
+    dataUri: `data:image/png;base64,${png.toString('base64')}`,
+    width: (moduleCount + 2 * CODE_128_QUIET_ZONE_MODULES) * CODE_128_MODULE_WIDTH_MM * POINTS_PER_MILLIMETRE,
+  };
 }

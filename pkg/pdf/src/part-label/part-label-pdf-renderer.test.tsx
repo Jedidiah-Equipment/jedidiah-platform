@@ -3,7 +3,7 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../bytes/pdf-bytes.js';
-import { getCode128BarPattern } from './code128.js';
+import { getCode128BarPattern, renderCode128Barcode } from './code128.js';
 import { PART_LABEL_PAGE_SIZE, PartLabelPdf } from './PartLabelPdf.js';
 import { renderPartLabelsPdf } from './part-label-pdf-renderer.js';
 
@@ -17,10 +17,23 @@ describe('Part label PDF', () => {
     expect(getCode128BarPattern('P-100')).toBe('2112143131211221321232211231221231221114222331112');
   });
 
+  test('renders a ten-module quiet zone at a stable physical module width', async () => {
+    const barcode = await renderCode128Barcode('P-100');
+    const png = Buffer.from(barcode.dataUri.slice(barcode.dataUri.indexOf(',') + 1), 'base64');
+
+    // P-100 is 90 modules; the raster adds 10 modules of quiet zone on each side at four pixels per module.
+    expect(png.readUInt32BE(16)).toBe((90 + 20) * 4);
+    expect(barcode.width).toBeCloseTo((90 + 20) * 0.254 * (72 / 25.4), 3);
+  });
+
   test('prints the Part code, name, and storage location with a fallback', () => {
     const text = collectText(
       PartLabelPdf({
-        items: LABELS.map((label, index) => ({ barcodeDataUri: index === 0 ? 'first' : 'second', label })),
+        items: LABELS.map((label, index) => ({
+          barcodeDataUri: index === 0 ? 'first' : 'second',
+          barcodeWidth: 100,
+          label,
+        })),
       }),
     );
 
@@ -38,6 +51,16 @@ describe('Part label PDF', () => {
       expect(page.width).toBeCloseTo(PART_LABEL_PAGE_SIZE.width, 3);
       expect(page.height).toBeCloseTo(PART_LABEL_PAGE_SIZE.height, 3);
     }
+  });
+
+  test('keeps unbounded readable fields on one physical label page', async () => {
+    const repeated = 'Long label content '.repeat(12);
+    const bytes = await renderPartLabelsPdf({
+      document: [{ code: 'LONG-001', name: repeated, storageLocation: repeated }],
+      filename: 'long-part-label.pdf',
+    });
+
+    expect(await getPdfPageSizes(bytes)).toHaveLength(1);
   });
 });
 

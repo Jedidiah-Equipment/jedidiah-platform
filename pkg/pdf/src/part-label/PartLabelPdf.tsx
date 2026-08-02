@@ -21,10 +21,11 @@ const styles = StyleSheet.create({
     paddingTop: 9,
   },
   barcode: {
+    alignSelf: 'center',
     height: 50,
     marginBottom: 3,
-    objectFit: 'fill',
-    width: '100%',
+    maxWidth: '100%',
+    objectFit: 'contain',
   },
   code: {
     fontFamily: pdfTitleFontFamily,
@@ -37,30 +38,35 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 10,
     fontWeight: 700,
+    height: 22,
     lineHeight: 1.1,
     marginTop: 4,
+    overflow: 'hidden',
     textAlign: 'center',
   },
   location: {
     fontSize: 8,
+    height: 18,
     lineHeight: 1.1,
     marginTop: 3,
+    overflow: 'hidden',
     textAlign: 'center',
   },
 });
 
 export type PartLabelRenderItem = {
   barcodeDataUri: string;
+  barcodeWidth: number;
   label: PartLabelPdfModel;
 };
 
 export function PartLabelPdf({ items }: { items: PartLabelRenderItem[] }) {
   return (
     <Document title={items.length === 1 ? `Part label ${items[0]?.label.code ?? ''}` : 'Part labels'}>
-      {items.map(({ barcodeDataUri, label }) => (
+      {items.map(({ barcodeDataUri, barcodeWidth, label }) => (
         <Page key={label.code} size={[PART_LABEL_PAGE_SIZE.width, PART_LABEL_PAGE_SIZE.height]} style={styles.page}>
-          <View>
-            <Image src={barcodeDataUri} style={styles.barcode} />
+          <View wrap={false}>
+            <Image src={barcodeDataUri} style={[styles.barcode, { width: barcodeWidth }]} />
             <Text style={styles.code}>{label.code}</Text>
             <Text style={styles.name}>{label.name}</Text>
             <Text style={styles.location}>{label.storageLocation ?? 'Location not set'}</Text>

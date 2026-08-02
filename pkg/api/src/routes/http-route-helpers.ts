@@ -78,21 +78,31 @@ export type SendHttpErrorOptions = {
   fallbackMessage: string;
   // Public message for a malformed request (Zod parse failure).
   invalidRequestMessage: string;
-  // Builds the response for an oversized multipart upload; omitted for generated-download routes.
-  onFileTooLarge?: () => { appCode: string | undefined; message: string };
+};
+
+export type SendUploadHttpErrorOptions = SendHttpErrorOptions & {
+  // Upload routes own their entity-specific size policy and must word this response explicitly.
+  onFileTooLarge: () => { appCode: string | undefined; message: string };
 };
 
 // Renders a thrown route error into a response. Callers map their own core errors into a
-// {@link RouteHttpError} before this point; this only knows the transport-level cases (oversized upload,
-// our mapped errors, malformed request, and framework errors that already carry a status). Anything else
-// rethrows so the server's default handler surfaces it as a 500.
+// {@link RouteHttpError} before this point; this only knows mapped errors, malformed requests, and
+// framework errors that already carry a status. Anything else rethrows so the default handler surfaces it as a 500.
 export function sendHttpError(reply: FastifyReply, error: unknown, options: SendHttpErrorOptions): void {
-  if (options.onFileTooLarge && isMultipartFileTooLargeError(reply, error)) {
+  sendNonUploadHttpError(reply, error, options);
+}
+
+export function sendUploadHttpError(reply: FastifyReply, error: unknown, options: SendUploadHttpErrorOptions): void {
+  if (isMultipartFileTooLargeError(reply, error)) {
     const { appCode, message } = options.onFileTooLarge();
     reply.status(400).send({ data: { appCode }, message });
     return;
   }
 
+  sendNonUploadHttpError(reply, error, options);
+}
+
+function sendNonUploadHttpError(reply: FastifyReply, error: unknown, options: SendHttpErrorOptions): void {
   if (error instanceof RouteHttpError) {
     reply.status(error.statusCode).send({ data: { appCode: error.appCode }, message: error.message });
     return;

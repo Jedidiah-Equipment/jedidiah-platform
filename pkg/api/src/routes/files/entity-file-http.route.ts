@@ -6,7 +6,7 @@ import {
   RouteHttpError,
   requirePermission,
   requireRouteAuth,
-  sendHttpError,
+  sendUploadHttpError,
   streamObjectBody,
 } from '../http-route-helpers.js';
 
@@ -85,7 +85,7 @@ function registerEntityFileConfig(app: FastifyInstance, config: EntityFileRouteC
 }
 
 function sendFileHttpError(reply: FastifyReply, error: unknown, config: EntityFileRouteConfig): void {
-  sendHttpError(reply, toFileRouteError(error, config) ?? error, {
+  sendUploadHttpError(reply, toFileRouteError(error, config) ?? error, {
     fallbackMessage: 'File request failed.',
     invalidRequestMessage: 'Invalid file request.',
     onFileTooLarge: () => ({ appCode: 'file.too_large', message: 'File is too large.' }),

@@ -34,7 +34,7 @@ import {
   requireAnyPermission,
   requirePermission,
   requireRouteAuth,
-  sendHttpError,
+  sendUploadHttpError,
   streamObjectBody,
 } from '../http-route-helpers.js';
 import { mapDocumentCoreError } from './documents.router.js';
@@ -393,7 +393,7 @@ function mapOwnerNotFound(
 }
 
 function sendDocumentHttpError(reply: FastifyReply, error: unknown): void {
-  sendHttpError(reply, error, {
+  sendUploadHttpError(reply, error, {
     fallbackMessage: 'Document request failed.',
     invalidRequestMessage: 'Invalid document request.',
     onFileTooLarge: () => {

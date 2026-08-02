@@ -42,7 +42,7 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
   const [partIds, setPartIds] = useState<string[]>([]);
   const categories = usePartCategoryOptions();
   const locations = usePartStorageLocationOptions();
-  const parts = usePartOptions({ limit: 0 });
+  const parts = usePartOptions({ enabled: isOpen && mode === 'ids', limit: 0 });
   const partLabels = useMemo(
     () => new Map(parts.items.map((part) => [part.id, `${part.code} · ${part.name}`])),
     [parts.items],

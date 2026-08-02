@@ -10,21 +10,30 @@ type PartSelectOption = SelectOption & {
 };
 
 type UsePartOptionsOptions = {
+  enabled?: boolean;
   limit?: number;
   sortBy?: PartListInput['sortBy'];
   sortDirection?: PartListInput['sortDirection'];
 };
 
-export function usePartOptions({ limit = 20, sortBy = 'name', sortDirection = 'asc' }: UsePartOptionsOptions = {}) {
+export function usePartOptions({
+  enabled = true,
+  limit = 20,
+  sortBy = 'name',
+  sortDirection = 'asc',
+}: UsePartOptionsOptions = {}) {
   const trpc = useTRPC();
   const query = useQuery(
-    trpc.parts.list.queryOptions({
-      columnFilters: {},
-      cursor: 0,
-      limit,
-      sortBy,
-      sortDirection,
-    }),
+    trpc.parts.list.queryOptions(
+      {
+        columnFilters: {},
+        cursor: 0,
+        limit,
+        sortBy,
+        sortDirection,
+      },
+      { enabled },
+    ),
   );
   const items = query.data?.items ?? [];
   const selectOptions = useMemo<PartSelectOption[]>(

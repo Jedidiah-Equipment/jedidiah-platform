@@ -76,9 +76,13 @@ export const inventoryRouter = router({
   postRevaluation: authorizedProcedure('inventory_cost:revalue')
     .input(PostRevaluationInput)
     .output(StockMovement)
-    .mutation(({ ctx, input }) =>
-      mapStockMovementErrors(() => postRevaluation({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const movement = await mapStockMovementErrors(() =>
+        postRevaluation({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+      );
+
+      return projectInventoryCostFields({ access: ctx.access, costFields: ['unitCost'], output: movement });
+    }),
 });
 
 async function mapStockMovementErrors<T>(action: () => Promise<T>): Promise<T> {

@@ -1,14 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
-import { distinctPartOptions, parseAdjustmentForm, parseRevaluationForm, type StockPartOption } from './types.js';
+import {
+  distinctPartOptions,
+  parseAdjustmentForm,
+  parseRevaluationForm,
+  revaluablePartOptions,
+  type StockPartOption,
+} from './types.js';
 
 const piece: StockPartOption = {
+  isInternallyFabricated: false,
   partCode: 'P-100',
   partId: '00000000-0000-4000-8000-000000000001',
   partName: 'Bearing',
   unitOfMeasure: 'piece',
 };
 const linear: StockPartOption = {
+  isInternallyFabricated: false,
   partCode: 'RAW-100',
   partId: '00000000-0000-4000-8000-000000000002',
   partName: 'Channel',
@@ -76,12 +84,29 @@ describe('parseAdjustmentForm', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('never maps a cost for an internally fabricated Part', () => {
+    const result = parseAdjustmentForm({
+      canReadCost: true,
+      part: { ...piece, isInternallyFabricated: true },
+      values: {
+        delta: '1',
+        lengthMm: '',
+        note: '',
+        partId: piece.partId,
+        reason: 'opening-balance',
+        unitCost: '99',
+      },
+    });
+
+    expect(result).toMatchObject({ data: { unitCost: null }, success: true });
+  });
 });
 
 describe('parseRevaluationForm', () => {
   it('maps the new cost and normalizes a blank note', () => {
     expect(parseRevaluationForm({ note: '  ', partId: piece.partId, unitCost: '25.50' })).toMatchObject({
-      data: { lengthMm: null, note: null, partId: piece.partId, unitCost: 25.5 },
+      data: { note: null, partId: piece.partId, unitCost: 25.5 },
       success: true,
     });
   });
@@ -92,6 +117,7 @@ describe('distinctPartOptions', () => {
     const row = {
       averageUnitCost: 0.1,
       asOfLastCount: null,
+      isInternallyFabricated: false,
       lengthMm: 3_000,
       partCode: linear.partCode,
       partId: linear.partId,
@@ -103,5 +129,9 @@ describe('distinctPartOptions', () => {
     };
 
     expect(distinctPartOptions([row, { ...row, lengthMm: 6_000 }])).toEqual([linear]);
+  });
+
+  it('removes internally fabricated Parts from revaluation choices', () => {
+    expect(revaluablePartOptions([piece, { ...linear, isInternallyFabricated: true }])).toEqual([piece]);
   });
 });

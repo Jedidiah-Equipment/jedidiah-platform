@@ -27,6 +27,27 @@ describe('deriveMovingAverage', () => {
     ).toBe(15);
   });
 
+  it('resets the average when a cost-bearing row leaves non-positive stock', () => {
+    expect(
+      deriveMovingAverage([
+        {
+          delta: 10,
+          lengthMm: null,
+          movementType: 'adjustment',
+          reason: 'opening-balance',
+          unitCost: 10,
+        },
+        {
+          delta: -15,
+          lengthMm: null,
+          movementType: 'adjustment',
+          reason: 'opening-balance',
+          unitCost: 20,
+        },
+      ]),
+    ).toBe(20);
+  });
+
   it('uses a revaluation as the new moving average', () => {
     expect(
       deriveMovingAverage([

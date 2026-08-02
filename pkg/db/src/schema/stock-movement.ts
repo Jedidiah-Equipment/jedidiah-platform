@@ -22,7 +22,7 @@ export const stockMovements = pgTable(
       .notNull()
       .references(() => parts.id, { onDelete: 'restrict' }),
     reason: text('reason').$type<StockAdjustmentReason>(),
-    unitCost: numeric('unit_cost', { mode: 'number', precision: 12, scale: 2 }),
+    unitCost: numeric('unit_cost', { mode: 'number', precision: 18, scale: 6 }),
   },
   (table) => [
     check('stock_movement_length_mm_positive', sql`${table.lengthMm} IS NULL OR ${table.lengthMm} > 0`),

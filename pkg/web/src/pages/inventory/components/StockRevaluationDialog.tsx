@@ -39,7 +39,8 @@ export function StockRevaluationDialog({
   const [unitCost, setUnitCost] = useState('');
   const [note, setNote] = useState('');
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
-  const selectedPartId = parts.some((part) => part.partId === partId) ? partId : (parts[0]?.partId ?? '');
+  const selectedPart = parts.find((part) => part.partId === partId) ?? parts[0];
+  const selectedPartId = selectedPart?.partId ?? '';
   const mutation = useMutation(
     trpc.inventory.postRevaluation.mutationOptions({
       onSuccess: async () => {
@@ -74,13 +75,15 @@ export function StockRevaluationDialog({
         <form className="grid gap-4" onSubmit={submit}>
           <StockPartSelect onChange={setPartId} parts={parts} value={selectedPartId} />
           <Field>
-            <FieldLabel htmlFor="inventory-revaluation-cost">New unit cost</FieldLabel>
+            <FieldLabel htmlFor="inventory-revaluation-cost">
+              {selectedPart?.unitOfMeasure === 'mm' ? 'New cost per mm' : 'New unit cost'}
+            </FieldLabel>
             <Input
               id="inventory-revaluation-cost"
               min="0"
               onChange={(event) => setUnitCost(event.target.value)}
               required
-              step="0.01"
+              step={selectedPart?.unitOfMeasure === 'mm' ? '0.000001' : '0.01'}
               type="number"
               value={unitCost}
             />

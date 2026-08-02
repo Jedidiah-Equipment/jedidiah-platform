@@ -1,4 +1,4 @@
-import { type Db, parts, stockMovements, user } from '@pkg/db';
+import { type DatabaseTransaction, type Db, parts, stockMovements, user } from '@pkg/db';
 import { deriveMovingAverage, deriveMovingAverageTimeline, valueStockBucket, valueStockMovement } from '@pkg/domain';
 import type {
   AuthId,
@@ -16,7 +16,7 @@ import {
   StockOnHandResult as StockOnHandResultSchema,
   unitClassFor,
 } from '@pkg/schema';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 
 import {
   FabricatedPartCostError,
@@ -79,10 +79,6 @@ export async function postRevaluation({
 }): Promise<StockMovement> {
   const part = await loadStockPart({ db, partId: input.partId });
 
-  if (input.lengthMm !== null) {
-    throw new StockMovementLengthError(false);
-  }
-
   assertFabricatedPartCost(part.isInternallyFabricated, input.unitCost);
 
   const [movement] = await db
@@ -107,13 +103,17 @@ export async function postRevaluation({
 }
 
 export async function listStockOnHand({ db }: { db: Db }): Promise<StockOnHandResult> {
+  // Quantity and valuation are one report fact; concurrent postings must not split their snapshots.
+  return db.transaction((tx) => listStockOnHandSnapshot(tx), {
+    accessMode: 'read only',
+    isolationLevel: 'repeatable read',
+  });
+}
+
+async function listStockOnHandSnapshot(db: DatabaseTransaction): Promise<StockOnHandResult> {
   const [quantityRows, movementRows] = await Promise.all([
     db
       .select({
-        asOfLastCount:
-          sql<Date | null>`max(${stockMovements.createdAt}) filter (where ${stockMovements.reason} = 'stock-count')`.mapWith(
-            stockMovements.createdAt,
-          ),
         lengthMm: stockMovements.lengthMm,
         isInternallyFabricated: parts.isInternallyFabricated,
         partCode: parts.code,
@@ -124,11 +124,15 @@ export async function listStockOnHand({ db }: { db: Db }): Promise<StockOnHandRe
         unitOfMeasure: parts.unitOfMeasure,
       })
       .from(parts)
-      .leftJoin(stockMovements, eq(stockMovements.partId, parts.id))
+      .leftJoin(
+        stockMovements,
+        and(eq(stockMovements.partId, parts.id), ne(stockMovements.movementType, 'revaluation')),
+      )
       .groupBy(parts.id, parts.code, parts.name, parts.stockTrackingMode, parts.unitOfMeasure, stockMovements.lengthMm)
       .orderBy(asc(parts.code), asc(stockMovements.lengthMm)),
     db
       .select({
+        createdAt: stockMovements.createdAt,
         delta: stockMovements.delta,
         lengthMm: stockMovements.lengthMm,
         movementType: stockMovements.movementType,
@@ -141,21 +145,35 @@ export async function listStockOnHand({ db }: { db: Db }): Promise<StockOnHandRe
   ]);
 
   const movementsByPart = new Map<UUID, typeof movementRows>();
+  const asOfLastCountByPart = new Map<UUID, Date>();
   for (const movement of movementRows) {
     const partMovements = movementsByPart.get(movement.partId) ?? [];
     partMovements.push(movement);
     movementsByPart.set(movement.partId, partMovements);
+
+    if (movement.reason === 'stock-count') {
+      asOfLastCountByPart.set(movement.partId, movement.createdAt);
+    }
+  }
+
+  const averageUnitCostByPart = new Map<UUID, number | null>();
+  for (const row of quantityRows) {
+    if (!averageUnitCostByPart.has(row.partId)) {
+      averageUnitCostByPart.set(
+        row.partId,
+        row.isInternallyFabricated ? 0 : deriveMovingAverage(movementsByPart.get(row.partId) ?? []),
+      );
+    }
   }
 
   return StockOnHandResultSchema.parse({
     items: quantityRows.map((row) => {
-      const averageUnitCost = row.isInternallyFabricated
-        ? 0
-        : deriveMovingAverage(movementsByPart.get(row.partId) ?? []);
+      const averageUnitCost = averageUnitCostByPart.get(row.partId) ?? null;
 
       return {
         averageUnitCost,
-        asOfLastCount: row.stockTrackingMode === 'periodic' ? row.asOfLastCount : null,
+        asOfLastCount: row.stockTrackingMode === 'periodic' ? (asOfLastCountByPart.get(row.partId) ?? null) : null,
+        isInternallyFabricated: row.isInternallyFabricated,
         lengthMm: row.lengthMm,
         partCode: row.partCode,
         partId: row.partId,

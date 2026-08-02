@@ -1,4 +1,4 @@
-import { auditEvents, type Db, parts, supplier, user } from '@pkg/db';
+import { auditEvents, type Db, parts, stockMovements, supplier, user } from '@pkg/db';
 import { type PartBulkImportRow, PartListInput } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -133,6 +133,28 @@ describe('updatePart', () => {
       },
       entityType: 'part',
     });
+  });
+
+  test('rejects a Unit of Measure change after the Part ledger starts', async ({ context }) => {
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', id: '00000000-0000-4000-8000-000000000001' });
+    const created = await createPart({ actorUserId, db: context.db, input: partInput() });
+    await context.db.insert(stockMovements).values({
+      actorUserId,
+      delta: 1,
+      movementType: 'adjustment',
+      partId: created.id,
+      reason: 'opening-balance',
+    });
+
+    await expect(
+      updatePart({
+        actorUserId,
+        db: context.db,
+        input: { ...created, standardPurchaseLengthMm: 6_000, unitOfMeasure: 'mm' },
+      }),
+    ).rejects.toMatchObject({ code: 'part.unit_of_measure_locked' });
   });
 });
 
@@ -291,6 +313,33 @@ describe('bulkImportParts', () => {
       entityType: 'part',
       summary: 'Renamed part "Bearing" to "Bearing Assembly"',
     });
+  });
+
+  test('does not let a CSV update reinterpret an existing stock ledger', async ({ context }) => {
+    await bulkImportParts({ actorUserId, db: context.db, input: { rows: [importRow()] } });
+    const [part] = await context.db.select().from(parts);
+
+    if (!part) {
+      throw new Error('Imported Part was not returned');
+    }
+
+    await context.db.insert(stockMovements).values({
+      actorUserId,
+      delta: 1,
+      movementType: 'adjustment',
+      partId: part.id,
+      reason: 'opening-balance',
+    });
+
+    await expect(
+      bulkImportParts({
+        actorUserId,
+        db: context.db,
+        input: {
+          rows: [importRow({ standardPurchaseLengthMm: 6_000, unitOfMeasure: 'mm' })],
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'part.unit_of_measure_locked' });
   });
 
   test('creates a distinct part when only supplier code matches', async ({ context }) => {

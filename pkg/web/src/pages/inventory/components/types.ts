@@ -5,7 +5,10 @@ import {
   type StockOnHandRow,
 } from '@pkg/schema';
 
-export type StockPartOption = Pick<StockOnHandRow, 'partCode' | 'partId' | 'partName' | 'unitOfMeasure'>;
+export type StockPartOption = Pick<
+  StockOnHandRow,
+  'isInternallyFabricated' | 'partCode' | 'partId' | 'partName' | 'unitOfMeasure'
+>;
 
 export type AdjustmentFormValues = {
   delta: string;
@@ -37,13 +40,15 @@ export function parseAdjustmentForm({
     note: values.note,
     partId: part.partId,
     reason: values.reason,
-    unitCost: canReadCost && values.reason === 'opening-balance' ? optionalNumber(values.unitCost) : null,
+    unitCost:
+      canReadCost && !part.isInternallyFabricated && values.reason === 'opening-balance'
+        ? optionalNumber(values.unitCost)
+        : null,
   });
 }
 
 export function parseRevaluationForm(values: RevaluationFormValues) {
   return PostRevaluationInput.safeParse({
-    lengthMm: null,
     note: values.note,
     partId: values.partId,
     unitCost: requiredNumber(values.unitCost),
@@ -52,12 +57,17 @@ export function parseRevaluationForm(values: RevaluationFormValues) {
 
 export function distinctPartOptions(items: readonly StockOnHandRow[]): StockPartOption[] {
   const byId = new Map(items.map((item) => [item.partId, item]));
-  return [...byId.values()].map(({ partCode, partId, partName, unitOfMeasure }) => ({
+  return [...byId.values()].map(({ isInternallyFabricated, partCode, partId, partName, unitOfMeasure }) => ({
+    isInternallyFabricated,
     partCode,
     partId,
     partName,
     unitOfMeasure,
   }));
+}
+
+export function revaluablePartOptions(parts: readonly StockPartOption[]): StockPartOption[] {
+  return parts.filter((part) => !part.isInternallyFabricated);
 }
 
 function requiredNumber(value: string): number {

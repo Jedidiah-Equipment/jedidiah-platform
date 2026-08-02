@@ -40,7 +40,7 @@ export function deriveMovingAverageTimeline(orderedMovements: readonly MovingAve
       const previousQuantity = Math.max(0, quantityOnHand);
       const nextQuantity = previousQuantity + basisQuantity;
 
-      if (averageUnitCost === null || previousQuantity === 0 || nextQuantity === 0) {
+      if (averageUnitCost === null || previousQuantity === 0 || nextQuantity <= 0) {
         averageUnitCost = costPerBasisUnit;
       } else {
         averageUnitCost = (previousQuantity * averageUnitCost + basisQuantity * costPerBasisUnit) / nextQuantity;

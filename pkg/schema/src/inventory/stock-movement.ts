@@ -5,7 +5,7 @@ import { Price } from '../common/price.js';
 import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 import { PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
-import { InventoryCost, InventoryValue } from './inventory-cost.js';
+import { InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
 
 export type StockMovementType = z.infer<typeof StockMovementType>;
 export const StockMovementType = z.enum(['adjustment', 'revaluation']);
@@ -59,10 +59,13 @@ export const PostAdjustmentInput = MovementTargetInput.extend({
   });
 
 export type PostRevaluationInput = z.infer<typeof PostRevaluationInput>;
-export const PostRevaluationInput = MovementTargetInput.extend({
-  note: nullableTrimmedTextInput(),
-  unitCost: Price,
-}).strict();
+export const PostRevaluationInput = z
+  .object({
+    note: nullableTrimmedTextInput(),
+    partId: UUID,
+    unitCost: InventoryUnitCost,
+  })
+  .strict();
 
 export type StockMovement = z.infer<typeof StockMovement>;
 export const StockMovement = z.object({
@@ -75,13 +78,14 @@ export const StockMovement = z.object({
   note: nullableTrimmedText(),
   partId: UUID,
   reason: StockAdjustmentReason.nullable(),
-  unitCost: Price.nullable(),
+  unitCost: InventoryUnitCost.nullable(),
 });
 
 export type StockOnHandRow = z.infer<typeof StockOnHandRow>;
 export const StockOnHandRow = z.object({
   averageUnitCost: InventoryCost,
   asOfLastCount: DateIso.nullable(),
+  isInternallyFabricated: z.boolean(),
   lengthMm: StockMovementLengthMm.nullable(),
   partCode: z.string(),
   partId: UUID,

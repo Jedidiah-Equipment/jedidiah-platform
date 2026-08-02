@@ -127,4 +127,18 @@ describe('inventory cost projection', () => {
     expect(procurement.items[0]).toMatchObject({ movementValue: 250, unitCost: 25 });
     expect(stores.items[0]).toMatchObject({ movementValue: null, unitCost: null });
   });
+
+  test('cost-gates a revaluation response independently from revaluation authority', async ({ context }) => {
+    const revaluerWithoutCostRead = context.createCaller(mockSession('procurement-manager'), {
+      access: {
+        permissions: ['inventory_cost:revalue'],
+        role: 'procurement-manager',
+        userId: 'test-user-id',
+      },
+    });
+
+    await expect(
+      revaluerWithoutCostRead.inventory.postRevaluation({ partId: context.part.id, unitCost: 0.104 }),
+    ).resolves.toMatchObject({ movementType: 'revaluation', unitCost: null });
+  });
 });

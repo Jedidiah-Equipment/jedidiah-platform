@@ -50,14 +50,14 @@ describe('stock movement inputs', () => {
   });
 
   it('takes cost but not quantity or reason when posting a revaluation', () => {
-    expect(PostRevaluationInput.parse({ note: 'Supplier repriced', partId, unitCost: 18.75 })).toEqual({
-      lengthMm: null,
+    expect(PostRevaluationInput.parse({ note: 'Supplier repriced', partId, unitCost: 0.104 })).toEqual({
       note: 'Supplier repriced',
       partId,
-      unitCost: 18.75,
+      unitCost: 0.104,
     });
 
     expect(() => PostRevaluationInput.parse({ delta: 1, partId, unitCost: 18.75 })).toThrow();
     expect(() => PostRevaluationInput.parse({ partId, reason: 'correction', unitCost: 18.75 })).toThrow();
+    expect(() => PostRevaluationInput.parse({ lengthMm: null, partId, unitCost: 18.75 })).toThrow();
   });
 });

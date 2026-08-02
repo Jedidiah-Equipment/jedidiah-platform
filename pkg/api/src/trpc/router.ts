@@ -28,8 +28,8 @@ type AppRouterRecord = {
   customers: (typeof customersRouter)['_def']['record'];
   documents: (typeof documentsRouter)['_def']['record'];
   feedback: (typeof feedbackRouter)['_def']['record'];
-  jobs: (typeof jobsRouter)['_def']['record'];
   inventory: (typeof inventoryRouter)['_def']['record'];
+  jobs: (typeof jobsRouter)['_def']['record'];
   parts: (typeof partsRouter)['_def']['record'];
   productRanges: (typeof productRangesRouter)['_def']['record'];
   productUnits: (typeof productUnitsRouter)['_def']['record'];
@@ -51,8 +51,8 @@ function createAppRouter(): AppRouter {
     customers: customersRouter,
     documents: documentsRouter,
     feedback: feedbackRouter,
-    jobs: jobsRouter,
     inventory: inventoryRouter,
+    jobs: jobsRouter,
     parts: partsRouter,
     productRanges: productRangesRouter,
     productUnits: productUnitsRouter,

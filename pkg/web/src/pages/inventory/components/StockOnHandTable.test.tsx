@@ -9,6 +9,7 @@ const result = StockOnHandResult.parse({
     {
       averageUnitCost: 0.1,
       asOfLastCount: '2026-08-01T08:00:00.000Z',
+      isInternallyFabricated: false,
       lengthMm: 6_000,
       partCode: 'RAW-100',
       partId: '00000000-0000-4000-8000-000000000001',
@@ -21,6 +22,7 @@ const result = StockOnHandResult.parse({
     {
       averageUnitCost: null,
       asOfLastCount: null,
+      isInternallyFabricated: false,
       lengthMm: null,
       partCode: 'P-100',
       partId: '00000000-0000-4000-8000-000000000002',

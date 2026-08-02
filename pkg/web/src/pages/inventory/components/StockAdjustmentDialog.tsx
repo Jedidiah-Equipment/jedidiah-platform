@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Textarea } from '@/components/ui/textarea.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
@@ -117,22 +118,26 @@ export function StockAdjustmentDialog({
           ) : null}
           <Field>
             <FieldLabel htmlFor="inventory-adjustment-reason">Reason</FieldLabel>
-            <select
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-              id="inventory-adjustment-reason"
-              onChange={(event) => setReason(event.target.value as StockAdjustmentReason)}
-              value={reason}
-            >
-              {Object.entries(STOCK_ADJUSTMENT_REASON_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            <Select onValueChange={(value) => setReason(String(value) as StockAdjustmentReason)} value={reason}>
+              <SelectTrigger className="w-full" id="inventory-adjustment-reason">
+                <SelectValue>{STOCK_ADJUSTMENT_REASON_LABELS[reason]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent align="start">
+                <SelectGroup>
+                  {Object.entries(STOCK_ADJUSTMENT_REASON_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </Field>
-          {canReadCost && reason === 'opening-balance' ? (
+          {canReadCost && !selectedPart?.isInternallyFabricated && reason === 'opening-balance' ? (
             <Field>
-              <FieldLabel htmlFor="inventory-adjustment-cost">Unit cost (optional)</FieldLabel>
+              <FieldLabel htmlFor="inventory-adjustment-cost">
+                {selectedPart?.unitOfMeasure === 'mm' ? 'Cost per length piece' : 'Unit cost'} (optional)
+              </FieldLabel>
               <Input
                 id="inventory-adjustment-cost"
                 min="0"

@@ -156,7 +156,6 @@ describe('postRevaluation', () => {
         actorUserId,
         db: context.db,
         input: {
-          lengthMm: null,
           note: 'Supplier repriced before the next order',
           partId: context.parts.piece.id,
           unitCost: 31.5,
@@ -179,7 +178,7 @@ describe('postRevaluation', () => {
       postRevaluation({
         actorUserId,
         db: context.db,
-        input: { lengthMm: null, note: null, partId: context.parts.fabricated.id, unitCost: 1 },
+        input: { note: null, partId: context.parts.fabricated.id, unitCost: 1 },
       }),
     ).rejects.toMatchObject({ code: 'inventory.fabricated_part_cost' });
   });
@@ -288,6 +287,41 @@ describe('listStockOnHand', () => {
     });
     expect(fabricated).toMatchObject({ averageUnitCost: 0, quantity: 0, totalValue: 0 });
   });
+
+  test('omits revaluation-only buckets and carries the latest count across every Part bucket', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.linear.id, { delta: 2, lengthMm: 6_000, unitCost: 600 }),
+    });
+    await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: 'Current replacement cost', partId: context.parts.linear.id, unitCost: 0.104 },
+    });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.periodic.id, { delta: 2, lengthMm: 3_000, unitCost: 300 }),
+    });
+    const count = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.periodic.id, {
+        delta: 1,
+        lengthMm: 6_000,
+        note: 'Weekly count',
+        reason: 'stock-count',
+      }),
+    });
+
+    const result = await listStockOnHand({ db: context.db });
+    const linear = result.items.filter((row) => row.partId === context.parts.linear.id);
+    const periodic = result.items.filter((row) => row.partId === context.parts.periodic.id);
+
+    expect(linear.map((row) => row.lengthMm)).toEqual([6_000]);
+    expect(periodic.map((row) => row.asOfLastCount)).toEqual([count.createdAt, count.createdAt]);
+  });
 });
 
 describe('getStockMovementHistory', () => {
@@ -305,7 +339,7 @@ describe('getStockMovementHistory', () => {
     await postRevaluation({
       actorUserId,
       db: context.db,
-      input: { lengthMm: null, note: 'Supplier repriced', partId: context.parts.piece.id, unitCost: 30 },
+      input: { note: 'Supplier repriced', partId: context.parts.piece.id, unitCost: 30 },
     });
 
     const result = await getStockMovementHistory({ db: context.db, partId: context.parts.piece.id });

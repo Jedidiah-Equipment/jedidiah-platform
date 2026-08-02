@@ -1,7 +1,14 @@
 import { isPartCoreError, renderPartLabel, renderPartLabelBatch } from '@pkg/core';
 import { db } from '@pkg/db';
 import { renderPartLabelsPdf } from '@pkg/pdf';
-import { PartLabelBatchSelection, type PartLabelPdfRenderer, UUID } from '@pkg/schema';
+import {
+  PartCategory,
+  PartLabelBatchSelection,
+  type PartLabelPdfRenderer,
+  PartLabelSelectionMode,
+  PartStorageLocation,
+  UUID,
+} from '@pkg/schema';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
@@ -15,10 +22,10 @@ import {
 
 const PartLabelParams = z.object({ partId: UUID });
 const PartLabelBatchQuery = z.object({
-  category: z.string().optional(),
+  category: PartCategory.optional(),
   ids: z.string().optional(),
-  selection: z.enum(['all', 'category', 'storageLocation', 'ids']),
-  storageLocation: z.string().optional(),
+  selection: PartLabelSelectionMode,
+  storageLocation: PartStorageLocation.unwrap().optional(),
 });
 
 export async function registerPartLabelHttpRoutes(

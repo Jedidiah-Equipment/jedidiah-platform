@@ -49,13 +49,18 @@ const styles = StyleSheet.create({
   },
 });
 
-export function PartLabelPdf({ barcodeDataUris, labels }: { barcodeDataUris: string[]; labels: PartLabelPdfModel[] }) {
+export type PartLabelRenderItem = {
+  barcodeDataUri: string;
+  label: PartLabelPdfModel;
+};
+
+export function PartLabelPdf({ items }: { items: PartLabelRenderItem[] }) {
   return (
-    <Document title={labels.length === 1 ? `Part label ${labels[0]?.code ?? ''}` : 'Part labels'}>
-      {labels.map((label, index) => (
+    <Document title={items.length === 1 ? `Part label ${items[0]?.label.code ?? ''}` : 'Part labels'}>
+      {items.map(({ barcodeDataUri, label }) => (
         <Page key={label.code} size={[PART_LABEL_PAGE_SIZE.width, PART_LABEL_PAGE_SIZE.height]} style={styles.page}>
           <View>
-            <Image src={barcodeDataUris[index]} style={styles.barcode} />
+            <Image src={barcodeDataUri} style={styles.barcode} />
             <Text style={styles.code}>{label.code}</Text>
             <Text style={styles.name}>{label.name}</Text>
             <Text style={styles.location}>{label.storageLocation ?? 'Location not set'}</Text>

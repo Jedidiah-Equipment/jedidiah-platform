@@ -1,7 +1,10 @@
-import type { PartLabelBatchSelection, UUID } from '@pkg/schema';
+import type { Part, PartLabelBatchSelection, UUID } from '@pkg/schema';
+import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
+import { DataTable } from '@/components/data-table/DataTable.js';
+import { createPartLabelActionColumn } from './components/PartTable.js';
 import { PartLabelPrintButton } from './PartLabelPrintButton.js';
 import { partLabelBatchUrl, partLabelUrl } from './part-label.js';
 
@@ -23,6 +26,15 @@ describe('Part label actions', () => {
     expect(markup).toContain('Print label');
   });
 
+  test('keeps single-Part printing reachable from every Part table row', () => {
+    stubClientConfig();
+
+    const markup = renderToStaticMarkup(<PartLabelActionTable />);
+
+    expect(markup).toContain('Print label');
+    expect(markup).toContain('/api/parts/22222222-2222-4222-8222-222222222222/label');
+  });
+
   test.each([
     [{ selection: 'all' }, 'selection=all'],
     [{ category: 'Bright bar', selection: 'category' }, 'selection=category&amp;category=Bright+bar'],
@@ -38,6 +50,16 @@ describe('Part label actions', () => {
     );
   });
 });
+
+function PartLabelActionTable() {
+  const table = useReactTable({
+    columns: [createPartLabelActionColumn()],
+    data: [{ id: PART_ID } as Part],
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  return <DataTable emptyMessage="No parts" hideGlobalFilter paginationMode="complete" table={table} total={1} />;
+}
 
 function stubClientConfig(): void {
   vi.stubGlobal('window', {

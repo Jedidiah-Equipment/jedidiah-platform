@@ -18,6 +18,7 @@ import type { SortOptions } from '@/components/data-table/table-state.js';
 import { usePartCategoryOptions, usePartStorageLocationOptions } from '@/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { PartLabelPrintButton } from '../PartLabelPrintButton.js';
 
 type PartTableProps = {
   onEditPart: ((part: Part) => void) | undefined;
@@ -172,6 +173,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
         enableSorting: true,
         header: 'Name',
       },
+      createPartLabelActionColumn(),
     ];
 
     return tableColumns;
@@ -216,6 +218,24 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
     />
   );
 };
+
+export function createPartLabelActionColumn(): ColumnDef<Part> {
+  return {
+    cell: ({ row }) => (
+      <div className="flex justify-end">
+        <PartLabelPrintButton partId={row.original.id} size="xs" />
+      </div>
+    ),
+    enableColumnFilter: false,
+    enableSorting: false,
+    header: '',
+    id: 'label',
+    meta: {
+      cellClassName: 'w-[96px]',
+    },
+    size: 96,
+  };
+}
 
 function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId?: UUID) {
   return {

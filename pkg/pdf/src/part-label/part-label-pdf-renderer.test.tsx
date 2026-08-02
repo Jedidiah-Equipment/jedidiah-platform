@@ -18,7 +18,11 @@ describe('Part label PDF', () => {
   });
 
   test('prints the Part code, name, and storage location with a fallback', () => {
-    const text = collectText(PartLabelPdf({ barcodeDataUris: ['first', 'second'], labels: LABELS }));
+    const text = collectText(
+      PartLabelPdf({
+        items: LABELS.map((label, index) => ({ barcodeDataUri: index === 0 ? 'first' : 'second', label })),
+      }),
+    );
 
     expect(text).toEqual(expect.arrayContaining(['P-100', 'Main bearing', 'Bin A-04', 'PIPE-042', 'Hydraulic pipe']));
     expect(text.filter((value) => value === 'Location not set')).toHaveLength(1);

@@ -1,3 +1,4 @@
+import fastifyMultipart from '@fastify/multipart';
 import type { Db } from '@pkg/db';
 import { parts, supplier, user } from '@pkg/db';
 import type { PartLabelPdfModel, PartLabelPdfRenderer } from '@pkg/schema';
@@ -163,5 +164,3 @@ function partRow(supplierId: string, code: string, name: string, category: strin
     unitOfMeasure: 'piece' as const,
   };
 }
-
-import fastifyMultipart from '@fastify/multipart';

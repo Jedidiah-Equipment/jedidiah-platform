@@ -36,7 +36,12 @@ import {
   QuoteNotFoundError,
   QuoteProductBayAvailabilityNotApplicableError,
 } from './quotes/quote-errors.js';
-import { DuplicateSupplierNameError, isSupplierCoreError, SupplierNotFoundError } from './suppliers/supplier-errors.js';
+import {
+  DuplicateSupplierNameError,
+  isSupplierCoreError,
+  SupplierHasDraftPurchaseOrdersError,
+  SupplierNotFoundError,
+} from './suppliers/supplier-errors.js';
 import { isProductUnitCoreError, ProductUnitProductNotFoundError } from './units/product-unit-errors.js';
 import { isUserCoreError, UserNotFoundError } from './users/user-errors.js';
 
@@ -84,6 +89,7 @@ describe('core error codes and guards', () => {
 
   it('identifies supplier core errors', () => {
     expect(new DuplicateSupplierNameError('Acme Supplies').code).toBe('supplier.duplicate_name');
+    expect(new SupplierHasDraftPurchaseOrdersError('supplier-id').code).toBe('supplier.has_draft_purchase_orders');
     expect(new SupplierNotFoundError('supplier-id').code).toBe('supplier.not_found');
     expect(isSupplierCoreError(new SupplierNotFoundError('supplier-id'))).toBe(true);
     expect(isSupplierCoreError(new Error('supplier.not_found'))).toBe(false);

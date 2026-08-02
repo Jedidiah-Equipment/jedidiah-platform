@@ -5,6 +5,7 @@ import {
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
+  purchaseOrders,
   supplier,
 } from '@pkg/db';
 import type {
@@ -21,7 +22,11 @@ import { and, asc, eq, isNull, type SQL, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
-import { DuplicateSupplierNameError, SupplierNotFoundError } from './supplier-errors.js';
+import {
+  DuplicateSupplierNameError,
+  SupplierHasDraftPurchaseOrdersError,
+  SupplierNotFoundError,
+} from './supplier-errors.js';
 
 type SupplierRow = typeof supplier.$inferSelect;
 
@@ -199,6 +204,13 @@ export async function removeSupplier({
     if (!before) {
       throw new SupplierNotFoundError(id);
     }
+
+    const [draftPurchaseOrder] = await tx
+      .select({ id: purchaseOrders.id })
+      .from(purchaseOrders)
+      .where(and(eq(purchaseOrders.supplierId, id), eq(purchaseOrders.status, 'draft')))
+      .limit(1);
+    if (draftPurchaseOrder) throw new SupplierHasDraftPurchaseOrdersError(id);
 
     const now = new Date();
     await tx.update(supplier).set({ deletedAt: now, updatedAt: now }).where(eq(supplier.id, id));

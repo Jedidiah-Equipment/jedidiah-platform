@@ -146,7 +146,7 @@ export async function listPurchaseOrders({
   db: Db;
   input: PurchaseOrderListInput;
 }): Promise<PurchaseOrderListResult> {
-  const where = buildPurchaseOrderListWhere(input);
+  const where = buildPurchaseOrderListWhere(db, input);
   const orderBy = getPurchaseOrderListOrder(input);
   const paging = getPaginationQueryOptions(input);
   const rows = await db.query.purchaseOrders.findMany({
@@ -163,10 +163,14 @@ export async function listPurchaseOrders({
       : await db
           .select({ id: documents.id, purchaseOrderId: documents.purchaseOrderId })
           .from(documents)
-          .where(inArray(documents.purchaseOrderId, ids));
-  const documentIdByPurchaseOrder = new Map(
-    documentRows.flatMap((row) => (row.purchaseOrderId ? [[row.purchaseOrderId, row.id] as const] : [])),
-  );
+          .where(inArray(documents.purchaseOrderId, ids))
+          .orderBy(desc(documents.createdAt), desc(documents.id));
+  const documentIdByPurchaseOrder = new Map<string, string>();
+  for (const row of documentRows) {
+    if (row.purchaseOrderId && !documentIdByPurchaseOrder.has(row.purchaseOrderId)) {
+      documentIdByPurchaseOrder.set(row.purchaseOrderId, row.id);
+    }
+  }
   const total = totalRow?.value ?? 0;
   const items = rows.map((row) => mapPurchaseOrder(row, documentIdByPurchaseOrder.get(row.id) ?? null));
 
@@ -324,41 +328,57 @@ export async function markPurchaseOrderSent({
   pdfRenderer: PurchaseOrderPdfRenderer;
   storage: StorageAdapter;
 }): Promise<PurchaseOrder> {
-  return db.transaction(async (tx) => {
-    const before = await lockPurchaseOrder(tx, id);
-    assertDraft(before);
-    const purchaseOrder = await getPurchaseOrder({ db: tx, id });
-    if (purchaseOrder.lines.length === 0) throw new PurchaseOrderEmptyError(id);
+  let uploadedDocumentStorageKey: string | null = null;
 
-    const sentAt = new Date();
-    const filename = `${purchaseOrder.code}.pdf`;
-    const bytes = await pdfRenderer({ document: toPdfModel(purchaseOrder, sentAt), filename });
-    await createDocumentRecord({
-      actorUserId,
-      db: tx,
-      input: {
-        bytes,
-        filename,
-        metadata: { revision: 1, type: 'purchase_order' },
-        ownerType: 'purchase_order',
-        purchaseOrderId: id,
-        storageKey: `documents/purchase-order/${id}/${randomUUID()}-${sanitizeDocumentStorageKeySuffix(filename)}`,
-      },
-      storage,
+  try {
+    return await db.transaction(async (tx) => {
+      const before = await lockPurchaseOrder(tx, id);
+      assertDraft(before);
+      const purchaseOrder = await getPurchaseOrder({ db: tx, id });
+      if (purchaseOrder.lines.length === 0) throw new PurchaseOrderEmptyError(id);
+
+      const sentAt = new Date();
+      const filename = `${purchaseOrder.code}.pdf`;
+      const bytes = await pdfRenderer({ document: toPdfModel(purchaseOrder, sentAt), filename });
+      const storageKey = `documents/purchase-order/${id}/${randomUUID()}-${sanitizeDocumentStorageKeySuffix(filename)}`;
+      await createDocumentRecord({
+        actorUserId,
+        db: tx,
+        input: {
+          bytes,
+          filename,
+          metadata: { revision: 1, type: 'purchase_order' },
+          ownerType: 'purchase_order',
+          purchaseOrderId: id,
+          storageKey,
+        },
+        storage,
+      });
+      // createDocumentRecord compensates its own savepoint failures; from here the outer transaction owns cleanup.
+      uploadedDocumentStorageKey = storageKey;
+
+      const [after] = await tx
+        .update(purchaseOrders)
+        .set({ sentAt, status: 'sent', updatedAt: sentAt })
+        .where(eq(purchaseOrders.id, id))
+        .returning();
+      if (!after) throw new PurchaseOrderNotFoundError(id);
+      const changes = diffAuditUpdate(purchaseOrderAuditDescriptor, before, after);
+      if (changes) {
+        await recordAuditUpdate({ actorUserId, after, changes, db: tx, descriptor: purchaseOrderAuditDescriptor });
+      }
+      return getPurchaseOrder({ db: tx, id });
     });
-
-    const [after] = await tx
-      .update(purchaseOrders)
-      .set({ sentAt, status: 'sent', updatedAt: sentAt })
-      .where(eq(purchaseOrders.id, id))
-      .returning();
-    if (!after) throw new PurchaseOrderNotFoundError(id);
-    const changes = diffAuditUpdate(purchaseOrderAuditDescriptor, before, after);
-    if (changes) {
-      await recordAuditUpdate({ actorUserId, after, changes, db: tx, descriptor: purchaseOrderAuditDescriptor });
+  } catch (error) {
+    if (uploadedDocumentStorageKey) {
+      try {
+        await storage.deleteObject(uploadedDocumentStorageKey);
+      } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], 'Failed to send Purchase Order and clean up its PDF');
+      }
     }
-    return getPurchaseOrder({ db: tx, id });
-  });
+    throw error;
+  }
 }
 
 export async function cancelPurchaseOrder({
@@ -481,7 +501,9 @@ async function assertSupplierExists({ db, supplierId }: { db: PurchaseOrderDb; s
     .select({ id: supplier.id })
     .from(supplier)
     .where(and(eq(supplier.id, supplierId), isNull(supplier.deletedAt)))
-    .limit(1);
+    .limit(1)
+    // Pair with removeSupplier's row lock so a supplier cannot be retired between validation and insertion.
+    .for('key share');
   if (!row) throw new PurchaseOrderSupplierNotFoundError(supplierId);
 }
 
@@ -529,14 +551,14 @@ function toPdfModel(purchaseOrder: PurchaseOrder, issueDate: Date): PurchaseOrde
   };
 }
 
-function buildPurchaseOrderListWhere(input: PurchaseOrderListInput): SQL | undefined {
+function buildPurchaseOrderListWhere(db: Db, input: PurchaseOrderListInput): SQL | undefined {
   const conditions: SQL[] = [];
   if (input.status) conditions.push(eq(purchaseOrders.status, input.status));
   if (input.supplierId) conditions.push(eq(purchaseOrders.supplierId, input.supplierId));
   if (input.search) {
     const digits = input.search.trim().replace(/^PO-/i, '');
     const code = /^\d+$/.test(digits) ? Number.parseInt(digits, 10) : null;
-    const supplierIds = dbSupplierIdsBySearch(input.search);
+    const supplierIds = dbSupplierIdsBySearch(db, input.search);
     const searchCondition = or(
       code ? eq(purchaseOrders.code, code) : undefined,
       inArray(purchaseOrders.supplierId, supplierIds),
@@ -546,8 +568,11 @@ function buildPurchaseOrderListWhere(input: PurchaseOrderListInput): SQL | undef
   return conditions.length === 0 ? undefined : and(...conditions);
 }
 
-function dbSupplierIdsBySearch(search: string) {
-  return sql`select ${supplier.id} from ${supplier} where ${createEscapedContainsSearchCondition(sql`${supplier.companyName}`, search)} and ${isNull(supplier.deletedAt)}`;
+function dbSupplierIdsBySearch(db: Db, search: string) {
+  return db
+    .select({ id: supplier.id })
+    .from(supplier)
+    .where(and(createEscapedContainsSearchCondition(sql`${supplier.companyName}`, search), isNull(supplier.deletedAt)));
 }
 
 function getPurchaseOrderListOrder(input: PurchaseOrderListInput): SQL {

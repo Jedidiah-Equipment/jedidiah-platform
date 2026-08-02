@@ -1,14 +1,18 @@
 import { auditEvents, customers, type Db, documents, jobs, parts, quotes, supplier, user } from '@pkg/db';
 import { DateOnlyIso, type PurchaseOrderPdfModel } from '@pkg/schema';
+import { sql } from 'drizzle-orm';
 import { describe, expect, vi } from 'vitest';
 
 import { getJobDocuments } from '../jobs/job-read-service.js';
 import { updatePart } from '../parts/part-service.js';
+import { removeSupplier } from '../suppliers/supplier-service.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import {
   cancelPurchaseOrder,
   createPurchaseOrder,
+  getPurchaseOrder,
+  listPurchaseOrders,
   markPurchaseOrderSent,
   replacePurchaseOrderJobLinks,
   replacePurchaseOrderLines,
@@ -38,6 +42,15 @@ describe('Purchase Order draft lifecycle', () => {
     });
 
     expect(purchaseOrder).toMatchObject({ code: 'PO-00001', jobs: [], lines: [], status: 'draft' });
+    await expect(
+      listPurchaseOrders({
+        db: context.db,
+        input: { cursor: 0, limit: 20, search: 'acme', sortBy: 'createdAt', sortDirection: 'desc' },
+      }),
+    ).resolves.toMatchObject({ items: [expect.objectContaining({ id: purchaseOrder.id })], total: 1 });
+    await expect(removeSupplier({ actorUserId: ACTOR_ID, db: context.db, id: SUPPLIER_A_ID })).rejects.toMatchObject({
+      code: 'supplier.has_draft_purchase_orders',
+    });
 
     await replacePurchaseOrderLines({
       actorUserId: ACTOR_ID,
@@ -160,6 +173,31 @@ describe('Purchase Order draft lifecycle', () => {
         },
       }),
     ).rejects.toMatchObject({ code: 'part.supplier_locked_by_purchase_order' });
+
+    await cancelPurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
+    await expect(
+      updatePart({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: {
+          category: 'Pipe',
+          code: 'P-100',
+          description: 'Test Part',
+          drawingCode: null,
+          finish: 'Plain',
+          id: PIECE_PART_ID,
+          isInternallyFabricated: false,
+          minimumStock: null,
+          name: 'Test Part',
+          standardPurchaseLengthMm: null,
+          stockTrackingMode: 'perpetual',
+          storageLocation: null,
+          supplierCode: 'SUP-100',
+          supplierId: SUPPLIER_B_ID,
+          unitOfMeasure: 'piece',
+        },
+      }),
+    ).resolves.toMatchObject({ supplierId: SUPPLIER_B_ID });
   });
 });
 
@@ -238,6 +276,47 @@ describe('Purchase Order send and cancel', () => {
     await expect(
       cancelPurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
     ).resolves.toMatchObject({ sentAt: null, status: 'cancelled' });
+  });
+
+  test('removes the uploaded PDF when the outer send transaction rolls back', async ({ context }) => {
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await replacePurchaseOrderLines({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { id: purchaseOrder.id, lines: [{ partId: PIECE_PART_ID, quantity: 1, unitPrice: 10 }] },
+    });
+    await context.db.execute(sql`
+      create function fail_purchase_order_send() returns trigger language plpgsql as $$
+      begin
+        if new.status = 'sent' then raise exception 'forced send failure'; end if;
+        return new;
+      end
+      $$
+    `);
+    await context.db.execute(sql`
+      create trigger fail_purchase_order_send
+      before update on purchase_order
+      for each row execute function fail_purchase_order_send()
+    `);
+
+    await expect(
+      markPurchaseOrderSent({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        id: purchaseOrder.id,
+        pdfRenderer: async () => pdfBytes(),
+        storage: context.storage,
+      }),
+    ).rejects.toThrow();
+    expect(context.storage.objects.size).toBe(0);
+    await expect(context.db.select().from(documents)).resolves.toHaveLength(0);
+    await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
+      status: 'draft',
+    });
   });
 });
 

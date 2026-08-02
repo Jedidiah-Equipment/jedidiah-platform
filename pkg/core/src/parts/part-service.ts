@@ -7,6 +7,7 @@ import {
   getUniqueViolationConstraint,
   parts,
   purchaseOrderLines,
+  purchaseOrders,
   stockMovements,
   supplier,
   withPagination,
@@ -25,7 +26,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { getNextCursor, Part as PartSchema } from '@pkg/schema';
-import { and, asc, count, eq, inArray, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -491,7 +492,8 @@ async function assertSupplierMutable({
   const [purchaseOrderLine] = await db
     .select({ partId: purchaseOrderLines.partId })
     .from(purchaseOrderLines)
-    .where(eq(purchaseOrderLines.partId, before.id))
+    .innerJoin(purchaseOrders, eq(purchaseOrderLines.purchaseOrderId, purchaseOrders.id))
+    .where(and(eq(purchaseOrderLines.partId, before.id), ne(purchaseOrders.status, 'cancelled')))
     .limit(1);
 
   if (purchaseOrderLine) throw new PartSupplierLockedByPurchaseOrderError(before.id);

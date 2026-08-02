@@ -221,3 +221,16 @@ export type PartStorageLocationListResult = z.infer<typeof PartStorageLocationLi
 export const PartStorageLocationListResult = z.object({
   locations: z.array(PartStorageLocation.unwrap()),
 });
+
+export type PartLabelPdfModel = z.infer<typeof PartLabelPdfModel>;
+export const PartLabelPdfModel = Part.pick({ code: true, name: true, storageLocation: true });
+
+export type PartLabelBatchSelection = z.infer<typeof PartLabelBatchSelection>;
+export const PartLabelBatchSelection = z.discriminatedUnion('selection', [
+  z.object({ selection: z.literal('all') }).strict(),
+  z.object({ category: PartCategory, selection: z.literal('category') }).strict(),
+  z.object({ selection: z.literal('storageLocation'), storageLocation: PartStorageLocation.unwrap() }).strict(),
+  z.object({ ids: z.array(UUID).min(1), selection: z.literal('ids') }).strict(),
+]);
+
+export type PartLabelPdfRenderer = (input: { document: PartLabelPdfModel[]; filename: string }) => Promise<Uint8Array>;

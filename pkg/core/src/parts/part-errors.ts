@@ -72,9 +72,19 @@ export class PartSupplierLockedByPurchaseOrderError extends Error {
   }
 }
 
+export class PartLabelSelectionEmptyError extends Error {
+  readonly code = 'part.label_selection_empty';
+
+  constructor() {
+    super('No Parts match the label selection');
+    this.name = 'PartLabelSelectionEmptyError';
+  }
+}
+
 export type PartCoreError =
   | PartBulkImportConflictError
   | DuplicatePartCodeError
+  | PartLabelSelectionEmptyError
   | PartNotFoundError
   | PartSupplierLockedByPurchaseOrderError
   | PartSupplierNotFoundError
@@ -84,6 +94,7 @@ export function isPartCoreError(error: unknown): error is PartCoreError {
   return (
     error instanceof PartBulkImportConflictError ||
     error instanceof DuplicatePartCodeError ||
+    error instanceof PartLabelSelectionEmptyError ||
     error instanceof PartNotFoundError ||
     error instanceof PartSupplierLockedByPurchaseOrderError ||
     error instanceof PartSupplierNotFoundError ||

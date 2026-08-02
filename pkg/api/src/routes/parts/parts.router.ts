@@ -71,6 +71,12 @@ function mapPartCoreError(error: PartCoreError): CoreErrorMapping<PartCoreError[
         code: 'NOT_FOUND',
         message: 'Part not found.',
       };
+    case 'part.label_selection_empty':
+      return {
+        appCode: error.code,
+        code: 'NOT_FOUND',
+        message: 'No Parts match this label selection.',
+      };
     case 'part.supplier_not_found':
       return {
         appCode: error.code,

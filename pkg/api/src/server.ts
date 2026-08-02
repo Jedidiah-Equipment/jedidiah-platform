@@ -19,6 +19,7 @@ import { registerAiChatRoute } from './routes/ai/ai-chat.route.js';
 import { createFileChangelogLoader } from './routes/changelog/changelog-loader.js';
 import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
 import { registerEntityFileRoutes } from './routes/files/entity-file-http.route.js';
+import { registerPartLabelHttpRoutes } from './routes/parts/part-label-http.route.js';
 import {
   createProductRangeImageRouteConfig,
   createProductRangeLogoRouteConfig,
@@ -78,6 +79,7 @@ export async function buildServer(
   });
   await registerAiChatRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
+  await registerPartLabelHttpRoutes(app);
   await registerEntityFileRoutes(app, [
     createProductImageRouteConfig(storage, { cacheDir: config.API_IMAGE_CACHE_DIR }),
     createProductRangeImageRouteConfig(storage),

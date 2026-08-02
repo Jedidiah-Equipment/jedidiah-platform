@@ -115,8 +115,8 @@ export type StockOnHandRow = z.infer<typeof StockOnHandRow>;
 export const StockOnHandRow = z.object({
   averageUnitCost: InventoryCost,
   asOfLastCount: DateIso.nullable(),
-  committed: z.number().finite(),
-  free: z.number().finite(),
+  committed: z.number().finite().describe('Part-level commitment, repeated on each linear length-bucket row'),
+  free: z.number().finite().describe('Part-level free stock, repeated on each linear length-bucket row'),
   isInternallyFabricated: z.boolean(),
   lengthMm: StockMovementLengthMm.nullable(),
   partCode: z.string(),

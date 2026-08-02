@@ -42,7 +42,17 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('Job stock movements', () => {
-  test('rejects a movement against a cancelled Job', async ({ context }) => {
+  test('rejects checkout but allows cost-preserving returns after a Job is cancelled', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 2, unitCost: 10 }),
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+    });
     await context.db
       .update(jobs)
       .set({ cancelledAt: new Date('2026-08-01T09:00:00.000Z') })
@@ -54,7 +64,15 @@ describe('Job stock movements', () => {
         db: context.db,
         input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
       }),
-    ).rejects.toMatchObject({ code: 'inventory.cancelled_job' });
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
+
+    await expect(
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+      }),
+    ).resolves.toMatchObject({ movement: { unitCost: 10 }, warnings: { exceedsDrawn: false } });
   });
 
   test('posts an off-CFO checkout for a Custom Job and returns soft overdraw and negative-SOH warnings', async ({
@@ -117,6 +135,61 @@ describe('Job stock movements', () => {
 
     expect(linear.movement.unitCost).toBe(300);
     expect(measured.movement.delta).toBe(-1.125);
+  });
+
+  test('returns linear stock at its matching length-bucket cost and reports the net buckets', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.linear.id, { delta: 2, lengthMm: 6_000, unitCost: 600 }),
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: 6_000, partId: context.parts.linear.id, quantity: 1 },
+    });
+    await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: 'Repriced linear stock', partId: context.parts.linear.id, unitCost: 0.3 },
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: 3_000, partId: context.parts.linear.id, quantity: 1 },
+    });
+
+    const returned = await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: 3_000, partId: context.parts.linear.id, quantity: 1 },
+    });
+    const jobStock = await listJobStock({ db: context.db, jobId: context.jobs.custom.id });
+    const stockOnHand = await listStockOnHand({ db: context.db });
+    const linear = stockOnHand.items.filter((row) => row.partId === context.parts.linear.id);
+
+    expect(returned.movement.unitCost).toBe(900);
+    expect(jobStock.items[0]?.lengthBuckets).toEqual([
+      { drawnQuantity: 0, lengthMm: 3_000 },
+      { drawnQuantity: 1, lengthMm: 6_000 },
+    ]);
+    expect(linear[0]?.averageUnitCost).toBeCloseTo(0.3, 10);
+  });
+
+  test('keeps a return uncosted when its outstanding draw had no cost', async ({ context }) => {
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1 },
+    });
+
+    await expect(
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1 },
+      }),
+    ).resolves.toMatchObject({ movement: { unitCost: null } });
   });
 
   test('stamps returns from the outstanding draw value without valuing an over-return', async ({ context }) => {

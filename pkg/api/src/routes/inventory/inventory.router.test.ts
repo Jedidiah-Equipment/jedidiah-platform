@@ -1,4 +1,4 @@
-import { customers, jobs, parts, quotes, supplier, user } from '@pkg/db';
+import { customers, eq, jobs, parts, quotes, supplier, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
@@ -61,7 +61,7 @@ const test = createTester(async ({ db }) => {
   const [job] = await db.insert(jobs).values({ quoteId: quote.id }).returning();
   if (!job) throw new Error('Job insert did not return a row');
 
-  return { job, part };
+  return { db, job, part };
 });
 
 describe('inventory procedure permissions', () => {
@@ -140,6 +140,25 @@ describe('inventory procedure permissions', () => {
     await expect(
       context.createCaller(mockSession('sales')).inventory.jobOptions({ search: String(context.job.code) }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('uses Job error vocabulary for cancelled checkout while still allowing a return', async ({ context }) => {
+    const caller = context.createCaller();
+    await caller.inventory.postAdjustment({
+      delta: 2,
+      partId: context.part.id,
+      reason: 'opening-balance',
+      unitCost: 25,
+    });
+    await caller.inventory.postCheckout({ jobId: context.job.id, partId: context.part.id, quantity: 1 });
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, context.job.id));
+
+    await expect(
+      caller.inventory.postCheckout({ jobId: context.job.id, partId: context.part.id, quantity: 1 }),
+    ).rejects.toMatchObject({ appCode: 'job.cancelled', code: 'BAD_REQUEST' });
+    await expect(
+      caller.inventory.postReturnToStore({ jobId: context.job.id, partId: context.part.id, quantity: 1 }),
+    ).resolves.toMatchObject({ movement: { unitCost: 25 } });
   });
 });
 

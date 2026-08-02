@@ -44,7 +44,6 @@ type FixedJob = { code: string; id: string };
 
 export function StockMovementDialog({
   fixedJob,
-  initialPartId,
   items,
   onOpenChange,
   open,
@@ -52,7 +51,6 @@ export function StockMovementDialog({
   type,
 }: {
   fixedJob?: FixedJob;
-  initialPartId?: string;
   items: Parameters<typeof deriveJobMovementWarnings>[0]['stockOnHand'];
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -62,7 +60,7 @@ export function StockMovementDialog({
   const trpc = useTRPC();
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const initialPart = parts.find((part) => part.partId === initialPartId) ?? parts[0];
+  const initialPart = parts[0];
   const [jobSearch, setJobSearch] = useState('');
   const [debouncedJobSearch] = useDebouncedValue(jobSearch, 250);
   const [selectedJob, setSelectedJob] = useState<InventoryJobOption | null>(null);
@@ -103,6 +101,7 @@ export function StockMovementDialog({
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (jobStockQuery.isPending) return;
     if (!selectedPart) {
       setValidationMessage('Select a Part.');
       return;
@@ -113,9 +112,13 @@ export function StockMovementDialog({
       setValidationMessage(parsed.error.issues[0]?.message ?? 'Check the movement details.');
       return;
     }
+    if (!jobStockQuery.data) {
+      setValidationMessage('Unable to load Job stock for warning checks.');
+      return;
+    }
 
     const warnings = deriveJobMovementWarnings({
-      jobStock: jobStockQuery.data?.items.find((row) => row.partId === selectedPart.partId),
+      jobStock: jobStockQuery.data.items.find((row) => row.partId === selectedPart.partId),
       lengthMm: parsed.data.lengthMm,
       part: selectedPart,
       quantity: parsed.data.quantity,
@@ -229,7 +232,7 @@ export function StockMovementDialog({
             <DialogClose render={<Button disabled={mutation.isPending} type="button" variant="outline" />}>
               Cancel
             </DialogClose>
-            <Button disabled={mutation.isPending} type="submit">
+            <Button disabled={mutation.isPending || jobStockQuery.isPending} type="submit">
               {pendingWarnings.length > 0 ? 'Post anyway' : `${verb} stock`}
             </Button>
           </DialogFooter>

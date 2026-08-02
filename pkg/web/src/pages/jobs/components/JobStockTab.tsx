@@ -7,22 +7,16 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { StockMovementDialog } from '../../inventory/components/StockMovementDialog.js';
-import { distinctPartOptions } from '../../inventory/components/types.js';
+import { perpetualPartOptions } from '../../inventory/components/types.js';
 import { JobStockTable } from './JobStockTable.js';
 
-export function JobStockTab({ job, readOnly }: { job: { code: string; id: string }; readOnly: boolean }) {
+export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: { code: string; id: string } }) {
   const trpc = useTRPC();
   const canMove = useCan('inventory:move').can;
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId: job.id }));
-  const stockOnHandQuery = useQuery(trpc.inventory.stockOnHand.queryOptions());
+  const stockOnHandQuery = useQuery(trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove }));
   const [movementType, setMovementType] = useState<'checkout' | 'return-to-store' | null>(null);
-  const parts = useMemo(
-    () =>
-      distinctPartOptions(
-        (stockOnHandQuery.data?.items ?? []).filter((item) => item.stockTrackingMode === 'perpetual'),
-      ),
-    [stockOnHandQuery.data?.items],
-  );
+  const parts = useMemo(() => perpetualPartOptions(stockOnHandQuery.data?.items ?? []), [stockOnHandQuery.data?.items]);
 
   if (jobStockQuery.isPending) {
     return <Skeleton className="h-24 w-full" />;
@@ -34,12 +28,14 @@ export function JobStockTab({ job, readOnly }: { job: { code: string; id: string
 
   return (
     <div className="grid gap-4">
-      {canMove && !readOnly ? (
+      {canMove ? (
         <div className="flex flex-wrap gap-2">
-          <Button disabled={parts.length === 0} onClick={() => setMovementType('checkout')} variant="outline">
-            <IconArrowDown data-icon="inline-start" />
-            Check out
-          </Button>
+          {!isCancelled ? (
+            <Button disabled={parts.length === 0} onClick={() => setMovementType('checkout')} variant="outline">
+              <IconArrowDown data-icon="inline-start" />
+              Check out
+            </Button>
+          ) : null}
           <Button disabled={parts.length === 0} onClick={() => setMovementType('return-to-store')} variant="outline">
             <IconArrowUp data-icon="inline-start" />
             Return to store

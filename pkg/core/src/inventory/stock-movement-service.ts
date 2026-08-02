@@ -38,13 +38,13 @@ import {
   unitClassFor,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { JobNotFoundError } from '../jobs/job-errors.js';
+import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 
 import {
   FabricatedPartCostError,
   PeriodicStockAdjustmentError,
-  StockMovementCancelledJobError,
   StockMovementDeltaError,
-  StockMovementJobNotFoundError,
   StockMovementLengthError,
   StockMovementPartNotFoundError,
 } from './stock-movement-errors.js';
@@ -162,8 +162,7 @@ export async function postCheckout({
 }): Promise<StockMovementPostResult> {
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
-    const job = await loadStockMovementJob({ db: tx, jobId: input.jobId, lockForMovement: true });
-    if (job.cancelledAt !== null) throw new StockMovementCancelledJobError(input.jobId);
+    await lockMutableJob(tx, input.jobId);
     const unitClass = unitClassFor(part.unitOfMeasure);
 
     assertDeltaMatchesUnitClass(input.quantity, unitClass);
@@ -213,8 +212,8 @@ export async function postReturnToStore({
 }): Promise<StockMovementPostResult> {
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
-    const job = await loadStockMovementJob({ db: tx, jobId: input.jobId, lockForMovement: true });
-    if (job.cancelledAt !== null) throw new StockMovementCancelledJobError(input.jobId);
+    // Returns remain valid after cancellation so physically recovered stock is not stranded off-ledger.
+    await lockJob(tx, input.jobId);
     const unitClass = unitClassFor(part.unitOfMeasure);
 
     assertDeltaMatchesUnitClass(input.quantity, unitClass);
@@ -341,9 +340,11 @@ export async function listJobStock({
         cfoQuantity,
         committedQuantity: deriveCommitment({ cfoQuantity, drawnQuantity, isClosedOut: commitmentReleased }),
         drawnQuantity,
-        lengthBuckets: movementBuckets.flatMap((row) =>
-          row.lengthMm === null ? [] : [{ drawnQuantity: row.drawnQuantity, lengthMm: row.lengthMm }],
-        ),
+        lengthBuckets: movementBuckets
+          .flatMap((row) =>
+            row.lengthMm === null ? [] : [{ drawnQuantity: row.drawnQuantity, lengthMm: row.lengthMm }],
+          )
+          .sort((left, right) => left.lengthMm - right.lengthMm),
         partCode: part.code,
         partId: part.id,
         partName: part.name,
@@ -532,20 +533,14 @@ async function loadStockPart({
   return part;
 }
 
-async function loadStockMovementJob({
-  db,
-  jobId,
-  lockForMovement = false,
-}: {
-  db: StockMovementDatabase;
-  jobId: UUID;
-  lockForMovement?: boolean;
-}) {
-  const query = db.select({ cancelledAt: jobs.cancelledAt, id: jobs.id }).from(jobs).where(eq(jobs.id, jobId)).limit(1);
-  // Cancellation takes the same row lock, so no movement can slip in after the cancelled-state check.
-  const [job] = lockForMovement ? await query.for('update') : await query;
+async function loadStockMovementJob({ db, jobId }: { db: StockMovementDatabase; jobId: UUID }) {
+  const [job] = await db
+    .select({ cancelledAt: jobs.cancelledAt, id: jobs.id })
+    .from(jobs)
+    .where(eq(jobs.id, jobId))
+    .limit(1);
   if (!job) {
-    throw new StockMovementJobNotFoundError(jobId);
+    throw new JobNotFoundError(jobId);
   }
   return job;
 }

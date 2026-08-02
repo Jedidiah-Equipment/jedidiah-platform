@@ -1,6 +1,8 @@
 import {
   getStockMovementHistory,
   isStockMovementCoreError,
+  JobCancelledError,
+  JobNotFoundError,
   listJobStock,
   listJobs,
   listStockOnHand,
@@ -153,17 +155,34 @@ export const inventoryRouter = router({
 });
 
 async function mapStockMovementErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(action, isStockMovementCoreError, mapStockMovementCoreError);
+  return mapKnownCoreError(
+    () => mapKnownCoreError(action, isStockMovementJobError, mapStockMovementJobError),
+    isStockMovementCoreError,
+    mapStockMovementCoreError,
+  );
+}
+
+type StockMovementJobError = JobCancelledError | JobNotFoundError;
+
+function isStockMovementJobError(error: unknown): error is StockMovementJobError {
+  return error instanceof JobCancelledError || error instanceof JobNotFoundError;
+}
+
+function mapStockMovementJobError(error: StockMovementJobError): CoreErrorMapping<StockMovementJobError['code']> {
+  switch (error.code) {
+    case 'job.cancelled':
+      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
+    case 'job.not_found':
+      return { appCode: error.code, code: 'NOT_FOUND', message: 'Job not found.' };
+    default:
+      return assertNever(error);
+  }
 }
 
 function mapStockMovementCoreError(error: StockMovementCoreError): CoreErrorMapping<StockMovementCoreError['code']> {
   switch (error.code) {
-    case 'inventory.cancelled_job':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
     case 'inventory.fabricated_part_cost':
       return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    case 'inventory.job_not_found':
-      return { appCode: error.code, code: 'NOT_FOUND', message: 'Job not found.' };
     case 'inventory.part_not_found':
       return { appCode: error.code, code: 'NOT_FOUND', message: 'Part not found.' };
     case 'inventory.invalid_delta':

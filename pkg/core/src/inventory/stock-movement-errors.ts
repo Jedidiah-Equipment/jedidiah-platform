@@ -11,28 +11,6 @@ export class StockMovementPartNotFoundError extends Error {
   }
 }
 
-export class StockMovementJobNotFoundError extends Error {
-  readonly code = 'inventory.job_not_found';
-  readonly metadata: { jobId: UUID };
-
-  constructor(jobId: UUID) {
-    super(`Job not found: ${jobId}`);
-    this.name = 'StockMovementJobNotFoundError';
-    this.metadata = { jobId };
-  }
-}
-
-export class StockMovementCancelledJobError extends Error {
-  readonly code = 'inventory.cancelled_job';
-  readonly metadata: { jobId: UUID };
-
-  constructor(jobId: UUID) {
-    super('Stock movements cannot be posted against a cancelled Job');
-    this.name = 'StockMovementCancelledJobError';
-    this.metadata = { jobId };
-  }
-}
-
 export class StockMovementDeltaError extends Error {
   readonly code = 'inventory.invalid_delta';
   readonly metadata: { unitClass: PartUnitClass };
@@ -76,21 +54,17 @@ export class FabricatedPartCostError extends Error {
 }
 
 export type StockMovementCoreError =
-  | StockMovementCancelledJobError
   | FabricatedPartCostError
   | PeriodicStockAdjustmentError
   | StockMovementDeltaError
-  | StockMovementJobNotFoundError
   | StockMovementLengthError
   | StockMovementPartNotFoundError;
 
 export function isStockMovementCoreError(error: unknown): error is StockMovementCoreError {
   return (
-    error instanceof StockMovementCancelledJobError ||
     error instanceof FabricatedPartCostError ||
     error instanceof PeriodicStockAdjustmentError ||
     error instanceof StockMovementDeltaError ||
-    error instanceof StockMovementJobNotFoundError ||
     error instanceof StockMovementLengthError ||
     error instanceof StockMovementPartNotFoundError
   );

@@ -97,8 +97,8 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
               {canReadInventory ? (
                 <TabsContent className="p-4" value="stock">
                   <JobStockTab
+                    isCancelled={isJobCancelled(jobQuery.data)}
                     job={{ code: jobQuery.data.code, id: jobQuery.data.id }}
-                    readOnly={isJobCancelled(jobQuery.data)}
                   />
                 </TabsContent>
               ) : null}

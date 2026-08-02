@@ -50,17 +50,30 @@ export class PartBulkImportConflictError extends Error {
   }
 }
 
+export class PartUnitOfMeasureLockedError extends Error {
+  readonly code = 'part.unit_of_measure_locked';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super(`Part Unit of Measure cannot change after its stock ledger starts: ${id}`);
+    this.name = 'PartUnitOfMeasureLockedError';
+    this.metadata = { id };
+  }
+}
+
 export type PartCoreError =
   | PartBulkImportConflictError
   | DuplicatePartCodeError
   | PartNotFoundError
-  | PartSupplierNotFoundError;
+  | PartSupplierNotFoundError
+  | PartUnitOfMeasureLockedError;
 
 export function isPartCoreError(error: unknown): error is PartCoreError {
   return (
     error instanceof PartBulkImportConflictError ||
     error instanceof DuplicatePartCodeError ||
     error instanceof PartNotFoundError ||
-    error instanceof PartSupplierNotFoundError
+    error instanceof PartSupplierNotFoundError ||
+    error instanceof PartUnitOfMeasureLockedError
   );
 }

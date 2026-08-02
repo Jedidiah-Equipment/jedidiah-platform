@@ -6,6 +6,7 @@ import {
   getSortOrder,
   getUniqueViolationConstraint,
   parts,
+  stockMovements,
   supplier,
   withPagination,
 } from '@pkg/db';
@@ -38,6 +39,7 @@ import {
   PartBulkImportConflictError,
   PartNotFoundError,
   PartSupplierNotFoundError,
+  PartUnitOfMeasureLockedError,
 } from './part-errors.js';
 
 type PartRow = typeof parts.$inferSelect;
@@ -280,7 +282,10 @@ export async function updatePart({
   try {
     return await mutateEntity({
       actorUserId,
-      assert: (tx) => assertSupplierExists({ db: tx, supplierId: input.supplierId }),
+      assert: async (tx, before) => {
+        await assertSupplierExists({ db: tx, supplierId: input.supplierId });
+        await assertUnitOfMeasureMutable({ before, db: tx, nextUnitOfMeasure: input.unitOfMeasure });
+      },
       db,
       descriptor: partAuditDescriptor,
       id: input.id,
@@ -409,6 +414,12 @@ export async function bulkImportParts({
           continue;
         }
 
+        await assertUnitOfMeasureMutable({
+          before: existingPart,
+          db: tx,
+          nextUnitOfMeasure: partInput.unitOfMeasure,
+        });
+
         const [updated] = await tx.update(parts).set(partInput).where(eq(parts.id, existingPart.id)).returning();
 
         if (!updated) {
@@ -428,6 +439,30 @@ export async function bulkImportParts({
     });
   } catch (error) {
     throw mapPartUniqueViolationForBulkImport(error, input);
+  }
+}
+
+async function assertUnitOfMeasureMutable({
+  before,
+  db,
+  nextUnitOfMeasure,
+}: {
+  before: Pick<PartRow, 'id' | 'unitOfMeasure'>;
+  db: DatabaseTransaction;
+  nextUnitOfMeasure: PartRow['unitOfMeasure'];
+}): Promise<void> {
+  if (before.unitOfMeasure === nextUnitOfMeasure) {
+    return;
+  }
+
+  const [movement] = await db
+    .select({ id: stockMovements.id })
+    .from(stockMovements)
+    .where(eq(stockMovements.partId, before.id))
+    .limit(1);
+
+  if (movement) {
+    throw new PartUnitOfMeasureLockedError(before.id);
   }
 }
 

@@ -27,6 +27,7 @@ export * from './domain/environment.js';
 export * from './domain/logger.js';
 export * from './feedback/feedback.js';
 export * from './inventory/inventory-cost.js';
+export * from './inventory/stock-movement.js';
 export * from './jobs/job.js';
 export * from './parts/part.js';
 export * from './products/brochure-document.js';

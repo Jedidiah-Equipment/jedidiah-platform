@@ -1,0 +1,1 @@
+ALTER TABLE "stock_movement" ALTER COLUMN "unit_cost" SET DATA TYPE numeric(18, 6);

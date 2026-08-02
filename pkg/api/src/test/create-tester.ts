@@ -23,6 +23,7 @@ export type AppRouterCaller = ReturnType<AppRouter['createCaller']>;
 
 /** Per-caller overrides for the injectable context dependencies a test wants to vary. */
 export type CallerOverrides = {
+  access?: Context['access'];
   appEnv?: Context['appEnv'];
   catalogTranslationScheduler?: TranslationMarker;
   changelogLoader?: ChangelogLoader;
@@ -77,10 +78,12 @@ export function createTester<T extends object = Record<string, never>>(
               }),
             createCaller: (session = mockSession(), overrides = {}) => {
               return createAppRouterCaller({
-                access: createUserAccessSummary({
-                  role: parseBetterAuthRole(session.user.role),
-                  userId: session.user.id,
-                }),
+                access:
+                  overrides.access ??
+                  createUserAccessSummary({
+                    role: parseBetterAuthRole(session.user.role),
+                    userId: session.user.id,
+                  }),
                 appEnv: overrides.appEnv ?? 'production',
                 catalogTranslationScheduler: overrides.catalogTranslationScheduler ?? NOOP_TRANSLATION_MARKER,
                 changelogLoader: overrides.changelogLoader ?? (() => []),

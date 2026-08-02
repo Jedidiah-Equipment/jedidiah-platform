@@ -125,6 +125,12 @@ const navSections = [
         icon: IconTool,
       },
       {
+        title: 'Inventory',
+        permission: 'inventory:read',
+        link: linkOptions({ to: '/inventory' }),
+        icon: IconBuildingWarehouse,
+      },
+      {
         title: 'Products',
         permission: 'product:read',
         link: linkOptions({ to: '/products' }),

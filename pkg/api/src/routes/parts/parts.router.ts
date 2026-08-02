@@ -77,6 +77,12 @@ function mapPartCoreError(error: PartCoreError): CoreErrorMapping<PartCoreError[
         code: 'NOT_FOUND',
         message: 'Supplier not found.',
       };
+    case 'part.unit_of_measure_locked':
+      return {
+        appCode: error.code,
+        code: 'CONFLICT',
+        message: 'Unit of Measure cannot change after the Part ledger starts.',
+      };
     default:
       return assertNever(error);
   }

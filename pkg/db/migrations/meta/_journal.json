@@ -701,6 +701,20 @@
       "when": 1785567142840,
       "tag": "0099_friendly_sandman",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1785601857543,
+      "tag": "0100_ambitious_gladiator",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1785652816805,
+      "tag": "0101_volatile_madame_masque",
+      "breakpoints": true
     }
   ]
 }

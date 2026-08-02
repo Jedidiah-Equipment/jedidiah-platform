@@ -10,6 +10,10 @@ export function formatQuoteCode(code: number): string {
   return `QUO-${code.toString().padStart(5, '0')}`;
 }
 
+export function formatPurchaseOrderCode(code: number): string {
+  return `PO-${code.toString().padStart(5, '0')}`;
+}
+
 export function parseQuoteCodeNumber(input: string): number | undefined {
   const normalized = input.trim().replace(/^QUO-/i, '');
 
@@ -64,3 +68,14 @@ export const QuoteCodeInput = z
   .transform((code) => (typeof code === 'number' ? formatQuoteCode(code) : code))
   .pipe(QuoteCodeString)
   .describe('Exact Quote Code, such as QUO-00008 or 8.');
+
+const PurchaseOrderCodeString = z
+  .string()
+  .regex(/^PO-\d{5,}$/)
+  .brand<'PurchaseOrderCode'>();
+
+export type PurchaseOrderCode = z.infer<typeof PurchaseOrderCode>;
+export const PurchaseOrderCode = z
+  .union([PublicCodeNumber, PurchaseOrderCodeString])
+  .transform((code) => (typeof code === 'number' ? formatPurchaseOrderCode(code) : code))
+  .pipe(PurchaseOrderCodeString);

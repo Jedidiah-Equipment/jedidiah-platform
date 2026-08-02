@@ -11,6 +11,7 @@ export const APP_CODE_PREFIXES = [
   'product',
   'product_range',
   'product_unit',
+  'purchase_order',
   'quote',
   'supplier',
   'user',

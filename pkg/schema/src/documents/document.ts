@@ -6,7 +6,7 @@ import { requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 
 export type DocumentOwnerType = z.infer<typeof DocumentOwnerType>;
-export const DocumentOwnerType = z.enum(['product', 'job', 'quote']);
+export const DocumentOwnerType = z.enum(['product', 'job', 'quote', 'purchase_order']);
 
 export type DocumentFilename = z.infer<typeof DocumentFilename>;
 export const DocumentFilename = requiredTrimmedText('Filename is required');
@@ -42,8 +42,19 @@ export const QuoteDocumentMetadata = z.object({
   revision: z.int().min(1),
 });
 
+export type PurchaseOrderDocumentMetadata = z.infer<typeof PurchaseOrderDocumentMetadata>;
+export const PurchaseOrderDocumentMetadata = z.object({
+  revision: z.int().min(1),
+  type: z.literal('purchase_order'),
+});
+
 export type DocumentMetadata = z.infer<typeof DocumentMetadata>;
-export const DocumentMetadata = z.union([JobDocumentMetadata, QuoteDocumentMetadata]);
+export const DocumentMetadata = z.union([
+  JobDocumentMetadata,
+  ProductDocumentMetadata,
+  PurchaseOrderDocumentMetadata,
+  QuoteDocumentMetadata,
+]);
 
 export type DocumentSummary = z.infer<typeof DocumentSummary>;
 export const DocumentSummary = z.object({
@@ -51,6 +62,7 @@ export const DocumentSummary = z.object({
   ownerType: DocumentOwnerType,
   jobId: UUID.nullable(),
   productId: UUID.nullable(),
+  purchaseOrderId: UUID.nullable().default(null),
   quoteId: UUID.nullable(),
   sourceProductId: UUID.nullable(),
   filename: DocumentFilename,
@@ -68,6 +80,7 @@ export const JobDocument = DocumentSummary.extend({
   ownerType: z.literal('job'),
   jobId: UUID,
   productId: z.null(),
+  purchaseOrderId: z.null().default(null),
   quoteId: z.null(),
   sourceProductId: UUID.nullable(),
   sourceProductName: z.string().trim().min(1).nullable(),
@@ -79,6 +92,7 @@ export const ProductDocument = DocumentSummary.extend({
   ownerType: z.literal('product'),
   jobId: z.null(),
   productId: UUID,
+  purchaseOrderId: z.null().default(null),
   quoteId: z.null(),
   sourceProductId: z.null(),
   metadata: ProductDocumentMetadata,
@@ -89,10 +103,25 @@ export const QuoteDocument = DocumentSummary.extend({
   ownerType: z.literal('quote'),
   jobId: z.null(),
   productId: z.null(),
+  purchaseOrderId: z.null().default(null),
   quoteId: UUID,
   sourceProductId: z.null(),
   metadata: QuoteDocumentMetadata,
 });
+
+export type PurchaseOrderDocument = z.infer<typeof PurchaseOrderDocument>;
+export const PurchaseOrderDocument = DocumentSummary.extend({
+  ownerType: z.literal('purchase_order'),
+  jobId: z.null(),
+  productId: z.null(),
+  purchaseOrderId: UUID,
+  quoteId: z.null(),
+  sourceProductId: z.null(),
+  metadata: PurchaseOrderDocumentMetadata,
+});
+
+export type JobVisibleDocument = z.infer<typeof JobVisibleDocument>;
+export const JobVisibleDocument = z.union([JobDocument, PurchaseOrderDocument.extend({ sourceProductName: z.null() })]);
 
 export type DocumentListByProductInput = z.infer<typeof DocumentListByProductInput>;
 export const DocumentListByProductInput = z.object({
@@ -120,4 +149,10 @@ export type QuoteDocumentInput = z.infer<typeof QuoteDocumentInput>;
 export const QuoteDocumentInput = z.object({
   documentId: UUID,
   quoteId: UUID,
+});
+
+export type PurchaseOrderDocumentInput = z.infer<typeof PurchaseOrderDocumentInput>;
+export const PurchaseOrderDocumentInput = z.object({
+  documentId: UUID,
+  purchaseOrderId: UUID,
 });

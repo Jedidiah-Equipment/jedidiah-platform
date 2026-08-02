@@ -1,0 +1,1 @@
+ALTER TABLE "documents" ADD CONSTRAINT "documents_purchase_order_rows_have_no_source" CHECK ("documents"."owner_type" <> 'purchase_order' OR "documents"."source_product_id" IS NULL);

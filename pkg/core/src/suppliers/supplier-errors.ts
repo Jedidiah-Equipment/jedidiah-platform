@@ -20,8 +20,26 @@ export class SupplierNotFoundError extends Error {
   }
 }
 
-export type SupplierCoreError = DuplicateSupplierNameError | SupplierNotFoundError;
+export class SupplierHasDraftPurchaseOrdersError extends Error {
+  readonly code = 'supplier.has_draft_purchase_orders';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super(`Supplier has draft Purchase Orders: ${id}`);
+    this.name = 'SupplierHasDraftPurchaseOrdersError';
+    this.metadata = { id };
+  }
+}
+
+export type SupplierCoreError =
+  | DuplicateSupplierNameError
+  | SupplierHasDraftPurchaseOrdersError
+  | SupplierNotFoundError;
 
 export function isSupplierCoreError(error: unknown): error is SupplierCoreError {
-  return error instanceof DuplicateSupplierNameError || error instanceof SupplierNotFoundError;
+  return (
+    error instanceof DuplicateSupplierNameError ||
+    error instanceof SupplierHasDraftPurchaseOrdersError ||
+    error instanceof SupplierNotFoundError
+  );
 }

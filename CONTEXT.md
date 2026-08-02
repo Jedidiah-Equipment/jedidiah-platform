@@ -74,7 +74,7 @@ A Slot's span is half-open `[startDate, endDate)` and tiles its Bay Queue withou
 
 **Job Document Snapshot** copies the Product's current uploaded Documents onto a Product Job at Job creation, pointing to the same immutable stored files and freezing metadata. The Brochure is not copied but generated fresh and saved as its own Job Document. Custom Jobs start with an empty Documents collection and do not generate a Brochure. Product display names may still read live. Snapshot Documents and the saved Brochure cannot be deleted.
 
-**Purchase Order** is a PDF uploaded directly to a Product or Custom Job after creation. Every Job upload is forced to this type by the server and captures only the file; a Job may have many Purchase Orders. Users with `job:update` can upload and delete Purchase Orders on web. Purchase Orders remain read-only and downloadable on mobile, and deleting one removes only its Document row, not the stored object.
+**Purchase Order** is the live procurement order placed with exactly one Supplier. It starts as a Draft whose expected delivery date, Part lines, and optional links to one or more Jobs can change; an order with no linked Jobs is restock. A line records a quantity in the Part's purchasing unit and its agreed unit price, and every line's Part must belong to the order's Supplier. Marking it Sent is a human assertion that freezes editing and saves one immutable, Purchase-Order-owned PDF containing the order number and linked Job codes. That same Document is projected into every linked Job's Documents tab without copying its bytes or ownership. Cancellation is allowed only while no receipts exist. The older manually uploaded Job `purchase_order` Document remains supported as historical evidence and is distinct from the live entity.
 
 **Quote Document** is a generated customer-facing PDF packet owned by a Quote. The newest created Quote Document is treated as the latest. Product Quote packets merge the Product's Brochure at generation time; Custom Quote packets do not include a Product Brochure.
 
@@ -136,7 +136,7 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 ## Cross-Cutting
 
-**Audit Event** records boundary-visible changes for Customers, Jobs, Job Bays, Product Units, Products, Quotes, Suppliers, and Users. Slot create/resize/remove are not audited; Slot reorders are. Feedback is not audited.
+**Audit Event** records boundary-visible changes for Customers, Jobs, Job Bays, Product Units, Products, Purchase Orders, Quotes, Suppliers, and Users. Slot create/resize/remove are not audited; Slot reorders are. Feedback is not audited.
 
 **Dashboard** is the single signed-in landing surface. Widgets are permission-gated registry entries, and Dashboard Metrics are computed live rather than stored in reporting tables.
 

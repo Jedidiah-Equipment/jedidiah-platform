@@ -1,10 +1,11 @@
 import type { StockAdjustmentReason, StockMovementType } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, index, integer, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, foreignKey, index, integer, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { jobs } from './job.js';
 import { parts } from './part.js';
+import { purchaseOrderLines } from './purchase-order.js';
 
 export const stockMovements = pgTable(
   'stock_movement',
@@ -23,6 +24,8 @@ export const stockMovements = pgTable(
     partId: uuid('part_id')
       .notNull()
       .references(() => parts.id, { onDelete: 'restrict' }),
+    // Reserved for receipt rows added by #1054; this is the immutable PO-line identity they attach to.
+    purchaseOrderId: uuid('purchase_order_id'),
     reason: text('reason').$type<StockAdjustmentReason>(),
     unitCost: numeric('unit_cost', { mode: 'number', precision: 18, scale: 6 }),
   },
@@ -43,27 +46,36 @@ export const stockMovements = pgTable(
       sql`(
         ${table.movementType} = 'adjustment'
         AND ${table.jobId} IS NULL
+        AND ${table.purchaseOrderId} IS NULL
         AND ${table.reason} IS NOT NULL
         AND (${table.reason} = 'opening-balance' OR ${table.note} IS NOT NULL)
         AND (${table.unitCost} IS NULL OR ${table.reason} = 'opening-balance')
       ) OR (
         ${table.movementType} = 'revaluation'
         AND ${table.jobId} IS NULL
+        AND ${table.purchaseOrderId} IS NULL
         AND ${table.delta} = 0
         AND ${table.unitCost} IS NOT NULL
         AND ${table.reason} IS NULL
       ) OR (
         ${table.movementType} = 'checkout'
         AND ${table.jobId} IS NOT NULL
+        AND ${table.purchaseOrderId} IS NULL
         AND ${table.delta} < 0
         AND ${table.reason} IS NULL
       ) OR (
         ${table.movementType} = 'return-to-store'
         AND ${table.jobId} IS NOT NULL
+        AND ${table.purchaseOrderId} IS NULL
         AND ${table.delta} > 0
         AND ${table.reason} IS NULL
       )`,
     ),
+    foreignKey({
+      columns: [table.purchaseOrderId, table.partId],
+      foreignColumns: [purchaseOrderLines.purchaseOrderId, purchaseOrderLines.partId],
+      name: 'stock_movement_purchase_order_line_fk',
+    }).onDelete('restrict'),
     index('stock_movement_job_part_created_idx').on(table.jobId, table.partId, table.createdAt, table.id),
     index('stock_movement_part_created_idx').on(table.partId, table.createdAt, table.id),
   ],

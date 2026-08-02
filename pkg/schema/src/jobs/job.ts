@@ -8,7 +8,7 @@ import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
-import { JobDocument } from '../documents/document.js';
+import { JobVisibleDocument } from '../documents/document.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
 import { ProductBuildTimeDays } from '../products/product-shared.js';
 import { QuoteKind, QuoteWorkTitle } from '../quotes/quote-shared.js';
@@ -717,7 +717,7 @@ export const JobDetail = JobSummary.extend({
       ),
     }),
   ),
-  documents: z.array(JobDocument),
+  documents: z.array(JobVisibleDocument),
   schedule: z.array(JobDetailDepartmentSchedule).length(5),
 });
 

@@ -29,6 +29,7 @@ import {
   unassignJobBayOperator,
   updateJob,
 } from '@pkg/core';
+import { hasPermission } from '@pkg/domain';
 import { renderBrochurePdf } from '@pkg/pdf';
 import {
   AddBayCalendarExceptionInput,
@@ -122,7 +123,14 @@ export const jobsRouter = router({
 
   get: authorizedProcedure('job:read')
     .input(z.object({ id: UUID }))
-    .query(({ ctx, input }) => mapJobErrors(() => getJob({ db: ctx.db, id: input.id }))),
+    .query(({ ctx, input }) =>
+      mapJobErrors(() => getJob({ db: ctx.db, id: input.id })).then((job) => ({
+        ...job,
+        documents: hasPermission(ctx.access, 'inventory_cost:read')
+          ? job.documents
+          : job.documents.filter((document) => document.ownerType !== 'purchase_order'),
+      })),
+    ),
 
   create: authorizedProcedure('job:create')
     .input(JobCreateInput)

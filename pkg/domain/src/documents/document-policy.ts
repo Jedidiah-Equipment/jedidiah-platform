@@ -1,5 +1,10 @@
 import type { DocumentOwnerType, JobDocumentType } from '@pkg/schema';
-import { JobDocumentMetadata, ProductDocumentMetadata, QuoteDocumentMetadata } from '@pkg/schema';
+import {
+  JobDocumentMetadata,
+  ProductDocumentMetadata,
+  PurchaseOrderDocumentMetadata,
+  QuoteDocumentMetadata,
+} from '@pkg/schema';
 import type { ZodType } from 'zod';
 
 export const JOB_DOCUMENT_TYPE_LABELS = {
@@ -66,6 +71,11 @@ export const documentPolicies = {
     allowedContentTypes: [DOCUMENT_PDF_CONTENT_TYPE, DOCUMENT_ZIP_CONTENT_TYPE],
     maxBytes: PRODUCT_DOCUMENT_MAX_BYTES,
     metadataSchema: ProductDocumentMetadata,
+  },
+  purchase_order: {
+    allowedContentTypes: [DOCUMENT_PDF_CONTENT_TYPE],
+    maxBytes: PRODUCT_DOCUMENT_MAX_BYTES,
+    metadataSchema: PurchaseOrderDocumentMetadata,
   },
   quote: {
     allowedContentTypes: [DOCUMENT_PDF_CONTENT_TYPE],

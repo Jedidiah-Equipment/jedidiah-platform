@@ -60,6 +60,11 @@ const supplierErrorMappings = {
     code: 'NOT_FOUND',
     message: 'Supplier not found.',
   },
+  'supplier.has_draft_purchase_orders': {
+    appCode: 'supplier.has_draft_purchase_orders',
+    code: 'CONFLICT',
+    message: 'This supplier cannot be removed while it has draft Purchase Orders.',
+  },
 } satisfies {
   [TCode in SupplierCoreError['code']]: CoreErrorMapping<TCode>;
 };

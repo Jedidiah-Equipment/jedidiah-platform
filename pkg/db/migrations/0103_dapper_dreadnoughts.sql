@@ -1,0 +1,1 @@
+CREATE INDEX "stock_movement_job_part_created_idx" ON "stock_movement" USING btree ("job_id","part_id","created_at","id");

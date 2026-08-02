@@ -78,6 +78,23 @@ describe('deriveMovingAverage', () => {
     expect(averagePerMm).toBeCloseTo(0.104, 10);
     expect(valueStockBucket({ averageUnitCost: averagePerMm, lengthMm: 5_000, quantity: 3 })).toBeCloseTo(1_560, 10);
   });
+
+  it('weights returned stock back in at its stamped draw cost', () => {
+    expect(
+      deriveMovingAverage([
+        {
+          delta: 10,
+          lengthMm: null,
+          movementType: 'adjustment',
+          reason: 'opening-balance',
+          unitCost: 10,
+        },
+        { delta: -5, lengthMm: null, movementType: 'checkout', reason: null, unitCost: 10 },
+        { delta: 5, lengthMm: null, movementType: 'receipt', reason: null, unitCost: 20 },
+        { delta: 5, lengthMm: null, movementType: 'return-to-store', reason: null, unitCost: 10 },
+      ]),
+    ).toBeCloseTo(40 / 3, 10);
+  });
 });
 
 describe('valueStockMovement', () => {

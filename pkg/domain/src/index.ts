@@ -17,6 +17,7 @@ export * from './formatting/text.js';
 export * from './forms/autosave-core.js';
 export * from './forms/create-stable-row-keys.js';
 export * from './forms/stable-serialize.js';
+export * from './inventory/commitment.js';
 export * from './inventory/moving-average.js';
 export * from './jobs/bay-active-job.js';
 export * from './jobs/bay-working-calendars.js';

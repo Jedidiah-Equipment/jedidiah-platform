@@ -1,14 +1,16 @@
 import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso } from '../common/date.js';
+import { createCursorQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
-import { PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
+import { JobListInput } from '../jobs/job.js';
+import { PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
 import { InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
 
 export type StockMovementType = z.infer<typeof StockMovementType>;
-export const StockMovementType = z.enum(['adjustment', 'revaluation']);
+export const StockMovementType = z.enum(['adjustment', 'revaluation', 'checkout', 'return-to-store']);
 
 export type StockAdjustmentReason = z.infer<typeof StockAdjustmentReason>;
 export const StockAdjustmentReason = z.enum(['opening-balance', 'stock-count', 'damage', 'scrap', 'correction']);
@@ -24,6 +26,9 @@ export const STOCK_ADJUSTMENT_REASON_LABELS = {
 export type StockMovementDelta = z.infer<typeof StockMovementDelta>;
 export const StockMovementDelta = z.number().finite().multipleOf(0.001, 'Delta supports at most three decimal places');
 
+export type StockMovementQuantity = z.infer<typeof StockMovementQuantity>;
+export const StockMovementQuantity = StockMovementDelta.positive();
+
 export type StockMovementLengthMm = z.infer<typeof StockMovementLengthMm>;
 export const StockMovementLengthMm = z.int().positive();
 
@@ -31,6 +36,17 @@ const MovementTargetInput = z.object({
   lengthMm: StockMovementLengthMm.nullable().default(null),
   partId: UUID,
 });
+
+const JobMovementInput = MovementTargetInput.extend({
+  jobId: UUID,
+  quantity: StockMovementQuantity,
+}).strict();
+
+export type PostCheckoutInput = z.infer<typeof PostCheckoutInput>;
+export const PostCheckoutInput = JobMovementInput;
+
+export type PostReturnToStoreInput = z.infer<typeof PostReturnToStoreInput>;
+export const PostReturnToStoreInput = JobMovementInput;
 
 export type PostAdjustmentInput = z.infer<typeof PostAdjustmentInput>;
 export const PostAdjustmentInput = MovementTargetInput.extend({
@@ -73,6 +89,7 @@ export const StockMovement = z.object({
   createdAt: DateIso,
   delta: StockMovementDelta,
   id: UUID,
+  jobId: UUID.nullable(),
   lengthMm: StockMovementLengthMm.nullable(),
   movementType: StockMovementType,
   note: nullableTrimmedText(),
@@ -81,16 +98,32 @@ export const StockMovement = z.object({
   unitCost: InventoryUnitCost.nullable(),
 });
 
+export type StockMovementWarnings = z.infer<typeof StockMovementWarnings>;
+export const StockMovementWarnings = z.object({
+  exceedsCfo: z.boolean(),
+  exceedsDrawn: z.boolean(),
+  negativeStockOnHand: z.boolean(),
+});
+
+export type StockMovementPostResult = z.infer<typeof StockMovementPostResult>;
+export const StockMovementPostResult = z.object({
+  movement: StockMovement,
+  warnings: StockMovementWarnings,
+});
+
 export type StockOnHandRow = z.infer<typeof StockOnHandRow>;
 export const StockOnHandRow = z.object({
   averageUnitCost: InventoryCost,
   asOfLastCount: DateIso.nullable(),
+  committed: z.number().finite(),
+  free: z.number().finite(),
   isInternallyFabricated: z.boolean(),
   lengthMm: StockMovementLengthMm.nullable(),
   partCode: z.string(),
   partId: UUID,
   partName: z.string(),
   quantity: z.number().finite(),
+  standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
   stockTrackingMode: PartStockTrackingMode,
   totalValue: InventoryValue,
   unitOfMeasure: PartUnitOfMeasure,
@@ -98,6 +131,50 @@ export const StockOnHandRow = z.object({
 
 export type StockOnHandResult = z.infer<typeof StockOnHandResult>;
 export const StockOnHandResult = z.object({ items: z.array(StockOnHandRow) });
+
+export type JobStockInput = z.infer<typeof JobStockInput>;
+export const JobStockInput = z.object({ jobId: UUID }).strict();
+
+export type JobStockLengthBucket = z.infer<typeof JobStockLengthBucket>;
+export const JobStockLengthBucket = z.object({
+  drawnQuantity: z.number().finite(),
+  lengthMm: StockMovementLengthMm,
+});
+
+export type JobStockRow = z.infer<typeof JobStockRow>;
+export const JobStockRow = z.object({
+  cfoQuantity: z.number().finite(),
+  committedQuantity: z.number().finite(),
+  drawnQuantity: z.number().finite(),
+  lengthBuckets: z.array(JobStockLengthBucket),
+  partCode: z.string(),
+  partId: UUID,
+  partName: z.string(),
+  standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
+  unitOfMeasure: PartUnitOfMeasure,
+});
+
+export type JobStockResult = z.infer<typeof JobStockResult>;
+export const JobStockResult = z.object({ items: z.array(JobStockRow) });
+
+export type InventoryJobOptionListInput = z.infer<typeof InventoryJobOptionListInput>;
+export const InventoryJobOptionListInput = JobListInput.pick({
+  cursor: true,
+  limit: true,
+  search: true,
+  sortBy: true,
+  sortDirection: true,
+});
+
+export type InventoryJobOption = z.infer<typeof InventoryJobOption>;
+export const InventoryJobOption = z.object({
+  code: z.string(),
+  displayName: z.string(),
+  id: UUID,
+});
+
+export type InventoryJobOptionListResult = z.infer<typeof InventoryJobOptionListResult>;
+export const InventoryJobOptionListResult = createCursorQueryResult(InventoryJobOption);
 
 export type StockMovementHistoryInput = z.infer<typeof StockMovementHistoryInput>;
 export const StockMovementHistoryInput = z.object({ partId: UUID });

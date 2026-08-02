@@ -17,6 +17,7 @@ export function InventoryPage() {
   const stockOnHandQuery = useQuery(trpc.inventory.stockOnHand.queryOptions());
   const showCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
   const canAdjust = hasPermission(accessQuery.data, 'inventory:adjust');
+  const canMove = hasPermission(accessQuery.data, 'inventory:move');
   const canRevalue = hasPermission(accessQuery.data, 'inventory_cost:revalue');
 
   return (
@@ -24,6 +25,7 @@ export function InventoryPage() {
       actions={
         <StockMovementActions
           canAdjust={canAdjust}
+          canMove={canMove}
           canReadCost={showCosts}
           canRevalue={canRevalue}
           items={stockOnHandQuery.data?.items ?? []}

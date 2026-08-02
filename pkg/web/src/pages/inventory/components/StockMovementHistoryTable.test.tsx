@@ -12,6 +12,7 @@ const result = StockMovementHistoryResult.parse({
       createdAt: '2026-08-01T08:00:00.000Z',
       delta: 10,
       id: '00000000-0000-4000-8000-000000000010',
+      jobId: null,
       lengthMm: null,
       movementType: 'adjustment',
       movementValue: 250,
@@ -27,6 +28,7 @@ const result = StockMovementHistoryResult.parse({
       createdAt: '2026-08-01T09:00:00.000Z',
       delta: 0,
       id: '00000000-0000-4000-8000-000000000011',
+      jobId: null,
       lengthMm: null,
       movementType: 'revaluation',
       movementValue: null,
@@ -34,6 +36,22 @@ const result = StockMovementHistoryResult.parse({
       partId: '00000000-0000-4000-8000-000000000001',
       reason: null,
       runningBalance: 10,
+      unitCost: 30,
+    },
+    {
+      actorName: 'Test User',
+      actorUserId: 'test-user-id',
+      createdAt: '2026-08-01T10:00:00.000Z',
+      delta: -1,
+      id: '00000000-0000-4000-8000-000000000012',
+      jobId: '00000000-0000-4000-8000-000000000099',
+      lengthMm: null,
+      movementType: 'checkout',
+      movementValue: -30,
+      note: null,
+      partId: '00000000-0000-4000-8000-000000000001',
+      reason: null,
+      runningBalance: 9,
       unitCost: 30,
     },
   ],
@@ -53,6 +71,7 @@ describe('StockMovementHistoryTable', () => {
 
     expect(html).toContain('Opening balance');
     expect(html).toContain('Revaluation');
+    expect(html).toContain('Checkout');
     expect(html).toContain('10 pc');
     expect(html).toContain('Test User');
     expect(html).toContain('Supplier repriced');

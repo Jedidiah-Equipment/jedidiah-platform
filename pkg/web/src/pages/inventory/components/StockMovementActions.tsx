@@ -1,33 +1,51 @@
 import type { StockOnHandRow } from '@pkg/schema';
-import { IconAdjustments, IconCash } from '@tabler/icons-react';
+import { IconAdjustments, IconArrowDown, IconArrowUp, IconCash } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button.js';
 
 import { StockAdjustmentDialog } from './StockAdjustmentDialog.js';
+import { StockMovementDialog } from './StockMovementDialog.js';
 import { StockRevaluationDialog } from './StockRevaluationDialog.js';
-import { distinctPartOptions, revaluablePartOptions } from './types.js';
+import { distinctPartOptions, perpetualPartOptions, revaluablePartOptions } from './types.js';
 
 export function StockMovementActions({
   canAdjust,
   canReadCost,
   canRevalue,
+  canMove,
   items,
 }: {
   canAdjust: boolean;
   canReadCost: boolean;
   canRevalue: boolean;
+  canMove: boolean;
   items: readonly StockOnHandRow[];
 }) {
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [revaluationOpen, setRevaluationOpen] = useState(false);
-  const parts = useMemo(() => distinctPartOptions(items), [items]);
-  const revaluableParts = useMemo(() => revaluablePartOptions(parts), [parts]);
+  const [returnOpen, setReturnOpen] = useState(false);
+  const allParts = useMemo(() => distinctPartOptions(items), [items]);
+  const movementParts = useMemo(() => perpetualPartOptions(items), [items]);
+  const revaluableParts = useMemo(() => revaluablePartOptions(allParts), [allParts]);
 
   return (
     <>
+      {canMove ? (
+        <Button disabled={movementParts.length === 0} onClick={() => setCheckoutOpen(true)} variant="outline">
+          <IconArrowDown data-icon="inline-start" />
+          Check out
+        </Button>
+      ) : null}
+      {canMove ? (
+        <Button disabled={movementParts.length === 0} onClick={() => setReturnOpen(true)} variant="outline">
+          <IconArrowUp data-icon="inline-start" />
+          Return to store
+        </Button>
+      ) : null}
       {canAdjust ? (
-        <Button disabled={parts.length === 0} onClick={() => setAdjustmentOpen(true)} variant="outline">
+        <Button disabled={allParts.length === 0} onClick={() => setAdjustmentOpen(true)} variant="outline">
           <IconAdjustments data-icon="inline-start" />
           Post adjustment
         </Button>
@@ -39,10 +57,33 @@ export function StockMovementActions({
         </Button>
       ) : null}
       {adjustmentOpen ? (
-        <StockAdjustmentDialog canReadCost={canReadCost} onOpenChange={setAdjustmentOpen} open={true} parts={parts} />
+        <StockAdjustmentDialog
+          canReadCost={canReadCost}
+          onOpenChange={setAdjustmentOpen}
+          open={true}
+          parts={allParts}
+        />
       ) : null}
       {revaluationOpen ? (
         <StockRevaluationDialog onOpenChange={setRevaluationOpen} open={true} parts={revaluableParts} />
+      ) : null}
+      {checkoutOpen ? (
+        <StockMovementDialog
+          items={items}
+          onOpenChange={setCheckoutOpen}
+          open={true}
+          parts={movementParts}
+          type="checkout"
+        />
+      ) : null}
+      {returnOpen ? (
+        <StockMovementDialog
+          items={items}
+          onOpenChange={setReturnOpen}
+          open={true}
+          parts={movementParts}
+          type="return-to-store"
+        />
       ) : null}
     </>
   );

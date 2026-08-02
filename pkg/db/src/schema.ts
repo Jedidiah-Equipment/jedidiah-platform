@@ -9,6 +9,7 @@ export * from './schema/part.js';
 export * from './schema/product.js';
 export * from './schema/product-range.js';
 export * from './schema/product-unit.js';
+export * from './schema/purchase-order.js';
 export * from './schema/quote.js';
 export * from './schema/stock-movement.js';
 export * from './schema/stored-file.js';
@@ -25,6 +26,7 @@ import * as partSchema from './schema/part.js';
 import * as productSchema from './schema/product.js';
 import * as productRangeSchema from './schema/product-range.js';
 import * as productUnitSchema from './schema/product-unit.js';
+import * as purchaseOrderSchema from './schema/purchase-order.js';
 import * as quoteSchema from './schema/quote.js';
 import * as stockMovementSchema from './schema/stock-movement.js';
 import * as supplierSchema from './schema/supplier.js';
@@ -41,6 +43,7 @@ export const schema = {
   ...productRangeSchema,
   ...productSchema,
   ...productUnitSchema,
+  ...purchaseOrderSchema,
   ...quoteSchema,
   ...stockMovementSchema,
   ...supplierSchema,

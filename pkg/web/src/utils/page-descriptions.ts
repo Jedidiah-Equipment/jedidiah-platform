@@ -17,6 +17,8 @@ export const partsPageDescription = 'Reusable purchasable items across all Suppl
 
 export const productsPageDescription = 'Product models with assemblies, pricing, and build documents';
 
+export const purchaseOrdersPageDescription = 'Draft, send, and track supplier orders for Parts and Jobs';
+
 export const productRangesPageDescription = 'Admin-managed catalog groupings for product presentation';
 
 export const catalogTranslationsPageDescription =

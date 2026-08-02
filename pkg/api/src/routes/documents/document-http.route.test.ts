@@ -8,8 +8,11 @@ import {
   productAssemblies,
   products,
   productUnits,
+  purchaseOrderJobLinks,
+  purchaseOrders,
   quotes,
   sql,
+  supplier,
   user,
 } from '@pkg/db';
 import type { UUID } from '@pkg/schema';
@@ -123,6 +126,62 @@ describe('document HTTP routes', () => {
     expect(response.headers['content-length']).toBe(String(pdfBytes().byteLength));
     expect(response.rawPayload).toEqual(Buffer.from(pdfBytes()));
     expect(storage.gets).toEqual([`documents/product/${context.product.id}/job-part-book.pdf`]);
+  });
+
+  test('keeps a linked Purchase Order PDF behind the inventory cost gate', async ({ context }) => {
+    routeTestState.session = mockSession('job-viewer');
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const job = await createJobOwner(context.db, context.product.id);
+    const [poSupplier] = await context.db
+      .insert(supplier)
+      .values({ companyName: 'PO Document Supplier' })
+      .returning({ id: supplier.id });
+    if (!poSupplier) throw new Error('Supplier fixture was not created');
+    const [purchaseOrder] = await context.db
+      .insert(purchaseOrders)
+      .values({ sentAt: new Date(), status: 'sent', supplierId: poSupplier.id })
+      .returning({ id: purchaseOrders.id });
+    if (!purchaseOrder) throw new Error('Purchase Order fixture was not created');
+    await context.db.insert(purchaseOrderJobLinks).values({ jobId: job.id, purchaseOrderId: purchaseOrder.id });
+    const storageKey = `documents/purchase-order/${purchaseOrder.id}/PO-00001.pdf`;
+    await storage.put({
+      body: pdfBytes(),
+      byteSize: pdfBytes().byteLength,
+      contentType: 'application/pdf',
+      key: storageKey,
+    });
+    const [document] = await context.db
+      .insert(documents)
+      .values({
+        byteSize: pdfBytes().byteLength,
+        contentType: 'application/pdf',
+        filename: 'PO-00001.pdf',
+        metadata: { revision: 1, type: 'purchase_order' },
+        ownerType: 'purchase_order',
+        purchaseOrderId: purchaseOrder.id,
+        storageKey,
+        uploaderUserId: 'test-user-id',
+      })
+      .returning({ id: documents.id });
+    if (!document) throw new Error('Document fixture was not created');
+
+    const response = await app.inject(`/api/jobs/${job.id}/documents/${document.id}/download`);
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  test('denies a price-blind Purchase Order reader before loading the priced PDF', async () => {
+    routeTestState.session = mockSession('stores');
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const purchaseOrderId = '00000000-0000-4000-8000-000000000401';
+    const documentId = '00000000-0000-4000-8000-000000000402';
+
+    const response = await app.inject(`/api/purchase-orders/${purchaseOrderId}/documents/${documentId}/download`);
+
+    expect(response.statusCode).toBe(403);
+    expect(storage.gets).toEqual([]);
   });
 
   test('downloads quote documents through the owner-scoped Quote route', async ({ context }) => {

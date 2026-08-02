@@ -7,7 +7,7 @@ import {
   isJobCancelled,
   JOB_DOCUMENT_TYPE_LABELS,
 } from '@pkg/domain';
-import type { JobDetail, JobDocument, JobUpdateInput, UUID } from '@pkg/schema';
+import type { JobDetail, JobUpdateInput, JobVisibleDocument, UUID } from '@pkg/schema';
 import { IconInfoCircle, IconLoader2, IconMessageCircle, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -312,7 +312,9 @@ const JobDocumentsTab: React.FC<{
 
   return (
     <DocumentCardList
-      canDelete={(document) => canEditJobs && document.metadata.type === 'purchase_order'}
+      canDelete={(document) =>
+        canEditJobs && document.ownerType === 'job' && document.metadata.type === 'purchase_order'
+      }
       documents={documents}
       emptyActionMessage="Choose a PDF, then upload the first Purchase Order."
       emptyMessage="No documents captured."
@@ -553,9 +555,9 @@ const JobSheetSkeleton = () => (
 );
 
 const jobDocumentMetadata = {
-  getSearchText: (document: JobDocument) =>
+  getSearchText: (document: JobVisibleDocument) =>
     `${JOB_DOCUMENT_TYPE_LABELS[document.metadata.type]} ${document.sourceProductName ?? ''}`,
-  render: (document: JobDocument) => (
+  render: (document: JobVisibleDocument) => (
     <span>
       {JOB_DOCUMENT_TYPE_LABELS[document.metadata.type]}
       {document.sourceProductName ? (

@@ -1,5 +1,5 @@
 import { formatBytes, JOB_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
-import type { JobDocument } from '@pkg/schema';
+import type { JobVisibleDocument } from '@pkg/schema';
 import { IconChevronRight, IconDownload } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
@@ -20,7 +20,7 @@ export function JobDocuments({ jobId }: { jobId: string }) {
   const router = useRouter();
 
   return (
-    <JobSectionCard<JobDocument>
+    <JobSectionCard<JobVisibleDocument>
       jobId={jobId}
       noun="documents"
       renderItem={(document) => (
@@ -44,7 +44,7 @@ function DocumentRow({
   downloadPath,
   onOpen,
 }: {
-  document: JobDocument;
+  document: JobVisibleDocument;
   downloadPath: string;
   onOpen: () => void;
 }) {

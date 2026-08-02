@@ -61,10 +61,22 @@ export class PartUnitOfMeasureLockedError extends Error {
   }
 }
 
+export class PartSupplierLockedByPurchaseOrderError extends Error {
+  readonly code = 'part.supplier_locked_by_purchase_order';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super(`Part supplier cannot change after the Part is used on a Purchase Order: ${id}`);
+    this.name = 'PartSupplierLockedByPurchaseOrderError';
+    this.metadata = { id };
+  }
+}
+
 export type PartCoreError =
   | PartBulkImportConflictError
   | DuplicatePartCodeError
   | PartNotFoundError
+  | PartSupplierLockedByPurchaseOrderError
   | PartSupplierNotFoundError
   | PartUnitOfMeasureLockedError;
 
@@ -73,6 +85,7 @@ export function isPartCoreError(error: unknown): error is PartCoreError {
     error instanceof PartBulkImportConflictError ||
     error instanceof DuplicatePartCodeError ||
     error instanceof PartNotFoundError ||
+    error instanceof PartSupplierLockedByPurchaseOrderError ||
     error instanceof PartSupplierNotFoundError ||
     error instanceof PartUnitOfMeasureLockedError
   );

@@ -53,7 +53,7 @@ export async function createJobPurchaseOrder({
     });
     const document = (await getJobDocuments({ db: tx, jobId })).find((item) => item.id === row.id);
 
-    if (!document) {
+    if (document?.ownerType !== 'job') {
       throw new DocumentNotFoundError(row.id);
     }
 

@@ -13,6 +13,7 @@ import { partsRouter } from '../routes/parts/parts.router.js';
 import { productRangesRouter } from '../routes/product-ranges/product-ranges.router.js';
 import { productUnitsRouter } from '../routes/product-units/product-units.router.js';
 import { productsRouter } from '../routes/products/products.router.js';
+import { purchaseOrdersRouter } from '../routes/purchase-orders/purchase-orders.router.js';
 import { quotesRouter } from '../routes/quotes/quotes.router.js';
 import { suppliersRouter } from '../routes/suppliers/suppliers.router.js';
 import { usersRouter } from '../routes/users/users.router.js';
@@ -34,6 +35,7 @@ type AppRouterRecord = {
   productRanges: (typeof productRangesRouter)['_def']['record'];
   productUnits: (typeof productUnitsRouter)['_def']['record'];
   products: (typeof productsRouter)['_def']['record'];
+  purchaseOrders: (typeof purchaseOrdersRouter)['_def']['record'];
   quotes: (typeof quotesRouter)['_def']['record'];
   suppliers: (typeof suppliersRouter)['_def']['record'];
   users: (typeof usersRouter)['_def']['record'];
@@ -57,6 +59,7 @@ function createAppRouter(): AppRouter {
     productRanges: productRangesRouter,
     productUnits: productUnitsRouter,
     products: productsRouter,
+    purchaseOrders: purchaseOrdersRouter,
     quotes: quotesRouter,
     suppliers: suppliersRouter,
     users: usersRouter,

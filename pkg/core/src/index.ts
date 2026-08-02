@@ -35,6 +35,8 @@ export * from './products/product-brochure-document.js';
 export * from './products/product-errors.js';
 export * from './products/product-image-service.js';
 export * from './products/product-service.js';
+export * from './purchase-orders/purchase-order-errors.js';
+export * from './purchase-orders/purchase-order-service.js';
 export * from './quotes/quote-document.js';
 export * from './quotes/quote-document-generation.js';
 export * from './quotes/quote-errors.js';

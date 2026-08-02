@@ -5,6 +5,7 @@ import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uu
 import { user } from './auth.js';
 import { jobs } from './job.js';
 import { products } from './product.js';
+import { purchaseOrders } from './purchase-order.js';
 import { quotes } from './quote.js';
 
 export const documents = pgTable(
@@ -19,6 +20,7 @@ export const documents = pgTable(
     metadata: jsonb('metadata').notNull().$type<DocumentMetadata>(),
     ownerType: text('owner_type').notNull().$type<DocumentOwnerType>(),
     productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }),
+    purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id, { onDelete: 'cascade' }),
     quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'cascade' }),
     sourceProductId: uuid('source_product_id').references(() => products.id, { onDelete: 'restrict' }),
     storageKey: text('storage_key').notNull(),
@@ -32,7 +34,7 @@ export const documents = pgTable(
     check('documents_filename_nonempty', sql`length(trim(${table.filename})) > 0`),
     check(
       'documents_exactly_one_owner',
-      sql`(${table.ownerType} = 'product' AND ${table.productId} IS NOT NULL AND ${table.jobId} IS NULL AND ${table.quoteId} IS NULL) OR (${table.ownerType} = 'job' AND ${table.jobId} IS NOT NULL AND ${table.productId} IS NULL AND ${table.quoteId} IS NULL) OR (${table.ownerType} = 'quote' AND ${table.quoteId} IS NOT NULL AND ${table.productId} IS NULL AND ${table.jobId} IS NULL)`,
+      sql`(${table.ownerType} = 'product' AND ${table.productId} IS NOT NULL AND ${table.jobId} IS NULL AND ${table.quoteId} IS NULL AND ${table.purchaseOrderId} IS NULL) OR (${table.ownerType} = 'job' AND ${table.jobId} IS NOT NULL AND ${table.productId} IS NULL AND ${table.quoteId} IS NULL AND ${table.purchaseOrderId} IS NULL) OR (${table.ownerType} = 'quote' AND ${table.quoteId} IS NOT NULL AND ${table.productId} IS NULL AND ${table.jobId} IS NULL AND ${table.purchaseOrderId} IS NULL) OR (${table.ownerType} = 'purchase_order' AND ${table.purchaseOrderId} IS NOT NULL AND ${table.productId} IS NULL AND ${table.jobId} IS NULL AND ${table.quoteId} IS NULL)`,
     ),
     check(
       'documents_product_rows_have_no_source',
@@ -42,11 +44,20 @@ export const documents = pgTable(
       'documents_quote_rows_have_no_source',
       sql`${table.ownerType} <> 'quote' OR ${table.sourceProductId} IS NULL`,
     ),
+    check(
+      'documents_purchase_order_rows_have_no_source',
+      sql`${table.ownerType} <> 'purchase_order' OR ${table.sourceProductId} IS NULL`,
+    ),
     index('documents_job_id_created_at_idx').on(table.jobId, table.createdAt),
     index('documents_product_id_created_at_idx').on(table.productId, table.createdAt),
+    index('documents_purchase_order_id_created_at_idx').on(table.purchaseOrderId, table.createdAt),
     index('documents_quote_id_created_at_idx').on(table.quoteId, table.createdAt),
     uniqueIndex('documents_job_id_filename_ci_unique').on(table.jobId, sql`lower(${table.filename})`),
     uniqueIndex('documents_product_id_filename_ci_unique').on(table.productId, sql`lower(${table.filename})`),
+    uniqueIndex('documents_purchase_order_id_filename_ci_unique').on(
+      table.purchaseOrderId,
+      sql`lower(${table.filename})`,
+    ),
     uniqueIndex('documents_quote_id_filename_ci_unique').on(table.quoteId, sql`lower(${table.filename})`),
   ],
 );
@@ -60,6 +71,10 @@ export const documentsRelations = relations(documents, ({ one }) => ({
     fields: [documents.productId],
     relationName: 'documentProductOwner',
     references: [products.id],
+  }),
+  purchaseOrder: one(purchaseOrders, {
+    fields: [documents.purchaseOrderId],
+    references: [purchaseOrders.id],
   }),
   quote: one(quotes, {
     fields: [documents.quoteId],

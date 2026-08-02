@@ -14,6 +14,7 @@ import {
   parts,
   products,
   productUnits,
+  purchaseOrderJobLinks,
   quotes,
   quoteWorkItems,
   user,
@@ -41,12 +42,12 @@ import {
   type JobCustomerOptionListResult,
   type JobDetail,
   type JobDetailDepartmentSchedule,
-  JobDocument,
   type JobListInput,
   type JobListResult,
   type JobScheduleState,
   type JobSortBy,
   type JobSummary,
+  JobVisibleDocument,
   type ProjectedBayQueue,
   type ProjectedWorkJobSlot,
   QuoteCode,
@@ -642,7 +643,7 @@ async function listJobDocumentRows({
   db: Db | DatabaseTransaction;
   jobId: UUID;
 }): Promise<JobDetail['documents']> {
-  const rows = await selectJobDocuments(db).where(eq(documents.jobId, jobId)).orderBy(asc(documents.filename));
+  const rows = await selectJobDocuments(db).where(jobVisibleDocumentWhere(db, jobId)).orderBy(asc(documents.filename));
 
   return rows.map(mapJobDocument);
 }
@@ -697,14 +698,14 @@ async function findJobDocumentSummaryRow({
   jobId: UUID;
 }): Promise<DocumentSummaryRow | null> {
   const [row] = await selectJobDocuments(db)
-    .where(and(eq(documents.jobId, jobId), eq(documents.id, documentId)))
+    .where(and(jobVisibleDocumentWhere(db, jobId), eq(documents.id, documentId)))
     .limit(1);
 
   return row ?? null;
 }
 
 function mapJobDocument(row: JobDocumentRow): JobDetail['documents'][number] {
-  return JobDocument.parse({
+  return JobVisibleDocument.parse({
     byteSize: row.byteSize,
     contentType: row.contentType,
     createdAt: row.createdAt.toISOString(),
@@ -714,6 +715,7 @@ function mapJobDocument(row: JobDocumentRow): JobDetail['documents'][number] {
     metadata: row.metadata,
     ownerType: row.ownerType,
     productId: row.productId,
+    purchaseOrderId: row.purchaseOrderId,
     quoteId: row.quoteId,
     sourceProductId: row.sourceProductId,
     sourceProductName: row.sourceProductName,
@@ -721,6 +723,14 @@ function mapJobDocument(row: JobDocumentRow): JobDetail['documents'][number] {
     uploaderName: row.uploaderName,
     uploaderUserId: row.uploaderUserId,
   });
+}
+
+function jobVisibleDocumentWhere(db: Db | DatabaseTransaction, jobId: UUID): SQL {
+  const linkedPurchaseOrders = db
+    .select({ purchaseOrderId: purchaseOrderJobLinks.purchaseOrderId })
+    .from(purchaseOrderJobLinks)
+    .where(eq(purchaseOrderJobLinks.jobId, jobId));
+  return or(eq(documents.jobId, jobId), inArray(documents.purchaseOrderId, linkedPurchaseOrders)) as SQL;
 }
 
 async function assertJobExists({ db, jobId }: { db: Db | DatabaseTransaction; jobId: UUID }): Promise<void> {

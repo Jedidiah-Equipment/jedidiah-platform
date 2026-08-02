@@ -77,6 +77,12 @@ function mapPartCoreError(error: PartCoreError): CoreErrorMapping<PartCoreError[
         code: 'NOT_FOUND',
         message: 'Supplier not found.',
       };
+    case 'part.supplier_locked_by_purchase_order':
+      return {
+        appCode: error.code,
+        code: 'CONFLICT',
+        message: 'Supplier cannot change after the Part is used on a Purchase Order.',
+      };
     case 'part.unit_of_measure_locked':
       return {
         appCode: error.code,

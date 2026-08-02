@@ -6,6 +6,7 @@ import {
   getSortOrder,
   getUniqueViolationConstraint,
   parts,
+  purchaseOrderLines,
   stockMovements,
   supplier,
   withPagination,
@@ -38,6 +39,7 @@ import {
   DuplicatePartCodeError,
   PartBulkImportConflictError,
   PartNotFoundError,
+  PartSupplierLockedByPurchaseOrderError,
   PartSupplierNotFoundError,
   PartUnitOfMeasureLockedError,
 } from './part-errors.js';
@@ -284,6 +286,7 @@ export async function updatePart({
       actorUserId,
       assert: async (tx, before) => {
         await assertSupplierExists({ db: tx, supplierId: input.supplierId });
+        await assertSupplierMutable({ before, db: tx, nextSupplierId: input.supplierId });
         await assertUnitOfMeasureMutable({ before, db: tx, nextUnitOfMeasure: input.unitOfMeasure });
       },
       db,
@@ -404,20 +407,28 @@ export async function bulkImportParts({
           continue;
         }
 
+        const [lockedPart] = await tx.select().from(parts).where(eq(parts.id, existingPart.id)).for('update');
+        if (!lockedPart) throw new PartNotFoundError(existingPart.id);
+
         const after = {
-          ...existingPart,
+          ...lockedPart,
           ...partInput,
         };
-        const changes = diffAuditUpdate(partAuditDescriptor, existingPart, after);
+        const changes = diffAuditUpdate(partAuditDescriptor, lockedPart, after);
 
         if (!changes) {
           continue;
         }
 
         await assertUnitOfMeasureMutable({
-          before: existingPart,
+          before: lockedPart,
           db: tx,
           nextUnitOfMeasure: partInput.unitOfMeasure,
+        });
+        await assertSupplierMutable({
+          before: lockedPart,
+          db: tx,
+          nextSupplierId: partInput.supplierId,
         });
 
         const [updated] = await tx.update(parts).set(partInput).where(eq(parts.id, existingPart.id)).returning();
@@ -464,6 +475,26 @@ async function assertUnitOfMeasureMutable({
   if (movement) {
     throw new PartUnitOfMeasureLockedError(before.id);
   }
+}
+
+async function assertSupplierMutable({
+  before,
+  db,
+  nextSupplierId,
+}: {
+  before: Pick<PartRow, 'id' | 'supplierId'>;
+  db: DatabaseTransaction;
+  nextSupplierId: PartRow['supplierId'];
+}): Promise<void> {
+  if (before.supplierId === nextSupplierId) return;
+
+  const [purchaseOrderLine] = await db
+    .select({ partId: purchaseOrderLines.partId })
+    .from(purchaseOrderLines)
+    .where(eq(purchaseOrderLines.partId, before.id))
+    .limit(1);
+
+  if (purchaseOrderLine) throw new PartSupplierLockedByPurchaseOrderError(before.id);
 }
 
 async function formatBulkImportIdentityConflict({

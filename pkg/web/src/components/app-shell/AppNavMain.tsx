@@ -14,6 +14,7 @@ import {
   IconLayoutKanban,
   IconMessageReport,
   IconPackages,
+  IconShoppingCart,
   IconTool,
   IconUsers,
   type TablerIcon,
@@ -117,6 +118,12 @@ const navSections = [
         permission: 'supplier:read',
         link: linkOptions({ to: '/suppliers' }),
         icon: IconHeartHandshake,
+      },
+      {
+        title: 'Purchase Orders',
+        permission: 'purchase_order:read',
+        link: linkOptions({ to: '/purchase-orders' }),
+        icon: IconShoppingCart,
       },
       {
         title: 'Parts',

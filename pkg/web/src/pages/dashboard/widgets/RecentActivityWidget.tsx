@@ -48,6 +48,7 @@ const auditEntityTypeLabels = {
   part: 'Part',
   product: 'Product',
   product_unit: 'Unit',
+  purchase_order: 'Purchase Order',
   quote: 'Quote',
   supplier: 'Supplier',
   user: 'User',

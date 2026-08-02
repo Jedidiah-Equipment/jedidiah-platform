@@ -4,17 +4,27 @@ import {
   isDocumentCoreError,
   isJobCoreError,
   isProductCoreError,
+  isPurchaseOrderCoreError,
   isQuoteCoreError,
   readJobDocument,
   readProductDocument,
+  readPurchaseOrderDocument,
   readQuoteDocument,
   renderProductBrochurePreview,
+  renderPurchaseOrderPreview,
   type StorageAdapter,
 } from '@pkg/core';
 import { db } from '@pkg/db';
 import { validateDocumentPolicy } from '@pkg/domain';
-import { renderBrochurePdf } from '@pkg/pdf';
-import { DocumentListByProductInput, JobDocumentInput, ProductDocumentInput, QuoteDocumentInput } from '@pkg/schema';
+import { renderBrochurePdf, renderPurchaseOrderPdf } from '@pkg/pdf';
+import {
+  DocumentListByProductInput,
+  JobDocumentInput,
+  ProductDocumentInput,
+  PurchaseOrderActionInput,
+  PurchaseOrderDocumentInput,
+  QuoteDocumentInput,
+} from '@pkg/schema';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
@@ -29,6 +39,7 @@ import {
 import { mapDocumentCoreError } from './documents.router.js';
 
 const JobDocumentUploadInput = JobDocumentInput.pick({ jobId: true });
+const PurchaseOrderParams = z.object({ purchaseOrderId: PurchaseOrderActionInput.shape.id });
 
 export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: StorageAdapter): Promise<void> {
   app.post('/api/products/:productId/documents', async (request, reply) => {
@@ -190,6 +201,15 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
         }),
       );
 
+      if (result.document.ownerType === 'purchase_order') {
+        requirePermission(
+          auth,
+          'inventory_cost:read',
+          'You do not have permission to view Purchase Order prices.',
+          'document.forbidden',
+        );
+      }
+
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
@@ -216,6 +236,73 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
           db,
           documentId: params.documentId,
           quoteId: params.quoteId,
+          storage,
+        }),
+      );
+
+      reply.header('Content-Type', result.document.contentType);
+      reply.header('Content-Length', result.document.byteSize);
+      reply.header('Content-Disposition', createContentDisposition(result.document.filename));
+      return reply.send(streamObjectBody(result.object.body));
+    } catch (error) {
+      sendDocumentHttpError(reply, error);
+    }
+  });
+
+  app.get('/api/purchase-orders/:purchaseOrderId/preview', async (request, reply) => {
+    const auth = await requireRouteAuth(request, reply);
+    if (!auth) return;
+
+    try {
+      requirePermission(
+        auth,
+        'purchase_order:create',
+        'You do not have permission to preview this Purchase Order.',
+        'document.forbidden',
+      );
+      requirePermission(
+        auth,
+        'inventory_cost:read',
+        'You do not have permission to preview Purchase Order prices.',
+        'document.forbidden',
+      );
+      const params = PurchaseOrderParams.parse(request.params);
+      const preview = await mapHttpDocumentErrors(() =>
+        renderPurchaseOrderPreview({ db, id: params.purchaseOrderId, pdfRenderer: renderPurchaseOrderPdf }),
+      );
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Length', preview.bytes.byteLength);
+      reply.header('Content-Disposition', createContentDisposition(preview.filename, 'inline'));
+      return reply.send(Buffer.from(preview.bytes));
+    } catch (error) {
+      sendDocumentHttpError(reply, error);
+    }
+  });
+
+  app.get('/api/purchase-orders/:purchaseOrderId/documents/:documentId/download', async (request, reply) => {
+    const auth = await requireRouteAuth(request, reply);
+    if (!auth) return;
+
+    try {
+      requirePermission(
+        auth,
+        'purchase_order:read',
+        'You do not have permission to download this Purchase Order.',
+        'document.forbidden',
+      );
+      requirePermission(
+        auth,
+        'inventory_cost:read',
+        'You do not have permission to view Purchase Order prices.',
+        'document.forbidden',
+      );
+      const params = PurchaseOrderDocumentInput.parse(request.params);
+      const result = await mapHttpDocumentErrors(() =>
+        readPurchaseOrderDocument({
+          db,
+          documentId: params.documentId,
+          purchaseOrderId: params.purchaseOrderId,
           storage,
         }),
       );
@@ -275,6 +362,14 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
 
     if (isQuoteCoreError(error)) {
       throw mapOwnerNotFound(error, { notFoundCode: 'quote.not_found', label: 'Quote', otherStatus: 400 });
+    }
+
+    if (isPurchaseOrderCoreError(error)) {
+      throw mapOwnerNotFound(error, {
+        notFoundCode: 'purchase_order.not_found',
+        label: 'Purchase Order',
+        otherStatus: 400,
+      });
     }
 
     throw error;

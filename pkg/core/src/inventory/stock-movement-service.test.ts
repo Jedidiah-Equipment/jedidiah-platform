@@ -1,9 +1,18 @@
 import type { Db } from '@pkg/db';
-import { parts, stockMovements, supplier, user } from '@pkg/db';
+import { customers, jobCfoAssemblies, jobCfoParts, jobs, parts, quotes, stockMovements, supplier, user } from '@pkg/db';
+import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
-import { getStockMovementHistory, listStockOnHand, postAdjustment, postRevaluation } from './stock-movement-service.js';
+import {
+  getStockMovementHistory,
+  listJobStock,
+  listStockOnHand,
+  postAdjustment,
+  postCheckout,
+  postReturnToStore,
+  postRevaluation,
+} from './stock-movement-service.js';
 
 const actorUserId = 'inventory-test-user';
 
@@ -28,7 +37,265 @@ const test = createTester(async ({ db }) => {
   }
 
   const seededParts = await seedParts(db, createdSupplier.id);
-  return { parts: seededParts };
+  const seededJobs = await seedJobs(db, seededParts.piece.id);
+  return { jobs: seededJobs, parts: seededParts };
+});
+
+describe('Job stock movements', () => {
+  test('rejects checkout but allows cost-preserving returns after a Job is cancelled', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 2, unitCost: 10 }),
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+    });
+    await context.db
+      .update(jobs)
+      .set({ cancelledAt: new Date('2026-08-01T09:00:00.000Z') })
+      .where(eq(jobs.id, context.jobs.custom.id));
+
+    await expect(
+      postCheckout({
+        actorUserId,
+        db: context.db,
+        input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+      }),
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
+
+    await expect(
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+      }),
+    ).resolves.toMatchObject({ movement: { unitCost: 10 }, warnings: { exceedsDrawn: false } });
+  });
+
+  test('posts an off-CFO checkout for a Custom Job and returns soft overdraw and negative-SOH warnings', async ({
+    context,
+  }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.measured.id, { delta: 1, unitCost: 12 }),
+    });
+
+    const result = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        jobId: context.jobs.custom.id,
+        lengthMm: null,
+        partId: context.parts.measured.id,
+        quantity: 2,
+      },
+    });
+
+    expect(result).toMatchObject({
+      movement: {
+        actorUserId,
+        delta: -2,
+        jobId: context.jobs.custom.id,
+        movementType: 'checkout',
+        reason: null,
+        unitCost: 12,
+      },
+      warnings: { exceedsCfo: true, exceedsDrawn: false, negativeStockOnHand: true },
+    });
+  });
+
+  test('enforces unit classes and stamps a linear draw with the selected piece cost', async ({ context }) => {
+    await expect(
+      postCheckout({
+        actorUserId,
+        db: context.db,
+        input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1.5 },
+      }),
+    ).rejects.toMatchObject({ code: 'inventory.invalid_delta' });
+
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.linear.id, { delta: 2, lengthMm: 6_000, unitCost: 600 }),
+    });
+    const linear = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: 3_000, partId: context.parts.linear.id, quantity: 1 },
+    });
+    const measured = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1.125 },
+    });
+
+    expect(linear.movement.unitCost).toBe(300);
+    expect(measured.movement.delta).toBe(-1.125);
+  });
+
+  test('returns linear stock at its matching length-bucket cost and reports the net buckets', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.linear.id, { delta: 2, lengthMm: 6_000, unitCost: 600 }),
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: 6_000, partId: context.parts.linear.id, quantity: 1 },
+    });
+    await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: 'Repriced linear stock', partId: context.parts.linear.id, unitCost: 0.3 },
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: 3_000, partId: context.parts.linear.id, quantity: 1 },
+    });
+
+    const returned = await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: 3_000, partId: context.parts.linear.id, quantity: 1 },
+    });
+    const jobStock = await listJobStock({ db: context.db, jobId: context.jobs.custom.id });
+    const stockOnHand = await listStockOnHand({ db: context.db });
+    const linear = stockOnHand.items.filter((row) => row.partId === context.parts.linear.id);
+
+    expect(returned.movement.unitCost).toBe(900);
+    expect(jobStock.items[0]?.lengthBuckets).toEqual([
+      { drawnQuantity: 0, lengthMm: 3_000 },
+      { drawnQuantity: 1, lengthMm: 6_000 },
+    ]);
+    expect(linear[0]?.averageUnitCost).toBeCloseTo(0.3, 10);
+  });
+
+  test('keeps a return uncosted when its outstanding draw had no cost', async ({ context }) => {
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1 },
+    });
+
+    await expect(
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1 },
+      }),
+    ).resolves.toMatchObject({ movement: { unitCost: null } });
+  });
+
+  test('stamps returns from the outstanding draw value without valuing an over-return', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+    });
+    await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: 'New average', partId: context.parts.piece.id, unitCost: 20 },
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+    });
+
+    const result = await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 4 },
+    });
+
+    expect(result.movement).toMatchObject({ delta: 4, movementType: 'return-to-store' });
+    expect(result.movement.unitCost).toBe(10);
+    expect(result.warnings).toEqual({ exceedsCfo: false, exceedsDrawn: true, negativeStockOnHand: false });
+  });
+
+  test('prices a later return from the still-drawn cost pool after an earlier draw was fully returned', async ({
+    context,
+  }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+    });
+    await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+    });
+    await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: 'New average', partId: context.parts.piece.id, unitCost: 20 },
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+    });
+
+    const result = await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+    });
+
+    expect(result.movement.unitCost).toBe(20);
+  });
+
+  test('aggregates CFO rows, decays commitment on checkout, and re-opens it on return', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 4 },
+    });
+
+    expect(await listJobStock({ db: context.db, jobId: context.jobs.cfo.id })).toMatchObject({
+      items: [
+        {
+          cfoQuantity: 5,
+          committedQuantity: 1,
+          drawnQuantity: 4,
+          partId: context.parts.piece.id,
+        },
+      ],
+    });
+
+    await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+    });
+
+    expect(await listJobStock({ db: context.db, jobId: context.jobs.cfo.id })).toMatchObject({
+      items: [{ cfoQuantity: 5, committedQuantity: 3, drawnQuantity: 2 }],
+    });
+  });
 });
 
 describe('postAdjustment', () => {
@@ -208,6 +475,22 @@ describe('stock movement database constraints', () => {
         reason: null,
         unitCost: 10,
       },
+      {
+        delta: -1,
+        jobId: null,
+        movementType: 'checkout' as const,
+        note: null,
+        reason: null,
+        unitCost: 10,
+      },
+      {
+        delta: -1,
+        jobId: context.jobs.cfo.id,
+        movementType: 'return-to-store' as const,
+        note: null,
+        reason: null,
+        unitCost: 10,
+      },
     ];
 
     for (const invalidShape of invalidShapes) {
@@ -224,6 +507,39 @@ describe('stock movement database constraints', () => {
 });
 
 describe('listStockOnHand', () => {
+  test('subtracts commitments across Jobs to report free stock', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+
+    const result = await listStockOnHand({ db: context.db });
+    const piece = result.items.find((row) => row.partId === context.parts.piece.id);
+
+    expect(piece).toMatchObject({ committed: 5, free: 5, quantity: 10 });
+  });
+
+  test('does not reserve free stock for a cancelled Job CFO', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    await context.db
+      .update(jobs)
+      .set({ cancelledAt: new Date('2026-08-01T09:00:00.000Z') })
+      .where(eq(jobs.id, context.jobs.cfo.id));
+
+    const result = await listStockOnHand({ db: context.db });
+    const piece = result.items.find((row) => row.partId === context.parts.piece.id);
+
+    expect(piece).toMatchObject({ committed: 0, free: 10, quantity: 10 });
+    await expect(listJobStock({ db: context.db, jobId: context.jobs.cfo.id })).resolves.toMatchObject({
+      items: [{ cfoQuantity: 5, committedQuantity: 0 }],
+    });
+  });
+
   test('reports quantities, linear buckets, moving value, no-cost state, and periodic count age', async ({
     context,
   }) => {
@@ -278,6 +594,7 @@ describe('listStockOnHand', () => {
     ]);
     expect(linear[0]?.totalValue).toBeCloseTo(312, 10);
     expect(linear[1]?.totalValue).toBeCloseTo(1_248, 10);
+    expect(linear.map((row) => row.free)).toEqual([3, 3]);
     expect(periodic).toMatchObject({
       asOfLastCount: count.createdAt,
       lengthMm: 6_000,
@@ -420,6 +737,59 @@ async function seedParts(db: Db, supplierId: string) {
   }
 
   return { fabricated, linear, measured, periodic, piece };
+}
+
+async function seedJobs(db: Db, cfoPartId: string) {
+  const [customer] = await db.insert(customers).values({ companyName: 'Inventory Customer' }).returning();
+  if (!customer) throw new Error('Customer insert did not return a row');
+
+  const [cfoQuote, customQuote] = await db
+    .insert(quotes)
+    .values([
+      {
+        customerId: customer.id,
+        kind: 'custom',
+        quotedBasePrice: 0,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: actorUserId,
+        status: 'accepted',
+        workTitle: 'CFO fabrication',
+      },
+      {
+        customerId: customer.id,
+        kind: 'custom',
+        quotedBasePrice: 0,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: actorUserId,
+        status: 'accepted',
+        workTitle: 'Off-CFO repair',
+      },
+    ])
+    .returning();
+  if (!cfoQuote || !customQuote) throw new Error('Quote inserts did not return rows');
+
+  const [cfo, custom] = await db
+    .insert(jobs)
+    .values([{ quoteId: cfoQuote.id }, { quoteId: customQuote.id }])
+    .returning();
+  if (!cfo || !custom) throw new Error('Job inserts did not return rows');
+
+  const assemblies = await db
+    .insert(jobCfoAssemblies)
+    .values([
+      { assemblyName: 'First assembly', jobId: cfo.id, kind: 'standard', sequence: 0 },
+      { assemblyName: 'Second assembly', jobId: cfo.id, kind: 'optional', sequence: 1 },
+    ])
+    .returning();
+  const [firstAssembly, secondAssembly] = assemblies;
+  if (!firstAssembly || !secondAssembly) throw new Error('CFO assembly inserts did not return rows');
+
+  await db.insert(jobCfoParts).values([
+    { cfoAssemblyId: firstAssembly.id, partId: cfoPartId, quantity: 3 },
+    { cfoAssemblyId: secondAssembly.id, partId: cfoPartId, quantity: 2 },
+  ]);
+
+  return { cfo, custom };
 }
 
 function partValues({

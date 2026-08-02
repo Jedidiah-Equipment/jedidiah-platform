@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  deriveJobMovementWarnings,
   distinctPartOptions,
   parseAdjustmentForm,
+  parseJobMovementForm,
   parseRevaluationForm,
+  perpetualPartOptions,
   revaluablePartOptions,
   type StockPartOption,
 } from './types.js';
@@ -13,6 +16,7 @@ const piece: StockPartOption = {
   partCode: 'P-100',
   partId: '00000000-0000-4000-8000-000000000001',
   partName: 'Bearing',
+  standardPurchaseLengthMm: null,
   unitOfMeasure: 'piece',
 };
 const linear: StockPartOption = {
@@ -20,6 +24,7 @@ const linear: StockPartOption = {
   partCode: 'RAW-100',
   partId: '00000000-0000-4000-8000-000000000002',
   partName: 'Channel',
+  standardPurchaseLengthMm: 6_000,
   unitOfMeasure: 'mm',
 };
 
@@ -112,17 +117,87 @@ describe('parseRevaluationForm', () => {
   });
 });
 
+describe('Job movement form behavior', () => {
+  it('maps the standard purchase length into a linear movement', () => {
+    expect(
+      parseJobMovementForm({
+        part: linear,
+        values: { jobId: piece.partId, lengthMm: '6000', partId: linear.partId, quantity: '2' },
+      }),
+    ).toMatchObject({
+      data: { jobId: piece.partId, lengthMm: 6_000, partId: linear.partId, quantity: 2 },
+      success: true,
+    });
+  });
+
+  it('surfaces over-CFO and negative-SOH checkout warnings without rejecting the input', () => {
+    const warnings = deriveJobMovementWarnings({
+      jobStock: {
+        cfoQuantity: 2,
+        committedQuantity: 0,
+        drawnQuantity: 2,
+        lengthBuckets: [],
+        partCode: linear.partCode,
+        partId: linear.partId,
+        partName: linear.partName,
+        standardPurchaseLengthMm: 6_000,
+        unitOfMeasure: 'mm',
+      },
+      lengthMm: 6_000,
+      part: linear,
+      quantity: 2,
+      stockOnHand: [
+        {
+          averageUnitCost: 0.1,
+          asOfLastCount: null,
+          committed: 0,
+          free: 1,
+          isInternallyFabricated: false,
+          lengthMm: 6_000,
+          partCode: linear.partCode,
+          partId: linear.partId,
+          partName: linear.partName,
+          quantity: 1,
+          standardPurchaseLengthMm: 6_000,
+          stockTrackingMode: 'perpetual',
+          totalValue: 600,
+          unitOfMeasure: 'mm',
+        },
+      ],
+      type: 'checkout',
+    });
+
+    expect(warnings).toEqual(['exceeds-cfo', 'negative-stock-on-hand']);
+  });
+
+  it('surfaces an over-return warning', () => {
+    expect(
+      deriveJobMovementWarnings({
+        jobStock: undefined,
+        lengthMm: null,
+        part: piece,
+        quantity: 1,
+        stockOnHand: [],
+        type: 'return-to-store',
+      }),
+    ).toEqual(['exceeds-drawn']);
+  });
+});
+
 describe('distinctPartOptions', () => {
   it('collapses length buckets into one selectable Part', () => {
     const row = {
       averageUnitCost: 0.1,
       asOfLastCount: null,
+      committed: 0,
+      free: 2,
       isInternallyFabricated: false,
       lengthMm: 3_000,
       partCode: linear.partCode,
       partId: linear.partId,
       partName: linear.partName,
       quantity: 2,
+      standardPurchaseLengthMm: 6_000,
       stockTrackingMode: 'perpetual' as const,
       totalValue: 600,
       unitOfMeasure: linear.unitOfMeasure,
@@ -133,5 +208,27 @@ describe('distinctPartOptions', () => {
 
   it('removes internally fabricated Parts from revaluation choices', () => {
     expect(revaluablePartOptions([piece, { ...linear, isInternallyFabricated: true }])).toEqual([piece]);
+  });
+
+  it('keeps periodic Parts in general choices but excludes them from Job movements', () => {
+    const periodic = {
+      averageUnitCost: 0.1,
+      asOfLastCount: null,
+      committed: 0,
+      free: 2,
+      isInternallyFabricated: false,
+      lengthMm: 6_000,
+      partCode: linear.partCode,
+      partId: linear.partId,
+      partName: linear.partName,
+      quantity: 2,
+      standardPurchaseLengthMm: 6_000,
+      stockTrackingMode: 'periodic' as const,
+      totalValue: 600,
+      unitOfMeasure: linear.unitOfMeasure,
+    };
+
+    expect(distinctPartOptions([periodic])).toEqual([linear]);
+    expect(perpetualPartOptions([periodic])).toEqual([]);
   });
 });

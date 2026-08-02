@@ -3,7 +3,7 @@ import type { StockAdjustmentReason } from '@pkg/schema';
 export type MovingAverageMovement = {
   delta: number;
   lengthMm: number | null;
-  movementType: 'adjustment' | 'receipt' | 'revaluation';
+  movementType: 'adjustment' | 'checkout' | 'receipt' | 'return-to-store' | 'revaluation';
   reason: StockAdjustmentReason | null;
   unitCost: number | null;
 };
@@ -33,6 +33,7 @@ export function deriveMovingAverageTimeline(orderedMovements: readonly MovingAve
     const establishesWeightedCost =
       unitCost !== null &&
       (movement.movementType === 'receipt' ||
+        movement.movementType === 'return-to-store' ||
         (movement.movementType === 'adjustment' && movement.reason === 'opening-balance'));
 
     if (establishesWeightedCost && unitCost !== null) {

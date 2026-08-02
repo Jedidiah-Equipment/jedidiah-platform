@@ -14,12 +14,15 @@ export function StockOnHandTable({
   onOpenHistory: (partId: UUID) => void;
   showCosts: boolean;
 }) {
+  const partGroups = groupPartRows(items);
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Part</TableHead>
           <TableHead>Stock on hand</TableHead>
+          <TableHead>Free</TableHead>
           <TableHead>Count status</TableHead>
           {showCosts ? <TableHead>Average cost</TableHead> : null}
           {showCosts ? <TableHead>Value</TableHead> : null}
@@ -27,26 +30,49 @@ export function StockOnHandTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {items.map((item) => (
-          <TableRow key={`${item.partId}:${item.lengthMm ?? 'unbucketed'}`}>
-            <TableCell>
-              <span className="block font-medium">{item.partName}</span>
-              <span className="block text-muted-foreground text-xs">{item.partCode}</span>
-            </TableCell>
-            <TableCell className="tabular-nums">{formatStockOnHand(item)}</TableCell>
-            <TableCell>{formatCountStatus(item)}</TableCell>
-            {showCosts ? <TableCell>{formatAverageCost(item)}</TableCell> : null}
-            {showCosts ? <TableCell>{formatInventoryValue(item.totalValue)}</TableCell> : null}
-            <TableCell className="text-right">
-              <Button onClick={() => onOpenHistory(item.partId)} size="sm" variant="link">
-                View history
-              </Button>
-            </TableCell>
-          </TableRow>
-        ))}
+        {partGroups.flatMap((partItems) =>
+          partItems.map((item, partIndex) => (
+            <TableRow key={`${item.partId}:${item.lengthMm ?? 'unbucketed'}`}>
+              <TableCell>
+                <span className="block font-medium">{item.partName}</span>
+                <span className="block text-muted-foreground text-xs">{item.partCode}</span>
+              </TableCell>
+              <TableCell className="tabular-nums">{formatStockOnHand(item)}</TableCell>
+              {partIndex === 0 ? (
+                <TableCell className="tabular-nums" rowSpan={partItems.length}>
+                  {formatFreeStock(item)}
+                </TableCell>
+              ) : null}
+              <TableCell>{formatCountStatus(item)}</TableCell>
+              {showCosts ? <TableCell>{formatAverageCost(item)}</TableCell> : null}
+              {showCosts ? <TableCell>{formatInventoryValue(item.totalValue)}</TableCell> : null}
+              <TableCell className="text-right">
+                <Button onClick={() => onOpenHistory(item.partId)} size="sm" variant="link">
+                  View history
+                </Button>
+              </TableCell>
+            </TableRow>
+          )),
+        )}
       </TableBody>
     </Table>
   );
+}
+
+function groupPartRows(items: readonly StockOnHandRow[]): StockOnHandRow[][] {
+  const groups = new Map<UUID, StockOnHandRow[]>();
+  for (const item of items) {
+    const group = groups.get(item.partId) ?? [];
+    group.push(item);
+    groups.set(item.partId, group);
+  }
+  return [...groups.values()];
+}
+
+function formatFreeStock(item: StockOnHandRow): string {
+  return item.unitOfMeasure === 'mm'
+    ? `${formatNumber(item.free, { decimals: 0 })} pieces`
+    : formatPartQuantity(item.free, item.unitOfMeasure);
 }
 
 function formatStockOnHand(item: StockOnHandRow): string {

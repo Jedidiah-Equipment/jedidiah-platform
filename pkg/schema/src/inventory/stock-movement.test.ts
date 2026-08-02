@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { PostAdjustmentInput, PostRevaluationInput } from './stock-movement.js';
+import {
+  PostAdjustmentInput,
+  PostCheckoutInput,
+  PostReturnToStoreInput,
+  PostRevaluationInput,
+  StockMovementType,
+} from './stock-movement.js';
 
 const partId = '00000000-0000-4000-8000-000000000001';
 
 describe('stock movement inputs', () => {
+  it('accepts the complete shipped movement vocabulary', () => {
+    expect(StockMovementType.options).toEqual(['adjustment', 'revaluation', 'checkout', 'return-to-store']);
+  });
+
   it('accepts adjustment deltas with up to three decimal places', () => {
     expect(
       PostAdjustmentInput.parse({
@@ -59,5 +69,21 @@ describe('stock movement inputs', () => {
     expect(() => PostRevaluationInput.parse({ delta: 1, partId, unitCost: 18.75 })).toThrow();
     expect(() => PostRevaluationInput.parse({ partId, reason: 'correction', unitCost: 18.75 })).toThrow();
     expect(() => PostRevaluationInput.parse({ lengthMm: null, partId, unitCost: 18.75 })).toThrow();
+  });
+
+  it.each([
+    ['checkout', PostCheckoutInput],
+    ['return-to-store', PostReturnToStoreInput],
+  ] as const)('takes a positive quantity, Job, Part, and optional length for %s', (_type, schema) => {
+    expect(schema.parse({ jobId: partId, lengthMm: 6_000, partId, quantity: 1.125 })).toEqual({
+      jobId: partId,
+      lengthMm: 6_000,
+      partId,
+      quantity: 1.125,
+    });
+
+    expect(() => schema.parse({ jobId: partId, partId, quantity: 0 })).toThrow();
+    expect(() => schema.parse({ jobId: partId, partId, quantity: -1 })).toThrow();
+    expect(() => schema.parse({ jobId: partId, partId, quantity: 1, unitCost: 12 })).toThrow();
   });
 });

@@ -46,11 +46,16 @@ export function StockMovementHistoryTable({
 }
 
 function formatMovementLabel(item: StockMovementHistoryRow): string {
-  if (item.movementType === 'revaluation') {
-    return 'Revaluation';
+  switch (item.movementType) {
+    case 'checkout':
+      return 'Checkout';
+    case 'return-to-store':
+      return 'Return to store';
+    case 'revaluation':
+      return 'Revaluation';
+    case 'adjustment':
+      return item.reason === null ? 'Adjustment' : STOCK_ADJUSTMENT_REASON_LABELS[item.reason];
   }
-
-  return item.reason === null ? 'Adjustment' : STOCK_ADJUSTMENT_REASON_LABELS[item.reason];
 }
 
 function formatMovementQuantity(item: StockMovementHistoryRow, unitOfMeasure: PartUnitOfMeasure): string {

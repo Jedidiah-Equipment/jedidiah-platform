@@ -37,10 +37,11 @@ import { cn } from '@/lib/utils.js';
 import { JOB_DOCUMENT_ACCEPT, uploadJobPurchaseOrder, validateSelectedFile } from '@/utils/document.js';
 import { CustomJobWorkItems } from './CustomJobWorkItems.js';
 import { InfoList, InfoRow } from './JobInfoList.js';
+import { JobStockTab } from './JobStockTab.js';
 import { JobEditFormValues, toJobEditFormValues, toJobUpdateInput } from './job-edit-form.js';
 import { scheduleBadgeToneClass, scheduleBarToneClass, scheduleDotToneClass } from './schedule-state-tone.js';
 
-type JobSheetTab = 'details' | 'documents' | 'schedule';
+type JobSheetTab = 'details' | 'documents' | 'schedule' | 'stock';
 
 type JobSheetProps = {
   jobId: UUID;
@@ -50,6 +51,7 @@ type JobSheetProps = {
 export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
   const trpc = useTRPC();
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
+  const canReadInventory = useCan('inventory:read').can;
   const [tab, setTab] = useState<JobSheetTab>('details');
 
   return (
@@ -75,6 +77,7 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="documents">Documents</TabsTrigger>
                 <TabsTrigger value="schedule">Schedule</TabsTrigger>
+                {canReadInventory ? <TabsTrigger value="stock">Stock</TabsTrigger> : null}
               </TabsList>
             </div>
             <ScrollArea className="min-h-0 flex-1">
@@ -91,6 +94,14 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
               <TabsContent className="p-4" value="schedule">
                 <JobScheduleTab job={jobQuery.data} />
               </TabsContent>
+              {canReadInventory ? (
+                <TabsContent className="p-4" value="stock">
+                  <JobStockTab
+                    isCancelled={isJobCancelled(jobQuery.data)}
+                    job={{ code: jobQuery.data.code, id: jobQuery.data.id }}
+                  />
+                </TabsContent>
+              ) : null}
             </ScrollArea>
           </Tabs>
         ) : null}

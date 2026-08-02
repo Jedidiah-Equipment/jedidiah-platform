@@ -715,6 +715,20 @@
       "when": 1785652816805,
       "tag": "0101_volatile_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1785669879355,
+      "tag": "0102_mighty_wallflower",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1785670609081,
+      "tag": "0103_dapper_dreadnoughts",
+      "breakpoints": true
     }
   ]
 }

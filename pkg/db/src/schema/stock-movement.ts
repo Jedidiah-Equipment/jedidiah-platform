@@ -3,6 +3,7 @@ import { relations, sql } from 'drizzle-orm';
 import { check, index, integer, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
+import { jobs } from './job.js';
 import { parts } from './part.js';
 
 export const stockMovements = pgTable(
@@ -14,6 +15,7 @@ export const stockMovements = pgTable(
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     delta: numeric('delta', { mode: 'number', precision: 14, scale: 3 }).notNull(),
     id: uuid('id').defaultRandom().primaryKey(),
+    jobId: uuid('job_id').references(() => jobs.id, { onDelete: 'restrict' }),
     lengthMm: integer('length_mm'),
     // Later inventory tickets extend this closed set as they ship their corresponding write paths.
     movementType: text('movement_type').notNull().$type<StockMovementType>(),
@@ -26,7 +28,10 @@ export const stockMovements = pgTable(
   },
   (table) => [
     check('stock_movement_length_mm_positive', sql`${table.lengthMm} IS NULL OR ${table.lengthMm} > 0`),
-    check('stock_movement_type_check', sql`${table.movementType} IN ('adjustment', 'revaluation')`),
+    check(
+      'stock_movement_type_check',
+      sql`${table.movementType} IN ('adjustment', 'revaluation', 'checkout', 'return-to-store')`,
+    ),
     check(
       'stock_movement_reason_check',
       sql`${table.reason} IS NULL OR ${table.reason} IN ('opening-balance', 'stock-count', 'damage', 'scrap', 'correction')`,
@@ -37,16 +42,29 @@ export const stockMovements = pgTable(
       'stock_movement_shape',
       sql`(
         ${table.movementType} = 'adjustment'
+        AND ${table.jobId} IS NULL
         AND ${table.reason} IS NOT NULL
         AND (${table.reason} = 'opening-balance' OR ${table.note} IS NOT NULL)
         AND (${table.unitCost} IS NULL OR ${table.reason} = 'opening-balance')
       ) OR (
         ${table.movementType} = 'revaluation'
+        AND ${table.jobId} IS NULL
         AND ${table.delta} = 0
         AND ${table.unitCost} IS NOT NULL
         AND ${table.reason} IS NULL
+      ) OR (
+        ${table.movementType} = 'checkout'
+        AND ${table.jobId} IS NOT NULL
+        AND ${table.delta} < 0
+        AND ${table.reason} IS NULL
+      ) OR (
+        ${table.movementType} = 'return-to-store'
+        AND ${table.jobId} IS NOT NULL
+        AND ${table.delta} > 0
+        AND ${table.reason} IS NULL
       )`,
     ),
+    index('stock_movement_job_part_created_idx').on(table.jobId, table.partId, table.createdAt, table.id),
     index('stock_movement_part_created_idx').on(table.partId, table.createdAt, table.id),
   ],
 );
@@ -55,6 +73,10 @@ export const stockMovementRelations = relations(stockMovements, ({ one }) => ({
   actor: one(user, {
     fields: [stockMovements.actorUserId],
     references: [user.id],
+  }),
+  job: one(jobs, {
+    fields: [stockMovements.jobId],
+    references: [jobs.id],
   }),
   part: one(parts, {
     fields: [stockMovements.partId],

@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import './load-read-env.js';
 import { createDatabaseClient, type Db } from '@pkg/db';
@@ -35,8 +35,12 @@ export async function readSeedSnapshot(sourceArgument?: string): Promise<void> {
       console.info(`[seed:read] Wrote ${rows.length} ${config.tableName} row(s) to ${destination.pathname}`);
 
       if (config.storageFiles) {
-        const downloaded = await downloadSnapshotObjects(storage, collectStorageFiles(config, rows), source.name);
-        console.info(`[seed:read] Downloaded ${downloaded} ${config.tableName} object(s)`);
+        const { cached, downloaded } = await downloadSnapshotObjects(
+          storage,
+          collectStorageFiles(config, rows),
+          source.name,
+        );
+        console.info(`[seed:read] Downloaded ${downloaded} ${config.tableName} object(s) (${cached} already cached)`);
       }
     }
   } finally {
@@ -113,24 +117,53 @@ async function downloadSnapshotObjects(
   storage: SeedStorage,
   files: SnapshotStorageFile[],
   source: SeedReadSource,
-): Promise<number> {
+): Promise<{ cached: number; downloaded: number }> {
+  let cached = 0;
   let downloaded = 0;
 
   for (const file of files) {
-    const bytes = await downloadObject(storage, file.storageKey);
+    const destination = objectFilePath(file.storageKey);
+    const result = await downloadSnapshotObjectIfMissing(destination, () => downloadObject(storage, file.storageKey));
 
-    if (!bytes) {
+    if (result === 'cached') {
+      cached += 1;
+      continue;
+    }
+
+    if (result === 'missing') {
       console.warn(`[seed:read] Missing ${source} object ${file.storageKey}, skipping`);
       continue;
     }
 
-    const destination = objectFilePath(file.storageKey);
-    await mkdir(new URL('.', destination), { recursive: true });
-    await writeFile(destination, bytes);
     downloaded += 1;
   }
 
-  return downloaded;
+  return { cached, downloaded };
+}
+
+// Snapshot image replacements receive new storage keys, so an existing file is the same immutable object.
+export async function downloadSnapshotObjectIfMissing(
+  destination: URL,
+  download: () => Promise<Uint8Array | null>,
+): Promise<'cached' | 'downloaded' | 'missing'> {
+  try {
+    await access(destination);
+    return 'cached';
+  } catch (error) {
+    if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 'ENOENT') {
+      throw error;
+    }
+  }
+
+  const bytes = await download();
+
+  if (!bytes) {
+    return 'missing';
+  }
+
+  await mkdir(new URL('.', destination), { recursive: true });
+  await writeFile(destination, bytes);
+  return 'downloaded';
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

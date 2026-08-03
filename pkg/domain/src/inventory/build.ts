@@ -25,18 +25,109 @@ export function deriveBuildConsumption({
   return bomLines.map((line) => ({ componentPartId: line.componentPartId, quantity: line.quantity * quantity }));
 }
 
+/** One component of the Built Part's stored BOM, as the deviation check reads it. */
+export type BuildBomComponent = BuildBomLine & {
+  /**
+   * Raw material. Its consumption is corrected by the next stocktake rather than posted (spec §6),
+   * so its line writes no movement, and leaving it off the build is not a deviation.
+   */
+  isInformational: boolean;
+};
+
+/** One component the builder says actually left the rack, with the ledger facts it is judged against. */
+export type BuildPostedLine = {
+  componentPartId: string;
+  isInformational: boolean;
+  lengthMm: number | null;
+  quantity: number;
+  /** Stock on hand for this component's own length bucket, before the build. */
+  quantityOnHand: number;
+  /** The component's current average, already scaled to the piece length; null when never costed. */
+  unitCost: number | null;
+};
+
+export type BuildConsumptionRow = {
+  componentPartId: string;
+  lengthMm: number | null;
+  quantity: number;
+  unitCost: number | null;
+};
+
+export type BuildDerivation = {
+  /** The consume rows to post, in the order they were keyed. An informational line never appears. */
+  consumption: BuildConsumptionRow[];
+  /** The value the consume rows removed, divided across the units made; null when none carried cost. */
+  producedUnitCost: number | null;
+  warnings: Array<{ codes: StockMovementWarningCode[]; componentPartId: string }>;
+};
+
 /**
- * Both build warnings, judged once so the dialog's prompt and the post agree. Neither blocks: a
- * deviation from the BOM is the record of what the rack actually gave, and a short rack goes
- * negative rather than refusing the build that already happened.
+ * The whole judgement of one build, as a pure function of what the builder keyed and what the ledger
+ * held when the build took its locks. Both halves of the value-preserving rule (spec §6) are decided
+ * here, so the rows a build writes can be derived once and inserted in one statement.
+ *
+ * Nothing here blocks. A deviation from the BOM is the record of what the rack actually gave, and a
+ * short rack goes negative rather than refusing a build that has already happened.
+ */
+export function deriveBuild({
+  bom,
+  posted,
+  quantity,
+}: {
+  bom: readonly BuildBomComponent[];
+  posted: readonly BuildPostedLine[];
+  quantity: number;
+}): BuildDerivation {
+  const expectedByComponent = new Map(bom.map((line) => [line.componentPartId, line.quantity * quantity]));
+  const consumption: BuildConsumptionRow[] = [];
+  const warnings: BuildDerivation['warnings'] = [];
+
+  for (const line of posted) {
+    const codes = deriveBuildWarnings({
+      // A component the BOM never asked for is expected at zero, so posting any of it deviates.
+      expectedQuantity: expectedByComponent.get(line.componentPartId) ?? 0,
+      isInformational: line.isInformational,
+      quantity: line.quantity,
+      quantityOnHand: line.quantityOnHand,
+    });
+    if (codes.length > 0) warnings.push({ codes, componentPartId: line.componentPartId });
+
+    if (line.isInformational) continue;
+
+    consumption.push({
+      componentPartId: line.componentPartId,
+      lengthMm: line.lengthMm,
+      quantity: line.quantity,
+      unitCost: line.unitCost,
+    });
+  }
+
+  // A BOM component the builder left off the list entirely consumed none of what the BOM asked for,
+  // which is as much a deviation as an edited quantity — and the loop above never sees it.
+  const postedComponentIds = new Set(posted.map((line) => line.componentPartId));
+  for (const line of bom) {
+    if (line.isInformational || postedComponentIds.has(line.componentPartId)) continue;
+    warnings.push({ codes: ['bom-deviation'], componentPartId: line.componentPartId });
+  }
+
+  return { consumption, producedUnitCost: deriveBuildProducedUnitCost({ consumed: consumption, quantity }), warnings };
+}
+
+/**
+ * Both per-component warnings, judged once so the dialog's prompt and the post agree. Neither
+ * blocks: a deviation from the BOM is the record of what the rack actually gave, and a short rack
+ * goes negative rather than refusing the build that already happened.
  */
 export function deriveBuildWarnings({
   expectedQuantity,
+  isInformational = false,
   quantity,
   quantityOnHand,
 }: {
   /** The BOM quantity times the build size — what the consumption prefilled to. */
   expectedQuantity: number;
+  /** Raw material, whose line posts nothing. Its deviation still reads; its stock figure does not. */
+  isInformational?: boolean;
   /** What the builder says actually left the rack. */
   quantity: number;
   quantityOnHand: number;
@@ -44,7 +135,9 @@ export function deriveBuildWarnings({
   const warnings: StockMovementWarningCode[] = [];
 
   if (quantity !== expectedQuantity) warnings.push('bom-deviation');
-  if (quantityOnHand - quantity < 0) warnings.push('negative-stock-on-hand');
+  // Periodic stock is only truly counted at stocktake, so "the rack is short" is not a fact a build
+  // is in a position to assert about it — but what the builder says they took still is.
+  if (!isInformational && quantityOnHand - quantity < 0) warnings.push('negative-stock-on-hand');
 
   return warnings;
 }

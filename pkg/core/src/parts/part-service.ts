@@ -39,6 +39,7 @@ import { mutateEntity } from '../audit/mutate-entity.js';
 import { supplierAuditDescriptor } from '../suppliers/supplier-service.js';
 import {
   DuplicatePartCodeError,
+  NO_SUPPLIER_LABEL,
   PartBomLockedError,
   PartBulkImportConflictError,
   PartNotFoundError,
@@ -351,27 +352,17 @@ export async function bulkImportParts({
       const partsByCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
 
       for (const row of input.rows) {
-        // A built Part row names no Supplier at all, so every supplier step below is skipped for it
-        // and the Part lands with a null `supplierId`, which is what the XOR invariant requires.
-        const supplierName = row.supplierName;
-
-        if (
-          supplierName !== null &&
-          scopedSupplier &&
-          supplierName.toLowerCase() !== scopedSupplier.companyName.toLowerCase()
-        ) {
-          errors.push(`Line ${row.lineNumber}: Supplier ${supplierName} does not match ${scopedSupplier.companyName}.`);
+        // Whether this row names a Supplier is settled once, here. Everything below reads the one
+        // resolved value, so a built Part — made in-house and bought from nobody — takes the same
+        // path as a bought one rather than branching at every step.
+        const rowSupplier = resolveRowSupplier({ row, scopedSupplier, suppliersByName });
+        if ('error' in rowSupplier) {
+          errors.push(rowSupplier.error);
           continue;
         }
 
-        const existingSupplier =
-          supplierName === null ? undefined : (scopedSupplier ?? suppliersByName.get(supplierName.toLowerCase()));
         const partByCode = partsByCode.get(row.code);
-        const identityMatches =
-          supplierName === null
-            ? partByCode?.supplierId === null
-            : Boolean(existingSupplier) && partByCode?.supplierId === existingSupplier?.id;
-        if (partByCode && !identityMatches) {
+        if (partByCode && !matchesStoredIdentity(rowSupplier, partByCode)) {
           errors.push(
             await formatBulkImportIdentityConflict({
               db: tx,
@@ -382,19 +373,8 @@ export async function bulkImportParts({
           continue;
         }
 
-        const importedSupplier =
-          supplierName === null
-            ? null
-            : (existingSupplier ??
-              (await createImportSupplier({
-                actorUserId,
-                db: tx,
-                companyName: supplierName,
-              })));
-
-        if (importedSupplier && !existingSupplier) {
-          suppliersByName.set(importedSupplier.companyName.toLowerCase(), importedSupplier);
-        }
+        // Created only now, so a row rejected above never leaves a stray Supplier behind.
+        const supplierId = await ensureImportSupplierId({ actorUserId, db: tx, rowSupplier, suppliersByName });
 
         // Bulk CSV owns catalog identity; stock policy/location/minimum default on create and survive updates.
         const partInput = {
@@ -407,7 +387,7 @@ export async function bulkImportParts({
           name: row.name,
           standardPurchaseLengthMm: row.standardPurchaseLengthMm ?? null,
           supplierCode: row.supplierCode,
-          supplierId: importedSupplier?.id ?? null,
+          supplierId,
           unitOfMeasure: row.unitOfMeasure,
         };
         const existingPart = partByCode;
@@ -541,6 +521,69 @@ async function assertBomCleared({
   if (line) throw new PartBomLockedError(before.id);
 }
 
+/**
+ * What one CSV row says about its Supplier, settled before anything is written. A row either names
+ * no Supplier at all (a built Part), names one already loaded, or names one nobody has seen yet —
+ * and the last of those only becomes a Supplier once the row's identity has passed.
+ */
+type RowSupplier =
+  | { kind: 'existing'; supplier: SupplierRow }
+  | { kind: 'new'; companyName: string }
+  | { kind: 'none' };
+
+function resolveRowSupplier({
+  row,
+  scopedSupplier,
+  suppliersByName,
+}: {
+  row: PartBulkImportInput['rows'][number];
+  scopedSupplier: SupplierRow | undefined;
+  suppliersByName: ReadonlyMap<string, SupplierRow>;
+}): RowSupplier | { error: string } {
+  if (row.supplierName === null) return { kind: 'none' };
+
+  if (scopedSupplier) {
+    return row.supplierName.toLowerCase() === scopedSupplier.companyName.toLowerCase()
+      ? { kind: 'existing', supplier: scopedSupplier }
+      : { error: `Line ${row.lineNumber}: Supplier ${row.supplierName} does not match ${scopedSupplier.companyName}.` };
+  }
+
+  const existing = suppliersByName.get(row.supplierName.toLowerCase());
+
+  return existing ? { kind: 'existing', supplier: existing } : { kind: 'new', companyName: row.supplierName };
+}
+
+/**
+ * A Part's identity is its code plus who supplies it. A row naming a Supplier that does not exist
+ * yet can never match a stored Part, since no stored Part could already point at it.
+ */
+function matchesStoredIdentity(rowSupplier: RowSupplier, part: Pick<PartRow, 'supplierId'>): boolean {
+  if (rowSupplier.kind === 'none') return part.supplierId === null;
+
+  return rowSupplier.kind === 'existing' && part.supplierId === rowSupplier.supplier.id;
+}
+
+async function ensureImportSupplierId({
+  actorUserId,
+  db,
+  rowSupplier,
+  suppliersByName,
+}: {
+  actorUserId: AuthId;
+  db: DatabaseTransaction;
+  rowSupplier: RowSupplier;
+  suppliersByName: Map<string, SupplierRow>;
+}): Promise<string | null> {
+  if (rowSupplier.kind === 'none') return null;
+  if (rowSupplier.kind === 'existing') return rowSupplier.supplier.id;
+
+  const created = await createImportSupplier({ actorUserId, companyName: rowSupplier.companyName, db });
+  // Folded back so a later row naming the same Supplier resolves it without creating a second one.
+  suppliersByName.set(created.companyName.toLowerCase(), created);
+
+  return created.id;
+}
+
 async function formatBulkImportIdentityConflict({
   db,
   existingPart,
@@ -561,11 +604,9 @@ async function formatBulkImportIdentityConflict({
           where: eq(supplier.id, existingPart.supplierId),
         });
   const existingSupplierName =
-    existingPart.supplierId === null
-      ? 'no supplier (built in-house)'
-      : (existingSupplier?.companyName ?? 'an unknown supplier');
+    existingPart.supplierId === null ? NO_SUPPLIER_LABEL : (existingSupplier?.companyName ?? 'an unknown supplier');
   const existingIdentity = `${existingSupplierName} / supplier code ${existingPart.supplierCode}`;
-  const importIdentity = `${row.supplierName ?? 'no supplier (built in-house)'} / ${row.supplierCode}`;
+  const importIdentity = `${row.supplierName ?? NO_SUPPLIER_LABEL} / ${row.supplierCode}`;
 
   return `Line ${row.lineNumber}: Part code ${existingPart.code} already exists with supplier ${existingIdentity}; CSV row has ${importIdentity}.`;
 }
@@ -726,7 +767,7 @@ function mapPartUniqueViolationForBulkImport(error: unknown, input: PartBulkImpo
     return new PartBulkImportConflictError({
       code: conflictingRow.code,
       supplierCode: conflictingRow.supplierCode,
-      supplierName: conflictingRow.supplierName ?? 'no supplier (built in-house)',
+      supplierName: conflictingRow.supplierName,
     });
   }
 

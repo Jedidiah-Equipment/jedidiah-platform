@@ -7,8 +7,6 @@ import {
   parts,
   products,
   productUnits,
-  purchaseOrderLines,
-  purchaseOrders,
   quotes,
   stockMovements,
   user,
@@ -18,7 +16,6 @@ import {
   deriveMovingAverage,
   deriveMovingAverageTimeline,
   deriveOutstandingDrawUnitCost,
-  deriveReceiptWarnings,
   deriveStockMovementWarnings,
   type StockMovementContext,
   valueStockBucket,
@@ -26,11 +23,10 @@ import {
 } from '@pkg/domain';
 import type {
   AuthId,
+  JobStockMovementType,
   JobStockResult,
-  PartUnitClass,
   PostAdjustmentInput,
   PostJobMovementInput,
-  PostReceiptInput,
   PostRevaluationInput,
   StockMovement,
   StockMovementHistoryResult,
@@ -40,37 +36,27 @@ import type {
 } from '@pkg/schema';
 import {
   isPeriodicStockAdjustmentReason,
-  JobStockMovementType,
+  JOB_STOCK_MOVEMENT_TYPES,
   JobStockResult as JobStockResultSchema,
   StockMovementHistoryResult as StockMovementHistoryResultSchema,
   StockMovementPostResult as StockMovementPostResultSchema,
-  StockMovement as StockMovementSchema,
   StockOnHandResult as StockOnHandResultSchema,
   unitClassFor,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, ne, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
-import {
-  PurchaseOrderClosedShortError,
-  PurchaseOrderLineNotFoundError,
-  PurchaseOrderNotFoundError,
-  PurchaseOrderNotSentError,
-} from '../purchase-orders/purchase-order-errors.js';
 
 import { JobClosedOutError } from './close-out-errors.js';
 import { getJobCloseOutAt, jobIsNotClosedOut } from './close-out-service.js';
+import { bucketMatches, insertMovement, loadMovingAverages, loadStockPart, scaleUnitCost, sumDelta } from './ledger.js';
 import {
   FabricatedPartCostError,
   PeriodicStockMovementError,
-  StockMovementDeltaError,
-  StockMovementLengthError,
   StockMovementPartNotFoundError,
 } from './stock-movement-errors.js';
-
-type StockMovementDatabase = Db | DatabaseTransaction;
-const JOB_MOVEMENT_TYPES = JobStockMovementType.options;
+import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
 export async function postAdjustment({
   actorUserId,
@@ -87,7 +73,7 @@ export async function postAdjustment({
 
     assertDeltaMatchesUnitClass(input.delta, unitClass);
     assertLengthMatchesUnitClass(input.lengthMm, unitClass);
-    assertFabricatedPartCost(part.isInternallyFabricated, input.unitCost);
+    assertBuiltPartCostIsDerived(part.isInternallyFabricated, input.unitCost);
     if (part.stockTrackingMode === 'periodic' && !isPeriodicStockAdjustmentReason(input.reason)) {
       throw new PeriodicStockMovementError(input.reason);
     }
@@ -117,7 +103,7 @@ export async function postRevaluation({
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
 
-    assertFabricatedPartCost(part.isInternallyFabricated, input.unitCost);
+    assertBuiltPartCostIsDerived(part.isInternallyFabricated, input.unitCost);
 
     return insertMovement(tx, {
       actorUserId,
@@ -182,91 +168,6 @@ export async function postJobMovement({
   });
 }
 
-/**
- * Receives stock against one open Purchase Order line. Receiving *is* the ledger write (spec §11):
- * the confirmed quantity, the line's own price, and the Part's standard purchase length become one
- * receipt row in one transaction — there is no post-the-receipt-later state to drift out of.
- *
- * The dock confirms quantities. `unitCost` is a desk-side correction the API gates on cost access;
- * left null the line price lands on the movement, which is why a price-blind receiver still posts a
- * correctly valued row. Periodic Parts receive like any other: receipts are one of the two things
- * their ledger ever records.
- */
-export async function postReceipt({
-  actorUserId,
-  db,
-  input,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: PostReceiptInput;
-}): Promise<StockMovementPostResult> {
-  return db.transaction(async (tx) => {
-    const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
-    const purchaseOrder = await lockReceivablePurchaseOrder(tx, input.purchaseOrderId);
-    const line = await loadPurchaseOrderLine(tx, input.purchaseOrderId, input.partId);
-    const unitClass = unitClassFor(part.unitOfMeasure);
-    // A dock that keys nothing takes the length the Part is bought in; a short delivery keys its own.
-    const lengthMm = unitClass === 'linear' ? (input.lengthMm ?? part.standardPurchaseLengthMm) : input.lengthMm;
-    const unitCost = input.unitCost ?? line.unitPrice;
-
-    assertDeltaMatchesUnitClass(input.quantity, unitClass);
-    assertLengthMatchesUnitClass(lengthMm, unitClass);
-
-    const receivedQuantity = await sumDelta(
-      tx,
-      and(
-        eq(stockMovements.purchaseOrderId, purchaseOrder.id),
-        eq(stockMovements.partId, input.partId),
-        eq(stockMovements.movementType, 'receipt'),
-      ),
-    );
-    const movement = await insertMovement(tx, {
-      actorUserId,
-      delta: input.quantity,
-      lengthMm,
-      movementType: 'receipt',
-      partId: input.partId,
-      purchaseOrderId: purchaseOrder.id,
-      unitCost,
-    });
-
-    return StockMovementPostResultSchema.parse({
-      movement,
-      warnings: deriveReceiptWarnings({
-        orderedQuantity: line.quantity,
-        quantity: input.quantity,
-        receivedQuantity,
-      }),
-    });
-  });
-}
-
-async function lockReceivablePurchaseOrder(tx: DatabaseTransaction, id: UUID) {
-  const [row] = await tx
-    .select({ closedShortAt: purchaseOrders.closedShortAt, id: purchaseOrders.id, status: purchaseOrders.status })
-    .from(purchaseOrders)
-    .where(eq(purchaseOrders.id, id))
-    // The same row lock cancel and close-short take, so a receipt cannot race either decision.
-    .for('update');
-  if (!row) throw new PurchaseOrderNotFoundError(id);
-  if (row.status !== 'sent') throw new PurchaseOrderNotSentError(id);
-  // Close-short asserted that the remainder will never come; a later receipt would make that a lie.
-  if (row.closedShortAt !== null) throw new PurchaseOrderClosedShortError(id);
-
-  return row;
-}
-
-async function loadPurchaseOrderLine(tx: DatabaseTransaction, purchaseOrderId: UUID, partId: UUID) {
-  const [line] = await tx
-    .select({ quantity: purchaseOrderLines.quantity, unitPrice: purchaseOrderLines.unitPrice })
-    .from(purchaseOrderLines)
-    .where(and(eq(purchaseOrderLines.purchaseOrderId, purchaseOrderId), eq(purchaseOrderLines.partId, partId)));
-  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrderId, partId);
-
-  return line;
-}
-
 export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Promise<JobStockResult> {
   const job = await loadJobStockJob({ db, jobId });
   const closedOutAt = await getJobCloseOutAt({ db, jobId });
@@ -288,7 +189,7 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
         partId: stockMovements.partId,
       })
       .from(stockMovements)
-      .where(and(eq(stockMovements.jobId, jobId), inArray(stockMovements.movementType, JOB_MOVEMENT_TYPES)))
+      .where(and(eq(stockMovements.jobId, jobId), inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES)))
       .groupBy(stockMovements.partId, stockMovements.lengthMm),
   ]);
 
@@ -507,57 +408,6 @@ export async function getStockMovementHistory({
   });
 }
 
-async function insertMovement(
-  db: DatabaseTransaction,
-  values: typeof stockMovements.$inferInsert,
-): Promise<StockMovement> {
-  const [movement] = await db.insert(stockMovements).values(values).returning();
-  if (!movement) throw new Error('Stock movement insert did not return a row');
-
-  return StockMovementSchema.parse(movement);
-}
-
-async function loadStockPart({
-  db,
-  lockForMovement = false,
-  partId,
-}: {
-  db: StockMovementDatabase;
-  lockForMovement?: boolean;
-  partId: UUID;
-}) {
-  const query = db
-    .select({
-      id: parts.id,
-      isInternallyFabricated: parts.isInternallyFabricated,
-      standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
-      stockTrackingMode: parts.stockTrackingMode,
-      unitOfMeasure: parts.unitOfMeasure,
-    })
-    .from(parts)
-    .where(eq(parts.id, partId))
-    .limit(1);
-  // Every writer takes the same Part lock so cost replay and the appended stamp form one ledger order.
-  const [part] = lockForMovement ? await query.for('update') : await query;
-
-  if (!part) {
-    throw new StockMovementPartNotFoundError(partId);
-  }
-
-  return part;
-}
-
-async function loadStockMovementJob({ db, jobId }: { db: StockMovementDatabase; jobId: UUID }) {
-  const [job] = await db
-    .select({ cancelledAt: jobs.cancelledAt, id: jobs.id })
-    .from(jobs)
-    .where(eq(jobs.id, jobId))
-    .limit(1);
-  if (!job) throw new JobNotFoundError(jobId);
-
-  return job;
-}
-
 /** Loads the four stock facts a Job movement is judged against, all scoped to its Job, Part, bucket. */
 async function loadStockMovementContext(
   db: DatabaseTransaction,
@@ -567,7 +417,7 @@ async function loadStockMovementContext(
   const drawnCondition = and(
     eq(stockMovements.jobId, input.jobId),
     eq(stockMovements.partId, input.partId),
-    inArray(stockMovements.movementType, JOB_MOVEMENT_TYPES),
+    inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES),
   );
   const [bucketQuantityOnHand, cfoQuantity, drawnQuantity, drawnBucketQuantity] = await Promise.all([
     sumDelta(
@@ -586,19 +436,6 @@ async function loadStockMovementContext(
   ]);
 
   return { bucketQuantityOnHand, cfoQuantity, drawnBucketQuantity, drawnQuantity };
-}
-
-function bucketMatches(lengthMm: number | null): SQL {
-  return lengthMm === null ? isNull(stockMovements.lengthMm) : eq(stockMovements.lengthMm, lengthMm);
-}
-
-async function sumDelta(db: DatabaseTransaction, where: SQL | undefined): Promise<number> {
-  return scalar(
-    db
-      .select({ value: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision` })
-      .from(stockMovements)
-      .where(where),
-  );
 }
 
 async function scalar(query: PromiseLike<Array<{ value: number }>>): Promise<number> {
@@ -621,30 +458,17 @@ async function deriveCheckoutUnitCost(db: DatabaseTransaction, input: PostJobMov
 }
 
 /**
- * A Part's current average, scaled to the piece length for linear stock — what a draw and a build
- * consumption are both stamped with. Null when the ledger holds no costed row yet ("no cost yet").
+ * A Part's current average, scaled to the piece length for linear stock. Null when the ledger holds
+ * no costed row yet ("no cost yet").
  */
-export async function derivePartUnitCost(
+async function derivePartUnitCost(
   db: DatabaseTransaction,
   partId: UUID,
   lengthMm: number | null,
 ): Promise<number | null> {
-  const orderedMovements = await db
-    .select({
-      delta: stockMovements.delta,
-      lengthMm: stockMovements.lengthMm,
-      movementType: stockMovements.movementType,
-      reason: stockMovements.reason,
-      unitCost: stockMovements.unitCost,
-    })
-    .from(stockMovements)
-    .where(eq(stockMovements.partId, partId))
-    .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
-  const movingAverage = deriveMovingAverage(orderedMovements);
+  const averages = await loadMovingAverages(db, [partId]);
 
-  if (movingAverage === null) return null;
-
-  return lengthMm === null ? movingAverage : movingAverage * lengthMm;
+  return scaleUnitCost(averages.get(partId) ?? null, lengthMm);
 }
 
 /**
@@ -660,7 +484,7 @@ async function deriveReturnUnitCost(db: DatabaseTransaction, input: PostJobMovem
         eq(stockMovements.jobId, input.jobId),
         eq(stockMovements.partId, input.partId),
         bucketMatches(input.lengthMm),
-        inArray(stockMovements.movementType, JOB_MOVEMENT_TYPES),
+        inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES),
       ),
     )
     .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
@@ -691,7 +515,7 @@ async function listOpenCommitments(db: DatabaseTransaction): Promise<Map<UUID, n
       })
       .from(stockMovements)
       .innerJoin(jobs, eq(jobs.id, stockMovements.jobId))
-      .where(and(isNull(jobs.cancelledAt), inArray(stockMovements.movementType, JOB_MOVEMENT_TYPES)))
+      .where(and(isNull(jobs.cancelledAt), inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES)))
       .groupBy(stockMovements.jobId, stockMovements.partId),
   ]);
   const drawnByJobPart = new Map(
@@ -746,23 +570,17 @@ function sumBy<TRow>(rows: readonly TRow[], toValue: (row: TRow) => number): num
   return rows.reduce((total, row) => total + toValue(row), 0);
 }
 
-export function assertDeltaMatchesUnitClass(delta: number, unitClass: PartUnitClass): void {
-  if (unitClass !== 'measured' && !Number.isInteger(delta)) {
-    throw new StockMovementDeltaError(unitClass);
-  }
-}
-
-export function assertLengthMatchesUnitClass(lengthMm: number | null, unitClass: PartUnitClass): void {
-  if (unitClass === 'linear' && lengthMm === null) {
-    throw new StockMovementLengthError(true);
-  }
-
-  if (unitClass !== 'linear' && lengthMm !== null) {
-    throw new StockMovementLengthError(false);
-  }
-}
-
-function assertFabricatedPartCost(isInternallyFabricated: boolean, unitCost: number | null): void {
+/**
+ * A Built Part's cost is *derived*, never keyed. Its only costed row is the `build-produce` the
+ * build itself writes, which divides the value the consume rows took out across the units made — so
+ * the two facts hold together: a build may stamp any cost it derived, and no hand-entered figure
+ * may reach the same Part through an adjustment or a revaluation.
+ *
+ * Correcting a wrong built-part average therefore means correcting the build, not overwriting the
+ * number. That is deliberate: overwriting would assert a price for something we never bought, and
+ * for sheet metal cut from plate it would pay for the plate twice (spec §5).
+ */
+function assertBuiltPartCostIsDerived(isInternallyFabricated: boolean, unitCost: number | null): void {
   if (isInternallyFabricated && unitCost !== null && unitCost !== 0) {
     throw new FabricatedPartCostError();
   }

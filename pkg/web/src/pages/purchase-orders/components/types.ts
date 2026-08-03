@@ -15,6 +15,8 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
+import { optionalNumber } from '@/components/form/utils/form-schema.js';
+
 export type PurchaseOrderCreateFormValues = z.infer<typeof PurchaseOrderCreateFormValues>;
 export const PurchaseOrderCreateFormValues = z.object({
   expectedDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
@@ -71,13 +73,10 @@ function toExpectedDeliveryDate(value: string) {
   return value ? DateOnlyIso.parse(value) : null;
 }
 
-/**
- * What the dock keys in. `NumberField` holds an empty control as `NaN`, so the optional length is
- * its schema leaf or `NaN`; every other rule stays owned by `@pkg/schema`.
- */
+/** What the dock keys in. Every rule beyond the length being optional stays owned by `@pkg/schema`. */
 export type PurchaseOrderReceiveFormValues = z.infer<typeof PurchaseOrderReceiveFormValues>;
 export const PurchaseOrderReceiveFormValues = z.object({
-  lengthMm: z.union([z.nan(), StockMovementLengthMm]),
+  lengthMm: optionalNumber(StockMovementLengthMm),
   quantity: StockMovementQuantity,
 });
 

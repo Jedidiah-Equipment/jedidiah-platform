@@ -1,7 +1,9 @@
+import { type BuildBomLine, deriveBuildConsumption, deriveBuildWarnings } from '@pkg/domain';
 import {
   CloseOutJobInput,
   InventoryUnitCost,
   PostAdjustmentInput,
+  PostBuildInput,
   PostJobMovementInput,
   PostRevaluationInput,
   Price,
@@ -9,24 +11,18 @@ import {
   StockMovementDelta,
   StockMovementLengthMm,
   StockMovementQuantity,
+  type StockMovementWarningCode,
   type StockOnHandRow,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { requiredSelection } from '@/components/form/utils/form-schema.js';
+import { optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 export type StockPartOption = Pick<
   StockOnHandRow,
   'isInternallyFabricated' | 'partCode' | 'partId' | 'partName' | 'standardPurchaseLengthMm' | 'unitOfMeasure'
 >;
-
-/**
- * `NumberField` holds an empty control as `NaN`, so an optional numeric field is its schema leaf or
- * `NaN`. Every rule beyond that emptiness — sign, bounds, decimal places — stays owned by
- * `@pkg/schema`, since `NumberField` renders a text input and enforces none of it in the browser.
- */
-const optionalNumber = <TSchema extends z.ZodType>(schema: TSchema) => z.union([z.nan(), schema]);
 
 /** A movement's length bucket is only meaningful on a linear Part; `refineLengthForPart` requires it there. */
 const StockMovementLengthValue = optionalNumber(StockMovementLengthMm);
@@ -72,9 +68,112 @@ export const StockJobMovementFormValues = z.object({
 export type JobCloseOutFormValues = z.infer<typeof JobCloseOutFormValues>;
 export const JobCloseOutFormValues = z.object({ note: z.string() });
 
-/** The build's own field is its size; consumption is edited row-by-row outside the form schema. */
+/**
+ * The build's size and its consumption rows. The rows live in the form rather than beside it so one
+ * subscription drives the rows, the warnings and the submit label — none of them needs a stand-in
+ * build size to be computed early. The Built Part stays outside: it is the BOM query's key.
+ *
+ * `consumption` is keyed by component Part id and holds what the builder typed, unparsed: a row is
+ * a text control, and a half-typed "1." is not yet a number.
+ */
 export type StockBuildFormValues = z.infer<typeof StockBuildFormValues>;
-export const StockBuildFormValues = z.object({ quantity: StockMovementQuantity });
+export const StockBuildFormValues = z
+  .object({
+    consumption: z.record(z.string(), z.string()),
+    quantity: StockMovementQuantity,
+  })
+  .superRefine((values, context) => {
+    for (const [componentPartId, keyed] of Object.entries(values.consumption)) {
+      const quantity = Number(keyed);
+
+      if (keyed.trim() === '' || !Number.isFinite(quantity) || quantity < 0) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Enter a quantity of zero or more. Zero drops the line.',
+          path: ['consumption', componentPartId],
+        });
+      }
+    }
+  });
+
+/** One consumption row, carrying everything the screen renders and the ledger is asked to judge. */
+export type StockBuildRow = {
+  componentPartId: string;
+  /** BOM quantity × build size: what the row prefilled to, and what a deviation is measured from. */
+  expectedQuantity: number;
+  /** Raw material. Its line posts nothing, so its rack is never called short (spec §6). */
+  isInformational: boolean;
+  /** What the builder typed, as typed — the row is a text control. */
+  keyedQuantity: string;
+  lengthMm: number | null;
+  quantityOnHand: number;
+};
+
+/**
+ * The build's rows, prefilled from the BOM at the size being built and overridden by whatever the
+ * builder has keyed. Held as overrides rather than a copied list, so changing the build size
+ * re-prefills every row nobody has touched without discarding the ones they have.
+ */
+export function deriveStockBuildRows({
+  bomLines,
+  items,
+  values,
+}: {
+  bomLines: readonly BuildBomLine[];
+  items: readonly StockOnHandRow[];
+  values: Pick<StockBuildFormValues, 'consumption' | 'quantity'>;
+}): StockBuildRow[] {
+  const quantity = Number.isFinite(values.quantity) ? values.quantity : 0;
+
+  return deriveBuildConsumption({ bomLines, quantity }).map((line) => {
+    const item = items.find((candidate) => candidate.partId === line.componentPartId);
+    // Linear components come out of their standard purchase bucket unless the builder says otherwise.
+    const lengthMm = item?.unitOfMeasure === 'mm' ? item.standardPurchaseLengthMm : null;
+
+    return {
+      componentPartId: line.componentPartId,
+      expectedQuantity: line.quantity,
+      isInformational: item?.stockTrackingMode === 'periodic',
+      keyedQuantity: values.consumption[line.componentPartId] ?? String(line.quantity),
+      lengthMm,
+      quantityOnHand: item?.buckets.find((bucket) => bucket.lengthMm === lengthMm)?.quantity ?? 0,
+    };
+  });
+}
+
+/**
+ * The same judgement the ledger applies on post, run against what this screen has loaded so the
+ * builder sees it before committing rather than only afterwards.
+ */
+export function deriveStockBuildWarnings(rows: readonly StockBuildRow[]): StockMovementWarningCode[] {
+  return [
+    ...new Set(
+      rows.flatMap((row) =>
+        deriveBuildWarnings({
+          expectedQuantity: row.expectedQuantity,
+          isInformational: row.isInformational,
+          quantity: Number(row.keyedQuantity),
+          quantityOnHand: row.quantityOnHand,
+        }),
+      ),
+    ),
+  ];
+}
+
+/** A row the builder zeroed means none of it left the rack — a dropped line, not a zero movement. */
+export function toBuildInput(builtPartId: string, rows: readonly StockBuildRow[], quantity: number): PostBuildInput {
+  return PostBuildInput.parse({
+    builtPartId,
+    consumption: rows
+      .map((row) => ({
+        componentPartId: row.componentPartId,
+        lengthMm: row.lengthMm,
+        quantity: Number(row.keyedQuantity),
+      }))
+      .filter((line) => line.quantity > 0),
+    quantity,
+  });
+}
 
 /** Adds the per-Part rules a flat form schema cannot express on its own. */
 export function stockAdjustmentValidator(parts: readonly StockPartOption[]) {

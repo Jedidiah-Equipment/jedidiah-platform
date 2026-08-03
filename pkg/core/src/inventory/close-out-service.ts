@@ -15,17 +15,14 @@ import type { AuthId, CloseOutJobInput, CloseOutQueueResult, JobCloseOut, UUID }
 import {
   CloseOutQueueResult as CloseOutQueueResultSchema,
   DateOnlyIso,
+  JOB_STOCK_MOVEMENT_TYPES,
   JobCloseOut as JobCloseOutSchema,
-  JobStockMovementType,
 } from '@pkg/schema';
 import { type AnyColumn, and, asc, eq, inArray, isNotNull, isNull, type SQL, sql } from 'drizzle-orm';
 
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { lockMutableJob } from '../jobs/job-mutation-guards.js';
 import { JobAlreadyClosedOutError, JobNotCompletedError } from './close-out-errors.js';
-
-/** The one compile-checked list of Job-attributed movement types; net drawn must read them all. */
-const JOB_MOVEMENT_TYPES = JobStockMovementType.options;
 
 /**
  * Ends a Job's stock life in one insert. Leftovers are returned first through the ordinary
@@ -131,7 +128,7 @@ export async function listCloseOutQueue({
       })
       .from(stockMovements)
       .innerJoin(jobs, eq(jobs.id, stockMovements.jobId))
-      .where(and(closeOutCandidateCondition(), inArray(stockMovements.movementType, JOB_MOVEMENT_TYPES)))
+      .where(and(closeOutCandidateCondition(), inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES)))
       .groupBy(stockMovements.jobId, stockMovements.partId),
   ]);
 
@@ -186,7 +183,36 @@ export async function listCloseOutQueue({
 /**
  * One condition for all three reads, so an aggregate can never cover a different set than the list.
  * It predicates on `jobs` directly, so every caller must have that table joined into its query.
+ *
+ * The stock-activity arm is what keeps the queue bounded. Without it every completed Job the shop
+ * has ever finished stays a candidate forever — nothing ever closes out a Job that held no stock —
+ * and the reads below grow without limit. A Job that never drew and was never planned for cannot
+ * have leftovers or commitment, so excluding it here is exact, not an approximation.
+ *
+ * The remaining per-Part arithmetic stays in `deriveCommitment`. Expressing it here too would put
+ * the same rule in two languages, and the residue it would remove — a Job that drew and returned
+ * everything — is the small, human-sized set the queue is meant to be working through anyway.
  */
 function closeOutCandidateCondition() {
-  return and(isNotNull(jobs.completedOn), isNull(jobs.cancelledAt), jobIsNotClosedOut(jobs.id));
+  return and(isNotNull(jobs.completedOn), isNull(jobs.cancelledAt), jobIsNotClosedOut(jobs.id), hasStockActivity());
+}
+
+function hasStockActivity(): SQL {
+  const jobMovementTypes = sql.join(
+    JOB_STOCK_MOVEMENT_TYPES.map((movementType) => sql`${movementType}`),
+    sql`, `,
+  );
+
+  // Aliased: callers already have `stock_movement` and the CFO tables in their own FROM clauses.
+  return sql`(
+    EXISTS (
+      SELECT 1 FROM ${stockMovements} AS activity_movement
+      WHERE activity_movement.job_id = ${jobs.id}
+        AND activity_movement.movement_type IN (${jobMovementTypes})
+    ) OR EXISTS (
+      SELECT 1 FROM ${jobCfoAssemblies} AS activity_assembly
+      JOIN ${jobCfoParts} AS activity_cfo_part ON activity_cfo_part.cfo_assembly_id = activity_assembly.id
+      WHERE activity_assembly.job_id = ${jobs.id}
+    )
+  )`;
 }

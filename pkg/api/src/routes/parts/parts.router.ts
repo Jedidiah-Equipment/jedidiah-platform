@@ -3,13 +3,9 @@ import {
   createPart,
   getPart,
   getPartBom,
-  isPartBomError,
-  isPartCoreError,
   listPartCategories,
   listPartStorageLocations,
   listParts,
-  type PartBomError,
-  type PartCoreError,
   savePartBom,
   updatePart,
 } from '@pkg/core';
@@ -25,8 +21,9 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
+import { mapCoreErrors } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
+import { partBomErrorFamily, partCoreErrorFamily } from './part-error-families.js';
 
 export const partsRouter = router({
   list: authorizedProcedure('part:read')
@@ -73,73 +70,5 @@ export const partsRouter = router({
 });
 
 async function mapPartErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(
-    () => mapKnownCoreError(action, isPartBomError, mapPartBomError),
-    isPartCoreError,
-    mapPartCoreError,
-  );
-}
-
-function mapPartBomError(error: PartBomError): CoreErrorMapping<PartBomError['code']> {
-  switch (error.code) {
-    case 'part.bom_component_not_found':
-      return { appCode: error.code, code: 'NOT_FOUND', message: error.message };
-    case 'part.bom_cycle':
-    case 'part.bom_quantity':
-    case 'part.not_built':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    default:
-      return assertNever(error);
-  }
-}
-
-function mapPartCoreError(error: PartCoreError): CoreErrorMapping<PartCoreError['code']> {
-  switch (error.code) {
-    case 'part.duplicate_code':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: 'A part with this code already exists.',
-      };
-    case 'part.bulk_import_conflict':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: 'A CSV row matches an existing part code with a different supplier.',
-      };
-    case 'part.not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Part not found.',
-      };
-    case 'part.label_selection_empty':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'No Parts match this label selection.',
-      };
-    case 'part.supplier_not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Supplier not found.',
-      };
-    case 'part.bom_locked':
-      return { appCode: error.code, code: 'CONFLICT', message: error.message };
-    case 'part.supplier_locked_by_purchase_order':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: 'Supplier cannot change after the Part is used on a Purchase Order.',
-      };
-    case 'part.unit_of_measure_locked':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: 'Unit of Measure cannot change after the Part ledger starts.',
-      };
-    default:
-      return assertNever(error);
-  }
+  return mapCoreErrors(action, partBomErrorFamily, partCoreErrorFamily);
 }

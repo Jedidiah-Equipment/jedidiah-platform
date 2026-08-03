@@ -16,8 +16,10 @@ import { useAppForm } from './hooks/use-app-form.js';
 
 type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> = {
   /**
-   * Blocks submit for state the form schema cannot see — a failed dependency, or dynamic rows held
-   * outside the form. `onSubmit` is fire-and-forget, so a throw inside `onCreate` would be silent.
+   * Blocks submit for state the form schema cannot see — typically a dependency the dialog needs
+   * that has not loaded or has failed. `onSubmit` is fire-and-forget, so a throw inside `onCreate`
+   * would be silent; this refuses the click instead. Anything the values themselves determine
+   * belongs in `validator`, not here.
    */
   canSubmit?: boolean;
   children: (form: CreateEntityFormApi<TValues>) => React.ReactNode;

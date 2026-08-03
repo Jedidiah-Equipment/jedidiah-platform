@@ -78,6 +78,15 @@ export function unitClassFor(unitOfMeasure: PartUnitOfMeasure): PartUnitClass {
   return PART_UNIT_CLASS[unitOfMeasure];
 }
 
+/**
+ * Discrete and linear Parts are counted in whole units; only measured ones take decimals. Every
+ * surface that accepts a Part quantity — ledger movements, BOM lines, Purchase Order lines — asks
+ * this one question and raises its own error, so the rule cannot drift between them.
+ */
+export function isWholeUnitQuantity(quantity: number, unitClass: PartUnitClass): boolean {
+  return unitClass === 'measured' || Number.isInteger(quantity);
+}
+
 export type Part = z.infer<typeof Part>;
 export const Part = z.object({
   category: PartCategory,

@@ -22,6 +22,7 @@ import {
   DateIso,
   formatPurchaseOrderCode,
   getNextCursor,
+  isWholeUnitQuantity,
   type PurchaseOrder,
   type PurchaseOrderCreateInput,
   type PurchaseOrderListInput,
@@ -612,7 +613,7 @@ async function assertLinePartsMatchSupplier({
     if (!part) throw new PurchaseOrderPartNotFoundError(line.partId);
     if (part.supplierId === null) throw new PurchaseOrderPartNotPurchasableError(line.partId);
     if (part.supplierId !== supplierId) throw new PurchaseOrderPartSupplierMismatchError(line.partId);
-    if (unitClassFor(part.unitOfMeasure) !== 'measured' && !Number.isInteger(line.quantity)) {
+    if (!isWholeUnitQuantity(line.quantity, unitClassFor(part.unitOfMeasure))) {
       throw new PurchaseOrderInvalidQuantityError(line.partId);
     }
   }

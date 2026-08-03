@@ -2,12 +2,15 @@ import type { StockOnHandRow } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
+  deriveStockBuildRows,
+  deriveStockBuildWarnings,
   perpetualPartOptions,
   revaluablePartOptions,
   type StockPartOption,
   stockAdjustmentValidator,
   stockJobMovementValidator,
   toAdjustmentInput,
+  toBuildInput,
   toCloseOutJobInput,
   toJobMovementInput,
   toRevaluationInput,
@@ -174,5 +177,71 @@ describe('toCloseOutJobInput', () => {
       jobId,
       note: 'Two bars back in bin A',
     });
+  });
+});
+
+describe('stock build rows', () => {
+  const BOLT = '00000000-0000-4000-8000-00000000000b';
+  const PLATE = '00000000-0000-4000-8000-00000000000c';
+  const ASSEMBLY = '00000000-0000-4000-8000-00000000000a';
+  const bomLines = [
+    { componentPartId: BOLT, quantity: 4 },
+    { componentPartId: PLATE, quantity: 2 },
+  ];
+  const items: StockOnHandRow[] = [
+    stockRow({
+      buckets: [{ lengthMm: null, quantity: 100, totalValue: 250 }],
+      partId: BOLT,
+      standardPurchaseLengthMm: null,
+      unitOfMeasure: 'piece',
+    }),
+    stockRow({
+      buckets: [{ lengthMm: 6_000, quantity: 1, totalValue: 60 }],
+      partId: PLATE,
+      standardPurchaseLengthMm: 6_000,
+      stockTrackingMode: 'periodic',
+      unitOfMeasure: 'mm',
+    }),
+  ];
+
+  it('prefills at BOM times the build size and takes the linear standard bucket', () => {
+    const rows = deriveStockBuildRows({ bomLines, items, values: { consumption: {}, quantity: 3 } });
+
+    expect(rows).toEqual([
+      expect.objectContaining({ componentPartId: BOLT, expectedQuantity: 12, keyedQuantity: '12', lengthMm: null }),
+      expect.objectContaining({ componentPartId: PLATE, expectedQuantity: 6, keyedQuantity: '6', lengthMm: 6_000 }),
+    ]);
+  });
+
+  it('re-prefills untouched rows when the build size changes, and keeps the edited ones', () => {
+    const edited = { consumption: { [BOLT]: '9' }, quantity: 1 };
+    expect(deriveStockBuildRows({ bomLines, items, values: edited }).map((row) => row.keyedQuantity)).toEqual([
+      '9',
+      '2',
+    ]);
+
+    const resized = { ...edited, quantity: 5 };
+    expect(deriveStockBuildRows({ bomLines, items, values: resized }).map((row) => row.keyedQuantity)).toEqual([
+      '9',
+      '10',
+    ]);
+  });
+
+  it('agrees with the ledger about a periodic component: deviation reads, a short rack does not', () => {
+    // The plate is periodic and only 1 piece is on hand, but 6 are keyed. The server posts nothing
+    // for it and never calls its rack short, so the screen must not either.
+    const rows = deriveStockBuildRows({ bomLines, items, values: { consumption: {}, quantity: 3 } });
+    expect(deriveStockBuildWarnings(rows)).toEqual([]);
+
+    const deviating = deriveStockBuildRows({ bomLines, items, values: { consumption: { [PLATE]: '7' }, quantity: 3 } });
+    expect(deriveStockBuildWarnings(deviating)).toEqual(['bom-deviation']);
+  });
+
+  it('drops a zeroed row rather than posting a zero-quantity movement', () => {
+    const rows = deriveStockBuildRows({ bomLines, items, values: { consumption: { [BOLT]: '0' }, quantity: 1 } });
+
+    expect(toBuildInput(ASSEMBLY, rows, 1).consumption).toEqual([
+      { componentPartId: PLATE, lengthMm: 6_000, quantity: 2 },
+    ]);
   });
 });

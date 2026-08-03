@@ -1,65 +1,11 @@
-import type { Db } from '@pkg/db';
-import { eq, partBom, parts, stockMovements, supplier, user } from '@pkg/db';
+import { eq, stockMovements } from '@pkg/db';
 import { describe, expect } from 'vitest';
-
 import { PartNotBuiltError } from '../parts/part-bom-errors.js';
-import { savePartBom } from '../parts/part-bom-service.js';
-import { createTester } from '../test/create-tester.js';
+import { actorUserId, opening, test } from '../test/build-fixtures.js';
 import { BuildPeriodicPartError, BuildSelfComponentError } from './build-errors.js';
 import { postBuild } from './build-service.js';
-import { getStockMovementHistory, listStockOnHand, postAdjustment, postJobMovement } from './stock-movement-service.js';
-
-const actorUserId = 'build-test-user';
-
-const test = createTester(async ({ db }) => {
-  const now = new Date('2026-08-01T08:00:00.000Z');
-  await db.insert(user).values({
-    createdAt: now,
-    email: 'build@example.com',
-    emailVerified: true,
-    id: actorUserId,
-    name: 'Build Tester',
-    role: 'admin',
-    updatedAt: now,
-  });
-  const [createdSupplier] = await db.insert(supplier).values({ companyName: 'Build Supplier' }).returning();
-  if (!createdSupplier) throw new Error('Supplier insert did not return a row');
-
-  const seeded = await seedParts(db, createdSupplier.id);
-
-  // The assembly consumes 4 bolts and 1 cylinder per unit, plus raw plate that posts nothing.
-  await savePartBom({
-    actorUserId,
-    db,
-    input: {
-      lines: [
-        { componentPartId: seeded.bolt.id, quantity: 4 },
-        { componentPartId: seeded.cylinder.id, quantity: 1 },
-        { componentPartId: seeded.plate.id, quantity: 2 },
-      ],
-      partId: seeded.assembly.id,
-    },
-  });
-
-  await postAdjustment({
-    actorUserId,
-    db,
-    input: opening(seeded.bolt.id, { delta: 100, unitCost: 2.5 }),
-  });
-  await postAdjustment({
-    actorUserId,
-    db,
-    input: opening(seeded.cylinder.id, { delta: 10, unitCost: 100 }),
-  });
-  // Two 6 m lengths at R60 a piece, i.e. R0.01 per mm.
-  await postAdjustment({
-    actorUserId,
-    db,
-    input: { ...opening(seeded.channel.id, { delta: 2, unitCost: 60 }), lengthMm: 6_000 },
-  });
-
-  return { parts: seeded };
-});
+import { FabricatedPartCostError } from './stock-movement-errors.js';
+import { getStockMovementHistory, listStockOnHand, postAdjustment, postRevaluation } from './stock-movement-service.js';
 
 describe('postBuild', () => {
   test('is value preserving: what the consume rows take out, the produce row puts back', async ({ context }) => {
@@ -238,109 +184,37 @@ describe('postBuild', () => {
       }),
     ).rejects.toBeInstanceOf(BuildSelfComponentError);
   });
-});
 
-describe('savePartBom', () => {
-  test('refuses a BOM on a Part that is bought rather than built', async ({ context }) => {
+  test('costs a Built Part by its build and refuses the same figure keyed by hand', async ({ context }) => {
+    // The two halves of one invariant, pinned together so neither can be "fixed" on its own: a build
+    // may stamp the cost it derived, and no hand-entered figure may reach the same Part.
+    await postBuild({
+      actorUserId,
+      db: context.db,
+      input: {
+        builtPartId: context.parts.assembly.id,
+        consumption: [{ componentPartId: context.parts.bolt.id, lengthMm: null, quantity: 4 }],
+        quantity: 1,
+      },
+    });
+
+    const stockOnHand = await listStockOnHand({ db: context.db });
+    expect(stockOnHand.items.find((row) => row.partId === context.parts.assembly.id)?.averageUnitCost).toBe(10);
+
     await expect(
-      savePartBom({
+      postAdjustment({
         actorUserId,
         db: context.db,
-        input: { lines: [{ componentPartId: context.parts.cylinder.id, quantity: 1 }], partId: context.parts.bolt.id },
+        input: opening(context.parts.assembly.id, { delta: 1, unitCost: 10 }),
       }),
-    ).rejects.toBeInstanceOf(PartNotBuiltError);
-  });
+    ).rejects.toBeInstanceOf(FabricatedPartCostError);
 
-  test('rewrites the whole BOM, and an empty one is the trivial build', async ({ context }) => {
-    const emptied = await savePartBom({
-      actorUserId,
-      db: context.db,
-      input: { lines: [], partId: context.parts.assembly.id },
-    });
-    expect(emptied.lines).toEqual([]);
-
-    const rewritten = await savePartBom({
-      actorUserId,
-      db: context.db,
-      input: { lines: [{ componentPartId: context.parts.bolt.id, quantity: 7 }], partId: context.parts.assembly.id },
-    });
-    expect(rewritten.lines).toEqual([expect.objectContaining({ componentPartId: context.parts.bolt.id, quantity: 7 })]);
-
-    const stored = await context.db.select().from(partBom).where(eq(partBom.parentPartId, context.parts.assembly.id));
-    expect(stored).toHaveLength(1);
+    await expect(
+      postRevaluation({
+        actorUserId,
+        db: context.db,
+        input: { note: null, partId: context.parts.assembly.id, unitCost: 10 },
+      }),
+    ).rejects.toBeInstanceOf(FabricatedPartCostError);
   });
 });
-
-function opening(partId: string, overrides: { delta: number; unitCost: number }) {
-  return {
-    delta: overrides.delta,
-    lengthMm: null,
-    note: null,
-    partId,
-    reason: 'opening-balance' as const,
-    unitCost: overrides.unitCost,
-  };
-}
-
-async function seedParts(db: Db, supplierId: string) {
-  const [bolt, cylinder, plate, channel, assembly, periodicBuilt] = await db
-    .insert(parts)
-    .values([
-      partValues({ code: 'BOLT', supplierId, unitOfMeasure: 'piece' }),
-      partValues({ code: 'CYLINDER', supplierId, unitOfMeasure: 'piece' }),
-      partValues({
-        code: 'PLATE',
-        standardPurchaseLengthMm: 6_000,
-        stockTrackingMode: 'periodic',
-        supplierId,
-        unitOfMeasure: 'mm',
-      }),
-      partValues({ code: 'CHANNEL', standardPurchaseLengthMm: 6_000, supplierId, unitOfMeasure: 'mm' }),
-      partValues({ code: 'ASSEMBLY', isInternallyFabricated: true, supplierId, unitOfMeasure: 'piece' }),
-      partValues({
-        code: 'PERIODIC-BUILT',
-        isInternallyFabricated: true,
-        stockTrackingMode: 'periodic',
-        supplierId,
-        unitOfMeasure: 'piece',
-      }),
-    ])
-    .returning();
-
-  if (!bolt || !cylinder || !plate || !channel || !assembly || !periodicBuilt) {
-    throw new Error('Part inserts did not return all rows');
-  }
-
-  return { assembly, bolt, channel, cylinder, periodicBuilt, plate };
-}
-
-function partValues({
-  code,
-  isInternallyFabricated = false,
-  standardPurchaseLengthMm = null,
-  stockTrackingMode = 'perpetual',
-  supplierId,
-  unitOfMeasure,
-}: {
-  code: string;
-  isInternallyFabricated?: boolean;
-  standardPurchaseLengthMm?: number | null;
-  stockTrackingMode?: 'periodic' | 'perpetual';
-  supplierId: string;
-  unitOfMeasure: 'kg' | 'mm' | 'piece';
-}) {
-  return {
-    category: 'Test',
-    code,
-    description: `${code} description`,
-    finish: 'None',
-    isInternallyFabricated,
-    name: code,
-    standardPurchaseLengthMm,
-    stockTrackingMode,
-    supplierCode: code,
-    // Supplier XOR BOM: a built Part is made in-house and bought from nobody.
-    supplierId: isInternallyFabricated ? null : supplierId,
-    unitOfMeasure,
-  };
-}

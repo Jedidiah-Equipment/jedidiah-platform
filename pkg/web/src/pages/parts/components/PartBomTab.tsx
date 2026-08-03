@@ -1,8 +1,8 @@
 import type { PartBomLine, UUID } from '@pkg/schema';
-import { PartBomQuantity } from '@pkg/schema';
+import { SavePartBomInput } from '@pkg/schema';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button.js';
@@ -20,18 +20,35 @@ type DraftLine = { componentPartId: string; key: string; quantity: string };
 /**
  * A built Part's components. An empty BOM is legitimate — that is the trivial build of a Part whose
  * components are all raw material, which posts nothing when built (spec §6).
+ *
+ * The loaded BOM seeds the editor's initial rows and is never written back into them: the save
+ * invalidates `parts`, and a refetch landing mid-edit must not silently discard what is being typed.
+ * A different Part is a different editor, which the `key` says outright.
  */
 export function PartBomTab({ canEdit, partId }: { canEdit: boolean; partId: UUID }) {
   const trpc = useTRPC();
+  const bomQuery = useQuery(trpc.parts.bom.queryOptions({ partId }));
+
+  if (bomQuery.isPending) return <Skeleton className="h-32 w-full" />;
+  if (bomQuery.error) return <p className="text-destructive text-sm">Unable to load the Bill of Materials.</p>;
+
+  return <PartBomEditor canEdit={canEdit} initialLines={bomQuery.data.lines} key={partId} partId={partId} />;
+}
+
+function PartBomEditor({
+  canEdit,
+  initialLines,
+  partId,
+}: {
+  canEdit: boolean;
+  initialLines: readonly PartBomLine[];
+  partId: UUID;
+}) {
+  const trpc = useTRPC();
   const { invalidateParts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const bomQuery = useQuery(trpc.parts.bom.queryOptions({ partId }));
   const partsQuery = useQuery(trpc.parts.list.queryOptions({ limit: 0 }));
-  const [lines, setLines] = useState<DraftLine[]>([]);
-
-  useEffect(() => {
-    if (bomQuery.data) setLines(bomQuery.data.lines.map(toDraftLine));
-  }, [bomQuery.data]);
+  const [lines, setLines] = useState<DraftLine[]>(() => initialLines.map(toDraftLine));
 
   const saveMutation = useMutation(
     trpc.parts.saveBom.mutationOptions({
@@ -43,11 +60,12 @@ export function PartBomTab({ canEdit, partId }: { canEdit: boolean; partId: UUID
     }),
   );
 
-  if (bomQuery.isPending) return <Skeleton className="h-32 w-full" />;
-  if (bomQuery.error) return <p className="text-destructive text-sm">Unable to load the Bill of Materials.</p>;
-
   // A Part cannot be a component of itself, and the walk on save refuses deeper loops too.
   const componentOptions = (partsQuery.data?.items ?? []).filter((part) => part.id !== partId);
+  // The whole payload is checked by the schema that owns it — component ids, quantities, and the
+  // repeated-component rule — rather than by a local restatement that could drift from it.
+  const draft = { lines: lines.map(toSaveLine), partId };
+  const isSavable = SavePartBomInput.safeParse(draft).success;
 
   return (
     <div className="grid gap-4">
@@ -115,9 +133,9 @@ export function PartBomTab({ canEdit, partId }: { canEdit: boolean; partId: UUID
             Add component
           </Button>
           <Button
-            disabled={saveMutation.isPending || lines.some((line) => !isCompleteLine(line))}
+            disabled={saveMutation.isPending || !isSavable}
             onClick={() => {
-              void saveMutation.mutateAsync({ lines: lines.map(toSaveLine), partId }).catch(() => undefined);
+              void saveMutation.mutateAsync(draft).catch(() => undefined);
             }}
           >
             Save Bill of Materials
@@ -138,11 +156,6 @@ function updateLine(
 
 function toDraftLine(line: PartBomLine): DraftLine {
   return { componentPartId: line.componentPartId, key: line.componentPartId, quantity: String(line.quantity) };
-}
-
-/** The quantity rule lives in `@pkg/schema`; re-stating it here is how the two drift apart. */
-function isCompleteLine(line: DraftLine): boolean {
-  return line.componentPartId !== '' && PartBomQuantity.safeParse(Number(line.quantity)).success;
 }
 
 function toSaveLine(line: DraftLine) {

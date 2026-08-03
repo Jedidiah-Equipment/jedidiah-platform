@@ -3,11 +3,8 @@ import {
   closePurchaseOrderShort,
   createPurchaseOrder,
   getPurchaseOrder,
-  isPurchaseOrderCoreError,
-  JobNotFoundError,
   listPurchaseOrders,
   markPurchaseOrderSent,
-  type PurchaseOrderCoreError,
   postReceipt,
   savePurchaseOrderDraft,
 } from '@pkg/core';
@@ -25,13 +22,11 @@ import {
   StockMovementPostResult,
 } from '@pkg/schema';
 
-import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
+import { mapCoreErrors } from '../../trpc/errors.js';
 import { authorizedProcedure, type InventoryCostAccess, projectInventoryCostFields, router } from '../../trpc/init.js';
-import {
-  assertCanWriteInventoryCost,
-  mapStockMovementErrors,
-  projectMovement,
-} from '../inventory/stock-movement-transport.js';
+import { stockMovementErrorFamily } from '../inventory/inventory-error-families.js';
+import { assertCanWriteInventoryCost, projectMovement } from '../inventory/stock-movement-transport.js';
+import { purchaseOrderErrorFamily, purchaseOrderJobErrorFamily } from './purchase-order-error-families.js';
 
 export const purchaseOrdersRouter = router({
   cancel: authorizedProcedure('purchase_order:close')
@@ -142,47 +137,10 @@ function toPurchaseOrderView(purchaseOrder: PurchaseOrder, access: InventoryCost
 }
 
 async function mapPurchaseOrderErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(
-    () => mapKnownCoreError(action, isPurchaseOrderJobError, mapPurchaseOrderJobError),
-    isPurchaseOrderCoreError,
-    mapPurchaseOrderCoreError,
-  );
+  return mapCoreErrors(action, purchaseOrderErrorFamily, purchaseOrderJobErrorFamily);
 }
 
 /** A receipt fails on either side of its seam: the order and line it attaches to, or the ledger rules. */
 async function mapReceiptErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapStockMovementErrors(() => mapPurchaseOrderErrors(action));
-}
-
-function isPurchaseOrderJobError(error: unknown): error is JobNotFoundError {
-  return error instanceof JobNotFoundError;
-}
-
-function mapPurchaseOrderJobError(error: JobNotFoundError): CoreErrorMapping<JobNotFoundError['code']> {
-  return { appCode: error.code, code: 'NOT_FOUND', message: 'Job not found.' };
-}
-
-function mapPurchaseOrderCoreError(error: PurchaseOrderCoreError): CoreErrorMapping<PurchaseOrderCoreError['code']> {
-  switch (error.code) {
-    case 'purchase_order.line_not_found':
-    case 'purchase_order.not_found':
-    case 'purchase_order.part_not_found':
-    case 'purchase_order.supplier_not_found':
-      return { appCode: error.code, code: 'NOT_FOUND', message: error.message };
-    case 'purchase_order.already_cancelled':
-    case 'purchase_order.already_closed_short':
-    case 'purchase_order.closed_short':
-    case 'purchase_order.empty':
-    case 'purchase_order.fully_received':
-    case 'purchase_order.has_receipts':
-    case 'purchase_order.invalid_quantity':
-    case 'purchase_order.no_receipts':
-    case 'purchase_order.not_draft':
-    case 'purchase_order.not_sent':
-    case 'purchase_order.part_not_purchasable':
-    case 'purchase_order.part_supplier_mismatch':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    default:
-      return assertNever(error);
-  }
+  return mapCoreErrors(action, purchaseOrderErrorFamily, stockMovementErrorFamily);
 }

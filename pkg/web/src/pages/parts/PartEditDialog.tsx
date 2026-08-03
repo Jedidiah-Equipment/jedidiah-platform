@@ -11,7 +11,7 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PartBomTab } from './components/PartBomTab.js';
 import { PartForm } from './components/PartForm.js';
-import { toPartInput } from './components/types.js';
+import { type PartFormValues, toPartInput } from './components/types.js';
 import { PartLabelPrintButton } from './PartLabelPrintButton.js';
 
 type PartEditDialogProps = {
@@ -53,39 +53,61 @@ export const PartEditDialog: React.FC<PartEditDialogProps> = ({ onClose, part, s
           </div>
         </DialogHeader>
         {part ? (
-          <Tabs defaultValue="details">
-            {/* Only a built Part carries a BOM, so the tab appears with the flag rather than always. */}
-            {part.isInternallyFabricated ? (
-              <TabsList>
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
-              </TabsList>
-            ) : null}
-            <TabsContent value="details">
-              <PartForm
-                fixedSupplier={supplier ?? undefined}
-                initialPart={part}
-                isPending={updatePartMutation.isPending}
-                key={part.id}
-                onSubmit={(value) =>
-                  updatePartMutation.mutateAsync({
-                    // Only a dialog that really is supplier-scoped pins the Supplier. A built Part
-                    // has none, and forcing '' here would block converting it back to a bought one.
-                    ...toPartInput(supplier ? { ...value, supplierId: supplier.id } : value),
-                    id: part.id,
-                  })
-                }
-                submitLabel="Save part"
-              />
-            </TabsContent>
-            {part.isInternallyFabricated ? (
-              <TabsContent value="bom">
-                <PartBomTab canEdit={canUpdatePart} partId={part.id} />
-              </TabsContent>
-            ) : null}
-          </Tabs>
+          <PartEditBody
+            canUpdatePart={canUpdatePart}
+            isPending={updatePartMutation.isPending}
+            key={part.id}
+            onSubmit={(value) =>
+              updatePartMutation.mutateAsync({
+                // Only a dialog that really is supplier-scoped pins the Supplier. A built Part has
+                // none, and forcing '' here would block converting it back to a bought one.
+                ...toPartInput(supplier ? { ...value, supplierId: supplier.id } : value),
+                id: part.id,
+              })
+            }
+            part={part}
+            supplier={supplier}
+          />
         ) : null}
       </DialogContent>
     </Dialog>
+  );
+};
+
+/**
+ * A bought Part has one screen and no tab strip to choose between; only a built Part carries a Bill
+ * of Materials. Splitting on that once here keeps the two shapes legible rather than asking the same
+ * question at every level of one tree.
+ */
+const PartEditBody: React.FC<{
+  canUpdatePart: boolean;
+  isPending: boolean;
+  onSubmit: (value: PartFormValues) => Promise<unknown>;
+  part: Part;
+  supplier: Pick<Supplier, 'companyName' | 'id'> | null;
+}> = ({ canUpdatePart, isPending, onSubmit, part, supplier }) => {
+  const details = (
+    <PartForm
+      fixedSupplier={supplier ?? undefined}
+      initialPart={part}
+      isPending={isPending}
+      onSubmit={onSubmit}
+      submitLabel="Save part"
+    />
+  );
+
+  if (!part.isInternallyFabricated) return details;
+
+  return (
+    <Tabs defaultValue="details">
+      <TabsList>
+        <TabsTrigger value="details">Details</TabsTrigger>
+        <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
+      </TabsList>
+      <TabsContent value="details">{details}</TabsContent>
+      <TabsContent value="bom">
+        <PartBomTab canEdit={canUpdatePart} partId={part.id} />
+      </TabsContent>
+    </Tabs>
   );
 };

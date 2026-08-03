@@ -21,15 +21,17 @@ import {
 } from './types.js';
 
 /**
- * Confirms one delivery at the dock. Quantities only — the price rides in from the PO line, and a
- * correction is a cost-gated desk-side action, so a price-blind receiver never sees a money field.
+ * Confirms one delivery at the dock. The price rides in from the PO line unless a cost-authorized
+ * receiver corrects it; a price-blind receiver never sees or submits a money field.
  */
 export function PurchaseOrderReceiveDialog({
+  canReadCosts,
   line,
   onOpenChange,
   open,
   purchaseOrder,
 }: {
+  canReadCosts: boolean;
   line: PurchaseOrderLineView;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -60,13 +62,21 @@ export function PurchaseOrderReceiveDialog({
 
   return (
     <CreateEntityDialog<PurchaseOrderReceiveFormValues, { warnings: StockMovementWarningCode[] }>
-      defaultValues={{ lengthMm: Number.NaN, quantity: outstanding > 0 ? outstanding : Number.NaN }}
+      defaultValues={{
+        lengthMm: Number.NaN,
+        quantity: outstanding > 0 ? outstanding : Number.NaN,
+        unitCost: Number.NaN,
+      }}
       description={`${line.partCode} · ${line.partName} — ${line.receivedQuantity} of ${line.quantity} received so far.`}
       onCreate={(values) => {
         acknowledgedWarnings.current = receiptWarnings(values);
 
-        return mutation.mutateAsync(toReceiptInput({ line, purchaseOrderId: purchaseOrder.id, values }));
+        return mutation.mutateAsync(toReceiptInput({ canReadCosts, line, purchaseOrderId: purchaseOrder.id, values }));
       }}
+      onBeforeCreate={(values) =>
+        receiptWarnings(values).length === 0 ||
+        window.confirm('This receipt exceeds the quantity ordered. Receive it anyway?')
+      }
       onCreated={async (result) => {
         await Promise.all([invalidatePurchaseOrders(), invalidateInventory()]);
         onOpenChange(false);
@@ -99,6 +109,16 @@ export function PurchaseOrderReceiveDialog({
                   label="Length (mm)"
                   min={1}
                   step="1"
+                />
+              )}
+            </form.AppField>
+          ) : null}
+          {canReadCosts ? (
+            <form.AppField name="unitCost">
+              {(field) => (
+                <field.CurrencyField
+                  label="Unit cost override"
+                  placeholder="Leave blank to use the Purchase Order price"
                 />
               )}
             </form.AppField>

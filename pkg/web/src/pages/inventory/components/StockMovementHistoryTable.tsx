@@ -23,6 +23,7 @@ export function StockMovementHistoryTable({
           <TableHead>Running balance</TableHead>
           <TableHead>Note</TableHead>
           <TableHead>Actor</TableHead>
+          <TableHead>Reference</TableHead>
           {showCosts ? <TableHead>Unit cost</TableHead> : null}
           {showCosts ? <TableHead>Movement value</TableHead> : null}
         </TableRow>
@@ -36,6 +37,18 @@ export function StockMovementHistoryTable({
             <TableCell className="tabular-nums">{formatLedgerQuantity(item.runningBalance, unitOfMeasure)}</TableCell>
             <TableCell>{item.note ?? '—'}</TableCell>
             <TableCell>{item.actorName}</TableCell>
+            <TableCell>
+              {item.purchaseOrderId && item.purchaseOrderCode ? (
+                <a
+                  className="font-medium underline-offset-4 hover:underline"
+                  href={`/purchase-orders/${item.purchaseOrderId}`}
+                >
+                  {item.purchaseOrderCode}
+                </a>
+              ) : (
+                '—'
+              )}
+            </TableCell>
             {showCosts ? <TableCell>{formatCost(item.unitCost)}</TableCell> : null}
             {showCosts ? <TableCell>{formatCost(item.movementValue)}</TableCell> : null}
           </TableRow>

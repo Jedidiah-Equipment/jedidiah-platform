@@ -2,7 +2,7 @@ import { describe, expect } from 'vitest';
 
 import { actorUserId, adjustmentInput, seedSentPurchaseOrder, test } from '../test/inventory-fixtures.js';
 import { postReceipt } from './receipt-service.js';
-import { listStockOnHand, postAdjustment } from './stock-movement-service.js';
+import { getStockMovementHistory, listStockOnHand, postAdjustment } from './stock-movement-service.js';
 
 describe('postReceipt', () => {
   test('posts a receipt at the line price and feeds it into stock on hand and the moving average', async ({
@@ -23,6 +23,7 @@ describe('postReceipt', () => {
       input: { lengthMm: null, partId: context.parts.piece.id, purchaseOrderId, quantity: 10, unitCost: null },
     });
     const stockOnHand = await listStockOnHand({ db: context.db });
+    const history = await getStockMovementHistory({ db: context.db, partId: context.parts.piece.id });
     const piece = stockOnHand.items.find((row) => row.partId === context.parts.piece.id);
 
     expect(result).toMatchObject({
@@ -30,6 +31,7 @@ describe('postReceipt', () => {
       warnings: [],
     });
     expect(piece?.quantity).toBe(20);
+    expect(history.items.at(-1)).toMatchObject({ purchaseOrderCode: expect.stringMatching(/^PO-/), purchaseOrderId });
     // Ten pieces at 15 met ten at 25.
     expect(piece?.averageUnitCost).toBeCloseTo(20, 10);
   });

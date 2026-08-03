@@ -2,6 +2,7 @@ import {
   DateOnlyIso,
   DateOnlyIsoString,
   hasUniquePartIds,
+  InventoryUnitCost,
   PostReceiptInput,
   PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
   type PurchaseOrderCreateInput,
@@ -78,6 +79,7 @@ export type PurchaseOrderReceiveFormValues = z.infer<typeof PurchaseOrderReceive
 export const PurchaseOrderReceiveFormValues = z.object({
   lengthMm: optionalNumber(StockMovementLengthMm),
   quantity: StockMovementQuantity,
+  unitCost: optionalNumber(InventoryUnitCost),
 });
 
 /** The outstanding quantity a line is still waiting on, floored at zero once it is over-delivered. */
@@ -94,10 +96,12 @@ export function isLinearLine(line: Pick<PurchaseOrderLineView, 'unitOfMeasure'>)
  * Part's standard purchase length — so the dock only keys one when the delivery is not that.
  */
 export function toReceiptInput({
+  canReadCosts,
   line,
   purchaseOrderId,
   values,
 }: {
+  canReadCosts: boolean;
   line: Pick<PurchaseOrderLineView, 'partId' | 'unitOfMeasure'>;
   purchaseOrderId: PurchaseOrderView['id'];
   values: PurchaseOrderReceiveFormValues;
@@ -107,6 +111,6 @@ export function toReceiptInput({
     partId: line.partId,
     purchaseOrderId,
     quantity: values.quantity,
-    unitCost: null,
+    unitCost: canReadCosts && !Number.isNaN(values.unitCost) ? values.unitCost : null,
   });
 }

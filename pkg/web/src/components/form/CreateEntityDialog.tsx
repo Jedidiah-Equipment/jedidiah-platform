@@ -27,6 +27,7 @@ type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> =
   description?: React.ReactNode;
   onCreated: (result: TResult) => Promise<void> | void;
   onCreate: (values: TValues) => Promise<TResult>;
+  onBeforeCreate?: (values: TValues) => boolean;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   /** Static label, or derive it from the live form values (e.g. a kind-dependent verb). */
@@ -59,6 +60,7 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
   description,
   onCreated,
   onCreate,
+  onBeforeCreate,
   onOpenChange,
   open,
   submitLabel = 'Save',
@@ -71,6 +73,7 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
       onSubmit: validator,
     },
     onSubmit: async ({ value }) => {
+      if (onBeforeCreate && !onBeforeCreate(value as TValues)) return;
       const result = await onCreate(value as TValues);
       await onCreated(result);
     },

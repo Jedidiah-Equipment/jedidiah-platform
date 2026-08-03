@@ -82,7 +82,16 @@ export function hasNumberFieldValueChanged(previousValue: number, nextValue: num
 }
 
 export function formatNumberFieldValue(value: number, decimals?: number): string {
-  return formatNumber(value, decimals === undefined ? undefined : { decimals });
+  if (!Number.isFinite(value)) return '';
+
+  return formatNumber(value, { decimals: decimals ?? decimalPlaces(value) });
+}
+
+function decimalPlaces(value: number): number {
+  const [coefficient = '', exponentText = '0'] = String(value).toLowerCase().split('e');
+  const fractionLength = coefficient.split('.')[1]?.length ?? 0;
+
+  return Math.max(0, fractionLength - Number(exponentText));
 }
 
 export function parseNumberFieldValue(text: string, emptyValue = NaN): number {

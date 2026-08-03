@@ -9,6 +9,8 @@ describe('formatNumberFieldValue', () => {
   it('formats finite numeric values as plain input text', () => {
     expect(formatNumberFieldValue(0)).toBe('0');
     expect(formatNumberFieldValue(1000000)).toBe('1 000 000');
+    expect(formatNumberFieldValue(12.5)).toBe('12.5');
+    expect(formatNumberFieldValue(1e-7)).toBe('0.0000001');
     expect(formatNumberFieldValue(12.5, 2)).toBe('12.50');
   });
 });

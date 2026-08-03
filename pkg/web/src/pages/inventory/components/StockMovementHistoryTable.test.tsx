@@ -74,6 +74,7 @@ const result = StockMovementHistoryResult.parse({
       note: null,
       partId: '00000000-0000-4000-8000-000000000001',
       purchaseOrderId: '00000000-0000-4000-8000-000000000098',
+      purchaseOrderCode: 'PO-00042',
       reason: null,
       runningBalance: 13,
       unitCost: 25,
@@ -97,6 +98,8 @@ describe('StockMovementHistoryTable', () => {
     expect(html).toContain('Revaluation');
     expect(html).toContain('Checkout');
     expect(html).toContain('Receipt');
+    expect(html).toContain('PO-00042');
+    expect(html).toContain('/purchase-orders/00000000-0000-4000-8000-000000000098');
     expect(html).toContain('10 pc');
     expect(html).toContain('Test User');
     expect(html).toContain('Supplier repriced');

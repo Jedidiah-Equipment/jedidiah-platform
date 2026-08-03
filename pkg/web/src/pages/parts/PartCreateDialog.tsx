@@ -14,7 +14,7 @@ import { PartForm } from './components/PartForm.js';
 import { toPartInput } from './components/types.js';
 
 type PartCreateDialogProps = {
-  supplier: Pick<Supplier, 'companyName' | 'id'>;
+  supplier?: Pick<Supplier, 'companyName' | 'id'>;
   buttonSize?: ButtonSize;
 };
 
@@ -48,19 +48,16 @@ export const PartCreateDialog: React.FC<PartCreateDialogProps> = ({ supplier, bu
         <DialogContent className="sm:max-w-[720px]">
           <DialogHeader>
             <DialogTitle>New part</DialogTitle>
-            <DialogDescription>{supplier.companyName}</DialogDescription>
+            <DialogDescription>
+              {supplier?.companyName ?? 'Create a bought or internally fabricated Part.'}
+            </DialogDescription>
           </DialogHeader>
           {isOpen ? (
             <PartForm
               fixedSupplier={supplier}
               isPending={createPartMutation.isPending}
               onSubmit={(value) =>
-                createPartMutation.mutateAsync(
-                  toPartInput({
-                    ...value,
-                    supplierId: supplier.id,
-                  }),
-                )
+                createPartMutation.mutateAsync(toPartInput(supplier ? { ...value, supplierId: supplier.id } : value))
               }
               submitLabel="Create part"
             />

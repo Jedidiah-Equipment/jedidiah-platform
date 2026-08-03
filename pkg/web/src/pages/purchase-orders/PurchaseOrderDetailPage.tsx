@@ -152,7 +152,7 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ p
       ) : (
         <>
           <ReadOnlyDetailsCard purchaseOrder={purchaseOrder} />
-          {canReceive ? <PurchaseOrderReceivingCard purchaseOrder={purchaseOrder} /> : null}
+          {canReceive ? <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} /> : null}
           <ReadOnlyLinesCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
           <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
         </>
@@ -227,11 +227,15 @@ const PurchaseOrderActions: React.FC<{
       const url = `/api/purchase-orders/${purchaseOrder.id}/preview`;
       if (previewWindow) previewWindow.location.href = url;
       else window.location.assign(url);
+      toast.success('PDF preview opened');
     }, 'Save all Purchase Order changes before previewing the PDF.')
       .then((didRun) => {
         if (!didRun) previewWindow?.close();
       })
-      .catch(() => previewWindow?.close());
+      .catch(() => {
+        previewWindow?.close();
+        toast.error('Unable to open the PDF preview.');
+      });
   };
 
   return (

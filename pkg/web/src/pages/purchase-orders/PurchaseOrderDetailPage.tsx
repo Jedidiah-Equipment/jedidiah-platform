@@ -27,6 +27,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from '../jobs/components/all-jobs-input.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
+import { loadPurchaseOrderPreview } from './components/purchase-order-preview.js';
 import {
   type PurchaseOrderDraftFormValues,
   PurchaseOrderDraftFormValues as PurchaseOrderDraftFormValuesSchema,
@@ -225,8 +226,11 @@ const PurchaseOrderActions: React.FC<{
 
     void runAfterSave(async () => {
       const url = `/api/purchase-orders/${purchaseOrder.id}/preview`;
-      if (previewWindow) previewWindow.location.href = url;
-      else window.location.assign(url);
+      const previewUrl = await loadPurchaseOrderPreview(url);
+      if (previewWindow) previewWindow.location.href = previewUrl;
+      else window.location.assign(previewUrl);
+      // Delay revocation long enough for either tab-navigation path to consume the object URL.
+      window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60_000);
       toast.success('PDF preview opened');
     }, 'Save all Purchase Order changes before previewing the PDF.')
       .then((didRun) => {

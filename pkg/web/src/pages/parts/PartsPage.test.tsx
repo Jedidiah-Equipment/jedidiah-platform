@@ -13,7 +13,7 @@ vi.mock('./components/PartTable.js', () => ({
   PartTable: ({ rightSection }: { rightSection: React.ReactNode }) => <div>{rightSection}</div>,
 }));
 vi.mock('./PartEditDialog.js', () => ({ PartEditDialog: () => null }));
-vi.mock('./PartCreateDialog.js', () => ({ PartCreateDialog: () => <button type="button">New part</button> }));
+vi.mock('./PartListCreateDialog.js', () => ({ PartListCreateDialog: () => null }));
 vi.mock('./PartBulkImportDialog.js', () => ({
   PartBulkImportDialog: () => <button type="button">Bulk parts import</button>,
 }));

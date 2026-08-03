@@ -71,6 +71,20 @@ describe('Purchase Order draft form values', () => {
     });
   });
 
+  it('rejects a Part appearing on two lines, the same rule the save input enforces', () => {
+    const duplicated = {
+      expectedDeliveryDate: '',
+      jobIds: [],
+      lines: [
+        { partId: PART_ID, quantity: 1, unitPrice: 10 },
+        { partId: PART_ID, quantity: 2, unitPrice: 20 },
+      ],
+      supplierId: purchaseOrder.supplierId,
+    };
+
+    expect(PurchaseOrderDraftFormValues.safeParse(duplicated).success).toBe(false);
+  });
+
   it('creates a draft from the supplier and expected date alone', () => {
     const values = PurchaseOrderCreateFormValues.parse({
       expectedDeliveryDate: '2026-08-20',

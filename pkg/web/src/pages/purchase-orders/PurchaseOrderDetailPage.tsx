@@ -313,6 +313,13 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
                   <TableBody>
                     {lines.map((line, index) => {
                       const part = eligibleParts.find((candidate) => candidate.id === line.partId);
+                      // A Part appears once per order, so every other row's pick drops out of this
+                      // one's choices; its own stays so the selected value keeps a label.
+                      const partOptions = eligibleParts
+                        .filter(
+                          (option) => option.id === line.partId || !lines.some((other) => other.partId === option.id),
+                        )
+                        .map((option) => ({ label: `${option.code} · ${option.name}`, value: option.id }));
 
                       return (
                         <TableRow key={getLineKey(line)}>
@@ -322,10 +329,7 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
                                 <field.SelectField
                                   label={<span className="sr-only">Part</span>}
                                   onValueCommit={commit}
-                                  options={eligibleParts.map((option) => ({
-                                    label: `${option.code} · ${option.name}`,
-                                    value: option.id,
-                                  }))}
+                                  options={partOptions}
                                 />
                               )}
                             </form.AppField>

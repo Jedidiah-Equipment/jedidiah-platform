@@ -103,6 +103,13 @@ function uniqueValues(values: readonly string[]): boolean {
   return new Set(values).size === values.length;
 }
 
+export const PURCHASE_ORDER_DUPLICATE_PART_MESSAGE = 'A Part can appear only once on a Purchase Order';
+
+/** Shared with the draft form so a duplicate reads as a field error, not a rejected save. */
+export function hasUniquePartIds(lines: readonly { partId: string }[]): boolean {
+  return uniqueValues(lines.map((line) => line.partId));
+}
+
 /**
  * A draft is saved whole: supplier, expected date, lines, and Job links are one editable aggregate,
  * so one transaction owns the supplier/line consistency rule and one audit event records the change.
@@ -114,8 +121,8 @@ export const PurchaseOrderSaveDraftInput = PurchaseOrderCreateInput.extend({
   lines: z.array(PurchaseOrderLineInput),
 })
   .strict()
-  .refine((input) => uniqueValues(input.lines.map((line) => line.partId)), {
-    message: 'A Part can appear only once on a Purchase Order',
+  .refine((input) => hasUniquePartIds(input.lines), {
+    message: PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
     path: ['lines'],
   })
   .refine((input) => uniqueValues(input.jobIds), {

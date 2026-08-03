@@ -1,6 +1,8 @@
 import {
   DateOnlyIso,
   DateOnlyIsoString,
+  hasUniquePartIds,
+  PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
   type PurchaseOrderCreateInput,
   PurchaseOrderLineInput,
   type PurchaseOrderSaveDraftInput,
@@ -20,6 +22,11 @@ export type PurchaseOrderDraftFormValues = z.infer<typeof PurchaseOrderDraftForm
 export const PurchaseOrderDraftFormValues = PurchaseOrderCreateFormValues.extend({
   jobIds: z.array(UUID),
   lines: z.array(PurchaseOrderLineInput),
+  // Mirrors PurchaseOrderSaveDraftInput so a duplicate Part fails validation here rather than
+  // autosaving into a server rejection the reader cannot trace back to a row.
+}).refine((values) => hasUniquePartIds(values.lines), {
+  message: PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
+  path: ['lines'],
 });
 
 export function toPurchaseOrderCreateInput(values: PurchaseOrderCreateFormValues): PurchaseOrderCreateInput {

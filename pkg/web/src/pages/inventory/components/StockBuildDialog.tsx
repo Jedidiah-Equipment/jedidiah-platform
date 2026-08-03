@@ -1,7 +1,8 @@
 import { deriveBuildConsumption, deriveBuildWarnings } from '@pkg/domain';
-import type { StockMovementWarningCode, StockOnHandRow, UUID } from '@pkg/schema';
+import type { StockMovementWarningCode, StockOnHandRow } from '@pkg/schema';
+import { PostBuildInput } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
@@ -15,11 +16,19 @@ import { useTRPC } from '@/lib/trpc.js';
 import { StockMovementWarningPrompt, warningMessageFor } from './StockMovementWarningPrompt.js';
 import { type StockBuildFormValues, StockBuildFormValues as StockBuildFormValuesSchema } from './types.js';
 
-type ConsumptionDraft = { componentPartId: string; lengthMm: number | null; quantity: string };
+type ConsumptionLine = {
+  componentPartId: string;
+  expectedQuantity: number;
+  lengthMm: number | null;
+  quantity: string;
+};
 
 /**
  * Posts one build. The consumption prefills at BOM × N and is edited to what actually left the rack;
  * a deviation warns and posts, and a short rack goes negative — the build already happened.
+ *
+ * Edits are held per component rather than as a copied list, so changing the build size re-prefills
+ * every line the builder has not touched without discarding the ones they have.
  */
 export function StockBuildDialog({
   buildableParts,
@@ -36,31 +45,18 @@ export function StockBuildDialog({
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [builtPartId, setBuiltPartId] = useState(buildableParts[0]?.partId ?? '');
+  const [edits, setEdits] = useState<Record<string, string>>({});
   const builtPart = buildableParts.find((part) => part.partId === builtPartId);
-  const bomQuery = useQuery(
-    trpc.parts.bom.queryOptions({ partId: builtPartId as UUID }, { enabled: builtPartId !== '' }),
-  );
-  const [quantity, setQuantity] = useState('1');
-  const [consumption, setConsumption] = useState<ConsumptionDraft[]>([]);
+  const bomQuery = useQuery(trpc.parts.bom.queryOptions({ partId: builtPartId }, { enabled: builtPartId !== '' }));
 
   const bomLines = useMemo(
     () =>
-      (bomQuery.data?.lines ?? []).map((line) => ({ componentPartId: line.componentPartId, quantity: line.quantity })),
+      (bomQuery.data?.lines ?? []).map((line) => ({
+        componentPartId: line.componentPartId,
+        quantity: line.quantity,
+      })),
     [bomQuery.data?.lines],
   );
-
-  useEffect(() => {
-    const buildQuantity = Number(quantity);
-    if (!Number.isFinite(buildQuantity) || buildQuantity <= 0) return;
-
-    setConsumption(
-      deriveBuildConsumption({ bomLines, quantity: buildQuantity }).map((line) => ({
-        componentPartId: line.componentPartId,
-        lengthMm: standardLengthOf(items, line.componentPartId),
-        quantity: String(line.quantity),
-      })),
-    );
-  }, [bomLines, items, quantity]);
 
   const mutation = useMutation(
     trpc.inventory.postBuild.mutationOptions({
@@ -68,51 +64,83 @@ export function StockBuildDialog({
     }),
   );
 
-  const warnings = consumption.flatMap((line) =>
-    deriveBuildWarnings({
-      expectedQuantity:
-        (bomLines.find((bom) => bom.componentPartId === line.componentPartId)?.quantity ?? 0) * Number(quantity),
-      quantity: Number(line.quantity),
-      quantityOnHand: bucketOnHandOf(items, line.componentPartId, line.lengthMm),
-    }),
-  );
-  const uniqueWarnings = [...new Set(warnings)] as StockMovementWarningCode[];
+  function consumptionFor(quantity: number): ConsumptionLine[] {
+    return deriveBuildConsumption({ bomLines, quantity }).map((line) => ({
+      componentPartId: line.componentPartId,
+      expectedQuantity: line.quantity,
+      lengthMm: standardLengthOf(items, line.componentPartId),
+      quantity: edits[line.componentPartId] ?? String(line.quantity),
+    }));
+  }
+
+  /**
+   * The same judgement the ledger applies on post, run against what this dialog has loaded so the
+   * builder sees it before committing rather than only afterwards. Until the BOM arrives every
+   * figure reads zero, which would warn on any build at all, so it stays quiet.
+   */
+  function warningsFor(quantity: number): StockMovementWarningCode[] {
+    if (bomQuery.isPending || !Number.isFinite(quantity)) return [];
+
+    return [
+      ...new Set(
+        consumptionFor(quantity).flatMap((line) =>
+          deriveBuildWarnings({
+            expectedQuantity: line.expectedQuantity,
+            quantity: Number(line.quantity),
+            quantityOnHand: bucketOnHandOf(items, line.componentPartId, line.lengthMm),
+          }),
+        ),
+      ),
+    ];
+  }
 
   return (
     <CreateEntityDialog<StockBuildFormValues, { warnings: Array<{ codes: StockMovementWarningCode[] }> }>
       defaultValues={{ quantity: 1 }}
       description="Record what came off the rack, and what it took to make it."
-      onCreate={() =>
-        mutation.mutateAsync({
-          builtPartId: builtPartId as UUID,
-          consumption: consumption.map((line) => ({
-            componentPartId: line.componentPartId as UUID,
-            lengthMm: line.lengthMm,
-            quantity: Number(line.quantity),
-          })),
-          quantity: Number(quantity),
-        })
-      }
+      onCreate={(values) => {
+        if (builtPartId === '') throw new Error('Select a Part to build');
+
+        return mutation.mutateAsync(
+          PostBuildInput.parse({
+            builtPartId,
+            consumption: consumptionFor(values.quantity).map((line) => ({
+              componentPartId: line.componentPartId,
+              lengthMm: line.lengthMm,
+              quantity: Number(line.quantity),
+            })),
+            quantity: values.quantity,
+          }),
+        );
+      }}
       onCreated={async (result) => {
         await invalidateInventory();
         onOpenChange(false);
         toast.success('Build posted');
         // The prompt already showed what the dialog could see; only raise what its snapshot missed.
+        const raised = new Set(warningsFor(1));
         for (const code of new Set(result.warnings.flatMap((warning) => warning.codes))) {
-          if (!uniqueWarnings.includes(code)) toast.warning(warningMessageFor(code));
+          if (!raised.has(code)) toast.warning(warningMessageFor(code));
         }
       }}
       onOpenChange={onOpenChange}
       open={open}
-      submitLabel={uniqueWarnings.length > 0 ? 'Build anyway' : 'Post build'}
+      submitLabel={(values) => (warningsFor(values.quantity).length > 0 ? 'Build anyway' : 'Post build')}
       title="Build stock"
       validator={StockBuildFormValuesSchema}
     >
-      {() => (
+      {(form) => (
         <>
           <Field>
             <FieldLabel htmlFor="stock-build-part">Built Part</FieldLabel>
-            <Select onValueChange={(partId) => setBuiltPartId(partId ?? '')} value={builtPartId}>
+            <Select
+              onValueChange={(partId) => {
+                setBuiltPartId(partId ?? '');
+                // A different Part has different components, so held edits no longer mean anything.
+                setEdits({});
+              }}
+              value={builtPartId}
+            >
               <SelectTrigger className="w-full" id="stock-build-part">
                 <SelectValue placeholder="Select Part">
                   {builtPart ? `${builtPart.partCode} · ${builtPart.partName}` : null}
@@ -129,41 +157,43 @@ export function StockBuildDialog({
               </SelectContent>
             </Select>
           </Field>
-          <Field>
-            <FieldLabel htmlFor="stock-build-quantity">Units built</FieldLabel>
-            <Input
-              id="stock-build-quantity"
-              inputMode="decimal"
-              onChange={(event) => setQuantity(event.target.value)}
-              value={quantity}
-            />
-          </Field>
-          {bomQuery.isPending ? (
-            <p className="text-muted-foreground text-sm">Loading the Bill of Materials...</p>
-          ) : null}
-          {consumption.length === 0 && !bomQuery.isPending ? (
-            <p className="text-muted-foreground text-sm">
-              No components to consume. This Part is made from raw material alone.
-            </p>
-          ) : null}
-          {consumption.map((line, index) => (
-            <Field key={line.componentPartId}>
-              <FieldLabel htmlFor={`stock-build-component-${index}`}>
-                {labelFor(items, line.componentPartId)}
-              </FieldLabel>
-              <Input
-                id={`stock-build-component-${index}`}
-                inputMode="decimal"
-                onChange={(event) =>
-                  setConsumption((current) =>
-                    current.map((draft, at) => (at === index ? { ...draft, quantity: event.target.value } : draft)),
-                  )
-                }
-                value={line.quantity}
-              />
-            </Field>
-          ))}
-          <StockMovementWarningPrompt warnings={uniqueWarnings} />
+          <form.AppField name="quantity">
+            {(field) => <field.NumberField label="Units built" min={0.001} step="0.001" />}
+          </form.AppField>
+          <form.Subscribe selector={(state) => state.values.quantity}>
+            {(quantity) => {
+              const consumption = Number.isFinite(quantity) ? consumptionFor(quantity) : [];
+
+              return (
+                <>
+                  {bomQuery.isPending ? (
+                    <p className="text-muted-foreground text-sm">Loading the Bill of Materials...</p>
+                  ) : null}
+                  {consumption.length === 0 && !bomQuery.isPending ? (
+                    <p className="text-muted-foreground text-sm">
+                      No components to consume. This Part is made from raw material alone.
+                    </p>
+                  ) : null}
+                  {consumption.map((line) => (
+                    <Field key={line.componentPartId}>
+                      <FieldLabel htmlFor={`stock-build-${line.componentPartId}`}>
+                        {labelFor(items, line.componentPartId)}
+                      </FieldLabel>
+                      <Input
+                        id={`stock-build-${line.componentPartId}`}
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          setEdits((current) => ({ ...current, [line.componentPartId]: event.target.value }))
+                        }
+                        value={line.quantity}
+                      />
+                    </Field>
+                  ))}
+                  <StockMovementWarningPrompt warnings={warningsFor(quantity)} />
+                </>
+              );
+            }}
+          </form.Subscribe>
         </>
       )}
     </CreateEntityDialog>

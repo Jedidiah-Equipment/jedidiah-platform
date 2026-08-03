@@ -134,6 +134,9 @@ const PartInputFields = z.object({
   unitOfMeasure: PartUnitOfMeasure,
 });
 
+/** The one wording for the Supplier-XOR-BOM rule, so the entity form and the CSV row agree. */
+export const PART_BUILT_HAS_NO_SUPPLIER_MESSAGE = 'A built Part is made in-house and has no Supplier';
+
 /**
  * A Part has either a Supplier or a BOM — never both, never neither (spec §6). The stored form of
  * that invariant is the fabricated flag against `supplierId`; the BOM side is service-enforced,
@@ -146,7 +149,7 @@ export function refinePartSupplier(
   if (input.isInternallyFabricated && input.supplierId !== null) {
     context.addIssue({
       code: 'custom',
-      message: 'A built Part is made in-house and has no Supplier',
+      message: PART_BUILT_HAS_NO_SUPPLIER_MESSAGE,
       path: ['supplierId'],
     });
   }
@@ -214,12 +217,9 @@ export const PartBulkImportRow = z
       context,
     );
 
+    // The same rule as `refinePartSupplier`, against the Supplier *name* a CSV row carries.
     if (input.isInternallyFabricated && input.supplierName !== null) {
-      context.addIssue({
-        code: 'custom',
-        message: 'A built Part is made in-house and has no Supplier',
-        path: ['supplierName'],
-      });
+      context.addIssue({ code: 'custom', message: PART_BUILT_HAS_NO_SUPPLIER_MESSAGE, path: ['supplierName'] });
     }
 
     if (!input.isInternallyFabricated && input.supplierName === null) {

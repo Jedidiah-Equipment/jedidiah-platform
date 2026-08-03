@@ -50,6 +50,12 @@ const test = createTester(async ({ db }) => {
     db,
     input: opening(seeded.cylinder.id, { delta: 10, unitCost: 100 }),
   });
+  // Two 6 m lengths at R60 a piece, i.e. R0.01 per mm.
+  await postAdjustment({
+    actorUserId,
+    db,
+    input: { ...opening(seeded.channel.id, { delta: 2, unitCost: 60 }), lengthMm: 6_000 },
+  });
 
   return { parts: seeded };
 });
@@ -83,6 +89,25 @@ describe('postBuild', () => {
 
     expect(consumedValue + producedValue).toBeCloseTo(0, 6);
     expect(movements.every((row) => row.buildId === result.build.id)).toBe(true);
+  });
+
+  test('values a linear component once, at its piece cost rather than per millimetre', async ({ context }) => {
+    const result = await postBuild({
+      actorUserId,
+      db: context.db,
+      input: {
+        builtPartId: context.parts.assembly.id,
+        consumption: [{ componentPartId: context.parts.channel.id, lengthMm: 6_000, quantity: 2 }],
+        quantity: 2,
+      },
+    });
+
+    // Two 6 m pieces at R60 each is R120 consumed, over 2 units built — not R720 000.
+    expect(result.producedUnitCost).toBe(60);
+
+    const movements = await context.db.select().from(stockMovements).where(eq(stockMovements.buildId, result.build.id));
+    const value = movements.reduce((total, row) => total + row.delta * (row.unitCost ?? 0), 0);
+    expect(value).toBeCloseTo(0, 6);
   });
 
   test('posts nothing for a raw-material component, whose BOM line is informational', async ({ context }) => {
@@ -235,7 +260,7 @@ function opening(partId: string, overrides: { delta: number; unitCost: number })
 }
 
 async function seedParts(db: Db, supplierId: string) {
-  const [bolt, cylinder, plate, assembly, periodicBuilt] = await db
+  const [bolt, cylinder, plate, channel, assembly, periodicBuilt] = await db
     .insert(parts)
     .values([
       partValues({ code: 'BOLT', supplierId, unitOfMeasure: 'piece' }),
@@ -247,6 +272,7 @@ async function seedParts(db: Db, supplierId: string) {
         supplierId,
         unitOfMeasure: 'mm',
       }),
+      partValues({ code: 'CHANNEL', standardPurchaseLengthMm: 6_000, supplierId, unitOfMeasure: 'mm' }),
       partValues({ code: 'ASSEMBLY', isInternallyFabricated: true, supplierId, unitOfMeasure: 'piece' }),
       partValues({
         code: 'PERIODIC-BUILT',
@@ -258,11 +284,11 @@ async function seedParts(db: Db, supplierId: string) {
     ])
     .returning();
 
-  if (!bolt || !cylinder || !plate || !assembly || !periodicBuilt) {
+  if (!bolt || !cylinder || !plate || !channel || !assembly || !periodicBuilt) {
     throw new Error('Part inserts did not return all rows');
   }
 
-  return { assembly, bolt, cylinder, periodicBuilt, plate };
+  return { assembly, bolt, channel, cylinder, periodicBuilt, plate };
 }
 
 function partValues({

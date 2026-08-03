@@ -1,5 +1,5 @@
 import { type DatabaseTransaction, type Db, partBom, parts, stockBuilds, stockMovements } from '@pkg/db';
-import { deriveBuildProducedUnitCost, deriveBuildWarnings, deriveMovingAverage } from '@pkg/domain';
+import { deriveBuildProducedUnitCost, deriveBuildWarnings } from '@pkg/domain';
 import type { AuthId, BuildPostResult, PostBuildInput, StockMovementWarningCode, UUID } from '@pkg/schema';
 import { BuildPostResult as BuildPostResultSchema, unitClassFor } from '@pkg/schema';
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
@@ -12,7 +12,11 @@ import {
   BuildPeriodicPartError,
   BuildSelfComponentError,
 } from './build-errors.js';
-import { StockMovementDeltaError, StockMovementLengthError } from './stock-movement-errors.js';
+import {
+  assertDeltaMatchesUnitClass,
+  assertLengthMatchesUnitClass,
+  derivePartUnitCost,
+} from './stock-movement-service.js';
 
 /**
  * Posts one build: N units of a Built Part came off the rack, consuming what the builder says
@@ -38,7 +42,7 @@ export async function postBuild({
     if (!builtPart.isInternallyFabricated) throw new PartNotBuiltError(input.builtPartId);
     if (builtPart.stockTrackingMode === 'periodic') throw new BuildPeriodicPartError(input.builtPartId);
     if (unitClassFor(builtPart.unitOfMeasure) === 'linear') throw new BuildLinearPartError(input.builtPartId);
-    assertQuantityMatchesUnitClass(input.quantity, builtPart.unitOfMeasure);
+    assertDeltaMatchesUnitClass(input.quantity, unitClassFor(builtPart.unitOfMeasure));
 
     const components = await loadBuildComponents(tx, input);
     const expectedByComponent = await loadExpectedConsumption(tx, input);
@@ -56,14 +60,14 @@ export async function postBuild({
       const component = components.get(line.componentPartId);
       if (!component) throw new BuildComponentNotFoundError(line.componentPartId);
       if (component.id === input.builtPartId) throw new BuildSelfComponentError(input.builtPartId);
-      assertQuantityMatchesUnitClass(line.quantity, component.unitOfMeasure);
-      assertLengthMatchesUnitClass(line.lengthMm, component.unitOfMeasure);
+      assertDeltaMatchesUnitClass(line.quantity, unitClassFor(component.unitOfMeasure));
+      assertLengthMatchesUnitClass(line.lengthMm, unitClassFor(component.unitOfMeasure));
 
       // Raw material posts no consumption at all (spec §6); its BOM line is a note to the builder.
       if (component.stockTrackingMode === 'periodic') continue;
 
       const [unitCost, quantityOnHand] = await Promise.all([
-        deriveComponentUnitCost(tx, line.componentPartId, line.lengthMm),
+        derivePartUnitCost(tx, line.componentPartId, line.lengthMm),
         sumBucketOnHand(tx, line.componentPartId, line.lengthMm),
       ]);
       const codes = deriveBuildWarnings({
@@ -82,7 +86,10 @@ export async function postBuild({
         partId: line.componentPartId,
         unitCost,
       });
-      consumed.push({ quantity: line.quantity * (line.lengthMm ?? 1), unitCost });
+      // `unitCost` is already the per-piece cost — `deriveComponentUnitCost` scales a linear
+      // component's average by its length — so the value is `quantity × unitCost`, exactly what the
+      // consume row itself posts. Scaling by length again here would count it twice.
+      consumed.push({ quantity: line.quantity, unitCost });
     }
 
     const producedUnitCost = deriveBuildProducedUnitCost({ consumed, quantity: input.quantity });
@@ -144,30 +151,6 @@ async function loadExpectedConsumption(tx: DatabaseTransaction, input: PostBuild
   return new Map(rows.map((row) => [row.componentPartId, row.quantity]));
 }
 
-/** A component is consumed at its current average, scaled to the piece length for linear stock. */
-async function deriveComponentUnitCost(
-  tx: DatabaseTransaction,
-  partId: UUID,
-  lengthMm: number | null,
-): Promise<number | null> {
-  const orderedMovements = await tx
-    .select({
-      delta: stockMovements.delta,
-      lengthMm: stockMovements.lengthMm,
-      movementType: stockMovements.movementType,
-      reason: stockMovements.reason,
-      unitCost: stockMovements.unitCost,
-    })
-    .from(stockMovements)
-    .where(eq(stockMovements.partId, partId))
-    .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
-  const movingAverage = deriveMovingAverage(orderedMovements);
-
-  if (movingAverage === null) return null;
-
-  return lengthMm === null ? movingAverage : movingAverage * lengthMm;
-}
-
 async function sumBucketOnHand(tx: DatabaseTransaction, partId: UUID, lengthMm: number | null): Promise<number> {
   const [row] = await tx
     .select({ quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision` })
@@ -182,18 +165,4 @@ async function sumBucketOnHand(tx: DatabaseTransaction, partId: UUID, lengthMm: 
     );
 
   return row?.quantity ?? 0;
-}
-
-function assertQuantityMatchesUnitClass(quantity: number, unitOfMeasure: Parameters<typeof unitClassFor>[0]): void {
-  const unitClass = unitClassFor(unitOfMeasure);
-  if (unitClass !== 'measured' && !Number.isInteger(quantity)) throw new StockMovementDeltaError(unitClass);
-}
-
-function assertLengthMatchesUnitClass(
-  lengthMm: number | null,
-  unitOfMeasure: Parameters<typeof unitClassFor>[0],
-): void {
-  const unitClass = unitClassFor(unitOfMeasure);
-  if (unitClass === 'linear' && lengthMm === null) throw new StockMovementLengthError(true);
-  if (unitClass !== 'linear' && lengthMm !== null) throw new StockMovementLengthError(false);
 }

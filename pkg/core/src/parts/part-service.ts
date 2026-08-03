@@ -5,6 +5,7 @@ import {
   type Db,
   getSortOrder,
   getUniqueViolationConstraint,
+  partBom,
   parts,
   purchaseOrderLines,
   purchaseOrders,
@@ -38,6 +39,7 @@ import { mutateEntity } from '../audit/mutate-entity.js';
 import { supplierAuditDescriptor } from '../suppliers/supplier-service.js';
 import {
   DuplicatePartCodeError,
+  PartBomLockedError,
   PartBulkImportConflictError,
   PartNotFoundError,
   PartSupplierLockedByPurchaseOrderError,
@@ -289,6 +291,7 @@ export async function updatePart({
       assert: async (tx, before) => {
         await assertSupplierExists({ db: tx, supplierId: input.supplierId });
         await assertSupplierMutable({ before, db: tx, nextSupplierId: input.supplierId });
+        await assertBomCleared({ before, db: tx, nextIsInternallyFabricated: input.isInternallyFabricated });
         await assertUnitOfMeasureMutable({ before, db: tx, nextUnitOfMeasure: input.unitOfMeasure });
       },
       db,
@@ -511,6 +514,31 @@ async function assertSupplierMutable({
     .limit(1);
 
   if (purchaseOrderLine) throw new PartSupplierLockedByPurchaseOrderError(before.id);
+}
+
+/**
+ * The DB's XOR check sees the fabricated flag against `supplier_id`, but it cannot see `part_bom`.
+ * Turning a built Part back into a bought one with components still stored would leave a Part
+ * holding both, so the BOM has to be cleared first.
+ */
+async function assertBomCleared({
+  before,
+  db,
+  nextIsInternallyFabricated,
+}: {
+  before: Pick<PartRow, 'id' | 'isInternallyFabricated'>;
+  db: DatabaseTransaction;
+  nextIsInternallyFabricated: boolean;
+}): Promise<void> {
+  if (nextIsInternallyFabricated || !before.isInternallyFabricated) return;
+
+  const [line] = await db
+    .select({ parentPartId: partBom.parentPartId })
+    .from(partBom)
+    .where(eq(partBom.parentPartId, before.id))
+    .limit(1);
+
+  if (line) throw new PartBomLockedError(before.id);
 }
 
 async function formatBulkImportIdentityConflict({

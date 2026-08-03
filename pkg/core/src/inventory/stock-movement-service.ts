@@ -617,6 +617,18 @@ async function scalar(query: PromiseLike<Array<{ value: number }>>): Promise<num
  * dropping the value here would make it vanish at the next hop instead of reaching the Job.
  */
 async function deriveCheckoutUnitCost(db: DatabaseTransaction, input: PostJobMovementInput): Promise<number | null> {
+  return derivePartUnitCost(db, input.partId, input.lengthMm);
+}
+
+/**
+ * A Part's current average, scaled to the piece length for linear stock — what a draw and a build
+ * consumption are both stamped with. Null when the ledger holds no costed row yet ("no cost yet").
+ */
+export async function derivePartUnitCost(
+  db: DatabaseTransaction,
+  partId: UUID,
+  lengthMm: number | null,
+): Promise<number | null> {
   const orderedMovements = await db
     .select({
       delta: stockMovements.delta,
@@ -626,13 +638,13 @@ async function deriveCheckoutUnitCost(db: DatabaseTransaction, input: PostJobMov
       unitCost: stockMovements.unitCost,
     })
     .from(stockMovements)
-    .where(eq(stockMovements.partId, input.partId))
+    .where(eq(stockMovements.partId, partId))
     .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
   const movingAverage = deriveMovingAverage(orderedMovements);
 
   if (movingAverage === null) return null;
 
-  return input.lengthMm === null ? movingAverage : movingAverage * input.lengthMm;
+  return lengthMm === null ? movingAverage : movingAverage * lengthMm;
 }
 
 /**
@@ -734,13 +746,13 @@ function sumBy<TRow>(rows: readonly TRow[], toValue: (row: TRow) => number): num
   return rows.reduce((total, row) => total + toValue(row), 0);
 }
 
-function assertDeltaMatchesUnitClass(delta: number, unitClass: PartUnitClass): void {
+export function assertDeltaMatchesUnitClass(delta: number, unitClass: PartUnitClass): void {
   if (unitClass !== 'measured' && !Number.isInteger(delta)) {
     throw new StockMovementDeltaError(unitClass);
   }
 }
 
-function assertLengthMatchesUnitClass(lengthMm: number | null, unitClass: PartUnitClass): void {
+export function assertLengthMatchesUnitClass(lengthMm: number | null, unitClass: PartUnitClass): void {
   if (unitClass === 'linear' && lengthMm === null) {
     throw new StockMovementLengthError(true);
   }

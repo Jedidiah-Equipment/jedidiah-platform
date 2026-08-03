@@ -123,6 +123,8 @@ function mapPartCoreError(error: PartCoreError): CoreErrorMapping<PartCoreError[
         code: 'NOT_FOUND',
         message: 'Supplier not found.',
       };
+    case 'part.bom_locked':
+      return { appCode: error.code, code: 'CONFLICT', message: error.message };
     case 'part.supplier_locked_by_purchase_order':
       return {
         appCode: error.code,

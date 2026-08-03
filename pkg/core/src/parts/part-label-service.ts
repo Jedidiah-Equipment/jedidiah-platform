@@ -1,5 +1,5 @@
 import type { Db } from '@pkg/db';
-import { parts, supplier } from '@pkg/db';
+import { parts } from '@pkg/db';
 import {
   type PartLabelBatchSelection,
   type PartLabelPdfModel,
@@ -7,7 +7,7 @@ import {
   type PartLabelPdfRenderer,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, type SQL } from 'drizzle-orm';
+import { asc, eq, inArray, type SQL } from 'drizzle-orm';
 
 import { PartLabelSelectionEmptyError, PartNotFoundError } from './part-errors.js';
 
@@ -55,6 +55,11 @@ export async function renderPartLabelBatch({
   return { bytes: await pdfRenderer({ document: labels, filename }), filename };
 }
 
+/**
+ * A label is a Part's own identity — its code, name, and Storage Location — so it is never scoped by
+ * Supplier. Joining one in would silently drop a Part whose Supplier was retired, and every Built
+ * Part once `parts.supplierId` goes nullable (spec §6); the go-live batch is where a missing label hurts.
+ */
 async function listLabelModels({
   db,
   selection,
@@ -62,12 +67,10 @@ async function listLabelModels({
   db: Db;
   selection: PartLabelBatchSelection;
 }): Promise<PartLabelPdfModel[]> {
-  const selectionCondition = getSelectionCondition(selection);
   const rows = await db
     .select({ code: parts.code, name: parts.name, storageLocation: parts.storageLocation })
     .from(parts)
-    .innerJoin(supplier, eq(parts.supplierId, supplier.id))
-    .where(and(isNull(supplier.deletedAt), selectionCondition))
+    .where(getSelectionCondition(selection))
     .orderBy(asc(parts.code));
 
   return rows.map((row) => PartLabelPdfModelSchema.parse(row));

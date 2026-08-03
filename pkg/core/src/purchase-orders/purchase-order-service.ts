@@ -6,6 +6,7 @@ import {
   type Db,
   documents,
   getPaginationQueryOptions,
+  getSortOrder,
   jobs,
   parts,
   purchaseOrderJobLinks,
@@ -26,14 +27,12 @@ import {
   type PurchaseOrderListResult,
   type PurchaseOrderPdfModel,
   type PurchaseOrderPdfRenderer,
-  type PurchaseOrderReplaceJobLinksInput,
-  type PurchaseOrderReplaceLinesInput,
+  type PurchaseOrderSaveDraftInput,
   PurchaseOrder as PurchaseOrderSchema,
-  type PurchaseOrderUpdateHeaderInput,
   type UUID,
   unitClassFor,
 } from '@pkg/schema';
-import { and, asc, count, desc, eq, inArray, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -82,13 +81,17 @@ export const purchaseOrderAuditDescriptor = defineAuditDescriptor<PurchaseOrderR
   }),
 });
 
-const purchaseOrderCollectionAuditDescriptor = defineAuditDescriptor<PurchaseOrder>({
+/** A draft is audited as one aggregate: header fields alongside the lines and Job links it carries. */
+const purchaseOrderDraftAuditDescriptor = defineAuditDescriptor<PurchaseOrder>({
   entityId: (purchaseOrder) => purchaseOrder.id,
   entityType: 'purchase_order',
   label: (purchaseOrder) => purchaseOrder.code,
   noun: 'Purchase Order',
   primaryLabelField: 'code',
-  toRecord: () => ({}),
+  toRecord: (purchaseOrder) => ({
+    expectedDeliveryDate: purchaseOrder.expectedDeliveryDate,
+    supplierId: purchaseOrder.supplierId,
+  }),
   toCollections: (purchaseOrder) => ({
     job: purchaseOrder.jobs.map((job) => ({
       key: job.id,
@@ -129,14 +132,33 @@ export async function getPurchaseOrder({ db, id }: { db: PurchaseOrderDb; id: UU
   const aggregate = await loadPurchaseOrderAggregate({ db, id });
   if (!aggregate) throw new PurchaseOrderNotFoundError(id);
 
-  const [document] = await db
-    .select({ id: documents.id })
-    .from(documents)
-    .where(eq(documents.purchaseOrderId, id))
-    .orderBy(desc(documents.createdAt), desc(documents.id))
-    .limit(1);
+  const documentIds = await loadLatestDocumentIds({ db, purchaseOrderIds: [id] });
 
-  return mapPurchaseOrder(aggregate, document?.id ?? null);
+  return mapPurchaseOrder(aggregate, documentIds.get(id) ?? null);
+}
+
+/** The as-sent PDF of each order; amendments (#1055) add revisions, so the newest row is the current one. */
+async function loadLatestDocumentIds({
+  db,
+  purchaseOrderIds,
+}: {
+  db: PurchaseOrderDb;
+  purchaseOrderIds: readonly UUID[];
+}): Promise<Map<string, string>> {
+  if (purchaseOrderIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({ id: documents.id, purchaseOrderId: documents.purchaseOrderId })
+    .from(documents)
+    .where(inArray(documents.purchaseOrderId, [...purchaseOrderIds]))
+    .orderBy(desc(documents.createdAt), desc(documents.id));
+  const latest = new Map<string, string>();
+
+  for (const row of rows) {
+    if (row.purchaseOrderId && !latest.has(row.purchaseOrderId)) latest.set(row.purchaseOrderId, row.id);
+  }
+
+  return latest;
 }
 
 export async function listPurchaseOrders({
@@ -147,87 +169,58 @@ export async function listPurchaseOrders({
   input: PurchaseOrderListInput;
 }): Promise<PurchaseOrderListResult> {
   const where = buildPurchaseOrderListWhere(db, input);
-  const orderBy = getPurchaseOrderListOrder(input);
   const paging = getPaginationQueryOptions(input);
   const rows = await db.query.purchaseOrders.findMany({
     ...(paging.limit === undefined ? {} : { limit: paging.limit, offset: paging.offset }),
-    orderBy: [orderBy, desc(purchaseOrders.id)],
+    orderBy: [getSortOrder(getPurchaseOrderSortColumn(input.sortBy), input.sortDirection), desc(purchaseOrders.id)],
     where,
     with: purchaseOrderWith,
   });
-  const [totalRow] = await db.select({ value: count() }).from(purchaseOrders).where(where);
-  const ids = rows.map((row) => row.id);
-  const documentRows =
-    ids.length === 0
-      ? []
-      : await db
-          .select({ id: documents.id, purchaseOrderId: documents.purchaseOrderId })
-          .from(documents)
-          .where(inArray(documents.purchaseOrderId, ids))
-          .orderBy(desc(documents.createdAt), desc(documents.id));
-  const documentIdByPurchaseOrder = new Map<string, string>();
-  for (const row of documentRows) {
-    if (row.purchaseOrderId && !documentIdByPurchaseOrder.has(row.purchaseOrderId)) {
-      documentIdByPurchaseOrder.set(row.purchaseOrderId, row.id);
-    }
-  }
+  const [[totalRow], documentIds] = await Promise.all([
+    db.select({ value: count() }).from(purchaseOrders).where(where),
+    loadLatestDocumentIds({ db, purchaseOrderIds: rows.map((row) => row.id) }),
+  ]);
   const total = totalRow?.value ?? 0;
-  const items = rows.map((row) => mapPurchaseOrder(row, documentIdByPurchaseOrder.get(row.id) ?? null));
+  const items = rows.map((row) => mapPurchaseOrder(row, documentIds.get(row.id) ?? null));
 
   return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
 }
 
-export async function updatePurchaseOrderHeader({
+/**
+ * Saves a draft whole. Supplier, expected date, lines, and Job links are one editable aggregate, so
+ * one transaction owns the cross-row rule DB checks cannot express — every line's Part must belong
+ * to the order's Supplier — and one audit event records what actually changed.
+ */
+export async function savePurchaseOrderDraft({
   actorUserId,
   db,
   input,
 }: {
   actorUserId: AuthId;
   db: Db;
-  input: PurchaseOrderUpdateHeaderInput;
-}): Promise<PurchaseOrder> {
-  return mutateEntity({
-    actorUserId,
-    assert: async (tx, before) => {
-      assertDraft(before);
-      await assertSupplierExists({ db: tx, supplierId: input.supplierId });
-      const [mismatched] = await tx
-        .select({ partId: purchaseOrderLines.partId })
-        .from(purchaseOrderLines)
-        .innerJoin(parts, eq(purchaseOrderLines.partId, parts.id))
-        .where(and(eq(purchaseOrderLines.purchaseOrderId, input.id), sql`${parts.supplierId} <> ${input.supplierId}`))
-        .limit(1);
-      if (mismatched) throw new PurchaseOrderPartSupplierMismatchError(mismatched.partId);
-    },
-    db,
-    descriptor: purchaseOrderAuditDescriptor,
-    id: input.id,
-    notFound: () => new PurchaseOrderNotFoundError(input.id),
-    project: (tx, row) => getPurchaseOrder({ db: tx, id: row.id }),
-    set: () => ({
-      expectedDeliveryDate: input.expectedDeliveryDate,
-      supplierId: input.supplierId,
-      updatedAt: new Date(),
-    }),
-    table: purchaseOrders,
-  });
-}
-
-export async function replacePurchaseOrderLines({
-  actorUserId,
-  db,
-  input,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: PurchaseOrderReplaceLinesInput;
+  input: PurchaseOrderSaveDraftInput;
 }): Promise<PurchaseOrder> {
   return db.transaction(async (tx) => {
-    const purchaseOrder = await lockPurchaseOrder(tx, input.id);
-    assertDraft(purchaseOrder);
+    assertDraft(await lockPurchaseOrder(tx, input.id));
     const before = await getPurchaseOrder({ db: tx, id: input.id });
-    await validateLineParts({ db: tx, input, supplierId: purchaseOrder.supplierId });
+    // A Job link is a set membership, so a repeated id is the same link, not a second one. Collapsing
+    // here keeps the existence check exact and makes a core caller that repeats one idempotent rather
+    // than a unique-constraint failure; the router contract still refuses duplicates outright.
+    const jobIds = [...new Set(input.jobIds)];
 
+    await assertSupplierExists({ db: tx, supplierId: input.supplierId });
+    await assertLinePartsMatchSupplier({ db: tx, lines: input.lines, supplierId: input.supplierId });
+    await assertJobsExist({ db: tx, jobIds });
+
+    await tx
+      .update(purchaseOrders)
+      .set({
+        expectedDeliveryDate: input.expectedDeliveryDate,
+        supplierId: input.supplierId,
+        updatedAt: new Date(),
+      })
+      .where(eq(purchaseOrders.id, input.id));
+    // Both child collections are rewritten wholesale; an empty list simply leaves the scope cleared.
     await tx.delete(purchaseOrderLines).where(eq(purchaseOrderLines.purchaseOrderId, input.id));
     if (input.lines.length > 0) {
       await tx.insert(purchaseOrderLines).values(
@@ -239,63 +232,18 @@ export async function replacePurchaseOrderLines({
         })),
       );
     }
-    await tx.update(purchaseOrders).set({ updatedAt: new Date() }).where(eq(purchaseOrders.id, input.id));
-
-    const after = await getPurchaseOrder({ db: tx, id: input.id });
-    const changes = diffAuditUpdate(purchaseOrderCollectionAuditDescriptor, before, after);
-    if (changes) {
-      await recordAuditUpdate({
-        actorUserId,
-        after,
-        changes,
-        db: tx,
-        descriptor: purchaseOrderCollectionAuditDescriptor,
-      });
-    }
-    return after;
-  });
-}
-
-export async function replacePurchaseOrderJobLinks({
-  actorUserId,
-  db,
-  input,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: PurchaseOrderReplaceJobLinksInput;
-}): Promise<PurchaseOrder> {
-  return db.transaction(async (tx) => {
-    const purchaseOrder = await lockPurchaseOrder(tx, input.id);
-    assertDraft(purchaseOrder);
-    const before = await getPurchaseOrder({ db: tx, id: input.id });
-    const jobRows =
-      input.jobIds.length === 0
-        ? []
-        : await tx.select({ id: jobs.id }).from(jobs).where(inArray(jobs.id, input.jobIds));
-    if (jobRows.length !== input.jobIds.length) {
-      const found = new Set(jobRows.map((row) => row.id));
-      throw new JobNotFoundError(input.jobIds.find((id) => !found.has(id)) ?? input.id);
-    }
 
     await tx.delete(purchaseOrderJobLinks).where(eq(purchaseOrderJobLinks.purchaseOrderId, input.id));
-    if (input.jobIds.length > 0) {
-      await tx
-        .insert(purchaseOrderJobLinks)
-        .values(input.jobIds.map((jobId) => ({ jobId, purchaseOrderId: input.id })));
+    if (jobIds.length > 0) {
+      await tx.insert(purchaseOrderJobLinks).values(jobIds.map((jobId) => ({ jobId, purchaseOrderId: input.id })));
     }
-    await tx.update(purchaseOrders).set({ updatedAt: new Date() }).where(eq(purchaseOrders.id, input.id));
+
     const after = await getPurchaseOrder({ db: tx, id: input.id });
-    const changes = diffAuditUpdate(purchaseOrderCollectionAuditDescriptor, before, after);
+    const changes = diffAuditUpdate(purchaseOrderDraftAuditDescriptor, before, after);
     if (changes) {
-      await recordAuditUpdate({
-        actorUserId,
-        after,
-        changes,
-        db: tx,
-        descriptor: purchaseOrderCollectionAuditDescriptor,
-      });
+      await recordAuditUpdate({ actorUserId, after, changes, db: tx, descriptor: purchaseOrderDraftAuditDescriptor });
     }
+
     return after;
   });
 }
@@ -507,36 +455,50 @@ async function assertSupplierExists({ db, supplierId }: { db: PurchaseOrderDb; s
   if (!row) throw new PurchaseOrderSupplierNotFoundError(supplierId);
 }
 
-async function validateLineParts({
+async function assertLinePartsMatchSupplier({
   db,
-  input,
+  lines,
   supplierId,
 }: {
   db: DatabaseTransaction;
-  input: PurchaseOrderReplaceLinesInput;
+  lines: PurchaseOrderSaveDraftInput['lines'];
   supplierId: UUID;
-}) {
-  if (input.lines.length === 0) return;
+}): Promise<void> {
+  if (lines.length === 0) return;
   const rows = await db
     .select({ id: parts.id, supplierId: parts.supplierId, unitOfMeasure: parts.unitOfMeasure })
     .from(parts)
     .where(
       inArray(
         parts.id,
-        input.lines.map((line) => line.partId),
+        lines.map((line) => line.partId),
       ),
     )
     // Prevent a concurrent Part supplier change between validation and line insertion.
     .for('key share');
   const byId = new Map(rows.map((row) => [row.id, row]));
 
-  for (const line of input.lines) {
+  for (const line of lines) {
     const part = byId.get(line.partId);
     if (!part) throw new PurchaseOrderPartNotFoundError(line.partId);
     if (part.supplierId !== supplierId) throw new PurchaseOrderPartSupplierMismatchError(line.partId);
     if (unitClassFor(part.unitOfMeasure) !== 'measured' && !Number.isInteger(line.quantity)) {
       throw new PurchaseOrderInvalidQuantityError(line.partId);
     }
+  }
+}
+
+async function assertJobsExist({ db, jobIds }: { db: DatabaseTransaction; jobIds: readonly UUID[] }): Promise<void> {
+  if (jobIds.length === 0) return;
+  const rows = await db
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(inArray(jobs.id, [...jobIds]));
+
+  if (rows.length !== jobIds.length) {
+    const found = new Set(rows.map((row) => row.id));
+    const missing = jobIds.find((id) => !found.has(id));
+    if (missing) throw new JobNotFoundError(missing);
   }
 }
 
@@ -575,16 +537,13 @@ function dbSupplierIdsBySearch(db: Db, search: string) {
     .where(and(createEscapedContainsSearchCondition(sql`${supplier.companyName}`, search), isNull(supplier.deletedAt)));
 }
 
-function getPurchaseOrderListOrder(input: PurchaseOrderListInput): SQL {
-  const column =
-    input.sortBy === 'code'
-      ? purchaseOrders.code
-      : input.sortBy === 'expectedDeliveryDate'
-        ? purchaseOrders.expectedDeliveryDate
-        : input.sortBy === 'status'
-          ? purchaseOrders.status
-          : input.sortBy === 'supplier'
-            ? sql`(select ${supplier.companyName} from ${supplier} where ${supplier.id} = ${purchaseOrders.supplierId})`
-            : purchaseOrders.createdAt;
-  return input.sortDirection === 'asc' ? asc(column) : desc(column);
+function getPurchaseOrderSortColumn(sortBy: PurchaseOrderListInput['sortBy']): SQLWrapper {
+  if (sortBy === 'code') return purchaseOrders.code;
+  if (sortBy === 'expectedDeliveryDate') return purchaseOrders.expectedDeliveryDate;
+  if (sortBy === 'status') return purchaseOrders.status;
+  if (sortBy === 'supplier') {
+    return sql`(select ${supplier.companyName} from ${supplier} where ${supplier.id} = ${purchaseOrders.supplierId})`;
+  }
+
+  return purchaseOrders.createdAt;
 }

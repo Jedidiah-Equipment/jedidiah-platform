@@ -7,30 +7,38 @@ import {
   listJobs,
   listStockOnHand,
   postAdjustment,
-  postCheckout,
-  postReturnToStore,
+  postJobMovement,
   postRevaluation,
   type StockMovementCoreError,
 } from '@pkg/core';
-import { getJobDisplayName, hasPermission } from '@pkg/domain';
+import { getJobDisplayName } from '@pkg/domain';
 import {
   InventoryJobOptionListInput,
   InventoryJobOptionListResult,
   JobStockInput,
   JobStockResult,
   PostAdjustmentInput,
-  PostCheckoutInput,
-  PostReturnToStoreInput,
+  PostJobMovementInput,
   PostRevaluationInput,
   StockMovement,
+  StockMovementCostFields,
   StockMovementHistoryInput,
   StockMovementHistoryResult,
+  StockMovementHistoryRowCostFields,
   StockMovementPostResult,
+  StockOnHandBucketCostFields,
   StockOnHandResult,
+  StockOnHandRowCostFields,
 } from '@pkg/schema';
 
 import { assertNever, type CoreErrorMapping, createAuthTRPCError, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, projectInventoryCostFields, router } from '../../trpc/init.js';
+import {
+  authorizedProcedure,
+  canReadInventoryCosts,
+  type InventoryCostAccess,
+  projectInventoryCostFields,
+  router,
+} from '../../trpc/init.js';
 
 export const inventoryRouter = router({
   jobOptions: authorizedProcedure('inventory:move')
@@ -38,6 +46,7 @@ export const inventoryRouter = router({
     .output(InventoryJobOptionListResult)
     .query(async ({ ctx, input }) => {
       const result = await listJobs({ db: ctx.db, input: { ...input, columnFilters: {}, filters: {} } });
+
       return {
         ...result,
         items: result.items.map((job) => ({
@@ -57,8 +66,17 @@ export const inventoryRouter = router({
         items: result.items.map((row) =>
           projectInventoryCostFields({
             access: ctx.access,
-            costFields: ['averageUnitCost', 'totalValue'],
-            output: row,
+            costFields: StockOnHandRowCostFields,
+            output: {
+              ...row,
+              buckets: row.buckets.map((bucket) =>
+                projectInventoryCostFields({
+                  access: ctx.access,
+                  costFields: StockOnHandBucketCostFields,
+                  output: bucket,
+                }),
+              ),
+            },
           }),
         ),
       };
@@ -75,7 +93,7 @@ export const inventoryRouter = router({
         items: result.items.map((row) =>
           projectInventoryCostFields({
             access: ctx.access,
-            costFields: ['movementValue', 'unitCost'],
+            costFields: StockMovementHistoryRowCostFields,
             output: row,
           }),
         ),
@@ -91,7 +109,8 @@ export const inventoryRouter = router({
     .input(PostAdjustmentInput)
     .output(StockMovement)
     .mutation(async ({ ctx, input }) => {
-      if (input.unitCost !== null && !hasPermission(ctx.access, 'inventory_cost:read')) {
+      // The gate reads both ways: a price-blind poster may not seed an opening balance with a value.
+      if (input.unitCost !== null && !canReadInventoryCosts(ctx.access)) {
         throw createAuthTRPCError({
           appCode: 'auth.forbidden',
           code: 'FORBIDDEN',
@@ -103,25 +122,29 @@ export const inventoryRouter = router({
         postAdjustment({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
       );
 
-      return projectInventoryCostFields({ access: ctx.access, costFields: ['unitCost'], output: movement });
+      return projectMovement(movement, ctx.access);
     }),
 
   postCheckout: authorizedProcedure('inventory:move')
-    .input(PostCheckoutInput)
+    .input(PostJobMovementInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {
       const result = await mapStockMovementErrors(() =>
-        postCheckout({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+        postJobMovement({ actorUserId: ctx.session.user.id, db: ctx.db, input, movementType: 'checkout' }),
       );
 
-      return {
-        ...result,
-        movement: projectInventoryCostFields({
-          access: ctx.access,
-          costFields: ['unitCost'],
-          output: result.movement,
-        }),
-      };
+      return { ...result, movement: projectMovement(result.movement, ctx.access) };
+    }),
+
+  postReturnToStore: authorizedProcedure('inventory:move')
+    .input(PostJobMovementInput)
+    .output(StockMovementPostResult)
+    .mutation(async ({ ctx, input }) => {
+      const result = await mapStockMovementErrors(() =>
+        postJobMovement({ actorUserId: ctx.session.user.id, db: ctx.db, input, movementType: 'return-to-store' }),
+      );
+
+      return { ...result, movement: projectMovement(result.movement, ctx.access) };
     }),
 
   postRevaluation: authorizedProcedure('inventory_cost:revalue')
@@ -132,27 +155,13 @@ export const inventoryRouter = router({
         postRevaluation({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
       );
 
-      return projectInventoryCostFields({ access: ctx.access, costFields: ['unitCost'], output: movement });
-    }),
-
-  postReturnToStore: authorizedProcedure('inventory:move')
-    .input(PostReturnToStoreInput)
-    .output(StockMovementPostResult)
-    .mutation(async ({ ctx, input }) => {
-      const result = await mapStockMovementErrors(() =>
-        postReturnToStore({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
-      );
-
-      return {
-        ...result,
-        movement: projectInventoryCostFields({
-          access: ctx.access,
-          costFields: ['unitCost'],
-          output: result.movement,
-        }),
-      };
+      return projectMovement(movement, ctx.access);
     }),
 });
+
+function projectMovement(movement: StockMovement, access: InventoryCostAccess) {
+  return projectInventoryCostFields({ access, costFields: StockMovementCostFields, output: movement });
+}
 
 async function mapStockMovementErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapKnownCoreError(
@@ -189,7 +198,7 @@ function mapStockMovementCoreError(error: StockMovementCoreError): CoreErrorMapp
       return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
     case 'inventory.invalid_length':
       return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    case 'inventory.periodic_adjustment':
+    case 'inventory.periodic_movement':
       return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
     default:
       return assertNever(error);

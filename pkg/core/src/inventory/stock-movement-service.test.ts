@@ -9,8 +9,7 @@ import {
   listJobStock,
   listStockOnHand,
   postAdjustment,
-  postCheckout,
-  postReturnToStore,
+  postJobMovement,
   postRevaluation,
 } from './stock-movement-service.js';
 
@@ -48,10 +47,11 @@ describe('Job stock movements', () => {
       db: context.db,
       input: adjustmentInput(context.parts.piece.id, { delta: 2, unitCost: 10 }),
     });
-    await postCheckout({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+      movementType: 'checkout',
     });
     await context.db
       .update(jobs)
@@ -59,20 +59,22 @@ describe('Job stock movements', () => {
       .where(eq(jobs.id, context.jobs.custom.id));
 
     await expect(
-      postCheckout({
+      postJobMovement({
         actorUserId,
         db: context.db,
         input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+        movementType: 'checkout',
       }),
     ).rejects.toMatchObject({ code: 'job.cancelled' });
 
     await expect(
-      postReturnToStore({
+      postJobMovement({
         actorUserId,
         db: context.db,
         input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+        movementType: 'return-to-store',
       }),
-    ).resolves.toMatchObject({ movement: { unitCost: 10 }, warnings: { exceedsDrawn: false } });
+    ).resolves.toMatchObject({ movement: { unitCost: 10 }, warnings: [] });
   });
 
   test('posts an off-CFO checkout for a Custom Job and returns soft overdraw and negative-SOH warnings', async ({
@@ -84,7 +86,7 @@ describe('Job stock movements', () => {
       input: adjustmentInput(context.parts.measured.id, { delta: 1, unitCost: 12 }),
     });
 
-    const result = await postCheckout({
+    const result = await postJobMovement({
       actorUserId,
       db: context.db,
       input: {
@@ -93,6 +95,7 @@ describe('Job stock movements', () => {
         partId: context.parts.measured.id,
         quantity: 2,
       },
+      movementType: 'checkout',
     });
 
     expect(result).toMatchObject({
@@ -104,16 +107,17 @@ describe('Job stock movements', () => {
         reason: null,
         unitCost: 12,
       },
-      warnings: { exceedsCfo: true, exceedsDrawn: false, negativeStockOnHand: true },
+      warnings: ['exceeds-cfo', 'negative-stock-on-hand'],
     });
   });
 
   test('enforces unit classes and stamps a linear draw with the selected piece cost', async ({ context }) => {
     await expect(
-      postCheckout({
+      postJobMovement({
         actorUserId,
         db: context.db,
         input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1.5 },
+        movementType: 'checkout',
       }),
     ).rejects.toMatchObject({ code: 'inventory.invalid_delta' });
 
@@ -122,15 +126,17 @@ describe('Job stock movements', () => {
       db: context.db,
       input: adjustmentInput(context.parts.linear.id, { delta: 2, lengthMm: 6_000, unitCost: 600 }),
     });
-    const linear = await postCheckout({
+    const linear = await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: 3_000, partId: context.parts.linear.id, quantity: 1 },
+      movementType: 'checkout',
     });
-    const measured = await postCheckout({
+    const measured = await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1.125 },
+      movementType: 'checkout',
     });
 
     expect(linear.movement.unitCost).toBe(300);
@@ -143,26 +149,29 @@ describe('Job stock movements', () => {
       db: context.db,
       input: adjustmentInput(context.parts.linear.id, { delta: 2, lengthMm: 6_000, unitCost: 600 }),
     });
-    await postCheckout({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: 6_000, partId: context.parts.linear.id, quantity: 1 },
+      movementType: 'checkout',
     });
     await postRevaluation({
       actorUserId,
       db: context.db,
       input: { note: 'Repriced linear stock', partId: context.parts.linear.id, unitCost: 0.3 },
     });
-    await postCheckout({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: 3_000, partId: context.parts.linear.id, quantity: 1 },
+      movementType: 'checkout',
     });
 
-    const returned = await postReturnToStore({
+    const returned = await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: 3_000, partId: context.parts.linear.id, quantity: 1 },
+      movementType: 'return-to-store',
     });
     const jobStock = await listJobStock({ db: context.db, jobId: context.jobs.custom.id });
     const stockOnHand = await listStockOnHand({ db: context.db });
@@ -177,17 +186,19 @@ describe('Job stock movements', () => {
   });
 
   test('keeps a return uncosted when its outstanding draw had no cost', async ({ context }) => {
-    await postCheckout({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1 },
+      movementType: 'checkout',
     });
 
     await expect(
-      postReturnToStore({
+      postJobMovement({
         actorUserId,
         db: context.db,
         input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1 },
+        movementType: 'return-to-store',
       }),
     ).resolves.toMatchObject({ movement: { unitCost: null } });
   });
@@ -198,31 +209,34 @@ describe('Job stock movements', () => {
       db: context.db,
       input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
     });
-    await postCheckout({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+      movementType: 'checkout',
     });
     await postRevaluation({
       actorUserId,
       db: context.db,
       input: { note: 'New average', partId: context.parts.piece.id, unitCost: 20 },
     });
-    await postCheckout({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+      movementType: 'checkout',
     });
 
-    const result = await postReturnToStore({
+    const result = await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 4 },
+      movementType: 'return-to-store',
     });
 
     expect(result.movement).toMatchObject({ delta: 4, movementType: 'return-to-store' });
     expect(result.movement.unitCost).toBe(10);
-    expect(result.warnings).toEqual({ exceedsCfo: false, exceedsDrawn: true, negativeStockOnHand: false });
+    expect(result.warnings).toEqual(['exceeds-drawn']);
   });
 
   test('prices a later return from the still-drawn cost pool after an earlier draw was fully returned', async ({
@@ -233,31 +247,35 @@ describe('Job stock movements', () => {
       db: context.db,
       input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
     });
-    await postCheckout({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+      movementType: 'checkout',
     });
-    await postReturnToStore({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+      movementType: 'return-to-store',
     });
     await postRevaluation({
       actorUserId,
       db: context.db,
       input: { note: 'New average', partId: context.parts.piece.id, unitCost: 20 },
     });
-    await postCheckout({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+      movementType: 'checkout',
     });
 
-    const result = await postReturnToStore({
+    const result = await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+      movementType: 'return-to-store',
     });
 
     expect(result.movement.unitCost).toBe(20);
@@ -269,10 +287,11 @@ describe('Job stock movements', () => {
       db: context.db,
       input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
     });
-    await postCheckout({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 4 },
+      movementType: 'checkout',
     });
 
     expect(await listJobStock({ db: context.db, jobId: context.jobs.cfo.id })).toMatchObject({
@@ -286,10 +305,11 @@ describe('Job stock movements', () => {
       ],
     });
 
-    await postReturnToStore({
+    await postJobMovement({
       actorUserId,
       db: context.db,
       input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+      movementType: 'return-to-store',
     });
 
     expect(await listJobStock({ db: context.db, jobId: context.jobs.cfo.id })).toMatchObject({
@@ -381,7 +401,7 @@ describe('postAdjustment', () => {
           reason: 'damage',
         }),
       }),
-    ).rejects.toMatchObject({ code: 'inventory.periodic_adjustment' });
+    ).rejects.toMatchObject({ code: 'inventory.periodic_movement' });
 
     await expect(
       postAdjustment({
@@ -580,29 +600,42 @@ describe('listStockOnHand', () => {
     });
 
     const result = await listStockOnHand({ db: context.db });
-    const piece = result.items.find((row) => row.partId === context.parts.piece.id);
-    const measured = result.items.find((row) => row.partId === context.parts.measured.id);
-    const linear = result.items.filter((row) => row.partId === context.parts.linear.id);
-    const periodic = result.items.find((row) => row.partId === context.parts.periodic.id);
-    const fabricated = result.items.find((row) => row.partId === context.parts.fabricated.id);
+    const rowFor = (partId: string) => result.items.find((row) => row.partId === partId);
+    const linear = rowFor(context.parts.linear.id);
 
-    expect(piece).toMatchObject({ averageUnitCost: 20, lengthMm: null, quantity: 8, totalValue: 160 });
-    expect(measured).toMatchObject({ averageUnitCost: null, lengthMm: null, quantity: 0, totalValue: null });
-    expect(linear).toEqual([
-      expect.objectContaining({ averageUnitCost: expect.closeTo(0.104, 10), lengthMm: 3_000, quantity: 1 }),
-      expect.objectContaining({ averageUnitCost: expect.closeTo(0.104, 10), lengthMm: 6_000, quantity: 2 }),
+    expect(rowFor(context.parts.piece.id)).toMatchObject({
+      averageUnitCost: 20,
+      buckets: [{ lengthMm: null, quantity: 8, totalValue: 160 }],
+      quantity: 8,
+      totalValue: 160,
+    });
+    expect(rowFor(context.parts.measured.id)).toMatchObject({
+      averageUnitCost: null,
+      buckets: [{ lengthMm: null, quantity: 0, totalValue: null }],
+      quantity: 0,
+      totalValue: null,
+    });
+    // A linear Part holds one bucket per length, valued at length x average-per-mm x count.
+    expect(linear).toMatchObject({ averageUnitCost: expect.closeTo(0.104, 10), free: 3, quantity: 3 });
+    expect(linear?.buckets.map((bucket) => [bucket.lengthMm, bucket.quantity])).toEqual([
+      [3_000, 1],
+      [6_000, 2],
     ]);
-    expect(linear[0]?.totalValue).toBeCloseTo(312, 10);
-    expect(linear[1]?.totalValue).toBeCloseTo(1_248, 10);
-    expect(linear.map((row) => row.free)).toEqual([3, 3]);
-    expect(periodic).toMatchObject({
+    expect(linear?.buckets[0]?.totalValue).toBeCloseTo(312, 10);
+    expect(linear?.buckets[1]?.totalValue).toBeCloseTo(1_248, 10);
+    expect(linear?.totalValue).toBeCloseTo(1_560, 10);
+    expect(rowFor(context.parts.periodic.id)).toMatchObject({
       asOfLastCount: count.createdAt,
-      lengthMm: 6_000,
+      buckets: [{ lengthMm: 6_000, quantity: 4, totalValue: 2_400 }],
       quantity: 4,
       stockTrackingMode: 'periodic',
       totalValue: 2_400,
     });
-    expect(fabricated).toMatchObject({ averageUnitCost: 0, quantity: 0, totalValue: 0 });
+    expect(rowFor(context.parts.fabricated.id)).toMatchObject({
+      averageUnitCost: 0,
+      quantity: 0,
+      totalValue: 0,
+    });
   });
 
   test('omits revaluation-only buckets and carries the latest count across every Part bucket', async ({ context }) => {
@@ -633,11 +666,12 @@ describe('listStockOnHand', () => {
     });
 
     const result = await listStockOnHand({ db: context.db });
-    const linear = result.items.filter((row) => row.partId === context.parts.linear.id);
-    const periodic = result.items.filter((row) => row.partId === context.parts.periodic.id);
+    const linear = result.items.find((row) => row.partId === context.parts.linear.id);
+    const periodic = result.items.find((row) => row.partId === context.parts.periodic.id);
 
-    expect(linear.map((row) => row.lengthMm)).toEqual([6_000]);
-    expect(periodic.map((row) => row.asOfLastCount)).toEqual([count.createdAt, count.createdAt]);
+    expect(linear?.buckets.map((bucket) => bucket.lengthMm)).toEqual([6_000]);
+    expect(periodic?.buckets.map((bucket) => bucket.lengthMm)).toEqual([3_000, 6_000]);
+    expect(periodic?.asOfLastCount).toEqual(count.createdAt);
   });
 });
 

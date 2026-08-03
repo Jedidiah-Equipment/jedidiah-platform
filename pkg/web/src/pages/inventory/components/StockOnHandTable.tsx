@@ -1,9 +1,9 @@
-import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import { formatCurrency, formatDate } from '@pkg/domain';
 import type { StockOnHandRow, UUID } from '@pkg/schema';
 
 import { Button } from '@/components/ui/button.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
-import { formatPartQuantity, getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
+import { formatLengthBucket, formatPartQuantity, getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 
 export function StockOnHandTable({
   items,
@@ -14,8 +14,6 @@ export function StockOnHandTable({
   onOpenHistory: (partId: UUID) => void;
   showCosts: boolean;
 }) {
-  const partGroups = groupPartRows(items);
-
   return (
     <Table>
       <TableHeader>
@@ -30,57 +28,36 @@ export function StockOnHandTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {partGroups.flatMap((partItems) =>
-          partItems.map((item, partIndex) => (
-            <TableRow key={`${item.partId}:${item.lengthMm ?? 'unbucketed'}`}>
-              <TableCell>
-                <span className="block font-medium">{item.partName}</span>
-                <span className="block text-muted-foreground text-xs">{item.partCode}</span>
-              </TableCell>
-              <TableCell className="tabular-nums">{formatStockOnHand(item)}</TableCell>
-              {partIndex === 0 ? (
-                <TableCell className="tabular-nums" rowSpan={partItems.length}>
-                  {formatFreeStock(item)}
-                </TableCell>
-              ) : null}
-              <TableCell>{formatCountStatus(item)}</TableCell>
-              {showCosts ? <TableCell>{formatAverageCost(item)}</TableCell> : null}
-              {showCosts ? <TableCell>{formatInventoryValue(item.totalValue)}</TableCell> : null}
-              <TableCell className="text-right">
-                <Button onClick={() => onOpenHistory(item.partId)} size="sm" variant="link">
-                  View history
-                </Button>
-              </TableCell>
-            </TableRow>
-          )),
-        )}
+        {items.map((item) => (
+          <TableRow key={item.partId}>
+            <TableCell>
+              <span className="block font-medium">{item.partName}</span>
+              <span className="block text-muted-foreground text-xs">{item.partCode}</span>
+            </TableCell>
+            <TableCell className="tabular-nums">
+              <span className="block">{formatPartQuantity(item.quantity, item.unitOfMeasure)}</span>
+              {item.buckets.map((bucket) =>
+                bucket.lengthMm === null ? null : (
+                  <span key={bucket.lengthMm} className="block text-muted-foreground text-xs">
+                    {formatLengthBucket(bucket.lengthMm, bucket.quantity)}
+                  </span>
+                ),
+              )}
+            </TableCell>
+            <TableCell className="tabular-nums">{formatPartQuantity(item.free, item.unitOfMeasure)}</TableCell>
+            <TableCell>{formatCountStatus(item)}</TableCell>
+            {showCosts ? <TableCell>{formatAverageCost(item)}</TableCell> : null}
+            {showCosts ? <TableCell>{formatInventoryValue(item.totalValue)}</TableCell> : null}
+            <TableCell className="text-right">
+              <Button onClick={() => onOpenHistory(item.partId)} size="sm" variant="link">
+                View history
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   );
-}
-
-function groupPartRows(items: readonly StockOnHandRow[]): StockOnHandRow[][] {
-  const groups = new Map<UUID, StockOnHandRow[]>();
-  for (const item of items) {
-    const group = groups.get(item.partId) ?? [];
-    group.push(item);
-    groups.set(item.partId, group);
-  }
-  return [...groups.values()];
-}
-
-function formatFreeStock(item: StockOnHandRow): string {
-  return item.unitOfMeasure === 'mm'
-    ? `${formatNumber(item.free, { decimals: 0 })} pieces`
-    : formatPartQuantity(item.free, item.unitOfMeasure);
-}
-
-function formatStockOnHand(item: StockOnHandRow): string {
-  if (item.unitOfMeasure === 'mm' && item.lengthMm !== null) {
-    return `${formatNumber(item.lengthMm / 1_000, { decimals: item.lengthMm % 1_000 === 0 ? 0 : 1 })} m × ${formatNumber(item.quantity, { decimals: 0 })}`;
-  }
-
-  return formatPartQuantity(item.quantity, item.unitOfMeasure);
 }
 
 function formatCountStatus(item: StockOnHandRow): string {
@@ -98,8 +75,8 @@ function formatAverageCost(item: StockOnHandRow): string {
     return 'No cost yet';
   }
 
-  const suffix = item.unitOfMeasure === 'mm' ? 'mm' : getPartQuantityUnitDisplay(item.unitOfMeasure).suffix;
-  return `${formatCurrency(item.averageUnitCost, 'ZAR')}/${suffix}`;
+  // A linear Part's average is per millimetre, so its suffix is the dimension, not the counting unit.
+  return `${formatCurrency(item.averageUnitCost, 'ZAR')}/${getPartQuantityUnitDisplay(item.unitOfMeasure).suffix}`;
 }
 
 function formatInventoryValue(value: number | null): string {

@@ -137,13 +137,9 @@ export const snapshotTableDefinitions = [
     tableName: 'parts',
     timestampColumns: [],
     optionalReadColumns: ['minimumStock', 'standardPurchaseLengthMm', 'stockTrackingMode', 'storageLocation'],
-    seedRowDefaults: (row) => ({
-      minimumStock: null,
-      standardPurchaseLengthMm:
-        typeof row.code === 'string' ? (legacyPartStandardPurchaseLengthsMm[row.code] ?? null) : null,
-      stockTrackingMode: 'perpetual',
-      storageLocation: null,
-    }),
+    seedRowDefaults: () => ({ minimumStock: null, stockTrackingMode: 'perpetual', storageLocation: null }),
+    // Owns every legacy normalization: its `== null` test covers both a column the source never read
+    // and one it read as empty, so the defaults above stay plain. Delete once the source is migrated.
     seedRowTransform: (row) => {
       const legacyPurchaseLength =
         typeof row.code === 'string' ? legacyPartStandardPurchaseLengthsMm[row.code] : undefined;
@@ -151,9 +147,8 @@ export const snapshotTableDefinitions = [
       return {
         ...row,
         ...(row.code === 'SEMP-0001' && row.category === '6000' ? { category: 'Pipe' } : {}),
-        ...(row.standardPurchaseLengthMm == null && legacyPurchaseLength !== undefined
-          ? { standardPurchaseLengthMm: legacyPurchaseLength }
-          : {}),
+        standardPurchaseLengthMm:
+          row.standardPurchaseLengthMm == null ? (legacyPurchaseLength ?? null) : row.standardPurchaseLengthMm,
         unitOfMeasure: row.unitOfMeasure === 'quantity' ? 'piece' : row.unitOfMeasure,
       };
     },

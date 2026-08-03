@@ -1,14 +1,7 @@
 import { isPartCoreError, renderPartLabel, renderPartLabelBatch } from '@pkg/core';
 import { db } from '@pkg/db';
 import { renderPartLabelsPdf } from '@pkg/pdf';
-import {
-  PartCategory,
-  PartLabelBatchSelection,
-  type PartLabelPdfRenderer,
-  PartLabelSelectionMode,
-  PartStorageLocation,
-  UUID,
-} from '@pkg/schema';
+import { PartLabelBatchQuery, type PartLabelPdfRenderer, UUID } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
@@ -21,12 +14,6 @@ import {
 } from '../http-route-helpers.js';
 
 const PartLabelParams = z.object({ partId: UUID });
-const PartLabelBatchQuery = z.object({
-  category: PartCategory.optional(),
-  ids: z.string().optional(),
-  selection: PartLabelSelectionMode,
-  storageLocation: PartStorageLocation.unwrap().optional(),
-});
 
 export async function registerPartLabelHttpRoutes(
   app: FastifyInstance,
@@ -38,7 +25,7 @@ export async function registerPartLabelHttpRoutes(
 
     try {
       requirePartLabelAccess(auth);
-      const selection = parseBatchSelection(request.query);
+      const selection = PartLabelBatchQuery.parse(request.query);
       const result = await mapPartLabelErrors(() => renderPartLabelBatch({ db, pdfRenderer, selection }));
       return sendPdf(reply, result);
     } catch (error) {
@@ -63,27 +50,6 @@ export async function registerPartLabelHttpRoutes(
 
 function requirePartLabelAccess(auth: Parameters<typeof requirePermission>[0]): void {
   requirePermission(auth, 'part:read', 'You do not have permission to print Part labels.', 'part.label_forbidden');
-}
-
-function parseBatchSelection(query: unknown) {
-  const parsed = PartLabelBatchQuery.parse(query);
-
-  switch (parsed.selection) {
-    case 'all':
-      return PartLabelBatchSelection.parse({ selection: parsed.selection });
-    case 'category':
-      return PartLabelBatchSelection.parse({ category: parsed.category, selection: parsed.selection });
-    case 'storageLocation':
-      return PartLabelBatchSelection.parse({
-        selection: parsed.selection,
-        storageLocation: parsed.storageLocation,
-      });
-    case 'ids':
-      return PartLabelBatchSelection.parse({
-        ids: parsed.ids?.split(',').filter(Boolean),
-        selection: parsed.selection,
-      });
-  }
 }
 
 async function mapPartLabelErrors<T>(action: () => Promise<T>): Promise<T> {

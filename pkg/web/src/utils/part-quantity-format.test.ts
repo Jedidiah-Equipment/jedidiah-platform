@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatPartQuantity, getPartQuantityUnitDisplay } from './part-quantity-format.js';
+import {
+  formatLengthBucket,
+  formatLengthMetres,
+  formatPartQuantity,
+  getPartQuantityUnitDisplay,
+} from './part-quantity-format.js';
 
 describe('getPartQuantityUnitDisplay', () => {
   it('renders piece parts with a compact suffix', () => {
@@ -15,7 +20,7 @@ describe('getPartQuantityUnitDisplay', () => {
     expect(getPartQuantityUnitDisplay('litre')).toEqual({ label: 'Litres', suffix: 'L' });
   });
 
-  it('renders millimetre parts with an mm suffix', () => {
+  it('renders millimetre parts with an mm suffix, the dimension its lengths are measured in', () => {
     expect(getPartQuantityUnitDisplay('mm')).toEqual({
       label: 'Millimetres',
       suffix: 'mm',
@@ -28,7 +33,18 @@ describe('formatPartQuantity', () => {
     expect(formatPartQuantity(3, 'piece')).toBe('3 pc');
   });
 
-  it('formats millimetre quantities with the unit suffix', () => {
-    expect(formatPartQuantity(6000, 'mm')).toBe('6000 mm');
+  it('counts linear stock in pieces, never in millimetres', () => {
+    expect(formatPartQuantity(2, 'mm')).toBe('2 pieces');
+  });
+});
+
+describe('length formatting', () => {
+  it('shows a length in metres, keeping one decimal only when it needs one', () => {
+    expect(formatLengthMetres(6_000)).toBe('6 m');
+    expect(formatLengthMetres(4_200)).toBe('4.2 m');
+  });
+
+  it('reads a bucket as its length and its piece count', () => {
+    expect(formatLengthBucket(13_000, 9)).toBe('13 m × 9');
   });
 });

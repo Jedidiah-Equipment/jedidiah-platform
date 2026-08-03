@@ -228,7 +228,8 @@ describe('inventory cost projection', () => {
       quantity: 1,
     });
 
-    expect(admin).toMatchObject({ movement: { unitCost: 25 }, warnings: { negativeStockOnHand: false } });
-    expect(stores).toMatchObject({ movement: { unitCost: null }, warnings: { exceedsDrawn: false } });
+    // The draw is off-CFO on this fixture, so it warns; the price-blind return still reverses at cost.
+    expect(admin).toMatchObject({ movement: { unitCost: 25 }, warnings: ['exceeds-cfo'] });
+    expect(stores).toMatchObject({ movement: { unitCost: null }, warnings: [] });
   });
 });

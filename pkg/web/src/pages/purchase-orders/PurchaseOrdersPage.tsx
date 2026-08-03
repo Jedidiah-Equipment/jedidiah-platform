@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
-import type { PurchaseOrder, PurchaseOrderStatus } from '@pkg/schema';
+import type { PurchaseOrderView } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -8,7 +8,6 @@ import { useState } from 'react';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
@@ -16,13 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { purchaseOrdersPageDescription } from '@/utils/page-descriptions.js';
+import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
 import { PurchaseOrderCreateDialog } from './PurchaseOrderCreateDialog.js';
-
-const statusLabels = {
-  cancelled: 'Cancelled',
-  draft: 'Draft',
-  sent: 'Sent',
-} as const satisfies Record<PurchaseOrderStatus, string>;
 
 export const PurchaseOrdersPage: React.FC = () => {
   const trpc = useTRPC();
@@ -72,8 +66,8 @@ export const PurchaseOrdersPage: React.FC = () => {
 
 const PurchaseOrderTable: React.FC<{
   canReadCosts: boolean;
-  items: PurchaseOrder[];
-  onOpen: (id: PurchaseOrder['id']) => void;
+  items: PurchaseOrderView[];
+  onOpen: (id: PurchaseOrderView['id']) => void;
 }> = ({ canReadCosts, items, onOpen }) => {
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">No Purchase Orders found.</p>;
@@ -127,11 +121,6 @@ const PurchaseOrderTable: React.FC<{
   );
 };
 
-export function PurchaseOrderStatusBadge({ status }: { status: PurchaseOrderStatus }) {
-  const variant = status === 'cancelled' ? 'destructive' : status === 'sent' ? 'default' : 'secondary';
-  return <Badge variant={variant}>{statusLabels[status]}</Badge>;
-}
-
-function totalFor(purchaseOrder: PurchaseOrder): number {
+function totalFor(purchaseOrder: PurchaseOrderView): number {
   return purchaseOrder.lines.reduce((total, line) => total + line.quantity * (line.unitPrice ?? 0), 0);
 }

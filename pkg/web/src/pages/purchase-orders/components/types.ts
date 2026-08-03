@@ -1,43 +1,68 @@
 import {
   DateOnlyIso,
   DateOnlyIsoString,
-  type PurchaseOrder,
+  hasUniquePartIds,
+  PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
   type PurchaseOrderCreateInput,
-  type PurchaseOrderUpdateHeaderInput,
+  PurchaseOrderLineInput,
+  type PurchaseOrderSaveDraftInput,
+  type PurchaseOrderView,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
 
-export type PurchaseOrderHeaderFormValues = z.infer<typeof PurchaseOrderHeaderFormValues>;
-export const PurchaseOrderHeaderFormValues = z.object({
+export type PurchaseOrderCreateFormValues = z.infer<typeof PurchaseOrderCreateFormValues>;
+export const PurchaseOrderCreateFormValues = z.object({
   expectedDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
   supplierId: UUID,
 });
 
-export type PurchaseOrderCreateFormValues = z.infer<typeof PurchaseOrderCreateFormValues>;
-export const PurchaseOrderCreateFormValues = PurchaseOrderHeaderFormValues;
+/** The whole editable draft: header, lines, and Job links move together through one save. */
+export type PurchaseOrderDraftFormValues = z.infer<typeof PurchaseOrderDraftFormValues>;
+export const PurchaseOrderDraftFormValues = PurchaseOrderCreateFormValues.extend({
+  jobIds: z.array(UUID),
+  lines: z.array(PurchaseOrderLineInput),
+  // Mirrors PurchaseOrderSaveDraftInput so a duplicate Part fails validation here rather than
+  // autosaving into a server rejection the reader cannot trace back to a row.
+}).refine((values) => hasUniquePartIds(values.lines), {
+  message: PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
+  path: ['lines'],
+});
 
 export function toPurchaseOrderCreateInput(values: PurchaseOrderCreateFormValues): PurchaseOrderCreateInput {
   return {
-    expectedDeliveryDate: values.expectedDeliveryDate ? DateOnlyIso.parse(values.expectedDeliveryDate) : null,
+    expectedDeliveryDate: toExpectedDeliveryDate(values.expectedDeliveryDate),
     supplierId: values.supplierId,
   };
 }
 
-export function toPurchaseOrderHeaderFormValues(purchaseOrder: PurchaseOrder): PurchaseOrderHeaderFormValues {
+export function toPurchaseOrderDraftFormValues(purchaseOrder: PurchaseOrderView): PurchaseOrderDraftFormValues {
   return {
     expectedDeliveryDate: purchaseOrder.expectedDeliveryDate ?? '',
+    jobIds: purchaseOrder.jobs.map((job) => job.id),
+    // A price-blind reader never reaches the editable form, so a stored line always has its price.
+    lines: purchaseOrder.lines.map((line) => ({
+      partId: line.partId,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice ?? 0,
+    })),
     supplierId: purchaseOrder.supplierId,
   };
 }
 
-export function toPurchaseOrderHeaderInput(
-  id: PurchaseOrder['id'],
-  values: PurchaseOrderHeaderFormValues,
-): PurchaseOrderUpdateHeaderInput {
+export function toPurchaseOrderDraftInput(
+  id: PurchaseOrderView['id'],
+  values: PurchaseOrderDraftFormValues,
+): PurchaseOrderSaveDraftInput {
   return {
-    expectedDeliveryDate: values.expectedDeliveryDate ? DateOnlyIso.parse(values.expectedDeliveryDate) : null,
+    expectedDeliveryDate: toExpectedDeliveryDate(values.expectedDeliveryDate),
     id,
+    jobIds: values.jobIds,
+    lines: values.lines,
     supplierId: values.supplierId,
   };
+}
+
+function toExpectedDeliveryDate(value: string) {
+  return value ? DateOnlyIso.parse(value) : null;
 }

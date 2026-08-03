@@ -37,7 +37,8 @@ type ColumnDefinition = {
   key: PartBulkImportColumnKey;
   label: (typeof PART_BULK_IMPORT_COLUMNS)[number];
   normalizedHeaders: readonly string[];
-  required?: boolean;
+  /** Optional columns sit at the end of the template so a shorter legacy row still lines up. */
+  required: boolean;
 };
 
 type ParsePartBulkImportCsvOptions = {
@@ -50,19 +51,25 @@ export type ParsePartBulkImportCsvResult = {
 };
 
 const columnDefinitions: readonly ColumnDefinition[] = [
-  { key: 'code', label: 'Code', normalizedHeaders: ['code'] },
-  { key: 'drawingCode', label: 'Drawing code', normalizedHeaders: ['drawingcode'] },
-  { key: 'description', label: 'Description', normalizedHeaders: ['description'] },
-  { key: 'supplierName', label: 'Supplier', normalizedHeaders: ['supplier'] },
-  { key: 'supplierCode', label: 'Supplier Code', normalizedHeaders: ['suppliercode'] },
-  { key: 'finish', label: 'Finish', normalizedHeaders: ['finish'] },
-  { key: 'category', label: 'Catagory', normalizedHeaders: ['catagory', 'category'] },
-  { key: 'name', label: 'Name', normalizedHeaders: ['name'] },
-  { key: 'unitOfMeasure', label: 'Unit', normalizedHeaders: ['unit', 'unitofmeasure', 'unitofmeasurement'] },
+  { key: 'code', label: 'Code', normalizedHeaders: ['code'], required: true },
+  { key: 'drawingCode', label: 'Drawing code', normalizedHeaders: ['drawingcode'], required: true },
+  { key: 'description', label: 'Description', normalizedHeaders: ['description'], required: true },
+  { key: 'supplierName', label: 'Supplier', normalizedHeaders: ['supplier'], required: true },
+  { key: 'supplierCode', label: 'Supplier Code', normalizedHeaders: ['suppliercode'], required: true },
+  { key: 'finish', label: 'Finish', normalizedHeaders: ['finish'], required: true },
+  { key: 'category', label: 'Catagory', normalizedHeaders: ['catagory', 'category'], required: true },
+  { key: 'name', label: 'Name', normalizedHeaders: ['name'], required: true },
+  {
+    key: 'unitOfMeasure',
+    label: 'Unit',
+    normalizedHeaders: ['unit', 'unitofmeasure', 'unitofmeasurement'],
+    required: true,
+  },
   {
     key: 'isInternallyFabricated',
     label: 'Internally Fabricated',
     normalizedHeaders: ['internallyfabricated', 'internalfabrication', 'internal'],
+    required: true,
   },
   {
     key: 'standardPurchaseLengthMm',
@@ -129,9 +136,7 @@ export function parsePartBulkImportCsv(
     };
   }
 
-  const columnIndexes = options.hasHeader
-    ? getHeaderColumnIndexes(table[0] ?? [])
-    : { errors: [], indexes: new Map<PartBulkImportColumnKey, number>() };
+  const columnIndexes = options.hasHeader ? getHeaderColumnIndexes(table[0] ?? []) : getPositionColumnIndexes();
 
   if (parseErrors.length > 0) {
     return {
@@ -161,25 +166,19 @@ export function parsePartBulkImportCsv(
   dataRows.forEach((dataRow, index) => {
     const rowNumber = options.hasHeader ? index + 2 : index + 1;
 
-    if (
-      !options.hasHeader &&
-      dataRow.length !== columnDefinitions.length &&
-      dataRow.length !== columnDefinitions.length - 1
-    ) {
-      errors.push(
-        `Row ${rowNumber}: Expected ${columnDefinitions.length - 1} or ${columnDefinitions.length} columns, found ${dataRow.length}.`,
-      );
-      return;
-    }
-
-    if (options.hasHeader && dataRow.length < getRequiredColumnCount(columnIndexes.indexes)) {
+    // Trailing optional columns may simply be absent; every required cell must be present.
+    if (dataRow.length < requiredCellCount(columnIndexes.indexes)) {
       errors.push(`Row ${rowNumber}: Missing one or more expected columns.`);
       return;
     }
 
-    const rowIndexes = options.hasHeader ? columnIndexes.indexes : getPositionColumnIndexes(dataRow.length).indexes;
+    if (!options.hasHeader && dataRow.length > columnDefinitions.length) {
+      errors.push(`Row ${rowNumber}: Expected at most ${columnDefinitions.length} columns, found ${dataRow.length}.`);
+      return;
+    }
+
     const rowInput = {
-      ...buildRowInput(dataRow, rowIndexes),
+      ...buildRowInput(dataRow, columnIndexes.indexes),
       lineNumber: rowNumber,
     };
     const result = PartBulkImportRow.safeParse(rowInput);
@@ -208,14 +207,8 @@ export function parsePartBulkImportCsv(
   };
 }
 
-function getPositionColumnIndexes(columnCount: number): {
-  errors: string[];
-  indexes: Map<PartBulkImportColumnKey, number>;
-} {
-  return {
-    errors: [],
-    indexes: new Map(columnDefinitions.slice(0, columnCount).map((column, index) => [column.key, index])),
-  };
+function getPositionColumnIndexes(): { errors: string[]; indexes: Map<PartBulkImportColumnKey, number> } {
+  return { errors: [], indexes: new Map(columnDefinitions.map((column, index) => [column.key, index])) };
 }
 
 function getHeaderColumnIndexes(headers: readonly string[]): {
@@ -230,7 +223,7 @@ function getHeaderColumnIndexes(headers: readonly string[]): {
     const index = normalizedHeaders.findIndex((header) => column.normalizedHeaders.includes(header));
 
     if (index === -1) {
-      if (column.required !== false) errors.push(`Missing required column: ${column.label}.`);
+      if (column.required) errors.push(`Missing required column: ${column.label}.`);
       continue;
     }
 
@@ -243,8 +236,8 @@ function getHeaderColumnIndexes(headers: readonly string[]): {
 function buildRowInput(
   row: readonly string[],
   indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
-): Record<string, string | number | boolean | null> {
-  const input: Record<string, string | number | boolean | null> = {
+): Record<PartBulkImportColumnKey, string | number | boolean | null> {
+  return {
     category: getFormattedCell(row, indexes, 'category'),
     code: getCell(row, indexes, 'code'),
     description: getCell(row, indexes, 'description'),
@@ -252,16 +245,11 @@ function buildRowInput(
     finish: getFormattedCell(row, indexes, 'finish'),
     isInternallyFabricated: getBooleanCell(row, indexes, 'isInternallyFabricated'),
     name: getFormattedCell(row, indexes, 'name'),
+    standardPurchaseLengthMm: getOptionalIntegerCell(row, indexes, 'standardPurchaseLengthMm'),
     supplierCode: getCell(row, indexes, 'supplierCode'),
     supplierName: getFormattedCell(row, indexes, 'supplierName'),
     unitOfMeasure: getUnitOfMeasureCell(row, indexes),
   };
-
-  if (indexes.has('standardPurchaseLengthMm')) {
-    input.standardPurchaseLengthMm = getOptionalIntegerCell(row, indexes, 'standardPurchaseLengthMm');
-  }
-
-  return input;
 }
 
 function getCell(
@@ -355,6 +343,7 @@ function formatWord(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 }
 
+/** Drops punctuation as well as spacing, so a labelled unit like "Length (mm)" still matches. */
 function normalizeHeader(header: string): string {
   return header
     .trim()
@@ -362,11 +351,13 @@ function normalizeHeader(header: string): string {
     .replaceAll(/[^a-z0-9]/g, '');
 }
 
-function getRequiredColumnCount(indexes: ReadonlyMap<PartBulkImportColumnKey, number>): number {
+/** How many cells a row must hold to reach every required column at its resolved position. */
+function requiredCellCount(indexes: ReadonlyMap<PartBulkImportColumnKey, number>): number {
   const requiredIndexes = columnDefinitions.flatMap((column) => {
     const index = indexes.get(column.key);
-    return column.required === false || index === undefined ? [] : [index];
+
+    return column.required && index !== undefined ? [index] : [];
   });
 
-  return Math.max(...requiredIndexes) + 1;
+  return requiredIndexes.length === 0 ? 0 : Math.max(...requiredIndexes) + 1;
 }

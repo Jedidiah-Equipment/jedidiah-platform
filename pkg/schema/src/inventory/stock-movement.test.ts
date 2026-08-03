@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isPeriodicStockAdjustmentReason,
+  JobStockMovementType,
   PostAdjustmentInput,
-  PostCheckoutInput,
-  PostReturnToStoreInput,
+  PostJobMovementInput,
   PostRevaluationInput,
   StockMovementType,
 } from './stock-movement.js';
@@ -71,19 +72,26 @@ describe('stock movement inputs', () => {
     expect(() => PostRevaluationInput.parse({ lengthMm: null, partId, unitCost: 18.75 })).toThrow();
   });
 
-  it.each([
-    ['checkout', PostCheckoutInput],
-    ['return-to-store', PostReturnToStoreInput],
-  ] as const)('takes a positive quantity, Job, Part, and optional length for %s', (_type, schema) => {
-    expect(schema.parse({ jobId: partId, lengthMm: 6_000, partId, quantity: 1.125 })).toEqual({
+  it('takes a positive quantity, Job, Part, and optional length for either Job movement', () => {
+    expect(JobStockMovementType.options).toEqual(['checkout', 'return-to-store']);
+    expect(PostJobMovementInput.parse({ jobId: partId, lengthMm: 6_000, partId, quantity: 1.125 })).toEqual({
       jobId: partId,
       lengthMm: 6_000,
       partId,
       quantity: 1.125,
     });
 
-    expect(() => schema.parse({ jobId: partId, partId, quantity: 0 })).toThrow();
-    expect(() => schema.parse({ jobId: partId, partId, quantity: -1 })).toThrow();
-    expect(() => schema.parse({ jobId: partId, partId, quantity: 1, unitCost: 12 })).toThrow();
+    expect(() => PostJobMovementInput.parse({ jobId: partId, partId, quantity: 0 })).toThrow();
+    expect(() => PostJobMovementInput.parse({ jobId: partId, partId, quantity: -1 })).toThrow();
+    expect(() => PostJobMovementInput.parse({ jobId: partId, partId, quantity: 1, unitCost: 12 })).toThrow();
+  });
+
+  it('limits periodic Parts to their opening balance and stock counts', () => {
+    expect(isPeriodicStockAdjustmentReason('opening-balance')).toBe(true);
+    expect(isPeriodicStockAdjustmentReason('stock-count')).toBe(true);
+
+    for (const reason of ['damage', 'scrap', 'correction'] as const) {
+      expect(isPeriodicStockAdjustmentReason(reason), reason).toBe(false);
+    }
   });
 });

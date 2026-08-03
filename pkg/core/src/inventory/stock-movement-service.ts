@@ -12,16 +12,19 @@ import {
   deriveCommitment,
   deriveMovingAverage,
   deriveMovingAverageTimeline,
+  deriveOutstandingDrawUnitCost,
+  deriveStockMovementWarnings,
+  type StockMovementContext,
   valueStockBucket,
   valueStockMovement,
 } from '@pkg/domain';
 import type {
   AuthId,
+  JobStockMovementType,
   JobStockResult,
   PartUnitClass,
   PostAdjustmentInput,
-  PostCheckoutInput,
-  PostReturnToStoreInput,
+  PostJobMovementInput,
   PostRevaluationInput,
   StockMovement,
   StockMovementHistoryResult,
@@ -30,6 +33,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import {
+  isPeriodicStockAdjustmentReason,
   JobStockResult as JobStockResultSchema,
   StockMovementHistoryResult as StockMovementHistoryResultSchema,
   StockMovementPostResult as StockMovementPostResultSchema,
@@ -37,19 +41,20 @@ import {
   StockOnHandResult as StockOnHandResultSchema,
   unitClassFor,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne, type SQL, sql } from 'drizzle-orm';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 
 import {
   FabricatedPartCostError,
-  PeriodicStockAdjustmentError,
+  PeriodicStockMovementError,
   StockMovementDeltaError,
   StockMovementLengthError,
   StockMovementPartNotFoundError,
 } from './stock-movement-errors.js';
 
 type StockMovementDatabase = Db | DatabaseTransaction;
+const JOB_MOVEMENT_TYPES = ['checkout', 'return-to-store'] as const satisfies readonly JobStockMovementType[];
 
 export async function postAdjustment({
   actorUserId,
@@ -60,33 +65,18 @@ export async function postAdjustment({
   db: Db;
   input: PostAdjustmentInput;
 }): Promise<StockMovement> {
-  return db.transaction((tx) => postAdjustmentInTransaction({ actorUserId, db: tx, input }));
-}
+  return db.transaction(async (tx) => {
+    const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
+    const unitClass = unitClassFor(part.unitOfMeasure);
 
-async function postAdjustmentInTransaction({
-  actorUserId,
-  db,
-  input,
-}: {
-  actorUserId: AuthId;
-  db: DatabaseTransaction;
-  input: PostAdjustmentInput;
-}): Promise<StockMovement> {
-  const part = await loadStockPart({ db, lockForMovement: true, partId: input.partId });
-  const unitClass = unitClassFor(part.unitOfMeasure);
+    assertDeltaMatchesUnitClass(input.delta, unitClass);
+    assertLengthMatchesUnitClass(input.lengthMm, unitClass);
+    assertFabricatedPartCost(part.isInternallyFabricated, input.unitCost);
+    if (part.stockTrackingMode === 'periodic' && !isPeriodicStockAdjustmentReason(input.reason)) {
+      throw new PeriodicStockMovementError(input.reason);
+    }
 
-  assertDeltaMatchesUnitClass(input.delta, unitClass);
-  assertLengthMatchesUnitClass(input.lengthMm, unitClass);
-  assertFabricatedPartCost(part.isInternallyFabricated, input.unitCost);
-
-  // Go-live opening balances are the one pre-count seed for periodic stock; normal periodic writes stay count-only.
-  if (part.stockTrackingMode === 'periodic' && input.reason !== 'opening-balance' && input.reason !== 'stock-count') {
-    throw new PeriodicStockAdjustmentError(input.reason);
-  }
-
-  const [movement] = await db
-    .insert(stockMovements)
-    .values({
+    return insertMovement(tx, {
       actorUserId,
       delta: input.delta,
       lengthMm: input.lengthMm,
@@ -95,14 +85,8 @@ async function postAdjustmentInTransaction({
       partId: input.partId,
       reason: input.reason,
       unitCost: input.unitCost,
-    })
-    .returning();
-
-  if (!movement) {
-    throw new Error('Stock movement insert did not return a row');
-  }
-
-  return StockMovementSchema.parse(movement);
+    });
+  });
 }
 
 export async function postRevaluation({
@@ -114,160 +98,67 @@ export async function postRevaluation({
   db: Db;
   input: PostRevaluationInput;
 }): Promise<StockMovement> {
-  return db.transaction((tx) => postRevaluationInTransaction({ actorUserId, db: tx, input }));
-}
+  return db.transaction(async (tx) => {
+    const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
 
-async function postRevaluationInTransaction({
-  actorUserId,
-  db,
-  input,
-}: {
-  actorUserId: AuthId;
-  db: DatabaseTransaction;
-  input: PostRevaluationInput;
-}): Promise<StockMovement> {
-  const part = await loadStockPart({ db, lockForMovement: true, partId: input.partId });
+    assertFabricatedPartCost(part.isInternallyFabricated, input.unitCost);
 
-  assertFabricatedPartCost(part.isInternallyFabricated, input.unitCost);
-
-  const [movement] = await db
-    .insert(stockMovements)
-    .values({
+    return insertMovement(tx, {
       actorUserId,
       delta: 0,
-      lengthMm: null,
       movementType: 'revaluation',
       note: input.note,
       partId: input.partId,
-      reason: null,
       unitCost: input.unitCost,
-    })
-    .returning();
-
-  if (!movement) {
-    throw new Error('Stock movement insert did not return a row');
-  }
-
-  return StockMovementSchema.parse(movement);
-}
-
-export async function postCheckout({
-  actorUserId,
-  db,
-  input,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: PostCheckoutInput;
-}): Promise<StockMovementPostResult> {
-  return db.transaction(async (tx) => {
-    const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
-    await lockMutableJob(tx, input.jobId);
-    const unitClass = unitClassFor(part.unitOfMeasure);
-
-    assertDeltaMatchesUnitClass(input.quantity, unitClass);
-    assertLengthMatchesUnitClass(input.lengthMm, unitClass);
-    if (part.stockTrackingMode === 'periodic') {
-      throw new PeriodicStockAdjustmentError('checkout');
-    }
-
-    const [orderedMovements, cfoQuantity, drawnQuantity, stockOnHand] = await Promise.all([
-      loadOrderedPartMovements({ db: tx, partId: input.partId }),
-      getJobPartCfoQuantity({ db: tx, jobId: input.jobId, partId: input.partId }),
-      getJobPartDrawnQuantity({ db: tx, jobId: input.jobId, partId: input.partId }),
-      getStockBucketQuantity({ db: tx, lengthMm: input.lengthMm, partId: input.partId }),
-    ]);
-    const movingAverage = part.isInternallyFabricated ? 0 : deriveMovingAverage(orderedMovements);
-    const unitCost =
-      movingAverage === null ? null : input.lengthMm === null ? movingAverage : movingAverage * input.lengthMm;
-
-    const movement = await insertJobMovement({
-      actorUserId,
-      db: tx,
-      delta: -input.quantity,
-      input,
-      movementType: 'checkout',
-      unitCost,
-    });
-
-    return StockMovementPostResultSchema.parse({
-      movement,
-      warnings: {
-        exceedsCfo: drawnQuantity + input.quantity > cfoQuantity,
-        exceedsDrawn: false,
-        negativeStockOnHand: stockOnHand - input.quantity < 0,
-      },
     });
   });
 }
 
-export async function postReturnToStore({
+/**
+ * Draws a Part against a Job, or returns it. The two directions share every rule but three: a return
+ * is still valid on a cancelled Job (physically recovered stock must not be stranded off-ledger), it
+ * reverses at the cost the parts left with rather than today's average, and its delta is positive.
+ */
+export async function postJobMovement({
   actorUserId,
   db,
   input,
+  movementType,
 }: {
   actorUserId: AuthId;
   db: Db;
-  input: PostReturnToStoreInput;
+  input: PostJobMovementInput;
+  movementType: JobStockMovementType;
 }): Promise<StockMovementPostResult> {
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
-    // Returns remain valid after cancellation so physically recovered stock is not stranded off-ledger.
-    await lockJob(tx, input.jobId);
+    await (movementType === 'checkout' ? lockMutableJob(tx, input.jobId) : lockJob(tx, input.jobId));
     const unitClass = unitClassFor(part.unitOfMeasure);
 
     assertDeltaMatchesUnitClass(input.quantity, unitClass);
     assertLengthMatchesUnitClass(input.lengthMm, unitClass);
-    if (part.stockTrackingMode === 'periodic') {
-      throw new PeriodicStockAdjustmentError('return-to-store');
-    }
+    if (part.stockTrackingMode === 'periodic') throw new PeriodicStockMovementError(movementType);
 
-    const [drawnQuantity, jobMovementRows] = await Promise.all([
-      getJobPartDrawnQuantity({
-        db: tx,
-        jobId: input.jobId,
-        lengthMm: input.lengthMm,
-        partId: input.partId,
-      }),
-      tx
-        .select({
-          delta: stockMovements.delta,
-          movementType: stockMovements.movementType,
-          unitCost: stockMovements.unitCost,
-        })
-        .from(stockMovements)
-        .where(
-          and(
-            eq(stockMovements.jobId, input.jobId),
-            eq(stockMovements.partId, input.partId),
-            input.lengthMm === null
-              ? sql`${stockMovements.lengthMm} IS NULL`
-              : eq(stockMovements.lengthMm, input.lengthMm),
-            inArray(stockMovements.movementType, ['checkout', 'return-to-store']),
-          ),
-        )
-        .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id)),
+    const [context, unitCost] = await Promise.all([
+      loadStockMovementContext(tx, input),
+      movementType === 'checkout'
+        ? deriveCheckoutUnitCost(tx, part.isInternallyFabricated, input)
+        : deriveReturnUnitCost(tx, input),
     ]);
 
-    // A linear piece's stamped cost scales with its bucket length, so only matching-length draws
-    // can establish the reversal price. Any unknown stamp keeps the return honestly uncosted.
-    const unitCost = deriveOutstandingDrawUnitCost(jobMovementRows, input.quantity);
-    const movement = await insertJobMovement({
+    const movement = await insertMovement(tx, {
       actorUserId,
-      db: tx,
-      delta: input.quantity,
-      input,
-      movementType: 'return-to-store',
+      delta: movementType === 'checkout' ? -input.quantity : input.quantity,
+      jobId: input.jobId,
+      lengthMm: input.lengthMm,
+      movementType,
+      partId: input.partId,
       unitCost,
     });
 
     return StockMovementPostResultSchema.parse({
       movement,
-      warnings: {
-        exceedsCfo: false,
-        exceedsDrawn: input.quantity > drawnQuantity,
-        negativeStockOnHand: false,
-      },
+      warnings: deriveStockMovementWarnings({ context, movementType, quantity: input.quantity }),
     });
   });
 }
@@ -300,19 +191,12 @@ export async function listJobStock({
         partId: stockMovements.partId,
       })
       .from(stockMovements)
-      .where(
-        and(eq(stockMovements.jobId, jobId), inArray(stockMovements.movementType, ['checkout', 'return-to-store'])),
-      )
+      .where(and(eq(stockMovements.jobId, jobId), inArray(stockMovements.movementType, JOB_MOVEMENT_TYPES)))
       .groupBy(stockMovements.partId, stockMovements.lengthMm),
   ]);
 
   const cfoByPart = new Map(cfoRows.map((row) => [row.partId, row.cfoQuantity]));
-  const movementsByPart = new Map<UUID, typeof movementRows>();
-  for (const row of movementRows) {
-    const rows = movementsByPart.get(row.partId) ?? [];
-    rows.push(row);
-    movementsByPart.set(row.partId, rows);
-  }
+  const movementsByPart = groupBy(movementRows, (row) => row.partId);
   const partIds = [...new Set([...cfoByPart.keys(), ...movementsByPart.keys()])];
   if (partIds.length === 0) {
     return { items: [] };
@@ -334,7 +218,7 @@ export async function listJobStock({
     items: partRows.map((part) => {
       const movementBuckets = movementsByPart.get(part.id) ?? [];
       const cfoQuantity = cfoByPart.get(part.id) ?? 0;
-      const drawnQuantity = movementBuckets.reduce((sum, row) => sum + row.drawnQuantity, 0);
+      const drawnQuantity = sumBy(movementBuckets, (row) => row.drawnQuantity);
 
       return {
         cfoQuantity,
@@ -364,11 +248,11 @@ export async function listStockOnHand({ db }: { db: Db }): Promise<StockOnHandRe
 }
 
 async function listStockOnHandSnapshot(db: DatabaseTransaction): Promise<StockOnHandResult> {
-  const [quantityRows, movementRows, commitmentRows] = await Promise.all([
+  const [bucketRows, movementRows, committedByPart] = await Promise.all([
     db
       .select({
-        lengthMm: stockMovements.lengthMm,
         isInternallyFabricated: parts.isInternallyFabricated,
+        lengthMm: stockMovements.lengthMm,
         partCode: parts.code,
         partId: parts.id,
         partName: parts.name,
@@ -378,6 +262,7 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction): Promise<StockOn
         unitOfMeasure: parts.unitOfMeasure,
       })
       .from(parts)
+      // A revaluation moves cost, never quantity, so it must not open a length bucket of its own.
       .leftJoin(
         stockMovements,
         and(eq(stockMovements.partId, parts.id), ne(stockMovements.movementType, 'revaluation')),
@@ -407,50 +292,43 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction): Promise<StockOn
     listOpenCommitments(db),
   ]);
 
-  const movementsByPart = new Map<UUID, typeof movementRows>();
-  const asOfLastCountByPart = new Map<UUID, Date>();
-  for (const movement of movementRows) {
-    const partMovements = movementsByPart.get(movement.partId) ?? [];
-    partMovements.push(movement);
-    movementsByPart.set(movement.partId, partMovements);
-
-    if (movement.reason === 'stock-count') {
-      asOfLastCountByPart.set(movement.partId, movement.createdAt);
-    }
-  }
-
-  const averageUnitCostByPart = new Map<UUID, number | null>();
-  const totalQuantityByPart = new Map<UUID, number>();
-  for (const row of quantityRows) {
-    totalQuantityByPart.set(row.partId, (totalQuantityByPart.get(row.partId) ?? 0) + row.quantity);
-    if (!averageUnitCostByPart.has(row.partId)) {
-      averageUnitCostByPart.set(
-        row.partId,
-        row.isInternallyFabricated ? 0 : deriveMovingAverage(movementsByPart.get(row.partId) ?? []),
-      );
-    }
-  }
+  const movementsByPart = groupBy(movementRows, (row) => row.partId);
+  const lastCountByPart = new Map(
+    movementRows.flatMap((row) => (row.reason === 'stock-count' ? [[row.partId, row.createdAt] as const] : [])),
+  );
 
   return StockOnHandResultSchema.parse({
-    items: quantityRows.map((row) => {
-      const averageUnitCost = averageUnitCostByPart.get(row.partId) ?? null;
-      const committed = commitmentRows.get(row.partId) ?? 0;
+    // Grouping preserves the query's ordering, so the head bucket carries the Part's own columns.
+    items: [...groupBy(bucketRows, (row) => row.partId).values()].map(([part, ...tailBuckets]) => {
+      const averageUnitCost = part.isInternallyFabricated
+        ? 0
+        : deriveMovingAverage(movementsByPart.get(part.partId) ?? []);
+      const buckets = [part, ...tailBuckets].map((bucket) => ({
+        lengthMm: bucket.lengthMm,
+        quantity: bucket.quantity,
+        totalValue: valueStockBucket({ averageUnitCost, lengthMm: bucket.lengthMm, quantity: bucket.quantity }),
+      }));
+      const committed = committedByPart.get(part.partId) ?? 0;
+      const quantity = sumBy(buckets, (bucket) => bucket.quantity);
 
       return {
+        asOfLastCount: part.stockTrackingMode === 'periodic' ? (lastCountByPart.get(part.partId) ?? null) : null,
         averageUnitCost,
-        asOfLastCount: row.stockTrackingMode === 'periodic' ? (asOfLastCountByPart.get(row.partId) ?? null) : null,
+        buckets,
         committed,
-        free: (totalQuantityByPart.get(row.partId) ?? 0) - committed,
-        isInternallyFabricated: row.isInternallyFabricated,
-        lengthMm: row.lengthMm,
-        partCode: row.partCode,
-        partId: row.partId,
-        partName: row.partName,
-        quantity: row.quantity,
-        standardPurchaseLengthMm: row.standardPurchaseLengthMm,
-        stockTrackingMode: row.stockTrackingMode,
-        totalValue: valueStockBucket({ averageUnitCost, lengthMm: row.lengthMm, quantity: row.quantity }),
-        unitOfMeasure: row.unitOfMeasure,
+        free: quantity - committed,
+        isInternallyFabricated: part.isInternallyFabricated,
+        partCode: part.partCode,
+        partId: part.partId,
+        partName: part.partName,
+        quantity,
+        standardPurchaseLengthMm: part.standardPurchaseLengthMm,
+        stockTrackingMode: part.stockTrackingMode,
+        totalValue: buckets.reduce<number | null>(
+          (total, bucket) => (total === null || bucket.totalValue === null ? null : total + bucket.totalValue),
+          0,
+        ),
+        unitOfMeasure: part.unitOfMeasure,
       };
     }),
   });
@@ -504,6 +382,16 @@ export async function getStockMovementHistory({
   });
 }
 
+async function insertMovement(
+  db: DatabaseTransaction,
+  values: typeof stockMovements.$inferInsert,
+): Promise<StockMovement> {
+  const [movement] = await db.insert(stockMovements).values(values).returning();
+  if (!movement) throw new Error('Stock movement insert did not return a row');
+
+  return StockMovementSchema.parse(movement);
+}
+
 async function loadStockPart({
   db,
   lockForMovement = false,
@@ -539,47 +427,69 @@ async function loadStockMovementJob({ db, jobId }: { db: StockMovementDatabase; 
     .from(jobs)
     .where(eq(jobs.id, jobId))
     .limit(1);
-  if (!job) {
-    throw new JobNotFoundError(jobId);
-  }
+  if (!job) throw new JobNotFoundError(jobId);
+
   return job;
 }
 
-async function insertJobMovement({
-  actorUserId,
-  db,
-  delta,
-  input,
-  movementType,
-  unitCost,
-}: {
-  actorUserId: AuthId;
-  db: DatabaseTransaction;
-  delta: number;
-  input: PostCheckoutInput | PostReturnToStoreInput;
-  movementType: 'checkout' | 'return-to-store';
-  unitCost: number | null;
-}): Promise<StockMovement> {
-  const [movement] = await db
-    .insert(stockMovements)
-    .values({
-      actorUserId,
-      delta,
-      jobId: input.jobId,
-      lengthMm: input.lengthMm,
-      movementType,
-      note: null,
-      partId: input.partId,
-      reason: null,
-      unitCost,
-    })
-    .returning();
-  if (!movement) throw new Error('Stock movement insert did not return a row');
-  return StockMovementSchema.parse(movement);
+/** Loads the four stock facts a Job movement is judged against, all scoped to its Job, Part, bucket. */
+async function loadStockMovementContext(
+  db: DatabaseTransaction,
+  input: PostJobMovementInput,
+): Promise<StockMovementContext> {
+  const bucketCondition = bucketMatches(input.lengthMm);
+  const drawnCondition = and(
+    eq(stockMovements.jobId, input.jobId),
+    eq(stockMovements.partId, input.partId),
+    inArray(stockMovements.movementType, JOB_MOVEMENT_TYPES),
+  );
+  const [bucketQuantityOnHand, cfoQuantity, drawnQuantity, drawnBucketQuantity] = await Promise.all([
+    sumDelta(
+      db,
+      and(eq(stockMovements.partId, input.partId), ne(stockMovements.movementType, 'revaluation'), bucketCondition),
+    ),
+    scalar(
+      db
+        .select({ value: sql<number>`coalesce(sum(${jobCfoParts.quantity}), 0)::double precision` })
+        .from(jobCfoAssemblies)
+        .innerJoin(jobCfoParts, eq(jobCfoParts.cfoAssemblyId, jobCfoAssemblies.id))
+        .where(and(eq(jobCfoAssemblies.jobId, input.jobId), eq(jobCfoParts.partId, input.partId))),
+    ),
+    sumDelta(db, drawnCondition).then((delta) => -delta),
+    sumDelta(db, and(drawnCondition, bucketCondition)).then((delta) => -delta),
+  ]);
+
+  return { bucketQuantityOnHand, cfoQuantity, drawnBucketQuantity, drawnQuantity };
 }
 
-async function loadOrderedPartMovements({ db, partId }: { db: StockMovementDatabase; partId: UUID }) {
-  return db
+function bucketMatches(lengthMm: number | null): SQL {
+  return lengthMm === null ? isNull(stockMovements.lengthMm) : eq(stockMovements.lengthMm, lengthMm);
+}
+
+async function sumDelta(db: DatabaseTransaction, where: SQL | undefined): Promise<number> {
+  return scalar(
+    db
+      .select({ value: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision` })
+      .from(stockMovements)
+      .where(where),
+  );
+}
+
+async function scalar(query: PromiseLike<Array<{ value: number }>>): Promise<number> {
+  const [row] = await query;
+
+  return row?.value ?? 0;
+}
+
+/** A draw is stamped at the Part's current average, scaled to the piece length for linear stock. */
+async function deriveCheckoutUnitCost(
+  db: DatabaseTransaction,
+  isInternallyFabricated: boolean,
+  input: PostJobMovementInput,
+): Promise<number | null> {
+  if (isInternallyFabricated) return 0;
+
+  const orderedMovements = await db
     .select({
       delta: stockMovements.delta,
       lengthMm: stockMovements.lengthMm,
@@ -588,120 +498,34 @@ async function loadOrderedPartMovements({ db, partId }: { db: StockMovementDatab
       unitCost: stockMovements.unitCost,
     })
     .from(stockMovements)
-    .where(eq(stockMovements.partId, partId))
+    .where(eq(stockMovements.partId, input.partId))
     .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
+  const movingAverage = deriveMovingAverage(orderedMovements);
+
+  if (movingAverage === null) return null;
+
+  return input.lengthMm === null ? movingAverage : movingAverage * input.lengthMm;
 }
 
-async function getJobPartCfoQuantity({
-  db,
-  jobId,
-  partId,
-}: {
-  db: StockMovementDatabase;
-  jobId: UUID;
-  partId: UUID;
-}): Promise<number> {
-  const [row] = await db
-    .select({ quantity: sql<number>`coalesce(sum(${jobCfoParts.quantity}), 0)::double precision` })
-    .from(jobCfoAssemblies)
-    .innerJoin(jobCfoParts, eq(jobCfoParts.cfoAssemblyId, jobCfoAssemblies.id))
-    .where(and(eq(jobCfoAssemblies.jobId, jobId), eq(jobCfoParts.partId, partId)));
-  return row?.quantity ?? 0;
-}
-
-async function getJobPartDrawnQuantity({
-  db,
-  jobId,
-  lengthMm,
-  partId,
-}: {
-  db: StockMovementDatabase;
-  jobId: UUID;
-  lengthMm?: number | null;
-  partId: UUID;
-}): Promise<number> {
-  const [row] = await db
-    .select({ quantity: sql<number>`coalesce(-sum(${stockMovements.delta}), 0)::double precision` })
+/**
+ * A linear piece's stamped cost scales with its bucket length, so only matching-length draws can
+ * establish the reversal price; the pool replay in `@pkg/domain` owns the rest of the rule.
+ */
+async function deriveReturnUnitCost(db: DatabaseTransaction, input: PostJobMovementInput): Promise<number | null> {
+  const rows = await db
+    .select({ delta: stockMovements.delta, unitCost: stockMovements.unitCost })
     .from(stockMovements)
     .where(
       and(
-        eq(stockMovements.jobId, jobId),
-        eq(stockMovements.partId, partId),
-        inArray(stockMovements.movementType, ['checkout', 'return-to-store']),
-        lengthMm === undefined
-          ? undefined
-          : lengthMm === null
-            ? sql`${stockMovements.lengthMm} IS NULL`
-            : eq(stockMovements.lengthMm, lengthMm),
+        eq(stockMovements.jobId, input.jobId),
+        eq(stockMovements.partId, input.partId),
+        bucketMatches(input.lengthMm),
+        inArray(stockMovements.movementType, JOB_MOVEMENT_TYPES),
       ),
-    );
-  return row?.quantity ?? 0;
-}
+    )
+    .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
 
-async function getStockBucketQuantity({
-  db,
-  lengthMm,
-  partId,
-}: {
-  db: StockMovementDatabase;
-  lengthMm: number | null;
-  partId: UUID;
-}): Promise<number> {
-  const [row] = await db
-    .select({ quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision` })
-    .from(stockMovements)
-    .where(
-      and(
-        eq(stockMovements.partId, partId),
-        ne(stockMovements.movementType, 'revaluation'),
-        lengthMm === null ? sql`${stockMovements.lengthMm} IS NULL` : eq(stockMovements.lengthMm, lengthMm),
-      ),
-    );
-  return row?.quantity ?? 0;
-}
-
-function deriveOutstandingDrawUnitCost(
-  rows: ReadonlyArray<{
-    delta: number;
-    movementType: 'adjustment' | 'checkout' | 'return-to-store' | 'revaluation';
-    unitCost: number | null;
-  }>,
-  returnQuantity: number,
-): number | null {
-  let hasUnknownCost = false;
-  let quantity = 0;
-  let value = 0;
-
-  for (const row of rows) {
-    if (row.movementType === 'checkout') {
-      const checkoutQuantity = Math.abs(row.delta);
-      quantity += checkoutQuantity;
-      if (row.unitCost === null) {
-        hasUnknownCost = true;
-      } else {
-        value += checkoutQuantity * row.unitCost;
-      }
-      continue;
-    }
-
-    quantity -= row.delta;
-    if (row.unitCost === null) {
-      hasUnknownCost = true;
-    } else {
-      value -= row.delta * row.unitCost;
-    }
-
-    if (quantity <= 0) {
-      quantity = 0;
-      value = 0;
-      hasUnknownCost = false;
-    }
-  }
-
-  if (quantity === 0 || hasUnknownCost) return null;
-  // Over-returns warn but still post. Spread only the outstanding Job value over the larger row so
-  // the excess quantity does not invent inventory value or drive the Job's net material cost negative.
-  return value / Math.max(quantity, returnQuantity);
+  return deriveOutstandingDrawUnitCost(rows, input.quantity);
 }
 
 async function listOpenCommitments(db: DatabaseTransaction): Promise<Map<UUID, number>> {
@@ -725,13 +549,14 @@ async function listOpenCommitments(db: DatabaseTransaction): Promise<Map<UUID, n
       })
       .from(stockMovements)
       .innerJoin(jobs, eq(jobs.id, stockMovements.jobId))
-      .where(and(isNull(jobs.cancelledAt), inArray(stockMovements.movementType, ['checkout', 'return-to-store'])))
+      .where(and(isNull(jobs.cancelledAt), inArray(stockMovements.movementType, JOB_MOVEMENT_TYPES)))
       .groupBy(stockMovements.jobId, stockMovements.partId),
   ]);
   const drawnByJobPart = new Map(
     drawnRows.flatMap((row) => (row.jobId ? [[`${row.jobId}:${row.partId}`, row.drawnQuantity] as const] : [])),
   );
   const committedByPart = new Map<UUID, number>();
+
   for (const row of cfoRows) {
     const drawnQuantity = drawnByJobPart.get(`${row.jobId}:${row.partId}`) ?? 0;
     committedByPart.set(
@@ -739,6 +564,7 @@ async function listOpenCommitments(db: DatabaseTransaction): Promise<Map<UUID, n
       (committedByPart.get(row.partId) ?? 0) + deriveCommitment({ cfoQuantity: row.cfoQuantity, drawnQuantity }),
     );
   }
+
   return committedByPart;
 }
 
@@ -759,6 +585,23 @@ async function loadStockPartDetails({ db, partId }: { db: Db; partId: UUID }) {
   }
 
   return part;
+}
+
+/** Groups in first-seen order; the non-empty tuple lets a caller read the head without a null check. */
+function groupBy<TRow, TKey>(rows: readonly TRow[], keyOf: (row: TRow) => TKey): Map<TKey, [TRow, ...TRow[]]> {
+  const groups = new Map<TKey, [TRow, ...TRow[]]>();
+
+  for (const row of rows) {
+    const group = groups.get(keyOf(row));
+    if (group) group.push(row);
+    else groups.set(keyOf(row), [row]);
+  }
+
+  return groups;
+}
+
+function sumBy<TRow>(rows: readonly TRow[], toValue: (row: TRow) => number): number {
+  return rows.reduce((total, row) => total + toValue(row), 0);
 }
 
 function assertDeltaMatchesUnitClass(delta: number, unitClass: PartUnitClass): void {

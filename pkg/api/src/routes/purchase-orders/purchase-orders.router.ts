@@ -7,66 +7,69 @@ import {
   listPurchaseOrders,
   markPurchaseOrderSent,
   type PurchaseOrderCoreError,
-  replacePurchaseOrderJobLinks,
-  replacePurchaseOrderLines,
-  updatePurchaseOrderHeader,
+  savePurchaseOrderDraft,
 } from '@pkg/core';
 import { renderPurchaseOrderPdf } from '@pkg/pdf';
 import {
-  PurchaseOrder,
+  type PurchaseOrder,
   PurchaseOrderActionInput,
   PurchaseOrderCreateInput,
+  PurchaseOrderLineViewCostFields,
   PurchaseOrderListInput,
-  PurchaseOrderListResult,
-  PurchaseOrderReplaceJobLinksInput,
-  PurchaseOrderReplaceLinesInput,
-  PurchaseOrderUpdateHeaderInput,
+  PurchaseOrderListViewResult,
+  PurchaseOrderSaveDraftInput,
+  PurchaseOrderView,
 } from '@pkg/schema';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, projectInventoryCostFields, router } from '../../trpc/init.js';
+import { authorizedProcedure, type InventoryCostAccess, projectInventoryCostFields, router } from '../../trpc/init.js';
 
 export const purchaseOrdersRouter = router({
   cancel: authorizedProcedure('purchase_order:close')
     .input(PurchaseOrderActionInput)
-    .output(PurchaseOrder)
-    .mutation(({ ctx, input }) =>
-      mapPurchaseOrderErrors(() =>
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
         cancelPurchaseOrder({ actorUserId: ctx.session.user.id, db: ctx.db, id: input.id }),
-      ).then((purchaseOrder) => projectPurchaseOrder(purchaseOrder, ctx.access)),
-    ),
+      );
+
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
 
   create: authorizedProcedure('purchase_order:create')
     .input(PurchaseOrderCreateInput)
-    .output(PurchaseOrder)
-    .mutation(({ ctx, input }) =>
-      mapPurchaseOrderErrors(() => createPurchaseOrder({ actorUserId: ctx.session.user.id, db: ctx.db, input })).then(
-        (purchaseOrder) => projectPurchaseOrder(purchaseOrder, ctx.access),
-      ),
-    ),
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
+        createPurchaseOrder({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+      );
+
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
 
   get: authorizedProcedure('purchase_order:read')
     .input(PurchaseOrderActionInput)
-    .output(PurchaseOrder)
-    .query(({ ctx, input }) =>
-      mapPurchaseOrderErrors(() => getPurchaseOrder({ db: ctx.db, id: input.id })).then((purchaseOrder) =>
-        projectPurchaseOrder(purchaseOrder, ctx.access),
-      ),
-    ),
+    .output(PurchaseOrderView)
+    .query(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() => getPurchaseOrder({ db: ctx.db, id: input.id }));
+
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
 
   list: authorizedProcedure('purchase_order:read')
     .input(PurchaseOrderListInput)
-    .output(PurchaseOrderListResult)
+    .output(PurchaseOrderListViewResult)
     .query(async ({ ctx, input }) => {
       const result = await listPurchaseOrders({ db: ctx.db, input });
-      return { ...result, items: result.items.map((purchaseOrder) => projectPurchaseOrder(purchaseOrder, ctx.access)) };
+
+      return { ...result, items: result.items.map((purchaseOrder) => toPurchaseOrderView(purchaseOrder, ctx.access)) };
     }),
 
   markSent: authorizedProcedure('purchase_order:send')
     .input(PurchaseOrderActionInput)
-    .output(PurchaseOrder)
-    .mutation(({ ctx, input }) =>
-      mapPurchaseOrderErrors(() =>
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
         markPurchaseOrderSent({
           actorUserId: ctx.session.user.id,
           db: ctx.db,
@@ -74,45 +77,29 @@ export const purchaseOrdersRouter = router({
           pdfRenderer: renderPurchaseOrderPdf,
           storage: ctx.storage,
         }),
-      ).then((purchaseOrder) => projectPurchaseOrder(purchaseOrder, ctx.access)),
-    ),
+      );
 
-  replaceJobLinks: authorizedProcedure('purchase_order:create')
-    .input(PurchaseOrderReplaceJobLinksInput)
-    .output(PurchaseOrder)
-    .mutation(({ ctx, input }) =>
-      mapPurchaseOrderErrors(() =>
-        replacePurchaseOrderJobLinks({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
-      ).then((purchaseOrder) => projectPurchaseOrder(purchaseOrder, ctx.access)),
-    ),
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
 
-  replaceLines: authorizedProcedure('purchase_order:create')
-    .input(PurchaseOrderReplaceLinesInput)
-    .output(PurchaseOrder)
-    .mutation(({ ctx, input }) =>
-      mapPurchaseOrderErrors(() =>
-        replacePurchaseOrderLines({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
-      ).then((purchaseOrder) => projectPurchaseOrder(purchaseOrder, ctx.access)),
-    ),
+  saveDraft: authorizedProcedure('purchase_order:create')
+    .input(PurchaseOrderSaveDraftInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
+        savePurchaseOrderDraft({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+      );
 
-  updateHeader: authorizedProcedure('purchase_order:create')
-    .input(PurchaseOrderUpdateHeaderInput)
-    .output(PurchaseOrder)
-    .mutation(({ ctx, input }) =>
-      mapPurchaseOrderErrors(() =>
-        updatePurchaseOrderHeader({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
-      ).then((purchaseOrder) => projectPurchaseOrder(purchaseOrder, ctx.access)),
-    ),
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
 });
 
-function projectPurchaseOrder<T extends PurchaseOrder>(
-  purchaseOrder: T,
-  access: Parameters<typeof projectInventoryCostFields>[0]['access'],
-): T {
+/** The only path from the core order to what the API serves, so a line price cannot escape the gate. */
+function toPurchaseOrderView(purchaseOrder: PurchaseOrder, access: InventoryCostAccess) {
   return {
     ...purchaseOrder,
     lines: purchaseOrder.lines.map((line) =>
-      projectInventoryCostFields({ access, costFields: ['unitPrice'], output: line }),
+      projectInventoryCostFields({ access, costFields: PurchaseOrderLineViewCostFields, output: line }),
     ),
   };
 }

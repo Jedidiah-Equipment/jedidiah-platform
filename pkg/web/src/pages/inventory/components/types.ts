@@ -1,142 +1,137 @@
 import {
-  type JobStockRow,
+  InventoryUnitCost,
   PostAdjustmentInput,
-  PostCheckoutInput,
+  PostJobMovementInput,
   PostRevaluationInput,
-  type StockAdjustmentReason,
+  Price,
+  StockAdjustmentReason,
+  StockMovementDelta,
+  StockMovementLengthMm,
+  StockMovementQuantity,
   type StockOnHandRow,
+  UUID,
 } from '@pkg/schema';
+import { z } from 'zod';
+
+import { requiredSelection } from '@/components/form/utils/form-schema.js';
 
 export type StockPartOption = Pick<
   StockOnHandRow,
   'isInternallyFabricated' | 'partCode' | 'partId' | 'partName' | 'standardPurchaseLengthMm' | 'unitOfMeasure'
 >;
 
-export type AdjustmentFormValues = {
-  delta: string;
-  lengthMm: string;
-  note: string;
-  partId: string;
-  reason: StockAdjustmentReason;
-  unitCost: string;
-};
+/**
+ * `NumberField` holds an empty control as `NaN`, so an optional numeric field is its schema leaf or
+ * `NaN`. Every rule beyond that emptiness — sign, bounds, decimal places — stays owned by
+ * `@pkg/schema`, since `NumberField` renders a text input and enforces none of it in the browser.
+ */
+const optionalNumber = <TSchema extends z.ZodType>(schema: TSchema) => z.union([z.nan(), schema]);
 
-export type RevaluationFormValues = {
-  note: string;
-  partId: string;
-  unitCost: string;
-};
+/** A movement's length bucket is only meaningful on a linear Part; `refineLengthForPart` requires it there. */
+const StockMovementLengthValue = optionalNumber(StockMovementLengthMm);
 
-export type JobMovementFormValues = {
-  jobId: string;
-  lengthMm: string;
-  partId: string;
-  quantity: string;
-};
+function refineLengthForPart(
+  values: { lengthMm: number; partId: string },
+  parts: readonly StockPartOption[],
+  context: z.RefinementCtx,
+): void {
+  const isLinear = parts.find((part) => part.partId === values.partId)?.unitOfMeasure === 'mm';
 
-export type JobMovementWarningCode = 'exceeds-cfo' | 'exceeds-drawn' | 'negative-stock-on-hand';
+  if (isLinear && Number.isNaN(values.lengthMm)) {
+    context.addIssue({ code: 'custom', message: 'Linear stock needs a piece length', path: ['lengthMm'] });
+  }
+}
 
-export function parseAdjustmentForm({
-  canReadCost,
-  part,
-  values,
-}: {
-  canReadCost: boolean;
-  part: StockPartOption;
-  values: AdjustmentFormValues;
-}) {
-  return PostAdjustmentInput.safeParse({
-    delta: requiredNumber(values.delta),
-    lengthMm: part.unitOfMeasure === 'mm' ? requiredNumber(values.lengthMm) : null,
+export type StockAdjustmentFormValues = z.infer<typeof StockAdjustmentFormValues>;
+export const StockAdjustmentFormValues = z.object({
+  delta: StockMovementDelta,
+  lengthMm: StockMovementLengthValue,
+  note: z.string(),
+  partId: requiredSelection(UUID, 'Select a Part'),
+  reason: StockAdjustmentReason,
+  unitCost: optionalNumber(Price),
+});
+
+export type StockRevaluationFormValues = z.infer<typeof StockRevaluationFormValues>;
+export const StockRevaluationFormValues = z.object({
+  note: z.string(),
+  partId: requiredSelection(UUID, 'Select a Part'),
+  unitCost: InventoryUnitCost,
+});
+
+export type StockJobMovementFormValues = z.infer<typeof StockJobMovementFormValues>;
+export const StockJobMovementFormValues = z.object({
+  jobId: requiredSelection(UUID, 'Select a Job'),
+  lengthMm: StockMovementLengthValue,
+  partId: requiredSelection(UUID, 'Select a Part'),
+  quantity: StockMovementQuantity,
+});
+
+/** Adds the per-Part rules a flat form schema cannot express on its own. */
+export function stockAdjustmentValidator(parts: readonly StockPartOption[]) {
+  return StockAdjustmentFormValues.superRefine((values, context) => {
+    refineLengthForPart(values, parts, context);
+
+    // Mirrors PostAdjustmentInput so the rule reads as a field error rather than a failed request.
+    if (values.reason !== 'opening-balance' && values.note.trim() === '') {
+      context.addIssue({ code: 'custom', message: 'A note is required for this adjustment reason', path: ['note'] });
+    }
+  });
+}
+
+export function stockJobMovementValidator(parts: readonly StockPartOption[]) {
+  return StockJobMovementFormValues.superRefine((values, context) => refineLengthForPart(values, parts, context));
+}
+
+export function toAdjustmentInput(values: StockAdjustmentFormValues, canReadCost: boolean, part: StockPartOption) {
+  return PostAdjustmentInput.parse({
+    delta: values.delta,
+    lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
     note: values.note,
-    partId: part.partId,
+    partId: values.partId,
     reason: values.reason,
     unitCost:
-      canReadCost && !part.isInternallyFabricated && values.reason === 'opening-balance'
-        ? optionalNumber(values.unitCost)
+      canReadCost &&
+      !part.isInternallyFabricated &&
+      values.reason === 'opening-balance' &&
+      !Number.isNaN(values.unitCost)
+        ? values.unitCost
         : null,
   });
 }
 
-export function parseRevaluationForm(values: RevaluationFormValues) {
-  return PostRevaluationInput.safeParse({
-    note: values.note,
-    partId: values.partId,
-    unitCost: requiredNumber(values.unitCost),
-  });
+export function toRevaluationInput(values: StockRevaluationFormValues) {
+  return PostRevaluationInput.parse(values);
 }
 
-export function parseJobMovementForm({ part, values }: { part: StockPartOption; values: JobMovementFormValues }) {
-  return PostCheckoutInput.safeParse({
+export function toJobMovementInput(values: StockJobMovementFormValues, part: StockPartOption) {
+  return PostJobMovementInput.parse({
     jobId: values.jobId,
-    lengthMm: part.unitOfMeasure === 'mm' ? requiredNumber(values.lengthMm) : null,
-    partId: part.partId,
-    quantity: requiredNumber(values.quantity),
+    lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
+    partId: values.partId,
+    quantity: values.quantity,
   });
 }
 
-export function deriveJobMovementWarnings({
-  jobStock,
-  lengthMm,
-  part,
-  quantity,
-  stockOnHand,
-  type,
-}: {
-  jobStock: JobStockRow | undefined;
-  lengthMm: number | null;
-  part: StockPartOption;
-  quantity: number;
-  stockOnHand: readonly StockOnHandRow[];
-  type: 'checkout' | 'return-to-store';
-}): JobMovementWarningCode[] {
-  if (type === 'return-to-store') {
-    const drawnQuantity =
-      lengthMm === null
-        ? (jobStock?.drawnQuantity ?? 0)
-        : (jobStock?.lengthBuckets.find((bucket) => bucket.lengthMm === lengthMm)?.drawnQuantity ?? 0);
-    return quantity > drawnQuantity ? ['exceeds-drawn'] : [];
-  }
-
-  const warnings: JobMovementWarningCode[] = [];
-  if ((jobStock?.drawnQuantity ?? 0) + quantity > (jobStock?.cfoQuantity ?? 0)) {
-    warnings.push('exceeds-cfo');
-  }
-
-  const bucketQuantity =
-    stockOnHand.find((row) => row.partId === part.partId && row.lengthMm === lengthMm)?.quantity ?? 0;
-  if (bucketQuantity - quantity < 0) {
-    warnings.push('negative-stock-on-hand');
-  }
-  return warnings;
-}
-
-export function distinctPartOptions(items: readonly StockOnHandRow[]): StockPartOption[] {
-  const byId = new Map(items.map((item) => [item.partId, item]));
-  return [...byId.values()].map(
-    ({ isInternallyFabricated, partCode, partId, partName, standardPurchaseLengthMm, unitOfMeasure }) => ({
-      isInternallyFabricated,
-      partCode,
-      partId,
-      partName,
-      standardPurchaseLengthMm,
-      unitOfMeasure,
-    }),
-  );
+export function toStockPartOption(item: StockOnHandRow): StockPartOption {
+  return {
+    isInternallyFabricated: item.isInternallyFabricated,
+    partCode: item.partCode,
+    partId: item.partId,
+    partName: item.partName,
+    standardPurchaseLengthMm: item.standardPurchaseLengthMm,
+    unitOfMeasure: item.unitOfMeasure,
+  };
 }
 
 export function perpetualPartOptions(items: readonly StockOnHandRow[]): StockPartOption[] {
-  return distinctPartOptions(items.filter((item) => item.stockTrackingMode === 'perpetual'));
+  return items.filter((item) => item.stockTrackingMode === 'perpetual').map(toStockPartOption);
 }
 
 export function revaluablePartOptions(parts: readonly StockPartOption[]): StockPartOption[] {
   return parts.filter((part) => !part.isInternallyFabricated);
 }
 
-function requiredNumber(value: string): number {
-  return value === '' ? Number.NaN : Number(value);
-}
-
-function optionalNumber(value: string): number | null {
-  return value === '' ? null : Number(value);
+export function partSelectOptions(parts: readonly StockPartOption[]) {
+  return parts.map((part) => ({ label: `${part.partCode} · ${part.partName}`, value: part.partId }));
 }

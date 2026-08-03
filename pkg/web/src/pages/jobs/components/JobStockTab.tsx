@@ -1,3 +1,4 @@
+import type { JobStockMovementType } from '@pkg/schema';
 import { IconArrowDown, IconArrowUp } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -14,8 +15,11 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
   const trpc = useTRPC();
   const canMove = useCan('inventory:move').can;
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId: job.id }));
-  const stockOnHandQuery = useQuery(trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove }));
-  const [movementType, setMovementType] = useState<'checkout' | 'return-to-store' | null>(null);
+  const [movementType, setMovementType] = useState<JobStockMovementType | null>(null);
+  // The stock-on-hand report replays the ledger; only a movement needs it, so the tab does not pay for it.
+  const stockOnHandQuery = useQuery(
+    trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove && movementType !== null }),
+  );
   const parts = useMemo(() => perpetualPartOptions(stockOnHandQuery.data?.items ?? []), [stockOnHandQuery.data?.items]);
 
   if (jobStockQuery.isPending) {
@@ -31,12 +35,12 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
       {canMove ? (
         <div className="flex flex-wrap gap-2">
           {!isCancelled ? (
-            <Button disabled={parts.length === 0} onClick={() => setMovementType('checkout')} variant="outline">
+            <Button onClick={() => setMovementType('checkout')} variant="outline">
               <IconArrowDown data-icon="inline-start" />
               Check out
             </Button>
           ) : null}
-          <Button disabled={parts.length === 0} onClick={() => setMovementType('return-to-store')} variant="outline">
+          <Button onClick={() => setMovementType('return-to-store')} variant="outline">
             <IconArrowUp data-icon="inline-start" />
             Return to store
           </Button>
@@ -50,6 +54,7 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
       {movementType ? (
         <StockMovementDialog
           fixedJob={job}
+          isLoadingParts={stockOnHandQuery.isPending}
           items={stockOnHandQuery.data?.items ?? []}
           onOpenChange={(open) => {
             if (!open) setMovementType(null);

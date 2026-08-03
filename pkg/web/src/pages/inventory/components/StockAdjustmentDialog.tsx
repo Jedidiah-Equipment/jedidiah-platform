@@ -1,29 +1,25 @@
-import { STOCK_ADJUSTMENT_REASON_LABELS, type StockAdjustmentReason } from '@pkg/schema';
+import { STOCK_ADJUSTMENT_REASON_LABELS, StockAdjustmentReason } from '@pkg/schema';
 import { useMutation } from '@tanstack/react-query';
-import type React from 'react';
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button.js';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog.js';
-import { Field, FieldLabel } from '@/components/ui/field.js';
-import { Input } from '@/components/ui/input.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { Textarea } from '@/components/ui/textarea.js';
+import { CreateEntityDialog } from '@/components/form/index.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { StockPartSelect } from './StockPartSelect.js';
-import { parseAdjustmentForm, type StockPartOption } from './types.js';
+import {
+  partSelectOptions,
+  type StockAdjustmentFormValues,
+  type StockPartOption,
+  stockAdjustmentValidator,
+  toAdjustmentInput,
+} from './types.js';
+
+const reasonOptions = StockAdjustmentReason.options.map((value) => ({
+  label: STOCK_ADJUSTMENT_REASON_LABELS[value],
+  value,
+}));
 
 export function StockAdjustmentDialog({
   canReadCost,
@@ -39,138 +35,98 @@ export function StockAdjustmentDialog({
   const trpc = useTRPC();
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const [partId, setPartId] = useState(parts[0]?.partId ?? '');
-  const [delta, setDelta] = useState('');
-  const [lengthMm, setLengthMm] = useState('');
-  const [reason, setReason] = useState<StockAdjustmentReason>('opening-balance');
-  const [note, setNote] = useState('');
-  const [unitCost, setUnitCost] = useState('');
-  const [validationMessage, setValidationMessage] = useState<string | null>(null);
-  const selectedPart = parts.find((part) => part.partId === partId) ?? parts[0];
+  const validator = useMemo(() => stockAdjustmentValidator(parts), [parts]);
   const mutation = useMutation(
     trpc.inventory.postAdjustment.mutationOptions({
-      onSuccess: async () => {
-        await invalidateInventory();
-        onOpenChange(false);
-        toast.success('Stock adjustment posted');
-      },
       onError: (error) => showMutationError(error, 'Unable to post stock adjustment.'),
     }),
   );
 
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selectedPart) {
-      setValidationMessage('Select a Part.');
-      return;
-    }
-
-    const parsed = parseAdjustmentForm({
-      canReadCost,
-      part: selectedPart,
-      values: { delta, lengthMm, note, partId, reason, unitCost },
-    });
-
-    if (!parsed.success) {
-      setValidationMessage(parsed.error.issues[0]?.message ?? 'Check the adjustment details.');
-      return;
-    }
-
-    setValidationMessage(null);
-    mutation.mutate(parsed.data);
-  };
-
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Post stock adjustment</DialogTitle>
-          <DialogDescription>Append a signed quantity change to the Part ledger.</DialogDescription>
-        </DialogHeader>
-        <form className="grid gap-4" onSubmit={submit}>
-          <StockPartSelect onChange={setPartId} parts={parts} value={selectedPart?.partId ?? partId} />
-          <Field>
-            <FieldLabel htmlFor="inventory-adjustment-delta">Signed quantity delta</FieldLabel>
-            <Input
-              id="inventory-adjustment-delta"
-              inputMode="decimal"
-              onChange={(event) => setDelta(event.target.value)}
-              placeholder="10 or -2"
-              required
-              step="0.001"
-              type="number"
-              value={delta}
-            />
-          </Field>
-          {selectedPart?.unitOfMeasure === 'mm' ? (
-            <Field>
-              <FieldLabel htmlFor="inventory-adjustment-length">Length (mm)</FieldLabel>
-              <Input
-                id="inventory-adjustment-length"
-                min="1"
-                onChange={(event) => setLengthMm(event.target.value)}
-                required
-                step="1"
-                type="number"
-                value={lengthMm}
+    <CreateEntityDialog<StockAdjustmentFormValues, unknown>
+      defaultValues={{
+        delta: Number.NaN,
+        lengthMm: Number.NaN,
+        note: '',
+        partId: '',
+        reason: 'opening-balance',
+        unitCost: Number.NaN,
+      }}
+      description="Append a signed quantity change to the Part ledger."
+      onCreate={(values) => {
+        const part = parts.find((candidate) => candidate.partId === values.partId);
+        if (!part) throw new Error('Select a Part');
+
+        return mutation.mutateAsync(toAdjustmentInput(values, canReadCost, part));
+      }}
+      onCreated={async () => {
+        await invalidateInventory();
+        onOpenChange(false);
+        toast.success('Stock adjustment posted');
+      }}
+      onOpenChange={onOpenChange}
+      open={open}
+      submitLabel="Post adjustment"
+      title="Post stock adjustment"
+      validator={validator}
+    >
+      {(form) => (
+        <>
+          <form.AppField name="partId">
+            {(field) => <field.SelectField label="Part" options={partSelectOptions(parts)} placeholder="Select Part" />}
+          </form.AppField>
+          <form.AppField name="delta">
+            {(field) => (
+              <field.NumberField
+                description="Negative removes stock; positive adds it."
+                label="Signed quantity delta"
+                placeholder="10 or -2"
+                step="0.001"
               />
-            </Field>
-          ) : null}
-          <Field>
-            <FieldLabel htmlFor="inventory-adjustment-reason">Reason</FieldLabel>
-            <Select onValueChange={(value) => setReason(String(value) as StockAdjustmentReason)} value={reason}>
-              <SelectTrigger className="w-full" id="inventory-adjustment-reason">
-                <SelectValue>{STOCK_ADJUSTMENT_REASON_LABELS[reason]}</SelectValue>
-              </SelectTrigger>
-              <SelectContent align="start">
-                <SelectGroup>
-                  {Object.entries(STOCK_ADJUSTMENT_REASON_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          {canReadCost && !selectedPart?.isInternallyFabricated && reason === 'opening-balance' ? (
-            <Field>
-              <FieldLabel htmlFor="inventory-adjustment-cost">
-                {selectedPart?.unitOfMeasure === 'mm' ? 'Cost per length piece' : 'Unit cost'} (optional)
-              </FieldLabel>
-              <Input
-                id="inventory-adjustment-cost"
-                min="0"
-                onChange={(event) => setUnitCost(event.target.value)}
-                step="0.01"
-                type="number"
-                value={unitCost}
+            )}
+          </form.AppField>
+          <form.Subscribe selector={(state) => state.values}>
+            {(values) => {
+              const part = parts.find((candidate) => candidate.partId === values.partId);
+              const showCost =
+                canReadCost && values.reason === 'opening-balance' && part?.isInternallyFabricated === false;
+
+              return (
+                <>
+                  {part?.unitOfMeasure === 'mm' ? (
+                    <form.AppField name="lengthMm">
+                      {(field) => <field.NumberField inputMode="numeric" label="Length (mm)" min={1} step="1" />}
+                    </form.AppField>
+                  ) : null}
+                  {showCost ? (
+                    <form.AppField name="unitCost">
+                      {(field) => (
+                        // A linear opening balance is priced per piece, not per mm: the ledger divides
+                        // this by the bucket length to reach the per-mm average.
+                        <field.CurrencyField
+                          label={part?.unitOfMeasure === 'mm' ? 'Opening cost per length piece' : 'Opening unit cost'}
+                        />
+                      )}
+                    </form.AppField>
+                  ) : null}
+                </>
+              );
+            }}
+          </form.Subscribe>
+          <form.AppField name="reason">
+            {(field) => <field.SelectField label="Reason" options={reasonOptions} />}
+          </form.AppField>
+          <form.AppField name="note">
+            {(field) => (
+              <field.TextareaField
+                label="Note"
+                placeholder="Required for every reason except an opening balance"
+                rows={3}
               />
-            </Field>
-          ) : null}
-          <Field>
-            <FieldLabel htmlFor="inventory-adjustment-note">
-              Note {reason === 'opening-balance' ? '(optional)' : ''}
-            </FieldLabel>
-            <Textarea
-              id="inventory-adjustment-note"
-              onChange={(event) => setNote(event.target.value)}
-              required={reason !== 'opening-balance'}
-              rows={3}
-              value={note}
-            />
-          </Field>
-          {validationMessage ? <p className="text-destructive text-sm">{validationMessage}</p> : null}
-          <DialogFooter>
-            <DialogClose render={<Button disabled={mutation.isPending} type="button" variant="outline" />}>
-              Cancel
-            </DialogClose>
-            <Button disabled={mutation.isPending} type="submit">
-              Post adjustment
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+            )}
+          </form.AppField>
+        </>
+      )}
+    </CreateEntityDialog>
   );
 }

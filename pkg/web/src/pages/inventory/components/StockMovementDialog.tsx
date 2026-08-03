@@ -1,34 +1,31 @@
 import { useDebouncedValue } from '@mantine/hooks';
-import type { InventoryJobOption, InventoryJobOptionListInput, StockMovementPostResult } from '@pkg/schema';
+import { deriveStockMovementWarnings, type StockMovementContext } from '@pkg/domain';
+import type {
+  InventoryJobOption,
+  InventoryJobOptionListInput,
+  JobStockMovementType,
+  JobStockRow,
+  StockMovementWarningCode,
+  StockOnHandRow,
+} from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type React from 'react';
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { EntityCombobox } from '@/components/common/EntityCombobox.js';
-import { Button } from '@/components/ui/button.js';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog.js';
+import { CreateEntityDialog } from '@/components/form/index.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
-import { Input } from '@/components/ui/input.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { StockMovementWarningPrompt, warningMessageFor } from './StockMovementWarningPrompt.js';
-import { StockPartSelect } from './StockPartSelect.js';
 import {
-  deriveJobMovementWarnings,
-  type JobMovementWarningCode,
-  parseJobMovementForm,
+  partSelectOptions,
+  type StockJobMovementFormValues,
   type StockPartOption,
+  stockJobMovementValidator,
+  toJobMovementInput,
 } from './types.js';
 
 const inventoryJobsInput = (search: string) =>
@@ -44,6 +41,7 @@ type FixedJob = { code: string; id: string };
 
 export function StockMovementDialog({
   fixedJob,
+  isLoadingParts = false,
   items,
   onOpenChange,
   open,
@@ -51,203 +49,179 @@ export function StockMovementDialog({
   type,
 }: {
   fixedJob?: FixedJob;
-  items: Parameters<typeof deriveJobMovementWarnings>[0]['stockOnHand'];
+  /** Set where the Part list is fetched only once the dialog opens, so the select can say so. */
+  isLoadingParts?: boolean;
+  items: readonly StockOnHandRow[];
   onOpenChange: (open: boolean) => void;
   open: boolean;
   parts: readonly StockPartOption[];
-  type: 'checkout' | 'return-to-store';
+  type: JobStockMovementType;
 }) {
   const trpc = useTRPC();
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const initialPart = parts[0];
   const [jobSearch, setJobSearch] = useState('');
   const [debouncedJobSearch] = useDebouncedValue(jobSearch, 250);
   const [selectedJob, setSelectedJob] = useState<InventoryJobOption | null>(null);
+  const acknowledgedWarnings = useRef<readonly StockMovementWarningCode[]>([]);
+  const validator = useMemo(() => stockJobMovementValidator(parts), [parts]);
+  const verb = type === 'checkout' ? 'Check out' : 'Return';
   const jobId = fixedJob?.id ?? selectedJob?.id ?? '';
-  const [partId, setPartId] = useState(initialPart?.partId ?? '');
-  const [quantity, setQuantity] = useState('');
-  const [lengthMm, setLengthMm] = useState(
-    initialPart?.standardPurchaseLengthMm === null || initialPart?.standardPurchaseLengthMm === undefined
-      ? ''
-      : String(initialPart.standardPurchaseLengthMm),
-  );
-  const [validationMessage, setValidationMessage] = useState<string | null>(null);
-  const [pendingWarnings, setPendingWarnings] = useState<JobMovementWarningCode[]>([]);
-  const [pendingInputKey, setPendingInputKey] = useState<string | null>(null);
+
   const jobsQuery = useQuery(
     trpc.inventory.jobOptions.queryOptions(inventoryJobsInput(debouncedJobSearch), { enabled: fixedJob === undefined }),
   );
-  const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }, { enabled: jobId.length > 0 }));
-  const selectedPart = parts.find((part) => part.partId === partId) ?? initialPart;
-
-  const handleSuccess = async (result: StockMovementPostResult) => {
-    for (const warning of warningCodesFromResult(result)) {
-      toast.warning(warningMessageFor(warning));
-    }
-    await invalidateInventory();
-    onOpenChange(false);
-    toast.success(type === 'checkout' ? 'Stock checked out' : 'Stock returned to store');
-  };
-  const handleError = (error: unknown) =>
-    showMutationError(error, type === 'checkout' ? 'Unable to check stock out.' : 'Unable to return stock.');
-  const checkoutMutation = useMutation(
-    trpc.inventory.postCheckout.mutationOptions({ onError: handleError, onSuccess: handleSuccess }),
+  const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }, { enabled: jobId !== '' }));
+  const mutation = useMutation(
+    (type === 'checkout' ? trpc.inventory.postCheckout : trpc.inventory.postReturnToStore).mutationOptions({
+      onError: (error) =>
+        showMutationError(error, type === 'checkout' ? 'Unable to check stock out.' : 'Unable to return stock.'),
+    }),
   );
-  const returnMutation = useMutation(
-    trpc.inventory.postReturnToStore.mutationOptions({ onError: handleError, onSuccess: handleSuccess }),
-  );
-  const mutation = type === 'checkout' ? checkoutMutation : returnMutation;
 
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (jobStockQuery.isPending) return;
-    if (!selectedPart) {
-      setValidationMessage('Select a Part.');
-      return;
-    }
+  function movementContext(values: StockJobMovementFormValues): StockMovementContext {
+    const lengthMm = Number.isNaN(values.lengthMm) ? null : values.lengthMm;
+    const jobStock: JobStockRow | undefined = jobStockQuery.data?.items.find((row) => row.partId === values.partId);
+    const bucket = items
+      .find((row) => row.partId === values.partId)
+      ?.buckets.find((candidate) => candidate.lengthMm === lengthMm);
 
-    const parsed = parseJobMovementForm({ part: selectedPart, values: { jobId, lengthMm, partId, quantity } });
-    if (!parsed.success) {
-      setValidationMessage(parsed.error.issues[0]?.message ?? 'Check the movement details.');
-      return;
-    }
-    if (!jobStockQuery.data) {
-      setValidationMessage('Unable to load Job stock for warning checks.');
-      return;
-    }
+    return {
+      bucketQuantityOnHand: bucket?.quantity ?? 0,
+      cfoQuantity: jobStock?.cfoQuantity ?? 0,
+      drawnBucketQuantity:
+        lengthMm === null
+          ? (jobStock?.drawnQuantity ?? 0)
+          : (jobStock?.lengthBuckets.find((candidate) => candidate.lengthMm === lengthMm)?.drawnQuantity ?? 0),
+      drawnQuantity: jobStock?.drawnQuantity ?? 0,
+    };
+  }
 
-    const warnings = deriveJobMovementWarnings({
-      jobStock: jobStockQuery.data.items.find((row) => row.partId === selectedPart.partId),
-      lengthMm: parsed.data.lengthMm,
-      part: selectedPart,
-      quantity: parsed.data.quantity,
-      stockOnHand: items,
-      type,
+  /**
+   * The same judgement the ledger applies on post (`@pkg/domain`), run against what this dialog has
+   * loaded so the reader sees it before committing rather than only afterwards.
+   */
+  function movementWarnings(values: StockJobMovementFormValues): StockMovementWarningCode[] {
+    if (!Number.isFinite(values.quantity) || values.jobId === '' || values.partId === '') return [];
+    // Until the Job's stock arrives, every figure reads zero, which would warn on any draw at all.
+    // Staying quiet is the honest state: the post still returns the ledger's own verdict.
+    if (jobStockQuery.isPending) return [];
+
+    return deriveStockMovementWarnings({
+      context: movementContext(values),
+      movementType: type,
+      quantity: values.quantity,
     });
-    const inputKey = JSON.stringify(parsed.data);
-    if (warnings.length > 0 && pendingInputKey !== inputKey) {
-      setPendingInputKey(inputKey);
-      setPendingWarnings(warnings);
-      setValidationMessage(null);
-      return;
-    }
-
-    setValidationMessage(null);
-    mutation.mutate(parsed.data);
-  };
-
-  const verb = type === 'checkout' ? 'Check out' : 'Return';
+  }
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{verb} stock</DialogTitle>
-          <DialogDescription>
-            {type === 'checkout'
-              ? 'Draw a Part from stock against any Job.'
-              : 'Return a previously drawn Part to store.'}
-          </DialogDescription>
-        </DialogHeader>
-        <form className="grid gap-4" onSubmit={submit}>
+    <CreateEntityDialog<StockJobMovementFormValues, { warnings: StockMovementWarningCode[] }>
+      defaultValues={{ jobId: fixedJob?.id ?? '', lengthMm: Number.NaN, partId: '', quantity: Number.NaN }}
+      description={
+        type === 'checkout' ? 'Draw a Part from stock against any Job.' : 'Return a previously drawn Part to store.'
+      }
+      onCreate={(values) => {
+        const part = parts.find((candidate) => candidate.partId === values.partId);
+        if (!part) throw new Error('Select a Part');
+
+        acknowledgedWarnings.current = movementWarnings(values);
+        return mutation.mutateAsync(toJobMovementInput(values, part));
+      }}
+      onCreated={async (result) => {
+        await invalidateInventory();
+        onOpenChange(false);
+        toast.success(type === 'checkout' ? 'Stock checked out' : 'Stock returned to store');
+        // The prompt already showed what the dialog could see; only raise what its snapshot missed.
+        for (const warning of result.warnings) {
+          if (!acknowledgedWarnings.current.includes(warning)) toast.warning(warningMessageFor(warning));
+        }
+      }}
+      onOpenChange={onOpenChange}
+      open={open}
+      submitLabel={(values) => (movementWarnings(values).length > 0 ? `${verb} anyway` : `${verb} stock`)}
+      title={`${verb} stock`}
+      validator={validator}
+    >
+      {(form) => (
+        <>
           {fixedJob ? (
             <Field>
               <FieldLabel>Job</FieldLabel>
               <div className="rounded-md border px-3 py-2 font-mono text-sm">{fixedJob.code}</div>
             </Field>
           ) : (
-            <Field>
-              <FieldLabel htmlFor="inventory-job-movement-job">Job</FieldLabel>
-              <EntityCombobox
-                disabled={false}
-                emptyMessage="No Jobs found"
-                inputId="inventory-job-movement-job"
-                inputValue={jobSearch}
-                isFetching={jobsQuery.isFetching}
-                itemToLabel={jobOptionLabel}
-                onInputValueChange={setJobSearch}
-                onSelected={(job) => {
-                  setSelectedJob(job);
-                  setJobSearch('');
-                  setPendingInputKey(null);
-                  setPendingWarnings([]);
-                }}
-                options={mergeSelectedJobOption(jobsQuery.data?.items ?? [], selectedJob)}
-                placeholder="Search Jobs"
-                renderItem={(job) => jobOptionLabel(job)}
-                searchPlaceholder="Searching Jobs..."
-                value={selectedJob}
-              />
-            </Field>
+            <form.AppField name="jobId">
+              {(field) => (
+                <Field data-invalid={field.state.meta.errors.length > 0}>
+                  <FieldLabel htmlFor="inventory-job-movement-job">Job</FieldLabel>
+                  <EntityCombobox
+                    disabled={false}
+                    emptyMessage="No Jobs found"
+                    inputId="inventory-job-movement-job"
+                    inputValue={jobSearch}
+                    isFetching={jobsQuery.isFetching}
+                    itemToLabel={jobOptionLabel}
+                    onInputValueChange={setJobSearch}
+                    onSelected={(job) => {
+                      setSelectedJob(job);
+                      setJobSearch('');
+                      field.handleChange(job?.id ?? '');
+                    }}
+                    options={mergeSelectedJobOption(jobsQuery.data?.items ?? [], selectedJob)}
+                    placeholder="Search Jobs"
+                    renderItem={(job) => jobOptionLabel(job)}
+                    searchPlaceholder="Searching Jobs..."
+                    value={selectedJob}
+                  />
+                </Field>
+              )}
+            </form.AppField>
           )}
-          <StockPartSelect
-            parts={parts}
-            value={selectedPart?.partId ?? partId}
-            onChange={(nextPartId) => {
-              const nextPart = parts.find((part) => part.partId === nextPartId);
-              setPartId(nextPartId);
-              setLengthMm(nextPart?.standardPurchaseLengthMm ? String(nextPart.standardPurchaseLengthMm) : '');
-              setPendingInputKey(null);
-              setPendingWarnings([]);
-            }}
-          />
-          <Field>
-            <FieldLabel htmlFor="inventory-job-movement-quantity">Quantity</FieldLabel>
-            <Input
-              id="inventory-job-movement-quantity"
-              min="0.001"
-              onChange={(event) => {
-                setQuantity(event.target.value);
-                setPendingInputKey(null);
-                setPendingWarnings([]);
-              }}
-              required
-              step="0.001"
-              type="number"
-              value={quantity}
-            />
-          </Field>
-          {selectedPart?.unitOfMeasure === 'mm' ? (
-            <Field>
-              <FieldLabel htmlFor="inventory-job-movement-length">Length (mm)</FieldLabel>
-              <Input
-                id="inventory-job-movement-length"
-                min="1"
-                onChange={(event) => {
-                  setLengthMm(event.target.value);
-                  setPendingInputKey(null);
-                  setPendingWarnings([]);
-                }}
-                required
-                step="1"
-                type="number"
-                value={lengthMm}
+          <form.AppField name="partId">
+            {(field) => (
+              <field.SelectField
+                disabled={isLoadingParts}
+                label="Part"
+                options={partSelectOptions(parts)}
+                placeholder={isLoadingParts ? 'Loading Parts...' : 'Select Part'}
               />
-            </Field>
-          ) : null}
-          <StockMovementWarningPrompt warnings={pendingWarnings} />
-          {validationMessage ? <p className="text-destructive text-sm">{validationMessage}</p> : null}
-          <DialogFooter>
-            <DialogClose render={<Button disabled={mutation.isPending} type="button" variant="outline" />}>
-              Cancel
-            </DialogClose>
-            <Button disabled={mutation.isPending || jobStockQuery.isPending} type="submit">
-              {pendingWarnings.length > 0 ? 'Post anyway' : `${verb} stock`}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+            )}
+          </form.AppField>
+          <form.AppField name="quantity">
+            {(field) => <field.NumberField label="Quantity" min={0.001} step="0.001" />}
+          </form.AppField>
+          <form.Subscribe selector={(state) => state.values}>
+            {(values) => {
+              const part = parts.find((candidate) => candidate.partId === values.partId);
 
-function warningCodesFromResult(result: StockMovementPostResult): JobMovementWarningCode[] {
-  const warnings: JobMovementWarningCode[] = [];
-  if (result.warnings.exceedsCfo) warnings.push('exceeds-cfo');
-  if (result.warnings.exceedsDrawn) warnings.push('exceeds-drawn');
-  if (result.warnings.negativeStockOnHand) warnings.push('negative-stock-on-hand');
-  return warnings;
+              return (
+                <>
+                  {part?.unitOfMeasure === 'mm' ? (
+                    <form.AppField name="lengthMm">
+                      {(field) => (
+                        <field.NumberField
+                          description={
+                            part.standardPurchaseLengthMm === null
+                              ? undefined
+                              : `Standard purchase length is ${part.standardPurchaseLengthMm} mm.`
+                          }
+                          inputMode="numeric"
+                          label="Length (mm)"
+                          min={1}
+                          step="1"
+                        />
+                      )}
+                    </form.AppField>
+                  ) : null}
+                  <StockMovementWarningPrompt warnings={movementWarnings(values)} />
+                </>
+              );
+            }}
+          </form.Subscribe>
+        </>
+      )}
+    </CreateEntityDialog>
+  );
 }
 
 function jobOptionLabel(job: InventoryJobOption): string {

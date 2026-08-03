@@ -60,9 +60,12 @@ describe('purchaseOrders router', () => {
     const stores = context.createCaller(mockSession('stores'));
     const sales = context.createCaller(mockSession('sales'));
     const created = await admin.purchaseOrders.create({ supplierId: SUPPLIER_ID });
-    await admin.purchaseOrders.replaceLines({
+    await admin.purchaseOrders.saveDraft({
+      expectedDeliveryDate: null,
       id: created.id,
+      jobIds: [],
       lines: [{ partId: PART_ID, quantity: 2, unitPrice: 150 }],
+      supplierId: SUPPLIER_ID,
     });
 
     await expect(admin.purchaseOrders.get({ id: created.id })).resolves.toMatchObject({
@@ -75,6 +78,11 @@ describe('purchaseOrders router', () => {
       code: 'FORBIDDEN',
     });
     await expect(sales.purchaseOrders.get({ id: created.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    // The gate covers the list read too, not just the single order.
+    await expect(stores.purchaseOrders.list({ cursor: 0, limit: 20 })).resolves.toMatchObject({
+      items: [expect.objectContaining({ lines: [expect.objectContaining({ unitPrice: null })] })],
+    });
   });
 
   test('sends a populated draft and cancels a zero-receipt draft through their named permissions', async ({
@@ -82,11 +90,13 @@ describe('purchaseOrders router', () => {
   }) => {
     const admin = context.createCaller();
     const sendable = await admin.purchaseOrders.create({ supplierId: SUPPLIER_ID });
-    await admin.purchaseOrders.replaceLines({
+    await admin.purchaseOrders.saveDraft({
+      expectedDeliveryDate: null,
       id: sendable.id,
+      jobIds: [context.jobId],
       lines: [{ partId: PART_ID, quantity: 2, unitPrice: 150 }],
+      supplierId: SUPPLIER_ID,
     });
-    await admin.purchaseOrders.replaceJobLinks({ id: sendable.id, jobIds: [context.jobId] });
 
     await expect(admin.purchaseOrders.markSent({ id: sendable.id })).resolves.toMatchObject({ status: 'sent' });
     await expect(admin.jobs.get({ id: context.jobId })).resolves.toMatchObject({

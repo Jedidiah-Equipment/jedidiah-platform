@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button.js';
 import { StockAdjustmentDialog } from './StockAdjustmentDialog.js';
 import { StockMovementDialog } from './StockMovementDialog.js';
 import { StockRevaluationDialog } from './StockRevaluationDialog.js';
-import { distinctPartOptions, perpetualPartOptions, revaluablePartOptions } from './types.js';
+import { perpetualPartOptions, revaluablePartOptions, toStockPartOption } from './types.js';
 
 export function StockMovementActions({
   canAdjust,
@@ -26,7 +26,7 @@ export function StockMovementActions({
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [revaluationOpen, setRevaluationOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
-  const allParts = useMemo(() => distinctPartOptions(items), [items]);
+  const allParts = useMemo(() => items.map(toStockPartOption), [items]);
   const movementParts = useMemo(() => perpetualPartOptions(items), [items]);
   const revaluableParts = useMemo(() => revaluablePartOptions(allParts), [allParts]);
 

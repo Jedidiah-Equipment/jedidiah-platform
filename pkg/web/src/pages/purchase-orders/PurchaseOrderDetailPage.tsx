@@ -69,9 +69,11 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ p
     hasPermission(accessQuery.data, 'purchase_order:close');
   const canCloseShort =
     purchaseOrder.derivedStatus === 'partially-received' && hasPermission(accessQuery.data, 'purchase_order:close');
-  // Closing short releases the remainder, so the dock stops being offered an order to receive against.
+  // A fully received order still receives: over-receipt warns and posts, and stock that turns up
+  // late has to reach the ledger. Only closing short (or cancelling) stops the dock.
   const canReceive =
-    (purchaseOrder.derivedStatus === 'sent' || purchaseOrder.derivedStatus === 'partially-received') &&
+    purchaseOrder.status === 'sent' &&
+    purchaseOrder.closedShortAt === null &&
     hasPermission(accessQuery.data, 'purchase_order:receive');
   const { invalidatePurchaseOrders, invalidateJobs } = useQueryInvalidation();
   const [isLifecycleActionPending, setIsLifecycleActionPending] = useState(false);

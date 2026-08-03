@@ -523,7 +523,7 @@ function mapPurchaseOrder(
     code: row.code,
     createdAt: row.createdAt,
     derivedStatus: derivePurchaseOrderStatus({
-      closedShortAt: row.closedShortAt === null ? null : row.closedShortAt.toISOString(),
+      closedShortAt: row.closedShortAt,
       lines: row.lines,
       receivedByPartId,
       status: row.status,

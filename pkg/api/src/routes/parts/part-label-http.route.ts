@@ -8,7 +8,7 @@ import { z } from 'zod';
 import {
   createContentDisposition,
   RouteHttpError,
-  requirePermission,
+  requireAnyPermission,
   requireRouteAuth,
   sendHttpError,
 } from '../http-route-helpers.js';
@@ -48,8 +48,18 @@ export async function registerPartLabelHttpRoutes(
   });
 }
 
-function requirePartLabelAccess(auth: Parameters<typeof requirePermission>[0]): void {
-  requirePermission(auth, 'part:read', 'You do not have permission to print Part labels.', 'part.label_forbidden');
+/**
+ * A label carries a Part's own identity — code, name, location — and no cost, so the physical roles
+ * print it as readily as the catalog ones. Spec §10 puts a print button on receiving lines, which
+ * the price-blind `stores` role works: it holds `inventory:read` but no `part:read` (§11's matrix).
+ */
+function requirePartLabelAccess(auth: Parameters<typeof requireAnyPermission>[0]): void {
+  requireAnyPermission(
+    auth,
+    ['part:read', 'inventory:read'],
+    'You do not have permission to print Part labels.',
+    'part.label_forbidden',
+  );
 }
 
 async function mapPartLabelErrors<T>(action: () => Promise<T>): Promise<T> {

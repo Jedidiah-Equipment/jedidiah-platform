@@ -38,7 +38,8 @@ export function derivePurchaseOrderStatus({
   receivedByPartId,
   status,
 }: PurchaseOrderProgressInput & {
-  closedShortAt: string | null;
+  /** Only its presence matters here — the timestamp itself is the order's own record. */
+  closedShortAt: Date | string | null;
   status: PurchaseOrderStatus;
 }): PurchaseOrderDerivedStatus {
   if (status !== 'sent') return status;

@@ -199,11 +199,12 @@ export async function postReceipt({
     const unitClass = unitClassFor(part.unitOfMeasure);
     // A dock that keys nothing takes the length the Part is bought in; a short delivery keys its own.
     const lengthMm = unitClass === 'linear' ? (input.lengthMm ?? part.standardPurchaseLengthMm) : input.lengthMm;
-    const unitCost = input.unitCost ?? line.unitPrice;
+    // A fabricated Part carries zero material cost (spec §5) whatever its line says, the same rule a
+    // draw is stamped under — the dock never sees the price, so refusing it would strand the line.
+    const unitCost = part.isInternallyFabricated ? 0 : (input.unitCost ?? line.unitPrice);
 
     assertDeltaMatchesUnitClass(input.quantity, unitClass);
     assertLengthMatchesUnitClass(lengthMm, unitClass);
-    assertFabricatedPartCost(part.isInternallyFabricated, unitCost);
 
     const receivedQuantity = await sumDelta(
       tx,

@@ -635,6 +635,20 @@ describe('postReceipt', () => {
     expect(result.movement.unitCost).toBe(31.5);
   });
 
+  test('receipts an internally fabricated Part at zero, whatever its line was priced at', async ({ context }) => {
+    const purchaseOrderId = await seedSentPurchaseOrder(context.db, context.supplierId, [
+      { partId: context.parts.fabricated.id, quantity: 2, unitPrice: 480 },
+    ]);
+
+    const result = await postReceipt({
+      actorUserId,
+      db: context.db,
+      input: { lengthMm: null, partId: context.parts.fabricated.id, purchaseOrderId, quantity: 2, unitCost: null },
+    });
+
+    expect(result.movement.unitCost).toBe(0);
+  });
+
   test('receipts periodic raw material, which consumption movements are barred from', async ({ context }) => {
     const purchaseOrderId = await seedSentPurchaseOrder(context.db, context.supplierId, [
       { partId: context.parts.periodic.id, quantity: 3, unitPrice: 420 },

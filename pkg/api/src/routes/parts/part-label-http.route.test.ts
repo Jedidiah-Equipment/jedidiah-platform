@@ -106,7 +106,7 @@ describe('Part label HTTP routes', () => {
     ]);
   });
 
-  test('requires part read access before rendering labels', async ({ context }) => {
+  test('requires part or inventory read access before rendering labels', async ({ context }) => {
     const rendered: PartLabelPdfModel[][] = [];
     const app = await createApp(capturingRenderer(rendered));
 
@@ -118,6 +118,13 @@ describe('Part label HTTP routes', () => {
     expect(unauthenticated.statusCode, unauthenticated.body).toBe(401);
     expect(forbidden.statusCode, forbidden.body).toBe(403);
     expect(rendered).toEqual([]);
+
+    // A label carries no cost, so the price-blind stores role prints what it just received (spec §10).
+    routeTestState.session = mockSession('stores');
+    const stores = await app.inject(`/api/parts/${context.ids.get('P-100')}/label`);
+
+    expect(stores.statusCode, stores.body).toBe(200);
+    expect(rendered).toHaveLength(1);
   });
 
   test('returns not found for a missing Part and for an empty batch', async ({ context }) => {

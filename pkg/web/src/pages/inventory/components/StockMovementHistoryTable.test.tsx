@@ -1,6 +1,12 @@
 import { StockMovementHistoryResult } from '@pkg/schema';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, params }: { children: React.ReactNode; params: { id: string } }) => (
+    <a href={`/purchase-orders/${params.id}`}>{children}</a>
+  ),
+}));
 
 import { StockMovementHistoryTable } from './StockMovementHistoryTable.js';
 

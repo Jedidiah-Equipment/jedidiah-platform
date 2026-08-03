@@ -57,6 +57,12 @@ export function PartListCreateDialog({
         <>
           <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
           <form.AppField name="code">{(field) => <field.TextField autoComplete="off" label="Code" />}</form.AppField>
+          <form.AppField name="category">
+            {(field) => <field.TextField autoComplete="off" label="Category" />}
+          </form.AppField>
+          <form.AppField name="finish">
+            {(field) => <field.TextField autoComplete="off" label="Finish" />}
+          </form.AppField>
           <form.AppField name="isInternallyFabricated">
             {(field) => <field.CheckboxField label="Internally fabricated" />}
           </form.AppField>
@@ -81,6 +87,18 @@ export function PartListCreateDialog({
           </form.AppField>
           <form.AppField name="unitOfMeasure">
             {(field) => <field.SelectField label="Unit" options={partUnitOfMeasureOptions} />}
+          </form.AppField>
+          <form.Subscribe selector={(state) => state.values.unitOfMeasure}>
+            {(unitOfMeasure) =>
+              unitOfMeasure === 'mm' ? (
+                <form.AppField name="standardPurchaseLengthMm">
+                  {(field) => <field.NumberField inputMode="numeric" label="Standard purchase length (mm)" min={1} />}
+                </form.AppField>
+              ) : null
+            }
+          </form.Subscribe>
+          <form.AppField name="description">
+            {(field) => <field.TextareaField label="Description" rows={3} />}
           </form.AppField>
         </>
       )}

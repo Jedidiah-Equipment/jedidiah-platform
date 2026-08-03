@@ -1,5 +1,6 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
 import { type PartUnitOfMeasure, STOCK_ADJUSTMENT_REASON_LABELS, type StockMovementHistoryRow } from '@pkg/schema';
+import { Link } from '@tanstack/react-router';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
@@ -39,12 +40,13 @@ export function StockMovementHistoryTable({
             <TableCell>{item.actorName}</TableCell>
             <TableCell>
               {item.purchaseOrderId && item.purchaseOrderCode ? (
-                <a
+                <Link
                   className="font-medium underline-offset-4 hover:underline"
-                  href={`/purchase-orders/${item.purchaseOrderId}`}
+                  params={{ id: item.purchaseOrderId }}
+                  to="/purchase-orders/$id"
                 >
                   {item.purchaseOrderCode}
-                </a>
+                </Link>
               ) : (
                 '—'
               )}

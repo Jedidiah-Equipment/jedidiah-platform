@@ -27,7 +27,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from '../jobs/components/all-jobs-input.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
-import { loadPurchaseOrderPreview } from './components/purchase-order-preview.js';
+import { ensurePurchaseOrderPreview } from './components/purchase-order-preview.js';
 import {
   type PurchaseOrderDraftFormValues,
   PurchaseOrderDraftFormValues as PurchaseOrderDraftFormValuesSchema,
@@ -226,19 +226,20 @@ const PurchaseOrderActions: React.FC<{
 
     void runAfterSave(async () => {
       const url = `/api/purchase-orders/${purchaseOrder.id}/preview`;
-      const previewUrl = await loadPurchaseOrderPreview(url);
-      if (previewWindow) previewWindow.location.href = previewUrl;
-      else window.location.assign(previewUrl);
-      // Delay revocation long enough for either tab-navigation path to consume the object URL.
-      window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60_000);
-      toast.success('PDF preview opened');
+      const toastId = `purchase-order-preview-${purchaseOrder.id}`;
+      toast.loading('Preparing PDF preview...', { id: toastId });
+      await ensurePurchaseOrderPreview(url);
+      toast.success('PDF preview opened', { id: toastId });
+      // Navigate to the server response so the PDF viewer retains the PO filename from Content-Disposition.
+      if (previewWindow) previewWindow.location.href = url;
+      else window.location.assign(url);
     }, 'Save all Purchase Order changes before previewing the PDF.')
       .then((didRun) => {
         if (!didRun) previewWindow?.close();
       })
       .catch(() => {
         previewWindow?.close();
-        toast.error('Unable to open the PDF preview.');
+        toast.error('Unable to open the PDF preview.', { id: `purchase-order-preview-${purchaseOrder.id}` });
       });
   };
 

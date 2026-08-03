@@ -12,6 +12,7 @@ import {
   type PurchaseOrderView,
   StockMovementLengthMm,
   StockMovementQuantity,
+  type StockMovementWarningCode,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
@@ -89,6 +90,13 @@ export function outstandingQuantity(line: Pick<PurchaseOrderLineView, 'quantity'
 
 export function isLinearLine(line: Pick<PurchaseOrderLineView, 'unitOfMeasure'>): boolean {
   return line.unitOfMeasure === 'mm';
+}
+
+export function confirmReceiptWarnings(
+  warnings: readonly StockMovementWarningCode[],
+  confirm: (message: string) => boolean,
+): boolean {
+  return warnings.length === 0 || confirm('This receipt exceeds the quantity ordered. Receive it anyway?');
 }
 
 /**

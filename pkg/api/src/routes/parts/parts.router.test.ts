@@ -189,10 +189,13 @@ describe('parts.bom', () => {
       partId: built.id,
     });
 
-    await expect(stores.parts.bom({ partId: built.id })).resolves.toMatchObject({
+    const expectedBom = {
       lines: [{ componentPartId: component.id, quantity: 2 }],
       partId: built.id,
-    });
+    };
+
+    await expect(admin.parts.bom({ partId: built.id })).resolves.toMatchObject(expectedBom);
+    await expect(stores.parts.bom({ partId: built.id })).resolves.toMatchObject(expectedBom);
   });
 });
 

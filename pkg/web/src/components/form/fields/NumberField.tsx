@@ -84,7 +84,8 @@ export function hasNumberFieldValueChanged(previousValue: number, nextValue: num
 export function formatNumberFieldValue(value: number, decimals?: number): string {
   if (!Number.isFinite(value)) return '';
 
-  return formatNumber(value, { decimals: decimals ?? decimalPlaces(value) });
+  const displayValue = decimals === undefined && !Number.isInteger(value) ? Number(value.toPrecision(15)) : value;
+  return formatNumber(displayValue, { decimals: decimals ?? decimalPlaces(displayValue) });
 }
 
 function decimalPlaces(value: number): number {

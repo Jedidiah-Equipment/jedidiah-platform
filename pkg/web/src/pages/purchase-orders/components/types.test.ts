@@ -1,7 +1,8 @@
 import { PurchaseOrderView } from '@pkg/schema';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
+  confirmReceiptWarnings,
   outstandingQuantity,
   PurchaseOrderCreateFormValues,
   PurchaseOrderDraftFormValues,
@@ -120,6 +121,16 @@ describe('Purchase Order draft form values', () => {
 });
 
 describe('Purchase Order receiving values', () => {
+  it('requires explicit confirmation only when a receipt warning is present', () => {
+    const confirm = vi.fn(() => false);
+
+    expect(confirmReceiptWarnings([], confirm)).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(confirmReceiptWarnings(['exceeds-ordered'], confirm)).toBe(false);
+    expect(confirm).toHaveBeenCalledWith('This receipt exceeds the quantity ordered. Receive it anyway?');
+    confirm.mockReturnValue(true);
+    expect(confirmReceiptWarnings(['exceeds-ordered'], confirm)).toBe(true);
+  });
   const [pieceLine, linearLine] = purchaseOrder.lines;
   if (!pieceLine || !linearLine) throw new Error('Purchase Order fixture is missing its lines');
 

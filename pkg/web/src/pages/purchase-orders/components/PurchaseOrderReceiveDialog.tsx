@@ -13,6 +13,7 @@ import {
   warningMessageFor,
 } from '../../inventory/components/StockMovementWarningPrompt.js';
 import {
+  confirmReceiptWarnings,
   isLinearLine,
   outstandingQuantity,
   type PurchaseOrderReceiveFormValues,
@@ -73,10 +74,7 @@ export function PurchaseOrderReceiveDialog({
 
         return mutation.mutateAsync(toReceiptInput({ canReadCosts, line, purchaseOrderId: purchaseOrder.id, values }));
       }}
-      onBeforeCreate={(values) =>
-        receiptWarnings(values).length === 0 ||
-        window.confirm('This receipt exceeds the quantity ordered. Receive it anyway?')
-      }
+      onBeforeCreate={(values) => confirmReceiptWarnings(receiptWarnings(values), (message) => window.confirm(message))}
       onCreated={async (result) => {
         await Promise.all([invalidatePurchaseOrders(), invalidateInventory()]);
         onOpenChange(false);
@@ -116,9 +114,11 @@ export function PurchaseOrderReceiveDialog({
           {canReadCosts ? (
             <form.AppField name="unitCost">
               {(field) => (
-                <field.CurrencyField
+                <field.NumberField
+                  description="ZAR per unit; leave blank to use the Purchase Order price."
                   label="Unit cost override"
-                  placeholder="Leave blank to use the Purchase Order price"
+                  min={0}
+                  step="any"
                 />
               )}
             </form.AppField>

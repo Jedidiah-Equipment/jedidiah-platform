@@ -1,7 +1,7 @@
 import { type DatabaseTransaction, type Db, partBom, parts } from '@pkg/db';
 import { findBomCycle } from '@pkg/domain';
 import type { AuditChanges, AuthId, PartBomResult, SavePartBomInput, UUID } from '@pkg/schema';
-import { PartBomResult as PartBomResultSchema, unitClassFor } from '@pkg/schema';
+import { isWholeUnitQuantity, PartBomResult as PartBomResultSchema, unitClassFor } from '@pkg/schema';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { recordAuditUpdate } from '../audit/audit-service.js';
 import {
@@ -57,15 +57,13 @@ export async function savePartBom({
     // are rare and the catalog is small, so they take one transaction-scoped lock between them.
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${BOM_GRAPH_LOCK_KEY})`);
 
-    const [part] = await tx
-      .select({ id: parts.id, isInternallyFabricated: parts.isInternallyFabricated })
-      .from(parts)
-      .where(eq(parts.id, input.partId))
-      .for('update');
+    // Selected whole rather than by column: the audit event needs the same row the lock was taken
+    // on, so re-reading it after the write would be a second query for a row that cannot have moved.
+    const [part] = await tx.select().from(parts).where(eq(parts.id, input.partId)).for('update');
     if (!part) throw new PartNotFoundError(input.partId);
     if (!part.isInternallyFabricated) throw new PartNotBuiltError(input.partId);
 
-    await assertComponentsAreStockable({ db: tx, lines: input.lines });
+    await assertComponentLines({ db: tx, lines: input.lines });
     await assertNoCycle({ db: tx, input });
 
     // A BOM change moves what every future build consumes and what it costs, so it is attributed
@@ -87,11 +85,8 @@ export async function savePartBom({
     const after = await getPartBom({ db: tx, partId: input.partId });
     const changes = diffBomLines(before.lines, after.lines);
 
-    if (changes !== null) {
-      const [row] = await tx.select().from(parts).where(eq(parts.id, input.partId));
-      if (row) {
-        await recordAuditUpdate({ actorUserId, after: row, changes, db: tx, descriptor: partAuditDescriptor });
-      }
+    if (changes) {
+      await recordAuditUpdate({ actorUserId, after: part, changes, db: tx, descriptor: partAuditDescriptor });
     }
 
     return after;
@@ -108,7 +103,8 @@ function diffBomLines(before: PartBomResult['lines'], after: PartBomResult['line
   return from === to ? null : { bom: { from, to } };
 }
 
-async function assertComponentsAreStockable({
+/** Every component must exist, and its quantity must respect that component's own unit class. */
+async function assertComponentLines({
   db,
   lines,
 }: {
@@ -131,7 +127,7 @@ async function assertComponentsAreStockable({
   for (const line of lines) {
     const component = byId.get(line.componentPartId);
     if (!component) throw new PartBomComponentNotFoundError(line.componentPartId);
-    if (unitClassFor(component.unitOfMeasure) !== 'measured' && !Number.isInteger(line.quantity)) {
+    if (!isWholeUnitQuantity(line.quantity, unitClassFor(component.unitOfMeasure))) {
       throw new PartBomQuantityError(line.componentPartId);
     }
   }

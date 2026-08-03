@@ -5,6 +5,7 @@ export * from './schema/customer.js';
 export * from './schema/document.js';
 export * from './schema/feedback.js';
 export * from './schema/job.js';
+export * from './schema/job-stock-close-out.js';
 export * from './schema/part.js';
 export * from './schema/product.js';
 export * from './schema/product-range.js';
@@ -22,6 +23,7 @@ import * as customerSchema from './schema/customer.js';
 import * as documentSchema from './schema/document.js';
 import * as feedbackSchema from './schema/feedback.js';
 import * as jobSchema from './schema/job.js';
+import * as jobStockCloseOutSchema from './schema/job-stock-close-out.js';
 import * as partSchema from './schema/part.js';
 import * as productSchema from './schema/product.js';
 import * as productRangeSchema from './schema/product-range.js';
@@ -39,6 +41,7 @@ export const schema = {
   ...documentSchema,
   ...feedbackSchema,
   ...jobSchema,
+  ...jobStockCloseOutSchema,
   ...partSchema,
   ...productRangeSchema,
   ...productSchema,

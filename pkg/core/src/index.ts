@@ -14,6 +14,7 @@ export * from './inventory/build-errors.js';
 export * from './inventory/build-service.js';
 export * from './inventory/close-out-errors.js';
 export * from './inventory/close-out-service.js';
+export * from './inventory/receipt-service.js';
 export * from './inventory/stock-movement-errors.js';
 export * from './inventory/stock-movement-service.js';
 export * from './jobs/board-preview-service.js';

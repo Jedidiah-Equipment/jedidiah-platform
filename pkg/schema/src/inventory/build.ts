@@ -30,7 +30,26 @@ export const PostBuildInput = z
     consumption: z.array(BuildConsumptionInput),
     quantity: BuildQuantity,
   })
-  .strict();
+  .strict()
+  .superRefine((input, context) => {
+    // One line per component, like the BOM it prefills from. Without this a component could arrive
+    // twice, and each line would be judged against the full BOM expectation and against a stock
+    // figure the other line had already moved — making the posted warnings depend on array order.
+    // Consuming one component out of two length buckets is not a v1 concept; if it arrives it is a
+    // shape change to the line, not a second line.
+    const seen = new Set<string>();
+
+    for (const [index, line] of input.consumption.entries()) {
+      if (seen.has(line.componentPartId)) {
+        context.addIssue({
+          code: 'custom',
+          message: 'This component is already on the build',
+          path: ['consumption', index, 'componentPartId'],
+        });
+      }
+      seen.add(line.componentPartId);
+    }
+  });
 
 export type StockBuild = z.infer<typeof StockBuild>;
 export const StockBuild = z.object({

@@ -22,7 +22,7 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
+import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 const PartFormFields = z.object({
   category: PartCategory,

@@ -25,6 +25,9 @@ export const StockMovementType = z.enum([
 export type JobStockMovementType = z.infer<typeof JobStockMovementType>;
 export const JobStockMovementType = StockMovementType.extract(['checkout', 'return-to-store']);
 
+/** The one compile-checked list of Job-attributed movement types; every net-drawn sum reads it all. */
+export const JOB_STOCK_MOVEMENT_TYPES = JobStockMovementType.options;
+
 export type StockAdjustmentReason = z.infer<typeof StockAdjustmentReason>;
 export const StockAdjustmentReason = z.enum(['opening-balance', 'stock-count', 'damage', 'scrap', 'correction']);
 

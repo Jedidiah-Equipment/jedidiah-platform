@@ -1,8 +1,15 @@
 import { type DatabaseTransaction, type Db, partBom, parts, stockBuilds, stockMovements } from '@pkg/db';
-import { deriveBuildProducedUnitCost, deriveBuildWarnings } from '@pkg/domain';
-import type { AuthId, BuildPostResult, PostBuildInput, StockMovementWarningCode, UUID } from '@pkg/schema';
+import { type BuildBomComponent, type BuildPostedLine, deriveBuild } from '@pkg/domain';
+import type {
+  AuthId,
+  BuildPostResult,
+  PartStockTrackingMode,
+  PartUnitOfMeasure,
+  PostBuildInput,
+  UUID,
+} from '@pkg/schema';
 import { BuildPostResult as BuildPostResultSchema, unitClassFor } from '@pkg/schema';
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 
 import { PartNotBuiltError } from '../parts/part-bom-errors.js';
 import { PartNotFoundError } from '../parts/part-errors.js';
@@ -12,11 +19,15 @@ import {
   BuildPeriodicPartError,
   BuildSelfComponentError,
 } from './build-errors.js';
-import {
-  assertDeltaMatchesUnitClass,
-  assertLengthMatchesUnitClass,
-  derivePartUnitCost,
-} from './stock-movement-service.js';
+import { bucketKey, loadBucketQuantities, loadMovingAverages, scaleUnitCost } from './ledger.js';
+import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
+
+type BuildPart = {
+  id: string;
+  isInternallyFabricated: boolean;
+  stockTrackingMode: PartStockTrackingMode;
+  unitOfMeasure: PartUnitOfMeasure;
+};
 
 /**
  * Posts one build: N units of a Built Part came off the rack, consuming what the builder says
@@ -27,6 +38,10 @@ import {
  * short, stock goes negative with a warning rather than the build being refused, because the build
  * already happened. Periodic components post nothing at all — their BOM lines are informational,
  * and their consumption is corrected by the next stocktake instead.
+ *
+ * The shape is deliberately flat: lock every Part at once, read the ledger twice, decide the whole
+ * build in one pure call, write two statements. A ten-component BOM costs the same round trips as a
+ * one-component BOM, and nothing about the outcome depends on the order the lines arrived in.
  */
 export async function postBuild({
   actorUserId,
@@ -38,14 +53,44 @@ export async function postBuild({
   input: PostBuildInput;
 }): Promise<BuildPostResult> {
   return db.transaction(async (tx) => {
-    const builtPart = await lockBuildPart(tx, input.builtPartId);
-    if (!builtPart.isInternallyFabricated) throw new PartNotBuiltError(input.builtPartId);
-    if (builtPart.stockTrackingMode === 'periodic') throw new BuildPeriodicPartError(input.builtPartId);
-    if (unitClassFor(builtPart.unitOfMeasure) === 'linear') throw new BuildLinearPartError(input.builtPartId);
-    assertDeltaMatchesUnitClass(input.quantity, unitClassFor(builtPart.unitOfMeasure));
+    const partsById = await lockBuildParts(tx, input);
+    const builtPart = partsById.get(input.builtPartId);
+    if (!builtPart) throw new PartNotFoundError(input.builtPartId);
 
-    const components = await loadBuildComponents(tx, input);
-    const expectedByComponent = await loadExpectedConsumption(tx, input);
+    assertBuildable(builtPart);
+    assertDeltaMatchesUnitClass(input.quantity, unitClassFor(builtPart.unitOfMeasure));
+    // Builds never recurse, so a Part can never consume itself (spec §6). The BOM table forbids the
+    // stored row; this forbids the keyed line, which is the only other way one could arrive.
+    if (input.consumption.some((line) => line.componentPartId === input.builtPartId)) {
+      throw new BuildSelfComponentError(input.builtPartId);
+    }
+
+    const componentPartIds = input.consumption.map((line) => line.componentPartId);
+    const [bom, averagesByPart, quantitiesByBucket] = await Promise.all([
+      loadBom(tx, input.builtPartId),
+      loadMovingAverages(tx, componentPartIds),
+      loadBucketQuantities(tx, componentPartIds),
+    ]);
+
+    const posted = input.consumption.map((line): BuildPostedLine => {
+      const component = partsById.get(line.componentPartId);
+      if (!component) throw new BuildComponentNotFoundError(line.componentPartId);
+      const unitClass = unitClassFor(component.unitOfMeasure);
+      assertDeltaMatchesUnitClass(line.quantity, unitClass);
+      assertLengthMatchesUnitClass(line.lengthMm, unitClass);
+
+      return {
+        componentPartId: line.componentPartId,
+        // Raw material posts no consumption at all (spec §6); its line is a note to the builder.
+        isInformational: component.stockTrackingMode === 'periodic',
+        lengthMm: line.lengthMm,
+        quantity: line.quantity,
+        quantityOnHand: quantitiesByBucket.get(bucketKey(line.componentPartId, line.lengthMm)) ?? 0,
+        unitCost: scaleUnitCost(averagesByPart.get(line.componentPartId) ?? null, line.lengthMm),
+      };
+    });
+
+    const { consumption, producedUnitCost, warnings } = deriveBuild({ bom, posted, quantity: input.quantity });
 
     const [build] = await tx
       .insert(stockBuilds)
@@ -53,73 +98,46 @@ export async function postBuild({
       .returning();
     if (!build) throw new Error('Stock build insert did not return a row');
 
-    const consumed: Array<{ quantity: number; unitCost: number | null }> = [];
-    const warnings: Array<{ codes: StockMovementWarningCode[]; componentPartId: UUID }> = [];
-
-    for (const line of input.consumption) {
-      const component = components.get(line.componentPartId);
-      if (!component) throw new BuildComponentNotFoundError(line.componentPartId);
-      if (component.id === input.builtPartId) throw new BuildSelfComponentError(input.builtPartId);
-      assertDeltaMatchesUnitClass(line.quantity, unitClassFor(component.unitOfMeasure));
-      assertLengthMatchesUnitClass(line.lengthMm, unitClassFor(component.unitOfMeasure));
-
-      // Raw material posts no consumption at all (spec §6); its BOM line is a note to the builder.
-      if (component.stockTrackingMode === 'periodic') continue;
-
-      const [unitCost, quantityOnHand] = await Promise.all([
-        derivePartUnitCost(tx, line.componentPartId, line.lengthMm),
-        sumBucketOnHand(tx, line.componentPartId, line.lengthMm),
-      ]);
-      const codes = deriveBuildWarnings({
-        expectedQuantity: (expectedByComponent.get(line.componentPartId)?.quantity ?? 0) * input.quantity,
-        quantity: line.quantity,
-        quantityOnHand,
-      });
-      if (codes.length > 0) warnings.push({ codes, componentPartId: line.componentPartId });
-
-      await tx.insert(stockMovements).values({
+    await tx.insert(stockMovements).values([
+      ...consumption.map((line) => ({
         actorUserId,
         buildId: build.id,
         delta: -line.quantity,
         lengthMm: line.lengthMm,
-        movementType: 'build-consume',
+        movementType: 'build-consume' as const,
         partId: line.componentPartId,
-        unitCost,
-      });
-      // `unitCost` is already the per-piece cost — `deriveComponentUnitCost` scales a linear
-      // component's average by its length — so the value is `quantity × unitCost`, exactly what the
-      // consume row itself posts. Scaling by length again here would count it twice.
-      consumed.push({ quantity: line.quantity, unitCost });
-    }
-
-    // A BOM component the builder left off the list entirely consumed none of what the BOM asked
-    // for, which is as much a deviation as an edited quantity — and the loop above never sees it.
-    for (const [componentPartId, expected] of expectedByComponent) {
-      if (expected.isInformational) continue;
-
-      const posted = input.consumption.some((line) => line.componentPartId === componentPartId);
-      if (!posted && expected.quantity * input.quantity > 0) {
-        warnings.push({ codes: ['bom-deviation'], componentPartId });
-      }
-    }
-
-    const producedUnitCost = deriveBuildProducedUnitCost({ consumed, quantity: input.quantity });
-
-    await tx.insert(stockMovements).values({
-      actorUserId,
-      buildId: build.id,
-      delta: input.quantity,
-      movementType: 'build-produce',
-      partId: input.builtPartId,
-      unitCost: producedUnitCost,
-    });
+        // Already the per-piece cost — `scaleUnitCost` multiplied a linear component's average by
+        // its length — so the row's value is quantity × unitCost. Scaling again would double it.
+        unitCost: line.unitCost,
+      })),
+      {
+        actorUserId,
+        buildId: build.id,
+        delta: input.quantity,
+        movementType: 'build-produce' as const,
+        partId: input.builtPartId,
+        unitCost: producedUnitCost,
+      },
+    ]);
 
     return BuildPostResultSchema.parse({ build, producedUnitCost, warnings });
   });
 }
 
-async function lockBuildPart(tx: DatabaseTransaction, partId: UUID) {
-  const [part] = await tx
+function assertBuildable(part: BuildPart): void {
+  if (!part.isInternallyFabricated) throw new PartNotBuiltError(part.id);
+  if (part.stockTrackingMode === 'periodic') throw new BuildPeriodicPartError(part.id);
+  if (unitClassFor(part.unitOfMeasure) === 'linear') throw new BuildLinearPartError(part.id);
+}
+
+/**
+ * Locks the Built Part and every component in one ordered pass. Ordering matters: two builds sharing
+ * components — or a pair where one's Built Part is the other's component — would otherwise take the
+ * same rows in opposite orders and deadlock. Sorting by id gives every writer the same sequence.
+ */
+async function lockBuildParts(tx: DatabaseTransaction, input: PostBuildInput): Promise<Map<string, BuildPart>> {
+  const partIds = [...new Set([input.builtPartId, ...input.consumption.map((line) => line.componentPartId)])].sort();
+  const rows = await tx
     .select({
       id: parts.id,
       isInternallyFabricated: parts.isInternallyFabricated,
@@ -127,39 +145,18 @@ async function lockBuildPart(tx: DatabaseTransaction, partId: UUID) {
       unitOfMeasure: parts.unitOfMeasure,
     })
     .from(parts)
-    .where(eq(parts.id, partId))
-    .for('update');
-  if (!part) throw new PartNotFoundError(partId);
-
-  return part;
-}
-
-async function loadBuildComponents(tx: DatabaseTransaction, input: PostBuildInput) {
-  const componentPartIds = input.consumption.map((line) => line.componentPartId);
-  if (componentPartIds.length === 0) return new Map<string, never>();
-
-  const rows = await tx
-    .select({
-      id: parts.id,
-      stockTrackingMode: parts.stockTrackingMode,
-      unitOfMeasure: parts.unitOfMeasure,
-    })
-    .from(parts)
-    .where(inArray(parts.id, componentPartIds))
-    // The same lock a movement takes, so two builds cannot interleave on one component's average.
+    .where(inArray(parts.id, partIds))
+    .orderBy(asc(parts.id))
     .for('update');
 
   return new Map(rows.map((row) => [row.id, row]));
 }
 
 /**
- * The BOM quantity per unit, which the posted consumption is compared against for deviation. Raw
- * material is carried as informational: its line posts nothing, so leaving it off is not a deviation.
+ * The stored BOM, which the posted consumption is compared against for deviation. Raw material is
+ * carried as informational: its line posts nothing, so leaving it off is not a deviation.
  */
-async function loadExpectedConsumption(
-  tx: DatabaseTransaction,
-  input: PostBuildInput,
-): Promise<Map<string, { isInformational: boolean; quantity: number }>> {
+async function loadBom(tx: DatabaseTransaction, builtPartId: UUID): Promise<BuildBomComponent[]> {
   const rows = await tx
     .select({
       componentPartId: partBom.componentPartId,
@@ -168,28 +165,11 @@ async function loadExpectedConsumption(
     })
     .from(partBom)
     .innerJoin(parts, eq(parts.id, partBom.componentPartId))
-    .where(eq(partBom.parentPartId, input.builtPartId));
+    .where(eq(partBom.parentPartId, builtPartId));
 
-  return new Map(
-    rows.map((row) => [
-      row.componentPartId,
-      { isInformational: row.stockTrackingMode === 'periodic', quantity: row.quantity },
-    ]),
-  );
-}
-
-async function sumBucketOnHand(tx: DatabaseTransaction, partId: UUID, lengthMm: number | null): Promise<number> {
-  const [row] = await tx
-    .select({ quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision` })
-    .from(stockMovements)
-    .where(
-      and(
-        eq(stockMovements.partId, partId),
-        // A revaluation moves cost, never quantity, so it never belongs to a length bucket.
-        ne(stockMovements.movementType, 'revaluation'),
-        lengthMm === null ? sql`${stockMovements.lengthMm} IS NULL` : eq(stockMovements.lengthMm, lengthMm),
-      ),
-    );
-
-  return row?.quantity ?? 0;
+  return rows.map((row) => ({
+    componentPartId: row.componentPartId,
+    isInformational: row.stockTrackingMode === 'periodic',
+    quantity: row.quantity,
+  }));
 }

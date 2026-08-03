@@ -14,6 +14,13 @@ import { StockMovementDialog } from '../components/StockMovementDialog.js';
 import { perpetualPartOptions } from '../components/types.js';
 import { JobCloseOutDialog } from './components/JobCloseOutDialog.js';
 
+/**
+ * Opens the return dialog with nothing preselected, for the toolbar action that is not about any one
+ * row. `null` already means "the dialog is closed", so the open-but-unselected state needs its own
+ * value rather than a second meaning for the empty string.
+ */
+const ANY_PART = '';
+
 export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
   const trpc = useTRPC();
   const accessQuery = useAccess();
@@ -59,7 +66,7 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
           {/* Returns stay open after the close: recovered stock must never be stranded off-ledger,
               and the released commitment does not come back with it. */}
           {canMove ? (
-            <Button onClick={() => setReturningPartId('')} variant="outline">
+            <Button onClick={() => setReturningPartId(ANY_PART)} variant="outline">
               <IconArrowUp data-icon="inline-start" />
               Return to store
             </Button>
@@ -90,7 +97,7 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
           onOpenChange={(open) => {
             if (!open) setReturningPartId(null);
           }}
-          open={true}
+          open
           parts={parts}
           type="return-to-store"
         />
@@ -99,7 +106,7 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
         <JobCloseOutDialog
           jobId={jobId}
           onOpenChange={setIsClosing}
-          open={true}
+          open
           committedPartCount={committedPartCount}
           drawnPartCount={drawnPartCount}
         />

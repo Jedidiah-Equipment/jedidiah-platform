@@ -3,7 +3,7 @@ import { DateOnlyIso, type PurchaseOrderPdfModel } from '@pkg/schema';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, vi } from 'vitest';
 
-import { postReceipt } from '../inventory/stock-movement-service.js';
+import { postReceipt } from '../inventory/receipt-service.js';
 import { getJobDocuments } from '../jobs/job-read-service.js';
 import { updatePart } from '../parts/part-service.js';
 import { removeSupplier } from '../suppliers/supplier-service.js';

@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { deriveBuildConsumption, deriveBuildProducedUnitCost, deriveBuildWarnings } from './build.js';
+import {
+  type BuildPostedLine,
+  deriveBuild,
+  deriveBuildConsumption,
+  deriveBuildProducedUnitCost,
+  deriveBuildWarnings,
+} from './build.js';
+
+function postedLine(overrides: Partial<BuildPostedLine> & Pick<BuildPostedLine, 'componentPartId'>): BuildPostedLine {
+  return {
+    isInformational: false,
+    lengthMm: null,
+    quantity: 1,
+    quantityOnHand: 100,
+    unitCost: null,
+    ...overrides,
+  };
+}
 
 describe('deriveBuildConsumption', () => {
   it('prefills each BOM line at its quantity times the build size', () => {
@@ -43,6 +60,96 @@ describe('deriveBuildWarnings', () => {
       'bom-deviation',
       'negative-stock-on-hand',
     ]);
+  });
+
+  it('will not call a periodic rack short, but still reads its deviation', () => {
+    // Periodic stock is only truly counted at stocktake, so its on-hand figure cannot say "short".
+    expect(
+      deriveBuildWarnings({ expectedQuantity: 12, isInformational: true, quantity: 20, quantityOnHand: 5 }),
+    ).toEqual(['bom-deviation']);
+    expect(
+      deriveBuildWarnings({ expectedQuantity: 12, isInformational: true, quantity: 12, quantityOnHand: -80 }),
+    ).toEqual([]);
+  });
+});
+
+describe('deriveBuild', () => {
+  const bom = [
+    { componentPartId: 'bolt', isInformational: false, quantity: 4 },
+    { componentPartId: 'plate', isInformational: true, quantity: 2 },
+  ];
+
+  it('posts what was keyed, values the produce row from it, and stays quiet on an exact build', () => {
+    const derivation = deriveBuild({
+      bom,
+      posted: [
+        postedLine({ componentPartId: 'bolt', quantity: 8, unitCost: 2.5 }),
+        postedLine({ componentPartId: 'plate', isInformational: true, quantity: 4 }),
+      ],
+      quantity: 2,
+    });
+
+    // Raw material posts nothing, so only the bolt line reaches the ledger.
+    expect(derivation.consumption).toEqual([{ componentPartId: 'bolt', lengthMm: null, quantity: 8, unitCost: 2.5 }]);
+    expect(derivation.producedUnitCost).toBe(10);
+    expect(derivation.warnings).toEqual([]);
+  });
+
+  it('flags a BOM component the builder left off entirely, which no posted line can show', () => {
+    const derivation = deriveBuild({
+      bom,
+      posted: [postedLine({ componentPartId: 'plate', isInformational: true, quantity: 2 })],
+      quantity: 1,
+    });
+
+    expect(derivation.warnings).toEqual([{ codes: ['bom-deviation'], componentPartId: 'bolt' }]);
+  });
+
+  it('does not flag an omitted raw-material line, which was never going to post anything', () => {
+    const derivation = deriveBuild({
+      bom,
+      posted: [postedLine({ componentPartId: 'bolt', quantity: 4 })],
+      quantity: 1,
+    });
+
+    expect(derivation.warnings).toEqual([]);
+  });
+
+  it('treats a component the BOM never asked for as a deviation from zero', () => {
+    const derivation = deriveBuild({
+      bom,
+      posted: [
+        postedLine({ componentPartId: 'bolt', quantity: 4 }),
+        postedLine({ componentPartId: 'shim', quantity: 1 }),
+      ],
+      quantity: 1,
+    });
+
+    expect(derivation.warnings).toEqual([{ codes: ['bom-deviation'], componentPartId: 'shim' }]);
+    expect(derivation.consumption).toHaveLength(2);
+  });
+
+  it('scales the BOM expectation by the build size', () => {
+    const derivation = deriveBuild({
+      bom,
+      posted: [postedLine({ componentPartId: 'bolt', quantity: 4 })],
+      quantity: 3,
+    });
+
+    expect(derivation.warnings).toEqual([{ codes: ['bom-deviation'], componentPartId: 'bolt' }]);
+  });
+
+  it('preserves value across a mixed-cost build', () => {
+    const derivation = deriveBuild({
+      bom: [],
+      posted: [
+        postedLine({ componentPartId: 'bolt', quantity: 6, unitCost: 3 }),
+        postedLine({ componentPartId: 'channel', lengthMm: 1_500, quantity: 2, unitCost: 15 }),
+      ],
+      quantity: 4,
+    });
+
+    expect((derivation.producedUnitCost ?? 0) * 4).toBeCloseTo(6 * 3 + 2 * 15, 10);
   });
 });
 

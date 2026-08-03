@@ -31,9 +31,13 @@ export class PartSupplierNotFoundError extends Error {
   }
 }
 
+/** How a Part with no Supplier reads to a human. A built Part is made in-house and bought from nobody. */
+export const NO_SUPPLIER_LABEL = 'no supplier (built in-house)';
+
 export class PartBulkImportConflictError extends Error {
   readonly code = 'part.bulk_import_conflict';
-  readonly metadata: { code: string; supplierCode: string; supplierName: string };
+  /** `supplierName` stays null for a built Part rather than carrying display copy as data. */
+  readonly metadata: { code: string; supplierCode: string; supplierName: string | null };
 
   constructor({
     code,
@@ -42,9 +46,11 @@ export class PartBulkImportConflictError extends Error {
   }: {
     code: string;
     supplierCode: string;
-    supplierName: string;
+    supplierName: string | null;
   }) {
-    super(`Part import row conflicts with existing part identity: ${code} ${supplierName} ${supplierCode}`);
+    super(
+      `Part import row conflicts with existing part identity: ${code} ${supplierName ?? NO_SUPPLIER_LABEL} ${supplierCode}`,
+    );
     this.name = 'PartBulkImportConflictError';
     this.metadata = { code, supplierCode, supplierName };
   }

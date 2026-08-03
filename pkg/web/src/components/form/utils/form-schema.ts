@@ -21,3 +21,12 @@ export function emptyStringOr<T extends z.ZodTypeAny>(schema: T) {
 export function requiredSelection<T extends z.ZodTypeAny>(schema: T, message: string) {
   return z.string().refine((value) => schema.safeParse(value).success, message);
 }
+
+/**
+ * Browser form-field for an optional *numeric* field. `NumberField` renders a text input and holds
+ * an empty control as `NaN`, so emptiness is the one rule this adds — sign, bounds and decimal
+ * places all stay owned by the `@pkg/schema` leaf, which the browser does not re-state.
+ */
+export function optionalNumber<T extends z.ZodTypeAny>(schema: T) {
+  return z.union([z.nan(), schema]);
+}

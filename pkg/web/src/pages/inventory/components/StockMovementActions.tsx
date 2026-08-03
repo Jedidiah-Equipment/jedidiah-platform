@@ -72,7 +72,7 @@ export function StockMovementActions({
         </Button>
       ) : null}
       {buildOpen ? (
-        <StockBuildDialog buildableParts={buildableParts} items={items} onOpenChange={setBuildOpen} open={true} />
+        <StockBuildDialog buildableParts={buildableParts} items={items} onOpenChange={setBuildOpen} open />
       ) : null}
       {adjustmentOpen ? (
         <StockAdjustmentDialog

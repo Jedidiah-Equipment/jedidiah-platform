@@ -1,20 +1,10 @@
 import {
-  type BuildError,
   closeOutJob,
   getStockMovementHistory,
-  isBuildError,
-  isJobCloseOutError,
-  isPartBomError,
-  isPartCoreError,
-  JobCancelledError,
-  type JobCloseOutError,
-  JobNotFoundError,
   listCloseOutQueue,
   listJobStock,
   listJobs,
   listStockOnHand,
-  type PartBomError,
-  type PartCoreError,
   postAdjustment,
   postBuild,
   postJobMovement,
@@ -44,9 +34,16 @@ import {
   StockOnHandRowCostFields,
 } from '@pkg/schema';
 
-import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
+import { mapCoreErrors } from '../../trpc/errors.js';
 import { authorizedProcedure, projectInventoryCostFields, router } from '../../trpc/init.js';
-import { assertCanWriteInventoryCost, mapStockMovementErrors, projectMovement } from './stock-movement-transport.js';
+import { partBomErrorFamily, partCoreErrorFamily } from '../parts/part-error-families.js';
+import {
+  buildErrorFamily,
+  jobCloseOutErrorFamily,
+  stockMovementErrorFamily,
+  stockMovementJobErrorFamily,
+} from './inventory-error-families.js';
+import { assertCanWriteInventoryCost, projectMovement } from './stock-movement-transport.js';
 
 export const inventoryRouter = router({
   jobOptions: authorizedProcedure('inventory:move')
@@ -94,9 +91,7 @@ export const inventoryRouter = router({
     .input(StockMovementHistoryInput)
     .output(StockMovementHistoryResult)
     .query(async ({ ctx, input }) => {
-      const result = await mapJobStockMovementErrors(() =>
-        getStockMovementHistory({ db: ctx.db, partId: input.partId }),
-      );
+      const result = await mapStockLedgerErrors(() => getStockMovementHistory({ db: ctx.db, partId: input.partId }));
 
       return {
         ...result,
@@ -113,7 +108,7 @@ export const inventoryRouter = router({
   jobStock: authorizedProcedure('inventory:read')
     .input(JobStockInput)
     .output(JobStockResult)
-    .query(({ ctx, input }) => mapJobStockMovementErrors(() => listJobStock({ db: ctx.db, jobId: input.jobId }))),
+    .query(({ ctx, input }) => mapJobStockErrors(() => listJobStock({ db: ctx.db, jobId: input.jobId }))),
 
   closeOutQueue: authorizedProcedure('inventory:close-out')
     .output(CloseOutQueueResult)
@@ -123,7 +118,7 @@ export const inventoryRouter = router({
     .input(CloseOutJobInput)
     .output(JobCloseOut)
     .mutation(({ ctx, input }) =>
-      mapJobStockMovementErrors(() => closeOutJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapJobStockErrors(() => closeOutJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
   postBuild: authorizedProcedure('inventory:build')
@@ -139,7 +134,7 @@ export const inventoryRouter = router({
     .mutation(async ({ ctx, input }) => {
       assertCanWriteInventoryCost(ctx.access, input.unitCost);
 
-      const movement = await mapJobStockMovementErrors(() =>
+      const movement = await mapStockLedgerErrors(() =>
         postAdjustment({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
       );
 
@@ -150,7 +145,7 @@ export const inventoryRouter = router({
     .input(PostJobMovementInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {
-      const result = await mapJobStockMovementErrors(() =>
+      const result = await mapJobStockErrors(() =>
         postJobMovement({ actorUserId: ctx.session.user.id, db: ctx.db, input, movementType: 'checkout' }),
       );
 
@@ -161,7 +156,7 @@ export const inventoryRouter = router({
     .input(PostJobMovementInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {
-      const result = await mapJobStockMovementErrors(() =>
+      const result = await mapJobStockErrors(() =>
         postJobMovement({ actorUserId: ctx.session.user.id, db: ctx.db, input, movementType: 'return-to-store' }),
       );
 
@@ -172,7 +167,7 @@ export const inventoryRouter = router({
     .input(PostRevaluationInput)
     .output(StockMovement)
     .mutation(async ({ ctx, input }) => {
-      const movement = await mapJobStockMovementErrors(() =>
+      const movement = await mapStockLedgerErrors(() =>
         postRevaluation({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
       );
 
@@ -180,102 +175,20 @@ export const inventoryRouter = router({
     }),
 });
 
-/**
- * Job movements and close-out add the Job's own failures on top of the shared ledger rules. Both
- * carry the close-out vocabulary: a draw against a closed-out Job is refused the same way a second
- * close is.
- */
-async function mapJobStockMovementErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapStockMovementErrors(() =>
-    mapKnownCoreError(
-      () =>
-        mapKnownCoreError(
-          () => mapKnownCoreError(action, isStockMovementJobError, mapStockMovementJobError),
-          isBuildError,
-          mapBuildError,
-        ),
-      isJobCloseOutError,
-      mapJobCloseOutError,
-    ),
-  );
+/** Stock the plant owns outright: no Job to be cancelled or closed out, only the ledger's own rules. */
+async function mapStockLedgerErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapCoreErrors(action, stockMovementErrorFamily);
 }
 
 /**
- * A build's own failures, plus the Part failures it raises reaching for its Built Part and
- * components. It shares the ledger rules but none of the Job or close-out vocabulary.
+ * Anything attributed to a Job carries all three vocabularies: the ledger's rules, the Job's own
+ * state, and close-out — a draw against a closed-out Job is refused exactly as a second close is.
  */
+async function mapJobStockErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapCoreErrors(action, stockMovementErrorFamily, stockMovementJobErrorFamily, jobCloseOutErrorFamily);
+}
+
+/** A build shares the ledger rules and the Part failures it reaches for, but no Job vocabulary. */
 async function mapBuildErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapStockMovementErrors(() =>
-    mapKnownCoreError(
-      () =>
-        mapKnownCoreError(
-          () => mapKnownCoreError(action, isBuildError, mapBuildError),
-          isPartBomError,
-          mapPartBomError,
-        ),
-      isPartCoreError,
-      mapPartCoreError,
-    ),
-  );
-}
-
-function mapPartBomError(error: PartBomError): CoreErrorMapping<PartBomError['code']> {
-  switch (error.code) {
-    case 'part.bom_component_not_found':
-      return { appCode: error.code, code: 'NOT_FOUND', message: error.message };
-    case 'part.bom_cycle':
-    case 'part.bom_quantity':
-    case 'part.not_built':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    default:
-      return assertNever(error);
-  }
-}
-
-/** Only the Part failures a build can reach; the rest belong to the Part router's own surface. */
-function mapPartCoreError(error: PartCoreError): CoreErrorMapping<PartCoreError['code']> {
-  return error.code === 'part.not_found'
-    ? { appCode: error.code, code: 'NOT_FOUND', message: 'Part not found.' }
-    : { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-}
-
-function mapBuildError(error: BuildError): CoreErrorMapping<BuildError['code']> {
-  switch (error.code) {
-    case 'inventory.build_component_not_found':
-      return { appCode: error.code, code: 'NOT_FOUND', message: error.message };
-    case 'inventory.build_linear_part':
-    case 'inventory.build_periodic_part':
-    case 'inventory.build_self_component':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    default:
-      return assertNever(error);
-  }
-}
-
-function mapJobCloseOutError(error: JobCloseOutError): CoreErrorMapping<JobCloseOutError['code']> {
-  switch (error.code) {
-    case 'inventory.job_already_closed_out':
-    case 'inventory.job_closed_out':
-    case 'inventory.job_not_completed':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    default:
-      return assertNever(error);
-  }
-}
-
-type StockMovementJobError = JobCancelledError | JobNotFoundError;
-
-function isStockMovementJobError(error: unknown): error is StockMovementJobError {
-  return error instanceof JobCancelledError || error instanceof JobNotFoundError;
-}
-
-function mapStockMovementJobError(error: StockMovementJobError): CoreErrorMapping<StockMovementJobError['code']> {
-  switch (error.code) {
-    case 'job.cancelled':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    case 'job.not_found':
-      return { appCode: error.code, code: 'NOT_FOUND', message: 'Job not found.' };
-    default:
-      return assertNever(error);
-  }
+  return mapCoreErrors(action, stockMovementErrorFamily, buildErrorFamily, partBomErrorFamily, partCoreErrorFamily);
 }

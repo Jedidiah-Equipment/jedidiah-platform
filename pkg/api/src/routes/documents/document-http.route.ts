@@ -29,11 +29,12 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
 import {
+  createContentDisposition,
   RouteHttpError,
   requireAnyPermission,
   requirePermission,
   requireRouteAuth,
-  sendHttpError,
+  sendUploadHttpError,
   streamObjectBody,
 } from '../http-route-helpers.js';
 import { mapDocumentCoreError } from './documents.router.js';
@@ -392,7 +393,7 @@ function mapOwnerNotFound(
 }
 
 function sendDocumentHttpError(reply: FastifyReply, error: unknown): void {
-  sendHttpError(reply, error, {
+  sendUploadHttpError(reply, error, {
     fallbackMessage: 'Document request failed.',
     invalidRequestMessage: 'Invalid document request.',
     onFileTooLarge: () => {
@@ -417,11 +418,4 @@ function trpcCodeToHttpStatus(code: string): number {
   if (code === 'NOT_FOUND') return 404;
 
   return 500;
-}
-
-function createContentDisposition(filename: string, disposition: 'attachment' | 'inline' = 'attachment'): string {
-  const fallback = filename.replace(/["\\\r\n]/g, '_');
-  const encoded = encodeURIComponent(filename).replace(/'/g, '%27');
-
-  return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encoded}`;
 }

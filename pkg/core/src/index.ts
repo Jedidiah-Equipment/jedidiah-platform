@@ -24,6 +24,7 @@ export * from './media/image-cache.js';
 export * from './media/image-optimizer.js';
 export * from './media/image-transform.js';
 export * from './parts/part-errors.js';
+export * from './parts/part-label-service.js';
 export * from './parts/part-service.js';
 export * from './product-ranges/product-range-errors.js';
 export * from './product-ranges/product-range-image-service.js';

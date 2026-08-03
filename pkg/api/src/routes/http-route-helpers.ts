@@ -78,21 +78,31 @@ export type SendHttpErrorOptions = {
   fallbackMessage: string;
   // Public message for a malformed request (Zod parse failure).
   invalidRequestMessage: string;
-  // Builds the response for an oversized multipart upload; entities word this for their own size cap.
+};
+
+export type SendUploadHttpErrorOptions = SendHttpErrorOptions & {
+  // Upload routes own their entity-specific size policy and must word this response explicitly.
   onFileTooLarge: () => { appCode: string | undefined; message: string };
 };
 
 // Renders a thrown route error into a response. Callers map their own core errors into a
-// {@link RouteHttpError} before this point; this only knows the transport-level cases (oversized upload,
-// our mapped errors, malformed request, and framework errors that already carry a status). Anything else
-// rethrows so the server's default handler surfaces it as a 500.
+// {@link RouteHttpError} before this point; this only knows mapped errors, malformed requests, and
+// framework errors that already carry a status. Anything else rethrows so the default handler surfaces it as a 500.
 export function sendHttpError(reply: FastifyReply, error: unknown, options: SendHttpErrorOptions): void {
+  sendNonUploadHttpError(reply, error, options);
+}
+
+export function sendUploadHttpError(reply: FastifyReply, error: unknown, options: SendUploadHttpErrorOptions): void {
   if (isMultipartFileTooLargeError(reply, error)) {
     const { appCode, message } = options.onFileTooLarge();
     reply.status(400).send({ data: { appCode }, message });
     return;
   }
 
+  sendNonUploadHttpError(reply, error, options);
+}
+
+function sendNonUploadHttpError(reply: FastifyReply, error: unknown, options: SendHttpErrorOptions): void {
   if (error instanceof RouteHttpError) {
     reply.status(error.statusCode).send({ data: { appCode: error.appCode }, message: error.message });
     return;
@@ -121,6 +131,18 @@ export function streamObjectBody(body: AsyncIterable<Uint8Array>): Readable {
   return Readable.from(body, { objectMode: false });
 }
 
+export function createContentDisposition(
+  filename: string,
+  disposition: 'attachment' | 'inline' = 'attachment',
+): string {
+  const fallback = filename.replace(/["\\\r\n]/g, '_');
+  const encoded = encodeURIComponent(filename).replace(/'/g, '%27');
+
+  return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
+
 function isMultipartFileTooLargeError(reply: FastifyReply, error: unknown): boolean {
-  return error instanceof reply.server.multipartErrors.RequestFileTooLargeError;
+  return Boolean(
+    reply.server.multipartErrors && error instanceof reply.server.multipartErrors.RequestFileTooLargeError,
+  );
 }

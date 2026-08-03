@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc -b",
     "render:brochure-fixture": "tsx scripts/render-brochure-fixture.ts",
+    "render:part-label-fixture": "tsx scripts/render-part-label-fixture.ts",
     "render:purchase-order-fixture": "tsx scripts/render-purchase-order-fixture.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
@@ -20,6 +21,7 @@
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
     "@react-pdf/renderer": "^4.5.1",
+    "bwip-js": "4.11.2",
     "pdf-lib": "^1.17.1",
     "react": "19.2.3"
   },

@@ -183,7 +183,10 @@ export async function listCloseOutQueue({
   });
 }
 
-/** One condition for all three reads, so an aggregate can never cover a different set than the list. */
+/**
+ * One condition for all three reads, so an aggregate can never cover a different set than the list.
+ * It predicates on `jobs` directly, so every caller must have that table joined into its query.
+ */
 function closeOutCandidateCondition() {
   return and(isNotNull(jobs.completedOn), isNull(jobs.cancelledAt), jobIsNotClosedOut(jobs.id));
 }

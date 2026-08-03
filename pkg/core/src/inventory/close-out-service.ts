@@ -192,6 +192,10 @@ export async function listCloseOutQueue({
  * The remaining per-Part arithmetic stays in `deriveCommitment`. Expressing it here too would put
  * the same rule in two languages, and the residue it would remove — a Job that drew and returned
  * everything — is the small, human-sized set the queue is meant to be working through anyway.
+ *
+ * Note for anyone tempted to drop the arm: it is deliberately *output*-invariant. The residue filter
+ * in `listCloseOutQueue` already excludes everything this excludes, so no assertion on `items` can
+ * tell the two apart — what changes is how many rows the three reads scan to reach that answer.
  */
 function closeOutCandidateCondition() {
   return and(isNotNull(jobs.completedOn), isNull(jobs.cancelledAt), jobIsNotClosedOut(jobs.id), hasStockActivity());

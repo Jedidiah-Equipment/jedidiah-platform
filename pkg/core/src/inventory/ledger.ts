@@ -125,10 +125,20 @@ export function bucketMatches(lengthMm: number | null): SQL {
 
 /** The net delta of whatever slice of the ledger the condition selects. */
 export async function sumDelta(db: LedgerDb, where: SQL | undefined): Promise<number> {
-  const [row] = await db
-    .select({ value: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision` })
-    .from(stockMovements)
-    .where(where);
+  return scalar(
+    db
+      .select({ value: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision` })
+      .from(stockMovements)
+      .where(where),
+  );
+}
+
+/**
+ * A one-row, one-column aggregate. Every `coalesce(sum(…), 0)` read here and in the services that
+ * sit on this module unwraps the same way; an empty result is zero, not absent.
+ */
+export async function scalar(query: PromiseLike<Array<{ value: number }>>): Promise<number> {
+  const [row] = await query;
 
   return row?.value ?? 0;
 }

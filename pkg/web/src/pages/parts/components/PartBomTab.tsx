@@ -24,15 +24,29 @@ type DraftLine = { componentPartId: string; key: string; quantity: string };
  * The loaded BOM seeds the editor's initial rows and is never written back into them: the save
  * invalidates `parts`, and a refetch landing mid-edit must not silently discard what is being typed.
  * A different Part is a different editor, which the `key` says outright.
+ *
+ * That holds for a refetch that *fails* too, which is why the error is rendered beside the editor
+ * rather than in place of it. React Query keeps the last data and sets `error` on a failed
+ * background refetch — with `refetchOnWindowFocus` on, an alt-tab onto an expired session is enough
+ * — and unmounting the editor there would throw away exactly the rows this split exists to keep.
  */
 export function PartBomTab({ canEdit, partId }: { canEdit: boolean; partId: UUID }) {
   const trpc = useTRPC();
   const bomQuery = useQuery(trpc.parts.bom.queryOptions({ partId }));
 
   if (bomQuery.isPending) return <Skeleton className="h-32 w-full" />;
-  if (bomQuery.error) return <p className="text-destructive text-sm">Unable to load the Bill of Materials.</p>;
+  if (!bomQuery.data) return <p className="text-destructive text-sm">Unable to load the Bill of Materials.</p>;
 
-  return <PartBomEditor canEdit={canEdit} initialLines={bomQuery.data.lines} key={partId} partId={partId} />;
+  return (
+    <div className="grid gap-4">
+      {bomQuery.error ? (
+        <p className="text-destructive text-sm">
+          Could not refresh the Bill of Materials. You are still editing the last loaded version.
+        </p>
+      ) : null}
+      <PartBomEditor canEdit={canEdit} initialLines={bomQuery.data.lines} key={partId} partId={partId} />
+    </div>
+  );
 }
 
 function PartBomEditor({

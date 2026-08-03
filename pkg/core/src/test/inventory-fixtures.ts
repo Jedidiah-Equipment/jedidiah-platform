@@ -14,6 +14,7 @@ import {
 import type { PostAdjustmentInput } from '@pkg/schema';
 
 import { createTester } from './create-tester.js';
+import { partValues } from './part-fixtures.js';
 
 /**
  * The one seeded ledger every inventory suite runs against: a Part of each unit class, a Job with
@@ -154,35 +155,4 @@ export async function seedJobs(db: Db, cfoPartId: string) {
   ]);
 
   return { cfo, custom };
-}
-
-export function partValues({
-  code,
-  isInternallyFabricated = false,
-  standardPurchaseLengthMm = null,
-  stockTrackingMode = 'perpetual',
-  supplierId,
-  unitOfMeasure,
-}: {
-  code: string;
-  isInternallyFabricated?: boolean;
-  standardPurchaseLengthMm?: number | null;
-  stockTrackingMode?: 'periodic' | 'perpetual';
-  supplierId: string;
-  unitOfMeasure: 'kg' | 'mm' | 'piece';
-}) {
-  return {
-    category: 'Test',
-    code,
-    description: `${code} description`,
-    finish: 'None',
-    isInternallyFabricated,
-    name: code,
-    standardPurchaseLengthMm,
-    stockTrackingMode,
-    supplierCode: code,
-    // Supplier XOR BOM: a built Part is made in-house and bought from nobody.
-    supplierId: isInternallyFabricated ? null : supplierId,
-    unitOfMeasure,
-  };
 }

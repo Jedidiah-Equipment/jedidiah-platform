@@ -50,7 +50,15 @@ import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 
 import { JobClosedOutError } from './close-out-errors.js';
 import { getJobCloseOutAt, jobIsNotClosedOut } from './close-out-service.js';
-import { bucketMatches, insertMovement, loadMovingAverages, loadStockPart, scaleUnitCost, sumDelta } from './ledger.js';
+import {
+  bucketMatches,
+  insertMovement,
+  loadMovingAverages,
+  loadStockPart,
+  scalar,
+  scaleUnitCost,
+  sumDelta,
+} from './ledger.js';
 import {
   FabricatedPartCostError,
   PeriodicStockMovementError,
@@ -436,12 +444,6 @@ async function loadStockMovementContext(
   ]);
 
   return { bucketQuantityOnHand, cfoQuantity, drawnBucketQuantity, drawnQuantity };
-}
-
-async function scalar(query: PromiseLike<Array<{ value: number }>>): Promise<number> {
-  const [row] = await query;
-
-  return row?.value ?? 0;
 }
 
 /**

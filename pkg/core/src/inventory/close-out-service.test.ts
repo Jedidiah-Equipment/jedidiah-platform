@@ -216,14 +216,6 @@ describe('listCloseOutQueue', () => {
     expect(settled.items.map((row) => row.jobId)).not.toContain(context.jobs.custom.id);
   });
 
-  test('never considers a completed Job that has no CFO and never drew, however many pile up', async ({ context }) => {
-    // The Custom Job is completed and live but has never touched stock. Nothing will ever close it
-    // out, so if it reached the candidate set it would sit in every query the queue runs, forever.
-    const queued = await listCloseOutQueue({ clock, db: context.db });
-
-    expect(queued.items.map((row) => row.jobId)).not.toContain(context.jobs.custom.id);
-  });
-
   test('skips open and cancelled Jobs, and ages the stale ones', async ({ context }) => {
     await context.db.update(jobs).set({ completedOn: null }).where(eq(jobs.id, context.jobs.cfo.id));
     expect((await listCloseOutQueue({ clock, db: context.db })).items).toEqual([]);

@@ -3,6 +3,7 @@ import { parts, supplier, user } from '@pkg/db';
 import { postAdjustment } from '../inventory/stock-movement-service.js';
 import { savePartBom } from '../parts/part-bom-service.js';
 import { createTester } from './create-tester.js';
+import { partValues } from './part-fixtures.js';
 
 /**
  * The world a Built Part lives in: an assembly with a BOM of bought components plus raw plate that
@@ -103,35 +104,4 @@ export async function seedParts(db: Db, supplierId: string) {
   }
 
   return { assembly, bolt, channel, cylinder, periodicBuilt, plate };
-}
-
-export function partValues({
-  code,
-  isInternallyFabricated = false,
-  standardPurchaseLengthMm = null,
-  stockTrackingMode = 'perpetual',
-  supplierId,
-  unitOfMeasure,
-}: {
-  code: string;
-  isInternallyFabricated?: boolean;
-  standardPurchaseLengthMm?: number | null;
-  stockTrackingMode?: 'periodic' | 'perpetual';
-  supplierId: string;
-  unitOfMeasure: 'kg' | 'mm' | 'piece';
-}) {
-  return {
-    category: 'Test',
-    code,
-    description: `${code} description`,
-    finish: 'None',
-    isInternallyFabricated,
-    name: code,
-    standardPurchaseLengthMm,
-    stockTrackingMode,
-    supplierCode: code,
-    // Supplier XOR BOM: a built Part is made in-house and bought from nobody.
-    supplierId: isInternallyFabricated ? null : supplierId,
-    unitOfMeasure,
-  };
 }

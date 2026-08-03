@@ -90,7 +90,10 @@ export function defineCoreErrorFamily<TCoreError extends Error & { code: AppCode
       if (!is(error)) return null;
 
       const code = codeByAppCode[error.code];
-      if (!code) throw new Error(`Unmapped core error code: ${error.code}`);
+      // Reachable only if a class joins a family's `is` guard without joining its error union, which
+      // the `codes` Record cannot catch. The core error rides along as `cause` like every other
+      // mapped failure, so `serializeError` still logs what actually went wrong.
+      if (!code) throw new Error(`Unmapped core error code: ${error.code}`, { cause: error });
 
       return { appCode: error.code, code, message: messageByAppCode[error.code] ?? error.message };
     },

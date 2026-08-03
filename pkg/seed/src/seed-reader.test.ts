@@ -1,7 +1,11 @@
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { Db } from '@pkg/db';
 import { describe, expect, it, vi } from 'vitest';
 
-import { readExistingSnapshotTable } from './seed-reader.js';
+import { downloadSnapshotObjectIfMissing, readExistingSnapshotTable } from './seed-reader.js';
 import { snapshotTables } from './snapshot-tables.js';
 
 describe('readExistingSnapshotTable', () => {
@@ -24,5 +28,52 @@ describe('readExistingSnapshotTable', () => {
     expect(select).toHaveBeenCalledTimes(2);
     expect(select.mock.calls[1]?.[0]).not.toHaveProperty('cancellationReason');
     expect(rows).toEqual([{ cancellationReason: null, kind: 'custom', status: 'draft' }]);
+  });
+});
+
+describe('downloadSnapshotObjectIfMissing', () => {
+  it('skips the remote download when the local object already exists', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'seed-reader-'));
+    const destination = pathToFileURL(path.join(directory, 'nested', 'image.png'));
+    const download = vi.fn(async () => new Uint8Array([4, 5, 6]));
+
+    try {
+      await mkdir(new URL('.', destination), { recursive: true });
+      await writeFile(destination, new Uint8Array([1, 2, 3]));
+
+      await expect(downloadSnapshotObjectIfMissing(destination, download)).resolves.toBe('cached');
+      expect(download).not.toHaveBeenCalled();
+      await expect(readFile(destination)).resolves.toEqual(Buffer.from([1, 2, 3]));
+    } finally {
+      await rm(directory, { recursive: true });
+    }
+  });
+
+  it('downloads and stores an object that is not cached', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'seed-reader-'));
+    const destination = pathToFileURL(path.join(directory, 'nested', 'image.png'));
+    const download = vi.fn(async () => new Uint8Array([4, 5, 6]));
+
+    try {
+      await expect(downloadSnapshotObjectIfMissing(destination, download)).resolves.toBe('downloaded');
+      expect(download).toHaveBeenCalledOnce();
+      await expect(readFile(destination)).resolves.toEqual(Buffer.from([4, 5, 6]));
+    } finally {
+      await rm(directory, { recursive: true });
+    }
+  });
+
+  it('leaves the destination absent when the remote object is missing', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'seed-reader-'));
+    const destination = pathToFileURL(path.join(directory, 'nested', 'image.png'));
+    const download = vi.fn(async () => null);
+
+    try {
+      await expect(downloadSnapshotObjectIfMissing(destination, download)).resolves.toBe('missing');
+      expect(download).toHaveBeenCalledOnce();
+      await expect(readFile(destination)).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      await rm(directory, { recursive: true });
+    }
   });
 });

@@ -33,7 +33,7 @@ export const CloseOutQueueWidget: React.FC = () => {
 function describeQueue(count: number, staleCount: number): string {
   if (count === 0) return 'Nothing waiting';
   // Stale is the backstop the queue exists to make loud, so it leads the sublabel when there is any.
-  if (staleCount > 0) return `${staleCount} waiting over ${STALE_CLOSE_OUT_DAYS} days`;
+  if (staleCount > 0) return `${staleCount} waiting ${STALE_CLOSE_OUT_DAYS} days or more`;
 
   return count === 1 ? '1 completed Job to close' : `${count} completed Jobs to close`;
 }

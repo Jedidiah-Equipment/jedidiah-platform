@@ -14,7 +14,7 @@ import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
-import { JobAlreadyClosedOutError, JobNotCompletedError } from './close-out-errors.js';
+import { JobAlreadyClosedOutError, JobClosedOutError, JobNotCompletedError } from './close-out-errors.js';
 import { closeOutJob, listCloseOutQueue } from './close-out-service.js';
 import { listJobStock, listStockOnHand, postAdjustment, postJobMovement } from './stock-movement-service.js';
 
@@ -135,6 +135,36 @@ describe('close-out and commitment', () => {
     const onHand = await listStockOnHand({ db: context.db });
     expect(jobStock.items[0]).toMatchObject({ cfoQuantity: 5, committedQuantity: 0, drawnQuantity: 0 });
     expect(onHand.items.find((row) => row.partId === context.partId)?.committed).toBe(0);
+  });
+
+  test('refuses a later checkout but still takes the returns it was closed for', async ({ context }) => {
+    await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.partId, quantity: 2 },
+      movementType: 'checkout',
+    });
+    await closeOutJob({ actorUserId, db: context.db, input: { jobId: context.jobs.cfo.id, note: null } });
+
+    // A draw after the close would sit against the Job unprompted forever: a closed Job can never
+    // re-enter the queue, so nothing would ever ask for it back.
+    await expect(
+      postJobMovement({
+        actorUserId,
+        db: context.db,
+        input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.partId, quantity: 1 },
+        movementType: 'checkout',
+      }),
+    ).rejects.toBeInstanceOf(JobClosedOutError);
+
+    await expect(
+      postJobMovement({
+        actorUserId,
+        db: context.db,
+        input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.partId, quantity: 2 },
+        movementType: 'return-to-store',
+      }),
+    ).resolves.toMatchObject({ movement: { movementType: 'return-to-store' } });
   });
 });
 

@@ -26,7 +26,6 @@ import {
 } from '@pkg/domain';
 import type {
   AuthId,
-  JobStockMovementType,
   JobStockResult,
   PartUnitClass,
   PostAdjustmentInput,
@@ -41,6 +40,7 @@ import type {
 } from '@pkg/schema';
 import {
   isPeriodicStockAdjustmentReason,
+  JobStockMovementType,
   JobStockResult as JobStockResultSchema,
   StockMovementHistoryResult as StockMovementHistoryResultSchema,
   StockMovementPostResult as StockMovementPostResultSchema,
@@ -59,6 +59,7 @@ import {
   PurchaseOrderNotSentError,
 } from '../purchase-orders/purchase-order-errors.js';
 
+import { JobClosedOutError } from './close-out-errors.js';
 import { getJobCloseOutAt, jobIsNotClosedOut } from './close-out-service.js';
 import {
   FabricatedPartCostError,
@@ -69,7 +70,7 @@ import {
 } from './stock-movement-errors.js';
 
 type StockMovementDatabase = Db | DatabaseTransaction;
-const JOB_MOVEMENT_TYPES = ['checkout', 'return-to-store'] as const satisfies readonly JobStockMovementType[];
+const JOB_MOVEMENT_TYPES = JobStockMovementType.options;
 
 export async function postAdjustment({
   actorUserId,
@@ -148,6 +149,11 @@ export async function postJobMovement({
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
     await (movementType === 'checkout' ? lockMutableJob(tx, input.jobId) : lockJob(tx, input.jobId));
+    // Close-out ended this Job's stock life; a later draw would sit against it unprompted forever,
+    // since a closed Job can never re-enter the queue. Returns are deliberately still allowed.
+    if (movementType === 'checkout' && (await getJobCloseOutAt({ db: tx, jobId: input.jobId })) !== null) {
+      throw new JobClosedOutError(input.jobId);
+    }
     const unitClass = unitClassFor(part.unitOfMeasure);
 
     assertDeltaMatchesUnitClass(input.quantity, unitClass);

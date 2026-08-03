@@ -197,6 +197,12 @@ describe('close-out queue and close action', () => {
       appCode: 'inventory.job_already_closed_out',
       code: 'BAD_REQUEST',
     });
+    await expect(
+      stores.inventory.postCheckout({ jobId: context.job.id, partId: context.part.id, quantity: 1 }),
+    ).rejects.toMatchObject({ appCode: 'inventory.job_closed_out', code: 'BAD_REQUEST' });
+    await expect(
+      stores.inventory.postReturnToStore({ jobId: context.job.id, partId: context.part.id, quantity: 1 }),
+    ).resolves.toMatchObject({ movement: { movementType: 'return-to-store' } });
     await expect(stores.inventory.jobStock({ jobId: context.job.id })).resolves.toMatchObject({
       job: { code: 'JOB-00001', completedOn: '2026-08-01', displayName: 'Inventory repair' },
     });

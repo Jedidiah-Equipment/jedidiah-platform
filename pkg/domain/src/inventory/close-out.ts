@@ -21,8 +21,9 @@ export function deriveCloseOutAge({
   completedOn: DateOnlyIso;
   today: DateOnlyIso;
 }): CloseOutAge {
-  // Completion is human-controllable and takes future dates on the Job sheet; a Job cannot have
-  // been waiting for less than no time, so the queue reads a not-yet-reached date as fresh.
+  // The Job sheet rejects future dates, but the nightly sweep stamps a Job's latest `lastWorkDay`,
+  // which can lead plant today across a timezone boundary. Waiting for less than no time is not a
+  // thing, so the queue reads a not-yet-reached date as fresh rather than as negative age.
   const ageDays = Math.max(0, diffDateOnlyDays(today, completedOn));
 
   return { ageDays, isStale: ageDays >= STALE_CLOSE_OUT_DAYS };

@@ -22,8 +22,11 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
   const [isClosing, setIsClosing] = useState(false);
   const canMove = hasPermission(accessQuery.data, 'inventory:move');
   const canCloseOut = hasPermission(accessQuery.data, 'inventory:close-out');
-  // The Part list only matters once a return is being posted, so the screen does not pay for it.
-  const stockOnHandQuery = useQuery(trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove }));
+  // The stock-on-hand report replays the whole ledger; only a return needs it, so the screen does
+  // not pay for it until one opens.
+  const stockOnHandQuery = useQuery(
+    trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove && returningPartId !== null }),
+  );
   const parts = useMemo(() => perpetualPartOptions(stockOnHandQuery.data?.items ?? []), [stockOnHandQuery.data?.items]);
 
   if (jobStockQuery.isPending) {
@@ -105,9 +108,19 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
   );
 }
 
-function describeJob(job: { closedOutAt: string | null; code: string; completedOn: string | null }): string {
+function describeJob(job: {
+  cancelledAt: string | null;
+  closedOutAt: string | null;
+  code: string;
+  completedOn: string | null;
+}): string {
   if (job.closedOutAt !== null) {
     return `${job.code} · closed out ${formatDate(job.closedOutAt)}. Its commitment stays released.`;
+  }
+
+  // Cancellation already released the commitment, so there is nothing left for a close-out to do.
+  if (job.cancelledAt !== null) {
+    return `${job.code} · cancelled, so its commitment is already released. Return anything still drawn.`;
   }
 
   if (job.completedOn === null) {

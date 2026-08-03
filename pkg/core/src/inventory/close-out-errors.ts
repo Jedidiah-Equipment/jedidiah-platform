@@ -22,8 +22,28 @@ export class JobAlreadyClosedOutError extends Error {
   }
 }
 
-export type JobCloseOutError = JobAlreadyClosedOutError | JobNotCompletedError;
+/**
+ * Close-out asserted that this Job's stock life is over. A fresh draw would make that a lie and
+ * would never be prompted for again — the Job cannot re-enter the close-out queue. Returns stay
+ * open: recovered stock must always reach the ledger.
+ */
+export class JobClosedOutError extends Error {
+  readonly code = 'inventory.job_closed_out';
+  readonly metadata: { jobId: string };
+
+  constructor(jobId: string) {
+    super('This Job has been closed out and can no longer draw stock.');
+    this.name = 'JobClosedOutError';
+    this.metadata = { jobId };
+  }
+}
+
+export type JobCloseOutError = JobAlreadyClosedOutError | JobClosedOutError | JobNotCompletedError;
 
 export function isJobCloseOutError(error: unknown): error is JobCloseOutError {
-  return error instanceof JobAlreadyClosedOutError || error instanceof JobNotCompletedError;
+  return (
+    error instanceof JobAlreadyClosedOutError ||
+    error instanceof JobClosedOutError ||
+    error instanceof JobNotCompletedError
+  );
 }

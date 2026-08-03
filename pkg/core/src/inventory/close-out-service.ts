@@ -16,6 +16,7 @@ import {
   CloseOutQueueResult as CloseOutQueueResultSchema,
   DateOnlyIso,
   JobCloseOut as JobCloseOutSchema,
+  JobStockMovementType,
 } from '@pkg/schema';
 import { type AnyColumn, and, asc, eq, inArray, isNotNull, isNull, type SQL, sql } from 'drizzle-orm';
 
@@ -23,7 +24,8 @@ import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { lockMutableJob } from '../jobs/job-mutation-guards.js';
 import { JobAlreadyClosedOutError, JobNotCompletedError } from './close-out-errors.js';
 
-const JOB_MOVEMENT_TYPES = ['checkout', 'return-to-store'] as const;
+/** The one compile-checked list of Job-attributed movement types; net drawn must read them all. */
+const JOB_MOVEMENT_TYPES = JobStockMovementType.options;
 
 /**
  * Ends a Job's stock life in one insert. Leftovers are returned first through the ordinary
@@ -129,7 +131,7 @@ export async function listCloseOutQueue({
       })
       .from(stockMovements)
       .innerJoin(jobs, eq(jobs.id, stockMovements.jobId))
-      .where(and(closeOutCandidateCondition(), inArray(stockMovements.movementType, [...JOB_MOVEMENT_TYPES])))
+      .where(and(closeOutCandidateCondition(), inArray(stockMovements.movementType, JOB_MOVEMENT_TYPES)))
       .groupBy(stockMovements.jobId, stockMovements.partId),
   ]);
 

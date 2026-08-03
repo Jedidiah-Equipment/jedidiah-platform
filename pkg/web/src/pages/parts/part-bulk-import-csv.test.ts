@@ -53,6 +53,7 @@ describe('parsePartBulkImportCsv', () => {
           isInternallyFabricated: false,
           lineNumber: 1,
           name: 'Bearing',
+          standardPurchaseLengthMm: null,
           supplierCode: 'SUP-100',
           supplierName: 'Acme Supplies',
           unitOfMeasure: 'piece',
@@ -70,7 +71,7 @@ describe('parsePartBulkImportCsv', () => {
       { hasHeader: false },
     );
 
-    expect(result.errors).toEqual(['Row 1: Expected 10 or 11 columns, found 9.']);
+    expect(result.errors).toEqual(['Row 1: Missing one or more expected columns.']);
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({ code: 'P-101', isInternallyFabricated: false, lineNumber: 2 });
   });
@@ -159,6 +160,7 @@ describe('parsePartBulkImportCsv', () => {
         isInternallyFabricated: false,
         lineNumber: 3,
         name: 'Bearing',
+        standardPurchaseLengthMm: null,
         supplierCode: 'SUP-101',
         supplierName: 'Acme Supplies',
         unitOfMeasure: 'piece',
@@ -205,7 +207,7 @@ describe('parsePartBulkImportCsv', () => {
     const result = parsePartBulkImportCsv('P-100,Main bearing', { hasHeader: false });
 
     expect(result.rows).toEqual([]);
-    expect(result.errors).toContain('Row 1: Expected 10 or 11 columns, found 2.');
+    expect(result.errors).toContain('Row 1: Missing one or more expected columns.');
   });
 
   it('requires a standard purchase length for millimetre parts', () => {

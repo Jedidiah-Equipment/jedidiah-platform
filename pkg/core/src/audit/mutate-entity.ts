@@ -17,9 +17,9 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  *   set between the diff and the write, and acceptance transfers an allocation in the same gap.
  * - Product update — the audit event is recorded after the post-update assembly/bay syncs so it
  *   captures the child collections.
- * - Part bulk import — one transaction over many rows, no per-row lock, skip is `continue`.
- * - Purchase Order line/Job-link replacement and send — child collections and the stored PDF are
- *   changed inside the same transaction before the aggregate audit diff is recorded.
+ * - Part bulk import — one transaction over many rows, its own per-row lock, skip is `continue`.
+ * - Purchase Order draft save and send — child collections and the stored PDF are changed inside the
+ *   same transaction before the aggregate audit diff is recorded.
  * - The Job completion sweep — the order is inverted: it writes first (`WHERE completedOn IS NULL` is
  *   the additive latch), diffs after, with a null system actor.
  */

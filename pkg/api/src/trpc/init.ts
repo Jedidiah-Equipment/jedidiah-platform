@@ -64,20 +64,30 @@ type InventoryCostProjection<TOutput, TCostField extends keyof TOutput> = Omit<T
   [Field in TCostField]: TOutput[Field] | null;
 };
 
-/** Centralizes the server-side cost gate; projected fields must use the nullable InventoryCost schema. */
+export type InventoryCostAccess = Pick<UserAccessSummary, 'permissions'> | null | undefined;
+
+export function canReadInventoryCosts(access: InventoryCostAccess): boolean {
+  return hasPermission(access, 'inventory_cost:read');
+}
+
+/**
+ * The server-side cost gate (spec §11). `costFields` always comes from the contract that owns the
+ * row — `declareInventoryCostFields` in `@pkg/schema` — so a contract cannot gain a cost field the
+ * gate does not know about; `inventory-cost.test.ts` there fails when one does.
+ */
 export function projectInventoryCostFields<
   TCostField extends PropertyKey,
-  TOutput extends Record<TCostField, number | null>,
+  TOutput extends Record<TCostField, unknown>,
 >({
   access,
   costFields,
   output,
 }: {
-  access: Pick<UserAccessSummary, 'permissions'> | null | undefined;
+  access: InventoryCostAccess;
   costFields: readonly TCostField[];
   output: TOutput;
 }): InventoryCostProjection<TOutput, TCostField> {
-  if (hasPermission(access, 'inventory_cost:read')) {
+  if (canReadInventoryCosts(access)) {
     return output;
   }
 

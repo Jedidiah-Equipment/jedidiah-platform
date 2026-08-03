@@ -61,10 +61,8 @@ const styles = StyleSheet.create({
 });
 
 export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel }) {
-  const total = document.lines.reduce(
-    (sum, line) => sum + (line.unitPrice === null ? 0 : line.quantity * line.unitPrice),
-    0,
-  );
+  // The as-sent record always prints real prices: it is rendered from the core read, never the gated view.
+  const total = document.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
 
   return (
     <Document title={document.code}>
@@ -109,10 +107,8 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
               {line.supplierCode ? <Text style={styles.line}>Supplier code: {line.supplierCode}</Text> : null}
             </View>
             <Text style={styles.quantity}>{formatLineQuantity(line)}</Text>
-            <Text style={styles.money}>{formatLineMoney(line.unitPrice)}</Text>
-            <Text style={styles.money}>
-              {formatLineMoney(line.unitPrice === null ? null : line.quantity * line.unitPrice)}
-            </Text>
+            <Text style={styles.money}>{formatCurrency(line.unitPrice, 'ZAR')}</Text>
+            <Text style={styles.money}>{formatCurrency(line.quantity * line.unitPrice, 'ZAR')}</Text>
           </View>
         ))}
 
@@ -133,8 +129,4 @@ function formatLineQuantity(line: PurchaseOrderPdfModel['lines'][number]): strin
     return `${line.quantity} x ${line.standardPurchaseLengthMm} mm`;
   }
   return `${line.quantity} ${PART_UNIT_OF_MEASURE_LABELS[line.unitOfMeasure]}`;
-}
-
-function formatLineMoney(value: number | null): string {
-  return value === null ? '-' : formatCurrency(value, 'ZAR');
 }

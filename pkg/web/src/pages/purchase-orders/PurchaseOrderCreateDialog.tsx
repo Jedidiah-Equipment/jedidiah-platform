@@ -1,4 +1,4 @@
-import type { PurchaseOrder } from '@pkg/schema';
+import type { PurchaseOrderView } from '@pkg/schema';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
@@ -38,7 +38,7 @@ export const PurchaseOrderCreateDialog: React.FC<PurchaseOrderCreateDialogProps>
       defaultValues={defaultValues}
       key={open ? 'open' : 'closed'}
       onCreate={(values) => createMutation.mutateAsync(toPurchaseOrderCreateInput(values))}
-      onCreated={async (purchaseOrder: PurchaseOrder) => {
+      onCreated={async (purchaseOrder: PurchaseOrderView) => {
         await invalidatePurchaseOrders();
         onOpenChange(false);
         toast.success(`${purchaseOrder.code} created`);

@@ -4,7 +4,7 @@ import { DateIso, DateOnlyIso } from '../common/date.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { PurchaseOrderCode } from '../common/public-code.js';
 import { UUID } from '../common/uuid.js';
-import { InventoryCost } from '../inventory/inventory-cost.js';
+import { declareInventoryCostFields, InventoryCost } from '../inventory/inventory-cost.js';
 import { JobCode } from '../jobs/job.js';
 import { PartStandardPurchaseLengthMm, PartUnitOfMeasure } from '../parts/part.js';
 
@@ -36,6 +36,7 @@ export const PurchaseOrderLineInput = z
   })
   .strict();
 
+/** A stored line always has an agreed price; only the API's cost gate can take it away (see the View). */
 export type PurchaseOrderLine = z.infer<typeof PurchaseOrderLine>;
 export const PurchaseOrderLine = PurchaseOrderLineInput.extend({
   partCode: z.string().trim().min(1),
@@ -43,8 +44,6 @@ export const PurchaseOrderLine = PurchaseOrderLineInput.extend({
   standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
   supplierCode: z.string().trim().min(1).optional(),
   unitOfMeasure: PartUnitOfMeasure,
-  // The API cost gate projects this to null for price-blind receivers.
-  unitPrice: InventoryCost,
 });
 
 export type PurchaseOrderLinkedJob = z.infer<typeof PurchaseOrderLinkedJob>;
@@ -79,6 +78,19 @@ export const PurchaseOrder = z.object({
   updatedAt: DateIso,
 });
 
+/**
+ * What the API serves. Procurement enters the prices and can read them back; the price-blind stores
+ * role reads the same order with `unitPrice` nulled by the cost gate (spec §5, §11). Only this shape
+ * is nullable — the core read and the as-sent PDF always carry the real price.
+ */
+export type PurchaseOrderLineView = z.infer<typeof PurchaseOrderLineView>;
+export const PurchaseOrderLineView = PurchaseOrderLine.extend({ unitPrice: InventoryCost });
+
+export const PurchaseOrderLineViewCostFields = declareInventoryCostFields(PurchaseOrderLineView, 'unitPrice');
+
+export type PurchaseOrderView = z.infer<typeof PurchaseOrderView>;
+export const PurchaseOrderView = PurchaseOrder.extend({ lines: z.array(PurchaseOrderLineView) });
+
 export type PurchaseOrderCreateInput = z.infer<typeof PurchaseOrderCreateInput>;
 export const PurchaseOrderCreateInput = z
   .object({
@@ -87,32 +99,25 @@ export const PurchaseOrderCreateInput = z
   })
   .strict();
 
-export type PurchaseOrderUpdateHeaderInput = z.infer<typeof PurchaseOrderUpdateHeaderInput>;
-export const PurchaseOrderUpdateHeaderInput = PurchaseOrderCreateInput.extend({ id: UUID }).strict();
-
 function uniqueValues(values: readonly string[]): boolean {
   return new Set(values).size === values.length;
 }
 
-export type PurchaseOrderReplaceLinesInput = z.infer<typeof PurchaseOrderReplaceLinesInput>;
-export const PurchaseOrderReplaceLinesInput = z
-  .object({
-    id: UUID,
-    lines: z.array(PurchaseOrderLineInput),
-  })
+/**
+ * A draft is saved whole: supplier, expected date, lines, and Job links are one editable aggregate,
+ * so one transaction owns the supplier/line consistency rule and one audit event records the change.
+ */
+export type PurchaseOrderSaveDraftInput = z.infer<typeof PurchaseOrderSaveDraftInput>;
+export const PurchaseOrderSaveDraftInput = PurchaseOrderCreateInput.extend({
+  id: UUID,
+  jobIds: z.array(UUID),
+  lines: z.array(PurchaseOrderLineInput),
+})
   .strict()
   .refine((input) => uniqueValues(input.lines.map((line) => line.partId)), {
     message: 'A Part can appear only once on a Purchase Order',
     path: ['lines'],
-  });
-
-export type PurchaseOrderReplaceJobLinksInput = z.infer<typeof PurchaseOrderReplaceJobLinksInput>;
-export const PurchaseOrderReplaceJobLinksInput = z
-  .object({
-    id: UUID,
-    jobIds: z.array(UUID),
   })
-  .strict()
   .refine((input) => uniqueValues(input.jobIds), {
     message: 'A Job can be linked only once',
     path: ['jobIds'],
@@ -136,6 +141,9 @@ export const PurchaseOrderListInput = createSearchedSortedCursorQueryInput({
 
 export type PurchaseOrderListResult = z.infer<typeof PurchaseOrderListResult>;
 export const PurchaseOrderListResult = createCursorQueryResult(PurchaseOrder);
+
+export type PurchaseOrderListViewResult = z.infer<typeof PurchaseOrderListViewResult>;
+export const PurchaseOrderListViewResult = createCursorQueryResult(PurchaseOrderView);
 
 export type PurchaseOrderPdfModel = z.infer<typeof PurchaseOrderPdfModel>;
 export const PurchaseOrderPdfModel = PurchaseOrder.pick({

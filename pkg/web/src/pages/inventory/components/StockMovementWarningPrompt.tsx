@@ -1,16 +1,15 @@
+import type { StockMovementWarningCode } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
-
-import type { JobMovementWarningCode } from './types.js';
 
 const warningMessages = {
   'exceeds-cfo': 'This draw exceeds the Job CFO.',
   'exceeds-drawn': 'This return exceeds the quantity currently drawn.',
   'negative-stock-on-hand': 'This draw will take stock on hand negative.',
-} as const satisfies Record<JobMovementWarningCode, string>;
+} as const satisfies Record<StockMovementWarningCode, string>;
 
-export function StockMovementWarningPrompt({ warnings }: { warnings: readonly JobMovementWarningCode[] }) {
+export function StockMovementWarningPrompt({ warnings }: { warnings: readonly StockMovementWarningCode[] }) {
   if (warnings.length === 0) return null;
 
   return (
@@ -29,6 +28,6 @@ export function StockMovementWarningPrompt({ warnings }: { warnings: readonly Jo
   );
 }
 
-export function warningMessageFor(code: JobMovementWarningCode): string {
+export function warningMessageFor(code: StockMovementWarningCode): string {
   return warningMessages[code];
 }

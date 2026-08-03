@@ -7,10 +7,14 @@ import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js
 import { UUID } from '../common/uuid.js';
 import { JobListInput } from '../jobs/job.js';
 import { PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
-import { InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
+import { declareInventoryCostFields, InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
 
 export type StockMovementType = z.infer<typeof StockMovementType>;
 export const StockMovementType = z.enum(['adjustment', 'revaluation', 'checkout', 'return-to-store']);
+
+/** The movement types a Job draws and returns through; the ledger's other types are stock-only. */
+export type JobStockMovementType = z.infer<typeof JobStockMovementType>;
+export const JobStockMovementType = StockMovementType.extract(['checkout', 'return-to-store']);
 
 export type StockAdjustmentReason = z.infer<typeof StockAdjustmentReason>;
 export const StockAdjustmentReason = z.enum(['opening-balance', 'stock-count', 'damage', 'scrap', 'correction']);
@@ -22,6 +26,13 @@ export const STOCK_ADJUSTMENT_REASON_LABELS = {
   scrap: 'Scrap',
   'stock-count': 'Stock count',
 } as const satisfies Record<StockAdjustmentReason, string>;
+
+/** The adjustment reasons a periodic Part accepts: its go-live seed and the count that corrects it. */
+export const PERIODIC_STOCK_ADJUSTMENT_REASONS = ['opening-balance', 'stock-count'] as const;
+
+export function isPeriodicStockAdjustmentReason(reason: StockAdjustmentReason): boolean {
+  return (PERIODIC_STOCK_ADJUSTMENT_REASONS as readonly StockAdjustmentReason[]).includes(reason);
+}
 
 export type StockMovementDelta = z.infer<typeof StockMovementDelta>;
 export const StockMovementDelta = z.number().finite().multipleOf(0.001, 'Delta supports at most three decimal places');
@@ -37,16 +48,12 @@ const MovementTargetInput = z.object({
   partId: UUID,
 });
 
-const JobMovementInput = MovementTargetInput.extend({
+/** Checkout and return-to-store take the same target; the movement type decides the sign. */
+export type PostJobMovementInput = z.infer<typeof PostJobMovementInput>;
+export const PostJobMovementInput = MovementTargetInput.extend({
   jobId: UUID,
   quantity: StockMovementQuantity,
 }).strict();
-
-export type PostCheckoutInput = z.infer<typeof PostCheckoutInput>;
-export const PostCheckoutInput = JobMovementInput;
-
-export type PostReturnToStoreInput = z.infer<typeof PostReturnToStoreInput>;
-export const PostReturnToStoreInput = JobMovementInput;
 
 export type PostAdjustmentInput = z.infer<typeof PostAdjustmentInput>;
 export const PostAdjustmentInput = MovementTargetInput.extend({
@@ -95,30 +102,38 @@ export const StockMovement = z.object({
   note: nullableTrimmedText(),
   partId: UUID,
   reason: StockAdjustmentReason.nullable(),
-  unitCost: InventoryUnitCost.nullable(),
+  unitCost: InventoryCost,
 });
 
-export type StockMovementWarnings = z.infer<typeof StockMovementWarnings>;
-export const StockMovementWarnings = z.object({
-  exceedsCfo: z.boolean(),
-  exceedsDrawn: z.boolean(),
-  negativeStockOnHand: z.boolean(),
-});
+export const StockMovementCostFields = declareInventoryCostFields(StockMovement, 'unitCost');
+
+export type StockMovementWarningCode = z.infer<typeof StockMovementWarningCode>;
+export const StockMovementWarningCode = z.enum(['exceeds-cfo', 'exceeds-drawn', 'negative-stock-on-hand']);
 
 export type StockMovementPostResult = z.infer<typeof StockMovementPostResult>;
 export const StockMovementPostResult = z.object({
   movement: StockMovement,
-  warnings: StockMovementWarnings,
+  warnings: z.array(StockMovementWarningCode),
 });
+
+/** One length bucket of a Part's stock; discrete and measured Parts hold exactly one `null` bucket. */
+export type StockOnHandBucket = z.infer<typeof StockOnHandBucket>;
+export const StockOnHandBucket = z.object({
+  lengthMm: StockMovementLengthMm.nullable(),
+  quantity: z.number().finite(),
+  totalValue: InventoryValue,
+});
+
+export const StockOnHandBucketCostFields = declareInventoryCostFields(StockOnHandBucket, 'totalValue');
 
 export type StockOnHandRow = z.infer<typeof StockOnHandRow>;
 export const StockOnHandRow = z.object({
-  averageUnitCost: InventoryCost,
   asOfLastCount: DateIso.nullable(),
-  committed: z.number().finite().describe('Part-level commitment, repeated on each linear length-bucket row'),
-  free: z.number().finite().describe('Part-level free stock, repeated on each linear length-bucket row'),
+  averageUnitCost: InventoryCost,
+  buckets: z.array(StockOnHandBucket).min(1),
+  committed: z.number().finite(),
+  free: z.number().finite(),
   isInternallyFabricated: z.boolean(),
-  lengthMm: StockMovementLengthMm.nullable(),
   partCode: z.string(),
   partId: UUID,
   partName: z.string(),
@@ -128,6 +143,8 @@ export const StockOnHandRow = z.object({
   totalValue: InventoryValue,
   unitOfMeasure: PartUnitOfMeasure,
 });
+
+export const StockOnHandRowCostFields = declareInventoryCostFields(StockOnHandRow, 'averageUnitCost', 'totalValue');
 
 export type StockOnHandResult = z.infer<typeof StockOnHandResult>;
 export const StockOnHandResult = z.object({ items: z.array(StockOnHandRow) });
@@ -185,6 +202,12 @@ export const StockMovementHistoryRow = StockMovement.extend({
   movementValue: InventoryValue,
   runningBalance: z.number().finite(),
 });
+
+export const StockMovementHistoryRowCostFields = declareInventoryCostFields(
+  StockMovementHistoryRow,
+  'movementValue',
+  'unitCost',
+);
 
 export type StockMovementHistoryResult = z.infer<typeof StockMovementHistoryResult>;
 export const StockMovementHistoryResult = z.object({

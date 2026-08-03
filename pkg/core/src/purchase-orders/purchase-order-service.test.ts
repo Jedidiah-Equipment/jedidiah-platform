@@ -14,9 +14,7 @@ import {
   getPurchaseOrder,
   listPurchaseOrders,
   markPurchaseOrderSent,
-  replacePurchaseOrderJobLinks,
-  replacePurchaseOrderLines,
-  updatePurchaseOrderHeader,
+  savePurchaseOrderDraft,
 } from './purchase-order-service.js';
 
 const ACTOR_ID = 'po-test-user';
@@ -25,6 +23,10 @@ const SUPPLIER_B_ID = '00000000-0000-4000-8000-000000000102';
 const PIECE_PART_ID = '00000000-0000-4000-8000-000000000201';
 const LINEAR_PART_ID = '00000000-0000-4000-8000-000000000202';
 const OTHER_PART_ID = '00000000-0000-4000-8000-000000000203';
+
+function draftInput(id: string, lines: Array<{ partId: string; quantity: number; unitPrice: number }>) {
+  return { expectedDeliveryDate: null, id, jobIds: [], lines, supplierId: SUPPLIER_A_ID };
+}
 
 const test = createTester(async ({ db }) => {
   await seedCatalog(db);
@@ -52,28 +54,17 @@ describe('Purchase Order draft lifecycle', () => {
       code: 'supplier.has_draft_purchase_orders',
     });
 
-    await replacePurchaseOrderLines({
-      actorUserId: ACTOR_ID,
-      db: context.db,
-      input: {
-        id: purchaseOrder.id,
-        lines: [
-          { partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 },
-          { partId: LINEAR_PART_ID, quantity: 2, unitPrice: 900 },
-        ],
-      },
-    });
-    await replacePurchaseOrderJobLinks({
-      actorUserId: ACTOR_ID,
-      db: context.db,
-      input: { id: purchaseOrder.id, jobIds: context.jobIds },
-    });
-    const updated = await updatePurchaseOrderHeader({
+    const updated = await savePurchaseOrderDraft({
       actorUserId: ACTOR_ID,
       db: context.db,
       input: {
         expectedDeliveryDate: DateOnlyIso.parse('2026-08-20'),
         id: purchaseOrder.id,
+        jobIds: context.jobIds,
+        lines: [
+          { partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 },
+          { partId: LINEAR_PART_ID, quantity: 2, unitPrice: 900 },
+        ],
         supplierId: SUPPLIER_A_ID,
       },
     });
@@ -87,32 +78,21 @@ describe('Purchase Order draft lifecycle', () => {
       ],
     });
 
+    // One save is one audit event: the header change and both child collections together.
     const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
-    expect(events).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ action: 'created', entityId: purchaseOrder.id, entityType: 'purchase_order' }),
-        expect.objectContaining({
-          action: 'updated',
-          changes: expect.objectContaining({ 'line:P-100': expect.objectContaining({ from: null }) }),
-          entityId: purchaseOrder.id,
-          entityType: 'purchase_order',
+    expect(events).toEqual([
+      expect.objectContaining({ action: 'created', entityId: purchaseOrder.id, entityType: 'purchase_order' }),
+      expect.objectContaining({
+        action: 'updated',
+        changes: expect.objectContaining({
+          expectedDeliveryDate: { from: null, to: '2026-08-20' },
+          [`job:${updated.jobs[0]?.code}`]: expect.objectContaining({ from: null }),
+          'line:P-100': expect.objectContaining({ from: null }),
         }),
-        expect.objectContaining({
-          action: 'updated',
-          changes: expect.objectContaining({
-            [`job:${updated.jobs[0]?.code}`]: expect.objectContaining({ from: null }),
-          }),
-          entityId: purchaseOrder.id,
-          entityType: 'purchase_order',
-        }),
-        expect.objectContaining({
-          action: 'updated',
-          changes: expect.objectContaining({ expectedDeliveryDate: { from: null, to: '2026-08-20' } }),
-          entityId: purchaseOrder.id,
-          entityType: 'purchase_order',
-        }),
-      ]),
-    );
+        entityId: purchaseOrder.id,
+        entityType: 'purchase_order',
+      }),
+    ]);
   });
 
   test('rejects a line from another supplier and a fractional piece count', async ({ context }) => {
@@ -123,17 +103,17 @@ describe('Purchase Order draft lifecycle', () => {
     });
 
     await expect(
-      replacePurchaseOrderLines({
+      savePurchaseOrderDraft({
         actorUserId: ACTOR_ID,
         db: context.db,
-        input: { id: purchaseOrder.id, lines: [{ partId: OTHER_PART_ID, quantity: 1, unitPrice: 10 }] },
+        input: draftInput(purchaseOrder.id, [{ partId: OTHER_PART_ID, quantity: 1, unitPrice: 10 }]),
       }),
     ).rejects.toMatchObject({ code: 'purchase_order.part_supplier_mismatch' });
     await expect(
-      replacePurchaseOrderLines({
+      savePurchaseOrderDraft({
         actorUserId: ACTOR_ID,
         db: context.db,
-        input: { id: purchaseOrder.id, lines: [{ partId: PIECE_PART_ID, quantity: 1.5, unitPrice: 10 }] },
+        input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 1.5, unitPrice: 10 }]),
       }),
     ).rejects.toMatchObject({ code: 'purchase_order.invalid_quantity' });
   });
@@ -144,10 +124,10 @@ describe('Purchase Order draft lifecycle', () => {
       db: context.db,
       input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
     });
-    await replacePurchaseOrderLines({
+    await savePurchaseOrderDraft({
       actorUserId: ACTOR_ID,
       db: context.db,
-      input: { id: purchaseOrder.id, lines: [{ partId: PIECE_PART_ID, quantity: 1, unitPrice: 10 }] },
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 1, unitPrice: 10 }]),
     });
 
     await expect(
@@ -208,15 +188,14 @@ describe('Purchase Order send and cancel', () => {
       db: context.db,
       input: { expectedDeliveryDate: DateOnlyIso.parse('2026-08-20'), supplierId: SUPPLIER_A_ID },
     });
-    await replacePurchaseOrderLines({
+    await savePurchaseOrderDraft({
       actorUserId: ACTOR_ID,
       db: context.db,
-      input: { id: purchaseOrder.id, lines: [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }] },
-    });
-    await replacePurchaseOrderJobLinks({
-      actorUserId: ACTOR_ID,
-      db: context.db,
-      input: { id: purchaseOrder.id, jobIds: context.jobIds },
+      input: {
+        ...draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]),
+        expectedDeliveryDate: DateOnlyIso.parse('2026-08-20'),
+        jobIds: context.jobIds,
+      },
     });
     const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => pdfBytes());
 
@@ -248,11 +227,7 @@ describe('Purchase Order send and cancel', () => {
     await expect(context.db.select().from(documents)).resolves.toHaveLength(1);
 
     await expect(
-      updatePurchaseOrderHeader({
-        actorUserId: ACTOR_ID,
-        db: context.db,
-        input: { expectedDeliveryDate: null, id: sent.id, supplierId: SUPPLIER_A_ID },
-      }),
+      savePurchaseOrderDraft({ actorUserId: ACTOR_ID, db: context.db, input: draftInput(sent.id, []) }),
     ).rejects.toMatchObject({ code: 'purchase_order.not_draft' });
   });
 
@@ -284,10 +259,10 @@ describe('Purchase Order send and cancel', () => {
       db: context.db,
       input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
     });
-    await replacePurchaseOrderLines({
+    await savePurchaseOrderDraft({
       actorUserId: ACTOR_ID,
       db: context.db,
-      input: { id: purchaseOrder.id, lines: [{ partId: PIECE_PART_ID, quantity: 1, unitPrice: 10 }] },
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 1, unitPrice: 10 }]),
     });
     await context.db.execute(sql`
       create function fail_purchase_order_send() returns trigger language plpgsql as $$

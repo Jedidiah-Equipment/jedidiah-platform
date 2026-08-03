@@ -1,4 +1,4 @@
-import type { PartUnitClass, UUID } from '@pkg/schema';
+import type { JobStockMovementType, PartUnitClass, StockAdjustmentReason, UUID } from '@pkg/schema';
 
 export class StockMovementPartNotFoundError extends Error {
   readonly code = 'inventory.part_not_found';
@@ -33,14 +33,15 @@ export class StockMovementLengthError extends Error {
   }
 }
 
-export class PeriodicStockAdjustmentError extends Error {
-  readonly code = 'inventory.periodic_adjustment';
-  readonly metadata: { reason: string };
+/** A periodic Part records only its opening balance, receipts, and stock counts — never consumption. */
+export class PeriodicStockMovementError extends Error {
+  readonly code = 'inventory.periodic_movement';
+  readonly metadata: { movement: JobStockMovementType | StockAdjustmentReason };
 
-  constructor(reason: string) {
-    super(`Periodic stock cannot be adjusted for ${reason}`);
-    this.name = 'PeriodicStockAdjustmentError';
-    this.metadata = { reason };
+  constructor(movement: JobStockMovementType | StockAdjustmentReason) {
+    super(`Periodic stock does not record ${movement} movements`);
+    this.name = 'PeriodicStockMovementError';
+    this.metadata = { movement };
   }
 }
 
@@ -55,7 +56,7 @@ export class FabricatedPartCostError extends Error {
 
 export type StockMovementCoreError =
   | FabricatedPartCostError
-  | PeriodicStockAdjustmentError
+  | PeriodicStockMovementError
   | StockMovementDeltaError
   | StockMovementLengthError
   | StockMovementPartNotFoundError;
@@ -63,7 +64,7 @@ export type StockMovementCoreError =
 export function isStockMovementCoreError(error: unknown): error is StockMovementCoreError {
   return (
     error instanceof FabricatedPartCostError ||
-    error instanceof PeriodicStockAdjustmentError ||
+    error instanceof PeriodicStockMovementError ||
     error instanceof StockMovementDeltaError ||
     error instanceof StockMovementLengthError ||
     error instanceof StockMovementPartNotFoundError

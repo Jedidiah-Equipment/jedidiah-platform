@@ -241,4 +241,24 @@ export const PartLabelBatchSelection = z.discriminatedUnion('selection', [
   z.object({ ids: z.array(UUID).min(1), selection: z.literal(PartLabelSelectionMode.enum.ids) }).strict(),
 ]);
 
+/**
+ * The batch selection as it arrives on a query string: every mode's field is flat and optional, and
+ * `ids` is comma-separated. Narrowing to the union belongs here, not in the route.
+ */
+export type PartLabelBatchQuery = z.infer<typeof PartLabelBatchQuery>;
+export const PartLabelBatchQuery = z
+  .object({
+    category: PartCategory.optional(),
+    ids: z.string().optional(),
+    selection: PartLabelSelectionMode,
+    storageLocation: PartStorageLocation.unwrap().optional(),
+  })
+  .transform((query) => ({
+    ...(query.selection === 'category' ? { category: query.category } : {}),
+    ...(query.selection === 'storageLocation' ? { storageLocation: query.storageLocation } : {}),
+    ...(query.selection === 'ids' ? { ids: query.ids?.split(',').filter(Boolean) } : {}),
+    selection: query.selection,
+  }))
+  .pipe(PartLabelBatchSelection);
+
 export type PartLabelPdfRenderer = (input: { document: PartLabelPdfModel[]; filename: string }) => Promise<Uint8Array>;

@@ -25,6 +25,7 @@ const SUPPLIER_B_ID = '00000000-0000-4000-8000-000000000102';
 const PIECE_PART_ID = '00000000-0000-4000-8000-000000000201';
 const LINEAR_PART_ID = '00000000-0000-4000-8000-000000000202';
 const OTHER_PART_ID = '00000000-0000-4000-8000-000000000203';
+const BUILT_PART_ID = '00000000-0000-4000-8000-000000000204';
 
 function draftInput(id: string, lines: Array<{ partId: string; quantity: number; unitPrice: number }>) {
   return { expectedDeliveryDate: null, id, jobIds: [], lines, supplierId: SUPPLIER_A_ID };
@@ -180,6 +181,34 @@ describe('Purchase Order draft lifecycle', () => {
         },
       }),
     ).resolves.toMatchObject({ supplierId: SUPPLIER_B_ID });
+  });
+});
+
+describe('Purchase Order line parts', () => {
+  test('refuses a built Part by name rather than as a supplier mismatch', async ({ context }) => {
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+
+    // A built Part has no Supplier, so a generic mismatch would send the buyer looking for the
+    // wrong Supplier instead of saying the Part is not purchasable at all.
+    await expect(
+      savePurchaseOrderDraft({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: draftInput(purchaseOrder.id, [{ partId: BUILT_PART_ID, quantity: 2, unitPrice: 100 }]),
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.part_not_purchasable' });
+
+    await expect(
+      savePurchaseOrderDraft({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: draftInput(purchaseOrder.id, [{ partId: OTHER_PART_ID, quantity: 2, unitPrice: 100 }]),
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.part_supplier_mismatch' });
   });
 });
 
@@ -451,6 +480,8 @@ async function seedCatalog(db: Db): Promise<void> {
       unitOfMeasure: 'mm',
     }),
     partRow({ code: 'P-300', id: OTHER_PART_ID, supplierId: SUPPLIER_B_ID }),
+    // Supplier XOR BOM: a built Part is made in-house, so it names no Supplier at all.
+    partRow({ code: 'P-400', id: BUILT_PART_ID, isInternallyFabricated: true, supplierId: null }),
   ]);
 }
 

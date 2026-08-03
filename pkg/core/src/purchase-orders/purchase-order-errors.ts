@@ -48,6 +48,22 @@ export class PurchaseOrderPartSupplierMismatchError extends Error {
   }
 }
 
+/**
+ * A built Part is made in-house and bought from nobody, so it has no Supplier to match. Without its
+ * own error this reads as a generic supplier mismatch, which sends the buyer looking for the wrong
+ * Supplier instead of telling them the Part is not purchasable at all.
+ */
+export class PurchaseOrderPartNotPurchasableError extends Error {
+  readonly code = 'purchase_order.part_not_purchasable';
+  readonly metadata: { partId: string };
+
+  constructor(partId: string) {
+    super('Built Parts are made in-house and cannot be purchased.');
+    this.name = 'PurchaseOrderPartNotPurchasableError';
+    this.metadata = { partId };
+  }
+}
+
 export class PurchaseOrderInvalidQuantityError extends Error {
   readonly code = 'purchase_order.invalid_quantity' as const;
 
@@ -140,6 +156,7 @@ export type PurchaseOrderCoreError =
   | PurchaseOrderNotFoundError
   | PurchaseOrderNotSentError
   | PurchaseOrderPartNotFoundError
+  | PurchaseOrderPartNotPurchasableError
   | PurchaseOrderPartSupplierMismatchError
   | PurchaseOrderSupplierNotFoundError;
 
@@ -158,6 +175,7 @@ export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrder
     error instanceof PurchaseOrderNotFoundError ||
     error instanceof PurchaseOrderNotSentError ||
     error instanceof PurchaseOrderPartNotFoundError ||
+    error instanceof PurchaseOrderPartNotPurchasableError ||
     error instanceof PurchaseOrderPartSupplierMismatchError ||
     error instanceof PurchaseOrderSupplierNotFoundError
   );

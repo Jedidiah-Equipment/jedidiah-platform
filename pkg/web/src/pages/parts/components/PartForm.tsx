@@ -9,7 +9,7 @@ import { usePartCategoryOptions, usePartStorageLocationOptions, useSupplierOptio
 import { PartFormValues, partStockTrackingModeOptions, partUnitOfMeasureOptions, toPartFormValues } from './types.js';
 
 type PartFormProps = {
-  fixedSupplier?: Pick<Supplier, 'companyName' | 'id'>;
+  fixedSupplier?: Pick<Supplier, 'companyName' | 'id'> | undefined;
   initialPart?: Part;
   isPending: boolean;
   onSubmit: (value: PartFormValues) => Promise<unknown>;
@@ -48,16 +48,22 @@ export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, 
         </form.AppField>
         <form.AppField name="finish">{(field) => <field.TextField autoComplete="off" label="Finish" />}</form.AppField>
         {fixedSupplier ? null : (
-          <form.AppField name="supplierId">
-            {(field) => (
-              <field.SelectField
-                disabled={isSupplierSelectPending}
-                label="Supplier"
-                options={supplierOptions.selectOptions}
-                placeholder={isSupplierSelectPending ? 'Loading suppliers...' : 'Select supplier'}
-              />
-            )}
-          </form.AppField>
+          <form.Subscribe selector={(state) => state.values.isInternallyFabricated}>
+            {(isInternallyFabricated) =>
+              isInternallyFabricated ? null : (
+                <form.AppField name="supplierId">
+                  {(field) => (
+                    <field.SelectField
+                      disabled={isSupplierSelectPending}
+                      label="Supplier"
+                      options={supplierOptions.selectOptions}
+                      placeholder={isSupplierSelectPending ? 'Loading suppliers...' : 'Select supplier'}
+                    />
+                  )}
+                </form.AppField>
+              )
+            }
+          </form.Subscribe>
         )}
         <form.AppField name="supplierCode">
           {(field) => <field.TextField autoComplete="off" label="Supplier code" />}

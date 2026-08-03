@@ -1,7 +1,11 @@
 import {
+  type BuildError,
   closeOutJob,
   getStockMovementHistory,
+  isBuildError,
   isJobCloseOutError,
+  isPartBomError,
+  isPartCoreError,
   JobCancelledError,
   type JobCloseOutError,
   JobNotFoundError,
@@ -9,12 +13,16 @@ import {
   listJobStock,
   listJobs,
   listStockOnHand,
+  type PartBomError,
+  type PartCoreError,
   postAdjustment,
+  postBuild,
   postJobMovement,
   postRevaluation,
 } from '@pkg/core';
 import { getJobDisplayName } from '@pkg/domain';
 import {
+  BuildPostResult,
   CloseOutJobInput,
   CloseOutQueueResult,
   InventoryJobOptionListInput,
@@ -23,6 +31,7 @@ import {
   JobStockInput,
   JobStockResult,
   PostAdjustmentInput,
+  PostBuildInput,
   PostJobMovementInput,
   PostRevaluationInput,
   StockMovement,
@@ -117,6 +126,13 @@ export const inventoryRouter = router({
       mapJobStockMovementErrors(() => closeOutJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
+  postBuild: authorizedProcedure('inventory:build')
+    .input(PostBuildInput)
+    .output(BuildPostResult)
+    .mutation(({ ctx, input }) =>
+      mapBuildErrors(() => postBuild({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
   postAdjustment: authorizedProcedure('inventory:adjust')
     .input(PostAdjustmentInput)
     .output(StockMovement)
@@ -172,11 +188,68 @@ export const inventoryRouter = router({
 async function mapJobStockMovementErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapStockMovementErrors(() =>
     mapKnownCoreError(
-      () => mapKnownCoreError(action, isStockMovementJobError, mapStockMovementJobError),
+      () =>
+        mapKnownCoreError(
+          () => mapKnownCoreError(action, isStockMovementJobError, mapStockMovementJobError),
+          isBuildError,
+          mapBuildError,
+        ),
       isJobCloseOutError,
       mapJobCloseOutError,
     ),
   );
+}
+
+/**
+ * A build's own failures, plus the Part failures it raises reaching for its Built Part and
+ * components. It shares the ledger rules but none of the Job or close-out vocabulary.
+ */
+async function mapBuildErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapStockMovementErrors(() =>
+    mapKnownCoreError(
+      () =>
+        mapKnownCoreError(
+          () => mapKnownCoreError(action, isBuildError, mapBuildError),
+          isPartBomError,
+          mapPartBomError,
+        ),
+      isPartCoreError,
+      mapPartCoreError,
+    ),
+  );
+}
+
+function mapPartBomError(error: PartBomError): CoreErrorMapping<PartBomError['code']> {
+  switch (error.code) {
+    case 'part.bom_component_not_found':
+      return { appCode: error.code, code: 'NOT_FOUND', message: error.message };
+    case 'part.bom_cycle':
+    case 'part.bom_quantity':
+    case 'part.not_built':
+      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
+    default:
+      return assertNever(error);
+  }
+}
+
+/** Only the Part failures a build can reach; the rest belong to the Part router's own surface. */
+function mapPartCoreError(error: PartCoreError): CoreErrorMapping<PartCoreError['code']> {
+  return error.code === 'part.not_found'
+    ? { appCode: error.code, code: 'NOT_FOUND', message: 'Part not found.' }
+    : { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
+}
+
+function mapBuildError(error: BuildError): CoreErrorMapping<BuildError['code']> {
+  switch (error.code) {
+    case 'inventory.build_component_not_found':
+      return { appCode: error.code, code: 'NOT_FOUND', message: error.message };
+    case 'inventory.build_linear_part':
+    case 'inventory.build_periodic_part':
+    case 'inventory.build_self_component':
+      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
+    default:
+      return assertNever(error);
+  }
 }
 
 function mapJobCloseOutError(error: JobCloseOutError): CoreErrorMapping<JobCloseOutError['code']> {

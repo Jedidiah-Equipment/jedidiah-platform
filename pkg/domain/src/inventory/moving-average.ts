@@ -3,7 +3,14 @@ import type { StockAdjustmentReason } from '@pkg/schema';
 export type MovingAverageMovement = {
   delta: number;
   lengthMm: number | null;
-  movementType: 'adjustment' | 'checkout' | 'receipt' | 'return-to-store' | 'revaluation';
+  movementType:
+    | 'adjustment'
+    | 'build-consume'
+    | 'build-produce'
+    | 'checkout'
+    | 'receipt'
+    | 'return-to-store'
+    | 'revaluation';
   reason: StockAdjustmentReason | null;
   unitCost: number | null;
 };
@@ -34,6 +41,9 @@ export function deriveMovingAverageTimeline(orderedMovements: readonly MovingAve
       unitCost !== null &&
       (movement.movementType === 'receipt' ||
         movement.movementType === 'return-to-store' ||
+        // A build produces value the consume rows just took out of stock, so the produced units are
+        // weighted in exactly like an arrival. `build-consume` is a draw, and draws only take.
+        movement.movementType === 'build-produce' ||
         (movement.movementType === 'adjustment' && movement.reason === 'opening-balance'));
 
     if (establishesWeightedCost && unitCost !== null) {

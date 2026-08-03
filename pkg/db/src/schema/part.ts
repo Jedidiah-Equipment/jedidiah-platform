@@ -1,6 +1,17 @@
 import type { PartStockTrackingMode, PartUnitOfMeasure } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { boolean, check, index, integer, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  numeric,
+  pgTable,
+  primaryKey,
+  text,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 import { supplier } from './supplier.js';
 
@@ -20,9 +31,9 @@ export const parts = pgTable(
     stockTrackingMode: text('stock_tracking_mode').notNull().default('perpetual').$type<PartStockTrackingMode>(),
     storageLocation: text('storage_location'),
     supplierCode: text('supplier_code').notNull(),
-    supplierId: uuid('supplier_id')
-      .notNull()
-      .references(() => supplier.id, { onDelete: 'restrict' }),
+    // Null on a Built Part. The XOR invariant below is the stored form of "a Part has either a
+    // Supplier or a BOM"; the BOM side is service-enforced, since a check cannot see `part_bom`.
+    supplierId: uuid('supplier_id').references(() => supplier.id, { onDelete: 'restrict' }),
     unitOfMeasure: text('unit_of_measure').notNull().$type<PartUnitOfMeasure>(),
   },
   (table) => [
@@ -36,6 +47,10 @@ export const parts = pgTable(
       sql`(${table.unitOfMeasure} = 'mm' AND ${table.standardPurchaseLengthMm} IS NOT NULL) OR (${table.unitOfMeasure} <> 'mm' AND ${table.standardPurchaseLengthMm} IS NULL)`,
     ),
     check('parts_stock_tracking_mode_check', sql`${table.stockTrackingMode} IN ('perpetual', 'periodic')`),
+    check(
+      'parts_supplier_or_bom',
+      sql`(${table.isInternallyFabricated} AND ${table.supplierId} IS NULL) OR (NOT ${table.isInternallyFabricated} AND ${table.supplierId} IS NOT NULL)`,
+    ),
     check(
       'parts_storage_location_nonempty',
       sql`${table.storageLocation} IS NULL OR length(trim(${table.storageLocation})) > 0`,
@@ -51,5 +66,42 @@ export const partsRelations = relations(parts, ({ one }) => ({
   supplier: one(supplier, {
     fields: [parts.supplierId],
     references: [supplier.id],
+  }),
+}));
+
+/**
+ * One line of a Built Part's Bill of Materials: how much of a component one unit of the parent
+ * consumes. BOMs nest but builds never recurse (spec §6), so the graph must stay acyclic — the
+ * table can only forbid the self-reference, and the transitive walk lives in the service.
+ */
+export const partBom = pgTable(
+  'part_bom',
+  {
+    componentPartId: uuid('component_part_id')
+      .notNull()
+      .references(() => parts.id, { onDelete: 'restrict' }),
+    parentPartId: uuid('parent_part_id')
+      .notNull()
+      .references(() => parts.id, { onDelete: 'restrict' }),
+    quantity: numeric('quantity', { mode: 'number', precision: 14, scale: 3 }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.parentPartId, table.componentPartId], name: 'part_bom_pkey' }),
+    check('part_bom_quantity_positive', sql`${table.quantity} > 0`),
+    check('part_bom_no_self_reference', sql`${table.parentPartId} <> ${table.componentPartId}`),
+    index('part_bom_component_part_id_idx').on(table.componentPartId),
+  ],
+);
+
+export const partBomRelations = relations(partBom, ({ one }) => ({
+  component: one(parts, {
+    fields: [partBom.componentPartId],
+    references: [parts.id],
+    relationName: 'partBomComponent',
+  }),
+  parent: one(parts, {
+    fields: [partBom.parentPartId],
+    references: [parts.id],
+    relationName: 'partBomParent',
   }),
 }));

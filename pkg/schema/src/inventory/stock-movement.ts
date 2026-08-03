@@ -11,7 +11,15 @@ import { PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure 
 import { declareInventoryCostFields, InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
 
 export type StockMovementType = z.infer<typeof StockMovementType>;
-export const StockMovementType = z.enum(['adjustment', 'revaluation', 'checkout', 'return-to-store', 'receipt']);
+export const StockMovementType = z.enum([
+  'adjustment',
+  'revaluation',
+  'checkout',
+  'return-to-store',
+  'receipt',
+  'build-consume',
+  'build-produce',
+]);
 
 /** The movement types a Job draws and returns through; the ledger's other types are stock-only. */
 export type JobStockMovementType = z.infer<typeof JobStockMovementType>;
@@ -110,6 +118,7 @@ export const PostRevaluationInput = z
 export type StockMovement = z.infer<typeof StockMovement>;
 export const StockMovement = z.object({
   actorUserId: AuthId,
+  buildId: UUID.nullable(),
   createdAt: DateIso,
   delta: StockMovementDelta,
   id: UUID,
@@ -127,6 +136,7 @@ export const StockMovementCostFields = declareInventoryCostFields(StockMovement,
 
 export type StockMovementWarningCode = z.infer<typeof StockMovementWarningCode>;
 export const StockMovementWarningCode = z.enum([
+  'bom-deviation',
   'exceeds-cfo',
   'exceeds-drawn',
   'exceeds-ordered',

@@ -13,7 +13,15 @@ const partId = '00000000-0000-4000-8000-000000000001';
 
 describe('stock movement inputs', () => {
   it('accepts the complete shipped movement vocabulary', () => {
-    expect(StockMovementType.options).toEqual(['adjustment', 'revaluation', 'checkout', 'return-to-store', 'receipt']);
+    expect(StockMovementType.options).toEqual([
+      'adjustment',
+      'revaluation',
+      'checkout',
+      'return-to-store',
+      'receipt',
+      'build-consume',
+      'build-produce',
+    ]);
   });
 
   it('accepts adjustment deltas with up to three decimal places', () => {

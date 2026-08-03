@@ -16,6 +16,7 @@ import {
   PartSupplierCode,
   PartUnitOfMeasure,
   refinePartStandardPurchaseLength,
+  refinePartSupplier,
   type UUID,
   UUID as UUIDSchema,
 } from '@pkg/schema';
@@ -36,7 +37,7 @@ const PartFormFields = z.object({
   stockTrackingMode: PartStockTrackingMode,
   storageLocation: emptyStringOr(PartStorageLocation),
   supplierCode: PartSupplierCode,
-  supplierId: requiredSelection(UUIDSchema, 'Select a supplier'),
+  supplierId: emptyStringOr(UUIDSchema),
   unitOfMeasure: PartUnitOfMeasure,
 });
 
@@ -49,7 +50,19 @@ export const PartFormValues = PartFormFields.superRefine((values, context) => {
     },
     context,
   );
+  refinePartSupplier(
+    { isInternallyFabricated: values.isInternallyFabricated, supplierId: partSupplierIdOf(values) },
+    context,
+  );
 });
+
+/**
+ * Supplier XOR BOM. Ticking "internally fabricated" hides the Supplier select, so whatever it last
+ * held is dropped here rather than left to fail validation against a field nobody can see.
+ */
+function partSupplierIdOf(values: Pick<PartFormValues, 'isInternallyFabricated' | 'supplierId'>): string | null {
+  return values.isInternallyFabricated ? null : values.supplierId || null;
+}
 
 export const partStockTrackingModeOptions = PartStockTrackingMode.options.map((value) => ({
   label: PART_STOCK_TRACKING_MODE_LABELS[value],
@@ -65,7 +78,7 @@ export function toPartFormValues({
   fixedSupplierId,
   initialPart,
 }: {
-  fixedSupplierId?: UUID | undefined;
+  fixedSupplierId?: UUID | null | undefined;
   initialPart?: Part | undefined;
 }): PartFormValues {
   return {
@@ -93,5 +106,6 @@ export function toPartInput(values: PartFormValues): PartCreateInput {
     minimumStock: Number.isNaN(values.minimumStock) ? null : values.minimumStock,
     standardPurchaseLengthMm: Number.isNaN(values.standardPurchaseLengthMm) ? null : values.standardPurchaseLengthMm,
     storageLocation: values.storageLocation || null,
+    supplierId: partSupplierIdOf(values),
   });
 }

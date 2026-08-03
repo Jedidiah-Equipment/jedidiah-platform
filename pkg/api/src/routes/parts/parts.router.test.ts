@@ -17,7 +17,7 @@ async function createSupplier(caller: AppRouterCaller, name = 'Acme Supplies'): 
 
 async function createPart(
   caller: AppRouterCaller,
-  supplierId: string,
+  supplierId: string | null,
   overrides: Partial<PartCreateInput> = {},
 ): Promise<Part> {
   return caller.parts.create({
@@ -209,7 +209,6 @@ describe('parts.bulkImport', () => {
         rows: [
           bulkImportRow({
             description: 'Updated main bearing',
-            isInternallyFabricated: true,
             standardPurchaseLengthMm: 6000,
             unitOfMeasure: 'mm',
           }),
@@ -225,7 +224,6 @@ describe('parts.bulkImport', () => {
 
     expect(parts.items[0]).toMatchObject({
       description: 'Updated main bearing',
-      isInternallyFabricated: true,
       standardPurchaseLengthMm: 6000,
       unitOfMeasure: 'mm',
     });
@@ -365,12 +363,19 @@ describe('parts.list, parts.categories, and parts.locations', () => {
       category: 'Fasteners',
       code: 'P-200',
       drawingCode: 'DR-200',
-      isInternallyFabricated: true,
       name: 'Bolt',
       supplierCode: 'BT-200',
       standardPurchaseLengthMm: 6000,
       storageLocation: 'Rack B',
       unitOfMeasure: 'mm',
+    });
+    await createPart(caller, null, {
+      category: 'Fasteners',
+      code: 'P-400',
+      isInternallyFabricated: true,
+      name: 'Weldment',
+      supplierCode: 'WELD-400',
+      unitOfMeasure: 'piece',
     });
     await createPart(caller, acme.id, {
       category: 'Bearings',
@@ -409,7 +414,7 @@ describe('parts.list, parts.categories, and parts.locations', () => {
     expect(drawingSearch.items.map((part) => part.code)).toEqual(['P-200']);
     expect(supplierParts.items.map((part) => part.code)).toEqual(['P-300', 'P-100']);
     expect(lengthParts.items.map((part) => part.code)).toEqual(['P-200']);
-    expect(internallyFabricatedParts.items.map((part) => part.code)).toEqual(['P-200']);
+    expect(internallyFabricatedParts.items.map((part) => part.code)).toEqual(['P-400']);
     expect(rackParts.items.map((part) => part.code)).toEqual(['P-300']);
     expect(categories.categories).toEqual(['Bearings', 'Fasteners']);
     expect(locations.locations).toEqual(['Rack A', 'Rack B']);
@@ -479,7 +484,6 @@ describe('parts.update', () => {
       ...created,
       drawingCode: 'DR-100',
       finish: 'Painted',
-      isInternallyFabricated: true,
       minimumStock: 5,
       name: 'Bearing Assembly',
       standardPurchaseLengthMm: 6000,
@@ -492,7 +496,6 @@ describe('parts.update', () => {
       drawingCode: 'DR-100',
       finish: 'Painted',
       id: created.id,
-      isInternallyFabricated: true,
       minimumStock: 5,
       name: 'Bearing Assembly',
       standardPurchaseLengthMm: 6000,
@@ -514,10 +517,6 @@ describe('parts.update', () => {
         finish: {
           from: 'Zinc',
           to: 'Painted',
-        },
-        isInternallyFabricated: {
-          from: false,
-          to: true,
         },
         name: {
           from: 'Bearing',

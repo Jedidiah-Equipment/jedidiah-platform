@@ -162,9 +162,7 @@ export async function postJobMovement({
 
     const [context, unitCost] = await Promise.all([
       loadStockMovementContext(tx, input),
-      movementType === 'checkout'
-        ? deriveCheckoutUnitCost(tx, part.isInternallyFabricated, input)
-        : deriveReturnUnitCost(tx, input),
+      movementType === 'checkout' ? deriveCheckoutUnitCost(tx, input) : deriveReturnUnitCost(tx, input),
     ]);
 
     const movement = await insertMovement(tx, {
@@ -210,9 +208,7 @@ export async function postReceipt({
     const unitClass = unitClassFor(part.unitOfMeasure);
     // A dock that keys nothing takes the length the Part is bought in; a short delivery keys its own.
     const lengthMm = unitClass === 'linear' ? (input.lengthMm ?? part.standardPurchaseLengthMm) : input.lengthMm;
-    // A fabricated Part carries zero material cost (spec §5) whatever its line says, the same rule a
-    // draw is stamped under — the dock never sees the price, so refusing it would strand the line.
-    const unitCost = part.isInternallyFabricated ? 0 : (input.unitCost ?? line.unitPrice);
+    const unitCost = input.unitCost ?? line.unitPrice;
 
     assertDeltaMatchesUnitClass(input.quantity, unitClass);
     assertLengthMatchesUnitClass(lengthMm, unitClass);
@@ -429,9 +425,7 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction): Promise<StockOn
   return StockOnHandResultSchema.parse({
     // Grouping preserves the query's ordering, so the head bucket carries the Part's own columns.
     items: [...groupBy(bucketRows, (row) => row.partId).values()].map(([part, ...tailBuckets]) => {
-      const averageUnitCost = part.isInternallyFabricated
-        ? 0
-        : deriveMovingAverage(movementsByPart.get(part.partId) ?? []);
+      const averageUnitCost = deriveMovingAverage(movementsByPart.get(part.partId) ?? []);
       const buckets = [part, ...tailBuckets].map((bucket) => ({
         lengthMm: bucket.lengthMm,
         quantity: bucket.quantity,
@@ -475,6 +469,7 @@ export async function getStockMovementHistory({
     .select({
       actorName: user.name,
       actorUserId: stockMovements.actorUserId,
+      buildId: stockMovements.buildId,
       createdAt: stockMovements.createdAt,
       delta: stockMovements.delta,
       id: stockMovements.id,
@@ -502,7 +497,7 @@ export async function getStockMovementHistory({
         row.delta === 0
           ? null
           : valueStockMovement({
-              averageUnitCost: part.isInternallyFabricated ? 0 : (movingAverageTimeline[index] ?? null),
+              averageUnitCost: movingAverageTimeline[index] ?? null,
               delta: row.delta,
               lengthMm: row.lengthMm,
               unitCost: row.unitCost,
@@ -612,14 +607,28 @@ async function scalar(query: PromiseLike<Array<{ value: number }>>): Promise<num
   return row?.value ?? 0;
 }
 
-/** A draw is stamped at the Part's current average, scaled to the piece length for linear stock. */
-async function deriveCheckoutUnitCost(
-  db: DatabaseTransaction,
-  isInternallyFabricated: boolean,
-  input: PostJobMovementInput,
-): Promise<number | null> {
-  if (isInternallyFabricated) return 0;
+/**
+ * A draw is stamped at the Part's current average, scaled to the piece length for linear stock.
+ *
+ * A Built Part is stamped the same way as any other. Spec §5's zero-cost rule is about sheet metal
+ * cut from plate, whose material is charged through the raw-material lines — that Part's ledger
+ * simply holds no costed rows, so the average is null ("no cost yet") without hardcoding it. A Part
+ * built from *stocked* components is different: its build already moved that value onto it, and
+ * dropping the value here would make it vanish at the next hop instead of reaching the Job.
+ */
+async function deriveCheckoutUnitCost(db: DatabaseTransaction, input: PostJobMovementInput): Promise<number | null> {
+  return derivePartUnitCost(db, input.partId, input.lengthMm);
+}
 
+/**
+ * A Part's current average, scaled to the piece length for linear stock — what a draw and a build
+ * consumption are both stamped with. Null when the ledger holds no costed row yet ("no cost yet").
+ */
+export async function derivePartUnitCost(
+  db: DatabaseTransaction,
+  partId: UUID,
+  lengthMm: number | null,
+): Promise<number | null> {
   const orderedMovements = await db
     .select({
       delta: stockMovements.delta,
@@ -629,13 +638,13 @@ async function deriveCheckoutUnitCost(
       unitCost: stockMovements.unitCost,
     })
     .from(stockMovements)
-    .where(eq(stockMovements.partId, input.partId))
+    .where(eq(stockMovements.partId, partId))
     .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
   const movingAverage = deriveMovingAverage(orderedMovements);
 
   if (movingAverage === null) return null;
 
-  return input.lengthMm === null ? movingAverage : movingAverage * input.lengthMm;
+  return lengthMm === null ? movingAverage : movingAverage * lengthMm;
 }
 
 /**
@@ -737,13 +746,13 @@ function sumBy<TRow>(rows: readonly TRow[], toValue: (row: TRow) => number): num
   return rows.reduce((total, row) => total + toValue(row), 0);
 }
 
-function assertDeltaMatchesUnitClass(delta: number, unitClass: PartUnitClass): void {
+export function assertDeltaMatchesUnitClass(delta: number, unitClass: PartUnitClass): void {
   if (unitClass !== 'measured' && !Number.isInteger(delta)) {
     throw new StockMovementDeltaError(unitClass);
   }
 }
 
-function assertLengthMatchesUnitClass(lengthMm: number | null, unitClass: PartUnitClass): void {
+export function assertLengthMatchesUnitClass(lengthMm: number | null, unitClass: PartUnitClass): void {
   if (unitClass === 'linear' && lengthMm === null) {
     throw new StockMovementLengthError(true);
   }

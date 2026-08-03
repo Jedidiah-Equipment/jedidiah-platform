@@ -17,6 +17,8 @@ export * from './formatting/text.js';
 export * from './forms/autosave-core.js';
 export * from './forms/create-stable-row-keys.js';
 export * from './forms/stable-serialize.js';
+export * from './inventory/bom.js';
+export * from './inventory/build.js';
 export * from './inventory/close-out.js';
 export * from './inventory/commitment.js';
 export * from './inventory/draw-cost.js';

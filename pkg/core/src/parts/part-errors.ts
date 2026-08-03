@@ -50,6 +50,21 @@ export class PartBulkImportConflictError extends Error {
   }
 }
 
+/**
+ * Supplier XOR BOM cuts both ways: turning a built Part back into a bought one while it still has
+ * components would leave a Part holding both, which the DB check cannot see across tables.
+ */
+export class PartBomLockedError extends Error {
+  readonly code = 'part.bom_locked';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super('Clear the Bill of Materials before making this a bought Part.');
+    this.name = 'PartBomLockedError';
+    this.metadata = { id };
+  }
+}
+
 export class PartUnitOfMeasureLockedError extends Error {
   readonly code = 'part.unit_of_measure_locked';
   readonly metadata: { id: string };
@@ -88,6 +103,7 @@ export type PartCoreError =
   | PartNotFoundError
   | PartSupplierLockedByPurchaseOrderError
   | PartSupplierNotFoundError
+  | PartBomLockedError
   | PartUnitOfMeasureLockedError;
 
 export function isPartCoreError(error: unknown): error is PartCoreError {
@@ -96,6 +112,7 @@ export function isPartCoreError(error: unknown): error is PartCoreError {
     error instanceof DuplicatePartCodeError ||
     error instanceof PartLabelSelectionEmptyError ||
     error instanceof PartNotFoundError ||
+    error instanceof PartBomLockedError ||
     error instanceof PartSupplierLockedByPurchaseOrderError ||
     error instanceof PartSupplierNotFoundError ||
     error instanceof PartUnitOfMeasureLockedError

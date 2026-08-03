@@ -7,7 +7,7 @@ describe('parsePartBulkImportCsv', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated,Standard Purchase Length (mm)',
-        ' P-100, DR-100, Main bearing, BOLT & NUT, SUP-100, BLACK, PLAIN NUT, M30 PLAIN NUT, mm, yes, 6000 ',
+        ' P-100, DR-100, Main bearing, , SUP-100, BLACK, PLAIN NUT, M30 PLAIN NUT, mm, yes, 6000 ',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -26,7 +26,7 @@ describe('parsePartBulkImportCsv', () => {
           name: 'M30 Plain Nut',
           standardPurchaseLengthMm: 6000,
           supplierCode: 'SUP-100',
-          supplierName: 'Bolt & Nut',
+          supplierName: null,
           unitOfMeasure: 'mm',
         },
       ],
@@ -110,7 +110,7 @@ describe('parsePartBulkImportCsv', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
-        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,piece,1',
+        'P-100,,Main bearing,,SUP-100,Zinc,Bearings,Bearing,piece,1',
         'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,piece,n',
       ].join('\n'),
       { hasHeader: true },
@@ -229,7 +229,7 @@ describe('parsePartBulkImportCsv', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated,Standard Purchase Length (mm)',
-        'P-100,NC,Description,BOLT & NUT,SUP-100,BLACK,SS LOCK NUT,M10 X 120 HT SHCS BOLT,piece,yes,',
+        'P-100,NC,Description,,SUP-100,BLACK,SS LOCK NUT,M10 X 120 HT SHCS BOLT,piece,yes,',
         'P-101,NC,Description,BOLT & NUT,SUP-101,GALV,HT UNC BOLT,1/2 X 2 HT UNC BOLT,mm,no,6000',
       ].join('\n'),
       { hasHeader: true },
@@ -249,7 +249,7 @@ describe('parsePartBulkImportCsv', () => {
           name: 'M10 X 120 HT SHCS Bolt',
           standardPurchaseLengthMm: null,
           supplierCode: 'SUP-100',
-          supplierName: 'Bolt & Nut',
+          supplierName: null,
           unitOfMeasure: 'piece',
         },
         {

@@ -95,8 +95,9 @@ export function isLinearLine(line: Pick<PurchaseOrderLineView, 'unitOfMeasure'>)
 export function confirmReceiptWarnings(
   warnings: readonly StockMovementWarningCode[],
   confirm: (message: string) => boolean,
+  messageFor: (warning: StockMovementWarningCode) => string,
 ): boolean {
-  return warnings.length === 0 || confirm('This receipt exceeds the quantity ordered. Receive it anyway?');
+  return warnings.length === 0 || confirm(`${warnings.map(messageFor).join('\n')} Receive it anyway?`);
 }
 
 /**

@@ -228,7 +228,12 @@ const PurchaseOrderActions: React.FC<{
       const url = `/api/purchase-orders/${purchaseOrder.id}/preview`;
       const toastId = `purchase-order-preview-${purchaseOrder.id}`;
       toast.loading('Preparing PDF preview...', { id: toastId });
-      await ensurePurchaseOrderPreview(url);
+      try {
+        await ensurePurchaseOrderPreview(url);
+      } catch (error) {
+        toast.error('Unable to open the PDF preview.', { id: toastId });
+        throw error;
+      }
       toast.success('PDF preview opened', { id: toastId });
       // Navigate to the server response so the PDF viewer retains the PO filename from Content-Disposition.
       if (previewWindow) previewWindow.location.href = url;
@@ -239,7 +244,6 @@ const PurchaseOrderActions: React.FC<{
       })
       .catch(() => {
         previewWindow?.close();
-        toast.error('Unable to open the PDF preview.', { id: `purchase-order-preview-${purchaseOrder.id}` });
       });
   };
 

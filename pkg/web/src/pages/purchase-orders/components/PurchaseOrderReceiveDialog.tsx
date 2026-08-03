@@ -74,7 +74,9 @@ export function PurchaseOrderReceiveDialog({
 
         return mutation.mutateAsync(toReceiptInput({ canReadCosts, line, purchaseOrderId: purchaseOrder.id, values }));
       }}
-      onBeforeCreate={(values) => confirmReceiptWarnings(receiptWarnings(values), (message) => window.confirm(message))}
+      onBeforeCreate={(values) =>
+        confirmReceiptWarnings(receiptWarnings(values), (message) => window.confirm(message), warningMessageFor)
+      }
       onCreated={async (result) => {
         await Promise.all([invalidatePurchaseOrders(), invalidateInventory()]);
         onOpenChange(false);
@@ -85,7 +87,7 @@ export function PurchaseOrderReceiveDialog({
       }}
       onOpenChange={onOpenChange}
       open={open}
-      submitLabel={(values) => (receiptWarnings(values).length > 0 ? 'Receive anyway' : 'Receive')}
+      submitLabel="Receive"
       title="Receive delivery"
       validator={PurchaseOrderReceiveFormValuesSchema}
     >

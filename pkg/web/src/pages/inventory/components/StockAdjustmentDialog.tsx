@@ -74,7 +74,17 @@ export function StockAdjustmentDialog({
       {(form) => (
         <>
           <form.AppField name="partId">
-            {(field) => <field.SelectField label="Part" options={partSelectOptions(parts)} placeholder="Select Part" />}
+            {(field) => (
+              <field.SelectField
+                label="Part"
+                onValueCommit={() => {
+                  // SelectField commits first; defer until the form exposes the new Part to the dependent validator.
+                  queueMicrotask(() => void form.validateField('delta', 'blur'));
+                }}
+                options={partSelectOptions(parts)}
+                placeholder="Select Part"
+              />
+            )}
           </form.AppField>
           <form.AppField
             name="delta"

@@ -186,6 +186,10 @@ export function StockMovementDialog({
               <field.SelectField
                 disabled={isLoadingParts}
                 label="Part"
+                onValueCommit={() => {
+                  // SelectField commits first; defer until the form exposes the new Part to the dependent validator.
+                  queueMicrotask(() => void form.validateField('quantity', 'blur'));
+                }}
                 options={partSelectOptions(parts)}
                 placeholder={isLoadingParts ? 'Loading Parts...' : 'Select Part'}
               />

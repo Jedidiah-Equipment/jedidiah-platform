@@ -1,6 +1,5 @@
 import {
   getStockMovementHistory,
-  isStockMovementCoreError,
   JobCancelledError,
   JobNotFoundError,
   listJobStock,
@@ -9,7 +8,6 @@ import {
   postAdjustment,
   postJobMovement,
   postRevaluation,
-  type StockMovementCoreError,
 } from '@pkg/core';
 import { getJobDisplayName } from '@pkg/domain';
 import {
@@ -21,7 +19,6 @@ import {
   PostJobMovementInput,
   PostRevaluationInput,
   StockMovement,
-  StockMovementCostFields,
   StockMovementHistoryInput,
   StockMovementHistoryResult,
   StockMovementHistoryRowCostFields,
@@ -31,14 +28,9 @@ import {
   StockOnHandRowCostFields,
 } from '@pkg/schema';
 
-import { assertNever, type CoreErrorMapping, createAuthTRPCError, mapKnownCoreError } from '../../trpc/errors.js';
-import {
-  authorizedProcedure,
-  canReadInventoryCosts,
-  type InventoryCostAccess,
-  projectInventoryCostFields,
-  router,
-} from '../../trpc/init.js';
+import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
+import { authorizedProcedure, projectInventoryCostFields, router } from '../../trpc/init.js';
+import { assertCanWriteInventoryCost, mapStockMovementErrors, projectMovement } from './stock-movement-transport.js';
 
 export const inventoryRouter = router({
   jobOptions: authorizedProcedure('inventory:move')
@@ -86,7 +78,9 @@ export const inventoryRouter = router({
     .input(StockMovementHistoryInput)
     .output(StockMovementHistoryResult)
     .query(async ({ ctx, input }) => {
-      const result = await mapStockMovementErrors(() => getStockMovementHistory({ db: ctx.db, partId: input.partId }));
+      const result = await mapJobStockMovementErrors(() =>
+        getStockMovementHistory({ db: ctx.db, partId: input.partId }),
+      );
 
       return {
         ...result,
@@ -103,22 +97,15 @@ export const inventoryRouter = router({
   jobStock: authorizedProcedure('inventory:read')
     .input(JobStockInput)
     .output(JobStockResult)
-    .query(({ ctx, input }) => mapStockMovementErrors(() => listJobStock({ db: ctx.db, jobId: input.jobId }))),
+    .query(({ ctx, input }) => mapJobStockMovementErrors(() => listJobStock({ db: ctx.db, jobId: input.jobId }))),
 
   postAdjustment: authorizedProcedure('inventory:adjust')
     .input(PostAdjustmentInput)
     .output(StockMovement)
     .mutation(async ({ ctx, input }) => {
-      // The gate reads both ways: a price-blind poster may not seed an opening balance with a value.
-      if (input.unitCost !== null && !canReadInventoryCosts(ctx.access)) {
-        throw createAuthTRPCError({
-          appCode: 'auth.forbidden',
-          code: 'FORBIDDEN',
-          message: 'You do not have permission to set inventory cost.',
-        });
-      }
+      assertCanWriteInventoryCost(ctx.access, input.unitCost);
 
-      const movement = await mapStockMovementErrors(() =>
+      const movement = await mapJobStockMovementErrors(() =>
         postAdjustment({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
       );
 
@@ -129,7 +116,7 @@ export const inventoryRouter = router({
     .input(PostJobMovementInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {
-      const result = await mapStockMovementErrors(() =>
+      const result = await mapJobStockMovementErrors(() =>
         postJobMovement({ actorUserId: ctx.session.user.id, db: ctx.db, input, movementType: 'checkout' }),
       );
 
@@ -140,7 +127,7 @@ export const inventoryRouter = router({
     .input(PostJobMovementInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {
-      const result = await mapStockMovementErrors(() =>
+      const result = await mapJobStockMovementErrors(() =>
         postJobMovement({ actorUserId: ctx.session.user.id, db: ctx.db, input, movementType: 'return-to-store' }),
       );
 
@@ -151,7 +138,7 @@ export const inventoryRouter = router({
     .input(PostRevaluationInput)
     .output(StockMovement)
     .mutation(async ({ ctx, input }) => {
-      const movement = await mapStockMovementErrors(() =>
+      const movement = await mapJobStockMovementErrors(() =>
         postRevaluation({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
       );
 
@@ -159,16 +146,9 @@ export const inventoryRouter = router({
     }),
 });
 
-function projectMovement(movement: StockMovement, access: InventoryCostAccess) {
-  return projectInventoryCostFields({ access, costFields: StockMovementCostFields, output: movement });
-}
-
-async function mapStockMovementErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(
-    () => mapKnownCoreError(action, isStockMovementJobError, mapStockMovementJobError),
-    isStockMovementCoreError,
-    mapStockMovementCoreError,
-  );
+/** Job movements add the Job's own failures on top of the shared ledger rules. */
+async function mapJobStockMovementErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapStockMovementErrors(() => mapKnownCoreError(action, isStockMovementJobError, mapStockMovementJobError));
 }
 
 type StockMovementJobError = JobCancelledError | JobNotFoundError;
@@ -183,23 +163,6 @@ function mapStockMovementJobError(error: StockMovementJobError): CoreErrorMappin
       return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
     case 'job.not_found':
       return { appCode: error.code, code: 'NOT_FOUND', message: 'Job not found.' };
-    default:
-      return assertNever(error);
-  }
-}
-
-function mapStockMovementCoreError(error: StockMovementCoreError): CoreErrorMapping<StockMovementCoreError['code']> {
-  switch (error.code) {
-    case 'inventory.fabricated_part_cost':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    case 'inventory.part_not_found':
-      return { appCode: error.code, code: 'NOT_FOUND', message: 'Part not found.' };
-    case 'inventory.invalid_delta':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    case 'inventory.invalid_length':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    case 'inventory.periodic_movement':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
     default:
       return assertNever(error);
   }

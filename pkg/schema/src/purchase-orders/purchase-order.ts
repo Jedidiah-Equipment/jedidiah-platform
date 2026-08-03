@@ -13,6 +13,21 @@ export { formatPurchaseOrderCode, PurchaseOrderCode } from '../common/public-cod
 export type PurchaseOrderStatus = z.infer<typeof PurchaseOrderStatus>;
 export const PurchaseOrderStatus = z.enum(['draft', 'sent', 'cancelled']);
 
+/** How far a sent order's receipts have got. Computed from the ledger, never stored or toggled. */
+export type PurchaseOrderProgress = z.infer<typeof PurchaseOrderProgress>;
+export const PurchaseOrderProgress = z.enum(['sent', 'partially-received', 'received']);
+
+/** The stored status widened by receipts and the close-short assertion — what every reader sees. */
+export type PurchaseOrderDerivedStatus = z.infer<typeof PurchaseOrderDerivedStatus>;
+export const PurchaseOrderDerivedStatus = z.enum([
+  'draft',
+  'sent',
+  'partially-received',
+  'received',
+  'closed-short',
+  'cancelled',
+]);
+
 export type PurchaseOrderQuantity = z.infer<typeof PurchaseOrderQuantity>;
 export const PurchaseOrderQuantity = z
   .number()
@@ -41,6 +56,8 @@ export type PurchaseOrderLine = z.infer<typeof PurchaseOrderLine>;
 export const PurchaseOrderLine = PurchaseOrderLineInput.extend({
   partCode: z.string().trim().min(1),
   partName: z.string().trim().min(1),
+  /** Cumulative receipt movements against this line — the number the derived states are read from. */
+  receivedQuantity: z.number().finite(),
   standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
   supplierCode: z.string().trim().min(1).optional(),
   unitOfMeasure: PartUnitOfMeasure,
@@ -64,8 +81,11 @@ export const PurchaseOrderSupplier = z.object({
 
 export type PurchaseOrder = z.infer<typeof PurchaseOrder>;
 export const PurchaseOrder = z.object({
+  closedShortAt: DateIso.nullable(),
   code: PurchaseOrderCode,
   createdAt: DateIso,
+  /** The projection every surface reads; `status` stays the narrow stored fact behind it. */
+  derivedStatus: PurchaseOrderDerivedStatus,
   documentId: UUID.nullable(),
   expectedDeliveryDate: DateOnlyIso.nullable(),
   id: UUID,
@@ -152,15 +172,16 @@ export const PurchaseOrderListResult = createCursorQueryResult(PurchaseOrder);
 export type PurchaseOrderListViewResult = z.infer<typeof PurchaseOrderListViewResult>;
 export const PurchaseOrderListViewResult = createCursorQueryResult(PurchaseOrderView);
 
+/** The as-sent order: what was asked for, never what has since arrived against it. */
 export type PurchaseOrderPdfModel = z.infer<typeof PurchaseOrderPdfModel>;
 export const PurchaseOrderPdfModel = PurchaseOrder.pick({
   code: true,
   expectedDeliveryDate: true,
-  lines: true,
   supplier: true,
 }).extend({
   issueDate: DateIso,
   jobCodes: z.array(JobCode),
+  lines: z.array(PurchaseOrderLine.omit({ receivedQuantity: true })),
 });
 
 export type PurchaseOrderPdfRenderer = (input: {

@@ -64,6 +64,60 @@ export class PurchaseOrderEmptyError extends Error {
   }
 }
 
+/** Stock arrives against an order the Supplier has actually been given — never a draft or a dead one. */
+export class PurchaseOrderNotSentError extends Error {
+  readonly code = 'purchase_order.not_sent' as const;
+
+  constructor(readonly id: UUID) {
+    super('Only a sent Purchase Order can be received against.');
+  }
+}
+
+export class PurchaseOrderLineNotFoundError extends Error {
+  readonly code = 'purchase_order.line_not_found' as const;
+
+  constructor(
+    readonly purchaseOrderId: UUID,
+    readonly partId: UUID,
+  ) {
+    super('This Part is not on the Purchase Order.');
+  }
+}
+
+/** A closed-short order has no open remainder left, so nothing can still arrive against it. */
+export class PurchaseOrderClosedShortError extends Error {
+  readonly code = 'purchase_order.closed_short' as const;
+
+  constructor(readonly id: UUID) {
+    super('This Purchase Order was closed short and can no longer be received against.');
+  }
+}
+
+/** Close-short releases an open remainder, so there has to be a part-delivery to close short of. */
+export class PurchaseOrderNoReceiptsError extends Error {
+  readonly code = 'purchase_order.no_receipts' as const;
+
+  constructor(readonly id: UUID) {
+    super('A Purchase Order can only be closed short once something has been received against it.');
+  }
+}
+
+export class PurchaseOrderFullyReceivedError extends Error {
+  readonly code = 'purchase_order.fully_received' as const;
+
+  constructor(readonly id: UUID) {
+    super('A fully received Purchase Order has no outstanding quantity to close short.');
+  }
+}
+
+export class PurchaseOrderAlreadyClosedShortError extends Error {
+  readonly code = 'purchase_order.already_closed_short' as const;
+
+  constructor(readonly id: UUID) {
+    super('This Purchase Order is already closed short.');
+  }
+}
+
 export class PurchaseOrderHasReceiptsError extends Error {
   readonly code = 'purchase_order.has_receipts' as const;
 
@@ -74,11 +128,17 @@ export class PurchaseOrderHasReceiptsError extends Error {
 
 export type PurchaseOrderCoreError =
   | PurchaseOrderAlreadyCancelledError
+  | PurchaseOrderAlreadyClosedShortError
+  | PurchaseOrderClosedShortError
   | PurchaseOrderEmptyError
+  | PurchaseOrderFullyReceivedError
   | PurchaseOrderHasReceiptsError
   | PurchaseOrderInvalidQuantityError
+  | PurchaseOrderLineNotFoundError
+  | PurchaseOrderNoReceiptsError
   | PurchaseOrderNotDraftError
   | PurchaseOrderNotFoundError
+  | PurchaseOrderNotSentError
   | PurchaseOrderPartNotFoundError
   | PurchaseOrderPartSupplierMismatchError
   | PurchaseOrderSupplierNotFoundError;
@@ -86,11 +146,17 @@ export type PurchaseOrderCoreError =
 export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrderCoreError {
   return (
     error instanceof PurchaseOrderAlreadyCancelledError ||
+    error instanceof PurchaseOrderAlreadyClosedShortError ||
+    error instanceof PurchaseOrderClosedShortError ||
     error instanceof PurchaseOrderEmptyError ||
+    error instanceof PurchaseOrderFullyReceivedError ||
     error instanceof PurchaseOrderHasReceiptsError ||
     error instanceof PurchaseOrderInvalidQuantityError ||
+    error instanceof PurchaseOrderLineNotFoundError ||
+    error instanceof PurchaseOrderNoReceiptsError ||
     error instanceof PurchaseOrderNotDraftError ||
     error instanceof PurchaseOrderNotFoundError ||
+    error instanceof PurchaseOrderNotSentError ||
     error instanceof PurchaseOrderPartNotFoundError ||
     error instanceof PurchaseOrderPartSupplierMismatchError ||
     error instanceof PurchaseOrderSupplierNotFoundError

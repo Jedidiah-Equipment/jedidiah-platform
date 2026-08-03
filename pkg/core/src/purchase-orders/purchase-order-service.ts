@@ -16,6 +16,7 @@ import {
   supplier,
   user,
 } from '@pkg/db';
+import { derivePurchaseOrderProgress, derivePurchaseOrderStatus } from '@pkg/domain';
 import {
   type AuthId,
   DateIso,
@@ -27,6 +28,7 @@ import {
   type PurchaseOrderListResult,
   type PurchaseOrderPdfModel,
   type PurchaseOrderPdfRenderer,
+  type PurchaseOrderProgress,
   type PurchaseOrderSaveDraftInput,
   PurchaseOrder as PurchaseOrderSchema,
   type UUID,
@@ -53,11 +55,15 @@ import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import {
   PurchaseOrderAlreadyCancelledError,
+  PurchaseOrderAlreadyClosedShortError,
   PurchaseOrderEmptyError,
+  PurchaseOrderFullyReceivedError,
   PurchaseOrderHasReceiptsError,
   PurchaseOrderInvalidQuantityError,
+  PurchaseOrderNoReceiptsError,
   PurchaseOrderNotDraftError,
   PurchaseOrderNotFoundError,
+  PurchaseOrderNotSentError,
   PurchaseOrderPartNotFoundError,
   PurchaseOrderPartSupplierMismatchError,
   PurchaseOrderSupplierNotFoundError,
@@ -73,6 +79,7 @@ export const purchaseOrderAuditDescriptor = defineAuditDescriptor<PurchaseOrderR
   noun: 'Purchase Order',
   primaryLabelField: 'code',
   toRecord: (row) => ({
+    closedShortAt: row.closedShortAt?.toISOString() ?? null,
     code: formatPurchaseOrderCode(row.code),
     expectedDeliveryDate: row.expectedDeliveryDate,
     sentAt: row.sentAt?.toISOString() ?? null,
@@ -132,9 +139,78 @@ export async function getPurchaseOrder({ db, id }: { db: PurchaseOrderDb; id: UU
   const aggregate = await loadPurchaseOrderAggregate({ db, id });
   if (!aggregate) throw new PurchaseOrderNotFoundError(id);
 
-  const documentIds = await loadLatestDocumentIds({ db, purchaseOrderIds: [id] });
+  const [documentIds, receivedQuantities] = await Promise.all([
+    loadLatestDocumentIds({ db, purchaseOrderIds: [id] }),
+    loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
+  ]);
 
-  return mapPurchaseOrder(aggregate, documentIds.get(id) ?? null);
+  return mapPurchaseOrder(aggregate, documentIds.get(id) ?? null, receivedQuantities);
+}
+
+/**
+ * Cumulative receipts per order line, keyed by the line's own composite identity. The derived
+ * `partially received` / `received` states are read from this and never stored (spec §4).
+ */
+async function loadReceivedQuantities({
+  db,
+  purchaseOrderIds,
+}: {
+  db: PurchaseOrderDb;
+  purchaseOrderIds: readonly UUID[];
+}): Promise<Map<string, number>> {
+  if (purchaseOrderIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({
+      partId: stockMovements.partId,
+      purchaseOrderId: stockMovements.purchaseOrderId,
+      receivedQuantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
+    })
+    .from(stockMovements)
+    .where(
+      and(inArray(stockMovements.purchaseOrderId, [...purchaseOrderIds]), eq(stockMovements.movementType, 'receipt')),
+    )
+    .groupBy(stockMovements.purchaseOrderId, stockMovements.partId);
+
+  return new Map(
+    rows.flatMap((row) =>
+      row.purchaseOrderId
+        ? [[receivedQuantityKey(row.purchaseOrderId, row.partId), row.receivedQuantity] as const]
+        : [],
+    ),
+  );
+}
+
+function receivedQuantityKey(purchaseOrderId: string, partId: string): string {
+  return `${purchaseOrderId}:${partId}`;
+}
+
+/**
+ * One order's receiving progress, read inside a caller's transaction. The close-short gate and the
+ * projected `derivedStatus` share this so an order cannot be closed short of a remainder it hasn't
+ * got.
+ */
+export async function loadPurchaseOrderProgress({
+  db,
+  id,
+}: {
+  db: PurchaseOrderDb;
+  id: UUID;
+}): Promise<PurchaseOrderProgress> {
+  const [lines, receivedQuantities] = await Promise.all([
+    db
+      .select({ partId: purchaseOrderLines.partId, quantity: purchaseOrderLines.quantity })
+      .from(purchaseOrderLines)
+      .where(eq(purchaseOrderLines.purchaseOrderId, id)),
+    loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
+  ]);
+
+  return derivePurchaseOrderProgress({
+    lines,
+    receivedByPartId: new Map(
+      lines.map((line) => [line.partId, receivedQuantities.get(receivedQuantityKey(id, line.partId)) ?? 0]),
+    ),
+  });
 }
 
 /** The as-sent PDF of each order; amendments (#1055) add revisions, so the newest row is the current one. */
@@ -176,12 +252,13 @@ export async function listPurchaseOrders({
     where,
     with: purchaseOrderWith,
   });
-  const [[totalRow], documentIds] = await Promise.all([
+  const [[totalRow], documentIds, receivedQuantities] = await Promise.all([
     db.select({ value: count() }).from(purchaseOrders).where(where),
     loadLatestDocumentIds({ db, purchaseOrderIds: rows.map((row) => row.id) }),
+    loadReceivedQuantities({ db, purchaseOrderIds: rows.map((row) => row.id) }),
   ]);
   const total = totalRow?.value ?? 0;
-  const items = rows.map((row) => mapPurchaseOrder(row, documentIds.get(row.id) ?? null));
+  const items = rows.map((row) => mapPurchaseOrder(row, documentIds.get(row.id) ?? null, receivedQuantities));
 
   return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
 }
@@ -359,6 +436,41 @@ export async function cancelPurchaseOrder({
   });
 }
 
+/**
+ * Releases the open remainder of an order the Supplier will never finish. Close-short is an
+ * assertion rather than a status value (spec §4): the stored status stays `sent` and this timestamp
+ * is what the derived state and #1057's on-order figure read, so the order's own history is intact.
+ */
+export async function closePurchaseOrderShort({
+  actorUserId,
+  db,
+  id,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  id: UUID;
+}): Promise<PurchaseOrder> {
+  return mutateEntity({
+    actorUserId,
+    // Asserted from the derived partially-received state: there has to be an open remainder to
+    // release, and something already delivered to close short of.
+    assert: async (tx, before) => {
+      if (before.status !== 'sent') throw new PurchaseOrderNotSentError(id);
+      if (before.closedShortAt !== null) throw new PurchaseOrderAlreadyClosedShortError(id);
+      const progress = await loadPurchaseOrderProgress({ db: tx, id });
+      if (progress === 'sent') throw new PurchaseOrderNoReceiptsError(id);
+      if (progress === 'received') throw new PurchaseOrderFullyReceivedError(id);
+    },
+    db,
+    descriptor: purchaseOrderAuditDescriptor,
+    id,
+    notFound: () => new PurchaseOrderNotFoundError(id),
+    project: (tx, row) => getPurchaseOrder({ db: tx, id: row.id }),
+    set: () => ({ closedShortAt: new Date(), updatedAt: new Date() }),
+    table: purchaseOrders,
+  });
+}
+
 export async function readPurchaseOrderDocument({
   db,
   documentId,
@@ -397,10 +509,25 @@ async function loadPurchaseOrderAggregate({ db, id }: { db: PurchaseOrderDb; id:
 
 type PurchaseOrderAggregate = NonNullable<Awaited<ReturnType<typeof loadPurchaseOrderAggregate>>>;
 
-function mapPurchaseOrder(row: PurchaseOrderAggregate, documentId: UUID | null): PurchaseOrder {
+function mapPurchaseOrder(
+  row: PurchaseOrderAggregate,
+  documentId: UUID | null,
+  receivedQuantities: ReadonlyMap<string, number>,
+): PurchaseOrder {
+  const receivedByPartId = new Map(
+    row.lines.map((line) => [line.partId, receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0]),
+  );
+
   return PurchaseOrderSchema.parse({
+    closedShortAt: row.closedShortAt,
     code: row.code,
     createdAt: row.createdAt,
+    derivedStatus: derivePurchaseOrderStatus({
+      closedShortAt: row.closedShortAt,
+      lines: row.lines,
+      receivedByPartId,
+      status: row.status,
+    }),
     documentId,
     expectedDeliveryDate: row.expectedDeliveryDate,
     id: row.id,
@@ -413,6 +540,7 @@ function mapPurchaseOrder(row: PurchaseOrderAggregate, documentId: UUID | null):
         partId: line.partId,
         partName: line.part.name,
         quantity: line.quantity,
+        receivedQuantity: receivedByPartId.get(line.partId) ?? 0,
         standardPurchaseLengthMm: line.part.standardPurchaseLengthMm,
         supplierCode: line.part.supplierCode,
         unitOfMeasure: line.part.unitOfMeasure,

@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 const warningMessages = {
   'exceeds-cfo': 'This draw exceeds the Job CFO.',
   'exceeds-drawn': 'This return exceeds the quantity currently drawn.',
+  'exceeds-ordered': 'This receipt takes the line past the quantity ordered.',
   'negative-stock-on-hand': 'This draw will take stock on hand negative.',
 } as const satisfies Record<StockMovementWarningCode, string>;
 

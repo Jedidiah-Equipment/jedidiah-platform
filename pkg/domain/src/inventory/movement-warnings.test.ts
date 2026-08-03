@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { deriveStockMovementWarnings, type StockMovementContext } from './movement-warnings.js';
+import { deriveReceiptWarnings, deriveStockMovementWarnings, type StockMovementContext } from './movement-warnings.js';
 
 const stocked: StockMovementContext = {
   bucketQuantityOnHand: 10,
@@ -68,6 +68,28 @@ describe('deriveStockMovementWarnings', () => {
 
     expect(deriveStockMovementWarnings({ context, movementType: 'return-to-store', quantity: 1 })).toEqual([
       'exceeds-drawn',
+    ]);
+  });
+});
+
+describe('deriveReceiptWarnings', () => {
+  it('stays quiet while the delivery is still inside the ordered quantity', () => {
+    expect(deriveReceiptWarnings({ orderedQuantity: 10, quantity: 4, receivedQuantity: 0 })).toEqual([]);
+  });
+
+  it('stays quiet on the receipt that completes the line exactly', () => {
+    expect(deriveReceiptWarnings({ orderedQuantity: 10, quantity: 6, receivedQuantity: 4 })).toEqual([]);
+  });
+
+  it('warns once the delivery would take the line past what was ordered', () => {
+    expect(deriveReceiptWarnings({ orderedQuantity: 10, quantity: 7, receivedQuantity: 4 })).toEqual([
+      'exceeds-ordered',
+    ]);
+  });
+
+  it('counts earlier receipts, so a small over-receipt on a nearly full line still warns', () => {
+    expect(deriveReceiptWarnings({ orderedQuantity: 10, quantity: 1, receivedQuantity: 10 })).toEqual([
+      'exceeds-ordered',
     ]);
   });
 });

@@ -250,7 +250,7 @@ export type StockMovementHistoryRow = z.infer<typeof StockMovementHistoryRow>;
 export const StockMovementHistoryRow = StockMovement.extend({
   actorName: z.string(),
   movementValue: InventoryValue,
-  purchaseOrderCode: PurchaseOrderCode.nullable().default(null),
+  purchaseOrderCode: PurchaseOrderCode.nullable(),
   runningBalance: z.number().finite(),
 });
 

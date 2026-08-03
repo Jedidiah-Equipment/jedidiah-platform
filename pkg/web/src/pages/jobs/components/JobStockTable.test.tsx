@@ -20,6 +20,14 @@ describe('JobStockTable', () => {
           unitOfMeasure: 'mm',
         },
       ],
+      job: {
+        cancelledAt: null,
+        closedOutAt: null,
+        code: 1,
+        completedOn: null,
+        displayName: 'Channel fabrication',
+        id: '00000000-0000-4000-8000-000000000009',
+      },
     });
 
     const html = renderToStaticMarkup(<JobStockTable items={result.items} />);

@@ -1,4 +1,5 @@
 import {
+  CloseOutJobInput,
   InventoryUnitCost,
   PostAdjustmentInput,
   PostJobMovementInput,
@@ -67,6 +68,10 @@ export const StockJobMovementFormValues = z.object({
   quantity: StockMovementQuantity,
 });
 
+/** Closing out asserts a fact about the whole Job, so the note is all the screen has left to ask. */
+export type JobCloseOutFormValues = z.infer<typeof JobCloseOutFormValues>;
+export const JobCloseOutFormValues = z.object({ note: z.string() });
+
 /** Adds the per-Part rules a flat form schema cannot express on its own. */
 export function stockAdjustmentValidator(parts: readonly StockPartOption[]) {
   return StockAdjustmentFormValues.superRefine((values, context) => {
@@ -111,6 +116,10 @@ export function toJobMovementInput(values: StockJobMovementFormValues, part: Sto
     partId: values.partId,
     quantity: values.quantity,
   });
+}
+
+export function toCloseOutJobInput(jobId: string, values: JobCloseOutFormValues) {
+  return CloseOutJobInput.parse({ jobId, note: values.note });
 }
 
 export function toStockPartOption(item: StockOnHandRow): StockPartOption {

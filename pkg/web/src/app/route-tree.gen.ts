@@ -48,12 +48,15 @@ import { Route as AuthedJobsStockBuildRouteImport } from './../routes/_authed.jo
 import { Route as AuthedJobsListRouteImport } from './../routes/_authed.jobs.list'
 import { Route as AuthedJobsCalendarRouteImport } from './../routes/_authed.jobs.calendar'
 import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
+import { Route as AuthedInventoryCloseOutRouteImport } from './../routes/_authed.inventory.close-out'
 import { Route as AuthedInventoryPartIdRouteImport } from './../routes/_authed.inventory.$partId'
+import { Route as AuthedInventoryCloseOutIndexRouteImport } from './../routes/_authed.inventory.close-out.index'
 import { Route as AuthedSuppliersIdEditRouteImport } from './../routes/_authed.suppliers.$id.edit'
 import { Route as AuthedQuotesIdStartJobRouteImport } from './../routes/_authed.quotes.$id_.start-job'
 import { Route as AuthedQuotesIdEditRouteImport } from './../routes/_authed.quotes.$id_.edit'
 import { Route as AuthedProductsIdEditRouteImport } from './../routes/_authed.products.$id.edit'
 import { Route as AuthedProductRangesIdEditRouteImport } from './../routes/_authed.product-ranges.$id.edit'
+import { Route as AuthedInventoryCloseOutJobIdRouteImport } from './../routes/_authed.inventory.close-out.$jobId'
 import { Route as AuthedCustomersIdEditRouteImport } from './../routes/_authed.customers.$id.edit'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
@@ -253,11 +256,22 @@ const AuthedJobsIdRoute = AuthedJobsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthedJobsRoute,
 } as any)
+const AuthedInventoryCloseOutRoute = AuthedInventoryCloseOutRouteImport.update({
+  id: '/close-out',
+  path: '/close-out',
+  getParentRoute: () => AuthedInventoryRoute,
+} as any)
 const AuthedInventoryPartIdRoute = AuthedInventoryPartIdRouteImport.update({
   id: '/$partId',
   path: '/$partId',
   getParentRoute: () => AuthedInventoryRoute,
 } as any)
+const AuthedInventoryCloseOutIndexRoute =
+  AuthedInventoryCloseOutIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedInventoryCloseOutRoute,
+  } as any)
 const AuthedSuppliersIdEditRoute = AuthedSuppliersIdEditRouteImport.update({
   id: '/$id/edit',
   path: '/$id/edit',
@@ -283,6 +297,12 @@ const AuthedProductRangesIdEditRoute =
     id: '/$id/edit',
     path: '/$id/edit',
     getParentRoute: () => AuthedProductRangesRoute,
+  } as any)
+const AuthedInventoryCloseOutJobIdRoute =
+  AuthedInventoryCloseOutJobIdRouteImport.update({
+    id: '/$jobId',
+    path: '/$jobId',
+    getParentRoute: () => AuthedInventoryCloseOutRoute,
   } as any)
 const AuthedCustomersIdEditRoute = AuthedCustomersIdEditRouteImport.update({
   id: '/$id/edit',
@@ -315,6 +335,7 @@ export interface FileRoutesByFullPath {
   '/units': typeof AuthedUnitsRouteWithChildren
   '/users': typeof AuthedUsersRoute
   '/inventory/$partId': typeof AuthedInventoryPartIdRoute
+  '/inventory/close-out': typeof AuthedInventoryCloseOutRouteWithChildren
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/jobs/list': typeof AuthedJobsListRoute
@@ -331,11 +352,13 @@ export interface FileRoutesByFullPath {
   '/suppliers/': typeof AuthedSuppliersIndexRoute
   '/units/': typeof AuthedUnitsIndexRoute
   '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
+  '/inventory/close-out/$jobId': typeof AuthedInventoryCloseOutJobIdRoute
   '/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
   '/quotes/$id/edit': typeof AuthedQuotesIdEditRoute
   '/quotes/$id/start-job': typeof AuthedQuotesIdStartJobRoute
   '/suppliers/$id/edit': typeof AuthedSuppliersIdEditRoute
+  '/inventory/close-out/': typeof AuthedInventoryCloseOutIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -369,11 +392,13 @@ export interface FileRoutesByTo {
   '/suppliers': typeof AuthedSuppliersIndexRoute
   '/units': typeof AuthedUnitsIndexRoute
   '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
+  '/inventory/close-out/$jobId': typeof AuthedInventoryCloseOutJobIdRoute
   '/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
   '/quotes/$id/edit': typeof AuthedQuotesIdEditRoute
   '/quotes/$id/start-job': typeof AuthedQuotesIdStartJobRoute
   '/suppliers/$id/edit': typeof AuthedSuppliersIdEditRoute
+  '/inventory/close-out': typeof AuthedInventoryCloseOutIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -402,6 +427,7 @@ export interface FileRoutesById {
   '/_authed/units': typeof AuthedUnitsRouteWithChildren
   '/_authed/users': typeof AuthedUsersRoute
   '/_authed/inventory/$partId': typeof AuthedInventoryPartIdRoute
+  '/_authed/inventory/close-out': typeof AuthedInventoryCloseOutRouteWithChildren
   '/_authed/jobs/$id': typeof AuthedJobsIdRoute
   '/_authed/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/_authed/jobs/list': typeof AuthedJobsListRoute
@@ -418,11 +444,13 @@ export interface FileRoutesById {
   '/_authed/suppliers/': typeof AuthedSuppliersIndexRoute
   '/_authed/units/': typeof AuthedUnitsIndexRoute
   '/_authed/customers/$id/edit': typeof AuthedCustomersIdEditRoute
+  '/_authed/inventory/close-out/$jobId': typeof AuthedInventoryCloseOutJobIdRoute
   '/_authed/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/_authed/products/$id/edit': typeof AuthedProductsIdEditRoute
   '/_authed/quotes/$id_/edit': typeof AuthedQuotesIdEditRoute
   '/_authed/quotes/$id_/start-job': typeof AuthedQuotesIdStartJobRoute
   '/_authed/suppliers/$id/edit': typeof AuthedSuppliersIdEditRoute
+  '/_authed/inventory/close-out/': typeof AuthedInventoryCloseOutIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -451,6 +479,7 @@ export interface FileRouteTypes {
     | '/units'
     | '/users'
     | '/inventory/$partId'
+    | '/inventory/close-out'
     | '/jobs/$id'
     | '/jobs/calendar'
     | '/jobs/list'
@@ -467,11 +496,13 @@ export interface FileRouteTypes {
     | '/suppliers/'
     | '/units/'
     | '/customers/$id/edit'
+    | '/inventory/close-out/$jobId'
     | '/product-ranges/$id/edit'
     | '/products/$id/edit'
     | '/quotes/$id/edit'
     | '/quotes/$id/start-job'
     | '/suppliers/$id/edit'
+    | '/inventory/close-out/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -505,11 +536,13 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/units'
     | '/customers/$id/edit'
+    | '/inventory/close-out/$jobId'
     | '/product-ranges/$id/edit'
     | '/products/$id/edit'
     | '/quotes/$id/edit'
     | '/quotes/$id/start-job'
     | '/suppliers/$id/edit'
+    | '/inventory/close-out'
   id:
     | '__root__'
     | '/'
@@ -537,6 +570,7 @@ export interface FileRouteTypes {
     | '/_authed/units'
     | '/_authed/users'
     | '/_authed/inventory/$partId'
+    | '/_authed/inventory/close-out'
     | '/_authed/jobs/$id'
     | '/_authed/jobs/calendar'
     | '/_authed/jobs/list'
@@ -553,11 +587,13 @@ export interface FileRouteTypes {
     | '/_authed/suppliers/'
     | '/_authed/units/'
     | '/_authed/customers/$id/edit'
+    | '/_authed/inventory/close-out/$jobId'
     | '/_authed/product-ranges/$id/edit'
     | '/_authed/products/$id/edit'
     | '/_authed/quotes/$id_/edit'
     | '/_authed/quotes/$id_/start-job'
     | '/_authed/suppliers/$id/edit'
+    | '/_authed/inventory/close-out/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -846,12 +882,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedJobsIdRouteImport
       parentRoute: typeof AuthedJobsRoute
     }
+    '/_authed/inventory/close-out': {
+      id: '/_authed/inventory/close-out'
+      path: '/close-out'
+      fullPath: '/inventory/close-out'
+      preLoaderRoute: typeof AuthedInventoryCloseOutRouteImport
+      parentRoute: typeof AuthedInventoryRoute
+    }
     '/_authed/inventory/$partId': {
       id: '/_authed/inventory/$partId'
       path: '/$partId'
       fullPath: '/inventory/$partId'
       preLoaderRoute: typeof AuthedInventoryPartIdRouteImport
       parentRoute: typeof AuthedInventoryRoute
+    }
+    '/_authed/inventory/close-out/': {
+      id: '/_authed/inventory/close-out/'
+      path: '/'
+      fullPath: '/inventory/close-out/'
+      preLoaderRoute: typeof AuthedInventoryCloseOutIndexRouteImport
+      parentRoute: typeof AuthedInventoryCloseOutRoute
     }
     '/_authed/suppliers/$id/edit': {
       id: '/_authed/suppliers/$id/edit'
@@ -888,6 +938,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProductRangesIdEditRouteImport
       parentRoute: typeof AuthedProductRangesRoute
     }
+    '/_authed/inventory/close-out/$jobId': {
+      id: '/_authed/inventory/close-out/$jobId'
+      path: '/$jobId'
+      fullPath: '/inventory/close-out/$jobId'
+      preLoaderRoute: typeof AuthedInventoryCloseOutJobIdRouteImport
+      parentRoute: typeof AuthedInventoryCloseOutRoute
+    }
     '/_authed/customers/$id/edit': {
       id: '/_authed/customers/$id/edit'
       path: '/$id/edit'
@@ -912,13 +969,31 @@ const AuthedCustomersRouteWithChildren = AuthedCustomersRoute._addFileChildren(
   AuthedCustomersRouteChildren,
 )
 
+interface AuthedInventoryCloseOutRouteChildren {
+  AuthedInventoryCloseOutJobIdRoute: typeof AuthedInventoryCloseOutJobIdRoute
+  AuthedInventoryCloseOutIndexRoute: typeof AuthedInventoryCloseOutIndexRoute
+}
+
+const AuthedInventoryCloseOutRouteChildren: AuthedInventoryCloseOutRouteChildren =
+  {
+    AuthedInventoryCloseOutJobIdRoute: AuthedInventoryCloseOutJobIdRoute,
+    AuthedInventoryCloseOutIndexRoute: AuthedInventoryCloseOutIndexRoute,
+  }
+
+const AuthedInventoryCloseOutRouteWithChildren =
+  AuthedInventoryCloseOutRoute._addFileChildren(
+    AuthedInventoryCloseOutRouteChildren,
+  )
+
 interface AuthedInventoryRouteChildren {
   AuthedInventoryPartIdRoute: typeof AuthedInventoryPartIdRoute
+  AuthedInventoryCloseOutRoute: typeof AuthedInventoryCloseOutRouteWithChildren
   AuthedInventoryIndexRoute: typeof AuthedInventoryIndexRoute
 }
 
 const AuthedInventoryRouteChildren: AuthedInventoryRouteChildren = {
   AuthedInventoryPartIdRoute: AuthedInventoryPartIdRoute,
+  AuthedInventoryCloseOutRoute: AuthedInventoryCloseOutRouteWithChildren,
   AuthedInventoryIndexRoute: AuthedInventoryIndexRoute,
 }
 

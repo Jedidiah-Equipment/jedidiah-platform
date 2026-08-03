@@ -8,6 +8,7 @@ import {
   IconChevronRight,
   IconClipboardList,
   IconFileText,
+  IconFlagCheck,
   IconGauge,
   IconHeartHandshake,
   IconLanguage,
@@ -136,6 +137,12 @@ const navSections = [
         permission: 'inventory:read',
         link: linkOptions({ to: '/inventory' }),
         icon: IconBuildingWarehouse,
+      },
+      {
+        title: 'Close-out',
+        permission: 'inventory:close-out',
+        link: linkOptions({ to: '/inventory/close-out' }),
+        icon: IconFlagCheck,
       },
       {
         title: 'Products',

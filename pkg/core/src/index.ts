@@ -10,6 +10,8 @@ export * from './feedback/feedback-errors.js';
 export * from './feedback/feedback-service.js';
 export * from './files/file-errors.js';
 export * from './files/stored-file-service.js';
+export * from './inventory/close-out-errors.js';
+export * from './inventory/close-out-service.js';
 export * from './inventory/stock-movement-errors.js';
 export * from './inventory/stock-movement-service.js';
 export * from './jobs/board-preview-service.js';

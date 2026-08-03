@@ -5,8 +5,11 @@ import {
   jobCfoParts,
   jobs,
   parts,
+  products,
+  productUnits,
   purchaseOrderLines,
   purchaseOrders,
+  quotes,
   stockMovements,
   user,
 } from '@pkg/db';
@@ -17,6 +20,7 @@ import {
   deriveOutstandingDrawUnitCost,
   deriveReceiptWarnings,
   deriveStockMovementWarnings,
+  getJobDisplayName,
   type StockMovementContext,
   valueStockBucket,
   valueStockMovement,
@@ -37,6 +41,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import {
+  formatJobCode,
   isPeriodicStockAdjustmentReason,
   JobStockResult as JobStockResultSchema,
   StockMovementHistoryResult as StockMovementHistoryResultSchema,
@@ -55,6 +60,7 @@ import {
   PurchaseOrderNotSentError,
 } from '../purchase-orders/purchase-order-errors.js';
 
+import { getJobCloseOutAt, jobIsNotClosedOut } from './close-out-service.js';
 import {
   FabricatedPartCostError,
   PeriodicStockMovementError,
@@ -260,17 +266,10 @@ async function loadPurchaseOrderLine(tx: DatabaseTransaction, purchaseOrderId: U
   return line;
 }
 
-export async function listJobStock({
-  db,
-  isClosedOut = false,
-  jobId,
-}: {
-  db: Db;
-  isClosedOut?: boolean;
-  jobId: UUID;
-}): Promise<JobStockResult> {
-  const job = await loadStockMovementJob({ db, jobId });
-  const commitmentReleased = isClosedOut || job.cancelledAt !== null;
+export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Promise<JobStockResult> {
+  const job = await loadJobStockJob({ db, jobId });
+  const closedOutAt = await getJobCloseOutAt({ db, jobId });
+  const commitmentReleased = closedOutAt !== null || job.cancelledAt !== null;
   const [cfoRows, movementRows] = await Promise.all([
     db
       .select({
@@ -295,8 +294,21 @@ export async function listJobStock({
   const cfoByPart = new Map(cfoRows.map((row) => [row.partId, row.cfoQuantity]));
   const movementsByPart = groupBy(movementRows, (row) => row.partId);
   const partIds = [...new Set([...cfoByPart.keys(), ...movementsByPart.keys()])];
+  const jobFacts = {
+    cancelledAt: job.cancelledAt,
+    closedOutAt,
+    code: job.code,
+    completedOn: job.completedOn,
+    displayName: getJobDisplayName({
+      code: formatJobCode(job.code),
+      productName: job.productName,
+      quoteKind: job.quoteKind,
+      workTitle: job.workTitle,
+    }),
+    id: job.id,
+  };
   if (partIds.length === 0) {
-    return { items: [] };
+    return JobStockResultSchema.parse({ items: [], job: jobFacts });
   }
 
   const partRows = await db
@@ -333,7 +345,30 @@ export async function listJobStock({
         unitOfMeasure: part.unitOfMeasure,
       };
     }),
+    job: jobFacts,
   });
+}
+
+async function loadJobStockJob({ db, jobId }: { db: Db; jobId: UUID }) {
+  const [job] = await db
+    .select({
+      cancelledAt: jobs.cancelledAt,
+      code: jobs.code,
+      completedOn: jobs.completedOn,
+      id: jobs.id,
+      productName: products.name,
+      quoteKind: quotes.kind,
+      workTitle: quotes.workTitle,
+    })
+    .from(jobs)
+    .leftJoin(productUnits, eq(productUnits.id, jobs.productUnitId))
+    .leftJoin(products, eq(products.id, productUnits.productId))
+    .leftJoin(quotes, eq(quotes.id, jobs.quoteId))
+    .where(eq(jobs.id, jobId))
+    .limit(1);
+  if (!job) throw new JobNotFoundError(jobId);
+
+  return job;
 }
 
 export async function listStockOnHand({ db }: { db: Db }): Promise<StockOnHandResult> {
@@ -638,7 +673,9 @@ async function listOpenCommitments(db: DatabaseTransaction): Promise<Map<UUID, n
       .from(jobCfoAssemblies)
       .innerJoin(jobCfoParts, eq(jobCfoParts.cfoAssemblyId, jobCfoAssemblies.id))
       .innerJoin(jobs, eq(jobs.id, jobCfoAssemblies.jobId))
-      .where(isNull(jobs.cancelledAt))
+      // Close-out releases the remainder permanently, so a closed Job's CFO never reaches the sum
+      // again — later returns move drawn, but there is no open demand left for them to re-open.
+      .where(and(isNull(jobs.cancelledAt), jobIsNotClosedOut(jobs.id)))
       .groupBy(jobCfoAssemblies.jobId, jobCfoParts.partId),
     db
       .select({

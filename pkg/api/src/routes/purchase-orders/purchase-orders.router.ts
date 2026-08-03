@@ -179,6 +179,7 @@ function mapPurchaseOrderCoreError(error: PurchaseOrderCoreError): CoreErrorMapp
     case 'purchase_order.no_receipts':
     case 'purchase_order.not_draft':
     case 'purchase_order.not_sent':
+    case 'purchase_order.part_not_purchasable':
     case 'purchase_order.part_supplier_mismatch':
       return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
     default:

@@ -635,20 +635,6 @@ describe('postReceipt', () => {
     expect(result.movement.unitCost).toBe(31.5);
   });
 
-  test('receipts an internally fabricated Part at zero, whatever its line was priced at', async ({ context }) => {
-    const purchaseOrderId = await seedSentPurchaseOrder(context.db, context.supplierId, [
-      { partId: context.parts.fabricated.id, quantity: 2, unitPrice: 480 },
-    ]);
-
-    const result = await postReceipt({
-      actorUserId,
-      db: context.db,
-      input: { lengthMm: null, partId: context.parts.fabricated.id, purchaseOrderId, quantity: 2, unitCost: null },
-    });
-
-    expect(result.movement.unitCost).toBe(0);
-  });
-
   test('receipts periodic raw material, which consumption movements are barred from', async ({ context }) => {
     const purchaseOrderId = await seedSentPurchaseOrder(context.db, context.supplierId, [
       { partId: context.parts.periodic.id, quantity: 3, unitPrice: 420 },
@@ -833,9 +819,9 @@ describe('listStockOnHand', () => {
       totalValue: 2_400,
     });
     expect(rowFor(context.parts.fabricated.id)).toMatchObject({
-      averageUnitCost: 0,
+      averageUnitCost: null,
       quantity: 0,
-      totalValue: 0,
+      totalValue: null,
     });
   });
 
@@ -909,7 +895,7 @@ describe('getStockMovementHistory', () => {
     ]);
   });
 
-  test('keeps stamped linear movement values and values fabricated movements at zero', async ({ context }) => {
+  test('keeps stamped linear movement values and reads an uncosted built Part as having none', async ({ context }) => {
     await postAdjustment({
       actorUserId,
       db: context.db,
@@ -930,7 +916,7 @@ describe('getStockMovementHistory', () => {
     const fabricated = await getStockMovementHistory({ db: context.db, partId: context.parts.fabricated.id });
 
     expect(linear.items.map((item) => item.movementValue)).toEqual([1_200, 360]);
-    expect(fabricated.items[0]?.movementValue).toBe(0);
+    expect(fabricated.items[0]?.movementValue).toBeNull();
   });
 });
 
@@ -1069,7 +1055,8 @@ function partValues({
     standardPurchaseLengthMm,
     stockTrackingMode,
     supplierCode: code,
-    supplierId,
+    // Supplier XOR BOM: a built Part is made in-house and bought from nobody.
+    supplierId: isInternallyFabricated ? null : supplierId,
     unitOfMeasure,
   };
 }

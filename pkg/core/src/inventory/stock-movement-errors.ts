@@ -45,11 +45,16 @@ export class PeriodicStockMovementError extends Error {
   }
 }
 
+/**
+ * A Built Part's cost is only ever derived from its own ledger — a build divides the value it
+ * consumed across the units it produced. Hand-entering one would assert a price for something we
+ * never bought, and for sheet metal cut from plate it would pay for the plate twice (spec §5).
+ */
 export class FabricatedPartCostError extends Error {
   readonly code = 'inventory.fabricated_part_cost';
 
   constructor() {
-    super('Internally fabricated Parts must carry zero material cost');
+    super('A built Part is costed by its build, not by hand');
     this.name = 'FabricatedPartCostError';
   }
 }

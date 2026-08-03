@@ -4,6 +4,7 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 
 const warningMessages = {
+  'bom-deviation': 'This differs from what the BOM calls for.',
   'exceeds-cfo': 'This draw exceeds the Job CFO.',
   'exceeds-drawn': 'This return exceeds the quantity currently drawn.',
   'exceeds-ordered': 'This receipt takes the line past the quantity ordered.',

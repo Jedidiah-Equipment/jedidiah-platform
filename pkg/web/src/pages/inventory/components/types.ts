@@ -72,6 +72,10 @@ export const StockJobMovementFormValues = z.object({
 export type JobCloseOutFormValues = z.infer<typeof JobCloseOutFormValues>;
 export const JobCloseOutFormValues = z.object({ note: z.string() });
 
+/** The build's own field is its size; consumption is edited row-by-row outside the form schema. */
+export type StockBuildFormValues = z.infer<typeof StockBuildFormValues>;
+export const StockBuildFormValues = z.object({ quantity: StockMovementQuantity });
+
 /** Adds the per-Part rules a flat form schema cannot express on its own. */
 export function stockAdjustmentValidator(parts: readonly StockPartOption[]) {
   return StockAdjustmentFormValues.superRefine((values, context) => {

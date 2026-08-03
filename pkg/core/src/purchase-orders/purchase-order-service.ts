@@ -65,6 +65,7 @@ import {
   PurchaseOrderNotFoundError,
   PurchaseOrderNotSentError,
   PurchaseOrderPartNotFoundError,
+  PurchaseOrderPartNotPurchasableError,
   PurchaseOrderPartSupplierMismatchError,
   PurchaseOrderSupplierNotFoundError,
 } from './purchase-order-errors.js';
@@ -609,6 +610,7 @@ async function assertLinePartsMatchSupplier({
   for (const line of lines) {
     const part = byId.get(line.partId);
     if (!part) throw new PurchaseOrderPartNotFoundError(line.partId);
+    if (part.supplierId === null) throw new PurchaseOrderPartNotPurchasableError(line.partId);
     if (part.supplierId !== supplierId) throw new PurchaseOrderPartSupplierMismatchError(line.partId);
     if (unitClassFor(part.unitOfMeasure) !== 'measured' && !Number.isInteger(line.quantity)) {
       throw new PurchaseOrderInvalidQuantityError(line.partId);

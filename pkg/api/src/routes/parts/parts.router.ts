@@ -2,14 +2,27 @@ import {
   bulkImportParts,
   createPart,
   getPart,
+  getPartBom,
+  isPartBomError,
   isPartCoreError,
   listPartCategories,
   listPartStorageLocations,
   listParts,
+  type PartBomError,
   type PartCoreError,
+  savePartBom,
   updatePart,
 } from '@pkg/core';
-import { PartBulkImportInput, PartCreateInput, PartListInput, PartUpdateInput, UUID } from '@pkg/schema';
+import {
+  PartBomInput,
+  PartBomResult,
+  PartBulkImportInput,
+  PartCreateInput,
+  PartListInput,
+  PartUpdateInput,
+  SavePartBomInput,
+  UUID,
+} from '@pkg/schema';
 import { z } from 'zod';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
@@ -40,6 +53,16 @@ export const partsRouter = router({
       mapPartErrors(() => updatePart({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
+  bom: authorizedProcedure('part:read')
+    .input(PartBomInput)
+    .output(PartBomResult)
+    .query(({ ctx, input }) => getPartBom({ db: ctx.db, partId: input.partId })),
+
+  saveBom: authorizedProcedure('part:update')
+    .input(SavePartBomInput)
+    .output(PartBomResult)
+    .mutation(({ ctx, input }) => mapPartErrors(() => savePartBom({ db: ctx.db, input }))),
+
   bulkImport: authorizedProcedure('part:update')
     .input(PartBulkImportInput)
     .mutation(({ ctx, input }) =>
@@ -48,7 +71,24 @@ export const partsRouter = router({
 });
 
 async function mapPartErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(action, isPartCoreError, mapPartCoreError);
+  return mapKnownCoreError(
+    () => mapKnownCoreError(action, isPartBomError, mapPartBomError),
+    isPartCoreError,
+    mapPartCoreError,
+  );
+}
+
+function mapPartBomError(error: PartBomError): CoreErrorMapping<PartBomError['code']> {
+  switch (error.code) {
+    case 'part.bom_component_not_found':
+      return { appCode: error.code, code: 'NOT_FOUND', message: error.message };
+    case 'part.bom_cycle':
+    case 'part.bom_quantity':
+    case 'part.not_built':
+      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
+    default:
+      return assertNever(error);
+  }
 }
 
 function mapPartCoreError(error: PartCoreError): CoreErrorMapping<PartCoreError['code']> {

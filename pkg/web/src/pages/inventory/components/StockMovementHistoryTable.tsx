@@ -53,6 +53,10 @@ function formatMovementLabel(item: StockMovementHistoryRow): string {
       return 'Return to store';
     case 'receipt':
       return 'Receipt';
+    case 'build-consume':
+      return 'Build consumption';
+    case 'build-produce':
+      return 'Build output';
     case 'revaluation':
       return 'Revaluation';
     case 'adjustment':

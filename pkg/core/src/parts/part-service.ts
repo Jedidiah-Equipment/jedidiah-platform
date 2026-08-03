@@ -72,7 +72,8 @@ export const partAuditDescriptor = defineAuditDescriptor<PartRow>({
 });
 
 type PartWithSupplierRow = PartRow & {
-  supplier: SupplierRow;
+  /** Null on a Built Part, which is made in-house and bought from nobody. */
+  supplier: SupplierRow | null;
 };
 
 export function mapPart(row: PartWithSupplierRow): Part {
@@ -110,7 +111,7 @@ export async function listParts({ db, input }: { db: Db; input: PartListInput })
         },
       })
       .from(parts)
-      .innerJoin(supplier, eq(parts.supplierId, supplier.id))
+      .leftJoin(supplier, eq(parts.supplierId, supplier.id))
       .where(where)
       .orderBy(orderBy, asc(parts.id))
       .$dynamic(),
@@ -119,7 +120,7 @@ export async function listParts({ db, input }: { db: Db; input: PartListInput })
   const totalQuery = db
     .select({ value: count() })
     .from(parts)
-    .innerJoin(supplier, eq(parts.supplierId, supplier.id))
+    .leftJoin(supplier, eq(parts.supplierId, supplier.id))
     .where(where);
   const [rows, totalRows] = await Promise.all([rowsQuery, totalQuery]);
   const total = totalRows[0]?.value ?? 0;
@@ -347,16 +348,27 @@ export async function bulkImportParts({
       const partsByCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
 
       for (const row of input.rows) {
-        if (scopedSupplier && row.supplierName.toLowerCase() !== scopedSupplier.companyName.toLowerCase()) {
-          errors.push(
-            `Line ${row.lineNumber}: Supplier ${row.supplierName} does not match ${scopedSupplier.companyName}.`,
-          );
+        // A built Part row names no Supplier at all, so every supplier step below is skipped for it
+        // and the Part lands with a null `supplierId`, which is what the XOR invariant requires.
+        const supplierName = row.supplierName;
+
+        if (
+          supplierName !== null &&
+          scopedSupplier &&
+          supplierName.toLowerCase() !== scopedSupplier.companyName.toLowerCase()
+        ) {
+          errors.push(`Line ${row.lineNumber}: Supplier ${supplierName} does not match ${scopedSupplier.companyName}.`);
           continue;
         }
 
-        const existingSupplier = scopedSupplier ?? suppliersByName.get(row.supplierName.toLowerCase());
+        const existingSupplier =
+          supplierName === null ? undefined : (scopedSupplier ?? suppliersByName.get(supplierName.toLowerCase()));
         const partByCode = partsByCode.get(row.code);
-        if (partByCode && (!existingSupplier || partByCode.supplierId !== existingSupplier.id)) {
+        const identityMatches =
+          supplierName === null
+            ? partByCode?.supplierId === null
+            : Boolean(existingSupplier) && partByCode?.supplierId === existingSupplier?.id;
+        if (partByCode && !identityMatches) {
           errors.push(
             await formatBulkImportIdentityConflict({
               db: tx,
@@ -368,14 +380,16 @@ export async function bulkImportParts({
         }
 
         const importedSupplier =
-          existingSupplier ??
-          (await createImportSupplier({
-            actorUserId,
-            db: tx,
-            companyName: row.supplierName,
-          }));
+          supplierName === null
+            ? null
+            : (existingSupplier ??
+              (await createImportSupplier({
+                actorUserId,
+                db: tx,
+                companyName: supplierName,
+              })));
 
-        if (!existingSupplier) {
+        if (importedSupplier && !existingSupplier) {
           suppliersByName.set(importedSupplier.companyName.toLowerCase(), importedSupplier);
         }
 
@@ -390,7 +404,7 @@ export async function bulkImportParts({
           name: row.name,
           standardPurchaseLengthMm: row.standardPurchaseLengthMm ?? null,
           supplierCode: row.supplierCode,
-          supplierId: importedSupplier.id,
+          supplierId: importedSupplier?.id ?? null,
           unitOfMeasure: row.unitOfMeasure,
         };
         const existingPart = partByCode;
@@ -508,16 +522,22 @@ async function formatBulkImportIdentityConflict({
   existingPart: Pick<PartRow, 'code' | 'supplierCode' | 'supplierId'>;
   row: PartBulkImportInput['rows'][number];
 }): Promise<string> {
-  const existingSupplier = await db.query.supplier.findFirst({
-    columns: {
-      companyName: true,
-      id: true,
-    },
-    where: eq(supplier.id, existingPart.supplierId),
-  });
-  const existingSupplierName = existingSupplier?.companyName ?? 'an unknown supplier';
+  const existingSupplier =
+    existingPart.supplierId === null
+      ? null
+      : await db.query.supplier.findFirst({
+          columns: {
+            companyName: true,
+            id: true,
+          },
+          where: eq(supplier.id, existingPart.supplierId),
+        });
+  const existingSupplierName =
+    existingPart.supplierId === null
+      ? 'no supplier (built in-house)'
+      : (existingSupplier?.companyName ?? 'an unknown supplier');
   const existingIdentity = `${existingSupplierName} / supplier code ${existingPart.supplierCode}`;
-  const importIdentity = `${row.supplierName} / ${row.supplierCode}`;
+  const importIdentity = `${row.supplierName ?? 'no supplier (built in-house)'} / ${row.supplierCode}`;
 
   return `Line ${row.lineNumber}: Part code ${existingPart.code} already exists with supplier ${existingIdentity}; CSV row has ${importIdentity}.`;
 }
@@ -530,7 +550,7 @@ async function loadImportSuppliersByName({
   rows: PartBulkImportInput['rows'];
 }): Promise<Map<string, SupplierRow>> {
   const byName = new Map<string, SupplierRow>();
-  const lowerNames = [...new Set(rows.map((row) => row.supplierName.toLowerCase()))];
+  const lowerNames = [...new Set(rows.flatMap((row) => (row.supplierName ? [row.supplierName.toLowerCase()] : [])))];
 
   if (lowerNames.length === 0) {
     return byName;
@@ -621,13 +641,16 @@ async function createImportSupplier({
   };
 }
 
+/** A Built Part names no Supplier, so there is nothing to check; the XOR rule is Zod's and the DB's. */
 async function assertSupplierExists({
   db,
   supplierId,
 }: {
   db: Db | DatabaseTransaction;
-  supplierId: UUID;
+  supplierId: UUID | null;
 }): Promise<void> {
+  if (supplierId === null) return;
+
   const row = await db.query.supplier.findFirst({
     columns: {
       id: true,
@@ -675,7 +698,7 @@ function mapPartUniqueViolationForBulkImport(error: unknown, input: PartBulkImpo
     return new PartBulkImportConflictError({
       code: conflictingRow.code,
       supplierCode: conflictingRow.supplierCode,
-      supplierName: conflictingRow.supplierName,
+      supplierName: conflictingRow.supplierName ?? 'no supplier (built in-house)',
     });
   }
 

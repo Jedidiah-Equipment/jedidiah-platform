@@ -44,6 +44,7 @@ describe('listParts', () => {
             name: 'Linear rail',
             standardPurchaseLengthMm: 6000,
             supplierCode: 'SUP-200',
+            supplierName: null,
             unitOfMeasure: 'mm',
           }),
         ],
@@ -168,7 +169,6 @@ describe('bulkImportParts', () => {
           importRow(),
           importRow({
             code: 'P-200',
-            isInternallyFabricated: true,
             name: 'Bolt',
             standardPurchaseLengthMm: 6000,
             supplierCode: 'BET-200',
@@ -186,7 +186,7 @@ describe('bulkImportParts', () => {
     expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
     expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies', 'Beta Supplies']);
     expect(importedParts.items.map((part) => part.code)).toEqual(['P-100', 'P-200']);
-    expect(importedParts.items.map((part) => part.isInternallyFabricated)).toEqual([false, true]);
+    expect(importedParts.items.map((part) => part.isInternallyFabricated)).toEqual([false, false]);
     expect(importedParts.items.map((part) => part.unitOfMeasure)).toEqual(['piece', 'mm']);
     expect(events).toMatchObject([
       {
@@ -250,7 +250,7 @@ describe('bulkImportParts', () => {
     expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
     expect(suppliers).toHaveLength(1);
     expect(importedParts.items.map((part) => part.code).sort()).toEqual(['P-100', 'P-101']);
-    expect(importedParts.items.every((part) => part.supplier.companyName === 'Acme Supplies')).toBe(true);
+    expect(importedParts.items.every((part) => part.supplier?.companyName === 'Acme Supplies')).toBe(true);
   });
 
   test('updates changed rows when the part identity matches', async ({ context }) => {
@@ -265,7 +265,6 @@ describe('bulkImportParts', () => {
           importRow({
             description: 'Updated main bearing',
             finish: 'Painted',
-            isInternallyFabricated: true,
             name: 'Bearing Assembly',
             standardPurchaseLengthMm: 6000,
             unitOfMeasure: 'mm',
@@ -280,7 +279,6 @@ describe('bulkImportParts', () => {
     expect(importedParts.items[0]).toMatchObject({
       description: 'Updated main bearing',
       finish: 'Painted',
-      isInternallyFabricated: true,
       name: 'Bearing Assembly',
       standardPurchaseLengthMm: 6000,
       unitOfMeasure: 'mm',
@@ -296,10 +294,6 @@ describe('bulkImportParts', () => {
         finish: {
           from: 'Zinc',
           to: 'Painted',
-        },
-        isInternallyFabricated: {
-          from: false,
-          to: true,
         },
         name: {
           from: 'Bearing',

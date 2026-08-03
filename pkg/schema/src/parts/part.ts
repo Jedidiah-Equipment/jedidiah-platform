@@ -92,9 +92,10 @@ export const Part = z.object({
   standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
   stockTrackingMode: PartStockTrackingMode,
   storageLocation: PartStorageLocation,
-  supplier: Supplier.pick({ companyName: true, id: true }),
+  /** Null on a Built Part, which is made in-house from a BOM and bought from nobody. */
+  supplier: Supplier.pick({ companyName: true, id: true }).nullable(),
   supplierCode: PartSupplierCode,
-  supplierId: UUID,
+  supplierId: UUID.nullable(),
   unitOfMeasure: PartUnitOfMeasure,
 });
 
@@ -129,9 +130,31 @@ const PartInputFields = z.object({
   stockTrackingMode: PartStockTrackingMode.default('perpetual'),
   storageLocation: PartStorageLocationInput,
   supplierCode: PartSupplierCode,
-  supplierId: UUID,
+  supplierId: UUID.nullable().default(null),
   unitOfMeasure: PartUnitOfMeasure,
 });
+
+/**
+ * A Part has either a Supplier or a BOM — never both, never neither (spec §6). The stored form of
+ * that invariant is the fabricated flag against `supplierId`; the BOM side is service-enforced,
+ * because an empty BOM on a fabricated Part is legitimate (its components are all raw material).
+ */
+export function refinePartSupplier(
+  input: Pick<z.infer<typeof PartInputFields>, 'isInternallyFabricated' | 'supplierId'>,
+  context: z.RefinementCtx,
+): void {
+  if (input.isInternallyFabricated && input.supplierId !== null) {
+    context.addIssue({
+      code: 'custom',
+      message: 'A built Part is made in-house and has no Supplier',
+      path: ['supplierId'],
+    });
+  }
+
+  if (!input.isInternallyFabricated && input.supplierId === null) {
+    context.addIssue({ code: 'custom', message: 'Select a Supplier', path: ['supplierId'] });
+  }
+}
 
 export function refinePartStandardPurchaseLength(
   input: Pick<z.infer<typeof PartInputFields>, 'standardPurchaseLengthMm' | 'unitOfMeasure'>,
@@ -154,11 +177,16 @@ export function refinePartStandardPurchaseLength(
   }
 }
 
+function refinePartInput(input: z.infer<typeof PartInputFields>, context: z.RefinementCtx): void {
+  refinePartStandardPurchaseLength(input, context);
+  refinePartSupplier(input, context);
+}
+
 export type PartCreateInput = z.infer<typeof PartCreateInput>;
-export const PartCreateInput = PartInputFields.superRefine(refinePartStandardPurchaseLength);
+export const PartCreateInput = PartInputFields.superRefine(refinePartInput);
 
 export type PartUpdateInput = z.infer<typeof PartUpdateInput>;
-export const PartUpdateInput = PartInputFields.extend({ id: UUID }).superRefine(refinePartStandardPurchaseLength);
+export const PartUpdateInput = PartInputFields.extend({ id: UUID }).superRefine(refinePartInput);
 
 export type PartBulkImportRow = z.infer<typeof PartBulkImportRow>;
 export const PartBulkImportRow = z
@@ -173,18 +201,31 @@ export const PartBulkImportRow = z
     name: PartName,
     standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable().optional(),
     supplierCode: PartSupplierCode,
-    supplierName: SupplierCompanyName,
+    /** Absent on a built Part row, which names no Supplier because it is bought from nobody. */
+    supplierName: SupplierCompanyName.nullable().default(null),
     unitOfMeasure: PartUnitOfMeasure,
   })
-  .superRefine((input, context) =>
+  .superRefine((input, context) => {
     refinePartStandardPurchaseLength(
       {
         standardPurchaseLengthMm: input.standardPurchaseLengthMm ?? null,
         unitOfMeasure: input.unitOfMeasure,
       },
       context,
-    ),
-  );
+    );
+
+    if (input.isInternallyFabricated && input.supplierName !== null) {
+      context.addIssue({
+        code: 'custom',
+        message: 'A built Part is made in-house and has no Supplier',
+        path: ['supplierName'],
+      });
+    }
+
+    if (!input.isInternallyFabricated && input.supplierName === null) {
+      context.addIssue({ code: 'custom', message: 'Supplier is required', path: ['supplierName'] });
+    }
+  });
 
 export type PartBulkImportInput = z.infer<typeof PartBulkImportInput>;
 export const PartBulkImportInput = z.object({

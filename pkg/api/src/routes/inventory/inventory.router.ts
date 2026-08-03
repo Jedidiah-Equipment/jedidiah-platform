@@ -1,6 +1,8 @@
 import {
+  type BuildError,
   closeOutJob,
   getStockMovementHistory,
+  isBuildError,
   isJobCloseOutError,
   JobCancelledError,
   type JobCloseOutError,
@@ -10,11 +12,13 @@ import {
   listJobs,
   listStockOnHand,
   postAdjustment,
+  postBuild,
   postJobMovement,
   postRevaluation,
 } from '@pkg/core';
 import { getJobDisplayName } from '@pkg/domain';
 import {
+  BuildPostResult,
   CloseOutJobInput,
   CloseOutQueueResult,
   InventoryJobOptionListInput,
@@ -23,6 +27,7 @@ import {
   JobStockInput,
   JobStockResult,
   PostAdjustmentInput,
+  PostBuildInput,
   PostJobMovementInput,
   PostRevaluationInput,
   StockMovement,
@@ -117,6 +122,13 @@ export const inventoryRouter = router({
       mapJobStockMovementErrors(() => closeOutJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
+  postBuild: authorizedProcedure('inventory:build')
+    .input(PostBuildInput)
+    .output(BuildPostResult)
+    .mutation(({ ctx, input }) =>
+      mapJobStockMovementErrors(() => postBuild({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
   postAdjustment: authorizedProcedure('inventory:adjust')
     .input(PostAdjustmentInput)
     .output(StockMovement)
@@ -172,11 +184,29 @@ export const inventoryRouter = router({
 async function mapJobStockMovementErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapStockMovementErrors(() =>
     mapKnownCoreError(
-      () => mapKnownCoreError(action, isStockMovementJobError, mapStockMovementJobError),
+      () =>
+        mapKnownCoreError(
+          () => mapKnownCoreError(action, isStockMovementJobError, mapStockMovementJobError),
+          isBuildError,
+          mapBuildError,
+        ),
       isJobCloseOutError,
       mapJobCloseOutError,
     ),
   );
+}
+
+function mapBuildError(error: BuildError): CoreErrorMapping<BuildError['code']> {
+  switch (error.code) {
+    case 'inventory.build_component_not_found':
+      return { appCode: error.code, code: 'NOT_FOUND', message: error.message };
+    case 'inventory.build_linear_part':
+    case 'inventory.build_periodic_part':
+    case 'inventory.build_self_component':
+      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
+    default:
+      return assertNever(error);
+  }
 }
 
 function mapJobCloseOutError(error: JobCloseOutError): CoreErrorMapping<JobCloseOutError['code']> {

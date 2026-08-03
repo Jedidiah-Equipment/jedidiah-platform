@@ -7,12 +7,46 @@ import { jobs } from './job.js';
 import { parts } from './part.js';
 import { purchaseOrderLines } from './purchase-order.js';
 
+/**
+ * One production event: N units of a Built Part came off the rack, consuming its components. Its
+ * movements carry the value across (spec §6), so the header is insert-only like the ledger itself —
+ * there is no planned-build entity to amend, you record the build you actually did.
+ */
+export const stockBuilds = pgTable(
+  'stock_build',
+  {
+    actorUserId: text('actor_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'restrict' }),
+    builtPartId: uuid('built_part_id')
+      .notNull()
+      .references(() => parts.id, { onDelete: 'restrict' }),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    id: uuid('id').defaultRandom().primaryKey(),
+    quantity: numeric('quantity', { mode: 'number', precision: 14, scale: 3 }).notNull(),
+  },
+  (table) => [check('stock_build_quantity_positive', sql`${table.quantity} > 0`)],
+);
+
+export const stockBuildRelations = relations(stockBuilds, ({ one }) => ({
+  actor: one(user, {
+    fields: [stockBuilds.actorUserId],
+    references: [user.id],
+  }),
+  builtPart: one(parts, {
+    fields: [stockBuilds.builtPartId],
+    references: [parts.id],
+  }),
+}));
+
 export const stockMovements = pgTable(
   'stock_movement',
   {
     actorUserId: text('actor_user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'restrict' }),
+    // Both halves of a build point at the one event that produced them.
+    buildId: uuid('build_id').references(() => stockBuilds.id, { onDelete: 'restrict' }),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     delta: numeric('delta', { mode: 'number', precision: 14, scale: 3 }).notNull(),
     id: uuid('id').defaultRandom().primaryKey(),
@@ -33,7 +67,7 @@ export const stockMovements = pgTable(
     check('stock_movement_length_mm_positive', sql`${table.lengthMm} IS NULL OR ${table.lengthMm} > 0`),
     check(
       'stock_movement_type_check',
-      sql`${table.movementType} IN ('adjustment', 'revaluation', 'checkout', 'return-to-store', 'receipt')`,
+      sql`${table.movementType} IN ('adjustment', 'revaluation', 'checkout', 'return-to-store', 'receipt', 'build-consume', 'build-produce')`,
     ),
     check(
       'stock_movement_reason_check',
@@ -47,6 +81,7 @@ export const stockMovements = pgTable(
         ${table.movementType} = 'adjustment'
         AND ${table.jobId} IS NULL
         AND ${table.purchaseOrderId} IS NULL
+        AND ${table.buildId} IS NULL
         AND ${table.reason} IS NOT NULL
         AND (${table.reason} = 'opening-balance' OR ${table.note} IS NOT NULL)
         AND (${table.unitCost} IS NULL OR ${table.reason} = 'opening-balance')
@@ -54,6 +89,7 @@ export const stockMovements = pgTable(
         ${table.movementType} = 'revaluation'
         AND ${table.jobId} IS NULL
         AND ${table.purchaseOrderId} IS NULL
+        AND ${table.buildId} IS NULL
         AND ${table.delta} = 0
         AND ${table.unitCost} IS NOT NULL
         AND ${table.reason} IS NULL
@@ -61,21 +97,38 @@ export const stockMovements = pgTable(
         ${table.movementType} = 'checkout'
         AND ${table.jobId} IS NOT NULL
         AND ${table.purchaseOrderId} IS NULL
+        AND ${table.buildId} IS NULL
         AND ${table.delta} < 0
         AND ${table.reason} IS NULL
       ) OR (
         ${table.movementType} = 'return-to-store'
         AND ${table.jobId} IS NOT NULL
         AND ${table.purchaseOrderId} IS NULL
+        AND ${table.buildId} IS NULL
         AND ${table.delta} > 0
         AND ${table.reason} IS NULL
       ) OR (
         ${table.movementType} = 'receipt'
         AND ${table.jobId} IS NULL
         AND ${table.purchaseOrderId} IS NOT NULL
+        AND ${table.buildId} IS NULL
         AND ${table.delta} > 0
         AND ${table.reason} IS NULL
         AND ${table.unitCost} IS NOT NULL
+      ) OR (
+        ${table.movementType} = 'build-consume'
+        AND ${table.jobId} IS NULL
+        AND ${table.purchaseOrderId} IS NULL
+        AND ${table.buildId} IS NOT NULL
+        AND ${table.delta} < 0
+        AND ${table.reason} IS NULL
+      ) OR (
+        ${table.movementType} = 'build-produce'
+        AND ${table.jobId} IS NULL
+        AND ${table.purchaseOrderId} IS NULL
+        AND ${table.buildId} IS NOT NULL
+        AND ${table.delta} > 0
+        AND ${table.reason} IS NULL
       )`,
     ),
     foreignKey({
@@ -86,6 +139,7 @@ export const stockMovements = pgTable(
     index('stock_movement_job_part_created_idx').on(table.jobId, table.partId, table.createdAt, table.id),
     index('stock_movement_purchase_order_part_idx').on(table.purchaseOrderId, table.partId),
     index('stock_movement_part_created_idx').on(table.partId, table.createdAt, table.id),
+    index('stock_movement_build_idx').on(table.buildId),
   ],
 );
 

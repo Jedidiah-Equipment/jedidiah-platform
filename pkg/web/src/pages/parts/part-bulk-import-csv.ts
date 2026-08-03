@@ -247,7 +247,8 @@ function buildRowInput(
     name: getFormattedCell(row, indexes, 'name'),
     standardPurchaseLengthMm: getOptionalIntegerCell(row, indexes, 'standardPurchaseLengthMm'),
     supplierCode: getCell(row, indexes, 'supplierCode'),
-    supplierName: getFormattedCell(row, indexes, 'supplierName'),
+    // A built Part row leaves the Supplier cell blank — it is made in-house and bought from nobody.
+    supplierName: getFormattedCell(row, indexes, 'supplierName') || null,
     unitOfMeasure: getUnitOfMeasureCell(row, indexes),
   };
 }

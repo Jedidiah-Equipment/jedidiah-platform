@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
-import { DateIso } from '../common/date.js';
+import { DateIso, DateOnlyIso } from '../common/date.js';
 import { createCursorQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
+import { JobCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 import { JobListInput } from '../jobs/job.js';
@@ -193,8 +194,22 @@ export const JobStockRow = z.object({
   unitOfMeasure: PartUnitOfMeasure,
 });
 
+/**
+ * The Job facts the stock surfaces need. They ride the stock read rather than a Job read because
+ * `stores` closes Jobs out without holding `job:read`.
+ */
+export type JobStockJob = z.infer<typeof JobStockJob>;
+export const JobStockJob = z.object({
+  cancelledAt: DateIso.nullable(),
+  closedOutAt: DateIso.nullable(),
+  code: JobCode,
+  completedOn: DateOnlyIso.nullable(),
+  displayName: z.string(),
+  id: UUID,
+});
+
 export type JobStockResult = z.infer<typeof JobStockResult>;
-export const JobStockResult = z.object({ items: z.array(JobStockRow) });
+export const JobStockResult = z.object({ items: z.array(JobStockRow), job: JobStockJob });
 
 export type InventoryJobOptionListInput = z.infer<typeof InventoryJobOptionListInput>;
 export const InventoryJobOptionListInput = JobListInput.pick({

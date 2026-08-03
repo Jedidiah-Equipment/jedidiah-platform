@@ -162,6 +162,53 @@ describe('inventory procedure permissions', () => {
   });
 });
 
+describe('close-out queue and close action', () => {
+  test('gates both on inventory:close-out and drives the queue from the close', async ({ context }) => {
+    const stores = context.createCaller(mockSession('stores'));
+    await stores.inventory.postAdjustment({ delta: 4, partId: context.part.id, reason: 'opening-balance' });
+    await stores.inventory.postCheckout({ jobId: context.job.id, partId: context.part.id, quantity: 2 });
+
+    await expect(context.createAnonCaller().inventory.closeOutQueue()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+    await expect(
+      context.createCaller(mockSession('procurement-manager')).inventory.closeOutQueue(),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      context.createCaller(mockSession('sales')).inventory.closeOutJob({ jobId: context.job.id }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    // The Job is still open, so it is neither queued nor closeable.
+    await expect(stores.inventory.closeOutQueue()).resolves.toEqual({ items: [] });
+    await expect(stores.inventory.closeOutJob({ jobId: context.job.id })).rejects.toMatchObject({
+      appCode: 'inventory.job_not_completed',
+      code: 'BAD_REQUEST',
+    });
+
+    await context.db.update(jobs).set({ completedOn: '2026-08-01' }).where(eq(jobs.id, context.job.id));
+
+    await expect(stores.inventory.closeOutQueue()).resolves.toMatchObject({
+      items: [{ code: 'JOB-00001', displayName: 'Inventory repair', drawnPartCount: 1, jobId: context.job.id }],
+    });
+
+    await expect(
+      stores.inventory.closeOutJob({ jobId: context.job.id, note: 'Leftovers returned' }),
+    ).resolves.toMatchObject({ actorUserId: 'test-user-id', jobId: context.job.id, note: 'Leftovers returned' });
+    await expect(stores.inventory.closeOutQueue()).resolves.toEqual({ items: [] });
+    await expect(stores.inventory.closeOutJob({ jobId: context.job.id })).rejects.toMatchObject({
+      appCode: 'inventory.job_already_closed_out',
+      code: 'BAD_REQUEST',
+    });
+    await expect(
+      stores.inventory.postCheckout({ jobId: context.job.id, partId: context.part.id, quantity: 1 }),
+    ).rejects.toMatchObject({ appCode: 'inventory.job_closed_out', code: 'BAD_REQUEST' });
+    await expect(
+      stores.inventory.postReturnToStore({ jobId: context.job.id, partId: context.part.id, quantity: 1 }),
+    ).resolves.toMatchObject({ movement: { movementType: 'return-to-store' } });
+    await expect(stores.inventory.jobStock({ jobId: context.job.id })).resolves.toMatchObject({
+      job: { code: 'JOB-00001', completedOn: '2026-08-01', displayName: 'Inventory repair' },
+    });
+  });
+});
+
 describe('inventory cost projection', () => {
   test('returns the same SOH procedure with costs visible to a cost-reader and null to stores', async ({ context }) => {
     await context.createCaller().inventory.postAdjustment({

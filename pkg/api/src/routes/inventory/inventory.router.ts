@@ -1,7 +1,11 @@
 import {
+  closeOutJob,
   getStockMovementHistory,
+  isJobCloseOutError,
   JobCancelledError,
+  type JobCloseOutError,
   JobNotFoundError,
+  listCloseOutQueue,
   listJobStock,
   listJobs,
   listStockOnHand,
@@ -11,8 +15,11 @@ import {
 } from '@pkg/core';
 import { getJobDisplayName } from '@pkg/domain';
 import {
+  CloseOutJobInput,
+  CloseOutQueueResult,
   InventoryJobOptionListInput,
   InventoryJobOptionListResult,
+  JobCloseOut,
   JobStockInput,
   JobStockResult,
   PostAdjustmentInput,
@@ -99,6 +106,17 @@ export const inventoryRouter = router({
     .output(JobStockResult)
     .query(({ ctx, input }) => mapJobStockMovementErrors(() => listJobStock({ db: ctx.db, jobId: input.jobId }))),
 
+  closeOutQueue: authorizedProcedure('inventory:close-out')
+    .output(CloseOutQueueResult)
+    .query(({ ctx }) => listCloseOutQueue({ db: ctx.db })),
+
+  closeOutJob: authorizedProcedure('inventory:close-out')
+    .input(CloseOutJobInput)
+    .output(JobCloseOut)
+    .mutation(({ ctx, input }) =>
+      mapJobStockMovementErrors(() => closeOutJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
   postAdjustment: authorizedProcedure('inventory:adjust')
     .input(PostAdjustmentInput)
     .output(StockMovement)
@@ -146,9 +164,30 @@ export const inventoryRouter = router({
     }),
 });
 
-/** Job movements add the Job's own failures on top of the shared ledger rules. */
+/**
+ * Job movements and close-out add the Job's own failures on top of the shared ledger rules. Both
+ * carry the close-out vocabulary: a draw against a closed-out Job is refused the same way a second
+ * close is.
+ */
 async function mapJobStockMovementErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapStockMovementErrors(() => mapKnownCoreError(action, isStockMovementJobError, mapStockMovementJobError));
+  return mapStockMovementErrors(() =>
+    mapKnownCoreError(
+      () => mapKnownCoreError(action, isStockMovementJobError, mapStockMovementJobError),
+      isJobCloseOutError,
+      mapJobCloseOutError,
+    ),
+  );
+}
+
+function mapJobCloseOutError(error: JobCloseOutError): CoreErrorMapping<JobCloseOutError['code']> {
+  switch (error.code) {
+    case 'inventory.job_already_closed_out':
+    case 'inventory.job_closed_out':
+    case 'inventory.job_not_completed':
+      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
+    default:
+      return assertNever(error);
+  }
 }
 
 type StockMovementJobError = JobCancelledError | JobNotFoundError;

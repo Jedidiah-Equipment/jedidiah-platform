@@ -161,6 +161,10 @@ export const jobs = pgTable(
     ),
     // The Unit's build state is a correlated lookup of its Jobs, so this FK is read per Unit row.
     index('job_product_unit_id_idx').on(table.productUnitId),
+    // The inventory close-out queue asks only for live completed Jobs, so the index carries only those.
+    index('job_close_out_candidate_idx')
+      .on(table.completedOn)
+      .where(sql`${table.completedOn} IS NOT NULL AND ${table.cancelledAt} IS NULL`),
     uniqueIndex('job_code_unique').on(table.code),
     uniqueIndex('job_quote_id_unique').on(table.quoteId),
   ],

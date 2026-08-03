@@ -1,0 +1,1 @@
+CREATE INDEX "job_close_out_candidate_idx" ON "job" USING btree ("completed_on") WHERE "job"."completed_on" IS NOT NULL AND "job"."cancelled_at" IS NULL;

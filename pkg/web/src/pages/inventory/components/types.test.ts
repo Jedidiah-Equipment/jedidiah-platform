@@ -8,6 +8,7 @@ import {
   stockAdjustmentValidator,
   stockJobMovementValidator,
   toAdjustmentInput,
+  toCloseOutJobInput,
   toJobMovementInput,
   toRevaluationInput,
   toStockPartOption,
@@ -158,5 +159,20 @@ describe('Part option lists', () => {
   it('excludes periodic Parts from Job movements, which they never record', () => {
     expect(perpetualPartOptions([stockRow({ stockTrackingMode: 'periodic' })])).toEqual([]);
     expect(perpetualPartOptions([stockRow()])).toEqual([linear]);
+  });
+});
+
+describe('toCloseOutJobInput', () => {
+  const jobId = '00000000-0000-4000-8000-000000000001';
+
+  it('drops an empty or whitespace-only note rather than storing a blank one', () => {
+    expect(toCloseOutJobInput(jobId, { note: '   ' })).toEqual({ jobId, note: null });
+  });
+
+  it('trims a note the closer actually wrote', () => {
+    expect(toCloseOutJobInput(jobId, { note: '  Two bars back in bin A  ' })).toEqual({
+      jobId,
+      note: 'Two bars back in bin A',
+    });
   });
 });

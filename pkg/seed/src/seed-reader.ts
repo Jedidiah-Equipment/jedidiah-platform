@@ -1,4 +1,5 @@
-import { access, mkdir, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { access, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import './load-read-env.js';
 import { createDatabaseClient, type Db } from '@pkg/db';
@@ -162,7 +163,17 @@ export async function downloadSnapshotObjectIfMissing(
   }
 
   await mkdir(new URL('.', destination), { recursive: true });
-  await writeFile(destination, bytes);
+  const temporaryDestination = new URL(`.${randomUUID()}.tmp`, new URL('.', destination));
+
+  // Keep the temporary file beside its destination so rename is atomic and interrupted writes never
+  // become cache hits on a later seed read.
+  try {
+    await writeFile(temporaryDestination, bytes);
+    await rename(temporaryDestination, destination);
+  } finally {
+    await rm(temporaryDestination, { force: true });
+  }
+
   return 'downloaded';
 }
 

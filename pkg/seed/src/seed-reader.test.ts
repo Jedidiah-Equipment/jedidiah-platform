@@ -62,4 +62,18 @@ describe('downloadSnapshotObjectIfMissing', () => {
       await rm(directory, { recursive: true });
     }
   });
+
+  it('leaves the destination absent when the remote object is missing', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'seed-reader-'));
+    const destination = pathToFileURL(path.join(directory, 'nested', 'image.png'));
+    const download = vi.fn(async () => null);
+
+    try {
+      await expect(downloadSnapshotObjectIfMissing(destination, download)).resolves.toBe('missing');
+      expect(download).toHaveBeenCalledOnce();
+      await expect(readFile(destination)).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      await rm(directory, { recursive: true });
+    }
+  });
 });

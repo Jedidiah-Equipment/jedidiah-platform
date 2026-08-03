@@ -136,11 +136,18 @@ function toPurchaseOrderView(purchaseOrder: PurchaseOrder, access: InventoryCost
   };
 }
 
+/** Editing an order reaches Jobs, since a draft carries Job links. */
 async function mapPurchaseOrderErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapCoreErrors(action, purchaseOrderErrorFamily, purchaseOrderJobErrorFamily);
 }
 
-/** A receipt fails on either side of its seam: the order and line it attaches to, or the ledger rules. */
+/**
+ * A receipt fails on either side of its seam: the order and line it attaches to, or the ledger rules.
+ *
+ * Deliberately *not* the Job family the rest of this router carries. `postReceipt` never reaches a
+ * Job — stock arrives against an order, and which Jobs that order was raised for has nothing to do
+ * with what turned up at the dock — so listing it here would claim a failure that cannot happen.
+ */
 async function mapReceiptErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapCoreErrors(action, purchaseOrderErrorFamily, stockMovementErrorFamily);
 }

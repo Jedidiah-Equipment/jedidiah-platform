@@ -29,6 +29,7 @@ const test = createTester(async ({ db }) => {
 
   // The assembly consumes 4 bolts and 1 cylinder per unit, plus raw plate that posts nothing.
   await savePartBom({
+    actorUserId,
     db,
     input: {
       lines: [
@@ -159,6 +160,22 @@ describe('postBuild', () => {
     expect(onHand.items.find((row) => row.partId === context.parts.cylinder.id)?.quantity).toBe(-30);
   });
 
+  test('flags a BOM component left off the list entirely', async ({ context }) => {
+    const result = await postBuild({
+      actorUserId,
+      db: context.db,
+      input: {
+        builtPartId: context.parts.assembly.id,
+        consumption: [{ componentPartId: context.parts.bolt.id, lengthMm: null, quantity: 4 }],
+        quantity: 1,
+      },
+    });
+
+    // The cylinder never reached the loop, but consuming none of it still deviates from the BOM.
+    // The plate does not: raw material posts nothing, so leaving it off is what the spec expects.
+    expect(result.warnings).toEqual([{ codes: ['bom-deviation'], componentPartId: context.parts.cylinder.id }]);
+  });
+
   test('reads a trivial build as having no cost yet rather than as free', async ({ context }) => {
     const result = await postBuild({
       actorUserId,
@@ -227,6 +244,7 @@ describe('savePartBom', () => {
   test('refuses a BOM on a Part that is bought rather than built', async ({ context }) => {
     await expect(
       savePartBom({
+        actorUserId,
         db: context.db,
         input: { lines: [{ componentPartId: context.parts.cylinder.id, quantity: 1 }], partId: context.parts.bolt.id },
       }),
@@ -234,10 +252,15 @@ describe('savePartBom', () => {
   });
 
   test('rewrites the whole BOM, and an empty one is the trivial build', async ({ context }) => {
-    const emptied = await savePartBom({ db: context.db, input: { lines: [], partId: context.parts.assembly.id } });
+    const emptied = await savePartBom({
+      actorUserId,
+      db: context.db,
+      input: { lines: [], partId: context.parts.assembly.id },
+    });
     expect(emptied.lines).toEqual([]);
 
     const rewritten = await savePartBom({
+      actorUserId,
       db: context.db,
       input: { lines: [{ componentPartId: context.parts.bolt.id, quantity: 7 }], partId: context.parts.assembly.id },
     });

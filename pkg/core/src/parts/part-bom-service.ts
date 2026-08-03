@@ -1,8 +1,9 @@
 import { type DatabaseTransaction, type Db, partBom, parts } from '@pkg/db';
 import { findBomCycle } from '@pkg/domain';
-import type { PartBomResult, SavePartBomInput, UUID } from '@pkg/schema';
+import type { AuditChanges, AuthId, PartBomResult, SavePartBomInput, UUID } from '@pkg/schema';
 import { PartBomResult as PartBomResultSchema, unitClassFor } from '@pkg/schema';
-import { asc, eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { recordAuditUpdate } from '../audit/audit-service.js';
 import {
   PartBomComponentNotFoundError,
   PartBomCycleError,
@@ -10,8 +11,12 @@ import {
   PartNotBuiltError,
 } from './part-bom-errors.js';
 import { PartNotFoundError } from './part-errors.js';
+import { partAuditDescriptor } from './part-service.js';
 
 type PartBomDb = DatabaseTransaction | Db;
+
+/** Arbitrary but fixed: every BOM save serializes against this one key. */
+const BOM_GRAPH_LOCK_KEY = 1058;
 
 export async function getPartBom({ db, partId }: { db: PartBomDb; partId: UUID }): Promise<PartBomResult> {
   const component = parts;
@@ -37,8 +42,21 @@ export async function getPartBom({ db, partId }: { db: PartBomDb; partId: UUID }
  * Rewrites a built Part's whole BOM. An empty list is legitimate — that is the trivial build of a
  * Part whose components are all raw material, which posts nothing (spec §6).
  */
-export async function savePartBom({ db, input }: { db: Db; input: SavePartBomInput }): Promise<PartBomResult> {
+export async function savePartBom({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: SavePartBomInput;
+}): Promise<PartBomResult> {
   return db.transaction(async (tx) => {
+    // The cycle check reads the whole graph, so locking only this parent would let two saves for
+    // different parents each validate against the old graph and together close a loop. BOM writes
+    // are rare and the catalog is small, so they take one transaction-scoped lock between them.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${BOM_GRAPH_LOCK_KEY})`);
+
     const [part] = await tx
       .select({ id: parts.id, isInternallyFabricated: parts.isInternallyFabricated })
       .from(parts)
@@ -49,6 +67,11 @@ export async function savePartBom({ db, input }: { db: Db; input: SavePartBomInp
 
     await assertComponentsAreStockable({ db: tx, lines: input.lines });
     await assertNoCycle({ db: tx, input });
+
+    // A BOM change moves what every future build consumes and what it costs, so it is attributed
+    // like any other catalog edit. The rows are a child collection, not an entity `mutateEntity`
+    // can diff, so this takes the documented explicit audit path.
+    const before = await getPartBom({ db: tx, partId: input.partId });
 
     await tx.delete(partBom).where(eq(partBom.parentPartId, input.partId));
     if (input.lines.length > 0) {
@@ -61,8 +84,28 @@ export async function savePartBom({ db, input }: { db: Db; input: SavePartBomInp
       );
     }
 
-    return getPartBom({ db: tx, partId: input.partId });
+    const after = await getPartBom({ db: tx, partId: input.partId });
+    const changes = diffBomLines(before.lines, after.lines);
+
+    if (changes !== null) {
+      const [row] = await tx.select().from(parts).where(eq(parts.id, input.partId));
+      if (row) {
+        await recordAuditUpdate({ actorUserId, after: row, changes, db: tx, descriptor: partAuditDescriptor });
+      }
+    }
+
+    return after;
   });
+}
+
+/** One `bom` change carrying the whole list either side, since the lines are rewritten wholesale. */
+function diffBomLines(before: PartBomResult['lines'], after: PartBomResult['lines']): AuditChanges | null {
+  const summarise = (lines: PartBomResult['lines']) =>
+    lines.map((line) => `${line.componentCode} x ${line.quantity}`).join(', ');
+  const from = summarise(before);
+  const to = summarise(after);
+
+  return from === to ? null : { bom: { from, to } };
 }
 
 async function assertComponentsAreStockable({

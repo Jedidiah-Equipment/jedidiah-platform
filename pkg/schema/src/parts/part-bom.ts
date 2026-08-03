@@ -27,7 +27,23 @@ export const SavePartBomInput = z
     lines: z.array(PartBomLineInput),
     partId: UUID,
   })
-  .strict();
+  .strict()
+  .superRefine((input, context) => {
+    // The table's primary key is (parent, component), so a repeated component is a unique violation
+    // rather than a second line. Caught here it reads as a field error, not an internal failure.
+    const seen = new Set<string>();
+
+    for (const [index, line] of input.lines.entries()) {
+      if (seen.has(line.componentPartId)) {
+        context.addIssue({
+          code: 'custom',
+          message: 'This component is already on the Bill of Materials',
+          path: ['lines', index, 'componentPartId'],
+        });
+      }
+      seen.add(line.componentPartId);
+    }
+  });
 
 export type PartBomLine = z.infer<typeof PartBomLine>;
 export const PartBomLine = z.object({

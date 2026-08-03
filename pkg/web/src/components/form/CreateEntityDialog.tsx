@@ -15,6 +15,11 @@ import {
 import { useAppForm } from './hooks/use-app-form.js';
 
 type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> = {
+  /**
+   * Blocks submit for state the form schema cannot see — a failed dependency, or dynamic rows held
+   * outside the form. `onSubmit` is fire-and-forget, so a throw inside `onCreate` would be silent.
+   */
+  canSubmit?: boolean;
   children: (form: CreateEntityFormApi<TValues>) => React.ReactNode;
   defaultValues: TValues;
   description?: React.ReactNode;
@@ -46,6 +51,7 @@ type CreateEntityFormApi<TValues extends Record<string, unknown>> = ReturnType<
 >;
 
 export function CreateEntityDialog<TValues extends Record<string, unknown>, TResult>({
+  canSubmit = true,
   children,
   defaultValues,
   description,
@@ -95,7 +101,7 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
                 <DialogClose render={<Button disabled={isSubmitting} type="button" variant="outline" />}>
                   Cancel
                 </DialogClose>
-                <Button disabled={isSubmitting} type="submit">
+                <Button disabled={isSubmitting || !canSubmit} type="submit">
                   {isSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
                   {label}
                 </Button>

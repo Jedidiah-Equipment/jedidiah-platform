@@ -71,7 +71,7 @@ export async function postBuild({
         sumBucketOnHand(tx, line.componentPartId, line.lengthMm),
       ]);
       const codes = deriveBuildWarnings({
-        expectedQuantity: (expectedByComponent.get(line.componentPartId) ?? 0) * input.quantity,
+        expectedQuantity: (expectedByComponent.get(line.componentPartId)?.quantity ?? 0) * input.quantity,
         quantity: line.quantity,
         quantityOnHand,
       });
@@ -90,6 +90,17 @@ export async function postBuild({
       // component's average by its length — so the value is `quantity × unitCost`, exactly what the
       // consume row itself posts. Scaling by length again here would count it twice.
       consumed.push({ quantity: line.quantity, unitCost });
+    }
+
+    // A BOM component the builder left off the list entirely consumed none of what the BOM asked
+    // for, which is as much a deviation as an edited quantity — and the loop above never sees it.
+    for (const [componentPartId, expected] of expectedByComponent) {
+      if (expected.isInformational) continue;
+
+      const posted = input.consumption.some((line) => line.componentPartId === componentPartId);
+      if (!posted && expected.quantity * input.quantity > 0) {
+        warnings.push({ codes: ['bom-deviation'], componentPartId });
+      }
     }
 
     const producedUnitCost = deriveBuildProducedUnitCost({ consumed, quantity: input.quantity });
@@ -141,14 +152,30 @@ async function loadBuildComponents(tx: DatabaseTransaction, input: PostBuildInpu
   return new Map(rows.map((row) => [row.id, row]));
 }
 
-/** The BOM quantity per unit, which the posted consumption is compared against for deviation. */
-async function loadExpectedConsumption(tx: DatabaseTransaction, input: PostBuildInput): Promise<Map<string, number>> {
+/**
+ * The BOM quantity per unit, which the posted consumption is compared against for deviation. Raw
+ * material is carried as informational: its line posts nothing, so leaving it off is not a deviation.
+ */
+async function loadExpectedConsumption(
+  tx: DatabaseTransaction,
+  input: PostBuildInput,
+): Promise<Map<string, { isInformational: boolean; quantity: number }>> {
   const rows = await tx
-    .select({ componentPartId: partBom.componentPartId, quantity: partBom.quantity })
+    .select({
+      componentPartId: partBom.componentPartId,
+      quantity: partBom.quantity,
+      stockTrackingMode: parts.stockTrackingMode,
+    })
     .from(partBom)
+    .innerJoin(parts, eq(parts.id, partBom.componentPartId))
     .where(eq(partBom.parentPartId, input.builtPartId));
 
-  return new Map(rows.map((row) => [row.componentPartId, row.quantity]));
+  return new Map(
+    rows.map((row) => [
+      row.componentPartId,
+      { isInformational: row.stockTrackingMode === 'periodic', quantity: row.quantity },
+    ]),
+  );
 }
 
 async function sumBucketOnHand(tx: DatabaseTransaction, partId: UUID, lengthMm: number | null): Promise<number> {

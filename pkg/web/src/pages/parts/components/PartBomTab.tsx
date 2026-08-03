@@ -1,4 +1,5 @@
 import type { PartBomLine, UUID } from '@pkg/schema';
+import { PartBomQuantity } from '@pkg/schema';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -139,8 +140,9 @@ function toDraftLine(line: PartBomLine): DraftLine {
   return { componentPartId: line.componentPartId, key: line.componentPartId, quantity: String(line.quantity) };
 }
 
+/** The quantity rule lives in `@pkg/schema`; re-stating it here is how the two drift apart. */
 function isCompleteLine(line: DraftLine): boolean {
-  return line.componentPartId !== '' && Number.isFinite(Number(line.quantity)) && Number(line.quantity) > 0;
+  return line.componentPartId !== '' && PartBomQuantity.safeParse(Number(line.quantity)).success;
 }
 
 function toSaveLine(line: DraftLine) {

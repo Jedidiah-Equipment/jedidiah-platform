@@ -61,7 +61,9 @@ export const partsRouter = router({
   saveBom: authorizedProcedure('part:update')
     .input(SavePartBomInput)
     .output(PartBomResult)
-    .mutation(({ ctx, input }) => mapPartErrors(() => savePartBom({ db: ctx.db, input }))),
+    .mutation(({ ctx, input }) =>
+      mapPartErrors(() => savePartBom({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
 
   bulkImport: authorizedProcedure('part:update')
     .input(PartBulkImportInput)

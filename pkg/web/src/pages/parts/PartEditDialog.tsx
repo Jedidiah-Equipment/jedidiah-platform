@@ -69,10 +69,9 @@ export const PartEditDialog: React.FC<PartEditDialogProps> = ({ onClose, part, s
                 key={part.id}
                 onSubmit={(value) =>
                   updatePartMutation.mutateAsync({
-                    ...toPartInput({
-                      ...value,
-                      supplierId: supplier?.id ?? '',
-                    }),
+                    // Only a dialog that really is supplier-scoped pins the Supplier. A built Part
+                    // has none, and forcing '' here would block converting it back to a bought one.
+                    ...toPartInput(supplier ? { ...value, supplierId: supplier.id } : value),
                     id: part.id,
                   })
                 }

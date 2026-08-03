@@ -2,7 +2,7 @@ import { deriveBuildConsumption, deriveBuildWarnings } from '@pkg/domain';
 import type { StockMovementWarningCode, StockOnHandRow } from '@pkg/schema';
 import { PostBuildInput } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
@@ -46,6 +46,7 @@ export function StockBuildDialog({
   const showMutationError = useApiMutationErrorToast();
   const [builtPartId, setBuiltPartId] = useState(buildableParts[0]?.partId ?? '');
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const acknowledgedWarnings = useRef<readonly StockMovementWarningCode[]>([]);
   const builtPart = buildableParts.find((part) => part.partId === builtPartId);
   const bomQuery = useQuery(trpc.parts.bom.queryOptions({ partId: builtPartId }, { enabled: builtPartId !== '' }));
 
@@ -63,6 +64,24 @@ export function StockBuildDialog({
       onError: (error) => showMutationError(error, 'Unable to post this build.'),
     }),
   );
+
+  // A line the builder zeroes means "none of this one left the rack", which is a dropped line
+  // rather than a zero-quantity movement the ledger would refuse.
+  function postedConsumptionFor(quantity: number) {
+    return consumptionFor(quantity)
+      .map((line) => ({
+        componentPartId: line.componentPartId,
+        lengthMm: line.lengthMm,
+        quantity: Number(line.quantity),
+      }))
+      .filter((line) => line.quantity > 0);
+  }
+
+  function hasUnreadableQuantity(quantity: number): boolean {
+    return consumptionFor(quantity).some(
+      (line) => !Number.isFinite(Number(line.quantity)) || Number(line.quantity) < 0,
+    );
+  }
 
   function consumptionFor(quantity: number): ConsumptionLine[] {
     return deriveBuildConsumption({ bomLines, quantity }).map((line) => ({
@@ -96,19 +115,18 @@ export function StockBuildDialog({
 
   return (
     <CreateEntityDialog<StockBuildFormValues, { warnings: Array<{ codes: StockMovementWarningCode[] }> }>
+      canSubmit={builtPartId !== '' && !bomQuery.error && !bomQuery.isPending && !hasUnreadableQuantity(1)}
       defaultValues={{ quantity: 1 }}
       description="Record what came off the rack, and what it took to make it."
       onCreate={(values) => {
-        if (builtPartId === '') throw new Error('Select a Part to build');
+        // The prompt already showed what the dialog could see, judged at the size actually built;
+        // only what this snapshot missed is worth raising again once the ledger has ruled.
+        acknowledgedWarnings.current = warningsFor(values.quantity);
 
         return mutation.mutateAsync(
           PostBuildInput.parse({
             builtPartId,
-            consumption: consumptionFor(values.quantity).map((line) => ({
-              componentPartId: line.componentPartId,
-              lengthMm: line.lengthMm,
-              quantity: Number(line.quantity),
-            })),
+            consumption: postedConsumptionFor(values.quantity),
             quantity: values.quantity,
           }),
         );
@@ -117,10 +135,8 @@ export function StockBuildDialog({
         await invalidateInventory();
         onOpenChange(false);
         toast.success('Build posted');
-        // The prompt already showed what the dialog could see; only raise what its snapshot missed.
-        const raised = new Set(warningsFor(1));
         for (const code of new Set(result.warnings.flatMap((warning) => warning.codes))) {
-          if (!raised.has(code)) toast.warning(warningMessageFor(code));
+          if (!acknowledgedWarnings.current.includes(code)) toast.warning(warningMessageFor(code));
         }
       }}
       onOpenChange={onOpenChange}
@@ -169,9 +185,21 @@ export function StockBuildDialog({
                   {bomQuery.isPending ? (
                     <p className="text-muted-foreground text-sm">Loading the Bill of Materials...</p>
                   ) : null}
-                  {consumption.length === 0 && !bomQuery.isPending ? (
+                  {/* An unknown BOM is indistinguishable from an empty one once it reaches the
+                      server, and the ledger row it would write cannot be edited or deleted. */}
+                  {bomQuery.error ? (
+                    <p className="text-destructive text-sm">
+                      Unable to load the Bill of Materials, so this build cannot be posted.
+                    </p>
+                  ) : null}
+                  {consumption.length === 0 && !bomQuery.isPending && !bomQuery.error ? (
                     <p className="text-muted-foreground text-sm">
                       No components to consume. This Part is made from raw material alone.
+                    </p>
+                  ) : null}
+                  {hasUnreadableQuantity(quantity) ? (
+                    <p className="text-destructive text-sm">
+                      Enter a quantity of zero or more for every component. Zero drops the line.
                     </p>
                   ) : null}
                   {consumption.map((line) => (

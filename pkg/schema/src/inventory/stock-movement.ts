@@ -10,7 +10,7 @@ import { PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure 
 import { declareInventoryCostFields, InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
 
 export type StockMovementType = z.infer<typeof StockMovementType>;
-export const StockMovementType = z.enum(['adjustment', 'revaluation', 'checkout', 'return-to-store']);
+export const StockMovementType = z.enum(['adjustment', 'revaluation', 'checkout', 'return-to-store', 'receipt']);
 
 /** The movement types a Job draws and returns through; the ledger's other types are stock-only. */
 export type JobStockMovementType = z.infer<typeof JobStockMovementType>;
@@ -81,6 +81,22 @@ export const PostAdjustmentInput = MovementTargetInput.extend({
     }
   });
 
+/**
+ * What the dock confirms: how much arrived, and for linear stock which length it came in. `unitCost`
+ * is an optional correction only a cost reader may send — a price-blind receiver posts the PO line's
+ * own price by leaving it null, and `lengthMm` defaults to the Part's standard purchase length.
+ */
+export type PostReceiptInput = z.infer<typeof PostReceiptInput>;
+export const PostReceiptInput = z
+  .object({
+    lengthMm: StockMovementLengthMm.nullable().default(null),
+    partId: UUID,
+    purchaseOrderId: UUID,
+    quantity: StockMovementQuantity,
+    unitCost: InventoryUnitCost.nullable().default(null),
+  })
+  .strict();
+
 export type PostRevaluationInput = z.infer<typeof PostRevaluationInput>;
 export const PostRevaluationInput = z
   .object({
@@ -101,6 +117,7 @@ export const StockMovement = z.object({
   movementType: StockMovementType,
   note: nullableTrimmedText(),
   partId: UUID,
+  purchaseOrderId: UUID.nullable(),
   reason: StockAdjustmentReason.nullable(),
   unitCost: InventoryCost,
 });
@@ -108,7 +125,12 @@ export const StockMovement = z.object({
 export const StockMovementCostFields = declareInventoryCostFields(StockMovement, 'unitCost');
 
 export type StockMovementWarningCode = z.infer<typeof StockMovementWarningCode>;
-export const StockMovementWarningCode = z.enum(['exceeds-cfo', 'exceeds-drawn', 'negative-stock-on-hand']);
+export const StockMovementWarningCode = z.enum([
+  'exceeds-cfo',
+  'exceeds-drawn',
+  'exceeds-ordered',
+  'negative-stock-on-hand',
+]);
 
 export type StockMovementPostResult = z.infer<typeof StockMovementPostResult>;
 export const StockMovementPostResult = z.object({

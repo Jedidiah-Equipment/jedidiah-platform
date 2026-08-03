@@ -37,3 +37,23 @@ export function deriveStockMovementWarnings({
 
   return warnings;
 }
+
+/**
+ * Over-receipt warns and posts (spec §4) — the supplier sent what it sent, and the ledger has to
+ * say so. Judged once here so the receiving screen's confirm prompt and the post agree; refused-at-
+ * dock deliveries never reach this because nothing is posted for them at all.
+ */
+export function deriveReceiptWarnings({
+  orderedQuantity,
+  quantity,
+  receivedQuantity,
+}: {
+  /** The line's ordered quantity. */
+  orderedQuantity: number;
+  /** The quantity being received now. */
+  quantity: number;
+  /** Cumulative receipts already posted against the line. */
+  receivedQuantity: number;
+}): StockMovementWarningCode[] {
+  return receivedQuantity + quantity > orderedQuantity ? ['exceeds-ordered'] : [];
+}

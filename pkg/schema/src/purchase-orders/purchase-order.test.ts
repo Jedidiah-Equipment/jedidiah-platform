@@ -17,6 +17,7 @@ const line = {
   partId: ID_A,
   partName: 'Hydraulic pipe',
   quantity: 2,
+  receivedQuantity: 0,
   standardPurchaseLengthMm: 6_000,
   unitOfMeasure: 'mm',
 } as const;

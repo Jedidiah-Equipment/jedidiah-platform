@@ -18,6 +18,7 @@ const result = StockMovementHistoryResult.parse({
       movementValue: 250,
       note: null,
       partId: '00000000-0000-4000-8000-000000000001',
+      purchaseOrderId: null,
       reason: 'opening-balance',
       runningBalance: 10,
       unitCost: 25,
@@ -34,6 +35,7 @@ const result = StockMovementHistoryResult.parse({
       movementValue: null,
       note: 'Supplier repriced',
       partId: '00000000-0000-4000-8000-000000000001',
+      purchaseOrderId: null,
       reason: null,
       runningBalance: 10,
       unitCost: 30,
@@ -50,9 +52,27 @@ const result = StockMovementHistoryResult.parse({
       movementValue: -30,
       note: null,
       partId: '00000000-0000-4000-8000-000000000001',
+      purchaseOrderId: null,
       reason: null,
       runningBalance: 9,
       unitCost: 30,
+    },
+    {
+      actorName: 'Test User',
+      actorUserId: 'test-user-id',
+      createdAt: '2026-08-01T11:00:00.000Z',
+      delta: 4,
+      id: '00000000-0000-4000-8000-000000000013',
+      jobId: null,
+      lengthMm: null,
+      movementType: 'receipt',
+      movementValue: 100,
+      note: null,
+      partId: '00000000-0000-4000-8000-000000000001',
+      purchaseOrderId: '00000000-0000-4000-8000-000000000098',
+      reason: null,
+      runningBalance: 13,
+      unitCost: 25,
     },
   ],
   part: {
@@ -72,6 +92,7 @@ describe('StockMovementHistoryTable', () => {
     expect(html).toContain('Opening balance');
     expect(html).toContain('Revaluation');
     expect(html).toContain('Checkout');
+    expect(html).toContain('Receipt');
     expect(html).toContain('10 pc');
     expect(html).toContain('Test User');
     expect(html).toContain('Supplier repriced');

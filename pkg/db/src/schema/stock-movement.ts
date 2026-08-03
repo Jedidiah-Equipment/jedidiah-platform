@@ -24,7 +24,7 @@ export const stockMovements = pgTable(
     partId: uuid('part_id')
       .notNull()
       .references(() => parts.id, { onDelete: 'restrict' }),
-    // Reserved for receipt rows added by #1054; this is the immutable PO-line identity they attach to.
+    // A receipt attaches to exactly one PO line through the line's own composite key.
     purchaseOrderId: uuid('purchase_order_id'),
     reason: text('reason').$type<StockAdjustmentReason>(),
     unitCost: numeric('unit_cost', { mode: 'number', precision: 18, scale: 6 }),
@@ -33,7 +33,7 @@ export const stockMovements = pgTable(
     check('stock_movement_length_mm_positive', sql`${table.lengthMm} IS NULL OR ${table.lengthMm} > 0`),
     check(
       'stock_movement_type_check',
-      sql`${table.movementType} IN ('adjustment', 'revaluation', 'checkout', 'return-to-store')`,
+      sql`${table.movementType} IN ('adjustment', 'revaluation', 'checkout', 'return-to-store', 'receipt')`,
     ),
     check(
       'stock_movement_reason_check',
@@ -69,6 +69,13 @@ export const stockMovements = pgTable(
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.delta} > 0
         AND ${table.reason} IS NULL
+      ) OR (
+        ${table.movementType} = 'receipt'
+        AND ${table.jobId} IS NULL
+        AND ${table.purchaseOrderId} IS NOT NULL
+        AND ${table.delta} > 0
+        AND ${table.reason} IS NULL
+        AND ${table.unitCost} IS NOT NULL
       )`,
     ),
     foreignKey({
@@ -77,6 +84,7 @@ export const stockMovements = pgTable(
       name: 'stock_movement_purchase_order_line_fk',
     }).onDelete('restrict'),
     index('stock_movement_job_part_created_idx').on(table.jobId, table.partId, table.createdAt, table.id),
+    index('stock_movement_purchase_order_part_idx').on(table.purchaseOrderId, table.partId),
     index('stock_movement_part_created_idx').on(table.partId, table.createdAt, table.id),
   ],
 );

@@ -2,11 +2,15 @@ import {
   DateOnlyIso,
   DateOnlyIsoString,
   hasUniquePartIds,
+  PostReceiptInput,
   PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
   type PurchaseOrderCreateInput,
   PurchaseOrderLineInput,
+  type PurchaseOrderLineView,
   type PurchaseOrderSaveDraftInput,
   type PurchaseOrderView,
+  StockMovementLengthMm,
+  StockMovementQuantity,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
@@ -65,4 +69,45 @@ export function toPurchaseOrderDraftInput(
 
 function toExpectedDeliveryDate(value: string) {
   return value ? DateOnlyIso.parse(value) : null;
+}
+
+/**
+ * What the dock keys in. `NumberField` holds an empty control as `NaN`, so the optional length is
+ * its schema leaf or `NaN`; every other rule stays owned by `@pkg/schema`.
+ */
+export type PurchaseOrderReceiveFormValues = z.infer<typeof PurchaseOrderReceiveFormValues>;
+export const PurchaseOrderReceiveFormValues = z.object({
+  lengthMm: z.union([z.nan(), StockMovementLengthMm]),
+  quantity: StockMovementQuantity,
+});
+
+/** The outstanding quantity a line is still waiting on, floored at zero once it is over-delivered. */
+export function outstandingQuantity(line: Pick<PurchaseOrderLineView, 'quantity' | 'receivedQuantity'>): number {
+  return Math.max(0, line.quantity - line.receivedQuantity);
+}
+
+export function isLinearLine(line: Pick<PurchaseOrderLineView, 'unitOfMeasure'>): boolean {
+  return line.unitOfMeasure === 'mm';
+}
+
+/**
+ * A blank length on a linear line means "the length we buy it in", which the ledger fills from the
+ * Part's standard purchase length — so the dock only keys one when the delivery is not that.
+ */
+export function toReceiptInput({
+  line,
+  purchaseOrderId,
+  values,
+}: {
+  line: Pick<PurchaseOrderLineView, 'partId' | 'unitOfMeasure'>;
+  purchaseOrderId: PurchaseOrderView['id'];
+  values: PurchaseOrderReceiveFormValues;
+}) {
+  return PostReceiptInput.parse({
+    lengthMm: isLinearLine(line) && !Number.isNaN(values.lengthMm) ? values.lengthMm : null,
+    partId: line.partId,
+    purchaseOrderId,
+    quantity: values.quantity,
+    unitCost: null,
+  });
 }

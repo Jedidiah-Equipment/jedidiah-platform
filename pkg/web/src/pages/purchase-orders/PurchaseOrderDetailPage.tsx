@@ -6,7 +6,7 @@ import {
   type PurchaseOrderView,
   type UUID,
 } from '@pkg/schema';
-import { IconBan, IconDownload, IconEye, IconPlus, IconSend, IconTrash } from '@tabler/icons-react';
+import { IconBan, IconDownload, IconEye, IconFlagCheck, IconPlus, IconSend, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useState } from 'react';
@@ -25,6 +25,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from '../jobs/components/all-jobs-input.js';
+import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
 import {
   type PurchaseOrderDraftFormValues,
@@ -62,7 +63,13 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ p
   const canEdit =
     purchaseOrder.status === 'draft' && canReadCosts && hasPermission(accessQuery.data, 'purchase_order:create');
   const canSend = purchaseOrder.status === 'draft' && hasPermission(accessQuery.data, 'purchase_order:send');
-  const canCancel = purchaseOrder.status !== 'cancelled' && hasPermission(accessQuery.data, 'purchase_order:close');
+  // Receipts freeze cancellation server-side, so only an order nothing has arrived against offers it.
+  const canCancel =
+    (purchaseOrder.derivedStatus === 'draft' || purchaseOrder.derivedStatus === 'sent') &&
+    hasPermission(accessQuery.data, 'purchase_order:close');
+  const canCloseShort =
+    purchaseOrder.derivedStatus === 'partially-received' && hasPermission(accessQuery.data, 'purchase_order:close');
+  const canReceive = purchaseOrder.status === 'sent' && hasPermission(accessQuery.data, 'purchase_order:receive');
   const { invalidatePurchaseOrders, invalidateJobs } = useQueryInvalidation();
   const [isLifecycleActionPending, setIsLifecycleActionPending] = useState(false);
 
@@ -100,9 +107,10 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ p
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PurchaseOrderStatusBadge status={purchaseOrder.status} />
+        <PurchaseOrderStatusBadge status={purchaseOrder.derivedStatus} />
         <PurchaseOrderActions
           canCancel={canCancel}
+          canCloseShort={canCloseShort}
           canEdit={canEdit}
           canReadCosts={canReadCosts}
           canSend={canSend}
@@ -139,6 +147,7 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ p
       ) : (
         <>
           <ReadOnlyDetailsCard purchaseOrder={purchaseOrder} />
+          {canReceive ? <PurchaseOrderReceivingCard purchaseOrder={purchaseOrder} /> : null}
           <ReadOnlyLinesCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
           <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
         </>
@@ -168,13 +177,14 @@ const SupplierField: React.FC<{ commit: () => void; form: DraftForm }> = ({ comm
 
 const PurchaseOrderActions: React.FC<{
   canCancel: boolean;
+  canCloseShort: boolean;
   canEdit: boolean;
   canReadCosts: boolean;
   canSend: boolean;
   isPending: boolean;
   purchaseOrder: PurchaseOrderView;
   runAfterSave: (action: () => Promise<void>, failureMessage: string) => Promise<boolean>;
-}> = ({ canCancel, canEdit, canReadCosts, canSend, isPending, purchaseOrder, runAfterSave }) => {
+}> = ({ canCancel, canCloseShort, canEdit, canReadCosts, canSend, isPending, purchaseOrder, runAfterSave }) => {
   const trpc = useTRPC();
   const { invalidatePurchaseOrders } = useQueryInvalidation();
   const markSentMutation = useMutation(
@@ -193,7 +203,15 @@ const PurchaseOrderActions: React.FC<{
       },
     }),
   );
-  const disabled = isPending || markSentMutation.isPending || cancelMutation.isPending;
+  const closeShortMutation = useMutation(
+    trpc.purchaseOrders.closeShort.mutationOptions({
+      onSuccess: async () => {
+        await invalidatePurchaseOrders();
+        toast.success('Purchase Order closed short');
+      },
+    }),
+  );
+  const disabled = isPending || markSentMutation.isPending || cancelMutation.isPending || closeShortMutation.isPending;
 
   const handlePreview = () => {
     // Reserve the tab during the click gesture so browsers do not treat the post-save navigation as a popup.
@@ -238,6 +256,20 @@ const PurchaseOrderActions: React.FC<{
           }}
         >
           <IconSend data-icon="inline-start" /> Mark sent
+        </Button>
+      ) : null}
+      {canCloseShort ? (
+        <Button
+          disabled={disabled}
+          onClick={() => {
+            if (!window.confirm(`Close ${purchaseOrder.code} short? Its outstanding quantities will be released.`)) {
+              return;
+            }
+            void closeShortMutation.mutateAsync({ id: purchaseOrder.id }).catch(() => undefined);
+          }}
+          variant="outline"
+        >
+          <IconFlagCheck data-icon="inline-start" /> Close short
         </Button>
       ) : null}
       {canCancel ? (
@@ -445,6 +477,7 @@ const ReadOnlyLinesCard: React.FC<{ canReadCosts: boolean; purchaseOrder: Purcha
               <TableHead>Part</TableHead>
               <TableHead>Unit</TableHead>
               <TableHead>Quantity</TableHead>
+              <TableHead className="text-right">Received</TableHead>
               {canReadCosts ? (
                 <>
                   <TableHead className="text-right">Unit price</TableHead>
@@ -461,6 +494,7 @@ const ReadOnlyLinesCard: React.FC<{ canReadCosts: boolean; purchaseOrder: Purcha
                 </TableCell>
                 <TableCell>{purchaseUnitLabel(line)}</TableCell>
                 <TableCell>{line.quantity}</TableCell>
+                <TableCell className="text-right tabular-nums">{line.receivedQuantity}</TableCell>
                 {canReadCosts ? (
                   <>
                     <TableCell className="text-right">
@@ -520,6 +554,7 @@ function lineTotal(lines: ReadonlyArray<{ quantity: number; unitPrice: number | 
 
 function statusDescription(purchaseOrder: PurchaseOrderView): string {
   if (purchaseOrder.status === 'cancelled') return 'Cancelled';
+  if (purchaseOrder.closedShortAt) return `Closed short ${formatDate(purchaseOrder.closedShortAt)}`;
   if (purchaseOrder.sentAt) return `Sent ${formatDate(purchaseOrder.sentAt)}`;
   return 'Draft';
 }

@@ -5,6 +5,8 @@ import {
   jobCfoParts,
   jobs,
   parts,
+  purchaseOrderLines,
+  purchaseOrders,
   stockMovements,
   user,
 } from '@pkg/db';
@@ -13,6 +15,7 @@ import {
   deriveMovingAverage,
   deriveMovingAverageTimeline,
   deriveOutstandingDrawUnitCost,
+  deriveReceiptWarnings,
   deriveStockMovementWarnings,
   type StockMovementContext,
   valueStockBucket,
@@ -25,6 +28,7 @@ import type {
   PartUnitClass,
   PostAdjustmentInput,
   PostJobMovementInput,
+  PostReceiptInput,
   PostRevaluationInput,
   StockMovement,
   StockMovementHistoryResult,
@@ -44,6 +48,11 @@ import {
 import { and, asc, eq, inArray, isNull, ne, type SQL, sql } from 'drizzle-orm';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
+import {
+  PurchaseOrderLineNotFoundError,
+  PurchaseOrderNotFoundError,
+  PurchaseOrderNotSentError,
+} from '../purchase-orders/purchase-order-errors.js';
 
 import {
   FabricatedPartCostError,
@@ -161,6 +170,90 @@ export async function postJobMovement({
       warnings: deriveStockMovementWarnings({ context, movementType, quantity: input.quantity }),
     });
   });
+}
+
+/**
+ * Receives stock against one open Purchase Order line. Receiving *is* the ledger write (spec §11):
+ * the confirmed quantity, the line's own price, and the Part's standard purchase length become one
+ * receipt row in one transaction — there is no post-the-receipt-later state to drift out of.
+ *
+ * The dock confirms quantities. `unitCost` is a desk-side correction the API gates on cost access;
+ * left null the line price lands on the movement, which is why a price-blind receiver still posts a
+ * correctly valued row. Periodic Parts receive like any other: receipts are one of the two things
+ * their ledger ever records.
+ */
+export async function postReceipt({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PostReceiptInput;
+}): Promise<StockMovementPostResult> {
+  return db.transaction(async (tx) => {
+    const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
+    const purchaseOrder = await lockReceivablePurchaseOrder(tx, input.purchaseOrderId);
+    const line = await loadPurchaseOrderLine(tx, input.purchaseOrderId, input.partId);
+    const unitClass = unitClassFor(part.unitOfMeasure);
+    // A dock that keys nothing takes the length the Part is bought in; a short delivery keys its own.
+    const lengthMm = unitClass === 'linear' ? (input.lengthMm ?? part.standardPurchaseLengthMm) : input.lengthMm;
+    const unitCost = input.unitCost ?? line.unitPrice;
+
+    assertDeltaMatchesUnitClass(input.quantity, unitClass);
+    assertLengthMatchesUnitClass(lengthMm, unitClass);
+    assertFabricatedPartCost(part.isInternallyFabricated, unitCost);
+
+    const receivedQuantity = await sumDelta(
+      tx,
+      and(
+        eq(stockMovements.purchaseOrderId, purchaseOrder.id),
+        eq(stockMovements.partId, input.partId),
+        eq(stockMovements.movementType, 'receipt'),
+      ),
+    );
+    const movement = await insertMovement(tx, {
+      actorUserId,
+      delta: input.quantity,
+      lengthMm,
+      movementType: 'receipt',
+      partId: input.partId,
+      purchaseOrderId: purchaseOrder.id,
+      unitCost,
+    });
+
+    return StockMovementPostResultSchema.parse({
+      movement,
+      warnings: deriveReceiptWarnings({
+        orderedQuantity: line.quantity,
+        quantity: input.quantity,
+        receivedQuantity,
+      }),
+    });
+  });
+}
+
+async function lockReceivablePurchaseOrder(tx: DatabaseTransaction, id: UUID) {
+  const [row] = await tx
+    .select({ id: purchaseOrders.id, status: purchaseOrders.status })
+    .from(purchaseOrders)
+    .where(eq(purchaseOrders.id, id))
+    // The same row lock cancel and close-short take, so a receipt cannot race either decision.
+    .for('update');
+  if (!row) throw new PurchaseOrderNotFoundError(id);
+  if (row.status !== 'sent') throw new PurchaseOrderNotSentError(id);
+
+  return row;
+}
+
+async function loadPurchaseOrderLine(tx: DatabaseTransaction, purchaseOrderId: UUID, partId: UUID) {
+  const [line] = await tx
+    .select({ quantity: purchaseOrderLines.quantity, unitPrice: purchaseOrderLines.unitPrice })
+    .from(purchaseOrderLines)
+    .where(and(eq(purchaseOrderLines.purchaseOrderId, purchaseOrderId), eq(purchaseOrderLines.partId, partId)));
+  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrderId, partId);
+
+  return line;
 }
 
 export async function listJobStock({
@@ -354,6 +447,7 @@ export async function getStockMovementHistory({
       movementType: stockMovements.movementType,
       note: stockMovements.note,
       partId: stockMovements.partId,
+      purchaseOrderId: stockMovements.purchaseOrderId,
       reason: stockMovements.reason,
       runningBalance: sql<number>`(sum(${stockMovements.delta}) over (order by ${stockMovements.createdAt}, ${stockMovements.id}))::double precision`,
       unitCost: stockMovements.unitCost,
@@ -405,6 +499,7 @@ async function loadStockPart({
     .select({
       id: parts.id,
       isInternallyFabricated: parts.isInternallyFabricated,
+      standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
       stockTrackingMode: parts.stockTrackingMode,
       unitOfMeasure: parts.unitOfMeasure,
     })

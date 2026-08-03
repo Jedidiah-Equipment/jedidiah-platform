@@ -1,7 +1,7 @@
 import { customers, jobs, parts, quotes, supplier, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '../../test/create-tester.js';
+import { type AppRouterCaller, createTester } from '../../test/create-tester.js';
 import { mockSession } from '../../test/test-utils.js';
 
 const SUPPLIER_ID = '00000000-0000-4000-8000-000000000301';
@@ -111,4 +111,80 @@ describe('purchaseOrders router', () => {
     const cancellable = await admin.purchaseOrders.create({ supplierId: SUPPLIER_ID });
     await expect(admin.purchaseOrders.cancel({ id: cancellable.id })).resolves.toMatchObject({ status: 'cancelled' });
   });
+
+  test('lets a price-blind stores user receive while the line price still lands on the movement', async ({
+    context,
+  }) => {
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+    const purchaseOrder = await sendOrder(admin, 4);
+
+    const received = await stores.purchaseOrders.receive({
+      lengthMm: null,
+      partId: PART_ID,
+      purchaseOrderId: purchaseOrder.id,
+      quantity: 3,
+      unitCost: null,
+    });
+
+    // The receiver never sees the price it just posted, and cannot send one of their own.
+    expect(received).toMatchObject({ movement: { delta: 3, movementType: 'receipt', unitCost: null }, warnings: [] });
+    await expect(
+      stores.purchaseOrders.receive({
+        lengthMm: null,
+        partId: PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 1,
+        unitCost: 175,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(admin.purchaseOrders.get({ id: purchaseOrder.id })).resolves.toMatchObject({
+      derivedStatus: 'partially-received',
+      lines: [{ receivedQuantity: 3 }],
+    });
+    await expect(admin.inventory.history({ partId: PART_ID })).resolves.toMatchObject({
+      items: [{ movementType: 'receipt', purchaseOrderId: purchaseOrder.id, unitCost: 150 }],
+    });
+  });
+
+  test('warns on an over-receipt and closes the remainder short under the close permission', async ({ context }) => {
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+    const purchaseOrder = await sendOrder(admin, 4);
+
+    await expect(
+      stores.purchaseOrders.receive({
+        lengthMm: null,
+        partId: PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 5,
+        unitCost: null,
+      }),
+    ).resolves.toMatchObject({ warnings: ['exceeds-ordered'] });
+
+    // Stores receives, procurement closes: close-short is a purchasing decision, not a dock one.
+    await expect(stores.purchaseOrders.closeShort({ id: purchaseOrder.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(admin.purchaseOrders.closeShort({ id: purchaseOrder.id })).resolves.toMatchObject({
+      derivedStatus: 'closed-short',
+      status: 'sent',
+    });
+    await expect(admin.purchaseOrders.cancel({ id: purchaseOrder.id })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+  });
 });
+
+async function sendOrder(admin: AppRouterCaller, quantity: number) {
+  const purchaseOrder = await admin.purchaseOrders.create({ supplierId: SUPPLIER_ID });
+  await admin.purchaseOrders.saveDraft({
+    expectedDeliveryDate: null,
+    id: purchaseOrder.id,
+    jobIds: [],
+    lines: [{ partId: PART_ID, quantity, unitPrice: 150 }],
+    supplierId: SUPPLIER_ID,
+  });
+
+  return admin.purchaseOrders.markSent({ id: purchaseOrder.id });
+}

@@ -24,6 +24,11 @@ export const purchaseOrderCodeSequence = pgSequence('purchase_order_code_seq');
 export const purchaseOrders = pgTable(
   'purchase_order',
   {
+    /**
+     * Close-short is an assertion, not a status: the stored status stays `draft`/`sent`/`cancelled`
+     * and this timestamp releases the open remainder of a partially received order.
+     */
+    closedShortAt: timestamp('closed_short_at', { mode: 'date', withTimezone: true }),
     code: integer('code').notNull().default(sql`nextval('purchase_order_code_seq'::regclass)`),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     expectedDeliveryDate: date('expected_delivery_date', { mode: 'string' }),
@@ -42,6 +47,7 @@ export const purchaseOrders = pgTable(
       'purchase_order_sent_at_shape',
       sql`(${table.status} = 'draft' AND ${table.sentAt} IS NULL) OR (${table.status} = 'sent' AND ${table.sentAt} IS NOT NULL) OR ${table.status} = 'cancelled'`,
     ),
+    check('purchase_order_closed_short_shape', sql`${table.closedShortAt} IS NULL OR ${table.status} = 'sent'`),
     index('purchase_order_supplier_id_idx').on(table.supplierId),
     uniqueIndex('purchase_order_code_unique').on(table.code),
   ],

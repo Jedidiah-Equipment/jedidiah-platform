@@ -110,7 +110,7 @@ const PurchaseOrderTable: React.FC<{
                   </TableCell>
                 ) : null}
                 <TableCell>
-                  <PurchaseOrderStatusBadge status={purchaseOrder.status} />
+                  <PurchaseOrderStatusBadge status={purchaseOrder.derivedStatus} />
                 </TableCell>
               </TableRow>
             ))}

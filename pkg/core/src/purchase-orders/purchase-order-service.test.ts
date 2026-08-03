@@ -1,8 +1,9 @@
 import { auditEvents, customers, type Db, documents, jobs, parts, quotes, supplier, user } from '@pkg/db';
 import { DateOnlyIso, type PurchaseOrderPdfModel } from '@pkg/schema';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { describe, expect, vi } from 'vitest';
 
+import { postReceipt } from '../inventory/stock-movement-service.js';
 import { getJobDocuments } from '../jobs/job-read-service.js';
 import { updatePart } from '../parts/part-service.js';
 import { removeSupplier } from '../suppliers/supplier-service.js';
@@ -10,6 +11,7 @@ import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import {
   cancelPurchaseOrder,
+  closePurchaseOrderShort,
   createPurchaseOrder,
   getPurchaseOrder,
   listPurchaseOrders,
@@ -294,6 +296,123 @@ describe('Purchase Order send and cancel', () => {
     });
   });
 });
+
+describe('Purchase Order receiving progress', () => {
+  test('projects the stored status through cumulative receipts on every line', async ({ context }) => {
+    const purchaseOrder = await sendOrder(context, [
+      { partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 },
+      { partId: LINEAR_PART_ID, quantity: 2, unitPrice: 900 },
+    ]);
+
+    expect(purchaseOrder).toMatchObject({
+      closedShortAt: null,
+      derivedStatus: 'sent',
+      lines: [{ receivedQuantity: 0 }, { receivedQuantity: 0 }],
+    });
+
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 3);
+    await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
+      derivedStatus: 'partially-received',
+      lines: [{ partId: PIECE_PART_ID, receivedQuantity: 3 }, { receivedQuantity: 0 }],
+    });
+
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 1);
+    await receive(context, purchaseOrder.id, LINEAR_PART_ID, 2);
+    await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
+      derivedStatus: 'received',
+      lines: [{ receivedQuantity: 4 }, { receivedQuantity: 2 }],
+    });
+
+    // The list read projects the same derived state, so a receiver never sees two different answers.
+    await expect(
+      listPurchaseOrders({
+        db: context.db,
+        input: { cursor: 0, limit: 20, search: '', sortBy: 'createdAt', sortDirection: 'desc' },
+      }),
+    ).resolves.toMatchObject({ items: [expect.objectContaining({ derivedStatus: 'received' })] });
+  });
+
+  test('closes a part-delivered order short and stops cancelling it once stock has arrived', async ({ context }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]);
+
+    await expect(
+      closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
+    ).rejects.toMatchObject({ code: 'purchase_order.no_receipts' });
+
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 1);
+
+    // The cancel guard is no longer trivially satisfied: a real receipt now blocks it.
+    await expect(
+      cancelPurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
+    ).rejects.toMatchObject({ code: 'purchase_order.has_receipts' });
+
+    const closed = await closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
+
+    expect(closed).toMatchObject({ closedShortAt: expect.any(String), derivedStatus: 'closed-short', status: 'sent' });
+    await expect(
+      closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
+    ).rejects.toMatchObject({ code: 'purchase_order.already_closed_short' });
+    await expect(
+      context.db.select().from(auditEvents).where(eq(auditEvents.entityId, purchaseOrder.id)),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'updated',
+          changes: expect.objectContaining({ closedShortAt: { from: null, to: closed.closedShortAt } }),
+        }),
+      ]),
+    );
+  });
+
+  test('refuses to close a draft or a cancelled order short', async ({ context }) => {
+    const draft = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+
+    await expect(
+      closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: draft.id }),
+    ).rejects.toMatchObject({ code: 'purchase_order.not_sent' });
+
+    await cancelPurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: draft.id });
+    await expect(
+      closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: draft.id }),
+    ).rejects.toMatchObject({ code: 'purchase_order.not_sent' });
+  });
+});
+
+async function sendOrder(
+  context: { db: Db; storage: InMemoryStorageAdapter },
+  lines: Array<{ partId: string; quantity: number; unitPrice: number }>,
+) {
+  const purchaseOrder = await createPurchaseOrder({
+    actorUserId: ACTOR_ID,
+    db: context.db,
+    input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+  });
+  await savePurchaseOrderDraft({
+    actorUserId: ACTOR_ID,
+    db: context.db,
+    input: draftInput(purchaseOrder.id, lines),
+  });
+
+  return markPurchaseOrderSent({
+    actorUserId: ACTOR_ID,
+    db: context.db,
+    id: purchaseOrder.id,
+    pdfRenderer: async () => pdfBytes(),
+    storage: context.storage,
+  });
+}
+
+async function receive(context: { db: Db }, purchaseOrderId: string, partId: string, quantity: number) {
+  return postReceipt({
+    actorUserId: ACTOR_ID,
+    db: context.db,
+    input: { lengthMm: null, partId, purchaseOrderId, quantity, unitCost: null },
+  });
+}
 
 async function seedCatalog(db: Db): Promise<void> {
   await db.insert(user).values({

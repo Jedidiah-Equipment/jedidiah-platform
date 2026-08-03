@@ -42,7 +42,7 @@ type CreateEntityFormApi<TValues extends Record<string, unknown>> = ReturnType<
     undefined,
     undefined,
     undefined,
-    z.ZodType<TValues, TValues>,
+    undefined,
     undefined,
     z.ZodType<TValues, TValues>,
     undefined,
@@ -70,7 +70,6 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
   const form: CreateEntityFormApi<TValues> = useAppForm({
     defaultValues,
     validators: {
-      onBlur: validator,
       onSubmit: validator,
     },
     onSubmit: async ({ value }) => {

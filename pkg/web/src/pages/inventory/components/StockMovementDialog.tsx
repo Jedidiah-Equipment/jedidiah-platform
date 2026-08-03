@@ -21,6 +21,7 @@ import { useTRPC } from '@/lib/trpc.js';
 
 import { StockMovementWarningPrompt, warningMessageFor } from './StockMovementWarningPrompt.js';
 import {
+  partQuantityValidationMessage,
   partSelectOptions,
   type StockJobMovementFormValues,
   type StockPartOption,
@@ -190,7 +191,13 @@ export function StockMovementDialog({
               />
             )}
           </form.AppField>
-          <form.AppField name="quantity">
+          <form.AppField
+            name="quantity"
+            validators={{
+              onBlur: ({ value }) =>
+                partQuantityValidationMessage({ partId: form.state.values.partId, quantity: value }, parts),
+            }}
+          >
             {(field) => <field.NumberField label="Quantity" min={0.001} step="0.001" />}
           </form.AppField>
           <form.Subscribe selector={(state) => state.values}>

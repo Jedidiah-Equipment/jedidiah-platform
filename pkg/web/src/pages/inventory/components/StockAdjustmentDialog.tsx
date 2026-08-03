@@ -9,6 +9,7 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import {
+  partQuantityValidationMessage,
   partSelectOptions,
   type StockAdjustmentFormValues,
   type StockPartOption,
@@ -75,7 +76,13 @@ export function StockAdjustmentDialog({
           <form.AppField name="partId">
             {(field) => <field.SelectField label="Part" options={partSelectOptions(parts)} placeholder="Select Part" />}
           </form.AppField>
-          <form.AppField name="delta">
+          <form.AppField
+            name="delta"
+            validators={{
+              onBlur: ({ value }) =>
+                partQuantityValidationMessage({ partId: form.state.values.partId, quantity: value }, parts),
+            }}
+          >
             {(field) => (
               <field.NumberField
                 description="Negative removes stock; positive adds it."

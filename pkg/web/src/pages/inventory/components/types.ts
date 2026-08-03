@@ -47,14 +47,24 @@ function refineQuantityForPart(
   path: 'delta' | 'quantity',
   context: z.RefinementCtx,
 ): void {
-  const part = parts.find((candidate) => candidate.partId === values.partId);
-  if (!part || isWholeUnitQuantity(values.quantity, unitClassFor(part.unitOfMeasure))) return;
+  const message = partQuantityValidationMessage(values, parts);
+  if (!message) return;
 
   context.addIssue({
     code: 'custom',
-    message: 'This Part is counted in whole units',
+    message,
     path: [path],
   });
+}
+
+export function partQuantityValidationMessage(
+  values: { partId: string; quantity: number },
+  parts: readonly StockPartOption[],
+): string | undefined {
+  const part = parts.find((candidate) => candidate.partId === values.partId);
+  return !part || isWholeUnitQuantity(values.quantity, unitClassFor(part.unitOfMeasure))
+    ? undefined
+    : 'This Part is counted in whole units';
 }
 
 export type StockAdjustmentFormValues = z.infer<typeof StockAdjustmentFormValues>;

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveStockBuildRows,
   deriveStockBuildWarnings,
+  partQuantityValidationMessage,
   perpetualPartOptions,
   revaluablePartOptions,
   type StockPartOption,
@@ -107,6 +108,10 @@ describe('stock adjustment form', () => {
     ).toBe(false);
     expect(validator.safeParse({ ...adjustment, delta: 1.0005 }).success).toBe(false);
     expect(validator.safeParse({ ...adjustment, lengthMm: 6_000.5 }).success).toBe(false);
+    expect(partQuantityValidationMessage({ partId: piece.partId, quantity: 1.125 }, [piece])).toBe(
+      'This Part is counted in whole units',
+    );
+    expect(partQuantityValidationMessage({ partId: measured.partId, quantity: 1.125 }, [measured])).toBeUndefined();
   });
 
   it('requires a length on a linear Part and a note on every reason but an opening balance', () => {

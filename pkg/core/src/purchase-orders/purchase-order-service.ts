@@ -203,10 +203,14 @@ export async function savePurchaseOrderDraft({
   return db.transaction(async (tx) => {
     assertDraft(await lockPurchaseOrder(tx, input.id));
     const before = await getPurchaseOrder({ db: tx, id: input.id });
+    // A Job link is a set membership, so a repeated id is the same link, not a second one. Collapsing
+    // here keeps the existence check exact and makes a core caller that repeats one idempotent rather
+    // than a unique-constraint failure; the router contract still refuses duplicates outright.
+    const jobIds = [...new Set(input.jobIds)];
 
     await assertSupplierExists({ db: tx, supplierId: input.supplierId });
     await assertLinePartsMatchSupplier({ db: tx, lines: input.lines, supplierId: input.supplierId });
-    await assertJobsExist({ db: tx, jobIds: input.jobIds });
+    await assertJobsExist({ db: tx, jobIds });
 
     await tx
       .update(purchaseOrders)
@@ -230,10 +234,8 @@ export async function savePurchaseOrderDraft({
     }
 
     await tx.delete(purchaseOrderJobLinks).where(eq(purchaseOrderJobLinks.purchaseOrderId, input.id));
-    if (input.jobIds.length > 0) {
-      await tx
-        .insert(purchaseOrderJobLinks)
-        .values(input.jobIds.map((jobId) => ({ jobId, purchaseOrderId: input.id })));
+    if (jobIds.length > 0) {
+      await tx.insert(purchaseOrderJobLinks).values(jobIds.map((jobId) => ({ jobId, purchaseOrderId: input.id })));
     }
 
     const after = await getPurchaseOrder({ db: tx, id: input.id });

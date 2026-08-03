@@ -54,19 +54,24 @@ export function StockRevaluationDialog({
             {(field) => <field.SelectField label="Part" options={partSelectOptions(parts)} placeholder="Select Part" />}
           </form.AppField>
           <form.Subscribe selector={(state) => state.values.partId}>
-            {(partId) => (
-              <form.AppField name="unitCost">
-                {(field) => (
-                  <field.CurrencyField
-                    label={
-                      parts.find((part) => part.partId === partId)?.unitOfMeasure === 'mm'
-                        ? 'New cost per mm'
-                        : 'New unit cost'
-                    }
-                  />
-                )}
-              </form.AppField>
-            )}
+            {(partId) => {
+              // A revaluation sets the average directly, and a linear Part's is per millimetre — which
+              // CurrencyField cannot hold, since it truncates typed input to two decimals.
+              const isLinear = parts.find((part) => part.partId === partId)?.unitOfMeasure === 'mm';
+
+              return (
+                <form.AppField name="unitCost">
+                  {(field) => (
+                    <field.NumberField
+                      decimals={isLinear ? 6 : 2}
+                      label={isLinear ? 'New cost per mm' : 'New unit cost'}
+                      min={0}
+                      step={isLinear ? '0.000001' : '0.01'}
+                    />
+                  )}
+                </form.AppField>
+              );
+            }}
           </form.Subscribe>
           <form.AppField name="note">
             {(field) => <field.TextareaField label="Note (optional)" rows={3} />}

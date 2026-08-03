@@ -41,6 +41,7 @@ type FixedJob = { code: string; id: string };
 
 export function StockMovementDialog({
   fixedJob,
+  isLoadingParts = false,
   items,
   onOpenChange,
   open,
@@ -48,6 +49,8 @@ export function StockMovementDialog({
   type,
 }: {
   fixedJob?: FixedJob;
+  /** Set where the Part list is fetched only once the dialog opens, so the select can say so. */
+  isLoadingParts?: boolean;
   items: readonly StockOnHandRow[];
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -100,6 +103,9 @@ export function StockMovementDialog({
    */
   function movementWarnings(values: StockJobMovementFormValues): StockMovementWarningCode[] {
     if (!Number.isFinite(values.quantity) || values.jobId === '' || values.partId === '') return [];
+    // Until the Job's stock arrives, every figure reads zero, which would warn on any draw at all.
+    // Staying quiet is the honest state: the post still returns the ledger's own verdict.
+    if (jobStockQuery.isPending) return [];
 
     return deriveStockMovementWarnings({
       context: movementContext(values),
@@ -172,7 +178,14 @@ export function StockMovementDialog({
             </form.AppField>
           )}
           <form.AppField name="partId">
-            {(field) => <field.SelectField label="Part" options={partSelectOptions(parts)} placeholder="Select Part" />}
+            {(field) => (
+              <field.SelectField
+                disabled={isLoadingParts}
+                label="Part"
+                options={partSelectOptions(parts)}
+                placeholder={isLoadingParts ? 'Loading Parts...' : 'Select Part'}
+              />
+            )}
           </form.AppField>
           <form.AppField name="quantity">
             {(field) => <field.NumberField label="Quantity" min={0.001} step="0.001" />}

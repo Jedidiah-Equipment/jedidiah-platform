@@ -371,7 +371,9 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
                 </Table>
               )}
             </CardContent>
-            <div className="border-t px-4 pt-4 text-right font-medium">Total {formatCurrency(lineTotal(lines))}</div>
+            <div className="border-t px-4 pt-4 text-right font-medium">
+              Total {formatCurrency(lineTotal(lines), 'ZAR')}
+            </div>
           </Card>
         );
       }}
@@ -459,10 +461,14 @@ const ReadOnlyLinesCard: React.FC<{ canReadCosts: boolean; purchaseOrder: Purcha
                 </TableCell>
                 <TableCell>{purchaseUnitLabel(line)}</TableCell>
                 <TableCell>{line.quantity}</TableCell>
-                {canReadCosts && line.unitPrice !== null ? (
+                {canReadCosts ? (
                   <>
-                    <TableCell className="text-right">{formatCurrency(line.unitPrice)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(line.quantity * line.unitPrice)}</TableCell>
+                    <TableCell className="text-right">
+                      {line.unitPrice === null ? '—' : formatCurrency(line.unitPrice, 'ZAR')}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {line.unitPrice === null ? '—' : formatCurrency(line.quantity * line.unitPrice, 'ZAR')}
+                    </TableCell>
                   </>
                 ) : null}
               </TableRow>
@@ -473,7 +479,7 @@ const ReadOnlyLinesCard: React.FC<{ canReadCosts: boolean; purchaseOrder: Purcha
     </CardContent>
     {canReadCosts ? (
       <div className="border-t px-4 pt-4 text-right font-medium">
-        Total {formatCurrency(lineTotal(purchaseOrder.lines))}
+        Total {formatCurrency(lineTotal(purchaseOrder.lines), 'ZAR')}
       </div>
     ) : null}
   </Card>

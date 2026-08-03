@@ -84,6 +84,14 @@ describe('stock adjustment form', () => {
     });
   });
 
+  it('keeps the ledger decimal rules the schema owns, which the text input cannot enforce', () => {
+    const validator = stockAdjustmentValidator([piece, linear]);
+
+    expect(validator.safeParse({ ...adjustment, delta: 1.125 }).success).toBe(true);
+    expect(validator.safeParse({ ...adjustment, delta: 1.0005 }).success).toBe(false);
+    expect(validator.safeParse({ ...adjustment, lengthMm: 6_000.5 }).success).toBe(false);
+  });
+
   it('requires a length on a linear Part and a note on every reason but an opening balance', () => {
     const validator = stockAdjustmentValidator([piece, linear]);
 
@@ -109,6 +117,14 @@ describe('Job movement form', () => {
     expect(
       toJobMovementInput({ jobId: piece.partId, lengthMm: 6_000, partId: linear.partId, quantity: 2 }, linear),
     ).toMatchObject({ jobId: piece.partId, lengthMm: 6_000, partId: linear.partId, quantity: 2 });
+  });
+
+  it('holds a quantity to three decimals, the ledger rule, not just to a positive number', () => {
+    const validator = stockJobMovementValidator([piece, linear]);
+    const values = { jobId: piece.partId, lengthMm: Number.NaN, partId: piece.partId, quantity: 1.125 };
+
+    expect(validator.safeParse(values).success).toBe(true);
+    expect(validator.safeParse({ ...values, quantity: 1.0005 }).success).toBe(false);
   });
 
   it('needs a Job, a Part, a positive quantity, and a length for linear stock', () => {

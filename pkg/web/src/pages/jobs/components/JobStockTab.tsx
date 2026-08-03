@@ -54,6 +54,7 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
       {movementType ? (
         <StockMovementDialog
           fixedJob={job}
+          isLoadingParts={stockOnHandQuery.isPending}
           items={stockOnHandQuery.data?.items ?? []}
           onOpenChange={(open) => {
             if (!open) setMovementType(null);

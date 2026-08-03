@@ -1,8 +1,13 @@
 import {
+  InventoryUnitCost,
   PostAdjustmentInput,
   PostJobMovementInput,
   PostRevaluationInput,
+  Price,
   StockAdjustmentReason,
+  StockMovementDelta,
+  StockMovementLengthMm,
+  StockMovementQuantity,
   type StockOnHandRow,
   UUID,
 } from '@pkg/schema';
@@ -16,10 +21,14 @@ export type StockPartOption = Pick<
 >;
 
 /**
- * A movement's length bucket is only meaningful on a linear Part. The form always holds the field so
- * the control stays uncontrolled-free; these schemas reject it on the Parts that must not carry one.
+ * `NumberField` holds an empty control as `NaN`, so an optional numeric field is its schema leaf or
+ * `NaN`. Every rule beyond that emptiness — sign, bounds, decimal places — stays owned by
+ * `@pkg/schema`, since `NumberField` renders a text input and enforces none of it in the browser.
  */
-const StockMovementLengthValue = z.union([z.nan(), z.int().positive('Enter the piece length in millimetres')]);
+const optionalNumber = <TSchema extends z.ZodType>(schema: TSchema) => z.union([z.nan(), schema]);
+
+/** A movement's length bucket is only meaningful on a linear Part; `refineLengthForPart` requires it there. */
+const StockMovementLengthValue = optionalNumber(StockMovementLengthMm);
 
 function refineLengthForPart(
   values: { lengthMm: number; partId: string },
@@ -35,19 +44,19 @@ function refineLengthForPart(
 
 export type StockAdjustmentFormValues = z.infer<typeof StockAdjustmentFormValues>;
 export const StockAdjustmentFormValues = z.object({
-  delta: z.number().finite('Enter a signed quantity'),
+  delta: StockMovementDelta,
   lengthMm: StockMovementLengthValue,
   note: z.string(),
   partId: requiredSelection(UUID, 'Select a Part'),
   reason: StockAdjustmentReason,
-  unitCost: z.union([z.nan(), z.number().min(0, 'Must be zero or greater')]),
+  unitCost: optionalNumber(Price),
 });
 
 export type StockRevaluationFormValues = z.infer<typeof StockRevaluationFormValues>;
 export const StockRevaluationFormValues = z.object({
   note: z.string(),
   partId: requiredSelection(UUID, 'Select a Part'),
-  unitCost: z.number().min(0, 'Must be zero or greater'),
+  unitCost: InventoryUnitCost,
 });
 
 export type StockJobMovementFormValues = z.infer<typeof StockJobMovementFormValues>;
@@ -55,7 +64,7 @@ export const StockJobMovementFormValues = z.object({
   jobId: requiredSelection(UUID, 'Select a Job'),
   lengthMm: StockMovementLengthValue,
   partId: requiredSelection(UUID, 'Select a Part'),
-  quantity: z.number().positive('Enter a quantity greater than zero'),
+  quantity: StockMovementQuantity,
 });
 
 /** Adds the per-Part rules a flat form schema cannot express on its own. */

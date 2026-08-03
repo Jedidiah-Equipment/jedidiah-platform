@@ -101,8 +101,10 @@ export function StockAdjustmentDialog({
                   {showCost ? (
                     <form.AppField name="unitCost">
                       {(field) => (
+                        // A linear opening balance is priced per piece, not per mm: the ledger divides
+                        // this by the bucket length to reach the per-mm average.
                         <field.CurrencyField
-                          label={part?.unitOfMeasure === 'mm' ? 'Opening cost per mm' : 'Opening unit cost'}
+                          label={part?.unitOfMeasure === 'mm' ? 'Opening cost per length piece' : 'Opening unit cost'}
                         />
                       )}
                     </form.AppField>

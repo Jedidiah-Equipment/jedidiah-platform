@@ -77,10 +77,19 @@ export class PurchaseOrderLineNotFoundError extends Error {
   readonly code = 'purchase_order.line_not_found' as const;
 
   constructor(
-    readonly id: UUID,
+    readonly purchaseOrderId: UUID,
     readonly partId: UUID,
   ) {
     super('This Part is not on the Purchase Order.');
+  }
+}
+
+/** A closed-short order has no open remainder left, so nothing can still arrive against it. */
+export class PurchaseOrderClosedShortError extends Error {
+  readonly code = 'purchase_order.closed_short' as const;
+
+  constructor(readonly id: UUID) {
+    super('This Purchase Order was closed short and can no longer be received against.');
   }
 }
 
@@ -90,6 +99,14 @@ export class PurchaseOrderNoReceiptsError extends Error {
 
   constructor(readonly id: UUID) {
     super('A Purchase Order can only be closed short once something has been received against it.');
+  }
+}
+
+export class PurchaseOrderFullyReceivedError extends Error {
+  readonly code = 'purchase_order.fully_received' as const;
+
+  constructor(readonly id: UUID) {
+    super('A fully received Purchase Order has no outstanding quantity to close short.');
   }
 }
 
@@ -112,7 +129,9 @@ export class PurchaseOrderHasReceiptsError extends Error {
 export type PurchaseOrderCoreError =
   | PurchaseOrderAlreadyCancelledError
   | PurchaseOrderAlreadyClosedShortError
+  | PurchaseOrderClosedShortError
   | PurchaseOrderEmptyError
+  | PurchaseOrderFullyReceivedError
   | PurchaseOrderHasReceiptsError
   | PurchaseOrderInvalidQuantityError
   | PurchaseOrderLineNotFoundError
@@ -128,7 +147,9 @@ export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrder
   return (
     error instanceof PurchaseOrderAlreadyCancelledError ||
     error instanceof PurchaseOrderAlreadyClosedShortError ||
+    error instanceof PurchaseOrderClosedShortError ||
     error instanceof PurchaseOrderEmptyError ||
+    error instanceof PurchaseOrderFullyReceivedError ||
     error instanceof PurchaseOrderHasReceiptsError ||
     error instanceof PurchaseOrderInvalidQuantityError ||
     error instanceof PurchaseOrderLineNotFoundError ||

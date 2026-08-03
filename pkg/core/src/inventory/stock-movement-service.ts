@@ -49,6 +49,7 @@ import { and, asc, eq, inArray, isNull, ne, type SQL, sql } from 'drizzle-orm';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 import {
+  PurchaseOrderClosedShortError,
   PurchaseOrderLineNotFoundError,
   PurchaseOrderNotFoundError,
   PurchaseOrderNotSentError,
@@ -235,13 +236,15 @@ export async function postReceipt({
 
 async function lockReceivablePurchaseOrder(tx: DatabaseTransaction, id: UUID) {
   const [row] = await tx
-    .select({ id: purchaseOrders.id, status: purchaseOrders.status })
+    .select({ closedShortAt: purchaseOrders.closedShortAt, id: purchaseOrders.id, status: purchaseOrders.status })
     .from(purchaseOrders)
     .where(eq(purchaseOrders.id, id))
     // The same row lock cancel and close-short take, so a receipt cannot race either decision.
     .for('update');
   if (!row) throw new PurchaseOrderNotFoundError(id);
   if (row.status !== 'sent') throw new PurchaseOrderNotSentError(id);
+  // Close-short asserted that the remainder will never come; a later receipt would make that a lie.
+  if (row.closedShortAt !== null) throw new PurchaseOrderClosedShortError(id);
 
   return row;
 }

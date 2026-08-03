@@ -4,13 +4,11 @@ import {
   createPurchaseOrder,
   getPurchaseOrder,
   isPurchaseOrderCoreError,
-  isStockMovementCoreError,
   JobNotFoundError,
   listPurchaseOrders,
   markPurchaseOrderSent,
   type PurchaseOrderCoreError,
   postReceipt,
-  type StockMovementCoreError,
   savePurchaseOrderDraft,
 } from '@pkg/core';
 import { renderPurchaseOrderPdf } from '@pkg/pdf';
@@ -24,18 +22,16 @@ import {
   PurchaseOrderListViewResult,
   PurchaseOrderSaveDraftInput,
   PurchaseOrderView,
-  StockMovementCostFields,
   StockMovementPostResult,
 } from '@pkg/schema';
 
-import { assertNever, type CoreErrorMapping, createAuthTRPCError, mapKnownCoreError } from '../../trpc/errors.js';
+import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
+import { authorizedProcedure, type InventoryCostAccess, projectInventoryCostFields, router } from '../../trpc/init.js';
 import {
-  authorizedProcedure,
-  canReadInventoryCosts,
-  type InventoryCostAccess,
-  projectInventoryCostFields,
-  router,
-} from '../../trpc/init.js';
+  assertCanWriteInventoryCost,
+  mapStockMovementErrors,
+  projectMovement,
+} from '../inventory/stock-movement-transport.js';
 
 export const purchaseOrdersRouter = router({
   cancel: authorizedProcedure('purchase_order:close')
@@ -116,24 +112,11 @@ export const purchaseOrdersRouter = router({
     .input(PostReceiptInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {
-      if (input.unitCost !== null && !canReadInventoryCosts(ctx.access)) {
-        throw createAuthTRPCError({
-          appCode: 'auth.forbidden',
-          code: 'FORBIDDEN',
-          message: 'You do not have permission to set inventory cost.',
-        });
-      }
+      assertCanWriteInventoryCost(ctx.access, input.unitCost);
 
       const result = await mapReceiptErrors(() => postReceipt({ actorUserId: ctx.session.user.id, db: ctx.db, input }));
 
-      return {
-        ...result,
-        movement: projectInventoryCostFields({
-          access: ctx.access,
-          costFields: StockMovementCostFields,
-          output: result.movement,
-        }),
-      };
+      return { ...result, movement: projectMovement(result.movement, ctx.access) };
     }),
 
   saveDraft: authorizedProcedure('purchase_order:create')
@@ -168,21 +151,7 @@ async function mapPurchaseOrderErrors<T>(action: () => Promise<T>): Promise<T> {
 
 /** A receipt fails on either side of its seam: the order and line it attaches to, or the ledger rules. */
 async function mapReceiptErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(() => mapPurchaseOrderErrors(action), isStockMovementCoreError, mapStockMovementCoreError);
-}
-
-function mapStockMovementCoreError(error: StockMovementCoreError): CoreErrorMapping<StockMovementCoreError['code']> {
-  switch (error.code) {
-    case 'inventory.part_not_found':
-      return { appCode: error.code, code: 'NOT_FOUND', message: 'Part not found.' };
-    case 'inventory.fabricated_part_cost':
-    case 'inventory.invalid_delta':
-    case 'inventory.invalid_length':
-    case 'inventory.periodic_movement':
-      return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-    default:
-      return assertNever(error);
-  }
+  return mapStockMovementErrors(() => mapPurchaseOrderErrors(action));
 }
 
 function isPurchaseOrderJobError(error: unknown): error is JobNotFoundError {
@@ -202,7 +171,9 @@ function mapPurchaseOrderCoreError(error: PurchaseOrderCoreError): CoreErrorMapp
       return { appCode: error.code, code: 'NOT_FOUND', message: error.message };
     case 'purchase_order.already_cancelled':
     case 'purchase_order.already_closed_short':
+    case 'purchase_order.closed_short':
     case 'purchase_order.empty':
+    case 'purchase_order.fully_received':
     case 'purchase_order.has_receipts':
     case 'purchase_order.invalid_quantity':
     case 'purchase_order.no_receipts':

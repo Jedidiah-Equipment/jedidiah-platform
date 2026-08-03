@@ -352,6 +352,10 @@ describe('Purchase Order receiving progress', () => {
     await expect(
       closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
     ).rejects.toMatchObject({ code: 'purchase_order.already_closed_short' });
+    // The released remainder stays released: a later delivery cannot make the assertion a lie.
+    await expect(receive(context, purchaseOrder.id, PIECE_PART_ID, 1)).rejects.toMatchObject({
+      code: 'purchase_order.closed_short',
+    });
     await expect(
       context.db.select().from(auditEvents).where(eq(auditEvents.entityId, purchaseOrder.id)),
     ).resolves.toEqual(
@@ -379,6 +383,15 @@ describe('Purchase Order receiving progress', () => {
     await expect(
       closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: draft.id }),
     ).rejects.toMatchObject({ code: 'purchase_order.not_sent' });
+  });
+
+  test('refuses to close a fully received order short — there is no remainder to release', async ({ context }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]);
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 4);
+
+    await expect(
+      closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
+    ).rejects.toMatchObject({ code: 'purchase_order.fully_received' });
   });
 });
 

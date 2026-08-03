@@ -147,20 +147,41 @@ describe('purchaseOrders router', () => {
     });
   });
 
-  test('warns on an over-receipt and closes the remainder short under the close permission', async ({ context }) => {
+  test('warns on an over-receipt, which leaves the order received with nothing to close short', async ({ context }) => {
     const admin = context.createCaller();
-    const stores = context.createCaller(mockSession('stores'));
-    const purchaseOrder = await sendOrder(admin, 4);
+    const overDelivered = await sendOrder(admin, 4);
 
     await expect(
-      stores.purchaseOrders.receive({
+      context.createCaller(mockSession('stores')).purchaseOrders.receive({
         lengthMm: null,
         partId: PART_ID,
-        purchaseOrderId: purchaseOrder.id,
+        purchaseOrderId: overDelivered.id,
         quantity: 5,
         unitCost: null,
       }),
     ).resolves.toMatchObject({ warnings: ['exceeds-ordered'] });
+    await expect(admin.purchaseOrders.get({ id: overDelivered.id })).resolves.toMatchObject({
+      derivedStatus: 'received',
+    });
+    await expect(admin.purchaseOrders.closeShort({ id: overDelivered.id })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+  });
+
+  test('closes a part-delivered order short under the close permission, and blocks cancelling it', async ({
+    context,
+  }) => {
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+    const purchaseOrder = await sendOrder(admin, 4);
+
+    await stores.purchaseOrders.receive({
+      lengthMm: null,
+      partId: PART_ID,
+      purchaseOrderId: purchaseOrder.id,
+      quantity: 1,
+      unitCost: null,
+    });
 
     // Stores receives, procurement closes: close-short is a purchasing decision, not a dock one.
     await expect(stores.purchaseOrders.closeShort({ id: purchaseOrder.id })).rejects.toMatchObject({

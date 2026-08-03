@@ -61,15 +61,18 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ p
   const canReadCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
   // Line prices are part of the draft, so editing needs the cost gate open as well as create rights.
   const canEdit =
-    purchaseOrder.status === 'draft' && canReadCosts && hasPermission(accessQuery.data, 'purchase_order:create');
-  const canSend = purchaseOrder.status === 'draft' && hasPermission(accessQuery.data, 'purchase_order:send');
+    purchaseOrder.derivedStatus === 'draft' && canReadCosts && hasPermission(accessQuery.data, 'purchase_order:create');
+  const canSend = purchaseOrder.derivedStatus === 'draft' && hasPermission(accessQuery.data, 'purchase_order:send');
   // Receipts freeze cancellation server-side, so only an order nothing has arrived against offers it.
   const canCancel =
     (purchaseOrder.derivedStatus === 'draft' || purchaseOrder.derivedStatus === 'sent') &&
     hasPermission(accessQuery.data, 'purchase_order:close');
   const canCloseShort =
     purchaseOrder.derivedStatus === 'partially-received' && hasPermission(accessQuery.data, 'purchase_order:close');
-  const canReceive = purchaseOrder.status === 'sent' && hasPermission(accessQuery.data, 'purchase_order:receive');
+  // Closing short releases the remainder, so the dock stops being offered an order to receive against.
+  const canReceive =
+    (purchaseOrder.derivedStatus === 'sent' || purchaseOrder.derivedStatus === 'partially-received') &&
+    hasPermission(accessQuery.data, 'purchase_order:receive');
   const { invalidatePurchaseOrders, invalidateJobs } = useQueryInvalidation();
   const [isLifecycleActionPending, setIsLifecycleActionPending] = useState(false);
 

@@ -16,16 +16,13 @@ import { outstandingQuantity } from './types.js';
 export function PurchaseOrderReceivingCard({ purchaseOrder }: { purchaseOrder: PurchaseOrderView }) {
   const [receivingPartId, setReceivingPartId] = useState<string | null>(null);
   const receivingLine = purchaseOrder.lines.find((line) => line.partId === receivingPartId) ?? null;
-  const isClosed = purchaseOrder.derivedStatus === 'closed-short';
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Receiving</CardTitle>
         <CardDescription>
-          {isClosed
-            ? 'This order was closed short — its open remainder has been released.'
-            : 'Confirm what arrived at the dock. Quantities only; the order price is carried through.'}
+          Confirm what arrived at the dock. Quantities only; the order price is carried through.
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0">
@@ -52,8 +49,9 @@ export function PurchaseOrderReceivingCard({ purchaseOrder }: { purchaseOrder: P
                 <TableCell className="text-right tabular-nums">{outstandingQuantity(line)}</TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-2">
-                    <PartLabelPrintButton partId={line.partId} size="sm" />
-                    <Button disabled={isClosed} onClick={() => setReceivingPartId(line.partId)} size="sm" type="button">
+                    {/* Labels go on stock that has actually landed, so the button appears with the first receipt. */}
+                    {line.receivedQuantity > 0 ? <PartLabelPrintButton partId={line.partId} size="sm" /> : null}
+                    <Button onClick={() => setReceivingPartId(line.partId)} size="sm" type="button">
                       <IconTruckDelivery data-icon="inline-start" /> Receive
                     </Button>
                   </div>

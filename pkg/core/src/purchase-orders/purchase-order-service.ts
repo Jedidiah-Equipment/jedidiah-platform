@@ -16,7 +16,7 @@ import {
   supplier,
   user,
 } from '@pkg/db';
-import { derivePurchaseOrderStatus } from '@pkg/domain';
+import { derivePurchaseOrderProgress, derivePurchaseOrderStatus } from '@pkg/domain';
 import {
   type AuthId,
   DateIso,
@@ -28,6 +28,7 @@ import {
   type PurchaseOrderListResult,
   type PurchaseOrderPdfModel,
   type PurchaseOrderPdfRenderer,
+  type PurchaseOrderProgress,
   type PurchaseOrderSaveDraftInput,
   PurchaseOrder as PurchaseOrderSchema,
   type UUID,
@@ -56,6 +57,7 @@ import {
   PurchaseOrderAlreadyCancelledError,
   PurchaseOrderAlreadyClosedShortError,
   PurchaseOrderEmptyError,
+  PurchaseOrderFullyReceivedError,
   PurchaseOrderHasReceiptsError,
   PurchaseOrderInvalidQuantityError,
   PurchaseOrderNoReceiptsError,
@@ -181,6 +183,34 @@ async function loadReceivedQuantities({
 
 function receivedQuantityKey(purchaseOrderId: string, partId: string): string {
   return `${purchaseOrderId}:${partId}`;
+}
+
+/**
+ * One order's receiving progress, read inside a caller's transaction. The close-short gate and the
+ * projected `derivedStatus` share this so an order cannot be closed short of a remainder it hasn't
+ * got.
+ */
+export async function loadPurchaseOrderProgress({
+  db,
+  id,
+}: {
+  db: PurchaseOrderDb;
+  id: UUID;
+}): Promise<PurchaseOrderProgress> {
+  const [lines, receivedQuantities] = await Promise.all([
+    db
+      .select({ partId: purchaseOrderLines.partId, quantity: purchaseOrderLines.quantity })
+      .from(purchaseOrderLines)
+      .where(eq(purchaseOrderLines.purchaseOrderId, id)),
+    loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
+  ]);
+
+  return derivePurchaseOrderProgress({
+    lines,
+    receivedByPartId: new Map(
+      lines.map((line) => [line.partId, receivedQuantities.get(receivedQuantityKey(id, line.partId)) ?? 0]),
+    ),
+  });
 }
 
 /** The as-sent PDF of each order; amendments (#1055) add revisions, so the newest row is the current one. */
@@ -422,15 +452,14 @@ export async function closePurchaseOrderShort({
 }): Promise<PurchaseOrder> {
   return mutateEntity({
     actorUserId,
+    // Asserted from the derived partially-received state: there has to be an open remainder to
+    // release, and something already delivered to close short of.
     assert: async (tx, before) => {
       if (before.status !== 'sent') throw new PurchaseOrderNotSentError(id);
       if (before.closedShortAt !== null) throw new PurchaseOrderAlreadyClosedShortError(id);
-      const [receipt] = await tx
-        .select({ id: stockMovements.id })
-        .from(stockMovements)
-        .where(and(eq(stockMovements.purchaseOrderId, id), eq(stockMovements.movementType, 'receipt')))
-        .limit(1);
-      if (!receipt) throw new PurchaseOrderNoReceiptsError(id);
+      const progress = await loadPurchaseOrderProgress({ db: tx, id });
+      if (progress === 'sent') throw new PurchaseOrderNoReceiptsError(id);
+      if (progress === 'received') throw new PurchaseOrderFullyReceivedError(id);
     },
     db,
     descriptor: purchaseOrderAuditDescriptor,

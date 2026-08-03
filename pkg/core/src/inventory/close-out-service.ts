@@ -10,20 +10,19 @@ import {
   quotes,
   stockMovements,
 } from '@pkg/db';
-import { deriveCloseOutAge, deriveCommitment, getJobDisplayName, toPlantDateOnly } from '@pkg/domain';
+import { deriveCloseOutAge, deriveCommitment, toPlantDateOnly } from '@pkg/domain';
 import type { AuthId, CloseOutJobInput, CloseOutQueueResult, JobCloseOut, UUID } from '@pkg/schema';
 import {
   CloseOutQueueResult as CloseOutQueueResultSchema,
   DateOnlyIso,
-  formatJobCode,
   JobCloseOut as JobCloseOutSchema,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { type AnyColumn, and, asc, eq, inArray, isNotNull, isNull, type SQL, sql } from 'drizzle-orm';
 
-import { assertJobIsMutable, lockJob } from '../jobs/job-mutation-guards.js';
+import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
+import { lockMutableJob } from '../jobs/job-mutation-guards.js';
 import { JobAlreadyClosedOutError, JobNotCompletedError } from './close-out-errors.js';
 
-type CloseOutDatabase = Db | DatabaseTransaction;
 const JOB_MOVEMENT_TYPES = ['checkout', 'return-to-store'] as const;
 
 /**
@@ -41,13 +40,14 @@ export async function closeOutJob({
   input: CloseOutJobInput;
 }): Promise<JobCloseOut> {
   return db.transaction(async (tx) => {
-    const job = await lockJob(tx, input.jobId);
-
     // Cancellation already released this Job's commitment and is a different exit from the queue;
     // closing one out would assert a stock life that ended some other way.
-    assertJobIsMutable(job);
+    const job = await lockMutableJob(tx, input.jobId);
+
     if (job.completedOn === null) throw new JobNotCompletedError(input.jobId);
-    if (await isJobClosedOut(tx, input.jobId)) throw new JobAlreadyClosedOutError(input.jobId);
+    if ((await getJobCloseOutAt({ db: tx, jobId: input.jobId })) !== null) {
+      throw new JobAlreadyClosedOutError(input.jobId);
+    }
 
     const [row] = await tx
       .insert(jobStockCloseOuts)
@@ -64,7 +64,13 @@ export async function closeOutJob({
   });
 }
 
-export async function getJobCloseOutAt({ db, jobId }: { db: CloseOutDatabase; jobId: UUID }): Promise<Date | null> {
+export async function getJobCloseOutAt({
+  db,
+  jobId,
+}: {
+  db: DatabaseTransaction | Db;
+  jobId: UUID;
+}): Promise<Date | null> {
   const [row] = await db
     .select({ createdAt: jobStockCloseOuts.createdAt })
     .from(jobStockCloseOuts)
@@ -74,7 +80,7 @@ export async function getJobCloseOutAt({ db, jobId }: { db: CloseOutDatabase; jo
 }
 
 /** The condition every commitment sum carries: a closed-out Job contributes nothing, ever again. */
-export function jobIsNotClosedOut(jobIdColumn: Parameters<typeof eq>[0]) {
+export function jobIsNotClosedOut(jobIdColumn: AnyColumn): SQL {
   return sql`NOT EXISTS (
     SELECT 1 FROM ${jobStockCloseOuts} WHERE ${jobStockCloseOuts.jobId} = ${jobIdColumn}
   )`;
@@ -83,6 +89,9 @@ export function jobIsNotClosedOut(jobIdColumn: Parameters<typeof eq>[0]) {
 /**
  * Completed Jobs whose stock life has not ended: something is still drawn, or commitment is still
  * open, or both. A Job leaves only by being closed out — the age column is the stale backstop.
+ *
+ * Outstanding stock is counted in **Parts**, never summed: a Job's leftovers span discrete, linear,
+ * and measured Parts, and one figure spanning three unit classes would mean nothing.
  */
 export async function listCloseOutQueue({
   clock = () => new Date(),
@@ -91,27 +100,16 @@ export async function listCloseOutQueue({
   clock?: () => Date;
   db: Db;
 }): Promise<CloseOutQueueResult> {
-  const candidates = await db
-    .select({
-      code: jobs.code,
-      completedOn: jobs.completedOn,
-      id: jobs.id,
-      productName: products.name,
-      quoteKind: quotes.kind,
-      workTitle: quotes.workTitle,
-    })
-    .from(jobs)
-    .leftJoin(productUnits, eq(productUnits.id, jobs.productUnitId))
-    .leftJoin(products, eq(products.id, productUnits.productId))
-    .leftJoin(quotes, eq(quotes.id, jobs.quoteId))
-    .where(and(isNotNull(jobs.completedOn), isNull(jobs.cancelledAt), jobIsNotClosedOut(jobs.id)))
-    // Oldest completion first, so whatever has waited longest — the stale end — leads the queue.
-    .orderBy(asc(jobs.completedOn), asc(jobs.code));
-
-  if (candidates.length === 0) return { items: [] };
-
-  const jobIds = candidates.map((candidate) => candidate.id);
-  const [cfoRows, drawnRows] = await Promise.all([
+  const [candidates, cfoRows, drawnRows] = await Promise.all([
+    db
+      .select({ ...jobDisplaySelection, completedOn: jobs.completedOn, id: jobs.id })
+      .from(jobs)
+      .leftJoin(productUnits, eq(productUnits.id, jobs.productUnitId))
+      .leftJoin(products, eq(products.id, productUnits.productId))
+      .leftJoin(quotes, eq(quotes.id, jobs.quoteId))
+      .where(closeOutCandidateCondition())
+      // Oldest completion first, so whatever has waited longest — the stale end — leads the queue.
+      .orderBy(asc(jobs.completedOn), asc(jobs.code)),
     db
       .select({
         cfoQuantity: sql<number>`sum(${jobCfoParts.quantity})::double precision`,
@@ -120,7 +118,8 @@ export async function listCloseOutQueue({
       })
       .from(jobCfoAssemblies)
       .innerJoin(jobCfoParts, eq(jobCfoParts.cfoAssemblyId, jobCfoAssemblies.id))
-      .where(inArray(jobCfoAssemblies.jobId, jobIds))
+      .innerJoin(jobs, eq(jobs.id, jobCfoAssemblies.jobId))
+      .where(closeOutCandidateCondition())
       .groupBy(jobCfoAssemblies.jobId, jobCfoParts.partId),
     db
       .select({
@@ -129,9 +128,12 @@ export async function listCloseOutQueue({
         partId: stockMovements.partId,
       })
       .from(stockMovements)
-      .where(and(inArray(stockMovements.jobId, jobIds), inArray(stockMovements.movementType, [...JOB_MOVEMENT_TYPES])))
+      .innerJoin(jobs, eq(jobs.id, stockMovements.jobId))
+      .where(and(closeOutCandidateCondition(), inArray(stockMovements.movementType, [...JOB_MOVEMENT_TYPES])))
       .groupBy(stockMovements.jobId, stockMovements.partId),
   ]);
+
+  if (candidates.length === 0) return { items: [] };
 
   const cfoByJobPart = new Map<string, number>(cfoRows.map((row) => [`${row.jobId}:${row.partId}`, row.cfoQuantity]));
   const drawnByJobPart = new Map<string, number>(
@@ -150,36 +152,28 @@ export async function listCloseOutQueue({
 
   return CloseOutQueueResultSchema.parse({
     items: candidates.flatMap((candidate) => {
-      let committedQuantity = 0;
-      let drawnQuantity = 0;
+      let committedPartCount = 0;
+      let drawnPartCount = 0;
 
       for (const partId of partIdsByJob.get(candidate.id) ?? []) {
         const key = `${candidate.id}:${partId}`;
-        const partDrawn = drawnByJobPart.get(key) ?? 0;
+        const drawnQuantity = drawnByJobPart.get(key) ?? 0;
 
-        committedQuantity += deriveCommitment({
-          cfoQuantity: cfoByJobPart.get(key) ?? 0,
-          drawnQuantity: partDrawn,
-        });
+        if (deriveCommitment({ cfoQuantity: cfoByJobPart.get(key) ?? 0, drawnQuantity }) > 0) committedPartCount += 1;
         // Leftovers still held, per Part: an over-returned Part is not stock some other Part owes.
-        drawnQuantity += Math.max(0, partDrawn);
+        if (drawnQuantity > 0) drawnPartCount += 1;
       }
 
-      if (committedQuantity <= 0 && drawnQuantity <= 0) return [];
+      if (committedPartCount === 0 && drawnPartCount === 0) return [];
 
       return [
         {
           ...deriveCloseOutAge({ completedOn: DateOnlyIso.parse(candidate.completedOn), today }),
           code: candidate.code,
-          committedQuantity,
+          committedPartCount,
           completedOn: candidate.completedOn,
-          displayName: getJobDisplayName({
-            code: formatJobCode(candidate.code),
-            productName: candidate.productName,
-            quoteKind: candidate.quoteKind,
-            workTitle: candidate.workTitle,
-          }),
-          drawnQuantity,
+          displayName: jobDisplayNameOf(candidate),
+          drawnPartCount,
           jobId: candidate.id,
         },
       ];
@@ -187,11 +181,7 @@ export async function listCloseOutQueue({
   });
 }
 
-async function isJobClosedOut(tx: DatabaseTransaction, jobId: UUID): Promise<boolean> {
-  const [row] = await tx
-    .select({ jobId: jobStockCloseOuts.jobId })
-    .from(jobStockCloseOuts)
-    .where(eq(jobStockCloseOuts.jobId, jobId));
-
-  return row !== undefined;
+/** One condition for all three reads, so an aggregate can never cover a different set than the list. */
+function closeOutCandidateCondition() {
+  return and(isNotNull(jobs.completedOn), isNull(jobs.cancelledAt), jobIsNotClosedOut(jobs.id));
 }

@@ -146,9 +146,9 @@ describe('listCloseOutQueue', () => {
       expect.objectContaining({
         ageDays: 3,
         code: expect.any(String),
-        committedQuantity: 5,
+        committedPartCount: 1,
         completedOn: '2026-08-01',
-        drawnQuantity: 0,
+        drawnPartCount: 0,
         isStale: false,
         jobId: context.jobs.cfo.id,
       }),
@@ -170,8 +170,8 @@ describe('listCloseOutQueue', () => {
     const withDraws = await listCloseOutQueue({ clock, db: context.db });
     expect(withDraws.items.map((row) => row.jobId)).toContain(context.jobs.custom.id);
     expect(withDraws.items.find((row) => row.jobId === context.jobs.custom.id)).toMatchObject({
-      committedQuantity: 0,
-      drawnQuantity: 3,
+      committedPartCount: 0,
+      drawnPartCount: 1,
     });
 
     await postJobMovement({

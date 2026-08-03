@@ -186,7 +186,7 @@ describe('close-out queue and close action', () => {
     await context.db.update(jobs).set({ completedOn: '2026-08-01' }).where(eq(jobs.id, context.job.id));
 
     await expect(stores.inventory.closeOutQueue()).resolves.toMatchObject({
-      items: [{ code: 'JOB-00001', displayName: 'Inventory repair', drawnQuantity: 2, jobId: context.job.id }],
+      items: [{ code: 'JOB-00001', displayName: 'Inventory repair', drawnPartCount: 1, jobId: context.job.id }],
     });
 
     await expect(

@@ -40,6 +40,7 @@ const inventoryJobsInput = (search: string) =>
 type FixedJob = { code: string; id: string };
 
 export function StockMovementDialog({
+  defaultPartId = '',
   fixedJob,
   isLoadingParts = false,
   items,
@@ -48,6 +49,8 @@ export function StockMovementDialog({
   parts,
   type,
 }: {
+  /** Pre-selects the Part, so a leftover row can open straight onto the Part it is returning. */
+  defaultPartId?: string;
   fixedJob?: FixedJob;
   /** Set where the Part list is fetched only once the dialog opens, so the select can say so. */
   isLoadingParts?: boolean;
@@ -116,7 +119,7 @@ export function StockMovementDialog({
 
   return (
     <CreateEntityDialog<StockJobMovementFormValues, { warnings: StockMovementWarningCode[] }>
-      defaultValues={{ jobId: fixedJob?.id ?? '', lengthMm: Number.NaN, partId: '', quantity: Number.NaN }}
+      defaultValues={{ jobId: fixedJob?.id ?? '', lengthMm: Number.NaN, partId: defaultPartId, quantity: Number.NaN }}
       description={
         type === 'checkout' ? 'Draw a Part from stock against any Job.' : 'Return a previously drawn Part to store.'
       }

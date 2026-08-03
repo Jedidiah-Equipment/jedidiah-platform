@@ -11,17 +11,17 @@ import { useTRPC } from '@/lib/trpc.js';
 import { JobCloseOutFormValues, toCloseOutJobInput } from '../../components/types.js';
 
 export function JobCloseOutDialog({
+  committedPartCount,
+  drawnPartCount,
   jobId,
   onOpenChange,
   open,
-  outstandingCommitment,
-  outstandingDrawn,
 }: {
+  committedPartCount: number;
+  drawnPartCount: number;
   jobId: UUID;
   onOpenChange: (open: boolean) => void;
   open: boolean;
-  outstandingCommitment: number;
-  outstandingDrawn: number;
 }) {
   const trpc = useTRPC();
   const navigate = useNavigate();
@@ -36,7 +36,7 @@ export function JobCloseOutDialog({
   return (
     <CreateEntityDialog<JobCloseOutFormValues, unknown>
       defaultValues={{ note: '' }}
-      description={describeOutstanding(outstandingDrawn, outstandingCommitment)}
+      description={describeOutstanding(drawnPartCount, committedPartCount)}
       onCreate={(values) => mutation.mutateAsync(toCloseOutJobInput(jobId, values))}
       onCreated={async () => {
         await invalidateInventory();
@@ -63,13 +63,17 @@ export function JobCloseOutDialog({
  * The close is irreversible — reopening is not a v1 concept — so the dialog names exactly what is
  * about to be given up rather than asking for a blind confirmation.
  */
-function describeOutstanding(drawn: number, committed: number): string {
-  const parts = [
-    drawn > 0 ? `${drawn} still drawn against the Job` : null,
-    committed > 0 ? `${committed} of open commitment` : null,
+function describeOutstanding(drawnPartCount: number, committedPartCount: number): string {
+  const outstanding = [
+    drawnPartCount > 0 ? `${pluralParts(drawnPartCount)} still drawn against the Job` : null,
+    committedPartCount > 0 ? `${pluralParts(committedPartCount)} still committed` : null,
   ].filter((part) => part !== null);
 
-  if (parts.length === 0) return 'Ends this Job’s stock life. Nothing is outstanding.';
+  if (outstanding.length === 0) return 'Ends this Job’s stock life. Nothing is outstanding.';
 
-  return `Ends this Job’s stock life and releases ${parts.join(' and ')}. This cannot be undone.`;
+  return `Ends this Job’s stock life with ${outstanding.join(' and ')}. This cannot be undone.`;
+}
+
+function pluralParts(count: number): string {
+  return count === 1 ? '1 Part' : `${count} Parts`;
 }

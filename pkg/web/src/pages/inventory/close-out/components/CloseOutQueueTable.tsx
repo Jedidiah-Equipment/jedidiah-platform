@@ -13,8 +13,8 @@ export function CloseOutQueueTable({ items }: { items: readonly CloseOutQueueRow
           <TableHead>Job</TableHead>
           <TableHead>Completed</TableHead>
           <TableHead>Waiting</TableHead>
-          <TableHead className="text-right">Drawn</TableHead>
-          <TableHead className="text-right">Committed</TableHead>
+          <TableHead className="text-right">Parts drawn</TableHead>
+          <TableHead className="text-right">Parts committed</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -39,8 +39,8 @@ export function CloseOutQueueTable({ items }: { items: readonly CloseOutQueueRow
                 <span className="text-muted-foreground">{formatWaiting(item.ageDays)}</span>
               )}
             </TableCell>
-            <TableCell className="text-right tabular-nums">{item.drawnQuantity}</TableCell>
-            <TableCell className="text-right tabular-nums">{item.committedQuantity}</TableCell>
+            <TableCell className="text-right tabular-nums">{item.drawnPartCount}</TableCell>
+            <TableCell className="text-right tabular-nums">{item.committedPartCount}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -48,7 +48,7 @@ export function CloseOutQueueTable({ items }: { items: readonly CloseOutQueueRow
   );
 }
 
-export function formatWaiting(ageDays: number): string {
+function formatWaiting(ageDays: number): string {
   if (ageDays === 0) return 'today';
 
   return ageDays === 1 ? '1 day' : `${ageDays} days`;

@@ -18,7 +18,7 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }));
-  const [isReturning, setIsReturning] = useState(false);
+  const [returningPartId, setReturningPartId] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const canMove = hasPermission(accessQuery.data, 'inventory:move');
   const canCloseOut = hasPermission(accessQuery.data, 'inventory:close-out');
@@ -43,8 +43,9 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
   }
 
   const { items, job } = jobStockQuery.data;
-  const outstandingDrawn = items.reduce((total, item) => total + Math.max(0, item.drawnQuantity), 0);
-  const outstandingCommitment = items.reduce((total, item) => total + item.committedQuantity, 0);
+  // Counted, never summed: one Job's Parts span pieces, lengths, and weights.
+  const drawnPartCount = items.filter((item) => item.drawnQuantity > 0).length;
+  const committedPartCount = items.filter((item) => item.committedQuantity > 0).length;
   // Cancellation ends a Job's stock life its own way, so only a live completed Job is closeable here.
   const isCloseable = job.closedOutAt === null && job.cancelledAt === null && job.completedOn !== null;
 
@@ -52,8 +53,10 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
     <PageLayout
       actions={
         <div className="flex flex-wrap gap-2">
-          {canMove && job.closedOutAt === null ? (
-            <Button onClick={() => setIsReturning(true)} variant="outline">
+          {/* Returns stay open after the close: recovered stock must never be stranded off-ledger,
+              and the released commitment does not come back with it. */}
+          {canMove ? (
+            <Button onClick={() => setReturningPartId('')} variant="outline">
               <IconArrowUp data-icon="inline-start" />
               Return to store
             </Button>
@@ -73,26 +76,29 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
       {items.length === 0 ? (
         <p className="text-muted-foreground text-sm">No CFO or stock movements for this Job.</p>
       ) : (
-        <JobStockTable items={items} />
+        <JobStockTable items={items} onReturn={canMove ? setReturningPartId : undefined} />
       )}
-      {isReturning ? (
+      {returningPartId === null ? null : (
         <StockMovementDialog
+          defaultPartId={returningPartId}
           fixedJob={{ code: job.code, id: job.id }}
           isLoadingParts={stockOnHandQuery.isPending}
           items={stockOnHandQuery.data?.items ?? []}
-          onOpenChange={setIsReturning}
+          onOpenChange={(open) => {
+            if (!open) setReturningPartId(null);
+          }}
           open={true}
           parts={parts}
           type="return-to-store"
         />
-      ) : null}
+      )}
       {isClosing ? (
         <JobCloseOutDialog
           jobId={jobId}
           onOpenChange={setIsClosing}
           open={true}
-          outstandingCommitment={outstandingCommitment}
-          outstandingDrawn={outstandingDrawn}
+          committedPartCount={committedPartCount}
+          drawnPartCount={drawnPartCount}
         />
       ) : null}
     </PageLayout>

@@ -118,7 +118,7 @@ export function toJobMovementInput(values: StockJobMovementFormValues, part: Sto
   });
 }
 
-export function toCloseOutJobInput(jobId: string, values: JobCloseOutFormValues) {
+export function toCloseOutJobInput(jobId: UUID, values: JobCloseOutFormValues) {
   return CloseOutJobInput.parse({ jobId, note: values.note });
 }
 

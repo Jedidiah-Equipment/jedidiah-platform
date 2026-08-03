@@ -26,11 +26,12 @@ export const CloseOutQueueRow = z.object({
   /** Plant business days since Job Completion; the queue's age column is the stale-commitment report. */
   ageDays: z.int().nonnegative(),
   code: JobCode,
-  committedQuantity: z.number().finite(),
+  /** Parts still carrying open commitment. Counted, not summed — one Job spans three unit classes. */
+  committedPartCount: z.int().nonnegative(),
   completedOn: DateOnlyIso,
   displayName: z.string(),
-  /** Checked out and not yet returned — the leftovers still sitting against the Job. */
-  drawnQuantity: z.number().finite(),
+  /** Parts checked out and not yet returned — the leftovers still sitting against the Job. */
+  drawnPartCount: z.int().nonnegative(),
   isStale: z.boolean(),
   jobId: UUID,
 });

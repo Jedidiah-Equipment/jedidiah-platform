@@ -20,7 +20,6 @@ import {
   deriveOutstandingDrawUnitCost,
   deriveReceiptWarnings,
   deriveStockMovementWarnings,
-  getJobDisplayName,
   type StockMovementContext,
   valueStockBucket,
   valueStockMovement,
@@ -41,7 +40,6 @@ import type {
   UUID,
 } from '@pkg/schema';
 import {
-  formatJobCode,
   isPeriodicStockAdjustmentReason,
   JobStockResult as JobStockResultSchema,
   StockMovementHistoryResult as StockMovementHistoryResultSchema,
@@ -51,6 +49,7 @@ import {
   unitClassFor,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull, ne, type SQL, sql } from 'drizzle-orm';
+import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 import {
@@ -299,12 +298,7 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
     closedOutAt,
     code: job.code,
     completedOn: job.completedOn,
-    displayName: getJobDisplayName({
-      code: formatJobCode(job.code),
-      productName: job.productName,
-      quoteKind: job.quoteKind,
-      workTitle: job.workTitle,
-    }),
+    displayName: jobDisplayNameOf(job),
     id: job.id,
   };
   if (partIds.length === 0) {
@@ -352,13 +346,10 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
 async function loadJobStockJob({ db, jobId }: { db: Db; jobId: UUID }) {
   const [job] = await db
     .select({
+      ...jobDisplaySelection,
       cancelledAt: jobs.cancelledAt,
-      code: jobs.code,
       completedOn: jobs.completedOn,
       id: jobs.id,
-      productName: products.name,
-      quoteKind: quotes.kind,
-      workTitle: quotes.workTitle,
     })
     .from(jobs)
     .leftJoin(productUnits, eq(productUnits.id, jobs.productUnitId))

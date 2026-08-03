@@ -1,3 +1,4 @@
+import { STALE_CLOSE_OUT_DAYS } from '@pkg/domain';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
@@ -32,7 +33,7 @@ export const CloseOutQueueWidget: React.FC = () => {
 function describeQueue(count: number, staleCount: number): string {
   if (count === 0) return 'Nothing waiting';
   // Stale is the backstop the queue exists to make loud, so it leads the sublabel when there is any.
-  if (staleCount > 0) return `${staleCount} waiting over 30 days`;
+  if (staleCount > 0) return `${staleCount} waiting over ${STALE_CLOSE_OUT_DAYS} days`;
 
   return count === 1 ? '1 completed Job to close' : `${count} completed Jobs to close`;
 }

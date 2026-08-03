@@ -17,6 +17,7 @@ export * from './inventory/stock-movement-service.js';
 export * from './jobs/board-preview-service.js';
 export * from './jobs/job-bay-service.js';
 export * from './jobs/job-completion-service.js';
+export * from './jobs/job-display.js';
 export * from './jobs/job-document-service.js';
 export * from './jobs/job-errors.js';
 export * from './jobs/job-read-service.js';

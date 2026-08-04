@@ -46,9 +46,9 @@ describe('DOCS_SECTIONS', () => {
     expect(new Set(links).size).toBe(links.length);
   });
 
-  it('declares absolute, extensionless links', () => {
+  it('declares absolute, extensionless links, or a section landing page ending in a slash', () => {
     for (const link of DOCS_SECTIONS.flatMap((section) => section.items.map((item) => item.link))) {
-      expect(link).toMatch(/^\/[a-z0-9-]+(\/[a-z0-9-]+)*$/);
+      expect(link).toMatch(/^\/[a-z0-9-]+(\/[a-z0-9-]+)*\/?$/);
     }
   });
 });

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { docsConfig } from './config';
 import { CONTENT_DIR, listContentPages } from './pages';
+import { buildSidebar, DOCS_SECTIONS } from './sidebar';
 
 const sidebar = docsConfig.themeConfig?.sidebar;
 const sections = Array.isArray(sidebar) ? sidebar : [];
@@ -29,11 +30,8 @@ describe('docs site config', () => {
 describe('docs site navigation', () => {
   const listed = sections.flatMap((section) => section.items?.map((item) => item.link) ?? []);
 
-  it('is built from the pages on disk rather than a hand-kept list', () => {
-    const existing = listContentPages();
-    for (const link of listed) {
-      expect(existing).toContain(link);
-    }
+  it('is the declared structure narrowed by the pages on disk, not a hand-kept list', () => {
+    expect(sidebar).toEqual(buildSidebar(DOCS_SECTIONS, listContentPages()));
   });
 
   it('lists every content page except the landing page', () => {

@@ -56,6 +56,7 @@ function stubClientConfig(): void {
       appEnv: 'development',
       apiBaseUrl: 'http://localhost:7002',
       authBaseUrl: 'http://localhost:7002/api/auth',
+      docsBaseUrl: 'http://localhost:7006',
     },
   });
 }

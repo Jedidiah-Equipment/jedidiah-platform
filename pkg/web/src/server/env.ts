@@ -1,4 +1,4 @@
-import { getReleaseMetadata } from '@pkg/domain';
+import { getReleaseMetadata, resolveDocsOrigin } from '@pkg/domain';
 import {
   AppEnv,
   ClientConfig,
@@ -38,6 +38,7 @@ const ServerEnv = z.object({
   APP_BASE_URL: z.url(),
   API_BASE_URL: z.url(),
   AUTH_BASE_URL: z.url(),
+  DOCS_BASE_URL: OptionalEnvString,
   POSTHOG_ENABLED: OptionalEnvBoolean,
   POSTHOG_PROJECT_TOKEN: OptionalEnvString,
   POSTHOG_INGEST_HOST: defaultedEnvUrl(POSTHOG_INGEST_HOST),
@@ -106,6 +107,7 @@ function createClientConfig(env: ServerEnv, release: string | null): ClientConfi
     appBaseUrl: env.APP_BASE_URL,
     apiBaseUrl: env.API_BASE_URL,
     authBaseUrl: env.AUTH_BASE_URL,
+    docsBaseUrl: resolveDocsOrigin(env.DOCS_BASE_URL, env.APP_ENV),
     deploymentVersion: release,
     posthog: {
       enabled: isPostHogEnabled(env),

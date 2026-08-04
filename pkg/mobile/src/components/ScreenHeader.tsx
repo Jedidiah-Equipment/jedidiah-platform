@@ -1,12 +1,22 @@
+import type { HelpTopic } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { AppIcon } from '@/components/AppLogo';
 import { AssistantEntryButton } from '@/components/assistant/AssistantEntryButton';
+import { HelpButton } from '@/components/HelpButton';
 import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { Text } from '@/components/ui/text';
 
-/** Shared landing-screen title bar with a branded mark, title/caption, and profile menu. */
-export function ScreenHeader({ title, subtitle }: { title: string; subtitle: string }) {
+/** Shared landing-screen title bar with a branded mark, title/caption, Help, and profile menu. */
+export function ScreenHeader({
+  title,
+  subtitle,
+  helpTopic,
+}: {
+  title: string;
+  subtitle: string;
+  helpTopic: HelpTopic;
+}) {
   return (
     <View className="h-12 flex-row items-center gap-3">
       {/* No rem-sized wrapper: NativeWind rem is 14px on native (16px on web), so an
@@ -22,6 +32,7 @@ export function ScreenHeader({ title, subtitle }: { title: string; subtitle: str
           {subtitle}
         </Text>
       </View>
+      <HelpButton topic={helpTopic} />
       <AssistantEntryButton />
       <ProfileMenuButton />
     </View>

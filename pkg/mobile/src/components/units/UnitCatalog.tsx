@@ -26,6 +26,7 @@ const UNIT_SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
 export function UnitCatalogHeader({ count }: { count: number | null }) {
   return (
     <ScreenHeader
+      helpTopic="units"
       subtitle={count === null ? 'Loading units…' : `${count} ${count === 1 ? 'unit' : 'units'}`}
       title="Units"
     />

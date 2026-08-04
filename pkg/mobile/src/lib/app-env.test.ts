@@ -21,6 +21,7 @@ afterEach(() => {
 
 async function loadAppEnv(rawValue: string | undefined, rawLanderOrigin?: string) {
   vi.resetModules();
+  delete process.env.EXPO_PUBLIC_DOCS_ORIGIN;
   if (rawValue === undefined) {
     delete process.env.EXPO_PUBLIC_APP_ENV;
   } else {
@@ -69,5 +70,13 @@ describe('landerOrigin', () => {
     const { landerOrigin } = await loadAppEnv('staging', 'https://preview.example.com/');
 
     expect(landerOrigin).toBe('https://preview.example.com');
+  });
+});
+
+describe('docsOrigin', () => {
+  it('stays null until a docs site is configured, so no Help is offered', async () => {
+    const { docsOrigin } = await loadAppEnv(undefined);
+
+    expect(docsOrigin).toBeNull();
   });
 });

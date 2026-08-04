@@ -1,8 +1,10 @@
+import type { HelpTopic } from '@pkg/domain';
 import type { BayOperator } from '@pkg/schema';
 import { IconChevronLeft } from '@tabler/icons-react-native';
 import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { HelpButton } from '@/components/HelpButton';
 import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -16,6 +18,7 @@ export function ScheduleHeader({
   subtitle,
   operator,
   onBack,
+  helpTopic,
   showOperatorAvatar = true,
   titleMono = false,
 }: {
@@ -24,6 +27,7 @@ export function ScheduleHeader({
   subtitle?: string;
   operator: BayOperator | null;
   onBack: () => void;
+  helpTopic: HelpTopic;
   showOperatorAvatar?: boolean;
   titleMono?: boolean;
 }) {
@@ -57,6 +61,7 @@ export function ScheduleHeader({
         ) : null}
       </View>
 
+      <HelpButton topic={helpTopic} />
       <ProfileMenuButton />
     </View>
   );

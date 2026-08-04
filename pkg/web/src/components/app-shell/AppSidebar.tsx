@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
+import { AppNavHelp } from '@/components/app-shell/AppNavHelp.js';
 import { AppNavMain } from '@/components/app-shell/AppNavMain.js';
 import { AppNavUser } from '@/components/app-shell/AppNavUser.js';
 import { SidebarAssistant } from '@/components/assistant-ui/SidebarAssistant.js';
@@ -35,6 +36,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
         <AppNavMain />
       </SidebarContent>
       <SidebarFooter>
+        <AppNavHelp />
         <SidebarAssistant enabled={session?.user.assistantEnabled === true} />
         <AppNavUser onSignOut={onSignOut} user={user} />
       </SidebarFooter>

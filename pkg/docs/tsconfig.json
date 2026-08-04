@@ -9,5 +9,6 @@
     "declarationMap": false,
     "types": ["node", "vitest"]
   },
-  "include": ["src/**/*.ts", ".vitepress/**/*.ts"]
+  "include": ["src/**/*.ts", ".vitepress/**/*.ts"],
+  "references": [{ "path": "../domain" }]
 }

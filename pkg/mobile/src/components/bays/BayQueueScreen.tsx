@@ -170,6 +170,7 @@ function Ready({
   return (
     <>
       <ScheduleHeader
+        helpTopic="jobs"
         onBack={handleBack}
         operator={bay.operator}
         showOperatorAvatar={!onDetail}
@@ -471,7 +472,7 @@ function Frame({
 }) {
   return (
     <>
-      <ScheduleHeader onBack={onBack} operator={operator} subtitle="Bay schedule" title={title} />
+      <ScheduleHeader helpTopic="jobs" onBack={onBack} operator={operator} subtitle="Bay schedule" title={title} />
       <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
         {children}
       </ScrollView>

@@ -12,7 +12,8 @@
         "APP_VARIANT": "staging",
         "EXPO_PUBLIC_APP_ENV": "staging",
         "EXPO_PUBLIC_API_BASE_URL": "https://staging-api.jedidiahequipment.co.za",
-        "EXPO_PUBLIC_LANDER_ORIGIN": "https://jedidiahequipment.co.za"
+        "EXPO_PUBLIC_LANDER_ORIGIN": "https://jedidiahequipment.co.za",
+        "EXPO_PUBLIC_DOCS_ORIGIN": "https://docs.jedidiahequipment.co.za"
       },
       "android": {
         "buildType": "app-bundle"
@@ -26,7 +27,8 @@
         "APP_VARIANT": "production",
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_API_BASE_URL": "https://api.jedidiahequipment.co.za",
-        "EXPO_PUBLIC_LANDER_ORIGIN": "https://jedidiahequipment.co.za"
+        "EXPO_PUBLIC_LANDER_ORIGIN": "https://jedidiahequipment.co.za",
+        "EXPO_PUBLIC_DOCS_ORIGIN": "https://docs.jedidiahequipment.co.za"
       },
       "android": {
         "buildType": "app-bundle"

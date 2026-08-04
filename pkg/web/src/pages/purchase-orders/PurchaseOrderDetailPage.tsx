@@ -28,6 +28,11 @@ import { allJobsInput } from '../jobs/components/all-jobs-input.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
 import {
+  ensurePurchaseOrderPreview,
+  purchaseOrderDocumentDownloadUrl,
+  purchaseOrderPreviewUrl,
+} from './components/purchase-order-pdf.js';
+import {
   type PurchaseOrderDraftFormValues,
   PurchaseOrderDraftFormValues as PurchaseOrderDraftFormValuesSchema,
   toPurchaseOrderDraftFormValues,
@@ -152,7 +157,7 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ p
       ) : (
         <>
           <ReadOnlyDetailsCard purchaseOrder={purchaseOrder} />
-          {canReceive ? <PurchaseOrderReceivingCard purchaseOrder={purchaseOrder} /> : null}
+          {canReceive ? <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} /> : null}
           <ReadOnlyLinesCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
           <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
         </>
@@ -224,14 +229,26 @@ const PurchaseOrderActions: React.FC<{
     if (previewWindow) previewWindow.opener = null;
 
     void runAfterSave(async () => {
-      const url = `/api/purchase-orders/${purchaseOrder.id}/preview`;
+      const url = purchaseOrderPreviewUrl(purchaseOrder.id);
+      const toastId = `purchase-order-preview-${purchaseOrder.id}`;
+      toast.loading('Preparing PDF preview...', { id: toastId });
+      try {
+        await ensurePurchaseOrderPreview(url);
+      } catch (error) {
+        toast.error('Unable to open the PDF preview.', { id: toastId });
+        throw error;
+      }
+      toast.success('PDF preview opened', { id: toastId });
+      // Navigate to the server response so the PDF viewer retains the PO filename from Content-Disposition.
       if (previewWindow) previewWindow.location.href = url;
       else window.location.assign(url);
     }, 'Save all Purchase Order changes before previewing the PDF.')
       .then((didRun) => {
         if (!didRun) previewWindow?.close();
       })
-      .catch(() => previewWindow?.close());
+      .catch(() => {
+        previewWindow?.close();
+      });
   };
 
   return (
@@ -243,9 +260,7 @@ const PurchaseOrderActions: React.FC<{
       ) : null}
       {canReadCosts && purchaseOrder.documentId ? (
         <Button
-          render={
-            <a href={`/api/purchase-orders/${purchaseOrder.id}/documents/${purchaseOrder.documentId}/download`} />
-          }
+          render={<a href={purchaseOrderDocumentDownloadUrl(purchaseOrder.id, purchaseOrder.documentId)} />}
           variant="outline"
         >
           <IconDownload data-icon="inline-start" /> Download PDF

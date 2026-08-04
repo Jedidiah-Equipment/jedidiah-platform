@@ -1,5 +1,6 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
 import { type PartUnitOfMeasure, STOCK_ADJUSTMENT_REASON_LABELS, type StockMovementHistoryRow } from '@pkg/schema';
+import { Link } from '@tanstack/react-router';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
@@ -23,6 +24,7 @@ export function StockMovementHistoryTable({
           <TableHead>Running balance</TableHead>
           <TableHead>Note</TableHead>
           <TableHead>Actor</TableHead>
+          <TableHead>Reference</TableHead>
           {showCosts ? <TableHead>Unit cost</TableHead> : null}
           {showCosts ? <TableHead>Movement value</TableHead> : null}
         </TableRow>
@@ -36,6 +38,19 @@ export function StockMovementHistoryTable({
             <TableCell className="tabular-nums">{formatLedgerQuantity(item.runningBalance, unitOfMeasure)}</TableCell>
             <TableCell>{item.note ?? '—'}</TableCell>
             <TableCell>{item.actorName}</TableCell>
+            <TableCell>
+              {item.purchaseOrderId && item.purchaseOrderCode ? (
+                <Link
+                  className="font-medium underline-offset-4 hover:underline"
+                  params={{ id: item.purchaseOrderId }}
+                  to="/purchase-orders/$id"
+                >
+                  {item.purchaseOrderCode}
+                </Link>
+              ) : (
+                '—'
+              )}
+            </TableCell>
             {showCosts ? <TableCell>{formatCost(item.unitCost)}</TableCell> : null}
             {showCosts ? <TableCell>{formatCost(item.movementValue)}</TableCell> : null}
           </TableRow>

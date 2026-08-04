@@ -54,14 +54,7 @@ export const PartCreateDialog: React.FC<PartCreateDialogProps> = ({ supplier, bu
             <PartForm
               fixedSupplier={supplier}
               isPending={createPartMutation.isPending}
-              onSubmit={(value) =>
-                createPartMutation.mutateAsync(
-                  toPartInput({
-                    ...value,
-                    supplierId: supplier.id,
-                  }),
-                )
-              }
+              onSubmit={(value) => createPartMutation.mutateAsync(toPartInput({ ...value, supplierId: supplier.id }))}
               submitLabel="Create part"
             />
           ) : null}

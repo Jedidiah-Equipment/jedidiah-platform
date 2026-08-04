@@ -3,7 +3,7 @@ import { AuthId } from '../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
 import { createCursorQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
-import { JobCode } from '../common/public-code.js';
+import { JobCode, PurchaseOrderCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 import { JobListInput } from '../jobs/job.js';
@@ -250,6 +250,7 @@ export type StockMovementHistoryRow = z.infer<typeof StockMovementHistoryRow>;
 export const StockMovementHistoryRow = StockMovement.extend({
   actorName: z.string(),
   movementValue: InventoryValue,
+  purchaseOrderCode: PurchaseOrderCode.nullable(),
   runningBalance: z.number().finite(),
 });
 

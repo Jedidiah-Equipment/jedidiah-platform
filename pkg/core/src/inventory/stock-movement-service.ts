@@ -7,6 +7,7 @@ import {
   parts,
   products,
   productUnits,
+  purchaseOrders,
   quotes,
   stockMovements,
   user,
@@ -388,12 +389,14 @@ export async function getStockMovementHistory({
       note: stockMovements.note,
       partId: stockMovements.partId,
       purchaseOrderId: stockMovements.purchaseOrderId,
+      purchaseOrderCode: purchaseOrders.code,
       reason: stockMovements.reason,
       runningBalance: sql<number>`(sum(${stockMovements.delta}) over (order by ${stockMovements.createdAt}, ${stockMovements.id}))::double precision`,
       unitCost: stockMovements.unitCost,
     })
     .from(stockMovements)
     .innerJoin(user, eq(user.id, stockMovements.actorUserId))
+    .leftJoin(purchaseOrders, eq(purchaseOrders.id, stockMovements.purchaseOrderId))
     .where(eq(stockMovements.partId, partId))
     .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
 

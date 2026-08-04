@@ -2,6 +2,7 @@ import {
   DateOnlyIso,
   DateOnlyIsoString,
   hasUniquePartIds,
+  InventoryUnitCost,
   PostReceiptInput,
   PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
   type PurchaseOrderCreateInput,
@@ -11,6 +12,7 @@ import {
   type PurchaseOrderView,
   StockMovementLengthMm,
   StockMovementQuantity,
+  type StockMovementWarningCode,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
@@ -78,6 +80,7 @@ export type PurchaseOrderReceiveFormValues = z.infer<typeof PurchaseOrderReceive
 export const PurchaseOrderReceiveFormValues = z.object({
   lengthMm: optionalNumber(StockMovementLengthMm),
   quantity: StockMovementQuantity,
+  unitCost: optionalNumber(InventoryUnitCost),
 });
 
 /** The outstanding quantity a line is still waiting on, floored at zero once it is over-delivered. */
@@ -89,15 +92,25 @@ export function isLinearLine(line: Pick<PurchaseOrderLineView, 'unitOfMeasure'>)
   return line.unitOfMeasure === 'mm';
 }
 
+export function confirmReceiptWarnings(
+  warnings: readonly StockMovementWarningCode[],
+  confirm: (message: string) => boolean,
+  messageFor: (warning: StockMovementWarningCode) => string,
+): boolean {
+  return warnings.length === 0 || confirm(`${warnings.map(messageFor).join('\n')} Receive it anyway?`);
+}
+
 /**
  * A blank length on a linear line means "the length we buy it in", which the ledger fills from the
  * Part's standard purchase length — so the dock only keys one when the delivery is not that.
  */
 export function toReceiptInput({
+  canReadCosts,
   line,
   purchaseOrderId,
   values,
 }: {
+  canReadCosts: boolean;
   line: Pick<PurchaseOrderLineView, 'partId' | 'unitOfMeasure'>;
   purchaseOrderId: PurchaseOrderView['id'];
   values: PurchaseOrderReceiveFormValues;
@@ -107,6 +120,6 @@ export function toReceiptInput({
     partId: line.partId,
     purchaseOrderId,
     quantity: values.quantity,
-    unitCost: null,
+    unitCost: canReadCosts && !Number.isNaN(values.unitCost) ? values.unitCost : null,
   });
 }

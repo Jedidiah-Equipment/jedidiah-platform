@@ -1,7 +1,8 @@
 import { PurchaseOrderView } from '@pkg/schema';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
+  confirmReceiptWarnings,
   outstandingQuantity,
   PurchaseOrderCreateFormValues,
   PurchaseOrderDraftFormValues,
@@ -120,6 +121,17 @@ describe('Purchase Order draft form values', () => {
 });
 
 describe('Purchase Order receiving values', () => {
+  it('requires explicit confirmation only when a receipt warning is present', () => {
+    const confirm = vi.fn(() => false);
+    const messageFor = vi.fn(() => 'This receipt takes the line past the quantity ordered.');
+
+    expect(confirmReceiptWarnings([], confirm, messageFor)).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(confirmReceiptWarnings(['exceeds-ordered'], confirm, messageFor)).toBe(false);
+    expect(confirm).toHaveBeenCalledWith('This receipt takes the line past the quantity ordered. Receive it anyway?');
+    confirm.mockReturnValue(true);
+    expect(confirmReceiptWarnings(['exceeds-ordered'], confirm, messageFor)).toBe(true);
+  });
   const [pieceLine, linearLine] = purchaseOrder.lines;
   if (!pieceLine || !linearLine) throw new Error('Purchase Order fixture is missing its lines');
 
@@ -131,36 +143,52 @@ describe('Purchase Order receiving values', () => {
     expect(outstandingQuantity(linearLine)).toBe(0);
   });
 
-  it('sends no length for a discrete line, and never a price from the dock', () => {
-    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: Number.NaN, quantity: 3 });
+  it('sends no length for a discrete line and ignores a price from a price-blind dock', () => {
+    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: Number.NaN, quantity: 3, unitCost: 140 });
 
-    expect(toReceiptInput({ line: pieceLine, purchaseOrderId: purchaseOrder.id, values })).toEqual({
-      lengthMm: null,
-      partId: PART_ID,
-      purchaseOrderId: purchaseOrder.id,
-      quantity: 3,
-      unitCost: null,
-    });
+    expect(toReceiptInput({ canReadCosts: false, line: pieceLine, purchaseOrderId: purchaseOrder.id, values })).toEqual(
+      {
+        lengthMm: null,
+        partId: PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 3,
+        unitCost: null,
+      },
+    );
+  });
+
+  it('carries an optional cost override from an authorized dock', () => {
+    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: Number.NaN, quantity: 3, unitCost: 140 });
+
+    expect(
+      toReceiptInput({ canReadCosts: true, line: pieceLine, purchaseOrderId: purchaseOrder.id, values }),
+    ).toMatchObject({ unitCost: 140 });
   });
 
   it('leaves a blank linear length null so the ledger fills the standard purchase length', () => {
-    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: Number.NaN, quantity: 2 });
+    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: Number.NaN, quantity: 2, unitCost: Number.NaN });
 
-    expect(toReceiptInput({ line: linearLine, purchaseOrderId: purchaseOrder.id, values })).toMatchObject({
+    expect(
+      toReceiptInput({ canReadCosts: true, line: linearLine, purchaseOrderId: purchaseOrder.id, values }),
+    ).toMatchObject({
       lengthMm: null,
       partId: LINEAR_PART_ID,
     });
   });
 
   it('carries a keyed length through for a short delivery', () => {
-    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: 3_000, quantity: 1 });
+    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: 3_000, quantity: 1, unitCost: Number.NaN });
 
-    expect(toReceiptInput({ line: linearLine, purchaseOrderId: purchaseOrder.id, values })).toMatchObject({
+    expect(
+      toReceiptInput({ canReadCosts: true, line: linearLine, purchaseOrderId: purchaseOrder.id, values }),
+    ).toMatchObject({
       lengthMm: 3_000,
     });
   });
 
   it('rejects a receipt of nothing', () => {
-    expect(PurchaseOrderReceiveFormValues.safeParse({ lengthMm: Number.NaN, quantity: 0 }).success).toBe(false);
+    expect(
+      PurchaseOrderReceiveFormValues.safeParse({ lengthMm: Number.NaN, quantity: 0, unitCost: Number.NaN }).success,
+    ).toBe(false);
   });
 });

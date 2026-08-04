@@ -9,6 +9,9 @@ describe('formatNumberFieldValue', () => {
   it('formats finite numeric values as plain input text', () => {
     expect(formatNumberFieldValue(0)).toBe('0');
     expect(formatNumberFieldValue(1000000)).toBe('1 000 000');
+    expect(formatNumberFieldValue(12.5)).toBe('12.5');
+    expect(formatNumberFieldValue(0.1 + 0.2)).toBe('0.3');
+    expect(formatNumberFieldValue(1e-7)).toBe('0.0000001');
     expect(formatNumberFieldValue(12.5, 2)).toBe('12.50');
   });
 });
@@ -33,6 +36,14 @@ describe('parseNumberFieldValue', () => {
     expect(parseNumberFieldValue('1\u00a0000\u00a0000')).toBe(1000000);
     expect(parseNumberFieldValue('1,000,000')).toBe(1000000);
     expect(parseNumberFieldValue('1000,5')).toBe(1000.5);
+  });
+});
+
+describe('formatNumberFieldValue fraction digits', () => {
+  it('formats a value with more fraction digits than Intl accepts', () => {
+    // Intl.NumberFormat throws above 100 fraction digits, and `1e-101` parses straight out of the field.
+    expect(() => formatNumberFieldValue(1e-101)).not.toThrow();
+    expect(formatNumberFieldValue(0.125)).toBe('0.125');
   });
 });
 

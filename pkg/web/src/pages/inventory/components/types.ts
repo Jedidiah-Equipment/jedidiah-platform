@@ -2,6 +2,7 @@ import { type BuildBomLine, deriveBuildConsumption, deriveBuildWarnings } from '
 import {
   CloseOutJobInput,
   InventoryUnitCost,
+  isWholeUnitQuantity,
   PostAdjustmentInput,
   PostBuildInput,
   PostJobMovementInput,
@@ -14,6 +15,7 @@ import {
   type StockMovementWarningCode,
   type StockOnHandRow,
   UUID,
+  unitClassFor,
 } from '@pkg/schema';
 import { z } from 'zod';
 
@@ -37,6 +39,36 @@ function refineLengthForPart(
   if (isLinear && Number.isNaN(values.lengthMm)) {
     context.addIssue({ code: 'custom', message: 'Linear stock needs a piece length', path: ['lengthMm'] });
   }
+}
+
+function refineQuantityForPart(
+  values: { partId: string; quantity: number },
+  parts: readonly StockPartOption[],
+  path: 'delta' | 'quantity',
+  context: z.RefinementCtx,
+): void {
+  const message = partQuantityValidationMessage(values, parts);
+  if (!message) return;
+
+  context.addIssue({
+    code: 'custom',
+    message,
+    path: [path],
+  });
+}
+
+export function partQuantityValidationMessage(
+  values: { partId: string; quantity: number },
+  parts: readonly StockPartOption[],
+): string | undefined {
+  const part = parts.find((candidate) => candidate.partId === values.partId);
+  // An empty field holds NaN, which is not a whole number — but "unkeyed" is the schema's own
+  // complaint to make, not a unit-class violation to report against a quantity nobody typed.
+  if (!part || !Number.isFinite(values.quantity)) return undefined;
+
+  return isWholeUnitQuantity(values.quantity, unitClassFor(part.unitOfMeasure))
+    ? undefined
+    : 'This Part is counted in whole units';
 }
 
 export type StockAdjustmentFormValues = z.infer<typeof StockAdjustmentFormValues>;
@@ -179,6 +211,7 @@ export function toBuildInput(builtPartId: string, rows: readonly StockBuildRow[]
 export function stockAdjustmentValidator(parts: readonly StockPartOption[]) {
   return StockAdjustmentFormValues.superRefine((values, context) => {
     refineLengthForPart(values, parts, context);
+    refineQuantityForPart({ partId: values.partId, quantity: values.delta }, parts, 'delta', context);
 
     // Mirrors PostAdjustmentInput so the rule reads as a field error rather than a failed request.
     if (values.reason !== 'opening-balance' && values.note.trim() === '') {
@@ -188,7 +221,10 @@ export function stockAdjustmentValidator(parts: readonly StockPartOption[]) {
 }
 
 export function stockJobMovementValidator(parts: readonly StockPartOption[]) {
-  return StockJobMovementFormValues.superRefine((values, context) => refineLengthForPart(values, parts, context));
+  return StockJobMovementFormValues.superRefine((values, context) => {
+    refineLengthForPart(values, parts, context);
+    refineQuantityForPart(values, parts, 'quantity', context);
+  });
 }
 
 export function toAdjustmentInput(values: StockAdjustmentFormValues, canReadCost: boolean, part: StockPartOption) {

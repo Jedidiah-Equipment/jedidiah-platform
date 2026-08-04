@@ -13,7 +13,13 @@ import { outstandingQuantity } from './types.js';
  * The dock's view of a sent order: what each line still owes, and the one action that posts it.
  * A refused-at-dock delivery is simply not received — nothing here records it.
  */
-export function PurchaseOrderReceivingCard({ purchaseOrder }: { purchaseOrder: PurchaseOrderView }) {
+export function PurchaseOrderReceivingCard({
+  canReadCosts,
+  purchaseOrder,
+}: {
+  canReadCosts: boolean;
+  purchaseOrder: PurchaseOrderView;
+}) {
   const [receivingPartId, setReceivingPartId] = useState<string | null>(null);
   const receivingLine = purchaseOrder.lines.find((line) => line.partId === receivingPartId) ?? null;
 
@@ -22,7 +28,7 @@ export function PurchaseOrderReceivingCard({ purchaseOrder }: { purchaseOrder: P
       <CardHeader>
         <CardTitle>Receiving</CardTitle>
         <CardDescription>
-          Confirm what arrived at the dock. Quantities only; the order price is carried through.
+          Confirm what arrived at the dock. The Purchase Order price is used unless an authorized receiver overrides it.
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0">
@@ -63,6 +69,7 @@ export function PurchaseOrderReceivingCard({ purchaseOrder }: { purchaseOrder: P
       </CardContent>
       {receivingLine ? (
         <PurchaseOrderReceiveDialog
+          canReadCosts={canReadCosts}
           // Remount per line so the dialog's prefilled outstanding quantity follows the line it opens on.
           key={receivingLine.partId}
           line={receivingLine}

@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input.js';
 import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
 
+const INTL_MAX_FRACTION_DIGITS = 100;
+
 type NumberFieldInputProps = Omit<
   React.ComponentProps<typeof Input>,
   'aria-invalid' | 'id' | 'name' | 'onBlur' | 'onChange' | 'type' | 'value'
@@ -82,7 +84,18 @@ export function hasNumberFieldValueChanged(previousValue: number, nextValue: num
 }
 
 export function formatNumberFieldValue(value: number, decimals?: number): string {
-  return formatNumber(value, decimals === undefined ? undefined : { decimals });
+  if (!Number.isFinite(value)) return '';
+
+  const displayValue = decimals === undefined && !Number.isInteger(value) ? Number(value.toPrecision(15)) : value;
+  return formatNumber(displayValue, { decimals: decimals ?? decimalPlaces(displayValue) });
+}
+
+function decimalPlaces(value: number): number {
+  const [coefficient = '', exponentText = '0'] = String(value).toLowerCase().split('e');
+  const fractionLength = coefficient.split('.')[1]?.length ?? 0;
+
+  // Intl.NumberFormat refuses more than 100 fraction digits, and a keyed `1e-101` asks for 101.
+  return Math.min(INTL_MAX_FRACTION_DIGITS, Math.max(0, fractionLength - Number(exponentText)));
 }
 
 export function parseNumberFieldValue(text: string, emptyValue = NaN): number {

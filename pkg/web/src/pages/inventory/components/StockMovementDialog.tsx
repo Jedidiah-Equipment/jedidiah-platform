@@ -21,6 +21,7 @@ import { useTRPC } from '@/lib/trpc.js';
 
 import { StockMovementWarningPrompt, warningMessageFor } from './StockMovementWarningPrompt.js';
 import {
+  partQuantityValidationMessage,
   partSelectOptions,
   type StockJobMovementFormValues,
   type StockPartOption,
@@ -185,12 +186,22 @@ export function StockMovementDialog({
               <field.SelectField
                 disabled={isLoadingParts}
                 label="Part"
+                onValueCommit={() => {
+                  // SelectField commits first; defer until the form exposes the new Part to the dependent validator.
+                  queueMicrotask(() => void form.validateField('quantity', 'blur'));
+                }}
                 options={partSelectOptions(parts)}
                 placeholder={isLoadingParts ? 'Loading Parts...' : 'Select Part'}
               />
             )}
           </form.AppField>
-          <form.AppField name="quantity">
+          <form.AppField
+            name="quantity"
+            validators={{
+              onBlur: ({ value }) =>
+                partQuantityValidationMessage({ partId: form.state.values.partId, quantity: value }, parts),
+            }}
+          >
             {(field) => <field.NumberField label="Quantity" min={0.001} step="0.001" />}
           </form.AppField>
           <form.Subscribe selector={(state) => state.values}>

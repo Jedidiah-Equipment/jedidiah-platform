@@ -1,6 +1,8 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
 import type { StockOnHandRow, UUID } from '@pkg/schema';
+import { IconAlertTriangle } from '@tabler/icons-react';
 
+import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { formatLengthBucket, formatPartQuantity, getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
@@ -35,12 +37,18 @@ export function StockOnHandTable({
               <span className="block text-muted-foreground text-xs">{item.partCode}</span>
             </TableCell>
             <TableCell className="tabular-nums">
-              <span className="block">{formatPartQuantity(item.quantity, item.unitOfMeasure)}</span>
+              <StockQuantity className="block" quantity={item.quantity}>
+                {formatPartQuantity(item.quantity, item.unitOfMeasure)}
+              </StockQuantity>
               {item.buckets.map((bucket) =>
                 bucket.lengthMm === null ? null : (
-                  <span key={bucket.lengthMm} className="block text-muted-foreground text-xs">
+                  <StockQuantity
+                    key={bucket.lengthMm}
+                    className="block text-muted-foreground text-xs"
+                    quantity={bucket.quantity}
+                  >
                     {formatLengthBucket(bucket.lengthMm, bucket.quantity)}
-                  </span>
+                  </StockQuantity>
                 ),
               )}
             </TableCell>
@@ -57,6 +65,28 @@ export function StockOnHandTable({
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+/**
+ * A negative count is an operational exception, not a smaller number: it means the shelf disagrees
+ * with the ledger, and plain table text disappears in a long list. Free stock is deliberately not
+ * routed through here — spec §3 sends negative free to procurement's buy list and reserves the
+ * count-is-wrong flag for negative stock on hand.
+ */
+function StockQuantity({ children, className, quantity }: { children: string; className?: string; quantity: number }) {
+  if (quantity >= 0) {
+    return <span className={className}>{children}</span>;
+  }
+
+  return (
+    <span className={className}>
+      <Badge variant="destructive">
+        <IconAlertTriangle data-icon="inline-start" />
+        {children}
+        <span className="sr-only">Negative stock</span>
+      </Badge>
+    </span>
   );
 }
 

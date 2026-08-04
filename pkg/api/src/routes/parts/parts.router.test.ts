@@ -172,6 +172,33 @@ describe('parts.create', () => {
   });
 });
 
+describe('parts.bom', () => {
+  test('loads a built Part BOM through the read endpoint used by Build Stock', async ({ context }) => {
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+    const supplier = await createSupplier(admin);
+    const component = await createPart(admin, supplier.id);
+    const built = await createPart(admin, null, {
+      code: 'FAB-100',
+      isInternallyFabricated: true,
+      name: 'Fabricated bracket',
+      supplierCode: 'FAB-100',
+    });
+    await admin.parts.saveBom({
+      lines: [{ componentPartId: component.id, quantity: 2 }],
+      partId: built.id,
+    });
+
+    const expectedBom = {
+      lines: [{ componentPartId: component.id, quantity: 2 }],
+      partId: built.id,
+    };
+
+    await expect(admin.parts.bom({ partId: built.id })).resolves.toMatchObject(expectedBom);
+    await expect(stores.parts.bom({ partId: built.id })).resolves.toMatchObject(expectedBom);
+  });
+});
+
 describe('parts.bulkImport', () => {
   test('rejects unauthenticated and unauthorized bulk imports', async ({ context }) => {
     await expect(

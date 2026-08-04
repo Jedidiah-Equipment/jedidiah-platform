@@ -16,6 +16,7 @@ import {
   getPurchaseOrder,
   listPurchaseOrders,
   markPurchaseOrderSent,
+  renderPurchaseOrderPreview,
   savePurchaseOrderDraft,
 } from './purchase-order-service.js';
 
@@ -213,6 +214,34 @@ describe('Purchase Order line parts', () => {
 });
 
 describe('Purchase Order send and cancel', () => {
+  test('renders an inline preview for a saved draft without mutating its lifecycle', async ({ context }) => {
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: DateOnlyIso.parse('2026-08-20'), supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]),
+    });
+    const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => pdfBytes());
+
+    const preview = await renderPurchaseOrderPreview({ db: context.db, id: purchaseOrder.id, pdfRenderer: render });
+
+    expect(preview).toEqual({ bytes: pdfBytes(), filename: 'PO-00001.pdf' });
+    expect(render).toHaveBeenCalledWith({
+      document: expect.objectContaining({
+        code: 'PO-00001',
+        lines: [expect.objectContaining({ partCode: 'P-100', quantity: 4, unitPrice: 125.5 })],
+      }),
+      filename: 'PO-00001.pdf',
+    });
+    await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
+      status: 'draft',
+    });
+  });
+
   test('stores one as-sent PDF and projects it onto every linked Job', async ({ context }) => {
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,

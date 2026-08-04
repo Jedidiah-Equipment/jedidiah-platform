@@ -1,6 +1,12 @@
 import { StockMovementHistoryResult } from '@pkg/schema';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, params }: { children: React.ReactNode; params: { id: string } }) => (
+    <a href={`/purchase-orders/${params.id}`}>{children}</a>
+  ),
+}));
 
 import { StockMovementHistoryTable } from './StockMovementHistoryTable.js';
 
@@ -20,6 +26,7 @@ const result = StockMovementHistoryResult.parse({
       partId: '00000000-0000-4000-8000-000000000001',
       buildId: null,
       purchaseOrderId: null,
+      purchaseOrderCode: null,
       reason: 'opening-balance',
       runningBalance: 10,
       unitCost: 25,
@@ -38,6 +45,7 @@ const result = StockMovementHistoryResult.parse({
       partId: '00000000-0000-4000-8000-000000000001',
       buildId: null,
       purchaseOrderId: null,
+      purchaseOrderCode: null,
       reason: null,
       runningBalance: 10,
       unitCost: 30,
@@ -56,6 +64,7 @@ const result = StockMovementHistoryResult.parse({
       partId: '00000000-0000-4000-8000-000000000001',
       buildId: null,
       purchaseOrderId: null,
+      purchaseOrderCode: null,
       reason: null,
       runningBalance: 9,
       unitCost: 30,
@@ -74,6 +83,7 @@ const result = StockMovementHistoryResult.parse({
       note: null,
       partId: '00000000-0000-4000-8000-000000000001',
       purchaseOrderId: '00000000-0000-4000-8000-000000000098',
+      purchaseOrderCode: 'PO-00042',
       reason: null,
       runningBalance: 13,
       unitCost: 25,
@@ -97,6 +107,8 @@ describe('StockMovementHistoryTable', () => {
     expect(html).toContain('Revaluation');
     expect(html).toContain('Checkout');
     expect(html).toContain('Receipt');
+    expect(html).toContain('PO-00042');
+    expect(html).toContain('/purchase-orders/00000000-0000-4000-8000-000000000098');
     expect(html).toContain('10 pc');
     expect(html).toContain('Test User');
     expect(html).toContain('Supplier repriced');

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveStockBuildRows,
   deriveStockBuildWarnings,
+  partQuantityValidationMessage,
   perpetualPartOptions,
   revaluablePartOptions,
   type StockPartOption,
@@ -32,6 +33,14 @@ const linear: StockPartOption = {
   partName: 'Channel',
   standardPurchaseLengthMm: 6_000,
   unitOfMeasure: 'mm',
+};
+const measured: StockPartOption = {
+  isInternallyFabricated: false,
+  partCode: 'RAW-200',
+  partId: '00000000-0000-4000-8000-000000000003',
+  partName: 'Powder',
+  standardPurchaseLengthMm: null,
+  unitOfMeasure: 'kg',
 };
 
 function stockRow(overrides: Partial<StockOnHandRow> = {}): StockOnHandRow {
@@ -88,12 +97,36 @@ describe('stock adjustment form', () => {
     });
   });
 
-  it('keeps the ledger decimal rules the schema owns, which the text input cannot enforce', () => {
-    const validator = stockAdjustmentValidator([piece, linear]);
+  it('accepts decimal measured stock and rejects fractional whole-unit stock before submission', () => {
+    const validator = stockAdjustmentValidator([piece, linear, measured]);
 
-    expect(validator.safeParse({ ...adjustment, delta: 1.125 }).success).toBe(true);
+    expect(
+      validator.safeParse({ ...adjustment, delta: 1.125, lengthMm: Number.NaN, partId: measured.partId }).success,
+    ).toBe(true);
+    expect(
+      validator.safeParse({ ...adjustment, delta: 1.125, lengthMm: Number.NaN, partId: piece.partId }).success,
+    ).toBe(false);
     expect(validator.safeParse({ ...adjustment, delta: 1.0005 }).success).toBe(false);
     expect(validator.safeParse({ ...adjustment, lengthMm: 6_000.5 }).success).toBe(false);
+    expect(partQuantityValidationMessage({ partId: piece.partId, quantity: 1.125 }, [piece])).toBe(
+      'This Part is counted in whole units',
+    );
+    expect(partQuantityValidationMessage({ partId: measured.partId, quantity: 1.125 }, [measured])).toBeUndefined();
+  });
+
+  it('stays quiet on an empty quantity, which is unkeyed rather than fractional', () => {
+    expect(partQuantityValidationMessage({ partId: piece.partId, quantity: Number.NaN }, [piece])).toBeUndefined();
+
+    // The field rule staying quiet does not let an unkeyed quantity through either submit.
+    expect(stockAdjustmentValidator([piece]).safeParse({ ...adjustment, delta: Number.NaN }).success).toBe(false);
+    expect(
+      stockJobMovementValidator([piece]).safeParse({
+        jobId: '00000000-0000-4000-8000-000000000009',
+        lengthMm: Number.NaN,
+        partId: piece.partId,
+        quantity: Number.NaN,
+      }).success,
+    ).toBe(false);
   });
 
   it('requires a length on a linear Part and a note on every reason but an opening balance', () => {
@@ -124,10 +157,11 @@ describe('Job movement form', () => {
   });
 
   it('holds a quantity to three decimals, the ledger rule, not just to a positive number', () => {
-    const validator = stockJobMovementValidator([piece, linear]);
+    const validator = stockJobMovementValidator([piece, linear, measured]);
     const values = { jobId: piece.partId, lengthMm: Number.NaN, partId: piece.partId, quantity: 1.125 };
 
-    expect(validator.safeParse(values).success).toBe(true);
+    expect(validator.safeParse(values).success).toBe(false);
+    expect(validator.safeParse({ ...values, partId: measured.partId }).success).toBe(true);
     expect(validator.safeParse({ ...values, quantity: 1.0005 }).success).toBe(false);
   });
 

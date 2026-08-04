@@ -50,7 +50,8 @@ export const partsRouter = router({
       mapPartErrors(() => updatePart({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
-  bom: authorizedProcedure('part:read')
+  // Stores needs the BOM to post Builds even though the Parts catalogue itself remains hidden.
+  bom: authorizedProcedure(['part:read', 'inventory:build'])
     .input(PartBomInput)
     .output(PartBomResult)
     .query(({ ctx, input }) => getPartBom({ db: ctx.db, partId: input.partId })),

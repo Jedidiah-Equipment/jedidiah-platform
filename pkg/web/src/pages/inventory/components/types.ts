@@ -62,7 +62,11 @@ export function partQuantityValidationMessage(
   parts: readonly StockPartOption[],
 ): string | undefined {
   const part = parts.find((candidate) => candidate.partId === values.partId);
-  return !part || isWholeUnitQuantity(values.quantity, unitClassFor(part.unitOfMeasure))
+  // An empty field holds NaN, which is not a whole number — but "unkeyed" is the schema's own
+  // complaint to make, not a unit-class violation to report against a quantity nobody typed.
+  if (!part || !Number.isFinite(values.quantity)) return undefined;
+
+  return isWholeUnitQuantity(values.quantity, unitClassFor(part.unitOfMeasure))
     ? undefined
     : 'This Part is counted in whole units';
 }

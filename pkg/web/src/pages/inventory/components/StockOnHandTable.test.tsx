@@ -63,6 +63,71 @@ describe('StockOnHandTable', () => {
     expect(html.match(/View history/g)).toHaveLength(2);
   });
 
+  it('flags negative stock on hand and negative length buckets as the exceptions they are', () => {
+    const negative = StockOnHandResult.parse({
+      items: [
+        {
+          averageUnitCost: null,
+          asOfLastCount: null,
+          buckets: [
+            { lengthMm: 6_000, quantity: -1, totalValue: null },
+            { lengthMm: 3_000, quantity: 2, totalValue: null },
+          ],
+          committed: 0,
+          free: -2,
+          isInternallyFabricated: false,
+          partCode: 'P-200',
+          partId: '00000000-0000-4000-8000-000000000003',
+          partName: 'Wheel kit',
+          quantity: -2,
+          standardPurchaseLengthMm: 6_000,
+          stockTrackingMode: 'perpetual',
+          totalValue: null,
+          unitOfMeasure: 'mm',
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(
+      <StockOnHandTable items={negative.items} onOpenHistory={vi.fn()} showCosts={false} />,
+    );
+
+    // The count itself and the bucket that went short, and nothing else.
+    expect(html.match(/Negative stock/g)).toHaveLength(2);
+    expect(html).toContain('-2 pieces');
+    expect(html).toContain('6 m × -1');
+  });
+
+  it('leaves positive stock and negative free stock unflagged', () => {
+    const oversold = StockOnHandResult.parse({
+      items: [
+        {
+          averageUnitCost: null,
+          asOfLastCount: null,
+          buckets: [{ lengthMm: null, quantity: 4, totalValue: null }],
+          committed: 6,
+          free: -2,
+          isInternallyFabricated: false,
+          partCode: 'P-300',
+          partId: '00000000-0000-4000-8000-000000000004',
+          partName: 'Auger pin',
+          quantity: 4,
+          standardPurchaseLengthMm: null,
+          stockTrackingMode: 'perpetual',
+          totalValue: null,
+          unitOfMeasure: 'piece',
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(
+      <StockOnHandTable items={[...result.items, ...oversold.items]} onOpenHistory={vi.fn()} showCosts={true} />,
+    );
+
+    expect(html).not.toContain('Negative stock');
+    expect(html).toContain('-2 pc');
+  });
+
   it('removes all cost columns for a caller without cost-read access', () => {
     const html = renderToStaticMarkup(
       <StockOnHandTable items={result.items} onOpenHistory={vi.fn()} showCosts={false} />,

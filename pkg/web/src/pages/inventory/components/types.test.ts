@@ -114,6 +114,21 @@ describe('stock adjustment form', () => {
     expect(partQuantityValidationMessage({ partId: measured.partId, quantity: 1.125 }, [measured])).toBeUndefined();
   });
 
+  it('stays quiet on an empty quantity, which is unkeyed rather than fractional', () => {
+    expect(partQuantityValidationMessage({ partId: piece.partId, quantity: Number.NaN }, [piece])).toBeUndefined();
+
+    // The field rule staying quiet does not let an unkeyed quantity through either submit.
+    expect(stockAdjustmentValidator([piece]).safeParse({ ...adjustment, delta: Number.NaN }).success).toBe(false);
+    expect(
+      stockJobMovementValidator([piece]).safeParse({
+        jobId: '00000000-0000-4000-8000-000000000009',
+        lengthMm: Number.NaN,
+        partId: piece.partId,
+        quantity: Number.NaN,
+      }).success,
+    ).toBe(false);
+  });
+
   it('requires a length on a linear Part and a note on every reason but an opening balance', () => {
     const validator = stockAdjustmentValidator([piece, linear]);
 

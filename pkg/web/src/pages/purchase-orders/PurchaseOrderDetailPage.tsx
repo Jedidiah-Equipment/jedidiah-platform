@@ -27,7 +27,11 @@ import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from '../jobs/components/all-jobs-input.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
-import { ensurePurchaseOrderPreview } from './components/purchase-order-preview.js';
+import {
+  ensurePurchaseOrderPreview,
+  purchaseOrderDocumentDownloadUrl,
+  purchaseOrderPreviewUrl,
+} from './components/purchase-order-pdf.js';
 import {
   type PurchaseOrderDraftFormValues,
   PurchaseOrderDraftFormValues as PurchaseOrderDraftFormValuesSchema,
@@ -225,7 +229,7 @@ const PurchaseOrderActions: React.FC<{
     if (previewWindow) previewWindow.opener = null;
 
     void runAfterSave(async () => {
-      const url = `/api/purchase-orders/${purchaseOrder.id}/preview`;
+      const url = purchaseOrderPreviewUrl(purchaseOrder.id);
       const toastId = `purchase-order-preview-${purchaseOrder.id}`;
       toast.loading('Preparing PDF preview...', { id: toastId });
       try {
@@ -256,9 +260,7 @@ const PurchaseOrderActions: React.FC<{
       ) : null}
       {canReadCosts && purchaseOrder.documentId ? (
         <Button
-          render={
-            <a href={`/api/purchase-orders/${purchaseOrder.id}/documents/${purchaseOrder.documentId}/download`} />
-          }
+          render={<a href={purchaseOrderDocumentDownloadUrl(purchaseOrder.id, purchaseOrder.documentId)} />}
           variant="outline"
         >
           <IconDownload data-icon="inline-start" /> Download PDF

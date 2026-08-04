@@ -10,12 +10,14 @@ describe('client config', () => {
         appBaseUrl: 'http://localhost:7001',
         apiBaseUrl: 'http://localhost:7002',
         authBaseUrl: 'http://localhost:7002/api/auth',
+        docsBaseUrl: 'http://localhost:5173',
       }),
     ).toEqual({
       appEnv: 'development',
       appBaseUrl: 'http://localhost:7001',
       apiBaseUrl: 'http://localhost:7002',
       authBaseUrl: 'http://localhost:7002/api/auth',
+      docsBaseUrl: 'http://localhost:5173',
       deploymentVersion: null,
       posthog: {
         enabled: false,

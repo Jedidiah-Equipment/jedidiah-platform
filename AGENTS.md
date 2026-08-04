@@ -8,7 +8,10 @@
   tests, and planning. If a needed term is missing, or a recommendation conflicts with an ADR, say so
   instead of inventing local vocabulary.
 - Definition of done: a change to user-facing behavior in an area `pkg/docs` documents updates the affected
-  docs pages in the same PR — the same discipline `CONTEXT.md` already gets.
+  docs pages in the same PR, and a new user-facing screen brings its `HELP_TOPICS` entry (`@pkg/domain`) and
+  its docs page together — the same discipline `CONTEXT.md` already gets. A test in `pkg/docs` catches half
+  of that automatically: a registry entry naming a page that does not exist fails CI. The other half — a
+  screen shipping with no entry at all — is on the author.
 
 ## Database
 

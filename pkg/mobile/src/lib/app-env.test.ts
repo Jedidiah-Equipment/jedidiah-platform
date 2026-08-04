@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { resolveAppEnv, resolveLanderOrigin } from './app-env';
+import { resolveAppEnv, resolveDocsOrigin, resolveLanderOrigin } from './app-env';
 
 const originalAppEnv = process.env.EXPO_PUBLIC_APP_ENV;
 const originalLanderOrigin = process.env.EXPO_PUBLIC_LANDER_ORIGIN;
@@ -69,5 +69,12 @@ describe('landerOrigin', () => {
     const { landerOrigin } = await loadAppEnv('staging', 'https://preview.example.com/');
 
     expect(landerOrigin).toBe('https://preview.example.com');
+  });
+});
+
+describe('resolveDocsOrigin', () => {
+  it('defaults to the local docs dev server and removes trailing slashes from overrides', () => {
+    expect(resolveDocsOrigin(undefined)).toBe('http://localhost:5173');
+    expect(resolveDocsOrigin('https://docs.example.com///')).toBe('https://docs.example.com');
   });
 });

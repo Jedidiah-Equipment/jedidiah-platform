@@ -33,6 +33,7 @@ const QUOTE_SORT_OPTIONS: readonly ListControlOption<QuoteSort>[] = [
 export function QuoteCatalogHeader({ count }: { count: number | null }) {
   return (
     <ScreenHeader
+      helpTopic="quotes"
       subtitle={count === null ? 'Loading quotes…' : `${count} ${count === 1 ? 'quote' : 'quotes'}`}
       title="Quotes"
     />

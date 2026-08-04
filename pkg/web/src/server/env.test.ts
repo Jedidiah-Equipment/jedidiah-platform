@@ -7,6 +7,7 @@ const baseEnv = {
   APP_BASE_URL: 'http://localhost:7001',
   API_BASE_URL: 'http://localhost:7002',
   AUTH_BASE_URL: 'http://localhost:7002/api/auth',
+  DOCS_BASE_URL: 'http://localhost:5173',
 };
 
 describe('web server config', () => {

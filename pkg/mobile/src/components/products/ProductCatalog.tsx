@@ -25,6 +25,7 @@ const PRODUCT_SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
 export function ProductCatalogHeader({ count }: { count: number | null }) {
   return (
     <ScreenHeader
+      helpTopic="products"
       subtitle={count === null ? 'Loading catalog…' : `${count} ${count === 1 ? 'product' : 'products'}`}
       title="Products"
     />

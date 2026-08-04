@@ -10,6 +10,8 @@
   `PORT`, which `pnpm dev` does not pass through (turbo runs in strict env mode).
 - The sidebar is computed once when the config loads, so a newly written page shows up in a running dev
   server only after VitePress restarts on a config change.
+- `src/help-topics.test.ts` walks `HELP_TOPICS` from `@pkg/domain` and fails when a topic names a page this
+  site does not have. Renaming or moving a page means repointing its registry entry in the same PR.
 - Navigation comes from `DOCS_SECTIONS` in `src/sidebar.ts` filtered to the pages that exist. Declare a page
   there before writing it if you like — it stays hidden until the file lands. Never ship a "coming soon"
   stub, and never leave a written page out of `DOCS_SECTIONS`; a test fails on the orphan.

@@ -43,6 +43,7 @@ export default function IndexRoute() {
         refreshControl={<RefreshControl {...refresh} />}
       >
         <ScreenHeader
+          helpTopic="jobs"
           subtitle={bayCount === null ? 'Loading schedule…' : `${bayCount} ${bayCount === 1 ? 'bay' : 'bays'}`}
           title="Schedule"
         />

@@ -18,6 +18,7 @@ const APP_CONFIG = {
     appEnv: 'development',
     apiBaseUrl: 'http://localhost:7002',
     authBaseUrl: 'http://localhost:7002/api/auth',
+    docsBaseUrl: 'http://localhost:5173',
   },
 };
 
@@ -164,6 +165,7 @@ describe('document utilities', () => {
         appEnv: 'development',
         apiBaseUrl: 'http://localhost:7002',
         authBaseUrl: 'http://localhost:7002/api/auth',
+        docsBaseUrl: 'http://localhost:5173',
       },
     });
 
@@ -199,6 +201,7 @@ describe('document utilities', () => {
         appEnv: 'development',
         apiBaseUrl: 'http://localhost:7002',
         authBaseUrl: 'http://localhost:7002/api/auth',
+        docsBaseUrl: 'http://localhost:5173',
       },
       document: {
         createElement: vi.fn(() => ({

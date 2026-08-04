@@ -1,14 +1,20 @@
 # How stock costs work
 
-Parts are costed on a moving average. Every movement that carries a cost shifts it; every movement
-that does not, leaves it alone.
+Parts are costed on a moving average. Arrivals move it. Draws do not.
 
 ## The moving average
 
-When stock arrives at a price, that price is blended into what was already on hand, weighted by
-quantity. When stock leaves, it leaves at the average current at that moment — and that stamped
-figure is what the Job carries, so returning it later reverses at the cost the Job actually drew,
-not at whatever the average has since drifted to.
+Stock arriving at a price is blended into what was already on hand, weighted by quantity. Four
+movements arrive that way: a Receipt, a Return to Store, the units a build produces, and a Part's
+opening balance.
+
+Stock leaving does not move the average at all. A Checkout, or the components a build consumes, take
+their quantity off at the average current at that moment — and that stamped figure is what the Job
+carries, so returning it later comes back at the cost the Job actually drew rather than at whatever
+the average has since drifted to.
+
+A revaluation is the one movement that sets the average outright instead of blending into it. See
+[Revalue a Part](./revalue-a-part.md).
 
 For a linear Part the average is held per millimetre, so a 6 m length and a 300 mm offcut of the
 same Part are valued consistently.

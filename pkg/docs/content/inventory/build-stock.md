@@ -17,11 +17,9 @@ units go on.
 ## If it warns you
 
 Changing a consumption row away from its BOM figure raises *This differs from what the BOM calls
-for.*, and the button becomes **Build anyway**. Post it — the build already happened, and the BOM is
-what you expected it to take, not a record of what it took. A short rack going negative is likewise
-recorded rather than blocked.
-
-See [Warnings are judgments, not blocks](./warnings-are-judgments.md).
+for.*, and the button becomes **Build anyway**. Post it. A short rack going negative is likewise
+recorded rather than blocked — see
+[Warnings are judgments, not blocks](./warnings-are-judgments.md).
 
 ## Notes
 

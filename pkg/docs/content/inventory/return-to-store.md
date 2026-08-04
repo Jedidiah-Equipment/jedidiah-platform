@@ -1,7 +1,7 @@
 # Return to Store
 
-A Return to Store puts a Part back on the rack against the Job that drew it. It reverses a Checkout
-at the cost that Job is still carrying, so returning material never quietly re-prices it.
+A Return to Store puts a Part back on the rack against the Job that drew it. It comes back at the
+cost that Job is still carrying, rather than at whatever the average has drifted to since.
 
 ## From the Job
 

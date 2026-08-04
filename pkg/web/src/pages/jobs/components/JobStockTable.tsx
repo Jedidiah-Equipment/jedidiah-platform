@@ -100,7 +100,7 @@ function createJobStockColumns(onReturn: ((partId: string) => void) | undefined)
                 </Button>
               ) : null,
             enableSorting: false,
-            header: '',
+            header: () => <span className="sr-only">Return</span>,
             id: 'return',
             meta: {
               cellClassName: 'text-right',

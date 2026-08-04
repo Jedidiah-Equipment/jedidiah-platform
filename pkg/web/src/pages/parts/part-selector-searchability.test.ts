@@ -2,11 +2,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const formPartSelectors = [
+const simpleFormPartSelectors = [
   '../inventory/components/StockMovementDialog.tsx',
   '../inventory/components/StockAdjustmentDialog.tsx',
   '../inventory/components/StockRevaluationDialog.tsx',
-  '../purchase-orders/PurchaseOrderDetailPage.tsx',
 ] as const;
 
 const controlledPartSelectors = [
@@ -16,8 +15,18 @@ const controlledPartSelectors = [
 ] as const;
 
 describe('Part selector searchability', () => {
-  it.each(formPartSelectors)('%s uses the searchable form field', (relativePath) => {
+  it.each(simpleFormPartSelectors)('%s uses the searchable form field', (relativePath) => {
     expect(readSource(relativePath)).toContain('<field.ComboboxField');
+  });
+
+  it('keeps the Purchase Order line Part picker searchable', () => {
+    const source = readSource('../purchase-orders/PurchaseOrderDetailPage.tsx');
+    const partField = source.match(
+      /<form\.AppField name={`lines\[\$\{index\}\]\.partId`}>[\s\S]*?<\/form\.AppField>/,
+    )?.[0];
+
+    expect(partField).toContain('<field.ComboboxField');
+    expect(partField).not.toContain('<field.SelectField');
   });
 
   it.each(controlledPartSelectors)('%s uses the searchable controlled combobox', (relativePath) => {

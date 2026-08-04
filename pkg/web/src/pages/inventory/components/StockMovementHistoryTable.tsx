@@ -26,9 +26,10 @@ export function StockMovementHistoryTable({
     () => createStockMovementHistoryColumns({ showCosts, unitOfMeasure }),
     [showCosts, unitOfMeasure],
   );
+  const data = useMemo(() => [...items], [items]);
   const table = useReactTable({
     columns,
-    data: [...items],
+    data,
     enableColumnFilters: false,
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
@@ -68,15 +69,16 @@ function createStockMovementHistoryColumns({
       id: 'movement',
     },
     {
-      accessorFn: (item) => formatMovementQuantity(item, unitOfMeasure),
+      accessorFn: (item) => (item.movementType === 'revaluation' ? 0 : item.delta),
+      cell: ({ row }) => formatMovementQuantity(row.original, unitOfMeasure),
       header: 'Quantity',
       id: 'quantity',
       meta: { cellClassName: 'tabular-nums' },
     },
     {
-      accessorFn: (item) => formatLedgerQuantity(item.runningBalance, unitOfMeasure),
+      accessorKey: 'runningBalance',
+      cell: ({ row }) => formatLedgerQuantity(row.original.runningBalance, unitOfMeasure),
       header: 'Running balance',
-      id: 'runningBalance',
       meta: { cellClassName: 'tabular-nums' },
     },
     {
@@ -108,14 +110,14 @@ function createStockMovementHistoryColumns({
     ...(showCosts
       ? [
           {
-            accessorFn: (item) => formatCost(item.unitCost),
+            accessorKey: 'unitCost',
+            cell: ({ row }) => formatCost(row.original.unitCost),
             header: 'Unit cost',
-            id: 'unitCost',
           } satisfies ColumnDef<StockMovementHistoryRow>,
           {
-            accessorFn: (item) => formatCost(item.movementValue),
+            accessorKey: 'movementValue',
+            cell: ({ row }) => formatCost(row.original.movementValue),
             header: 'Movement value',
-            id: 'movementValue',
           } satisfies ColumnDef<StockMovementHistoryRow>,
         ]
       : []),

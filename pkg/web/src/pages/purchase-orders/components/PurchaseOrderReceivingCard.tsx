@@ -1,10 +1,11 @@
 import type { PurchaseOrderView } from '@pkg/schema';
 import { IconTruckDelivery } from '@tabler/icons-react';
-import { useState } from 'react';
+import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { useMemo, useState } from 'react';
 
+import { DataTable } from '@/components/data-table/DataTable.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { PartLabelPrintButton } from '../../parts/PartLabelPrintButton.js';
 import { PurchaseOrderReceiveDialog } from './PurchaseOrderReceiveDialog.js';
 import { outstandingQuantity } from './types.js';
@@ -22,6 +23,55 @@ export function PurchaseOrderReceivingCard({
 }) {
   const [receivingPartId, setReceivingPartId] = useState<string | null>(null);
   const receivingLine = purchaseOrder.lines.find((line) => line.partId === receivingPartId) ?? null;
+  const columns = useMemo<ColumnDef<PurchaseOrderView['lines'][number]>[]>(
+    () => [
+      {
+        accessorFn: (line) => `${line.partCode} ${line.partName}`,
+        cell: ({ row }) => (
+          <>
+            <span className="font-medium">{row.original.partCode}</span> · {row.original.partName}
+          </>
+        ),
+        header: 'Part',
+        id: 'part',
+      },
+      {
+        accessorKey: 'receivedQuantity',
+        cell: ({ row }) => `${row.original.receivedQuantity} / ${row.original.quantity}`,
+        header: 'Received',
+        meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
+      },
+      {
+        accessorFn: outstandingQuantity,
+        header: 'Outstanding',
+        id: 'outstanding',
+        meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
+      },
+      {
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            {/* Labels go on stock that has actually landed, so the button appears with the first receipt. */}
+            {row.original.receivedQuantity > 0 ? <PartLabelPrintButton partId={row.original.partId} size="sm" /> : null}
+            <Button onClick={() => setReceivingPartId(row.original.partId)} size="sm" type="button">
+              <IconTruckDelivery data-icon="inline-start" /> Receive
+            </Button>
+          </div>
+        ),
+        enableSorting: false,
+        header: () => <span className="sr-only">Actions</span>,
+        id: 'actions',
+      },
+    ],
+    [],
+  );
+  const table = useReactTable({
+    columns,
+    data: purchaseOrder.lines,
+    enableColumnFilters: false,
+    enableSorting: false,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (line) => line.partId,
+  });
 
   return (
     <Card>
@@ -32,40 +82,14 @@ export function PurchaseOrderReceivingCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Part</TableHead>
-              <TableHead className="text-right">Received</TableHead>
-              <TableHead className="text-right">Outstanding</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {purchaseOrder.lines.map((line) => (
-              <TableRow key={line.partId}>
-                <TableCell>
-                  <span className="font-medium">{line.partCode}</span> · {line.partName}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {line.receivedQuantity} / {line.quantity}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{outstandingQuantity(line)}</TableCell>
-                <TableCell>
-                  <div className="flex justify-end gap-2">
-                    {/* Labels go on stock that has actually landed, so the button appears with the first receipt. */}
-                    {line.receivedQuantity > 0 ? <PartLabelPrintButton partId={line.partId} size="sm" /> : null}
-                    <Button onClick={() => setReceivingPartId(line.partId)} size="sm" type="button">
-                      <IconTruckDelivery data-icon="inline-start" /> Receive
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <DataTable
+          emptyMessage="No Parts to receive."
+          hideGlobalFilter
+          paginationMode="complete"
+          table={table}
+          total={purchaseOrder.lines.length}
+          totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
+        />
       </CardContent>
       {receivingLine ? (
         <PurchaseOrderReceiveDialog

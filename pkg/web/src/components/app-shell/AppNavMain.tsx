@@ -20,7 +20,7 @@ import {
   IconUsers,
   type TablerIcon,
 } from '@tabler/icons-react';
-import { Link, linkOptions } from '@tanstack/react-router';
+import { Link, linkOptions, useLocation } from '@tanstack/react-router';
 import React from 'react';
 
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible.js';
@@ -51,6 +51,7 @@ type MainNavItem = {
   permission?: AppPermission;
   link: NavLinkProps;
   icon: TablerIcon;
+  isActive?: (pathname: string) => boolean;
   indicator?: React.ComponentType;
   children?: readonly NavSubItem[];
 };
@@ -144,6 +145,7 @@ const navSections = [
         permission: 'inventory:read',
         link: linkOptions({ activeOptions: { exact: true }, to: '/inventory' }),
         icon: IconBuildingWarehouse,
+        isActive: isInventoryNavPath,
       },
       {
         title: 'Purchase Orders',
@@ -271,6 +273,7 @@ const NavCollapsibleItem: React.FC<{
 
 export const AppNavMain: React.FC = () => {
   const accessQuery = useAccess();
+  const pathname = useLocation({ select: (location) => location.pathname });
 
   const canSee = (permission?: AppPermission) =>
     permission === undefined || hasPermission(accessQuery.data, permission);
@@ -291,18 +294,22 @@ export const AppNavMain: React.FC = () => {
                 return (
                   <SidebarMenuItem key={item.title}>
                     <Link {...item.link}>
-                      {({ isActive }) => (
-                        <SidebarMenuButton
-                          isActive={isActive}
-                          render={<span />}
-                          tooltip={item.title}
-                          className={cn(biggerIconClass, !isActive && inactiveItemClass)}
-                        >
-                          <item.icon />
-                          <span>{item.title}</span>
-                          {Indicator ? <Indicator /> : null}
-                        </SidebarMenuButton>
-                      )}
+                      {({ isActive }) => {
+                        const navItemIsActive = item.isActive ? item.isActive(pathname) : isActive;
+
+                        return (
+                          <SidebarMenuButton
+                            isActive={navItemIsActive}
+                            render={<span />}
+                            tooltip={item.title}
+                            className={cn(biggerIconClass, !navItemIsActive && inactiveItemClass)}
+                          >
+                            <item.icon />
+                            <span>{item.title}</span>
+                            {Indicator ? <Indicator /> : null}
+                          </SidebarMenuButton>
+                        );
+                      }}
                     </Link>
                   </SidebarMenuItem>
                 );
@@ -347,4 +354,8 @@ export function getVisibleNavSections(canSee: (permission?: AppPermission) => bo
       }),
     }))
     .filter((section) => section.items.length > 0);
+}
+
+export function isInventoryNavPath(pathname: string): boolean {
+  return pathname === '/inventory' || (/^\/inventory\/[^/]+\/?$/.test(pathname) && pathname !== '/inventory/close-out');
 }

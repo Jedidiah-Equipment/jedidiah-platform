@@ -4,8 +4,10 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { createStableRowKeys, formatCurrency } from '@pkg/domain';
 import { type AssemblyInput, AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
+import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import React, { useMemo } from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
+import { DataTable } from '@/components/data-table/DataTable.js';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
 import { CreatableComboboxField, CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
@@ -43,7 +45,6 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/c
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table.js';
 import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
@@ -653,25 +654,21 @@ const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({
                 Add part
               </Button>
             </div>
-            <Table>
-              <TableBody>
-                {assemblyParts.map((part, partIndex) => (
-                  <AssemblyPartRow
-                    categories={categories}
-                    key={getAssemblyPartKey(part)}
-                    part={part}
-                    partIndex={partIndex}
-                    partOptions={partOptions}
-                    parentIndex={index}
-                    onRemove={() => {
-                      partsField.removeValue(partIndex);
-                      onStructuralChange();
-                    }}
-                    onStructuralChange={onStructuralChange}
-                  />
-                ))}
-              </TableBody>
-            </Table>
+            <AssemblyPartsDataTable
+              categories={categories}
+              items={assemblyParts.map((part, partIndex) => ({
+                key: getAssemblyPartKey(part),
+                part,
+                partIndex,
+              }))}
+              onRemove={(partIndex) => {
+                partsField.removeValue(partIndex);
+                onStructuralChange();
+              }}
+              onStructuralChange={onStructuralChange}
+              parentIndex={index}
+              partOptions={partOptions}
+            />
           </div>
         );
       }}
@@ -679,23 +676,112 @@ const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({
   );
 };
 
-type AssemblyPartRowProps = {
+type AssemblyPartTableRow = {
+  key: string;
+  part: AssemblyInput['parts'][number];
+  partIndex: number;
+};
+
+type AssemblyPartsDataTableProps = {
+  categories: string[];
+  items: AssemblyPartTableRow[];
+  onRemove: (partIndex: number) => void;
+  onStructuralChange: () => void;
+  parentIndex: number;
+  partOptions: Part[];
+};
+
+const AssemblyPartsDataTable: React.FC<AssemblyPartsDataTableProps> = ({
+  categories,
+  items,
+  onRemove,
+  onStructuralChange,
+  parentIndex,
+  partOptions,
+}) => {
+  const columns = useMemo<ColumnDef<AssemblyPartTableRow>[]>(
+    () => [
+      {
+        cell: ({ row }) => (
+          <AssemblyPartPickerCell
+            categories={categories}
+            parentIndex={parentIndex}
+            part={row.original.part}
+            partIndex={row.original.partIndex}
+            partOptions={partOptions}
+            onStructuralChange={onStructuralChange}
+          />
+        ),
+        header: 'Part',
+        id: 'part',
+      },
+      {
+        cell: ({ row }) => (
+          <AssemblyPartQuantityCell
+            parentIndex={parentIndex}
+            partIndex={row.original.partIndex}
+            partOptions={partOptions}
+          />
+        ),
+        header: 'Quantity',
+        id: 'quantity',
+      },
+      {
+        cell: ({ row }) => (
+          <Button
+            aria-label="Remove part"
+            onClick={() => onRemove(row.original.partIndex)}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <IconTrash />
+          </Button>
+        ),
+        enableSorting: false,
+        header: () => <span className="sr-only">Remove</span>,
+        id: 'remove',
+        meta: { cellClassName: 'text-right' },
+      },
+    ],
+    [categories, onRemove, onStructuralChange, parentIndex, partOptions],
+  );
+  const table = useReactTable({
+    columns,
+    data: items,
+    enableColumnFilters: false,
+    enableSorting: false,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.key,
+  });
+
+  return (
+    <DataTable
+      emptyMessage="No Parts added."
+      hideGlobalFilter
+      paginationMode="complete"
+      table={table}
+      total={items.length}
+      totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
+    />
+  );
+};
+
+type AssemblyPartPickerCellProps = {
   categories: string[];
   parentIndex: number;
   part: AssemblyInput['parts'][number];
   partIndex: number;
   partOptions: Part[];
-  onRemove: () => void;
   onStructuralChange: () => void;
 };
 
-const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
+const AssemblyPartPickerCell: React.FC<AssemblyPartPickerCellProps> = ({
   categories,
   parentIndex,
   part,
   partIndex,
   partOptions,
-  onRemove,
   onStructuralChange,
 }) => {
   const FormField = useProductForm().Field;
@@ -704,77 +790,77 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
   const visibleParts = partOptions.filter((option) => category === ALL_CATEGORIES || option.category === category);
 
   return (
-    <TableRow>
-      <TableCell>
-        <div className="grid gap-2 md:grid-cols-[13rem_minmax(12rem,1fr)]">
-          <Select value={category} onValueChange={(value) => setCategory(value ?? ALL_CATEGORIES)}>
-            <SelectTrigger className="w-full min-w-0">
-              <SelectValue className="min-w-0 truncate">
-                {category === ALL_CATEGORIES ? 'All categories' : category}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={ALL_CATEGORIES}>All categories</SelectItem>
-                {categories.map((categoryOption) => (
-                  <SelectItem key={categoryOption} value={categoryOption}>
-                    {categoryOption}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <FormField
-            name={`assemblies[${parentIndex}].parts[${partIndex}].partId`}
-            validators={ASSEMBLY_PART_FIELD_VALIDATORS}
-          >
-            {(field: FieldApi<string>) => {
-              const errors = getFieldErrors(field.state.meta.errors);
-              const isInvalid = errors.length > 0;
-              const selectedPart = partOptions.find((option) => option.id === field.state.value);
-              const visiblePartOptions =
-                selectedPart && !visibleParts.some((option) => option.id === selectedPart.id)
-                  ? [selectedPart, ...visibleParts]
-                  : visibleParts;
+    <div className="grid gap-2 md:grid-cols-[13rem_minmax(12rem,1fr)]">
+      <Select value={category} onValueChange={(value) => setCategory(value ?? ALL_CATEGORIES)}>
+        <SelectTrigger className="w-full min-w-0">
+          <SelectValue className="min-w-0 truncate">
+            {category === ALL_CATEGORIES ? 'All categories' : category}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value={ALL_CATEGORIES}>All categories</SelectItem>
+            {categories.map((categoryOption) => (
+              <SelectItem key={categoryOption} value={categoryOption}>
+                {categoryOption}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+      <FormField
+        name={`assemblies[${parentIndex}].parts[${partIndex}].partId`}
+        validators={ASSEMBLY_PART_FIELD_VALIDATORS}
+      >
+        {(field: FieldApi<string>) => {
+          const errors = getFieldErrors(field.state.meta.errors);
+          const isInvalid = errors.length > 0;
+          const selectedPart = partOptions.find((option) => option.id === field.state.value);
+          const visiblePartOptions =
+            selectedPart && !visibleParts.some((option) => option.id === selectedPart.id)
+              ? [selectedPart, ...visibleParts]
+              : visibleParts;
 
-              return (
-                <AssemblyPartPickerField
-                  field={field}
-                  isInvalid={isInvalid}
-                  options={visiblePartOptions}
-                  selectedPart={selectedPart ?? null}
-                  onStructuralChange={onStructuralChange}
-                />
-              );
-            }}
-          </FormField>
-        </div>
-      </TableCell>
-      <TableCell>
-        <FormField name={`assemblies[${parentIndex}].parts[${partIndex}].quantity`}>
-          {(field: FieldApi<number>) => {
-            const errors = getFieldErrors(field.state.meta.errors);
-            const isInvalid = errors.length > 0;
+          return (
+            <AssemblyPartPickerField
+              field={field}
+              isInvalid={isInvalid}
+              options={visiblePartOptions}
+              selectedPart={selectedPart ?? null}
+              onStructuralChange={onStructuralChange}
+            />
+          );
+        }}
+      </FormField>
+    </div>
+  );
+};
 
-            return (
-              <PartQuantityField
-                errors={errors}
-                field={field}
-                isInvalid={isInvalid}
-                parentIndex={parentIndex}
-                partIndex={partIndex}
-                partOptions={partOptions}
-              />
-            );
-          }}
-        </FormField>
-      </TableCell>
-      <TableCell>
-        <Button aria-label="Remove part" size="icon" type="button" variant="ghost" onClick={onRemove}>
-          <IconTrash />
-        </Button>
-      </TableCell>
-    </TableRow>
+const AssemblyPartQuantityCell: React.FC<{
+  parentIndex: number;
+  partIndex: number;
+  partOptions: Part[];
+}> = ({ parentIndex, partIndex, partOptions }) => {
+  const FormField = useProductForm().Field;
+
+  return (
+    <FormField name={`assemblies[${parentIndex}].parts[${partIndex}].quantity`}>
+      {(field: FieldApi<number>) => {
+        const errors = getFieldErrors(field.state.meta.errors);
+        const isInvalid = errors.length > 0;
+
+        return (
+          <PartQuantityField
+            errors={errors}
+            field={field}
+            isInvalid={isInvalid}
+            parentIndex={parentIndex}
+            partIndex={partIndex}
+            partOptions={partOptions}
+          />
+        );
+      }}
+    </FormField>
   );
 };
 

@@ -1,7 +1,7 @@
 import type { AppPermission } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { getVisibleNavSections } from './AppNavMain.js';
+import { getVisibleNavSections, isInventoryNavPath } from './AppNavMain.js';
 
 describe('AppNavMain', () => {
   it('groups inventory links in the required order', () => {
@@ -26,5 +26,12 @@ describe('AppNavMain', () => {
     const inventory = sections.find((section) => section.label === 'Inventory');
 
     expect(inventory?.items.map((item) => item.title)).toEqual(['Suppliers']);
+  });
+
+  it('highlights Inventory history without highlighting Close-out routes', () => {
+    expect(isInventoryNavPath('/inventory')).toBe(true);
+    expect(isInventoryNavPath('/inventory/9bd0c2cb-d97f-4b34-beba-c03e5541c96d')).toBe(true);
+    expect(isInventoryNavPath('/inventory/close-out')).toBe(false);
+    expect(isInventoryNavPath('/inventory/close-out/job-id')).toBe(false);
   });
 });

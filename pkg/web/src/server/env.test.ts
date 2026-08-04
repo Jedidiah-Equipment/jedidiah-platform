@@ -7,8 +7,32 @@ const baseEnv = {
   APP_BASE_URL: 'http://localhost:7001',
   API_BASE_URL: 'http://localhost:7002',
   AUTH_BASE_URL: 'http://localhost:7002/api/auth',
-  DOCS_BASE_URL: 'http://localhost:5173',
+  DOCS_BASE_URL: 'http://localhost:7006',
 };
+
+describe('docs base url', () => {
+  it('is null when no docs site is configured, so the app offers no Help', () => {
+    const { DOCS_BASE_URL: _unset, ...withoutDocs } = baseEnv;
+
+    expect(ServerConfig.parse(withoutDocs).clientConfig.docsBaseUrl).toBeNull();
+    expect(ServerConfig.parse({ ...baseEnv, DOCS_BASE_URL: '' }).clientConfig.docsBaseUrl).toBeNull();
+  });
+
+  it('keeps the committed local default in development', () => {
+    expect(ServerConfig.parse(baseEnv).clientConfig.docsBaseUrl).toBe('http://localhost:7006');
+  });
+
+  it('ignores the committed local default once deployed, rather than linking a browser to the server', () => {
+    expect(ServerConfig.parse({ ...baseEnv, APP_ENV: 'production' }).clientConfig.docsBaseUrl).toBeNull();
+  });
+
+  it('takes a real docs origin once deployed', () => {
+    expect(
+      ServerConfig.parse({ ...baseEnv, APP_ENV: 'production', DOCS_BASE_URL: 'https://docs.example.com/' }).clientConfig
+        .docsBaseUrl,
+    ).toBe('https://docs.example.com');
+  });
+});
 
 describe('web server config', () => {
   it('keeps PostHog disabled in development by default', () => {

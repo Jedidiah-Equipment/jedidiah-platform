@@ -99,6 +99,7 @@ function Ready({
 }) {
   const header = (
     <ScheduleHeader
+      helpTopic="jobs"
       onBack={onBack}
       operator={null}
       showOperatorAvatar={false}
@@ -342,7 +343,7 @@ function Frame({
 }) {
   return (
     <>
-      <ScheduleHeader onBack={onBack} operator={null} showOperatorAvatar={false} title="Job detail" />
+      <ScheduleHeader helpTopic="jobs" onBack={onBack} operator={null} showOperatorAvatar={false} title="Job detail" />
       <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
         {children}
       </ScrollView>

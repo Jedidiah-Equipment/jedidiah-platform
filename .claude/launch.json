@@ -34,7 +34,7 @@
       "name": "docs",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@pkg/docs", "dev"],
-      "port": 5173,
+      "port": 7006,
       "autoPort": true
     }
   ]

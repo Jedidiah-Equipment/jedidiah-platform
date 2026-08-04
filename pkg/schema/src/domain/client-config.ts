@@ -13,7 +13,8 @@ export const ClientConfig = z.object({
   appBaseUrl: z.string().url(),
   apiBaseUrl: z.string().url(),
   authBaseUrl: z.string().url(),
-  docsBaseUrl: z.string().url(),
+  // Null when no docs site is configured; the apps hide Help rather than offer a dead link.
+  docsBaseUrl: z.string().url().nullable().default(null),
   deploymentVersion: z.string().min(1).nullable().default(null),
   posthog: z
     .object({

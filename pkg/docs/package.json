@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vitepress dev --port ${PORT:-5173}",
+    "dev": "vitepress dev --port ${PORT:-7006}",
     "build": "vitepress build",
     "start": "vitepress preview --port ${PORT:-4173}",
     "typecheck": "tsc -p tsconfig.json --noEmit",

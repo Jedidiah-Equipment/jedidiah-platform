@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { resolveAppEnv, resolveDocsOrigin, resolveLanderOrigin } from './app-env';
+import { resolveAppEnv, resolveLanderOrigin } from './app-env';
 
 const originalAppEnv = process.env.EXPO_PUBLIC_APP_ENV;
 const originalLanderOrigin = process.env.EXPO_PUBLIC_LANDER_ORIGIN;
@@ -21,6 +21,7 @@ afterEach(() => {
 
 async function loadAppEnv(rawValue: string | undefined, rawLanderOrigin?: string) {
   vi.resetModules();
+  delete process.env.EXPO_PUBLIC_DOCS_ORIGIN;
   if (rawValue === undefined) {
     delete process.env.EXPO_PUBLIC_APP_ENV;
   } else {
@@ -72,9 +73,10 @@ describe('landerOrigin', () => {
   });
 });
 
-describe('resolveDocsOrigin', () => {
-  it('defaults to the local docs dev server and removes trailing slashes from overrides', () => {
-    expect(resolveDocsOrigin(undefined)).toBe('http://localhost:5173');
-    expect(resolveDocsOrigin('https://docs.example.com///')).toBe('https://docs.example.com');
+describe('docsOrigin', () => {
+  it('stays null until a docs site is configured, so no Help is offered', async () => {
+    const { docsOrigin } = await loadAppEnv(undefined);
+
+    expect(docsOrigin).toBeNull();
   });
 });

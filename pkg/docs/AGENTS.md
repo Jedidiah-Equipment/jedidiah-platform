@@ -5,9 +5,9 @@
   publish belongs here; it belongs in the app, near the data.
 - Markdown pages live in `content/`; the site config and its tests live in `src/`. `.vitepress/config.ts`
   only re-exports `src/config.ts`.
-- The dev server sits outside the parallel slot port scheme. It lands on 5173 and steps to the next free
-  port rather than failing, so two checkouts can preview at once; `pnpm --filter @pkg/docs dev` also honours
-  `PORT`, which `pnpm dev` does not pass through (turbo runs in strict env mode).
+- The dev server takes port 7006 — after the lander's 7004 — but is not slot-allocated: it steps to the next
+  free port rather than failing, so two checkouts can preview at once. `pnpm --filter @pkg/docs dev` also
+  honours `PORT`, which `pnpm dev` does not pass through (turbo runs in strict env mode).
 - The sidebar is computed once when the config loads, so a newly written page shows up in a running dev
   server only after VitePress restarts on a config change.
 - `src/help-topics.test.ts` walks `HELP_TOPICS` from `@pkg/domain` and fails when a topic names a page this

@@ -1,6 +1,13 @@
 import type { CatalogTranslationNeedsReviewItem } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import {
+  type ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
 import type React from 'react';
 
 import {
@@ -8,10 +15,9 @@ import {
   PRODUCT_RANGE_VARIANT_TRANSLATION_FIELD_LABELS,
   PRODUCT_TRANSLATION_FIELD_LABELS,
 } from '@/components/catalog-translations/catalog-translation-labels.js';
+import { DataTable } from '@/components/data-table/DataTable.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Skeleton } from '@/components/ui/skeleton.js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 export const CatalogTranslationNeedsReview: React.FC = () => {
@@ -37,64 +43,72 @@ export const CatalogTranslationNeedsReviewContent: React.FC<CatalogTranslationNe
   hasError,
   isLoading,
   items,
-}) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Needs review</CardTitle>
-      <CardDescription>Manual Afrikaans translations whose English source has changed.</CardDescription>
-    </CardHeader>
-    <CardContent>
-      {hasError ? (
-        <div className="rounded-lg border border-destructive/40 p-4 text-destructive text-sm">
-          Unable to load translations needing review.
-        </div>
-      ) : isLoading ? (
-        <div className="flex flex-col gap-2" role="status">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <span className="sr-only">Loading translations needing review</span>
-        </div>
-      ) : items.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
-          No Afrikaans translations need review.
-        </div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Entity kind</TableHead>
-              <TableHead>Entity name</TableHead>
-              <TableHead>Affected fields</TableHead>
-              <TableHead>
-                <span className="sr-only">Action</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={`${item.kind}:${item.id}`}>
-                <TableCell>{ENTITY_KIND_LABELS[item.kind]}</TableCell>
-                <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell className="whitespace-normal text-muted-foreground">
-                  {affectedFieldLabels(item).join(', ')}
-                </TableCell>
-                <TableCell className="text-right">
-                  <NeedsReviewButton item={item} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </CardContent>
-  </Card>
-);
+}) => {
+  const table = useReactTable({
+    columns: needsReviewColumns,
+    data: items,
+    enableColumnFilters: false,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getRowId: (item) => `${item.kind}:${item.id}`,
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Needs review</CardTitle>
+        <CardDescription>Manual Afrikaans translations whose English source has changed.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <DataTable
+          emptyMessage="No Afrikaans translations need review."
+          errorMessage={hasError ? 'Unable to load translations needing review.' : undefined}
+          hideGlobalFilter
+          isLoading={isLoading}
+          paginationMode="complete"
+          table={table}
+          total={items.length}
+          totalLabel={(value) => `${value} ${value === 1 ? 'translation' : 'translations'}`}
+        />
+      </CardContent>
+    </Card>
+  );
+};
 
 const ENTITY_KIND_LABELS = {
   product: 'Product',
   range: 'Range',
   variant: 'Variant',
 } satisfies Record<CatalogTranslationNeedsReviewItem['kind'], string>;
+
+const needsReviewColumns: ColumnDef<CatalogTranslationNeedsReviewItem>[] = [
+  {
+    accessorFn: (item) => ENTITY_KIND_LABELS[item.kind],
+    header: 'Entity kind',
+    id: 'kind',
+  },
+  {
+    accessorKey: 'name',
+    header: 'Entity name',
+    meta: { cellClassName: 'font-medium' },
+  },
+  {
+    accessorFn: (item) => affectedFieldLabels(item).join(', '),
+    header: 'Affected fields',
+    id: 'affectedFields',
+    meta: { cellClassName: 'whitespace-normal text-muted-foreground' },
+  },
+  {
+    cell: ({ row }) => <NeedsReviewButton item={row.original} />,
+    enableGlobalFilter: false,
+    enableSorting: false,
+    header: () => <span className="sr-only">Action</span>,
+    id: 'action',
+    meta: { cellClassName: 'text-right' },
+  },
+];
 
 // Button renders the link by cloning it with its own label and styling, so the Link has to be the direct
 // render element. A Variant's translations live on its Range's Translations tab, so triage links there.

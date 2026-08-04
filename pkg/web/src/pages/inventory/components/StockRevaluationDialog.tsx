@@ -51,7 +51,14 @@ export function StockRevaluationDialog({
       {(form) => (
         <>
           <form.AppField name="partId">
-            {(field) => <field.SelectField label="Part" options={partSelectOptions(parts)} placeholder="Select Part" />}
+            {(field) => (
+              <field.ComboboxField
+                emptyMessage="No Parts found."
+                label="Part"
+                options={partSelectOptions(parts)}
+                placeholder="Search Parts"
+              />
+            )}
           </form.AppField>
           <form.Subscribe selector={(state) => state.values.partId}>
             {(partId) => {

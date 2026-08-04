@@ -1,15 +1,18 @@
 import { PART_UNIT_OF_MEASURE_LABELS, type Supplier } from '@pkg/schema';
 import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
+import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { DataTable } from '@/components/data-table/DataTable.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button, type ButtonSize } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -19,7 +22,6 @@ import {
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -189,37 +191,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
             {previewRows.length > 0 && !result ? (
               <div className="space-y-2">
                 <div className="text-sm font-medium">Preview</div>
-                <ScrollArea className="h-56 rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Line</TableHead>
-                        <TableHead>Code</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Supplier</TableHead>
-                        <TableHead>Unit</TableHead>
-                        <TableHead>Internal</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewRows.map((row) => (
-                        <TableRow key={`${row.lineNumber}-${row.code}`}>
-                          <TableCell>{row.lineNumber}</TableCell>
-                          <TableCell>{row.code}</TableCell>
-                          <TableCell>{row.name}</TableCell>
-                          <TableCell>{row.supplierName}</TableCell>
-                          <TableCell>{PART_UNIT_OF_MEASURE_LABELS[row.unitOfMeasure]}</TableCell>
-                          <TableCell>{row.isInternallyFabricated ? 'Yes' : 'No'}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-                {parseResult.rows.length > previewRows.length ? (
-                  <div className="text-xs text-muted-foreground">
-                    Showing first {previewRows.length} of {parseResult.rows.length} rows.
-                  </div>
-                ) : null}
+                <PartBulkImportPreviewTable items={previewRows} total={parseResult.rows.length} />
               </div>
             ) : null}
             {result ? (
@@ -233,7 +205,8 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
                 </AlertDescription>
               </Alert>
             ) : null}
-            <DialogFooter className="mt-0" showCloseButton>
+            <DialogFooter className="mt-0">
+              <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
               {result ? (
                 <Button onClick={resetForm} type="button" variant="link">
                   Import Another
@@ -251,3 +224,44 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
     </>
   );
 };
+
+type PartBulkImportPreviewRow = ParsePartBulkImportCsvResult['rows'][number];
+
+const previewColumns: ColumnDef<PartBulkImportPreviewRow>[] = [
+  { accessorKey: 'lineNumber', header: 'Line' },
+  { accessorKey: 'code', header: 'Code' },
+  { accessorKey: 'name', header: 'Name' },
+  { accessorKey: 'supplierName', header: 'Supplier' },
+  {
+    accessorFn: (row) => PART_UNIT_OF_MEASURE_LABELS[row.unitOfMeasure],
+    header: 'Unit',
+    id: 'unit',
+  },
+  {
+    accessorFn: (row) => (row.isInternallyFabricated ? 'Yes' : 'No'),
+    header: 'Internal',
+    id: 'internal',
+  },
+];
+
+function PartBulkImportPreviewTable({ items, total }: { items: PartBulkImportPreviewRow[]; total: number }) {
+  const table = useReactTable({
+    columns: previewColumns,
+    data: items,
+    enableColumnFilters: false,
+    enableSorting: false,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => `${row.lineNumber}-${row.code}`,
+  });
+
+  return (
+    <DataTable
+      emptyMessage="No valid Part rows to preview."
+      hideGlobalFilter
+      paginationMode="complete"
+      table={table}
+      total={total}
+      totalLabel={(value) => `${value} ${value === 1 ? 'part row' : 'part rows'}`}
+    />
+  );
+}

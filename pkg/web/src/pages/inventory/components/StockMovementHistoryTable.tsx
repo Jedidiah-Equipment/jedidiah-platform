@@ -1,8 +1,16 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
 import { type PartUnitOfMeasure, STOCK_ADJUSTMENT_REASON_LABELS, type StockMovementHistoryRow } from '@pkg/schema';
 import { Link } from '@tanstack/react-router';
+import {
+  type ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
+import { useMemo } from 'react';
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
+import { DataTable } from '@/components/data-table/DataTable.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 
 export function StockMovementHistoryTable({
@@ -14,50 +22,106 @@ export function StockMovementHistoryTable({
   showCosts: boolean;
   unitOfMeasure: PartUnitOfMeasure;
 }) {
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>When</TableHead>
-          <TableHead>Movement</TableHead>
-          <TableHead>Quantity</TableHead>
-          <TableHead>Running balance</TableHead>
-          <TableHead>Note</TableHead>
-          <TableHead>Actor</TableHead>
-          <TableHead>Reference</TableHead>
-          {showCosts ? <TableHead>Unit cost</TableHead> : null}
-          {showCosts ? <TableHead>Movement value</TableHead> : null}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.map((item) => (
-          <TableRow key={item.id}>
-            <TableCell>{formatDate(item.createdAt, 'medium')}</TableCell>
-            <TableCell>{formatMovementLabel(item)}</TableCell>
-            <TableCell className="tabular-nums">{formatMovementQuantity(item, unitOfMeasure)}</TableCell>
-            <TableCell className="tabular-nums">{formatLedgerQuantity(item.runningBalance, unitOfMeasure)}</TableCell>
-            <TableCell>{item.note ?? '—'}</TableCell>
-            <TableCell>{item.actorName}</TableCell>
-            <TableCell>
-              {item.purchaseOrderId && item.purchaseOrderCode ? (
-                <Link
-                  className="font-medium underline-offset-4 hover:underline"
-                  params={{ id: item.purchaseOrderId }}
-                  to="/purchase-orders/$id"
-                >
-                  {item.purchaseOrderCode}
-                </Link>
-              ) : (
-                '—'
-              )}
-            </TableCell>
-            {showCosts ? <TableCell>{formatCost(item.unitCost)}</TableCell> : null}
-            {showCosts ? <TableCell>{formatCost(item.movementValue)}</TableCell> : null}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+  const columns = useMemo(
+    () => createStockMovementHistoryColumns({ showCosts, unitOfMeasure }),
+    [showCosts, unitOfMeasure],
   );
+  const data = useMemo(() => [...items], [items]);
+  const table = useReactTable({
+    columns,
+    data,
+    enableColumnFilters: false,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+  const total = table.getFilteredRowModel().rows.length;
+
+  return (
+    <DataTable
+      emptyMessage="No stock movements have been recorded for this Part."
+      globalFilterPlaceholder="Search inventory history..."
+      paginationMode="complete"
+      table={table}
+      total={total}
+      totalLabel={(value) => `${value} ${value === 1 ? 'movement' : 'movements'}`}
+    />
+  );
+}
+
+function createStockMovementHistoryColumns({
+  showCosts,
+  unitOfMeasure,
+}: {
+  showCosts: boolean;
+  unitOfMeasure: PartUnitOfMeasure;
+}): ColumnDef<StockMovementHistoryRow>[] {
+  return [
+    {
+      accessorKey: 'createdAt',
+      cell: ({ row }) => formatDate(row.original.createdAt, 'medium'),
+      header: 'When',
+    },
+    {
+      accessorFn: formatMovementLabel,
+      header: 'Movement',
+      id: 'movement',
+    },
+    {
+      accessorFn: (item) => (item.movementType === 'revaluation' ? 0 : item.delta),
+      cell: ({ row }) => formatMovementQuantity(row.original, unitOfMeasure),
+      header: 'Quantity',
+      id: 'quantity',
+      meta: { cellClassName: 'tabular-nums' },
+    },
+    {
+      accessorKey: 'runningBalance',
+      cell: ({ row }) => formatLedgerQuantity(row.original.runningBalance, unitOfMeasure),
+      header: 'Running balance',
+      meta: { cellClassName: 'tabular-nums' },
+    },
+    {
+      accessorFn: (item) => item.note ?? '—',
+      header: 'Note',
+      id: 'note',
+    },
+    {
+      accessorKey: 'actorName',
+      header: 'Actor',
+    },
+    {
+      accessorFn: (item) => item.purchaseOrderCode ?? '—',
+      cell: ({ row }) =>
+        row.original.purchaseOrderId && row.original.purchaseOrderCode ? (
+          <Link
+            className="font-medium underline-offset-4 hover:underline"
+            params={{ id: row.original.purchaseOrderId }}
+            to="/purchase-orders/$id"
+          >
+            {row.original.purchaseOrderCode}
+          </Link>
+        ) : (
+          '—'
+        ),
+      header: 'Reference',
+      id: 'reference',
+    },
+    ...(showCosts
+      ? [
+          {
+            accessorKey: 'unitCost',
+            cell: ({ row }) => formatCost(row.original.unitCost),
+            header: 'Unit cost',
+          } satisfies ColumnDef<StockMovementHistoryRow>,
+          {
+            accessorKey: 'movementValue',
+            cell: ({ row }) => formatCost(row.original.movementValue),
+            header: 'Movement value',
+          } satisfies ColumnDef<StockMovementHistoryRow>,
+        ]
+      : []),
+  ];
 }
 
 function formatMovementLabel(item: StockMovementHistoryRow): string {

@@ -44,13 +44,8 @@ export const PartEditDialog: React.FC<PartEditDialogProps> = ({ onClose, part, s
     <Dialog onOpenChange={(isOpen) => !isOpen && onClose()} open={!!part}>
       <DialogContent className="sm:max-w-[720px]">
         <DialogHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <DialogTitle>Edit part</DialogTitle>
-              <DialogDescription>{supplier?.companyName ?? 'Built in-house'}</DialogDescription>
-            </div>
-            {part ? <PartLabelPrintButton partId={part.id} size="sm" /> : null}
-          </div>
+          <DialogTitle>Edit part</DialogTitle>
+          <DialogDescription>{supplier?.companyName ?? 'Built in-house'}</DialogDescription>
         </DialogHeader>
         {part ? (
           <PartEditBody
@@ -92,6 +87,7 @@ const PartEditBody: React.FC<{
       initialPart={part}
       isPending={isPending}
       onSubmit={onSubmit}
+      footerActions={<PartLabelPrintButton partId={part.id} />}
       submitLabel="Save part"
     />
   );

@@ -1,6 +1,7 @@
 import { createStableRowKeys, formatCurrency, formatDate, hasPermission } from '@pkg/domain';
 import {
   PART_UNIT_OF_MEASURE_LABELS,
+  type Part,
   type PurchaseOrderLineInput,
   type PurchaseOrderSaveDraftInput,
   type PurchaseOrderView,
@@ -8,18 +9,19 @@ import {
 } from '@pkg/schema';
 import { IconBan, IconDownload, IconEye, IconFlagCheck, IconPlus, IconSend, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { DataTable } from '@/components/data-table/DataTable.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { usePartOptions, useSupplierOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
@@ -45,22 +47,22 @@ export const PurchaseOrderDetailPage: React.FC<{ purchaseOrderId: UUID }> = ({ p
   const trpc = useTRPC();
   const query = useQuery(trpc.purchaseOrders.get.queryOptions({ id: purchaseOrderId }));
 
+  if (query.data) {
+    return <PurchaseOrderDetail purchaseOrder={query.data} queryError={query.error} />;
+  }
+
   return (
-    <PageLayout
-      description={
-        query.data ? `${query.data.supplier.companyName} · ${statusDescription(query.data)}` : 'Purchase Order'
-      }
-      size="lg"
-      title={query.data?.code ?? 'Loading Purchase Order...'}
-    >
+    <PageLayout description="Purchase Order" size="lg" title="Loading Purchase Order...">
       {query.isPending ? <Skeleton className="h-64 w-full" /> : null}
       <ErrorMessage error={query.error} fallbackMessage="Unable to load this Purchase Order." />
-      {query.data ? <PurchaseOrderDetail purchaseOrder={query.data} /> : null}
     </PageLayout>
   );
 };
 
-const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ purchaseOrder }) => {
+const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryError: unknown }> = ({
+  purchaseOrder,
+  queryError,
+}) => {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const canReadCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
@@ -115,54 +117,65 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ p
   );
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PurchaseOrderStatusBadge status={purchaseOrder.derivedStatus} />
-        <PurchaseOrderActions
-          canCancel={canCancel}
-          canCloseShort={canCloseShort}
-          canEdit={canEdit}
-          canReadCosts={canReadCosts}
-          canSend={canSend}
-          isPending={isLifecycleActionPending}
-          purchaseOrder={purchaseOrder}
-          runAfterSave={runAfterSave}
-        />
+    <PageLayout
+      actions={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <PurchaseOrderActions
+            canCancel={canCancel}
+            canCloseShort={canCloseShort}
+            canEdit={canEdit}
+            canReadCosts={canReadCosts}
+            canSend={canSend}
+            isPending={isLifecycleActionPending}
+            purchaseOrder={purchaseOrder}
+            runAfterSave={runAfterSave}
+          />
+          <PurchaseOrderStatusBadge size="lg" status={purchaseOrder.derivedStatus} />
+        </div>
+      }
+      description={`${purchaseOrder.supplier.companyName} · ${statusDescription(purchaseOrder)}`}
+      size="lg"
+      title={purchaseOrder.code}
+    >
+      <ErrorMessage error={queryError} fallbackMessage="Unable to refresh this Purchase Order." />
+      <div className="grid gap-4">
+        {canEdit ? (
+          <form {...formProps} className="grid gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Order details</CardTitle>
+                <CardAction>
+                  <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
+                </CardAction>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <SupplierField commit={autosave.commit} form={form} />
+                <form.AppField name="expectedDeliveryDate">
+                  {(field) => (
+                    <field.DatePickerField
+                      label="Expected delivery date"
+                      onValueCommit={autosave.commit}
+                      placeholder="Optional"
+                    />
+                  )}
+                </form.AppField>
+              </CardContent>
+            </Card>
+            <PurchaseOrderLinesCard commit={autosave.commit} form={form} supplierId={purchaseOrder.supplierId} />
+            <PurchaseOrderJobsCard commit={autosave.commit} form={form} />
+          </form>
+        ) : (
+          <>
+            <ReadOnlyDetailsCard purchaseOrder={purchaseOrder} />
+            {canReceive ? (
+              <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+            ) : null}
+            <ReadOnlyLinesCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+            <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
+          </>
+        )}
       </div>
-      {canEdit ? (
-        <form {...formProps} className="grid gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Order details</CardTitle>
-              <CardAction>
-                <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
-              </CardAction>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              <SupplierField commit={autosave.commit} form={form} />
-              <form.AppField name="expectedDeliveryDate">
-                {(field) => (
-                  <field.DatePickerField
-                    label="Expected delivery date"
-                    onValueCommit={autosave.commit}
-                    placeholder="Optional"
-                  />
-                )}
-              </form.AppField>
-            </CardContent>
-          </Card>
-          <PurchaseOrderLinesCard commit={autosave.commit} form={form} supplierId={purchaseOrder.supplierId} />
-          <PurchaseOrderJobsCard commit={autosave.commit} form={form} />
-        </form>
-      ) : (
-        <>
-          <ReadOnlyDetailsCard purchaseOrder={purchaseOrder} />
-          {canReceive ? <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} /> : null}
-          <ReadOnlyLinesCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
-          <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
-        </>
-      )}
-    </div>
+    </PageLayout>
   );
 };
 
@@ -174,11 +187,13 @@ const SupplierField: React.FC<{ commit: () => void; form: DraftForm }> = ({ comm
   return (
     <form.AppField name="supplierId">
       {(field) => (
-        <field.SelectField
+        <field.ComboboxField
           disabled={suppliers.isPending}
+          emptyMessage="No suppliers found."
           label="Supplier"
           onValueCommit={commit}
           options={suppliers.selectOptions}
+          placeholder={suppliers.isPending ? 'Loading suppliers...' : 'Search suppliers'}
         />
       )}
     </form.AppField>
@@ -347,81 +362,13 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
               </CardAction>
             </CardHeader>
             <CardContent className="px-0">
-              {lines.length === 0 ? (
-                <p className="px-4 text-sm text-muted-foreground">No Parts added.</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Part</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead className="w-32">Quantity</TableHead>
-                      <TableHead className="w-40">Unit price</TableHead>
-                      <TableHead>
-                        <span className="sr-only">Remove</span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lines.map((line, index) => {
-                      const part = eligibleParts.find((candidate) => candidate.id === line.partId);
-                      // A Part appears once per order, so every other row's pick drops out of this
-                      // one's choices; its own stays so the selected value keeps a label.
-                      const partOptions = eligibleParts
-                        .filter(
-                          (option) => option.id === line.partId || !lines.some((other) => other.partId === option.id),
-                        )
-                        .map((option) => ({ label: `${option.code} · ${option.name}`, value: option.id }));
-
-                      return (
-                        <TableRow key={getLineKey(line)}>
-                          <TableCell>
-                            <form.AppField name={`lines[${index}].partId`}>
-                              {(field) => (
-                                <field.SelectField
-                                  label={<span className="sr-only">Part</span>}
-                                  onValueCommit={commit}
-                                  options={partOptions}
-                                />
-                              )}
-                            </form.AppField>
-                          </TableCell>
-                          <TableCell>{part ? purchaseUnitLabel(part) : '—'}</TableCell>
-                          <TableCell>
-                            <form.AppField name={`lines[${index}].quantity`}>
-                              {(field) => (
-                                <field.NumberField
-                                  decimals={part && isMeasuredUnit(part.unitOfMeasure) ? 3 : 0}
-                                  label={<span className="sr-only">Quantity</span>}
-                                />
-                              )}
-                            </form.AppField>
-                          </TableCell>
-                          <TableCell>
-                            <form.AppField name={`lines[${index}].unitPrice`}>
-                              {(field) => <field.CurrencyField label={<span className="sr-only">Unit price</span>} />}
-                            </form.AppField>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              aria-label={`Remove ${part?.name ?? 'line'}`}
-                              onClick={() => {
-                                linesField.removeValue(index);
-                                commit();
-                              }}
-                              size="icon-sm"
-                              type="button"
-                              variant="ghost"
-                            >
-                              <IconTrash />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
+              <PurchaseOrderLinesDataTable
+                commit={commit}
+                eligibleParts={eligibleParts}
+                form={form}
+                lines={lines}
+                removeLine={(index) => linesField.removeValue(index)}
+              />
             </CardContent>
             <div className="border-t px-4 pt-4 text-right font-medium">
               Total {formatCurrency(lineTotal(lines), 'ZAR')}
@@ -430,6 +377,130 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
         );
       }}
     </form.AppField>
+  );
+};
+
+type PurchaseOrderLineTableRow = {
+  index: number;
+  key: string;
+  line: PurchaseOrderLineInput;
+};
+
+const PurchaseOrderLinesDataTable: React.FC<{
+  commit: () => void;
+  eligibleParts: Part[];
+  form: DraftForm;
+  lines: PurchaseOrderLineInput[];
+  removeLine: (index: number) => void;
+}> = ({ commit, eligibleParts, form, lines, removeLine }) => {
+  const data = useMemo(() => lines.map((line, index) => ({ index, key: getLineKey(line), line })), [lines]);
+  const columns = useMemo<ColumnDef<PurchaseOrderLineTableRow>[]>(
+    () => [
+      {
+        cell: ({ row }) => {
+          const { index, line } = row.original;
+          // A Part appears once per order, so every other row's pick drops out of this
+          // one's choices; its own stays so the selected value keeps a label.
+          const options = eligibleParts
+            .filter((option) => option.id === line.partId || !lines.some((other) => other.partId === option.id))
+            .map((option) => ({ label: `${option.code} · ${option.name}`, value: option.id }));
+
+          return (
+            <form.AppField name={`lines[${index}].partId`}>
+              {(field) => (
+                <field.ComboboxField
+                  emptyMessage="No Parts found."
+                  label={<span className="sr-only">Part</span>}
+                  onValueCommit={commit}
+                  options={options}
+                  placeholder="Search Parts"
+                />
+              )}
+            </form.AppField>
+          );
+        },
+        header: 'Part',
+        id: 'part',
+      },
+      {
+        cell: ({ row }) => {
+          const part = eligibleParts.find((candidate) => candidate.id === row.original.line.partId);
+          return part ? purchaseUnitLabel(part) : '—';
+        },
+        header: 'Unit',
+        id: 'unit',
+      },
+      {
+        cell: ({ row }) => {
+          const part = eligibleParts.find((candidate) => candidate.id === row.original.line.partId);
+          return (
+            <form.AppField name={`lines[${row.original.index}].quantity`}>
+              {(field) => (
+                <field.NumberField
+                  decimals={part && isMeasuredUnit(part.unitOfMeasure) ? 3 : 0}
+                  label={<span className="sr-only">Quantity</span>}
+                />
+              )}
+            </form.AppField>
+          );
+        },
+        header: 'Quantity',
+        id: 'quantity',
+        meta: { headerClassName: 'w-32' },
+      },
+      {
+        cell: ({ row }) => (
+          <form.AppField name={`lines[${row.original.index}].unitPrice`}>
+            {(field) => <field.CurrencyField label={<span className="sr-only">Unit price</span>} />}
+          </form.AppField>
+        ),
+        header: 'Unit price',
+        id: 'unitPrice',
+        meta: { headerClassName: 'w-40' },
+      },
+      {
+        cell: ({ row }) => {
+          const part = eligibleParts.find((candidate) => candidate.id === row.original.line.partId);
+          return (
+            <Button
+              aria-label={`Remove ${part?.name ?? 'line'}`}
+              onClick={() => {
+                removeLine(row.original.index);
+                commit();
+              }}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <IconTrash />
+            </Button>
+          );
+        },
+        enableSorting: false,
+        header: () => <span className="sr-only">Remove</span>,
+        id: 'remove',
+      },
+    ],
+    [commit, eligibleParts, form, lines, removeLine],
+  );
+  const table = useReactTable({
+    columns,
+    data,
+    enableColumnFilters: false,
+    enableSorting: false,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.key,
+  });
+
+  return (
+    <DataTable
+      emptyMessage="No Parts added."
+      hideGlobalFilter
+      paginationMode="complete"
+      table={table}
+      total={data.length}
+      totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
+    />
   );
 };
 
@@ -488,48 +559,7 @@ const ReadOnlyLinesCard: React.FC<{ canReadCosts: boolean; purchaseOrder: Purcha
       <CardDescription>Quantities are ordered in the Part's purchasing unit.</CardDescription>
     </CardHeader>
     <CardContent className="px-0">
-      {purchaseOrder.lines.length === 0 ? (
-        <p className="px-4 text-sm text-muted-foreground">No Parts added.</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Part</TableHead>
-              <TableHead>Unit</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead className="text-right">Received</TableHead>
-              {canReadCosts ? (
-                <>
-                  <TableHead className="text-right">Unit price</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </>
-              ) : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {purchaseOrder.lines.map((line) => (
-              <TableRow key={line.partId}>
-                <TableCell>
-                  <span className="font-medium">{line.partCode}</span> · {line.partName}
-                </TableCell>
-                <TableCell>{purchaseUnitLabel(line)}</TableCell>
-                <TableCell>{line.quantity}</TableCell>
-                <TableCell className="text-right tabular-nums">{line.receivedQuantity}</TableCell>
-                {canReadCosts ? (
-                  <>
-                    <TableCell className="text-right">
-                      {line.unitPrice === null ? '—' : formatCurrency(line.unitPrice, 'ZAR')}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {line.unitPrice === null ? '—' : formatCurrency(line.quantity * line.unitPrice, 'ZAR')}
-                    </TableCell>
-                  </>
-                ) : null}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <PurchaseOrderReadOnlyLinesTable canReadCosts={canReadCosts} items={purchaseOrder.lines} />
     </CardContent>
     {canReadCosts ? (
       <div className="border-t px-4 pt-4 text-right font-medium">
@@ -538,6 +568,78 @@ const ReadOnlyLinesCard: React.FC<{ canReadCosts: boolean; purchaseOrder: Purcha
     ) : null}
   </Card>
 );
+
+const PurchaseOrderReadOnlyLinesTable: React.FC<{
+  canReadCosts: boolean;
+  items: PurchaseOrderView['lines'];
+}> = ({ canReadCosts, items }) => {
+  const columns = useMemo<ColumnDef<PurchaseOrderView['lines'][number]>[]>(
+    () => [
+      {
+        accessorFn: (line) => `${line.partCode} ${line.partName}`,
+        cell: ({ row }) => (
+          <>
+            <span className="font-medium">{row.original.partCode}</span> · {row.original.partName}
+          </>
+        ),
+        header: 'Part',
+        id: 'part',
+      },
+      {
+        accessorFn: purchaseUnitLabel,
+        header: 'Unit',
+        id: 'unit',
+      },
+      { accessorKey: 'quantity', header: 'Quantity' },
+      {
+        accessorKey: 'receivedQuantity',
+        header: 'Received',
+        meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
+      },
+      ...(canReadCosts
+        ? [
+            {
+              accessorKey: 'unitPrice',
+              cell: ({ row }) =>
+                row.original.unitPrice === null ? '—' : formatCurrency(row.original.unitPrice, 'ZAR'),
+              header: 'Unit price',
+              meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
+            } satisfies ColumnDef<PurchaseOrderView['lines'][number]>,
+            {
+              accessorFn: (line) => (line.unitPrice === null ? null : line.quantity * line.unitPrice),
+              cell: ({ getValue }) => {
+                const value = getValue<number | null>();
+                return value === null ? '—' : formatCurrency(value, 'ZAR');
+              },
+              header: 'Amount',
+              id: 'amount',
+              meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
+            } satisfies ColumnDef<PurchaseOrderView['lines'][number]>,
+          ]
+        : []),
+    ],
+    [canReadCosts],
+  );
+  const table = useReactTable({
+    columns,
+    data: items,
+    enableColumnFilters: false,
+    enableSorting: false,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (line) => line.partId,
+  });
+
+  return (
+    <DataTable
+      emptyMessage="No Parts added."
+      hideGlobalFilter
+      paginationMode="complete"
+      table={table}
+      total={items.length}
+      totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
+    />
+  );
+};
 
 const ReadOnlyJobsCard: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ purchaseOrder }) => (
   <Card>

@@ -1,4 +1,5 @@
 import type { PurchaseOrderDerivedStatus } from '@pkg/schema';
+import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';
 
@@ -14,8 +15,16 @@ const statusBadges = {
   { label: string; variant: 'default' | 'destructive' | 'secondary' }
 >;
 
-export function PurchaseOrderStatusBadge({ status }: { status: PurchaseOrderDerivedStatus }) {
+type PurchaseOrderStatusBadgeProps = Omit<React.ComponentProps<typeof Badge>, 'children' | 'variant'> & {
+  status: PurchaseOrderDerivedStatus;
+};
+
+export function PurchaseOrderStatusBadge({ status, ...props }: PurchaseOrderStatusBadgeProps) {
   const badge = statusBadges[status];
 
-  return <Badge variant={badge.variant}>{badge.label}</Badge>;
+  return (
+    <Badge variant={badge.variant} {...props}>
+      {badge.label}
+    </Badge>
+  );
 }

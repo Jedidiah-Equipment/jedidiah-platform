@@ -183,15 +183,16 @@ export function StockMovementDialog({
           )}
           <form.AppField name="partId">
             {(field) => (
-              <field.SelectField
+              <field.ComboboxField
                 disabled={isLoadingParts}
+                emptyMessage="No Parts found."
                 label="Part"
                 onValueCommit={() => {
-                  // SelectField commits first; defer until the form exposes the new Part to the dependent validator.
+                  // The selection commits first; defer until the form exposes the new Part to the dependent validator.
                   queueMicrotask(() => void form.validateField('quantity', 'blur'));
                 }}
                 options={partSelectOptions(parts)}
-                placeholder={isLoadingParts ? 'Loading Parts...' : 'Select Part'}
+                placeholder={isLoadingParts ? 'Loading Parts...' : 'Search Parts'}
               />
             )}
           </form.AppField>

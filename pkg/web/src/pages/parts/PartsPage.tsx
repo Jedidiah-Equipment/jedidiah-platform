@@ -1,4 +1,5 @@
 import type { Part } from '@pkg/schema';
+import { IconPlus } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';
 
@@ -18,21 +19,24 @@ export const PartsPage: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   return (
-    <PageLayout description={partsPageDescription} size="lg" title="Parts">
-      <PartTable
-        onEditPart={canUpdatePart ? setEditingPart : undefined}
-        rightSection={
-          <div className="flex flex-wrap gap-2">
-            {canUpdatePart ? <PartBulkImportDialog buttonSize="sm" /> : null}
-            {canUpdatePart ? (
-              <Button onClick={() => setIsCreateDialogOpen(true)} size="sm">
-                New part
-              </Button>
-            ) : null}
-            <PartLabelBatchDialog buttonSize="sm" />
-          </div>
-        }
-      />
+    <PageLayout
+      actions={
+        <div className="flex gap-2">
+          {canUpdatePart ? <PartBulkImportDialog /> : null}
+          <PartLabelBatchDialog />
+          {canUpdatePart ? (
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <IconPlus data-icon="inline-start" />
+              New part
+            </Button>
+          ) : null}
+        </div>
+      }
+      description={partsPageDescription}
+      size="full"
+      title="Parts"
+    >
+      <PartTable onEditPart={canUpdatePart ? setEditingPart : undefined} />
       {editingPart ? (
         <PartEditDialog onClose={() => setEditingPart(null)} part={editingPart} supplier={editingPart.supplier} />
       ) : null}

@@ -1,6 +1,7 @@
 export { AutosaveStatus } from './AutosaveStatus.js';
 export { CreateEntityDialog } from './CreateEntityDialog.js';
 export { CheckboxField, type CheckboxFieldProps } from './fields/CheckboxField.js';
+export { ComboboxField, type ComboboxFieldProps } from './fields/ComboboxField.js';
 export { CreatableComboboxField, type CreatableComboboxFieldProps } from './fields/CreatableComboboxField.js';
 export { CurrencyField, type CurrencyFieldProps } from './fields/CurrencyField.js';
 export { DatePickerField, type DatePickerFieldProps } from './fields/DatePickerField.js';

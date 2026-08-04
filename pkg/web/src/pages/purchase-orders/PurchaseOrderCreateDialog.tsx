@@ -54,11 +54,12 @@ export const PurchaseOrderCreateDialog: React.FC<PurchaseOrderCreateDialogProps>
         <>
           <form.AppField name="supplierId">
             {(field) => (
-              <field.SelectField
+              <field.ComboboxField
                 disabled={suppliers.isPending}
+                emptyMessage="No suppliers found."
                 label="Supplier"
                 options={suppliers.selectOptions}
-                placeholder="Select a supplier"
+                placeholder={suppliers.isPending ? 'Loading suppliers...' : 'Search suppliers'}
               />
             )}
           </form.AppField>

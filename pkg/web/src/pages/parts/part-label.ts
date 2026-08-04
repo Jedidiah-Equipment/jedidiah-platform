@@ -2,6 +2,15 @@ import type { PartLabelBatchSelection, UUID } from '@pkg/schema';
 
 import { getClientConfig } from '@/lib/app-config.js';
 
+type PartLabelBatchMode = PartLabelBatchSelection['selection'];
+
+export const partLabelBatchModeLabels = {
+  all: 'All Parts',
+  category: 'By category',
+  ids: 'Choose Parts',
+  storageLocation: 'By storage location',
+} satisfies Record<PartLabelBatchMode, string>;
+
 export function partLabelUrl(partId: UUID): string {
   return `${getClientConfig().apiBaseUrl}/api/parts/${encodeURIComponent(partId)}/label`;
 }

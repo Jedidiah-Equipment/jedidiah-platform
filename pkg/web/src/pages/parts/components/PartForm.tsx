@@ -10,13 +10,21 @@ import { PartFormValues, partStockTrackingModeOptions, partUnitOfMeasureOptions,
 
 type PartFormProps = {
   fixedSupplier?: Pick<Supplier, 'companyName' | 'id'> | undefined;
+  footerActions?: React.ReactNode;
   initialPart?: Part;
   isPending: boolean;
   onSubmit: (value: PartFormValues) => Promise<unknown>;
   submitLabel: string;
 };
 
-export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, isPending, onSubmit, submitLabel }) => {
+export const PartForm: React.FC<PartFormProps> = ({
+  fixedSupplier,
+  footerActions,
+  initialPart,
+  isPending,
+  onSubmit,
+  submitLabel,
+}) => {
   const supplierOptions = useSupplierOptions({ enabled: !fixedSupplier, limit: 0 });
   const isSupplierSelectPending = !fixedSupplier && supplierOptions.isPending;
   const categoryOptions = usePartCategoryOptions();
@@ -53,11 +61,12 @@ export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, 
               isInternallyFabricated ? null : (
                 <form.AppField name="supplierId">
                   {(field) => (
-                    <field.SelectField
+                    <field.ComboboxField
                       disabled={isSupplierSelectPending}
+                      emptyMessage="No suppliers found."
                       label="Supplier"
                       options={supplierOptions.selectOptions}
-                      placeholder={isSupplierSelectPending ? 'Loading suppliers...' : 'Select supplier'}
+                      placeholder={isSupplierSelectPending ? 'Loading suppliers...' : 'Search suppliers'}
                     />
                   )}
                 </form.AppField>
@@ -145,6 +154,7 @@ export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, 
         </EditFormFullWidth>
       </EditFormGrid>
       <EditFormActions className="mt-4">
+        {footerActions}
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <Button disabled={isSubmitting || isPending || isSupplierSelectPending} type="submit">

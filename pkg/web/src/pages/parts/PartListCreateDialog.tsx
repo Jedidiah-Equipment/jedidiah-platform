@@ -71,11 +71,12 @@ export function PartListCreateDialog({
               isInternallyFabricated ? null : (
                 <form.AppField name="supplierId">
                   {(field) => (
-                    <field.SelectField
+                    <field.ComboboxField
                       disabled={suppliers.isPending}
+                      emptyMessage="No suppliers found."
                       label="Supplier"
                       options={suppliers.selectOptions}
-                      placeholder={suppliers.isPending ? 'Loading suppliers...' : 'Select supplier'}
+                      placeholder={suppliers.isPending ? 'Loading suppliers...' : 'Search suppliers'}
                     />
                   )}
                 </form.AppField>

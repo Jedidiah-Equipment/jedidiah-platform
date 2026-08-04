@@ -20,7 +20,7 @@ import {
   IconUsers,
   type TablerIcon,
 } from '@tabler/icons-react';
-import { Link, linkOptions } from '@tanstack/react-router';
+import { Link, linkOptions, useLocation } from '@tanstack/react-router';
 import React from 'react';
 
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible.js';
@@ -38,17 +38,20 @@ import { useAccess } from '@/hooks/use-access.js';
 import { cn } from '@/lib/utils.js';
 import { FeedbackOpenNavIndicator, QuotesPriorityNavIndicator } from './AppNavIndicators.js';
 
+type NavLinkProps = React.ComponentProps<typeof Link>;
+
 type NavSubItem = {
   title: string;
   permission?: AppPermission;
-  link: ReturnType<typeof linkOptions>;
+  link: NavLinkProps;
 };
 
 type MainNavItem = {
   title: string;
   permission?: AppPermission;
-  link: ReturnType<typeof linkOptions>;
+  link: NavLinkProps;
   icon: TablerIcon;
+  isActive?: (pathname: string) => boolean;
   indicator?: React.ComponentType;
   children?: readonly NavSubItem[];
 };
@@ -115,16 +118,21 @@ const navSections = [
         icon: IconBuilding,
       },
       {
+        title: 'Products',
+        permission: 'product:read',
+        link: linkOptions({ to: '/products' }),
+        icon: IconPackages,
+      },
+    ],
+  },
+  {
+    label: 'Inventory',
+    items: [
+      {
         title: 'Suppliers',
         permission: 'supplier:read',
         link: linkOptions({ to: '/suppliers' }),
         icon: IconHeartHandshake,
-      },
-      {
-        title: 'Purchase Orders',
-        permission: 'purchase_order:read',
-        link: linkOptions({ to: '/purchase-orders' }),
-        icon: IconShoppingCart,
       },
       {
         title: 'Parts',
@@ -135,20 +143,21 @@ const navSections = [
       {
         title: 'Inventory',
         permission: 'inventory:read',
-        link: linkOptions({ to: '/inventory' }),
+        link: linkOptions({ activeOptions: { exact: true }, to: '/inventory' }),
         icon: IconBuildingWarehouse,
+        isActive: isInventoryNavPath,
+      },
+      {
+        title: 'Purchase Orders',
+        permission: 'purchase_order:read',
+        link: linkOptions({ to: '/purchase-orders' }),
+        icon: IconShoppingCart,
       },
       {
         title: 'Close-out',
         permission: 'inventory:close-out',
         link: linkOptions({ to: '/inventory/close-out' }),
         icon: IconFlagCheck,
-      },
-      {
-        title: 'Products',
-        permission: 'product:read',
-        link: linkOptions({ to: '/products' }),
-        icon: IconPackages,
       },
     ],
   },
@@ -207,8 +216,6 @@ const biggerIconClass = '[&_svg]:size-5';
 const activeSubMarkerClass =
   'relative overflow-visible data-active:before:absolute data-active:before:-left-2.5 data-active:before:inset-y-0.5 data-active:before:w-0.5 data-active:before:rounded-full data-active:before:bg-sidebar-foreground';
 
-type NavLinkProps = React.ComponentProps<typeof Link>;
-
 // A parent that expands to its children. The parent row doubles as a shortcut
 // to its first child (same destination) and toggles the group open/closed.
 const NavCollapsibleItem: React.FC<{
@@ -266,18 +273,11 @@ const NavCollapsibleItem: React.FC<{
 
 export const AppNavMain: React.FC = () => {
   const accessQuery = useAccess();
+  const pathname = useLocation({ select: (location) => location.pathname });
 
   const canSee = (permission?: AppPermission) =>
     permission === undefined || hasPermission(accessQuery.data, permission);
-
-  const canSeeItem = (item: MainNavItem) => canSee('permission' in item ? item.permission : undefined);
-
-  const visibleSections = navSections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => canSeeItem(item)),
-    }))
-    .filter((section) => section.items.length > 0);
+  const visibleSections = getVisibleNavSections(canSee);
 
   return (
     <>
@@ -286,7 +286,7 @@ export const AppNavMain: React.FC = () => {
           {section.label ? <SidebarGroupLabel>{section.label}</SidebarGroupLabel> : null}
           <SidebarMenu className="gap-1">
             {section.items.map((item) => {
-              const subItems = 'children' in item ? item.children.filter((child) => canSee(child.permission)) : [];
+              const subItems = item.children ?? [];
               const [firstChild] = subItems;
               const Indicator = 'indicator' in item ? item.indicator : undefined;
 
@@ -294,18 +294,22 @@ export const AppNavMain: React.FC = () => {
                 return (
                   <SidebarMenuItem key={item.title}>
                     <Link {...item.link}>
-                      {({ isActive }) => (
-                        <SidebarMenuButton
-                          isActive={isActive}
-                          render={<span />}
-                          tooltip={item.title}
-                          className={cn(biggerIconClass, !isActive && inactiveItemClass)}
-                        >
-                          <item.icon />
-                          <span>{item.title}</span>
-                          {Indicator ? <Indicator /> : null}
-                        </SidebarMenuButton>
-                      )}
+                      {({ isActive }) => {
+                        const navItemIsActive = item.isActive ? item.isActive(pathname) : isActive;
+
+                        return (
+                          <SidebarMenuButton
+                            isActive={navItemIsActive}
+                            render={<span />}
+                            tooltip={item.title}
+                            className={cn(biggerIconClass, !navItemIsActive && inactiveItemClass)}
+                          >
+                            <item.icon />
+                            <span>{item.title}</span>
+                            {Indicator ? <Indicator /> : null}
+                          </SidebarMenuButton>
+                        );
+                      }}
                     </Link>
                   </SidebarMenuItem>
                 );
@@ -328,3 +332,30 @@ export const AppNavMain: React.FC = () => {
     </>
   );
 };
+
+export function getVisibleNavSections(canSee: (permission?: AppPermission) => boolean): NavSection[] {
+  return navSections
+    .map((section) => ({
+      label: section.label,
+      items: section.items.flatMap((item): MainNavItem[] => {
+        const navItem: MainNavItem = item;
+
+        if (!canSee(navItem.permission)) {
+          return [];
+        }
+
+        if (!navItem.children) {
+          return [navItem];
+        }
+
+        const children = navItem.children.filter((child) => canSee(child.permission));
+
+        return children.length > 0 ? [{ ...navItem, children }] : [];
+      }),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
+export function isInventoryNavPath(pathname: string): boolean {
+  return pathname === '/inventory' || (/^\/inventory\/[^/]+\/?$/.test(pathname) && pathname !== '/inventory/close-out');
+}

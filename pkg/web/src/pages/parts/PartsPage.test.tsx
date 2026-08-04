@@ -7,10 +7,15 @@ vi.mock('@/hooks/use-access.js', () => ({
   useCan: () => ({ can: access.canUpdatePart }),
 }));
 vi.mock('@/components/page-layout/PageLayout.js', () => ({
-  PageLayout: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PageLayout: ({ actions, children, size }: { actions: React.ReactNode; children: React.ReactNode; size: string }) => (
+    <>
+      <header data-size={size}>{actions}</header>
+      {children}
+    </>
+  ),
 }));
 vi.mock('./components/PartTable.js', () => ({
-  PartTable: ({ rightSection }: { rightSection: React.ReactNode }) => <div>{rightSection}</div>,
+  PartTable: () => <div>Parts table</div>,
 }));
 vi.mock('./PartEditDialog.js', () => ({ PartEditDialog: () => null }));
 vi.mock('./PartListCreateDialog.js', () => ({ PartListCreateDialog: () => null }));
@@ -34,6 +39,7 @@ describe('PartsPage actions', () => {
     expect(html).toContain('New part');
     expect(html).toContain('Bulk parts import');
     expect(html).toContain('Print labels');
+    expect(html).toContain('data-size="full"');
   });
 
   it('keeps catalogue mutation actions away from a read-only user', () => {

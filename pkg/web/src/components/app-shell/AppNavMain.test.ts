@@ -1,0 +1,37 @@
+import type { AppPermission } from '@pkg/schema';
+import { describe, expect, it } from 'vitest';
+
+import { getVisibleNavSections, isInventoryNavPath } from './AppNavMain.js';
+
+describe('AppNavMain', () => {
+  it('groups inventory links in the required order', () => {
+    const sections = getVisibleNavSections(() => true);
+    const operations = sections.find((section) => section.label === 'Operations');
+    const inventory = sections.find((section) => section.label === 'Inventory');
+
+    expect(operations?.items.map((item) => item.title)).toEqual(['Quotes', 'Jobs', 'Units', 'Customers', 'Products']);
+    expect(inventory?.items.map((item) => item.title)).toEqual([
+      'Suppliers',
+      'Parts',
+      'Inventory',
+      'Purchase Orders',
+      'Close-out',
+    ]);
+    expect(inventory?.items.find((item) => item.title === 'Inventory')?.link.activeOptions).toEqual({ exact: true });
+  });
+
+  it('shows the Inventory section when any permitted item is visible', () => {
+    const permissions = new Set<AppPermission>(['supplier:read']);
+    const sections = getVisibleNavSections((permission) => permission === undefined || permissions.has(permission));
+    const inventory = sections.find((section) => section.label === 'Inventory');
+
+    expect(inventory?.items.map((item) => item.title)).toEqual(['Suppliers']);
+  });
+
+  it('highlights Inventory history without highlighting Close-out routes', () => {
+    expect(isInventoryNavPath('/inventory')).toBe(true);
+    expect(isInventoryNavPath('/inventory/9bd0c2cb-d97f-4b34-beba-c03e5541c96d')).toBe(true);
+    expect(isInventoryNavPath('/inventory/close-out')).toBe(false);
+    expect(isInventoryNavPath('/inventory/close-out/job-id')).toBe(false);
+  });
+});

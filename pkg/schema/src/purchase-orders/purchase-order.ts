@@ -182,6 +182,12 @@ export const PurchaseOrderPdfModel = PurchaseOrder.pick({
   issueDate: DateIso,
   jobCodes: z.array(JobCode),
   lines: z.array(PurchaseOrderLine.omit({ receivedQuantity: true })),
+  /**
+   * Which rendering of the order this is. Amendments file further revisions rather than replacing
+   * the original, so the printed number is how the Supplier knows the page in their hand is the
+   * current one.
+   */
+  revision: z.int().min(1).default(1),
 });
 
 export type PurchaseOrderPdfRenderer = (input: {

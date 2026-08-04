@@ -1,4 +1,10 @@
-import { isPurchaseOrderCoreError, JobNotFoundError, type PurchaseOrderCoreError } from '@pkg/core';
+import {
+  type CreditNoteCoreError,
+  isCreditNoteCoreError,
+  isPurchaseOrderCoreError,
+  JobNotFoundError,
+  type PurchaseOrderCoreError,
+} from '@pkg/core';
 
 import { defineCoreErrorFamily } from '../../trpc/errors.js';
 
@@ -7,11 +13,13 @@ export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreE
   codes: {
     'purchase_order.already_cancelled': 'BAD_REQUEST',
     'purchase_order.already_closed_short': 'BAD_REQUEST',
+    'purchase_order.amendment_below_received': 'BAD_REQUEST',
     'purchase_order.closed_short': 'BAD_REQUEST',
     'purchase_order.empty': 'BAD_REQUEST',
     'purchase_order.fully_received': 'BAD_REQUEST',
     'purchase_order.has_receipts': 'BAD_REQUEST',
     'purchase_order.invalid_quantity': 'BAD_REQUEST',
+    'purchase_order.line_exists': 'CONFLICT',
     'purchase_order.line_not_found': 'NOT_FOUND',
     'purchase_order.line_not_priced': 'BAD_REQUEST',
     'purchase_order.no_receipts': 'BAD_REQUEST',
@@ -21,9 +29,19 @@ export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreE
     'purchase_order.part_not_found': 'NOT_FOUND',
     'purchase_order.part_not_purchasable': 'BAD_REQUEST',
     'purchase_order.part_supplier_mismatch': 'BAD_REQUEST',
+    'purchase_order.substitution_has_receipts': 'CONFLICT',
     'purchase_order.supplier_not_found': 'NOT_FOUND',
   },
   is: isPurchaseOrderCoreError,
+});
+
+/** A credit note fails on the returns it claims, never on the document itself. */
+export const creditNoteErrorFamily = defineCoreErrorFamily<CreditNoteCoreError>({
+  codes: {
+    'credit_note.already_settled': 'CONFLICT',
+    'credit_note.return_not_found': 'NOT_FOUND',
+  },
+  is: isCreditNoteCoreError,
 });
 
 /** The one Job failure an order reaches, linking Jobs to a draft. */

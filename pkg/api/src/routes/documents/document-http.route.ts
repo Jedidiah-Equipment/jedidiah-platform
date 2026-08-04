@@ -1,6 +1,7 @@
 import {
   createJobPurchaseOrder,
   createProductDocument,
+  isCreditNoteCoreError,
   isDocumentCoreError,
   isJobCoreError,
   isProductCoreError,
@@ -13,11 +14,13 @@ import {
   renderProductBrochurePreview,
   renderPurchaseOrderPreview,
   type StorageAdapter,
+  uploadCreditNote,
 } from '@pkg/core';
 import { db } from '@pkg/db';
 import { validateDocumentPolicy } from '@pkg/domain';
 import { renderBrochurePdf, renderPurchaseOrderPdf } from '@pkg/pdf';
 import {
+  CreditNoteSettlementInput,
   DocumentListByProductInput,
   JobDocumentInput,
   ProductDocumentInput,
@@ -281,6 +284,53 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
     }
   });
 
+  /**
+   * Files a supplier credit against an order, naming the `return-to-supplier` movements it settles
+   * (spec §4). Gated on `purchase_order:amend` alone — the same procurement hands that make the call
+   * the credit answers. No separate cost gate: reading the priced document back already needs one on
+   * the download route, and adding a second here would narrow who may file past what the spec asks.
+   */
+  app.post('/api/purchase-orders/:purchaseOrderId/credit-notes', async (request, reply) => {
+    const auth = await requireRouteAuth(request, reply);
+    if (!auth) return;
+
+    try {
+      requirePermission(
+        auth,
+        'purchase_order:amend',
+        'You do not have permission to file credit notes.',
+        'document.forbidden',
+      );
+      const params = PurchaseOrderParams.parse(request.params);
+      const file = await request.file();
+
+      if (!file) {
+        reply.status(400).send({ message: 'Choose a credit note to upload.' });
+        return;
+      }
+
+      const bytes = await file.toBuffer();
+      const input = CreditNoteSettlementInput.parse({
+        purchaseOrderId: params.purchaseOrderId,
+        stockMovementIds: readMultipartJsonField(file.fields.stockMovementIds),
+      });
+      const document = await mapHttpCreditNoteErrors(() =>
+        uploadCreditNote({
+          actorUserId: auth.session.user.id,
+          bytes,
+          db,
+          filename: file.filename,
+          input,
+          storage,
+        }),
+      );
+
+      reply.status(201).send(document);
+    } catch (error) {
+      sendDocumentHttpError(reply, error);
+    }
+  });
+
   app.get('/api/purchase-orders/:purchaseOrderId/documents/:documentId/download', async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
@@ -322,6 +372,21 @@ const MultipartTextField = z.object({ type: z.literal('field'), value: z.string(
 
 function readMultipartTextField(field: unknown): string | undefined {
   return MultipartTextField.safeParse(Array.isArray(field) ? field[0] : field).data;
+}
+
+/**
+ * A multipart field carrying a JSON array — the only way a list rides alongside a file upload. The
+ * value is left unparsed on bad JSON so the input schema, not this helper, owns the message.
+ */
+function readMultipartJsonField(field: unknown): unknown {
+  const value = readMultipartTextField(field);
+  if (value === undefined) return undefined;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
 }
 
 // Maps a core error raised while serving documents into a {@link RouteHttpError} with a public message
@@ -375,6 +440,25 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
 
     throw error;
   }
+}
+
+/** A credit note also fails on the returns it claims, which the document families know nothing of. */
+async function mapHttpCreditNoteErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapHttpDocumentErrors(async () => {
+    try {
+      return await action();
+    } catch (error) {
+      if (isCreditNoteCoreError(error)) {
+        throw new RouteHttpError({
+          appCode: error.code,
+          message: error.message,
+          statusCode: error.code === 'credit_note.return_not_found' ? 404 : 409,
+        });
+      }
+
+      throw error;
+    }
+  });
 }
 
 // Owner reads share one shape: the owner's not-found code becomes a 404 with a public label, and every

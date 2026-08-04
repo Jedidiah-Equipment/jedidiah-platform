@@ -27,6 +27,34 @@ describe('deriveMovingAverage', () => {
     ).toBe(15);
   });
 
+  it('leaves the average undisturbed when a return to the Supplier takes stock back out', () => {
+    // Stock came in at 10 and at 20 (average 15); sending the dearer pieces back at their own
+    // stamped 20 must not reprice what is still on the shelf, which arrived at exactly those prices.
+    const movements = [
+      { delta: 10, lengthMm: null, movementType: 'receipt', reason: null, unitCost: 10 },
+      { delta: 10, lengthMm: null, movementType: 'receipt', reason: null, unitCost: 20 },
+    ] as const;
+
+    expect(deriveMovingAverage([...movements])).toBe(15);
+    expect(
+      deriveMovingAverage([
+        ...movements,
+        { delta: -4, lengthMm: null, movementType: 'return-to-supplier', reason: 'defective', unitCost: 20 },
+      ]),
+    ).toBe(15);
+  });
+
+  it('weights a later receipt against the stock a return to the Supplier left behind', () => {
+    // 10 in at 10, 8 sent back, 2 left; the next 2 at 30 weight against those 2, not the original 10.
+    expect(
+      deriveMovingAverage([
+        { delta: 10, lengthMm: null, movementType: 'receipt', reason: null, unitCost: 10 },
+        { delta: -8, lengthMm: null, movementType: 'return-to-supplier', reason: 'wrong-item', unitCost: 10 },
+        { delta: 2, lengthMm: null, movementType: 'receipt', reason: null, unitCost: 30 },
+      ]),
+    ).toBe(20);
+  });
+
   it('resets the average when a cost-bearing row leaves non-positive stock', () => {
     expect(
       deriveMovingAverage([

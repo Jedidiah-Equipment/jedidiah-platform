@@ -42,11 +42,39 @@ export const QuoteDocumentMetadata = z.object({
   revision: z.int().min(1),
 });
 
-export type PurchaseOrderDocumentMetadata = z.infer<typeof PurchaseOrderDocumentMetadata>;
-export const PurchaseOrderDocumentMetadata = z.object({
+/** The order itself, as sent. Amendments file further revisions; the original is never replaced. */
+export type PurchaseOrderPdfMetadata = z.infer<typeof PurchaseOrderPdfMetadata>;
+export const PurchaseOrderPdfMetadata = z.object({
   revision: z.int().min(1),
   type: z.literal('purchase_order'),
 });
+
+/**
+ * A supplier credit answering one or more `return-to-supplier` movements. It is a revision of
+ * nothing, so it carries no revision number — the returns it settles are recorded beside the
+ * document, because the movement rows it points at are immutable (spec §4).
+ */
+export type CreditNoteDocumentMetadata = z.infer<typeof CreditNoteDocumentMetadata>;
+export const CreditNoteDocumentMetadata = z.object({
+  type: z.literal('credit_note'),
+});
+
+export type PurchaseOrderDocumentMetadata = z.infer<typeof PurchaseOrderDocumentMetadata>;
+export const PurchaseOrderDocumentMetadata = z.discriminatedUnion('type', [
+  PurchaseOrderPdfMetadata,
+  CreditNoteDocumentMetadata,
+]);
+
+/**
+ * The discriminant of the union above, on its own, for readers that label a document without
+ * caring what else its metadata carries. Typed off the union, so a third kind of Purchase-Order
+ * document cannot be added there without this failing to compile.
+ */
+export type PurchaseOrderDocumentType = PurchaseOrderDocumentMetadata['type'];
+export const PurchaseOrderDocumentType = z.enum(['purchase_order', 'credit_note'] satisfies [
+  PurchaseOrderDocumentType,
+  PurchaseOrderDocumentType,
+]);
 
 export type DocumentMetadata = z.infer<typeof DocumentMetadata>;
 export const DocumentMetadata = z.union([
@@ -120,8 +148,16 @@ export const PurchaseOrderDocument = DocumentSummary.extend({
   metadata: PurchaseOrderDocumentMetadata,
 });
 
+/**
+ * What a Job's documents tab shows: its own documents, and the order PDFs of the Purchase Orders
+ * raised for it. A credit note lives in the same Purchase-Order-owned collection but never reaches
+ * a Job — it answers a return to the Supplier, which is nothing to do with the work (spec §4).
+ */
 export type JobVisibleDocument = z.infer<typeof JobVisibleDocument>;
-export const JobVisibleDocument = z.union([JobDocument, PurchaseOrderDocument.extend({ sourceProductName: z.null() })]);
+export const JobVisibleDocument = z.union([
+  JobDocument,
+  PurchaseOrderDocument.extend({ metadata: PurchaseOrderPdfMetadata, sourceProductName: z.null() }),
+]);
 
 export type DocumentListByProductInput = z.infer<typeof DocumentListByProductInput>;
 export const DocumentListByProductInput = z.object({

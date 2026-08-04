@@ -69,7 +69,9 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Text style={styles.title}>PURCHASE ORDER</Text>
-          <Text style={styles.code}>{document.code}</Text>
+          <Text style={styles.code}>
+            {document.revision > 1 ? `${document.code} REV ${document.revision}` : document.code}
+          </Text>
         </View>
 
         <View style={styles.metaGrid}>
@@ -86,6 +88,9 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
           <View style={styles.panel}>
             <Text style={styles.label}>Order details</Text>
             <Text style={styles.line}>Issued: {formatDate(document.issueDate, 'd MMMM yyyy')}</Text>
+            {document.revision > 1 ? (
+              <Text style={styles.line}>{`Revision ${document.revision} - supersedes all earlier revisions`}</Text>
+            ) : null}
             <Text style={styles.line}>
               Expected: {formatDate(document.expectedDeliveryDate, 'd MMMM yyyy', 'Not specified')}
             </Text>

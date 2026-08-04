@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { deriveReceiptWarnings, deriveStockMovementWarnings, type StockMovementContext } from './movement-warnings.js';
+import {
+  deriveReceiptWarnings,
+  deriveReturnToSupplierWarnings,
+  deriveStockMovementWarnings,
+  type StockMovementContext,
+} from './movement-warnings.js';
 
 const stocked: StockMovementContext = {
   bucketQuantityOnHand: 10,
@@ -102,6 +107,28 @@ describe('deriveReceiptWarnings', () => {
   it('counts earlier receipts, so a small over-receipt on a nearly full line still warns', () => {
     expect(deriveReceiptWarnings({ orderedQuantity: 10, quantity: 1, receivedQuantity: 10 })).toEqual([
       'exceeds-ordered',
+    ]);
+  });
+});
+
+describe('deriveReturnToSupplierWarnings', () => {
+  it('stays quiet while the return is inside what the line still holds', () => {
+    expect(deriveReturnToSupplierWarnings({ outstandingReceivedQuantity: 10, quantity: 4 })).toEqual([]);
+  });
+
+  it('stays quiet on the return that sends the whole receipt back', () => {
+    expect(deriveReturnToSupplierWarnings({ outstandingReceivedQuantity: 10, quantity: 10 })).toEqual([]);
+  });
+
+  it('warns — and never blocks — when more goes back than the line ever took in', () => {
+    expect(deriveReturnToSupplierWarnings({ outstandingReceivedQuantity: 10, quantity: 11 })).toEqual([
+      'exceeds-received',
+    ]);
+  });
+
+  it('counts earlier returns, so a second return past the remainder still warns', () => {
+    expect(deriveReturnToSupplierWarnings({ outstandingReceivedQuantity: 0, quantity: 1 })).toEqual([
+      'exceeds-received',
     ]);
   });
 });

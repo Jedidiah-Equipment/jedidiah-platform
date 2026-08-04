@@ -6,6 +6,7 @@ import { mockSession } from '../../test/test-utils.js';
 
 const SUPPLIER_ID = '00000000-0000-4000-8000-000000000301';
 const PART_ID = '00000000-0000-4000-8000-000000000302';
+const SPARE_PART_ID = '00000000-0000-4000-8000-000000000303';
 
 const test = createTester(async ({ db }) => {
   await db.insert(user).values({
@@ -18,17 +19,30 @@ const test = createTester(async ({ db }) => {
     updatedAt: new Date(),
   });
   await db.insert(supplier).values({ companyName: 'Router Supplies', id: SUPPLIER_ID });
-  await db.insert(parts).values({
-    category: 'Pipe',
-    code: 'PO-ROUTER-PART',
-    description: 'Router test Part',
-    finish: 'Plain',
-    id: PART_ID,
-    name: 'Router Part',
-    supplierCode: 'ROUTER-1',
-    supplierId: SUPPLIER_ID,
-    unitOfMeasure: 'piece',
-  });
+  await db.insert(parts).values([
+    {
+      category: 'Pipe',
+      code: 'PO-ROUTER-PART',
+      description: 'Router test Part',
+      finish: 'Plain',
+      id: PART_ID,
+      name: 'Router Part',
+      supplierCode: 'ROUTER-1',
+      supplierId: SUPPLIER_ID,
+      unitOfMeasure: 'piece',
+    },
+    {
+      category: 'Pipe',
+      code: 'PO-ROUTER-SPARE',
+      description: 'Router spare Part',
+      finish: 'Plain',
+      id: SPARE_PART_ID,
+      name: 'Router Spare',
+      supplierCode: 'ROUTER-2',
+      supplierId: SUPPLIER_ID,
+      unitOfMeasure: 'piece',
+    },
+  ]);
   const [customer] = await db
     .insert(customers)
     .values({ companyName: 'Router Customer', email: 'customer@example.com', phone: '0123456789', vatNumber: 'VAT-1' })
@@ -221,6 +235,88 @@ describe('buy-list seeding and late orders', () => {
       items: [{ jobs: [{ id: context.jobId }], lines: [{ quantity: 3, unitPrice: null }] }],
     });
     await expect(stores.purchaseOrders.late()).resolves.toEqual({ items: [] });
+  });
+});
+
+describe('amendments, returns, and credit notes', () => {
+  test('amends a sent order under purchase_order:amend and refuses a dock user', async ({ context }) => {
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+    const purchaseOrder = await sendOrder(admin, 4);
+
+    await expect(
+      stores.purchaseOrders.amendQuantity({
+        id: purchaseOrder.id,
+        note: 'Stores does not change orders',
+        partId: PART_ID,
+        quantity: 6,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    await expect(
+      admin.purchaseOrders.amendQuantity({
+        id: purchaseOrder.id,
+        note: 'Supplier can send 6',
+        partId: PART_ID,
+        quantity: 6,
+      }),
+    ).resolves.toMatchObject({ lines: [{ partId: PART_ID, quantity: 6 }] });
+    await expect(
+      admin.purchaseOrders.amendAddLine({
+        id: purchaseOrder.id,
+        note: 'Phoned through',
+        partId: SPARE_PART_ID,
+        quantity: 1,
+        unitPrice: 20,
+      }),
+    ).resolves.toMatchObject({ lines: [{ partId: PART_ID }, { partId: SPARE_PART_ID }] });
+
+    // The log is priceless in the literal sense, so a price-blind reader sees the whole history.
+    await expect(stores.purchaseOrders.amendments({ purchaseOrderId: purchaseOrder.id })).resolves.toMatchObject({
+      items: [
+        { kind: 'quantity-change', newQuantity: 6, oldQuantity: 4 },
+        { kind: 'add-line', newQuantity: 1 },
+      ],
+    });
+    await expect(stores.purchaseOrders.documents({ purchaseOrderId: purchaseOrder.id })).resolves.toMatchObject({
+      items: [{ revision: 3 }, { revision: 2 }, { revision: 1 }],
+    });
+  });
+
+  test('lets the dock return stock and hides its value from the price-blind poster', async ({ context }) => {
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+    const purchaseOrder = await sendOrder(admin, 4);
+    await stores.purchaseOrders.receive({
+      lengthMm: null,
+      partId: PART_ID,
+      purchaseOrderId: purchaseOrder.id,
+      quantity: 4,
+      unitCost: null,
+    });
+
+    const returned = await stores.purchaseOrders.returnToSupplier({
+      lengthMm: null,
+      note: 'Wrong thread',
+      partId: PART_ID,
+      purchaseOrderId: purchaseOrder.id,
+      quantity: 2,
+      reason: 'wrong-item',
+    });
+
+    expect(returned).toMatchObject({
+      movement: { delta: -2, movementType: 'return-to-supplier', reason: 'wrong-item', unitCost: null },
+      warnings: [],
+    });
+    await expect(admin.purchaseOrders.returns({ purchaseOrderId: purchaseOrder.id })).resolves.toMatchObject({
+      items: [{ quantity: 2, settledByDocumentId: null, value: 300 }],
+    });
+    await expect(stores.purchaseOrders.returns({ purchaseOrderId: purchaseOrder.id })).resolves.toMatchObject({
+      items: [{ quantity: 2, value: null }],
+    });
+    await expect(admin.purchaseOrders.returnsAwaitingCredit()).resolves.toMatchObject({
+      items: [{ purchaseOrderId: purchaseOrder.id, quantity: 2, value: 300 }],
+    });
   });
 });
 

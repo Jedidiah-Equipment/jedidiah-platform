@@ -63,6 +63,7 @@ import {
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
+import { isPurchaseOrderPdf } from '../purchase-orders/purchase-order-service.js';
 import {
   findBoardBayRows,
   findBoardBayRowsForJobs,
@@ -725,12 +726,20 @@ function mapJobDocument(row: JobDocumentRow): JobDetail['documents'][number] {
   });
 }
 
+/**
+ * A Job sees its own documents plus the *order PDFs* of every Purchase Order raised for it (spec
+ * §4). Deliberately not the credit notes filed in the same collection: those answer a return to the
+ * Supplier and are procurement's commercial paper, with nothing to say about the work on this Job.
+ */
 function jobVisibleDocumentWhere(db: Db | DatabaseTransaction, jobId: UUID): SQL {
   const linkedPurchaseOrders = db
     .select({ purchaseOrderId: purchaseOrderJobLinks.purchaseOrderId })
     .from(purchaseOrderJobLinks)
     .where(eq(purchaseOrderJobLinks.jobId, jobId));
-  return or(eq(documents.jobId, jobId), inArray(documents.purchaseOrderId, linkedPurchaseOrders)) as SQL;
+  return or(
+    eq(documents.jobId, jobId),
+    and(inArray(documents.purchaseOrderId, linkedPurchaseOrders), isPurchaseOrderPdf),
+  ) as SQL;
 }
 
 async function assertJobExists({ db, jobId }: { db: Db | DatabaseTransaction; jobId: UUID }): Promise<void> {

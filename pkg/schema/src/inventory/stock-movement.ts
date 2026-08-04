@@ -18,6 +18,7 @@ export const StockMovementType = z.enum([
   'checkout',
   'return-to-store',
   'receipt',
+  'return-to-supplier',
   'build-consume',
   'build-produce',
 ]);
@@ -31,6 +32,24 @@ export const JOB_STOCK_MOVEMENT_TYPES = JobStockMovementType.options;
 
 export type StockAdjustmentReason = z.infer<typeof StockAdjustmentReason>;
 export const StockAdjustmentReason = z.enum(['opening-balance', 'stock-count', 'damage', 'scrap', 'correction']);
+
+/** Why stock went back to the Supplier (spec §4) — its own closed set, never an adjustment reason. */
+export type StockReturnToSupplierReason = z.infer<typeof StockReturnToSupplierReason>;
+export const StockReturnToSupplierReason = z.enum(['wrong-item', 'defective', 'order-error']);
+
+export const STOCK_RETURN_TO_SUPPLIER_REASON_LABELS = {
+  defective: 'Defective',
+  'order-error': 'Order error',
+  'wrong-item': 'Wrong item',
+} as const satisfies Record<StockReturnToSupplierReason, string>;
+
+/**
+ * Every reason the ledger's `reason` column may hold. The column is one widened set while each
+ * movement type's own shape pins the subset it accepts, so an adjustment can never claim a return
+ * reason and a return can never claim `scrap`.
+ */
+export type StockMovementReason = z.infer<typeof StockMovementReason>;
+export const StockMovementReason = z.enum([...StockAdjustmentReason.options, ...StockReturnToSupplierReason.options]);
 
 export const STOCK_ADJUSTMENT_REASON_LABELS = {
   correction: 'Correction',
@@ -110,6 +129,23 @@ export const PostReceiptInput = z
   })
   .strict();
 
+/**
+ * What goes back to the Supplier off one received Purchase Order line. The value is never keyed —
+ * it comes off the stamped receipts the line already holds (spec §4) — so this input carries only
+ * the physical fact and why it is going back.
+ */
+export type PostReturnToSupplierInput = z.infer<typeof PostReturnToSupplierInput>;
+export const PostReturnToSupplierInput = z
+  .object({
+    lengthMm: StockMovementLengthMm.nullable().default(null),
+    note: nullableTrimmedTextInput(),
+    partId: UUID,
+    purchaseOrderId: UUID,
+    quantity: StockMovementQuantity,
+    reason: StockReturnToSupplierReason,
+  })
+  .strict();
+
 export type PostRevaluationInput = z.infer<typeof PostRevaluationInput>;
 export const PostRevaluationInput = z
   .object({
@@ -132,7 +168,7 @@ export const StockMovement = z.object({
   note: nullableTrimmedText(),
   partId: UUID,
   purchaseOrderId: UUID.nullable(),
-  reason: StockAdjustmentReason.nullable(),
+  reason: StockMovementReason.nullable(),
   unitCost: InventoryCost,
 });
 
@@ -144,6 +180,7 @@ export const StockMovementWarningCode = z.enum([
   'exceeds-cfo',
   'exceeds-drawn',
   'exceeds-ordered',
+  'exceeds-received',
   'negative-stock-on-hand',
 ]);
 

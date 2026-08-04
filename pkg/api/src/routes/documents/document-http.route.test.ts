@@ -5,13 +5,16 @@ import {
   type Db,
   documents,
   jobs,
+  parts,
   productAssemblies,
   products,
   productUnits,
   purchaseOrderJobLinks,
+  purchaseOrderLines,
   purchaseOrders,
   quotes,
   sql,
+  stockMovements,
   supplier,
   user,
 } from '@pkg/db';
@@ -482,6 +485,93 @@ describe('document HTTP routes', () => {
     expect(response.json()).toMatchObject({ data: { appCode: 'document.forbidden' } });
   });
 
+  test('files a credit note against the returns it settles, and gates it on the amend right', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const [poSupplier] = await context.db
+      .insert(supplier)
+      .values({ companyName: 'Credit Note Supplier' })
+      .returning({ id: supplier.id });
+    if (!poSupplier) throw new Error('Supplier fixture was not created');
+    const [part] = await context.db
+      .insert(parts)
+      .values({
+        category: 'Pipe',
+        code: 'CN-PART',
+        description: 'Credit note Part',
+        finish: 'Plain',
+        name: 'Credit Note Part',
+        supplierCode: 'CN-1',
+        supplierId: poSupplier.id,
+        unitOfMeasure: 'piece',
+      })
+      .returning({ id: parts.id });
+    if (!part) throw new Error('Part fixture was not created');
+    const [purchaseOrder] = await context.db
+      .insert(purchaseOrders)
+      .values({ sentAt: new Date(), status: 'sent', supplierId: poSupplier.id })
+      .returning({ id: purchaseOrders.id });
+    if (!purchaseOrder) throw new Error('Purchase Order fixture was not created');
+    await context.db
+      .insert(purchaseOrderLines)
+      .values({ partId: part.id, purchaseOrderId: purchaseOrder.id, quantity: 4, unitPrice: 25 });
+    const [returned] = await context.db
+      .insert(stockMovements)
+      .values({
+        actorUserId: 'test-user-id',
+        delta: -2,
+        movementType: 'return-to-supplier',
+        partId: part.id,
+        purchaseOrderId: purchaseOrder.id,
+        reason: 'defective',
+        unitCost: 25,
+      })
+      .returning({ id: stockMovements.id });
+    if (!returned) throw new Error('Return movement fixture was not created');
+    const upload = buildMultipartUpload({
+      bytes: pdfBytes(),
+      fields: { stockMovementIds: JSON.stringify([returned.id]) },
+      filename: 'CN-4410.pdf',
+    });
+
+    // The dock may post the return, but filing the credit it earns is procurement's job.
+    routeTestState.session = mockSession('stores');
+    const forbidden = await app.inject({
+      method: 'POST',
+      url: `/api/purchase-orders/${purchaseOrder.id}/credit-notes`,
+      ...upload,
+    });
+    expect(forbidden.statusCode).toBe(403);
+
+    routeTestState.session = mockSession('admin');
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/purchase-orders/${purchaseOrder.id}/credit-notes`,
+      ...upload,
+    });
+
+    expect(response.statusCode, response.body).toBe(201);
+    expect(response.json()).toMatchObject({
+      filename: 'CN-4410.pdf',
+      revision: null,
+      settledReturnIds: [returned.id],
+      type: 'credit_note',
+    });
+
+    // The same return cannot be credited twice, and the refused upload stores nothing.
+    const duplicate = await app.inject({
+      method: 'POST',
+      url: `/api/purchase-orders/${purchaseOrder.id}/credit-notes`,
+      ...buildMultipartUpload({
+        bytes: pdfBytes(),
+        fields: { stockMovementIds: JSON.stringify([returned.id]) },
+        filename: 'CN-4411.pdf',
+      }),
+    });
+    expect(duplicate.statusCode).toBe(409);
+    expect([...storage.objects.keys()]).toHaveLength(1);
+  });
+
   test('does not register the generic document download route', async ({ context }) => {
     const storage = new MemoryStorage();
     const app = await createDocumentApp(storage);
@@ -811,6 +901,7 @@ function zipBytes(): Uint8Array {
 function buildMultipartUpload(input: {
   bytes: Uint8Array;
   declaredContentType?: string;
+  fields?: Record<string, string>;
   filename: string;
   type?: string;
 }): {
@@ -823,6 +914,10 @@ function buildMultipartUpload(input: {
 
   if (input.type !== undefined) {
     pushText(`--${boundary}\r\nContent-Disposition: form-data; name="type"\r\n\r\n${input.type}\r\n`);
+  }
+
+  for (const [name, value] of Object.entries(input.fields ?? {})) {
+    pushText(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`);
   }
 
   pushText(

@@ -1,17 +1,10 @@
-import type { StockAdjustmentReason } from '@pkg/schema';
+import type { StockMovementReason, StockMovementType } from '@pkg/schema';
 
 export type MovingAverageMovement = {
   delta: number;
   lengthMm: number | null;
-  movementType:
-    | 'adjustment'
-    | 'build-consume'
-    | 'build-produce'
-    | 'checkout'
-    | 'receipt'
-    | 'return-to-store'
-    | 'revaluation';
-  reason: StockAdjustmentReason | null;
+  movementType: StockMovementType;
+  reason: StockMovementReason | null;
   unitCost: number | null;
 };
 
@@ -45,6 +38,9 @@ export function deriveMovingAverageTimeline(orderedMovements: readonly MovingAve
         // weighted in exactly like an arrival. `build-consume` is a draw, and draws only take.
         movement.movementType === 'build-produce' ||
         (movement.movementType === 'adjustment' && movement.reason === 'opening-balance'));
+    // `return-to-supplier` is deliberately absent: it is cost-bearing but *outbound*, removing
+    // quantity at the very cost that quantity came in at. Weighting it in would move the average
+    // away from the price of what is still on the shelf, which is exactly what did not change.
 
     if (establishesWeightedCost && unitCost !== null) {
       const costPerBasisUnit = movement.lengthMm === null ? unitCost : unitCost / movement.lengthMm;

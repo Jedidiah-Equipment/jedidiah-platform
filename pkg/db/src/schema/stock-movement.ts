@@ -1,4 +1,4 @@
-import type { StockAdjustmentReason, StockMovementType } from '@pkg/schema';
+import type { StockMovementReason, StockMovementType } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import { check, foreignKey, index, integer, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
@@ -58,20 +58,23 @@ export const stockMovements = pgTable(
     partId: uuid('part_id')
       .notNull()
       .references(() => parts.id, { onDelete: 'restrict' }),
-    // A receipt attaches to exactly one PO line through the line's own composite key.
+    // A receipt — and the return that sends it back — attaches to exactly one PO line through the
+    // line's own composite key.
     purchaseOrderId: uuid('purchase_order_id'),
-    reason: text('reason').$type<StockAdjustmentReason>(),
+    // One widened column carrying two closed sets; each movement type's shape branch below pins the
+    // subset it may use, so an adjustment can never claim `defective` nor a return `scrap`.
+    reason: text('reason').$type<StockMovementReason>(),
     unitCost: numeric('unit_cost', { mode: 'number', precision: 18, scale: 6 }),
   },
   (table) => [
     check('stock_movement_length_mm_positive', sql`${table.lengthMm} IS NULL OR ${table.lengthMm} > 0`),
     check(
       'stock_movement_type_check',
-      sql`${table.movementType} IN ('adjustment', 'revaluation', 'checkout', 'return-to-store', 'receipt', 'build-consume', 'build-produce')`,
+      sql`${table.movementType} IN ('adjustment', 'revaluation', 'checkout', 'return-to-store', 'receipt', 'return-to-supplier', 'build-consume', 'build-produce')`,
     ),
     check(
       'stock_movement_reason_check',
-      sql`${table.reason} IS NULL OR ${table.reason} IN ('opening-balance', 'stock-count', 'damage', 'scrap', 'correction')`,
+      sql`${table.reason} IS NULL OR ${table.reason} IN ('opening-balance', 'stock-count', 'damage', 'scrap', 'correction', 'wrong-item', 'defective', 'order-error')`,
     ),
     check('stock_movement_note_nonempty', sql`${table.note} IS NULL OR length(trim(${table.note})) > 0`),
     check('stock_movement_unit_cost_nonnegative', sql`${table.unitCost} IS NULL OR ${table.unitCost} >= 0`),
@@ -82,7 +85,7 @@ export const stockMovements = pgTable(
         AND ${table.jobId} IS NULL
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NULL
-        AND ${table.reason} IS NOT NULL
+        AND ${table.reason} IN ('opening-balance', 'stock-count', 'damage', 'scrap', 'correction')
         AND (${table.reason} = 'opening-balance' OR ${table.note} IS NOT NULL)
         AND (${table.unitCost} IS NULL OR ${table.reason} = 'opening-balance')
       ) OR (
@@ -115,6 +118,13 @@ export const stockMovements = pgTable(
         AND ${table.delta} > 0
         AND ${table.reason} IS NULL
         AND ${table.unitCost} IS NOT NULL
+      ) OR (
+        ${table.movementType} = 'return-to-supplier'
+        AND ${table.jobId} IS NULL
+        AND ${table.purchaseOrderId} IS NOT NULL
+        AND ${table.buildId} IS NULL
+        AND ${table.delta} < 0
+        AND ${table.reason} IN ('wrong-item', 'defective', 'order-error')
       ) OR (
         ${table.movementType} = 'build-consume'
         AND ${table.jobId} IS NULL

@@ -10,7 +10,8 @@ import {
   PurchaseOrderNotFoundError,
   PurchaseOrderNotSentError,
 } from '../purchase-orders/purchase-order-errors.js';
-import { insertMovement, loadStockPart, sumDelta } from './ledger.js';
+import { loadLineReceivedQuantity } from '../purchase-orders/purchase-order-service.js';
+import { insertMovement, loadStockPart } from './ledger.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
 /**
@@ -43,14 +44,14 @@ export async function postReceipt({
     assertDeltaMatchesUnitClass(input.quantity, unitClass);
     assertLengthMatchesUnitClass(lengthMm, unitClass);
 
-    const receivedQuantity = await sumDelta(
-      tx,
-      and(
-        eq(stockMovements.purchaseOrderId, purchaseOrder.id),
-        eq(stockMovements.partId, input.partId),
-        eq(stockMovements.movementType, 'receipt'),
-      ),
-    );
+    // The same netted figure the order's own projection reads, so the dock's warning and the line's
+    // outstanding quantity cannot disagree: stock returned as defective is owed again, and the
+    // replacement delivery must not read as an over-receipt.
+    const receivedQuantity = await loadLineReceivedQuantity({
+      db: tx,
+      partId: input.partId,
+      purchaseOrderId: purchaseOrder.id,
+    });
     const movement = await insertMovement(tx, {
       actorUserId,
       delta: input.quantity,

@@ -166,8 +166,20 @@ export async function getPurchaseOrder({ db, id }: { db: PurchaseOrderDb; id: UU
 }
 
 /**
- * Cumulative receipts per order line, keyed by the line's own composite identity. The derived
- * `partially received` / `received` states are read from this and never stored (spec §4).
+ * The return reasons that leave the Supplier still owing the goods (spec §4). Sending back the
+ * wrong item or a defective one re-opens the line's expectation, because a replacement is coming;
+ * `order-error` is us admitting we asked for the wrong thing, and nothing is owed in its place.
+ */
+const REPLACEMENT_OWED_RETURN_REASONS = ['wrong-item', 'defective'] as const;
+
+/**
+ * What each order line has actually taken in and kept, keyed by the line's own composite identity.
+ * The derived `partially received` / `received` states are read from this and never stored (§4), as
+ * are the line's outstanding quantity and the plant's On Order figure.
+ *
+ * Receipts *less* the returns that owe a replacement: a line that took ten and sent all ten back as
+ * defective is waiting on ten again, and every surface that asks what is still coming has to say so
+ * — including the over-receipt warning, which would otherwise fire on the replacement delivery.
  */
 async function loadReceivedQuantities({
   db,
@@ -186,7 +198,17 @@ async function loadReceivedQuantities({
     })
     .from(stockMovements)
     .where(
-      and(inArray(stockMovements.purchaseOrderId, [...purchaseOrderIds]), eq(stockMovements.movementType, 'receipt')),
+      and(
+        inArray(stockMovements.purchaseOrderId, [...purchaseOrderIds]),
+        // Return deltas are negative, so summing them alongside receipts nets the line down.
+        or(
+          eq(stockMovements.movementType, 'receipt'),
+          and(
+            eq(stockMovements.movementType, 'return-to-supplier'),
+            inArray(stockMovements.reason, [...REPLACEMENT_OWED_RETURN_REASONS]),
+          ),
+        ),
+      ),
     )
     .groupBy(stockMovements.purchaseOrderId, stockMovements.partId);
 
@@ -197,6 +219,31 @@ async function loadReceivedQuantities({
         : [],
     ),
   );
+}
+
+/**
+ * Whether anything at all has moved against a line, receipts and returns alike.
+ *
+ * Distinct from what the line has *kept*: a fully returned line is owed ten again but still has
+ * ledger rows pointing at `(purchaseOrderId, partId)`, and those rows are what a Part substitution
+ * would orphan. This is the question the substitution guard has to ask.
+ */
+export async function lineHasStockMovements({
+  db,
+  partId,
+  purchaseOrderId,
+}: {
+  db: PurchaseOrderDb;
+  partId: UUID;
+  purchaseOrderId: UUID;
+}): Promise<boolean> {
+  const [row] = await db
+    .select({ id: stockMovements.id })
+    .from(stockMovements)
+    .where(and(eq(stockMovements.purchaseOrderId, purchaseOrderId), eq(stockMovements.partId, partId)))
+    .limit(1);
+
+  return row !== undefined;
 }
 
 function receivedQuantityKey(purchaseOrderId: string, partId: string): string {
@@ -305,7 +352,11 @@ function compareOpenOrderLines(left: OpenOrderLine, right: OpenOrderLine): numbe
   );
 }
 
-/** The as-sent PDF of each order; amendments (#1055) add revisions, so the newest row is the current one. */
+/**
+ * The current PDF of each order: the newest revision, since an amendment files a further one rather
+ * than replacing the as-sent original. Narrowed to the generated order PDFs — the credit notes that
+ * share the collection are evidence filed *against* the order, never a rendering of it.
+ */
 async function loadLatestDocumentIds({
   db,
   purchaseOrderIds,
@@ -318,8 +369,8 @@ async function loadLatestDocumentIds({
   const rows = await db
     .select({ id: documents.id, purchaseOrderId: documents.purchaseOrderId })
     .from(documents)
-    .where(inArray(documents.purchaseOrderId, [...purchaseOrderIds]))
-    .orderBy(desc(documents.createdAt), desc(documents.id));
+    .where(and(inArray(documents.purchaseOrderId, [...purchaseOrderIds]), isPurchaseOrderPdf))
+    .orderBy(newestPurchaseOrderDocumentFirst);
   const latest = new Map<string, string>();
 
   for (const row of rows) {
@@ -327,6 +378,86 @@ async function loadLatestDocumentIds({
   }
 
   return latest;
+}
+
+/** The generated order PDFs, as against the credit notes filed alongside them. */
+export const isPurchaseOrderPdf = sql`${documents.metadata}->>'type' = 'purchase_order'`;
+
+/**
+ * Newest first, with the revision number breaking a tie rather than a random id. Two amendments
+ * landing inside the same clock tick is rare and entirely possible, and "which PDF is current" is
+ * not a question the order may answer differently on two reads — so every reader of the collection
+ * shares this one ordering.
+ */
+export const newestPurchaseOrderDocumentFirst = sql`${documents.createdAt} desc, coalesce((${documents.metadata}->>'revision')::int, 0) desc, ${documents.id} desc`;
+
+/** Where a Purchase-Order-owned document's bytes live. One shape for the PDFs and the credit notes. */
+export function purchaseOrderDocumentStorageKey(purchaseOrderId: UUID, filename: string): string {
+  return `documents/purchase-order/${purchaseOrderId}/${randomUUID()}-${sanitizeDocumentStorageKeySuffix(filename)}`;
+}
+
+/**
+ * Renders one revision of an order and files it as a Purchase-Order-owned document.
+ *
+ * Both writers go through here — marking sent files revision 1, and every amendment files the next
+ * — so the naming, the storage path and the metadata cannot drift apart between them. Documents are
+ * immutable, so the as-sent original survives every amendment; the caller owns compensating for the
+ * stored object if its transaction later fails, which is why the storage key comes back.
+ */
+export async function storePurchaseOrderPdfRevision({
+  actorUserId,
+  db,
+  issuedAt,
+  pdfRenderer,
+  purchaseOrder,
+  revision,
+  storage,
+}: {
+  actorUserId: AuthId;
+  db: DatabaseTransaction;
+  issuedAt: Date;
+  pdfRenderer: PurchaseOrderPdfRenderer;
+  purchaseOrder: PurchaseOrder;
+  revision: number;
+  storage: StorageAdapter;
+}): Promise<string> {
+  const filename = revision === 1 ? `${purchaseOrder.code}.pdf` : `${purchaseOrder.code} rev ${revision}.pdf`;
+  const bytes = await pdfRenderer({ document: toPdfModel(purchaseOrder, issuedAt, revision), filename });
+  const storageKey = purchaseOrderDocumentStorageKey(purchaseOrder.id, filename);
+
+  await createDocumentRecord({
+    actorUserId,
+    db,
+    input: {
+      bytes,
+      filename,
+      metadata: { revision, type: 'purchase_order' },
+      ownerType: 'purchase_order',
+      purchaseOrderId: purchaseOrder.id,
+      storageKey,
+    },
+    storage,
+  });
+
+  return storageKey;
+}
+
+/** The revision an amendment's re-render becomes: one past the highest the order already holds. */
+export async function loadNextPurchaseOrderRevision({
+  db,
+  purchaseOrderId,
+}: {
+  db: PurchaseOrderDb;
+  purchaseOrderId: UUID;
+}): Promise<number> {
+  const [row] = await db
+    .select({
+      revision: sql<number>`coalesce(max((${documents.metadata}->>'revision')::int), 0)`,
+    })
+    .from(documents)
+    .where(and(eq(documents.purchaseOrderId, purchaseOrderId), isPurchaseOrderPdf));
+
+  return (row?.revision ?? 0) + 1;
 }
 
 export async function listPurchaseOrders({
@@ -467,24 +598,16 @@ export async function markPurchaseOrderSent({
       assertLinesArePriced(purchaseOrder);
 
       const sentAt = new Date();
-      const filename = `${purchaseOrder.code}.pdf`;
-      const bytes = await pdfRenderer({ document: toPdfModel(purchaseOrder, sentAt), filename });
-      const storageKey = `documents/purchase-order/${id}/${randomUUID()}-${sanitizeDocumentStorageKeySuffix(filename)}`;
-      await createDocumentRecord({
+      // createDocumentRecord compensates its own savepoint failures; from here the outer transaction owns cleanup.
+      uploadedDocumentStorageKey = await storePurchaseOrderPdfRevision({
         actorUserId,
         db: tx,
-        input: {
-          bytes,
-          filename,
-          metadata: { revision: 1, type: 'purchase_order' },
-          ownerType: 'purchase_order',
-          purchaseOrderId: id,
-          storageKey,
-        },
+        issuedAt: sentAt,
+        pdfRenderer,
+        purchaseOrder,
+        revision: 1,
         storage,
       });
-      // createDocumentRecord compensates its own savepoint failures; from here the outer transaction owns cleanup.
-      uploadedDocumentStorageKey = storageKey;
 
       const [after] = await tx
         .update(purchaseOrders)
@@ -666,7 +789,22 @@ function mapPurchaseOrder(
   });
 }
 
-async function lockPurchaseOrder(tx: DatabaseTransaction, id: UUID): Promise<PurchaseOrderRow> {
+/** What one line has taken in and kept — the floor a quantity amendment may never go below. */
+export async function loadLineReceivedQuantity({
+  db,
+  partId,
+  purchaseOrderId,
+}: {
+  db: PurchaseOrderDb;
+  partId: UUID;
+  purchaseOrderId: UUID;
+}): Promise<number> {
+  const received = await loadReceivedQuantities({ db, purchaseOrderIds: [purchaseOrderId] });
+
+  return received.get(receivedQuantityKey(purchaseOrderId, partId)) ?? 0;
+}
+
+export async function lockPurchaseOrder(tx: DatabaseTransaction, id: UUID): Promise<PurchaseOrderRow> {
   const [row] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)).for('update');
   if (!row) throw new PurchaseOrderNotFoundError(id);
   return row;
@@ -698,13 +836,18 @@ async function assertSupplierExists({ db, supplierId }: { db: PurchaseOrderDb; s
   if (!row) throw new PurchaseOrderSupplierNotFoundError(supplierId);
 }
 
-async function assertLinePartsMatchSupplier({
+/**
+ * Every line's Part has to belong to the order's Supplier, be buyable at all, and be asked for in a
+ * quantity its unit class allows. Shared with the amendment path: a line added or substituted onto
+ * a sent order is held to exactly the rules a draft line is.
+ */
+export async function assertLinePartsMatchSupplier({
   db,
   lines,
   supplierId,
 }: {
   db: DatabaseTransaction;
-  lines: PurchaseOrderSaveDraftInput['lines'];
+  lines: readonly { partId: UUID; quantity: number }[];
   supplierId: UUID;
 }): Promise<void> {
   if (lines.length === 0) return;
@@ -746,13 +889,14 @@ async function assertJobsExist({ db, jobIds }: { db: DatabaseTransaction; jobIds
   }
 }
 
-function toPdfModel(purchaseOrder: PurchaseOrder, issueDate: Date): PurchaseOrderPdfModel {
+function toPdfModel(purchaseOrder: PurchaseOrder, issueDate: Date, revision = 1): PurchaseOrderPdfModel {
   return {
     code: purchaseOrder.code,
     expectedDeliveryDate: purchaseOrder.expectedDeliveryDate,
     issueDate: DateIso.parse(issueDate),
     jobCodes: purchaseOrder.jobs.map((job) => job.code),
     lines: purchaseOrder.lines,
+    revision,
     supplier: purchaseOrder.supplier,
   };
 }

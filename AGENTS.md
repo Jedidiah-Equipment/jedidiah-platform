@@ -7,6 +7,8 @@
   Search both for the term you need rather than loading either wholesale, and use their terms in issues,
   tests, and planning. If a needed term is missing, or a recommendation conflicts with an ADR, say so
   instead of inventing local vocabulary.
+- Definition of done: a change to user-facing behavior in an area `pkg/docs` documents updates the affected
+  docs pages in the same PR — the same discipline `CONTEXT.md` already gets.
 
 ## Database
 

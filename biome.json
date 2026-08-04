@@ -8,6 +8,7 @@
       "!**/dist",
       "!**/dist-server",
       "!**/coverage",
+      "!**/.vitepress/cache",
       "!**/.sandcastle/worktrees",
       "!pkg/db/migrations",
       "!**/.expo",

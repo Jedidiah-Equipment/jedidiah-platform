@@ -29,6 +29,13 @@
       "runtimeArgs": ["--filter", "@pkg/lander", "dev"],
       "port": 7004,
       "autoPort": false
+    },
+    {
+      "name": "docs",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@pkg/docs", "dev"],
+      "port": 5173,
+      "autoPort": true
     }
   ]
 }

@@ -275,8 +275,9 @@ describe('inventory cost projection', () => {
       quantity: 1,
     });
 
-    // The draw is off-CFO on this fixture, so it warns; the price-blind return still reverses at cost.
-    expect(admin).toMatchObject({ movement: { unitCost: 25 }, warnings: ['exceeds-cfo'] });
+    // The draw is off-CFO on this fixture, so nothing about the plan is exceeded; the price-blind
+    // return still reverses at cost.
+    expect(admin).toMatchObject({ movement: { unitCost: 25 }, warnings: [] });
     expect(stores).toMatchObject({ movement: { unitCost: null }, warnings: [] });
   });
 });

@@ -302,16 +302,14 @@ async function loadPlantStockPosition({
     onOrderByPart.set(line.partId, (onOrderByPart.get(line.partId) ?? 0) + line.outstandingQuantity);
   }
 
+  const quantityByPart = new Map(quantityRows.map((row) => [row.partId, row.quantity]));
+
   return {
     freeByPart: new Map(
-      partIds.map((partId) => [partId, quantityOf(quantityRows, partId) - (commitments.get(partId) ?? 0)]),
+      partIds.map((partId) => [partId, (quantityByPart.get(partId) ?? 0) - (commitments.get(partId) ?? 0)]),
     ),
     onOrderByPart,
   };
-}
-
-function quantityOf(rows: ReadonlyArray<{ partId: string; quantity: number }>, partId: string): number {
-  return rows.find((row) => row.partId === partId)?.quantity ?? 0;
 }
 
 async function loadJobStockJob({ db, jobId }: { db: Db; jobId: UUID }) {

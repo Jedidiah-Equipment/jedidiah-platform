@@ -13,32 +13,40 @@ const stockRow = (
   partCode: partId.toUpperCase(),
   partId,
   partName: `Part ${partId}`,
+  standardPurchaseLengthMm: null,
   supplierName: facts.supplier === undefined ? 'Acme Supplies' : facts.supplier,
   unitOfMeasure: 'piece' as const,
 });
 
 describe('toJobStockPurchaseCandidates', () => {
-  it('nets free stock out of the outstanding commitment and carries the Supplier through', () => {
-    const candidates = toJobStockPurchaseCandidates([stockRow('a', { committed: 6, free: 4 })]);
+  it('asks for nothing while Free Stock is not negative, and carries the Supplier through', () => {
+    // Free Stock already has this Job's own commitment taken off, so free >= 0 means it is covered:
+    // six committed against six on the shelf reads free = 0 and needs no order at all.
+    const candidates = toJobStockPurchaseCandidates([stockRow('a', { committed: 6, free: 0 })]);
 
     expect(candidates).toEqual([
-      expect.objectContaining({ partId: 'a', suggestedQuantity: 2, supplierName: 'Acme Supplies' }),
+      expect.objectContaining({ partId: 'a', suggestedQuantity: 0, supplierName: 'Acme Supplies' }),
     ]);
   });
 
-  it('counts negative free as part of the shortfall', () => {
-    expect(toJobStockPurchaseCandidates([stockRow('a', { committed: 6, free: -3 })])[0]?.suggestedQuantity).toBe(9);
+  it('asks for the plant shortfall once Free Stock has gone negative', () => {
+    expect(toJobStockPurchaseCandidates([stockRow('a', { committed: 6, free: -4 })])[0]?.suggestedQuantity).toBe(4);
+  });
+
+  it('never asks for more than this Job itself committed, however short the plant is', () => {
+    // Two Jobs of 6 against an empty shelf: each asks for its own 6, not the whole 12.
+    expect(toJobStockPurchaseCandidates([stockRow('a', { committed: 6, free: -12 })])[0]?.suggestedQuantity).toBe(6);
   });
 
   it('nets what is already on order, so the Job tab cannot re-order what a sent order covers', () => {
     expect(
-      toJobStockPurchaseCandidates([stockRow('a', { committed: 6, free: 1, onOrder: 3 })])[0]?.suggestedQuantity,
+      toJobStockPurchaseCandidates([stockRow('a', { committed: 6, free: -5, onOrder: 3 })])[0]?.suggestedQuantity,
     ).toBe(2);
   });
 
-  it('suggests nothing when free stock and open orders already cover the commitment', () => {
+  it('suggests nothing when open orders already cover the shortfall', () => {
     expect(
-      toJobStockPurchaseCandidates([stockRow('a', { committed: 2, free: 1, onOrder: 5 })])[0]?.suggestedQuantity,
+      toJobStockPurchaseCandidates([stockRow('a', { committed: 2, free: -1, onOrder: 5 })])[0]?.suggestedQuantity,
     ).toBe(0);
   });
 

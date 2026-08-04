@@ -61,6 +61,7 @@ import {
   PurchaseOrderFullyReceivedError,
   PurchaseOrderHasReceiptsError,
   PurchaseOrderInvalidQuantityError,
+  PurchaseOrderLineNotPricedError,
   PurchaseOrderNoReceiptsError,
   PurchaseOrderNotDraftError,
   PurchaseOrderNotFoundError,
@@ -445,6 +446,7 @@ export async function markPurchaseOrderSent({
       assertDraft(before);
       const purchaseOrder = await getPurchaseOrder({ db: tx, id });
       if (purchaseOrder.lines.length === 0) throw new PurchaseOrderEmptyError(id);
+      assertLinesArePriced(purchaseOrder);
 
       const sentAt = new Date();
       const filename = `${purchaseOrder.code}.pdf`;
@@ -650,6 +652,17 @@ async function lockPurchaseOrder(tx: DatabaseTransaction, id: UUID): Promise<Pur
   const [row] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)).for('update');
   if (!row) throw new PurchaseOrderNotFoundError(id);
   return row;
+}
+
+/**
+ * A zero price on a draft line means "not priced yet" — that is how a line raised from the buy list
+ * is written, since that screen is quantity-only under the cost gate. Sending is the assertion the
+ * price was agreed (spec §4), and it is the last point before a receipt would stamp that zero onto
+ * the ledger as the Part's cost.
+ */
+function assertLinesArePriced(purchaseOrder: PurchaseOrder): void {
+  const unpriced = purchaseOrder.lines.find((line) => line.unitPrice === 0);
+  if (unpriced) throw new PurchaseOrderLineNotPricedError(unpriced.partCode);
 }
 
 function assertDraft(row: PurchaseOrderRow): void {

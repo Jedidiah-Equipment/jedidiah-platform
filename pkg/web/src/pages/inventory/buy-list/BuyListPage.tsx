@@ -1,7 +1,7 @@
 import { IconShoppingCartPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import type { RowSelectionState } from '@tanstack/react-table';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
@@ -24,7 +24,20 @@ export function BuyListPage() {
   const [isSeeding, setIsSeeding] = useState(false);
 
   const items = buyListQuery.data?.items ?? [];
-  const selected = items.filter((item) => rowSelection[item.partId]);
+  const selected = useMemo(() => items.filter((item) => rowSelection[item.partId]), [items, rowSelection]);
+  const candidates = useMemo(
+    () =>
+      selected.map((item) => ({
+        partCode: item.partCode,
+        partId: item.partId,
+        partName: item.partName,
+        standardPurchaseLengthMm: item.standardPurchaseLengthMm,
+        suggestedQuantity: item.suggestedQuantity,
+        supplierName: item.supplierName,
+        unitOfMeasure: item.unitOfMeasure,
+      })),
+    [selected],
+  );
 
   return (
     <PageLayout
@@ -66,14 +79,7 @@ export function BuyListPage() {
         ) : null}
       </div>
       <CreatePurchaseOrdersDialog
-        candidates={selected.map((item) => ({
-          partCode: item.partCode,
-          partId: item.partId,
-          partName: item.partName,
-          suggestedQuantity: item.suggestedQuantity,
-          supplierName: item.supplierName,
-          unitOfMeasure: item.unitOfMeasure,
-        }))}
+        candidates={candidates}
         onOpenChange={setIsSeeding}
         onCreated={() => setRowSelection({})}
         open={isSeeding}

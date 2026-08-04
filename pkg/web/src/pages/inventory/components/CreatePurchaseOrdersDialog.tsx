@@ -1,7 +1,7 @@
-import { PART_UNIT_OF_MEASURE_LABELS, type PartUnitOfMeasure } from '@pkg/schema';
+import type { PartUnitOfMeasure } from '@pkg/schema';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button.js';
@@ -20,12 +20,14 @@ import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { formatPurchaseUnitLabel } from '@/utils/part-quantity-format.js';
 
 /** One offered Part on its way to a draft line. Supplier-blind: the split is the server's to make. */
 export type PurchaseSelectionCandidate = {
   partCode: string;
   partId: string;
   partName: string;
+  standardPurchaseLengthMm: number | null;
   suggestedQuantity: number;
   supplierName: string | null;
   unitOfMeasure: PartUnitOfMeasure;
@@ -61,10 +63,13 @@ export function CreatePurchaseOrdersDialog({
   const showMutationError = useApiMutationErrorToast();
   const mutation = useMutation(trpc.purchaseOrders.createFromSelection.mutationOptions());
   const [selection, setSelection] = useState<Record<string, SelectionState>>({});
+  const [isInitialised, setIsInitialised] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-
+  // Prefill on the *open* transition only, never on a candidates change. A background refetch —
+  // ordinary here, since queries refetch on window focus — would otherwise hand this a new list mid
+  // edit and silently snap every typed quantity back to the suggestion before the buyer submits.
+  if (open && !isInitialised) {
+    setIsInitialised(true);
     setSelection(
       Object.fromEntries(
         candidates.map((row) => [
@@ -73,7 +78,8 @@ export function CreatePurchaseOrdersDialog({
         ]),
       ),
     );
-  }, [candidates, open]);
+  }
+  if (!open && isInitialised) setIsInitialised(false);
 
   const update = (partId: string, patch: Partial<SelectionState>) =>
     setSelection((current) => ({
@@ -139,9 +145,7 @@ export function CreatePurchaseOrdersDialog({
                     type="number"
                     value={selection[candidate.partId]?.quantity ?? ''}
                   />
-                  <span className="w-16 text-muted-foreground text-xs">
-                    {PART_UNIT_OF_MEASURE_LABELS[candidate.unitOfMeasure]}
-                  </span>
+                  <span className="w-32 text-muted-foreground text-xs">{formatPurchaseUnitLabel(candidate)}</span>
                 </div>
               </div>
             ))}

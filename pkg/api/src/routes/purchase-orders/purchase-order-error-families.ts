@@ -13,6 +13,7 @@ export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreE
     'purchase_order.has_receipts': 'BAD_REQUEST',
     'purchase_order.invalid_quantity': 'BAD_REQUEST',
     'purchase_order.line_not_found': 'NOT_FOUND',
+    'purchase_order.line_not_priced': 'BAD_REQUEST',
     'purchase_order.no_receipts': 'BAD_REQUEST',
     'purchase_order.not_draft': 'BAD_REQUEST',
     'purchase_order.not_found': 'NOT_FOUND',

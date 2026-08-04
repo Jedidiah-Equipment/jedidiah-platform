@@ -2,8 +2,10 @@ import { customers, type Db, jobs, parts, purchaseOrders, quotes, supplier, user
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
+import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { partValues } from '../test/part-fixtures.js';
 import { createPurchaseOrderDraftsFromSelection } from './purchase-order-selection-service.js';
+import { markPurchaseOrderSent, savePurchaseOrderDraft } from './purchase-order-service.js';
 
 const ACTOR_ID = 'po-seed-test-user';
 const SUPPLIER_A_ID = '00000000-0000-4000-8000-000000000301';
@@ -173,4 +175,54 @@ async function seedJob(db: Db): Promise<string> {
   if (!job) throw new Error('Job insert did not return a row');
 
   return job.id;
+}
+
+describe('sending a Purchase Order raised from a selection', () => {
+  test('refuses to send while a line is still unpriced', async ({ context }) => {
+    const { purchaseOrders: created } = await createPurchaseOrderDraftsFromSelection({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { jobId: null, lines: [{ partId: ALPHA_PART_ID, quantity: 2 }] },
+    });
+    const [draft] = created;
+    if (!draft) throw new Error('Expected a seeded draft');
+
+    // A receipt against a zero-priced line would stamp that zero onto the ledger as the Part's cost.
+    await expect(
+      markPurchaseOrderSent({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        id: draft.id,
+        pdfRenderer: async () => pdfBytes(),
+        storage: new InMemoryStorageAdapter(),
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.line_not_priced' });
+
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        expectedDeliveryDate: null,
+        id: draft.id,
+        jobIds: [],
+        lines: [{ partId: ALPHA_PART_ID, quantity: 2, unitPrice: 125 }],
+        supplierId: SUPPLIER_A_ID,
+      },
+    });
+
+    await expect(
+      markPurchaseOrderSent({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        id: draft.id,
+        pdfRenderer: async () => pdfBytes(),
+        storage: new InMemoryStorageAdapter(),
+      }),
+    ).resolves.toMatchObject({ status: 'sent' });
+  });
+});
+
+/** The PDF magic bytes the document policy checks; the renderer itself is not under test here. */
+function pdfBytes(): Uint8Array {
+  return new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]);
 }

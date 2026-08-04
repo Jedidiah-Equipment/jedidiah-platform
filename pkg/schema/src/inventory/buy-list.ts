@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { DateOnlyIso } from '../common/date.js';
 import { JobCode, PurchaseOrderCode } from '../common/public-code.js';
 import { UUID } from '../common/uuid.js';
-import { PartUnitOfMeasure } from '../parts/part.js';
+import { PartStandardPurchaseLengthMm, PartUnitOfMeasure } from '../parts/part.js';
 import { PurchaseOrderQuantity } from '../purchase-orders/purchase-order.js';
 import { SupplierCompanyName } from '../suppliers/supplier.js';
 
@@ -65,6 +65,8 @@ export const BuyListRow = z.object({
   partName: z.string(),
   quantity: z.number().finite(),
   reasons: z.array(BuyListReason).min(1),
+  /** A linear Part is bought as whole pieces of this length, never as millimetres (spec §2). */
+  standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
   suggestedQuantity: z.number().finite(),
   supplierId: UUID.nullable(),
   supplierName: SupplierCompanyName.nullable(),

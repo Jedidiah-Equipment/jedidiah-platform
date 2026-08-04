@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { compareNullableDateOnly, formatDate } from '@pkg/domain';
 import { BUY_LIST_REASONS, type BuyListReason, type BuyListRow } from '@pkg/schema';
 import {
   type ColumnDef,
@@ -32,7 +32,11 @@ const buyListColumns: ColumnDef<BuyListRow>[] = [
   {
     cell: ({ row }) => (
       <Checkbox
-        aria-label={`Select ${row.original.partCode}`}
+        aria-label={
+          row.getCanSelect()
+            ? `Select ${row.original.partCode}`
+            : `${row.original.partCode} is built in-house and cannot be purchased`
+        }
         checked={row.getIsSelected()}
         // A Built Part is made in-house, so it can never reach a Purchase Order line (#1058).
         disabled={!row.getCanSelect()}
@@ -85,8 +89,11 @@ const buyListColumns: ColumnDef<BuyListRow>[] = [
         </>
       ),
     header: 'Needed by',
-    // Null last: no scheduled Job waiting is the absence of urgency, not the top of the list.
-    sortUndefined: 'last',
+    // The server's ranking rule, applied to the client sort so the two cannot disagree. A column
+    // option cannot do it: `sortUndefined` tests strict `undefined`, and this column holds `null`,
+    // which the default alphanumeric fn stringifies to '' — sorting the unscheduled rows first.
+    sortingFn: (left, right) =>
+      compareNullableDateOnly(left.original.earliestDemandDate, right.original.earliestDemandDate),
   },
   {
     accessorKey: 'quantity',

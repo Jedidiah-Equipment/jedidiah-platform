@@ -7,31 +7,29 @@ import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { SeedPurchaseOrdersDialog } from '../../inventory/components/SeedPurchaseOrdersDialog.js';
+import { CreatePurchaseOrdersDialog } from '../../inventory/components/CreatePurchaseOrdersDialog.js';
 import { StockMovementDialog } from '../../inventory/components/StockMovementDialog.js';
 import { perpetualPartOptions } from '../../inventory/components/types.js';
 import { JobStockTable } from './JobStockTable.js';
-import { toJobStockSeedCandidates } from './job-stock-seed.js';
+import { toJobStockPurchaseCandidates } from './job-stock-purchase-selection.js';
 
 export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: { code: string; id: string } }) {
   const trpc = useTRPC();
   const canMove = useCan('inventory:move').can;
-  const canSeedPurchaseOrders = useCan('purchase_order:create').can;
+  const canCreatePurchaseOrders = useCan('purchase_order:create').can;
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId: job.id }));
   const [movementType, setMovementType] = useState<JobStockMovementType | null>(null);
-  const [isSeeding, setIsSeeding] = useState(false);
-  // The stock-on-hand report replays the ledger; only a movement or a seeded order needs it, so the
-  // tab does not pay for it until one is opened.
+  const [isCreatingPurchaseOrders, setIsCreatingPurchaseOrders] = useState(false);
+  // The stock-on-hand report replays the whole ledger; only the movement dialog's Part picker needs
+  // it, so the tab does not pay for it until one opens.
   const stockOnHandQuery = useQuery(
-    trpc.inventory.stockOnHand.queryOptions(undefined, {
-      enabled: (canMove && movementType !== null) || (canSeedPurchaseOrders && isSeeding),
-    }),
+    trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove && movementType !== null }),
   );
   const stockOnHandItems = useMemo(() => stockOnHandQuery.data?.items ?? [], [stockOnHandQuery.data?.items]);
   const parts = useMemo(() => perpetualPartOptions(stockOnHandItems), [stockOnHandItems]);
-  const seedCandidates = useMemo(
-    () => toJobStockSeedCandidates({ items: jobStockQuery.data?.items ?? [], stockOnHand: stockOnHandItems }),
-    [jobStockQuery.data?.items, stockOnHandItems],
+  const purchaseCandidates = useMemo(
+    () => toJobStockPurchaseCandidates(jobStockQuery.data?.items ?? []),
+    [jobStockQuery.data?.items],
   );
 
   if (jobStockQuery.isPending) {
@@ -42,11 +40,9 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
     return <p className="text-destructive text-sm">Unable to load Job stock.</p>;
   }
 
-  const hasOpenCommitment = jobStockQuery.data.items.some((item) => item.committedQuantity > 0);
-
   return (
     <div className="grid gap-4">
-      {canMove || canSeedPurchaseOrders ? (
+      {canMove || canCreatePurchaseOrders ? (
         <div className="flex flex-wrap gap-2">
           {canMove && !isCancelled ? (
             <Button onClick={() => setMovementType('checkout')} variant="outline">
@@ -60,8 +56,8 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
               Return to store
             </Button>
           ) : null}
-          {canSeedPurchaseOrders && !isCancelled && hasOpenCommitment ? (
-            <Button onClick={() => setIsSeeding(true)} variant="outline">
+          {canCreatePurchaseOrders && !isCancelled && purchaseCandidates.length > 0 ? (
+            <Button onClick={() => setIsCreatingPurchaseOrders(true)} variant="outline">
               <IconShoppingCartPlus data-icon="inline-start" />
               Create Purchase Orders
             </Button>
@@ -86,9 +82,12 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
           type={movementType}
         />
       ) : null}
-      {isSeeding && !stockOnHandQuery.isPending ? (
-        <SeedPurchaseOrdersDialog candidates={seedCandidates} jobId={job.id} onOpenChange={setIsSeeding} open={true} />
-      ) : null}
+      <CreatePurchaseOrdersDialog
+        candidates={purchaseCandidates}
+        jobId={job.id}
+        onOpenChange={setIsCreatingPurchaseOrders}
+        open={isCreatingPurchaseOrders}
+      />
     </div>
   );
 }

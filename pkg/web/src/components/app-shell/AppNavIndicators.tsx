@@ -1,3 +1,4 @@
+import { buyListReasonsNotify } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
@@ -40,11 +41,9 @@ export const BuyListSignalNavIndicator: React.FC = () => {
     ...trpc.inventory.buyList.queryOptions(),
     enabled: inventoryAccess.can,
   });
-  const urgent = (buyListQuery.data?.items ?? []).filter((item) =>
-    item.reasons.some((reason) => reason === 'out-of-stock' || reason === 'below-minimum'),
-  );
+  const notifying = (buyListQuery.data?.items ?? []).filter((item) => buyListReasonsNotify(item.reasons));
 
-  return urgent.length > 0 ? <NavWarningDot label="Parts are out of stock or below minimum" /> : null;
+  return notifying.length > 0 ? <NavWarningDot label="Parts are out of stock or below minimum" /> : null;
 };
 
 export const FeedbackOpenNavIndicator: React.FC = () => {

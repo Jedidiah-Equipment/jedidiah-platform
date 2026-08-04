@@ -1,4 +1,4 @@
-import type { BuyListReason } from '@pkg/schema';
+import { BUY_LIST_REASONS, type BuyListReason } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
@@ -19,6 +19,7 @@ const BuyListReasonWidget: React.FC<{
   singular: string;
   plural: string;
 }> = ({ emptyLabel, plural, reason, singular }) => {
+  // Each tile is one facet of BUY_LIST_REASONS; the label there is what the buy list's badge says.
   const trpc = useTRPC();
   const buyListQuery = useQuery(trpc.inventory.buyList.queryOptions());
 

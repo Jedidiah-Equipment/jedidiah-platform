@@ -113,7 +113,7 @@ describe('postReceipt', () => {
       context.db,
       context.supplierId,
       [{ partId: context.parts.piece.id, quantity: 4, unitPrice: 25 }],
-      'draft',
+      { status: 'draft' },
     );
     const sentId = await seedSentPurchaseOrder(context.db, context.supplierId, [
       { partId: context.parts.piece.id, quantity: 4, unitPrice: 25 },

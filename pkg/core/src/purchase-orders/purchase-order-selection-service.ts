@@ -1,8 +1,8 @@
 import { type Db, parts, supplier } from '@pkg/db';
-import type { AuthId, PurchaseOrderSeedInput, PurchaseOrderSeedResult, UUID } from '@pkg/schema';
+import type { AuthId, PurchaseOrderSelectionInput, PurchaseOrderSelectionResult, UUID } from '@pkg/schema';
 import {
   isWholeUnitQuantity,
-  PurchaseOrderSeedResult as PurchaseOrderSeedResultSchema,
+  PurchaseOrderSelectionResult as PurchaseOrderSelectionResultSchema,
   unitClassFor,
 } from '@pkg/schema';
 import { eq, inArray } from 'drizzle-orm';
@@ -14,7 +14,7 @@ import {
 } from './purchase-order-errors.js';
 import { createPurchaseOrderWithin, savePurchaseOrderDraftWithin } from './purchase-order-service.js';
 
-type SeedGroup = {
+type SupplierGroup = {
   lines: { partId: UUID; quantity: number; unitPrice: number }[];
   supplierName: string;
 };
@@ -23,29 +23,29 @@ type SeedGroup = {
  * Turns a ticked selection into drafts, one per Supplier (spec §4).
  *
  * The selection is supplier-blind on purpose: procurement ticks what the shop is short of, and the
- * split into orders is arithmetic nobody should have to do by hand. Seeded from a Job, every draft
+ * split into orders is arithmetic nobody should have to do by hand. Ticked on a Job, every draft
  * links back to it, so the PDF reaches that Job's documents tab whichever Supplier it went to.
  *
- * Lines are seeded **unpriced**. The buy list is quantity-only by the cost gate (spec §11), so the
+ * Lines are written **unpriced**. The buy list is quantity-only by the cost gate (spec §11), so the
  * price is keyed on the draft afterwards by someone who may read costs — a zero here means "not
  * priced yet", and marking the order sent is what asserts the price was agreed.
  *
  * One transaction covers every draft: a selection spanning three Suppliers either becomes three
  * drafts or none, never a partial set the buyer has to reconcile against what they ticked.
  */
-export async function seedPurchaseOrderDrafts({
+export async function createPurchaseOrderDraftsFromSelection({
   actorUserId,
   db,
   input,
 }: {
   actorUserId: AuthId;
   db: Db;
-  input: PurchaseOrderSeedInput;
-}): Promise<PurchaseOrderSeedResult> {
+  input: PurchaseOrderSelectionInput;
+}): Promise<PurchaseOrderSelectionResult> {
   const groups = await groupSelectionBySupplier({ db, input });
 
   return db.transaction(async (tx) => {
-    const created: PurchaseOrderSeedResult['purchaseOrders'] = [];
+    const created: PurchaseOrderSelectionResult['purchaseOrders'] = [];
 
     for (const [supplierId, group] of groups) {
       // Supplier existence (and retirement) is the create's own check, taken under its row lock.
@@ -69,7 +69,7 @@ export async function seedPurchaseOrderDrafts({
       created.push({ code: saved.code, id: saved.id, supplierName: group.supplierName });
     }
 
-    return PurchaseOrderSeedResultSchema.parse({ purchaseOrders: created });
+    return PurchaseOrderSelectionResultSchema.parse({ purchaseOrders: created });
   });
 }
 
@@ -83,8 +83,8 @@ async function groupSelectionBySupplier({
   input,
 }: {
   db: Db;
-  input: PurchaseOrderSeedInput;
-}): Promise<Array<[UUID, SeedGroup]>> {
+  input: PurchaseOrderSelectionInput;
+}): Promise<Array<[UUID, SupplierGroup]>> {
   const partRows = await db
     .select({
       id: parts.id,
@@ -101,7 +101,7 @@ async function groupSelectionBySupplier({
       ),
     );
   const partsById = new Map(partRows.map((row) => [row.id, row]));
-  const bySupplier = new Map<UUID, SeedGroup>();
+  const bySupplier = new Map<UUID, SupplierGroup>();
 
   for (const line of input.lines) {
     const part = partsById.get(line.partId);

@@ -7,7 +7,6 @@ import {
   jobSlots,
   jobs,
   parts,
-  purchaseOrderLines,
   purchaseOrders,
   quotes,
   supplier,
@@ -17,6 +16,7 @@ import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
+import { seedSentPurchaseOrder } from '../test/inventory-fixtures.js';
 import { partValues } from '../test/part-fixtures.js';
 import { listBuyList } from './buy-list-service.js';
 import { closeOutJob } from './close-out-service.js';
@@ -56,11 +56,14 @@ const test = createTester(async ({ db }) => {
       { ...partValues({ code: 'MIN', supplierId: alpha.id, unitOfMeasure: 'piece' }), minimumStock: 10 },
       partValues({ code: 'EMPTY', supplierId: alpha.id, unitOfMeasure: 'piece' }),
       partValues({ code: 'FINE', supplierId: alpha.id, unitOfMeasure: 'piece' }),
+      partValues({ code: 'NEVER', supplierId: alpha.id, unitOfMeasure: 'piece' }),
       partValues({ code: 'BUILT', isInternallyFabricated: true, supplierId: alpha.id, unitOfMeasure: 'piece' }),
     ])
     .returning();
-  const [urgent, later, minimum, empty, fine, built] = partRows;
-  if (!urgent || !later || !minimum || !empty || !fine || !built) throw new Error('Part inserts did not return rows');
+  const [urgent, later, minimum, empty, fine, never, built] = partRows;
+  if (!urgent || !later || !minimum || !empty || !fine || !never || !built) {
+    throw new Error('Part inserts did not return rows');
+  }
 
   const [customer] = await db.insert(customers).values({ companyName: 'Buy List Customer' }).returning();
   if (!customer) throw new Error('Customer insert did not return a row');
@@ -90,7 +93,7 @@ const test = createTester(async ({ db }) => {
   return {
     bays: { late: lateBay, soon: soonBay },
     jobs: { late: lateJob, soon: soonJob, unscheduled: unscheduledJob },
-    parts: { built, empty, fine, later, minimum, urgent },
+    parts: { built, empty, fine, later, minimum, never, urgent },
     suppliers: { alpha, beta },
   };
 });
@@ -119,26 +122,28 @@ describe('listBuyList', () => {
   });
 
   test('nets an open sent order out of the suggestion and names it as cover', async ({ context }) => {
-    await seedSentPurchaseOrder(context.db, {
-      expectedDeliveryDate: '2026-08-06',
-      lines: [{ partId: context.parts.urgent.id, quantity: 3 }],
-      supplierId: context.suppliers.alpha.id,
-    });
+    await seedSentPurchaseOrder(
+      context.db,
+      context.suppliers.alpha.id,
+      [{ partId: context.parts.urgent.id, quantity: 3 }],
+      { expectedDeliveryDate: '2026-08-06' },
+    );
 
     const urgent = (await listBuyList({ clock, db: context.db })).items.find((item) => item.partCode === 'URGENT');
 
-    expect(urgent).toMatchObject({ onOrder: 3, shortfall: 4, suggestedQuantity: 1 });
+    expect(urgent).toMatchObject({ onOrder: 3, suggestedQuantity: 1 });
     expect(urgent?.coveringOrders).toEqual([
       expect.objectContaining({ expectedDeliveryDate: '2026-08-06', outstandingQuantity: 3 }),
     ]);
   });
 
   test('stops counting a closed-short order as cover', async ({ context }) => {
-    const purchaseOrderId = await seedSentPurchaseOrder(context.db, {
-      expectedDeliveryDate: '2026-08-06',
-      lines: [{ partId: context.parts.urgent.id, quantity: 3 }],
-      supplierId: context.suppliers.alpha.id,
-    });
+    const purchaseOrderId = await seedSentPurchaseOrder(
+      context.db,
+      context.suppliers.alpha.id,
+      [{ partId: context.parts.urgent.id, quantity: 3 }],
+      { expectedDeliveryDate: '2026-08-06' },
+    );
     await context.db
       .update(purchaseOrders)
       .set({ closedShortAt: new Date('2026-08-03T08:00:00.000Z') })
@@ -150,12 +155,12 @@ describe('listBuyList', () => {
   });
 
   test('leaves a draft order out of on-order entirely', async ({ context }) => {
-    await seedSentPurchaseOrder(context.db, {
-      expectedDeliveryDate: '2026-08-06',
-      lines: [{ partId: context.parts.urgent.id, quantity: 3 }],
-      status: 'draft',
-      supplierId: context.suppliers.alpha.id,
-    });
+    await seedSentPurchaseOrder(
+      context.db,
+      context.suppliers.alpha.id,
+      [{ partId: context.parts.urgent.id, quantity: 3 }],
+      { expectedDeliveryDate: '2026-08-06', status: 'draft' },
+    );
 
     const urgent = (await listBuyList({ clock, db: context.db })).items.find((item) => item.partCode === 'URGENT');
 
@@ -165,10 +170,24 @@ describe('listBuyList', () => {
   test('tags a Part below its minimum and asks for the gap up to it', async ({ context }) => {
     const minimum = (await listBuyList({ clock, db: context.db })).items.find((item) => item.partCode === 'MIN');
 
-    expect(minimum).toMatchObject({ reasons: ['below-minimum'], shortfall: 6, suggestedQuantity: 6 });
+    expect(minimum).toMatchObject({ quantity: 4, reasons: ['below-minimum'], suggestedQuantity: 6 });
   });
 
-  test('tags an empty shelf and carries a Built Part with no Supplier to buy from', async ({ context }) => {
+  test('carries a Built Part with no Supplier to buy from once its shelf has run out', async ({ context }) => {
+    await seedStock(context.db, context.parts.built.id, 1, null);
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: {
+        delta: -1,
+        lengthMm: null,
+        note: 'Written off',
+        partId: context.parts.built.id,
+        reason: 'scrap',
+        unitCost: null,
+      },
+    });
+
     const built = (await listBuyList({ clock, db: context.db })).items.find((item) => item.partCode === 'BUILT');
 
     expect(built).toMatchObject({
@@ -177,6 +196,14 @@ describe('listBuyList', () => {
       supplierId: null,
       supplierName: null,
     });
+  });
+
+  test('leaves a Part that has never been stocked off the list entirely', async ({ context }) => {
+    const codes = (await listBuyList({ clock, db: context.db })).items.map((item) => item.partCode);
+
+    // Never bought is not "run out" (spec §9); a whole catalogue of them would pin the signal open.
+    expect(codes).not.toContain('NEVER');
+    expect(codes).not.toContain('BUILT');
   });
 
   test('leaves a Part with cover and no reorder level off the list', async ({ context }) => {
@@ -243,42 +270,11 @@ async function seedCfo(
   await db.insert(jobCfoParts).values({ cfoAssemblyId: assembly.id, partId, quantity });
 }
 
-async function seedStock(db: Db, partId: string, delta: number): Promise<void> {
+async function seedStock(db: Db, partId: string, delta: number, unitCost: number | null = 5): Promise<void> {
   await postAdjustment({
     actorUserId,
     db,
-    input: { delta, lengthMm: null, note: null, partId, reason: 'opening-balance', unitCost: 5 },
+    // A Built Part's cost comes from its build, so its opening balance may never carry one.
+    input: { delta, lengthMm: null, note: null, partId, reason: 'opening-balance', unitCost },
   });
-}
-
-async function seedSentPurchaseOrder(
-  db: Db,
-  {
-    expectedDeliveryDate,
-    lines,
-    status = 'sent',
-    supplierId,
-  }: {
-    expectedDeliveryDate: string | null;
-    lines: ReadonlyArray<{ partId: string; quantity: number }>;
-    status?: 'draft' | 'sent';
-    supplierId: string;
-  },
-): Promise<string> {
-  const [purchaseOrder] = await db
-    .insert(purchaseOrders)
-    .values({
-      expectedDeliveryDate,
-      sentAt: status === 'sent' ? new Date('2026-08-02T08:00:00.000Z') : null,
-      status,
-      supplierId,
-    })
-    .returning();
-  if (!purchaseOrder) throw new Error('Purchase Order insert did not return a row');
-
-  await db
-    .insert(purchaseOrderLines)
-    .values(lines.map((line) => ({ ...line, purchaseOrderId: purchaseOrder.id, unitPrice: 10 })));
-
-  return purchaseOrder.id;
 }

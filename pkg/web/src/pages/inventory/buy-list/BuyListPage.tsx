@@ -10,7 +10,7 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { buyListPageDescription } from '@/utils/page-descriptions.js';
 
-import { SeedPurchaseOrdersDialog } from '../components/SeedPurchaseOrdersDialog.js';
+import { CreatePurchaseOrdersDialog } from '../components/CreatePurchaseOrdersDialog.js';
 import { BuyListTable } from './components/BuyListTable.js';
 import { LatePurchaseOrdersTable } from './components/LatePurchaseOrdersTable.js';
 
@@ -65,7 +65,7 @@ export function BuyListPage() {
           </section>
         ) : null}
       </div>
-      <SeedPurchaseOrdersDialog
+      <CreatePurchaseOrdersDialog
         candidates={selected.map((item) => ({
           partCode: item.partCode,
           partId: item.partId,
@@ -75,7 +75,7 @@ export function BuyListPage() {
           unitOfMeasure: item.unitOfMeasure,
         }))}
         onOpenChange={setIsSeeding}
-        onSeeded={() => setRowSelection({})}
+        onCreated={() => setRowSelection({})}
         open={isSeeding}
       />
     </PageLayout>

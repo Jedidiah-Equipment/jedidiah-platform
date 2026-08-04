@@ -9,7 +9,7 @@ import {
   stockMovements,
   supplier,
 } from '@pkg/db';
-import { compareBuyListRows, deriveBuyListSignal, toPlantDateOnly } from '@pkg/domain';
+import { compareBuyListRows, compareNullableDateOnly, deriveBuyListSignal, toPlantDateOnly } from '@pkg/domain';
 import type { BuyListResult, DateOnlyIso } from '@pkg/schema';
 import { BuyListResult as BuyListResultSchema } from '@pkg/schema';
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
@@ -53,9 +53,10 @@ async function listBuyListSnapshot(db: DatabaseTransaction, today: DateOnlyIso):
         partCode: parts.code,
         partId: parts.id,
         partName: parts.name,
+        // A Part with no ledger at all has never been stocked, so it has not run out (spec §9).
+        hasStockHistory: sql<boolean>`count(${stockMovements.id}) > 0`,
         // A revaluation moves cost, never quantity, so it must not reach a stock-on-hand sum.
         quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
-        standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
         supplierId: parts.supplierId,
         supplierName: supplier.companyName,
         unitOfMeasure: parts.unitOfMeasure,
@@ -93,7 +94,13 @@ async function listBuyListSnapshot(db: DatabaseTransaction, today: DateOnlyIso):
     const committed = committedByPart.get(part.partId) ?? 0;
     const free = part.quantity - committed;
     const onOrder = onOrderByPart.get(part.partId) ?? 0;
-    const signal = deriveBuyListSignal({ free, minimumStock: part.minimumStock, onOrder, quantity: part.quantity });
+    const signal = deriveBuyListSignal({
+      free,
+      hasStockHistory: part.hasStockHistory,
+      minimumStock: part.minimumStock,
+      onOrder,
+      quantity: part.quantity,
+    });
 
     return signal.reasons.length === 0 ? [] : [{ ...part, ...signal, committed, free, onOrder }];
   });
@@ -221,12 +228,5 @@ async function loadDrivingJobs({
 
 /** The list's own ranking rule, over Job codes rather than Part codes: unscheduled Jobs sort last. */
 function compareDrivingJobs(left: DrivingJobFacts, right: DrivingJobFacts): number {
-  if (left.earliestSlotDate !== right.earliestSlotDate) {
-    if (left.earliestSlotDate === null) return 1;
-    if (right.earliestSlotDate === null) return -1;
-
-    return left.earliestSlotDate < right.earliestSlotDate ? -1 : 1;
-  }
-
-  return left.code - right.code;
+  return compareNullableDateOnly(left.earliestSlotDate, right.earliestSlotDate) || left.code - right.code;
 }

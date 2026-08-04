@@ -1,10 +1,11 @@
-import type { Db } from '@pkg/db';
-import { parts, purchaseOrderLines, purchaseOrders, supplier, user } from '@pkg/db';
+import { parts, purchaseOrders, supplier, user } from '@pkg/db';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { postReceipt } from '../inventory/receipt-service.js';
 import { createTester } from '../test/create-tester.js';
+import { seedSentPurchaseOrder } from '../test/inventory-fixtures.js';
+import { partValues } from '../test/part-fixtures.js';
 import { listLatePurchaseOrders } from './purchase-order-signals.js';
 
 const ACTOR_ID = 'po-signals-test-user';
@@ -24,16 +25,19 @@ const test = createTester(async ({ db }) => {
     updatedAt: new Date(),
   });
   await db.insert(supplier).values({ companyName: 'Slow Supplies', id: SUPPLIER_ID });
-  await db
-    .insert(parts)
-    .values([partRow({ code: 'L-100', id: PART_ID }), partRow({ code: 'L-200', id: OTHER_PART_ID })]);
+  await db.insert(parts).values([
+    { ...partValues({ code: 'L-100', supplierId: SUPPLIER_ID, unitOfMeasure: 'piece' }), id: PART_ID },
+    { ...partValues({ code: 'L-200', supplierId: SUPPLIER_ID, unitOfMeasure: 'piece' }), id: OTHER_PART_ID },
+  ]);
 
   return {};
 });
 
 describe('listLatePurchaseOrders', () => {
   test('lists a sent order past its expected date with an open remainder', async ({ context }) => {
-    await seedSentOrder(context.db, { expectedDeliveryDate: '2026-07-30', lines: [{ partId: PART_ID, quantity: 4 }] });
+    await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 4 }], {
+      expectedDeliveryDate: '2026-07-30',
+    });
 
     await expect(listLatePurchaseOrders({ clock, db: context.db })).resolves.toEqual({
       items: [
@@ -50,13 +54,15 @@ describe('listLatePurchaseOrders', () => {
   });
 
   test('counts only the lines still owed', async ({ context }) => {
-    const id = await seedSentOrder(context.db, {
-      expectedDeliveryDate: '2026-07-30',
-      lines: [
+    const id = await seedSentPurchaseOrder(
+      context.db,
+      SUPPLIER_ID,
+      [
         { partId: PART_ID, quantity: 4 },
         { partId: OTHER_PART_ID, quantity: 2 },
       ],
-    });
+      { expectedDeliveryDate: '2026-07-30' },
+    );
     await postReceipt({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -69,9 +75,8 @@ describe('listLatePurchaseOrders', () => {
   });
 
   test('drops an order once every line has arrived', async ({ context }) => {
-    const id = await seedSentOrder(context.db, {
+    const id = await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 4 }], {
       expectedDeliveryDate: '2026-07-30',
-      lines: [{ partId: PART_ID, quantity: 4 }],
     });
     await postReceipt({
       actorUserId: ACTOR_ID,
@@ -83,9 +88,8 @@ describe('listLatePurchaseOrders', () => {
   });
 
   test('drops an order whose remainder was released by closing it short', async ({ context }) => {
-    const id = await seedSentOrder(context.db, {
+    const id = await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 4 }], {
       expectedDeliveryDate: '2026-07-30',
-      lines: [{ partId: PART_ID, quantity: 4 }],
     });
     await context.db
       .update(purchaseOrders)
@@ -96,59 +100,15 @@ describe('listLatePurchaseOrders', () => {
   });
 
   test('leaves an order due today, an undated order, and a draft alone', async ({ context }) => {
-    await seedSentOrder(context.db, { expectedDeliveryDate: '2026-08-04', lines: [{ partId: PART_ID, quantity: 1 }] });
-    await seedSentOrder(context.db, { expectedDeliveryDate: null, lines: [{ partId: PART_ID, quantity: 1 }] });
-    await seedSentOrder(context.db, {
+    await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 1 }], {
+      expectedDeliveryDate: '2026-08-04',
+    });
+    await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 1 }]);
+    await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 1 }], {
       expectedDeliveryDate: '2026-07-01',
-      lines: [{ partId: PART_ID, quantity: 1 }],
       status: 'draft',
     });
 
     await expect(listLatePurchaseOrders({ clock, db: context.db })).resolves.toEqual({ items: [] });
   });
 });
-
-function partRow(overrides: Partial<typeof parts.$inferInsert>): typeof parts.$inferInsert {
-  return {
-    category: 'Pipe',
-    code: 'L-100',
-    description: 'Late Part',
-    finish: 'Plain',
-    id: PART_ID,
-    name: 'Late Part',
-    supplierCode: 'SUP-LATE',
-    supplierId: SUPPLIER_ID,
-    unitOfMeasure: 'piece',
-    ...overrides,
-  };
-}
-
-async function seedSentOrder(
-  db: Db,
-  {
-    expectedDeliveryDate,
-    lines,
-    status = 'sent',
-  }: {
-    expectedDeliveryDate: string | null;
-    lines: ReadonlyArray<{ partId: string; quantity: number }>;
-    status?: 'draft' | 'sent';
-  },
-): Promise<string> {
-  const [purchaseOrder] = await db
-    .insert(purchaseOrders)
-    .values({
-      expectedDeliveryDate,
-      sentAt: status === 'sent' ? new Date('2026-07-20T08:00:00.000Z') : null,
-      status,
-      supplierId: SUPPLIER_ID,
-    })
-    .returning();
-  if (!purchaseOrder) throw new Error('Purchase Order insert did not return a row');
-
-  await db
-    .insert(purchaseOrderLines)
-    .values(lines.map((line) => ({ ...line, purchaseOrderId: purchaseOrder.id, unitPrice: 10 })));
-
-  return purchaseOrder.id;
-}

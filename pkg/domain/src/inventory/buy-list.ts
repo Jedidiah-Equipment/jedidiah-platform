@@ -1,9 +1,15 @@
 import type { BuyListReason, DateOnlyIso } from '@pkg/schema';
 
-/** The four stock facts a buy-list row is judged on, all in the Part's own counting unit. */
+/** The stock facts a buy-list row is judged on, all in the Part's own counting unit. */
 export type BuyListDemand = {
   /** Stock on hand minus open commitment. Negative is demand the shelf cannot cover. */
   free: number;
+  /**
+   * Whether the Part's ledger holds any movement at all. A Part that has never been stocked has not
+   * *run out* — spec §9's signal is stock **hitting** zero, and a catalogue entry nobody has ever
+   * bought would otherwise pin the out-of-stock list and its notification open forever.
+   */
+  hasStockHistory: boolean;
   /** The Part's reorder level, or null where it has none. Zero reads the same as none. */
   minimumStock: number | null;
   /** Σ(ordered − received) over open lines of sent, un-closed orders. */
@@ -29,12 +35,18 @@ export type BuyListSignal = {
  * than folded into free, so the row can still show what it is short beside what is already coming —
  * "PO-0042, expected Thursday" is the whole point of showing both.
  */
-export function deriveBuyListSignal({ free, minimumStock, onOrder, quantity }: BuyListDemand): BuyListSignal {
+export function deriveBuyListSignal({
+  free,
+  hasStockHistory,
+  minimumStock,
+  onOrder,
+  quantity,
+}: BuyListDemand): BuyListSignal {
   const reasons: BuyListReason[] = [];
   // A reorder level of zero is a Part with nothing to fall below; only a real level makes a gap.
   const minimumShortfall = minimumStock === null ? 0 : minimumStock - quantity;
 
-  if (quantity <= 0) reasons.push('out-of-stock');
+  if (quantity <= 0 && hasStockHistory) reasons.push('out-of-stock');
   if (free < 0) reasons.push('negative-free');
   if (minimumShortfall > 0) reasons.push('below-minimum');
 
@@ -55,12 +67,21 @@ export type BuyListRanking = {
  * least pressing rows at the top of the screen procurement reads top-down.
  */
 export function compareBuyListRows(left: BuyListRanking, right: BuyListRanking): number {
-  if (left.earliestDemandDate !== right.earliestDemandDate) {
-    if (left.earliestDemandDate === null) return 1;
-    if (right.earliestDemandDate === null) return -1;
+  return (
+    compareNullableDateOnly(left.earliestDemandDate, right.earliestDemandDate) ||
+    left.partCode.localeCompare(right.partCode)
+  );
+}
 
-    return left.earliestDemandDate < right.earliestDemandDate ? -1 : 1;
-  }
+/**
+ * Soonest first, with "no date at all" ranked last rather than first — the ordering every
+ * procurement surface shares, whether it is ranking Parts by demand or open order lines by promise.
+ * Returns 0 for equal dates so a caller can chain its own tiebreak with `||`.
+ */
+export function compareNullableDateOnly(left: string | null, right: string | null): number {
+  if (left === right) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
 
-  return left.partCode.localeCompare(right.partCode);
+  return left < right ? -1 : 1;
 }

@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import { BUY_LIST_REASON_LABELS, type BuyListRow } from '@pkg/schema';
+import { BUY_LIST_REASONS, type BuyListReason, type BuyListRow } from '@pkg/schema';
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -12,6 +12,7 @@ import {
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
+import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 
 type BuyListTableProps = {
   canSelect: boolean;
@@ -21,6 +22,11 @@ type BuyListTableProps = {
   onRowSelectionChange: (selection: RowSelectionState) => void;
   rowSelection: RowSelectionState;
 };
+
+/** A reason worth interrupting someone over reads loud; ordinary Job demand reads as information. */
+function reasonBadgeVariant(reason: BuyListReason) {
+  return BUY_LIST_REASONS[reason].notifies ? 'destructive' : 'secondary';
+}
 
 const buyListColumns: ColumnDef<BuyListRow>[] = [
   {
@@ -55,8 +61,8 @@ const buyListColumns: ColumnDef<BuyListRow>[] = [
     cell: ({ row }) => (
       <div className="flex flex-wrap gap-1">
         {row.original.reasons.map((reason) => (
-          <Badge key={reason} variant={reason === 'below-minimum' ? 'secondary' : 'destructive'}>
-            {BUY_LIST_REASON_LABELS[reason]}
+          <Badge key={reason} variant={reasonBadgeVariant(reason)}>
+            {BUY_LIST_REASONS[reason].label}
           </Badge>
         ))}
       </div>
@@ -71,7 +77,12 @@ const buyListColumns: ColumnDef<BuyListRow>[] = [
       row.original.earliestDemandDate === null ? (
         <span className="text-muted-foreground">Not scheduled</span>
       ) : (
-        formatDate(row.original.earliestDemandDate)
+        <>
+          <span className="block">{formatDate(row.original.earliestDemandDate)}</span>
+          {row.original.drivingJobs[0] ? (
+            <span className="block text-muted-foreground text-xs">{describeDemand(row.original.drivingJobs)}</span>
+          ) : null}
+        </>
       ),
     header: 'Needed by',
     // Null last: no scheduled Job waiting is the absence of urgency, not the top of the list.
@@ -79,13 +90,22 @@ const buyListColumns: ColumnDef<BuyListRow>[] = [
   },
   {
     accessorKey: 'quantity',
+    cell: ({ row }) => formatPartQuantity(row.original.quantity, row.original.unitOfMeasure),
     header: 'On hand',
+    meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
+  },
+  {
+    accessorKey: 'committed',
+    cell: ({ row }) => formatPartQuantity(row.original.committed, row.original.unitOfMeasure),
+    header: 'Committed',
     meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
   },
   {
     accessorKey: 'free',
     cell: ({ row }) => (
-      <span className={row.original.free < 0 ? 'font-medium text-destructive' : undefined}>{row.original.free}</span>
+      <span className={row.original.free < 0 ? 'font-medium text-destructive' : undefined}>
+        {formatPartQuantity(row.original.free, row.original.unitOfMeasure)}
+      </span>
     ),
     header: 'Free',
     meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
@@ -94,7 +114,9 @@ const buyListColumns: ColumnDef<BuyListRow>[] = [
     accessorKey: 'onOrder',
     cell: ({ row }) => (
       <>
-        <span className="block tabular-nums">{row.original.onOrder}</span>
+        <span className="block tabular-nums">
+          {formatPartQuantity(row.original.onOrder, row.original.unitOfMeasure)}
+        </span>
         {row.original.coveringOrders[0] ? (
           <span className="block text-muted-foreground text-xs">{describeCover(row.original.coveringOrders[0])}</span>
         ) : null}
@@ -105,7 +127,11 @@ const buyListColumns: ColumnDef<BuyListRow>[] = [
   },
   {
     accessorKey: 'suggestedQuantity',
-    cell: ({ row }) => <span className="font-medium">{row.original.suggestedQuantity}</span>,
+    cell: ({ row }) => (
+      <span className="font-medium">
+        {formatPartQuantity(row.original.suggestedQuantity, row.original.unitOfMeasure)}
+      </span>
+    ),
     header: 'Suggested buy',
     meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
   },
@@ -152,6 +178,14 @@ export function BuyListTable({
       totalLabel={(value) => `${value} ${value === 1 ? 'Part' : 'Parts'}`}
     />
   );
+}
+
+/** Names the Job that sets the date, so the row says *whose* deadline it is ranked against. */
+function describeDemand(drivingJobs: BuyListRow['drivingJobs']): string {
+  const [soonest, ...rest] = drivingJobs;
+  if (!soonest) return '';
+
+  return rest.length === 0 ? soonest.code : `${soonest.code} +${rest.length} more`;
 }
 
 function describeCover(order: BuyListRow['coveringOrders'][number]): string {

@@ -10,6 +10,7 @@ import {
   purchaseOrders,
   quotes,
   stockMovements,
+  supplier,
   user,
 } from '@pkg/db';
 import {
@@ -48,9 +49,10 @@ import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
-
+import { loadOpenOrderLines } from '../purchase-orders/purchase-order-service.js';
 import { JobClosedOutError } from './close-out-errors.js';
 import { getJobCloseOutAt } from './close-out-service.js';
+
 import { loadOpenCommitments, sumCommitmentsByPart } from './commitment-read.js';
 import {
   bucketMatches,
@@ -218,17 +220,26 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
     return JobStockResultSchema.parse({ items: [], job: jobFacts });
   }
 
-  const partRows = await db
-    .select({
-      code: parts.code,
-      id: parts.id,
-      name: parts.name,
-      standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
-      unitOfMeasure: parts.unitOfMeasure,
-    })
-    .from(parts)
-    .where(inArray(parts.id, partIds))
-    .orderBy(asc(parts.code), asc(parts.id));
+  // Free and on-order ride this read because the Job's stock tab is one of the two places buying is
+  // decided (spec §3, §4). Sourcing them here rather than from a second report keeps the tab's
+  // suggestion identical to the buy list's, so the two surfaces cannot ask for different quantities.
+  const [partRows, plantStock] = await Promise.all([
+    db
+      .select({
+        code: parts.code,
+        id: parts.id,
+        isInternallyFabricated: parts.isInternallyFabricated,
+        name: parts.name,
+        standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
+        supplierName: supplier.companyName,
+        unitOfMeasure: parts.unitOfMeasure,
+      })
+      .from(parts)
+      .leftJoin(supplier, eq(supplier.id, parts.supplierId))
+      .where(inArray(parts.id, partIds))
+      .orderBy(asc(parts.code), asc(parts.id)),
+    loadPlantStockPosition({ db, partIds }),
+  ]);
 
   return JobStockResultSchema.parse({
     items: partRows.map((part) => {
@@ -240,20 +251,67 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
         cfoQuantity,
         committedQuantity: deriveCommitment({ cfoQuantity, drawnQuantity, isClosedOut: commitmentReleased }),
         drawnQuantity,
+        freeQuantity: plantStock.freeByPart.get(part.id) ?? 0,
+        isInternallyFabricated: part.isInternallyFabricated,
         lengthBuckets: movementBuckets
           .flatMap((row) =>
             row.lengthMm === null ? [] : [{ drawnQuantity: row.drawnQuantity, lengthMm: row.lengthMm }],
           )
           .sort((left, right) => left.lengthMm - right.lengthMm),
+        onOrder: plantStock.onOrderByPart.get(part.id) ?? 0,
         partCode: part.code,
         partId: part.id,
         partName: part.name,
         standardPurchaseLengthMm: part.standardPurchaseLengthMm,
+        supplierName: part.supplierName,
         unitOfMeasure: part.unitOfMeasure,
       };
     }),
     job: jobFacts,
   });
+}
+
+/**
+ * Free Stock and On Order for a named set of Parts. Both are plant-wide facts — every Job's
+ * commitment eats the same shelf, and every open order feeds it — so they are read across the plant
+ * and narrowed to the Parts asked for, never scoped to the calling Job.
+ */
+async function loadPlantStockPosition({
+  db,
+  partIds,
+}: {
+  db: Db;
+  partIds: readonly UUID[];
+}): Promise<{ freeByPart: Map<string, number>; onOrderByPart: Map<string, number> }> {
+  const [quantityRows, commitments, openOrderLines] = await Promise.all([
+    db
+      .select({
+        partId: stockMovements.partId,
+        quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
+      })
+      .from(stockMovements)
+      // A revaluation moves cost, never quantity, so it must not reach a stock-on-hand sum.
+      .where(and(inArray(stockMovements.partId, [...partIds]), ne(stockMovements.movementType, 'revaluation')))
+      .groupBy(stockMovements.partId),
+    loadOpenCommitments(db).then(sumCommitmentsByPart),
+    loadOpenOrderLines({ db }),
+  ]);
+  const onOrderByPart = new Map<string, number>();
+
+  for (const line of openOrderLines) {
+    onOrderByPart.set(line.partId, (onOrderByPart.get(line.partId) ?? 0) + line.outstandingQuantity);
+  }
+
+  return {
+    freeByPart: new Map(
+      partIds.map((partId) => [partId, quantityOf(quantityRows, partId) - (commitments.get(partId) ?? 0)]),
+    ),
+    onOrderByPart,
+  };
+}
+
+function quantityOf(rows: ReadonlyArray<{ partId: string; quantity: number }>, partId: string): number {
+  return rows.find((row) => row.partId === partId)?.quantity ?? 0;
 }
 
 async function loadJobStockJob({ db, jobId }: { db: Db; jobId: UUID }) {

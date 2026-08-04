@@ -2,13 +2,13 @@ import {
   cancelPurchaseOrder,
   closePurchaseOrderShort,
   createPurchaseOrder,
+  createPurchaseOrderDraftsFromSelection,
   getPurchaseOrder,
   listLatePurchaseOrders,
   listPurchaseOrders,
   markPurchaseOrderSent,
   postReceipt,
   savePurchaseOrderDraft,
-  seedPurchaseOrderDrafts,
 } from '@pkg/core';
 import { renderPurchaseOrderPdf } from '@pkg/pdf';
 import {
@@ -21,8 +21,8 @@ import {
   PurchaseOrderListInput,
   PurchaseOrderListViewResult,
   PurchaseOrderSaveDraftInput,
-  PurchaseOrderSeedInput,
-  PurchaseOrderSeedResult,
+  PurchaseOrderSelectionInput,
+  PurchaseOrderSelectionResult,
   PurchaseOrderView,
   StockMovementPostResult,
 } from '@pkg/schema';
@@ -133,11 +133,13 @@ export const purchaseOrdersRouter = router({
    * lines it writes carry no price, so seeding needs no cost access even though editing the drafts
    * afterwards does.
    */
-  seedDrafts: authorizedProcedure('purchase_order:create')
-    .input(PurchaseOrderSeedInput)
-    .output(PurchaseOrderSeedResult)
+  createFromSelection: authorizedProcedure('purchase_order:create')
+    .input(PurchaseOrderSelectionInput)
+    .output(PurchaseOrderSelectionResult)
     .mutation(({ ctx, input }) =>
-      mapPurchaseOrderErrors(() => seedPurchaseOrderDrafts({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapPurchaseOrderErrors(() =>
+        createPurchaseOrderDraftsFromSelection({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+      ),
     ),
 
   saveDraft: authorizedProcedure('purchase_order:create')

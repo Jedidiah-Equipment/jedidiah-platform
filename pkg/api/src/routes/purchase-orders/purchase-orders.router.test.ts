@@ -206,14 +206,14 @@ describe('buy-list seeding and late orders', () => {
 
     // Stores may receive against an order but never raise one.
     await expect(
-      stores.purchaseOrders.seedDrafts({ jobId: null, lines: [{ partId: PART_ID, quantity: 3 }] }),
+      stores.purchaseOrders.createFromSelection({ jobId: null, lines: [{ partId: PART_ID, quantity: 3 }] }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(context.createCaller(mockSession('sales')).purchaseOrders.late()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
 
     await expect(
-      admin.purchaseOrders.seedDrafts({ jobId: context.jobId, lines: [{ partId: PART_ID, quantity: 3 }] }),
+      admin.purchaseOrders.createFromSelection({ jobId: context.jobId, lines: [{ partId: PART_ID, quantity: 3 }] }),
     ).resolves.toMatchObject({ purchaseOrders: [{ supplierName: 'Router Supplies' }] });
 
     // Seeded drafts are unpriced, so the cost gate has nothing to hide from a price-blind reader.

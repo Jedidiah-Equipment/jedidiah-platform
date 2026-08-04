@@ -90,6 +90,28 @@ function createJobStockColumns(onReturn: ((partId: string) => void) | undefined)
         cellClassName: 'tabular-nums',
       },
     },
+    // Free and On order sit beside Committed because this is one of the two screens buying is
+    // decided on; on-order is shown next to free, never folded into it (spec §3).
+    {
+      accessorKey: 'freeQuantity',
+      cell: ({ row }) => (
+        <span className={row.original.freeQuantity < 0 ? 'font-medium text-destructive' : undefined}>
+          {formatPartQuantity(row.original.freeQuantity, row.original.unitOfMeasure)}
+        </span>
+      ),
+      header: 'Free',
+      meta: {
+        cellClassName: 'tabular-nums',
+      },
+    },
+    {
+      accessorKey: 'onOrder',
+      cell: ({ row }) => formatPartQuantity(row.original.onOrder, row.original.unitOfMeasure),
+      header: 'On order',
+      meta: {
+        cellClassName: 'tabular-nums',
+      },
+    },
     ...(onReturn
       ? [
           {

@@ -16,7 +16,7 @@ import {
   supplier,
   user,
 } from '@pkg/db';
-import { derivePurchaseOrderProgress, derivePurchaseOrderStatus } from '@pkg/domain';
+import { compareNullableDateOnly, derivePurchaseOrderProgress, derivePurchaseOrderStatus } from '@pkg/domain';
 import {
   type AuthId,
   DateIso,
@@ -280,14 +280,10 @@ export async function loadOpenOrderLines({ db }: { db: PurchaseOrderDb }): Promi
 }
 
 function compareOpenOrderLines(left: OpenOrderLine, right: OpenOrderLine): number {
-  if (left.expectedDeliveryDate !== right.expectedDeliveryDate) {
-    if (left.expectedDeliveryDate === null) return 1;
-    if (right.expectedDeliveryDate === null) return -1;
-
-    return left.expectedDeliveryDate < right.expectedDeliveryDate ? -1 : 1;
-  }
-
-  return left.purchaseOrderCode - right.purchaseOrderCode;
+  return (
+    compareNullableDateOnly(left.expectedDeliveryDate, right.expectedDeliveryDate) ||
+    left.purchaseOrderCode - right.purchaseOrderCode
+  );
 }
 
 /** The as-sent PDF of each order; amendments (#1055) add revisions, so the newest row is the current one. */

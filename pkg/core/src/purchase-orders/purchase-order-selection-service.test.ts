@@ -2,7 +2,8 @@ import { customers, type Db, jobs, parts, purchaseOrders, quotes, supplier, user
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
-import { seedPurchaseOrderDrafts } from './purchase-order-seed-service.js';
+import { partValues } from '../test/part-fixtures.js';
+import { createPurchaseOrderDraftsFromSelection } from './purchase-order-selection-service.js';
 
 const ACTOR_ID = 'po-seed-test-user';
 const SUPPLIER_A_ID = '00000000-0000-4000-8000-000000000301';
@@ -28,24 +29,34 @@ const test = createTester(async ({ db }) => {
     { companyName: 'Acme Supplies', id: SUPPLIER_B_ID },
   ]);
   await db.insert(parts).values([
-    partRow({ code: 'S-100', id: ALPHA_PART_ID, supplierId: SUPPLIER_A_ID }),
-    partRow({
-      code: 'S-200',
+    { ...partValues({ code: 'S-100', supplierId: SUPPLIER_A_ID, unitOfMeasure: 'piece' }), id: ALPHA_PART_ID },
+    {
+      ...partValues({
+        code: 'S-200',
+        standardPurchaseLengthMm: 6_000,
+        supplierId: SUPPLIER_A_ID,
+        unitOfMeasure: 'mm',
+      }),
       id: ALPHA_LINEAR_PART_ID,
-      standardPurchaseLengthMm: 6_000,
-      supplierId: SUPPLIER_A_ID,
-      unitOfMeasure: 'mm',
-    }),
-    partRow({ code: 'S-300', id: BETA_PART_ID, supplierId: SUPPLIER_B_ID }),
-    partRow({ code: 'S-400', id: BUILT_PART_ID, isInternallyFabricated: true, supplierId: null }),
+    },
+    { ...partValues({ code: 'S-300', supplierId: SUPPLIER_B_ID, unitOfMeasure: 'piece' }), id: BETA_PART_ID },
+    {
+      ...partValues({
+        code: 'S-400',
+        isInternallyFabricated: true,
+        supplierId: SUPPLIER_A_ID,
+        unitOfMeasure: 'piece',
+      }),
+      id: BUILT_PART_ID,
+    },
   ]);
 
   return { jobId: await seedJob(db) };
 });
 
-describe('seedPurchaseOrderDrafts', () => {
+describe('createPurchaseOrderDraftsFromSelection', () => {
   test('splits one selection into a draft per Supplier, ordered by Supplier name', async ({ context }) => {
-    const result = await seedPurchaseOrderDrafts({
+    const result = await createPurchaseOrderDraftsFromSelection({
       actorUserId: ACTOR_ID,
       db: context.db,
       input: {
@@ -65,7 +76,7 @@ describe('seedPurchaseOrderDrafts', () => {
   });
 
   test('prefills quantities and leaves the price for a cost reader to key', async ({ context }) => {
-    const { purchaseOrders: created } = await seedPurchaseOrderDrafts({
+    const { purchaseOrders: created } = await createPurchaseOrderDraftsFromSelection({
       actorUserId: ACTOR_ID,
       db: context.db,
       input: { jobId: null, lines: [{ partId: ALPHA_PART_ID, quantity: 7 }] },
@@ -83,7 +94,7 @@ describe('seedPurchaseOrderDrafts', () => {
   });
 
   test('links every draft back to the Job the selection was seeded from', async ({ context }) => {
-    const result = await seedPurchaseOrderDrafts({
+    const result = await createPurchaseOrderDraftsFromSelection({
       actorUserId: ACTOR_ID,
       db: context.db,
       input: {
@@ -103,7 +114,7 @@ describe('seedPurchaseOrderDrafts', () => {
 
   test('refuses a Built Part and creates nothing at all', async ({ context }) => {
     await expect(
-      seedPurchaseOrderDrafts({
+      createPurchaseOrderDraftsFromSelection({
         actorUserId: ACTOR_ID,
         db: context.db,
         input: {
@@ -121,7 +132,7 @@ describe('seedPurchaseOrderDrafts', () => {
 
   test('refuses a fractional quantity on a Part counted in whole pieces', async ({ context }) => {
     await expect(
-      seedPurchaseOrderDrafts({
+      createPurchaseOrderDraftsFromSelection({
         actorUserId: ACTOR_ID,
         db: context.db,
         input: { jobId: null, lines: [{ partId: ALPHA_PART_ID, quantity: 1.5 }] },
@@ -131,7 +142,7 @@ describe('seedPurchaseOrderDrafts', () => {
 
   test('refuses a Part that does not exist', async ({ context }) => {
     await expect(
-      seedPurchaseOrderDrafts({
+      createPurchaseOrderDraftsFromSelection({
         actorUserId: ACTOR_ID,
         db: context.db,
         input: { jobId: null, lines: [{ partId: '00000000-0000-4000-8000-0000000009ff', quantity: 1 }] },
@@ -139,22 +150,6 @@ describe('seedPurchaseOrderDrafts', () => {
     ).rejects.toMatchObject({ code: 'purchase_order.part_not_found' });
   });
 });
-
-function partRow(overrides: Partial<typeof parts.$inferInsert>): typeof parts.$inferInsert {
-  return {
-    category: 'Pipe',
-    code: 'S-100',
-    description: 'Seed Part',
-    finish: 'Plain',
-    id: ALPHA_PART_ID,
-    name: 'Seed Part',
-    standardPurchaseLengthMm: null,
-    supplierCode: 'SUP-SEED',
-    supplierId: SUPPLIER_A_ID,
-    unitOfMeasure: 'piece',
-    ...overrides,
-  };
-}
 
 async function seedJob(db: Db): Promise<string> {
   const [customer] = await db.insert(customers).values({ companyName: 'Seed Customer' }).returning();

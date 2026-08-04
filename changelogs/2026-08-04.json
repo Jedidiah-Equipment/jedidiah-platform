@@ -1,0 +1,55 @@
+{
+  "releasedAt": "2026-08-04T13:29:28.745Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Track stock by Part",
+          "description": "Configure how each Part is stocked, record opening balances and revaluations, and review its complete movement history with clearer stock and cost warnings."
+        },
+        {
+          "title": "Control inventory access",
+          "description": "Inventory and cost permissions now keep sensitive pricing hidden while still allowing stores staff to manage stock."
+        },
+        {
+          "title": "Check out and return Job stock",
+          "description": "Issue stock to Jobs and record unused quantities returned to store, with availability and commitment information shown during the workflow."
+        },
+        {
+          "title": "Manage purchase orders through receiving",
+          "description": "Create, edit, send, cancel, and print purchase orders, then record partial, complete, or excess deliveries. Partially received orders can also be closed short when the remaining quantity will not arrive."
+        },
+        {
+          "title": "Print barcode labels",
+          "description": "Generate printable barcode labels for Parts, including directly from received purchase order lines."
+        },
+        {
+          "title": "Build Parts from components",
+          "description": "Define bills of materials for internally built Parts and post builds that consume component stock and add the completed quantity at its derived cost."
+        },
+        {
+          "title": "Close out completed Jobs",
+          "description": "Use the close-out queue to find completed Jobs with outstanding stock, resolve their remaining quantities, and prevent further stock issues after close-out."
+        },
+        {
+          "title": "Work through inventory tasks more reliably",
+          "description": "Inventory tables, selectors, quantity validation, negative-stock warnings, number formatting, purchase-order PDFs, and several workflow messages now behave more consistently."
+        },
+        {
+          "title": "Open guidance for your current task",
+          "description": "A persistent Help link now opens public documentation relevant to the area you are using when documentation is configured."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Open help from any screen",
+          "description": "Use the new Help action in screen headers to open the public documentation in your browser when documentation is configured."
+        }
+      ]
+    }
+  ]
+}

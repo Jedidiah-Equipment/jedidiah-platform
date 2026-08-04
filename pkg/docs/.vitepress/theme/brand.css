@@ -1,0 +1,59 @@
+@import "@pkg/domain/fonts/geist-sans/geist.css";
+
+/*
+ * The docs site wears the same brand as the app: Geist, and the two yellows from
+ * `@pkg/domain/src/brand.ts` — #f8d300 on light, #fff000 on dark, exactly as `pkg/web` picks them.
+ */
+:root {
+  --vp-font-family-base: "Geist", ui-sans-serif, system-ui, sans-serif;
+
+  --jed-brand: #f8d300;
+  /* Yellow on white is unreadable as body-link text, so links get a darkened brand tone. The pure
+     brand colour stays on the surfaces it was made for: the wordmark, and anything on a dark field. */
+  --jed-brand-ink: #8a6d00;
+
+  --vp-c-brand-1: var(--jed-brand-ink);
+  --vp-c-brand-2: #6f5700;
+  --vp-c-brand-3: var(--jed-brand);
+  --vp-c-brand-soft: rgba(248, 211, 0, 0.16);
+
+  --vp-button-brand-bg: var(--jed-brand);
+  --vp-button-brand-hover-bg: #e6c400;
+  --vp-button-brand-text: #0a0a0a;
+  --vp-button-brand-border: transparent;
+}
+
+.dark {
+  --jed-brand: #fff000;
+  /* On a dark field the brand yellow is the most readable it ever is — no substitute needed. */
+  --jed-brand-ink: #fff000;
+
+  --vp-c-brand-1: var(--jed-brand);
+  --vp-c-brand-2: #ffe600;
+  --vp-c-brand-3: var(--jed-brand);
+  --vp-c-brand-soft: rgba(255, 240, 0, 0.16);
+
+  --vp-button-brand-bg: var(--jed-brand);
+  --vp-button-brand-hover-bg: #ffe600;
+  --vp-button-brand-text: #0a0a0a;
+}
+
+/* The wordmark, matching `AppBrand` in the web app: name in the text colour, product in the brand. */
+.jed-wordmark {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--vp-c-text-1);
+  white-space: nowrap;
+}
+
+.jed-wordmark-accent {
+  color: var(--jed-brand);
+}
+
+.jed-wordmark-suffix {
+  /* Vue collapses the template newline, so the gap is set here rather than left to whitespace. */
+  margin-left: 0.4em;
+  color: var(--vp-c-text-2);
+  font-weight: 400;
+}

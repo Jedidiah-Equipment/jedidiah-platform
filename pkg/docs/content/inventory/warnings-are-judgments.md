@@ -6,10 +6,10 @@ with the same sentence every time:
 
 > You can still post this movement.
 
-On a Checkout, a Return to Store, or a build, the submit button changes to say so — **Check out**
-becomes **Check out anyway**, **Post build** becomes **Build anyway**. Receiving a delivery asks in a
-browser confirmation box instead, ending *"Receive it anyway?"*, and the button stays **Receive**
-either way.
+On a Checkout, a Return to Store, or a build, the submit button changes to say so — **Check out
+stock** becomes **Check out anyway**, **Return stock** becomes **Return anyway**, **Post build**
+becomes **Build anyway**. Receiving a delivery asks in a browser confirmation box instead, ending
+*"Receive it anyway?"*, and the button stays **Receive** either way.
 
 Nothing is disabled. Nothing needs an override code or someone else's password.
 

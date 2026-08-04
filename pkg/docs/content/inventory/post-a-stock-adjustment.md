@@ -24,8 +24,9 @@ A **Stock adjustment posted** toast confirms it.
 
 ## Notes
 
-- An opening balance with cost access also asks for the opening cost, which is how a Part gets its
-  first moving average. See [How stock costs work](./how-stock-costs-work.md).
+- An opening balance also asks for the opening cost, which is how a Part gets its first moving
+  average — if you have cost access and the Part is not internally fabricated. Internally fabricated
+  Parts carry no material cost to set. See [How stock costs work](./how-stock-costs-work.md).
 - A periodic Part accepts only **Opening balance** and **Stock count**. Every other reason is
   rejected outright — see [Perpetual and periodic Parts](./perpetual-and-periodic-stock.md).
 - Adjustments are how a count gets onto the ledger. They are not how material gets to a Job: use

@@ -41,8 +41,10 @@ See [Warnings are judgments, not blocks](./warnings-are-judgments.md).
 
 ## Notes
 
-- You can check out against any Job, and against Parts the Job's CFO never mentioned. Off-CFO draws
-  are legitimate.
+- You can check out against Parts the Job's CFO never mentioned. Off-CFO draws are legitimate.
+- Two kinds of Job refuse a Checkout. A cancelled Job does not offer the button at all — return what
+  it holds instead. A Job that has been closed out still appears in the Job search, but the post is
+  refused: its stock life is over. See [Close out a Job's stock](./close-out-a-job.md).
 - Drawing does not add to what the Job is owed — it converts commitment into drawn stock. See
   [Stock on hand, Commitment, and Free Stock](./stock-on-hand-and-free-stock.md).
 - Periodic Parts cannot be checked out at all; they do not appear in the Part list. See

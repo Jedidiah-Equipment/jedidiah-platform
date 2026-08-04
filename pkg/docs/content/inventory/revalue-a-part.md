@@ -3,13 +3,15 @@
 Revaluing sets a Part's moving average directly. It writes a zero-quantity row to the ledger, so
 nothing moves on the rack — only what the stock is worth changes.
 
-This needs cost access. Without it the **Revalue Part** button is not on the screen.
+This needs revaluation access specifically — a separate thing from being able to see costs. Without
+it the **Revalue Part** button is not on the screen.
 
 ## Steps
 
 1. Open **Inventory**.
 2. Click **Revalue Part**.
-3. Choose the **Part**.
+3. Choose the **Part**. Built Parts are not in the list: their cost comes from what a build consumed,
+   so setting it by hand would only be overwritten.
 4. Enter the new cost. The field is **New unit cost**, or **New cost per mm** for a linear Part.
 5. Add a **Note (optional)** saying where the figure came from.
 6. Click **Post revaluation**.

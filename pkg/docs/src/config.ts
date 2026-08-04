@@ -22,6 +22,8 @@ export const docsConfig = defineConfig({
     optimizeDeps: { esbuildOptions: { target: BROWSER_TARGET } },
   },
   themeConfig: {
+    // The two-tone wordmark is rendered by the custom theme's nav slot instead.
+    siteTitle: false,
     search: { provider: 'local' },
     sidebar: buildSidebar(DOCS_SECTIONS, listContentPages()),
     outline: 'deep',

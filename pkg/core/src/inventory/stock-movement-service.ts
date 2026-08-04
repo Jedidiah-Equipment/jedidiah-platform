@@ -44,13 +44,14 @@ import {
   StockOnHandResult as StockOnHandResultSchema,
   unitClassFor,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 
 import { JobClosedOutError } from './close-out-errors.js';
-import { getJobCloseOutAt, jobIsNotClosedOut } from './close-out-service.js';
+import { getJobCloseOutAt } from './close-out-service.js';
+import { loadOpenCommitments, sumCommitmentsByPart } from './commitment-read.js';
 import {
   bucketMatches,
   insertMovement,
@@ -324,7 +325,7 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction): Promise<StockOn
       })
       .from(stockMovements)
       .orderBy(asc(stockMovements.partId), asc(stockMovements.createdAt), asc(stockMovements.id)),
-    listOpenCommitments(db),
+    loadOpenCommitments(db).then(sumCommitmentsByPart),
   ]);
 
   const movementsByPart = groupBy(movementRows, (row) => row.partId);
@@ -495,48 +496,6 @@ async function deriveReturnUnitCost(db: DatabaseTransaction, input: PostJobMovem
     .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
 
   return deriveOutstandingDrawUnitCost(rows, input.quantity);
-}
-
-async function listOpenCommitments(db: DatabaseTransaction): Promise<Map<UUID, number>> {
-  const [cfoRows, drawnRows] = await Promise.all([
-    db
-      .select({
-        cfoQuantity: sql<number>`sum(${jobCfoParts.quantity})::double precision`,
-        jobId: jobCfoAssemblies.jobId,
-        partId: jobCfoParts.partId,
-      })
-      .from(jobCfoAssemblies)
-      .innerJoin(jobCfoParts, eq(jobCfoParts.cfoAssemblyId, jobCfoAssemblies.id))
-      .innerJoin(jobs, eq(jobs.id, jobCfoAssemblies.jobId))
-      // Close-out releases the remainder permanently, so a closed Job's CFO never reaches the sum
-      // again — later returns move drawn, but there is no open demand left for them to re-open.
-      .where(and(isNull(jobs.cancelledAt), jobIsNotClosedOut(jobs.id)))
-      .groupBy(jobCfoAssemblies.jobId, jobCfoParts.partId),
-    db
-      .select({
-        drawnQuantity: sql<number>`(-sum(${stockMovements.delta}))::double precision`,
-        jobId: stockMovements.jobId,
-        partId: stockMovements.partId,
-      })
-      .from(stockMovements)
-      .innerJoin(jobs, eq(jobs.id, stockMovements.jobId))
-      .where(and(isNull(jobs.cancelledAt), inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES)))
-      .groupBy(stockMovements.jobId, stockMovements.partId),
-  ]);
-  const drawnByJobPart = new Map(
-    drawnRows.flatMap((row) => (row.jobId ? [[`${row.jobId}:${row.partId}`, row.drawnQuantity] as const] : [])),
-  );
-  const committedByPart = new Map<UUID, number>();
-
-  for (const row of cfoRows) {
-    const drawnQuantity = drawnByJobPart.get(`${row.jobId}:${row.partId}`) ?? 0;
-    committedByPart.set(
-      row.partId,
-      (committedByPart.get(row.partId) ?? 0) + deriveCommitment({ cfoQuantity: row.cfoQuantity, drawnQuantity }),
-    );
-  }
-
-  return committedByPart;
 }
 
 async function loadStockPartDetails({ db, partId }: { db: Db; partId: UUID }) {

@@ -3,13 +3,16 @@ import {
   closePurchaseOrderShort,
   createPurchaseOrder,
   getPurchaseOrder,
+  listLatePurchaseOrders,
   listPurchaseOrders,
   markPurchaseOrderSent,
   postReceipt,
   savePurchaseOrderDraft,
+  seedPurchaseOrderDrafts,
 } from '@pkg/core';
 import { renderPurchaseOrderPdf } from '@pkg/pdf';
 import {
+  LatePurchaseOrderResult,
   PostReceiptInput,
   type PurchaseOrder,
   PurchaseOrderActionInput,
@@ -18,6 +21,8 @@ import {
   PurchaseOrderListInput,
   PurchaseOrderListViewResult,
   PurchaseOrderSaveDraftInput,
+  PurchaseOrderSeedInput,
+  PurchaseOrderSeedResult,
   PurchaseOrderView,
   StockMovementPostResult,
 } from '@pkg/schema';
@@ -81,6 +86,15 @@ export const purchaseOrdersRouter = router({
       return { ...result, items: result.items.map((purchaseOrder) => toPurchaseOrderView(purchaseOrder, ctx.access)) };
     }),
 
+  /**
+   * Orders the shop is still waiting on past the day they were promised (spec §12). Read under
+   * `purchase_order:read` rather than `inventory:read`: every row is a Purchase Order, named by its
+   * code and its Supplier, and it is the PO screens it sends the reader to.
+   */
+  late: authorizedProcedure('purchase_order:read')
+    .output(LatePurchaseOrderResult)
+    .query(({ ctx }) => listLatePurchaseOrders({ db: ctx.db })),
+
   markSent: authorizedProcedure('purchase_order:send')
     .input(PurchaseOrderActionInput)
     .output(PurchaseOrderView)
@@ -113,6 +127,18 @@ export const purchaseOrdersRouter = router({
 
       return { ...result, movement: projectMovement(result.movement, ctx.access) };
     }),
+
+  /**
+   * A ticked selection becomes one draft per Supplier. Gated on `purchase_order:create` alone: the
+   * lines it writes carry no price, so seeding needs no cost access even though editing the drafts
+   * afterwards does.
+   */
+  seedDrafts: authorizedProcedure('purchase_order:create')
+    .input(PurchaseOrderSeedInput)
+    .output(PurchaseOrderSeedResult)
+    .mutation(({ ctx, input }) =>
+      mapPurchaseOrderErrors(() => seedPurchaseOrderDrafts({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
 
   saveDraft: authorizedProcedure('purchase_order:create')
     .input(PurchaseOrderSaveDraftInput)

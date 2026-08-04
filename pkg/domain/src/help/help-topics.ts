@@ -12,6 +12,7 @@ import { isRemoteAppEnv } from '../environment.js';
 export const HELP_TOPICS = {
   home: '/',
   inventory: '/inventory/stock-on-hand-and-free-stock',
+  inventoryBuyList: '/inventory/raise-purchase-orders-from-the-buy-list',
   inventoryCloseOut: '/inventory/close-out-a-job',
   jobs: '/inventory/check-out-parts-to-a-job',
   parts: '/inventory/print-part-labels',

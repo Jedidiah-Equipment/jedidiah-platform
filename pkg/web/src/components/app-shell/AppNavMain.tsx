@@ -16,6 +16,7 @@ import {
   IconMessageReport,
   IconPackages,
   IconShoppingCart,
+  IconShoppingCartPlus,
   IconTool,
   IconUsers,
   type TablerIcon,
@@ -36,7 +37,7 @@ import {
 } from '@/components/ui/sidebar.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { cn } from '@/lib/utils.js';
-import { FeedbackOpenNavIndicator, QuotesPriorityNavIndicator } from './AppNavIndicators.js';
+import { BuyListSignalNavIndicator, FeedbackOpenNavIndicator, QuotesPriorityNavIndicator } from './AppNavIndicators.js';
 
 type NavLinkProps = React.ComponentProps<typeof Link>;
 
@@ -146,6 +147,13 @@ const navSections = [
         link: linkOptions({ activeOptions: { exact: true }, to: '/inventory' }),
         icon: IconBuildingWarehouse,
         isActive: isInventoryNavPath,
+      },
+      {
+        title: 'Buy list',
+        permission: 'inventory:read',
+        link: linkOptions({ to: '/inventory/buy-list' }),
+        icon: IconShoppingCartPlus,
+        indicator: BuyListSignalNavIndicator,
       },
       {
         title: 'Purchase Orders',
@@ -356,6 +364,13 @@ export function getVisibleNavSections(canSee: (permission?: AppPermission) => bo
     .filter((section) => section.items.length > 0);
 }
 
+/** Inventory routes that are their own nav item, so the Part-history match must not claim them. */
+const inventorySiblingRoutes = ['/inventory/buy-list', '/inventory/close-out'];
+
 export function isInventoryNavPath(pathname: string): boolean {
-  return pathname === '/inventory' || (/^\/inventory\/[^/]+\/?$/.test(pathname) && pathname !== '/inventory/close-out');
+  if (inventorySiblingRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
+    return false;
+  }
+
+  return pathname === '/inventory' || /^\/inventory\/[^/]+\/?$/.test(pathname);
 }

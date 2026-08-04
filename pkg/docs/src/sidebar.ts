@@ -25,6 +25,10 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { text: 'Revalue a Part', link: '/inventory/revalue-a-part' },
       { text: "Close out a Job's stock", link: '/inventory/close-out-a-job' },
       { text: 'Print Part Labels', link: '/inventory/print-part-labels' },
+      {
+        text: 'Raise Purchase Orders from the buy list',
+        link: '/inventory/raise-purchase-orders-from-the-buy-list',
+      },
       // Declared ahead of the workflow landing; stays hidden until the page exists.
       { text: 'Run a stocktake session', link: '/inventory/run-a-stocktake-session' },
     ],

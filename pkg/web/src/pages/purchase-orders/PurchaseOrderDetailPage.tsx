@@ -195,7 +195,7 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
               purchaseOrder={purchaseOrder}
             />
             <PurchaseOrderAmendmentsCard purchaseOrderId={purchaseOrder.id} />
-            <PurchaseOrderDocumentsCard purchaseOrderId={purchaseOrder.id} />
+            <PurchaseOrderDocumentsCard canReadCosts={canReadCosts} purchaseOrderId={purchaseOrder.id} />
             <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
           </>
         )}
@@ -692,8 +692,10 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
                   >
                     Change quantity
                   </Button>
-                  {/* Receipts key off (order, Part), so only an untouched line can change its Part. */}
-                  {row.original.receivedQuantity === 0 ? (
+                  {/* Every movement keys off (order, Part), so only a line nothing has moved
+                      against can change its Part — the same test the server's guard applies. A
+                      fully returned line reads zero received but still carries its ledger rows. */}
+                  {!row.original.hasStockMovements ? (
                     <Button
                       onClick={() => onAmend('substitute-part', row.original.partId)}
                       size="sm"

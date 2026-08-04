@@ -161,6 +161,41 @@ describe('credit notes', () => {
     ).resolves.toMatchObject({ items: [{ filename: 'CN-1.pdf' }, { filename: 'PO-00001.pdf' }] });
   });
 
+  test('reports a repeated filename as a conflict rather than a raw constraint failure', async ({ context }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 25 }]);
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 10);
+    const first = await postReturn(context, { purchaseOrderId: purchaseOrder.id, quantity: 2 });
+    const second = await postReturn(context, { purchaseOrderId: purchaseOrder.id, quantity: 3 });
+
+    await uploadCreditNote({
+      actorUserId: ACTOR_ID,
+      bytes: pdfBytes(),
+      db: context.db,
+      filename: 'CN-1.pdf',
+      input: { purchaseOrderId: purchaseOrder.id, stockMovementIds: [first.id] },
+      storage: context.storage,
+    });
+
+    // A Supplier sending two credits under one reference is a naming clash the uploader can fix,
+    // the same way the Job, Quote and Product document paths report it.
+    await expect(
+      uploadCreditNote({
+        actorUserId: ACTOR_ID,
+        bytes: pdfBytes(),
+        db: context.db,
+        filename: 'CN-1.pdf',
+        input: { purchaseOrderId: purchaseOrder.id, stockMovementIds: [second.id] },
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({ code: 'document.duplicate_filename' });
+
+    // The second return is still owed a credit, and nothing half-written was left behind.
+    await expect(listReturnsAwaitingCredit({ db: context.db })).resolves.toMatchObject({ items: [{ id: second.id }] });
+    await expect(
+      listPurchaseOrderDocuments({ db: context.db, purchaseOrderId: purchaseOrder.id }),
+    ).resolves.toMatchObject({ items: [{ filename: 'CN-1.pdf' }, { filename: 'PO-00001.pdf' }] });
+  });
+
   test('has nothing to chase before anything has gone back', async ({ context }) => {
     await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 25 }]);
 

@@ -157,12 +157,13 @@ export async function getPurchaseOrder({ db, id }: { db: PurchaseOrderDb; id: UU
   const aggregate = await loadPurchaseOrderAggregate({ db, id });
   if (!aggregate) throw new PurchaseOrderNotFoundError(id);
 
-  const [documentIds, receivedQuantities] = await Promise.all([
+  const [documentIds, receivedQuantities, linesWithMovements] = await Promise.all([
     loadLatestDocumentIds({ db, purchaseOrderIds: [id] }),
     loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
+    loadLinesWithStockMovements({ db, purchaseOrderIds: [id] }),
   ]);
 
-  return mapPurchaseOrder(aggregate, documentIds.get(id) ?? null, receivedQuantities);
+  return mapPurchaseOrder(aggregate, documentIds.get(id) ?? null, receivedQuantities, linesWithMovements);
 }
 
 /**
@@ -215,9 +216,36 @@ async function loadReceivedQuantities({
   return new Map(
     rows.flatMap((row) =>
       row.purchaseOrderId
-        ? [[receivedQuantityKey(row.purchaseOrderId, row.partId), row.receivedQuantity] as const]
+        ? // Floored: an over-return posts by design (`exceeds-received` warns, never blocks), and a
+          // line that sent back more than it took in has taken in nothing — not a negative amount,
+          // which would inflate its outstanding quantity and the plant's On Order past what was ordered.
+          [[receivedQuantityKey(row.purchaseOrderId, row.partId), Math.max(0, row.receivedQuantity)] as const]
         : [],
     ),
+  );
+}
+
+/**
+ * Every line of these orders that carries any stock movement at all, keyed like the received map.
+ * Read alongside the received quantities because the two answer different questions: what a line has
+ * kept, and whether it has any ledger rows a substitution would orphan.
+ */
+async function loadLinesWithStockMovements({
+  db,
+  purchaseOrderIds,
+}: {
+  db: PurchaseOrderDb;
+  purchaseOrderIds: readonly UUID[];
+}): Promise<Set<string>> {
+  if (purchaseOrderIds.length === 0) return new Set();
+
+  const rows = await db
+    .selectDistinct({ partId: stockMovements.partId, purchaseOrderId: stockMovements.purchaseOrderId })
+    .from(stockMovements)
+    .where(inArray(stockMovements.purchaseOrderId, [...purchaseOrderIds]));
+
+  return new Set(
+    rows.flatMap((row) => (row.purchaseOrderId ? [receivedQuantityKey(row.purchaseOrderId, row.partId)] : [])),
   );
 }
 
@@ -475,13 +503,16 @@ export async function listPurchaseOrders({
     where,
     with: purchaseOrderWith,
   });
-  const [[totalRow], documentIds, receivedQuantities] = await Promise.all([
+  const [[totalRow], documentIds, receivedQuantities, linesWithMovements] = await Promise.all([
     db.select({ value: count() }).from(purchaseOrders).where(where),
     loadLatestDocumentIds({ db, purchaseOrderIds: rows.map((row) => row.id) }),
     loadReceivedQuantities({ db, purchaseOrderIds: rows.map((row) => row.id) }),
+    loadLinesWithStockMovements({ db, purchaseOrderIds: rows.map((row) => row.id) }),
   ]);
   const total = totalRow?.value ?? 0;
-  const items = rows.map((row) => mapPurchaseOrder(row, documentIds.get(row.id) ?? null, receivedQuantities));
+  const items = rows.map((row) =>
+    mapPurchaseOrder(row, documentIds.get(row.id) ?? null, receivedQuantities, linesWithMovements),
+  );
 
   return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
 }
@@ -740,6 +771,7 @@ function mapPurchaseOrder(
   row: PurchaseOrderAggregate,
   documentId: UUID | null,
   receivedQuantities: ReadonlyMap<string, number>,
+  linesWithMovements: ReadonlySet<string>,
 ): PurchaseOrder {
   const receivedByPartId = new Map(
     row.lines.map((line) => [line.partId, receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0]),
@@ -763,6 +795,7 @@ function mapPurchaseOrder(
       .sort((left, right) => left.code - right.code),
     lines: row.lines
       .map((line) => ({
+        hasStockMovements: linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
         partCode: line.part.code,
         partId: line.partId,
         partName: line.part.name,

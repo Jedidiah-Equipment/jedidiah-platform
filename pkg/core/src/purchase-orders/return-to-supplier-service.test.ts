@@ -7,10 +7,12 @@ import {
   LINEAR_PART_ID,
   PIECE_PART_ID,
   receive,
+  renderStubPdf,
   SPARE_PART_ID,
   sendOrder,
   test,
 } from './purchase-order-amendment-fixtures.js';
+import { amendPurchaseOrderSubstitutePart } from './purchase-order-amendment-service.js';
 import { getPurchaseOrder } from './purchase-order-service.js';
 
 describe('postReturnToSupplier', () => {
@@ -162,6 +164,71 @@ describe('postReturnToSupplier', () => {
 
     // The replacement delivery is expected, so it must not read as an over-receipt.
     await expect(receive(context, replaced.id, PIECE_PART_ID, 4)).resolves.toMatchObject({ warnings: [] });
+  });
+
+  test('floors an over-return at nothing received rather than owing more than was ordered', async ({ context }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 25 }]);
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 2);
+
+    // Five back off a line that took two: the excess warns and posts, but the order is owed ten,
+    // never twelve — a negative received quantity would inflate the line and the plant's On Order.
+    await postReturnToSupplier({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: null,
+        partId: PIECE_PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 5,
+        reason: 'defective',
+      },
+    });
+
+    await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
+      derivedStatus: 'sent',
+      lines: [{ hasStockMovements: true, quantity: 10, receivedQuantity: 0 }],
+    });
+  });
+
+  test('marks a fully returned line as still carrying movements, so its Part cannot be swapped', async ({
+    context,
+  }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 25 }]);
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 4);
+    await postReturnToSupplier({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: null,
+        partId: PIECE_PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 4,
+        reason: 'defective',
+      },
+    });
+
+    // Received reads zero again — the line is owed its stock — but the ledger rows are still there.
+    const after = await getPurchaseOrder({ db: context.db, id: purchaseOrder.id });
+    expect(after.lines).toMatchObject([{ hasStockMovements: true, receivedQuantity: 0 }]);
+
+    await expect(
+      amendPurchaseOrderSubstitutePart({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: {
+          id: purchaseOrder.id,
+          newPartId: SPARE_PART_ID,
+          note: 'Too late',
+          partId: PIECE_PART_ID,
+          quantity: 4,
+          unitPrice: 25,
+        },
+        pdfRenderer: renderStubPdf,
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.substitution_has_receipts' });
   });
 
   test('only ever attaches to a line of a sent order', async ({ context }) => {

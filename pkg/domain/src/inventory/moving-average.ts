@@ -1,9 +1,23 @@
-import type { StockMovementReason, StockMovementType } from '@pkg/schema';
+import type { StockMovementReason } from '@pkg/schema';
 
 export type MovingAverageMovement = {
   delta: number;
   lengthMm: number | null;
-  movementType: StockMovementType;
+  /**
+   * Spelled out rather than taken as `StockMovementType`, deliberately: the next movement type added
+   * to the ledger has to be weighed against `establishesWeightedCost` by a human, and this list
+   * failing to compile is what forces that. Widening it to the enum would let a new type default
+   * silently into "does not establish cost".
+   */
+  movementType:
+    | 'adjustment'
+    | 'build-consume'
+    | 'build-produce'
+    | 'checkout'
+    | 'receipt'
+    | 'return-to-store'
+    | 'return-to-supplier'
+    | 'revaluation';
   reason: StockMovementReason | null;
   unitCost: number | null;
 };

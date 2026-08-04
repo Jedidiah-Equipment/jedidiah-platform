@@ -17,7 +17,13 @@ import { purchaseOrderDocumentDownloadUrl } from './purchase-order-pdf.js';
  * the credit notes filed against it. Documents are immutable, so this is a history rather than a
  * folder — the newest revision is the one to send, and the older ones are what was agreed before.
  */
-export function PurchaseOrderDocumentsCard({ purchaseOrderId }: { purchaseOrderId: UUID }) {
+export function PurchaseOrderDocumentsCard({
+  canReadCosts,
+  purchaseOrderId,
+}: {
+  canReadCosts: boolean;
+  purchaseOrderId: UUID;
+}) {
   const trpc = useTRPC();
   const query = useQuery(trpc.purchaseOrders.documents.queryOptions({ purchaseOrderId }));
   const items = query.data?.items ?? [];
@@ -58,24 +64,31 @@ export function PurchaseOrderDocumentsCard({ purchaseOrderId }: { purchaseOrderI
         id: 'size',
         meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
       },
-      {
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <Button
-              render={<a href={purchaseOrderDocumentDownloadUrl(purchaseOrderId, row.original.id)} />}
-              size="sm"
-              variant="ghost"
-            >
-              <IconDownload data-icon="inline-start" /> Download
-            </Button>
-          </div>
-        ),
-        enableSorting: false,
-        header: () => <span className="sr-only">Download</span>,
-        id: 'download',
-      },
+      // Every document here is priced — the order PDF prints line prices and a credit note is a
+      // money document — and the download route refuses both without cost access. Offering the
+      // button to a price-blind reader would only ever produce a 403.
+      ...(canReadCosts
+        ? [
+            {
+              cell: ({ row }) => (
+                <div className="flex justify-end">
+                  <Button
+                    render={<a href={purchaseOrderDocumentDownloadUrl(purchaseOrderId, row.original.id)} />}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    <IconDownload data-icon="inline-start" /> Download
+                  </Button>
+                </div>
+              ),
+              enableSorting: false,
+              header: () => <span className="sr-only">Download</span>,
+              id: 'download',
+            } satisfies ColumnDef<PurchaseOrderDocumentRow>,
+          ]
+        : []),
     ],
-    [purchaseOrderId],
+    [canReadCosts, purchaseOrderId],
   );
   const table = useReactTable({
     columns,

@@ -230,14 +230,42 @@ describe('Purchase Order return values', () => {
   const [pieceLine, linearLine] = purchaseOrder.lines;
   if (!pieceLine || !linearLine) throw new Error('Purchase Order fixture is missing its lines');
 
-  it('counts what a line can still send back, net of what already went', () => {
-    // The linear line has received 5 (see the fixture); returning 2 leaves 3 that could still go.
+  it('counts what a line can still send back without double-counting the netted returns', () => {
+    // The linear line's `receivedQuantity` of 5 is what the server says it has *kept*.
     expect(outstandingReceivedQuantity({ line: linearLine, returns: [] })).toBe(5);
-    expect(outstandingReceivedQuantity({ line: linearLine, returns: [{ partId: LINEAR_PART_ID, quantity: 2 }] })).toBe(
-      3,
-    );
+
+    // A defective return has already been netted out of that 5 server-side, because it re-opens the
+    // line. Subtracting it again here would report less stock on hand than the shelf holds.
+    expect(
+      outstandingReceivedQuantity({
+        line: linearLine,
+        returns: [{ partId: LINEAR_PART_ID, quantity: 2, reason: 'defective' }],
+      }),
+    ).toBe(5);
+
+    // An `order-error` return is deliberately left in the received figure, so it comes off here.
+    expect(
+      outstandingReceivedQuantity({
+        line: linearLine,
+        returns: [{ partId: LINEAR_PART_ID, quantity: 2, reason: 'order-error' }],
+      }),
+    ).toBe(3);
+
     // Another line's returns are none of this line's business.
-    expect(outstandingReceivedQuantity({ line: linearLine, returns: [{ partId: PART_ID, quantity: 2 }] })).toBe(5);
+    expect(
+      outstandingReceivedQuantity({
+        line: linearLine,
+        returns: [{ partId: PART_ID, quantity: 2, reason: 'order-error' }],
+      }),
+    ).toBe(5);
+
+    // And it never goes negative, however the two figures happen to line up.
+    expect(
+      outstandingReceivedQuantity({
+        line: linearLine,
+        returns: [{ partId: LINEAR_PART_ID, quantity: 9, reason: 'order-error' }],
+      }),
+    ).toBe(0);
   });
 
   it('sends no length for a discrete line and blanks an empty note', () => {

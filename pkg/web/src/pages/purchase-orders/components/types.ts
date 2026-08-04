@@ -163,12 +163,17 @@ export function outstandingReceivedQuantity({
   returns,
 }: {
   line: Pick<PurchaseOrderLineView, 'partId' | 'receivedQuantity'>;
-  returns: readonly Pick<PurchaseOrderReturnRow, 'partId' | 'quantity'>[];
+  returns: readonly Pick<PurchaseOrderReturnRow, 'partId' | 'quantity' | 'reason'>[];
 }): number {
-  return (
-    line.receivedQuantity -
-    returns.reduce((total, row) => (row.partId === line.partId ? total + row.quantity : total), 0)
+  // `receivedQuantity` has already had the replacement-owed returns netted out of it server-side,
+  // because those re-open the line. Subtracting them again here would count them twice — so only
+  // the `order-error` returns, which the server deliberately left in, come off.
+  const unnettedReturns = returns.reduce(
+    (total, row) => (row.partId === line.partId && row.reason === 'order-error' ? total + row.quantity : total),
+    0,
   );
+
+  return Math.max(0, line.receivedQuantity - unnettedReturns);
 }
 
 /**

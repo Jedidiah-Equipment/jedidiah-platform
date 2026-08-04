@@ -3,6 +3,7 @@ import {
   type DatabaseTransaction,
   type Db,
   documents,
+  getUniqueViolationConstraint,
   parts,
   purchaseOrders,
   stockMovements,
@@ -28,7 +29,8 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
-import { createDocumentRecord, mapDocumentSummary } from '../documents/document-service.js';
+import { DuplicateDocumentFilenameError } from '../documents/document-errors.js';
+import { collectDocumentErrorText, createDocumentRecord, mapDocumentSummary } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { CreditNoteAlreadySettledError, CreditNoteReturnNotFoundError } from './credit-note-errors.js';
 import {
@@ -86,6 +88,10 @@ export async function uploadCreditNote({
           purchaseOrderId: input.purchaseOrderId,
           storageKey,
         },
+        // Two credit notes filed under one name on one order is a conflict the uploader can fix by
+        // renaming, the same way the Job, Quote and Product paths report it — not a 500.
+        mapInsertError: (error) =>
+          mapPurchaseOrderDocumentUniqueViolation(error, { filename, purchaseOrderId: input.purchaseOrderId }),
         storage,
       });
 
@@ -311,4 +317,33 @@ async function assertReturnsAreSettleable(tx: DatabaseTransaction, input: Credit
     .where(inArray(creditNoteSettlements.stockMovementId, [...input.stockMovementIds]))
     .limit(1);
   if (settled) throw new CreditNoteAlreadySettledError(settled.stockMovementId);
+}
+
+const PURCHASE_ORDER_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_purchase_order_id_filename_ci_unique';
+
+/** The order's own filename-uniqueness index, reported as the conflict it is (see the Quote path). */
+function mapPurchaseOrderDocumentUniqueViolation(
+  error: unknown,
+  input: { filename: string; purchaseOrderId: UUID },
+): Error {
+  const constraint = getUniqueViolationConstraint(error);
+
+  if (
+    constraint?.includes(PURCHASE_ORDER_DOCUMENT_FILENAME_UNIQUE_INDEX) ||
+    isPurchaseOrderDocumentFilenameUniqueDetail(error)
+  ) {
+    return new DuplicateDocumentFilenameError({
+      filename: input.filename,
+      ownerId: input.purchaseOrderId,
+      ownerType: 'purchase_order',
+    });
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function isPurchaseOrderDocumentFilenameUniqueDetail(error: unknown): boolean {
+  const text = collectDocumentErrorText(error).join('\n');
+
+  return text.includes('documents') && text.includes('purchase_order_id') && text.includes('lower(filename)');
 }

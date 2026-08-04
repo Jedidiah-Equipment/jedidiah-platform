@@ -1,10 +1,13 @@
 import type { DocumentPolicyViolationCode } from '@pkg/domain';
+import type { DocumentOwnerType } from '@pkg/schema';
 
 export class DuplicateDocumentFilenameError extends Error {
   readonly code = 'document.duplicate_filename';
-  readonly metadata: { filename: string; ownerId: string; ownerType: 'job' | 'product' | 'quote' };
+  // Every owner type carries a per-owner filename uniqueness index, so every one of them can raise
+  // this — taken from the schema's own set rather than a hand-kept subset that goes stale.
+  readonly metadata: { filename: string; ownerId: string; ownerType: DocumentOwnerType };
 
-  constructor(input: { filename: string; ownerId: string; ownerType: 'job' | 'product' | 'quote' }) {
+  constructor(input: { filename: string; ownerId: string; ownerType: DocumentOwnerType }) {
     super(`Document filename already exists for ${input.ownerType}: ${input.filename}`);
     this.name = 'DuplicateDocumentFilenameError';
     this.metadata = input;

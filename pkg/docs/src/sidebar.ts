@@ -20,15 +20,21 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { text: 'Post a Receipt', link: '/inventory/post-a-receipt' },
       { text: 'Check out Parts to a Job', link: '/inventory/check-out-parts-to-a-job' },
       { text: 'Return to Store', link: '/inventory/return-to-store' },
-      { text: 'Run a stocktake session', link: '/inventory/run-a-stocktake-session' },
+      { text: 'Build stock', link: '/inventory/build-stock' },
+      { text: 'Post a stock adjustment', link: '/inventory/post-a-stock-adjustment' },
+      { text: 'Revalue a Part', link: '/inventory/revalue-a-part' },
+      { text: "Close out a Job's stock", link: '/inventory/close-out-a-job' },
       { text: 'Print Part Labels', link: '/inventory/print-part-labels' },
+      // Declared ahead of the workflow landing; stays hidden until the page exists.
+      { text: 'Run a stocktake session', link: '/inventory/run-a-stocktake-session' },
     ],
   },
   {
     text: 'Inventory concepts',
     items: [
+      { text: 'Stock on hand, Commitment, and Free Stock', link: '/inventory/stock-on-hand-and-free-stock' },
+      { text: 'Perpetual and periodic Parts', link: '/inventory/perpetual-and-periodic-stock' },
       { text: 'Warnings are judgments, not blocks', link: '/inventory/warnings-are-judgments' },
-      { text: 'Perpetual and periodic stock', link: '/inventory/perpetual-and-periodic-stock' },
       { text: 'How stock costs work', link: '/inventory/how-stock-costs-work' },
     ],
   },

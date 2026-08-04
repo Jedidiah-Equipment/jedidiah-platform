@@ -1,12 +1,5 @@
 import { createStableRowKeys, formatCurrency, formatDate, hasPermission } from '@pkg/domain';
-import {
-  PART_UNIT_OF_MEASURE_LABELS,
-  type Part,
-  type PurchaseOrderLineInput,
-  type PurchaseOrderSaveDraftInput,
-  type PurchaseOrderView,
-  type UUID,
-} from '@pkg/schema';
+import type { Part, PurchaseOrderLineInput, PurchaseOrderSaveDraftInput, PurchaseOrderView, UUID } from '@pkg/schema';
 import { IconBan, IconDownload, IconEye, IconFlagCheck, IconPlus, IconSend, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -26,6 +19,7 @@ import { usePartOptions, useSupplierOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { formatPurchaseUnitLabel } from '@/utils/part-quantity-format.js';
 import { allJobsInput } from '../jobs/components/all-jobs-input.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
@@ -425,7 +419,7 @@ const PurchaseOrderLinesDataTable: React.FC<{
       {
         cell: ({ row }) => {
           const part = eligibleParts.find((candidate) => candidate.id === row.original.line.partId);
-          return part ? purchaseUnitLabel(part) : '—';
+          return part ? formatPurchaseUnitLabel(part) : '—';
         },
         header: 'Unit',
         id: 'unit',
@@ -586,7 +580,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
         id: 'part',
       },
       {
-        accessorFn: purchaseUnitLabel,
+        accessorFn: formatPurchaseUnitLabel,
         header: 'Unit',
         id: 'unit',
       },
@@ -683,17 +677,4 @@ function statusDescription(purchaseOrder: PurchaseOrderView): string {
 
 function isMeasuredUnit(unitOfMeasure: PurchaseOrderView['lines'][number]['unitOfMeasure']): boolean {
   return unitOfMeasure === 'kg' || unitOfMeasure === 'litre';
-}
-
-/** A linear Part is ordered as whole pieces of its standard length, never as millimetres (spec §2). */
-function purchaseUnitLabel({
-  standardPurchaseLengthMm,
-  unitOfMeasure,
-}: {
-  standardPurchaseLengthMm: number | null;
-  unitOfMeasure: PurchaseOrderView['lines'][number]['unitOfMeasure'];
-}): string {
-  return unitOfMeasure === 'mm' && standardPurchaseLengthMm !== null
-    ? `Pieces · ${standardPurchaseLengthMm} mm each`
-    : PART_UNIT_OF_MEASURE_LABELS[unitOfMeasure];
 }

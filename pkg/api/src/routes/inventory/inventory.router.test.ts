@@ -281,3 +281,21 @@ describe('inventory cost projection', () => {
     expect(stores).toMatchObject({ movement: { unitCost: null }, warnings: [] });
   });
 });
+
+describe('buy list', () => {
+  test('serves the shortfall to any inventory reader and refuses everyone else', async ({ context }) => {
+    const stores = context.createCaller(mockSession('stores'));
+    await stores.inventory.postAdjustment({ delta: 1, partId: context.part.id, reason: 'opening-balance' });
+    await stores.inventory.postCheckout({ jobId: context.job.id, partId: context.part.id, quantity: 1 });
+
+    await expect(context.createAnonCaller().inventory.buyList()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+    await expect(context.createCaller(mockSession('sales')).inventory.buyList()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+
+    // Nothing left on the shelf, and no price anywhere on the row for the gate to hide.
+    await expect(stores.inventory.buyList()).resolves.toMatchObject({
+      items: [{ partId: context.part.id, quantity: 0, reasons: ['out-of-stock'], suggestedQuantity: 0 }],
+    });
+  });
+});

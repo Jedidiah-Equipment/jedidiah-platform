@@ -1,6 +1,7 @@
 import {
   closeOutJob,
   getStockMovementHistory,
+  listBuyList,
   listCloseOutQueue,
   listJobStock,
   listJobs,
@@ -13,6 +14,7 @@ import {
 import { getJobDisplayName } from '@pkg/domain';
 import {
   BuildPostResult,
+  BuyListResult,
   CloseOutJobInput,
   CloseOutQueueResult,
   InventoryJobOptionListInput,
@@ -61,6 +63,14 @@ export const inventoryRouter = router({
         })),
       };
     }),
+
+  /**
+   * Quantity-only by design: the row carries what is short and what is coming, never a price. That
+   * keeps it readable by the stores role the cost gate holds prices back from (spec §11).
+   */
+  buyList: authorizedProcedure('inventory:read')
+    .output(BuyListResult)
+    .query(({ ctx }) => listBuyList({ db: ctx.db })),
 
   stockOnHand: authorizedProcedure('inventory:read')
     .output(StockOnHandResult)

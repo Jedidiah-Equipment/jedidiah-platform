@@ -10,6 +10,7 @@ import {
   purchaseOrders,
   quotes,
   stockMovements,
+  supplier,
   user,
 } from '@pkg/db';
 import {
@@ -44,13 +45,15 @@ import {
   StockOnHandResult as StockOnHandResultSchema,
   unitClassFor,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
-
+import { loadOpenOrderLines } from '../purchase-orders/purchase-order-service.js';
 import { JobClosedOutError } from './close-out-errors.js';
-import { getJobCloseOutAt, jobIsNotClosedOut } from './close-out-service.js';
+import { getJobCloseOutAt } from './close-out-service.js';
+
+import { loadOpenCommitments, sumCommitmentsByPart } from './commitment-read.js';
 import {
   bucketMatches,
   insertMovement,
@@ -217,17 +220,26 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
     return JobStockResultSchema.parse({ items: [], job: jobFacts });
   }
 
-  const partRows = await db
-    .select({
-      code: parts.code,
-      id: parts.id,
-      name: parts.name,
-      standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
-      unitOfMeasure: parts.unitOfMeasure,
-    })
-    .from(parts)
-    .where(inArray(parts.id, partIds))
-    .orderBy(asc(parts.code), asc(parts.id));
+  // Free and on-order ride this read because the Job's stock tab is one of the two places buying is
+  // decided (spec §3, §4). Sourcing them here rather than from a second report keeps the tab's
+  // suggestion identical to the buy list's, so the two surfaces cannot ask for different quantities.
+  const [partRows, plantStock] = await Promise.all([
+    db
+      .select({
+        code: parts.code,
+        id: parts.id,
+        isInternallyFabricated: parts.isInternallyFabricated,
+        name: parts.name,
+        standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
+        supplierName: supplier.companyName,
+        unitOfMeasure: parts.unitOfMeasure,
+      })
+      .from(parts)
+      .leftJoin(supplier, eq(supplier.id, parts.supplierId))
+      .where(inArray(parts.id, partIds))
+      .orderBy(asc(parts.code), asc(parts.id)),
+    loadPlantStockPosition({ db, partIds }),
+  ]);
 
   return JobStockResultSchema.parse({
     items: partRows.map((part) => {
@@ -239,20 +251,65 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
         cfoQuantity,
         committedQuantity: deriveCommitment({ cfoQuantity, drawnQuantity, isClosedOut: commitmentReleased }),
         drawnQuantity,
+        freeQuantity: plantStock.freeByPart.get(part.id) ?? 0,
+        isInternallyFabricated: part.isInternallyFabricated,
         lengthBuckets: movementBuckets
           .flatMap((row) =>
             row.lengthMm === null ? [] : [{ drawnQuantity: row.drawnQuantity, lengthMm: row.lengthMm }],
           )
           .sort((left, right) => left.lengthMm - right.lengthMm),
+        onOrder: plantStock.onOrderByPart.get(part.id) ?? 0,
         partCode: part.code,
         partId: part.id,
         partName: part.name,
         standardPurchaseLengthMm: part.standardPurchaseLengthMm,
+        supplierName: part.supplierName,
         unitOfMeasure: part.unitOfMeasure,
       };
     }),
     job: jobFacts,
   });
+}
+
+/**
+ * Free Stock and On Order for a named set of Parts. Both are plant-wide facts — every Job's
+ * commitment eats the same shelf, and every open order feeds it — so they are read across the plant
+ * and narrowed to the Parts asked for, never scoped to the calling Job.
+ */
+async function loadPlantStockPosition({
+  db,
+  partIds,
+}: {
+  db: Db;
+  partIds: readonly UUID[];
+}): Promise<{ freeByPart: Map<string, number>; onOrderByPart: Map<string, number> }> {
+  const [quantityRows, commitments, openOrderLines] = await Promise.all([
+    db
+      .select({
+        partId: stockMovements.partId,
+        quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
+      })
+      .from(stockMovements)
+      // A revaluation moves cost, never quantity, so it must not reach a stock-on-hand sum.
+      .where(and(inArray(stockMovements.partId, [...partIds]), ne(stockMovements.movementType, 'revaluation')))
+      .groupBy(stockMovements.partId),
+    loadOpenCommitments(db, partIds).then(sumCommitmentsByPart),
+    loadOpenOrderLines({ db, partIds }),
+  ]);
+  const onOrderByPart = new Map<string, number>();
+
+  for (const line of openOrderLines) {
+    onOrderByPart.set(line.partId, (onOrderByPart.get(line.partId) ?? 0) + line.outstandingQuantity);
+  }
+
+  const quantityByPart = new Map(quantityRows.map((row) => [row.partId, row.quantity]));
+
+  return {
+    freeByPart: new Map(
+      partIds.map((partId) => [partId, (quantityByPart.get(partId) ?? 0) - (commitments.get(partId) ?? 0)]),
+    ),
+    onOrderByPart,
+  };
 }
 
 async function loadJobStockJob({ db, jobId }: { db: Db; jobId: UUID }) {
@@ -324,7 +381,7 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction): Promise<StockOn
       })
       .from(stockMovements)
       .orderBy(asc(stockMovements.partId), asc(stockMovements.createdAt), asc(stockMovements.id)),
-    listOpenCommitments(db),
+    loadOpenCommitments(db).then(sumCommitmentsByPart),
   ]);
 
   const movementsByPart = groupBy(movementRows, (row) => row.partId);
@@ -495,48 +552,6 @@ async function deriveReturnUnitCost(db: DatabaseTransaction, input: PostJobMovem
     .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
 
   return deriveOutstandingDrawUnitCost(rows, input.quantity);
-}
-
-async function listOpenCommitments(db: DatabaseTransaction): Promise<Map<UUID, number>> {
-  const [cfoRows, drawnRows] = await Promise.all([
-    db
-      .select({
-        cfoQuantity: sql<number>`sum(${jobCfoParts.quantity})::double precision`,
-        jobId: jobCfoAssemblies.jobId,
-        partId: jobCfoParts.partId,
-      })
-      .from(jobCfoAssemblies)
-      .innerJoin(jobCfoParts, eq(jobCfoParts.cfoAssemblyId, jobCfoAssemblies.id))
-      .innerJoin(jobs, eq(jobs.id, jobCfoAssemblies.jobId))
-      // Close-out releases the remainder permanently, so a closed Job's CFO never reaches the sum
-      // again — later returns move drawn, but there is no open demand left for them to re-open.
-      .where(and(isNull(jobs.cancelledAt), jobIsNotClosedOut(jobs.id)))
-      .groupBy(jobCfoAssemblies.jobId, jobCfoParts.partId),
-    db
-      .select({
-        drawnQuantity: sql<number>`(-sum(${stockMovements.delta}))::double precision`,
-        jobId: stockMovements.jobId,
-        partId: stockMovements.partId,
-      })
-      .from(stockMovements)
-      .innerJoin(jobs, eq(jobs.id, stockMovements.jobId))
-      .where(and(isNull(jobs.cancelledAt), inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES)))
-      .groupBy(stockMovements.jobId, stockMovements.partId),
-  ]);
-  const drawnByJobPart = new Map(
-    drawnRows.flatMap((row) => (row.jobId ? [[`${row.jobId}:${row.partId}`, row.drawnQuantity] as const] : [])),
-  );
-  const committedByPart = new Map<UUID, number>();
-
-  for (const row of cfoRows) {
-    const drawnQuantity = drawnByJobPart.get(`${row.jobId}:${row.partId}`) ?? 0;
-    committedByPart.set(
-      row.partId,
-      (committedByPart.get(row.partId) ?? 0) + deriveCommitment({ cfoQuantity: row.cfoQuantity, drawnQuantity }),
-    );
-  }
-
-  return committedByPart;
 }
 
 async function loadStockPartDetails({ db, partId }: { db: Db; partId: UUID }) {

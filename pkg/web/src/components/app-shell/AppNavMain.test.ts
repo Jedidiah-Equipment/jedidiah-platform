@@ -14,6 +14,7 @@ describe('AppNavMain', () => {
       'Suppliers',
       'Parts',
       'Inventory',
+      'Buy list',
       'Purchase Orders',
       'Close-out',
     ]);
@@ -28,10 +29,11 @@ describe('AppNavMain', () => {
     expect(inventory?.items.map((item) => item.title)).toEqual(['Suppliers']);
   });
 
-  it('highlights Inventory history without highlighting Close-out routes', () => {
+  it('highlights Inventory history without highlighting the routes that own a nav item', () => {
     expect(isInventoryNavPath('/inventory')).toBe(true);
     expect(isInventoryNavPath('/inventory/9bd0c2cb-d97f-4b34-beba-c03e5541c96d')).toBe(true);
     expect(isInventoryNavPath('/inventory/close-out')).toBe(false);
     expect(isInventoryNavPath('/inventory/close-out/job-id')).toBe(false);
+    expect(isInventoryNavPath('/inventory/buy-list')).toBe(false);
   });
 });

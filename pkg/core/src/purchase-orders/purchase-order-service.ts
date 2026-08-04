@@ -16,7 +16,7 @@ import {
   supplier,
   user,
 } from '@pkg/db';
-import { derivePurchaseOrderProgress, derivePurchaseOrderStatus } from '@pkg/domain';
+import { compareNullableDateOnly, derivePurchaseOrderProgress, derivePurchaseOrderStatus } from '@pkg/domain';
 import {
   type AuthId,
   DateIso,
@@ -61,6 +61,7 @@ import {
   PurchaseOrderFullyReceivedError,
   PurchaseOrderHasReceiptsError,
   PurchaseOrderInvalidQuantityError,
+  PurchaseOrderLineNotPricedError,
   PurchaseOrderNoReceiptsError,
   PurchaseOrderNotDraftError,
   PurchaseOrderNotFoundError,
@@ -124,17 +125,32 @@ export async function createPurchaseOrder({
   db: Db;
   input: PurchaseOrderCreateInput;
 }): Promise<PurchaseOrder> {
-  return db.transaction(async (tx) => {
-    await assertSupplierExists({ db: tx, supplierId: input.supplierId });
-    const [row] = await tx
-      .insert(purchaseOrders)
-      .values({ expectedDeliveryDate: input.expectedDeliveryDate, supplierId: input.supplierId })
-      .returning();
-    if (!row) throw new Error('Purchase Order insert did not return a row');
+  return db.transaction((tx) => createPurchaseOrderWithin({ actorUserId, db: tx, input }));
+}
 
-    await recordAuditCreate({ actorUserId, db: tx, descriptor: purchaseOrderAuditDescriptor, input: row });
-    return getPurchaseOrder({ db: tx, id: row.id });
-  });
+/**
+ * The create itself, inside a caller's transaction. Seeding a selection raises one order per
+ * Supplier and must not leave half of them behind on a failure, so it owns the transaction and
+ * calls this rather than the wrapper above.
+ */
+export async function createPurchaseOrderWithin({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: DatabaseTransaction;
+  input: PurchaseOrderCreateInput;
+}): Promise<PurchaseOrder> {
+  await assertSupplierExists({ db, supplierId: input.supplierId });
+  const [row] = await db
+    .insert(purchaseOrders)
+    .values({ expectedDeliveryDate: input.expectedDeliveryDate, supplierId: input.supplierId })
+    .returning();
+  if (!row) throw new Error('Purchase Order insert did not return a row');
+
+  await recordAuditCreate({ actorUserId, db, descriptor: purchaseOrderAuditDescriptor, input: row });
+  return getPurchaseOrder({ db, id: row.id });
 }
 
 export async function getPurchaseOrder({ db, id }: { db: PurchaseOrderDb; id: UUID }): Promise<PurchaseOrder> {
@@ -215,6 +231,80 @@ export async function loadPurchaseOrderProgress({
   });
 }
 
+/** One open line of a sent order: what is still owed on it, and the order it is owed by. */
+export type OpenOrderLine = {
+  expectedDeliveryDate: string | null;
+  outstandingQuantity: number;
+  partId: UUID;
+  purchaseOrderCode: number;
+  purchaseOrderId: UUID;
+};
+
+/**
+ * Every line still owed by a Supplier, per Part (spec §3's "on order").
+ *
+ * The open set is `sent`, un-cancelled (`cancelled` replaces the stored `sent`, so the status test
+ * covers it), and not closed short — closing short is exactly the assertion that a remainder is
+ * never arriving, so it must stop counting as cover the moment it is made. Over-receipt floors at
+ * zero per line: a line that took 12 against 10 owes nothing, and never negative cover to some
+ * other line of the same Part.
+ *
+ * Ordered earliest-promised first, nulls last, so a caller's first line for a Part is the one worth
+ * naming — "PO-0042, expected Thursday" beside the shortfall it covers. `partIds` narrows the scan
+ * for a caller that only wants a handful of Parts, without changing what any of them is owed.
+ */
+export async function loadOpenOrderLines({
+  db,
+  partIds,
+}: {
+  db: PurchaseOrderDb;
+  partIds?: readonly UUID[];
+}): Promise<OpenOrderLine[]> {
+  // Narrowing by Part is exact: an open line belongs to exactly one Part, so dropping other Parts
+  // cannot change what is owed on the ones asked for.
+  const partScope = partIds === undefined ? undefined : [...partIds];
+  if (partScope?.length === 0) return [];
+
+  const lines = await db
+    .select({
+      expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+      partId: purchaseOrderLines.partId,
+      purchaseOrderCode: purchaseOrders.code,
+      purchaseOrderId: purchaseOrders.id,
+      quantity: purchaseOrderLines.quantity,
+    })
+    .from(purchaseOrderLines)
+    .innerJoin(purchaseOrders, eq(purchaseOrders.id, purchaseOrderLines.purchaseOrderId))
+    .where(
+      and(
+        eq(purchaseOrders.status, 'sent'),
+        isNull(purchaseOrders.closedShortAt),
+        partScope ? inArray(purchaseOrderLines.partId, partScope) : undefined,
+      ),
+    );
+
+  const receivedQuantities = await loadReceivedQuantities({
+    db,
+    purchaseOrderIds: [...new Set(lines.map((line) => line.purchaseOrderId))],
+  });
+
+  return lines
+    .flatMap((line) => {
+      const received = receivedQuantities.get(receivedQuantityKey(line.purchaseOrderId, line.partId)) ?? 0;
+      const outstandingQuantity = Math.max(0, line.quantity - received);
+
+      return outstandingQuantity > 0 ? [{ ...line, outstandingQuantity }] : [];
+    })
+    .sort(compareOpenOrderLines);
+}
+
+function compareOpenOrderLines(left: OpenOrderLine, right: OpenOrderLine): number {
+  return (
+    compareNullableDateOnly(left.expectedDeliveryDate, right.expectedDeliveryDate) ||
+    left.purchaseOrderCode - right.purchaseOrderCode
+  );
+}
+
 /** The as-sent PDF of each order; amendments (#1055) add revisions, so the newest row is the current one. */
 async function loadLatestDocumentIds({
   db,
@@ -279,52 +369,63 @@ export async function savePurchaseOrderDraft({
   db: Db;
   input: PurchaseOrderSaveDraftInput;
 }): Promise<PurchaseOrder> {
-  return db.transaction(async (tx) => {
-    assertDraft(await lockPurchaseOrder(tx, input.id));
-    const before = await getPurchaseOrder({ db: tx, id: input.id });
-    // A Job link is a set membership, so a repeated id is the same link, not a second one. Collapsing
-    // here keeps the existence check exact and makes a core caller that repeats one idempotent rather
-    // than a unique-constraint failure; the router contract still refuses duplicates outright.
-    const jobIds = [...new Set(input.jobIds)];
+  return db.transaction((tx) => savePurchaseOrderDraftWithin({ actorUserId, db: tx, input }));
+}
 
-    await assertSupplierExists({ db: tx, supplierId: input.supplierId });
-    await assertLinePartsMatchSupplier({ db: tx, lines: input.lines, supplierId: input.supplierId });
-    await assertJobsExist({ db: tx, jobIds });
+/** The draft save itself, inside a caller's transaction — see {@link createPurchaseOrderWithin}. */
+export async function savePurchaseOrderDraftWithin({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: DatabaseTransaction;
+  input: PurchaseOrderSaveDraftInput;
+}): Promise<PurchaseOrder> {
+  assertDraft(await lockPurchaseOrder(db, input.id));
+  const before = await getPurchaseOrder({ db, id: input.id });
+  // A Job link is a set membership, so a repeated id is the same link, not a second one. Collapsing
+  // here keeps the existence check exact and makes a core caller that repeats one idempotent rather
+  // than a unique-constraint failure; the router contract still refuses duplicates outright.
+  const jobIds = [...new Set(input.jobIds)];
 
-    await tx
-      .update(purchaseOrders)
-      .set({
-        expectedDeliveryDate: input.expectedDeliveryDate,
-        supplierId: input.supplierId,
-        updatedAt: new Date(),
-      })
-      .where(eq(purchaseOrders.id, input.id));
-    // Both child collections are rewritten wholesale; an empty list simply leaves the scope cleared.
-    await tx.delete(purchaseOrderLines).where(eq(purchaseOrderLines.purchaseOrderId, input.id));
-    if (input.lines.length > 0) {
-      await tx.insert(purchaseOrderLines).values(
-        input.lines.map((line) => ({
-          partId: line.partId,
-          purchaseOrderId: input.id,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-        })),
-      );
-    }
+  await assertSupplierExists({ db, supplierId: input.supplierId });
+  await assertLinePartsMatchSupplier({ db, lines: input.lines, supplierId: input.supplierId });
+  await assertJobsExist({ db, jobIds });
 
-    await tx.delete(purchaseOrderJobLinks).where(eq(purchaseOrderJobLinks.purchaseOrderId, input.id));
-    if (jobIds.length > 0) {
-      await tx.insert(purchaseOrderJobLinks).values(jobIds.map((jobId) => ({ jobId, purchaseOrderId: input.id })));
-    }
+  await db
+    .update(purchaseOrders)
+    .set({
+      expectedDeliveryDate: input.expectedDeliveryDate,
+      supplierId: input.supplierId,
+      updatedAt: new Date(),
+    })
+    .where(eq(purchaseOrders.id, input.id));
+  // Both child collections are rewritten wholesale; an empty list simply leaves the scope cleared.
+  await db.delete(purchaseOrderLines).where(eq(purchaseOrderLines.purchaseOrderId, input.id));
+  if (input.lines.length > 0) {
+    await db.insert(purchaseOrderLines).values(
+      input.lines.map((line) => ({
+        partId: line.partId,
+        purchaseOrderId: input.id,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+      })),
+    );
+  }
 
-    const after = await getPurchaseOrder({ db: tx, id: input.id });
-    const changes = diffAuditUpdate(purchaseOrderDraftAuditDescriptor, before, after);
-    if (changes) {
-      await recordAuditUpdate({ actorUserId, after, changes, db: tx, descriptor: purchaseOrderDraftAuditDescriptor });
-    }
+  await db.delete(purchaseOrderJobLinks).where(eq(purchaseOrderJobLinks.purchaseOrderId, input.id));
+  if (jobIds.length > 0) {
+    await db.insert(purchaseOrderJobLinks).values(jobIds.map((jobId) => ({ jobId, purchaseOrderId: input.id })));
+  }
 
-    return after;
-  });
+  const after = await getPurchaseOrder({ db, id: input.id });
+  const changes = diffAuditUpdate(purchaseOrderDraftAuditDescriptor, before, after);
+  if (changes) {
+    await recordAuditUpdate({ actorUserId, after, changes, db, descriptor: purchaseOrderDraftAuditDescriptor });
+  }
+
+  return after;
 }
 
 export async function renderPurchaseOrderPreview({
@@ -363,6 +464,7 @@ export async function markPurchaseOrderSent({
       assertDraft(before);
       const purchaseOrder = await getPurchaseOrder({ db: tx, id });
       if (purchaseOrder.lines.length === 0) throw new PurchaseOrderEmptyError(id);
+      assertLinesArePriced(purchaseOrder);
 
       const sentAt = new Date();
       const filename = `${purchaseOrder.code}.pdf`;
@@ -568,6 +670,17 @@ async function lockPurchaseOrder(tx: DatabaseTransaction, id: UUID): Promise<Pur
   const [row] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)).for('update');
   if (!row) throw new PurchaseOrderNotFoundError(id);
   return row;
+}
+
+/**
+ * A zero price on a draft line means "not priced yet" — that is how a line raised from the buy list
+ * is written, since that screen is quantity-only under the cost gate. Sending is the assertion the
+ * price was agreed (spec §4), and it is the last point before a receipt would stamp that zero onto
+ * the ledger as the Part's cost.
+ */
+function assertLinesArePriced(purchaseOrder: PurchaseOrder): void {
+  const unpriced = purchaseOrder.lines.find((line) => line.unitPrice === 0);
+  if (unpriced) throw new PurchaseOrderLineNotPricedError(unpriced.partCode);
 }
 
 function assertDraft(row: PurchaseOrderRow): void {

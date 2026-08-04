@@ -8,6 +8,7 @@ import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js
 import { UUID } from '../common/uuid.js';
 import { JobListInput } from '../jobs/job.js';
 import { PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
+import { SupplierCompanyName } from '../suppliers/supplier.js';
 import { declareInventoryCostFields, InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
 
 export type StockMovementType = z.infer<typeof StockMovementType>;
@@ -199,11 +200,18 @@ export const JobStockRow = z.object({
   cfoQuantity: z.number().finite(),
   committedQuantity: z.number().finite(),
   drawnQuantity: z.number().finite(),
+  /** Plant-wide free stock for the Part, so the tab that decides buying shows what is already here. */
+  freeQuantity: z.number().finite(),
+  /** A Built Part is made in-house, so it can hold commitment but never reach a Purchase Order. */
+  isInternallyFabricated: z.boolean(),
   lengthBuckets: z.array(JobStockLengthBucket),
+  /** Σ(ordered − received) over open sent lines — shown beside free, never folded into it (§3). */
+  onOrder: z.number().finite(),
   partCode: z.string(),
   partId: UUID,
   partName: z.string(),
   standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
+  supplierName: SupplierCompanyName.nullable(),
   unitOfMeasure: PartUnitOfMeasure,
 });
 

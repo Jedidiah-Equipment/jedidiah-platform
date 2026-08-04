@@ -20,6 +20,7 @@ export * from './forms/stable-serialize.js';
 export * from './help/help-topics.js';
 export * from './inventory/bom.js';
 export * from './inventory/build.js';
+export * from './inventory/buy-list.js';
 export * from './inventory/close-out.js';
 export * from './inventory/commitment.js';
 export * from './inventory/draw-cost.js';

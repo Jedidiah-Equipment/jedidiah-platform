@@ -64,6 +64,22 @@ export class PurchaseOrderPartNotPurchasableError extends Error {
   }
 }
 
+/**
+ * A line created from the buy list is written unpriced — a zero standing for "not priced yet", since
+ * the buy list is quantity-only under the cost gate. Sending is the human assertion that the price
+ * was agreed (spec §4), and a receipt against a zero-priced line would stamp that zero onto the
+ * ledger as cost, establishing a zero moving average for a Part that should read "no cost yet"
+ * (CONTEXT.md). This is the check that keeps the assertion honest, and it is why an order that
+ * genuinely costs nothing has to say so on the draft rather than by omission.
+ */
+export class PurchaseOrderLineNotPricedError extends Error {
+  readonly code = 'purchase_order.line_not_priced' as const;
+
+  constructor(readonly partCode: string) {
+    super(`Set a unit price for ${partCode} before sending this Purchase Order.`);
+  }
+}
+
 export class PurchaseOrderInvalidQuantityError extends Error {
   readonly code = 'purchase_order.invalid_quantity' as const;
 
@@ -151,6 +167,7 @@ export type PurchaseOrderCoreError =
   | PurchaseOrderHasReceiptsError
   | PurchaseOrderInvalidQuantityError
   | PurchaseOrderLineNotFoundError
+  | PurchaseOrderLineNotPricedError
   | PurchaseOrderNoReceiptsError
   | PurchaseOrderNotDraftError
   | PurchaseOrderNotFoundError
@@ -170,6 +187,7 @@ export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrder
     error instanceof PurchaseOrderHasReceiptsError ||
     error instanceof PurchaseOrderInvalidQuantityError ||
     error instanceof PurchaseOrderLineNotFoundError ||
+    error instanceof PurchaseOrderLineNotPricedError ||
     error instanceof PurchaseOrderNoReceiptsError ||
     error instanceof PurchaseOrderNotDraftError ||
     error instanceof PurchaseOrderNotFoundError ||

@@ -197,6 +197,33 @@ describe('purchaseOrders router', () => {
   });
 });
 
+describe('buy-list seeding and late orders', () => {
+  test('seeds drafts under purchase_order:create and lists late orders under purchase_order:read', async ({
+    context,
+  }) => {
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+
+    // Stores may receive against an order but never raise one.
+    await expect(
+      stores.purchaseOrders.createFromSelection({ jobId: null, lines: [{ partId: PART_ID, quantity: 3 }] }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(context.createCaller(mockSession('sales')).purchaseOrders.late()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+
+    await expect(
+      admin.purchaseOrders.createFromSelection({ jobId: context.jobId, lines: [{ partId: PART_ID, quantity: 3 }] }),
+    ).resolves.toMatchObject({ purchaseOrders: [{ supplierName: 'Router Supplies' }] });
+
+    // Seeded drafts are unpriced, so the cost gate has nothing to hide from a price-blind reader.
+    await expect(stores.purchaseOrders.list({})).resolves.toMatchObject({
+      items: [{ jobs: [{ id: context.jobId }], lines: [{ quantity: 3, unitPrice: null }] }],
+    });
+    await expect(stores.purchaseOrders.late()).resolves.toEqual({ items: [] });
+  });
+});
+
 async function sendOrder(admin: AppRouterCaller, quantity: number) {
   const purchaseOrder = await admin.purchaseOrders.create({ supplierId: SUPPLIER_ID });
   await admin.purchaseOrders.saveDraft({

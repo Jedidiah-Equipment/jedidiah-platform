@@ -62,19 +62,34 @@ export function adjustmentInput(partId: string, overrides: Partial<PostAdjustmen
   };
 }
 
+/**
+ * An order in the shape the on-order and late-order reads judge: sent unless told otherwise, with a
+ * priced line per Part. `expectedDeliveryDate` defaults to unpromised, which is what the receiving
+ * suites want and what the late-order read is required to ignore.
+ */
 export async function seedSentPurchaseOrder(
   db: Db,
   supplierId: string,
-  lines: ReadonlyArray<{ partId: string; quantity: number; unitPrice: number }>,
-  status: 'draft' | 'sent' = 'sent',
+  lines: ReadonlyArray<{ partId: string; quantity: number; unitPrice?: number }>,
+  {
+    expectedDeliveryDate = null,
+    status = 'sent',
+  }: { expectedDeliveryDate?: string | null; status?: 'draft' | 'sent' } = {},
 ): Promise<string> {
   const [purchaseOrder] = await db
     .insert(purchaseOrders)
-    .values({ sentAt: status === 'sent' ? new Date('2026-08-02T08:00:00.000Z') : null, status, supplierId })
+    .values({
+      expectedDeliveryDate,
+      sentAt: status === 'sent' ? new Date('2026-08-02T08:00:00.000Z') : null,
+      status,
+      supplierId,
+    })
     .returning({ id: purchaseOrders.id });
   if (!purchaseOrder) throw new Error('Purchase Order insert did not return a row');
 
-  await db.insert(purchaseOrderLines).values(lines.map((line) => ({ ...line, purchaseOrderId: purchaseOrder.id })));
+  await db
+    .insert(purchaseOrderLines)
+    .values(lines.map((line) => ({ unitPrice: 10, ...line, purchaseOrderId: purchaseOrder.id })));
 
   return purchaseOrder.id;
 }

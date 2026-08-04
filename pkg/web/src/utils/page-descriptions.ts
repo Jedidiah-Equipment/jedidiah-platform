@@ -13,6 +13,9 @@ export const jobListPageDescription =
 
 export const inventoryPageDescription = 'Current stock quantities, length buckets, count age, and ledger value';
 
+export const buyListPageDescription =
+  'Parts short for Jobs, below their minimum, or off the shelf — ranked by when the work starts';
+
 export const partsPageDescription = 'Reusable purchasable items across all Suppliers';
 
 export const productsPageDescription = 'Product models with assemblies, pricing, and build documents';

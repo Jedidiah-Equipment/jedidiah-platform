@@ -34,6 +34,23 @@ export function formatPartQuantity(quantity: number, unitOfMeasure: PartUnitOfMe
   return `${quantity} ${UNIT_SUFFIXES[unitOfMeasure]}`;
 }
 
+/**
+ * How a Part is *ordered*, for the surfaces that raise and read Purchase Order lines: a linear Part
+ * is bought as whole pieces of its standard length, never as millimetres (spec §2). Shared so a
+ * seeded line and the draft it opens in cannot label the same quantity two different ways.
+ */
+export function formatPurchaseUnitLabel({
+  standardPurchaseLengthMm,
+  unitOfMeasure,
+}: {
+  standardPurchaseLengthMm: number | null;
+  unitOfMeasure: PartUnitOfMeasure;
+}): string {
+  return unitOfMeasure === 'mm' && standardPurchaseLengthMm !== null
+    ? `Pieces · ${standardPurchaseLengthMm} mm each`
+    : PART_UNIT_OF_MEASURE_LABELS[unitOfMeasure];
+}
+
 /** Metres are display formatting of `mm`, never a second unit (spec §2). */
 export function formatLengthMetres(lengthMm: number): string {
   return `${formatNumber(lengthMm / 1_000, { decimals: lengthMm % 1_000 === 0 ? 0 : 1 })} m`;

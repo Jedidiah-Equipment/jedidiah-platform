@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input.js';
 import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
 
+const INTL_MAX_FRACTION_DIGITS = 100;
+
 type NumberFieldInputProps = Omit<
   React.ComponentProps<typeof Input>,
   'aria-invalid' | 'id' | 'name' | 'onBlur' | 'onChange' | 'type' | 'value'
@@ -92,7 +94,8 @@ function decimalPlaces(value: number): number {
   const [coefficient = '', exponentText = '0'] = String(value).toLowerCase().split('e');
   const fractionLength = coefficient.split('.')[1]?.length ?? 0;
 
-  return Math.max(0, fractionLength - Number(exponentText));
+  // Intl.NumberFormat refuses more than 100 fraction digits, and a keyed `1e-101` asks for 101.
+  return Math.min(INTL_MAX_FRACTION_DIGITS, Math.max(0, fractionLength - Number(exponentText)));
 }
 
 export function parseNumberFieldValue(text: string, emptyValue = NaN): number {

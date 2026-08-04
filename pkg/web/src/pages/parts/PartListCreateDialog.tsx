@@ -86,7 +86,15 @@ export function PartListCreateDialog({
             {(field) => <field.TextField autoComplete="off" label="Supplier code" />}
           </form.AppField>
           <form.AppField name="unitOfMeasure">
-            {(field) => <field.SelectField label="Unit" options={partUnitOfMeasureOptions} />}
+            {(field) => (
+              <field.SelectField
+                label="Unit"
+                onValueCommit={(unitOfMeasure) => {
+                  if (unitOfMeasure !== 'mm') form.setFieldValue('standardPurchaseLengthMm', NaN);
+                }}
+                options={partUnitOfMeasureOptions}
+              />
+            )}
           </form.AppField>
           <form.Subscribe selector={(state) => state.values.unitOfMeasure}>
             {(unitOfMeasure) =>

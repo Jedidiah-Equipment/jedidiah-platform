@@ -39,6 +39,14 @@ describe('parseNumberFieldValue', () => {
   });
 });
 
+describe('formatNumberFieldValue fraction digits', () => {
+  it('formats a value with more fraction digits than Intl accepts', () => {
+    // Intl.NumberFormat throws above 100 fraction digits, and `1e-101` parses straight out of the field.
+    expect(() => formatNumberFieldValue(1e-101)).not.toThrow();
+    expect(formatNumberFieldValue(0.125)).toBe('0.125');
+  });
+});
+
 describe('hasNumberFieldValueChanged', () => {
   it('treats empty numeric values as unchanged', () => {
     expect(hasNumberFieldValueChanged(NaN, NaN)).toBe(false);

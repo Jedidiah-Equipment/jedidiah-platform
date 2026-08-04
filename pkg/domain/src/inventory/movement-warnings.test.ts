@@ -26,10 +26,14 @@ describe('deriveStockMovementWarnings', () => {
     expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 2 })).toEqual(['exceeds-cfo']);
   });
 
-  it('warns on an off-CFO draw, which has no demand behind it at all', () => {
+  it('stays quiet on an off-CFO draw, which no CFO figure can be exceeded on', () => {
     const context = { ...stocked, cfoQuantity: 0 };
 
-    expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 1 })).toEqual(['exceeds-cfo']);
+    expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 1 })).toEqual([]);
+    // No draw size reintroduces it: past the rack it is the stock that is wrong, never the plan.
+    expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 500 })).toEqual([
+      'negative-stock-on-hand',
+    ]);
   });
 
   it('warns when a draw would take the length bucket negative', () => {
@@ -41,10 +45,18 @@ describe('deriveStockMovementWarnings', () => {
   });
 
   it('raises both draw warnings together', () => {
+    const context = { ...stocked, bucketQuantityOnHand: 0, cfoQuantity: 1 };
+
+    expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 2 })).toEqual([
+      'exceeds-cfo',
+      'negative-stock-on-hand',
+    ]);
+  });
+
+  it('still flags a short rack on the off-CFO draw it no longer flags the CFO for', () => {
     const context = { ...stocked, bucketQuantityOnHand: 0, cfoQuantity: 0 };
 
     expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 1 })).toEqual([
-      'exceeds-cfo',
       'negative-stock-on-hand',
     ]);
   });

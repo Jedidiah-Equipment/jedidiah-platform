@@ -49,7 +49,7 @@ describe('Job stock movements', () => {
     ).resolves.toMatchObject({ movement: { unitCost: 10 }, warnings: [] });
   });
 
-  test('posts an off-CFO checkout for a Custom Job and returns soft overdraw and negative-SOH warnings', async ({
+  test('posts an off-CFO checkout for a Custom Job, flagging the short rack but not a CFO it never had', async ({
     context,
   }) => {
     await postAdjustment({
@@ -79,8 +79,29 @@ describe('Job stock movements', () => {
         reason: null,
         unitCost: 12,
       },
-      warnings: ['exceeds-cfo', 'negative-stock-on-hand'],
+      warnings: ['negative-stock-on-hand'],
     });
+  });
+
+  test('warns once a Job that did plan the Part is drawn past its CFO', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    const movement = {
+      jobId: context.jobs.cfo.id,
+      lengthMm: null,
+      partId: context.parts.piece.id,
+    };
+
+    // The fixture's CFO demands 5 of this Part, and stock covers every draw here.
+    await expect(
+      postJobMovement({ actorUserId, db: context.db, input: { ...movement, quantity: 5 }, movementType: 'checkout' }),
+    ).resolves.toMatchObject({ warnings: [] });
+    await expect(
+      postJobMovement({ actorUserId, db: context.db, input: { ...movement, quantity: 1 }, movementType: 'checkout' }),
+    ).resolves.toMatchObject({ warnings: ['exceeds-cfo'] });
   });
 
   test('enforces unit classes and stamps a linear draw with the selected piece cost', async ({ context }) => {

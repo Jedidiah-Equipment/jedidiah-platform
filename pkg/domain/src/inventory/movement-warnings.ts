@@ -4,7 +4,11 @@ import type { StockMovementWarningCode } from '@pkg/schema';
 export type StockMovementContext = {
   /** Stock on hand for this Part and length bucket, before the movement. */
   bucketQuantityOnHand: number;
-  /** CFO demand for this Job and Part, summed across its assemblies. */
+  /**
+   * CFO demand for this Job and Part, summed across its assemblies. Zero means the Job never
+   * planned this Part at all — a custom Job has no CFO, and a Unit-bound one can still be drawn
+   * off it — because a CFO line's quantity is constrained positive.
+   */
   cfoQuantity: number;
   /** Net drawn for this Job, Part and length bucket — the quantity a return can reverse. */
   drawnBucketQuantity: number;
@@ -32,7 +36,11 @@ export function deriveStockMovementWarnings({
   }
 
   const warnings: StockMovementWarningCode[] = [];
-  if (context.drawnQuantity + quantity > context.cfoQuantity) warnings.push('exceeds-cfo');
+  // Only a Job that planned this Part can be drawn past its plan. Off-CFO draws are valid, and
+  // saying "exceeds the CFO" where there is no CFO trains Stores to dismiss the warning that counts.
+  if (context.cfoQuantity > 0 && context.drawnQuantity + quantity > context.cfoQuantity) {
+    warnings.push('exceeds-cfo');
+  }
   if (context.bucketQuantityOnHand - quantity < 0) warnings.push('negative-stock-on-hand');
 
   return warnings;

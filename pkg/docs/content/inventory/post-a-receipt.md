@@ -1,0 +1,40 @@
+# Post a Receipt
+
+A Receipt is how stock arrives. It attaches to one line of one Purchase Order, and posting it *is*
+the moment the stock exists — there is no separate paper step afterwards.
+
+## Steps
+
+1. Open **Purchase Orders** and select the order the delivery is against.
+2. Find the **Receiving** card. Each line shows **Received** as a running `x / y`, and
+   **Outstanding** as what is still to come.
+3. Click **Receive** on the line that arrived.
+4. Check **Quantity received**. It is prefilled with the outstanding quantity, which is right when
+   the delivery completes the line and wrong when it is a part delivery — change it to what actually
+   arrived.
+5. For a linear Part, set **Length (mm)** only if the pieces came in a length other than the
+   standard one. Leave it blank otherwise; the field tells you which length it will assume.
+6. If you have cost access, leave **Unit cost override** blank to use the Purchase Order price. Fill
+   it only when the invoice disagrees with the order.
+7. Click **Receive**.
+8. If a browser confirmation box appears asking *"Receive it anyway?"*, read what it says and accept
+   it if the delivery really was that size.
+
+A **Delivery received** toast confirms it, and the Part's stock on hand goes up immediately.
+
+## If it warns you
+
+Receiving more than the line ordered raises *This receipt takes the line past the quantity ordered.*
+— in the yellow panel while you type, and again in the confirmation box at step 8. Accepting is
+usually right; suppliers round up to a full box. See
+[Warnings are judgments, not blocks](./warnings-are-judgments.md).
+
+## Notes
+
+- Receive against the line the stock actually arrived for. A Receipt is a fact about one line, and
+  posting it against a convenient one instead makes both lines wrong.
+- Split deliveries are normal: receive what came, and the line stays open with the rest outstanding.
+- Once a line has received anything, a **Print label** button appears next to it. Labels go on stock
+  that has landed — see [Print Part Labels](./print-part-labels.md).
+- Periodic Parts accept Receipts like any other Part. That Receipt is the baseline their next count
+  corrects — see [Perpetual and periodic Parts](./perpetual-and-periodic-stock.md).

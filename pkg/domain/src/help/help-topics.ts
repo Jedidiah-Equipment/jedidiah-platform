@@ -6,17 +6,17 @@ import { isRemoteAppEnv } from '../environment.js';
  *
  * An area whose workflow has no page written yet points at the docs landing page, so every entry
  * always names a page that exists — a test in `@pkg/docs` walks these paths and fails when one does
- * not resolve, which is what stops a renamed doc from breaking Help on a tablet instead of in CI.
- * Repoint an entry in the same PR that writes its page.
+ * not resolve, which is what stops a renamed doc from breaking Help on a tablet instead of under
+ * `pnpm verify`. Repoint an entry in the same PR that writes its page.
  */
 export const HELP_TOPICS = {
   home: '/',
-  inventory: '/',
-  inventoryCloseOut: '/',
-  jobs: '/',
-  parts: '/',
+  inventory: '/inventory/stock-on-hand-and-free-stock',
+  inventoryCloseOut: '/inventory/close-out-a-job',
+  jobs: '/inventory/check-out-parts-to-a-job',
+  parts: '/inventory/print-part-labels',
   products: '/',
-  purchaseOrders: '/',
+  purchaseOrders: '/inventory/post-a-receipt',
   quotes: '/',
   suppliers: '/',
   units: '/',

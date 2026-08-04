@@ -12,6 +12,9 @@
   server only after VitePress restarts on a config change.
 - `src/help-topics.test.ts` walks `HELP_TOPICS` from `@pkg/domain` and fails when a topic names a page this
   site does not have. Renaming or moving a page means repointing its registry entry in the same PR.
+- The site wears the app's brand: Geist and the two brand yellows in `.vitepress/theme/brand.css`, and the
+  favicon copied into `content/public/`. `@pkg/domain/assets/brand` owns both — VitePress can only serve
+  what is in `public/`, so `src/favicon.test.ts` compares the bytes rather than trusting the copy.
 - Navigation comes from `DOCS_SECTIONS` in `src/sidebar.ts` filtered to the pages that exist. Declare a page
   there before writing it if you like — it stays hidden until the file lands. Never ship a "coming soon"
   stub, and never leave a written page out of `DOCS_SECTIONS`; a test fails on the orphan.

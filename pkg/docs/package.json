@@ -11,10 +11,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "vitepress": "^1.6.4"
+    "@pkg/domain": "workspace:*",
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.40"
   },
   "devDependencies": {
-    "@pkg/domain": "workspace:*",
     "vitest": "^4.1.10"
   }
 }

@@ -250,9 +250,21 @@ export type OpenOrderLine = {
  * other line of the same Part.
  *
  * Ordered earliest-promised first, nulls last, so a caller's first line for a Part is the one worth
- * naming — "PO-0042, expected Thursday" beside the shortfall it covers.
+ * naming — "PO-0042, expected Thursday" beside the shortfall it covers. `partIds` narrows the scan
+ * for a caller that only wants a handful of Parts, without changing what any of them is owed.
  */
-export async function loadOpenOrderLines({ db }: { db: PurchaseOrderDb }): Promise<OpenOrderLine[]> {
+export async function loadOpenOrderLines({
+  db,
+  partIds,
+}: {
+  db: PurchaseOrderDb;
+  partIds?: readonly UUID[];
+}): Promise<OpenOrderLine[]> {
+  // Narrowing by Part is exact: an open line belongs to exactly one Part, so dropping other Parts
+  // cannot change what is owed on the ones asked for.
+  const partScope = partIds === undefined ? undefined : [...partIds];
+  if (partScope?.length === 0) return [];
+
   const lines = await db
     .select({
       expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
@@ -263,7 +275,13 @@ export async function loadOpenOrderLines({ db }: { db: PurchaseOrderDb }): Promi
     })
     .from(purchaseOrderLines)
     .innerJoin(purchaseOrders, eq(purchaseOrders.id, purchaseOrderLines.purchaseOrderId))
-    .where(and(eq(purchaseOrders.status, 'sent'), isNull(purchaseOrders.closedShortAt)));
+    .where(
+      and(
+        eq(purchaseOrders.status, 'sent'),
+        isNull(purchaseOrders.closedShortAt),
+        partScope ? inArray(purchaseOrderLines.partId, partScope) : undefined,
+      ),
+    );
 
   const receivedQuantities = await loadReceivedQuantities({
     db,

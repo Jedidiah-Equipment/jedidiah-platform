@@ -293,8 +293,8 @@ async function loadPlantStockPosition({
       // A revaluation moves cost, never quantity, so it must not reach a stock-on-hand sum.
       .where(and(inArray(stockMovements.partId, [...partIds]), ne(stockMovements.movementType, 'revaluation')))
       .groupBy(stockMovements.partId),
-    loadOpenCommitments(db).then(sumCommitmentsByPart),
-    loadOpenOrderLines({ db }),
+    loadOpenCommitments(db, partIds).then(sumCommitmentsByPart),
+    loadOpenOrderLines({ db, partIds }),
   ]);
   const onOrderByPart = new Map<string, number>();
 

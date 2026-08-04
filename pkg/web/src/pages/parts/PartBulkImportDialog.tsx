@@ -10,6 +10,7 @@ import { Button, type ButtonSize } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -233,7 +234,8 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
                 </AlertDescription>
               </Alert>
             ) : null}
-            <DialogFooter className="mt-0" showCloseButton>
+            <DialogFooter className="mt-0">
+              <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
               {result ? (
                 <Button onClick={resetForm} type="button" variant="link">
                   Import Another

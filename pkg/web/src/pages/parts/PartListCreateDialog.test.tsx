@@ -20,6 +20,7 @@ vi.mock('@/components/form/index.js', () => ({
   CreateEntityDialog: ({ children }: { children: (form: React.ReactNode) => React.ReactNode }) => {
     const field = {
       CheckboxField: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
+      ComboboxField: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
       NumberField: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
       SelectField: ({ label, onValueCommit }: { label: React.ReactNode; onValueCommit?: (value: string) => void }) => {
         if (onValueCommit) commitUnitOfMeasure = onValueCommit;

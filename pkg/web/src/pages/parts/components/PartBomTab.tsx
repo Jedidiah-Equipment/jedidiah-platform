@@ -5,10 +5,10 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
 import { Button } from '@/components/ui/button.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
@@ -92,26 +92,18 @@ function PartBomEditor({
         <div key={line.key} className="grid grid-cols-[1fr_8rem_auto] items-end gap-2">
           <Field>
             <FieldLabel htmlFor={`bom-component-${index}`}>Component</FieldLabel>
-            <Select
+            <SearchableCombobox
               disabled={!canEdit}
-              onValueChange={(componentPartId) =>
-                updateLine(setLines, index, { componentPartId: componentPartId ?? '' })
-              }
+              emptyMessage="No Parts found."
+              inputId={`bom-component-${index}`}
+              onValueChange={(componentPartId) => updateLine(setLines, index, { componentPartId })}
+              options={componentOptions.map((part) => ({
+                label: `${part.code} · ${part.name}`,
+                value: part.id,
+              }))}
+              placeholder="Search Parts"
               value={line.componentPartId}
-            >
-              <SelectTrigger className="w-full" id={`bom-component-${index}`}>
-                <SelectValue placeholder="Select Part" />
-              </SelectTrigger>
-              <SelectContent align="start">
-                <SelectGroup>
-                  {componentOptions.map((part) => (
-                    <SelectItem key={part.id} value={part.id}>
-                      {part.code} · {part.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            />
           </Field>
           <Field>
             <FieldLabel htmlFor={`bom-quantity-${index}`}>Quantity</FieldLabel>

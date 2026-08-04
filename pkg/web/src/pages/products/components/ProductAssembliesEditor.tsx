@@ -809,10 +809,10 @@ const AssemblyPartPickerField: React.FC<AssemblyPartPickerFieldProps> = ({
           aria-invalid={isInvalid}
           className="w-full"
           onBlur={field.handleBlur}
-          placeholder="Select part"
+          placeholder="Search Parts"
         />
         <ComboboxContent>
-          <ComboboxEmpty>No parts found.</ComboboxEmpty>
+          <ComboboxEmpty>No Parts found.</ComboboxEmpty>
           <ComboboxList>
             {(option: Part) => (
               <ComboboxItem key={option.id} value={option}>

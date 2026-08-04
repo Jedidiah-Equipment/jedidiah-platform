@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/combobox.js';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -26,7 +27,7 @@ import {
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { usePartCategoryOptions, usePartOptions, usePartStorageLocationOptions } from '@/hooks/options/index.js';
-import { partLabelBatchUrl } from './part-label.js';
+import { partLabelBatchModeLabels, partLabelBatchUrl } from './part-label.js';
 
 type BatchMode = PartLabelSelection['selection'];
 
@@ -74,13 +75,13 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
               <FieldLabel htmlFor="part-label-batch-mode">Parts to label</FieldLabel>
               <Select onValueChange={(value) => value && setMode(value as BatchMode)} value={mode}>
                 <SelectTrigger className="w-full" id="part-label-batch-mode">
-                  <SelectValue />
+                  <SelectValue>{partLabelBatchModeLabels[mode]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Parts</SelectItem>
-                  <SelectItem value="category">By category</SelectItem>
-                  <SelectItem value="storageLocation">By storage location</SelectItem>
-                  <SelectItem value="ids">Choose Parts</SelectItem>
+                  <SelectItem value="all">{partLabelBatchModeLabels.all}</SelectItem>
+                  <SelectItem value="category">{partLabelBatchModeLabels.category}</SelectItem>
+                  <SelectItem value="storageLocation">{partLabelBatchModeLabels.storageLocation}</SelectItem>
+                  <SelectItem value="ids">{partLabelBatchModeLabels.ids}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -123,7 +124,7 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
                 <FieldLabel htmlFor="part-label-parts">Parts</FieldLabel>
                 <Combobox
                   items={parts.items.map((part) => part.id)}
-                  itemToStringValue={(id) => partLabels.get(id) ?? id}
+                  itemToStringLabel={(id) => partLabels.get(id) ?? id}
                   multiple
                   onValueChange={setPartIds}
                   value={partIds}
@@ -151,7 +152,8 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
               </Field>
             ) : null}
           </div>
-          <DialogFooter showCloseButton>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
             {selection ? (
               <Button render={<a href={partLabelBatchUrl(selection)} rel="noreferrer" target="_blank" />}>
                 <IconPrinter data-icon="inline-start" />

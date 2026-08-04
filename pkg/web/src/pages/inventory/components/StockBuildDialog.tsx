@@ -3,10 +3,10 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -45,7 +45,6 @@ export function StockBuildDialog({
   const showMutationError = useApiMutationErrorToast();
   const [builtPartId, setBuiltPartId] = useState(buildableParts[0]?.partId ?? '');
   const acknowledgedWarnings = useRef<readonly StockMovementWarningCode[]>([]);
-  const builtPart = buildableParts.find((part) => part.partId === builtPartId);
   const bomQuery = useQuery(trpc.parts.bom.queryOptions({ partId: builtPartId }, { enabled: builtPartId !== '' }));
 
   const bomLines = useMemo(
@@ -104,29 +103,21 @@ export function StockBuildDialog({
         <>
           <Field>
             <FieldLabel htmlFor="stock-build-part">Built Part</FieldLabel>
-            <Select
+            <SearchableCombobox
+              emptyMessage="No built Parts found."
+              inputId="stock-build-part"
               onValueChange={(partId) => {
-                setBuiltPartId(partId ?? '');
+                setBuiltPartId(partId);
                 // A different Part has different components, so held edits no longer mean anything.
                 form.setFieldValue('consumption', {});
               }}
+              options={buildableParts.map((part) => ({
+                label: `${part.partCode} · ${part.partName}`,
+                value: part.partId,
+              }))}
+              placeholder="Search Parts"
               value={builtPartId}
-            >
-              <SelectTrigger className="w-full" id="stock-build-part">
-                <SelectValue placeholder="Select Part">
-                  {builtPart ? `${builtPart.partCode} · ${builtPart.partName}` : null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent align="start">
-                <SelectGroup>
-                  {buildableParts.map((part) => (
-                    <SelectItem key={part.partId} value={part.partId}>
-                      {part.partCode} · {part.partName}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            />
           </Field>
           <form.AppField name="quantity">
             {(field) => <field.NumberField label="Units built" min={0.001} step="0.001" />}

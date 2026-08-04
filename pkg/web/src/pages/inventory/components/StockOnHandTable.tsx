@@ -1,71 +1,148 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
 import type { StockOnHandRow, UUID } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react';
+import {
+  type ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
+import { useMemo } from 'react';
 
+import { DataTable } from '@/components/data-table/DataTable.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { formatLengthBucket, formatPartQuantity, getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 
 export function StockOnHandTable({
+  errorMessage,
+  isLoading = false,
   items,
   onOpenHistory,
   showCosts,
 }: {
-  items: readonly StockOnHandRow[];
+  errorMessage?: string | undefined;
+  isLoading?: boolean;
+  items: StockOnHandRow[];
   onOpenHistory: (partId: UUID) => void;
   showCosts: boolean;
 }) {
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Part</TableHead>
-          <TableHead>Stock on hand</TableHead>
-          <TableHead>Free</TableHead>
-          <TableHead>Count status</TableHead>
-          {showCosts ? <TableHead>Average cost</TableHead> : null}
-          {showCosts ? <TableHead>Value</TableHead> : null}
-          <TableHead className="text-right">History</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.map((item) => (
-          <TableRow key={item.partId}>
-            <TableCell>
-              <span className="block font-medium">{item.partName}</span>
-              <span className="block text-muted-foreground text-xs">{item.partCode}</span>
-            </TableCell>
-            <TableCell className="tabular-nums">
-              <StockQuantity className="block" quantity={item.quantity}>
-                {formatPartQuantity(item.quantity, item.unitOfMeasure)}
-              </StockQuantity>
-              {item.buckets.map((bucket) =>
-                bucket.lengthMm === null ? null : (
-                  <StockQuantity
-                    key={bucket.lengthMm}
-                    className="block text-muted-foreground text-xs"
-                    quantity={bucket.quantity}
-                  >
-                    {formatLengthBucket(bucket.lengthMm, bucket.quantity)}
-                  </StockQuantity>
-                ),
-              )}
-            </TableCell>
-            <TableCell className="tabular-nums">{formatPartQuantity(item.free, item.unitOfMeasure)}</TableCell>
-            <TableCell>{formatCountStatus(item)}</TableCell>
-            {showCosts ? <TableCell>{formatAverageCost(item)}</TableCell> : null}
-            {showCosts ? <TableCell>{formatInventoryValue(item.totalValue)}</TableCell> : null}
-            <TableCell className="text-right">
-              <Button onClick={() => onOpenHistory(item.partId)} size="sm" variant="link">
-                View history
-              </Button>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+  const columns = useMemo<ColumnDef<StockOnHandRow>[]>(
+    () => createStockOnHandColumns({ onOpenHistory, showCosts }),
+    [onOpenHistory, showCosts],
   );
+  const table = useReactTable({
+    columns,
+    data: items,
+    enableColumnFilters: false,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+  const total = table.getFilteredRowModel().rows.length;
+
+  return (
+    <DataTable
+      emptyMessage="No Parts are available for inventory reporting."
+      errorMessage={errorMessage}
+      globalFilterPlaceholder="Search stock on hand..."
+      isLoading={isLoading}
+      paginationMode="complete"
+      table={table}
+      total={total}
+      totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
+    />
+  );
+}
+
+function createStockOnHandColumns({
+  onOpenHistory,
+  showCosts,
+}: {
+  onOpenHistory: (partId: UUID) => void;
+  showCosts: boolean;
+}): ColumnDef<StockOnHandRow>[] {
+  return [
+    {
+      accessorFn: (item) => `${item.partName} ${item.partCode}`,
+      cell: ({ row }) => (
+        <>
+          <span className="block font-medium">{row.original.partName}</span>
+          <span className="block text-muted-foreground text-xs">{row.original.partCode}</span>
+        </>
+      ),
+      header: 'Part',
+      id: 'part',
+    },
+    {
+      accessorKey: 'quantity',
+      cell: ({ row }) => (
+        <>
+          <StockQuantity className="block" quantity={row.original.quantity}>
+            {formatPartQuantity(row.original.quantity, row.original.unitOfMeasure)}
+          </StockQuantity>
+          {row.original.buckets.map((bucket) =>
+            bucket.lengthMm === null ? null : (
+              <StockQuantity
+                key={bucket.lengthMm}
+                className="block text-muted-foreground text-xs"
+                quantity={bucket.quantity}
+              >
+                {formatLengthBucket(bucket.lengthMm, bucket.quantity)}
+              </StockQuantity>
+            ),
+          )}
+        </>
+      ),
+      header: 'Stock on hand',
+      meta: {
+        cellClassName: 'tabular-nums',
+      },
+    },
+    {
+      accessorKey: 'free',
+      cell: ({ row }) => formatPartQuantity(row.original.free, row.original.unitOfMeasure),
+      header: 'Free',
+      meta: {
+        cellClassName: 'tabular-nums',
+      },
+    },
+    {
+      accessorFn: formatCountStatus,
+      header: 'Count status',
+      id: 'countStatus',
+    },
+    ...(showCosts
+      ? [
+          {
+            accessorKey: 'averageUnitCost',
+            cell: ({ row }) => formatAverageCost(row.original),
+            header: 'Average cost',
+          } satisfies ColumnDef<StockOnHandRow>,
+          {
+            accessorKey: 'totalValue',
+            cell: ({ row }) => formatInventoryValue(row.original.totalValue),
+            header: 'Value',
+          } satisfies ColumnDef<StockOnHandRow>,
+        ]
+      : []),
+    {
+      cell: ({ row }) => (
+        <Button onClick={() => onOpenHistory(row.original.partId)} size="sm" variant="link">
+          View history
+        </Button>
+      ),
+      enableSorting: false,
+      header: 'History',
+      id: 'history',
+      meta: {
+        cellClassName: 'text-right',
+        headerClassName: 'text-right',
+      },
+    },
+  ];
 }
 
 /**

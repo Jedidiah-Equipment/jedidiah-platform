@@ -75,14 +75,15 @@ export function StockAdjustmentDialog({
         <>
           <form.AppField name="partId">
             {(field) => (
-              <field.SelectField
+              <field.ComboboxField
+                emptyMessage="No Parts found."
                 label="Part"
                 onValueCommit={() => {
-                  // SelectField commits first; defer until the form exposes the new Part to the dependent validator.
+                  // The selection commits first; defer until the form exposes the new Part to the dependent validator.
                   queueMicrotask(() => void form.validateField('delta', 'blur'));
                 }}
                 options={partSelectOptions(parts)}
-                placeholder="Select Part"
+                placeholder="Search Parts"
               />
             )}
           </form.AppField>

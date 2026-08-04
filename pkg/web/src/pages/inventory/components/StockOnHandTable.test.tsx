@@ -50,6 +50,10 @@ describe('StockOnHandTable', () => {
       <StockOnHandTable items={result.items} onOpenHistory={vi.fn()} showCosts={true} />,
     );
 
+    expect(html).toContain('Search stock on hand...');
+    expect(html).toContain('2 parts');
+    expect(html).toContain('rounded-lg border');
+    expect(html).not.toContain('aria-label="Filter ');
     // One row per Part now, with its length buckets listed underneath the piece count.
     expect(html).toContain('6 m × 2');
     expect(html).toContain('3 m × 1');

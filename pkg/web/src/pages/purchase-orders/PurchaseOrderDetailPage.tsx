@@ -45,22 +45,22 @@ export const PurchaseOrderDetailPage: React.FC<{ purchaseOrderId: UUID }> = ({ p
   const trpc = useTRPC();
   const query = useQuery(trpc.purchaseOrders.get.queryOptions({ id: purchaseOrderId }));
 
+  if (query.data) {
+    return <PurchaseOrderDetail purchaseOrder={query.data} queryError={query.error} />;
+  }
+
   return (
-    <PageLayout
-      description={
-        query.data ? `${query.data.supplier.companyName} · ${statusDescription(query.data)}` : 'Purchase Order'
-      }
-      size="lg"
-      title={query.data?.code ?? 'Loading Purchase Order...'}
-    >
+    <PageLayout description="Purchase Order" size="lg" title="Loading Purchase Order...">
       {query.isPending ? <Skeleton className="h-64 w-full" /> : null}
       <ErrorMessage error={query.error} fallbackMessage="Unable to load this Purchase Order." />
-      {query.data ? <PurchaseOrderDetail purchaseOrder={query.data} /> : null}
     </PageLayout>
   );
 };
 
-const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ purchaseOrder }) => {
+const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryError: unknown }> = ({
+  purchaseOrder,
+  queryError,
+}) => {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const canReadCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
@@ -115,54 +115,65 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ p
   );
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PurchaseOrderStatusBadge status={purchaseOrder.derivedStatus} />
-        <PurchaseOrderActions
-          canCancel={canCancel}
-          canCloseShort={canCloseShort}
-          canEdit={canEdit}
-          canReadCosts={canReadCosts}
-          canSend={canSend}
-          isPending={isLifecycleActionPending}
-          purchaseOrder={purchaseOrder}
-          runAfterSave={runAfterSave}
-        />
+    <PageLayout
+      actions={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <PurchaseOrderActions
+            canCancel={canCancel}
+            canCloseShort={canCloseShort}
+            canEdit={canEdit}
+            canReadCosts={canReadCosts}
+            canSend={canSend}
+            isPending={isLifecycleActionPending}
+            purchaseOrder={purchaseOrder}
+            runAfterSave={runAfterSave}
+          />
+          <PurchaseOrderStatusBadge size="lg" status={purchaseOrder.derivedStatus} />
+        </div>
+      }
+      description={`${purchaseOrder.supplier.companyName} · ${statusDescription(purchaseOrder)}`}
+      size="lg"
+      title={purchaseOrder.code}
+    >
+      <ErrorMessage error={queryError} fallbackMessage="Unable to refresh this Purchase Order." />
+      <div className="grid gap-4">
+        {canEdit ? (
+          <form {...formProps} className="grid gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Order details</CardTitle>
+                <CardAction>
+                  <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
+                </CardAction>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <SupplierField commit={autosave.commit} form={form} />
+                <form.AppField name="expectedDeliveryDate">
+                  {(field) => (
+                    <field.DatePickerField
+                      label="Expected delivery date"
+                      onValueCommit={autosave.commit}
+                      placeholder="Optional"
+                    />
+                  )}
+                </form.AppField>
+              </CardContent>
+            </Card>
+            <PurchaseOrderLinesCard commit={autosave.commit} form={form} supplierId={purchaseOrder.supplierId} />
+            <PurchaseOrderJobsCard commit={autosave.commit} form={form} />
+          </form>
+        ) : (
+          <>
+            <ReadOnlyDetailsCard purchaseOrder={purchaseOrder} />
+            {canReceive ? (
+              <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+            ) : null}
+            <ReadOnlyLinesCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+            <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
+          </>
+        )}
       </div>
-      {canEdit ? (
-        <form {...formProps} className="grid gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Order details</CardTitle>
-              <CardAction>
-                <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
-              </CardAction>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              <SupplierField commit={autosave.commit} form={form} />
-              <form.AppField name="expectedDeliveryDate">
-                {(field) => (
-                  <field.DatePickerField
-                    label="Expected delivery date"
-                    onValueCommit={autosave.commit}
-                    placeholder="Optional"
-                  />
-                )}
-              </form.AppField>
-            </CardContent>
-          </Card>
-          <PurchaseOrderLinesCard commit={autosave.commit} form={form} supplierId={purchaseOrder.supplierId} />
-          <PurchaseOrderJobsCard commit={autosave.commit} form={form} />
-        </form>
-      ) : (
-        <>
-          <ReadOnlyDetailsCard purchaseOrder={purchaseOrder} />
-          {canReceive ? <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} /> : null}
-          <ReadOnlyLinesCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
-          <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
-        </>
-      )}
-    </div>
+    </PageLayout>
   );
 };
 
@@ -174,11 +185,13 @@ const SupplierField: React.FC<{ commit: () => void; form: DraftForm }> = ({ comm
   return (
     <form.AppField name="supplierId">
       {(field) => (
-        <field.SelectField
+        <field.ComboboxField
           disabled={suppliers.isPending}
+          emptyMessage="No suppliers found."
           label="Supplier"
           onValueCommit={commit}
           options={suppliers.selectOptions}
+          placeholder={suppliers.isPending ? 'Loading suppliers...' : 'Search suppliers'}
         />
       )}
     </form.AppField>
@@ -378,10 +391,12 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
                           <TableCell>
                             <form.AppField name={`lines[${index}].partId`}>
                               {(field) => (
-                                <field.SelectField
+                                <field.ComboboxField
+                                  emptyMessage="No Parts found."
                                   label={<span className="sr-only">Part</span>}
                                   onValueCommit={commit}
                                   options={partOptions}
+                                  placeholder="Search Parts"
                                 />
                               )}
                             </form.AppField>

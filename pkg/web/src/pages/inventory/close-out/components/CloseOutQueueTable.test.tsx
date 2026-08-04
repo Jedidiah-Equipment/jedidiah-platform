@@ -8,6 +8,7 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, params, to }: { children?: React.ReactNode; params: { jobId: string }; to: string }) => (
     <a href={to.replace('$jobId', params.jobId)}>{children}</a>
   ),
+  useNavigate: () => vi.fn(),
 }));
 
 import { CloseOutQueueTable } from './CloseOutQueueTable.js';
@@ -39,8 +40,16 @@ describe('CloseOutQueueTable', () => {
       ],
     });
 
-    const html = renderToStaticMarkup(<CloseOutQueueTable items={result.items} />);
+    const html = renderToStaticMarkup(
+      <CloseOutQueueTable errorMessage={undefined} isLoading={false} items={result.items} />,
+    );
 
+    expect(html).toContain('Search close-out queue...');
+    expect(html).toContain('2 Jobs');
+    expect(html).toContain('rounded-lg border');
+    expect(html).not.toContain('aria-label="Filter ');
+    expect(html).toContain('aria-label="Open close-out for JOB-00012"');
+    expect(html).toContain('tabindex="0"');
     expect(html).toContain('Parts drawn');
     expect(html).toContain('Parts committed');
     expect(html).toContain('Stale rebuild');

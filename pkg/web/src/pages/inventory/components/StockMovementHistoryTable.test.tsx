@@ -114,6 +114,8 @@ describe('StockMovementHistoryTable', () => {
     expect(html).toContain('Supplier repriced');
     expect(html).toContain('R 25.00');
     expect(html).toContain('R 250.00');
+    expect(html).toContain('placeholder="Search inventory history..."');
+    expect(html).toContain('4 of 4 movements');
   });
 
   it('removes cost columns for a caller without cost-read access', () => {

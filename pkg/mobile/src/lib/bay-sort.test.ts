@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type BaySort, isBaySort, sortBayCards } from './bay-sort';
+import { type BaySort, filterBayCards, isBaySort, sortBayCards } from './bay-sort';
 import type { BayListCard } from './use-bay-list';
 
 // A Bay card reduced to the fields sortBayCards reads; the rest of BayListCard is irrelevant here.
@@ -64,5 +64,31 @@ describe('sortBayCards', () => {
 
   it('handles an empty list', () => {
     expect(sortBayCards([], 'days-left' satisfies BaySort)).toEqual([]);
+  });
+});
+
+describe('filterBayCards', () => {
+  const searchable: BayListCard = {
+    id: 'bay-1',
+    name: 'Assembly Bay 2',
+    operator: { email: 'lindi@example.com', id: 'user-1', name: 'Lindi', thumbnailDataUrl: null },
+    active: {
+      customerCompanyName: 'Acme Farms',
+      jobCode: 'JOB-0042',
+      jobDisplayName: 'Square Baler',
+    } as BayListCard['active'],
+  };
+
+  it.each(['assembly', 'LINDI', 'job-0042', 'baler', 'acme'])('matches the visible fact %s', (search) => {
+    expect(filterBayCards([searchable], search)).toEqual([searchable]);
+  });
+
+  it('matches Stock for an active Job without a Customer and leaves the input untouched', () => {
+    const stock = { ...searchable, active: { ...searchable.active, customerCompanyName: null } } as BayListCard;
+    const input = [searchable, stock];
+
+    expect(filterBayCards(input, 'stock')).toEqual([stock]);
+    expect(filterBayCards(input, '')).toEqual(input);
+    expect(filterBayCards(input, '')).not.toBe(input);
   });
 });

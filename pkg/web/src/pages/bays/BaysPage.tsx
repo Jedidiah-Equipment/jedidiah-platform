@@ -13,6 +13,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { bayNameWithOperator } from '@/components/bays/bay-label.js';
 import { BayOperatorIndicator } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DepartmentIcon } from '@/components/departments/index.js';
@@ -167,7 +168,7 @@ export const BaysPage: React.FC = () => {
                             <BayOperatorIndicator operator={bay.currentOperator} />
                             <div className="min-w-0 space-y-0.5">
                               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                <CardTitle className="truncate">{bay.name}</CardTitle>
+                                <CardTitle className="truncate">{bayNameWithOperator(bay)}</CardTitle>
                                 {bay.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
                               </div>
                               <CardDescription className="text-xs">

@@ -28,7 +28,7 @@ describe('TopToolbar', () => {
     const toolbar = renderFunctionElement(
       asElement(
         MainTabToolbar({
-          assistantParent: MAIN_TAB_PARENTS.schedule,
+          assistantParent: MAIN_TAB_PARENTS.jobs,
           helpTopic: 'jobs',
           subtitle: '8 bays',
           title: 'Schedule',
@@ -44,7 +44,7 @@ describe('TopToolbar', () => {
     expect(asElement(children[0].props.children).props).toMatchObject({ size: 40 });
     expect(titleLines[0].props.children).toBe('Schedule');
     expect(titleLines[1].props).toMatchObject({ children: '8 bays', mono: true, numberOfLines: 1 });
-    expect(children[2].props.parent).toBe(MAIN_TAB_PARENTS.schedule);
+    expect(children[2].props.parent).toBe(MAIN_TAB_PARENTS.jobs);
     expect(children[3].props.helpTopic).toBe('jobs');
   });
 

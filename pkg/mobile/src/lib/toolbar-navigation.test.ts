@@ -9,10 +9,10 @@ import {
 } from './toolbar-navigation';
 
 describe('toolbar navigation', () => {
-  test('resolves Assistant origins and falls back to Schedule', () => {
+  test('resolves Assistant origins and falls back to Jobs', () => {
     expect(resolveAssistantParent('/stores')).toBe(MAIN_TAB_PARENTS.stores);
-    expect(resolveAssistantParent('/not-a-tab')).toBe(MAIN_TAB_PARENTS.schedule);
-    expect(resolveAssistantParent(undefined)).toBe(MAIN_TAB_PARENTS.schedule);
+    expect(resolveAssistantParent('/not-a-tab')).toBe(MAIN_TAB_PARENTS.jobs);
+    expect(resolveAssistantParent(undefined)).toBe(MAIN_TAB_PARENTS.jobs);
   });
 
   test('returns documents to their owning detail page', () => {
@@ -43,7 +43,7 @@ describe('toolbar navigation', () => {
       label: 'Part',
       returnTo: { pathname: '/stores/parts/[partCode]', params: { partCode: 'P-1' } },
     });
-    expect(bayToolbarParentLabel(false)).toBe('Schedule');
+    expect(bayToolbarParentLabel(false)).toBe('Plan');
     expect(bayToolbarParentLabel(true)).toBe('Bay schedule');
   });
 });

@@ -6,6 +6,24 @@ export type BaySort = 'days-left' | 'name';
 
 export const isBaySort = createLiteralGuard(['days-left', 'name']);
 
+/** Matches every fact rendered on the compact Plan row. */
+export function filterBayCards(cards: readonly BayListCard[], search: string): BayListCard[] {
+  const query = search.trim().toLocaleLowerCase();
+  if (!query) return [...cards];
+
+  return cards.filter((bay) => {
+    const facts = [
+      bay.name,
+      bay.operator?.name,
+      bay.active?.jobCode,
+      bay.active?.jobDisplayName,
+      bay.active?.customerCompanyName ?? (bay.active ? 'Stock' : null),
+    ];
+
+    return facts.some((fact) => fact?.toLocaleLowerCase().includes(query));
+  });
+}
+
 /**
  * Orders the Bay cards client-side. 'days-left' surfaces the most urgent active Jobs first
  * (fewest working days remaining); idle Bays have no countdown, so they sort by name after

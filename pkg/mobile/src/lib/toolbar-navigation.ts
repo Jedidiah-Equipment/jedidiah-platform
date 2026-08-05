@@ -1,22 +1,23 @@
 import type { Href } from 'expo-router';
 
 export const MAIN_TAB_PARENTS = {
+  jobs: { href: '/jobs', label: 'Jobs' },
+  plan: { href: '/plan', label: 'Plan' },
   products: { href: '/products', label: 'Products' },
   quotes: { href: '/quotes', label: 'Quotes' },
-  schedule: { href: '/', label: 'Schedule' },
   stores: { href: '/stores', label: 'Stores' },
   units: { href: '/units', label: 'Units' },
 } as const;
 
 export type MainTabParent = (typeof MAIN_TAB_PARENTS)[keyof typeof MAIN_TAB_PARENTS];
 
-/** Modal deep links have no invoking tab, so Schedule is the stable signed-in fallback. */
+/** Modal deep links have no invoking tab, so Jobs is the stable signed-in fallback. */
 export function resolveAssistantParent(href: string | undefined): MainTabParent {
-  return Object.values(MAIN_TAB_PARENTS).find((parent) => parent.href === href) ?? MAIN_TAB_PARENTS.schedule;
+  return Object.values(MAIN_TAB_PARENTS).find((parent) => parent.href === href) ?? MAIN_TAB_PARENTS.jobs;
 }
 
-export function bayToolbarParentLabel(showingSlotDetail: boolean): 'Bay schedule' | 'Schedule' {
-  return showingSlotDetail ? 'Bay schedule' : 'Schedule';
+export function bayToolbarParentLabel(showingSlotDetail: boolean): 'Bay schedule' | 'Plan' {
+  return showingSlotDetail ? 'Bay schedule' : 'Plan';
 }
 
 export type DocumentParent = {

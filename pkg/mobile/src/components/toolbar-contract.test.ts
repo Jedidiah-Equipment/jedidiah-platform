@@ -9,6 +9,8 @@ const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const PROTECTED_ROUTES_DIR = join(MOBILE_DIR, 'app/(protected)');
 
 const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
+  '(tabs)/(plan)/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  '(tabs)/jobs/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
   '(tabs)/products/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
   '(tabs)/quotes/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
   '(tabs)/stores/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
@@ -16,9 +18,11 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
-  '(tabs)/(schedule)/bays/[bayId].tsx': toolbar('secondary', 'src/components/bays/BayQueueScreen.tsx'),
-  '(tabs)/(schedule)/index.tsx': toolbar('main', 'app/(protected)/(tabs)/(schedule)/index.tsx'),
-  '(tabs)/(schedule)/jobs/[jobId].tsx': toolbar('secondary', 'src/components/bays/JobDetail.tsx'),
+  '(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/components/bays/BayQueueScreen.tsx'),
+  '(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/(tabs)/(plan)/plan/index.tsx'),
+  '(tabs)/index.tsx': toolbar('main', 'app/(protected)/(tabs)/index.tsx'),
+  '(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/components/bays/JobDetail.tsx'),
+  '(tabs)/jobs/index.tsx': toolbar('main', 'app/(protected)/(tabs)/jobs/index.tsx'),
   '(tabs)/products/[productId].tsx': toolbar('secondary', 'app/(protected)/(tabs)/products/[productId].tsx'),
   '(tabs)/products/index.tsx': toolbar('main', 'app/(protected)/(tabs)/products/index.tsx'),
   '(tabs)/quotes/[quoteId].tsx': toolbar('secondary', 'src/components/quotes/QuoteDetailsScreen.tsx'),

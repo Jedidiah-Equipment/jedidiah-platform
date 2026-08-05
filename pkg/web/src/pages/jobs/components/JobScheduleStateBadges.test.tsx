@@ -71,7 +71,7 @@ test('renders a pill per non-zero state for a mixed Job, omitting zero counts', 
   expect(markup).toContain('1 Done');
   expect(markup).toContain('1 Active');
   expect(markup).toContain('2 Scheduled');
-  expect(markup).toContain('bg-muted');
+  expect(markup).toContain('bg-gray-500/10');
   expect(markup).toContain('bg-blue-500/15');
   expect(markup).toContain('bg-emerald-500/15');
   expect(markup).not.toContain('Not scheduled');
@@ -94,7 +94,7 @@ test('renders only the done pill for an all-done Job', () => {
   );
 
   expect(markup).toContain('5 Done');
-  expect(markup).toContain('bg-muted');
+  expect(markup).toContain('bg-gray-500/10');
   expect(markup).not.toContain('bg-blue-500/15');
   expect(markup).not.toContain('bg-emerald-500/15');
   expect(markup).not.toContain('Active');

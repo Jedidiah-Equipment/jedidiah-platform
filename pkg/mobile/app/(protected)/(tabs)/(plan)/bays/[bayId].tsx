@@ -1,19 +1,16 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BayQueueScreen } from '@/components/bays/BayQueueScreen';
 
-/**
- * Bay schedule route: the responsive master–detail screen for the selected Bay —
- * the ACTIVE NOW + UP NEXT list pane (#519) and the Job Slot detail pane (#520).
- */
+/** Existing Bay schedule, now owned by the root Plan tab. */
 export default function BayScheduleRoute() {
   const router = useRouter();
   const { bayId } = useLocalSearchParams<{ bayId: string }>();
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <BayQueueScreen bayId={bayId} onBack={() => router.dismissTo('/')} />
+      <BayQueueScreen bayId={bayId} onBack={() => router.dismissTo('/plan' as Href)} />
     </SafeAreaView>
   );
 }

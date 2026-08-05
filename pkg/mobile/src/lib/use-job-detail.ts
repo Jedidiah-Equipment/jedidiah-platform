@@ -1,150 +1,53 @@
-import {
-  byBayDepartmentPipeline,
-  deriveJobProgress,
-  deriveJobRouteStop,
-  getJobDisplayName,
-  getNextJobIds,
-  hasPermission,
-  type JobProgress,
-  type JobRouteStop,
-  type JobStatusTone,
-  type JobWorkSlotEntry,
-  listEnabledBays,
-  listNextWorkSlots,
-  resolveJobStatusTone,
-} from '@pkg/domain';
-import type { BayOperator, DateOnlyIso, Department, UUID } from '@pkg/schema';
+import { hasPermission } from '@pkg/domain';
+import type { UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-
+import { isJobNotFoundError, type JobDetailReadyState, projectJobDetail } from './job-detail-projection';
 import { useTRPC } from './trpc';
 import { useAccess } from './use-access';
-import { useBayCalendars } from './use-bay-calendars';
 
-/** One Bay on the Job's production-route timeline, projected from its Work Slot. */
-export type JobRouteStopCard = JobRouteStop & {
-  /** Slot id — stable key for the timeline. */
-  slotId: string;
-  bayId: UUID;
-  bayName: string;
-  department: Department;
-  operator: BayOperator | null;
-  /** Inclusive first working day — the Slot's queue span can open on an off-day. */
-  firstWorkDay: DateOnlyIso;
-  isNext: boolean;
-};
+export type { JobDetailReadyState, JobRouteStopCard } from './job-detail-projection';
 
 export type JobDetailState =
   | { status: 'error'; error: unknown }
   | { status: 'forbidden' }
   | { status: 'pending' }
   | { status: 'not-found' }
-  | {
-      status: 'ready';
-      cancelledAt: string | null;
-      jobCode: string;
-      quoteCode: string;
-      jobDisplayName: string;
-      productSerialNumber: string | null;
-      productThumbnailDataUrl: string | null;
-      customerCompanyName: string | null;
-      description: string | null;
-      /** The Job's Bays in department-pipeline order, each with its state, dates, and progress. */
-      route: JobRouteStopCard[];
-      /** Shared days-left + overall-progress projection; `null` once the Job has no unfinished Slot. */
-      progress: JobProgress | null;
-      tone: JobStatusTone;
-      doneCount: number;
-      totalCount: number;
-      today: DateOnlyIso;
-    };
+  | JobDetailReadyState;
 
 /**
- * Loads the Job Detail from the same cached Board (`jobs.listBays`) the Job List reads, so a
- * tapped Job opens without a refetch. Collects the Job's Work Slots across every enabled Bay it
- * touches — mirroring {@link useJobList}'s `listEnabledBays` so retired Bays never leak in — and
- * projects the production-route stops and the shared {@link deriveJobProgress} summary. The two
- * always agree with the Job List card because both derive from the same Slots through the same seam.
- *
- * Documents are fetched separately with `jobs.get` in the detail pane, matching the per-Bay screen.
- * Gating matches {@link useJobList}: `jobs.listBays` requires `job:read`, surfaced as `forbidden`.
+ * Loads the full Job and schedule through `jobs.get`, including unscheduled and completed Jobs that
+ * are absent from the Active Board. The Board remains the source of plant "today", org Off-Days,
+ * and which Slot is next in each Bay Queue. Combining the two preserves the existing projection
+ * semantics without making historical Jobs depend on the Board's bounded response window.
  */
 export function useJobDetail(jobId: string): JobDetailState {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const canReadJobs = hasPermission(accessQuery.data, 'job:read');
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: canReadJobs }));
-  const bayCalendars = useBayCalendars({ enabled: canReadJobs });
+  const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId as UUID }, { enabled: canReadJobs }));
 
   return useMemo<JobDetailState>(() => {
     if (accessQuery.isPending) return { status: 'pending' };
     if (accessQuery.error && accessQuery.data === undefined) return { status: 'error', error: accessQuery.error };
     if (!canReadJobs) return { status: 'forbidden' };
 
-    if (baysQuery.error) return { status: 'error', error: baysQuery.error };
-    if (baysQuery.isPending || !bayCalendars) return { status: 'pending' };
+    if (jobQuery.error && isJobNotFoundError(jobQuery.error)) return { status: 'not-found' };
+    if (baysQuery.error || jobQuery.error) return { status: 'error', error: baysQuery.error ?? jobQuery.error };
+    if (baysQuery.isPending || jobQuery.isPending) return { status: 'pending' };
 
-    const { items, jobs, today } = baysQuery.data;
-    const bays = listEnabledBays(items).sort(byBayDepartmentPipeline);
-    const job = jobs.find((candidate) => candidate.id === jobId);
-    const nextSlots = listNextWorkSlots(bays);
-    const nextJobIds = getNextJobIds(bays);
-    const nextSlotIds = new Set(nextSlots.map((slot) => slot.id));
-
-    // Walk the Bays in pipeline order so the route reads procurement → assembly; each Bay's Slots
-    // already arrive in queue order. Collect the same entries the shared projection consumes.
-    const entries: JobWorkSlotEntry[] = [];
-    const route: JobRouteStopCard[] = [];
-    for (const bay of bays) {
-      const workingCalendar = bayCalendars.workingCalendarsByBayId.get(bay.id) ?? {};
-      for (const slot of bay.slots) {
-        if (slot.kind !== 'work' || slot.jobId !== jobId) continue;
-        entries.push({ slot, bayName: bay.name, workingCalendar });
-        route.push({
-          ...deriveJobRouteStop({ slot, today, workingCalendar }),
-          slotId: slot.id,
-          bayId: bay.id,
-          bayName: bay.name,
-          department: bay.department,
-          operator: bay.currentOperator,
-          firstWorkDay: slot.firstWorkDay,
-          isNext: nextSlotIds.has(slot.id),
-        });
-      }
-    }
-
-    // The Job holds no Work Slot on any enabled Bay (never scheduled, or only on retired Bays),
-    // or its summary failed to resolve — nothing to route.
-    if (entries.length === 0 || !job) return { status: 'not-found' };
-
-    const progress = deriveJobProgress({ slots: entries, today });
-    return {
-      status: 'ready',
-      cancelledAt: job.cancelledAt,
-      jobCode: job.code,
-      // A Stock Build has no Quote; the Customer field already reads Stock, so the code just blanks.
-      quoteCode: job.quoteCode ?? '—',
-      jobDisplayName: getJobDisplayName(job),
-      productSerialNumber: job.productUnit?.productSerialNumber ?? null,
-      productThumbnailDataUrl: job.productThumbnailDataUrl,
-      customerCompanyName: job.customerCompanyName,
-      description: job.description,
-      route,
-      progress,
-      tone: progress ? resolveJobStatusTone({ isNext: nextJobIds.has(job.id), status: progress.status }) : 'muted',
-      doneCount: route.filter((stop) => stop.state === 'done').length,
-      totalCount: route.length,
-      today,
-    };
+    return projectJobDetail(jobQuery.data, baysQuery.data);
   }, [
     accessQuery.data,
     accessQuery.error,
     accessQuery.isPending,
-    bayCalendars,
     baysQuery.data,
     baysQuery.error,
     baysQuery.isPending,
     canReadJobs,
-    jobId,
+    jobQuery.data,
+    jobQuery.error,
+    jobQuery.isPending,
   ]);
 }

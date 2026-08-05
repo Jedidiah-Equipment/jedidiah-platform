@@ -20,7 +20,10 @@ import { ScanField } from './ScanField';
  * it has to be able to correct it with the card in his hand, not walk back to the home screen.
  *
  * Tiles are deliberately large: this is tapped with a work glove on, often without looking away
- * from what is in the other hand.
+ * from what is in the other hand. They sit in two fixed half-width columns, with the gutter as
+ * padding inside each cell and a matching negative margin on the row — a `gap` plus `grow` made an
+ * odd last name stretch across the full width, and a tile twice its neighbours' size reads as more
+ * important than them rather than merely last.
  */
 export function QuickSwitchModal({
   onClose,
@@ -77,7 +80,11 @@ export function QuickSwitchModal({
         <Text className="mt-1 text-sm text-muted-foreground">Scan your badge card, or tap your name.</Text>
 
         <View className="mt-4">
-          <ScanField onScan={(raw) => void selectByBadge(raw)} placeholder="Scan your badge card" />
+          <ScanField
+            caption="SCAN A BADGE CARD, OR TAP A NAME BELOW"
+            onScan={(raw) => void selectByBadge(raw)}
+            placeholder="Scan your badge card"
+          />
           {badgeError === null ? null : (
             <Text className="mt-2 text-sm text-danger" weight="semibold">
               {badgeError}
@@ -96,28 +103,33 @@ export function QuickSwitchModal({
             Nobody holds the Stores role yet. Ask the office to set one.
           </Text>
         ) : (
-          <ScrollView className="mt-4" contentContainerClassName="flex-row flex-wrap gap-3">
+          <ScrollView className="mt-4" contentContainerClassName="-mx-1.5 flex-row flex-wrap">
             {actors.data.items.map((actor) => (
-              <Pressable
-                accessibilityLabel={`Work as ${actor.name}`}
-                accessibilityRole="button"
-                className="min-w-[46%] grow flex-row items-center gap-3 rounded-xl border border-border bg-elevated px-4 py-4"
-                key={actor.id}
-                onPress={() => {
-                  onSelect(actor);
-                  onClose();
-                }}
-              >
-                <Avatar
-                  className="h-12 w-12 rounded-full"
-                  name={actor.name}
-                  textClassName="text-sm"
-                  uri={actor.thumbnailDataUrl}
-                />
-                <Text className="min-w-0 flex-1 text-base text-surface-foreground" numberOfLines={2} weight="semibold">
-                  {actor.name}
-                </Text>
-              </Pressable>
+              <View className="w-1/2 p-1.5" key={actor.id}>
+                <Pressable
+                  accessibilityLabel={`Work as ${actor.name}`}
+                  accessibilityRole="button"
+                  className="flex-row items-center gap-3 rounded-xl border border-border bg-elevated px-4 py-4"
+                  onPress={() => {
+                    onSelect(actor);
+                    onClose();
+                  }}
+                >
+                  <Avatar
+                    className="h-12 w-12 rounded-full"
+                    name={actor.name}
+                    textClassName="text-sm"
+                    uri={actor.thumbnailDataUrl}
+                  />
+                  <Text
+                    className="min-w-0 flex-1 text-base text-surface-foreground"
+                    numberOfLines={2}
+                    weight="semibold"
+                  >
+                    {actor.name}
+                  </Text>
+                </Pressable>
+              </View>
             ))}
           </ScrollView>
         )}

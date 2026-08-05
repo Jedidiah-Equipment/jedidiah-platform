@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
-import { createCursorQueryResult } from '../common/pagination.js';
+import { CursorQueryInput, createCursorQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import { JobCode, PurchaseOrderCode } from '../common/public-code.js';
-import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js';
+import { nullableTrimmedText, nullableTrimmedTextInput, SearchText } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { JobListInput } from '../jobs/job.js';
@@ -316,6 +316,31 @@ export const InventoryJobOptionListResult = createCursorQueryResult(InventoryJob
  */
 export type PartStockByCodeInput = z.infer<typeof PartStockByCodeInput>;
 export const PartStockByCodeInput = z.object({ code: PartCode }).strict();
+
+/**
+ * A Part as the stores tablet's type-ahead needs it: enough to recognise on a shelf, and nothing
+ * more. Deliberately not a `StockOnHandRow` — that row carries valuation, and deriving it means
+ * replaying the whole ledger for a moving average, which is far too much work to do per keystroke
+ * for a role that may not see a price anyway. Quantity here is a plain sum of the Part's deltas.
+ */
+export type PartSearchRow = z.infer<typeof PartSearchRow>;
+export const PartSearchRow = z.object({
+  partCode: z.string(),
+  partId: UUID,
+  partName: z.string(),
+  quantity: z.number().finite(),
+  unitOfMeasure: PartUnitOfMeasure,
+});
+
+/**
+ * Not `.strict()`, like every other cursor input here: tRPC's infinite query appends its own
+ * `direction` key to the page params, and a strict schema rejects the whole request over it.
+ */
+export type PartSearchInput = z.infer<typeof PartSearchInput>;
+export const PartSearchInput = CursorQueryInput.extend({ search: SearchText });
+
+export type PartSearchResult = z.infer<typeof PartSearchResult>;
+export const PartSearchResult = createCursorQueryResult(PartSearchRow);
 
 /**
  * A person the stores tablet's quick-switch may attribute a movement to (spec §11): the `stores`

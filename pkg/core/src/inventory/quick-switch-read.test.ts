@@ -57,11 +57,11 @@ describe('listQuickSwitchActors', () => {
   });
 
   /**
-   * The tablet's own account holds the `stores` role — that is how it authorizes these flows — so
-   * without excluding it the grid would offer "Stores Tablet" as somebody to work as, and a tap
-   * would attribute the movement to the device rather than a person.
+   * The tablet's own account holds the `stores` role, so it appears like any other name. It is
+   * pinned to the head of the grid: choosing to post as the device is legitimate — the server
+   * attributes an unnamed post that way regardless — and first is where a deliberate choice goes.
    */
-  test('leaves the signed-in device account off its own list', async ({ context }) => {
+  test('sorts the signed-in device account to the head of its own list', async ({ context }) => {
     const now = new Date('2026-08-01T08:00:00.000Z');
     await context.db.insert(user).values([
       {
@@ -84,8 +84,16 @@ describe('listQuickSwitchActors', () => {
       },
     ]);
 
-    await expect(listQuickSwitchActors({ db: context.db, excludeUserId: 'stores-tablet' })).resolves.toEqual({
-      items: [{ id: 'stores-person', name: 'Stores Person', thumbnailDataUrl: null }],
+    await expect(listQuickSwitchActors({ db: context.db, deviceUserId: 'stores-tablet' })).resolves.toEqual({
+      items: [
+        { id: 'stores-tablet', name: 'Stores Tablet', thumbnailDataUrl: null },
+        { id: 'stores-person', name: 'Stores Person', thumbnailDataUrl: null },
+      ],
+    });
+
+    // With no device named, the grid is plain alphabetical — "Person" sorts before "Tablet".
+    await expect(listQuickSwitchActors({ db: context.db })).resolves.toMatchObject({
+      items: [{ id: 'stores-person' }, { id: 'stores-tablet' }],
     });
   });
 });

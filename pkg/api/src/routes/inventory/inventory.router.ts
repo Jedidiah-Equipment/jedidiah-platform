@@ -12,6 +12,7 @@ import {
   postBuild,
   postJobMovement,
   postRevaluation,
+  searchPartStock,
 } from '@pkg/core';
 import { getJobDisplayName } from '@pkg/domain';
 import {
@@ -24,6 +25,8 @@ import {
   JobCloseOut,
   JobStockInput,
   JobStockResult,
+  PartSearchInput,
+  PartSearchResult,
   PartStockByCodeInput,
   PostAdjustmentInput,
   PostBuildInput,
@@ -101,13 +104,23 @@ export const inventoryRouter = router({
     }),
 
   /**
+   * The tablet's type-ahead for a label that will not scan (spec §10). Quantity-only, so there is
+   * no cost projection to apply — and deliberately not the stock report with a search term bolted
+   * on, which would replay the whole ledger for a moving average nobody on this device may read.
+   */
+  partSearch: authorizedProcedure('inventory:read')
+    .input(PartSearchInput)
+    .output(PartSearchResult)
+    .query(({ ctx, input }) => searchPartStock({ db: ctx.db, input })),
+
+  /**
    * The names the tablet's quick-switch offers. Gated on `inventory:move` rather than `user:list`:
    * the device holding this session posts movements and needs to know whose name to put on them,
    * which is not the same right as reading the platform's user administration.
    */
   quickSwitchActors: authorizedProcedure('inventory:move')
     .output(QuickSwitchActorListResult)
-    .query(({ ctx }) => listQuickSwitchActors({ db: ctx.db, excludeUserId: ctx.session.user.id })),
+    .query(({ ctx }) => listQuickSwitchActors({ db: ctx.db, deviceUserId: ctx.session.user.id })),
 
   history: authorizedProcedure('inventory:read')
     .input(StockMovementHistoryInput)

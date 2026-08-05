@@ -27,10 +27,13 @@ import { ScanCameraModal } from './ScanCameraModal';
  * touched another control is not a fault to correct.
  */
 export function ScanField({
+  caption = 'SCAN, OR TYPE A PART CODE AND PRESS RETURN',
   isActive = true,
   onScan,
   placeholder = 'Scan a Part label or badge',
 }: {
+  /** What this field is for, in the caller's own words — a badge field is not asking for a code. */
+  caption?: string;
   /**
    * False while a dialog this screen owns is covering the field. Reclaiming focus on the way back
    * to true is the point: a dialog carrying its own scan field takes focus and, being a Modal
@@ -69,7 +72,12 @@ export function ScanField({
 
   return (
     <View className="gap-2">
-      <View className="flex-row items-center gap-2">
+      {/*
+        `items-stretch` rather than `items-center`: the field's height comes from the text it holds,
+        and the camera button matches it instead of sizing itself from its icon. Padding the button
+        to the same height by hand would only hold until the field's type size next moved.
+      */}
+      <View className="flex-row items-stretch gap-2">
         <View className="min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3">
           <Icon className="text-muted-foreground" icon={IconScan} size={22} />
           <TextInput
@@ -90,14 +98,16 @@ export function ScanField({
         <Pressable
           accessibilityLabel="Scan with the camera"
           accessibilityRole="button"
-          className="shrink-0 rounded-xl border border-border bg-surface p-3"
+          // Horizontal padding only — a vertical one would set a minimum height and take the row
+          // back off the field.
+          className="shrink-0 justify-center rounded-xl border border-border bg-surface px-3"
           onPress={() => setCameraOpen(true)}
         >
           <Icon className="text-surface-foreground" icon={IconCamera} size={22} />
         </Pressable>
       </View>
       <Text className="text-[11px] text-muted-foreground" mono>
-        SCAN, OR TYPE A PART CODE AND PRESS RETURN
+        {caption}
       </Text>
 
       <ScanCameraModal

@@ -17,6 +17,7 @@ export * from './inventory/close-out-errors.js';
 export * from './inventory/close-out-service.js';
 export * from './inventory/movement-actor.js';
 export * from './inventory/movement-actor-errors.js';
+export * from './inventory/part-search-read.js';
 export * from './inventory/quick-switch-read.js';
 export * from './inventory/receipt-service.js';
 export * from './inventory/return-to-supplier-service.js';

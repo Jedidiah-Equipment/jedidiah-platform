@@ -75,15 +75,21 @@ export function PurchaseOrderAmendmentsCard({ purchaseOrderId }: { purchaseOrder
 }
 
 function describeAmendment(amendment: PurchaseOrderAmendment): string {
-  const part = `${amendment.partCode} · ${amendment.partName}`;
+  if (amendment.kind === 'expected-date-change') {
+    const before = amendment.oldExpectedDate ? formatDate(amendment.oldExpectedDate) : 'Not set';
+    const after = amendment.newExpectedDate ? formatDate(amendment.newExpectedDate) : '—';
+    return `${before} → ${after}`;
+  }
+
+  const part = `${amendment.partCode ?? '—'} · ${amendment.partName ?? '—'}`;
 
   if (amendment.kind === 'add-line') {
-    return `${part} — ${formatNumber(amendment.newQuantity)} added`;
+    return `${part} — ${formatNumber(amendment.newQuantity ?? 0)} added`;
   }
 
   if (amendment.kind === 'substitute-part') {
-    return `${part} → ${amendment.newPartCode ?? '—'} · ${amendment.newPartName ?? ''} (${formatNumber(amendment.newQuantity)})`;
+    return `${part} → ${amendment.newPartCode ?? '—'} · ${amendment.newPartName ?? ''} (${formatNumber(amendment.newQuantity ?? 0)})`;
   }
 
-  return `${part} — ${formatNumber(amendment.oldQuantity ?? 0)} → ${formatNumber(amendment.newQuantity)}`;
+  return `${part} — ${formatNumber(amendment.oldQuantity ?? 0)} → ${formatNumber(amendment.newQuantity ?? 0)}`;
 }

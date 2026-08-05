@@ -105,6 +105,7 @@ export function isLinearLine(line: Pick<PurchaseOrderLineView, 'unitOfMeasure'>)
  */
 export type PurchaseOrderAmendmentFormValues = z.infer<typeof PurchaseOrderAmendmentFormValues>;
 export const PurchaseOrderAmendmentFormValues = z.object({
+  expectedDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
   newPartId: z.union([z.literal(''), UUID]),
   note: PurchaseOrderAmendmentNote,
   quantity: PurchaseOrderQuantity,
@@ -112,13 +113,19 @@ export const PurchaseOrderAmendmentFormValues = z.object({
 });
 
 /**
- * The one form serves all three kinds, so which fields it insists on depends on the kind: only an
- * added or substituted line names a Part, and a quantity change leaves that field unread.
+ * The one form serves all four kinds, so each amendment only insists on the field it changes.
  */
 export function purchaseOrderAmendmentValidator(
   kind: PurchaseOrderAmendmentKind,
 ): z.ZodType<PurchaseOrderAmendmentFormValues, PurchaseOrderAmendmentFormValues> {
   if (kind === 'quantity-change') return PurchaseOrderAmendmentFormValues;
+
+  if (kind === 'expected-date-change') {
+    return PurchaseOrderAmendmentFormValues.refine((values) => values.expectedDeliveryDate !== '', {
+      message: 'Choose an expected delivery date',
+      path: ['expectedDeliveryDate'],
+    });
+  }
 
   return PurchaseOrderAmendmentFormValues.refine((values) => values.newPartId !== '', {
     message: 'Choose a Part',

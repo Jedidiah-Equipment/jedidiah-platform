@@ -15,6 +15,11 @@ const DIALOG_COPY = {
     submitLabel: 'Add line',
     title: 'Add a line',
   },
+  'expected-date-change': {
+    description: 'Record the delivery date the Supplier now promises. It goes out as a new revision.',
+    submitLabel: 'Change expected date',
+    title: 'Change expected delivery',
+  },
   'quantity-change': {
     description: 'Move the quantity either way. It can never go below what has already been received.',
     submitLabel: 'Change quantity',
@@ -28,7 +33,7 @@ const DIALOG_COPY = {
 } as const satisfies Record<PurchaseOrderAmendmentKind, { description: string; submitLabel: string; title: string }>;
 
 /**
- * The one dialog behind all three amendments (spec §4). They differ only in which fields the buyer
+ * The one dialog behind all four amendments (spec §4). They differ only in which fields the buyer
  * fills; every one of them records the same mandatory note, applies to the same sent order, and
  * comes back with a fresh PDF revision to send on.
  */
@@ -48,7 +53,12 @@ export function PurchaseOrderAmendDialog({
   const copy = DIALOG_COPY[kind];
   const { invalidateInventory, invalidatePurchaseOrders } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const parts = usePartOptions({ limit: 0, sortBy: 'name', sortDirection: 'asc' });
+  const parts = usePartOptions({
+    enabled: kind === 'add-line' || kind === 'substitute-part',
+    limit: 0,
+    sortBy: 'name',
+    sortDirection: 'asc',
+  });
   // A PO is an order on one Supplier, and a Part appears once — the same rule the draft form applies.
   const eligibleParts = parts.items.filter(
     (part) =>
@@ -58,10 +68,20 @@ export function PurchaseOrderAmendDialog({
   const onError = (error: unknown) => showMutationError(error, 'Unable to amend this Purchase Order.');
   const quantityMutation = useMutation(trpc.purchaseOrders.amendQuantity.mutationOptions({ onError }));
   const addLineMutation = useMutation(trpc.purchaseOrders.amendAddLine.mutationOptions({ onError }));
+  const expectedDateMutation = useMutation(trpc.purchaseOrders.amendExpectedDate.mutationOptions({ onError }));
   const substituteMutation = useMutation(trpc.purchaseOrders.amendSubstitutePart.mutationOptions({ onError }));
 
   function amend(values: PurchaseOrderAmendmentFormValues) {
     const base = { id: purchaseOrder.id, note: values.note, quantity: values.quantity };
+
+    if (kind === 'expected-date-change') {
+      if (!values.expectedDeliveryDate) throw new Error('This amendment needs an expected delivery date');
+      return expectedDateMutation.mutateAsync({
+        expectedDeliveryDate: values.expectedDeliveryDate,
+        id: purchaseOrder.id,
+        note: values.note,
+      });
+    }
 
     if (kind === 'quantity-change') {
       return quantityMutation.mutateAsync({ ...base, partId: requirePartId(line) });
@@ -81,8 +101,9 @@ export function PurchaseOrderAmendDialog({
 
   return (
     <CreateEntityDialog<PurchaseOrderAmendmentFormValues, unknown>
-      canSubmit={kind === 'quantity-change' || !parts.isPending}
+      canSubmit={kind === 'quantity-change' || kind === 'expected-date-change' || !parts.isPending}
       defaultValues={{
+        expectedDeliveryDate: purchaseOrder.expectedDeliveryDate ?? '',
         newPartId: '',
         note: '',
         quantity: line?.quantity ?? 1,
@@ -104,7 +125,12 @@ export function PurchaseOrderAmendDialog({
     >
       {(form) => (
         <>
-          {kind === 'quantity-change' ? null : (
+          {kind === 'expected-date-change' ? (
+            <form.AppField name="expectedDeliveryDate">
+              {(field) => <field.DatePickerField label="Expected delivery date" />}
+            </form.AppField>
+          ) : null}
+          {kind === 'quantity-change' || kind === 'expected-date-change' ? null : (
             <form.AppField name="newPartId">
               {(field) => (
                 <field.ComboboxField
@@ -117,10 +143,12 @@ export function PurchaseOrderAmendDialog({
               )}
             </form.AppField>
           )}
-          <form.AppField name="quantity">
-            {(field) => <field.NumberField label="Quantity" min={0.001} step="0.001" />}
-          </form.AppField>
-          {kind === 'quantity-change' ? null : (
+          {kind === 'expected-date-change' ? null : (
+            <form.AppField name="quantity">
+              {(field) => <field.NumberField label="Quantity" min={0.001} step="0.001" />}
+            </form.AppField>
+          )}
+          {kind === 'quantity-change' || kind === 'expected-date-change' ? null : (
             <form.AppField name="unitPrice">{(field) => <field.CurrencyField label="Unit price" />}</form.AppField>
           )}
           <form.AppField name="note">

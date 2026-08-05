@@ -4,7 +4,17 @@ A Draft is edited freely. Once an order is Sent, the Supplier is holding a promi
 **amendment** instead: the phone call that changed the order is recorded, and the order re-renders as
 a new PDF revision you can send on.
 
-There are three amendments, and no others. Anything wider than these is a new order.
+There are four amendments, and no others. Anything wider than these is a new order.
+
+## Change the expected delivery date
+
+1. Open **Purchase Orders** and select the Sent order.
+2. On **Order details**, click **Change expected date**.
+3. Choose the Supplier's new **Expected delivery date**.
+4. Record the **Note** and click **Change expected date**.
+
+The date change appears in **Amendment history** and creates the next PDF revision. A past date also
+makes an order with outstanding lines appear under **Late Purchase Orders**.
 
 ## Change a quantity
 
@@ -28,9 +38,9 @@ There are three amendments, and no others. Anything wider than these is a new or
 2. Choose the **Substitute Part**, then the **Quantity** and **Unit price** agreed for it.
 3. Record the **Note** and click **Substitute Part**.
 
-**Substitute** only appears on a line nothing has arrived against. A Receipt belongs to the line it
-arrived on, so swapping the Part underneath it would orphan the delivery. On a line that has taken
-stock, change the quantity instead, or send the wrong item back — see
+**Substitute** is disabled on a line that has taken stock, with the reason shown on the action. A
+Receipt belongs to the line it arrived on, so swapping the Part underneath it would orphan the
+delivery. Change the quantity instead, or send the wrong item back — see
 [Return stock to a Supplier](./return-stock-to-a-supplier.md).
 
 ## Send the amended order

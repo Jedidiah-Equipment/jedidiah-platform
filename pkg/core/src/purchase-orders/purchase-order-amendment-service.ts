@@ -1,8 +1,17 @@
-import { type DatabaseTransaction, type Db, parts, purchaseOrderAmendments, purchaseOrderLines, user } from '@pkg/db';
+import {
+  type DatabaseTransaction,
+  type Db,
+  parts,
+  purchaseOrderAmendments,
+  purchaseOrderLines,
+  purchaseOrders,
+  user,
+} from '@pkg/db';
 import type {
   AuthId,
   PurchaseOrder,
   PurchaseOrderAmendAddLineInput,
+  PurchaseOrderAmendExpectedDateInput,
   PurchaseOrderAmendmentListResult,
   PurchaseOrderAmendQuantityInput,
   PurchaseOrderAmendSubstitutePartInput,
@@ -36,14 +45,47 @@ import {
  * What a sent Purchase Order takes instead of an edit (spec §4).
  *
  * A draft is one freely editable aggregate; the moment it goes out, the Supplier is holding a
- * promise, and the only honest way to change it is to record the call that changed it. So each of
- * the three amendments applies its change to the order's lines *and* appends an insert-only log row
+ * promise, and the only honest way to change it is to record the call that changed it. So an
+ * amendment applies its change to the order *and* appends an insert-only log row
  * in one transaction, then re-renders the order as a further PDF revision the buyer can send on.
  * The as-sent original is never replaced — that is what makes the log readable as history rather
  * than as the only surviving account of what was agreed.
  */
 
 type AmendmentRow = typeof purchaseOrderAmendments.$inferInsert;
+type AmendmentChange = Pick<AmendmentRow, 'kind' | 'note'> &
+  Partial<
+    Pick<AmendmentRow, 'newExpectedDate' | 'newPartId' | 'newQuantity' | 'oldExpectedDate' | 'oldQuantity' | 'partId'>
+  >;
+
+/** Records the Supplier's revised promise date on the sent order and its immutable history. */
+export async function amendPurchaseOrderExpectedDate({
+  actorUserId,
+  db,
+  input,
+  pdfRenderer,
+  storage,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PurchaseOrderAmendExpectedDateInput;
+  pdfRenderer: PurchaseOrderPdfRenderer;
+  storage: StorageAdapter;
+}): Promise<PurchaseOrder> {
+  return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, purchaseOrder) => {
+    await tx
+      .update(purchaseOrders)
+      .set({ expectedDeliveryDate: input.expectedDeliveryDate })
+      .where(eq(purchaseOrders.id, input.id));
+
+    return {
+      kind: 'expected-date-change',
+      newExpectedDate: input.expectedDeliveryDate,
+      note: input.note,
+      oldExpectedDate: purchaseOrder.expectedDeliveryDate,
+    };
+  });
+}
 
 /** Moves a line's quantity, either way — the short delivery agreed by phone, or the extra ordered. */
 export async function amendPurchaseOrderQuantity({
@@ -201,18 +243,20 @@ export async function listPurchaseOrderAmendments({
       createdAt: purchaseOrderAmendments.createdAt,
       id: purchaseOrderAmendments.id,
       kind: purchaseOrderAmendments.kind,
+      newExpectedDate: purchaseOrderAmendments.newExpectedDate,
       newPartCode: newParts.code,
       newPartId: purchaseOrderAmendments.newPartId,
       newPartName: newParts.name,
       newQuantity: purchaseOrderAmendments.newQuantity,
       note: purchaseOrderAmendments.note,
+      oldExpectedDate: purchaseOrderAmendments.oldExpectedDate,
       oldQuantity: purchaseOrderAmendments.oldQuantity,
       partCode: parts.code,
       partId: purchaseOrderAmendments.partId,
       partName: parts.name,
     })
     .from(purchaseOrderAmendments)
-    .innerJoin(parts, eq(parts.id, purchaseOrderAmendments.partId))
+    .leftJoin(parts, eq(parts.id, purchaseOrderAmendments.partId))
     .innerJoin(user, eq(user.id, purchaseOrderAmendments.actorUserId))
     .leftJoin(newParts, eq(newParts.id, purchaseOrderAmendments.newPartId))
     .where(eq(purchaseOrderAmendments.purchaseOrderId, purchaseOrderId))
@@ -240,10 +284,7 @@ async function applyAmendment(
     pdfRenderer: PurchaseOrderPdfRenderer;
     storage: StorageAdapter;
   },
-  apply: (
-    tx: DatabaseTransaction,
-    purchaseOrder: PurchaseOrder,
-  ) => Promise<Pick<AmendmentRow, 'kind' | 'newQuantity' | 'note' | 'oldQuantity' | 'partId'> & { newPartId?: UUID }>,
+  apply: (tx: DatabaseTransaction, purchaseOrder: PurchaseOrder) => Promise<AmendmentChange>,
 ): Promise<PurchaseOrder> {
   let uploadedDocumentStorageKey: string | null = null;
 

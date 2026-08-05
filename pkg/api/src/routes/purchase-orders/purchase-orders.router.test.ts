@@ -241,6 +241,7 @@ describe('buy-list seeding and late orders', () => {
 describe('amendments, returns, and credit notes', () => {
   test('amends a sent order under purchase_order:amend and refuses a dock user', async ({ context }) => {
     const admin = context.createCaller();
+    const procurement = context.createCaller(mockSession('procurement-manager'));
     const stores = context.createCaller(mockSession('stores'));
     const purchaseOrder = await sendOrder(admin, 4);
 
@@ -270,22 +271,32 @@ describe('amendments, returns, and credit notes', () => {
         unitPrice: 20,
       }),
     ).resolves.toMatchObject({ lines: [{ partId: PART_ID }, { partId: SPARE_PART_ID }] });
+    await expect(
+      procurement.purchaseOrders.amendExpectedDate({
+        expectedDeliveryDate: '2026-08-04',
+        id: purchaseOrder.id,
+        note: 'Supplier promised Tuesday',
+      }),
+    ).resolves.toMatchObject({ expectedDeliveryDate: '2026-08-04' });
 
     // The log is priceless in the literal sense, so a price-blind reader sees the whole history.
     await expect(stores.purchaseOrders.amendments({ purchaseOrderId: purchaseOrder.id })).resolves.toMatchObject({
       items: [
         { kind: 'quantity-change', newQuantity: 6, oldQuantity: 4 },
         { kind: 'add-line', newQuantity: 1 },
+        { kind: 'expected-date-change', newExpectedDate: '2026-08-04', oldExpectedDate: null },
       ],
     });
     await expect(stores.purchaseOrders.documents({ purchaseOrderId: purchaseOrder.id })).resolves.toMatchObject({
-      items: [{ revision: 3 }, { revision: 2 }, { revision: 1 }],
+      items: [{ revision: 4 }, { revision: 3 }, { revision: 2 }, { revision: 1 }],
     });
   });
 
-  test('lets the dock return stock and hides its value from the price-blind poster', async ({ context }) => {
+  test('lets stores and procurement return stock, refuses sales, and applies the cost gate', async ({ context }) => {
     const admin = context.createCaller();
     const stores = context.createCaller(mockSession('stores'));
+    const procurement = context.createCaller(mockSession('procurement-manager'));
+    const sales = context.createCaller(mockSession('sales'));
     const purchaseOrder = await sendOrder(admin, 4);
     await stores.purchaseOrders.receive({
       lengthMm: null,
@@ -308,14 +319,45 @@ describe('amendments, returns, and credit notes', () => {
       movement: { delta: -2, movementType: 'return-to-supplier', reason: 'wrong-item', unitCost: null },
       warnings: [],
     });
+    await expect(
+      procurement.purchaseOrders.returnToSupplier({
+        lengthMm: null,
+        note: 'Defective on inspection',
+        partId: PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 1,
+        reason: 'defective',
+      }),
+    ).resolves.toMatchObject({
+      movement: { delta: -1, movementType: 'return-to-supplier', reason: 'defective', unitCost: 150 },
+    });
+    await expect(
+      sales.purchaseOrders.returnToSupplier({
+        lengthMm: null,
+        note: 'Sales cannot move stock',
+        partId: PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 1,
+        reason: 'order-error',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(admin.purchaseOrders.returns({ purchaseOrderId: purchaseOrder.id })).resolves.toMatchObject({
-      items: [{ quantity: 2, settledByDocumentId: null, value: 300 }],
+      items: [
+        { quantity: 2, settledByDocumentId: null, value: 300 },
+        { quantity: 1, settledByDocumentId: null, value: 150 },
+      ],
     });
     await expect(stores.purchaseOrders.returns({ purchaseOrderId: purchaseOrder.id })).resolves.toMatchObject({
-      items: [{ quantity: 2, value: null }],
+      items: [
+        { quantity: 2, value: null },
+        { quantity: 1, value: null },
+      ],
     });
     await expect(admin.purchaseOrders.returnsAwaitingCredit()).resolves.toMatchObject({
-      items: [{ purchaseOrderId: purchaseOrder.id, quantity: 2, value: 300 }],
+      items: [
+        { purchaseOrderId: purchaseOrder.id, quantity: 2, value: 300 },
+        { purchaseOrderId: purchaseOrder.id, quantity: 1, value: 150 },
+      ],
     });
   });
 });

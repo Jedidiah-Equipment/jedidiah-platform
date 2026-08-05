@@ -1,3 +1,6 @@
+import { auditEvents } from '@pkg/db';
+import { DateOnlyIso } from '@pkg/schema';
+import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { listPurchaseOrderDocuments } from './credit-note-service.js';
@@ -15,13 +18,73 @@ import {
 } from './purchase-order-amendment-fixtures.js';
 import {
   amendPurchaseOrderAddLine,
+  amendPurchaseOrderExpectedDate,
   amendPurchaseOrderQuantity,
   amendPurchaseOrderSubstitutePart,
   listPurchaseOrderAmendments,
 } from './purchase-order-amendment-service.js';
 import { closePurchaseOrderShort, createPurchaseOrder, getPurchaseOrder } from './purchase-order-service.js';
+import { listLatePurchaseOrders } from './purchase-order-signals.js';
 
 describe('Purchase Order amendments', () => {
+  test('changes the expected delivery date, logs the call, revises the PDF, and makes an overdue order late', async ({
+    context,
+  }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]);
+
+    const amended = await amendPurchaseOrderExpectedDate({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        expectedDeliveryDate: DateOnlyIso.parse('2026-08-03'),
+        id: purchaseOrder.id,
+        note: 'Supplier promised Monday instead',
+      },
+      pdfRenderer: renderStubPdf,
+      storage: context.storage,
+    });
+
+    expect(amended.expectedDeliveryDate).toBe('2026-08-03');
+    await expect(
+      listPurchaseOrderAmendments({ db: context.db, purchaseOrderId: purchaseOrder.id }),
+    ).resolves.toMatchObject({
+      items: [
+        {
+          actorName: 'Amendment Tester',
+          kind: 'expected-date-change',
+          newExpectedDate: '2026-08-03',
+          note: 'Supplier promised Monday instead',
+          oldExpectedDate: null,
+          partId: null,
+        },
+      ],
+    });
+    await expect(
+      listPurchaseOrderDocuments({ db: context.db, purchaseOrderId: purchaseOrder.id }),
+    ).resolves.toMatchObject({
+      items: [{ revision: 2 }, { revision: 1 }],
+    });
+    await expect(
+      listLatePurchaseOrders({ clock: () => new Date('2026-08-04T08:00:00.000Z'), db: context.db }),
+    ).resolves.toMatchObject({ items: [{ id: purchaseOrder.id, expectedDeliveryDate: '2026-08-03' }] });
+    const audit = await context.db
+      .select()
+      .from(auditEvents)
+      .where(
+        and(
+          eq(auditEvents.action, 'updated'),
+          eq(auditEvents.entityId, purchaseOrder.id),
+          eq(auditEvents.entityType, 'purchase_order'),
+        ),
+      )
+      .orderBy(auditEvents.occurredAt, auditEvents.id);
+    expect(audit.at(-1)).toMatchObject({
+      actorUserId: ACTOR_ID,
+      changes: { expectedDeliveryDate: { from: null, to: '2026-08-03' } },
+      summary: 'Updated Purchase Order "PO-00001"',
+    });
+  });
+
   test('moves a line quantity, logs the call that moved it, and files a new PDF revision', async ({ context }) => {
     const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]);
 

@@ -1,20 +1,26 @@
 import { z } from 'zod';
 
 import { AuthId } from '../auth/auth-id.js';
-import { DateIso } from '../common/date.js';
+import { DateIso, DateOnlyIso } from '../common/date.js';
 import { requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 import { PurchaseOrderQuantity, PurchaseOrderUnitPrice } from './purchase-order.js';
 
 /**
- * The three ways a sent order actually changes (spec §4): the quantity moves either way, a line is
- * added, or the Supplier sends something else instead. Anything wider than this is a new order.
+ * The four ways a sent order actually changes (spec §4): a line changes, or the Supplier changes
+ * the day it promised the order. Anything wider than this is a new order.
  */
 export type PurchaseOrderAmendmentKind = z.infer<typeof PurchaseOrderAmendmentKind>;
-export const PurchaseOrderAmendmentKind = z.enum(['quantity-change', 'add-line', 'substitute-part']);
+export const PurchaseOrderAmendmentKind = z.enum([
+  'quantity-change',
+  'add-line',
+  'substitute-part',
+  'expected-date-change',
+]);
 
 export const PURCHASE_ORDER_AMENDMENT_KIND_LABELS = {
   'add-line': 'Line added',
+  'expected-date-change': 'Expected date changed',
   'quantity-change': 'Quantity changed',
   'substitute-part': 'Part substituted',
 } as const satisfies Record<PurchaseOrderAmendmentKind, string>;
@@ -29,16 +35,17 @@ export const PurchaseOrderAmendmentNote = requiredTrimmedText('Record why this o
 const AmendmentBaseInput = z.object({
   id: UUID,
   note: PurchaseOrderAmendmentNote,
-  partId: UUID,
 });
 
 export type PurchaseOrderAmendQuantityInput = z.infer<typeof PurchaseOrderAmendQuantityInput>;
 export const PurchaseOrderAmendQuantityInput = AmendmentBaseInput.extend({
+  partId: UUID,
   quantity: PurchaseOrderQuantity,
 }).strict();
 
 export type PurchaseOrderAmendAddLineInput = z.infer<typeof PurchaseOrderAmendAddLineInput>;
 export const PurchaseOrderAmendAddLineInput = AmendmentBaseInput.extend({
+  partId: UUID,
   quantity: PurchaseOrderQuantity,
   unitPrice: PurchaseOrderUnitPrice,
 }).strict();
@@ -50,6 +57,7 @@ export const PurchaseOrderAmendAddLineInput = AmendmentBaseInput.extend({
 export type PurchaseOrderAmendSubstitutePartInput = z.infer<typeof PurchaseOrderAmendSubstitutePartInput>;
 export const PurchaseOrderAmendSubstitutePartInput = AmendmentBaseInput.extend({
   newPartId: UUID,
+  partId: UUID,
   quantity: PurchaseOrderQuantity,
   unitPrice: PurchaseOrderUnitPrice,
 })
@@ -58,6 +66,11 @@ export const PurchaseOrderAmendSubstitutePartInput = AmendmentBaseInput.extend({
     message: 'Choose a different Part to substitute in',
     path: ['newPartId'],
   });
+
+export type PurchaseOrderAmendExpectedDateInput = z.infer<typeof PurchaseOrderAmendExpectedDateInput>;
+export const PurchaseOrderAmendExpectedDateInput = AmendmentBaseInput.extend({
+  expectedDeliveryDate: DateOnlyIso,
+}).strict();
 
 /**
  * One logged change to a sent order. The log is the record — insert-only, never edited — while the
@@ -70,17 +83,19 @@ export const PurchaseOrderAmendment = z.object({
   createdAt: DateIso,
   id: UUID,
   kind: PurchaseOrderAmendmentKind,
+  newExpectedDate: DateOnlyIso.nullable(),
   newPartCode: z.string().nullable(),
   newPartId: UUID.nullable(),
   newPartName: z.string().nullable(),
-  /** The line's quantity after the change; every kind sets it, including an added line. */
-  newQuantity: z.number().finite(),
+  /** The line's quantity after a line amendment; a date amendment carries no quantity. */
+  newQuantity: z.number().finite().nullable(),
   note: PurchaseOrderAmendmentNote,
-  /** Null only for `add-line`, which had no line to change. */
+  oldExpectedDate: DateOnlyIso.nullable(),
+  /** The earlier line quantity; null for an added line and for a date amendment. */
   oldQuantity: z.number().finite().nullable(),
-  partCode: z.string(),
-  partId: UUID,
-  partName: z.string(),
+  partCode: z.string().nullable(),
+  partId: UUID.nullable(),
+  partName: z.string().nullable(),
 });
 
 export type PurchaseOrderAmendmentListResult = z.infer<typeof PurchaseOrderAmendmentListResult>;

@@ -93,9 +93,11 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
     purchaseOrder.status === 'sent' &&
     purchaseOrder.closedShortAt === null &&
     hasPermission(accessQuery.data, 'purchase_order:amend');
-  // Returning stock is a ledger write, and it stays available after close-short: what already
-  // arrived can still turn out to be wrong.
-  const canReturn = purchaseOrder.status === 'sent' && hasPermission(accessQuery.data, 'inventory:move');
+  // Returns stay available after close-short: what already arrived can still turn out to be wrong.
+  // The server accepts either the physical move right or the PO amendment right for this PO-bound flow.
+  const canReturn =
+    purchaseOrder.status === 'sent' &&
+    (hasPermission(accessQuery.data, 'inventory:move') || hasPermission(accessQuery.data, 'purchase_order:amend'));
   // The same single gate the upload route applies — filing the credit is procurement's job, and it
   // is the amend right that says who does it.
   const canFileCreditNote = purchaseOrder.status === 'sent' && hasPermission(accessQuery.data, 'purchase_order:amend');
@@ -183,7 +185,7 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
           </form>
         ) : (
           <>
-            <ReadOnlyDetailsCard purchaseOrder={purchaseOrder} />
+            <ReadOnlyDetailsCard canAmend={canAmend} purchaseOrder={purchaseOrder} />
             {canReceive ? (
               <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
             ) : null}
@@ -557,22 +559,44 @@ const PurchaseOrderJobsCard: React.FC<{ commit: () => void; form: DraftForm }> =
   );
 };
 
-const ReadOnlyDetailsCard: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ purchaseOrder }) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Order details</CardTitle>
-    </CardHeader>
-    <CardContent className="grid gap-3 sm:grid-cols-2">
-      <ReadOnlyValue label="Supplier" value={purchaseOrder.supplier.companyName} />
-      <ReadOnlyValue
-        label="Expected delivery"
-        value={purchaseOrder.expectedDeliveryDate ? formatDate(purchaseOrder.expectedDeliveryDate) : 'Not set'}
-      />
-      <ReadOnlyValue label="Created" value={formatDate(purchaseOrder.createdAt)} />
-      <ReadOnlyValue label="Sent" value={purchaseOrder.sentAt ? formatDate(purchaseOrder.sentAt) : 'Not sent'} />
-    </CardContent>
-  </Card>
-);
+const ReadOnlyDetailsCard: React.FC<{ canAmend: boolean; purchaseOrder: PurchaseOrderView }> = ({
+  canAmend,
+  purchaseOrder,
+}) => {
+  const [isAmendingExpectedDate, setIsAmendingExpectedDate] = useState(false);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Order details</CardTitle>
+        {canAmend ? (
+          <CardAction>
+            <Button onClick={() => setIsAmendingExpectedDate(true)} size="sm" type="button" variant="outline">
+              Change expected date
+            </Button>
+          </CardAction>
+        ) : null}
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2">
+        <ReadOnlyValue label="Supplier" value={purchaseOrder.supplier.companyName} />
+        <ReadOnlyValue
+          label="Expected delivery"
+          value={purchaseOrder.expectedDeliveryDate ? formatDate(purchaseOrder.expectedDeliveryDate) : 'Not set'}
+        />
+        <ReadOnlyValue label="Created" value={formatDate(purchaseOrder.createdAt)} />
+        <ReadOnlyValue label="Sent" value={purchaseOrder.sentAt ? formatDate(purchaseOrder.sentAt) : 'Not sent'} />
+      </CardContent>
+      {isAmendingExpectedDate ? (
+        <PurchaseOrderAmendDialog
+          kind="expected-date-change"
+          line={null}
+          onOpenChange={setIsAmendingExpectedDate}
+          purchaseOrder={purchaseOrder}
+        />
+      ) : null}
+    </Card>
+  );
+};
 
 /**
  * A sent order's lines. They are read-only in the editing sense, but not frozen: an amendment is
@@ -695,16 +719,20 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
                   {/* Every movement keys off (order, Part), so only a line nothing has moved
                       against can change its Part — the same test the server's guard applies. A
                       fully returned line reads zero received but still carries its ledger rows. */}
-                  {!row.original.hasStockMovements ? (
-                    <Button
-                      onClick={() => onAmend('substitute-part', row.original.partId)}
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      Substitute
-                    </Button>
-                  ) : null}
+                  <Button
+                    disabled={row.original.hasStockMovements}
+                    onClick={() => onAmend('substitute-part', row.original.partId)}
+                    size="sm"
+                    title={
+                      row.original.hasStockMovements
+                        ? 'Stock has already arrived against this line, so its Part cannot change'
+                        : undefined
+                    }
+                    type="button"
+                    variant="ghost"
+                  >
+                    Substitute
+                  </Button>
                 </div>
               ),
               enableSorting: false,

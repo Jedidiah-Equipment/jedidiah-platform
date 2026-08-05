@@ -1,6 +1,6 @@
 import type { PurchaseOrderAmendmentKind } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, index, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, date, index, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { parts } from './part.js';
@@ -25,13 +25,13 @@ export const purchaseOrderAmendments = pgTable(
     kind: text('kind').notNull().$type<PurchaseOrderAmendmentKind>(),
     /** What took the line's place; only a substitution has one. */
     newPartId: uuid('new_part_id').references(() => parts.id, { onDelete: 'restrict' }),
-    newQuantity: numeric('new_quantity', { mode: 'number', precision: 14, scale: 3 }).notNull(),
+    newExpectedDate: date('new_expected_date', { mode: 'string' }),
+    newQuantity: numeric('new_quantity', { mode: 'number', precision: 14, scale: 3 }),
     note: text('note').notNull(),
-    /** Null only for an added line, which had no earlier quantity to move from. */
+    /** Null for an added line and for a date amendment, neither of which moved an earlier quantity. */
     oldQuantity: numeric('old_quantity', { mode: 'number', precision: 14, scale: 3 }),
-    partId: uuid('part_id')
-      .notNull()
-      .references(() => parts.id, { onDelete: 'restrict' }),
+    oldExpectedDate: date('old_expected_date', { mode: 'string' }),
+    partId: uuid('part_id').references(() => parts.id, { onDelete: 'restrict' }),
     purchaseOrderId: uuid('purchase_order_id')
       .notNull()
       .references(() => purchaseOrders.id, { onDelete: 'cascade' }),
@@ -39,7 +39,7 @@ export const purchaseOrderAmendments = pgTable(
   (table) => [
     check(
       'purchase_order_amendment_kind_check',
-      sql`${table.kind} IN ('quantity-change', 'add-line', 'substitute-part')`,
+      sql`${table.kind} IN ('quantity-change', 'add-line', 'substitute-part', 'expected-date-change')`,
     ),
     check('purchase_order_amendment_note_nonempty', sql`length(trim(${table.note})) > 0`),
     check('purchase_order_amendment_new_quantity_positive', sql`${table.newQuantity} > 0`),
@@ -52,17 +52,36 @@ export const purchaseOrderAmendments = pgTable(
       'purchase_order_amendment_shape',
       sql`(
         ${table.kind} = 'quantity-change'
+        AND ${table.partId} IS NOT NULL
         AND ${table.newPartId} IS NULL
+        AND ${table.newQuantity} IS NOT NULL
         AND ${table.oldQuantity} IS NOT NULL
+        AND ${table.oldExpectedDate} IS NULL
+        AND ${table.newExpectedDate} IS NULL
       ) OR (
         ${table.kind} = 'add-line'
+        AND ${table.partId} IS NOT NULL
         AND ${table.newPartId} IS NULL
+        AND ${table.newQuantity} IS NOT NULL
         AND ${table.oldQuantity} IS NULL
+        AND ${table.oldExpectedDate} IS NULL
+        AND ${table.newExpectedDate} IS NULL
       ) OR (
         ${table.kind} = 'substitute-part'
+        AND ${table.partId} IS NOT NULL
         AND ${table.newPartId} IS NOT NULL
         AND ${table.newPartId} <> ${table.partId}
+        AND ${table.newQuantity} IS NOT NULL
         AND ${table.oldQuantity} IS NOT NULL
+        AND ${table.oldExpectedDate} IS NULL
+        AND ${table.newExpectedDate} IS NULL
+      ) OR (
+        ${table.kind} = 'expected-date-change'
+        AND ${table.partId} IS NULL
+        AND ${table.newPartId} IS NULL
+        AND ${table.newQuantity} IS NULL
+        AND ${table.oldQuantity} IS NULL
+        AND ${table.newExpectedDate} IS NOT NULL
       )`,
     ),
     index('purchase_order_amendment_purchase_order_idx').on(table.purchaseOrderId, table.createdAt, table.id),

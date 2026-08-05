@@ -1,5 +1,6 @@
 import {
   amendPurchaseOrderAddLine,
+  amendPurchaseOrderExpectedDate,
   amendPurchaseOrderQuantity,
   amendPurchaseOrderSubstitutePart,
   cancelPurchaseOrder,
@@ -29,6 +30,7 @@ import {
   type PurchaseOrder,
   PurchaseOrderActionInput,
   PurchaseOrderAmendAddLineInput,
+  PurchaseOrderAmendExpectedDateInput,
   PurchaseOrderAmendmentListResult,
   PurchaseOrderAmendQuantityInput,
   PurchaseOrderAmendSubstitutePartInput,
@@ -57,9 +59,8 @@ import { purchaseOrderErrorFamily, purchaseOrderJobErrorFamily } from './purchas
 
 export const purchaseOrdersRouter = router({
   /**
-   * The three amendments a sent order takes (spec §4), each gated on `purchase_order:amend` — the
-   * right to change what a Supplier is already holding, which is deliberately narrower than the
-   * right to raise a draft.
+   * Sent-order changes are gated on `purchase_order:amend`: the right to change what a Supplier is
+   * already holding, which is deliberately narrower than the right to raise a draft.
    */
   amendQuantity: authorizedProcedure('purchase_order:amend')
     .input(PurchaseOrderAmendQuantityInput)
@@ -84,6 +85,23 @@ export const purchaseOrdersRouter = router({
     .mutation(async ({ ctx, input }) => {
       const purchaseOrder = await mapPurchaseOrderErrors(() =>
         amendPurchaseOrderAddLine({
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          input,
+          pdfRenderer: renderPurchaseOrderPdf,
+          storage: ctx.storage,
+        }),
+      );
+
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
+
+  amendExpectedDate: authorizedProcedure('purchase_order:amend')
+    .input(PurchaseOrderAmendExpectedDateInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
+        amendPurchaseOrderExpectedDate({
           actorUserId: ctx.session.user.id,
           db: ctx.db,
           input,
@@ -129,10 +147,10 @@ export const purchaseOrdersRouter = router({
     ),
 
   /**
-   * Sending stock back is a ledger write, so it rides `inventory:move` rather than a Purchase Order
-   * right: the person at the dock packing the wrong item back onto the truck is the one posting it.
+   * Stores can post the physical movement, while a Purchase Order amender can complete the same
+   * PO-bound return-to-credit workflow without gaining general Checkout or Return to Store rights.
    */
-  returnToSupplier: authorizedProcedure('inventory:move')
+  returnToSupplier: authorizedProcedure(['inventory:move', 'purchase_order:amend'])
     .input(PostReturnToSupplierInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {

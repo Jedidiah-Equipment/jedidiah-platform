@@ -7,6 +7,9 @@ average cost is untouched.
 This is not the same as a [Return to Store](./return-to-store.md), which puts a Job's leftovers back
 on the rack.
 
+A **Stores** user or **Procurement manager** can post this Purchase Order-bound return; Procurement
+does not gain permission to Checkout stock or Return it to Store.
+
 ## Steps
 
 1. Open **Purchase Orders** and select the order the stock arrived on.

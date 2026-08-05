@@ -207,7 +207,7 @@ describe('Purchase Order receiving values', () => {
 
 describe('Purchase Order amendment values', () => {
   it('insists on a Part only for the kinds that name one', () => {
-    const values = { newPartId: '', note: 'Agreed by phone', quantity: 2, unitPrice: 10 };
+    const values = { expectedDeliveryDate: '', newPartId: '', note: 'Agreed by phone', quantity: 2, unitPrice: 10 };
 
     expect(purchaseOrderAmendmentValidator('quantity-change').safeParse(values).success).toBe(true);
     expect(purchaseOrderAmendmentValidator('add-line').safeParse(values).success).toBe(false);
@@ -217,10 +217,29 @@ describe('Purchase Order amendment values', () => {
     ).toBe(true);
   });
 
-  it('holds every kind to the mandatory note the schema owns', () => {
-    const values = { newPartId: LINEAR_PART_ID, note: '   ', quantity: 2, unitPrice: 10 };
+  it('insists on a date only for an expected-date amendment', () => {
+    const values = { expectedDeliveryDate: '', newPartId: '', note: 'Supplier call', quantity: 2, unitPrice: 10 };
 
-    for (const kind of ['quantity-change', 'add-line', 'substitute-part'] as const) {
+    expect(purchaseOrderAmendmentValidator('expected-date-change').safeParse(values).success).toBe(false);
+    expect(
+      purchaseOrderAmendmentValidator('expected-date-change').safeParse({
+        ...values,
+        expectedDeliveryDate: '2026-08-04',
+      }).success,
+    ).toBe(true);
+    expect(purchaseOrderAmendmentValidator('quantity-change').safeParse(values).success).toBe(true);
+  });
+
+  it('holds every kind to the mandatory note the schema owns', () => {
+    const values = {
+      expectedDeliveryDate: '2026-08-04',
+      newPartId: LINEAR_PART_ID,
+      note: '   ',
+      quantity: 2,
+      unitPrice: 10,
+    };
+
+    for (const kind of ['quantity-change', 'add-line', 'substitute-part', 'expected-date-change'] as const) {
       expect(purchaseOrderAmendmentValidator(kind).safeParse(values).success, kind).toBe(false);
     }
   });

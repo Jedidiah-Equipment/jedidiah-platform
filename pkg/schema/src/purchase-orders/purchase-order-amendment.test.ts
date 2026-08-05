@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import {
   PurchaseOrderAmendAddLineInput,
+  PurchaseOrderAmendExpectedDateInput,
   PurchaseOrderAmendmentKind,
   PurchaseOrderAmendQuantityInput,
   PurchaseOrderAmendSubstitutePartInput,
@@ -12,8 +13,27 @@ const ID_B = '00000000-0000-4000-8000-000000000002';
 const ID_C = '00000000-0000-4000-8000-000000000003';
 
 describe('Purchase Order amendment contracts', () => {
-  test('carries the three ways a sent order changes', () => {
-    expect(PurchaseOrderAmendmentKind.options).toEqual(['quantity-change', 'add-line', 'substitute-part']);
+  test('carries the four ways a sent order changes', () => {
+    expect(PurchaseOrderAmendmentKind.options).toEqual([
+      'quantity-change',
+      'add-line',
+      'substitute-part',
+      'expected-date-change',
+    ]);
+  });
+
+  test('requires a delivery date and note when a sent order gains or changes its promise date', () => {
+    const expectedDateChange = {
+      expectedDeliveryDate: '2026-08-04',
+      id: ID_A,
+      note: 'Supplier moved delivery forward',
+    };
+
+    expect(PurchaseOrderAmendExpectedDateInput.parse(expectedDateChange)).toEqual(expectedDateChange);
+    expect(() =>
+      PurchaseOrderAmendExpectedDateInput.parse({ ...expectedDateChange, expectedDeliveryDate: null }),
+    ).toThrow();
+    expect(() => PurchaseOrderAmendExpectedDateInput.parse({ ...expectedDateChange, note: '   ' })).toThrow();
   });
 
   test('requires a note on every kind — the call is the recorded event', () => {

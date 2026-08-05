@@ -105,7 +105,7 @@ export function PurchaseOrderReturnsCard({
     getRowId: (row) => row.id,
   });
 
-  if (returns.length === 0 && !(canReturn && returnableLines.length > 0)) return null;
+  if (returns.length === 0 && returnableLines.length === 0) return null;
 
   return (
     <Card>
@@ -138,6 +138,11 @@ export function PurchaseOrderReturnsCard({
         </CardAction>
       </CardHeader>
       <CardContent className="px-0">
+        {!canReturn && returnableLines.length > 0 ? (
+          <p className="px-4 pb-4 text-sm text-muted-foreground">
+            A Stores user or someone who can amend Purchase Orders must post the return.
+          </p>
+        ) : null}
         <DataTable
           emptyMessage="Nothing has gone back to the Supplier."
           hideGlobalFilter

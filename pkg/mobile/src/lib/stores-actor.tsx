@@ -2,7 +2,7 @@ import { isStoresActorExpired } from '@pkg/domain';
 import type { QuickSwitchActor } from '@pkg/schema';
 import type React from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { AppState, View } from 'react-native';
 
 /**
  * Who is standing at the shared stores tablet (spec §11). Deliberately not a session — the tablet
@@ -40,18 +40,32 @@ export const StoresActorProvider: React.FC<{ children: React.ReactNode }> = ({ c
     lastInteractionAt.current = Date.now();
   }, []);
 
-  // The timer only runs while somebody is selected: an unattended tablet with nobody at it has
-  // nothing to forget, and a permanently ticking interval on a device that never sleeps is waste.
+  /**
+   * Expiry is checked on a tick *and* on every return to the foreground, and the second is not
+   * belt-and-braces: JavaScript timers do not run while a backgrounded app is suspended, so a
+   * tablet locked at 16:55 and woken the next morning would come back with the interval never
+   * having fired and yesterday's name still showing. The clock is the authority, not the tick —
+   * `lastInteractionAt` is wall time, so the elapsed check is correct however long the gap was.
+   *
+   * Both only run while somebody is selected: a tablet with nobody at it has nothing to forget.
+   */
   useEffect(() => {
     if (actor === null) return;
 
-    const interval = setInterval(() => {
+    const expireIfIdle = () => {
       if (isStoresActorExpired({ lastInteractionAt: lastInteractionAt.current, now: Date.now() })) {
         setActor(null);
       }
-    }, IDLE_TICK_MS);
+    };
+    const interval = setInterval(expireIfIdle, IDLE_TICK_MS);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') expireIfIdle();
+    });
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, [actor]);
 
   const value = useMemo(

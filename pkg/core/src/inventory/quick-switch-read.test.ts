@@ -55,4 +55,37 @@ describe('listQuickSwitchActors', () => {
       { id: 'stores-zola', name: 'Zola Stores', thumbnailDataUrl: null },
     ]);
   });
+
+  /**
+   * The tablet's own account holds the `stores` role — that is how it authorizes these flows — so
+   * without excluding it the grid would offer "Stores Tablet" as somebody to work as, and a tap
+   * would attribute the movement to the device rather than a person.
+   */
+  test('leaves the signed-in device account off its own list', async ({ context }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values([
+      {
+        createdAt: now,
+        email: 'tablet@example.com',
+        emailVerified: true,
+        id: 'stores-tablet',
+        name: 'Stores Tablet',
+        role: 'stores',
+        updatedAt: now,
+      },
+      {
+        createdAt: now,
+        email: 'person@example.com',
+        emailVerified: true,
+        id: 'stores-person',
+        name: 'Stores Person',
+        role: 'stores',
+        updatedAt: now,
+      },
+    ]);
+
+    await expect(listQuickSwitchActors({ db: context.db, excludeUserId: 'stores-tablet' })).resolves.toEqual({
+      items: [{ id: 'stores-person', name: 'Stores Person', thumbnailDataUrl: null }],
+    });
+  });
 });

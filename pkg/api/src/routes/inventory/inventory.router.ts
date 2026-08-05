@@ -107,7 +107,7 @@ export const inventoryRouter = router({
    */
   quickSwitchActors: authorizedProcedure('inventory:move')
     .output(QuickSwitchActorListResult)
-    .query(({ ctx }) => listQuickSwitchActors({ db: ctx.db })),
+    .query(({ ctx }) => listQuickSwitchActors({ db: ctx.db, excludeUserId: ctx.session.user.id })),
 
   history: authorizedProcedure('inventory:read')
     .input(StockMovementHistoryInput)

@@ -30,6 +30,9 @@ export default function IndexRoute() {
   const accessFailed = access.isLoadingError;
 
   if (!access.isPending && !accessFailed && !tabs.includes('schedule')) {
+    // The stores tablet lands here and has exactly one tab, so the tab bar is hidden — without this
+    // redirect it would reach "No mobile access" with no way at all into the Stores flow.
+    if (tabs.includes('stores')) return <Redirect href="/stores" />;
     if (tabs.includes('quotes')) return <Redirect href="/quotes" />;
     if (tabs.includes('products')) return <Redirect href="/products" />;
 

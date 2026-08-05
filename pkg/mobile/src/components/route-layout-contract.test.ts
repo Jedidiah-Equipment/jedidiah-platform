@@ -27,4 +27,29 @@ describe('route layout contract', () => {
     expect(initialRouteName).toBeDefined();
     expect(childNames).toContain(initialRouteName);
   });
+
+  test('keeps access-query failures distinct from resolved permission denial', () => {
+    const accessGates = [
+      'app/(protected)/(tabs)/index.tsx',
+      'app/(protected)/(tabs)/jobs/_layout.tsx',
+      'app/(protected)/(tabs)/(plan)/_layout.tsx',
+    ];
+
+    for (const file of accessGates) {
+      const source = readFileSync(join(MOBILE_DIR, file), 'utf8');
+
+      expect(source).toContain('access.isLoadingError');
+      expect(source).toContain('<TabAccessErrorScreen');
+      expect(source).toContain('access.refetch()');
+    }
+  });
+
+  test('counts only the Bays visible after Plan search and uses Plan help on Bay schedules', () => {
+    const plan = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/(plan)/plan/index.tsx'), 'utf8');
+    const baySchedule = readFileSync(join(MOBILE_DIR, 'src/components/bays/BayQueueScreen.tsx'), 'utf8');
+
+    expect(plan).toContain("const total = state.status === 'ready' ? bays.length : null;");
+    expect(baySchedule).toContain('helpTopic="plan"');
+    expect(baySchedule).not.toContain('helpTopic="jobs"');
+  });
 });

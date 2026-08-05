@@ -1,6 +1,6 @@
 import { Redirect, Stack } from 'expo-router';
 
-import { TabAccessLoadingScreen } from '@/components/TabAccessLoadingScreen';
+import { TabAccessErrorScreen, TabAccessLoadingScreen } from '@/components/TabAccessLoadingScreen';
 import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
 import { useCan } from '@/lib/use-access';
 
@@ -10,6 +10,10 @@ export default function JobsLayout() {
 
   if (access.isPending) {
     return <TabAccessLoadingScreen parent={MAIN_TAB_PARENTS.jobs} title="Jobs" />;
+  }
+
+  if (access.isLoadingError) {
+    return <TabAccessErrorScreen onRetry={() => void access.refetch()} parent={MAIN_TAB_PARENTS.jobs} title="Jobs" />;
   }
 
   if (!access.can) return <Redirect href="/" />;

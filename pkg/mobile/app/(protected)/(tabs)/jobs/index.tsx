@@ -49,7 +49,7 @@ export default function JobsRoute() {
     ),
   );
   const items = useMemo(() => jobs.data?.pages.flatMap((page) => page.items) ?? [], [jobs.data?.pages]);
-  const total = jobs.data?.pages.at(0)?.total ?? null;
+  const total = jobs.data?.pages.at(-1)?.total ?? null;
   const hasCriteria = search.trim().length > 0 || completion !== 'exclude-complete';
   const emptyContent = jobs.isError ? (
     <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load Jobs." />

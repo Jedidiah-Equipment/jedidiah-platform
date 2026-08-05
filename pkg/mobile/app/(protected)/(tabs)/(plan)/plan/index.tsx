@@ -22,7 +22,7 @@ export default function PlanRoute() {
     () => (state.status === 'ready' ? sortBayCards(filterBayCards(state.cards, search), sort) : []),
     [search, sort, state],
   );
-  const total = state.status === 'ready' ? state.cards.length : null;
+  const total = state.status === 'ready' ? bays.length : null;
   const emptyContent =
     state.status === 'error' ? (
       <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load Plan." />

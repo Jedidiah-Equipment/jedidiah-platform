@@ -1,3 +1,5 @@
+import { statusBadgeColorClassNames } from '@pkg/domain';
+
 /**
  * Canonical planning colors for a Work Slot's lifecycle, shared by the planning Gantt slot bars and
  * the schedule-state badges so both surfaces read identically: in-progress (running today) = blue,
@@ -7,9 +9,9 @@
 
 /** Badge-pill classes per Work-Slot lifecycle bucket. */
 export const scheduleBadgeToneClass = {
-  active: 'border-blue-500/50 bg-blue-500/15 text-blue-800 dark:text-blue-200',
-  done: 'border-border bg-muted text-muted-foreground',
-  scheduled: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200',
+  active: `${statusBadgeColorClassNames.blue.chip} ${statusBadgeColorClassNames.blue.text}`,
+  done: `${statusBadgeColorClassNames.gray.chip} ${statusBadgeColorClassNames.gray.text}`,
+  scheduled: `${statusBadgeColorClassNames.green.chip} ${statusBadgeColorClassNames.green.text}`,
 } as const;
 
 /** Gantt slot-bar border + ring for the highlighted tones (neutral slots use the plain border). */

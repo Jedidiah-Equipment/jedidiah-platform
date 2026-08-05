@@ -153,6 +153,36 @@ describe('catalog card mappings', () => {
     expect(badgeText.props.mono).toBe(true);
   });
 
+  test('wraps mixed Schedule badges within the shared fixed-height catalog card', () => {
+    const card = asElement(
+      JobCatalogCard({
+        job: {
+          code: 'JOB-00045',
+          completedOn: null,
+          customerCompanyName: null,
+          id: 'job-4',
+          productName: 'Square Baler',
+          productUnit: null,
+          quoteKind: 'product',
+          scheduleState: {
+            active: 1,
+            done: 1,
+            firstWorkDay: '2026-08-01',
+            lastWorkDay: '2026-08-10',
+            scheduled: 1,
+            total: 3,
+          },
+          workTitle: null,
+        } as JobSummary,
+      }),
+    );
+    const summary = asElement(card.props.trailing);
+    const rendered = asElement((summary.type as (props: ElementProps) => unknown)(summary.props));
+
+    expect(rendered.props.className).toContain('flex-row flex-wrap');
+    expect((rendered.props.children as unknown[])[0]).toHaveLength(3);
+  });
+
   test('maps a Bay to operator, active Job/Customer, and days left', () => {
     const card = asElement(
       PlanCatalogCard({

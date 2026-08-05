@@ -180,7 +180,7 @@ function Ready({
             />
           )
         }
-        helpTopic="jobs"
+        helpTopic="plan"
         onBack={handleBack}
         parentLabel={bayToolbarParentLabel(onDetail)}
         subtitle={onDetail && selected ? selected.jobDisplayName : bay.name}
@@ -488,7 +488,7 @@ function Frame({
             uri={operator?.thumbnailDataUrl}
           />
         }
-        helpTopic="jobs"
+        helpTopic="plan"
         onBack={onBack}
         parentLabel="Plan"
         subtitle="BAY SCHEDULE"

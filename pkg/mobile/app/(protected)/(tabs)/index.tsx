@@ -2,7 +2,7 @@ import { type Href, Redirect } from 'expo-router';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { TabAccessLoadingScreen } from '@/components/TabAccessLoadingScreen';
+import { TabAccessErrorScreen, TabAccessLoadingScreen } from '@/components/TabAccessLoadingScreen';
 import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { appTabHref, visibleTabs } from '@/lib/app-tabs';
@@ -15,6 +15,10 @@ export default function SignedInIndexRoute() {
 
   if (access.isPending) {
     return <TabAccessLoadingScreen parent={MAIN_TAB_PARENTS.jobs} title="Jobs" />;
+  }
+
+  if (access.isLoadingError) {
+    return <TabAccessErrorScreen onRetry={() => void access.refetch()} parent={MAIN_TAB_PARENTS.jobs} title="Jobs" />;
   }
 
   const [firstTab] = visibleTabs(access.data);

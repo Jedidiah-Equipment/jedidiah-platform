@@ -103,7 +103,7 @@ function JobScheduleSummary({ job }: { job: JobSummary }) {
   const schedule = getJobSchedulePresentation(job);
 
   return (
-    <View className="max-w-36 items-end gap-1">
+    <View className="max-w-36 flex-row flex-wrap items-center justify-end gap-1">
       {schedule.map((item) => (
         <JobScheduleBadge item={item} key={item.tone} />
       ))}

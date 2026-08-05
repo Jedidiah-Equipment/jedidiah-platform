@@ -95,12 +95,17 @@ function PartSearchRowTile({ onSelect, row }: { onSelect: (partCode: string) => 
       className="flex-row items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3"
       onPress={() => onSelect(row.partCode)}
     >
+      {/*
+        Name leads, code follows. Somebody searching here could not read the label — so they are
+        working from what the Part *is*, and the code is what they confirm against the bin once the
+        right row is found. It also matches the Part screen this row opens, which titles by name.
+      */}
       <View className="min-w-0 flex-1">
-        <Text className="text-sm text-surface-foreground" mono numberOfLines={1} weight="semibold">
-          {row.partCode}
-        </Text>
-        <Text className="mt-0.5 text-sm text-muted-foreground" numberOfLines={1}>
+        <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
           {row.partName}
+        </Text>
+        <Text className="mt-0.5 text-sm text-muted-foreground" mono numberOfLines={1}>
+          {row.partCode}
         </Text>
       </View>
       <Text className="shrink-0 text-sm text-surface-foreground" weight="semibold">

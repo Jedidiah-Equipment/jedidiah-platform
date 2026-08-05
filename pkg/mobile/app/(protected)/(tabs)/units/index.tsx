@@ -65,7 +65,7 @@ export default function UnitsRoute() {
       <MainTabToolbar
         assistantParent={MAIN_TAB_PARENTS.units}
         helpTopic="units"
-        subtitle={units.isPending ? 'Loading units…' : `${total} ${total === 1 ? 'unit' : 'units'}`}
+        subtitle={total === null ? 'Loading units…' : `${total} ${total === 1 ? 'unit' : 'units'}`}
         title="Units"
       />
       <PaginatedCatalogList

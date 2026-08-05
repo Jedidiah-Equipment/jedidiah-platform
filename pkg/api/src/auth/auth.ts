@@ -44,6 +44,14 @@ function createAuthOptions(database: Db) {
     user: {
       additionalFields: {
         phoneNumber: { type: 'string' as const, required: false as const, input: true as const },
+        // Admin create-user accepts server-owned data fields, while input:false keeps ordinary
+        // profile endpoints from letting a signed-in account make itself a shared device.
+        isDevice: {
+          type: 'boolean' as const,
+          required: false as const,
+          defaultValue: false as const,
+          input: false as const,
+        },
         // input: false so users cannot self-enable via the non-admin update-user endpoint; only the
         // admin update path (gated by user:update) can set it.
         assistantEnabled: {

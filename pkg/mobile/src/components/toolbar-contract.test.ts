@@ -9,32 +9,35 @@ const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const PROTECTED_ROUTES_DIR = join(MOBILE_DIR, 'app/(protected)');
 
 const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
-  '(tabs)/products/_layout.tsx': 'main',
-  '(tabs)/quotes/_layout.tsx': 'main',
-  '(tabs)/stores/_layout.tsx': 'main',
-  '(tabs)/units/_layout.tsx': 'main',
+  '(tabs)/products/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  '(tabs)/quotes/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  '(tabs)/stores/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  '(tabs)/units/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
-  '(tabs)/(schedule)/bays/[bayId].tsx': 'secondary',
-  '(tabs)/(schedule)/index.tsx': 'main',
-  '(tabs)/(schedule)/jobs/[jobId].tsx': 'secondary',
-  '(tabs)/products/[productId].tsx': 'secondary',
-  '(tabs)/products/index.tsx': 'main',
-  '(tabs)/quotes/[quoteId].tsx': 'secondary',
-  '(tabs)/quotes/index.tsx': 'main',
-  '(tabs)/stores/close-out/[jobId].tsx': 'secondary',
-  '(tabs)/stores/close-out/index.tsx': 'secondary',
-  '(tabs)/stores/index.tsx': 'main',
-  '(tabs)/stores/parts/[partCode]/checkout.tsx': 'secondary',
-  '(tabs)/stores/parts/[partCode]/index.tsx': 'secondary',
-  '(tabs)/stores/parts/[partCode]/receive.tsx': 'secondary',
-  '(tabs)/stores/parts/[partCode]/return-to-store.tsx': 'secondary',
-  '(tabs)/stores/parts/[partCode]/return-to-supplier.tsx': 'secondary',
-  '(tabs)/units/[unitId].tsx': 'secondary',
-  '(tabs)/units/index.tsx': 'main',
-  'assistant.tsx': 'secondary',
-  'documents/[documentId].tsx': 'secondary',
+  '(tabs)/(schedule)/bays/[bayId].tsx': toolbar('secondary', 'src/components/bays/BayQueueScreen.tsx'),
+  '(tabs)/(schedule)/index.tsx': toolbar('main', 'app/(protected)/(tabs)/(schedule)/index.tsx'),
+  '(tabs)/(schedule)/jobs/[jobId].tsx': toolbar('secondary', 'src/components/bays/JobDetail.tsx'),
+  '(tabs)/products/[productId].tsx': toolbar('secondary', 'app/(protected)/(tabs)/products/[productId].tsx'),
+  '(tabs)/products/index.tsx': toolbar('main', 'app/(protected)/(tabs)/products/index.tsx'),
+  '(tabs)/quotes/[quoteId].tsx': toolbar('secondary', 'src/components/quotes/QuoteDetailsScreen.tsx'),
+  '(tabs)/quotes/index.tsx': toolbar('main', 'app/(protected)/(tabs)/quotes/index.tsx'),
+  '(tabs)/stores/close-out/[jobId].tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  '(tabs)/stores/close-out/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  '(tabs)/stores/index.tsx': toolbar('main', 'app/(protected)/(tabs)/stores/index.tsx'),
+  '(tabs)/stores/parts/[partCode]/checkout.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  '(tabs)/stores/parts/[partCode]/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  '(tabs)/stores/parts/[partCode]/receive.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  '(tabs)/stores/parts/[partCode]/return-to-store.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  '(tabs)/stores/parts/[partCode]/return-to-supplier.tsx': toolbar(
+    'secondary',
+    'src/components/stores/StoresScreen.tsx',
+  ),
+  '(tabs)/units/[unitId].tsx': toolbar('secondary', 'app/(protected)/(tabs)/units/[unitId].tsx'),
+  '(tabs)/units/index.tsx': toolbar('main', 'app/(protected)/(tabs)/units/index.tsx'),
+  'assistant.tsx': toolbar('secondary', 'app/(protected)/assistant.tsx'),
+  'documents/[documentId].tsx': toolbar('secondary', 'app/(protected)/documents/[documentId].tsx'),
 } as const;
 
 describe('signed-in toolbar contract', () => {
@@ -45,6 +48,7 @@ describe('signed-in toolbar contract', () => {
       .sort();
 
     expect(routes).toEqual(Object.keys(SIGNED_IN_ROUTE_TOOLBARS).sort());
+    expectToolbarKinds(SIGNED_IN_ROUTE_TOOLBARS);
   });
 
   test('renders permission-loading surfaces inside the main tab toolbar contract', () => {
@@ -69,6 +73,7 @@ describe('signed-in toolbar contract', () => {
         usesStandardLoadingSurface: true,
       })),
     );
+    expectToolbarKinds(SIGNED_IN_PERMISSION_LOADING_SURFACES);
   });
 
   test('assembles signed-in toolbar chrome only in TopToolbar', () => {
@@ -84,3 +89,29 @@ describe('signed-in toolbar contract', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+type ToolbarKind = 'main' | 'secondary';
+type ToolbarContract = { kind: ToolbarKind; owner: string };
+
+function toolbar(kind: ToolbarKind, owner: string): ToolbarContract {
+  return { kind, owner };
+}
+
+function expectToolbarKinds(contracts: Record<string, ToolbarContract>): void {
+  for (const [route, contract] of Object.entries(contracts)) {
+    const source = readFileSync(join(MOBILE_DIR, contract.owner), 'utf8');
+    const expected = contract.kind === 'main' ? '<MainTabToolbar' : '<SecondaryPageToolbar';
+    const unexpected = contract.kind === 'main' ? '<SecondaryPageToolbar' : '<MainTabToolbar';
+
+    expect({ owner: contract.owner, route, usesExpectedToolbar: source.includes(expected) }).toEqual({
+      owner: contract.owner,
+      route,
+      usesExpectedToolbar: true,
+    });
+    expect({ owner: contract.owner, route, usesWrongToolbar: source.includes(unexpected) }).toEqual({
+      owner: contract.owner,
+      route,
+      usesWrongToolbar: false,
+    });
+  }
+}

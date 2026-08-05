@@ -25,13 +25,18 @@ export const UserCreateDialog: React.FC = () => {
   const canSetRole = hasPermission(accessQuery.data, 'user:set-role');
   const [isOpen, setIsOpen] = useState(false);
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
-  const setDeviceMutation = useMutation(trpc.users.setDevice.mutationOptions());
 
   const createUserMutation = useMutation({
     mutationFn: async (value: UserCreateFormValues) => {
       const result = unwrapAuthResult<{ user: { id: string } }>(
         await authClient.admin.createUser({
-          data: { emailVerified: value.emailVerified, phoneNumber: value.phoneNumber },
+          // Shared-device state belongs in Better Auth's user insert so a later request cannot
+          // leave a successfully created account behind while the dialog reports failure.
+          data: {
+            emailVerified: value.emailVerified,
+            isDevice: canSetRole ? value.isDevice : false,
+            phoneNumber: value.phoneNumber,
+          },
           email: value.email,
           name: value.name,
           password: value.password,
@@ -39,10 +44,6 @@ export const UserCreateDialog: React.FC = () => {
         }),
       );
       const userId = AuthId.parse(result.user.id);
-
-      if (value.isDevice) {
-        await setDeviceMutation.mutateAsync({ isDevice: true, userId });
-      }
 
       if (canAssignDepartments) {
         await setDepartmentsMutation.mutateAsync({

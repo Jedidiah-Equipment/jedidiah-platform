@@ -9,27 +9,37 @@ const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 describe('full-width page contract', () => {
   test('does not center route or scrolling content surfaces with automatic margins', () => {
-    const appOffenders = listTsxFiles(join(MOBILE_DIR, 'app'))
-      .filter((file) => readFileSync(file, 'utf8').includes('mx-auto'))
-      .map((file) => relative(MOBILE_DIR, file));
-    const scrollOffenders = listTsxFiles(join(MOBILE_DIR, 'src'))
-      .filter((file) => /contentContainerClassName=["'][^"']*mx-auto/.test(readFileSync(file, 'utf8')))
+    const offenders = mobileTsxFiles()
+      .filter((file) => pageSurfaceTags(readFileSync(file, 'utf8')).some((tag) => classListHas(tag, /\bmx-auto\b/)))
       .map((file) => relative(MOBILE_DIR, file));
 
-    // Nested content may be deliberately sized; the page shell and its scroller may not be.
-    expect({ appOffenders, scrollOffenders }).toEqual({ appOffenders: [], scrollOffenders: [] });
+    expect(offenders).toEqual([]);
   });
 
   test('does not cap route or scrolling content widths', () => {
-    const appFiles = listTsxFiles(join(MOBILE_DIR, 'app'));
-    const sourceFiles = listTsxFiles(join(MOBILE_DIR, 'src'));
-    const routeOffenders = appFiles
-      .filter((file) => /max-w-|maxWidth/.test(readFileSync(file, 'utf8')))
-      .map((file) => relative(MOBILE_DIR, file));
-    const scrollOffenders = sourceFiles
-      .filter((file) => /contentContainerClassName=["'][^"']*max-w-/.test(readFileSync(file, 'utf8')))
+    const offenders = mobileTsxFiles()
+      .filter((file) =>
+        pageSurfaceTags(readFileSync(file, 'utf8')).some(
+          (tag) => classListHas(tag, /\bmax-w-/) || /\bmaxWidth\s*:/.test(tag),
+        ),
+      )
       .map((file) => relative(MOBILE_DIR, file));
 
-    expect({ routeOffenders, scrollOffenders }).toEqual({ routeOffenders: [], scrollOffenders: [] });
+    expect(offenders).toEqual([]);
   });
 });
+
+function mobileTsxFiles(): string[] {
+  return [...listTsxFiles(join(MOBILE_DIR, 'app')), ...listTsxFiles(join(MOBILE_DIR, 'src'))];
+}
+
+/** Nested overlays and fields may be sized; only page roots and scrolling surfaces are governed. */
+function pageSurfaceTags(source: string): string[] {
+  return [...source.matchAll(/<(?:SafeAreaView|ScrollView|FlatList|SectionList)\b[^>]*>/gs)].map(([tag]) => tag);
+}
+
+function classListHas(tag: string, pattern: RegExp): boolean {
+  return [...tag.matchAll(/(?:className|contentContainerClassName)=["']([^"']*)["']/g)].some(([, className]) =>
+    pattern.test(className ?? ''),
+  );
+}

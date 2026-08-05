@@ -38,7 +38,7 @@ export function StoresPartScreen({
 
   if (part.isPending) {
     return (
-      <StoresScreen onBack={resolvedParent.onBack} parentLabel={resolvedParent.label} title={title}>
+      <StoresScreen onBack={resolvedParent.onBack} parentLabel={resolvedParent.label} subtitle={partCode} title={title}>
         <View className="items-center py-10">
           <ActivityIndicator accessibilityLabel="Loading Part" color={loadingSpinnerColor} size="large" />
         </View>
@@ -48,7 +48,7 @@ export function StoresPartScreen({
 
   if (part.isError) {
     return (
-      <StoresScreen onBack={resolvedParent.onBack} parentLabel={resolvedParent.label} title={title}>
+      <StoresScreen onBack={resolvedParent.onBack} parentLabel={resolvedParent.label} subtitle={partCode} title={title}>
         <Text className="py-10 text-center text-sm text-danger">
           Couldn’t load this Part. Pull down to retry, or scan it again.
         </Text>

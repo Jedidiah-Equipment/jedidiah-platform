@@ -48,6 +48,7 @@ export default function StoresJobCloseOutRoute() {
       <StoresScreen
         onBack={() => router.dismissTo('/stores/close-out')}
         parentLabel="Close-out queue"
+        subtitle="LOADING JOB STOCK"
         title="Close out"
       >
         <View className="items-center py-10">
@@ -62,6 +63,7 @@ export default function StoresJobCloseOutRoute() {
       <StoresScreen
         onBack={() => router.dismissTo('/stores/close-out')}
         parentLabel="Close-out queue"
+        subtitle="JOB STOCK UNAVAILABLE"
         title="Close out"
       >
         <Text className="py-10 text-center text-sm text-danger">

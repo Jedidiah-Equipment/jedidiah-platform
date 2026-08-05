@@ -26,7 +26,7 @@ export function StoresScreen({
   children: React.ReactNode;
   onBack: () => void;
   parentLabel: string;
-  subtitle?: string;
+  subtitle: string;
   title: string;
 }) {
   const refresh = useGlobalRefresh();
@@ -35,12 +35,7 @@ export function StoresScreen({
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <SecondaryPageToolbar
-        onBack={onBack}
-        parentLabel={parentLabel}
-        subtitle={subtitle ?? 'STORES WORKFLOW'}
-        title={title}
-      />
+      <SecondaryPageToolbar onBack={onBack} parentLabel={parentLabel} subtitle={subtitle} title={title} />
       <ScrollView
         contentContainerClassName="w-full gap-5 px-4 pb-10 pt-4"
         keyboardShouldPersistTaps="handled"

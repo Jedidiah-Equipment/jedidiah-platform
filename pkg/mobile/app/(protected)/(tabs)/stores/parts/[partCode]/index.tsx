@@ -27,7 +27,12 @@ export default function StoresPartRoute() {
 
   if (part.isPending) {
     return (
-      <StoresScreen onBack={() => router.dismissTo('/stores')} parentLabel="Stores" title={partCode}>
+      <StoresScreen
+        onBack={() => router.dismissTo('/stores')}
+        parentLabel="Stores"
+        subtitle={partCode}
+        title={partCode}
+      >
         <View className="items-center py-10">
           <ActivityIndicator accessibilityLabel="Loading Part" color={loadingSpinnerColor} size="large" />
         </View>
@@ -37,7 +42,12 @@ export default function StoresPartRoute() {
 
   if (part.isError) {
     return (
-      <StoresScreen onBack={() => router.dismissTo('/stores')} parentLabel="Stores" title={partCode}>
+      <StoresScreen
+        onBack={() => router.dismissTo('/stores')}
+        parentLabel="Stores"
+        subtitle={partCode}
+        title={partCode}
+      >
         <Text className="py-10 text-center text-sm text-danger">
           Couldn’t load this Part. Pull down to retry, or scan it again.
         </Text>

@@ -1,7 +1,7 @@
 import type { StockMovementPostResult } from '@pkg/schema';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 
 import { useAppToast } from '@/components/ui/toast';
 
@@ -35,24 +35,21 @@ export function useStoresPostOutcome({ successMessage, returnTo }: { successMess
   const { keepAlive } = useStoresActor();
   const [warnings, setWarnings] = useState<StockMovementPostResult['warnings']>([]);
 
-  const onError = useCallback((error: { message: string }) => toast('error', error.message), [toast]);
+  const onError = (error: { message: string }) => toast('error', error.message);
 
-  const onSuccess = useCallback(
-    async (result: StockMovementPostResult) => {
-      await invalidateQueryCache(queryClient);
-      toast('success', successMessage);
-      setWarnings(result.warnings);
-      // A clean post returns the tablet to the scan field for the next item straight away; a warned
-      // one waits, so the dialog is not dismissed by the navigation that would follow it.
-      if (result.warnings.length === 0) router.dismissTo(returnTo);
-    },
-    [queryClient, returnTo, router, successMessage, toast],
-  );
+  const onSuccess = async (result: StockMovementPostResult) => {
+    await invalidateQueryCache(queryClient);
+    toast('success', successMessage);
+    setWarnings(result.warnings);
+    // A clean post returns the tablet to the scan field for the next item straight away; a warned
+    // one waits, so the dialog is not dismissed by the navigation that would follow it.
+    if (result.warnings.length === 0) router.dismissTo(returnTo);
+  };
 
-  const acknowledgeWarnings = useCallback(() => {
+  const acknowledgeWarnings = () => {
     setWarnings([]);
     router.dismissTo(returnTo);
-  }, [returnTo, router]);
+  };
 
   return { acknowledgeWarnings, keepAlive, onError, onSuccess, warnings };
 }

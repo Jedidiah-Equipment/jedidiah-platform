@@ -38,7 +38,6 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const showMutationError = useApiMutationErrorToast();
   const access = accessQuery.data;
   const [baselineUser, setBaselineUser] = useState(user);
-  const [selectedRole, setSelectedRole] = useState(user.role);
   const [roleError, setRoleError] = useState<string | null>(null);
   const formId = useId();
 
@@ -54,7 +53,6 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
 
   useEffect(() => {
     setBaselineUser(user);
-    setSelectedRole(user.role);
     setRoleError(null);
   }, [user]);
 
@@ -178,14 +176,11 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             isPasswordPending={setPasswordMutation.isPending}
             isPending={saveUserMutation.isPending}
             onPasswordSubmit={(value) => setPasswordMutation.mutateAsync(value)}
-            onRoleChange={(role) => {
-              setSelectedRole(role);
-              setRoleError(null);
-            }}
+            onRoleChange={() => setRoleError(null)}
             onSubmit={(value) => saveUserMutation.mutateAsync(value)}
             roleError={roleError}
           />
-          {canSetRole && selectedRole === 'stores' && !baselineUser.isDevice ? (
+          {canSetRole && baselineUser.role === 'stores' && !baselineUser.isDevice ? (
             <UserBadgePrintButton userId={baselineUser.id} />
           ) : null}
           {canUpdateProfile && !baselineUser.emailVerified ? (

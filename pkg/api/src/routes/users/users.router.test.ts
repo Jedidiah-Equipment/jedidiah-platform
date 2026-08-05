@@ -306,6 +306,34 @@ describe('users.updateThumbnail', () => {
   });
 });
 
+describe('users.setDevice', () => {
+  test('persists the shared-device setting in subsequent user lists', async ({ context }) => {
+    await createUser(context.db, {
+      email: 'admin@example.com',
+      id: 'test-user-id',
+      name: 'Test User',
+      role: 'admin',
+    });
+    await createUser(context.db, {
+      email: 'device-target@example.com',
+      id: 'device-target-user-id',
+      name: 'Device Target',
+      role: 'stores',
+    });
+
+    await context.createCaller().users.setDevice({
+      isDevice: true,
+      userId: 'device-target-user-id',
+    });
+
+    const listedUsers = await context.createCaller().users.list();
+
+    expect(listedUsers.users.find((userSummary) => userSummary.id === 'device-target-user-id')).toMatchObject({
+      isDevice: true,
+    });
+  });
+});
+
 describe('users.sendVerificationEmail', () => {
   beforeEach(() => {
     clearMockEmailMessages();

@@ -5,29 +5,22 @@ import { describe, expect, it } from 'vitest';
 import { UserRoleMenuItemContent } from './UserRoleMenu.js';
 
 describe('UserRoleMenuItemContent', () => {
-  it('renders Job Viewer as a selectable role option with read-only job access', () => {
+  it('renders the role label and description without permission badges', () => {
     const html = renderToStaticMarkup(<UserRoleMenuItemContent appRole="job-viewer" />);
 
     expect(APP_ROLES).toContain('job-viewer');
     expect(html).toContain('Job Viewer');
-    expect(html).toContain('View jobs');
+    expect(html).toContain('Read-only access to production Jobs.');
+    expect(html).not.toContain('View jobs');
+    expect(html).not.toContain('View product units');
   });
 
-  it('renders Bay Operator as a selectable role option without sign-in permissions', () => {
+  it('keeps sign-in eligibility in the Bay Operator description', () => {
     const html = renderToStaticMarkup(<UserRoleMenuItemContent appRole="bay-operator" />);
 
     expect(APP_ROLES).toContain('bay-operator');
     expect(html).toContain('Bay Operator');
-    expect(html).toContain('No sign-in permissions');
-  });
-
-  it('renders Stores as a selectable role option with physical inventory access', () => {
-    const html = renderToStaticMarkup(<UserRoleMenuItemContent appRole="stores" />);
-
-    expect(APP_ROLES).toContain('stores');
-    expect(html).toContain('Stores');
-    expect(html).toMatch(/>View inventory<\/span>/);
-    expect(html).toContain('Receive purchase orders');
-    expect(html).not.toContain('View inventory costs');
+    expect(html).toContain('this role is not enabled for sign-in.');
+    expect(html).not.toContain('No sign-in permissions');
   });
 });

@@ -20,7 +20,12 @@ export default function StoresCloseOutQueueRoute() {
   const queue = useQuery(trpc.inventory.closeOutQueue.queryOptions());
 
   return (
-    <StoresScreen subtitle="JOBS WAITING TO BE CLOSED OUT" title="Close-out queue">
+    <StoresScreen
+      onBack={() => router.dismissTo('/stores')}
+      parentLabel="Stores"
+      subtitle="JOBS WAITING TO BE CLOSED OUT"
+      title="Close-out queue"
+    >
       {queue.isPending ? (
         <View className="items-center py-10">
           <ActivityIndicator accessibilityLabel="Loading the queue" color={loadingSpinnerColor} size="large" />

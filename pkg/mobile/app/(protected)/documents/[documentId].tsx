@@ -2,10 +2,11 @@ import { getJobDisplayName, getQuoteOfferingName, isBrochureReady } from '@pkg/d
 import type { DocumentSummary } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { DocumentViewer } from '@/components/documents/DocumentViewer';
+import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import {
   jobDocumentDownloadPath,
@@ -14,6 +15,7 @@ import {
   quoteDocumentDownloadPath,
 } from '@/lib/authed-fetch';
 import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/lib/product-brochure';
+import { type DocumentParent, resolveDocumentParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 
 /**
@@ -29,24 +31,9 @@ export default function DocumentViewerRoute() {
     productId?: string;
     quoteId?: string;
   }>();
-  const owner = productId
-    ? ({ fallback: () => router.replace('/products'), id: productId, kind: 'product' } as const)
-    : jobId
-      ? ({ fallback: () => router.replace('/'), id: jobId, kind: 'job' } as const)
-      : quoteId
-        ? ({
-            fallback: () => router.replace({ pathname: '/quotes/[quoteId]', params: { quoteId } }),
-            id: quoteId,
-            kind: 'quote',
-          } as const)
-        : null;
+  const owner = resolveDocumentParent({ jobId, productId, quoteId });
 
-  // Opened as a deep link / initial route, there's no entry to pop, so fall back
-  // to the owning tab rather than leaving `router.back()` a dead-end no-op.
-  const handleBack = () => {
-    if (router.canGoBack()) return router.back();
-    return owner?.fallback() ?? router.replace('/');
-  };
+  const handleBack = () => (owner ? router.dismissTo(owner.returnTo) : router.dismissTo('/'));
 
   return (
     // The full-screen modal is a react-native-screens route root, so it must measure
@@ -56,7 +43,7 @@ export default function DocumentViewerRoute() {
         {owner ? (
           <OwnerDocumentScreen documentId={documentId} onBack={handleBack} owner={owner} />
         ) : (
-          <Message onBack={handleBack} text="This document link is incomplete." />
+          <Message onBack={handleBack} parentLabel="Schedule" text="This document link is incomplete." />
         )}
       </SafeAreaView>
     </SafeAreaProvider>
@@ -70,29 +57,45 @@ function OwnerDocumentScreen({
 }: {
   documentId: string;
   onBack: () => void;
-  owner: { id: string; kind: 'job' } | { id: string; kind: 'product' } | { id: string; kind: 'quote' };
+  owner: DocumentParent;
 }) {
   switch (owner.kind) {
     case 'job':
-      return <JobDocumentScreen documentId={documentId} jobId={owner.id} onBack={onBack} />;
+      return (
+        <JobDocumentScreen documentId={documentId} jobId={owner.id} onBack={onBack} parentLabel={owner.parentLabel} />
+      );
     case 'product':
       return documentId === PRODUCT_BROCHURE_DOCUMENT_ID ? (
-        <BrochureScreen onBack={onBack} productId={owner.id} />
+        <BrochureScreen onBack={onBack} parentLabel={owner.parentLabel} productId={owner.id} />
       ) : (
-        <ProductDocumentScreen documentId={documentId} onBack={onBack} productId={owner.id} />
+        <ProductDocumentScreen
+          documentId={documentId}
+          onBack={onBack}
+          parentLabel={owner.parentLabel}
+          productId={owner.id}
+        />
       );
     case 'quote':
-      return <QuoteDocumentScreen documentId={documentId} onBack={onBack} quoteId={owner.id} />;
+      return (
+        <QuoteDocumentScreen
+          documentId={documentId}
+          onBack={onBack}
+          parentLabel={owner.parentLabel}
+          quoteId={owner.id}
+        />
+      );
   }
 }
 
 function QuoteDocumentScreen({
   documentId,
   onBack,
+  parentLabel,
   quoteId,
 }: {
   documentId: string;
   onBack: () => void;
+  parentLabel: string;
   quoteId: string;
 }) {
   const trpc = useTRPC();
@@ -108,11 +111,22 @@ function QuoteDocumentScreen({
       isError={quoteQuery.isError || documentsQuery.isError}
       isPending={quoteQuery.isPending || documentsQuery.isPending}
       onBack={onBack}
+      parentLabel={parentLabel}
     />
   );
 }
 
-function JobDocumentScreen({ jobId, documentId, onBack }: { jobId: string; documentId: string; onBack: () => void }) {
+function JobDocumentScreen({
+  jobId,
+  documentId,
+  onBack,
+  parentLabel,
+}: {
+  jobId: string;
+  documentId: string;
+  onBack: () => void;
+  parentLabel: string;
+}) {
   const trpc = useTRPC();
   const query = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const document = query.data?.documents.find((candidate) => candidate.id === documentId);
@@ -125,6 +139,7 @@ function JobDocumentScreen({ jobId, documentId, onBack }: { jobId: string; docum
       isError={query.isError}
       isPending={query.isPending}
       onBack={onBack}
+      parentLabel={parentLabel}
     />
   );
 }
@@ -133,10 +148,12 @@ function ProductDocumentScreen({
   productId,
   documentId,
   onBack,
+  parentLabel,
 }: {
   productId: string;
   documentId: string;
   onBack: () => void;
+  parentLabel: string;
 }) {
   const trpc = useTRPC();
   const productQuery = useQuery(trpc.products.get.queryOptions({ id: productId }));
@@ -151,6 +168,7 @@ function ProductDocumentScreen({
       isError={productQuery.isError || documentsQuery.isError}
       isPending={productQuery.isPending || documentsQuery.isPending}
       onBack={onBack}
+      parentLabel={parentLabel}
     />
   );
 }
@@ -162,6 +180,7 @@ function DocumentViewerState({
   isError,
   isPending,
   onBack,
+  parentLabel,
 }: {
   context: string | null;
   document: Pick<DocumentSummary, 'contentType' | 'filename'> | null | undefined;
@@ -169,22 +188,43 @@ function DocumentViewerState({
   isError: boolean;
   isPending: boolean;
   onBack: () => void;
+  parentLabel: string;
 }) {
-  if (isPending) return <Message text="Loading document…" />;
-  if (isError) return <Message onBack={onBack} text="Couldn’t load this document." />;
-  if (context === null) return <Message onBack={onBack} text="Couldn’t load this document." />;
-  if (!document) return <Message onBack={onBack} text="This document is no longer available." />;
+  if (isPending) return <Message onBack={onBack} parentLabel={parentLabel} text="Loading document…" />;
+  if (isError) return <Message onBack={onBack} parentLabel={parentLabel} text="Couldn’t load this document." />;
+  if (context === null)
+    return <Message onBack={onBack} parentLabel={parentLabel} text="Couldn’t load this document." />;
+  if (!document)
+    return <Message onBack={onBack} parentLabel={parentLabel} text="This document is no longer available." />;
 
-  return <DocumentViewer context={context} document={document} downloadPath={downloadPath} onBack={onBack} />;
+  return (
+    <DocumentViewer
+      context={context}
+      document={document}
+      downloadPath={downloadPath}
+      onBack={onBack}
+      parentLabel={parentLabel}
+    />
+  );
 }
 
-function BrochureScreen({ productId, onBack }: { productId: string; onBack: () => void }) {
+function BrochureScreen({
+  productId,
+  onBack,
+  parentLabel,
+}: {
+  productId: string;
+  onBack: () => void;
+  parentLabel: string;
+}) {
   const trpc = useTRPC();
   const query = useQuery(trpc.products.get.queryOptions({ id: productId }));
 
-  if (query.isPending) return <Message text="Loading document…" />;
-  if (query.isError) return <Message onBack={onBack} text="Couldn’t load this document." />;
-  if (!isBrochureReady(query.data)) return <Message onBack={onBack} text="This document is no longer available." />;
+  if (query.isPending) return <Message onBack={onBack} parentLabel={parentLabel} text="Loading document…" />;
+  if (query.isError) return <Message onBack={onBack} parentLabel={parentLabel} text="Couldn’t load this document." />;
+  if (!isBrochureReady(query.data)) {
+    return <Message onBack={onBack} parentLabel={parentLabel} text="This document is no longer available." />;
+  }
 
   return (
     <DocumentViewer
@@ -192,25 +232,18 @@ function BrochureScreen({ productId, onBack }: { productId: string; onBack: () =
       document={{ contentType: 'application/pdf', filename: productBrochureFilename(query.data.modelCode) }}
       downloadPath={productBrochurePreviewPath(productId)}
       onBack={onBack}
+      parentLabel={parentLabel}
     />
   );
 }
 
-function Message({ text, onBack }: { text: string; onBack?: () => void }) {
+function Message({ text, onBack, parentLabel }: { text: string; onBack: () => void; parentLabel: string }) {
   return (
-    <View className="flex-1 items-center justify-center gap-4 px-6">
-      <Text className="text-center text-sm text-muted-foreground">{text}</Text>
-      {onBack ? (
-        <Pressable
-          accessibilityRole="button"
-          className="rounded-xl border border-border bg-background px-4 py-2 active:bg-muted"
-          onPress={onBack}
-        >
-          <Text className="text-sm text-foreground" weight="semibold">
-            Go back
-          </Text>
-        </Pressable>
-      ) : null}
+    <View className="flex-1">
+      <SecondaryPageToolbar onBack={onBack} parentLabel={parentLabel} subtitle="DOCUMENT VIEWER" title="Document" />
+      <View className="flex-1 items-center justify-center px-6">
+        <Text className="text-center text-sm text-muted-foreground">{text}</Text>
+      </View>
     </View>
   );
 }

@@ -1,59 +1,24 @@
 import { formatDate } from '@pkg/domain';
 import type { ProductUnitDetail, ProductUnitJob, ProductUnitOwnershipTransfer } from '@pkg/schema';
-import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react-native';
+import { IconChevronRight } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 
-import { Avatar } from '@/components/Avatar';
-import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { UnitBuildStateChip } from '@/components/units/UnitBuildStateChip';
 import { useCan } from '@/lib/use-access';
 
 /** Read-only Product Unit screen. Mirrors the web Unit page; the VIN is shown, never edited. */
-export function UnitDetail({ unit, onBack }: { unit: ProductUnitDetail; onBack: () => void }) {
+export function UnitDetail({ unit }: { unit: ProductUnitDetail }) {
   return (
     <View className="flex-1 bg-background">
-      <UnitDetailHeader onBack={onBack} unit={unit} />
-      <ScrollView contentContainerClassName="mx-auto w-full max-w-[720px] gap-4 px-4 pb-8 pt-4">
+      <ScrollView contentContainerClassName="w-full gap-4 px-4 pb-8 pt-4">
         <UnitFactsCard unit={unit} />
         <UnitAssembliesCard unit={unit} />
         <UnitOwnershipCard unit={unit} />
         <UnitJobsCard unit={unit} />
       </ScrollView>
-    </View>
-  );
-}
-
-function UnitDetailHeader({ unit, onBack }: { unit: ProductUnitDetail; onBack: () => void }) {
-  return (
-    <View className="border-b border-border bg-background">
-      <View className="mx-auto h-16 w-full max-w-[720px] flex-row items-center gap-2 px-4">
-        <Pressable
-          accessibilityLabel="Back to Units"
-          accessibilityRole="button"
-          className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
-          onPress={onBack}
-        >
-          <Icon icon={IconChevronLeft} size={20} />
-        </Pressable>
-        <Avatar
-          className="h-10 w-10 rounded-xl"
-          name={unit.product.name}
-          textClassName="text-[10px]"
-          uri={unit.product.thumbnailDataUrl}
-        />
-        <View className="min-w-0 flex-1">
-          <Text className="text-[17px] leading-5 text-foreground" mono numberOfLines={1} weight="bold">
-            {unit.productSerialNumber}
-          </Text>
-          <Text className="mt-0.5 text-[11px] text-muted-foreground" numberOfLines={1}>
-            {unit.product.name}
-          </Text>
-        </View>
-        <ProfileMenuButton />
-      </View>
     </View>
   );
 }

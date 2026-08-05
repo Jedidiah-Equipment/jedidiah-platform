@@ -1,12 +1,12 @@
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
-import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { RefreshControl } from '@/components/ui/refresh-control';
+import { CatalogListSkeleton, PaginatedCatalogList } from '@/components/CatalogList';
+import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
-import { UnitCatalogControls, UnitCatalogHeader, UnitList, UnitListSkeleton } from '@/components/units/UnitCatalog';
-import { isNearVerticalScrollEnd } from '@/lib/scroll-pagination';
+import { UnitCatalogCard, UnitCatalogControls } from '@/components/units/UnitCatalog';
+import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import {
   getUnitListPresentation,
@@ -51,27 +51,27 @@ export default function UnitsRoute() {
   const unitItems = useMemo(() => units.data?.pages.flatMap((page) => page.items) ?? [], [units.data?.pages]);
   const total = units.data?.pages.at(-1)?.total ?? null;
   const hasCriteria = search.trim().length > 0 || buildState !== 'all';
-  const loadNextPage = useCallback(() => {
-    if (units.hasNextPage && !units.isFetchingNextPage) void units.fetchNextPage();
-  }, [units.fetchNextPage, units.hasNextPage, units.isFetchingNextPage]);
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (isNearVerticalScrollEnd(event.nativeEvent)) loadNextPage();
-    },
-    [loadNextPage],
+  const emptyContent = units.isError ? (
+    <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load units." />
+  ) : (
+    <CatalogMessage
+      detail={hasCriteria ? 'Try a different search or build state.' : 'Units appear once a Build Job creates them.'}
+      title={hasCriteria ? 'No units match' : 'No units yet'}
+    />
   );
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <ScrollView
-        contentContainerClassName="mx-auto w-full max-w-[1180px] gap-5 px-4 pb-8 pt-4"
-        keyboardShouldPersistTaps="handled"
-        onScroll={handleScroll}
-        refreshControl={<RefreshControl {...refresh} />}
-        scrollEventThrottle={100}
-      >
-        <UnitCatalogHeader count={units.isPending ? null : total} />
-        <View className="gap-4">
+      <MainTabToolbar
+        assistantParent={MAIN_TAB_PARENTS.units}
+        helpTopic="units"
+        subtitle={total === null ? 'Loading units…' : `${total} ${total === 1 ? 'unit' : 'units'}`}
+        title="Units"
+      />
+      <PaginatedCatalogList
+        emptyContent={emptyContent}
+        hasNextPage={units.hasNextPage}
+        header={
           <UnitCatalogControls
             buildState={buildState}
             onBuildStateChange={setBuildState}
@@ -80,28 +80,18 @@ export default function UnitsRoute() {
             search={search}
             sort={sort}
           />
-
-          {units.isPending ? (
-            <UnitListSkeleton />
-          ) : units.isError ? (
-            <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load units." />
-          ) : unitItems.length === 0 ? (
-            <CatalogMessage
-              detail={
-                hasCriteria ? 'Try a different search or build state.' : 'Units appear once a Build Job creates them.'
-              }
-              title={hasCriteria ? 'No units match' : 'No units yet'}
-            />
-          ) : (
-            <View className="gap-4">
-              <UnitList units={unitItems} />
-              {units.isFetchingNextPage ? (
-                <Text className="text-center text-sm text-muted-foreground">Loading more units…</Text>
-              ) : null}
-            </View>
-          )}
-        </View>
-      </ScrollView>
+        }
+        initialLoading={units.isPending}
+        keyOf={(unit) => unit.id}
+        loadingContent={<CatalogListSkeleton />}
+        loadingMore={units.isFetchingNextPage}
+        loadingMoreLabel="Loading more units…"
+        onLoadMore={() => void units.fetchNextPage()}
+        onRefresh={refresh.onRefresh}
+        refreshing={refresh.refreshing}
+        renderItem={(unit) => <UnitCatalogCard unit={unit} />}
+        sections={[{ data: unitItems, key: 'units' }]}
+      />
     </SafeAreaView>
   );
 }

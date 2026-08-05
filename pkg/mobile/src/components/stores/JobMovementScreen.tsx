@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { useMovementActorUserId } from '@/lib/stores-actor';
+import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
@@ -21,17 +22,19 @@ import { NoActorNotice, StoresPartScreen } from './StoresPartScreen';
 export function JobMovementScreen({
   jobId,
   movementType,
+  parent,
   partCode,
 }: {
   /** Pre-selects the Job when the return was reached from that Job's close-out. */
   jobId?: string;
   movementType: JobStockMovementType;
+  parent?: { label: string; onBack: () => void };
   partCode: string;
 }) {
   const isCheckout = movementType === 'checkout';
 
   return (
-    <StoresPartScreen partCode={partCode} title={isCheckout ? 'Check out to a Job' : 'Return to store'}>
+    <StoresPartScreen parent={parent} partCode={partCode} title={isCheckout ? 'Check out to a Job' : 'Return to store'}>
       {(row) => <JobMovementForm fixedJobId={jobId} movementType={movementType} row={row} />}
     </StoresPartScreen>
   );
@@ -56,7 +59,9 @@ function JobMovementForm({
   const [keyedLengthMm, setKeyedLengthMm] = useState<string | null>(null);
 
   const isCheckout = movementType === 'checkout';
+  const returnTo = resolveStoresMovementParent({ jobId: fixedJobId, partCode: row.partCode }).returnTo;
   const outcome = useStoresPostOutcome({
+    returnTo,
     successMessage: isCheckout ? 'Stock checked out' : 'Stock returned to store',
   });
   const mutation = useMutation(

@@ -245,6 +245,28 @@ describe('admin user safety policy', () => {
     expect(created.user.role).toBe('super-admin');
   });
 
+  test('persists shared-device state in the admin user insert', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await context.auth.api.createUser({
+      body: {
+        data: { isDevice: true },
+        email: 'stores-device@example.com',
+        name: 'Stores Device',
+        password: DEFAULT_DEMO_USER_PASSWORD,
+        role: 'stores',
+      },
+      headers,
+    });
+
+    const [created] = await context.db
+      .select({ isDevice: user.isDevice })
+      .from(user)
+      .where(sql`${user.email} = 'stores-device@example.com'`);
+
+    expect(created?.isDevice).toBe(true);
+  });
+
   test('rejects role removal from the last admin through adminUpdateUser', async ({ context }) => {
     const admin = mockSession('admin');
     const headers = await createSignedInAdmin(context, admin);

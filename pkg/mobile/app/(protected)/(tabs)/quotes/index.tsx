@@ -1,17 +1,13 @@
-import { useCallback, useState } from 'react';
-import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, View } from 'react-native';
+import { useState } from 'react';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CatalogListSkeleton, PaginatedCatalogList } from '@/components/CatalogList';
 import { NewQuoteModal } from '@/components/quotes/NewQuoteModal';
-import {
-  QuoteCatalogControls,
-  QuoteCatalogHeader,
-  QuoteGrid,
-  QuoteGridSkeleton,
-} from '@/components/quotes/QuoteCatalog';
-import { RefreshControl } from '@/components/ui/refresh-control';
+import { QuoteCatalogCard, QuoteCatalogControls, QuotePriorityHeader } from '@/components/quotes/QuoteCatalog';
+import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { isQuoteSort, isQuoteStatusFilter, type QuoteSort, type QuoteStatusFilter } from '@/lib/quote-presentation';
-import { isNearVerticalScrollEnd } from '@/lib/scroll-pagination';
+import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
 import { useCan } from '@/lib/use-access';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
@@ -31,25 +27,32 @@ export default function QuotesRoute() {
   const list = useQuoteList({ enabled: readAccess.can, search: debouncedSearch, sort, status });
   const displayedQuoteCount = list.priorityQuotes.length + list.mainQuotes.length;
   const hasCriteria = search.trim().length > 0 || status !== 'all';
-
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (isNearVerticalScrollEnd(event.nativeEvent)) list.loadNextPage();
-    },
-    [list.loadNextPage],
+  const initialLoading = list.pending && displayedQuoteCount === 0;
+  const emptyContent = list.failed ? (
+    <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load quotes." />
+  ) : (
+    <CatalogMessage
+      detail={hasCriteria ? 'Try a different search or status.' : 'Create a Quote to see it here.'}
+      title={hasCriteria ? 'No quotes match' : 'No quotes yet'}
+    />
   );
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <ScrollView
-        contentContainerClassName="mx-auto w-full max-w-[1180px] gap-5 px-4 pb-8 pt-4"
-        keyboardShouldPersistTaps="handled"
-        onScroll={handleScroll}
-        refreshControl={<RefreshControl {...refresh} />}
-        scrollEventThrottle={100}
-      >
-        <QuoteCatalogHeader count={list.pending && list.total === null ? null : list.total} />
-        <View className="gap-4">
+      <MainTabToolbar
+        assistantParent={MAIN_TAB_PARENTS.quotes}
+        helpTopic="quotes"
+        subtitle={
+          list.pending && list.total === null
+            ? 'Loading quotes…'
+            : `${list.total ?? 0} ${list.total === 1 ? 'quote' : 'quotes'}`
+        }
+        title="Quotes"
+      />
+      <PaginatedCatalogList
+        emptyContent={emptyContent}
+        hasNextPage={list.hasNextPage}
+        header={
           <QuoteCatalogControls
             canCreate={createAccess.can}
             onCreate={() => setNewQuoteOpen(true)}
@@ -60,26 +63,23 @@ export default function QuotesRoute() {
             sort={sort}
             status={status}
           />
-
-          {list.pending && displayedQuoteCount === 0 ? (
-            <QuoteGridSkeleton />
-          ) : list.failed ? (
-            <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load quotes." />
-          ) : displayedQuoteCount === 0 ? (
-            <CatalogMessage
-              detail={hasCriteria ? 'Try a different search or status.' : 'Create a Quote to see it here.'}
-              title={hasCriteria ? 'No quotes match' : 'No quotes yet'}
-            />
-          ) : (
-            <View className="gap-4">
-              <QuoteGrid mainQuotes={list.mainQuotes} priorityQuotes={list.priorityQuotes} />
-              {list.loadingMore ? (
-                <Text className="text-center text-sm text-muted-foreground">Loading more quotes…</Text>
-              ) : null}
-            </View>
-          )}
-        </View>
-      </ScrollView>
+        }
+        initialLoading={initialLoading}
+        keyOf={(quote) => quote.id}
+        loadingContent={<CatalogListSkeleton />}
+        loadingMore={list.loadingMore}
+        loadingMoreLabel="Loading more quotes…"
+        onLoadMore={list.loadNextPage}
+        onRefresh={refresh.onRefresh}
+        refreshing={refresh.refreshing}
+        renderItem={(quote) => <QuoteCatalogCard quote={quote} />}
+        sections={[
+          ...(list.priorityQuotes.length > 0
+            ? [{ data: list.priorityQuotes, header: <QuotePriorityHeader />, key: 'priority' }]
+            : []),
+          { data: list.mainQuotes, key: 'main' },
+        ]}
+      />
       {newQuoteOpen ? <NewQuoteModal onClose={() => setNewQuoteOpen(false)} /> : null}
     </SafeAreaView>
   );

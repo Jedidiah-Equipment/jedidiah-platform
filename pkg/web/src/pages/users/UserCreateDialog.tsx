@@ -22,6 +22,7 @@ export const UserCreateDialog: React.FC = () => {
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const canAssignDepartments = hasPermission(accessQuery.data, 'user:update');
+  const canSetRole = hasPermission(accessQuery.data, 'user:set-role');
   const [isOpen, setIsOpen] = useState(false);
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
 
@@ -29,18 +30,25 @@ export const UserCreateDialog: React.FC = () => {
     mutationFn: async (value: UserCreateFormValues) => {
       const result = unwrapAuthResult<{ user: { id: string } }>(
         await authClient.admin.createUser({
-          data: { emailVerified: value.emailVerified, phoneNumber: value.phoneNumber },
+          // Shared-device state belongs in Better Auth's user insert so a later request cannot
+          // leave a successfully created account behind while the dialog reports failure.
+          data: {
+            emailVerified: value.emailVerified,
+            isDevice: canSetRole ? value.isDevice : false,
+            phoneNumber: value.phoneNumber,
+          },
           email: value.email,
           name: value.name,
           password: value.password,
           role: value.role,
         }),
       );
+      const userId = AuthId.parse(result.user.id);
 
       if (canAssignDepartments) {
         await setDepartmentsMutation.mutateAsync({
           departments: value.departments,
-          userId: AuthId.parse(result.user.id),
+          userId,
         });
       }
 
@@ -75,6 +83,7 @@ export const UserCreateDialog: React.FC = () => {
           {isOpen ? (
             <UserCreateForm
               canAssignDepartments={canAssignDepartments}
+              canSetRole={canSetRole}
               isPending={createUserMutation.isPending}
               onSubmit={(value) => createUserMutation.mutateAsync(value)}
             />

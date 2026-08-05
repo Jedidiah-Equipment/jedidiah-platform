@@ -155,7 +155,7 @@ export function PromptInput({
 
   return (
     <View className="border-t border-border bg-background px-4 pb-3 pt-3">
-      <View className="mx-auto w-full max-w-[760px] flex-row items-end gap-2 rounded-3xl border border-border bg-surface p-2 pl-4">
+      <View className="w-full flex-row items-end gap-2 rounded-3xl border border-border bg-surface p-2 pl-4">
         <TextInput
           accessibilityLabel="Message the Assistant"
           className="max-h-32 min-h-10 flex-1 font-sans text-[15px] leading-5 text-foreground"

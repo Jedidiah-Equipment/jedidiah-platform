@@ -112,6 +112,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
     onSuccess: async ({ didUpdate, value }) => {
       if (!didUpdate) {
         toast.info('No user changes to save');
+        onClose();
         return;
       }
 
@@ -122,6 +123,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
       setRoleError(null);
       await refreshUser();
       toast.success('User updated');
+      onClose();
     },
     onError: (error) => {
       if (isOpenBayOperatorAssignmentRoleError(error)) {

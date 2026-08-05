@@ -17,7 +17,7 @@ import { mutateEntity } from '../audit/mutate-entity.js';
 import { listOpenBayOperatorAssignmentBayNames } from '../jobs/job-bay-service.js';
 import { UserNotFoundError } from './user-errors.js';
 
-type UserAuditInput = Pick<typeof user.$inferSelect, 'id' | 'email' | 'image' | 'phoneNumber'>;
+type UserAuditInput = Pick<typeof user.$inferSelect, 'id' | 'email' | 'image' | 'isDevice' | 'phoneNumber'>;
 
 // `email` is the summary label, not an audited field on these paths, so it lives in `label` rather
 // than `toRecord`. Department membership audits its own changes via recordAuditEvent below.
@@ -28,6 +28,7 @@ export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
   entityId: (row) => row.id,
   label: (row) => row.email,
   toRecord: (row) => ({
+    isDevice: row.isDevice,
     phoneNumber: row.phoneNumber,
     thumbnailDataUrl: row.image,
   }),

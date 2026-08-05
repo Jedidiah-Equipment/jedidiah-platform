@@ -161,11 +161,11 @@ type UserNameCellProps = {
  * A device gets an icon where a person gets a face. Nobody is behind the account, so a thumbnail —
  * or the initials one falls back to — would read as a colleague nobody can place.
  */
-const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, isDevice, name, thumbnailDataUrl }) => (
+export const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, isDevice, name, thumbnailDataUrl }) => (
   <div className="flex items-center gap-2 font-medium">
     {isDevice ? (
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
-        <IconDeviceTablet size={18} />
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+        <IconDeviceTablet size={14} />
       </span>
     ) : (
       <EntityThumbnail label={name} size="sm" thumbnailDataUrl={thumbnailDataUrl} />

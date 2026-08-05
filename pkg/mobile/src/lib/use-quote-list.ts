@@ -25,6 +25,7 @@ export function useQuoteList({
   status: QuoteStatusFilter;
 }): {
   failed: boolean;
+  hasNextPage: boolean;
   loadNextPage: () => void;
   loadingMore: boolean;
   mainQuotes: QuoteSummary[];
@@ -61,6 +62,7 @@ export function useQuoteList({
 
   return {
     failed: (pinPriorityQuotes && priorityQuery.isError) || listQuery.isError,
+    hasNextPage: listQuery.hasNextPage,
     loadNextPage,
     loadingMore: listQuery.isFetchingNextPage,
     mainQuotes: sections.mainQuotes,

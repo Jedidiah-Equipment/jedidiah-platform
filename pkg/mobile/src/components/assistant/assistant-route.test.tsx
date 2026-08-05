@@ -12,7 +12,10 @@ vi.mock('@ai-sdk/react', () => ({
   }),
 }));
 vi.mock('@tabler/icons-react-native', () => ({ IconPlus: 'IconPlus', IconX: 'IconX' }));
-vi.mock('expo-router', () => ({ useRouter: () => ({ back: vi.fn() }) }));
+vi.mock('expo-router', () => ({
+  useLocalSearchParams: () => ({ parentHref: '/stores' }),
+  useRouter: () => ({ dismissTo: vi.fn() }),
+}));
 vi.mock('react-native', () => ({
   Pressable: 'Pressable',
   View: 'View',
@@ -27,6 +30,7 @@ vi.mock('@/components/assistant/AssistantProvider', () => ({
 vi.mock('@/components/ui/chat-ai', () => ({ Conversation: 'Conversation', PromptInput: 'PromptInput' }));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
+vi.mock('@/components/TopToolbar', () => ({ SecondaryPageToolbar: 'SecondaryPageToolbar' }));
 vi.mock('@/lib/assistant-keyboard', () => ({ useAssistantKeyboardBottomPadding: () => 301 }));
 
 import AssistantRoute from '../../../app/(protected)/assistant';

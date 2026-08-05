@@ -7,11 +7,12 @@ import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { SlotDetailPane } from '@/components/bays/SlotDetailPane';
 import { CustomerName } from '@/components/CustomerName';
-import { ScheduleHeader } from '@/components/ScheduleHeader';
+import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
+import { bayToolbarParentLabel } from '@/lib/toolbar-navigation';
 import {
   type BayQueueActiveJob,
   type BayQueueState,
@@ -169,14 +170,21 @@ function Ready({
 
   return (
     <>
-      <ScheduleHeader
+      <SecondaryPageToolbar
+        avatar={
+          onDetail ? undefined : (
+            <Avatar
+              className="h-full w-full rounded-none border-0"
+              name={bay.operator?.name ?? 'No operator'}
+              uri={bay.operator?.thumbnailDataUrl}
+            />
+          )
+        }
         helpTopic="jobs"
         onBack={handleBack}
-        operator={bay.operator}
-        showOperatorAvatar={!onDetail}
+        parentLabel={bayToolbarParentLabel(onDetail)}
         subtitle={onDetail && selected ? selected.jobDisplayName : bay.name}
         title={onDetail && selected ? selected.jobCode : (bay.operator?.name ?? 'No operator')}
-        titleMono={onDetail && selected !== null}
       />
       <View className="flex-1 flex-row">
         {showList ? (
@@ -472,7 +480,20 @@ function Frame({
 }) {
   return (
     <>
-      <ScheduleHeader helpTopic="jobs" onBack={onBack} operator={operator} subtitle="Bay schedule" title={title} />
+      <SecondaryPageToolbar
+        avatar={
+          <Avatar
+            className="h-full w-full rounded-none border-0"
+            name={operator?.name ?? 'No operator'}
+            uri={operator?.thumbnailDataUrl}
+          />
+        }
+        helpTopic="jobs"
+        onBack={onBack}
+        parentLabel="Schedule"
+        subtitle="BAY SCHEDULE"
+        title={title}
+      />
       <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
         {children}
       </ScrollView>

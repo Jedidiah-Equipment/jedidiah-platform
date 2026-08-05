@@ -13,7 +13,7 @@ import { Avatar } from '@/components/Avatar';
 import { JobDetailSections } from '@/components/bays/JobDetailSections';
 import { JobWorkCard } from '@/components/bays/JobWorkCard';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
-import { ScheduleHeader } from '@/components/ScheduleHeader';
+import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
@@ -98,14 +98,12 @@ function Ready({
   refresh: ReturnType<typeof useGlobalRefresh>;
 }) {
   const header = (
-    <ScheduleHeader
+    <SecondaryPageToolbar
       helpTopic="jobs"
       onBack={onBack}
-      operator={null}
-      showOperatorAvatar={false}
+      parentLabel="Schedule"
       subtitle={state.jobDisplayName}
       title={state.jobCode}
-      titleMono
     />
   );
 
@@ -343,7 +341,7 @@ function Frame({
 }) {
   return (
     <>
-      <ScheduleHeader helpTopic="jobs" onBack={onBack} operator={null} showOperatorAvatar={false} title="Job detail" />
+      <SecondaryPageToolbar helpTopic="jobs" onBack={onBack} parentLabel="Schedule" subtitle="JOB DETAIL" title="Job" />
       <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
         {children}
       </ScrollView>

@@ -1,4 +1,5 @@
 import type { StockOnHandRow } from '@pkg/schema';
+import { useRouter } from 'expo-router';
 import type React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -17,18 +18,27 @@ import { StoresScreen } from './StoresScreen';
  */
 export function StoresPartScreen({
   children,
+  parent,
   partCode,
   title,
 }: {
   children: (row: StockOnHandRow) => React.ReactNode;
+  parent?: { label: string; onBack: () => void };
   partCode: string;
   title: string;
 }) {
   const part = usePartByCode(partCode);
+  const router = useRouter();
+  const resolvedParent =
+    parent ??
+    ({
+      label: 'Part',
+      onBack: () => router.dismissTo({ pathname: '/stores/parts/[partCode]', params: { partCode } }),
+    } as const);
 
   if (part.isPending) {
     return (
-      <StoresScreen title={title}>
+      <StoresScreen onBack={resolvedParent.onBack} parentLabel={resolvedParent.label} subtitle={partCode} title={title}>
         <View className="items-center py-10">
           <ActivityIndicator accessibilityLabel="Loading Part" color={loadingSpinnerColor} size="large" />
         </View>
@@ -38,7 +48,7 @@ export function StoresPartScreen({
 
   if (part.isError) {
     return (
-      <StoresScreen title={title}>
+      <StoresScreen onBack={resolvedParent.onBack} parentLabel={resolvedParent.label} subtitle={partCode} title={title}>
         <Text className="py-10 text-center text-sm text-danger">
           Couldn’t load this Part. Pull down to retry, or scan it again.
         </Text>
@@ -47,7 +57,12 @@ export function StoresPartScreen({
   }
 
   return (
-    <StoresScreen subtitle={`${part.data.partCode} · ${part.data.partName}`} title={title}>
+    <StoresScreen
+      onBack={resolvedParent.onBack}
+      parentLabel={resolvedParent.label}
+      subtitle={`${part.data.partCode} · ${part.data.partName}`}
+      title={title}
+    >
       {children(part.data)}
     </StoresScreen>
   );

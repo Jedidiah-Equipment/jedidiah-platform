@@ -68,7 +68,7 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full max-w-[430px]">
+          <View className="w-full">
             <BrandHeader centered subtitle="Sign in to continue" />
 
             <View className="gap-5">

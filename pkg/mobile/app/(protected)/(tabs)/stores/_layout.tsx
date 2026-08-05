@@ -1,9 +1,9 @@
 import { Redirect, Stack } from 'expo-router';
-import { ActivityIndicator, View } from 'react-native';
 
+import { TabAccessLoadingScreen } from '@/components/TabAccessLoadingScreen';
 import { StoresActorProvider } from '@/lib/stores-actor';
+import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
 import { useCan } from '@/lib/use-access';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 /**
  * Owns the Stores gate and the quick-switch state for the whole stack.
@@ -17,11 +17,7 @@ export default function StoresLayout() {
   const access = useCan('inventory:move');
 
   if (access.isPending) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator accessibilityLabel="Checking access" color={loadingSpinnerColor} size="large" />
-      </View>
-    );
+    return <TabAccessLoadingScreen parent={MAIN_TAB_PARENTS.stores} title="Stores" />;
   }
 
   if (!access.can) return <Redirect href="/" />;

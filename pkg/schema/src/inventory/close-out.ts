@@ -4,13 +4,19 @@ import { DateIso, DateOnlyIso } from '../common/date.js';
 import { JobCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
+import { AssertedActorUserId } from './stock-movement.js';
 
 /**
  * Close-out is job-level in v1: one motion ends a Job's stock life, so the Job is the whole input.
  * Returning leftovers happens first through the ordinary return-to-store path.
+ *
+ * It carries the tablet's asserted actor for the same reason the movements do: the queue is worked
+ * from the stores tablet, and "who ended this Job's stock life" is as much a fact as who drew from it.
  */
 export type CloseOutJobInput = z.infer<typeof CloseOutJobInput>;
-export const CloseOutJobInput = z.object({ jobId: UUID, note: nullableTrimmedTextInput() }).strict();
+export const CloseOutJobInput = z
+  .object({ actorUserId: AssertedActorUserId, jobId: UUID, note: nullableTrimmedTextInput() })
+  .strict();
 
 /** The immutable assertion that a Job's stock life ended — inserted once, never edited or undone. */
 export type JobCloseOut = z.infer<typeof JobCloseOut>;

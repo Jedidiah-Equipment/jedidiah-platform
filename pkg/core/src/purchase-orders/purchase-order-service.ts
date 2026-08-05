@@ -73,7 +73,7 @@ import {
 } from './purchase-order-errors.js';
 
 type PurchaseOrderRow = typeof purchaseOrders.$inferSelect;
-type PurchaseOrderDb = Db | DatabaseTransaction;
+export type PurchaseOrderDb = Db | DatabaseTransaction;
 
 export const purchaseOrderAuditDescriptor = defineAuditDescriptor<PurchaseOrderRow>({
   entityId: (row) => row.id,
@@ -182,7 +182,7 @@ const REPLACEMENT_OWED_RETURN_REASONS = ['wrong-item', 'defective'] as const;
  * defective is waiting on ten again, and every surface that asks what is still coming has to say so
  * — including the over-receipt warning, which would otherwise fire on the replacement delivery.
  */
-async function loadReceivedQuantities({
+export async function loadReceivedQuantities({
   db,
   purchaseOrderIds,
 }: {
@@ -274,7 +274,7 @@ export async function lineHasStockMovements({
   return row !== undefined;
 }
 
-function receivedQuantityKey(purchaseOrderId: string, partId: string): string {
+export function receivedQuantityKey(purchaseOrderId: string, partId: string): string {
   return `${purchaseOrderId}:${partId}`;
 }
 

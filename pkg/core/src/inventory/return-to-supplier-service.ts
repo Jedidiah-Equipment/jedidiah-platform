@@ -10,6 +10,7 @@ import {
   PurchaseOrderNotSentError,
 } from '../purchase-orders/purchase-order-errors.js';
 import { bucketMatches, insertMovement, loadStockPart } from './ledger.js';
+import { resolveMovementActor } from './movement-actor.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
 /** The two ways a PO line's stock moves. A return spends the pool the receipts filled. */
@@ -42,6 +43,11 @@ export async function postReturnToSupplier({
 }): Promise<StockMovementPostResult> {
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
+    const movementActorUserId = await resolveMovementActor({
+      assertedActorUserId: input.actorUserId,
+      db: tx,
+      sessionUserId: actorUserId,
+    });
     const purchaseOrder = await lockReturnablePurchaseOrder(tx, input.purchaseOrderId);
     await assertPurchaseOrderLineExists(tx, input.purchaseOrderId, input.partId);
     const unitClass = unitClassFor(part.unitOfMeasure);
@@ -66,7 +72,7 @@ export async function postReturnToSupplier({
     const outstandingReceivedQuantity = poolMovements.reduce((total, movement) => total + movement.delta, 0);
 
     const movement = await insertMovement(tx, {
-      actorUserId,
+      actorUserId: movementActorUserId,
       delta: -input.quantity,
       lengthMm,
       movementType: 'return-to-supplier',

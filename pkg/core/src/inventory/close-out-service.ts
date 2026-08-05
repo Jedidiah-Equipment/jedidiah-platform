@@ -23,6 +23,7 @@ import { type AnyColumn, and, asc, eq, inArray, isNotNull, isNull, type SQL, sql
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { lockMutableJob } from '../jobs/job-mutation-guards.js';
 import { JobAlreadyClosedOutError, JobNotCompletedError } from './close-out-errors.js';
+import { resolveMovementActor } from './movement-actor.js';
 
 /**
  * Ends a Job's stock life in one insert. Leftovers are returned first through the ordinary
@@ -42,6 +43,11 @@ export async function closeOutJob({
     // Cancellation already released this Job's commitment and is a different exit from the queue;
     // closing one out would assert a stock life that ended some other way.
     const job = await lockMutableJob(tx, input.jobId);
+    const closerUserId = await resolveMovementActor({
+      assertedActorUserId: input.actorUserId,
+      db: tx,
+      sessionUserId: actorUserId,
+    });
 
     if (job.completedOn === null) throw new JobNotCompletedError(input.jobId);
     if ((await getJobCloseOutAt({ db: tx, jobId: input.jobId })) !== null) {
@@ -50,7 +56,7 @@ export async function closeOutJob({
 
     const [row] = await tx
       .insert(jobStockCloseOuts)
-      .values({ actorUserId, jobId: input.jobId, note: input.note })
+      .values({ actorUserId: closerUserId, jobId: input.jobId, note: input.note })
       .returning();
     if (!row) throw new Error('Job close-out insert did not return a row');
 

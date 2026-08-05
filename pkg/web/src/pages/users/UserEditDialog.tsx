@@ -21,6 +21,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { UserBadgePrintButton } from './components/UserBadgePrintButton.js';
 import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
 import type { UserPasswordFormValues } from './components/UserPasswordForm.js';
 import { AuthAdminError, unwrapAuthResult } from './user-admin-client.js';
@@ -171,6 +172,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             onSubmit={(value) => saveUserMutation.mutateAsync(value)}
             roleError={roleError}
           />
+          {canSetRole && baselineUser.role === 'stores' ? <UserBadgePrintButton userId={baselineUser.id} /> : null}
           {canUpdateProfile && !baselineUser.emailVerified ? (
             <Button
               className="mt-4 w-full"

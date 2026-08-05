@@ -12,6 +12,7 @@ import {
 } from '../purchase-orders/purchase-order-errors.js';
 import { loadLineReceivedQuantity } from '../purchase-orders/purchase-order-service.js';
 import { insertMovement, loadStockPart } from './ledger.js';
+import { resolveMovementActor } from './movement-actor.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
 /**
@@ -23,6 +24,9 @@ import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './uni
  * left null the line price lands on the movement, which is why a price-blind receiver still posts a
  * correctly valued row. Periodic Parts receive like any other: receipts are one of the two things
  * their ledger ever records.
+ *
+ * `input.actorUserId` names the person at the shared tablet; absent it, the signed-in user is
+ * stamped. See `resolveMovementActor`.
  */
 export async function postReceipt({
   actorUserId,
@@ -35,6 +39,11 @@ export async function postReceipt({
 }): Promise<StockMovementPostResult> {
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
+    const movementActorUserId = await resolveMovementActor({
+      assertedActorUserId: input.actorUserId,
+      db: tx,
+      sessionUserId: actorUserId,
+    });
     const purchaseOrder = await lockReceivablePurchaseOrder(tx, input.purchaseOrderId);
     const line = await loadPurchaseOrderLine(tx, input.purchaseOrderId, input.partId);
     const unitClass = unitClassFor(part.unitOfMeasure);
@@ -53,7 +62,7 @@ export async function postReceipt({
       purchaseOrderId: purchaseOrder.id,
     });
     const movement = await insertMovement(tx, {
-      actorUserId,
+      actorUserId: movementActorUserId,
       delta: input.quantity,
       lengthMm,
       movementType: 'receipt',

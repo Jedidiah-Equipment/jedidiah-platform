@@ -11,6 +11,21 @@ export class StockMovementPartNotFoundError extends Error {
   }
 }
 
+/**
+ * A scanned label that names no Part. Separate from the id-keyed miss because the reader is holding
+ * a physical label: the answer is a reprint or a typed search, not "check the link you followed".
+ */
+export class ScannedPartNotFoundError extends Error {
+  readonly code = 'inventory.part_code_not_found';
+  readonly metadata: { partCode: string };
+
+  constructor(partCode: string) {
+    super(`No Part carries the code: ${partCode}`);
+    this.name = 'ScannedPartNotFoundError';
+    this.metadata = { partCode };
+  }
+}
+
 export class StockMovementDeltaError extends Error {
   readonly code = 'inventory.invalid_delta';
   readonly metadata: { unitClass: PartUnitClass };
@@ -62,6 +77,7 @@ export class FabricatedPartCostError extends Error {
 export type StockMovementCoreError =
   | FabricatedPartCostError
   | PeriodicStockMovementError
+  | ScannedPartNotFoundError
   | StockMovementDeltaError
   | StockMovementLengthError
   | StockMovementPartNotFoundError;
@@ -70,6 +86,7 @@ export function isStockMovementCoreError(error: unknown): error is StockMovement
   return (
     error instanceof FabricatedPartCostError ||
     error instanceof PeriodicStockMovementError ||
+    error instanceof ScannedPartNotFoundError ||
     error instanceof StockMovementDeltaError ||
     error instanceof StockMovementLengthError ||
     error instanceof StockMovementPartNotFoundError

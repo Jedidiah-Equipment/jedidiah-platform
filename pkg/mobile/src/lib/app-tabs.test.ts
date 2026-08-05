@@ -30,7 +30,20 @@ describe('visibleTabs', () => {
   it('shows every tab to an Admin', () => {
     const access = createUserAccessSummary({ role: 'admin', userId: 'admin-1' });
 
-    expect(visibleTabs(access)).toEqual(['schedule', 'quotes', 'products', 'units']);
+    expect(visibleTabs(access)).toEqual(['schedule', 'stores', 'quotes', 'products', 'units']);
+  });
+
+  /** The tablet's whole surface: physical stock flows, and no paperwork tab to wander into. */
+  it('shows only Stores to the Stores Tablet', () => {
+    const access = createUserAccessSummary({ role: 'stores', userId: 'tablet-1' });
+
+    expect(visibleTabs(access)).toEqual(['stores']);
+  });
+
+  it('keeps Stores away from a Procurement Manager, who has no right to move stock', () => {
+    const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'buyer-1' });
+
+    expect(visibleTabs(access)).not.toContain('stores');
   });
 });
 

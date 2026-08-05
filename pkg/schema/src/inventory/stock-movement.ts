@@ -5,9 +5,10 @@ import { createCursorQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import { JobCode, PurchaseOrderCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput } from '../common/text.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { JobListInput } from '../jobs/job.js';
-import { PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
+import { PartCode, PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
 import { SupplierCompanyName } from '../suppliers/supplier.js';
 import { declareInventoryCostFields, InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
 
@@ -80,9 +81,27 @@ const MovementTargetInput = z.object({
   partId: UUID,
 });
 
+/**
+ * Who the shared stores tablet attributes this movement to (spec §11): the device authorizes, the
+ * person attributes. The tablet holds one session as the "Stores Tablet" user and names the person
+ * at the scan field through its quick-switch, so the ledger records the hand that moved the stock
+ * rather than the device it was keyed on.
+ *
+ * Omitted — every web surface, and the tablet before anyone has identified themselves — attributes
+ * the signed-in user. Asserting an actor never widens what the caller may do: the asserted person's
+ * own permissions are never consulted, and an unknown or disabled one is refused rather than ignored.
+ *
+ * Optional rather than defaulted-to-null, because absence *is* the meaning: a caller with nobody to
+ * name leaves the field off entirely, and every surface that predates the tablet keeps compiling
+ * without being made to spell out that it has no quick-switch.
+ */
+export type AssertedActorUserId = z.infer<typeof AssertedActorUserId>;
+export const AssertedActorUserId = AuthId.nullish();
+
 /** Checkout and return-to-store take the same target; the movement type decides the sign. */
 export type PostJobMovementInput = z.infer<typeof PostJobMovementInput>;
 export const PostJobMovementInput = MovementTargetInput.extend({
+  actorUserId: AssertedActorUserId,
   jobId: UUID,
   quantity: StockMovementQuantity,
 }).strict();
@@ -121,6 +140,7 @@ export const PostAdjustmentInput = MovementTargetInput.extend({
 export type PostReceiptInput = z.infer<typeof PostReceiptInput>;
 export const PostReceiptInput = z
   .object({
+    actorUserId: AssertedActorUserId,
     lengthMm: StockMovementLengthMm.nullable().default(null),
     partId: UUID,
     purchaseOrderId: UUID,
@@ -137,6 +157,7 @@ export const PostReceiptInput = z
 export type PostReturnToSupplierInput = z.infer<typeof PostReturnToSupplierInput>;
 export const PostReturnToSupplierInput = z
   .object({
+    actorUserId: AssertedActorUserId,
     lengthMm: StockMovementLengthMm.nullable().default(null),
     note: nullableTrimmedTextInput(),
     partId: UUID,
@@ -287,6 +308,29 @@ export const InventoryJobOption = z.object({
 
 export type InventoryJobOptionListResult = z.infer<typeof InventoryJobOptionListResult>;
 export const InventoryJobOptionListResult = createCursorQueryResult(InventoryJobOption);
+
+/**
+ * What a scanned Part label resolves to. The code is matched exactly — a Code 128 read is all-or-
+ * nothing, so a partial match would mean a damaged label silently resolved to a neighbouring Part.
+ * Type-ahead search is the fallback for that (spec §10), and it goes through the ordinary Part list.
+ */
+export type PartStockByCodeInput = z.infer<typeof PartStockByCodeInput>;
+export const PartStockByCodeInput = z.object({ code: PartCode }).strict();
+
+/**
+ * A person the stores tablet's quick-switch may attribute a movement to (spec §11): the `stores`
+ * role, minus anyone disabled. Deliberately not a `UserSummary` — the grid needs a face and a name
+ * to tap, and the tablet is a shared device that should hold no more about anyone than that.
+ */
+export type QuickSwitchActor = z.infer<typeof QuickSwitchActor>;
+export const QuickSwitchActor = z.object({
+  id: AuthId,
+  name: z.string().trim().min(1),
+  thumbnailDataUrl: NullableThumbnailDataUrl,
+});
+
+export type QuickSwitchActorListResult = z.infer<typeof QuickSwitchActorListResult>;
+export const QuickSwitchActorListResult = z.object({ items: z.array(QuickSwitchActor) });
 
 export type StockMovementHistoryInput = z.infer<typeof StockMovementHistoryInput>;
 export const StockMovementHistoryInput = z.object({ partId: UUID });

@@ -8,6 +8,7 @@ import {
   createPurchaseOrderDraftsFromSelection,
   getPurchaseOrder,
   listLatePurchaseOrders,
+  listPartPurchaseOrderLines,
   listPurchaseOrderAmendments,
   listPurchaseOrderDocuments,
   listPurchaseOrderReturns,
@@ -21,6 +22,8 @@ import {
 import { renderPurchaseOrderPdf } from '@pkg/pdf';
 import {
   LatePurchaseOrderResult,
+  PartPurchaseOrderLineInput,
+  PartPurchaseOrderLineResult,
   PostReceiptInput,
   PostReturnToSupplierInput,
   type PurchaseOrder,
@@ -48,7 +51,7 @@ import {
 
 import { mapCoreErrors } from '../../trpc/errors.js';
 import { authorizedProcedure, type InventoryCostAccess, projectInventoryCostFields, router } from '../../trpc/init.js';
-import { stockMovementErrorFamily } from '../inventory/inventory-error-families.js';
+import { assertedActorErrorFamily, stockMovementErrorFamily } from '../inventory/inventory-error-families.js';
 import { assertCanWriteInventoryCost, projectMovement } from '../inventory/stock-movement-transport.js';
 import { purchaseOrderErrorFamily, purchaseOrderJobErrorFamily } from './purchase-order-error-families.js';
 
@@ -139,6 +142,16 @@ export const purchaseOrdersRouter = router({
 
       return { ...result, movement: projectMovement(result.movement, ctx.access) };
     }),
+
+  /**
+   * The sent order lines carrying one Part — what the stores tablet needs after a scan to receive
+   * against the right line, or to send something back off it. Quantity-only, so nothing here needs
+   * the cost projection the priced Purchase Order views go through.
+   */
+  partLines: authorizedProcedure('purchase_order:read')
+    .input(PartPurchaseOrderLineInput)
+    .output(PartPurchaseOrderLineResult)
+    .query(({ ctx, input }) => listPartPurchaseOrderLines({ db: ctx.db, partId: input.partId })),
 
   returns: authorizedProcedure('purchase_order:read')
     .input(PurchaseOrderCollectionInput)
@@ -313,7 +326,10 @@ async function mapPurchaseOrderErrors<T>(action: () => Promise<T>): Promise<T> {
  * Deliberately *not* the Job family the rest of this router carries. `postReceipt` never reaches a
  * Job — stock arrives against an order, and which Jobs that order was raised for has nothing to do
  * with what turned up at the dock — so listing it here would claim a failure that cannot happen.
+ *
+ * The actor family *is* here: both dock flows are worked from the shared tablet, which names the
+ * person who signed for the delivery.
  */
 async function mapReceiptErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapCoreErrors(action, purchaseOrderErrorFamily, stockMovementErrorFamily);
+  return mapCoreErrors(action, purchaseOrderErrorFamily, stockMovementErrorFamily, assertedActorErrorFamily);
 }

@@ -113,3 +113,15 @@ export type UserListResult = z.infer<typeof UserListResult>;
 export const UserListResult = z.object({
   users: z.array(UserSummary),
 });
+
+/**
+ * What a stores badge card carries: the person's name to read, and their id inside the Code 128 the
+ * tablet's scan field resolves (spec §11). No role, no email, nothing else — the card is dropped on
+ * a bench beside the scanner all shift, and it identifies rather than authenticates. Losing one
+ * means someone else can sign for stock under that name, which is exactly the exposure a PIN would
+ * close and v1 deliberately does not (spec §13).
+ */
+export type UserBadgePdfModel = z.infer<typeof UserBadgePdfModel>;
+export const UserBadgePdfModel = UserSummary.pick({ id: true, name: true });
+
+export type UserBadgePdfRenderer = (input: { document: UserBadgePdfModel[]; filename: string }) => Promise<Uint8Array>;

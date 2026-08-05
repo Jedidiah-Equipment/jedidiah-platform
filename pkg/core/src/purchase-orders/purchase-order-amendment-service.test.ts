@@ -1,4 +1,6 @@
+import { auditEvents } from '@pkg/db';
 import { DateOnlyIso } from '@pkg/schema';
+import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { listPurchaseOrderDocuments } from './credit-note-service.js';
@@ -65,6 +67,22 @@ describe('Purchase Order amendments', () => {
     await expect(
       listLatePurchaseOrders({ clock: () => new Date('2026-08-04T08:00:00.000Z'), db: context.db }),
     ).resolves.toMatchObject({ items: [{ id: purchaseOrder.id, expectedDeliveryDate: '2026-08-03' }] });
+    const audit = await context.db
+      .select()
+      .from(auditEvents)
+      .where(
+        and(
+          eq(auditEvents.action, 'updated'),
+          eq(auditEvents.entityId, purchaseOrder.id),
+          eq(auditEvents.entityType, 'purchase_order'),
+        ),
+      )
+      .orderBy(auditEvents.occurredAt, auditEvents.id);
+    expect(audit.at(-1)).toMatchObject({
+      actorUserId: ACTOR_ID,
+      changes: { expectedDeliveryDate: { from: null, to: '2026-08-03' } },
+      summary: 'Updated Purchase Order "PO-00001"',
+    });
   });
 
   test('moves a line quantity, logs the call that moved it, and files a new PDF revision', async ({ context }) => {

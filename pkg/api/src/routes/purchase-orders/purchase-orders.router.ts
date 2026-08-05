@@ -59,9 +59,8 @@ import { purchaseOrderErrorFamily, purchaseOrderJobErrorFamily } from './purchas
 
 export const purchaseOrdersRouter = router({
   /**
-   * The three amendments a sent order takes (spec §4), each gated on `purchase_order:amend` — the
-   * right to change what a Supplier is already holding, which is deliberately narrower than the
-   * right to raise a draft.
+   * Sent-order changes are gated on `purchase_order:amend`: the right to change what a Supplier is
+   * already holding, which is deliberately narrower than the right to raise a draft.
    */
   amendQuantity: authorizedProcedure('purchase_order:amend')
     .input(PurchaseOrderAmendQuantityInput)

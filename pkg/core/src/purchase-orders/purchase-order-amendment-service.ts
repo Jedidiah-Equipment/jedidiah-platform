@@ -21,6 +21,7 @@ import type {
 import { PurchaseOrderAmendmentListResult as PurchaseOrderAmendmentListResultSchema } from '@pkg/schema';
 import { aliasedTable, and, asc, eq } from 'drizzle-orm';
 
+import { diffAuditUpdate, recordAuditUpdate } from '../audit/audit-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import {
   PurchaseOrderAmendmentBelowReceivedError,
@@ -38,6 +39,7 @@ import {
   loadLineReceivedQuantity,
   loadNextPurchaseOrderRevision,
   lockPurchaseOrder,
+  purchaseOrderAuditDescriptor,
   storePurchaseOrderPdfRevision,
 } from './purchase-order-service.js';
 
@@ -75,7 +77,7 @@ export async function amendPurchaseOrderExpectedDate({
   return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, purchaseOrder) => {
     await tx
       .update(purchaseOrders)
-      .set({ expectedDeliveryDate: input.expectedDeliveryDate })
+      .set({ expectedDeliveryDate: input.expectedDeliveryDate, updatedAt: new Date() })
       .where(eq(purchaseOrders.id, input.id));
 
     return {
@@ -305,6 +307,18 @@ async function applyAmendment(
         actorUserId,
         purchaseOrderId: id,
       });
+
+      const afterRow = await lockPurchaseOrder(tx, id);
+      const auditChanges = diffAuditUpdate(purchaseOrderAuditDescriptor, row, afterRow);
+      if (auditChanges) {
+        await recordAuditUpdate({
+          actorUserId,
+          after: afterRow,
+          changes: auditChanges,
+          db: tx,
+          descriptor: purchaseOrderAuditDescriptor,
+        });
+      }
 
       const amended = await getPurchaseOrder({ db: tx, id });
       uploadedDocumentStorageKey = await storePurchaseOrderPdfRevision({

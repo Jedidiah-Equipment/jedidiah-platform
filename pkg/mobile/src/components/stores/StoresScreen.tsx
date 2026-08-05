@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StoresActorHeader } from '@/components/stores/StoresActorHeader';
 import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { RefreshControl } from '@/components/ui/refresh-control';
+import { isNearVerticalScrollEnd } from '@/lib/scroll-pagination';
 import { useStoresActor } from '@/lib/stores-actor';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { QuickSwitchModal } from './QuickSwitchModal';
@@ -18,12 +19,14 @@ import { QuickSwitchModal } from './QuickSwitchModal';
  */
 export function StoresScreen({
   children,
+  onNearScrollEnd,
   onBack,
   parentLabel,
   subtitle,
   title,
 }: {
   children: React.ReactNode;
+  onNearScrollEnd?: () => void;
   onBack: () => void;
   parentLabel: string;
   subtitle: string;
@@ -39,7 +42,15 @@ export function StoresScreen({
       <ScrollView
         contentContainerClassName="w-full gap-5 px-4 pb-10 pt-4"
         keyboardShouldPersistTaps="handled"
+        onScroll={
+          onNearScrollEnd
+            ? (event) => {
+                if (isNearVerticalScrollEnd(event.nativeEvent)) onNearScrollEnd();
+              }
+            : undefined
+        }
         refreshControl={<RefreshControl {...refresh} />}
+        scrollEventThrottle={onNearScrollEnd ? 100 : undefined}
       >
         <StoresActorHeader onSwitch={() => setQuickSwitchOpen(true)} />
 

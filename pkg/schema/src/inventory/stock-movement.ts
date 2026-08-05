@@ -7,7 +7,6 @@ import { JobCode, PurchaseOrderCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, SearchText } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
-import { JobListInput } from '../jobs/job.js';
 import { PartCode, PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
 import { SupplierCompanyName } from '../suppliers/supplier.js';
 import { declareInventoryCostFields, InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
@@ -292,17 +291,15 @@ export type JobStockResult = z.infer<typeof JobStockResult>;
 export const JobStockResult = z.object({ items: z.array(JobStockRow), job: JobStockJob });
 
 export type InventoryJobOptionListInput = z.infer<typeof InventoryJobOptionListInput>;
-export const InventoryJobOptionListInput = JobListInput.pick({
-  cursor: true,
-  limit: true,
-  search: true,
-  sortBy: true,
-  sortDirection: true,
+export const InventoryJobOptionListInput = CursorQueryInput.extend({
+  movementType: JobStockMovementType,
+  search: SearchText,
 });
 
 export type InventoryJobOption = z.infer<typeof InventoryJobOption>;
 export const InventoryJobOption = z.object({
   code: z.string(),
+  completedOn: DateOnlyIso.nullable(),
   displayName: z.string(),
   id: UUID,
 });

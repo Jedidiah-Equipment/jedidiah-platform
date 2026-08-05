@@ -29,13 +29,12 @@ import {
   toJobMovementInput,
 } from './types.js';
 
-const inventoryJobsInput = (search: string) =>
+const inventoryJobsInput = (search: string, movementType: JobStockMovementType) =>
   ({
     cursor: 0,
     limit: 20,
+    movementType,
     search,
-    sortBy: 'createdAt',
-    sortDirection: 'desc',
   }) satisfies InventoryJobOptionListInput;
 
 type FixedJob = { code: string; id: string };
@@ -73,7 +72,9 @@ export function StockMovementDialog({
   const jobId = fixedJob?.id ?? selectedJob?.id ?? '';
 
   const jobsQuery = useQuery(
-    trpc.inventory.jobOptions.queryOptions(inventoryJobsInput(debouncedJobSearch), { enabled: fixedJob === undefined }),
+    trpc.inventory.jobOptions.queryOptions(inventoryJobsInput(debouncedJobSearch, type), {
+      enabled: fixedJob === undefined,
+    }),
   );
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }, { enabled: jobId !== '' }));
   const mutation = useMutation(

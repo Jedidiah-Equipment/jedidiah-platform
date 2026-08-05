@@ -18,11 +18,13 @@ import { StoresScreen } from './StoresScreen';
  */
 export function StoresPartScreen({
   children,
+  onNearScrollEnd,
   parent,
   partCode,
   title,
 }: {
   children: (row: StockOnHandRow) => React.ReactNode;
+  onNearScrollEnd?: () => void;
   parent?: { label: string; onBack: () => void };
   partCode: string;
   title: string;
@@ -59,6 +61,7 @@ export function StoresPartScreen({
   return (
     <StoresScreen
       onBack={resolvedParent.onBack}
+      onNearScrollEnd={onNearScrollEnd}
       parentLabel={resolvedParent.label}
       subtitle={`${part.data.partCode} · ${part.data.partName}`}
       title={title}

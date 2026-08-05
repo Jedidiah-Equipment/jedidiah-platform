@@ -45,7 +45,7 @@ export default function StoresScanHomeRoute() {
         <StoresActorHeader onSwitch={() => setQuickSwitchOpen(true)} />
 
         <View className="gap-3">
-          <ScanField onScan={(raw) => void scan(raw)} />
+          <ScanField isActive={!quickSwitchOpen} onScan={(raw) => void scan(raw)} />
           {scanError === null ? null : (
             <Text className="text-sm text-danger" weight="semibold">
               {scanError}

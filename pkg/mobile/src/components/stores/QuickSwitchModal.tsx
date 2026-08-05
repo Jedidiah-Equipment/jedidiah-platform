@@ -1,12 +1,12 @@
-import { parseScanToken } from '@pkg/domain';
 import type { QuickSwitchActor } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
+import { resolveScan } from '@/lib/stores-scan-resolution';
 import { useTRPC } from '@/lib/trpc';
 import { loadingSpinnerColor } from '@/theme/brand-colors';
 
@@ -32,28 +32,40 @@ export function QuickSwitchModal({
   open: boolean;
 }) {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const actors = useQuery(trpc.inventory.quickSwitchActors.queryOptions(undefined, { enabled: open }));
   const [badgeError, setBadgeError] = useState<string | null>(null);
 
-  function selectByBadge(raw: string) {
-    const token = parseScanToken(raw);
-    if (token.kind === 'empty') return;
-    // Anything that is not a badge is a Part label, and picking a person is not the moment to go
-    // looking one up — say so rather than closing the dialog on an unrelated scan.
-    if (token.kind !== 'badge') {
-      setBadgeError('That is a Part label, not a badge card.');
-      return;
-    }
+  /**
+   * Resolved through `resolveScan` — which *awaits* the name list — rather than against whatever
+   * `actors.data` happens to hold. A card swiped while that fetch is still in flight would
+   * otherwise read as "not recognised", and the docs tell the reader that means a reprint or a
+   * role change. A slow network must not send somebody to the office.
+   */
+  async function selectByBadge(raw: string) {
+    const resolution = await resolveScan({
+      fetchActors: () => queryClient.fetchQuery(trpc.inventory.quickSwitchActors.queryOptions()),
+      // Picking a person is not the moment to go looking a Part up, so this never has to resolve
+      // one; a Part label reaching this field is answered below.
+      fetchPartByCode: (code) => Promise.resolve({ partCode: code }),
+      raw,
+    });
 
-    const actor = actors.data?.items.find((candidate) => candidate.id === token.userId);
-    if (!actor) {
-      setBadgeError('That badge is not recognised. Tap your name instead.');
-      return;
+    switch (resolution.kind) {
+      case 'actor':
+        setBadgeError(null);
+        onSelect(resolution.actor);
+        onClose();
+        break;
+      case 'part':
+        setBadgeError('That is a Part label, not a badge card.');
+        break;
+      case 'error':
+        setBadgeError(resolution.message);
+        break;
+      case 'ignored':
+        break;
     }
-
-    setBadgeError(null);
-    onSelect(actor);
-    onClose();
   }
 
   return (
@@ -65,7 +77,7 @@ export function QuickSwitchModal({
         <Text className="mt-1 text-sm text-muted-foreground">Scan your badge card, or tap your name.</Text>
 
         <View className="mt-4">
-          <ScanField onScan={selectByBadge} placeholder="Scan your badge card" />
+          <ScanField onScan={(raw) => void selectByBadge(raw)} placeholder="Scan your badge card" />
           {badgeError === null ? null : (
             <Text className="mt-2 text-sm text-danger" weight="semibold">
               {badgeError}

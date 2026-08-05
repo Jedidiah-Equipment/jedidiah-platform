@@ -46,6 +46,10 @@ function ReceiveForm({ row }: { row: StockOnHandRow }) {
   const lengthMm = keyedLengthMm ?? (row.standardPurchaseLengthMm === null ? '' : String(row.standardPurchaseLengthMm));
   const parsedQuantity = parseQuantity(quantity);
   const parsedLength = isLinear ? parseQuantity(lengthMm) : null;
+  // A linear Part with no standard purchase length opens with the length field empty, and the
+  // ledger refuses a linear movement without one — so the button has to wait for it rather than
+  // let the post fail at the server.
+  const hasLength = !isLinear || parsedLength !== null;
 
   return (
     <>
@@ -82,7 +86,7 @@ function ReceiveForm({ row }: { row: StockOnHandRow }) {
       <NoActorNotice actorUserId={actorUserId} />
 
       <PostButton
-        disabled={parsedQuantity === null || line === null || actorUserId === null}
+        disabled={parsedQuantity === null || line === null || actorUserId === null || !hasLength}
         isPending={mutation.isPending}
         label="Post receipt"
         onPress={() => {

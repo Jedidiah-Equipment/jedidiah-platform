@@ -1,6 +1,6 @@
 import { IconCamera, IconScan } from '@tabler/icons-react-native';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, type TextInput as RNTextInput, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
@@ -27,9 +27,17 @@ import { ScanCameraModal } from './ScanCameraModal';
  * touched another control is not a fault to correct.
  */
 export function ScanField({
+  isActive = true,
   onScan,
   placeholder = 'Scan a Part label or badge',
 }: {
+  /**
+   * False while a dialog this screen owns is covering the field. Reclaiming focus on the way back
+   * to true is the point: a dialog carrying its own scan field takes focus and, being a Modal
+   * rather than a route, never returns it through navigation — so the wedge would type into
+   * nothing for the rest of the shift.
+   */
+  isActive?: boolean;
   onScan: (raw: string) => void;
   placeholder?: string;
 }) {
@@ -41,9 +49,13 @@ export function ScanField({
   // screen should leave the wedge pointed here without anyone having to tap the field.
   useFocusEffect(
     useCallback(() => {
-      inputRef.current?.focus();
-    }, []),
+      if (isActive) inputRef.current?.focus();
+    }, [isActive]),
   );
+
+  useEffect(() => {
+    if (isActive) inputRef.current?.focus();
+  }, [isActive]);
 
   const submit = useCallback(
     (raw: string) => {

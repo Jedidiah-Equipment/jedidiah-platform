@@ -74,9 +74,9 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
     return (
       <Frame onBack={onBack} refresh={refresh}>
         <Text className="text-sm text-foreground" weight="semibold">
-          Job not on the shop floor.
+          Job not found.
         </Text>
-        <Text className="mt-1 text-sm text-muted-foreground">It has no scheduled work, or its Bays were retired.</Text>
+        <Text className="mt-1 text-sm text-muted-foreground">It may have been removed or the link may be invalid.</Text>
       </Frame>
     );
   }
@@ -101,7 +101,7 @@ function Ready({
     <SecondaryPageToolbar
       helpTopic="jobs"
       onBack={onBack}
-      parentLabel="Schedule"
+      parentLabel="Jobs"
       subtitle={state.jobDisplayName}
       title={state.jobCode}
     />
@@ -174,6 +174,19 @@ const STATE_LABELS = { active: 'IN PROGRESS', done: 'DONE', scheduled: 'SCHEDULE
 
 /** Left pane: the Job's Bays as a vertical timeline, each with its state, dates, and progress. */
 function RoutePane({ isCancelled, route }: { isCancelled: boolean; route: JobRouteStopCard[] }) {
+  if (route.length === 0) {
+    return (
+      <View className="rounded-2xl border border-dashed border-border px-4 py-10">
+        <Text className="text-center text-sm text-foreground" weight="semibold">
+          No work scheduled
+        </Text>
+        <Text className="mt-1 text-center text-sm text-muted-foreground">
+          This Job has not been placed in a Bay Queue yet.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View>
       <View className="mb-4 flex-row items-center justify-between">
@@ -271,10 +284,10 @@ function routeDaysLabel(stop: JobRouteStopCard, isCancelled: boolean): string {
 function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   const { progress } = state;
   const { resolved } = useColorMode();
-  const overallPercent = progress?.overallPercent ?? 100;
+  const overallPercent = progress?.overallPercent ?? (state.totalCount === 0 ? 0 : 100);
   const isCancelled = isJobCancelled(state);
   const accent = jobStatusAccentColor(isCancelled ? 'muted' : state.tone, resolved);
-  const status = isCancelled ? { tone: 'muted' as const, label: 'CANCELLED' } : jobStatus(progress);
+  const status = isCancelled ? { tone: 'muted' as const, label: 'CANCELLED' } : jobStatus(progress, state.totalCount);
 
   return (
     <View className="gap-4">
@@ -303,7 +316,7 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
           <View className="h-full rounded-full" style={{ backgroundColor: accent, width: `${overallPercent}%` }} />
         </View>
         <Text className="mt-2 text-[10px] text-muted-foreground" mono>
-          {state.doneCount} of {state.totalCount} bays complete
+          {state.totalCount === 0 ? 'No Bays scheduled' : `${state.doneCount} of ${state.totalCount} Bays complete`}
         </Text>
       </View>
 
@@ -320,8 +333,8 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   );
 }
 
-function jobStatus(progress: JobProgress | null): { tone: StatusTone; label: string } {
-  if (!progress) return { tone: 'muted', label: 'COMPLETE' };
+function jobStatus(progress: JobProgress | null, totalCount: number): { tone: StatusTone; label: string } {
+  if (!progress) return { tone: 'muted', label: totalCount === 0 ? 'UNSCHEDULED' : 'COMPLETE' };
   if (progress.status === 'in-progress') {
     return { tone: 'in-progress', label: `IN ${progress.currentBayName.toUpperCase()}` };
   }
@@ -341,7 +354,7 @@ function Frame({
 }) {
   return (
     <>
-      <SecondaryPageToolbar helpTopic="jobs" onBack={onBack} parentLabel="Schedule" subtitle="JOB DETAIL" title="Job" />
+      <SecondaryPageToolbar helpTopic="jobs" onBack={onBack} parentLabel="Jobs" subtitle="JOB DETAIL" title="Job" />
       <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
         {children}
       </ScrollView>

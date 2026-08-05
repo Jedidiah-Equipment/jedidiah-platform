@@ -1,11 +1,12 @@
 import {
   IconBarcode,
+  IconBriefcase2,
   IconBuildingWarehouse,
-  IconCalendarEvent,
+  IconCalendar,
   IconFileText,
   IconPackages,
 } from '@tabler/icons-react-native';
-import { Tabs } from 'expo-router';
+import { type Href, Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { showTabBar, visibleTabs } from '@/lib/app-tabs';
@@ -24,7 +25,7 @@ export default function AppTabsLayout() {
 
   return (
     <Tabs
-      initialRouteName="(schedule)"
+      initialRouteName="jobs"
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: colors.background },
@@ -45,11 +46,19 @@ export default function AppTabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="(schedule)"
+        name="jobs"
         options={{
-          href: tabs.includes('schedule') ? undefined : null,
-          tabBarIcon: ({ color, size }) => <IconCalendarEvent color={color} size={size} strokeWidth={1.8} />,
-          title: 'SCHEDULE',
+          href: tabs.includes('jobs') ? undefined : null,
+          tabBarIcon: ({ color, size }) => <IconBriefcase2 color={color} size={size} strokeWidth={1.8} />,
+          title: 'JOBS',
+        }}
+      />
+      <Tabs.Screen
+        name="(plan)"
+        options={{
+          href: tabs.includes('plan') ? ('/plan' as Href) : null,
+          tabBarIcon: ({ color, size }) => <IconCalendar color={color} size={size} strokeWidth={1.8} />,
+          title: 'PLAN',
         }}
       />
       <Tabs.Screen
@@ -84,6 +93,7 @@ export default function AppTabsLayout() {
           title: 'UNITS',
         }}
       />
+      <Tabs.Screen name="index" options={{ href: null }} />
     </Tabs>
   );
 }

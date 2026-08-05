@@ -1,7 +1,7 @@
 import { createUserAccessSummary } from '@pkg/domain';
 import { describe, expect, it } from 'vitest';
 
-import { showTabBar, visibleTabs } from './app-tabs';
+import { type AppTab, appTabHref, showTabBar, visibleTabs } from './app-tabs';
 
 describe('visibleTabs', () => {
   it('shows no tabs while access is unresolved', () => {
@@ -9,10 +9,10 @@ describe('visibleTabs', () => {
     expect(visibleTabs(null)).toEqual([]);
   });
 
-  it('shows Schedule and Units to a Job Viewer', () => {
+  it('shows Jobs, Plan, and Units to a Job Viewer', () => {
     const access = createUserAccessSummary({ role: 'job-viewer', userId: 'viewer-1' });
 
-    expect(visibleTabs(access)).toEqual(['schedule', 'units']);
+    expect(visibleTabs(access)).toEqual(['jobs', 'plan', 'units']);
   });
 
   it('shows Quotes and Units to Sales', () => {
@@ -21,21 +21,21 @@ describe('visibleTabs', () => {
     expect(visibleTabs(access)).toEqual(['quotes', 'units']);
   });
 
-  it('shows Schedule, Products, and Units to a Procurement Manager', () => {
+  it('shows Jobs, Plan, Products, and Units to a Procurement Manager', () => {
     const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'buyer-1' });
 
-    expect(visibleTabs(access)).toEqual(['schedule', 'products', 'units']);
+    expect(visibleTabs(access)).toEqual(['jobs', 'plan', 'products', 'units']);
   });
 
   it('shows every tab to an Admin', () => {
     const access = createUserAccessSummary({ role: 'admin', userId: 'admin-1' });
 
-    expect(visibleTabs(access)).toEqual(['schedule', 'stores', 'quotes', 'products', 'units']);
+    expect(visibleTabs(access)).toEqual(['jobs', 'plan', 'stores', 'quotes', 'products', 'units']);
   });
 
   /**
    * The tablet's whole surface: physical stock flows, and no paperwork tab to wander into. Being a
-   * single tab, the bar collapses — so the schedule landing has to redirect it to `/stores` rather
+   * single tab, the bar collapses — so the signed-in landing has to redirect it to `/stores` rather
    * than the no-access screen, which would leave the tablet with no way in at all.
    */
   it('shows only Stores to the Stores Tablet', () => {
@@ -57,16 +57,24 @@ describe('showTabBar', () => {
     expect(showTabBar([])).toBe(false);
   });
 
-  it('collapses when Schedule is the only visible tab', () => {
-    expect(showTabBar(['schedule'])).toBe(false);
+  it('collapses when one tab is visible', () => {
+    expect(showTabBar(['jobs'])).toBe(false);
   });
 
   it('renders once Units joins a single other tab', () => {
     // Every role reads Units, so the roles that used to see one tab now get a bar.
-    expect(showTabBar(['schedule', 'units'])).toBe(true);
+    expect(showTabBar(['jobs', 'plan', 'units'])).toBe(true);
   });
 
   it('renders when Products is also visible', () => {
-    expect(showTabBar(['schedule', 'products'])).toBe(true);
+    expect(showTabBar(['jobs', 'plan', 'products'])).toBe(true);
+  });
+});
+
+describe('appTabHref', () => {
+  it('maps the permission order to each root route', () => {
+    const tabs: AppTab[] = ['jobs', 'plan', 'stores', 'quotes', 'products', 'units'];
+
+    expect(tabs.map(appTabHref)).toEqual(['/jobs', '/plan', '/stores', '/quotes', '/products', '/units']);
   });
 });

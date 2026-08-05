@@ -49,12 +49,15 @@ export function ListSearchControl({
       <View className="min-w-0 flex-1">
         <TextInput
           accessibilityLabel={accessibilityLabel}
-          className="h-10 w-full border-0 bg-transparent px-0 py-0"
+          className="h-10 w-full border-0 bg-transparent"
           onBlur={() => setFocused(false)}
           onChangeText={onChangeText}
           onFocus={() => setFocused(true)}
           placeholder={placeholder}
           returnKeyType="search"
+          // Inline padding wins over the shared input's NativeWind padding on web, keeping
+          // the native focused placeholder aligned with the unfocused overlay.
+          style={{ paddingHorizontal: 0, paddingVertical: 0 }}
           textSize="toolbar"
           value={value}
           // Hidden behind the overlay, but still the field's accessibility hint.

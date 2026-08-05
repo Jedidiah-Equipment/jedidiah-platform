@@ -1,6 +1,9 @@
 # mobile (@pkg/mobile)
 
 - Expo managed app using Expo Router and `expo-dev-client`.
+- Whenever making a change in this package, review `pkg/docs` for affected user guidance and update
+  it in the same change. User-facing behavior is not done until the docs match; add or repoint the
+  corresponding `HELP_TOPICS` entry and docs page together when contextual Help changes.
 - `APP_VARIANT` is required. Variant identity lives in `src/lib/app-variant.ts`; keep
   `app.config.ts` thin and keep its explicit `.ts` resolver import.
 - Routes live under `app/`; all other source lives under `src/` and imports through `@/*`.
@@ -14,9 +17,9 @@
     a bottom border. Never use generic history-only Back behavior.
   - Do not create route-local toolbar variants or add arbitrary toolbar actions. Put page-specific
     actions in page content and expose contextual Help through the profile menu.
-- The Units, Products, and Quotes tab roots use the shared full-width card and paginated list from
-  `src/components/CatalogList.tsx`. Do not add per-route catalog card variants or responsive card
-  grids there. Schedule boards and detail-page cards are intentionally outside this catalog contract.
+- The Jobs, Plan, Units, Products, and Quotes tab roots use the shared full-width card and paginated
+  list from `src/components/CatalogList.tsx`. Do not add per-route catalog card variants or responsive
+  card grids there. Detail-page cards are intentionally outside this catalog contract.
 - Every page content surface spans the full available width. Horizontal page padding is allowed, but
   do not center page content or cap it with `mx-auto`, `max-w-*`, or equivalent inline styles. This
   rule does not apply to dialogs, drawers, sheets, chat bubbles, or deliberately sized field content.

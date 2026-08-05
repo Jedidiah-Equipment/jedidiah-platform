@@ -1,6 +1,6 @@
 import { useChat } from '@ai-sdk/react';
 import { IconPlus } from '@tabler/icons-react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,7 +26,7 @@ export default function AssistantRoute() {
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
       <View className="flex-1" style={{ paddingBottom: keyboardBottomPadding }}>
         <SecondaryPageToolbar
-          onBack={() => router.dismissTo(parent.href)}
+          onBack={() => router.dismissTo(parent.href as Href)}
           parentLabel={parent.label}
           subtitle="ACTS WITH YOUR PERMISSIONS"
           title="Assistant"

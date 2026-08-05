@@ -15,6 +15,7 @@ export * from './color.js';
 export * from './colors.js';
 export * from './scale.js';
 export * from './status.js';
+export * from './status-badge.js';
 
 export type ColorScheme = 'light' | 'dark';
 

@@ -6,6 +6,14 @@ import { describe, expect, test } from 'vitest';
 const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const CATALOG_SURFACES = [
   {
+    component: 'src/components/jobs/JobCatalog.tsx',
+    route: 'app/(protected)/(tabs)/jobs/index.tsx',
+  },
+  {
+    component: 'src/components/bays/PlanCatalog.tsx',
+    route: 'app/(protected)/(tabs)/(plan)/plan/index.tsx',
+  },
+  {
     component: 'src/components/products/ProductCatalog.tsx',
     route: 'app/(protected)/(tabs)/products/index.tsx',
   },
@@ -31,11 +39,6 @@ describe('catalog list contract', () => {
       expect(component).toContain('<CatalogListCard');
       expect(`${route}\n${component}`).not.toContain('BoardGrid');
     }
-  });
-
-  test('does not apply the catalog list contract to Schedule', () => {
-    expect(source('app/(protected)/(tabs)/(schedule)/index.tsx')).not.toContain('CatalogList');
-    expect(source('src/components/bays/BoardList.tsx')).not.toContain('CatalogList');
   });
 });
 

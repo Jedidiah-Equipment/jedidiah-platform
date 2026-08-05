@@ -43,7 +43,7 @@ export default function DocumentViewerRoute() {
         {owner ? (
           <OwnerDocumentScreen documentId={documentId} onBack={handleBack} owner={owner} />
         ) : (
-          <Message onBack={handleBack} parentLabel="Schedule" text="This document link is incomplete." />
+          <Message onBack={handleBack} parentLabel="Jobs" text="This document link is incomplete." />
         )}
       </SafeAreaView>
     </SafeAreaProvider>

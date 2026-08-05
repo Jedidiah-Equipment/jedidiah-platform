@@ -1,6 +1,9 @@
 # web (@pkg/web)
 
 - Browser access checks are UX only; the server/API is the authorization boundary.
+- Whenever making a change in this package, review `pkg/docs` for affected user guidance and update
+  it in the same change. User-facing behavior is not done until the docs match; add or repoint the
+  corresponding `HELP_TOPICS` entry and docs page together when contextual Help changes.
 - Login is email/password only unless asked otherwise.
 - Use `@pkg/domain` `formatDate` and `formatCurrency`; do not add one-off `Intl` or locale formatting in components.
 - Route all React Query invalidation through `src/hooks/use-query-invalidation.ts`; invalidate whole affected tRPC root paths.

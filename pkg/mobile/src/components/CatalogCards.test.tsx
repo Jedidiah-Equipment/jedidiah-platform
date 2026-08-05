@@ -1,4 +1,5 @@
-import type { Product, ProductUnitSummary, QuoteSummary } from '@pkg/schema';
+import { statusBadgeColorClassNames } from '@pkg/domain';
+import type { JobSummary, Product, ProductUnitSummary, QuoteSummary } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 
 vi.mock('@pkg/domain', async (importOriginal) => ({
@@ -10,6 +11,7 @@ vi.mock('@pkg/domain', async (importOriginal) => ({
 vi.mock('@tabler/icons-react-native', () => ({
   IconAlertTriangle: 'IconAlertTriangle',
   IconArrowsSort: 'IconArrowsSort',
+  IconCheck: 'IconCheck',
   IconFilter: 'IconFilter',
   IconPlus: 'IconPlus',
   IconTools: 'IconTools',
@@ -26,7 +28,11 @@ vi.mock('@/components/quotes/QuoteStatusChip', () => ({ QuoteStatusChip: 'QuoteS
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/components/units/UnitBuildStateChip', () => ({ UnitBuildStateChip: 'UnitBuildStateChip' }));
+vi.mock('@/theme/use-color-mode', () => ({ useColorMode: () => ({ resolved: 'dark' }) }));
 
+import type { BayListCard } from '@/lib/use-bay-list';
+import { PlanCatalogCard } from './bays/PlanCatalog';
+import { JobCatalogCard } from './jobs/JobCatalog';
 import { ProductCatalogCard } from './products/ProductCatalog';
 import { QuoteCatalogCard } from './quotes/QuoteCatalog';
 import { UnitCatalogCard } from './units/UnitCatalog';
@@ -39,6 +45,167 @@ function asElement(value: unknown): TestElement {
 }
 
 describe('catalog card mappings', () => {
+  test('maps a Job to code, work, Customer/serial, and Schedule state', () => {
+    const card = asElement(
+      JobCatalogCard({
+        job: {
+          code: 'JOB-00042',
+          customerCompanyName: 'Acme Farms',
+          id: 'job-1',
+          productName: 'Square Baler',
+          productThumbnailDataUrl: 'data:image/png;base64,job',
+          productUnit: { productSerialNumber: '260042' },
+          quoteKind: 'product',
+          scheduleState: {
+            active: 1,
+            done: 0,
+            firstWorkDay: '2026-08-05',
+            lastWorkDay: '2026-08-12',
+            scheduled: 1,
+            total: 2,
+          },
+          workTitle: null,
+        } as JobSummary,
+      }),
+    );
+
+    expect(card.props).toMatchObject({
+      avatarName: 'Square Baler',
+      avatarUri: 'data:image/png;base64,job',
+      mainText: 'JOB-00042',
+      monoText: 'Acme Farms · 260042',
+      subText: 'Square Baler',
+    });
+    expect(asElement(card.props.trailing).props.job).toMatchObject({
+      code: 'JOB-00042',
+      scheduleState: { active: 1, total: 2 },
+    });
+  });
+
+  test('shows stored completion once as a checked date without replacing the schedule state', () => {
+    const card = asElement(
+      JobCatalogCard({
+        job: {
+          code: 'JOB-00043',
+          completedOn: '2026-08-05',
+          customerCompanyName: null,
+          id: 'job-2',
+          productName: 'Square Baler',
+          productUnit: null,
+          quoteKind: 'product',
+          scheduleState: {
+            active: 0,
+            done: 1,
+            firstWorkDay: '2026-08-01',
+            lastWorkDay: '2026-08-04',
+            scheduled: 0,
+            total: 1,
+          },
+          workTitle: null,
+        } as JobSummary,
+      }),
+    );
+    const summary = asElement(card.props.trailing);
+    const rendered = asElement((summary.type as (props: ElementProps) => unknown)(summary.props));
+    const scheduleBadges = (rendered.props.children as unknown[])[0] as TestElement[];
+    const serialized = JSON.stringify(rendered);
+
+    expect(scheduleBadges[0]?.props.item).toEqual({ count: 1, label: 'Done', tone: 'gray' });
+    expect(serialized).toContain('IconCheck');
+    expect(serialized.match(/5 Aug 2026/g)).toHaveLength(1);
+    expect(serialized).not.toContain('COMPLETE');
+  });
+
+  test('uses the shared Quote-sized status treatment for a not-scheduled badge', () => {
+    const card = asElement(
+      JobCatalogCard({
+        job: {
+          code: 'JOB-00044',
+          completedOn: null,
+          customerCompanyName: null,
+          id: 'job-3',
+          productName: 'Square Baler',
+          productUnit: null,
+          quoteKind: 'product',
+          scheduleState: {
+            active: 0,
+            done: 0,
+            firstWorkDay: null,
+            lastWorkDay: null,
+            scheduled: 0,
+            total: 0,
+          },
+          workTitle: null,
+        } as JobSummary,
+      }),
+    );
+    const summary = asElement(card.props.trailing);
+    const renderedSummary = asElement((summary.type as (props: ElementProps) => unknown)(summary.props));
+    const badges = (renderedSummary.props.children as unknown[])[0] as TestElement[];
+    const badge = badges[0] as TestElement;
+    const renderedBadge = asElement((badge.type as (props: ElementProps) => unknown)(badge.props));
+    const badgeText = asElement(renderedBadge.props.children);
+
+    expect(renderedBadge.props.className).toContain('px-2 py-1');
+    expect(renderedBadge.props.className).toContain(statusBadgeColorClassNames.orange.chip);
+    expect(badgeText.props.className).toContain('text-[10px] tracking-wide');
+    expect(badgeText.props.className).toContain(statusBadgeColorClassNames.orange.text);
+    expect(badgeText.props.mono).toBe(true);
+  });
+
+  test('maps a Bay to operator, active Job/Customer, and days left', () => {
+    const card = asElement(
+      PlanCatalogCard({
+        bay: {
+          active: {
+            customerCompanyName: 'Acme Farms',
+            jobCode: 'JOB-00042',
+            jobDisplayName: 'Square Baler',
+            lastWorkDay: '2026-08-12',
+            remainingWorkDays: 5,
+          },
+          id: 'bay-1',
+          name: 'Assembly Bay 2 - Lindi',
+          operator: {
+            email: 'lindi@example.com',
+            id: 'user-1',
+            name: 'Lindi',
+            thumbnailDataUrl: 'data:image/png;base64,operator',
+          },
+        } as BayListCard,
+      }),
+    );
+
+    expect(card.props).toMatchObject({
+      avatarName: 'Lindi',
+      avatarUri: 'data:image/png;base64,operator',
+      mainText: 'Lindi - Assembly Bay 2',
+      monoText: 'Square Baler · Acme Farms',
+      subText: 'JOB-00042',
+    });
+    expect(JSON.stringify(card.props.trailing)).toContain('5');
+  });
+
+  test('keeps the operator-first title for an idle unassigned Bay', () => {
+    const card = asElement(
+      PlanCatalogCard({
+        bay: {
+          active: null,
+          id: 'bay-2',
+          name: 'Supply',
+          operator: null,
+        } as BayListCard,
+      }),
+    );
+
+    expect(card.props).toMatchObject({
+      avatarName: 'Unassigned',
+      mainText: 'Unassigned - Supply',
+      monoText: undefined,
+      subText: 'NO ACTIVE JOB',
+    });
+  });
+
   test('maps a Unit to serial, Product, ownership/date, and build state', () => {
     const card = asElement(
       UnitCatalogCard({

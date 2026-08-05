@@ -490,7 +490,7 @@ function Frame({
         }
         helpTopic="jobs"
         onBack={onBack}
-        parentLabel="Schedule"
+        parentLabel="Plan"
         subtitle="BAY SCHEDULE"
         title={title}
       />

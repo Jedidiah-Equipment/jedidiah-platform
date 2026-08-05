@@ -29,7 +29,7 @@ export function CatalogListCard({
   avatarName: string;
   avatarUri?: string | null;
   mainText: string;
-  monoText: string;
+  monoText?: string;
   onPress: () => void;
   subText: string;
   trailing?: ReactNode;
@@ -56,9 +56,11 @@ export function CatalogListCard({
         <Text className="mt-0.5 text-[11px] text-muted-foreground" numberOfLines={1}>
           {subText}
         </Text>
-        <Text className="mt-0.5 text-[10px] text-muted-foreground" mono numberOfLines={1}>
-          {monoText}
-        </Text>
+        {monoText === undefined ? null : (
+          <Text className="mt-0.5 text-[10px] text-muted-foreground" mono numberOfLines={1}>
+            {monoText}
+          </Text>
+        )}
       </View>
       {trailing === undefined ? null : <View className="shrink-0 items-end justify-center">{trailing}</View>}
     </Pressable>

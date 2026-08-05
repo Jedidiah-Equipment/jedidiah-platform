@@ -23,6 +23,8 @@ Use this when you are working from the rack rather than from a Job.
 1. Open **Inventory**.
 2. Click **Check out**.
 3. Search **Job** by code or name and select it.
+   The picker starts with the newest open Jobs and loads more as you scroll. A completed Job remains
+   searchable until its stock has been closed out.
 4. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
 5. Click **Check out stock**.
 
@@ -42,9 +44,8 @@ See [Warnings are judgments, not blocks](./warnings-are-judgments.md).
 ## Notes
 
 - You can check out against Parts the Job's CFO never mentioned. Off-CFO draws are legitimate.
-- Two kinds of Job refuse a Checkout. A cancelled Job does not offer the button at all — return what
-  it holds instead. A Job that has been closed out still appears in the Job search, but the post is
-  refused: its stock life is over. See [Close out a Job's stock](./close-out-a-job.md).
+- Two kinds of Job are never offered for Checkout. A cancelled Job can only take returns, and a Job
+  that has been closed out has ended its stock life. See [Close out a Job's stock](./close-out-a-job.md).
 - Drawing does not add to what the Job is owed — it converts commitment into drawn stock. See
   [Stock on hand, Commitment, and Free Stock](./stock-on-hand-and-free-stock.md).
 - Periodic Parts cannot be checked out at all; they do not appear in the Part list. See

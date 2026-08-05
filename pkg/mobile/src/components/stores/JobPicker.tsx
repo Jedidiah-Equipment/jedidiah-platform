@@ -1,5 +1,6 @@
-import type { InventoryJobOption } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
+import type { InventoryJobOption, JobStockMovementType } from '@pkg/schema';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
+import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
@@ -14,25 +15,39 @@ import { loadingSpinnerColor } from '@/theme/brand-colors';
  * Read through `inventory.jobOptions` rather than the Job list: the `stores` role holds no
  * `job:read` at all (spec §11's matrix), and this picker is the only Job surface the tablet has.
  */
-export function JobPicker({
-  onSearchChange,
-  onSelect,
-  search,
-  selected,
-}: {
-  onSearchChange: (value: string) => void;
-  onSelect: (job: InventoryJobOption | null) => void;
-  search: string;
-  selected: InventoryJobOption | null;
-}) {
+const JOB_PAGE_SIZE = 20;
+
+export type JobPickerHandle = { loadMore: () => void };
+
+export const JobPicker = forwardRef<
+  JobPickerHandle,
+  {
+    movementType: JobStockMovementType;
+    onSearchChange: (value: string) => void;
+    onSelect: (job: InventoryJobOption | null) => void;
+    search: string;
+    selected: InventoryJobOption | null;
+  }
+>(function JobPicker({ movementType, onSearchChange, onSelect, search, selected }, ref) {
   const trpc = useTRPC();
   const debouncedSearch = useDebouncedSearch(search);
-  const jobs = useQuery(
-    trpc.inventory.jobOptions.queryOptions(
-      { cursor: 0, limit: 20, search: debouncedSearch || undefined, sortBy: 'createdAt', sortDirection: 'desc' },
-      { enabled: selected === null },
+  const jobs = useInfiniteQuery(
+    trpc.inventory.jobOptions.infiniteQueryOptions(
+      { limit: JOB_PAGE_SIZE, movementType, search: debouncedSearch },
+      {
+        enabled: selected === null,
+        getNextPageParam: (page) => page.nextCursor,
+        initialCursor: 0,
+        placeholderData: keepPreviousData,
+      },
     ),
   );
+  const items = useMemo(() => jobs.data?.pages.flatMap((page) => page.items) ?? [], [jobs.data?.pages]);
+  const loadMore = useCallback(() => {
+    if (jobs.hasNextPage && !jobs.isFetchingNextPage) void jobs.fetchNextPage();
+  }, [jobs.fetchNextPage, jobs.hasNextPage, jobs.isFetchingNextPage]);
+
+  useImperativeHandle(ref, () => ({ loadMore }), [loadMore]);
 
   if (selected !== null) {
     return (
@@ -83,11 +98,13 @@ export function JobPicker({
         </View>
       ) : jobs.isError ? (
         <Text className="py-4 text-center text-sm text-danger">Couldn’t load Jobs. Pull down to retry.</Text>
-      ) : jobs.data.items.length === 0 ? (
-        <Text className="py-4 text-center text-sm text-muted-foreground">No Job matches that search.</Text>
+      ) : items.length === 0 ? (
+        <Text className="py-4 text-center text-sm text-muted-foreground">
+          {debouncedSearch ? 'No Job matches that search.' : movementType === 'checkout' ? 'No open Jobs.' : 'No Jobs.'}
+        </Text>
       ) : (
         <View className="gap-2">
-          {jobs.data.items.map((job) => (
+          {items.map((job) => (
             <Pressable
               accessibilityLabel={`${job.code} ${job.displayName}`}
               accessibilityRole="button"
@@ -95,16 +112,28 @@ export function JobPicker({
               key={job.id}
               onPress={() => onSelect(job)}
             >
-              <Text className="text-base text-surface-foreground" mono weight="semibold">
-                {job.code}
-              </Text>
+              <View className="flex-row items-center justify-between gap-3">
+                <Text className="text-base text-surface-foreground" mono weight="semibold">
+                  {job.code}
+                </Text>
+                {job.completedOn === null ? null : (
+                  <Text className="shrink-0 text-xs text-muted-foreground" mono>
+                    COMPLETED
+                  </Text>
+                )}
+              </View>
               <Text className="mt-0.5 text-sm text-muted-foreground" numberOfLines={1}>
                 {job.displayName}
               </Text>
             </Pressable>
           ))}
+          {jobs.isFetchingNextPage ? (
+            <View className="items-center py-3">
+              <ActivityIndicator accessibilityLabel="Loading more Jobs" color={loadingSpinnerColor} size="small" />
+            </View>
+          ) : null}
         </View>
       )}
     </View>
   );
-}
+});

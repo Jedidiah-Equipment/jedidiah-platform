@@ -1,13 +1,13 @@
 import type { InventoryJobOption, JobStockMovementType, StockOnHandRow } from '@pkg/schema';
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
 
 import { useMovementActorUserId } from '@/lib/stores-actor';
 import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
-import { JobPicker } from './JobPicker';
+import { JobPicker, type JobPickerHandle } from './JobPicker';
 import { LengthBucketField } from './LengthBucketField';
 import { MovementWarningModal } from './MovementWarningModal';
 import { PostButton } from './PostButton';
@@ -32,20 +32,28 @@ export function JobMovementScreen({
   partCode: string;
 }) {
   const isCheckout = movementType === 'checkout';
+  const jobPicker = useRef<JobPickerHandle>(null);
 
   return (
-    <StoresPartScreen parent={parent} partCode={partCode} title={isCheckout ? 'Check out to a Job' : 'Return to store'}>
-      {(row) => <JobMovementForm fixedJobId={jobId} movementType={movementType} row={row} />}
+    <StoresPartScreen
+      onNearScrollEnd={() => jobPicker.current?.loadMore()}
+      parent={parent}
+      partCode={partCode}
+      title={isCheckout ? 'Check out to a Job' : 'Return to store'}
+    >
+      {(row) => <JobMovementForm fixedJobId={jobId} jobPickerRef={jobPicker} movementType={movementType} row={row} />}
     </StoresPartScreen>
   );
 }
 
 function JobMovementForm({
   fixedJobId,
+  jobPickerRef,
   movementType,
   row,
 }: {
   fixedJobId: string | undefined;
+  jobPickerRef: RefObject<JobPickerHandle | null>;
   movementType: JobStockMovementType;
   row: StockOnHandRow;
 }) {
@@ -84,7 +92,14 @@ function JobMovementForm({
   return (
     <>
       {fixedJobId === undefined ? (
-        <JobPicker onSearchChange={setJobSearch} onSelect={setJob} search={jobSearch} selected={job} />
+        <JobPicker
+          movementType={movementType}
+          onSearchChange={setJobSearch}
+          onSelect={setJob}
+          ref={jobPickerRef}
+          search={jobSearch}
+          selected={job}
+        />
       ) : null}
 
       <QuantityField

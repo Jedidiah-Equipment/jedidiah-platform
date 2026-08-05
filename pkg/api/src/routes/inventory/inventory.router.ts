@@ -4,8 +4,8 @@ import {
   getStockMovementHistory,
   listBuyList,
   listCloseOutQueue,
+  listInventoryJobOptions,
   listJobStock,
-  listJobs,
   listQuickSwitchActors,
   listStockOnHand,
   postAdjustment,
@@ -14,7 +14,6 @@ import {
   postRevaluation,
   searchPartStock,
 } from '@pkg/core';
-import { getJobDisplayName } from '@pkg/domain';
 import {
   BuildPostResult,
   BuyListResult,
@@ -60,18 +59,7 @@ export const inventoryRouter = router({
   jobOptions: authorizedProcedure('inventory:move')
     .input(InventoryJobOptionListInput)
     .output(InventoryJobOptionListResult)
-    .query(async ({ ctx, input }) => {
-      const result = await listJobs({ db: ctx.db, input: { ...input, columnFilters: {}, filters: {} } });
-
-      return {
-        ...result,
-        items: result.items.map((job) => ({
-          code: job.code,
-          displayName: getJobDisplayName(job),
-          id: job.id,
-        })),
-      };
-    }),
+    .query(({ ctx, input }) => listInventoryJobOptions({ db: ctx.db, input })),
 
   /**
    * Quantity-only by design: the row carries what is short and what is coming, never a price. That

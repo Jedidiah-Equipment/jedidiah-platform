@@ -1,4 +1,4 @@
-import { customers, eq, jobs, parts, quotes, supplier, user } from '@pkg/db';
+import { customers, eq, jobStockCloseOuts, jobs, parts, quotes, supplier, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
@@ -132,14 +132,53 @@ describe('inventory procedure permissions', () => {
     ).resolves.toMatchObject({ items: [{ drawnQuantity: 1, partId: context.part.id }] });
 
     await expect(
-      context.createCaller(mockSession('stores')).inventory.jobOptions({ search: String(context.job.code) }),
+      context
+        .createCaller(mockSession('stores'))
+        .inventory.jobOptions({ movementType: 'checkout', search: String(context.job.code) }),
     ).resolves.toMatchObject({
-      items: [{ code: 'JOB-00001', displayName: 'Inventory repair', id: context.job.id }],
+      items: [{ code: 'JOB-00001', completedOn: null, displayName: 'Inventory repair', id: context.job.id }],
     });
 
     await expect(
-      context.createCaller(mockSession('sales')).inventory.jobOptions({ search: String(context.job.code) }),
+      context
+        .createCaller(mockSession('sales'))
+        .inventory.jobOptions({ movementType: 'checkout', search: String(context.job.code) }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('offers Jobs according to the stock movement direction and inventory lifecycle', async ({ context }) => {
+    const caller = context.createCaller(mockSession('stores'));
+
+    await expect(caller.inventory.jobOptions({ movementType: 'checkout' })).resolves.toMatchObject({
+      items: [{ id: context.job.id }],
+    });
+
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, context.job.id));
+    await expect(caller.inventory.jobOptions({ movementType: 'return-to-store' })).resolves.toMatchObject({
+      items: [{ id: context.job.id }],
+    });
+
+    await context.db
+      .update(jobs)
+      .set({ cancelledAt: null, completedOn: '2026-08-01' })
+      .where(eq(jobs.id, context.job.id));
+
+    await expect(caller.inventory.jobOptions({ movementType: 'checkout' })).resolves.toMatchObject({ items: [] });
+    await expect(
+      caller.inventory.jobOptions({ movementType: 'checkout', search: String(context.job.code) }),
+    ).resolves.toMatchObject({ items: [{ completedOn: '2026-08-01', id: context.job.id }] });
+
+    await context.db
+      .insert(jobStockCloseOuts)
+      .values({ actorUserId: 'test-user-id', jobId: context.job.id, note: null });
+
+    await expect(
+      caller.inventory.jobOptions({ movementType: 'checkout', search: String(context.job.code) }),
+    ).resolves.toMatchObject({ items: [] });
+
+    await expect(caller.inventory.jobOptions({ movementType: 'return-to-store' })).resolves.toMatchObject({
+      items: [{ id: context.job.id }],
+    });
   });
 
   test('uses Job error vocabulary for cancelled checkout while still allowing a return', async ({ context }) => {

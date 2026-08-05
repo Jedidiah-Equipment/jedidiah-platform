@@ -30,9 +30,17 @@ describe('Purchase Order PDF', () => {
       ]),
     );
   });
+
+  test('prints the revision number so the Supplier knows which page supersedes which', () => {
+    const text = collectText(PurchaseOrderPdf({ document: model({ revision: 3 }) }));
+
+    expect(text).toEqual(expect.arrayContaining(['PO-00042 REV 3', 'Revision 3 - supersedes all earlier revisions']));
+    // Revision 1 is the order as sent, so it says nothing about superseding anything.
+    expect(collectText(PurchaseOrderPdf({ document: model() }))).toEqual(expect.arrayContaining(['PO-00042']));
+  });
 });
 
-function model(): PurchaseOrderPdfModel {
+function model(overrides: Partial<PurchaseOrderPdfModel> = {}): PurchaseOrderPdfModel {
   return {
     code: PurchaseOrderCode.parse(42),
     expectedDeliveryDate: DateOnlyIso.parse('2026-08-20'),
@@ -58,6 +66,8 @@ function model(): PurchaseOrderPdfModel {
       id: '00000000-0000-4000-8000-000000000002',
       phone: '011 555 0100',
     },
+    revision: 1,
+    ...overrides,
   };
 }
 

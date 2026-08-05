@@ -1,16 +1,20 @@
-import { PurchaseOrderView } from '@pkg/schema';
+import { PurchaseOrderView, type StockMovementWarningCode } from '@pkg/schema';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  confirmReceiptWarnings,
+  confirmMovementWarnings,
   outstandingQuantity,
+  outstandingReceivedQuantity,
   PurchaseOrderCreateFormValues,
   PurchaseOrderDraftFormValues,
   PurchaseOrderReceiveFormValues,
+  PurchaseOrderReturnFormValues,
+  purchaseOrderAmendmentValidator,
   toPurchaseOrderCreateInput,
   toPurchaseOrderDraftFormValues,
   toPurchaseOrderDraftInput,
   toReceiptInput,
+  toReturnToSupplierInput,
 } from './types.js';
 
 const PART_ID = '4de0e2a1-2b2f-4b2e-9a5f-6a0d0a1b2c3d';
@@ -121,16 +125,24 @@ describe('Purchase Order draft form values', () => {
 });
 
 describe('Purchase Order receiving values', () => {
-  it('requires explicit confirmation only when a receipt warning is present', () => {
+  it("requires explicit confirmation only when a warning is present, in the caller's words", () => {
     const confirm = vi.fn(() => false);
     const messageFor = vi.fn(() => 'This receipt takes the line past the quantity ordered.');
+    const receipt = (warnings: StockMovementWarningCode[]) =>
+      confirmMovementWarnings({ action: 'Receive it anyway?', confirm, messageFor, warnings });
 
-    expect(confirmReceiptWarnings([], confirm, messageFor)).toBe(true);
+    expect(receipt([])).toBe(true);
     expect(confirm).not.toHaveBeenCalled();
-    expect(confirmReceiptWarnings(['exceeds-ordered'], confirm, messageFor)).toBe(false);
+    expect(receipt(['exceeds-ordered'])).toBe(false);
     expect(confirm).toHaveBeenCalledWith('This receipt takes the line past the quantity ordered. Receive it anyway?');
     confirm.mockReturnValue(true);
-    expect(confirmReceiptWarnings(['exceeds-ordered'], confirm, messageFor)).toBe(true);
+    expect(receipt(['exceeds-ordered'])).toBe(true);
+
+    // The same helper carries the return's own verb, so the two prompts cannot drift apart.
+    expect(
+      confirmMovementWarnings({ action: 'Post it anyway?', confirm, messageFor, warnings: ['exceeds-received'] }),
+    ).toBe(true);
+    expect(confirm).toHaveBeenLastCalledWith('This receipt takes the line past the quantity ordered. Post it anyway?');
   });
   const [pieceLine, linearLine] = purchaseOrder.lines;
   if (!pieceLine || !linearLine) throw new Error('Purchase Order fixture is missing its lines');
@@ -190,5 +202,98 @@ describe('Purchase Order receiving values', () => {
     expect(
       PurchaseOrderReceiveFormValues.safeParse({ lengthMm: Number.NaN, quantity: 0, unitCost: Number.NaN }).success,
     ).toBe(false);
+  });
+});
+
+describe('Purchase Order amendment values', () => {
+  it('insists on a Part only for the kinds that name one', () => {
+    const values = { newPartId: '', note: 'Agreed by phone', quantity: 2, unitPrice: 10 };
+
+    expect(purchaseOrderAmendmentValidator('quantity-change').safeParse(values).success).toBe(true);
+    expect(purchaseOrderAmendmentValidator('add-line').safeParse(values).success).toBe(false);
+    expect(purchaseOrderAmendmentValidator('substitute-part').safeParse(values).success).toBe(false);
+    expect(
+      purchaseOrderAmendmentValidator('add-line').safeParse({ ...values, newPartId: LINEAR_PART_ID }).success,
+    ).toBe(true);
+  });
+
+  it('holds every kind to the mandatory note the schema owns', () => {
+    const values = { newPartId: LINEAR_PART_ID, note: '   ', quantity: 2, unitPrice: 10 };
+
+    for (const kind of ['quantity-change', 'add-line', 'substitute-part'] as const) {
+      expect(purchaseOrderAmendmentValidator(kind).safeParse(values).success, kind).toBe(false);
+    }
+  });
+});
+
+describe('Purchase Order return values', () => {
+  const [pieceLine, linearLine] = purchaseOrder.lines;
+  if (!pieceLine || !linearLine) throw new Error('Purchase Order fixture is missing its lines');
+
+  it('counts what a line can still send back without double-counting the netted returns', () => {
+    // The linear line's `receivedQuantity` of 5 is what the server says it has *kept*.
+    expect(outstandingReceivedQuantity({ line: linearLine, returns: [] })).toBe(5);
+
+    // A defective return has already been netted out of that 5 server-side, because it re-opens the
+    // line. Subtracting it again here would report less stock on hand than the shelf holds.
+    expect(
+      outstandingReceivedQuantity({
+        line: linearLine,
+        returns: [{ partId: LINEAR_PART_ID, quantity: 2, reason: 'defective' }],
+      }),
+    ).toBe(5);
+
+    // An `order-error` return is deliberately left in the received figure, so it comes off here.
+    expect(
+      outstandingReceivedQuantity({
+        line: linearLine,
+        returns: [{ partId: LINEAR_PART_ID, quantity: 2, reason: 'order-error' }],
+      }),
+    ).toBe(3);
+
+    // Another line's returns are none of this line's business.
+    expect(
+      outstandingReceivedQuantity({
+        line: linearLine,
+        returns: [{ partId: PART_ID, quantity: 2, reason: 'order-error' }],
+      }),
+    ).toBe(5);
+
+    // And it never goes negative, however the two figures happen to line up.
+    expect(
+      outstandingReceivedQuantity({
+        line: linearLine,
+        returns: [{ partId: LINEAR_PART_ID, quantity: 9, reason: 'order-error' }],
+      }),
+    ).toBe(0);
+  });
+
+  it('sends no length for a discrete line and blanks an empty note', () => {
+    const values = PurchaseOrderReturnFormValues.parse({
+      lengthMm: Number.NaN,
+      note: '',
+      quantity: 2,
+      reason: 'defective',
+    });
+
+    expect(toReturnToSupplierInput({ line: pieceLine, purchaseOrderId: purchaseOrder.id, values })).toEqual({
+      lengthMm: null,
+      note: null,
+      partId: pieceLine.partId,
+      purchaseOrderId: purchaseOrder.id,
+      quantity: 2,
+      reason: 'defective',
+    });
+  });
+
+  it('keys a length only on a linear line, and only when the dock typed one', () => {
+    const parse = (lengthMm: number) =>
+      PurchaseOrderReturnFormValues.parse({ lengthMm, note: 'Bent', quantity: 1, reason: 'wrong-item' });
+    const forLine = (line: typeof linearLine, lengthMm: number) =>
+      toReturnToSupplierInput({ line, purchaseOrderId: purchaseOrder.id, values: parse(lengthMm) });
+
+    expect(forLine(linearLine, 3_000).lengthMm).toBe(3_000);
+    expect(forLine(linearLine, Number.NaN).lengthMm).toBeNull();
+    expect(forLine(pieceLine, 3_000).lengthMm).toBeNull();
   });
 });

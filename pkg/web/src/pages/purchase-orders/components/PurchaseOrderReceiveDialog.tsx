@@ -13,7 +13,7 @@ import {
   warningMessageFor,
 } from '../../inventory/components/StockMovementWarningPrompt.js';
 import {
-  confirmReceiptWarnings,
+  confirmMovementWarnings,
   isLinearLine,
   outstandingQuantity,
   type PurchaseOrderReceiveFormValues,
@@ -75,7 +75,12 @@ export function PurchaseOrderReceiveDialog({
         return mutation.mutateAsync(toReceiptInput({ canReadCosts, line, purchaseOrderId: purchaseOrder.id, values }));
       }}
       onBeforeCreate={(values) =>
-        confirmReceiptWarnings(receiptWarnings(values), (message) => window.confirm(message), warningMessageFor)
+        confirmMovementWarnings({
+          action: 'Receive it anyway?',
+          confirm: (message) => window.confirm(message),
+          messageFor: warningMessageFor,
+          warnings: receiptWarnings(values),
+        })
       }
       onCreated={async (result) => {
         await Promise.all([invalidatePurchaseOrders(), invalidateInventory()]);

@@ -5,7 +5,9 @@ import {
   JobStockMovementType,
   PostAdjustmentInput,
   PostJobMovementInput,
+  PostReturnToSupplierInput,
   PostRevaluationInput,
+  StockMovementReason,
   StockMovementType,
 } from './stock-movement.js';
 
@@ -19,9 +21,47 @@ describe('stock movement inputs', () => {
       'checkout',
       'return-to-store',
       'receipt',
+      'return-to-supplier',
       'build-consume',
       'build-produce',
     ]);
+  });
+
+  it('widens the ledger reason column without letting either set claim the other', () => {
+    expect(StockMovementReason.options).toEqual([
+      'opening-balance',
+      'stock-count',
+      'damage',
+      'scrap',
+      'correction',
+      'wrong-item',
+      'defective',
+      'order-error',
+    ]);
+
+    // The column takes both sets; the movement's own shape is what pins it to one of them.
+    expect(() => PostAdjustmentInput.parse({ delta: -1, note: 'Sent back', partId, reason: 'defective' })).toThrow();
+  });
+
+  it('takes the physical fact and the reason a return goes back, never a keyed value', () => {
+    const purchaseOrderId = '00000000-0000-4000-8000-000000000002';
+
+    expect(PostReturnToSupplierInput.parse({ partId, purchaseOrderId, quantity: 2, reason: 'defective' })).toEqual({
+      lengthMm: null,
+      note: null,
+      partId,
+      purchaseOrderId,
+      quantity: 2,
+      reason: 'defective',
+    });
+
+    expect(() =>
+      PostReturnToSupplierInput.parse({ partId, purchaseOrderId, quantity: 2, reason: 'defective', unitCost: 12 }),
+    ).toThrow();
+    expect(() => PostReturnToSupplierInput.parse({ partId, purchaseOrderId, quantity: 2, reason: 'scrap' })).toThrow();
+    expect(() =>
+      PostReturnToSupplierInput.parse({ partId, purchaseOrderId, quantity: -1, reason: 'defective' }),
+    ).toThrow();
   });
 
   it('accepts adjustment deltas with up to three decimal places', () => {

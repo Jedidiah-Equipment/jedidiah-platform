@@ -1,29 +1,48 @@
 import {
+  amendPurchaseOrderAddLine,
+  amendPurchaseOrderQuantity,
+  amendPurchaseOrderSubstitutePart,
   cancelPurchaseOrder,
   closePurchaseOrderShort,
   createPurchaseOrder,
   createPurchaseOrderDraftsFromSelection,
   getPurchaseOrder,
   listLatePurchaseOrders,
+  listPurchaseOrderAmendments,
+  listPurchaseOrderDocuments,
+  listPurchaseOrderReturns,
   listPurchaseOrders,
+  listReturnsAwaitingCredit,
   markPurchaseOrderSent,
   postReceipt,
+  postReturnToSupplier,
   savePurchaseOrderDraft,
 } from '@pkg/core';
 import { renderPurchaseOrderPdf } from '@pkg/pdf';
 import {
   LatePurchaseOrderResult,
   PostReceiptInput,
+  PostReturnToSupplierInput,
   type PurchaseOrder,
   PurchaseOrderActionInput,
+  PurchaseOrderAmendAddLineInput,
+  PurchaseOrderAmendmentListResult,
+  PurchaseOrderAmendQuantityInput,
+  PurchaseOrderAmendSubstitutePartInput,
+  PurchaseOrderCollectionInput,
   PurchaseOrderCreateInput,
+  PurchaseOrderDocumentListResult,
   PurchaseOrderLineViewCostFields,
   PurchaseOrderListInput,
   PurchaseOrderListViewResult,
+  PurchaseOrderReturnListResult,
+  PurchaseOrderReturnRowCostFields,
   PurchaseOrderSaveDraftInput,
   PurchaseOrderSelectionInput,
   PurchaseOrderSelectionResult,
   PurchaseOrderView,
+  ReturnAwaitingCreditRowCostFields,
+  ReturnsAwaitingCreditResult,
   StockMovementPostResult,
 } from '@pkg/schema';
 
@@ -34,6 +53,125 @@ import { assertCanWriteInventoryCost, projectMovement } from '../inventory/stock
 import { purchaseOrderErrorFamily, purchaseOrderJobErrorFamily } from './purchase-order-error-families.js';
 
 export const purchaseOrdersRouter = router({
+  /**
+   * The three amendments a sent order takes (spec §4), each gated on `purchase_order:amend` — the
+   * right to change what a Supplier is already holding, which is deliberately narrower than the
+   * right to raise a draft.
+   */
+  amendQuantity: authorizedProcedure('purchase_order:amend')
+    .input(PurchaseOrderAmendQuantityInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
+        amendPurchaseOrderQuantity({
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          input,
+          pdfRenderer: renderPurchaseOrderPdf,
+          storage: ctx.storage,
+        }),
+      );
+
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
+
+  amendAddLine: authorizedProcedure('purchase_order:amend')
+    .input(PurchaseOrderAmendAddLineInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
+        amendPurchaseOrderAddLine({
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          input,
+          pdfRenderer: renderPurchaseOrderPdf,
+          storage: ctx.storage,
+        }),
+      );
+
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
+
+  amendSubstitutePart: authorizedProcedure('purchase_order:amend')
+    .input(PurchaseOrderAmendSubstitutePartInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
+        amendPurchaseOrderSubstitutePart({
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          input,
+          pdfRenderer: renderPurchaseOrderPdf,
+          storage: ctx.storage,
+        }),
+      );
+
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
+
+  /** The amendment log carries no prices, so anyone who may read the order may read its history. */
+  amendments: authorizedProcedure('purchase_order:read')
+    .input(PurchaseOrderCollectionInput)
+    .output(PurchaseOrderAmendmentListResult)
+    .query(({ ctx, input }) =>
+      mapPurchaseOrderErrors(() => listPurchaseOrderAmendments({ db: ctx.db, purchaseOrderId: input.purchaseOrderId })),
+    ),
+
+  /** The order's document collection: its PDF revisions and the credit notes filed against it. */
+  documents: authorizedProcedure('purchase_order:read')
+    .input(PurchaseOrderCollectionInput)
+    .output(PurchaseOrderDocumentListResult)
+    .query(({ ctx, input }) =>
+      mapPurchaseOrderErrors(() => listPurchaseOrderDocuments({ db: ctx.db, purchaseOrderId: input.purchaseOrderId })),
+    ),
+
+  /**
+   * Sending stock back is a ledger write, so it rides `inventory:move` rather than a Purchase Order
+   * right: the person at the dock packing the wrong item back onto the truck is the one posting it.
+   */
+  returnToSupplier: authorizedProcedure('inventory:move')
+    .input(PostReturnToSupplierInput)
+    .output(StockMovementPostResult)
+    .mutation(async ({ ctx, input }) => {
+      const result = await mapReceiptErrors(() =>
+        postReturnToSupplier({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+      );
+
+      return { ...result, movement: projectMovement(result.movement, ctx.access) };
+    }),
+
+  returns: authorizedProcedure('purchase_order:read')
+    .input(PurchaseOrderCollectionInput)
+    .output(PurchaseOrderReturnListResult)
+    .query(async ({ ctx, input }) => {
+      const result = await mapPurchaseOrderErrors(() =>
+        listPurchaseOrderReturns({ db: ctx.db, purchaseOrderId: input.purchaseOrderId }),
+      );
+
+      return {
+        items: result.items.map((row) =>
+          projectInventoryCostFields({ access: ctx.access, costFields: PurchaseOrderReturnRowCostFields, output: row }),
+        ),
+      };
+    }),
+
+  /** Procurement's chase list: what has gone back to Suppliers with no credit note against it yet. */
+  returnsAwaitingCredit: authorizedProcedure('purchase_order:read')
+    .output(ReturnsAwaitingCreditResult)
+    .query(async ({ ctx }) => {
+      const result = await listReturnsAwaitingCredit({ db: ctx.db });
+
+      return {
+        items: result.items.map((row) =>
+          projectInventoryCostFields({
+            access: ctx.access,
+            costFields: ReturnAwaitingCreditRowCostFields,
+            output: row,
+          }),
+        ),
+      };
+    }),
+
   cancel: authorizedProcedure('purchase_order:close')
     .input(PurchaseOrderActionInput)
     .output(PurchaseOrderView)

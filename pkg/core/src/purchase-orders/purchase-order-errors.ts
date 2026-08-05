@@ -116,12 +116,49 @@ export class PurchaseOrderLineNotFoundError extends Error {
   }
 }
 
-/** A closed-short order has no open remainder left, so nothing can still arrive against it. */
+/** A closed-short order has no open remainder left, so nothing can still arrive or be changed on it. */
 export class PurchaseOrderClosedShortError extends Error {
   readonly code = 'purchase_order.closed_short' as const;
 
   constructor(readonly id: UUID) {
-    super('This Purchase Order was closed short and can no longer be received against.');
+    super('This Purchase Order was closed short and can no longer be amended or received against.');
+  }
+}
+
+/** An amendment changes an existing line, so the Part has to already be on the order. */
+export class PurchaseOrderLineExistsError extends Error {
+  readonly code = 'purchase_order.line_exists' as const;
+
+  constructor(readonly partCode: string) {
+    super(`${partCode} is already on this Purchase Order.`);
+  }
+}
+
+/**
+ * A quantity may move either way on a sent order, but never below what has already turned up: the
+ * receipts are facts, and an order asking for less than it has taken in describes nothing real.
+ */
+export class PurchaseOrderAmendmentBelowReceivedError extends Error {
+  readonly code = 'purchase_order.amendment_below_received' as const;
+
+  constructor(
+    readonly partCode: string,
+    readonly receivedQuantity: number,
+  ) {
+    super(`${partCode} has already taken ${receivedQuantity} in; a Purchase Order cannot ask for less than that.`);
+  }
+}
+
+/**
+ * Receipts attach to their line by `(purchaseOrderId, partId)`, so swapping the Part out from under
+ * them would orphan the arrival — the foreign key refuses it, and this says why before it gets
+ * there. A line that has taken delivery is amended by quantity or answered by a return, not rewritten.
+ */
+export class PurchaseOrderSubstitutionHasReceiptsError extends Error {
+  readonly code = 'purchase_order.substitution_has_receipts' as const;
+
+  constructor(readonly partCode: string) {
+    super(`${partCode} has already been received, so it can no longer be substituted.`);
   }
 }
 
@@ -161,11 +198,13 @@ export class PurchaseOrderHasReceiptsError extends Error {
 export type PurchaseOrderCoreError =
   | PurchaseOrderAlreadyCancelledError
   | PurchaseOrderAlreadyClosedShortError
+  | PurchaseOrderAmendmentBelowReceivedError
   | PurchaseOrderClosedShortError
   | PurchaseOrderEmptyError
   | PurchaseOrderFullyReceivedError
   | PurchaseOrderHasReceiptsError
   | PurchaseOrderInvalidQuantityError
+  | PurchaseOrderLineExistsError
   | PurchaseOrderLineNotFoundError
   | PurchaseOrderLineNotPricedError
   | PurchaseOrderNoReceiptsError
@@ -175,17 +214,20 @@ export type PurchaseOrderCoreError =
   | PurchaseOrderPartNotFoundError
   | PurchaseOrderPartNotPurchasableError
   | PurchaseOrderPartSupplierMismatchError
+  | PurchaseOrderSubstitutionHasReceiptsError
   | PurchaseOrderSupplierNotFoundError;
 
 export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrderCoreError {
   return (
     error instanceof PurchaseOrderAlreadyCancelledError ||
     error instanceof PurchaseOrderAlreadyClosedShortError ||
+    error instanceof PurchaseOrderAmendmentBelowReceivedError ||
     error instanceof PurchaseOrderClosedShortError ||
     error instanceof PurchaseOrderEmptyError ||
     error instanceof PurchaseOrderFullyReceivedError ||
     error instanceof PurchaseOrderHasReceiptsError ||
     error instanceof PurchaseOrderInvalidQuantityError ||
+    error instanceof PurchaseOrderLineExistsError ||
     error instanceof PurchaseOrderLineNotFoundError ||
     error instanceof PurchaseOrderLineNotPricedError ||
     error instanceof PurchaseOrderNoReceiptsError ||
@@ -195,6 +237,7 @@ export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrder
     error instanceof PurchaseOrderPartNotFoundError ||
     error instanceof PurchaseOrderPartNotPurchasableError ||
     error instanceof PurchaseOrderPartSupplierMismatchError ||
+    error instanceof PurchaseOrderSubstitutionHasReceiptsError ||
     error instanceof PurchaseOrderSupplierNotFoundError
   );
 }

@@ -8,6 +8,7 @@ const warningMessages = {
   'exceeds-cfo': 'This draw exceeds the Job CFO.',
   'exceeds-drawn': 'This return exceeds the quantity currently drawn.',
   'exceeds-ordered': 'This receipt takes the line past the quantity ordered.',
+  'exceeds-received': 'This return sends back more than the line ever received.',
   'negative-stock-on-hand': 'This draw will take stock on hand negative.',
 } as const satisfies Record<StockMovementWarningCode, string>;
 

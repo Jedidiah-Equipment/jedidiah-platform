@@ -5,6 +5,7 @@ import {
   JobDocument,
   ProductDocument,
   type ProductDocumentType,
+  PurchaseOrderDocumentRow,
   type UUID,
 } from '@pkg/schema';
 import { toast } from 'sonner';
@@ -71,6 +72,35 @@ export async function uploadProductDocument(
   }
 
   return ProductDocument.parse(await response.json());
+}
+
+/**
+ * Files a supplier credit against an order, naming the returns it settles. The settlement rides the
+ * same multipart request as the file so a credit note can never land without its reference (spec §4).
+ */
+export async function uploadCreditNote({
+  file,
+  purchaseOrderId,
+  stockMovementIds,
+}: {
+  file: File;
+  purchaseOrderId: UUID;
+  stockMovementIds: readonly UUID[];
+}): Promise<PurchaseOrderDocumentRow> {
+  const formData = new FormData();
+  formData.append('stockMovementIds', JSON.stringify(stockMovementIds));
+  formData.append('file', file);
+
+  const response = await fetch(
+    `${getClientConfig().apiBaseUrl}/api/purchase-orders/${encodeURIComponent(purchaseOrderId)}/credit-notes`,
+    { body: formData, credentials: 'include', method: 'POST' },
+  );
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, 'Unable to upload credit note.'));
+  }
+
+  return PurchaseOrderDocumentRow.parse(await response.json());
 }
 
 export async function uploadJobPurchaseOrder(jobId: UUID, file: File): Promise<JobDocument> {

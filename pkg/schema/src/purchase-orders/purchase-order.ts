@@ -56,7 +56,13 @@ export type PurchaseOrderLine = z.infer<typeof PurchaseOrderLine>;
 export const PurchaseOrderLine = PurchaseOrderLineInput.extend({
   partCode: z.string().trim().min(1),
   partName: z.string().trim().min(1),
-  /** Cumulative receipt movements against this line — the number the derived states are read from. */
+  /**
+   * Whether anything at all has moved against this line, receipts and returns alike. Distinct from
+   * `receivedQuantity`, which is what the line has *kept*: a fully returned line is owed its stock
+   * again but still carries the ledger rows a Part substitution would orphan.
+   */
+  hasStockMovements: z.boolean().default(false),
+  /** What the line has received and kept — the number the derived states are read from. */
   receivedQuantity: z.number().finite(),
   standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
   supplierCode: z.string().trim().min(1).optional(),
@@ -181,7 +187,15 @@ export const PurchaseOrderPdfModel = PurchaseOrder.pick({
 }).extend({
   issueDate: DateIso,
   jobCodes: z.array(JobCode),
-  lines: z.array(PurchaseOrderLine.omit({ receivedQuantity: true })),
+  // What the order asked for. Neither what has arrived against it nor whether anything has moved
+  // belongs on the page the Supplier is sent.
+  lines: z.array(PurchaseOrderLine.omit({ hasStockMovements: true, receivedQuantity: true })),
+  /**
+   * Which rendering of the order this is. Amendments file further revisions rather than replacing
+   * the original, so the printed number is how the Supplier knows the page in their hand is the
+   * current one.
+   */
+  revision: z.int().min(1).default(1),
 });
 
 export type PurchaseOrderPdfRenderer = (input: {

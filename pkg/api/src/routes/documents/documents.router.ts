@@ -15,6 +15,7 @@ import {
 import {
   DocumentListByProductInput,
   DocumentListByQuoteInput,
+  type DocumentOwnerType,
   JobDocumentInput,
   ProductDocumentInput,
 } from '@pkg/schema';
@@ -91,6 +92,14 @@ function mapDocumentJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreE
   };
 }
 
+/** What an owner is called in a message to a person, as against its `owner_type` column value. */
+const DOCUMENT_OWNER_NOUNS = {
+  job: 'Job',
+  product: 'Product',
+  purchase_order: 'Purchase Order',
+  quote: 'Quote',
+} as const satisfies Record<DocumentOwnerType, string>;
+
 export function mapDocumentCoreError(error: DocumentCoreError): CoreErrorMapping<DocumentCoreError['code']> {
   switch (error.code) {
     case 'document.delete_not_allowed':
@@ -107,7 +116,7 @@ export function mapDocumentCoreError(error: DocumentCoreError): CoreErrorMapping
       return {
         appCode: error.code,
         code: 'CONFLICT',
-        message: `A document with this filename already exists for this ${error.metadata.ownerType}.`,
+        message: `A document with this filename already exists for this ${DOCUMENT_OWNER_NOUNS[error.metadata.ownerType]}.`,
       };
     case 'document.not_found':
       return {

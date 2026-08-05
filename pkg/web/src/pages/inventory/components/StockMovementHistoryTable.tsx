@@ -1,5 +1,12 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
-import { type PartUnitOfMeasure, STOCK_ADJUSTMENT_REASON_LABELS, type StockMovementHistoryRow } from '@pkg/schema';
+import {
+  type PartUnitOfMeasure,
+  STOCK_ADJUSTMENT_REASON_LABELS,
+  STOCK_RETURN_TO_SUPPLIER_REASON_LABELS,
+  type StockMovementHistoryRow,
+  type StockMovementReason,
+  type StockReturnToSupplierReason,
+} from '@pkg/schema';
 import { Link } from '@tanstack/react-router';
 import {
   type ColumnDef,
@@ -132,6 +139,10 @@ function formatMovementLabel(item: StockMovementHistoryRow): string {
       return 'Return to store';
     case 'receipt':
       return 'Receipt';
+    case 'return-to-supplier':
+      return item.reason === null || !isReturnToSupplierReason(item.reason)
+        ? 'Return to Supplier'
+        : `Return to Supplier — ${STOCK_RETURN_TO_SUPPLIER_REASON_LABELS[item.reason]}`;
     case 'build-consume':
       return 'Build consumption';
     case 'build-produce':
@@ -139,8 +150,15 @@ function formatMovementLabel(item: StockMovementHistoryRow): string {
     case 'revaluation':
       return 'Revaluation';
     case 'adjustment':
-      return item.reason === null ? 'Adjustment' : STOCK_ADJUSTMENT_REASON_LABELS[item.reason];
+      return item.reason === null || isReturnToSupplierReason(item.reason)
+        ? 'Adjustment'
+        : STOCK_ADJUSTMENT_REASON_LABELS[item.reason];
   }
+}
+
+/** One column carries both reason sets, so each label lookup has to say which set it is reading. */
+function isReturnToSupplierReason(reason: StockMovementReason): reason is StockReturnToSupplierReason {
+  return reason in STOCK_RETURN_TO_SUPPLIER_REASON_LABELS;
 }
 
 function formatMovementQuantity(item: StockMovementHistoryRow, unitOfMeasure: PartUnitOfMeasure): string {

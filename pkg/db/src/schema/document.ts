@@ -1,12 +1,24 @@
 import type { DocumentMetadata, DocumentOwnerType } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { jobs } from './job.js';
 import { products } from './product.js';
 import { purchaseOrders } from './purchase-order.js';
 import { quotes } from './quote.js';
+import { stockMovements } from './stock-movement.js';
 
 export const documents = pgTable(
   'documents',
@@ -61,6 +73,41 @@ export const documents = pgTable(
     uniqueIndex('documents_quote_id_filename_ci_unique').on(table.quoteId, sql`lower(${table.filename})`),
   ],
 );
+
+/**
+ * Which `return-to-supplier` movements a credit-note document settles (spec §4).
+ *
+ * The reference lives beside the document rather than on the movement because ledger rows are
+ * immutable — "this has been credited" is a fact about the paper that arrived later, not about the
+ * stock that left. A return takes at most one credit note: the supplier credits the original
+ * invoice one-to-one, and the returns-awaiting-credit signal keys on the absence of a row here.
+ */
+export const creditNoteSettlements = pgTable(
+  'credit_note_settlement',
+  {
+    documentId: uuid('document_id')
+      .notNull()
+      .references(() => documents.id, { onDelete: 'cascade' }),
+    stockMovementId: uuid('stock_movement_id')
+      .notNull()
+      .references(() => stockMovements.id, { onDelete: 'restrict' }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.documentId, table.stockMovementId], name: 'credit_note_settlement_pkey' }),
+    uniqueIndex('credit_note_settlement_stock_movement_unique').on(table.stockMovementId),
+  ],
+);
+
+export const creditNoteSettlementRelations = relations(creditNoteSettlements, ({ one }) => ({
+  document: one(documents, {
+    fields: [creditNoteSettlements.documentId],
+    references: [documents.id],
+  }),
+  stockMovement: one(stockMovements, {
+    fields: [creditNoteSettlements.stockMovementId],
+    references: [stockMovements.id],
+  }),
+}));
 
 export const documentsRelations = relations(documents, ({ one }) => ({
   job: one(jobs, {

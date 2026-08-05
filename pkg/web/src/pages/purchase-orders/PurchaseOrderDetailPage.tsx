@@ -1,5 +1,12 @@
 import { createStableRowKeys, formatCurrency, formatDate, hasPermission } from '@pkg/domain';
-import type { Part, PurchaseOrderLineInput, PurchaseOrderSaveDraftInput, PurchaseOrderView, UUID } from '@pkg/schema';
+import type {
+  Part,
+  PurchaseOrderAmendmentKind,
+  PurchaseOrderLineInput,
+  PurchaseOrderSaveDraftInput,
+  PurchaseOrderView,
+  UUID,
+} from '@pkg/schema';
 import { IconBan, IconDownload, IconEye, IconFlagCheck, IconPlus, IconSend, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -21,7 +28,11 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatPurchaseUnitLabel } from '@/utils/part-quantity-format.js';
 import { allJobsInput } from '../jobs/components/all-jobs-input.js';
+import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.js';
+import { PurchaseOrderAmendmentsCard } from './components/PurchaseOrderAmendmentsCard.js';
+import { PurchaseOrderDocumentsCard } from './components/PurchaseOrderDocumentsCard.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
+import { PurchaseOrderReturnsCard } from './components/PurchaseOrderReturnsCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
 import {
   ensurePurchaseOrderPreview,
@@ -76,6 +87,18 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
     purchaseOrder.status === 'sent' &&
     purchaseOrder.closedShortAt === null &&
     hasPermission(accessQuery.data, 'purchase_order:receive');
+  // Amendments are for an order the Supplier is already holding; a closed-short one has had its
+  // remainder released, and a draft is edited whole rather than amended (spec §4).
+  const canAmend =
+    purchaseOrder.status === 'sent' &&
+    purchaseOrder.closedShortAt === null &&
+    hasPermission(accessQuery.data, 'purchase_order:amend');
+  // Returning stock is a ledger write, and it stays available after close-short: what already
+  // arrived can still turn out to be wrong.
+  const canReturn = purchaseOrder.status === 'sent' && hasPermission(accessQuery.data, 'inventory:move');
+  // The same single gate the upload route applies — filing the credit is procurement's job, and it
+  // is the amend right that says who does it.
+  const canFileCreditNote = purchaseOrder.status === 'sent' && hasPermission(accessQuery.data, 'purchase_order:amend');
   const { invalidatePurchaseOrders, invalidateJobs } = useQueryInvalidation();
   const [isLifecycleActionPending, setIsLifecycleActionPending] = useState(false);
 
@@ -164,7 +187,15 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
             {canReceive ? (
               <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
             ) : null}
-            <ReadOnlyLinesCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+            <ReadOnlyLinesCard canAmend={canAmend} canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+            <PurchaseOrderReturnsCard
+              canFileCreditNote={canFileCreditNote}
+              canReadCosts={canReadCosts}
+              canReturn={canReturn}
+              purchaseOrder={purchaseOrder}
+            />
+            <PurchaseOrderAmendmentsCard purchaseOrderId={purchaseOrder.id} />
+            <PurchaseOrderDocumentsCard canReadCosts={canReadCosts} purchaseOrderId={purchaseOrder.id} />
             <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
           </>
         )}
@@ -543,30 +574,67 @@ const ReadOnlyDetailsCard: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ p
   </Card>
 );
 
-const ReadOnlyLinesCard: React.FC<{ canReadCosts: boolean; purchaseOrder: PurchaseOrderView }> = ({
-  canReadCosts,
-  purchaseOrder,
-}) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Parts</CardTitle>
-      <CardDescription>Quantities are ordered in the Part's purchasing unit.</CardDescription>
-    </CardHeader>
-    <CardContent className="px-0">
-      <PurchaseOrderReadOnlyLinesTable canReadCosts={canReadCosts} items={purchaseOrder.lines} />
-    </CardContent>
-    {canReadCosts ? (
-      <div className="border-t px-4 pt-4 text-right font-medium">
-        Total {formatCurrency(lineTotal(purchaseOrder.lines), 'ZAR')}
-      </div>
-    ) : null}
-  </Card>
-);
+/**
+ * A sent order's lines. They are read-only in the editing sense, but not frozen: an amendment is
+ * how a sent order changes, and every one of them is logged and re-rendered as a PDF revision.
+ */
+const ReadOnlyLinesCard: React.FC<{
+  canAmend: boolean;
+  canReadCosts: boolean;
+  purchaseOrder: PurchaseOrderView;
+}> = ({ canAmend, canReadCosts, purchaseOrder }) => {
+  const [amendment, setAmendment] = useState<{ kind: PurchaseOrderAmendmentKind; partId: string | null } | null>(null);
+  const amendingLine = purchaseOrder.lines.find((line) => line.partId === amendment?.partId) ?? null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Parts</CardTitle>
+        <CardDescription>Quantities are ordered in the Part's purchasing unit.</CardDescription>
+        {canAmend ? (
+          <CardAction>
+            <Button
+              onClick={() => setAmendment({ kind: 'add-line', partId: null })}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <IconPlus data-icon="inline-start" /> Add line
+            </Button>
+          </CardAction>
+        ) : null}
+      </CardHeader>
+      <CardContent className="px-0">
+        <PurchaseOrderReadOnlyLinesTable
+          canReadCosts={canReadCosts}
+          items={purchaseOrder.lines}
+          onAmend={canAmend ? (kind, partId) => setAmendment({ kind, partId }) : null}
+        />
+      </CardContent>
+      {canReadCosts ? (
+        <div className="border-t px-4 pt-4 text-right font-medium">
+          Total {formatCurrency(lineTotal(purchaseOrder.lines), 'ZAR')}
+        </div>
+      ) : null}
+      {amendment ? (
+        <PurchaseOrderAmendDialog
+          key={`${amendment.kind}:${amendment.partId ?? 'new'}`}
+          kind={amendment.kind}
+          line={amendingLine}
+          onOpenChange={(open) => setAmendment(open ? amendment : null)}
+          purchaseOrder={purchaseOrder}
+        />
+      ) : null}
+    </Card>
+  );
+};
 
 const PurchaseOrderReadOnlyLinesTable: React.FC<{
   canReadCosts: boolean;
   items: PurchaseOrderView['lines'];
-}> = ({ canReadCosts, items }) => {
+  /** Absent when the reader may not amend, which is what drops the actions column entirely. */
+  onAmend: ((kind: PurchaseOrderAmendmentKind, partId: string) => void) | null;
+}> = ({ canReadCosts, items, onAmend }) => {
   const columns = useMemo<ColumnDef<PurchaseOrderView['lines'][number]>[]>(
     () => [
       {
@@ -611,8 +679,42 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
             } satisfies ColumnDef<PurchaseOrderView['lines'][number]>,
           ]
         : []),
+      ...(onAmend
+        ? [
+            {
+              cell: ({ row }) => (
+                <div className="flex justify-end gap-2">
+                  <Button
+                    onClick={() => onAmend('quantity-change', row.original.partId)}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    Change quantity
+                  </Button>
+                  {/* Every movement keys off (order, Part), so only a line nothing has moved
+                      against can change its Part — the same test the server's guard applies. A
+                      fully returned line reads zero received but still carries its ledger rows. */}
+                  {!row.original.hasStockMovements ? (
+                    <Button
+                      onClick={() => onAmend('substitute-part', row.original.partId)}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      Substitute
+                    </Button>
+                  ) : null}
+                </div>
+              ),
+              enableSorting: false,
+              header: () => <span className="sr-only">Amend</span>,
+              id: 'amend',
+            } satisfies ColumnDef<PurchaseOrderView['lines'][number]>,
+          ]
+        : []),
     ],
-    [canReadCosts],
+    [canReadCosts, onAmend],
   );
   const table = useReactTable({
     columns,

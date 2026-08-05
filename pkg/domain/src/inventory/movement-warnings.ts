@@ -65,3 +65,20 @@ export function deriveReceiptWarnings({
 }): StockMovementWarningCode[] {
   return receivedQuantity + quantity > orderedQuantity ? ['exceeds-ordered'] : [];
 }
+
+/**
+ * Sending back more than the line ever took in is almost always a scan error, so it earns a loud
+ * confirm — and then posts anyway, like every other ledger warning (spec §3). The stock physically
+ * left the building; refusing the row would only hide that.
+ */
+export function deriveReturnToSupplierWarnings({
+  outstandingReceivedQuantity,
+  quantity,
+}: {
+  /** Received on the line, less what has already gone back — the quantity a return can reverse. */
+  outstandingReceivedQuantity: number;
+  /** The quantity going back now. */
+  quantity: number;
+}): StockMovementWarningCode[] {
+  return quantity > outstandingReceivedQuantity ? ['exceeds-received'] : [];
+}

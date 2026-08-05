@@ -10,8 +10,6 @@ const page = { cursor: 0, limit: 10 };
 
 describe('searchPartStock', () => {
   test('finds a Part by its code', async ({ context }) => {
-    void context;
-
     await expect(searchPartStock({ db: context.db, input: { ...page, search: 'PIECE' } })).resolves.toMatchObject({
       items: [{ partCode: 'PIECE', quantity: 0, unitOfMeasure: 'piece' }],
       nextCursor: null,
@@ -54,8 +52,6 @@ describe('searchPartStock', () => {
 
   /** A Part with an empty shelf is still the Part somebody is looking for. */
   test('returns a Part that has never moved, at zero', async ({ context }) => {
-    void context;
-
     await expect(searchPartStock({ db: context.db, input: { ...page, search: 'MEASURED' } })).resolves.toMatchObject({
       items: [{ partCode: 'MEASURED', quantity: 0 }],
     });
@@ -70,7 +66,6 @@ describe('searchPartStock', () => {
   });
 
   test('pages through the matches, carrying the cursor to the end and then stopping', async ({ context }) => {
-    void context;
     const all = await searchPartStock({ db: context.db, input: { cursor: 0, limit: 100, search: '' } });
     expect(all.total).toBeGreaterThan(2);
 
@@ -87,7 +82,6 @@ describe('searchPartStock', () => {
 
   /** The repo's unpaged sentinel: a picker that wants everything asks for `limit: 0`. */
   test('treats a zero limit as unpaged rather than as an empty page', async ({ context }) => {
-    void context;
     const unpaged = await searchPartStock({ db: context.db, input: { cursor: 0, limit: 0, search: '' } });
 
     expect(unpaged.items).toHaveLength(unpaged.total);

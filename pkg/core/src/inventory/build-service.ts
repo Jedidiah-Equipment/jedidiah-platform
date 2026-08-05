@@ -20,6 +20,7 @@ import {
   BuildSelfComponentError,
 } from './build-errors.js';
 import { bucketKey, loadBucketQuantities, loadMovingAverages, scaleUnitCost } from './ledger.js';
+import { resolveMovementActor } from './movement-actor.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
 type BuildPart = {
@@ -54,6 +55,11 @@ export async function postBuild({
 }): Promise<BuildPostResult> {
   return db.transaction(async (tx) => {
     const partsById = await lockBuildParts(tx, input);
+    const movementActorUserId = await resolveMovementActor({
+      assertedActorUserId: input.actorUserId,
+      db: tx,
+      sessionUserId: actorUserId,
+    });
     const builtPart = partsById.get(input.builtPartId);
     if (!builtPart) throw new PartNotFoundError(input.builtPartId);
 
@@ -94,13 +100,13 @@ export async function postBuild({
 
     const [build] = await tx
       .insert(stockBuilds)
-      .values({ actorUserId, builtPartId: input.builtPartId, quantity: input.quantity })
+      .values({ actorUserId: movementActorUserId, builtPartId: input.builtPartId, quantity: input.quantity })
       .returning();
     if (!build) throw new Error('Stock build insert did not return a row');
 
     await tx.insert(stockMovements).values([
       ...consumption.map((line) => ({
-        actorUserId,
+        actorUserId: movementActorUserId,
         buildId: build.id,
         delta: -line.quantity,
         lengthMm: line.lengthMm,
@@ -111,7 +117,7 @@ export async function postBuild({
         unitCost: line.unitCost,
       })),
       {
-        actorUserId,
+        actorUserId: movementActorUserId,
         buildId: build.id,
         delta: input.quantity,
         movementType: 'build-produce' as const,

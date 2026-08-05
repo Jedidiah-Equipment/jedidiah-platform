@@ -36,7 +36,6 @@ export async function renderUserBadge({
     .where(eq(user.id, userId))
     .limit(1);
   if (!row) throw new UserNotFoundError(userId);
-  // A device is never the person a movement is attributed to, so it has no badge to print.
   if (row.isDevice) throw new UserIsDeviceError(userId);
 
   const badge: UserBadgePdfModel = UserBadgePdfModelSchema.parse(row);

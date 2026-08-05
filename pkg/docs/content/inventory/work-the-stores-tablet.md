@@ -3,7 +3,8 @@
 The stores tablet is the shared device in the warehouse. Everything physical happens here:
 Checkouts, Returns to Store, Receipts, Returns to Supplier, and closing out a Job's stock.
 
-The tablet stays signed in. You never sign in or out of it — you only say who you are.
+The tablet stays signed in. You never sign in or out of it — you only say who you are. Its account is
+a **Device Account**, which is why it can never be the name on a movement: it has to name one of you.
 
 ## Say who you are
 

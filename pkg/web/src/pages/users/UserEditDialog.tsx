@@ -178,8 +178,6 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             onSubmit={(value) => saveUserMutation.mutateAsync(value)}
             roleError={roleError}
           />
-          {/* A device is never the person a movement is attributed to, so it has no badge to print
-              — the server refuses one, and offering the button would only produce a dead card. */}
           {canSetRole && baselineUser.role === 'stores' && !baselineUser.isDevice ? (
             <UserBadgePrintButton userId={baselineUser.id} />
           ) : null}

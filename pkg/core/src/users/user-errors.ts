@@ -9,11 +9,7 @@ export class UserNotFoundError extends Error {
   }
 }
 
-/**
- * A badge card names a person to the stores tablet's quick-switch, and a device can never be that
- * person — `resolveMovementActor` refuses one as the actor. Printing a card that could only ever be
- * rejected at the scan field would put a broken-looking badge on the bench.
- */
+/** A badge card names a person, and `resolveMovementActor` refuses a device as the actor. */
 export class UserIsDeviceError extends Error {
   readonly code = 'user.is_device';
   readonly metadata: { id: string };

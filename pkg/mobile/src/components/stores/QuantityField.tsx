@@ -45,3 +45,12 @@ export function parseQuantity(value: string): number | null {
 
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
+
+/**
+ * Whether a movement has the length the ledger will demand of it. A linear Part with no standard
+ * purchase length opens the field empty, and `assertLengthMatchesUnitClass` refuses a linear
+ * movement without one — so every posting screen waits for it rather than letting the post fail.
+ */
+export function hasRequiredLength({ isLinear, lengthMm }: { isLinear: boolean; lengthMm: number | null }): boolean {
+  return !isLinear || lengthMm !== null;
+}

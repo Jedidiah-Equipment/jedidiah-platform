@@ -9,7 +9,7 @@ import { LengthBucketField } from '@/components/stores/LengthBucketField';
 import { MovementWarningModal } from '@/components/stores/MovementWarningModal';
 import { PostButton } from '@/components/stores/PostButton';
 import { PurchaseOrderLinePicker } from '@/components/stores/PurchaseOrderLinePicker';
-import { parseQuantity, QuantityField } from '@/components/stores/QuantityField';
+import { hasRequiredLength, parseQuantity, QuantityField } from '@/components/stores/QuantityField';
 import { NoActorNotice, StoresPartScreen } from '@/components/stores/StoresPartScreen';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
@@ -52,10 +52,7 @@ function ReturnToSupplierForm({ row }: { row: StockOnHandRow }) {
   const lengthMm = keyedLengthMm ?? (row.standardPurchaseLengthMm === null ? '' : String(row.standardPurchaseLengthMm));
   const parsedQuantity = parseQuantity(quantity);
   const parsedLength = isLinear ? parseQuantity(lengthMm) : null;
-  // A linear Part with no standard purchase length opens with the length field empty, and the
-  // ledger refuses a linear movement without one — so the button has to wait for it rather than
-  // let the post fail at the server.
-  const hasLength = !isLinear || parsedLength !== null;
+  const hasLength = hasRequiredLength({ isLinear, lengthMm: parsedLength });
 
   return (
     <>

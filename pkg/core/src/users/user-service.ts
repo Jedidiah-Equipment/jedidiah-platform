@@ -10,7 +10,7 @@ import {
   type UserListResult,
   type UserSummary,
 } from '@pkg/schema';
-import { asc, desc, eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditEvent } from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
@@ -94,9 +94,7 @@ export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
       phoneNumber: true,
       role: true,
     },
-    // Devices first, then people by email. A device is a different kind of account, and the list
-    // that administers them is the one place they belong at the top rather than filed among staff.
-    orderBy: [desc(user.isDevice), asc(user.email)],
+    orderBy: [asc(user.email)],
     with: {
       departments: {
         columns: {

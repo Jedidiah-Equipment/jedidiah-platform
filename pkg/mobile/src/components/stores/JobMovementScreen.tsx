@@ -10,7 +10,7 @@ import { JobPicker } from './JobPicker';
 import { LengthBucketField } from './LengthBucketField';
 import { MovementWarningModal } from './MovementWarningModal';
 import { PostButton } from './PostButton';
-import { parseQuantity, QuantityField } from './QuantityField';
+import { hasRequiredLength, parseQuantity, QuantityField } from './QuantityField';
 import { NoActorNotice, StoresPartScreen } from './StoresPartScreen';
 
 /**
@@ -73,7 +73,8 @@ function JobMovementForm({
   const parsedQuantity = parseQuantity(quantity);
   const parsedLength = isLinear ? parseQuantity(lengthMm) : null;
   const jobIdToPost = fixedJobId ?? job?.id ?? null;
-  const canPost = parsedQuantity !== null && jobIdToPost !== null && (!isLinear || parsedLength !== null);
+  const canPost =
+    parsedQuantity !== null && jobIdToPost !== null && hasRequiredLength({ isLinear, lengthMm: parsedLength });
 
   return (
     <>

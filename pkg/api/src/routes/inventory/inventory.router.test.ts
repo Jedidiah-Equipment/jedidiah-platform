@@ -414,6 +414,23 @@ describe('shared devices at the boundary', () => {
     ).rejects.toMatchObject({ appCode: 'inventory.actor_required', code: 'BAD_REQUEST' });
   });
 
+  /**
+   * The `stores` role holds `adjust` and `build` as well as `move`, so the rule has to cover them —
+   * an unattributed adjustment is exactly as much a lie about who touched the stock as a draw.
+   */
+  test('refuses every movement type a device can reach, not only the Job draws', async ({ context }) => {
+    await context.db.update(user).set({ isDevice: true }).where(eq(user.id, 'test-user-id'));
+    const tablet = context.createCaller(mockSession('stores'));
+
+    await expect(
+      tablet.inventory.postAdjustment({ delta: 5, partId: context.part.id, reason: 'opening-balance' }),
+    ).rejects.toMatchObject({ appCode: 'inventory.actor_required', code: 'BAD_REQUEST' });
+
+    await expect(
+      tablet.inventory.postBuild({ builtPartId: context.part.id, consumption: [], quantity: 1 }),
+    ).rejects.toMatchObject({ appCode: 'inventory.actor_required', code: 'BAD_REQUEST' });
+  });
+
   test('refuses a device named as the actor, and leaves it out of the quick-switch', async ({ context }) => {
     const now = new Date('2026-08-01T08:00:00.000Z');
     await context.db.insert(user).values({

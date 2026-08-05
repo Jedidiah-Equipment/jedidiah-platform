@@ -228,9 +228,13 @@ function projectStockOnHandRow(row: StockOnHandRow, access: InventoryCostAccess)
   });
 }
 
-/** Stock the plant owns outright: no Job to be cancelled or closed out, only the ledger's own rules. */
+/**
+ * Stock the plant owns outright: no Job to be cancelled or closed out, only the ledger's own rules —
+ * plus who the row is attributed to, since a shared device may post an adjustment as readily as a
+ * draw and must name a person for either.
+ */
 async function mapStockLedgerErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapCoreErrors(action, stockMovementErrorFamily);
+  return mapCoreErrors(action, stockMovementErrorFamily, assertedActorErrorFamily);
 }
 
 /**
@@ -250,5 +254,12 @@ async function mapJobStockErrors<T>(action: () => Promise<T>): Promise<T> {
 
 /** A build shares the ledger rules and the Part failures it reaches for, but no Job vocabulary. */
 async function mapBuildErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapCoreErrors(action, stockMovementErrorFamily, buildErrorFamily, partBomErrorFamily, partCoreErrorFamily);
+  return mapCoreErrors(
+    action,
+    stockMovementErrorFamily,
+    buildErrorFamily,
+    partBomErrorFamily,
+    partCoreErrorFamily,
+    assertedActorErrorFamily,
+  );
 }

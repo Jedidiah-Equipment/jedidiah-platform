@@ -84,6 +84,11 @@ export async function postAdjustment({
 }): Promise<StockMovement> {
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
+    const movementActorUserId = await resolveMovementActor({
+      assertedActorUserId: input.actorUserId,
+      db: tx,
+      sessionUserId: actorUserId,
+    });
     const unitClass = unitClassFor(part.unitOfMeasure);
 
     assertDeltaMatchesUnitClass(input.delta, unitClass);
@@ -94,7 +99,7 @@ export async function postAdjustment({
     }
 
     return insertMovement(tx, {
-      actorUserId,
+      actorUserId: movementActorUserId,
       delta: input.delta,
       lengthMm: input.lengthMm,
       movementType: 'adjustment',

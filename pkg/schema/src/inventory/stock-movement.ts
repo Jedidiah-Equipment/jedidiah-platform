@@ -108,6 +108,7 @@ export const PostJobMovementInput = MovementTargetInput.extend({
 
 export type PostAdjustmentInput = z.infer<typeof PostAdjustmentInput>;
 export const PostAdjustmentInput = MovementTargetInput.extend({
+  actorUserId: AssertedActorUserId,
   delta: StockMovementDelta,
   note: nullableTrimmedTextInput(),
   reason: StockAdjustmentReason,

@@ -22,7 +22,9 @@ import {
  *
  * - A shared device that named nobody. "No person, no movements" is a rule about the record, so it
  *   is asserted here rather than left to a disabled button — a button is UX, and the ledger keeps
- *   its row forever.
+ *   its row forever. Every write the `stores` role can reach goes through this: draws and returns,
+ *   receipts and supplier returns, adjustments, builds, and close-out. Revaluation does not, and
+ *   does not need to — it is gated on `inventory_cost:revalue`, which no device holds.
  * - A device named as the actor. A device is not somebody; attributing stock to one says a machine
  *   fetched it.
  * - An unknown or disabled person. Falling back to the device there would write a movement signed
@@ -55,7 +57,7 @@ export async function resolveMovementActor({
     return sessionUserId;
   }
 
-  const actor = asserted === sessionUserId ? session : rows.find((row) => row.id === asserted);
+  const actor = rows.find((row) => row.id === asserted);
 
   if (!actor) throw new AssertedActorNotFoundError(asserted);
   if (actor.isDevice) throw new DeviceActorAssertedError(asserted);

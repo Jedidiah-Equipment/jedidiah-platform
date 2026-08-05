@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
-import { resolveScan } from '@/lib/stores-scan-resolution';
+import { resolveBadgeScan } from '@/lib/stores-scan-resolution';
 import { useTRPC } from '@/lib/trpc';
 import { loadingSpinnerColor } from '@/theme/brand-colors';
 
@@ -39,18 +39,9 @@ export function QuickSwitchModal({
   const actors = useQuery(trpc.inventory.quickSwitchActors.queryOptions(undefined, { enabled: open }));
   const [badgeError, setBadgeError] = useState<string | null>(null);
 
-  /**
-   * Resolved through `resolveScan` — which *awaits* the name list — rather than against whatever
-   * `actors.data` happens to hold. A card swiped while that fetch is still in flight would
-   * otherwise read as "not recognised", and the docs tell the reader that means a reprint or a
-   * role change. A slow network must not send somebody to the office.
-   */
   async function selectByBadge(raw: string) {
-    const resolution = await resolveScan({
+    const resolution = await resolveBadgeScan({
       fetchActors: () => queryClient.fetchQuery(trpc.inventory.quickSwitchActors.queryOptions()),
-      // Picking a person is not the moment to go looking a Part up, so this never has to resolve
-      // one; a Part label reaching this field is answered below.
-      fetchPartByCode: (code) => Promise.resolve({ partCode: code }),
       raw,
     });
 
@@ -60,12 +51,11 @@ export function QuickSwitchModal({
         onSelect(resolution.actor);
         onClose();
         break;
-      case 'part':
-        setBadgeError('That is a Part label, not a badge card.');
-        break;
       case 'error':
         setBadgeError(resolution.message);
         break;
+      // A badge-only field never resolves a Part, so `part` cannot arrive here.
+      case 'part':
       case 'ignored':
         break;
     }

@@ -1,6 +1,6 @@
 import { IconCamera, IconScan } from '@tabler/icons-react-native';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, type TextInput as RNTextInput, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
@@ -48,17 +48,15 @@ export function ScanField({
   const [value, setValue] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
 
-  // Focus on arrival, and again whenever the screen is returned to — walking back from a posting
-  // screen should leave the wedge pointed here without anyone having to tap the field.
+  // Focus on arrival, again whenever the screen is returned to, and again when a dialog that was
+  // covering the field closes. `useFocusEffect` re-runs when its callback identity changes while the
+  // screen is focused, so keying the callback on `isActive` covers the dialog case too — walking
+  // back from a posting screen and dismissing the quick-switch both leave the wedge pointed here.
   useFocusEffect(
     useCallback(() => {
       if (isActive) inputRef.current?.focus();
     }, [isActive]),
   );
-
-  useEffect(() => {
-    if (isActive) inputRef.current?.focus();
-  }, [isActive]);
 
   const submit = useCallback(
     (raw: string) => {

@@ -1,9 +1,11 @@
 import { type AppRole, type Department, UserPassword } from '@pkg/schema';
 
-type DemoUser = {
+export type DemoUser = {
   departments: readonly Department[];
   email: string;
   id: string;
+  /** A shared machine rather than a person — the stores tablet. Defaults to false when omitted. */
+  isDevice?: boolean;
   name: string;
   password: UserPassword;
   role: AppRole;
@@ -11,7 +13,7 @@ type DemoUser = {
 
 export const DEFAULT_DEMO_USER_PASSWORD: UserPassword = UserPassword.parse('stoneybrook');
 
-export const demoUsers = [
+export const demoUsers: readonly DemoUser[] = [
   {
     departments: [],
     id: 'seed-dean-user',
@@ -52,4 +54,32 @@ export const demoUsers = [
     password: DEFAULT_DEMO_USER_PASSWORD,
     role: 'bay-operator',
   },
-] as const satisfies readonly DemoUser[];
+  // The stores tablet and two people to quick-switch between. Without all three a fresh seed leaves
+  // every device rule inert and the tablet impossible to exercise — the flag only bites when some
+  // account carries it, and the quick-switch grid is empty without stores people to offer.
+  {
+    departments: [],
+    id: 'seed-stores-tablet',
+    isDevice: true,
+    name: 'Stores Tablet',
+    email: 'stores.tablet@jedidiahequipment.co.za',
+    password: DEFAULT_DEMO_USER_PASSWORD,
+    role: 'stores',
+  },
+  {
+    departments: [],
+    id: 'seed-stores-first-user',
+    name: 'Stores Person One',
+    email: 'stores.one@jedidiahequipment.co.za',
+    password: DEFAULT_DEMO_USER_PASSWORD,
+    role: 'stores',
+  },
+  {
+    departments: [],
+    id: 'seed-stores-second-user',
+    name: 'Stores Person Two',
+    email: 'stores.two@jedidiahequipment.co.za',
+    password: DEFAULT_DEMO_USER_PASSWORD,
+    role: 'stores',
+  },
+];

@@ -17,6 +17,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
   {
     text: 'Inventory tasks',
     items: [
+      { text: 'Work the stores tablet', link: '/inventory/work-the-stores-tablet' },
       { text: 'Post a Receipt', link: '/inventory/post-a-receipt' },
       { text: 'Check out Parts to a Job', link: '/inventory/check-out-parts-to-a-job' },
       { text: 'Return to Store', link: '/inventory/return-to-store' },

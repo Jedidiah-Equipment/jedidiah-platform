@@ -33,7 +33,18 @@ export default ({ config }: ConfigContext): AppConfig => {
     // populate `extra.eas.projectId` and `updates.url` on first owner-side setup (see README).
     runtimeVersion: { policy: 'fingerprint' },
     icon: variant.iconConfig.icon,
-    plugins: ['expo-router', 'expo-font', '@config-plugins/react-native-pdf', '@config-plugins/react-native-blob-util'],
+    plugins: [
+      'expo-router',
+      'expo-font',
+      // The stores tablet's camera fallback for a damaged Part label (spec §10). The Bluetooth
+      // wedge is the everyday path, so this permission is asked for only when that path fails.
+      [
+        'expo-camera',
+        { cameraPermission: 'Allow $(PRODUCT_NAME) to scan Part labels and stores badges with the camera.' },
+      ],
+      '@config-plugins/react-native-pdf',
+      '@config-plugins/react-native-blob-util',
+    ],
     experiments: {
       typedRoutes: true,
     },

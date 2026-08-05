@@ -1,5 +1,7 @@
 import {
+  type AssertedActorError,
   type BuildError,
+  isAssertedActorError,
   isBuildError,
   isJobCloseOutError,
   isStockMovementCoreError,
@@ -23,11 +25,36 @@ export const stockMovementErrorFamily = defineCoreErrorFamily<StockMovementCoreE
     'inventory.fabricated_part_cost': 'BAD_REQUEST',
     'inventory.invalid_delta': 'BAD_REQUEST',
     'inventory.invalid_length': 'BAD_REQUEST',
+    'inventory.part_code_not_found': 'NOT_FOUND',
     'inventory.part_not_found': 'NOT_FOUND',
     'inventory.periodic_movement': 'BAD_REQUEST',
   },
   is: isStockMovementCoreError,
-  messages: { 'inventory.part_not_found': 'Part not found.' },
+  messages: {
+    'inventory.part_code_not_found': 'No Part carries that code. Search for it by name instead.',
+    'inventory.part_not_found': 'Part not found.',
+  },
+});
+
+/**
+ * The stores tablet failing to name a person the ledger may attribute a movement to — including
+ * naming nobody at all from a shared device. All read as a bad request rather than a forbidden: the
+ * caller's own right to post is intact, it is the name on the movement that is wrong or missing.
+ */
+export const assertedActorErrorFamily = defineCoreErrorFamily<AssertedActorError>({
+  codes: {
+    'inventory.actor_disabled': 'BAD_REQUEST',
+    'inventory.actor_is_device': 'BAD_REQUEST',
+    'inventory.actor_not_found': 'BAD_REQUEST',
+    'inventory.actor_required': 'BAD_REQUEST',
+  },
+  is: isAssertedActorError,
+  messages: {
+    'inventory.actor_disabled': 'That person’s account is disabled. Ask the office to re-enable it.',
+    'inventory.actor_is_device': 'A shared device cannot be the person who moved the stock.',
+    'inventory.actor_not_found': 'That badge is not recognised. Pick a name from the list instead.',
+    'inventory.actor_required': 'Choose who is at the tablet before moving any stock.',
+  },
 });
 
 export const buildErrorFamily = defineCoreErrorFamily<BuildError>({

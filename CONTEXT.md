@@ -108,6 +108,14 @@ App Role owns authorization. Department Membership is descriptive only and must 
 
 Server/API checks are the security boundary. Browser access checks are UX only.
 
+**Device Account** is a user record for a shared machine rather than a person — today the Stores Tablet. It is a flag on the user (`isDevice`), not a role: its *permissions* are its role's, and what the flag records is that nobody in particular is behind it. Three rules follow, all enforced server-side: a device session must name an actor before it may post any Stock Movement it has the rights to (draws, returns, receipts, supplier returns, adjustments, builds, and close-out — every write the `stores` role can reach), a device may never be named as an actor, and a device has no Badge Card. It is never offered by the Quick-switch, and the user admin lists devices first under an icon rather than a face.
+
+**Stores Tablet** is the shared warehouse Device Account running the mobile app, signed in as a single `stores` user. It is the surface for physical stock flows — Checkout, Return to Store, Receipt, Return to Supplier, close-out — while the web app keeps the paperwork. It is price-blind by role, not by screen.
+
+**Quick-switch** is how the Stores Tablet names the person doing the work: a name tap or a **Badge Card** scan sets the actor for the scan session, and an idle timeout clears it. It is not a session and grants nothing — *the device authorizes, the person attributes*. Authorization always comes from the tablet's own session; the quick-switch only decides whose name the Stock Movement's `actor_user_id` records. An actor who is unknown, disabled, or itself a device is refused rather than ignored, and a device that names nobody is refused outright — so a movement never lands under a machine's name. No PIN backs this in v1 — the timeout is the control. Avoid "log in as" for the quick-switch.
+
+**Badge Card** is a printed Code 128 label encoding `badge:<userId>`, scanned at the Stores Tablet's scan field to quick-switch to that person. It identifies; it does not authenticate. Printed from the user screen under `user:set-role`, and never for a Device Account.
+
 ## Feedback
 
 **Feedback** is an internal report a signed-in user submits about one subject — currently a Quote or a Job. It always has a submitter (the author) and exactly one subject, attached polymorphically the way a Document is (`subjectType ∈ {quote, job}`). Avoid Complaint, Comment, Review, Ticket, or Issue for the domain object. Visibility splits by Kind: Job General Feedback is public within the workspace (readable by anyone who can read the Job), while Quote General Feedback stays private until quote-scoped read paths exist; Corrective Feedback is readable only by super-admins. Submission requires only an authenticated session: there is no `feedback:create` permission and no subject-read gate, so any signed-in user can submit feedback about any Quote or Job. See ADR 0010.

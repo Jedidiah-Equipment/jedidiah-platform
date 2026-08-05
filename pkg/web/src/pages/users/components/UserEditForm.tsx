@@ -15,6 +15,7 @@ export const UserEditFormValues = UserSummary.pick({
   departments: true,
   email: true,
   emailVerified: true,
+  isDevice: true,
   name: true,
   phoneNumber: true,
   role: true,
@@ -61,6 +62,7 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
       emailVerified: initialUser.emailVerified,
       name: initialUser.name,
       phoneNumber: initialUser.phoneNumber,
+      isDevice: initialUser.isDevice,
       role: initialUser.role,
       thumbnailDataUrl: initialUser.thumbnailDataUrl,
     } satisfies UserEditFormValues,
@@ -116,6 +118,17 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                   {(field) => <field.CheckboxField disabled={isPending} label="Email verified" />}
                 </form.AppField>
               </>
+            ) : null}
+            {canSetRole ? (
+              <form.AppField name="isDevice">
+                {(field) => (
+                  <field.CheckboxField
+                    description="A tablet or terminal several people share. It signs in as itself, then names whoever is standing at it before any stock moves — so it is never the person a movement is recorded against, and has no badge card of its own."
+                    disabled={isPending}
+                    label="Shared device"
+                  />
+                )}
+              </form.AppField>
             ) : null}
             {canSetRole ? (
               <form.AppField name="role">

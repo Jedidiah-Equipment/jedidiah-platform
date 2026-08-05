@@ -13,6 +13,13 @@ export const user = pgTable(
     image: text('image'),
     phoneNumber: text('phone_number'),
     role: text('role').notNull().default(DEFAULT_APP_ROLE),
+    /**
+     * A shared device rather than a person — today the stores tablet, which signs in as itself and
+     * then names whoever is standing at it. Not a role: the tablet's *permissions* are the stores
+     * role's, and what this records is that no human is behind the account. The ledger's actor must
+     * always be a person, so a device session has to assert one and can never be asserted as one.
+     */
+    isDevice: boolean('is_device').default(false).notNull(),
     assistantEnabled: boolean('assistant_enabled').default(false).notNull(),
     banned: boolean('banned').default(false),
     banReason: text('ban_reason'),

@@ -21,6 +21,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { UserBadgePrintButton } from './components/UserBadgePrintButton.js';
 import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
 import type { UserPasswordFormValues } from './components/UserPasswordForm.js';
 import { AuthAdminError, unwrapAuthResult } from './user-admin-client.js';
@@ -47,6 +48,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const canSetPassword = hasPermission(access, 'user:set-password');
   const canSaveUser = canUpdateProfile || canSetEmail || canSetRole;
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
+  const setDeviceMutation = useMutation(trpc.users.setDevice.mutationOptions());
   const updateThumbnailMutation = useMutation(trpc.users.updateThumbnail.mutationOptions());
 
   useEffect(() => {
@@ -83,6 +85,11 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
           thumbnailDataUrl: value.thumbnailDataUrl,
           userId: baselineUser.id,
         });
+        didUpdate = true;
+      }
+
+      if (canSetRole && value.isDevice !== baselineUser.isDevice) {
+        await setDeviceMutation.mutateAsync({ isDevice: value.isDevice, userId: baselineUser.id });
         didUpdate = true;
       }
 
@@ -171,6 +178,9 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             onSubmit={(value) => saveUserMutation.mutateAsync(value)}
             roleError={roleError}
           />
+          {canSetRole && baselineUser.role === 'stores' && !baselineUser.isDevice ? (
+            <UserBadgePrintButton userId={baselineUser.id} />
+          ) : null}
           {canUpdateProfile && !baselineUser.emailVerified ? (
             <Button
               className="mt-4 w-full"

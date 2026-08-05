@@ -299,3 +299,162 @@ describe('buy list', () => {
     });
   });
 });
+
+describe('the stores tablet’s quick-switch', () => {
+  /**
+   * The invariant spec §11 turns on: the device authorizes, the person attributes. Naming a person
+   * who could not have posted this themselves still posts, under their name — and naming one from a
+   * session that may not post is still refused, because the assertion never confers anything.
+   */
+  test('attributes the named person while authorizing off the device session', async ({ context }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'stores-person@example.com',
+      emailVerified: true,
+      id: 'stores-person',
+      name: 'Stores Person',
+      role: 'stores',
+      updatedAt: now,
+    });
+    const tablet = context.createCaller(mockSession('stores'));
+    await tablet.inventory.postAdjustment({ delta: 5, partId: context.part.id, reason: 'opening-balance' });
+
+    await expect(
+      tablet.inventory.postCheckout({
+        actorUserId: 'stores-person',
+        jobId: context.job.id,
+        partId: context.part.id,
+        quantity: 1,
+      }),
+    ).resolves.toMatchObject({ movement: { actorUserId: 'stores-person', movementType: 'checkout' } });
+
+    // A session with no right to move stock does not acquire one by naming somebody who has it.
+    await expect(
+      context.createCaller(mockSession('sales')).inventory.postCheckout({
+        actorUserId: 'stores-person',
+        jobId: context.job.id,
+        partId: context.part.id,
+        quantity: 1,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('refuses an unrecognised badge rather than signing the movement as the tablet', async ({ context }) => {
+    const tablet = context.createCaller(mockSession('stores'));
+    await tablet.inventory.postAdjustment({ delta: 5, partId: context.part.id, reason: 'opening-balance' });
+
+    await expect(
+      tablet.inventory.postCheckout({
+        actorUserId: 'nobody-at-all',
+        jobId: context.job.id,
+        partId: context.part.id,
+        quantity: 1,
+      }),
+    ).rejects.toMatchObject({ appCode: 'inventory.actor_not_found', code: 'BAD_REQUEST' });
+  });
+
+  test('offers the stores names to a mover and refuses a session that cannot move stock', async ({ context }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'stores-person@example.com',
+      emailVerified: true,
+      id: 'stores-person',
+      name: 'Stores Person',
+      role: 'stores',
+      updatedAt: now,
+    });
+
+    await expect(context.createCaller(mockSession('stores')).inventory.quickSwitchActors()).resolves.toEqual({
+      items: [{ id: 'stores-person', name: 'Stores Person', thumbnailDataUrl: null }],
+    });
+    await expect(context.createCaller(mockSession('sales')).inventory.quickSwitchActors()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+});
+
+describe('scan resolution', () => {
+  test('resolves a scanned label to the Part’s stock, price-blind for stores', async ({ context }) => {
+    await context.createCaller().inventory.postAdjustment({
+      delta: 10,
+      partId: context.part.id,
+      reason: 'opening-balance',
+      unitCost: 25,
+    });
+
+    await expect(
+      context.createCaller(mockSession('procurement-manager')).inventory.partByCode({ code: 'P-100' }),
+    ).resolves.toMatchObject({ averageUnitCost: 25, partCode: 'P-100', quantity: 10, totalValue: 250 });
+
+    const stores = await context.createCaller(mockSession('stores')).inventory.partByCode({ code: 'P-100' });
+    expect(stores).toMatchObject({ averageUnitCost: null, partCode: 'P-100', quantity: 10, totalValue: null });
+    expect(stores.buckets).toEqual([{ lengthMm: null, quantity: 10, totalValue: null }]);
+  });
+
+  test('reports an unknown label as a not-found rather than an empty result', async ({ context }) => {
+    await expect(
+      context.createCaller(mockSession('stores')).inventory.partByCode({ code: 'NOT-A-PART' }),
+    ).rejects.toMatchObject({ appCode: 'inventory.part_code_not_found', code: 'NOT_FOUND' });
+  });
+});
+
+describe('shared devices at the boundary', () => {
+  /**
+   * "No person, no movements" as a server rule, not a disabled button. The tablet signs in as a
+   * device; until it names somebody, the ledger refuses the row outright.
+   */
+  test('refuses a movement from a device session that named nobody', async ({ context }) => {
+    await context.db.update(user).set({ isDevice: true }).where(eq(user.id, 'test-user-id'));
+    const tablet = context.createCaller(mockSession('stores'));
+
+    await expect(
+      tablet.inventory.postCheckout({ jobId: context.job.id, partId: context.part.id, quantity: 1 }),
+    ).rejects.toMatchObject({ appCode: 'inventory.actor_required', code: 'BAD_REQUEST' });
+  });
+
+  /**
+   * The `stores` role holds `adjust` and `build` as well as `move`, so the rule has to cover them —
+   * an unattributed adjustment is exactly as much a lie about who touched the stock as a draw.
+   */
+  test('refuses every movement type a device can reach, not only the Job draws', async ({ context }) => {
+    await context.db.update(user).set({ isDevice: true }).where(eq(user.id, 'test-user-id'));
+    const tablet = context.createCaller(mockSession('stores'));
+
+    await expect(
+      tablet.inventory.postAdjustment({ delta: 5, partId: context.part.id, reason: 'opening-balance' }),
+    ).rejects.toMatchObject({ appCode: 'inventory.actor_required', code: 'BAD_REQUEST' });
+
+    await expect(
+      tablet.inventory.postBuild({ builtPartId: context.part.id, consumption: [], quantity: 1 }),
+    ).rejects.toMatchObject({ appCode: 'inventory.actor_required', code: 'BAD_REQUEST' });
+  });
+
+  test('refuses a device named as the actor, and leaves it out of the quick-switch', async ({ context }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'tablet@example.com',
+      emailVerified: true,
+      id: 'stores-tablet',
+      isDevice: true,
+      name: 'Stores Tablet',
+      role: 'stores',
+      updatedAt: now,
+    });
+    const stores = context.createCaller(mockSession('stores'));
+    await stores.inventory.postAdjustment({ delta: 5, partId: context.part.id, reason: 'opening-balance' });
+
+    await expect(
+      stores.inventory.postCheckout({
+        actorUserId: 'stores-tablet',
+        jobId: context.job.id,
+        partId: context.part.id,
+        quantity: 1,
+      }),
+    ).rejects.toMatchObject({ appCode: 'inventory.actor_is_device', code: 'BAD_REQUEST' });
+
+    await expect(stores.inventory.quickSwitchActors()).resolves.toEqual({ items: [] });
+  });
+});

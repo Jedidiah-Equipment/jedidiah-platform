@@ -1,4 +1,10 @@
-import { IconBuildingWarehouse, IconCalendarEvent, IconFileText, IconPackages } from '@tabler/icons-react-native';
+import {
+  IconBarcode,
+  IconBuildingWarehouse,
+  IconCalendarEvent,
+  IconFileText,
+  IconPackages,
+} from '@tabler/icons-react-native';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -44,6 +50,14 @@ export default function AppTabsLayout() {
           href: tabs.includes('schedule') ? undefined : null,
           tabBarIcon: ({ color, size }) => <IconCalendarEvent color={color} size={size} strokeWidth={1.8} />,
           title: 'SCHEDULE',
+        }}
+      />
+      <Tabs.Screen
+        name="stores"
+        options={{
+          href: tabs.includes('stores') ? undefined : null,
+          tabBarIcon: ({ color, size }) => <IconBarcode color={color} size={size} strokeWidth={1.8} />,
+          title: 'STORES',
         }}
       />
       <Tabs.Screen

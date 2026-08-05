@@ -25,6 +25,7 @@ import {
   createProductRangeLogoRouteConfig,
 } from './routes/product-ranges/product-range-image-routes.js';
 import { createProductImageRouteConfig } from './routes/products/product-image-routes.js';
+import { registerUserBadgeHttpRoutes } from './routes/users/user-badge-http.route.js';
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
 import { createContextFactory } from './trpc/context.js';
 import { serializeError, shouldLogTRPCError } from './trpc/errors.js';
@@ -80,6 +81,7 @@ export async function buildServer(
   await registerAiChatRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
   await registerPartLabelHttpRoutes(app);
+  await registerUserBadgeHttpRoutes(app);
   await registerEntityFileRoutes(app, [
     createProductImageRouteConfig(storage, { cacheDir: config.API_IMAGE_CACHE_DIR }),
     createProductRangeImageRouteConfig(storage),

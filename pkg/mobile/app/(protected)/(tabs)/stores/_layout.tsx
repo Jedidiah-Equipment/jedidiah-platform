@@ -1,0 +1,34 @@
+import { Redirect, Stack } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+
+import { StoresActorProvider } from '@/lib/stores-actor';
+import { useCan } from '@/lib/use-access';
+import { loadingSpinnerColor } from '@/theme/brand-colors';
+
+/**
+ * Owns the Stores gate and the quick-switch state for the whole stack.
+ *
+ * The gate is UX: the server checks every post, and the cost projection strips prices, so nothing
+ * here is load-bearing for authorization (spec §11). Hoisting the actor provider to the layout is
+ * what matters — walking from the scan home into a checkout screen must not lose the person, and
+ * every screen below can assume there is somewhere to read them from.
+ */
+export default function StoresLayout() {
+  const access = useCan('inventory:move');
+
+  if (access.isPending) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator accessibilityLabel="Checking access" color={loadingSpinnerColor} size="large" />
+      </View>
+    );
+  }
+
+  if (!access.can) return <Redirect href="/" />;
+
+  return (
+    <StoresActorProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </StoresActorProvider>
+  );
+}

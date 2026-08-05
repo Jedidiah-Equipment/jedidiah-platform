@@ -88,6 +88,12 @@ export const UserSummary = z.object({
   departments: z.array(Department),
   emailVerified: z.boolean(),
   id: AuthId,
+  /**
+   * A shared device rather than a person — today the stores tablet. Distinct from role, which still
+   * says what the account may *do*: this says that nobody in particular is behind it, which is why
+   * a device must name a person before it may move stock and may never be named as one itself.
+   */
+  isDevice: z.boolean(),
   name: z.string().trim().min(1),
   email: z.email(),
   phoneNumber: NullablePhoneNumber,
@@ -113,3 +119,15 @@ export type UserListResult = z.infer<typeof UserListResult>;
 export const UserListResult = z.object({
   users: z.array(UserSummary),
 });
+
+/**
+ * What a stores badge card carries: the person's name to read, and their id inside the Code 128 the
+ * tablet's scan field resolves (spec §11). No role, no email, nothing else — the card is dropped on
+ * a bench beside the scanner all shift, and it identifies rather than authenticates. Losing one
+ * means someone else can sign for stock under that name, which is exactly the exposure a PIN would
+ * close and v1 deliberately does not (spec §13).
+ */
+export type UserBadgePdfModel = z.infer<typeof UserBadgePdfModel>;
+export const UserBadgePdfModel = UserSummary.pick({ id: true, name: true });
+
+export type UserBadgePdfRenderer = (input: { document: UserBadgePdfModel[]; filename: string }) => Promise<Uint8Array>;

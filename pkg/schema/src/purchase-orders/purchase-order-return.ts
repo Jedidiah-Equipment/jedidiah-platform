@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { DateIso } from '../common/date.js';
+import { DateIso, DateOnlyIso } from '../common/date.js';
 import { PurchaseOrderCode } from '../common/public-code.js';
 import { nullableTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
@@ -103,3 +103,34 @@ export const PurchaseOrderDocumentRow = z.object({
 
 export type PurchaseOrderDocumentListResult = z.infer<typeof PurchaseOrderDocumentListResult>;
 export const PurchaseOrderDocumentListResult = z.object({ items: z.array(PurchaseOrderDocumentRow) });
+
+/**
+ * One Purchase Order line a scanned Part sits on, as the stores tablet's dock flows need it.
+ *
+ * Quantity-only by design. Receiving and returning are both physical acts on a shared, price-blind
+ * device (spec §11), so the row carries what was ordered, what has arrived, and what is still owed
+ * — and nothing the cost gate would have to strip.
+ */
+export type PartPurchaseOrderLine = z.infer<typeof PartPurchaseOrderLine>;
+export const PartPurchaseOrderLine = z.object({
+  /**
+   * When the order was closed short, or null. A closed-short line still takes returns — closing
+   * short says nothing more is *coming*, not that what arrived is beyond question (spec §4) — but it
+   * refuses receipts, so the dock must be able to tell the two apart before offering the line.
+   */
+  closedShortAt: DateIso.nullable(),
+  expectedDeliveryDate: DateOnlyIso.nullable(),
+  orderedQuantity: z.number().finite(),
+  /** `ordered − received`, floored at zero: a line received twice over owes nothing, never less. */
+  outstandingQuantity: z.number().finite(),
+  purchaseOrderCode: PurchaseOrderCode,
+  purchaseOrderId: UUID,
+  receivedQuantity: z.number().finite(),
+  supplierName: SupplierCompanyName,
+});
+
+export type PartPurchaseOrderLineInput = z.infer<typeof PartPurchaseOrderLineInput>;
+export const PartPurchaseOrderLineInput = z.object({ partId: UUID }).strict();
+
+export type PartPurchaseOrderLineResult = z.infer<typeof PartPurchaseOrderLineResult>;
+export const PartPurchaseOrderLineResult = z.object({ items: z.array(PartPurchaseOrderLine) });

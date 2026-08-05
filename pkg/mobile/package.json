@@ -44,6 +44,7 @@
     "ai": "6.0.221",
     "better-auth": "^1.6.23",
     "expo": "~56.0.17",
+    "expo-camera": "~56.0.8",
     "expo-clipboard": "~56.0.4",
     "expo-constants": "~56.0.22",
     "expo-dev-client": "~56.0.24",

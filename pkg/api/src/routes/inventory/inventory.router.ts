@@ -1,15 +1,18 @@
 import {
   closeOutJob,
+  getPartStockByCode,
   getStockMovementHistory,
   listBuyList,
   listCloseOutQueue,
   listJobStock,
   listJobs,
+  listQuickSwitchActors,
   listStockOnHand,
   postAdjustment,
   postBuild,
   postJobMovement,
   postRevaluation,
+  searchPartStock,
 } from '@pkg/core';
 import { getJobDisplayName } from '@pkg/domain';
 import {
@@ -22,10 +25,14 @@ import {
   JobCloseOut,
   JobStockInput,
   JobStockResult,
+  PartSearchInput,
+  PartSearchResult,
+  PartStockByCodeInput,
   PostAdjustmentInput,
   PostBuildInput,
   PostJobMovementInput,
   PostRevaluationInput,
+  QuickSwitchActorListResult,
   StockMovement,
   StockMovementHistoryInput,
   StockMovementHistoryResult,
@@ -33,13 +40,15 @@ import {
   StockMovementPostResult,
   StockOnHandBucketCostFields,
   StockOnHandResult,
+  StockOnHandRow,
   StockOnHandRowCostFields,
 } from '@pkg/schema';
 
 import { mapCoreErrors } from '../../trpc/errors.js';
-import { authorizedProcedure, projectInventoryCostFields, router } from '../../trpc/init.js';
+import { authorizedProcedure, type InventoryCostAccess, projectInventoryCostFields, router } from '../../trpc/init.js';
 import { partBomErrorFamily, partCoreErrorFamily } from '../parts/part-error-families.js';
 import {
+  assertedActorErrorFamily,
   buildErrorFamily,
   jobCloseOutErrorFamily,
   stockMovementErrorFamily,
@@ -77,25 +86,41 @@ export const inventoryRouter = router({
     .query(async ({ ctx }) => {
       const result = await listStockOnHand({ db: ctx.db });
 
-      return {
-        items: result.items.map((row) =>
-          projectInventoryCostFields({
-            access: ctx.access,
-            costFields: StockOnHandRowCostFields,
-            output: {
-              ...row,
-              buckets: row.buckets.map((bucket) =>
-                projectInventoryCostFields({
-                  access: ctx.access,
-                  costFields: StockOnHandBucketCostFields,
-                  output: bucket,
-                }),
-              ),
-            },
-          }),
-        ),
-      };
+      return { items: result.items.map((row) => projectStockOnHandRow(row, ctx.access)) };
     }),
+
+  /**
+   * What a scanned Part label resolves to on the stores tablet. Read under `inventory:read` and
+   * cost-projected exactly as the stock report is, so the price-blind scanner sees a Part's
+   * quantities and its length buckets and nothing about what it is worth.
+   */
+  partByCode: authorizedProcedure('inventory:read')
+    .input(PartStockByCodeInput)
+    .output(StockOnHandRow)
+    .query(async ({ ctx, input }) => {
+      const row = await mapStockLedgerErrors(() => getPartStockByCode({ code: input.code, db: ctx.db }));
+
+      return projectStockOnHandRow(row, ctx.access);
+    }),
+
+  /**
+   * The tablet's type-ahead for a label that will not scan (spec §10). Quantity-only, so there is
+   * no cost projection to apply — and deliberately not the stock report with a search term bolted
+   * on, which would replay the whole ledger for a moving average nobody on this device may read.
+   */
+  partSearch: authorizedProcedure('inventory:read')
+    .input(PartSearchInput)
+    .output(PartSearchResult)
+    .query(({ ctx, input }) => searchPartStock({ db: ctx.db, input })),
+
+  /**
+   * The names the tablet's quick-switch offers. Gated on `inventory:move` rather than `user:list`:
+   * the device holding this session posts movements and needs to know whose name to put on them,
+   * which is not the same right as reading the platform's user administration.
+   */
+  quickSwitchActors: authorizedProcedure('inventory:move')
+    .output(QuickSwitchActorListResult)
+    .query(({ ctx }) => listQuickSwitchActors({ db: ctx.db })),
 
   history: authorizedProcedure('inventory:read')
     .input(StockMovementHistoryInput)
@@ -185,20 +210,56 @@ export const inventoryRouter = router({
     }),
 });
 
-/** Stock the plant owns outright: no Job to be cancelled or closed out, only the ledger's own rules. */
+/**
+ * The one path from a stock row to what the API serves, so a value cannot escape the gate on one
+ * surface while being stripped on another. A row and its length buckets each carry their own cost
+ * fields, so both have to be projected — missing the inner pass is the mistake this exists to stop.
+ */
+function projectStockOnHandRow(row: StockOnHandRow, access: InventoryCostAccess): StockOnHandRow {
+  return projectInventoryCostFields({
+    access,
+    costFields: StockOnHandRowCostFields,
+    output: {
+      ...row,
+      buckets: row.buckets.map((bucket) =>
+        projectInventoryCostFields({ access, costFields: StockOnHandBucketCostFields, output: bucket }),
+      ),
+    },
+  });
+}
+
+/**
+ * Stock the plant owns outright: no Job to be cancelled or closed out, only the ledger's own rules —
+ * plus who the row is attributed to, since a shared device may post an adjustment as readily as a
+ * draw and must name a person for either.
+ */
 async function mapStockLedgerErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapCoreErrors(action, stockMovementErrorFamily);
+  return mapCoreErrors(action, stockMovementErrorFamily, assertedActorErrorFamily);
 }
 
 /**
  * Anything attributed to a Job carries all three vocabularies: the ledger's rules, the Job's own
  * state, and close-out — a draw against a closed-out Job is refused exactly as a second close is.
+ * The tablet's quick-switch adds a fourth, since any of these may name the person who did it.
  */
 async function mapJobStockErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapCoreErrors(action, stockMovementErrorFamily, stockMovementJobErrorFamily, jobCloseOutErrorFamily);
+  return mapCoreErrors(
+    action,
+    stockMovementErrorFamily,
+    stockMovementJobErrorFamily,
+    jobCloseOutErrorFamily,
+    assertedActorErrorFamily,
+  );
 }
 
 /** A build shares the ledger rules and the Part failures it reaches for, but no Job vocabulary. */
 async function mapBuildErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapCoreErrors(action, stockMovementErrorFamily, buildErrorFamily, partBomErrorFamily, partCoreErrorFamily);
+  return mapCoreErrors(
+    action,
+    stockMovementErrorFamily,
+    buildErrorFamily,
+    partBomErrorFamily,
+    partCoreErrorFamily,
+    assertedActorErrorFamily,
+  );
 }

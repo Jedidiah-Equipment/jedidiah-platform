@@ -3,7 +3,12 @@ import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso } from '../common/date.js';
 import { UUID } from '../common/uuid.js';
-import { StockMovementLengthMm, StockMovementQuantity, StockMovementWarningCode } from './stock-movement.js';
+import {
+  AssertedActorUserId,
+  StockMovementLengthMm,
+  StockMovementQuantity,
+  StockMovementWarningCode,
+} from './stock-movement.js';
 
 /** How many units of the Built Part came off the rack. There is no planned build — you build what you built. */
 export type BuildQuantity = z.infer<typeof BuildQuantity>;
@@ -25,6 +30,7 @@ export const BuildConsumptionInput = z
 export type PostBuildInput = z.infer<typeof PostBuildInput>;
 export const PostBuildInput = z
   .object({
+    actorUserId: AssertedActorUserId,
     builtPartId: UUID,
     /** Empty is legitimate — the trivial build of a Part whose BOM is raw material only. */
     consumption: z.array(BuildConsumptionInput),

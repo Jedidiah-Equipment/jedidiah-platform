@@ -29,6 +29,25 @@ stock that has actually landed.
    disabled until the selection is complete.
 5. Click **Open printable PDF** and print the sheet from the tab that opens.
 
+## A stores badge card
+
+A badge card is the same label stock carrying a person's name and a barcode the stores tablet reads
+to switch to them. Only users with the **Stores** role have one.
+
+1. Open **Users** and click the person.
+2. Click **Print stores badge**.
+3. Print it from the tab that opens.
+
+The tablet itself has no badge. It is a **Device Account** — a record for a shared machine rather
+than a person — so it can never be the name on a movement, and the button is not offered for it. An
+admin marks an account one with **Shared device** on the user, alongside the role.
+
+The card identifies; it does not sign anyone in. Anyone holding it can post stock under that name, so
+treat it like a name badge, not a key. Reprint whenever one is lost, and change the person's role
+away from Stores when they should no longer be posting — the tablet then refuses the old card.
+
+See [Work the stores tablet](./work-the-stores-tablet.md).
+
 ## Notes
 
 - The barcode encodes only the Part code. Nothing about quantity, length, Job, or Supplier is in it.

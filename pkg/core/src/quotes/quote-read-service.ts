@@ -456,6 +456,7 @@ export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserList
         email: row.email,
         emailVerified: row.emailVerified,
         id: row.id,
+        isDevice: row.isDevice,
         name: row.name,
         phoneNumber: row.phoneNumber,
         role: row.role,

@@ -34,6 +34,7 @@ import type {
   StockMovementHistoryResult,
   StockMovementPostResult,
   StockOnHandResult,
+  StockOnHandRow,
   UUID,
 } from '@pkg/schema';
 import {
@@ -63,9 +64,11 @@ import {
   scaleUnitCost,
   sumDelta,
 } from './ledger.js';
+import { resolveMovementActor } from './movement-actor.js';
 import {
   FabricatedPartCostError,
   PeriodicStockMovementError,
+  ScannedPartNotFoundError,
   StockMovementPartNotFoundError,
 } from './stock-movement-errors.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
@@ -81,6 +84,11 @@ export async function postAdjustment({
 }): Promise<StockMovement> {
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
+    const movementActorUserId = await resolveMovementActor({
+      assertedActorUserId: input.actorUserId,
+      db: tx,
+      sessionUserId: actorUserId,
+    });
     const unitClass = unitClassFor(part.unitOfMeasure);
 
     assertDeltaMatchesUnitClass(input.delta, unitClass);
@@ -91,7 +99,7 @@ export async function postAdjustment({
     }
 
     return insertMovement(tx, {
-      actorUserId,
+      actorUserId: movementActorUserId,
       delta: input.delta,
       lengthMm: input.lengthMm,
       movementType: 'adjustment',
@@ -132,6 +140,9 @@ export async function postRevaluation({
  * Draws a Part against a Job, or returns it. The two directions share every rule but three: a return
  * is still valid on a cancelled Job (physically recovered stock must not be stranded off-ledger), it
  * reverses at the cost the parts left with rather than today's average, and its delta is positive.
+ *
+ * `actorUserId` is who is signed in; `input.actorUserId` is who the shared tablet says is standing
+ * at it, and the row is stamped with the second when it is given (see `resolveMovementActor`).
  */
 export async function postJobMovement({
   actorUserId,
@@ -146,6 +157,11 @@ export async function postJobMovement({
 }): Promise<StockMovementPostResult> {
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
+    const movementActorUserId = await resolveMovementActor({
+      assertedActorUserId: input.actorUserId,
+      db: tx,
+      sessionUserId: actorUserId,
+    });
     await (movementType === 'checkout' ? lockMutableJob(tx, input.jobId) : lockJob(tx, input.jobId));
     // Close-out ended this Job's stock life; a later draw would sit against it unprompted forever,
     // since a closed Job can never re-enter the queue. Returns are deliberately still allowed.
@@ -164,7 +180,7 @@ export async function postJobMovement({
     ]);
 
     const movement = await insertMovement(tx, {
-      actorUserId,
+      actorUserId: movementActorUserId,
       delta: movementType === 'checkout' ? -input.quantity : input.quantity,
       jobId: input.jobId,
       lengthMm: input.lengthMm,
@@ -339,7 +355,34 @@ export async function listStockOnHand({ db }: { db: Db }): Promise<StockOnHandRe
   });
 }
 
-async function listStockOnHandSnapshot(db: DatabaseTransaction): Promise<StockOnHandResult> {
+/**
+ * The stock position of one Part, addressed the way the shop addresses it: by the code on its label.
+ *
+ * A scan resolves through here rather than through an id lookup because the tablet's part-result
+ * screen wants the same figures the stock report shows — quantity, free, and the length buckets the
+ * checkout screen then asks a question about. One read, one snapshot, no second round trip.
+ *
+ * The match is exact and case-sensitive. A Code 128 read either succeeds whole or fails, so a fuzzy
+ * match here could only ever resolve a *mis*-read — and resolving a mis-read to a neighbouring Part
+ * is how stock moves against the wrong code. A damaged label is retyped through search instead.
+ */
+export async function getPartStockByCode({ code, db }: { code: string; db: Db }): Promise<StockOnHandRow> {
+  const [part] = await db.select({ id: parts.id }).from(parts).where(eq(parts.code, code)).limit(1);
+  if (!part) throw new ScannedPartNotFoundError(code);
+
+  const snapshot = await db.transaction((tx) => listStockOnHandSnapshot(tx, part.id), {
+    accessMode: 'read only',
+    isolationLevel: 'repeatable read',
+  });
+  const row = snapshot.items[0];
+  // The Part was read a moment ago, so an empty snapshot means it was deleted between the two reads.
+  if (!row) throw new ScannedPartNotFoundError(code);
+
+  return row;
+}
+
+async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): Promise<StockOnHandResult> {
+  const partCondition = partId === undefined ? undefined : eq(parts.id, partId);
   const [bucketRows, movementRows, committedByPart] = await Promise.all([
     db
       .select({
@@ -359,6 +402,7 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction): Promise<StockOn
         stockMovements,
         and(eq(stockMovements.partId, parts.id), ne(stockMovements.movementType, 'revaluation')),
       )
+      .where(partCondition)
       .groupBy(
         parts.id,
         parts.code,
@@ -380,8 +424,9 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction): Promise<StockOn
         unitCost: stockMovements.unitCost,
       })
       .from(stockMovements)
+      .where(partId === undefined ? undefined : eq(stockMovements.partId, partId))
       .orderBy(asc(stockMovements.partId), asc(stockMovements.createdAt), asc(stockMovements.id)),
-    loadOpenCommitments(db).then(sumCommitmentsByPart),
+    loadOpenCommitments(db, partId === undefined ? undefined : [partId]).then(sumCommitmentsByPart),
   ]);
 
   const movementsByPart = groupBy(movementRows, (row) => row.partId);

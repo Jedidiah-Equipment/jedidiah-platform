@@ -40,6 +40,7 @@ describe('users.list', () => {
         email: 'viewer@example.com',
         emailVerified: true,
         id: 'viewer-user-id',
+        isDevice: false,
         name: 'Viewer User',
         phoneNumber: null,
         role: 'sales',

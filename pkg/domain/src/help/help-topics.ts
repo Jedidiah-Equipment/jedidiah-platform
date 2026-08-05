@@ -19,6 +19,7 @@ export const HELP_TOPICS = {
   products: '/',
   purchaseOrders: '/inventory/post-a-receipt',
   quotes: '/',
+  storesTablet: '/inventory/work-the-stores-tablet',
   suppliers: '/',
   units: '/',
 } as const satisfies Record<string, string>;

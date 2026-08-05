@@ -49,6 +49,29 @@ export const test = createTester(async ({ db }) => {
   return { jobs: seededJobs, parts: seededParts, supplierId: createdSupplier.id };
 });
 
+/**
+ * A stores person the tablet's quick-switch can name — the "person attributes" half of spec §11.
+ * Distinct from `actorUserId`, which stands in for the signed-in device session.
+ */
+export async function seedQuickSwitchPerson(
+  db: Db,
+  { banned = false, id = 'quick-switch-person', isDevice = false, name = 'Quick Switch Person' } = {},
+): Promise<string> {
+  await db.insert(user).values({
+    banned,
+    isDevice,
+    createdAt: new Date('2026-08-01T08:00:00.000Z'),
+    email: `${id}@example.com`,
+    emailVerified: true,
+    id,
+    name,
+    role: 'stores',
+    updatedAt: new Date('2026-08-01T08:00:00.000Z'),
+  });
+
+  return id;
+}
+
 /** An opening balance, the one adjustment that may carry a cost — every suite seeds stock with it. */
 export function adjustmentInput(partId: string, overrides: Partial<PostAdjustmentInput> = {}): PostAdjustmentInput {
   return {

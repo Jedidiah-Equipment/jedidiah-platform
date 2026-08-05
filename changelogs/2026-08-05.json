@@ -1,0 +1,63 @@
+{
+  "releasedAt": "2026-08-05T14:42:51.678Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Prioritize what to buy",
+          "description": "Use the new Buy List to see parts needed for jobs, below minimum stock, or newly out of stock. Suggestions account for stock already on order and prioritize the earliest scheduled work."
+        },
+        {
+          "title": "Create draft purchase orders from stock needs",
+          "description": "Select parts from the Buy List or a job’s Stock tab to create separate draft orders for each supplier, with quantities ready to review."
+        },
+        {
+          "title": "Spot purchasing work sooner",
+          "description": "Dashboard alerts and a navigation indicator now highlight outstanding Buy List items and late purchase orders."
+        },
+        {
+          "title": "Keep sent purchase orders up to date",
+          "description": "Record quantity changes, added lines, part substitutions, and revised delivery dates after an order is sent. Each amendment retains its history and produces an updated order document."
+        },
+        {
+          "title": "Record supplier returns and credits",
+          "description": "Return received stock against its purchase order and attach supplier credit notes while keeping received quantities and stock values accurate."
+        },
+        {
+          "title": "Set up shared Stores devices",
+          "description": "Administrators can create shared-device accounts and print user badges so stock movements made on a tablet are attributed to the person operating it."
+        },
+        {
+          "title": "Choose eligible jobs for stock movements",
+          "description": "Job pickers prioritize appropriate work, showing open jobs for checkouts while keeping completed jobs clearly identified where returns still require them."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Run Stores from a shared tablet",
+          "description": "Quickly switch operators by badge, then scan or search for parts to check stock out, return leftovers, receive orders, return stock to suppliers, or close out a job."
+        },
+        {
+          "title": "Explore Jobs from a dedicated tab",
+          "description": "Search, filter, and sort jobs from the new Jobs tab, then open their details directly."
+        },
+        {
+          "title": "Plan work from a dedicated tab",
+          "description": "Use the new Plan tab to search and sort enabled bays and open their current queues."
+        },
+        {
+          "title": "Navigate the mobile app more consistently",
+          "description": "Catalogs, page headers, back navigation, loading states, and contextual Help now follow a consistent layout across the app."
+        },
+        {
+          "title": "Choose the right job for each movement",
+          "description": "Stores job pickers now load additional results as you scroll, prioritize eligible jobs, and clearly label completed work."
+        }
+      ]
+    }
+  ]
+}

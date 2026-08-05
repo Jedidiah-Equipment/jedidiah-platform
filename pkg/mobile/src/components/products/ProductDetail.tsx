@@ -7,13 +7,12 @@ import {
   isLanderReady,
 } from '@pkg/domain';
 import type { OptionalAssembly, Product, ProductDocument, StandardAssembly } from '@pkg/schema';
-import { IconCheck, IconChevronLeft, IconDownload, IconEye, IconLink } from '@tabler/icons-react-native';
+import { IconCheck, IconDownload, IconEye, IconLink } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
-import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { ProductImage } from '@/components/products/ProductImage';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -26,52 +25,16 @@ import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/lib/pro
 import { landerProductUrls } from '@/lib/product-presentation';
 import { useTRPC } from '@/lib/trpc';
 
-export function ProductDetail({ product, onBack }: { product: Product; onBack: () => void }) {
+export function ProductDetail({ product }: { product: Product }) {
   return (
     <View className="flex-1 bg-background">
-      <ProductDetailHeader onBack={onBack} product={product} />
-      <ScrollView contentContainerClassName="mx-auto w-full max-w-[720px] gap-4 px-4 pb-8 pt-4">
+      <ScrollView contentContainerClassName="w-full gap-4 px-4 pb-8 pt-4">
         <ProductIdentity product={product} />
         <ProductDetailsCard product={product} />
         <ProductAssembliesCard product={product} />
         <ProductDocumentsCard product={product} />
       </ScrollView>
     </View>
-  );
-}
-
-function ProductDetailHeader({ product, onBack }: { product: Product; onBack: () => void }) {
-  return (
-    <View className="border-b border-border bg-background">
-      <View className="mx-auto h-16 w-full max-w-[720px] flex-row items-center gap-2 px-4">
-        <HeaderButton icon={IconChevronLeft} label="Back to Products" onPress={onBack} />
-        <View className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border bg-image-backdrop">
-          <ProductImage product={product} />
-        </View>
-        <View className="min-w-0 flex-1">
-          <Text className="text-[17px] leading-5 text-foreground" numberOfLines={1} weight="bold">
-            {product.name}
-          </Text>
-          <Text className="mt-0.5 text-[11px] text-muted-foreground" mono numberOfLines={1}>
-            {product.modelCode}
-          </Text>
-        </View>
-        <ProfileMenuButton />
-      </View>
-    </View>
-  );
-}
-
-function HeaderButton({ icon, label, onPress }: { icon: typeof IconChevronLeft; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
-      onPress={onPress}
-    >
-      <Icon icon={icon} size={20} />
-    </Pressable>
   );
 }
 

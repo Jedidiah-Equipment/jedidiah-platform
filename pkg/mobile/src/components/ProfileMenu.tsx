@@ -1,4 +1,6 @@
-import { IconLogout } from '@tabler/icons-react-native';
+import { type HelpTopic, helpUrl } from '@pkg/domain';
+import { IconHelpCircle, IconLogout } from '@tabler/icons-react-native';
+import * as Linking from 'expo-linking';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -6,6 +8,8 @@ import { Avatar } from '@/components/Avatar';
 import { AnchoredMenu } from '@/components/ui/anchored-menu';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { useAppToast } from '@/components/ui/toast';
+import { docsOrigin } from '@/lib/app-env';
 import { signOut } from '@/lib/auth';
 import type { ColorModePreference } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -23,14 +27,24 @@ type ProfileUser = {
 
 /**
  * Overflow menu shared across screens: an {@link AnchoredMenu} pinned top-right
- * with the theme toggle and Log out.
+ * with optional contextual Help, the theme toggle, and Log out.
  */
-export function ProfileMenu({ user, onClose }: { user: ProfileUser; onClose: () => void }) {
+export function ProfileMenu({
+  helpTopic,
+  user,
+  onClose,
+}: {
+  helpTopic?: HelpTopic;
+  user: ProfileUser;
+  onClose: () => void;
+}) {
   const insets = useSafeAreaInsets();
+  const showToast = useAppToast();
+  const helpOrigin = docsOrigin;
 
   return (
     // Anchor below the header's overflow button, clear of the status bar.
-    <AnchoredMenu onClose={onClose} style={{ right: 16, top: insets.top + 56, width: 240 }}>
+    <AnchoredMenu onClose={onClose} style={{ right: 16, top: insets.top + 64, width: 240 }}>
       <View className="flex-row items-center gap-3 border-b border-border px-4 py-3">
         <Avatar className="h-9 w-9 rounded-lg" name={user.name} uri={user.image} />
         <View className="min-w-0 flex-1">
@@ -42,6 +56,27 @@ export function ProfileMenu({ user, onClose }: { user: ProfileUser; onClose: () 
           </Text>
         </View>
       </View>
+
+      {helpTopic && helpOrigin ? (
+        <View className="border-b border-border p-1.5">
+          <Pressable
+            accessibilityLabel="Open Help"
+            accessibilityRole="button"
+            className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
+            onPress={() => {
+              onClose();
+              Linking.openURL(helpUrl(helpOrigin, helpTopic)).catch(() => {
+                showToast('error', 'Could not open Help in the browser');
+              });
+            }}
+          >
+            <Icon className="text-muted-foreground" icon={IconHelpCircle} size={18} />
+            <Text className="text-sm text-surface-foreground" weight="semibold">
+              Help
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <View className="gap-2 p-3">
         <Text className="text-[11px] uppercase tracking-wider text-muted-foreground" weight="semibold">

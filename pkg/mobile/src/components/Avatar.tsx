@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Image, View } from 'react-native';
 
 import { Text } from './ui/text';
@@ -19,11 +19,13 @@ function initials(name: string): string {
  * image falls back to initials on a muted tile.
  */
 export function Avatar({
+  fallback,
   uri,
   name,
   className = '',
   textClassName = 'text-xs',
 }: {
+  fallback?: ReactNode;
   uri: string | null | undefined;
   name: string;
   /** Size + shape utilities, e.g. `h-10 w-10 rounded-full`. */
@@ -43,10 +45,12 @@ export function Avatar({
           resizeMode="cover"
           source={{ uri }}
         />
-      ) : (
+      ) : fallback === undefined ? (
         <Text className={`text-muted-foreground ${textClassName}`} weight="semibold">
           {initials(name)}
         </Text>
+      ) : (
+        fallback
       )}
     </View>
   );

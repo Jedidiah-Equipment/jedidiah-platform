@@ -22,8 +22,10 @@ export const UserCreateDialog: React.FC = () => {
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const canAssignDepartments = hasPermission(accessQuery.data, 'user:update');
+  const canSetRole = hasPermission(accessQuery.data, 'user:set-role');
   const [isOpen, setIsOpen] = useState(false);
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
+  const setDeviceMutation = useMutation(trpc.users.setDevice.mutationOptions());
 
   const createUserMutation = useMutation({
     mutationFn: async (value: UserCreateFormValues) => {
@@ -36,11 +38,16 @@ export const UserCreateDialog: React.FC = () => {
           role: value.role,
         }),
       );
+      const userId = AuthId.parse(result.user.id);
+
+      if (value.isDevice) {
+        await setDeviceMutation.mutateAsync({ isDevice: true, userId });
+      }
 
       if (canAssignDepartments) {
         await setDepartmentsMutation.mutateAsync({
           departments: value.departments,
-          userId: AuthId.parse(result.user.id),
+          userId,
         });
       }
 
@@ -75,6 +82,7 @@ export const UserCreateDialog: React.FC = () => {
           {isOpen ? (
             <UserCreateForm
               canAssignDepartments={canAssignDepartments}
+              canSetRole={canSetRole}
               isPending={createUserMutation.isPending}
               onSubmit={(value) => createUserMutation.mutateAsync(value)}
             />

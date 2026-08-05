@@ -10,6 +10,7 @@ import { PurchaseOrderLinePicker } from '@/components/stores/PurchaseOrderLinePi
 import { hasRequiredLength, parseQuantity, QuantityField } from '@/components/stores/QuantityField';
 import { NoActorNotice, StoresPartScreen } from '@/components/stores/StoresPartScreen';
 import { useMovementActorUserId } from '@/lib/stores-actor';
+import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
@@ -37,7 +38,10 @@ function ReceiveForm({ row }: { row: StockOnHandRow }) {
   const [quantity, setQuantity] = useState('');
   const [keyedLengthMm, setKeyedLengthMm] = useState<string | null>(null);
 
-  const outcome = useStoresPostOutcome({ successMessage: 'Receipt posted' });
+  const outcome = useStoresPostOutcome({
+    returnTo: resolveStoresMovementParent({ partCode: row.partCode }).returnTo,
+    successMessage: 'Receipt posted',
+  });
   const mutation = useMutation(
     trpc.purchaseOrders.receive.mutationOptions({ onError: outcome.onError, onSuccess: outcome.onSuccess }),
   );

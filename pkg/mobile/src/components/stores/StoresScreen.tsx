@@ -1,13 +1,10 @@
-import { IconChevronLeft } from '@tabler/icons-react-native';
-import { useRouter } from 'expo-router';
 import type React from 'react';
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StoresActorHeader } from '@/components/stores/StoresActorHeader';
-import { Icon } from '@/components/ui/icon';
+import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { RefreshControl } from '@/components/ui/refresh-control';
-import { Text } from '@/components/ui/text';
 import { useStoresActor } from '@/lib/stores-actor';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { QuickSwitchModal } from './QuickSwitchModal';
@@ -21,46 +18,34 @@ import { QuickSwitchModal } from './QuickSwitchModal';
  */
 export function StoresScreen({
   children,
+  onBack,
+  parentLabel,
   subtitle,
   title,
 }: {
   children: React.ReactNode;
+  onBack: () => void;
+  parentLabel: string;
   subtitle?: string;
   title: string;
 }) {
-  const router = useRouter();
   const refresh = useGlobalRefresh();
   const { selectActor } = useStoresActor();
   const [quickSwitchOpen, setQuickSwitchOpen] = useState(false);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
+      <SecondaryPageToolbar
+        onBack={onBack}
+        parentLabel={parentLabel}
+        subtitle={subtitle ?? 'STORES WORKFLOW'}
+        title={title}
+      />
       <ScrollView
-        contentContainerClassName="mx-auto w-full max-w-[820px] gap-5 px-4 pb-10 pt-4"
+        contentContainerClassName="w-full gap-5 px-4 pb-10 pt-4"
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl {...refresh} />}
       >
-        <View className="flex-row items-center gap-2">
-          <Pressable
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            className="shrink-0 rounded-xl border border-border bg-surface p-2"
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/stores'))}
-          >
-            <Icon className="text-surface-foreground" icon={IconChevronLeft} size={22} />
-          </Pressable>
-          <View className="min-w-0 flex-1">
-            <Text className="text-xl leading-6 text-foreground" numberOfLines={1} weight="bold">
-              {title}
-            </Text>
-            {subtitle === undefined ? null : (
-              <Text className="mt-0.5 text-[11px] text-muted-foreground" mono numberOfLines={1}>
-                {subtitle}
-              </Text>
-            )}
-          </View>
-        </View>
-
         <StoresActorHeader onSwitch={() => setQuickSwitchOpen(true)} />
 
         {children}

@@ -1,17 +1,21 @@
 import { useChat } from '@ai-sdk/react';
-import { IconPlus, IconX } from '@tabler/icons-react-native';
-import { useRouter } from 'expo-router';
+import { IconPlus } from '@tabler/icons-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAssistant } from '@/components/assistant/AssistantProvider';
+import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Conversation, PromptInput } from '@/components/ui/chat-ai';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAssistantKeyboardBottomPadding } from '@/lib/assistant-keyboard';
+import { resolveAssistantParent } from '@/lib/toolbar-navigation';
 
 export default function AssistantRoute() {
   const router = useRouter();
+  const { parentHref } = useLocalSearchParams<{ parentHref?: string }>();
+  const parent = resolveAssistantParent(parentHref);
   const { chat, reset } = useAssistant();
   const { clearError, error, messages, regenerate, sendMessage, status, stop } = useChat({ chat });
   const isStreaming = status === 'submitted' || status === 'streaming';
@@ -21,21 +25,13 @@ export default function AssistantRoute() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
       <View className="flex-1" style={{ paddingBottom: keyboardBottomPadding }}>
-        <View className="flex-row items-center gap-3 border-b border-border bg-background px-4 py-3">
-          <Pressable
-            accessibilityLabel="Close Assistant"
-            accessibilityRole="button"
-            className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
-            onPress={() => router.back()}
-          >
-            <Icon icon={IconX} size={20} />
-          </Pressable>
-          <View className="min-w-0 flex-1">
-            <Text className="text-base leading-5 text-foreground" weight="bold">
-              Assistant
-            </Text>
-            <Text className="text-xs text-muted-foreground">Acts with your permissions</Text>
-          </View>
+        <SecondaryPageToolbar
+          onBack={() => router.dismissTo(parent.href)}
+          parentLabel={parent.label}
+          subtitle="ACTS WITH YOUR PERMISSIONS"
+          title="Assistant"
+        />
+        <View className="items-end px-4 pt-3">
           <Pressable
             accessibilityLabel="New chat"
             accessibilityRole="button"

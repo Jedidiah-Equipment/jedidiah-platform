@@ -3,10 +3,11 @@ import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoardList, isListMode, type ListMode } from '@/components/bays/BoardList';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { MainTabToolbar } from '@/components/TopToolbar';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 import { visibleTabs } from '@/lib/app-tabs';
+import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
 import { useAccess } from '@/lib/use-access';
 import { useBayList } from '@/lib/use-bay-list';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
@@ -41,15 +42,16 @@ export default function IndexRoute() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
+      <MainTabToolbar
+        assistantParent={MAIN_TAB_PARENTS.schedule}
+        helpTopic="jobs"
+        subtitle={bayCount === null ? 'Loading schedule…' : `${bayCount} ${bayCount === 1 ? 'bay' : 'bays'}`}
+        title="Schedule"
+      />
       <ScrollView
-        contentContainerClassName="mx-auto w-full max-w-[1180px] gap-5 px-4 pb-8 pt-4"
+        contentContainerClassName="w-full gap-5 px-4 pb-8 pt-4"
         refreshControl={<RefreshControl {...refresh} />}
       >
-        <ScreenHeader
-          helpTopic="jobs"
-          subtitle={bayCount === null ? 'Loading schedule…' : `${bayCount} ${bayCount === 1 ? 'bay' : 'bays'}`}
-          title="Schedule"
-        />
         <BoardList
           bayState={bayList.state}
           jobState={jobList.state}
@@ -64,7 +66,12 @@ export default function IndexRoute() {
 function SignedInNoAccessScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <View className="mx-auto w-full max-w-[1180px] gap-2 px-4 py-8">
+      <MainTabToolbar
+        assistantParent={MAIN_TAB_PARENTS.schedule}
+        subtitle="ACCOUNT HAS NO MOBILE TABS"
+        title="No mobile access"
+      />
+      <View className="w-full gap-2 px-4 py-8">
         <Text className="text-lg text-foreground" weight="bold">
           No mobile access
         </Text>

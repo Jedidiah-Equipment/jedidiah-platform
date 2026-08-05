@@ -1,9 +1,10 @@
 import type { DocumentSummary } from '@pkg/schema';
-import { IconChevronLeft, IconDownload, IconShare, type Icon as TablerIcon } from '@tabler/icons-react-native';
+import { IconDownload, IconShare, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { DocumentPage } from '@/components/documents/DocumentPage';
+import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { type DocumentAction, saveDocument, shareDocument } from '@/lib/document-actions';
@@ -11,7 +12,7 @@ import { canPreviewDocument } from '@/lib/document-content';
 
 /**
  * In-app document reader (#521): the DOCUMENT VIEWER screen from the mockup —
- * header (back, name + context, download, share) above a full-screen preview area.
+ * standard secondary toolbar above document actions and a full-screen preview area.
  * PDFs render through the platform {@link DocumentPage}; download-only formats show
  * an explicit unavailable state without invoking the PDF renderer.
  */
@@ -20,12 +21,14 @@ export function DocumentViewer({
   document,
   context,
   onBack,
+  parentLabel,
 }: {
   downloadPath: string;
   document: Pick<DocumentSummary, 'contentType' | 'filename'>;
   /** Sub-label under the title, e.g. `JOB-00009 · Silage Grain 18 36`. */
   context: string;
   onBack: () => void;
+  parentLabel: string;
 }) {
   const [busy, setBusy] = useState<null | 'save' | 'share'>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -52,17 +55,8 @@ export function DocumentViewer({
 
   return (
     <View className="flex-1 overflow-hidden bg-background">
-      {/* Header: back, name + context, download, share. */}
-      <View className="flex-row items-center gap-2.5 border-b border-border bg-surface px-3.5 py-3">
-        <IconButton icon={IconChevronLeft} label="Back" onPress={onBack} />
-        <View className="min-w-0 flex-1">
-          <Text className="text-[15px] text-foreground" numberOfLines={1} weight="semibold">
-            {document.filename}
-          </Text>
-          <Text className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground" numberOfLines={1}>
-            {context}
-          </Text>
-        </View>
+      <SecondaryPageToolbar onBack={onBack} parentLabel={parentLabel} subtitle={context} title={document.filename} />
+      <View className="flex-row justify-end gap-2 px-4 py-3">
         <IconButton
           busy={busy === 'save'}
           disabled={busy !== null}
@@ -112,33 +106,25 @@ function IconButton({
   onPress,
   disabled = false,
   busy = false,
-  small = false,
 }: {
   icon: TablerIcon;
   label: string;
   onPress: () => void;
   disabled?: boolean;
   busy?: boolean;
-  small?: boolean;
 }) {
-  const size = small ? 'h-9 w-9' : 'h-10 w-10';
-
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ disabled: disabled || busy }}
-      className={`${size} items-center justify-center rounded-xl border border-border bg-background active:bg-muted ${
+      className={`h-10 w-10 items-center justify-center rounded-xl border border-border bg-background active:bg-muted ${
         disabled || busy ? 'opacity-40' : ''
       }`}
       disabled={disabled || busy}
       onPress={onPress}
     >
-      {busy ? (
-        <ActivityIndicator className="text-foreground" size="small" />
-      ) : (
-        <Icon icon={icon} size={small ? 18 : 20} />
-      )}
+      {busy ? <ActivityIndicator className="text-foreground" size="small" /> : <Icon icon={icon} size={20} />}
     </Pressable>
   );
 }

@@ -39,13 +39,17 @@ export default function StoresJobCloseOutRoute() {
     onSuccess: async () => {
       await invalidateQueryCache(queryClient);
       toast('success', 'Job stock closed out');
-      router.back();
+      router.dismissTo('/stores/close-out');
     },
   });
 
   if (jobStock.isPending) {
     return (
-      <StoresScreen title="Close out">
+      <StoresScreen
+        onBack={() => router.dismissTo('/stores/close-out')}
+        parentLabel="Close-out queue"
+        title="Close out"
+      >
         <View className="items-center py-10">
           <ActivityIndicator accessibilityLabel="Loading Job stock" color={loadingSpinnerColor} size="large" />
         </View>
@@ -55,7 +59,11 @@ export default function StoresJobCloseOutRoute() {
 
   if (jobStock.isError) {
     return (
-      <StoresScreen title="Close out">
+      <StoresScreen
+        onBack={() => router.dismissTo('/stores/close-out')}
+        parentLabel="Close-out queue"
+        title="Close out"
+      >
         <Text className="py-10 text-center text-sm text-danger">
           Couldn’t load this Job’s stock. Pull down to retry.
         </Text>
@@ -69,7 +77,12 @@ export default function StoresJobCloseOutRoute() {
   const isCloseable = job.closedOutAt === null && job.cancelledAt === null && job.completedOn !== null;
 
   return (
-    <StoresScreen subtitle={job.code} title={job.displayName}>
+    <StoresScreen
+      onBack={() => router.dismissTo('/stores/close-out')}
+      parentLabel="Close-out queue"
+      subtitle={job.code}
+      title={job.displayName}
+    >
       <View className="gap-2">
         <Text className="text-[11px] text-muted-foreground" mono>
           STILL OUT ON THIS JOB

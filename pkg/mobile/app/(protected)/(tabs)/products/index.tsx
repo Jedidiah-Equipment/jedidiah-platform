@@ -1,15 +1,11 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
-import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  ProductCatalogControls,
-  ProductCatalogHeader,
-  ProductGrid,
-  ProductGridSkeleton,
-} from '@/components/products/ProductCatalog';
-import { RefreshControl } from '@/components/ui/refresh-control';
+import { CatalogListSkeleton, PaginatedCatalogList } from '@/components/CatalogList';
+import { ProductCatalogCard, ProductCatalogControls } from '@/components/products/ProductCatalog';
+import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import {
   getProductListPresentation,
@@ -19,7 +15,7 @@ import {
   type ProductSort,
   type RangeFilter,
 } from '@/lib/product-presentation';
-import { isNearVerticalScrollEnd } from '@/lib/scroll-pagination';
+import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
@@ -64,39 +60,28 @@ export default function ProductsRoute() {
   );
   const productItems = useMemo(() => products.data?.pages.flatMap((page) => page.items) ?? [], [products.data?.pages]);
   const total = products.data?.pages.at(-1)?.total ?? null;
-  const loadNextPage = useCallback(() => {
-    if (products.hasNextPage && !products.isFetchingNextPage) void products.fetchNextPage();
-  }, [products.fetchNextPage, products.hasNextPage, products.isFetchingNextPage]);
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (isNearVerticalScrollEnd(event.nativeEvent)) loadNextPage();
-    },
-    [loadNextPage],
-  );
-
   const pending = rangeOptions.isPending || (rangeOptions.isSuccess && products.isPending);
+  const failed = products.isError || rangeOptions.isError;
   const count = pending ? null : total;
+  const emptyContent = failed ? (
+    <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load the Product catalog." />
+  ) : (
+    <Text className="text-sm text-muted-foreground">No Products match the current search and filter.</Text>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <ScrollView
-        contentContainerClassName="mx-auto w-full max-w-[1180px] gap-5 px-4 pb-8 pt-4"
-        keyboardShouldPersistTaps="handled"
-        onScroll={handleScroll}
-        refreshControl={<RefreshControl {...refresh} />}
-        scrollEventThrottle={100}
-      >
-        <ProductCatalogHeader count={count} />
-
-        {pending ? (
-          <ProductGridSkeleton />
-        ) : products.isError || rangeOptions.isError ? (
-          <CatalogMessage
-            detail="Pull to retry, or check your connection."
-            title="Couldn’t load the Product catalog."
-          />
-        ) : (
-          <View className="gap-4">
+      <MainTabToolbar
+        assistantParent={MAIN_TAB_PARENTS.products}
+        helpTopic="products"
+        subtitle={count === null ? 'Loading catalog…' : `${count} ${count === 1 ? 'product' : 'products'}`}
+        title="Products"
+      />
+      <PaginatedCatalogList
+        emptyContent={emptyContent}
+        hasNextPage={products.hasNextPage}
+        header={
+          pending || failed ? undefined : (
             <ProductCatalogControls
               onRangeChange={setRange}
               onSearchChange={setSearch}
@@ -106,13 +91,19 @@ export default function ProductsRoute() {
               search={search}
               sort={sort}
             />
-            <ProductGrid products={productItems} />
-            {products.isFetchingNextPage ? (
-              <Text className="text-center text-sm text-muted-foreground">Loading more products…</Text>
-            ) : null}
-          </View>
-        )}
-      </ScrollView>
+          )
+        }
+        initialLoading={pending}
+        keyOf={(product) => product.id}
+        loadingContent={<CatalogListSkeleton />}
+        loadingMore={products.isFetchingNextPage}
+        loadingMoreLabel="Loading more products…"
+        onLoadMore={() => void products.fetchNextPage()}
+        onRefresh={refresh.onRefresh}
+        refreshing={refresh.refreshing}
+        renderItem={(product) => <ProductCatalogCard product={product} />}
+        sections={[{ data: productItems, key: 'products' }]}
+      />
     </SafeAreaView>
   );
 }

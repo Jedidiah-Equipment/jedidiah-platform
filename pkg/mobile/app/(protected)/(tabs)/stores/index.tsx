@@ -4,16 +4,17 @@ import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ScreenHeader } from '@/components/ScreenHeader';
 import { PartSearchList } from '@/components/stores/PartSearchList';
 import { QuickSwitchModal } from '@/components/stores/QuickSwitchModal';
 import { ScanField } from '@/components/stores/ScanField';
 import { StoresActorHeader } from '@/components/stores/StoresActorHeader';
+import { MainTabToolbar } from '@/components/TopToolbar';
 import { Icon } from '@/components/ui/icon';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useStoresActor } from '@/lib/stores-actor';
+import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { useStoresScan } from '@/lib/use-stores-scan';
 
@@ -35,13 +36,17 @@ export default function StoresScanHomeRoute() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
+      <MainTabToolbar
+        assistantParent={MAIN_TAB_PARENTS.stores}
+        helpTopic="storesTablet"
+        subtitle="SCAN TO MOVE STOCK"
+        title="Stores"
+      />
       <ScrollView
-        contentContainerClassName="mx-auto w-full max-w-[820px] gap-5 px-4 pb-8 pt-4"
+        contentContainerClassName="w-full gap-5 px-4 pb-8 pt-4"
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl {...refresh} />}
       >
-        <ScreenHeader helpTopic="storesTablet" subtitle="SCAN TO MOVE STOCK" title="Stores" />
-
         <StoresActorHeader onSwitch={() => setQuickSwitchOpen(true)} />
 
         <View className="gap-3">

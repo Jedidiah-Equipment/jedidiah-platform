@@ -1,6 +1,6 @@
 import { computeQuoteSummary, EDITABLE_LOCKED_QUOTE_FIELDS, getQuoteOfferingName, isQuoteLocked } from '@pkg/domain';
 import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInput, UUID } from '@pkg/schema';
-import { IconChevronLeft, IconLayoutSidebarRight } from '@tabler/icons-react-native';
+import { IconLayoutSidebarRight } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
@@ -18,6 +18,7 @@ import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { QuoteSummaryDrawer } from '@/components/quotes/QuoteSummaryDrawer';
 import { QuoteWorkItemsEditor } from '@/components/quotes/QuoteWorkItemsEditor';
 import { SalespersonSelectField } from '@/components/quotes/SalespersonSelectField';
+import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Icon } from '@/components/ui/icon';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
@@ -128,30 +129,16 @@ function QuoteEditor({
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <View className="border-b border-border bg-background px-4 py-3">
-        <View className="mx-auto w-full max-w-[1180px] flex-row items-center gap-3">
-          <Pressable
-            accessibilityLabel="Back to Quotes"
-            accessibilityRole="button"
-            className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:opacity-80"
-            onPress={() => void autosave.flush().finally(() => router.replace('/quotes'))}
-          >
-            <Icon className="text-foreground" icon={IconChevronLeft} size={19} />
-          </Pressable>
-          <View className="min-w-0 flex-1">
-            <Text className="text-base text-foreground" mono numberOfLines={1} weight="bold">
-              {quote.code}
-            </Text>
-            <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-              {getQuoteOfferingName(quote)}
-            </Text>
-          </View>
-          <QuoteStatusChip status={values.status} />
-        </View>
-      </View>
+      <SecondaryPageToolbar
+        badge={<QuoteStatusChip status={values.status} />}
+        onBack={() => void autosave.flush().finally(() => router.dismissTo('/quotes'))}
+        parentLabel="Quotes"
+        subtitle={getQuoteOfferingName(quote)}
+        title={quote.code}
+      />
 
       <View className="border-b border-border px-4 py-3">
-        <View className="mx-auto w-full max-w-[1180px] flex-row items-center gap-3">
+        <View className="w-full flex-row items-center gap-3">
           <View className="flex-row rounded-xl border border-border bg-muted p-1">
             <QuoteTabButton active={activeTab === 'details'} label="Details" onPress={() => setActiveTab('details')} />
             <QuoteTabButton
@@ -176,7 +163,7 @@ function QuoteEditor({
 
       <ScrollView contentContainerClassName="px-4 pb-12 pt-4" keyboardShouldPersistTaps="handled">
         <form.AppForm>
-          <View className="mx-auto w-full max-w-[760px] gap-4">
+          <View className="w-full gap-4">
             <AutosaveStatus canRetry={canUpdate} onRetry={() => void autosave.retry()} state={autosave.state} />
             {activeTab === 'details' ? (
               <>
@@ -544,10 +531,20 @@ function CancellationReasonBanner({ cancellationReason }: { cancellationReason: 
 }
 
 function StateMessage({ loading = false, message }: { loading?: boolean; message: string }) {
+  const router = useRouter();
+
   return (
-    <SafeAreaView className="flex-1 items-center justify-center gap-3 bg-background p-6">
-      {loading ? <ActivityIndicator size="small" /> : null}
-      <Text className="text-center text-sm text-muted-foreground">{message}</Text>
+    <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
+      <SecondaryPageToolbar
+        onBack={() => router.dismissTo('/quotes')}
+        parentLabel="Quotes"
+        subtitle="QUOTE DETAIL"
+        title="Quote"
+      />
+      <View className="flex-1 items-center justify-center gap-3 p-6">
+        {loading ? <ActivityIndicator size="small" /> : null}
+        <Text className="text-center text-sm text-muted-foreground">{message}</Text>
+      </View>
     </SafeAreaView>
   );
 }

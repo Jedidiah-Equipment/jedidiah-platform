@@ -14,6 +14,7 @@ import { NoActorNotice, StoresPartScreen } from '@/components/stores/StoresPartS
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useMovementActorUserId } from '@/lib/stores-actor';
+import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
@@ -43,7 +44,10 @@ function ReturnToSupplierForm({ row }: { row: StockOnHandRow }) {
   const [reason, setReason] = useState<StockReturnToSupplierReason | null>(null);
   const [note, setNote] = useState('');
 
-  const outcome = useStoresPostOutcome({ successMessage: 'Return to Supplier posted' });
+  const outcome = useStoresPostOutcome({
+    returnTo: resolveStoresMovementParent({ partCode: row.partCode }).returnTo,
+    successMessage: 'Return to Supplier posted',
+  });
   const mutation = useMutation(
     trpc.purchaseOrders.returnToSupplier.mutationOptions({ onError: outcome.onError, onSuccess: outcome.onSuccess }),
   );

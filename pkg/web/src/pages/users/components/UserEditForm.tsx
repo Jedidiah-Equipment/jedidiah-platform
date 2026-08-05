@@ -33,7 +33,7 @@ type UserEditFormProps = {
   isPending: boolean;
   isPasswordPending: boolean;
   onPasswordSubmit: (value: UserPasswordFormValues) => Promise<unknown>;
-  onRoleChange?: () => void;
+  onRoleChange?: (role: UserEditFormValues['role']) => void;
   onSubmit: (value: UserEditFormValues) => Promise<unknown>;
   roleError?: string | null;
 };
@@ -138,7 +138,7 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                     errors={[...field.state.meta.errors, ...(roleError ? [{ message: roleError }] : [])]}
                     name={field.name}
                     onRoleChange={(role) => {
-                      onRoleChange?.();
+                      onRoleChange?.(role);
                       field.handleChange(role);
                     }}
                     value={field.state.value}

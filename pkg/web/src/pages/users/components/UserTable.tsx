@@ -1,5 +1,6 @@
 import { departmentLabels, roleLabels } from '@pkg/domain';
 import { type AuthId, UserSortBy, type UserSummary } from '@pkg/schema';
+import { IconDeviceTablet } from '@tabler/icons-react';
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -67,6 +68,7 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
         cell: ({ row }) => (
           <UserNameCell
             isCurrentUser={currentUserId === row.original.id}
+            isDevice={row.original.isDevice}
             name={row.original.name}
             thumbnailDataUrl={row.original.thumbnailDataUrl}
           />
@@ -144,14 +146,26 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
 
 type UserNameCellProps = {
   isCurrentUser: boolean;
+  isDevice: boolean;
   name: string;
   thumbnailDataUrl?: string | null;
 };
 
-const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, name, thumbnailDataUrl }) => (
+/**
+ * A device gets an icon where a person gets a face. Nobody is behind the account, so a thumbnail —
+ * or the initials one falls back to — would read as a colleague nobody can place.
+ */
+const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, isDevice, name, thumbnailDataUrl }) => (
   <div className="flex items-center gap-2 font-medium">
-    <EntityThumbnail label={name} size="sm" thumbnailDataUrl={thumbnailDataUrl} />
+    {isDevice ? (
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+        <IconDeviceTablet size={18} />
+      </span>
+    ) : (
+      <EntityThumbnail label={name} size="sm" thumbnailDataUrl={thumbnailDataUrl} />
+    )}
     <span>{name}</span>
+    {isDevice ? <Badge variant="secondary">Device</Badge> : null}
     {isCurrentUser ? <Badge variant="outline">You</Badge> : null}
   </div>
 );

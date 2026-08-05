@@ -16,7 +16,9 @@ screen.
 
 The tablet forgets you after a few minutes of no activity, and the action buttons switch off until
 someone chooses a name again. Reads keep working with nobody selected — you can look up a Part
-without saying who you are.
+without saying who you are — but nothing moves. That is not just the buttons being polite: the
+system refuses a movement from the tablet with no name on it, so stock is never recorded as having
+been fetched by a machine.
 
 Your name goes on every movement you post, so fix a wrong name before you post rather than after:
 movements are never edited or deleted.

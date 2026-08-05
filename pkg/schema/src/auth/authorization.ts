@@ -88,6 +88,12 @@ export const UserSummary = z.object({
   departments: z.array(Department),
   emailVerified: z.boolean(),
   id: AuthId,
+  /**
+   * A shared device rather than a person — today the stores tablet. Distinct from role, which still
+   * says what the account may *do*: this says that nobody in particular is behind it, which is why
+   * a device must name a person before it may move stock and may never be named as one itself.
+   */
+  isDevice: z.boolean(),
   name: z.string().trim().min(1),
   email: z.email(),
   phoneNumber: NullablePhoneNumber,

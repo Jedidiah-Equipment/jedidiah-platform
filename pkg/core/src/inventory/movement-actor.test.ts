@@ -11,7 +11,12 @@ import {
 } from '../test/inventory-fixtures.js';
 import { closeOutJob } from './close-out-service.js';
 import { resolveMovementActor } from './movement-actor.js';
-import { AssertedActorDisabledError, AssertedActorNotFoundError } from './movement-actor-errors.js';
+import {
+  AssertedActorDisabledError,
+  AssertedActorNotFoundError,
+  DeviceActorAssertedError,
+  DeviceActorRequiredError,
+} from './movement-actor-errors.js';
 import { postReceipt } from './receipt-service.js';
 import { postReturnToSupplier } from './return-to-supplier-service.js';
 import { getStockMovementHistory, postAdjustment, postJobMovement } from './stock-movement-service.js';
@@ -46,6 +51,44 @@ describe('resolveMovementActor', () => {
     await expect(
       resolveMovementActor({ assertedActorUserId: personId, db: context.db, sessionUserId: actorUserId }),
     ).rejects.toBeInstanceOf(AssertedActorDisabledError);
+  });
+
+  /**
+   * "No person, no movements" as a rule about the record rather than about a button. The tablet
+   * disables its post buttons too, but a disabled button is UX and the ledger keeps its row forever.
+   */
+  test('refuses a shared device that named nobody', async ({ context }) => {
+    const deviceId = await seedQuickSwitchPerson(context.db, { id: 'stores-tablet', isDevice: true });
+
+    await expect(
+      resolveMovementActor({ assertedActorUserId: null, db: context.db, sessionUserId: deviceId }),
+    ).rejects.toBeInstanceOf(DeviceActorRequiredError);
+  });
+
+  test('lets a device post once it names somebody', async ({ context }) => {
+    const deviceId = await seedQuickSwitchPerson(context.db, { id: 'stores-tablet', isDevice: true });
+    const personId = await seedQuickSwitchPerson(context.db);
+
+    await expect(
+      resolveMovementActor({ assertedActorUserId: personId, db: context.db, sessionUserId: deviceId }),
+    ).resolves.toBe(personId);
+  });
+
+  /** A device is not somebody: attributing stock to one would say a machine fetched it. */
+  test('refuses a device named as the actor, even from a person’s session', async ({ context }) => {
+    const deviceId = await seedQuickSwitchPerson(context.db, { id: 'stores-tablet', isDevice: true });
+
+    await expect(
+      resolveMovementActor({ assertedActorUserId: deviceId, db: context.db, sessionUserId: actorUserId }),
+    ).rejects.toBeInstanceOf(DeviceActorAssertedError);
+  });
+
+  test('refuses a device naming itself, which is the same lie by a shorter route', async ({ context }) => {
+    const deviceId = await seedQuickSwitchPerson(context.db, { id: 'stores-tablet', isDevice: true });
+
+    await expect(
+      resolveMovementActor({ assertedActorUserId: deviceId, db: context.db, sessionUserId: deviceId }),
+    ).rejects.toBeInstanceOf(DeviceActorAssertedError);
   });
 });
 

@@ -10,7 +10,7 @@ import {
   type UserListResult,
   type UserSummary,
 } from '@pkg/schema';
-import { asc, eq } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditEvent } from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
@@ -35,7 +35,7 @@ export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
 
 type UserRow = Pick<
   typeof user.$inferSelect,
-  'assistantEnabled' | 'email' | 'emailVerified' | 'id' | 'image' | 'name' | 'phoneNumber'
+  'assistantEnabled' | 'email' | 'emailVerified' | 'id' | 'image' | 'isDevice' | 'name' | 'phoneNumber'
 > & {
   departments: readonly Department[];
   role?: unknown;
@@ -48,6 +48,7 @@ export function mapUser(row: UserRow): UserSummary {
     email: row.email,
     emailVerified: row.emailVerified,
     id: AuthId.parse(row.id),
+    isDevice: row.isDevice,
     name: row.name,
     phoneNumber: NullablePhoneNumber.parse(row.phoneNumber),
     role: AppRole.parse(row.role),
@@ -63,6 +64,7 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
       emailVerified: user.emailVerified,
       id: user.id,
       image: user.image,
+      isDevice: user.isDevice,
       name: user.name,
       phoneNumber: user.phoneNumber,
       role: user.role,
@@ -87,11 +89,14 @@ export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
       emailVerified: true,
       id: true,
       image: true,
+      isDevice: true,
       name: true,
       phoneNumber: true,
       role: true,
     },
-    orderBy: [asc(user.email)],
+    // Devices first, then people by email. A device is a different kind of account, and the list
+    // that administers them is the one place they belong at the top rather than filed among staff.
+    orderBy: [desc(user.isDevice), asc(user.email)],
     with: {
       departments: {
         columns: {
@@ -158,6 +163,36 @@ export async function setUserDepartments({
     }
 
     return after;
+  });
+}
+
+/**
+ * Marks an account as a shared device, or back to a person.
+ *
+ * Gated at the API on `user:set-role` rather than `user:update`, because this decides whether the
+ * account may sign for stock at all — the same class of decision as granting it the stores role,
+ * and a stronger one than editing a phone number.
+ */
+export async function setUserIsDevice({
+  actorUserId,
+  db,
+  isDevice,
+  userId,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  isDevice: boolean;
+  userId: AuthId;
+}): Promise<UserAccount> {
+  return mutateEntity({
+    actorUserId,
+    db,
+    descriptor: userAuditDescriptor,
+    id: userId,
+    notFound: () => new UserNotFoundError(userId),
+    project: (_tx, row) => UserAccount.parse(mapUser({ ...row, departments: [] })),
+    set: () => ({ isDevice, updatedAt: new Date() }),
+    table: user,
   });
 }
 

@@ -37,18 +37,23 @@ export const stockMovementErrorFamily = defineCoreErrorFamily<StockMovementCoreE
 });
 
 /**
- * The stores tablet naming someone it may not attribute to. Both read as a bad request rather than a
- * forbidden: the caller's own right to post is intact — it is the name on the movement that is wrong.
+ * The stores tablet failing to name a person the ledger may attribute a movement to — including
+ * naming nobody at all from a shared device. All read as a bad request rather than a forbidden: the
+ * caller's own right to post is intact, it is the name on the movement that is wrong or missing.
  */
 export const assertedActorErrorFamily = defineCoreErrorFamily<AssertedActorError>({
   codes: {
     'inventory.actor_disabled': 'BAD_REQUEST',
+    'inventory.actor_is_device': 'BAD_REQUEST',
     'inventory.actor_not_found': 'BAD_REQUEST',
+    'inventory.actor_required': 'BAD_REQUEST',
   },
   is: isAssertedActorError,
   messages: {
     'inventory.actor_disabled': 'That person’s account is disabled. Ask the office to re-enable it.',
+    'inventory.actor_is_device': 'A shared device cannot be the person who moved the stock.',
     'inventory.actor_not_found': 'That badge is not recognised. Pick a name from the list instead.',
+    'inventory.actor_required': 'Choose who is at the tablet before moving any stock.',
   },
 });
 

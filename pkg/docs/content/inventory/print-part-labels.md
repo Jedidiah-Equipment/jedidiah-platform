@@ -38,6 +38,8 @@ to switch to them. Only users with the **Stores** role have one.
 2. Click **Print stores badge**.
 3. Print it from the tab that opens.
 
+The tablet itself has no badge — it is a device, not a person, and cannot be the name on a movement.
+
 The card identifies; it does not sign anyone in. Anyone holding it can post stock under that name, so
 treat it like a name badge, not a key. Reprint whenever one is lost, and change the person's role
 away from Stores when they should no longer be posting — the tablet then refuses the old card.

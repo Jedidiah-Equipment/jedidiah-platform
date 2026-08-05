@@ -55,10 +55,11 @@ export const test = createTester(async ({ db }) => {
  */
 export async function seedQuickSwitchPerson(
   db: Db,
-  { banned = false, id = 'quick-switch-person', name = 'Quick Switch Person' } = {},
+  { banned = false, id = 'quick-switch-person', isDevice = false, name = 'Quick Switch Person' } = {},
 ): Promise<string> {
   await db.insert(user).values({
     banned,
+    isDevice,
     createdAt: new Date('2026-08-01T08:00:00.000Z'),
     email: `${id}@example.com`,
     emailVerified: true,

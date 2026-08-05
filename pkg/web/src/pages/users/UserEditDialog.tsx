@@ -48,6 +48,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const canSetPassword = hasPermission(access, 'user:set-password');
   const canSaveUser = canUpdateProfile || canSetEmail || canSetRole;
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
+  const setDeviceMutation = useMutation(trpc.users.setDevice.mutationOptions());
   const updateThumbnailMutation = useMutation(trpc.users.updateThumbnail.mutationOptions());
 
   useEffect(() => {
@@ -84,6 +85,11 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
           thumbnailDataUrl: value.thumbnailDataUrl,
           userId: baselineUser.id,
         });
+        didUpdate = true;
+      }
+
+      if (canSetRole && value.isDevice !== baselineUser.isDevice) {
+        await setDeviceMutation.mutateAsync({ isDevice: value.isDevice, userId: baselineUser.id });
         didUpdate = true;
       }
 
@@ -172,7 +178,11 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             onSubmit={(value) => saveUserMutation.mutateAsync(value)}
             roleError={roleError}
           />
-          {canSetRole && baselineUser.role === 'stores' ? <UserBadgePrintButton userId={baselineUser.id} /> : null}
+          {/* A device is never the person a movement is attributed to, so it has no badge to print
+              — the server refuses one, and offering the button would only produce a dead card. */}
+          {canSetRole && baselineUser.role === 'stores' && !baselineUser.isDevice ? (
+            <UserBadgePrintButton userId={baselineUser.id} />
+          ) : null}
           {canUpdateProfile && !baselineUser.emailVerified ? (
             <Button
               className="mt-4 w-full"

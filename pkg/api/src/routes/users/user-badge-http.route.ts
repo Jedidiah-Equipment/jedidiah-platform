@@ -55,8 +55,17 @@ async function mapUserBadgeErrors<T>(action: () => Promise<T>): Promise<T> {
   try {
     return await action();
   } catch (error) {
-    if (isUserCoreError(error) && error.code === 'user.not_found') {
-      throw new RouteHttpError({ appCode: error.code, message: 'User not found.', statusCode: 404 });
+    if (isUserCoreError(error)) {
+      if (error.code === 'user.not_found') {
+        throw new RouteHttpError({ appCode: error.code, message: 'User not found.', statusCode: 404 });
+      }
+      if (error.code === 'user.is_device') {
+        throw new RouteHttpError({
+          appCode: error.code,
+          message: 'A shared device has no badge card.',
+          statusCode: 400,
+        });
+      }
     }
     throw error;
   }

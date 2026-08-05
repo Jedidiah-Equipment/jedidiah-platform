@@ -57,11 +57,11 @@ describe('listQuickSwitchActors', () => {
   });
 
   /**
-   * The tablet's own account holds the `stores` role, so it appears like any other name. It is
-   * pinned to the head of the grid: choosing to post as the device is legitimate — the server
-   * attributes an unnamed post that way regardless — and first is where a deliberate choice goes.
+   * The tablet's own account holds the `stores` role, so without this it would appear in its own
+   * grid — and `resolveMovementActor` refuses a device as the actor, so the tile could only ever
+   * fail on the post.
    */
-  test('sorts the signed-in device account to the head of its own list', async ({ context }) => {
+  test('leaves shared devices out entirely, whoever is asking', async ({ context }) => {
     const now = new Date('2026-08-01T08:00:00.000Z');
     await context.db.insert(user).values([
       {
@@ -69,6 +69,7 @@ describe('listQuickSwitchActors', () => {
         email: 'tablet@example.com',
         emailVerified: true,
         id: 'stores-tablet',
+        isDevice: true,
         name: 'Stores Tablet',
         role: 'stores',
         updatedAt: now,
@@ -84,16 +85,8 @@ describe('listQuickSwitchActors', () => {
       },
     ]);
 
-    await expect(listQuickSwitchActors({ db: context.db, deviceUserId: 'stores-tablet' })).resolves.toEqual({
-      items: [
-        { id: 'stores-tablet', name: 'Stores Tablet', thumbnailDataUrl: null },
-        { id: 'stores-person', name: 'Stores Person', thumbnailDataUrl: null },
-      ],
-    });
-
-    // With no device named, the grid is plain alphabetical — "Person" sorts before "Tablet".
-    await expect(listQuickSwitchActors({ db: context.db })).resolves.toMatchObject({
-      items: [{ id: 'stores-person' }, { id: 'stores-tablet' }],
+    await expect(listQuickSwitchActors({ db: context.db })).resolves.toEqual({
+      items: [{ id: 'stores-person', name: 'Stores Person', thumbnailDataUrl: null }],
     });
   });
 });

@@ -9,9 +9,12 @@ import { SubmitFooter } from './UserFormFooter.js';
 import { RoleField } from './UserRoleField.js';
 
 export type UserCreateFormValues = z.infer<typeof UserCreateFormValues>;
+// A new account is a person. Marking one a shared device is a deliberate later act on the user
+// screen, gated harder than creation is (`user:set-role`).
 export const UserCreateFormValues = UserSummary.omit({
   assistantEnabled: true,
   id: true,
+  isDevice: true,
   thumbnailDataUrl: true,
 }).extend({
   password: UserPassword,

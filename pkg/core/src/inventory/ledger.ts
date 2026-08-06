@@ -55,6 +55,11 @@ export async function loadStockPart({
   return part;
 }
 
+/** The ledger stores three decimals, so a computed quantity is rounded to what the column can hold. */
+export function toLedgerQuantity(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
 /** A length bucket's identity. Discrete and measured Parts hold exactly one `null` bucket. */
 export function bucketKey(partId: string, lengthMm: number | null): string {
   return `${partId}:${lengthMm ?? ''}`;

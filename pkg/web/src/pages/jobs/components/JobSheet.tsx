@@ -38,10 +38,11 @@ import { JOB_DOCUMENT_ACCEPT, uploadJobPurchaseOrder, validateSelectedFile } fro
 import { CustomJobWorkItems } from './CustomJobWorkItems.js';
 import { InfoList, InfoRow } from './JobInfoList.js';
 import { JobStockTab } from './JobStockTab.js';
+import { JobVarianceTab } from './JobVarianceTab.js';
 import { JobEditFormValues, toJobEditFormValues, toJobUpdateInput } from './job-edit-form.js';
 import { scheduleBadgeToneClass, scheduleBarToneClass, scheduleDotToneClass } from './schedule-state-tone.js';
 
-type JobSheetTab = 'details' | 'documents' | 'schedule' | 'stock';
+type JobSheetTab = 'details' | 'documents' | 'schedule' | 'stock' | 'variance';
 
 type JobSheetProps = {
   jobId: UUID;
@@ -78,6 +79,7 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
                 <TabsTrigger value="documents">Documents</TabsTrigger>
                 <TabsTrigger value="schedule">Schedule</TabsTrigger>
                 {canReadInventory ? <TabsTrigger value="stock">Stock</TabsTrigger> : null}
+                {canReadInventory ? <TabsTrigger value="variance">Variance</TabsTrigger> : null}
               </TabsList>
             </div>
             <ScrollArea className="min-h-0 flex-1">
@@ -95,12 +97,17 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
                 <JobScheduleTab job={jobQuery.data} />
               </TabsContent>
               {canReadInventory ? (
-                <TabsContent className="p-4" value="stock">
-                  <JobStockTab
-                    isCancelled={isJobCancelled(jobQuery.data)}
-                    job={{ code: jobQuery.data.code, id: jobQuery.data.id }}
-                  />
-                </TabsContent>
+                <>
+                  <TabsContent className="p-4" value="stock">
+                    <JobStockTab
+                      isCancelled={isJobCancelled(jobQuery.data)}
+                      job={{ code: jobQuery.data.code, id: jobQuery.data.id }}
+                    />
+                  </TabsContent>
+                  <TabsContent className="p-4" value="variance">
+                    <JobVarianceTab jobId={jobQuery.data.id} />
+                  </TabsContent>
+                </>
               ) : null}
             </ScrollArea>
           </Tabs>

@@ -13,8 +13,10 @@ back.
    closed out yet.
 4. Return anything still on the floor. Each Part row with stock drawn against it has a **Return**
    button — see [Return to Store](./return-to-store.md).
-5. Click **Close out**.
-6. In the **Close out Job stock** dialog, add a **Note** if there is anything worth recording, then
+5. Click **Material variance** to see what the Job planned against what it took before you end its
+   stock life — see [Read a Job's material variance](./read-a-jobs-material-variance.md).
+6. Click **Close out**.
+7. In the **Close out Job stock** dialog, add a **Note** if there is anything worth recording, then
    click **Close out**.
 
 The Job leaves the queue. It also leaves on its own if it ends up with nothing outstanding to close.

@@ -3,12 +3,8 @@ import {
   type Db,
   jobCfoAssemblies,
   jobCfoParts,
-  jobs,
   parts,
-  products,
-  productUnits,
   purchaseOrders,
-  quotes,
   stockMovements,
   supplier,
   user,
@@ -47,14 +43,13 @@ import {
   unitClassFor,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
-import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
-import { JobNotFoundError } from '../jobs/job-errors.js';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 import { loadOpenOrderLines } from '../purchase-orders/purchase-order-service.js';
 import { JobClosedOutError } from './close-out-errors.js';
 import { getJobCloseOutAt } from './close-out-service.js';
 
 import { loadOpenCommitments, sumCommitmentsByPart } from './commitment-read.js';
+import { loadCfoQuantitiesByPart, loadJobStockJob } from './job-stock-facts.js';
 import {
   assertBuiltPartCostIsDerived,
   bucketMatches,
@@ -199,18 +194,9 @@ export async function postJobMovement({
 
 export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Promise<JobStockResult> {
   const job = await loadJobStockJob({ db, jobId });
-  const closedOutAt = await getJobCloseOutAt({ db, jobId });
-  const commitmentReleased = closedOutAt !== null || job.cancelledAt !== null;
-  const [cfoRows, movementRows] = await Promise.all([
-    db
-      .select({
-        cfoQuantity: sql<number>`sum(${jobCfoParts.quantity})::double precision`,
-        partId: jobCfoParts.partId,
-      })
-      .from(jobCfoAssemblies)
-      .innerJoin(jobCfoParts, eq(jobCfoParts.cfoAssemblyId, jobCfoAssemblies.id))
-      .where(eq(jobCfoAssemblies.jobId, jobId))
-      .groupBy(jobCfoParts.partId),
+  const commitmentReleased = job.closedOutAt !== null || job.cancelledAt !== null;
+  const [cfoByPart, movementRows] = await Promise.all([
+    loadCfoQuantitiesByPart({ db, jobId }),
     db
       .select({
         drawnQuantity: sql<number>`(-sum(${stockMovements.delta}))::double precision`,
@@ -222,19 +208,10 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
       .groupBy(stockMovements.partId, stockMovements.lengthMm),
   ]);
 
-  const cfoByPart = new Map(cfoRows.map((row) => [row.partId, row.cfoQuantity]));
   const movementsByPart = groupBy(movementRows, (row) => row.partId);
   const partIds = [...new Set([...cfoByPart.keys(), ...movementsByPart.keys()])];
-  const jobFacts = {
-    cancelledAt: job.cancelledAt,
-    closedOutAt,
-    code: job.code,
-    completedOn: job.completedOn,
-    displayName: jobDisplayNameOf(job),
-    id: job.id,
-  };
   if (partIds.length === 0) {
-    return JobStockResultSchema.parse({ items: [], job: jobFacts });
+    return JobStockResultSchema.parse({ items: [], job });
   }
 
   // Free and on-order ride this read because the Job's stock tab is one of the two places buying is
@@ -284,7 +261,7 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
         unitOfMeasure: part.unitOfMeasure,
       };
     }),
-    job: jobFacts,
+    job,
   });
 }
 
@@ -327,25 +304,6 @@ async function loadPlantStockPosition({
     ),
     onOrderByPart,
   };
-}
-
-async function loadJobStockJob({ db, jobId }: { db: Db; jobId: UUID }) {
-  const [job] = await db
-    .select({
-      ...jobDisplaySelection,
-      cancelledAt: jobs.cancelledAt,
-      completedOn: jobs.completedOn,
-      id: jobs.id,
-    })
-    .from(jobs)
-    .leftJoin(productUnits, eq(productUnits.id, jobs.productUnitId))
-    .leftJoin(products, eq(products.id, productUnits.productId))
-    .leftJoin(quotes, eq(quotes.id, jobs.quoteId))
-    .where(eq(jobs.id, jobId))
-    .limit(1);
-  if (!job) throw new JobNotFoundError(jobId);
-
-  return job;
 }
 
 export async function listStockOnHand({ db }: { db: Db }): Promise<StockOnHandResult> {

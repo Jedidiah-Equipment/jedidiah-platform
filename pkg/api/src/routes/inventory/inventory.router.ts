@@ -1,6 +1,7 @@
 import {
   closeOutJob,
   closeStocktakeSession,
+  getJobMaterialVariance,
   getPartStockByCode,
   getStockMovementHistory,
   getStocktakeSession,
@@ -31,6 +32,9 @@ import {
   InventoryJobOptionListInput,
   InventoryJobOptionListResult,
   JobCloseOut,
+  JobMaterialVarianceResult,
+  JobMaterialVarianceResultCostFields,
+  JobMaterialVarianceRowCostFields,
   JobStockInput,
   JobStockResult,
   OpenStocktakeSessionInput,
@@ -154,6 +158,33 @@ export const inventoryRouter = router({
     .input(JobStockInput)
     .output(JobStockResult)
     .query(({ ctx, input }) => mapJobStockErrors(() => listJobStock({ db: ctx.db, jobId: input.jobId }))),
+
+  /**
+   * Planned against drawn for one Job, priced at what the draws were stamped with (spec §3). Read
+   * under `inventory:read` like every other Job stock surface — a storeman may see how far a Job ran
+   * past its plan — while the money it ran past it by stays behind the cost gate, row and total both.
+   */
+  jobVariance: authorizedProcedure('inventory:read')
+    .input(JobStockInput)
+    .output(JobMaterialVarianceResult)
+    .query(async ({ ctx, input }) => {
+      const report = await mapJobStockErrors(() => getJobMaterialVariance({ db: ctx.db, jobId: input.jobId }));
+
+      return projectInventoryCostFields({
+        access: ctx.access,
+        costFields: JobMaterialVarianceResultCostFields,
+        output: {
+          ...report,
+          items: report.items.map((item) =>
+            projectInventoryCostFields({
+              access: ctx.access,
+              costFields: JobMaterialVarianceRowCostFields,
+              output: item,
+            }),
+          ),
+        },
+      });
+    }),
 
   closeOutQueue: authorizedProcedure('inventory:close-out')
     .output(CloseOutQueueResult)

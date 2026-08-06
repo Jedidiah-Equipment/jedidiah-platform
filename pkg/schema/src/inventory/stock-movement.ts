@@ -290,6 +290,53 @@ export const JobStockJob = z.object({
 export type JobStockResult = z.infer<typeof JobStockResult>;
 export const JobStockResult = z.object({ items: z.array(JobStockRow), job: JobStockJob });
 
+/**
+ * One Part's material variance on a Job (spec §3): what the CFO planned, what the Job actually drew
+ * net of its returns, and what those draws cost at the price they were stamped with.
+ *
+ * Length buckets are summed away deliberately — a Job that drew two lengths of the same channel is
+ * over or under on the channel, not on a bucket, and the drawn figure the variance is measured
+ * against is the Part's. Planned *cost* is deliberately absent: the CFO froze quantities only, so
+ * the money column here is actuals. Estimated-versus-actual is the Job's own estimate snapshot.
+ */
+export type JobMaterialVarianceRow = z.infer<typeof JobMaterialVarianceRow>;
+export const JobMaterialVarianceRow = z.object({
+  /** Σ(quantity × stamped unit cost) over the Job's draws, net of returns; never re-priced today. */
+  actualCost: InventoryValue,
+  drawnQuantity: z.number().finite(),
+  partCode: z.string(),
+  partId: UUID,
+  partName: z.string(),
+  /** The CFO's demand, summed across its assemblies. Zero on a Part the Job drew off-CFO. */
+  plannedQuantity: z.number().finite(),
+  unitOfMeasure: PartUnitOfMeasure,
+  /** Drawn minus planned: positive is an over-draw, negative is demand the Job never took. */
+  varianceQuantity: z.number().finite(),
+});
+
+export const JobMaterialVarianceRowCostFields = declareInventoryCostFields(JobMaterialVarianceRow, 'actualCost');
+
+/**
+ * The Job's material variance report. Off-CFO cost is called out beside the total that contains it:
+ * parts drawn against a Job its CFO never planned — every draw on a Custom Job — are the unplanned
+ * cost eating the margin, and a lone total would bury exactly that.
+ */
+export type JobMaterialVarianceResult = z.infer<typeof JobMaterialVarianceResult>;
+export const JobMaterialVarianceResult = z.object({
+  items: z.array(JobMaterialVarianceRow),
+  job: JobStockJob,
+  /** The share of the total drawn against no CFO line at all. */
+  offCfoActualCost: InventoryValue,
+  /** Σ of every row's actual cost; null as soon as one drawn Part has no cost yet. */
+  totalActualCost: InventoryValue,
+});
+
+export const JobMaterialVarianceResultCostFields = declareInventoryCostFields(
+  JobMaterialVarianceResult,
+  'offCfoActualCost',
+  'totalActualCost',
+);
+
 export type InventoryJobOptionListInput = z.infer<typeof InventoryJobOptionListInput>;
 export const InventoryJobOptionListInput = CursorQueryInput.extend({
   movementType: JobStockMovementType,

@@ -1,7 +1,8 @@
 import { formatDate, hasPermission } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
-import { IconArrowUp, IconFlagCheck } from '@tabler/icons-react';
+import { IconArrowUp, IconChartBar, IconFlagCheck } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -63,6 +64,12 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
     <PageLayout
       actions={
         <div className="flex flex-wrap gap-2">
+          {/* Close-out is when planned-against-drawn gets read, so the report is one hop from here —
+              and on an inventory route, which the price-blind storeman working this page can reach. */}
+          <Button render={<Link params={{ jobId }} to="/inventory/job-variance/$jobId" />} variant="outline">
+            <IconChartBar data-icon="inline-start" />
+            Material variance
+          </Button>
           {/* Returns stay open after the close: recovered stock must never be stranded off-ledger,
               and the released commitment does not come back with it. */}
           {canMove ? (

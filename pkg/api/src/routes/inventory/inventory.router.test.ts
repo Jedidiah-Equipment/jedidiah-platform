@@ -295,6 +295,33 @@ describe('inventory cost projection', () => {
     ).resolves.toMatchObject({ movementType: 'revaluation', unitCost: null });
   });
 
+  test('serves the Job variance quantities to stores while holding its money column back', async ({ context }) => {
+    const admin = context.createCaller();
+    await admin.inventory.postAdjustment({
+      delta: 10,
+      partId: context.part.id,
+      reason: 'opening-balance',
+      unitCost: 25,
+    });
+    await admin.inventory.postCheckout({ jobId: context.job.id, partId: context.part.id, quantity: 4 });
+    await admin.inventory.postReturnToStore({ jobId: context.job.id, partId: context.part.id, quantity: 1 });
+
+    const procurement = await context
+      .createCaller(mockSession('procurement-manager'))
+      .inventory.jobVariance({ jobId: context.job.id });
+    const stores = await context.createCaller(mockSession('stores')).inventory.jobVariance({ jobId: context.job.id });
+
+    // The fixture Job has no CFO, so every draw on it is off-CFO — unplanned cost, reported apart.
+    expect(procurement.items[0]).toMatchObject({ actualCost: 75, drawnQuantity: 3, plannedQuantity: 0 });
+    expect(procurement).toMatchObject({ offCfoActualCost: 75, totalActualCost: 75 });
+    expect(stores.items[0]).toMatchObject({ actualCost: null, drawnQuantity: 3, varianceQuantity: 3 });
+    expect(stores).toMatchObject({ offCfoActualCost: null, totalActualCost: null });
+
+    await expect(
+      context.createCaller(mockSession('sales')).inventory.jobVariance({ jobId: context.job.id }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
   test('cost-gates checkout and return stamps without changing their warnings', async ({ context }) => {
     await context.createCaller().inventory.postAdjustment({
       delta: 2,

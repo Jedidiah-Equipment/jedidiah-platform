@@ -40,7 +40,14 @@ import {
 import { aliasedTable, and, asc, desc, eq, inArray, isNotNull, isNull, ne, type SQL, sql } from 'drizzle-orm';
 
 import { createOrgWorkingCalendar, listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
-import { bucketKey, bucketKeyLengthMm, insertMovement, loadBucketQuantities, loadStockPart } from './ledger.js';
+import {
+  bucketKey,
+  bucketKeyLengthMm,
+  insertMovement,
+  loadBucketQuantities,
+  loadStockPart,
+  toLedgerQuantity,
+} from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
 import { groupBy, sumBy } from './row-grouping.js';
 import {
@@ -54,11 +61,6 @@ import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './uni
 
 const closedByUser = aliasedTable(user, 'stocktake_closed_by_user');
 const openedByUser = aliasedTable(user, 'stocktake_opened_by_user');
-
-/** The ledger stores three decimals, so a computed delta is rounded to what the column can hold. */
-function toLedgerQuantity(value: number): number {
-  return Math.round(value * 1000) / 1000;
-}
 
 export async function openStocktakeSession({
   actorUserId,

@@ -61,6 +61,7 @@ import { Route as AuthedQuotesIdEditRouteImport } from './../routes/_authed.quot
 import { Route as AuthedProductsIdEditRouteImport } from './../routes/_authed.products.$id.edit'
 import { Route as AuthedProductRangesIdEditRouteImport } from './../routes/_authed.product-ranges.$id.edit'
 import { Route as AuthedInventoryStocktakeSessionIdRouteImport } from './../routes/_authed.inventory.stocktake.$sessionId'
+import { Route as AuthedInventoryJobVarianceJobIdRouteImport } from './../routes/_authed.inventory.job-variance.$jobId'
 import { Route as AuthedInventoryCloseOutJobIdRouteImport } from './../routes/_authed.inventory.close-out.$jobId'
 import { Route as AuthedCustomersIdEditRouteImport } from './../routes/_authed.customers.$id.edit'
 
@@ -332,6 +333,12 @@ const AuthedInventoryStocktakeSessionIdRoute =
     path: '/$sessionId',
     getParentRoute: () => AuthedInventoryStocktakeRoute,
   } as any)
+const AuthedInventoryJobVarianceJobIdRoute =
+  AuthedInventoryJobVarianceJobIdRouteImport.update({
+    id: '/job-variance/$jobId',
+    path: '/job-variance/$jobId',
+    getParentRoute: () => AuthedInventoryRoute,
+  } as any)
 const AuthedInventoryCloseOutJobIdRoute =
   AuthedInventoryCloseOutJobIdRouteImport.update({
     id: '/$jobId',
@@ -390,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/units/': typeof AuthedUnitsIndexRoute
   '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
   '/inventory/close-out/$jobId': typeof AuthedInventoryCloseOutJobIdRoute
+  '/inventory/job-variance/$jobId': typeof AuthedInventoryJobVarianceJobIdRoute
   '/inventory/stocktake/$sessionId': typeof AuthedInventoryStocktakeSessionIdRoute
   '/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
@@ -434,6 +442,7 @@ export interface FileRoutesByTo {
   '/units': typeof AuthedUnitsIndexRoute
   '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
   '/inventory/close-out/$jobId': typeof AuthedInventoryCloseOutJobIdRoute
+  '/inventory/job-variance/$jobId': typeof AuthedInventoryJobVarianceJobIdRoute
   '/inventory/stocktake/$sessionId': typeof AuthedInventoryStocktakeSessionIdRoute
   '/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
@@ -491,6 +500,7 @@ export interface FileRoutesById {
   '/_authed/units/': typeof AuthedUnitsIndexRoute
   '/_authed/customers/$id/edit': typeof AuthedCustomersIdEditRoute
   '/_authed/inventory/close-out/$jobId': typeof AuthedInventoryCloseOutJobIdRoute
+  '/_authed/inventory/job-variance/$jobId': typeof AuthedInventoryJobVarianceJobIdRoute
   '/_authed/inventory/stocktake/$sessionId': typeof AuthedInventoryStocktakeSessionIdRoute
   '/_authed/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
   '/_authed/products/$id/edit': typeof AuthedProductsIdEditRoute
@@ -548,6 +558,7 @@ export interface FileRouteTypes {
     | '/units/'
     | '/customers/$id/edit'
     | '/inventory/close-out/$jobId'
+    | '/inventory/job-variance/$jobId'
     | '/inventory/stocktake/$sessionId'
     | '/product-ranges/$id/edit'
     | '/products/$id/edit'
@@ -592,6 +603,7 @@ export interface FileRouteTypes {
     | '/units'
     | '/customers/$id/edit'
     | '/inventory/close-out/$jobId'
+    | '/inventory/job-variance/$jobId'
     | '/inventory/stocktake/$sessionId'
     | '/product-ranges/$id/edit'
     | '/products/$id/edit'
@@ -648,6 +660,7 @@ export interface FileRouteTypes {
     | '/_authed/units/'
     | '/_authed/customers/$id/edit'
     | '/_authed/inventory/close-out/$jobId'
+    | '/_authed/inventory/job-variance/$jobId'
     | '/_authed/inventory/stocktake/$sessionId'
     | '/_authed/product-ranges/$id/edit'
     | '/_authed/products/$id/edit'
@@ -1035,6 +1048,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedInventoryStocktakeSessionIdRouteImport
       parentRoute: typeof AuthedInventoryStocktakeRoute
     }
+    '/_authed/inventory/job-variance/$jobId': {
+      id: '/_authed/inventory/job-variance/$jobId'
+      path: '/job-variance/$jobId'
+      fullPath: '/inventory/job-variance/$jobId'
+      preLoaderRoute: typeof AuthedInventoryJobVarianceJobIdRouteImport
+      parentRoute: typeof AuthedInventoryRoute
+    }
     '/_authed/inventory/close-out/$jobId': {
       id: '/_authed/inventory/close-out/$jobId'
       path: '/$jobId'
@@ -1106,6 +1126,7 @@ interface AuthedInventoryRouteChildren {
   AuthedInventoryPriceVarianceRoute: typeof AuthedInventoryPriceVarianceRoute
   AuthedInventoryStocktakeRoute: typeof AuthedInventoryStocktakeRouteWithChildren
   AuthedInventoryIndexRoute: typeof AuthedInventoryIndexRoute
+  AuthedInventoryJobVarianceJobIdRoute: typeof AuthedInventoryJobVarianceJobIdRoute
 }
 
 const AuthedInventoryRouteChildren: AuthedInventoryRouteChildren = {
@@ -1115,6 +1136,7 @@ const AuthedInventoryRouteChildren: AuthedInventoryRouteChildren = {
   AuthedInventoryPriceVarianceRoute: AuthedInventoryPriceVarianceRoute,
   AuthedInventoryStocktakeRoute: AuthedInventoryStocktakeRouteWithChildren,
   AuthedInventoryIndexRoute: AuthedInventoryIndexRoute,
+  AuthedInventoryJobVarianceJobIdRoute: AuthedInventoryJobVarianceJobIdRoute,
 }
 
 const AuthedInventoryRouteWithChildren = AuthedInventoryRoute._addFileChildren(

@@ -91,7 +91,7 @@ export function EntityCombobox<TOption extends { id: string }>({
       />
       <ComboboxContent>
         <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
-        <ComboboxList onScroll={loadMore ? (event) => loadNextPageAtListEnd(event.currentTarget, loadMore) : undefined}>
+        <ComboboxList>
           {(option: TOption) => (
             <ComboboxItem key={option.id} value={option}>
               {renderItem(option)}
@@ -104,25 +104,12 @@ export function EntityCombobox<TOption extends { id: string }>({
   );
 }
 
-const LIST_END_THRESHOLD_PX = 24;
-
-/**
- * Paging on reaching the end of the list is what keeps the keyboard whole: arrowing onto the last
- * option scrolls it into view, which lands here. The footer button is the pointer's way to the same
- * page, not the only way to it.
- */
-export function loadNextPageAtListEnd(
-  list: Pick<HTMLElement, 'clientHeight' | 'scrollHeight' | 'scrollTop'>,
-  { hasNextPage, isFetchingNextPage, onLoadMore }: EntityComboboxLoadMoreProps,
-): void {
-  if (!hasNextPage || isFetchingNextPage) return;
-  if (list.scrollTop + list.clientHeight >= list.scrollHeight - LIST_END_THRESHOLD_PX) onLoadMore();
-}
-
 /**
  * The paged picker's footer. It sits under the list rather than inside it so paging never reads as
- * a selectable option, and its press is swallowed before focus leaves the input, which would shut
- * the popup on the way to the next page.
+ * a selectable option, and a pointer press is swallowed before focus leaves the input, which would
+ * otherwise take the caret out of the search field on the way to the next page. Paging is deliberately
+ * this button alone: the list's scroll position cannot tell a reader reaching the end from Base UI
+ * scrolling the selected option into view on open, so paging on scroll fetches pages nobody asked for.
  */
 export function EntityComboboxLoadMore({
   hasNextPage,

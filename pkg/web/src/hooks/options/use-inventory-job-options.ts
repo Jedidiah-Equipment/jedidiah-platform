@@ -4,9 +4,23 @@ import { useCallback, useMemo } from 'react';
 
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { mergeSelectedOption } from './helpers.js';
 
 const JOB_OPTION_PAGE_SIZE = 20;
+
+/**
+ * The chosen Job, kept visible when the current page does not contain it. It is pinned ahead of the
+ * page rather than after it — `mergeSelectedOption`'s placement — because the combobox tracks its
+ * highlight by position: appended behind the page, loading the next page would slide it down the
+ * list and leave the highlight on a different Job than the reader had arrowed onto.
+ */
+export function withSelectedJobPinnedFirst(
+  items: readonly InventoryJobOption[],
+  selected: InventoryJobOption | null,
+): InventoryJobOption[] {
+  if (!selected || items.some((item) => item.id === selected.id)) return [...items];
+
+  return [selected, ...items];
+}
 
 /**
  * The Job a stock movement is posted against. Paged rather than capped at one page: the
@@ -31,7 +45,7 @@ export function useInventoryJobOptions({
     ),
   );
   const { items, total } = useCombinedCursorQueryPages(query.data?.pages);
-  const options = useMemo(() => mergeSelectedOption(items, selected), [items, selected]);
+  const options = useMemo(() => withSelectedJobPinnedFirst(items, selected), [items, selected]);
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
   const onLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) void fetchNextPage();

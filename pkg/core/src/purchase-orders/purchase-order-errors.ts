@@ -162,12 +162,12 @@ export class PurchaseOrderSubstitutionHasReceiptsError extends Error {
   }
 }
 
-/** Close-short releases an open remainder, so there has to be a part-delivery to close short of. */
+/** Close-short releases an open remainder, so there has to be a delivery behind it to close short of. */
 export class PurchaseOrderNoReceiptsError extends Error {
   readonly code = 'purchase_order.no_receipts' as const;
 
   constructor(readonly id: UUID) {
-    super('A Purchase Order can only be closed short once something has been received against it.');
+    super('A Purchase Order can only be closed short once something has arrived against it. Cancel it instead.');
   }
 }
 

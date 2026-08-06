@@ -306,6 +306,35 @@ export async function loadPurchaseOrderProgress({
   });
 }
 
+/**
+ * What the ledger says about one order, read once for the two gates that terminate it. Both judge
+ * history by `hasAnyMovement` and only the remainder by `progress`, so an order can never refuse
+ * cancelling *and* closing short for want of history — which is what stranded one whose receipts
+ * had all gone back as replacement-owed returns: netted to nothing, it read `sent` and looked
+ * untouched to close-short, while its rows were real enough to block cancelling.
+ */
+export type PurchaseOrderLedgerFacts = {
+  /** Any row at all against the order, receipts and returns alike — the order's history exists. */
+  hasAnyMovement: boolean;
+  /** The netted projection: what the lines have kept, and so what remainder is still owed. */
+  progress: PurchaseOrderProgress;
+};
+
+export async function loadPurchaseOrderLedgerFacts({
+  db,
+  id,
+}: {
+  db: PurchaseOrderDb;
+  id: UUID;
+}): Promise<PurchaseOrderLedgerFacts> {
+  const [movement, progress] = await Promise.all([
+    db.select({ id: stockMovements.id }).from(stockMovements).where(eq(stockMovements.purchaseOrderId, id)).limit(1),
+    loadPurchaseOrderProgress({ db, id }),
+  ]);
+
+  return { hasAnyMovement: movement.length > 0, progress };
+}
+
 /** One open line of a sent order: what is still owed on it, and the order it is owed by. */
 export type OpenOrderLine = {
   expectedDeliveryDate: string | null;
@@ -677,12 +706,9 @@ export async function cancelPurchaseOrder({
     actorUserId,
     assert: async (tx, before) => {
       if (before.status === 'cancelled') throw new PurchaseOrderAlreadyCancelledError(id);
-      const [receipt] = await tx
-        .select({ id: stockMovements.id })
-        .from(stockMovements)
-        .where(eq(stockMovements.purchaseOrderId, id))
-        .limit(1);
-      if (receipt) throw new PurchaseOrderHasReceiptsError(id);
+      // Cancel reads `hasAnyMovement`: an order with history is closed short, never disowned.
+      const { hasAnyMovement } = await loadPurchaseOrderLedgerFacts({ db: tx, id });
+      if (hasAnyMovement) throw new PurchaseOrderHasReceiptsError(id);
     },
     db,
     descriptor: purchaseOrderAuditDescriptor,
@@ -710,13 +736,13 @@ export async function closePurchaseOrderShort({
 }): Promise<PurchaseOrder> {
   return mutateEntity({
     actorUserId,
-    // Asserted from the derived partially-received state: there has to be an open remainder to
-    // release, and something already delivered to close short of.
+    // `hasAnyMovement` is the history to close short of — the same fact cancel reads — and
+    // `progress` is the open remainder to release.
     assert: async (tx, before) => {
       if (before.status !== 'sent') throw new PurchaseOrderNotSentError(id);
       if (before.closedShortAt !== null) throw new PurchaseOrderAlreadyClosedShortError(id);
-      const progress = await loadPurchaseOrderProgress({ db: tx, id });
-      if (progress === 'sent') throw new PurchaseOrderNoReceiptsError(id);
+      const { hasAnyMovement, progress } = await loadPurchaseOrderLedgerFacts({ db: tx, id });
+      if (!hasAnyMovement) throw new PurchaseOrderNoReceiptsError(id);
       if (progress === 'received') throw new PurchaseOrderFullyReceivedError(id);
     },
     db,

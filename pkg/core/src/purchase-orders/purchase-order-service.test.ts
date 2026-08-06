@@ -4,6 +4,7 @@ import { eq, sql } from 'drizzle-orm';
 import { describe, expect, vi } from 'vitest';
 
 import { postReceipt } from '../inventory/receipt-service.js';
+import { postReturnToSupplier } from '../inventory/return-to-supplier-service.js';
 import { getJobDocuments } from '../jobs/job-read-service.js';
 import { updatePart } from '../parts/part-service.js';
 import { removeSupplier } from '../suppliers/supplier-service.js';
@@ -441,6 +442,38 @@ describe('Purchase Order receiving progress', () => {
     await expect(
       closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: draft.id }),
     ).rejects.toMatchObject({ code: 'purchase_order.not_sent' });
+  });
+
+  test('closes an order short after everything it took in went back as replacement-owed', async ({ context }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 125.5 }]);
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 2);
+    await postReturnToSupplier({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: null,
+        partId: PIECE_PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 2,
+        reason: 'defective',
+      },
+    });
+
+    // Netting is right about what is owed — all ten again — so the order reads as freshly sent.
+    await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
+      derivedStatus: 'sent',
+      lines: [{ receivedQuantity: 0 }],
+    });
+    // Cancel stays shut: the ledger rows are real history and cancelling would disown them.
+    await expect(
+      cancelPurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
+    ).rejects.toMatchObject({ code: 'purchase_order.has_receipts' });
+
+    // So Close Short has to be the way out, or the order is stuck counting toward On Order forever.
+    await expect(
+      closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
+    ).resolves.toMatchObject({ closedShortAt: expect.any(String), derivedStatus: 'closed-short', status: 'sent' });
   });
 
   test('refuses to close a fully received order short — there is no remainder to release', async ({ context }) => {

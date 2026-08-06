@@ -1,4 +1,12 @@
-import { type DatabaseTransaction, type Db, parts, stockMovements, stocktakeSessions, user } from '@pkg/db';
+import {
+  type DatabaseTransaction,
+  type Db,
+  isUniqueViolation,
+  parts,
+  stockMovements,
+  stocktakeSessions,
+  user,
+} from '@pkg/db';
 import type { MovingAverageMovement } from '@pkg/domain';
 import { deriveMovingAverageTimeline, deriveStocktakeOverdue, toPlantDateOnly, valueStockMovement } from '@pkg/domain';
 import type {
@@ -65,6 +73,8 @@ export async function openStocktakeSession({
 
     // The partial unique index is the real guard against two openers racing; this read is what turns
     // the race the index loses into the sentence that tells someone to resume the walk in progress.
+    // The loser of a genuine race never reaches the read's verdict, so its constraint violation is
+    // translated into the same refusal — a storeman tapping twice must not get an internal error.
     const [open] = await tx
       .select({ id: stocktakeSessions.id })
       .from(stocktakeSessions)
@@ -75,7 +85,11 @@ export async function openStocktakeSession({
     const [row] = await tx
       .insert(stocktakeSessions)
       .values({ openedByUserId: openerUserId, scope: input.scope })
-      .returning({ id: stocktakeSessions.id });
+      .returning({ id: stocktakeSessions.id })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error)) throw new StocktakeSessionAlreadyOpenError(input.scope);
+        throw error;
+      });
     if (!row) throw new Error('Stocktake session insert did not return a row');
 
     return loadSession({ db: tx, sessionId: row.id });

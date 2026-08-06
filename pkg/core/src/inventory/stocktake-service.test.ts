@@ -96,6 +96,16 @@ describe('stocktake sessions', () => {
     expect(rawMaterial.scope).toBe('raw-material');
   });
 
+  test('refuses the loser of a concurrent open with the same guidance, not a database error', async ({ context }) => {
+    const [first, second] = await Promise.allSettled([openStoresSession(context.db), openStoresSession(context.db)]);
+    const outcomes = [first, second];
+
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+    const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
+    // Whether the loser lost at the read or at the partial unique index, it reads the same sentence.
+    expect(rejected?.reason).toBeInstanceOf(StocktakeSessionAlreadyOpenError);
+  });
+
   test('closes once and refuses everything afterwards', async ({ context }) => {
     const session = await openStoresSession(context.db);
     const closed = await closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: session.id } });

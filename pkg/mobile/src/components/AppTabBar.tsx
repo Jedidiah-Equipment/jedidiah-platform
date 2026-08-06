@@ -53,10 +53,18 @@ export function AppTabBar() {
   const keyboardShown = useKeyboardShown();
   const [width, setWidth] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { visible, overflow } = fitAppTabs(tabs, width);
+  const hasOverflow = overflow.length > 0;
+
+  // A width change can empty the overflow while its menu is open — rotating and entering split
+  // screen both re-fit the bar — and the menu would then hold nothing, with the button that closes
+  // it already unmounted. The render below guards the same frame; this clears the state behind it.
+  useEffect(() => {
+    if (!hasOverflow) setMenuOpen(false);
+  }, [hasOverflow]);
 
   if (!showTabBar(tabs) || keyboardShown) return null;
 
-  const { visible, overflow } = fitAppTabs(tabs, width);
   const tintFor = (tab: AppTab) => (tab === active ? loadingSpinnerColor : colors.mutedForeground);
   const openTab = (tab: AppTab) => {
     setMenuOpen(false);
@@ -88,7 +96,7 @@ export function AppTabBar() {
         />
       ))}
 
-      {overflow.length > 0 ? (
+      {hasOverflow ? (
         <TabBarSlot
           // The menu owns the active tab whenever the current one is hidden inside it.
           color={overflow.some((tab) => tab === active) ? loadingSpinnerColor : colors.mutedForeground}
@@ -99,7 +107,7 @@ export function AppTabBar() {
         />
       ) : null}
 
-      {menuOpen ? (
+      {menuOpen && hasOverflow ? (
         <AnchoredMenu
           dismissLabel="Dismiss more tabs"
           onClose={() => setMenuOpen(false)}

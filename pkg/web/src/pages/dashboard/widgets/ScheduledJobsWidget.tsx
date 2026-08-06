@@ -69,7 +69,9 @@ function ScheduledJobRow({
   job: JobSummary | null;
   scheduledJob: ScheduledJob;
 }) {
-  const subtitle = scheduledJobSubtitle(scheduledJob.operatorName, job ? getJobDisplayName(job) : null);
+  // An unmanned Bay has nobody to name, and the row still has to say where the work is sitting.
+  const where = scheduledJob.operatorName ?? scheduledJob.bayName;
+  const subtitle = scheduledJobSubtitle(where, job ? getJobDisplayName(job) : null);
 
   return (
     <div className="grid min-w-0 grid-cols-[1fr_auto] items-start gap-x-3 gap-y-1 text-sm">
@@ -85,14 +87,15 @@ function ScheduledJobRow({
 }
 
 /**
- * Who has it and what it is, on one line. The Bay name is left out on purpose — it already carries
- * the operator ("Fabrication Bay 3 - Bonginkosi"), so naming both said the same thing twice.
+ * Where the work is and what it is, on one line. `where` is the operator when the Bay has one: the
+ * Bay name already carries it ("Fabrication Bay 3 - Bonginkosi"), so naming both said the same thing
+ * twice. An unmanned Bay falls back to the Bay name rather than leaving the row with no location.
  */
-export function scheduledJobSubtitle(operatorName: string | null, jobDisplayName: string | null): string | null {
-  if (!jobDisplayName) return operatorName;
-  if (!operatorName) return jobDisplayName;
+export function scheduledJobSubtitle(where: string | null, jobDisplayName: string | null): string | null {
+  if (!jobDisplayName) return where;
+  if (!where) return jobDisplayName;
 
-  return `${operatorName} - ${jobDisplayName}`;
+  return `${where} - ${jobDisplayName}`;
 }
 
 function ScheduledJobsWidgetSkeleton() {

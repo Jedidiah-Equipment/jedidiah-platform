@@ -5,7 +5,7 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../test/create-tester.js';
 import { listBuyList } from './buy-list-service.js';
 import { StockMovementDeltaError } from './stock-movement-errors.js';
-import { listStockOnHand, postAdjustment } from './stock-movement-service.js';
+import { getStockMovementHistory, listStockOnHand, postAdjustment } from './stock-movement-service.js';
 import {
   StocktakePartOutOfScopeError,
   StocktakeSessionAlreadyOpenError,
@@ -152,6 +152,21 @@ describe('postStockCount', () => {
 
     const onHand = await listStockOnHand({ db: context.db });
     expect(onHand.items.find((row) => row.partId === context.boltId)?.quantity).toBe(32);
+  });
+
+  test("names the walk that posted it in the Part's own history", async ({ context }) => {
+    const session = await openStoresSession(context.db);
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 32 }], partId: context.boltId, sessionId: session.id },
+    });
+
+    const history = await getStockMovementHistory({ db: context.db, partId: context.boltId });
+    const count = history.items.find((row) => row.reason === 'stock-count');
+
+    // Without this the row reads as an adjustment nobody can trace back to the count that made it.
+    expect(count).toMatchObject({ stocktakeSessionId: session.id, stocktakeSessionScope: 'stores' });
   });
 
   test('measures against the ledger at count time, so a mid-session receipt is not counted away', async ({

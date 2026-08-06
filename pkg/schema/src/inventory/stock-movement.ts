@@ -10,6 +10,7 @@ import { UUID } from '../common/uuid.js';
 import { PartCode, PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
 import { SupplierCompanyName } from '../suppliers/supplier.js';
 import { declareInventoryCostFields, InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
+import { StocktakeScope } from './stocktake-scope.js';
 
 export type StockMovementType = z.infer<typeof StockMovementType>;
 export const StockMovementType = z.enum([
@@ -405,12 +406,20 @@ export const QuickSwitchActorListResult = z.object({ items: z.array(QuickSwitchA
 export type StockMovementHistoryInput = z.infer<typeof StockMovementHistoryInput>;
 export const StockMovementHistoryInput = z.object({ partId: UUID });
 
+/**
+ * One ledger row as the Part's history shows it, carrying the reference that explains *why* it was
+ * posted: the order it arrived on, the Job it was drawn to, or the stocktake walk that counted it.
+ * Each is the movement's own foreign key resolved to something a reader can follow.
+ */
 export type StockMovementHistoryRow = z.infer<typeof StockMovementHistoryRow>;
 export const StockMovementHistoryRow = StockMovement.extend({
   actorName: z.string(),
+  jobCode: JobCode.nullable(),
   movementValue: InventoryValue,
   purchaseOrderCode: PurchaseOrderCode.nullable(),
   runningBalance: z.number().finite(),
+  stocktakeSessionId: UUID.nullable(),
+  stocktakeSessionScope: StocktakeScope.nullable(),
 });
 
 export const StockMovementHistoryRowCostFields = declareInventoryCostFields(

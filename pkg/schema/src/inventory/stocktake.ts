@@ -3,28 +3,12 @@ import { AuthId } from '../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
 import { CursorQueryInput, createCursorQueryResult } from '../common/pagination.js';
 import { UUID } from '../common/uuid.js';
-import { type PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
+import { PartUnitOfMeasure } from '../parts/part.js';
 import { declareInventoryCostFields, InventoryValue } from './inventory-cost.js';
 import { AssertedActorUserId, StockMovement, StockMovementDelta, StockMovementLengthMm } from './stock-movement.js';
+import { StocktakeScope } from './stocktake-scope.js';
 
-/**
- * The two standing counting rhythms (spec §9). A scope names *which shelf is being walked*, not a
- * stored membership list: a Part belongs to the scope its Stock Tracking Mode implies at the moment
- * it is counted, so re-classifying a Part moves it between rhythms without touching a session.
- */
-export type StocktakeScope = z.infer<typeof StocktakeScope>;
-export const StocktakeScope = z.enum(['raw-material', 'stores']);
-
-export const STOCKTAKE_SCOPE_LABELS = {
-  'raw-material': 'Raw material',
-  stores: 'Stores',
-} as const satisfies Record<StocktakeScope, string>;
-
-/** The one mapping from a rhythm to the Parts it walks; membership is derived through it, never stored. */
-export const STOCKTAKE_SCOPE_TRACKING_MODE = {
-  'raw-material': 'periodic',
-  stores: 'perpetual',
-} as const satisfies Record<StocktakeScope, PartStockTrackingMode>;
+export * from './stocktake-scope.js';
 
 /**
  * Where a walk sits in its life. Derived from `closedAt` rather than stored — a session has no

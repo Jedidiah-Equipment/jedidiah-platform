@@ -1,8 +1,10 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import type { UUID } from '@pkg/schema';
 import {
   type PartUnitOfMeasure,
   STOCK_ADJUSTMENT_REASON_LABELS,
   STOCK_RETURN_TO_SUPPLIER_REASON_LABELS,
+  STOCKTAKE_SCOPE_LABELS,
   type StockMovementHistoryRow,
   type StockMovementReason,
   type StockReturnToSupplierReason,
@@ -19,6 +21,63 @@ import { useMemo } from 'react';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
+
+type MovementReference = { id: UUID; kind: 'job' | 'purchase-order' | 'stocktake'; label: string };
+
+/**
+ * What a movement points back at. A ledger row is never posted in a vacuum — stock arrives on an
+ * order, is drawn to a Job, or is corrected by a stocktake walk — and each of those is a page the
+ * reader can open to see why the number moved. A movement with no reference of its own (a
+ * hand-posted adjustment, a revaluation) genuinely has none; its note carries the reason instead.
+ */
+function movementReference(item: StockMovementHistoryRow): MovementReference | null {
+  if (item.purchaseOrderId && item.purchaseOrderCode) {
+    return { id: item.purchaseOrderId, kind: 'purchase-order', label: item.purchaseOrderCode };
+  }
+
+  if (item.jobId && item.jobCode) {
+    return { id: item.jobId, kind: 'job', label: item.jobCode };
+  }
+
+  if (item.stocktakeSessionId && item.stocktakeSessionScope) {
+    return {
+      id: item.stocktakeSessionId,
+      kind: 'stocktake',
+      label: `${STOCKTAKE_SCOPE_LABELS[item.stocktakeSessionScope]} count`,
+    };
+  }
+
+  return null;
+}
+
+const REFERENCE_LINK_CLASS = 'font-medium underline-offset-4 hover:underline';
+
+function MovementReferenceCell({ item }: { item: StockMovementHistoryRow }) {
+  const reference = movementReference(item);
+  if (!reference) return '—';
+
+  if (reference.kind === 'purchase-order') {
+    return (
+      <Link className={REFERENCE_LINK_CLASS} params={{ id: reference.id }} to="/purchase-orders/$id">
+        {reference.label}
+      </Link>
+    );
+  }
+
+  if (reference.kind === 'job') {
+    return (
+      <Link className={REFERENCE_LINK_CLASS} params={{ id: reference.id }} to="/jobs/$id">
+        {reference.label}
+      </Link>
+    );
+  }
+
+  return (
+    <Link className={REFERENCE_LINK_CLASS} params={{ sessionId: reference.id }} to="/inventory/stocktake/$sessionId">
+      {reference.label}
+    </Link>
+  );
+}
 
 export function StockMovementHistoryTable({
   items,
@@ -98,19 +157,8 @@ function createStockMovementHistoryColumns({
       header: 'Actor',
     },
     {
-      accessorFn: (item) => item.purchaseOrderCode ?? '—',
-      cell: ({ row }) =>
-        row.original.purchaseOrderId && row.original.purchaseOrderCode ? (
-          <Link
-            className="font-medium underline-offset-4 hover:underline"
-            params={{ id: row.original.purchaseOrderId }}
-            to="/purchase-orders/$id"
-          >
-            {row.original.purchaseOrderCode}
-          </Link>
-        ) : (
-          '—'
-        ),
+      accessorFn: (item) => movementReference(item)?.label ?? '—',
+      cell: ({ row }) => <MovementReferenceCell item={row.original} />,
       header: 'Reference',
       id: 'reference',
     },

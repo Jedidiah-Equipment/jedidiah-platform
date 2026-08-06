@@ -8,9 +8,8 @@ with the same sentence every time:
 
 On a Checkout, a Return to Store, or a build, the submit button changes to say so — **Check out
 stock** becomes **Check out anyway**, **Return stock** becomes **Return anyway**, **Post build**
-becomes **Build anyway**. Receiving a delivery and returning stock to a Supplier ask in a browser
-confirmation box instead, ending *"Receive it anyway?"* and *"Post it anyway?"*, and their buttons
-are unchanged either way.
+becomes **Build anyway**. Receiving a delivery asks in a browser confirmation box instead, ending
+*"Receive it anyway?"*, and the button stays **Receive** either way.
 
 Nothing is disabled. Nothing needs an override code or someone else's password.
 
@@ -26,7 +25,7 @@ recording what actually happened would only push the truth off the ledger and in
 | This draw will take stock on hand negative. | The ledger thinks there is less on the rack than you are drawing. |
 | This return exceeds the quantity currently drawn. | You are returning more than this Job took out. |
 | This receipt takes the line past the quantity ordered. | The delivery is bigger than the Purchase Order line. |
-| This return sends back more than the line ever received. | You are sending a Supplier more than that Purchase Order line took in — including anything at all, on a line no Receipt was ever posted against. |
+| This return sends back more than the line ever received. | You are sending a Supplier more of this Part than that Purchase Order line took in. |
 | This differs from what the BOM calls for. | A build consumed something other than BOM quantity × units built. |
 
 ## When posting anyway is the right call

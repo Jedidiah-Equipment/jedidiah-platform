@@ -17,9 +17,6 @@ const getPricingRowKey = createStableRowKeys<QuoteDocumentPricingRow>('quote-doc
 const getWorkItemKey = createStableRowKeys<QuoteDocumentWorkItem>('quote-document-work-item');
 const getWorkItemChargeKey = createStableRowKeys<QuoteWorkItemCharge>('quote-document-work-item-charge');
 
-/** Money is printed to cents, so a difference below one is one the reader cannot see. */
-const CENT = 0.01;
-
 const layout = {
   priceColumnWidth: 96,
   quantityColumnWidth: 42,
@@ -285,26 +282,39 @@ function WorkItemRow({
 }
 
 /**
- * Whether the Labour and Parts rows beneath a Work Item add up to the whole of it, in which case the
- * heading prints no money of its own. An Other Work Item's flat amount is not labour and so never
- * becomes a charge: with a Part beneath it the rows fall short, and the heading has to carry the rest.
+ * What a Work Item heading prints in the Subtotal column: whatever the Labour and Parts rows beneath
+ * it leave unaccounted for, so every figure in the column sums. That is nothing on a Work Item its
+ * charges cover in full, and an Other Work Item's flat amount — never labour, so never a charge — on
+ * a line that also carries Parts. A Work Item with no rows beneath it prints its own total, down to
+ * the R 0.00 of a no-charge inclusion, because otherwise it would reach the customer with no price.
+ *
+ * The arithmetic runs in whole cents: the column is printed to cents, and subtracting in rands lets
+ * a genuine one-cent remainder come out as 0.00999… and round away.
  */
-function chargesCarryWholeAmount(workItem: QuoteDocumentWorkItem): boolean {
-  if (workItem.charges.length === 0) return false;
-  const chargeTotal = workItem.charges.reduce((total, charge) => total + charge.amount, 0);
+function workItemHeadingAmount(workItem: QuoteDocumentWorkItem): number | null {
+  if (workItem.charges.length === 0) return workItem.amount;
+  const unaccountedCents = workItem.charges.reduce(
+    (cents, charge) => cents - toCents(charge.amount),
+    toCents(workItem.amount),
+  );
 
-  return Math.abs(chargeTotal - workItem.amount) < CENT;
+  return unaccountedCents === 0 ? null : unaccountedCents / 100;
+}
+
+function toCents(value: number): number {
+  return Math.round(value * 100);
 }
 
 function WorkItemGroup({ currencyCode, workItem }: { currencyCode: string; workItem: QuoteDocumentWorkItem }) {
   const [firstCharge, ...remainingCharges] = workItem.charges;
+  const headingAmount = workItemHeadingAmount(workItem);
 
   return (
     <View>
       {/* The heading rides with its first charge so a page break never strands it alone. */}
       <View wrap={false}>
         <WorkItemRow
-          amount={chargesCarryWholeAmount(workItem) ? null : formatCurrency(workItem.amount, currencyCode)}
+          amount={headingAmount === null ? null : formatCurrency(headingAmount, currencyCode)}
           description={workItem.description}
           name={workItem.name}
         />

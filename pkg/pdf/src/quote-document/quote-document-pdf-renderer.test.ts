@@ -88,9 +88,9 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText.filter((value) => value === 'R 2 500.00')).toHaveLength(1);
   });
 
-  test('keeps the amount when the charges beneath a Work Item do not account for all of it', () => {
+  test('prints what the charges beneath a Work Item leave unaccounted for on its heading', () => {
     // An Other Work Item carries a flat amount rather than labour, so its own money never becomes a
-    // charge. Dropping the heading amount here would print a Part alone and lose the R 2 500.00.
+    // charge. The heading prints that flat amount, leaving every figure on the page summable.
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
       workItems: [
@@ -104,8 +104,26 @@ describe('renderQuoteDocumentPdf', () => {
     };
     const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
 
-    expect(renderedText.filter((value) => value === 'R 2 750.00')).toHaveLength(1);
+    expect(renderedText).not.toContain('R 2 750.00');
+    expect(renderedText.filter((value) => value === 'R 2 500.00')).toHaveLength(1);
     expect(renderedText.filter((value) => value === 'R 250.00')).toHaveLength(1);
+  });
+
+  test('prints a remainder of a single cent rather than rounding it away', () => {
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      workItems: [
+        {
+          amount: 250.01,
+          charges: [{ amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
+          description: null,
+          name: 'Sundries',
+        },
+      ],
+    };
+    const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
+
+    expect(renderedText.filter((value) => value === 'R 0.01')).toHaveLength(1);
   });
 
   test('prints a Work Item description on its own line beneath the name', () => {

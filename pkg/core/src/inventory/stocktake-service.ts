@@ -28,8 +28,9 @@ import {
 import { aliasedTable, and, asc, desc, eq, inArray, isNotNull, isNull, ne, notInArray, sql } from 'drizzle-orm';
 
 import { createOrgWorkingCalendar, listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
-import { bucketKey, insertMovement, loadBucketQuantities, loadStockPart } from './ledger.js';
+import { bucketKey, bucketKeyLengthMm, insertMovement, loadBucketQuantities, loadStockPart } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
+import { groupBy, sumBy } from './row-grouping.js';
 import {
   StocktakePartOutOfScopeError,
   StocktakeSessionAlreadyOpenError,
@@ -164,7 +165,7 @@ export async function postStockCount({
     const observedByBucket = new Map(input.buckets.map((bucket) => [bucketKey(input.partId, bucket.lengthMm), bucket]));
     const unmentioned = [...onHand]
       .filter(([key, quantity]) => quantity !== 0 && !observedByBucket.has(key))
-      .map(([key]) => ({ lengthMm: lengthOfBucketKey(key), observed: 0 }));
+      .map(([key]) => ({ lengthMm: bucketKeyLengthMm(key), observed: 0 }));
 
     const buckets: StockCountBucketVariance[] = [...input.buckets, ...unmentioned].map((bucket) => {
       const expected = onHand.get(bucketKey(input.partId, bucket.lengthMm)) ?? 0;
@@ -461,28 +462,4 @@ function sessionQuery(db: DatabaseTransaction | Db) {
     .from(stocktakeSessions)
     .innerJoin(openedByUser, eq(openedByUser.id, stocktakeSessions.openedByUserId))
     .leftJoin(closedByUser, eq(closedByUser.id, stocktakeSessions.closedByUserId));
-}
-
-/** The length a `bucketKey` encodes; the empty tail is the single `null` bucket a non-linear Part has. */
-function lengthOfBucketKey(key: string): number | null {
-  const suffix = key.slice(key.indexOf(':') + 1);
-
-  return suffix === '' ? null : Number(suffix);
-}
-
-/** Groups in first-seen order; the non-empty tuple lets a caller read the head without a null check. */
-function groupBy<TRow, TKey>(rows: readonly TRow[], keyOf: (row: TRow) => TKey): Map<TKey, [TRow, ...TRow[]]> {
-  const groups = new Map<TKey, [TRow, ...TRow[]]>();
-
-  for (const row of rows) {
-    const group = groups.get(keyOf(row));
-    if (group) group.push(row);
-    else groups.set(keyOf(row), [row]);
-  }
-
-  return groups;
-}
-
-function sumBy<TRow>(rows: readonly TRow[], toValue: (row: TRow) => number): number {
-  return rows.reduce((total, row) => total + toValue(row), 0);
 }

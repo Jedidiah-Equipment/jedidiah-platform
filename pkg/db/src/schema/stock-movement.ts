@@ -67,6 +67,10 @@ export const stockMovements = pgTable(
     reason: text('reason').$type<StockMovementReason>(),
     // The session a count was walked in, when it was walked in one. Ad-hoc counts outside a session
     // were always legal and stay so, which is why this is nullable rather than a second table.
+    //
+    // It is also the one thing that excuses an adjustment from the mandatory note (see the shape
+    // check below): the note exists so an adjustment explains itself, and naming the walk it was
+    // made on says strictly more than a line of free text would. An ad-hoc count still needs one.
     stocktakeSessionId: uuid('stocktake_session_id').references(() => stocktakeSessions.id, { onDelete: 'restrict' }),
     unitCost: numeric('unit_cost', { mode: 'number', precision: 18, scale: 6 }),
   },

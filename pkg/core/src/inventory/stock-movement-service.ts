@@ -65,6 +65,7 @@ import {
   sumDelta,
 } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
+import { groupBy, sumBy } from './row-grouping.js';
 import {
   FabricatedPartCostError,
   PeriodicStockMovementError,
@@ -616,23 +617,6 @@ async function loadStockPartDetails({ db, partId }: { db: Db; partId: UUID }) {
   }
 
   return part;
-}
-
-/** Groups in first-seen order; the non-empty tuple lets a caller read the head without a null check. */
-function groupBy<TRow, TKey>(rows: readonly TRow[], keyOf: (row: TRow) => TKey): Map<TKey, [TRow, ...TRow[]]> {
-  const groups = new Map<TKey, [TRow, ...TRow[]]>();
-
-  for (const row of rows) {
-    const group = groups.get(keyOf(row));
-    if (group) group.push(row);
-    else groups.set(keyOf(row), [row]);
-  }
-
-  return groups;
-}
-
-function sumBy<TRow>(rows: readonly TRow[], toValue: (row: TRow) => number): number {
-  return rows.reduce((total, row) => total + toValue(row), 0);
 }
 
 /**

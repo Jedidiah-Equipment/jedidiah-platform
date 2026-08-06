@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate, hasPermission } from '@pkg/domain';
-import { STOCKTAKE_SCOPE_LABELS, type UUID } from '@pkg/schema';
+import { STOCKTAKE_SCOPE_LABELS, type StocktakeSession, type UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -44,12 +44,7 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
   return (
     <PageLayout
       actions={<Badge variant={isClosed ? 'secondary' : 'default'}>{isClosed ? 'Closed' : 'Open'}</Badge>}
-      description={describeSession({
-        closedAt: session.closedAt,
-        closedByName: session.closedByName,
-        openedAt: session.openedAt,
-        openedByName: session.openedByName,
-      })}
+      description={describeSession(session)}
       size="lg"
       title={`${STOCKTAKE_SCOPE_LABELS[session.scope]} stocktake`}
     >
@@ -76,17 +71,7 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
   );
 }
 
-function describeSession({
-  closedAt,
-  closedByName,
-  openedAt,
-  openedByName,
-}: {
-  closedAt: string | null;
-  closedByName: string | null;
-  openedAt: string;
-  openedByName: string;
-}): string {
+function describeSession({ closedAt, closedByName, openedAt, openedByName }: StocktakeSession): string {
   const opened = `Opened ${formatDate(openedAt)} by ${openedByName}`;
 
   if (closedAt === null) return `${opened}. Still open — counts may still be posted against it.`;

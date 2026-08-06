@@ -1,9 +1,4 @@
-import {
-  STOCKTAKE_SCOPE_LABELS,
-  type StocktakeOverdueRow,
-  type StocktakeScope,
-  type StocktakeSession,
-} from '@pkg/schema';
+import { STOCKTAKE_SCOPE_LABELS, type StocktakeOverdueRow, StocktakeScope, type StocktakeSession } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
@@ -56,7 +51,7 @@ export default function StoresStocktakeRoute() {
         <Text className="py-10 text-center text-sm text-danger">Couldn’t load the sessions. Pull down to retry.</Text>
       ) : (
         <View className="gap-3">
-          {SCOPES.map((scope) => (
+          {StocktakeScope.options.map((scope) => (
             <ScopeTile
               disabled={actorUserId === null || openSession.isPending}
               key={scope}
@@ -84,8 +79,6 @@ export default function StoresStocktakeRoute() {
     </StoresScreen>
   );
 }
-
-const SCOPES: readonly StocktakeScope[] = ['raw-material', 'stores'];
 
 function ScopeTile({
   disabled,

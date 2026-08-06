@@ -5,7 +5,6 @@ import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
-import { ThemedModal } from '@/components/ui/themed-modal';
 import { useAppToast } from '@/components/ui/toast';
 import { invalidateQueryCache } from '@/lib/query-client';
 import { useMovementActorUserId, useStoresActor } from '@/lib/stores-actor';
@@ -13,6 +12,7 @@ import { useTRPC } from '@/lib/trpc';
 
 import { PostButton } from './PostButton';
 import { QuantityField } from './QuantityField';
+import { StoresConfirmModal } from './StoresConfirmModal';
 import { NoActorNotice } from './StoresPartScreen';
 
 type CountEntry = { key: string; lengthMm: number | null; observed: string };
@@ -63,13 +63,25 @@ export function StockCountPanel({
     }),
   );
 
-  const counted = entries.flatMap((entry) => {
+  const keyed = entries.flatMap((entry) => {
     const observed = parseCount(entry.observed);
 
     return observed === null ? [] : [{ lengthMm: entry.lengthMm, observed }];
   });
+  /**
+   * A count covers the whole Part, so a bucket left blank is a bucket walked past and found empty —
+   * the server would write it off whether or not the tablet said so. Spelling those out here is what
+   * keeps the review honest: the biggest correction of the shift is usually a length nobody keyed,
+   * and a review built only from the filled fields would post it unseen.
+   */
+  const impliedEmpty = row.buckets.flatMap((bucket) =>
+    bucket.quantity !== 0 && !keyed.some((entry) => entry.lengthMm === bucket.lengthMm)
+      ? [{ lengthMm: bucket.lengthMm, observed: 0 }]
+      : [],
+  );
+  const counted = [...keyed, ...impliedEmpty];
   const isKeyingValid = entries.every((entry) => entry.observed.trim() === '' || parseCount(entry.observed) !== null);
-  const canReview = counted.length > 0 && isKeyingValid;
+  const canReview = keyed.length > 0 && isKeyingValid;
 
   return (
     <View className="gap-5">
@@ -142,57 +154,40 @@ export function StockCountPanel({
         }}
       />
 
-      <ThemedModal backdropLabel="Keep counting" onClose={() => setIsReviewing(false)} open={isReviewing}>
-        <View className="w-full max-w-[520px] gap-4 rounded-2xl border border-border bg-surface p-5">
-          <Text className="text-xl text-surface-foreground" weight="bold">
-            {row.partCode}
-          </Text>
-          <View className="gap-2">
-            {counted.map((bucket) => {
-              const expected = expectedFor(row, bucket.lengthMm);
+      <StoresConfirmModal
+        cancelLabel="Recount"
+        confirmLabel="Post count"
+        isPending={postCount.isPending}
+        onCancel={() => setIsReviewing(false)}
+        onConfirm={() => {
+          if (actorUserId === null) return;
+          postCount.mutate({ actorUserId, buckets: counted, partId: row.partId, sessionId });
+        }}
+        open={isReviewing}
+        title={row.partCode}
+      >
+        <View className="gap-2">
+          {counted.map((bucket) => {
+            const expected = expectedFor(row, bucket.lengthMm);
 
-              return (
-                <View className="flex-row items-baseline justify-between gap-3" key={bucket.lengthMm ?? 'single'}>
-                  <Text className="text-base text-muted-foreground">
-                    {bucket.lengthMm === null ? 'On the shelf' : `${bucket.lengthMm} mm`}
-                  </Text>
-                  <Text className="text-base text-surface-foreground" weight="semibold">
-                    {`expected ${expected} · counted ${bucket.observed}`}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-          <Text className="text-sm text-muted-foreground">
-            Posting records the difference. Recount first if this does not look right.
-          </Text>
-          <View className="flex-row gap-3">
-            <Pressable
-              accessibilityRole="button"
-              className="flex-1 items-center rounded-xl border border-border px-4 py-3"
-              onPress={() => setIsReviewing(false)}
-            >
-              <Text className="text-base text-surface-foreground" weight="semibold">
-                Recount
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ busy: postCount.isPending }}
-              className={`flex-1 items-center rounded-xl bg-primary px-4 py-3 ${postCount.isPending ? 'opacity-40' : ''}`}
-              disabled={postCount.isPending}
-              onPress={() => {
-                if (actorUserId === null) return;
-                postCount.mutate({ actorUserId, buckets: counted, partId: row.partId, sessionId });
-              }}
-            >
-              <Text className="text-base text-primary-foreground" weight="bold">
-                Post count
-              </Text>
-            </Pressable>
-          </View>
+            return (
+              <View className="flex-row items-baseline justify-between gap-3" key={bucket.lengthMm ?? 'single'}>
+                <Text className="text-base text-muted-foreground">
+                  {bucket.lengthMm === null ? 'On the shelf' : `${bucket.lengthMm} mm`}
+                </Text>
+                <Text className="text-base text-surface-foreground" weight="semibold">
+                  {`expected ${expected} · counted ${bucket.observed}`}
+                </Text>
+              </View>
+            );
+          })}
         </View>
-      </ThemedModal>
+        <Text className="text-sm text-muted-foreground">
+          {impliedEmpty.length === 0
+            ? 'Posting records the difference. Recount first if this does not look right.'
+            : 'Lengths you did not key are recorded as empty. Posting records the difference — recount first if this does not look right.'}
+        </Text>
+      </StoresConfirmModal>
     </View>
   );
 }

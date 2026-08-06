@@ -60,6 +60,13 @@ export function bucketKey(partId: string, lengthMm: number | null): string {
   return `${partId}:${lengthMm ?? ''}`;
 }
 
+/** The length a `bucketKey` encodes — the decode kept beside the encode so the two cannot drift. */
+export function bucketKeyLengthMm(key: string): number | null {
+  const suffix = key.slice(key.indexOf(':') + 1);
+
+  return suffix === '' ? null : Number(suffix);
+}
+
 /** Scales a Part's average to one piece: linear stock is costed by the millimetre it is cut from. */
 export function scaleUnitCost(averageUnitCost: number | null, lengthMm: number | null): number | null {
   if (averageUnitCost === null) return null;

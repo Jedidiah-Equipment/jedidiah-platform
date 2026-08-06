@@ -128,6 +128,7 @@ describe('dashboardWidgets', () => {
       'below-minimum-stock',
       'short-for-jobs',
       'late-purchase-orders',
+      'stocktake-overdue',
     ]) {
       expect(widgetIds(dashboardWidgets)).not.toContain(widgetId);
     }

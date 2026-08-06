@@ -1,7 +1,7 @@
 import { DateOnlyIso } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { countWorkingDaysBetween, lastWorkingDayOnOrBefore } from './working-calendar.js';
+import { addWorkingDays, countWorkingDaysBetween, lastWorkingDayOnOrBefore } from './working-calendar.js';
 
 const day = (value: string) => DateOnlyIso.parse(value);
 
@@ -21,6 +21,27 @@ describe('countWorkingDaysBetween', () => {
         orgOffDays: new Set(['2026-06-06', '2026-06-07']),
       }),
     ).toBe(3);
+  });
+});
+
+describe('addWorkingDays', () => {
+  it('returns the date itself when nothing is added, working day or not', () => {
+    expect(addWorkingDays(day('2026-06-06'), 0, { orgOffDays: new Set(['2026-06-06']) })).toBe('2026-06-06');
+  });
+
+  it('walks forward over org off-days without spending them', () => {
+    expect(addWorkingDays(day('2026-06-05'), 2, { orgOffDays: new Set(['2026-06-06', '2026-06-07']) })).toBe(
+      '2026-06-09',
+    );
+  });
+
+  it('spends a bay overtime exception that opens an org off-day', () => {
+    expect(
+      addWorkingDays(day('2026-06-05'), 2, {
+        bayExceptions: new Map([['2026-06-06', 'work']]),
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      }),
+    ).toBe('2026-06-08');
   });
 });
 

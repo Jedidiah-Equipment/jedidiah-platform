@@ -36,6 +36,23 @@ export function firstWorkingDayOnOrAfter(date: DateOnlyIso, workingCalendar: Wor
   return cursor;
 }
 
+/** Walks forward over the calendar's working days; a zero count lands on the given date itself. */
+export function addWorkingDays(
+  date: DateOnlyIso,
+  workingDays: number,
+  workingCalendar: WorkingCalendar = {},
+): DateOnlyIso {
+  let cursor = date;
+  let remaining = workingDays;
+
+  while (remaining > 0) {
+    cursor = addDateOnlyDays(cursor, 1);
+    if (isWorkingDay(cursor, workingCalendar)) remaining -= 1;
+  }
+
+  return cursor;
+}
+
 export function lastWorkingDayOnOrBefore(date: DateOnlyIso, workingCalendar: WorkingCalendar = {}): DateOnlyIso {
   let cursor = date;
 

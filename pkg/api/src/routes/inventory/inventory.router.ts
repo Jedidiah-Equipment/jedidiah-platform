@@ -69,7 +69,13 @@ import {
 } from '@pkg/schema';
 
 import { mapCoreErrors } from '../../trpc/errors.js';
-import { authorizedProcedure, type InventoryCostAccess, projectInventoryCostFields, router } from '../../trpc/init.js';
+import {
+  authorizedProcedure,
+  type InventoryCostAccess,
+  projectInventoryCostFields,
+  projectInventoryCostReport,
+  router,
+} from '../../trpc/init.js';
 import { partBomErrorFamily, partCoreErrorFamily } from '../parts/part-error-families.js';
 import {
   assertedActorErrorFamily,
@@ -170,19 +176,12 @@ export const inventoryRouter = router({
     .query(async ({ ctx, input }) => {
       const report = await mapJobStockErrors(() => getJobMaterialVariance({ db: ctx.db, jobId: input.jobId }));
 
-      return projectInventoryCostFields({
+      return projectInventoryCostReport({
         access: ctx.access,
         costFields: JobMaterialVarianceResultCostFields,
-        output: {
-          ...report,
-          items: report.items.map((item) =>
-            projectInventoryCostFields({
-              access: ctx.access,
-              costFields: JobMaterialVarianceRowCostFields,
-              output: item,
-            }),
-          ),
-        },
+        report,
+        rowCostFields: JobMaterialVarianceRowCostFields,
+        rowsField: 'items',
       });
     }),
 
@@ -226,19 +225,12 @@ export const inventoryRouter = router({
         getStocktakeSessionReport({ db: ctx.db, sessionId: input.sessionId }),
       );
 
-      return projectInventoryCostFields({
+      return projectInventoryCostReport({
         access: ctx.access,
         costFields: StocktakeSessionReportCostFields,
-        output: {
-          ...report,
-          counts: report.counts.map((count) =>
-            projectInventoryCostFields({
-              access: ctx.access,
-              costFields: StocktakeSessionCountCostFields,
-              output: count,
-            }),
-          ),
-        },
+        report,
+        rowCostFields: StocktakeSessionCountCostFields,
+        rowsField: 'counts',
       });
     }),
 

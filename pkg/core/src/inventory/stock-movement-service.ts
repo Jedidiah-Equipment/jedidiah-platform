@@ -61,7 +61,7 @@ import {
   sumDelta,
 } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
-import { groupBy, sumBy } from './row-grouping.js';
+import { groupBy, sumBy, sumNullableBy } from './row-grouping.js';
 import {
   PeriodicStockMovementError,
   ScannedPartNotFoundError,
@@ -418,10 +418,7 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): 
         quantity,
         standardPurchaseLengthMm: part.standardPurchaseLengthMm,
         stockTrackingMode: part.stockTrackingMode,
-        totalValue: buckets.reduce<number | null>(
-          (total, bucket) => (total === null || bucket.totalValue === null ? null : total + bucket.totalValue),
-          0,
-        ),
+        totalValue: sumNullableBy(buckets, (bucket) => bucket.totalValue),
         unitOfMeasure: part.unitOfMeasure,
       };
     }),

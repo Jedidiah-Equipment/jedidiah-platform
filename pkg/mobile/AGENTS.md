@@ -1,9 +1,6 @@
 # mobile (@pkg/mobile)
 
 - Expo managed app using Expo Router and `expo-dev-client`.
-- Whenever making a change in this package, review `pkg/docs` for affected user guidance and update
-  it in the same change. User-facing behavior is not done until the docs match; add or repoint the
-  corresponding `HELP_TOPICS` entry and docs page together when contextual Help changes.
 - `APP_VARIANT` is required. Variant identity lives in `src/lib/app-variant.ts`; keep
   `app.config.ts` thin and keep its explicit `.ts` resolver import.
 - Routes live under `app/`; all other source lives under `src/` and imports through `@/*`.

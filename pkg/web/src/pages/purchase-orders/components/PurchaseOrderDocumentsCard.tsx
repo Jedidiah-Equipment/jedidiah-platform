@@ -107,7 +107,7 @@ export function PurchaseOrderDocumentsCard({
         <CardTitle>Documents</CardTitle>
         <CardDescription>Every revision of this order, and the credit notes filed against it.</CardDescription>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent>
         <DataTable
           emptyMessage="No documents filed."
           hideGlobalFilter

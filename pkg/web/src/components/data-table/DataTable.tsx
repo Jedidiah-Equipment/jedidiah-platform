@@ -1,5 +1,5 @@
 import { type Column, flexRender, type Row, type RowData, type Table as TanStackTable } from '@tanstack/react-table';
-import type React from 'react';
+import * as React from 'react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area.js';
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { cn } from '@/lib/utils.js';
@@ -45,13 +45,23 @@ type DataTableProps<TData> = {
 } & (
   | {
       loadMore?: never;
+      pageSize?: never;
       paginationMode: 'complete';
     }
   | {
       loadMore: DataTableLoadMoreProps;
+      pageSize?: never;
       paginationMode: 'cursor';
     }
+  | {
+      loadMore?: never;
+      /** Rows shown at first, and the step each Load more adds. */
+      pageSize?: number;
+      paginationMode: 'incremental';
+    }
 );
+
+const DEFAULT_INCREMENTAL_PAGE_SIZE = 25;
 
 export function DataTable<TData>({
   emptyMessage,
@@ -66,6 +76,7 @@ export function DataTable<TData>({
   loadMore,
   loadingRowCount = 10,
   onRowClick,
+  pageSize = DEFAULT_INCREMENTAL_PAGE_SIZE,
   paginationMode,
   rightSection,
   table,
@@ -79,10 +90,17 @@ export function DataTable<TData>({
     hasActiveFilterValue(tableState.globalFilter) ||
     tableState.columnFilters.some((filter) => hasActiveFilterValue(filter.value));
   const showToolbar = !hideGlobalFilter || rightSection || hasActiveFilters;
-  const rows = table.getRowModel().rows;
+  const [visibleRowCount, setVisibleRowCount] = React.useState(pageSize);
+  const modelRows = table.getRowModel().rows;
+  // Incremental mode paints a window of rows the browser already holds: sorting, searching and row
+  // selection still see every row, so a bulk action over the whole list stays whole.
+  const rows = paginationMode === 'incremental' ? modelRows.slice(0, visibleRowCount) : modelRows;
 
   return (
-    <div className="flex flex-col gap-3">
+    // `min-w-0` so a wide table shrinks to its container instead of stretching it: a flex or grid
+    // item defaults to `min-width: auto`, which refuses to go below the table's min-content width,
+    // and the page ends up scrolling sideways with the ScrollArea below never getting the chance.
+    <div className="flex min-w-0 flex-col gap-3">
       {errorMessage ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {errorMessage}
@@ -166,6 +184,14 @@ export function DataTable<TData>({
           isFetchingNextPage={loadMore.isFetchingNextPage}
           loadedCount={loadMore.loadedCount}
           onLoadMore={loadMore.onLoadMore}
+          total={total}
+          totalLabel={totalLabel}
+        />
+      ) : paginationMode === 'incremental' ? (
+        <DataTableLoadMore
+          hasNextPage={rows.length < modelRows.length}
+          loadedCount={rows.length}
+          onLoadMore={() => setVisibleRowCount((count) => count + pageSize)}
           total={total}
           totalLabel={totalLabel}
         />

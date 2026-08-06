@@ -130,7 +130,7 @@ export function QuoteCatalogCard({ quote }: { quote: QuoteSummary }) {
       trailing={
         <View className="items-end gap-1.5">
           <Text className="text-[15px] text-primary" numberOfLines={1} weight="bold">
-            {formatCurrency(total, quote.quotedCurrencyCode)}
+            {formatCurrency(total, quote.quotedCurrencyCode, { decimals: 0 })}
           </Text>
           <QuoteStatusChip status={quote.status} />
         </View>

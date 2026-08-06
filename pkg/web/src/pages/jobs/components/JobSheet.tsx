@@ -64,7 +64,7 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
       }}
     >
       <SheetContent
-        className="gap-0 p-0 data-[side=right]:!w-[min(100vw,42rem)] data-[side=right]:!max-w-[42rem]"
+        className="gap-0 p-0 data-[side=right]:!w-[min(100vw,56rem)] data-[side=right]:!max-w-[56rem]"
         side="right"
       >
         <JobSheetHeader job={jobQuery.data} />
@@ -161,7 +161,7 @@ const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
         icon={<IconMessageCircle />}
         title="Feedback"
       >
-        <JobFeedbackList canUpdateStatus={canEditJobs} jobId={job.id} />
+        <JobFeedbackList jobId={job.id} />
       </Section>
     </div>
   );

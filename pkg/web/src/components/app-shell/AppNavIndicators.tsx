@@ -3,17 +3,26 @@ import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
 import { SidebarMenuBadge } from '@/components/ui/sidebar.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+/**
+ * A dot says only that something is waiting; the tooltip says what and how many, so nobody has to
+ * open the page to find out. The badge is `pointer-events-none` by default — it has to take hover
+ * back to be a tooltip trigger at all, and a click still falls through to the nav link underneath.
+ */
 const NavWarningDot: React.FC<{
   label: string;
 }> = ({ label }) => (
   <SidebarMenuBadge
     aria-label={label}
-    className="right-3 min-w-0 px-0 group-data-[collapsible=icon]:right-1.5 group-data-[collapsible=icon]:flex"
+    className="pointer-events-auto right-3 min-w-0 px-0 group-data-[collapsible=icon]:right-1.5 group-data-[collapsible=icon]:flex"
   >
-    <span className="size-2 rounded-full bg-warning ring-2 ring-sidebar" />
+    <Tooltip>
+      <TooltipTrigger render={<span className="size-2 rounded-full bg-warning ring-2 ring-sidebar" />} />
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   </SidebarMenuBadge>
 );
 
@@ -25,8 +34,18 @@ export const QuotesPriorityNavIndicator: React.FC = () => {
     enabled: quoteAccess.can,
   });
 
-  return (priorityQuotesQuery.data?.length ?? 0) > 0 ? <NavWarningDot label="Quotes need jobs" /> : null;
+  const priorityCount = priorityQuotesQuery.data?.length ?? 0;
+
+  return priorityCount > 0 ? (
+    <NavWarningDot
+      label={`${priorityCount} accepted ${plural(priorityCount, 'Quote is', 'Quotes are')} due soon with no Job started`}
+    />
+  ) : null;
 };
+
+function plural(count: number, singular: string, pluralForm: string): string {
+  return count === 1 ? singular : pluralForm;
+}
 
 /**
  * The out-of-stock and below-minimum "notification" the spec asks for (§9, §12): a dot beside the
@@ -43,7 +62,11 @@ export const BuyListSignalNavIndicator: React.FC = () => {
   });
   const notifying = (buyListQuery.data?.items ?? []).filter((item) => buyListReasonsNotify(item.reasons));
 
-  return notifying.length > 0 ? <NavWarningDot label="Parts are out of stock or below minimum" /> : null;
+  return notifying.length > 0 ? (
+    <NavWarningDot
+      label={`${notifying.length} ${plural(notifying.length, 'Part is', 'Parts are')} out of stock or below minimum`}
+    />
+  ) : null;
 };
 
 export const FeedbackOpenNavIndicator: React.FC = () => {
@@ -54,5 +77,9 @@ export const FeedbackOpenNavIndicator: React.FC = () => {
     enabled: feedbackAccess.can,
   });
 
-  return (openFeedbackQuery.data ?? 0) > 0 ? <NavWarningDot label="Open feedback needs review" /> : null;
+  const openCount = openFeedbackQuery.data ?? 0;
+
+  return openCount > 0 ? (
+    <NavWarningDot label={`${openCount} open feedback ${plural(openCount, 'item needs', 'items need')} review`} />
+  ) : null;
 };

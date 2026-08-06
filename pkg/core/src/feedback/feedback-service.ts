@@ -27,7 +27,7 @@ import {
   JobFeedbackItem,
   QuoteCode,
 } from '@pkg/schema';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, ne, or } from 'drizzle-orm';
 
 import { FeedbackNotFoundError, FeedbackSubjectNotFoundError } from './feedback-errors.js';
 
@@ -105,10 +105,18 @@ export async function submitFeedback({
   });
 }
 
+/**
+ * The review inbox holds the feedback nobody else can see. A Job's `general` feedback is public on
+ * the Job itself (ADR 0010) and is read and closed there, so listing it here only buries the
+ * corrective items this queue exists for. Quote `general` feedback stays: it is still private, and
+ * this inbox is the only surface that reads it.
+ */
+const privateFeedback = or(ne(feedback.kind, 'general'), isNull(feedback.jobId));
+
 export async function listFeedback({ db, input }: { db: Db; input: FeedbackListInput }): Promise<FeedbackListResult> {
   const rows = await db.query.feedback.findMany({
     orderBy: [desc(feedback.createdAt), asc(feedback.id)],
-    where: input.status ? eq(feedback.status, input.status) : undefined,
+    where: and(privateFeedback, input.status ? eq(feedback.status, input.status) : undefined),
     with: feedbackReadRelations,
   });
 
@@ -117,8 +125,9 @@ export async function listFeedback({ db, input }: { db: Db; input: FeedbackListI
   };
 }
 
+/** Counts what the inbox lists, so the nav dot never points at a queue that reads as empty. */
 export async function countOpenFeedback({ db }: { db: Db }): Promise<number> {
-  return db.$count(feedback, eq(feedback.status, 'open'));
+  return db.$count(feedback, and(privateFeedback, eq(feedback.status, 'open')));
 }
 
 export async function getFeedback({

@@ -92,7 +92,7 @@ export function ProductCatalogCard({ product }: { product: Product }) {
       subText={rangeAndCategory}
       trailing={
         <Text className="text-[15px] text-primary" numberOfLines={1} weight="bold">
-          {formatCurrency(product.basePrice, product.currencyCode)}
+          {formatCurrency(product.basePrice, product.currencyCode, { decimals: 0 })}
         </Text>
       }
     />

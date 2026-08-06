@@ -111,7 +111,7 @@ export function CreatePurchaseOrdersDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
           <DialogTitle>Create draft Purchase Orders</DialogTitle>
           <DialogDescription>
@@ -134,7 +134,9 @@ export function CreatePurchaseOrdersDialog({
                     {candidate.supplierName ? ` · ${candidate.supplierName}` : null}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                {/* The unit sits under its input rather than beside it: a linear Part reads */}
+                {/* "Pieces · 1000 mm each", and next to the box that width shunted the inputs out of line. */}
+                <div className="flex shrink-0 flex-col items-end gap-1">
                   <Input
                     aria-label={`Quantity for ${candidate.partCode}`}
                     className="w-24 text-right tabular-nums"
@@ -145,7 +147,7 @@ export function CreatePurchaseOrdersDialog({
                     type="number"
                     value={selection[candidate.partId]?.quantity ?? ''}
                   />
-                  <span className="w-32 text-muted-foreground text-xs">{formatPurchaseUnitLabel(candidate)}</span>
+                  <span className="text-right text-muted-foreground text-xs">{formatPurchaseUnitLabel(candidate)}</span>
                 </div>
               </div>
             ))}

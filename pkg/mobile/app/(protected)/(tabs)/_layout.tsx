@@ -1,97 +1,47 @@
-import {
-  IconBarcode,
-  IconBriefcase2,
-  IconBuildingWarehouse,
-  IconCalendar,
-  IconFileText,
-  IconPackages,
-} from '@tabler/icons-react-native';
 import { type Href, Tabs } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { showTabBar, visibleTabs } from '@/lib/app-tabs';
+import { AppTabBar } from '@/components/AppTabBar';
+import { appTabLabel, visibleTabs } from '@/lib/app-tabs';
 import { useAccess } from '@/lib/use-access';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 import { navigationColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
-/** Permission-aware app tabs. A single visible tab collapses the bar entirely. */
+/** Permission-aware app tabs. {@link AppTabBar} owns which of them the bottom bar can show. */
 export default function AppTabsLayout() {
   const access = useAccess();
   const tabs = visibleTabs(access.data);
   const { resolved } = useColorMode();
   const colors = navigationColors[resolved];
-  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       initialRouteName="jobs"
-      screenOptions={{
-        headerShown: false,
-        sceneStyle: { backgroundColor: colors.background },
-        tabBarActiveTintColor: loadingSpinnerColor,
-        tabBarHideOnKeyboard: true,
-        tabBarInactiveTintColor: colors.mutedForeground,
-        tabBarLabelStyle: { fontFamily: 'monospace', fontSize: 10, letterSpacing: 0.6 },
-        tabBarStyle: showTabBar(tabs)
-          ? {
-              backgroundColor: colors.tabBarBackground,
-              borderTopColor: colors.border,
-              // Explicit tab-bar dimensions bypass React Navigation's automatic inset sizing.
-              height: 66 + insets.bottom,
-              paddingBottom: 8 + insets.bottom,
-              paddingTop: 8,
-            }
-          : { display: 'none' },
-      }}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.background } }}
+      tabBar={() => <AppTabBar />}
     >
       <Tabs.Screen
         name="jobs"
-        options={{
-          href: tabs.includes('jobs') ? undefined : null,
-          tabBarIcon: ({ color, size }) => <IconBriefcase2 color={color} size={size} strokeWidth={1.8} />,
-          title: 'JOBS',
-        }}
+        options={{ href: tabs.includes('jobs') ? undefined : null, title: appTabLabel('jobs') }}
       />
       <Tabs.Screen
         name="(plan)"
-        options={{
-          href: tabs.includes('plan') ? ('/plan' as Href) : null,
-          tabBarIcon: ({ color, size }) => <IconCalendar color={color} size={size} strokeWidth={1.8} />,
-          title: 'PLAN',
-        }}
+        options={{ href: tabs.includes('plan') ? ('/plan' as Href) : null, title: appTabLabel('plan') }}
       />
       <Tabs.Screen
         name="stores"
-        options={{
-          href: tabs.includes('stores') ? undefined : null,
-          tabBarIcon: ({ color, size }) => <IconBarcode color={color} size={size} strokeWidth={1.8} />,
-          title: 'STORES',
-        }}
+        options={{ href: tabs.includes('stores') ? undefined : null, title: appTabLabel('stores') }}
       />
       <Tabs.Screen
         name="quotes"
-        options={{
-          href: tabs.includes('quotes') ? undefined : null,
-          tabBarIcon: ({ color, size }) => <IconFileText color={color} size={size} strokeWidth={1.8} />,
-          title: 'QUOTES',
-        }}
+        options={{ href: tabs.includes('quotes') ? undefined : null, title: appTabLabel('quotes') }}
       />
       <Tabs.Screen
         name="products"
-        options={{
-          href: tabs.includes('products') ? undefined : null,
-          tabBarIcon: ({ color, size }) => <IconPackages color={color} size={size} strokeWidth={1.8} />,
-          title: 'PRODUCTS',
-        }}
+        options={{ href: tabs.includes('products') ? undefined : null, title: appTabLabel('products') }}
       />
       <Tabs.Screen
         name="units"
-        options={{
-          href: tabs.includes('units') ? undefined : null,
-          tabBarIcon: ({ color, size }) => <IconBuildingWarehouse color={color} size={size} strokeWidth={1.8} />,
-          title: 'UNITS',
-        }}
+        options={{ href: tabs.includes('units') ? undefined : null, title: appTabLabel('units') }}
       />
       <Tabs.Screen name="index" options={{ href: null }} />
     </Tabs>

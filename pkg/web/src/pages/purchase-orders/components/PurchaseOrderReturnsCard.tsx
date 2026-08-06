@@ -137,9 +137,9 @@ export function PurchaseOrderReturnsCard({
           </div>
         </CardAction>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent>
         {!canReturn && returnableLines.length > 0 ? (
-          <p className="px-4 pb-4 text-sm text-muted-foreground">
+          <p className="pb-4 text-sm text-muted-foreground">
             A Stores user or someone who can amend Purchase Orders must post the return.
           </p>
         ) : null}

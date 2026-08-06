@@ -122,11 +122,11 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Feedback Kind** is exactly one of `general`, `corrective-feedback-department`, or `corrective-feedback-user`. It selects which targets the Feedback carries and who may see it.
 
-**General Feedback** (`general`) is public only when a subject-scoped read/update surface exists. Today that is Job Feedback: anyone who can read the Job can read it with attribution (submitter, date, text, Status), and anyone who can update the Job can change its Status. Quote General Feedback remains private until the quote surface gets matching endpoints. General Feedback carries no targets and never exposes Internal Notes.
+**General Feedback** (`general`) is public only when a subject-scoped read/update surface exists. Today that is Job Feedback: anyone who can read the Job can read it with attribution (submitter, date, text). Status is carried but never shown on a subject surface — a note read on the shop floor is not a queue to triage — so `feedback.updateJobFeedback` has no caller today. Quote General Feedback remains private until the quote surface gets matching endpoints, and the Feedback inbox is its only reader. General Feedback carries no targets and never exposes Internal Notes.
 
 **Corrective Feedback** is Private Feedback that attributes a problem to one or more **Departments** (`corrective-feedback-department`) or one or more **Users** (`corrective-feedback-user`). Both targets are multi-select. Avoid Blame. Department targets reference the fixed Department enum; User targets reference Users. Only super-admins can read or act on it, through the Feedback inbox; the submission form marks it PRIVATE.
 
-**Feedback Status** is the review lifecycle: `open` (initial), `resolved` (acted on), or `closed` (dismissed). A super-admin moves freely between all three, including reopening; subject writers move General Feedback just as freely. There is an open-Feedback nav indicator (a warning dot on the Feedback menu item) shown when any Feedback is `open`.
+**Feedback Status** is the review lifecycle: `open` (initial), `resolved` (acted on), or `closed` (dismissed). A super-admin moves freely between all three, including reopening. It is a fact about the inbox queue: the Feedback inbox lists and counts Private Feedback only, so the open-Feedback nav indicator (a warning dot on the Feedback menu item) is shown when any *Private* Feedback is `open`. Public Job General Feedback never reaches that queue.
 
 **Internal Notes** is a single mutable free-text field on a Feedback that only super-admins can read or edit.
 

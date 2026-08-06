@@ -9,11 +9,11 @@ const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 describe('route layout contract', () => {
   test('uses the web Jobs icon and a calendar icon for Plan', () => {
-    const layout = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/_layout.tsx'), 'utf8');
+    const tabBar = readFileSync(join(MOBILE_DIR, 'src/components/AppTabBar.tsx'), 'utf8');
 
-    expect(layout).toContain('<IconBriefcase2');
-    expect(layout).toContain('<IconCalendar');
-    expect(layout).not.toContain('<IconTimeline');
+    expect(tabBar).toContain('jobs: IconBriefcase2');
+    expect(tabBar).toContain('plan: IconCalendar');
+    expect(tabBar).not.toContain('IconTimeline');
   });
 
   test('configures each explicit Stack initial route with its full registered child name', () => {

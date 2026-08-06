@@ -1,6 +1,7 @@
-import { IconUserPlus, IconUserX } from '@tabler/icons-react-native';
+import { IconUserX } from '@tabler/icons-react-native';
 import { Pressable, View } from 'react-native';
 
+import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useStoresActor } from '@/lib/stores-actor';
@@ -26,11 +27,18 @@ export function StoresActorHeader({ onSwitch }: { onSwitch: () => void }) {
         className="min-w-0 flex-1 flex-row items-center gap-3"
         onPress={onSwitch}
       >
-        <Icon
-          className={actor === null ? 'text-danger' : 'text-status-scheduled'}
-          icon={actor === null ? IconUserX : IconUserPlus}
-          size={28}
-        />
+        {actor === null ? (
+          <Icon className="text-danger" icon={IconUserX} size={28} />
+        ) : (
+          // The same face the quick-switch grid was tapped on, so the tablet confirms the choice
+          // in the picture the person recognises rather than in a name they have to read.
+          <Avatar
+            className="h-12 w-12 shrink-0 rounded-full"
+            name={actor.name}
+            textClassName="text-sm"
+            uri={actor.thumbnailDataUrl}
+          />
+        )}
         <View className="min-w-0 flex-1">
           <Text className="text-[11px] text-muted-foreground" mono numberOfLines={1}>
             {actor === null ? 'NOBODY AT THE TABLET' : 'WORKING AS'}

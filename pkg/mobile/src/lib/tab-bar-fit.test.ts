@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { AppTab } from './app-tabs';
 import { fitAppTabs } from './tab-bar-fit';
 
-const ALL_TABS: AppTab[] = ['jobs', 'plan', 'stores', 'quotes', 'products', 'units'];
+const ALL_TABS: AppTab[] = ['jobs', 'plan', 'quotes', 'products', 'units', 'stores'];
 
 describe('fitAppTabs', () => {
   it('keeps every tab on a tablet-width bar', () => {
@@ -17,8 +17,8 @@ describe('fitAppTabs', () => {
   /** The phone case in the screenshots: PRODUCTS truncates at six even slots, so the tail moves. */
   it('collapses the trailing tabs that would truncate on a phone-width bar', () => {
     expect(fitAppTabs(ALL_TABS, 390)).toEqual({
-      visible: ['jobs', 'plan', 'stores', 'quotes'],
-      overflow: ['products', 'units'],
+      visible: ['jobs', 'plan', 'quotes', 'products'],
+      overflow: ['units', 'stores'],
     });
   });
 
@@ -32,7 +32,7 @@ describe('fitAppTabs', () => {
   it('keeps one tab beside the menu when nothing else fits', () => {
     expect(fitAppTabs(ALL_TABS, 80)).toEqual({
       visible: ['jobs'],
-      overflow: ['plan', 'stores', 'quotes', 'products', 'units'],
+      overflow: ['plan', 'quotes', 'products', 'units', 'stores'],
     });
   });
 

@@ -30,7 +30,7 @@ describe('visibleTabs', () => {
   it('shows every tab to an Admin', () => {
     const access = createUserAccessSummary({ role: 'admin', userId: 'admin-1' });
 
-    expect(visibleTabs(access)).toEqual(['jobs', 'plan', 'stores', 'quotes', 'products', 'units']);
+    expect(visibleTabs(access)).toEqual(['jobs', 'plan', 'quotes', 'products', 'units', 'stores']);
   });
 
   /**
@@ -73,9 +73,9 @@ describe('showTabBar', () => {
 
 describe('appTabHref', () => {
   it('maps the permission order to each root route', () => {
-    const tabs: AppTab[] = ['jobs', 'plan', 'stores', 'quotes', 'products', 'units'];
+    const tabs: AppTab[] = ['jobs', 'plan', 'quotes', 'products', 'units', 'stores'];
 
-    expect(tabs.map(appTabHref)).toEqual(['/jobs', '/plan', '/stores', '/quotes', '/products', '/units']);
+    expect(tabs.map(appTabHref)).toEqual(['/jobs', '/plan', '/quotes', '/products', '/units', '/stores']);
   });
 });
 

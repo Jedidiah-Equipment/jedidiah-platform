@@ -1,18 +1,18 @@
 import { hasPermission } from '@pkg/domain';
 import type { UserAccessSummary } from '@pkg/schema';
 
-export type AppTab = 'jobs' | 'plan' | 'stores' | 'quotes' | 'products' | 'units';
+export type AppTab = 'jobs' | 'plan' | 'quotes' | 'products' | 'units' | 'stores';
 
 export function visibleTabs(access: UserAccessSummary | null | undefined): AppTab[] {
   const tabs: AppTab[] = [];
 
   if (hasPermission(access, 'job:read')) tabs.push('jobs', 'plan');
-  // Keyed on the right to *move* stock rather than to read it: the tab is the physical-flow surface
-  // (spec §10), and a reader with no `inventory:move` would find every action on it disabled.
-  if (hasPermission(access, 'inventory:move')) tabs.push('stores');
   if (hasPermission(access, 'quote:read')) tabs.push('quotes');
   if (hasPermission(access, 'product:read')) tabs.push('products');
   if (hasPermission(access, 'product_unit:read')) tabs.push('units');
+  // Keyed on the right to *move* stock rather than to read it: the tab is the physical-flow surface
+  // (spec §10), and a reader with no `inventory:move` would find every action on it disabled.
+  if (hasPermission(access, 'inventory:move')) tabs.push('stores');
 
   return tabs;
 }

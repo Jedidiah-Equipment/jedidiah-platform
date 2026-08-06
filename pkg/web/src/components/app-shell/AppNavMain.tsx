@@ -17,6 +17,7 @@ import {
   IconLayoutKanban,
   IconMessageReport,
   IconPackages,
+  IconReceipt2,
   IconShoppingCart,
   IconShoppingCartPlus,
   IconTool,
@@ -168,6 +169,12 @@ const navSections = [
         permission: 'purchase_order:read',
         link: linkOptions({ to: '/purchase-orders' }),
         icon: IconShoppingCart,
+      },
+      {
+        title: 'PO vs invoiced',
+        permission: 'inventory_cost:read',
+        link: linkOptions({ to: '/inventory/price-variance' }),
+        icon: IconReceipt2,
       },
       {
         title: 'Stocktake',
@@ -432,7 +439,12 @@ export function getVisibleNavSections(canSee: (permission?: AppPermission) => bo
 }
 
 /** Inventory routes that are their own nav item, so the Part-history match must not claim them. */
-const inventorySiblingRoutes = ['/inventory/buy-list', '/inventory/close-out', '/inventory/stocktake'];
+const inventorySiblingRoutes = [
+  '/inventory/buy-list',
+  '/inventory/close-out',
+  '/inventory/price-variance',
+  '/inventory/stocktake',
+];
 
 export function isInventoryNavPath(pathname: string): boolean {
   if (inventorySiblingRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {

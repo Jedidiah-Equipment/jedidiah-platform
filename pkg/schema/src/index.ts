@@ -43,6 +43,7 @@ export * from './products/product-range.js';
 export * from './purchase-orders/purchase-order.js';
 export * from './purchase-orders/purchase-order-amendment.js';
 export * from './purchase-orders/purchase-order-return.js';
+export * from './purchase-orders/supplier-invoice.js';
 export * from './quotes/quote.js';
 export * from './quotes/quote-document.js';
 export * from './suppliers/supplier.js';

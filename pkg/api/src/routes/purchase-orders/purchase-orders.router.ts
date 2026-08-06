@@ -3,11 +3,14 @@ import {
   amendPurchaseOrderExpectedDate,
   amendPurchaseOrderQuantity,
   amendPurchaseOrderSubstitutePart,
+  applyInvoicePrice,
   cancelPurchaseOrder,
   closePurchaseOrderShort,
   createPurchaseOrder,
   createPurchaseOrderDraftsFromSelection,
+  dismissInvoiceFlag,
   getPurchaseOrder,
+  listInvoicePriceVariance,
   listLatePurchaseOrders,
   listPartPurchaseOrderLines,
   listPurchaseOrderAmendments,
@@ -15,6 +18,7 @@ import {
   listPurchaseOrderReturns,
   listPurchaseOrders,
   listReturnsAwaitingCredit,
+  loadSupplierInvoiceReviews,
   markPurchaseOrderSent,
   postReceipt,
   postReturnToSupplier,
@@ -22,6 +26,8 @@ import {
 } from '@pkg/core';
 import { renderPurchaseOrderPdf } from '@pkg/pdf';
 import {
+  InvoiceFlagResolution,
+  InvoicePriceVarianceResult,
   LatePurchaseOrderResult,
   PartPurchaseOrderLineInput,
   PartPurchaseOrderLineResult,
@@ -49,13 +55,24 @@ import {
   ReturnAwaitingCreditRowCostFields,
   ReturnsAwaitingCreditResult,
   StockMovementPostResult,
+  SupplierInvoiceCorrectionInput,
+  SupplierInvoiceDismissFlagInput,
+  SupplierInvoiceReviewResult,
 } from '@pkg/schema';
 
 import { mapCoreErrors } from '../../trpc/errors.js';
 import { authorizedProcedure, type InventoryCostAccess, projectInventoryCostFields, router } from '../../trpc/init.js';
 import { assertedActorErrorFamily, stockMovementErrorFamily } from '../inventory/inventory-error-families.js';
-import { assertCanWriteInventoryCost, projectMovement } from '../inventory/stock-movement-transport.js';
-import { purchaseOrderErrorFamily, purchaseOrderJobErrorFamily } from './purchase-order-error-families.js';
+import {
+  assertCanReadInventoryCost,
+  assertCanWriteInventoryCost,
+  projectMovement,
+} from '../inventory/stock-movement-transport.js';
+import {
+  purchaseOrderErrorFamily,
+  purchaseOrderJobErrorFamily,
+  supplierInvoiceErrorFamily,
+} from './purchase-order-error-families.js';
 
 export const purchaseOrdersRouter = router({
   /**
@@ -145,6 +162,50 @@ export const purchaseOrdersRouter = router({
     .query(({ ctx, input }) =>
       mapPurchaseOrderErrors(() => listPurchaseOrderDocuments({ db: ctx.db, purchaseOrderId: input.purchaseOrderId })),
     ),
+
+  /**
+   * The AI cross-check for every Supplier invoice on this order (spec §5).
+   *
+   * Gated on `inventory_cost:read` as a whole rather than field by field: the panel is prices — what
+   * was agreed, what was billed, and what the difference would do to the average — so a price-blind
+   * reader has nothing left to see once the gate has done its work.
+   */
+  supplierInvoices: authorizedProcedure('inventory_cost:read')
+    .input(PurchaseOrderCollectionInput)
+    .output(SupplierInvoiceReviewResult)
+    .query(({ ctx, input }) =>
+      mapSupplierInvoiceErrors(() =>
+        loadSupplierInvoiceReviews({ db: ctx.db, purchaseOrderId: input.purchaseOrderId }),
+      ),
+    ),
+
+  /**
+   * Confirms one invoiced price and posts the revaluation that heals the average.
+   *
+   * Double-gated: `inventory_cost:revalue` is what the revaluation itself needs, and the read gate
+   * is asserted beside it because confirming a price you were never shown is not a confirmation.
+   */
+  applyInvoicePrice: authorizedProcedure('inventory_cost:revalue')
+    .input(SupplierInvoiceCorrectionInput)
+    .output(InvoiceFlagResolution)
+    .mutation(async ({ ctx, input }) => {
+      assertCanReadInventoryCost(ctx.access);
+
+      return mapSupplierInvoiceErrors(() => applyInvoicePrice({ actorUserId: ctx.session.user.id, db: ctx.db, input }));
+    }),
+
+  /** Setting a flag aside writes no ledger row, so it needs only the gate that shows the panel. */
+  dismissInvoiceFlag: authorizedProcedure('inventory_cost:read')
+    .input(SupplierInvoiceDismissFlagInput)
+    .output(InvoiceFlagResolution)
+    .mutation(({ ctx, input }) =>
+      mapSupplierInvoiceErrors(() => dismissInvoiceFlag({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
+  /** Every line a Supplier billed above or below what the order agreed, plant-wide (spec §12). */
+  invoicePriceVariance: authorizedProcedure('inventory_cost:read')
+    .output(InvoicePriceVarianceResult)
+    .query(({ ctx }) => listInvoicePriceVariance({ db: ctx.db })),
 
   /**
    * Stores can post the physical movement, while a Purchase Order amender can complete the same
@@ -331,6 +392,11 @@ function toPurchaseOrderView(purchaseOrder: PurchaseOrder, access: InventoryCost
       projectInventoryCostFields({ access, costFields: PurchaseOrderLineViewCostFields, output: line }),
     ),
   };
+}
+
+/** The invoice panel fails on the order it hangs off, or on the flag being acted on. */
+async function mapSupplierInvoiceErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapCoreErrors(action, purchaseOrderErrorFamily, supplierInvoiceErrorFamily, stockMovementErrorFamily);
 }
 
 /** Editing an order reaches Jobs, since a draft carries Job links. */

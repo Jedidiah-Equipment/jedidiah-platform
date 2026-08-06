@@ -1,3 +1,4 @@
+import { createOpenAiChatModel, extractSupplierInvoice } from '@pkg/ai';
 import {
   createJobPurchaseOrder,
   createProductDocument,
@@ -14,7 +15,9 @@ import {
   renderProductBrochurePreview,
   renderPurchaseOrderPreview,
   type StorageAdapter,
+  type SupplierInvoiceExtractor,
   uploadCreditNote,
+  uploadSupplierInvoice,
 } from '@pkg/core';
 import { db } from '@pkg/db';
 import { validateDocumentPolicy } from '@pkg/domain';
@@ -31,6 +34,7 @@ import {
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
+import { getApiConfig } from '@/env.js';
 import {
   createContentDisposition,
   RouteHttpError,
@@ -45,7 +49,28 @@ import { mapDocumentCoreError } from './documents.router.js';
 const JobDocumentUploadInput = JobDocumentInput.pick({ jobId: true });
 const PurchaseOrderParams = z.object({ purchaseOrderId: PurchaseOrderActionInput.shape.id });
 
-export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: StorageAdapter): Promise<void> {
+export type RegisterDocumentHttpRoutesOptions = {
+  /** Overridden by tests; production reads the invoice with the configured OpenAI model. */
+  extractSupplierInvoice?: SupplierInvoiceExtractor;
+};
+
+export async function registerDocumentHttpRoutes(
+  app: FastifyInstance,
+  storage: StorageAdapter,
+  options: RegisterDocumentHttpRoutesOptions = {},
+): Promise<void> {
+  const extractInvoice: SupplierInvoiceExtractor =
+    options.extractSupplierInvoice ??
+    (({ bytes, contentType }) => {
+      const config = getApiConfig();
+
+      return extractSupplierInvoice({
+        bytes,
+        contentType,
+        model: createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL }),
+      });
+    });
+
   app.post('/api/products/:productId/documents', async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
@@ -321,6 +346,53 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
           db,
           filename: file.filename,
           input,
+          storage,
+        }),
+      );
+
+      reply.status(201).send(document);
+    } catch (error) {
+      sendDocumentHttpError(reply, error);
+    }
+  });
+
+  /**
+   * Files the Supplier's bill against an order and records what an AI read off it (spec §5).
+   *
+   * Gated on `purchase_order:amend` alone, exactly like the credit note: filing the paperwork is
+   * procurement's job. Reading the cross-check it feeds is a separate, narrower question the tRPC
+   * panel answers under the cost gate — and the priced document itself is already gated on the
+   * download route, so a second gate here would only narrow who may file.
+   */
+  app.post('/api/purchase-orders/:purchaseOrderId/supplier-invoices', async (request, reply) => {
+    const auth = await requireRouteAuth(request, reply);
+    if (!auth) return;
+
+    try {
+      requirePermission(
+        auth,
+        'purchase_order:amend',
+        'You do not have permission to file Supplier invoices.',
+        'document.forbidden',
+      );
+      const params = PurchaseOrderParams.parse(request.params);
+      const file = await request.file();
+
+      if (!file) {
+        reply.status(400).send({ message: 'Choose a Supplier invoice to upload.' });
+        return;
+      }
+
+      const bytes = await file.toBuffer();
+      const document = await mapHttpDocumentErrors(() =>
+        uploadSupplierInvoice({
+          actorUserId: auth.session.user.id,
+          bytes,
+          contentType: file.mimetype,
+          db,
+          extract: extractInvoice,
+          filename: file.filename,
+          input: { purchaseOrderId: params.purchaseOrderId },
           storage,
         }),
       );

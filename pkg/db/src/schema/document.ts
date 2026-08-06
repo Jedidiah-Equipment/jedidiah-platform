@@ -1,4 +1,9 @@
-import type { DocumentMetadata, DocumentOwnerType } from '@pkg/schema';
+import type {
+  DocumentMetadata,
+  DocumentOwnerType,
+  InvoiceFlagResolutionKind,
+  SupplierInvoiceExtraction,
+} from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
   check,
@@ -97,6 +102,85 @@ export const creditNoteSettlements = pgTable(
     uniqueIndex('credit_note_settlement_stock_movement_unique').on(table.stockMovementId),
   ],
 );
+
+/**
+ * One AI read of one supplier-invoice document (spec §5).
+ *
+ * The extraction is stored; the *match* against the order's lines never is. Amendments change those
+ * lines after the invoice was filed (#1055), so a stored match would keep flagging a price somebody
+ * has since agreed — the panel recomputes it on every read instead.
+ *
+ * A null `extraction` is the explicit failure contract: the read was attempted and came back
+ * unusable, which the panel reports as "couldn't read this invoice". That is deliberately different
+ * from having no row at all, and it is why the row is written whether or not the model succeeded.
+ * The document id is the key because the read is re-runnable — a second attempt replaces the first.
+ */
+export const invoiceExtractions = pgTable('invoice_extraction', {
+  createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  documentId: uuid('document_id')
+    .primaryKey()
+    .references(() => documents.id, { onDelete: 'cascade' }),
+  extraction: jsonb('extraction').$type<SupplierInvoiceExtraction>(),
+});
+
+/**
+ * What a human did about one flagged line: applied the invoiced price, or dismissed the flag.
+ *
+ * Both persist for the same reason — the panel is rebuilt from scratch on every visit, so without
+ * this a dismissal would reappear tomorrow and an applied correction would keep asking to be
+ * applied again. `flagKey` is the flag's own stable identity (`@pkg/schema`'s `invoiceFlagKey`),
+ * keyed on the Part for a line-level flag and on the invoice line's position for the rest.
+ */
+export const invoiceFlagResolutions = pgTable(
+  'invoice_flag_resolution',
+  {
+    actorUserId: text('actor_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'restrict' }),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    documentId: uuid('document_id')
+      .notNull()
+      .references(() => documents.id, { onDelete: 'cascade' }),
+    flagKey: text('flag_key').notNull(),
+    kind: text('kind').notNull().$type<InvoiceFlagResolutionKind>(),
+    // The revaluation the apply posted — the ledger row is where "who corrected this, and to what"
+    // actually lives, and this is the reference back to it.
+    stockMovementId: uuid('stock_movement_id').references(() => stockMovements.id, { onDelete: 'restrict' }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.documentId, table.flagKey], name: 'invoice_flag_resolution_pkey' }),
+    check('invoice_flag_resolution_flag_key_nonempty', sql`length(trim(${table.flagKey})) > 0`),
+    check('invoice_flag_resolution_kind_check', sql`${table.kind} IN ('applied', 'dismissed')`),
+    // An apply that posted nothing would be a correction nobody can trace, and a dismissal that
+    // named a movement would claim the ledger was written when it was not.
+    check(
+      'invoice_flag_resolution_shape',
+      sql`(${table.kind} = 'applied' AND ${table.stockMovementId} IS NOT NULL) OR (${table.kind} = 'dismissed' AND ${table.stockMovementId} IS NULL)`,
+    ),
+  ],
+);
+
+export const invoiceExtractionRelations = relations(invoiceExtractions, ({ one }) => ({
+  document: one(documents, {
+    fields: [invoiceExtractions.documentId],
+    references: [documents.id],
+  }),
+}));
+
+export const invoiceFlagResolutionRelations = relations(invoiceFlagResolutions, ({ one }) => ({
+  actor: one(user, {
+    fields: [invoiceFlagResolutions.actorUserId],
+    references: [user.id],
+  }),
+  document: one(documents, {
+    fields: [invoiceFlagResolutions.documentId],
+    references: [documents.id],
+  }),
+  stockMovement: one(stockMovements, {
+    fields: [invoiceFlagResolutions.stockMovementId],
+    references: [stockMovements.id],
+  }),
+}));
 
 export const creditNoteSettlementRelations = relations(creditNoteSettlements, ({ one }) => ({
   document: one(documents, {

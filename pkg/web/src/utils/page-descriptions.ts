@@ -16,6 +16,9 @@ export const inventoryPageDescription = 'Current stock quantities, length bucket
 export const buyListPageDescription =
   'Parts short for Jobs, below their minimum, or off the shelf — ranked by when the work starts';
 
+export const priceVariancePageDescription =
+  'Lines a Supplier billed at a price the order did not agree — cross-checked against current lines';
+
 export const partsPageDescription = 'Reusable purchasable items across all Suppliers';
 
 export const productsPageDescription = 'Product models with assemblies, pricing, and build documents';

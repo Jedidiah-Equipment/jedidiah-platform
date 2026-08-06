@@ -1,0 +1,92 @@
+import { getDocumentPolicy } from '@pkg/domain';
+import type { UUID } from '@pkg/schema';
+import { IconLoader2 } from '@tabler/icons-react';
+import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
+import { Button } from '@/components/ui/button.js';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog.js';
+import { Field, FieldLabel } from '@/components/ui/field.js';
+import { Input } from '@/components/ui/input.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
+import { uploadSupplierInvoice, validateSelectedFile } from '@/utils/document.js';
+
+const SUPPLIER_INVOICE_ACCEPT = getDocumentPolicy('purchase_order').allowedContentTypes.join(',');
+
+/**
+ * Files the Supplier's bill against the order and reads it on the way in.
+ *
+ * The read happens inside the upload request, so the button stays busy while it runs — and an
+ * invoice the model cannot make sense of still uploads, arriving in the list as one nobody could
+ * read (spec §5). Nothing about this dialog is a gate.
+ */
+export function PurchaseOrderSupplierInvoiceDialog({
+  onOpenChange,
+  purchaseOrderId,
+}: {
+  onOpenChange: (open: boolean) => void;
+  purchaseOrderId: UUID;
+}) {
+  const { invalidateInventory, invalidatePurchaseOrders } = useQueryInvalidation();
+  const showMutationError = useApiMutationErrorToast();
+  const [file, setFile] = useState<File | null>(null);
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!file) throw new Error('Choose a Supplier invoice to upload.');
+
+      return uploadSupplierInvoice({ file, purchaseOrderId });
+    },
+    onError: (error) => showMutationError(error, 'Unable to upload this Supplier invoice.'),
+    onSuccess: async () => {
+      await Promise.all([invalidatePurchaseOrders(), invalidateInventory()]);
+      onOpenChange(false);
+      toast.success('Supplier invoice filed');
+    },
+  });
+
+  return (
+    <Dialog onOpenChange={onOpenChange} open>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>File a Supplier invoice</DialogTitle>
+          <DialogDescription>
+            The invoice is read and cross-checked against this order's lines. Every difference is a flag to judge, never
+            a change to the order.
+          </DialogDescription>
+        </DialogHeader>
+        <Field>
+          <FieldLabel htmlFor="supplier-invoice-file">Invoice PDF</FieldLabel>
+          <Input
+            accept={SUPPLIER_INVOICE_ACCEPT}
+            id="supplier-invoice-file"
+            onChange={(event) => setFile(validateSelectedFile(event.target.files?.[0] ?? null, 'purchase_order'))}
+            type="file"
+          />
+        </Field>
+        <DialogFooter>
+          <DialogClose render={<Button disabled={mutation.isPending} type="button" variant="outline" />}>
+            Cancel
+          </DialogClose>
+          <Button
+            disabled={mutation.isPending || !file}
+            onClick={() => void mutation.mutateAsync().catch(() => undefined)}
+            type="button"
+          >
+            {mutation.isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
+            {mutation.isPending ? 'Reading invoice...' : 'File invoice'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -61,6 +61,8 @@ export * from './purchase-orders/purchase-order-errors.js';
 export * from './purchase-orders/purchase-order-selection-service.js';
 export * from './purchase-orders/purchase-order-service.js';
 export * from './purchase-orders/purchase-order-signals.js';
+export * from './purchase-orders/supplier-invoice-errors.js';
+export * from './purchase-orders/supplier-invoice-service.js';
 export * from './quotes/quote-document.js';
 export * from './quotes/quote-document-generation.js';
 export * from './quotes/quote-errors.js';

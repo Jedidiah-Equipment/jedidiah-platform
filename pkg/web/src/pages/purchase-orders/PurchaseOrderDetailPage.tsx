@@ -31,6 +31,7 @@ import { allJobsInput } from '../jobs/components/all-jobs-input.js';
 import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.js';
 import { PurchaseOrderAmendmentsCard } from './components/PurchaseOrderAmendmentsCard.js';
 import { PurchaseOrderDocumentsCard } from './components/PurchaseOrderDocumentsCard.js';
+import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderInvoiceCrossCheckCard.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderReturnsCard } from './components/PurchaseOrderReturnsCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
@@ -101,6 +102,11 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
   // The same single gate the upload route applies — filing the credit is procurement's job, and it
   // is the amend right that says who does it.
   const canFileCreditNote = purchaseOrder.status === 'sent' && hasPermission(accessQuery.data, 'purchase_order:amend');
+  // A Supplier invoice is filed by the same procurement hands the credit note is. Reading the
+  // cross-check it feeds is the narrower cost question, and confirming a price needs the right to
+  // revalue on top of that.
+  const canFileSupplierInvoice = canFileCreditNote;
+  const canApplyInvoicePrices = canReadCosts && hasPermission(accessQuery.data, 'inventory_cost:revalue');
   const { invalidatePurchaseOrders, invalidateJobs } = useQueryInvalidation();
   const [isLifecycleActionPending, setIsLifecycleActionPending] = useState(false);
 
@@ -196,6 +202,14 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
               canReturn={canReturn}
               purchaseOrder={purchaseOrder}
             />
+            {/* Entirely about prices, so it never renders for a price-blind reader (spec §11). */}
+            {canReadCosts ? (
+              <PurchaseOrderInvoiceCrossCheckCard
+                canApplyPrices={canApplyInvoicePrices}
+                canFileInvoice={canFileSupplierInvoice}
+                purchaseOrderId={purchaseOrder.id}
+              />
+            ) : null}
             <PurchaseOrderAmendmentsCard purchaseOrderId={purchaseOrder.id} />
             <PurchaseOrderDocumentsCard canReadCosts={canReadCosts} purchaseOrderId={purchaseOrder.id} />
             <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />

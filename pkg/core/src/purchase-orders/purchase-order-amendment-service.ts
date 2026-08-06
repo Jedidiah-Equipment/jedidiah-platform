@@ -24,12 +24,11 @@ import { aliasedTable, and, asc, eq } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditUpdate } from '../audit/audit-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import {
+  assertPurchaseOrderAction,
   PurchaseOrderAmendmentBelowReceivedError,
-  PurchaseOrderClosedShortError,
   PurchaseOrderLineExistsError,
   PurchaseOrderLineNotFoundError,
   PurchaseOrderLineNotPricedError,
-  PurchaseOrderNotSentError,
   PurchaseOrderSubstitutionHasReceiptsError,
 } from './purchase-order-errors.js';
 import {
@@ -293,13 +292,11 @@ async function applyAmendment(
   try {
     return await db.transaction(async (tx) => {
       const row = await lockPurchaseOrder(tx, id);
-      // Drafts stay log-free: they are edited whole through the draft save, which is why an empty
-      // log reads as "unchanged since it went out" rather than "we did not record anything".
-      if (row.status !== 'sent') throw new PurchaseOrderNotSentError(id);
-      // Closing short asserted the remainder is not coming; amending it would take that back.
-      if (row.closedShortAt !== null) throw new PurchaseOrderClosedShortError(id);
-
       const before = await getPurchaseOrder({ db: tx, id });
+      // Drafts stay log-free: they are edited whole through the draft save, which is why an empty
+      // log reads as "unchanged since it went out" rather than "we did not record anything". And
+      // closing short asserted the remainder is not coming, so amending it would take that back.
+      assertPurchaseOrderAction(before.actions.amend, id);
       const amendment = await apply(tx, before);
 
       await tx.insert(purchaseOrderAmendments).values({

@@ -16,7 +16,13 @@ import {
   supplier,
   user,
 } from '@pkg/db';
-import { compareNullableDateOnly, derivePurchaseOrderProgress, derivePurchaseOrderStatus } from '@pkg/domain';
+import {
+  compareNullableDateOnly,
+  derivePurchaseOrderActions,
+  derivePurchaseOrderProgress,
+  derivePurchaseOrderStatus,
+  type PurchaseOrderActionFacts,
+} from '@pkg/domain';
 import {
   type AuthId,
   DateIso,
@@ -55,17 +61,11 @@ import {
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import {
-  PurchaseOrderAlreadyCancelledError,
-  PurchaseOrderAlreadyClosedShortError,
+  assertPurchaseOrderAction,
   PurchaseOrderEmptyError,
-  PurchaseOrderFullyReceivedError,
-  PurchaseOrderHasReceiptsError,
   PurchaseOrderInvalidQuantityError,
   PurchaseOrderLineNotPricedError,
-  PurchaseOrderNoReceiptsError,
-  PurchaseOrderNotDraftError,
   PurchaseOrderNotFoundError,
-  PurchaseOrderNotSentError,
   PurchaseOrderPartNotFoundError,
   PurchaseOrderPartNotPurchasableError,
   PurchaseOrderPartSupplierMismatchError,
@@ -335,6 +335,32 @@ export async function loadPurchaseOrderLedgerFacts({
   return { hasAnyMovement: movement.length > 0, progress };
 }
 
+/**
+ * The whole world an action verdict is judged against, read under whatever lock the caller already
+ * holds. It is the ledger facts the termination rules read, plus the two stored facts and whether
+ * the order has any lines at all — so every gate, not just cancel and close-short, asks one question.
+ */
+export async function loadPurchaseOrderActionFacts({
+  db,
+  row,
+}: {
+  db: PurchaseOrderDb;
+  row: Pick<PurchaseOrderRow, 'closedShortAt' | 'id' | 'status'>;
+}): Promise<PurchaseOrderActionFacts> {
+  const [ledger, [lines]] = await Promise.all([
+    loadPurchaseOrderLedgerFacts({ db, id: row.id }),
+    db.select({ value: count() }).from(purchaseOrderLines).where(eq(purchaseOrderLines.purchaseOrderId, row.id)),
+  ]);
+
+  return {
+    closedShortAt: row.closedShortAt,
+    hasAnyMovement: ledger.hasAnyMovement,
+    isEmpty: (lines?.value ?? 0) === 0,
+    progress: ledger.progress,
+    status: row.status,
+  };
+}
+
 /** One open line of a sent order: what is still owed on it, and the order it is owed by. */
 export type OpenOrderLine = {
   expectedDeliveryDate: string | null;
@@ -573,8 +599,11 @@ export async function savePurchaseOrderDraftWithin({
   db: DatabaseTransaction;
   input: PurchaseOrderSaveDraftInput;
 }): Promise<PurchaseOrder> {
-  assertDraft(await lockPurchaseOrder(db, input.id));
+  await lockPurchaseOrder(db, input.id);
   const before = await getPurchaseOrder({ db, id: input.id });
+  // A sent order is amended, never edited whole — the log and its PDF revisions are how a change
+  // after it went out is recorded.
+  assertPurchaseOrderAction(before.actions.edit, input.id);
   // A Job link is a set membership, so a repeated id is the same link, not a second one. Collapsing
   // here keeps the existence check exact and makes a core caller that repeats one idempotent rather
   // than a unique-constraint failure; the router contract still refuses duplicates outright.
@@ -652,9 +681,10 @@ export async function markPurchaseOrderSent({
   try {
     return await db.transaction(async (tx) => {
       const before = await lockPurchaseOrder(tx, id);
-      assertDraft(before);
       const purchaseOrder = await getPurchaseOrder({ db: tx, id });
-      if (purchaseOrder.lines.length === 0) throw new PurchaseOrderEmptyError(id);
+      // Draft-ness and having something on it are the order's own state; whether each line carries
+      // an agreed price judges the lines themselves, so it stays here with the write that reads them.
+      assertPurchaseOrderAction(purchaseOrder.actions.send, id);
       assertLinesArePriced(purchaseOrder);
 
       const sentAt = new Date();
@@ -704,11 +734,10 @@ export async function cancelPurchaseOrder({
 }): Promise<PurchaseOrder> {
   return mutateEntity({
     actorUserId,
+    // Cancel reads `hasAnyMovement`: an order with history is closed short, never disowned.
     assert: async (tx, before) => {
-      if (before.status === 'cancelled') throw new PurchaseOrderAlreadyCancelledError(id);
-      // Cancel reads `hasAnyMovement`: an order with history is closed short, never disowned.
-      const { hasAnyMovement } = await loadPurchaseOrderLedgerFacts({ db: tx, id });
-      if (hasAnyMovement) throw new PurchaseOrderHasReceiptsError(id);
+      const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row: before }));
+      assertPurchaseOrderAction(actions.cancel, id);
     },
     db,
     descriptor: purchaseOrderAuditDescriptor,
@@ -737,13 +766,11 @@ export async function closePurchaseOrderShort({
   return mutateEntity({
     actorUserId,
     // `hasAnyMovement` is the history to close short of — the same fact cancel reads — and
-    // `progress` is the open remainder to release.
+    // `progress` is the open remainder to release. Both come from the one derivation, so this can
+    // never disagree with what the Close Short control offered.
     assert: async (tx, before) => {
-      if (before.status !== 'sent') throw new PurchaseOrderNotSentError(id);
-      if (before.closedShortAt !== null) throw new PurchaseOrderAlreadyClosedShortError(id);
-      const { hasAnyMovement, progress } = await loadPurchaseOrderLedgerFacts({ db: tx, id });
-      if (!hasAnyMovement) throw new PurchaseOrderNoReceiptsError(id);
-      if (progress === 'received') throw new PurchaseOrderFullyReceivedError(id);
+      const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row: before }));
+      assertPurchaseOrderAction(actions.closeShort, id);
     },
     db,
     descriptor: purchaseOrderAuditDescriptor,
@@ -802,8 +829,16 @@ function mapPurchaseOrder(
   const receivedByPartId = new Map(
     row.lines.map((line) => [line.partId, receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0]),
   );
-
   return PurchaseOrderSchema.parse({
+    // Reduced from the facts this read already loaded — no extra query — so the payload a surface
+    // renders its controls from carries the same verdict the write gate will apply.
+    actions: derivePurchaseOrderActions({
+      closedShortAt: row.closedShortAt,
+      hasAnyMovement: row.lines.some((line) => linesWithMovements.has(receivedQuantityKey(row.id, line.partId))),
+      isEmpty: row.lines.length === 0,
+      progress: derivePurchaseOrderProgress({ lines: row.lines, receivedByPartId }),
+      status: row.status,
+    }),
     closedShortAt: row.closedShortAt,
     code: row.code,
     createdAt: row.createdAt,
@@ -878,10 +913,6 @@ export async function lockPurchaseOrder(tx: DatabaseTransaction, id: UUID): Prom
 function assertLinesArePriced(purchaseOrder: PurchaseOrder): void {
   const unpriced = purchaseOrder.lines.find((line) => line.unitPrice === 0);
   if (unpriced) throw new PurchaseOrderLineNotPricedError(unpriced.partCode);
-}
-
-function assertDraft(row: PurchaseOrderRow): void {
-  if (row.status !== 'draft') throw new PurchaseOrderNotDraftError(row.id);
 }
 
 async function assertSupplierExists({ db, supplierId }: { db: PurchaseOrderDb; supplierId: UUID }): Promise<void> {

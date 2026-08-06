@@ -1,4 +1,4 @@
-import type { UUID } from '@pkg/schema';
+import type { PurchaseOrderActionVerdict, UUID } from '@pkg/schema';
 
 export class PurchaseOrderNotFoundError extends Error {
   readonly code = 'purchase_order.not_found' as const;
@@ -192,6 +192,37 @@ export class PurchaseOrderHasReceiptsError extends Error {
 
   constructor(readonly id: UUID) {
     super('A Purchase Order with receipts cannot be cancelled.');
+  }
+}
+
+/**
+ * Refuses a write the order's own state does not allow, in the words that write already used. The
+ * verdict is derived once in `@pkg/domain` and read by both sides of the seam — the payload a
+ * surface renders its controls from, and this gate — so a control can no longer offer an action the
+ * post then refuses. The mapping is a lookup and nothing more: judgement lives in the derivation.
+ */
+export function assertPurchaseOrderAction(verdict: PurchaseOrderActionVerdict, id: UUID): void {
+  if (verdict.allowed) return;
+
+  switch (verdict.reason) {
+    case 'already-closed-short':
+      throw new PurchaseOrderAlreadyClosedShortError(id);
+    case 'cancelled':
+      throw new PurchaseOrderAlreadyCancelledError(id);
+    case 'closed-short':
+      throw new PurchaseOrderClosedShortError(id);
+    case 'empty':
+      throw new PurchaseOrderEmptyError(id);
+    case 'fully-received':
+      throw new PurchaseOrderFullyReceivedError(id);
+    case 'has-movements':
+      throw new PurchaseOrderHasReceiptsError(id);
+    case 'not-draft':
+      throw new PurchaseOrderNotDraftError(id);
+    case 'not-sent':
+      throw new PurchaseOrderNotSentError(id);
+    case 'nothing-received':
+      throw new PurchaseOrderNoReceiptsError(id);
   }
 }
 

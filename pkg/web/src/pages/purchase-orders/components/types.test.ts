@@ -1,3 +1,4 @@
+import { derivePurchaseOrderActions } from '@pkg/domain';
 import { PurchaseOrderView, type StockMovementWarningCode } from '@pkg/schema';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -22,7 +23,40 @@ const JOB_ID = '9c9e8b7a-6d5c-4b3a-8291-0f1e2d3c4b5a';
 
 const LINEAR_PART_ID = '2f7c9a10-3f4b-4f0c-9d4a-8b1c2d3e4f50';
 
+const lines = [
+  {
+    hasStockMovements: false,
+    partCode: 'P-100',
+    partId: PART_ID,
+    partName: 'Bearing',
+    quantity: 4,
+    receivedQuantity: 1,
+    standardPurchaseLengthMm: null,
+    unitOfMeasure: 'piece',
+    unitPrice: 125.5,
+  },
+  {
+    hasStockMovements: false,
+    partCode: 'C-200',
+    partId: LINEAR_PART_ID,
+    partName: 'Channel',
+    quantity: 3,
+    receivedQuantity: 5,
+    standardPurchaseLengthMm: 6_000,
+    unitOfMeasure: 'mm',
+    unitPrice: 900,
+  },
+];
+
 const purchaseOrder = PurchaseOrderView.parse({
+  // Derived rather than written out, so the fixture's verdicts cannot drift from the state it declares.
+  actions: derivePurchaseOrderActions({
+    closedShortAt: null,
+    hasAnyMovement: false,
+    isEmpty: lines.length === 0,
+    progress: 'partially-received',
+    status: 'draft',
+  }),
   closedShortAt: null,
   code: 'PO-00001',
   createdAt: '2026-08-02T08:00:00.000Z',
@@ -31,28 +65,7 @@ const purchaseOrder = PurchaseOrderView.parse({
   expectedDeliveryDate: '2026-08-20',
   id: 'f0e6a166-6958-46c0-a2e6-271bad486859',
   jobs: [{ code: 'JOB-00007', id: JOB_ID }],
-  lines: [
-    {
-      partCode: 'P-100',
-      partId: PART_ID,
-      partName: 'Bearing',
-      quantity: 4,
-      receivedQuantity: 1,
-      standardPurchaseLengthMm: null,
-      unitOfMeasure: 'piece',
-      unitPrice: 125.5,
-    },
-    {
-      partCode: 'C-200',
-      partId: LINEAR_PART_ID,
-      partName: 'Channel',
-      quantity: 3,
-      receivedQuantity: 5,
-      standardPurchaseLengthMm: 6_000,
-      unitOfMeasure: 'mm',
-      unitPrice: 900,
-    },
-  ],
+  lines,
   sentAt: null,
   status: 'draft',
   supplier: {

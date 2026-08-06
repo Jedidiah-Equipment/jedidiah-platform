@@ -461,7 +461,10 @@ describe('Purchase Order receiving progress', () => {
     });
 
     // Netting is right about what is owed — all ten again — so the order reads as freshly sent.
+    // The payload says which way out is open before either is attempted, from the same derivation
+    // the two gates below assert on, so no surface can offer the one that would be refused.
     await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
+      actions: { cancel: { allowed: false, reason: 'has-movements' }, closeShort: { allowed: true } },
       derivedStatus: 'sent',
       lines: [{ receivedQuantity: 0 }],
     });

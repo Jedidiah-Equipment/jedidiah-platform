@@ -85,8 +85,53 @@ export const PurchaseOrderSupplier = z.object({
   phone: z.string().nullable(),
 });
 
+/**
+ * Why an action the order cannot take is refused. These are the states themselves, not messages: the
+ * server maps each to the expected error it already raised, and a surface reads it to say why a
+ * button is dead instead of offering one the post would refuse.
+ */
+export type PurchaseOrderActionBlockedReason = z.infer<typeof PurchaseOrderActionBlockedReason>;
+export const PurchaseOrderActionBlockedReason = z.enum([
+  'already-closed-short',
+  'cancelled',
+  'closed-short',
+  'empty',
+  'fully-received',
+  'has-movements',
+  'not-draft',
+  'not-sent',
+  'nothing-received',
+]);
+
+export type PurchaseOrderActionVerdict = z.infer<typeof PurchaseOrderActionVerdict>;
+export const PurchaseOrderActionVerdict = z.discriminatedUnion('allowed', [
+  z.object({ allowed: z.literal(true) }),
+  z.object({ allowed: z.literal(false), reason: PurchaseOrderActionBlockedReason }),
+]);
+
+/**
+ * What this order may be asked to do in the state it is in — derived, never stored, and the same
+ * answer the server's own write gates gate on. It judges the *order*, so a check that judges an
+ * input instead (an unpriced line, a quantity below what a line has received, substituting a Part
+ * that has taken delivery) stays with the write that reads that input. Permissions are a separate
+ * seam: a surface renders a control when the role allows it *and* the order allows it.
+ */
+export type PurchaseOrderActions = z.infer<typeof PurchaseOrderActions>;
+export const PurchaseOrderActions = z.object({
+  amend: PurchaseOrderActionVerdict,
+  cancel: PurchaseOrderActionVerdict,
+  closeShort: PurchaseOrderActionVerdict,
+  edit: PurchaseOrderActionVerdict,
+  /** Filing the Supplier's own paperwork against the order: invoices and credit notes alike. */
+  fileDocuments: PurchaseOrderActionVerdict,
+  receive: PurchaseOrderActionVerdict,
+  returnToSupplier: PurchaseOrderActionVerdict,
+  send: PurchaseOrderActionVerdict,
+});
+
 export type PurchaseOrder = z.infer<typeof PurchaseOrder>;
 export const PurchaseOrder = z.object({
+  actions: PurchaseOrderActions,
   closedShortAt: DateIso.nullable(),
   code: PurchaseOrderCode,
   createdAt: DateIso,

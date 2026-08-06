@@ -1,14 +1,19 @@
 import { type DatabaseTransaction, type Db, purchaseOrderLines, purchaseOrders, stockMovements } from '@pkg/db';
-import { deriveOutstandingReceiptUnitCost, deriveReturnToSupplierWarnings } from '@pkg/domain';
+import {
+  deriveOutstandingReceiptUnitCost,
+  derivePurchaseOrderActions,
+  deriveReturnToSupplierWarnings,
+} from '@pkg/domain';
 import type { AuthId, PostReturnToSupplierInput, StockMovementPostResult, UUID } from '@pkg/schema';
 import { StockMovementPostResult as StockMovementPostResultSchema, unitClassFor } from '@pkg/schema';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
 import {
+  assertPurchaseOrderAction,
   PurchaseOrderLineNotFoundError,
   PurchaseOrderNotFoundError,
-  PurchaseOrderNotSentError,
 } from '../purchase-orders/purchase-order-errors.js';
+import { loadPurchaseOrderActionFacts } from '../purchase-orders/purchase-order-service.js';
 import { bucketMatches, insertMovement, loadStockPart } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
@@ -92,13 +97,16 @@ export async function postReturnToSupplier({
 
 async function lockReturnablePurchaseOrder(tx: DatabaseTransaction, id: UUID) {
   const [row] = await tx
-    .select({ id: purchaseOrders.id, status: purchaseOrders.status })
+    .select({ closedShortAt: purchaseOrders.closedShortAt, id: purchaseOrders.id, status: purchaseOrders.status })
     .from(purchaseOrders)
     .where(eq(purchaseOrders.id, id))
     // The same row lock receiving takes, so a return cannot race a receipt onto the same line.
     .for('update');
   if (!row) throw new PurchaseOrderNotFoundError(id);
-  if (row.status !== 'sent') throw new PurchaseOrderNotSentError(id);
+  // Returning deliberately outlives close-short, and that difference from receiving is now one
+  // named verdict rather than a check this function happens not to make.
+  const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row }));
+  assertPurchaseOrderAction(actions.returnToSupplier, id);
 
   return row;
 }

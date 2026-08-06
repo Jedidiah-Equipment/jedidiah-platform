@@ -54,7 +54,8 @@ order**.
 
 - Nothing refused at the dock is returned. A refused delivery was never received, so there is no
   Receipt to reverse and nothing to record.
-- A return needs a Receipt behind it. A line nothing arrived on has nothing to send back.
+- A return needs a Receipt behind it. A line nothing arrived on has nothing to send back, and is not
+  offered for return.
 - Once a line has moved stock either way, its Part can no longer be substituted — the movements
   belong to that line. See [Amend a sent Purchase Order](./amend-a-sent-purchase-order.md).
 - Every return leaves the Supplier owing a credit. Record it when it arrives — see

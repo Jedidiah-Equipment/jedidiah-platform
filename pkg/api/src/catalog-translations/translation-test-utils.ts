@@ -36,6 +36,7 @@ export function translationEnvelopes<Canonical extends object>(
   ) as { [Field in keyof Canonical]: CatalogTranslationEnvelope<Canonical[Field]> };
 }
 
+/** Resolves once the call is recorded — the run still has to persist, so poll for DB effects. */
 export async function waitForModelCalls(model: MockLanguageModelV3, count: number): Promise<void> {
   for (let attempt = 0; attempt < 200 && model.doGenerateCalls.length < count; attempt += 1) {
     await new Promise<void>((resolve) => setTimeout(resolve, 5));

@@ -68,12 +68,16 @@ describe('catalog mutation translation triggers', () => {
     expect(context.model.doGenerateCalls).toHaveLength(1);
     expect(JSON.stringify(context.model.doGenerateCalls[0]?.prompt)).toContain('Latest description.');
 
-    const [translated] = await context.db.select().from(products).where(eq(products.id, created.id));
-    expect(translated?.translations.af?.description).toMatchObject({
-      isManual: false,
-      sourceHash: expect.any(String),
-      value: 'Jongste beskrywing.',
-    });
+    await expect
+      .poll(async () => {
+        const [translated] = await context.db.select().from(products).where(eq(products.id, created.id));
+        return translated?.translations.af?.description;
+      })
+      .toMatchObject({
+        isManual: false,
+        sourceHash: expect.any(String),
+        value: 'Jongste beskrywing.',
+      });
 
     await caller.products.update(productUpdate(settled, { basePrice: settled.basePrice + 500 }));
     context.timers.advance(60_000);

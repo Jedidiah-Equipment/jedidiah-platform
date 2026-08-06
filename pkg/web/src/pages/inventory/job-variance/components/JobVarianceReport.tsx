@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
-import type { JobMaterialVarianceResult, JobMaterialVarianceRow } from '@pkg/schema';
+import { isOffCfo, type JobMaterialVarianceResult, type JobMaterialVarianceRow } from '@pkg/schema';
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -61,7 +61,7 @@ export function JobVarianceReport({ report, showCosts }: { report: JobMaterialVa
  */
 function JobVarianceTotals({ report, showCosts }: { report: JobMaterialVarianceResult; showCosts: boolean }) {
   const overPlanCount = report.items.filter((item) => item.varianceQuantity > 0).length;
-  const offCfoCount = report.items.filter((item) => item.plannedQuantity === 0).length;
+  const offCfoCount = report.items.filter(isOffCfo).length;
 
   return (
     <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-muted-foreground text-sm">
@@ -113,7 +113,7 @@ function createVarianceColumns(showCosts: boolean): ColumnDef<JobMaterialVarianc
           <span className="flex items-center gap-2 text-muted-foreground text-xs">
             {row.original.partCode}
             {/* The Job's CFO never asked for this Part — every draw on a Custom Job reads this way. */}
-            {row.original.plannedQuantity === 0 ? <Badge variant="outline">Off CFO</Badge> : null}
+            {isOffCfo(row.original) ? <Badge variant="outline">Off CFO</Badge> : null}
           </span>
         </>
       ),

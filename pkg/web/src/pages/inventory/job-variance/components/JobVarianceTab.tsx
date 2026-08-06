@@ -1,9 +1,7 @@
 import type { UUID } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
 
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { useCan } from '@/hooks/use-access.js';
-import { useTRPC } from '@/lib/trpc.js';
+import { useJobVariance } from '../use-job-variance.js';
 import { describeVarianceJob, JobVarianceReport } from './JobVarianceReport.js';
 
 /**
@@ -12,15 +10,13 @@ import { describeVarianceJob, JobVarianceReport } from './JobVarianceReport.js';
  * it out, who holds `inventory:read` without `job:read` and so never reaches this sheet.
  */
 export function JobVarianceTab({ jobId }: { jobId: UUID }) {
-  const trpc = useTRPC();
-  const showCosts = useCan('inventory_cost:read').can;
-  const varianceQuery = useQuery(trpc.inventory.jobVariance.queryOptions({ jobId }));
+  const { query, showCosts } = useJobVariance(jobId);
 
-  if (varianceQuery.isPending) {
+  if (query.isPending) {
     return <Skeleton className="h-24 w-full" />;
   }
 
-  if (varianceQuery.error) {
+  if (query.error) {
     return <p className="text-destructive text-sm">Unable to load Job variance.</p>;
   }
 
@@ -28,8 +24,8 @@ export function JobVarianceTab({ jobId }: { jobId: UUID }) {
     <div className="grid gap-3">
       {/* Where the Job's stock life stands, the same line the inventory screen leads with: a variance
           read after close-out means something different from one read mid-build. */}
-      <p className="text-muted-foreground text-sm">{describeVarianceJob(varianceQuery.data.job)}</p>
-      <JobVarianceReport report={varianceQuery.data} showCosts={showCosts} />
+      <p className="text-muted-foreground text-sm">{describeVarianceJob(query.data.job)}</p>
+      <JobVarianceReport report={query.data} showCosts={showCosts} />
     </div>
   );
 }

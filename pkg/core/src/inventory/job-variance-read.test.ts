@@ -163,6 +163,96 @@ describe('getJobMaterialVariance', () => {
     expect(report.totalActualCost).toBe(600);
   });
 
+  test('keeps a Job priced when a Part carries nothing but an uncosted return', async ({ context }) => {
+    // The Job is priced on one Part and has, on another, only a return with no value to reverse.
+    // That Part cost this Job nothing — not "an amount we cannot know" — so it must not unprice the
+    // Job's total. Summing over rows and letting a null mean both was what made it do exactly that.
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+      movementType: 'checkout',
+    });
+    const returned = await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1 },
+      movementType: 'return-to-store',
+    });
+
+    const report = await getJobMaterialVariance({ db: context.db, jobId: context.jobs.custom.id });
+
+    expect(returned.movement.unitCost).toBeNull();
+    expect(report.items).toMatchObject([
+      { actualCost: 0, drawnQuantity: -1, partCode: 'MEASURED' },
+      { actualCost: 20, drawnQuantity: 2, partCode: 'PIECE' },
+    ]);
+    expect(report.totalActualCost).toBe(20);
+  });
+
+  test('stops reporting no-cost-yet once the unpriced draw has been handed back', async ({ context }) => {
+    // An unpriced draw returned in full leaves the Job holding nothing it cannot price, so its cost
+    // is zero rather than unknowable. Asking whether any draw was *ever* unpriced would keep saying
+    // "not priced" forever, and would take the priced Part beside it down with it.
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+      movementType: 'checkout',
+    });
+    const drawn = await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 3 },
+      movementType: 'checkout',
+    });
+    await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 3 },
+      movementType: 'return-to-store',
+    });
+
+    const report = await getJobMaterialVariance({ db: context.db, jobId: context.jobs.custom.id });
+
+    expect(drawn.movement.unitCost).toBeNull();
+    expect(report.items).toMatchObject([
+      { actualCost: 0, drawnQuantity: 0, partCode: 'MEASURED' },
+      { actualCost: 20, drawnQuantity: 2, partCode: 'PIECE' },
+    ]);
+    expect(report.totalActualCost).toBe(20);
+  });
+
+  test('still reports no cost yet while part of the unpriced draw is outstanding', async ({ context }) => {
+    await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 3 },
+      movementType: 'checkout',
+    });
+    await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1 },
+      movementType: 'return-to-store',
+    });
+
+    const report = await getJobMaterialVariance({ db: context.db, jobId: context.jobs.custom.id });
+
+    expect(report.items).toMatchObject([{ actualCost: null, drawnQuantity: 2 }]);
+    expect(report.totalActualCost).toBeNull();
+  });
+
   test('reports an uncosted draw as no cost yet rather than as free material', async ({ context }) => {
     await postJobMovement({
       actorUserId,

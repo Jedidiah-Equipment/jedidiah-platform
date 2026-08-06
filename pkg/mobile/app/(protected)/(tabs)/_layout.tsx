@@ -28,10 +28,6 @@ export default function AppTabsLayout() {
         options={{ href: tabs.includes('plan') ? ('/plan' as Href) : null, title: appTabLabel('plan') }}
       />
       <Tabs.Screen
-        name="stores"
-        options={{ href: tabs.includes('stores') ? undefined : null, title: appTabLabel('stores') }}
-      />
-      <Tabs.Screen
         name="quotes"
         options={{ href: tabs.includes('quotes') ? undefined : null, title: appTabLabel('quotes') }}
       />
@@ -42,6 +38,10 @@ export default function AppTabsLayout() {
       <Tabs.Screen
         name="units"
         options={{ href: tabs.includes('units') ? undefined : null, title: appTabLabel('units') }}
+      />
+      <Tabs.Screen
+        name="stores"
+        options={{ href: tabs.includes('stores') ? undefined : null, title: appTabLabel('stores') }}
       />
       <Tabs.Screen name="index" options={{ href: null }} />
     </Tabs>

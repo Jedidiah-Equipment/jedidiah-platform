@@ -9,6 +9,7 @@ const LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
   '/elementor-265/': '/products',
   '/hd2020-in-line-ripper-range/': '/products',
   '/st300-strip-till-range/': '/products',
+  '/wp-content/uploads/2024/10/Jed_Flyers_Recharge-Slurry-Water-Tanks_JUL24_awVIZ.pdf': '/products',
 };
 
 export function permanentRedirectLocation(requestUrl: string | URL): string | null {

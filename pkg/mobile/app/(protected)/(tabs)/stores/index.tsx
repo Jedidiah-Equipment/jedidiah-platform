@@ -1,4 +1,4 @@
-import { IconChecklist } from '@tabler/icons-react-native';
+import { IconChecklist, IconClipboardCheck } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -23,8 +23,8 @@ import { useStoresScan } from '@/lib/use-stores-scan';
  * other than a Part label.
  *
  * Everything physical begins with a scan, so this screen deliberately has almost nothing else on
- * it. The counting screens of #1060 mount here as a third destination beside the close-out queue —
- * they take the same actor and the same scan stack, and need no new machinery from this screen.
+ * it. The two destinations below it are the exceptions, and they take the same actor and the same
+ * scan stack — neither needed any new machinery from this screen.
  */
 export default function StoresScanHomeRoute() {
   const router = useRouter();
@@ -88,13 +88,20 @@ export default function StoresScanHomeRoute() {
           <Text className="text-[11px] text-muted-foreground" mono>
             OTHER WORK
           </Text>
-          {/* The only destination that does not begin at a Part label: it begins at a Job. Receiving,
-              both returns, and checkout all hang off a scan, so they are reached from the Part screen. */}
+          {/* The two destinations that do not begin at a Part label: one begins at a Job, the other
+              at a counting walk. Receiving, both returns, and checkout all hang off a scan, so they
+              are reached from the Part screen. */}
           <DestinationTile
             caption="Return leftovers and end a Job’s stock life"
             icon={IconChecklist}
             onPress={() => router.push('/stores/close-out')}
             title="Close-out queue"
+          />
+          <DestinationTile
+            caption="Count the shelf and correct what the ledger holds"
+            icon={IconClipboardCheck}
+            onPress={() => router.push('/stores/stocktake')}
+            title="Stocktake"
           />
         </View>
       </ScrollView>

@@ -1,4 +1,4 @@
-import { buyListReasonsNotify } from '@pkg/schema';
+import { buyListReasonsNotify, STOCKTAKE_SCOPE_LABELS } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
@@ -65,6 +65,27 @@ export const BuyListSignalNavIndicator: React.FC = () => {
   return notifying.length > 0 ? (
     <NavWarningDot
       label={`${notifying.length} ${plural(notifying.length, 'Part is', 'Parts are')} out of stock or below minimum`}
+    />
+  ) : null;
+};
+
+/**
+ * The stocktake-overdue signal (spec §12), as a dot rather than a dashboard tile: raw material
+ * drifts downward forever between counts, so a late count is a stock report quietly going wrong —
+ * exactly the kind of thing that belongs beside the page that fixes it.
+ */
+export const StocktakeOverdueNavIndicator: React.FC = () => {
+  const trpc = useTRPC();
+  const inventoryAccess = useCan('inventory:read');
+  const overdueQuery = useQuery({
+    ...trpc.inventory.stocktakeOverdue.queryOptions(),
+    enabled: inventoryAccess.can,
+  });
+  const overdue = (overdueQuery.data?.items ?? []).filter((row) => row.isOverdue);
+
+  return overdue.length > 0 ? (
+    <NavWarningDot
+      label={`${overdue.map((row) => STOCKTAKE_SCOPE_LABELS[row.scope]).join(' and ')} ${overdue.length === 1 ? 'is' : 'are'} overdue for a count`}
     />
   ) : null;
 };

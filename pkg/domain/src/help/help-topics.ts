@@ -14,6 +14,7 @@ export const HELP_TOPICS = {
   inventory: '/inventory/stock-on-hand-and-free-stock',
   inventoryBuyList: '/inventory/raise-purchase-orders-from-the-buy-list',
   inventoryCloseOut: '/inventory/close-out-a-job',
+  inventoryStocktake: '/inventory/run-a-stocktake-session',
   jobs: '/production/find-a-job',
   parts: '/inventory/print-part-labels',
   plan: '/production/open-a-bay-plan',

@@ -7,6 +7,7 @@ import {
   IconBuildingWarehouse,
   IconCategory2,
   IconChevronRight,
+  IconClipboardCheck,
   IconClipboardList,
   IconFileText,
   IconFlagCheck,
@@ -39,7 +40,12 @@ import {
 } from '@/components/ui/sidebar.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { cn } from '@/lib/utils.js';
-import { BuyListSignalNavIndicator, FeedbackOpenNavIndicator, QuotesPriorityNavIndicator } from './AppNavIndicators.js';
+import {
+  BuyListSignalNavIndicator,
+  FeedbackOpenNavIndicator,
+  QuotesPriorityNavIndicator,
+  StocktakeOverdueNavIndicator,
+} from './AppNavIndicators.js';
 
 type NavLinkProps = React.ComponentProps<typeof Link>;
 
@@ -162,6 +168,13 @@ const navSections = [
         permission: 'purchase_order:read',
         link: linkOptions({ to: '/purchase-orders' }),
         icon: IconShoppingCart,
+      },
+      {
+        title: 'Stocktake',
+        permission: 'inventory:read',
+        link: linkOptions({ to: '/inventory/stocktake' }),
+        icon: IconClipboardCheck,
+        indicator: StocktakeOverdueNavIndicator,
       },
       {
         title: 'Close-out',
@@ -419,7 +432,7 @@ export function getVisibleNavSections(canSee: (permission?: AppPermission) => bo
 }
 
 /** Inventory routes that are their own nav item, so the Part-history match must not claim them. */
-const inventorySiblingRoutes = ['/inventory/buy-list', '/inventory/close-out'];
+const inventorySiblingRoutes = ['/inventory/buy-list', '/inventory/close-out', '/inventory/stocktake'];
 
 export function isInventoryNavPath(pathname: string): boolean {
   if (inventorySiblingRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {

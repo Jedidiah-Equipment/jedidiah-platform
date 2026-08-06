@@ -792,6 +792,13 @@
       "when": 1785936790723,
       "tag": "0112_tense_vulture",
       "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1786004876439,
+      "tag": "0113_dry_dragon_man",
+      "breakpoints": true
     }
   ]
 }

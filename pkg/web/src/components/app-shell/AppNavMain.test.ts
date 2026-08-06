@@ -16,6 +16,7 @@ describe('AppNavMain', () => {
       'Inventory',
       'Buy list',
       'Purchase Orders',
+      'Stocktake',
       'Close-out',
     ]);
     expect(inventory?.items.find((item) => item.title === 'Inventory')?.link.activeOptions).toEqual({ exact: true });
@@ -42,5 +43,7 @@ describe('AppNavMain', () => {
     expect(isInventoryNavPath('/inventory/close-out')).toBe(false);
     expect(isInventoryNavPath('/inventory/close-out/job-id')).toBe(false);
     expect(isInventoryNavPath('/inventory/buy-list')).toBe(false);
+    expect(isInventoryNavPath('/inventory/stocktake')).toBe(false);
+    expect(isInventoryNavPath('/inventory/stocktake/session-id')).toBe(false);
   });
 });

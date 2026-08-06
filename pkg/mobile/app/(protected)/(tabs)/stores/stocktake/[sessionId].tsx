@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import { ScanField } from '@/components/stores/ScanField';
 import { StockCountPanel } from '@/components/stores/StockCountPanel';
 import { StoresConfirmModal } from '@/components/stores/StoresConfirmModal';
+import { StoresLoadMoreButton } from '@/components/stores/StoresLoadMoreButton';
 import { StoresScreen } from '@/components/stores/StoresScreen';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
@@ -31,7 +32,7 @@ const SKIP_LIST_PREVIEW = 8;
 /**
  * One screenful at a time. The uncounted list starts as long as the scope — a stores walk covers
  * every perpetual Part the plant stocks — and it is re-read after every count, so it is paged
- * rather than held whole. The page grows as the counter scrolls toward the end of it.
+ * rather than held whole. Each page is asked for by tapping, never by scrolling.
  */
 const UNCOUNTED_PAGE_SIZE = 20;
 
@@ -175,18 +176,10 @@ export default function StoresStocktakeSessionRoute() {
                   <UncountedRow key={row.partId} onPress={() => setPartCode(row.partCode)} row={row} />
                 ))}
                 {uncountedPages.hasNextPage ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    className="items-center rounded-xl border border-border bg-surface px-4 py-3"
-                    disabled={uncountedPages.isFetchingNextPage}
+                  <StoresLoadMoreButton
+                    isLoading={uncountedPages.isFetchingNextPage}
                     onPress={() => void uncountedPages.fetchNextPage()}
-                  >
-                    <Text className="text-sm text-surface-foreground" weight="semibold">
-                      {uncountedPages.isFetchingNextPage
-                        ? 'Loading…'
-                        : `Load more (${uncounted.length} of ${uncountedTotal})`}
-                    </Text>
-                  </Pressable>
+                  />
                 ) : null}
               </View>
             )}

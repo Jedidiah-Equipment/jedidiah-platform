@@ -8,6 +8,8 @@ import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { loadingSpinnerColor } from '@/theme/brand-colors';
 
+import { StoresLoadMoreButton } from './StoresLoadMoreButton';
+
 /** Short enough that the answer is one glance rather than a scroll, on a list nobody browses. */
 const PART_SEARCH_PAGE_SIZE = 10;
 
@@ -41,7 +43,6 @@ export function PartSearchList({ onSelect, search }: { onSelect: (partCode: stri
   );
 
   const items = useMemo(() => results.data?.pages.flatMap((page) => page.items) ?? [], [results.data?.pages]);
-  const total = results.data?.pages.at(-1)?.total ?? 0;
 
   if (!isSearching) return null;
 
@@ -72,16 +73,7 @@ export function PartSearchList({ onSelect, search }: { onSelect: (partCode: stri
       ))}
 
       {results.hasNextPage ? (
-        <Pressable
-          accessibilityRole="button"
-          className="items-center rounded-xl border border-border bg-surface px-4 py-3"
-          disabled={results.isFetchingNextPage}
-          onPress={() => void results.fetchNextPage()}
-        >
-          <Text className="text-sm text-surface-foreground" weight="semibold">
-            {results.isFetchingNextPage ? 'Loading…' : `Load more (${items.length} of ${total})`}
-          </Text>
-        </Pressable>
+        <StoresLoadMoreButton isLoading={results.isFetchingNextPage} onPress={() => void results.fetchNextPage()} />
       ) : null}
     </View>
   );

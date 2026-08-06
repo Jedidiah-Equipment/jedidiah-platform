@@ -1,14 +1,11 @@
 import { type Db, parts, stockMovements } from '@pkg/db';
-import type { JobMaterialVarianceResult, JobStockMovementType, UUID } from '@pkg/schema';
+import type { JobMaterialVarianceResult, UUID } from '@pkg/schema';
 import {
   isOffCfo,
   JOB_STOCK_MOVEMENT_TYPES,
   JobMaterialVarianceResult as JobMaterialVarianceResultSchema,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
-
-/** Bound as a parameter through the movement-type union, so a renamed type fails to compile here. */
-const CHECKOUT: JobStockMovementType = 'checkout';
 
 import { loadCfoQuantitiesByPart, loadJobStockJob } from './job-stock-facts.js';
 import { toLedgerQuantity } from './ledger.js';
@@ -58,17 +55,18 @@ export async function getJobMaterialVariance({
         costedValue: sql<number>`(-coalesce(sum(${stockMovements.delta} * ${stockMovements.unitCost})
           filter (where ${stockMovements.unitCost} is not null), 0))::double precision`,
         drawnQuantity: sql<number>`(-coalesce(sum(${stockMovements.delta}), 0))::double precision`,
-        // Whether anything was drawn that we cannot price — the one fact that makes the Part's cost
-        // unknowable rather than merely small, stated on its own instead of inferred from a count.
-        //
-        // Draws only. A return is stamped null whenever its bucket's pool has nothing outstanding
-        // left to reverse — the offcut handed back in a length the Job never drew, or the piece
-        // returned past what it still held — and both of those give back exactly no value, which
-        // the sum already reflects. Counting them would let one returned offcut wipe the money off
-        // a Job whose every draw was priced, at close-out, which is when returns get posted.
-        hasUncostedDraw: sql<boolean>`coalesce(bool_or(${stockMovements.unitCost} is null
-          and ${stockMovements.movementType} = ${CHECKOUT}), false)`,
         partId: stockMovements.partId,
+        // How much unpriced material the Job is *still holding* — the one fact that makes its cost
+        // unknowable rather than merely small. Netted rather than counted, because what matters is
+        // what is outstanding: an unpriced draw handed straight back leaves nothing to price, and a
+        // Part whose every draw was priced must not be unpriced by it.
+        //
+        // The sign does the work that naming a movement type used to. A return is stamped null
+        // whenever its bucket's pool has nothing outstanding left to reverse — an offcut handed back
+        // in a length the Job never drew, a piece returned past what it still held — and each of
+        // those is a positive delta, so it can only ever reduce this figure, never raise it.
+        uncostedDrawnQuantity: sql<number>`(-coalesce(sum(${stockMovements.delta})
+          filter (where ${stockMovements.unitCost} is null), 0))::double precision`,
       })
       .from(stockMovements)
       .where(and(eq(stockMovements.jobId, jobId), inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES)))
@@ -94,8 +92,9 @@ export async function getJobMaterialVariance({
     const drawnQuantity = toLedgerQuantity(draws?.drawnQuantity ?? 0);
 
     return {
-      // Null is reserved for a cost we cannot know; a Part with no draws at all cost this Job zero.
-      actualCost: draws?.hasUncostedDraw ? null : (draws?.costedValue ?? 0),
+      // Null is reserved for a cost we cannot know: unpriced material this Job is still holding. A
+      // Part with no draws at all, or one whose unpriced draws all came back, cost it zero.
+      actualCost: toLedgerQuantity(draws?.uncostedDrawnQuantity ?? 0) > 0 ? null : (draws?.costedValue ?? 0),
       drawnQuantity,
       partCode: part.code,
       partId: part.id,

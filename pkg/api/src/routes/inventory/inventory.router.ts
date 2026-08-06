@@ -25,6 +25,7 @@ import {
 } from '@pkg/core';
 import {
   BuildPostResult,
+  BuildPostResultCostFields,
   BuyListResult,
   CloseOutJobInput,
   CloseOutQueueResult,
@@ -280,12 +281,22 @@ export const inventoryRouter = router({
       return { ...result, movements: result.movements.map((movement) => projectMovement(movement, ctx.access)) };
     }),
 
+  /**
+   * The produced cost is derived from what the build consumed rather than keyed, so it is gated on
+   * the way out with no `assertCanWriteInventoryCost` counterpart on the way in.
+   */
   postBuild: authorizedProcedure('inventory:build')
     .input(PostBuildInput)
     .output(BuildPostResult)
-    .mutation(({ ctx, input }) =>
-      mapBuildErrors(() => postBuild({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const result = await mapBuildErrors(() => postBuild({ actorUserId: ctx.session.user.id, db: ctx.db, input }));
+
+      return projectInventoryCostFields({
+        access: ctx.access,
+        costFields: BuildPostResultCostFields,
+        output: result,
+      });
+    }),
 
   postAdjustment: authorizedProcedure('inventory:adjust')
     .input(PostAdjustmentInput)

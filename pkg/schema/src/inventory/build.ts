@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso } from '../common/date.js';
 import { UUID } from '../common/uuid.js';
+import { declareInventoryCostFields, InventoryCost } from './inventory-cost.js';
 import {
   AssertedActorUserId,
   StockMovementLengthMm,
@@ -75,7 +76,9 @@ export const BuildComponentWarning = z.object({
 export type BuildPostResult = z.infer<typeof BuildPostResult>;
 export const BuildPostResult = z.object({
   build: StockBuild,
-  /** The derived cost stamped on the produce row; null when nothing consumed carried a cost. */
-  producedUnitCost: z.number().finite().nonnegative().nullable(),
+  /** The cost stamped on the produce row, derived from what the build consumed. */
+  producedUnitCost: InventoryCost,
   warnings: z.array(BuildComponentWarning),
 });
+
+export const BuildPostResultCostFields = declareInventoryCostFields(BuildPostResult, 'producedUnitCost');

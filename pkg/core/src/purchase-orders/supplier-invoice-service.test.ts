@@ -14,10 +14,12 @@ import {
   receive,
   renderStubPdf,
   SPARE_PART_ID,
+  SUPPLIER_ID,
   sendOrder,
   test,
 } from './purchase-order-amendment-fixtures.js';
 import { amendPurchaseOrderQuantity } from './purchase-order-amendment-service.js';
+import { createPurchaseOrder } from './purchase-order-service.js';
 import {
   applyInvoicePrice,
   dismissInvoiceFlag,
@@ -378,6 +380,53 @@ describe('supplier invoice cross-check', () => {
     });
 
     expect((await listInvoicePriceVariance({ db: context.db })).items).toMatchObject([{ resolution: 'dismissed' }]);
+  });
+
+  test('refuses an invoice against an order the Supplier was never sent', async ({ context }) => {
+    const draft = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_ID },
+    });
+
+    await expect(upload(context, draft.id, reads(extraction({ lines: [line()] })))).rejects.toMatchObject({
+      code: 'purchase_order.not_sent',
+    });
+  });
+
+  test('refuses a file whose bytes are not a PDF before it reaches the model', async ({ context }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 25 }]);
+    let called = false;
+
+    await expect(
+      uploadSupplierInvoice({
+        actorUserId: ACTOR_ID,
+        bytes: new Uint8Array([0x6e, 0x6f, 0x70, 0x65]),
+        // What the upload *claims* to be. The bytes are what decides.
+        contentType: 'application/pdf',
+        db: context.db,
+        extract: async () => {
+          called = true;
+          throw new Error('the model should never have seen these bytes');
+        },
+        filename: 'not-really.pdf',
+        input: { purchaseOrderId: purchaseOrder.id },
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({ code: 'document.content_type_not_allowed' });
+    expect(called).toBe(false);
+  });
+
+  test('leaves the variance unknown when the invoice printed a price against no quantity', async ({ context }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 25 }]);
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 10);
+    await upload(context, purchaseOrder.id, reads(extraction({ lines: [line({ quantity: null, unitPrice: 30 })] })));
+
+    // Reporting the order's 10 here would state a R50 exposure the Supplier never billed, on the
+    // very number the list is ranked by.
+    expect((await listInvoicePriceVariance({ db: context.db })).items).toMatchObject([
+      { invoiceUnitPrice: 30, quantity: null, unitPrice: 25, varianceValue: null },
+    ]);
   });
 
   test('leaves an unreadable invoice out of the variance list entirely', async ({ context }) => {

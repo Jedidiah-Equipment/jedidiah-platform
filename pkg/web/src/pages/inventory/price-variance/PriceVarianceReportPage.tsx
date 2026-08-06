@@ -54,7 +54,8 @@ const columns: ColumnDef<InvoicePriceVarianceRow>[] = [
   },
   {
     accessorKey: 'quantity',
-    cell: ({ row }) => formatNumber(row.original.quantity),
+    // Null where the invoice printed a price against no quantity — the variance is unknown, not zero.
+    cell: ({ row }) => (row.original.quantity === null ? '—' : formatNumber(row.original.quantity)),
     header: 'Quantity',
     meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
   },

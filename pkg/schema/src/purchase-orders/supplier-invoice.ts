@@ -215,11 +215,12 @@ export const InvoicePriceVarianceRow = z.object({
   partName: z.string(),
   purchaseOrderCode: PurchaseOrderCode,
   purchaseOrderId: UUID,
-  /** Signed: positive means the Supplier billed above the agreed price. */
-  quantity: z.number().finite(),
+  /** What the invoice printed, or null when it printed a price against no quantity at all. */
+  quantity: z.number().finite().nullable(),
   resolution: InvoiceFlagResolutionKind.nullable(),
   supplierName: SupplierCompanyName,
   unitPrice: InventoryCost,
+  /** Signed: positive means the Supplier billed above the agreed price. Null with the quantity. */
   varianceValue: InventoryValue,
 });
 

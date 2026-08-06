@@ -403,7 +403,7 @@ describe('amendments, returns, and credit notes', () => {
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
     await expect(procurement.purchaseOrders.invoicePriceVariance()).resolves.toMatchObject({
-      items: [{ partCode: 'PO-ROUTER-PART', resolution: 'applied', varianceValue: 100 }],
+      items: [{ partCode: 'PO-ROUTER-PART', quantity: 4, resolution: 'applied', varianceValue: 100 }],
     });
   });
 });

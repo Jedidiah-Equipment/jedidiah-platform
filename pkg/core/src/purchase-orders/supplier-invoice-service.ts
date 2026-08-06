@@ -12,7 +12,13 @@ import {
   supplier,
   user,
 } from '@pkg/db';
-import { deriveInvoicePriceCorrection, matchInvoiceLines, validateDocumentPolicy } from '@pkg/domain';
+import {
+  deriveInvoicePriceCorrection,
+  getDocumentPolicy,
+  matchInvoiceLines,
+  sniffDocumentContentType,
+  validateDocumentPolicy,
+} from '@pkg/domain';
 import type {
   AuthId,
   InvoiceFlagResolution,
@@ -42,6 +48,7 @@ import {
   loadMovingAverages,
   loadStockPart,
 } from '../inventory/ledger.js';
+import { PurchaseOrderNotSentError } from './purchase-order-errors.js';
 import {
   getPurchaseOrder,
   newestPurchaseOrderDocumentFirst,
@@ -102,18 +109,37 @@ export async function uploadSupplierInvoice({
   input: { purchaseOrderId: UUID };
   storage: StorageAdapter;
 }): Promise<PurchaseOrderDocumentRow> {
-  await getPurchaseOrder({ db, id: input.purchaseOrderId });
-  // `createDocumentRecord` re-checks this against the sniffed bytes; checking here too is what stops
-  // a rejected upload from spending a model call on its way to being refused.
+  const purchaseOrder = await getPurchaseOrder({ db, id: input.purchaseOrderId });
+  // Only an order the Supplier is actually holding can have been invoiced. A draft has not been
+  // sent and a cancelled one was called off, so a bill against either describes nothing — and the
+  // browser's own check of this is UX, never the boundary (`pkg/web/AGENTS.md`). Closed-short
+  // orders still qualify: closing short says nothing more is coming, not that nothing arrived.
+  if (purchaseOrder.status !== 'sent') throw new PurchaseOrderNotSentError(input.purchaseOrderId);
+
+  // Validated against the *sniffed* bytes rather than the multipart content type, and before the
+  // model is called: `createDocumentRecord` would refuse a spoofed PDF anyway, but only after this
+  // function had already sent its bytes to a third-party provider. What the file claims to be is
+  // not a reason to disclose it.
+  const verifiedContentType = sniffDocumentContentType(bytes);
+  if (!verifiedContentType) {
+    // Bytes matching nothing we accept, refused the same way `createDocumentRecord` refuses them.
+    // Falling back to the declared type here would hand exactly the spoofed upload this guards
+    // against straight to the provider.
+    throw new DocumentPolicyViolationError({
+      code: 'document.content_type_not_allowed',
+      message: `Uploaded file content does not match an allowed document type: ${getDocumentPolicy('purchase_order').allowedContentTypes.join(', ')}.`,
+    });
+  }
+
   const policyResult = validateDocumentPolicy({
     byteSize: bytes.byteLength,
-    contentType,
+    contentType: verifiedContentType,
     metadata: { type: 'supplier_invoice' },
     ownerType: 'purchase_order',
   });
   if (!policyResult.ok) throw new DocumentPolicyViolationError(policyResult);
 
-  const extraction = await readInvoice({ bytes, contentType, extract });
+  const extraction = await readInvoice({ bytes, contentType: verifiedContentType, extract });
   const storageKey = purchaseOrderDocumentStorageKey(input.purchaseOrderId, filename);
 
   try {
@@ -346,7 +372,9 @@ export async function listInvoicePriceVariance({ db }: { db: Db }): Promise<Invo
       const flag = row.flags.find((candidate) => candidate.kind === 'price-mismatch');
       if (!flag || row.partId === null || row.invoiceUnitPrice === null || row.unitPrice === null) return [];
 
-      const quantity = row.invoiceQuantity ?? row.orderedQuantity ?? 0;
+      // Strictly what the invoice printed. Falling back to the order's quantity would state a rand
+      // exposure the Supplier never billed, and the list is ranked on exactly that number.
+      const quantity = row.invoiceQuantity;
 
       return [
         {
@@ -363,7 +391,7 @@ export async function listInvoicePriceVariance({ db }: { db: Db }): Promise<Invo
           resolution: documentResolutions?.get(flag.key)?.kind ?? null,
           supplierName: order.supplierName,
           unitPrice: row.unitPrice,
-          varianceValue: (row.invoiceUnitPrice - row.unitPrice) * quantity,
+          varianceValue: quantity === null ? null : (row.invoiceUnitPrice - row.unitPrice) * quantity,
         },
       ];
     });

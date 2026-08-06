@@ -101,6 +101,7 @@ function labelDays(input: { endDate: string; firstWorkDay?: string; lastWorkDay?
 
 function buildBay(input: {
   calendarExceptions?: ProjectedBayQueue['calendarExceptions'];
+  currentOperator?: { name: string } | null;
   department?: Department;
   disabledAt?: string | null;
   id: string;
@@ -110,6 +111,7 @@ function buildBay(input: {
   return {
     calendarExceptions: input.calendarExceptions ?? [],
     createdAt: timestamp,
+    currentOperator: input.currentOperator ?? null,
     department: input.department ?? 'fabrication',
     disabledAt: input.disabledAt ?? null,
     id: id(input.id),
@@ -805,9 +807,29 @@ describe('listScheduledJobs', () => {
     });
 
     expect(listScheduledJobs({ bays: [bay] })).toEqual([
-      { bayId, bayName: 'Fab Bay 1', jobId: id('job-sooner'), startDate: day('2026-06-10') },
-      { bayId, bayName: 'Fab Bay 1', jobId: id('job-later'), startDate: day('2026-06-16') },
+      { bayId, bayName: 'Fab Bay 1', jobId: id('job-sooner'), operatorName: null, startDate: day('2026-06-10') },
+      { bayId, bayName: 'Fab Bay 1', jobId: id('job-later'), operatorName: null, startDate: day('2026-06-16') },
     ]);
+  });
+
+  it('carries the operator on the Bay so a caller can name who has the work', () => {
+    const bay = buildBay({
+      currentOperator: { name: 'Bonginkosi' },
+      id: 'bay-1',
+      name: 'Fabrication Bay 3 - Bonginkosi',
+      slots: [
+        buildWorkSlot(id('bay-1'), {
+          durationDays: 2,
+          endDate: '2026-06-12',
+          id: 'slot-scheduled',
+          jobId: 'job-1',
+          sequence: 1,
+          startDate: '2026-06-10',
+        }),
+      ],
+    });
+
+    expect(listScheduledJobs({ bays: [bay] })).toMatchObject([{ operatorName: 'Bonginkosi' }]);
   });
 
   it('drops a job that is already underway in another bay', () => {
@@ -873,7 +895,13 @@ describe('listScheduledJobs', () => {
     });
 
     expect(listScheduledJobs({ bays: [lateBay, earlyBay] })).toEqual([
-      { bayId: id('bay-1'), bayName: 'Fab Bay 1', jobId: id('job-multi'), startDate: day('2026-06-10') },
+      {
+        bayId: id('bay-1'),
+        bayName: 'Fab Bay 1',
+        jobId: id('job-multi'),
+        operatorName: null,
+        startDate: day('2026-06-10'),
+      },
     ]);
   });
 

@@ -246,6 +246,8 @@ export type ScheduledJob = {
   bayId: UUID;
   bayName: string;
   jobId: UUID;
+  /** Who is on that Bay today, or null while it has no operator — the Bay name already carries it. */
+  operatorName: string | null;
   /** Earliest first working day across the Job's Slots — the day work is due to begin. */
   startDate: DateOnlyIso;
 };
@@ -284,6 +286,7 @@ export function listScheduledJobs({ bays }: { bays: readonly ProjectedBayQueue[]
       bayId: bay.id,
       bayName: bay.name,
       jobId,
+      operatorName: bay.currentOperator?.name ?? null,
       startDate: slot.firstWorkDay,
     }))
     .sort((left, right) => left.startDate.localeCompare(right.startDate) || left.jobId.localeCompare(right.jobId));

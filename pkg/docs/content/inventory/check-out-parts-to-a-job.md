@@ -23,8 +23,9 @@ Use this when you are working from the rack rather than from a Job.
 1. Open **Inventory**.
 2. Click **Check out**.
 3. Search **Job** by code or name and select it.
-   The picker starts with the newest open Jobs and loads more as you scroll. A completed Job remains
-   searchable until its stock has been closed out.
+   The picker starts with the newest open Jobs and says how many of the matching Jobs it has loaded;
+   use **Load more** to reach the rest. A completed Job remains searchable until its stock has been
+   closed out.
 4. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
 5. Click **Check out stock**.
 

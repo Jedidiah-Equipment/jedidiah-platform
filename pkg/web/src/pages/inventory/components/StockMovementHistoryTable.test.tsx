@@ -134,7 +134,7 @@ const result = StockMovementHistoryResult.parse({
 describe('StockMovementHistoryTable', () => {
   it('shows movement details, actor, running balance, and cost-bearing values', () => {
     const html = renderToStaticMarkup(
-      <StockMovementHistoryTable items={result.items} showCosts={true} unitOfMeasure="piece" />,
+      <StockMovementHistoryTable canReadJobs={true} items={result.items} showCosts={true} unitOfMeasure="piece" />,
     );
 
     expect(html).toContain('Opening balance');
@@ -160,11 +160,24 @@ describe('StockMovementHistoryTable', () => {
 
   it('removes cost columns for a caller without cost-read access', () => {
     const html = renderToStaticMarkup(
-      <StockMovementHistoryTable items={result.items} showCosts={false} unitOfMeasure="piece" />,
+      <StockMovementHistoryTable canReadJobs={true} items={result.items} showCosts={false} unitOfMeasure="piece" />,
     );
 
     expect(html).not.toContain('Unit cost');
     expect(html).not.toContain('Movement value');
     expect(html).not.toContain('R 25.00');
+  });
+
+  it('names the Job without linking it for a caller who cannot open Jobs', () => {
+    const html = renderToStaticMarkup(
+      <StockMovementHistoryTable canReadJobs={false} items={result.items} showCosts={true} unitOfMeasure="piece" />,
+    );
+
+    // Stores reads this ledger and holds no `job:read`; the link would only reach a sheet that
+    // refuses to load. The other references are unaffected.
+    expect(html).toContain('JOB-00018');
+    expect(html).not.toContain('/jobs/00000000-0000-4000-8000-000000000099');
+    expect(html).toContain('/purchase-orders/00000000-0000-4000-8000-000000000098');
+    expect(html).toContain('/inventory/stocktake/00000000-0000-4000-8000-000000000097');
   });
 });

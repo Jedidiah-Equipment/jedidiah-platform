@@ -52,9 +52,12 @@ function movementReference(item: StockMovementHistoryRow): MovementReference | n
 
 const REFERENCE_LINK_CLASS = 'font-medium underline-offset-4 hover:underline';
 
-function MovementReferenceCell({ item }: { item: StockMovementHistoryRow }) {
+function MovementReferenceCell({ canReadJobs, item }: { canReadJobs: boolean; item: StockMovementHistoryRow }) {
   const reference = movementReference(item);
   if (!reference) return '—';
+
+  // A reference nobody may open is still worth naming; it just stops pretending to be a way there.
+  if (reference.kind === 'job' && !canReadJobs) return reference.label;
 
   if (reference.kind === 'purchase-order') {
     return (
@@ -80,17 +83,19 @@ function MovementReferenceCell({ item }: { item: StockMovementHistoryRow }) {
 }
 
 export function StockMovementHistoryTable({
+  canReadJobs,
   items,
   showCosts,
   unitOfMeasure,
 }: {
+  canReadJobs: boolean;
   items: readonly StockMovementHistoryRow[];
   showCosts: boolean;
   unitOfMeasure: PartUnitOfMeasure;
 }) {
   const columns = useMemo(
-    () => createStockMovementHistoryColumns({ showCosts, unitOfMeasure }),
-    [showCosts, unitOfMeasure],
+    () => createStockMovementHistoryColumns({ canReadJobs, showCosts, unitOfMeasure }),
+    [canReadJobs, showCosts, unitOfMeasure],
   );
   const data = useMemo(() => [...items], [items]);
   const table = useReactTable({
@@ -117,9 +122,11 @@ export function StockMovementHistoryTable({
 }
 
 function createStockMovementHistoryColumns({
+  canReadJobs,
   showCosts,
   unitOfMeasure,
 }: {
+  canReadJobs: boolean;
   showCosts: boolean;
   unitOfMeasure: PartUnitOfMeasure;
 }): ColumnDef<StockMovementHistoryRow>[] {
@@ -158,7 +165,7 @@ function createStockMovementHistoryColumns({
     },
     {
       accessorFn: (item) => movementReference(item)?.label ?? '—',
-      cell: ({ row }) => <MovementReferenceCell item={row.original} />,
+      cell: ({ row }) => <MovementReferenceCell canReadJobs={canReadJobs} item={row.original} />,
       header: 'Reference',
       id: 'reference',
     },

@@ -307,16 +307,11 @@ export async function loadPurchaseOrderProgress({
 }
 
 /**
- * What the ledger says about one order, read once for the two gates that decide how it may be
- * terminated. They are exact complements over `hasAnyMovement`: an order nothing has ever arrived
- * against is cancelled, and one carrying any history is closed short instead, so every live order
- * has exactly one way out.
- *
- * They used to read two different definitions of "has receipts" and an order could fail both. One
- * whose only receipts had all gone back as replacement-owed returns is owed everything again, so
- * the netted `progress` reads `sent` — while its ledger rows are still real and still block
- * cancelling. That order stayed Sent forever, counting toward On Order and suppressing the buy
- * list's suggested buy for a Part the plant was short of.
+ * What the ledger says about one order, read once for the two gates that terminate it. Both judge
+ * history by `hasAnyMovement` and only the remainder by `progress`, so an order can never refuse
+ * cancelling *and* closing short for want of history — which is what stranded one whose receipts
+ * had all gone back as replacement-owed returns: netted to nothing, it read `sent` and looked
+ * untouched to close-short, while its rows were real enough to block cancelling.
  */
 export type PurchaseOrderLedgerFacts = {
   /** Any row at all against the order, receipts and returns alike — the order's history exists. */
@@ -741,9 +736,8 @@ export async function closePurchaseOrderShort({
 }): Promise<PurchaseOrder> {
   return mutateEntity({
     actorUserId,
-    // Two facts, two questions: `hasAnyMovement` is the history to close short of — the same fact
-    // cancel reads, so an order can never fail both — and `progress` is the open remainder to
-    // release.
+    // `hasAnyMovement` is the history to close short of — the same fact cancel reads — and
+    // `progress` is the open remainder to release.
     assert: async (tx, before) => {
       if (before.status !== 'sent') throw new PurchaseOrderNotSentError(id);
       if (before.closedShortAt !== null) throw new PurchaseOrderAlreadyClosedShortError(id);

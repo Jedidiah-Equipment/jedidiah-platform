@@ -162,11 +162,7 @@ export class PurchaseOrderSubstitutionHasReceiptsError extends Error {
   }
 }
 
-/**
- * Close-short releases an open remainder, so there has to be a delivery behind it to close short
- * of. An order nothing has arrived against is cancelled instead — the two gates read the same
- * ledger fact from opposite sides, so exactly one of them is open.
- */
+/** Close-short releases an open remainder, so there has to be a delivery behind it to close short of. */
 export class PurchaseOrderNoReceiptsError extends Error {
   readonly code = 'purchase_order.no_receipts' as const;
 

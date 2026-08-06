@@ -76,10 +76,8 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
   const canEdit =
     purchaseOrder.derivedStatus === 'draft' && canReadCosts && hasPermission(accessQuery.data, 'purchase_order:create');
   const canSend = purchaseOrder.derivedStatus === 'draft' && hasPermission(accessQuery.data, 'purchase_order:send');
-  // The two ways out split on the ledger, exactly as the server's gates do. An order whose receipts
-  // have all gone back as replacement-owed returns is owed everything again and reads `sent`, but
-  // its rows are real: offering Cancel there is a button that can only fail, and hiding Close short
-  // strands it counting toward On Order forever.
+  // The two ways out split on the ledger, exactly as the server's gates do: an order fully returned
+  // as replacement-owed reads `sent` again, but its rows are real, so Cancel would only fail on it.
   const hasStockMovements = purchaseOrder.lines.some((line) => line.hasStockMovements);
   const canClose = hasPermission(accessQuery.data, 'purchase_order:close');
   const canCancel =

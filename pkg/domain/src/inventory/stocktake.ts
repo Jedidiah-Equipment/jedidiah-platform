@@ -1,7 +1,7 @@
 import type { DateOnlyIso, StocktakeOverdueRow, StocktakeScope, StocktakeSessionStatus } from '@pkg/schema';
 
 import { addDateOnlyDays, addDateOnlyMonths, diffDateOnlyDays } from '../formatting/date-only.js';
-import { isWorkingDay, type WorkingCalendar } from '../jobs/working-calendar.js';
+import { addWorkingDays, type WorkingCalendar } from '../jobs/working-calendar.js';
 import { statusBadgeColorClassNames } from '../theme/status-badge.js';
 
 /** A session's status is derived, so every surface asks the same question of the same field. */
@@ -69,17 +69,4 @@ export function deriveStocktakeOverdue({
   const overdueDays = Math.max(0, diffDateOnlyDays(today, dueBy));
 
   return { dueBy, isOverdue: overdueDays > 0, lastClosedOn, overdueDays, scope };
-}
-
-/** Walks forward over the calendar's working days; a zero grace lands on the due date itself. */
-function addWorkingDays(date: DateOnlyIso, workingDays: number, workingCalendar: WorkingCalendar): DateOnlyIso {
-  let cursor = date;
-  let remaining = workingDays;
-
-  while (remaining > 0) {
-    cursor = addDateOnlyDays(cursor, 1);
-    if (isWorkingDay(cursor, workingCalendar)) remaining -= 1;
-  }
-
-  return cursor;
 }

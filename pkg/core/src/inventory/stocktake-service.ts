@@ -37,19 +37,12 @@ import {
   StocktakeUncountedResult as StocktakeUncountedResultSchema,
   unitClassFor,
 } from '@pkg/schema';
-import { aliasedTable, and, asc, desc, eq, inArray, isNotNull, isNull, ne, type SQL, sql } from 'drizzle-orm';
+import { aliasedTable, and, asc, desc, eq, inArray, isNotNull, ne, type SQL, sql } from 'drizzle-orm';
 
 import { createOrgWorkingCalendar, listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
-import {
-  bucketKey,
-  bucketKeyLengthMm,
-  insertMovement,
-  loadBucketQuantities,
-  loadStockPart,
-  toLedgerQuantity,
-} from './ledger.js';
+import { bucketKey, insertMovement, loadBucketQuantities, loadStockPart, toLedgerQuantity } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
-import { groupBy, sumBy } from './row-grouping.js';
+import { groupBy, sumBy, sumNullableBy } from './row-grouping.js';
 import {
   StocktakePartOutOfScopeError,
   StocktakeSessionAlreadyOpenError,
@@ -78,17 +71,12 @@ export async function openStocktakeSession({
       sessionUserId: actorUserId,
     });
 
-    // The partial unique index is the real guard against two openers racing; this read is what turns
-    // the race the index loses into the sentence that tells someone to resume the walk in progress.
-    // The loser of a genuine race never reaches the read's verdict, so its constraint violation is
-    // translated into the same refusal — a storeman tapping twice must not get an internal error.
-    const [open] = await tx
-      .select({ id: stocktakeSessions.id })
-      .from(stocktakeSessions)
-      .where(and(eq(stocktakeSessions.scope, input.scope), isNull(stocktakeSessions.closedAt)))
-      .limit(1);
-    if (open) throw new StocktakeSessionAlreadyOpenError(input.scope);
-
+    // The partial unique index on the open session per scope is the whole latch: one open walk per
+    // rhythm, enforced by the database rather than by a read that a concurrent opener could clear.
+    // Every already-open case therefore arrives here as a constraint violation, and every one of
+    // them is translated into the sentence telling someone to resume the walk in progress — a
+    // storeman tapping twice and the loser of a genuine race read the same refusal, never an
+    // internal error.
     const [row] = await tx
       .insert(stocktakeSessions)
       .values({ openedByUserId: openerUserId, scope: input.scope })
@@ -183,11 +171,12 @@ export async function postStockCount({
       assertLengthMatchesUnitClass(bucket.lengthMm, unitClass);
     }
 
-    const onHand = await loadBucketQuantities(tx, [input.partId]);
-    const observedByBucket = new Map(input.buckets.map((bucket) => [bucketKey(input.partId, bucket.lengthMm), bucket]));
-    const unnamed = [...onHand]
-      .filter(([key, quantity]) => quantity !== 0 && !observedByBucket.has(key))
-      .map(([key]) => bucketKeyLengthMm(key));
+    const onHandByLength: ReadonlyMap<number | null, number> =
+      (await loadBucketQuantities(tx, [input.partId])).get(input.partId) ?? new Map();
+    const observedLengths = new Set(input.buckets.map((bucket) => bucket.lengthMm));
+    const unnamed = [...onHandByLength]
+      .filter(([lengthMm, quantity]) => quantity !== 0 && !observedLengths.has(lengthMm))
+      .map(([lengthMm]) => lengthMm);
 
     // A count covers the whole Part, so every stocked bucket must be accounted for — but the count
     // has to *say* it found one empty rather than have the server infer it. Inferring is what turns
@@ -197,7 +186,7 @@ export async function postStockCount({
     if (unnamed.length > 0) throw new StocktakeUncountedBucketError(input.partId, unnamed);
 
     const buckets: StockCountBucketVariance[] = input.buckets.map((bucket) => {
-      const expected = onHand.get(bucketKey(input.partId, bucket.lengthMm)) ?? 0;
+      const expected = onHandByLength.get(bucket.lengthMm) ?? 0;
 
       return {
         delta: toLedgerQuantity(bucket.observed - expected),
@@ -259,6 +248,15 @@ export async function getStocktakeSessionReport({
   db: Db;
   sessionId: UUID;
 }): Promise<StocktakeSessionReport> {
+  // The session's counts and the ledger they are replayed against are one report fact; a count
+  // posted between the two reads must not split their snapshots.
+  return db.transaction((tx) => readStocktakeSessionReport(tx, sessionId), {
+    accessMode: 'read only',
+    isolationLevel: 'repeatable read',
+  });
+}
+
+async function readStocktakeSessionReport(db: DatabaseTransaction, sessionId: UUID): Promise<StocktakeSessionReport> {
   const session = await loadSession({ db, sessionId });
   const countRows = await db
     .select({
@@ -306,8 +304,9 @@ export async function getStocktakeSessionReport({
   ].map(([head, ...tail]) => {
     const buckets = [head, ...tail].map((row) => {
       const variance = varianceByMovement.get(row.id);
-      // The replay covers every movement of every counted Part, so a session row it did not reach
-      // means the two reads saw different ledgers — worth failing loudly rather than reporting zero.
+      // Both reads share one snapshot and the replay covers every movement of every counted Part,
+      // so this cannot happen; it is asserted rather than defaulted so a reporting zero can never
+      // stand in for a variance that was never computed.
       if (!variance) throw new Error(`Stocktake count ${row.id} is missing from its Part's ledger replay`);
 
       return variance;
@@ -327,14 +326,14 @@ export async function getStocktakeSessionReport({
       partId: head.partId,
       partName: head.partName,
       unitOfMeasure: head.unitOfMeasure,
-      varianceValue: sumValues(buckets.map((bucket) => bucket.value)),
+      varianceValue: sumNullableBy(buckets, (bucket) => bucket.value),
     };
   });
 
   return StocktakeSessionReportSchema.parse({
     counts,
     session,
-    totalVarianceValue: sumValues(counts.map((count) => count.varianceValue)),
+    totalVarianceValue: sumNullableBy(counts, (count) => count.varianceValue),
   });
 }
 
@@ -481,11 +480,6 @@ function deriveSessionVariances(
   }
 
   return variances;
-}
-
-/** Σ, but a single unpriced member makes the whole total unpriced rather than quietly smaller. */
-function sumValues(values: readonly (number | null)[]): number | null {
-  return values.reduce<number | null>((total, value) => (total === null || value === null ? null : total + value), 0);
 }
 
 async function lockSession(db: DatabaseTransaction, sessionId: UUID) {

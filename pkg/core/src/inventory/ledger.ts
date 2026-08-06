@@ -65,13 +65,6 @@ export function bucketKey(partId: string, lengthMm: number | null): string {
   return `${partId}:${lengthMm ?? ''}`;
 }
 
-/** The length a `bucketKey` encodes — the decode kept beside the encode so the two cannot drift. */
-export function bucketKeyLengthMm(key: string): number | null {
-  const suffix = key.slice(key.indexOf(':') + 1);
-
-  return suffix === '' ? null : Number(suffix);
-}
-
 /** Scales a Part's average to one piece: linear stock is costed by the millimetre it is cut from. */
 export function scaleUnitCost(averageUnitCost: number | null, lengthMm: number | null): number | null {
   if (averageUnitCost === null) return null;
@@ -111,10 +104,15 @@ export async function loadMovingAverages(db: LedgerDb, partIds: readonly UUID[])
 }
 
 /**
- * Stock on hand per length bucket, keyed by `bucketKey`. A revaluation moves cost and never quantity,
- * so it must not open a bucket of its own.
+ * Stock on hand per Part, and within each Part per length bucket — the `null` bucket being the only
+ * one a discrete or measured Part holds. Nested rather than flattened onto a composite key so a
+ * caller asking about one Part's buckets gets them as lengths, with nothing to decode back out. A
+ * revaluation moves cost and never quantity, so it must not open a bucket of its own.
  */
-export async function loadBucketQuantities(db: LedgerDb, partIds: readonly UUID[]): Promise<Map<string, number>> {
+export async function loadBucketQuantities(
+  db: LedgerDb,
+  partIds: readonly UUID[],
+): Promise<Map<string, Map<number | null, number>>> {
   if (partIds.length === 0) return new Map();
 
   const rows = await db
@@ -127,7 +125,15 @@ export async function loadBucketQuantities(db: LedgerDb, partIds: readonly UUID[
     .where(and(inArray(stockMovements.partId, [...partIds]), ne(stockMovements.movementType, 'revaluation')))
     .groupBy(stockMovements.partId, stockMovements.lengthMm);
 
-  return new Map(rows.map((row) => [bucketKey(row.partId, row.lengthMm), row.quantity]));
+  const quantities = new Map<string, Map<number | null, number>>();
+
+  for (const row of rows) {
+    const buckets = quantities.get(row.partId);
+    if (buckets) buckets.set(row.lengthMm, row.quantity);
+    else quantities.set(row.partId, new Map([[row.lengthMm, row.quantity]]));
+  }
+
+  return quantities;
 }
 
 /** Matches one length bucket, or the single `null` bucket a non-linear Part holds. */

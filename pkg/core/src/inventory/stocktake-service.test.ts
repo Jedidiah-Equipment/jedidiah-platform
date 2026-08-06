@@ -105,7 +105,7 @@ describe('stocktake sessions', () => {
 
     expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
     const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
-    // Whether the loser lost at the read or at the partial unique index, it reads the same sentence.
+    // The loser lost at the partial unique index, and that violation reads as the same sentence.
     expect(rejected?.reason).toBeInstanceOf(StocktakeSessionAlreadyOpenError);
   });
 

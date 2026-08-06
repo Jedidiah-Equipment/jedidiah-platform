@@ -19,7 +19,7 @@ import {
   BuildPeriodicPartError,
   BuildSelfComponentError,
 } from './build-errors.js';
-import { bucketKey, loadBucketQuantities, loadMovingAverages, scaleUnitCost } from './ledger.js';
+import { loadBucketQuantities, loadMovingAverages, scaleUnitCost } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
@@ -91,7 +91,7 @@ export async function postBuild({
         isInformational: component.stockTrackingMode === 'periodic',
         lengthMm: line.lengthMm,
         quantity: line.quantity,
-        quantityOnHand: quantitiesByBucket.get(bucketKey(line.componentPartId, line.lengthMm)) ?? 0,
+        quantityOnHand: quantitiesByBucket.get(line.componentPartId)?.get(line.lengthMm) ?? 0,
         unitCost: scaleUnitCost(averagesByPart.get(line.componentPartId) ?? null, line.lengthMm),
       };
     });

@@ -17,6 +17,9 @@ const getPricingRowKey = createStableRowKeys<QuoteDocumentPricingRow>('quote-doc
 const getWorkItemKey = createStableRowKeys<QuoteDocumentWorkItem>('quote-document-work-item');
 const getWorkItemChargeKey = createStableRowKeys<QuoteWorkItemCharge>('quote-document-work-item-charge');
 
+/** Money is printed to cents, so a difference below one is one the reader cannot see. */
+const CENT = 0.01;
+
 const layout = {
   priceColumnWidth: 96,
   quantityColumnWidth: 42,
@@ -241,7 +244,15 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
   );
 }
 
-function WorkItemRow({ amount, description, name }: { amount: string; description: string | null; name: string }) {
+function WorkItemRow({
+  amount,
+  description,
+  name,
+}: {
+  amount: string | null;
+  description: string | null;
+  name: string;
+}) {
   return (
     <View style={pdfStyles.flexRow}>
       <View style={[pdfStyles.flex1, styles.tableCell]}>
@@ -252,21 +263,37 @@ function WorkItemRow({ amount, description, name }: { amount: string; descriptio
       </View>
       <Text style={[styles.tableCell, styles.qtyCol]} />
       <Text style={[styles.tableCell, styles.priceCol]} />
-      <Text
-        style={[
-          pdfStyles.bgPriceCell,
-          pdfStyles.fontBold,
-          pdfStyles.textBody,
-          pdfStyles.textRight,
-          styles.tableCell,
-          styles.subtotalCol,
-          styles.noRightBorder,
-        ]}
-      >
-        {amount}
-      </Text>
+      {amount === null ? (
+        <Text style={[styles.tableCell, styles.subtotalCol, styles.noRightBorder]} />
+      ) : (
+        <Text
+          style={[
+            pdfStyles.bgPriceCell,
+            pdfStyles.fontBold,
+            pdfStyles.textBody,
+            pdfStyles.textRight,
+            styles.tableCell,
+            styles.subtotalCol,
+            styles.noRightBorder,
+          ]}
+        >
+          {amount}
+        </Text>
+      )}
     </View>
   );
+}
+
+/**
+ * Whether the Labour and Parts rows beneath a Work Item add up to the whole of it, in which case the
+ * heading prints no money of its own. An Other Work Item's flat amount is not labour and so never
+ * becomes a charge: with a Part beneath it the rows fall short, and the heading has to carry the rest.
+ */
+function chargesCarryWholeAmount(workItem: QuoteDocumentWorkItem): boolean {
+  if (workItem.charges.length === 0) return false;
+  const chargeTotal = workItem.charges.reduce((total, charge) => total + charge.amount, 0);
+
+  return Math.abs(chargeTotal - workItem.amount) < CENT;
 }
 
 function WorkItemGroup({ currencyCode, workItem }: { currencyCode: string; workItem: QuoteDocumentWorkItem }) {
@@ -277,7 +304,7 @@ function WorkItemGroup({ currencyCode, workItem }: { currencyCode: string; workI
       {/* The heading rides with its first charge so a page break never strands it alone. */}
       <View wrap={false}>
         <WorkItemRow
-          amount={formatCurrency(workItem.amount, currencyCode)}
+          amount={chargesCarryWholeAmount(workItem) ? null : formatCurrency(workItem.amount, currencyCode)}
           description={workItem.description}
           name={workItem.name}
         />

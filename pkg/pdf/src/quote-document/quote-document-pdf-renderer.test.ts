@@ -51,9 +51,61 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText).toContain('R 850.00');
     expect(renderedText).toContain('2');
     expect(renderedText).toContain('R 125.00');
-    expect(renderedText).toContain('R 1 275.00');
-    expect(renderedText.filter((value) => value === 'R 250.00')).toHaveLength(2);
+    expect(renderedText.filter((value) => value === 'R 1 275.00')).toHaveLength(1);
+    expect(renderedText.filter((value) => value === 'R 250.00')).toHaveLength(1);
     expect(renderedText).toContain('R 0.00');
+  });
+
+  test('prices the charges beneath a Work Item rather than the Work Item heading', () => {
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      workItems: [
+        {
+          amount: 1_525,
+          charges: [
+            { amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 },
+            { amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 },
+          ],
+          description: null,
+          name: 'Hydraulic rebuild',
+        },
+      ],
+    };
+    const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
+
+    expect(renderedText).not.toContain('R 1 525.00');
+    expect(renderedText.filter((value) => value === 'R 1 275.00')).toHaveLength(1);
+    expect(renderedText.filter((value) => value === 'R 250.00')).toHaveLength(1);
+  });
+
+  test('keeps the amount on a Work Item that has no charges beneath it', () => {
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      workItems: [{ amount: 2_500, charges: [], description: null, name: 'Sundries' }],
+    };
+    const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
+
+    expect(renderedText.filter((value) => value === 'R 2 500.00')).toHaveLength(1);
+  });
+
+  test('keeps the amount when the charges beneath a Work Item do not account for all of it', () => {
+    // An Other Work Item carries a flat amount rather than labour, so its own money never becomes a
+    // charge. Dropping the heading amount here would print a Part alone and lose the R 2 500.00.
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      workItems: [
+        {
+          amount: 2_750,
+          charges: [{ amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
+          description: null,
+          name: 'Sundries',
+        },
+      ],
+    };
+    const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
+
+    expect(renderedText.filter((value) => value === 'R 2 750.00')).toHaveLength(1);
+    expect(renderedText.filter((value) => value === 'R 250.00')).toHaveLength(1);
   });
 
   test('prints a Work Item description on its own line beneath the name', () => {

@@ -181,6 +181,43 @@ describe('inventory procedure permissions', () => {
     });
   });
 
+  test('pages the Job options, so a picker can reach the Jobs past its first page', async ({ context }) => {
+    const caller = context.createCaller(mockSession('stores'));
+    const [customer] = await context.db.select({ id: customers.id }).from(customers);
+    if (!customer) throw new Error('Seeded customer is missing');
+
+    const extraQuotes = await context.db
+      .insert(quotes)
+      .values(
+        ['Second repair', 'Third repair'].map((workTitle) => ({
+          customerId: customer.id,
+          kind: 'custom' as const,
+          quotedBasePrice: 0,
+          quotedCurrencyCode: 'ZAR',
+          salesPersonId: 'test-user-id',
+          status: 'accepted' as const,
+          workTitle,
+        })),
+      )
+      .returning({ id: quotes.id });
+
+    await context.db.insert(jobs).values(extraQuotes.map((quote) => ({ quoteId: quote.id })));
+
+    const firstPage = await caller.inventory.jobOptions({ cursor: 0, limit: 2, movementType: 'checkout' });
+    expect(firstPage).toMatchObject({ nextCursor: 2, total: 3 });
+
+    const secondPage = await caller.inventory.jobOptions({
+      cursor: firstPage.nextCursor ?? 0,
+      limit: 2,
+      movementType: 'checkout',
+    });
+
+    expect(secondPage).toMatchObject({ nextCursor: null, total: 3 });
+    expect(secondPage.items).toHaveLength(1);
+    // The reachable set is every Job, not the first page repeated.
+    expect(new Set([...firstPage.items, ...secondPage.items].map((job) => job.id)).size).toBe(3);
+  });
+
   test('uses Job error vocabulary for cancelled checkout while still allowing a return', async ({ context }) => {
     const caller = context.createCaller();
     await caller.inventory.postAdjustment({

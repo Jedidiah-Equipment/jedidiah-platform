@@ -26,6 +26,13 @@ export const STOCKTAKE_SCOPE_TRACKING_MODE = {
   stores: 'perpetual',
 } as const satisfies Record<StocktakeScope, PartStockTrackingMode>;
 
+/**
+ * Where a walk sits in its life. Derived from `closedAt` rather than stored — a session has no
+ * status column, because closing is the only transition it has and the timestamp already records it.
+ */
+export type StocktakeSessionStatus = z.infer<typeof StocktakeSessionStatus>;
+export const StocktakeSessionStatus = z.enum(['open', 'closed']);
+
 export type OpenStocktakeSessionInput = z.infer<typeof OpenStocktakeSessionInput>;
 export const OpenStocktakeSessionInput = z.object({ actorUserId: AssertedActorUserId, scope: StocktakeScope }).strict();
 

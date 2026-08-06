@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, stocktakeSessionStatusOf } from '@pkg/domain';
 import { STOCKTAKE_SCOPE_LABELS, type StocktakeSession } from '@pkg/schema';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
@@ -10,7 +10,8 @@ import {
 } from '@tanstack/react-table';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
-import { Badge } from '@/components/ui/badge.js';
+
+import { StocktakeSessionStatusBadge } from './StocktakeSessionStatusBadge.js';
 
 const sessionColumns: ColumnDef<StocktakeSession>[] = [
   {
@@ -37,7 +38,7 @@ const sessionColumns: ColumnDef<StocktakeSession>[] = [
     accessorFn: (item) => item.closedAt ?? '',
     cell: ({ row }) =>
       row.original.closedAt === null ? (
-        <Badge variant="secondary">Open</Badge>
+        <StocktakeSessionStatusBadge status={stocktakeSessionStatusOf(row.original)} />
       ) : (
         <>
           <span className="block">{formatDate(row.original.closedAt)}</span>

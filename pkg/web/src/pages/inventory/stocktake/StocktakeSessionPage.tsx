@@ -1,14 +1,14 @@
-import { formatCurrency, formatDate, hasPermission } from '@pkg/domain';
+import { formatCurrency, formatDate, hasPermission, stocktakeSessionStatusOf } from '@pkg/domain';
 import { STOCKTAKE_SCOPE_LABELS, type StocktakeSession, type UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { StocktakeCountsTable } from './components/StocktakeCountsTable.js';
+import { StocktakeSessionStatusBadge } from './components/StocktakeSessionStatusBadge.js';
 import { StocktakeUncountedTable } from './components/StocktakeUncountedTable.js';
 
 /**
@@ -43,7 +43,7 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
 
   return (
     <PageLayout
-      actions={<Badge variant={isClosed ? 'secondary' : 'default'}>{isClosed ? 'Closed' : 'Open'}</Badge>}
+      actions={<StocktakeSessionStatusBadge size="lg" status={stocktakeSessionStatusOf(session)} />}
       description={describeSession(session)}
       size="lg"
       title={`${STOCKTAKE_SCOPE_LABELS[session.scope]} stocktake`}

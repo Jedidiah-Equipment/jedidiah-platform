@@ -1,7 +1,30 @@
-import type { DateOnlyIso, StocktakeOverdueRow, StocktakeScope } from '@pkg/schema';
+import type { DateOnlyIso, StocktakeOverdueRow, StocktakeScope, StocktakeSessionStatus } from '@pkg/schema';
 
 import { addDateOnlyDays, addDateOnlyMonths, diffDateOnlyDays } from '../formatting/date-only.js';
 import { isWorkingDay, type WorkingCalendar } from '../jobs/working-calendar.js';
+import { statusBadgeColorClassNames } from '../theme/status-badge.js';
+
+/** A session's status is derived, so every surface asks the same question of the same field. */
+export function stocktakeSessionStatusOf(session: { closedAt: string | null }): StocktakeSessionStatus {
+  return session.closedAt === null ? 'open' : 'closed';
+}
+
+export const stocktakeSessionStatusLabels: Record<StocktakeSessionStatus, string> = {
+  closed: 'Closed',
+  open: 'Open',
+};
+
+/**
+ * Tailwind classes split so native surfaces can put `text` on the Text element, the same shape
+ * `purchaseOrderStatusColorClassNames` uses — and for the same reason it gives: a session's status
+ * is a fact about where the walk sits in its life, never a call to action, so neither reaches for
+ * the brand colour. Closed is grey rather than green because a walk that closed over a long skip
+ * list is settled, not successful; the skip list is what carries that judgement.
+ */
+export const stocktakeSessionStatusColorClassNames: Record<StocktakeSessionStatus, { chip: string; text: string }> = {
+  closed: statusBadgeColorClassNames.gray,
+  open: statusBadgeColorClassNames.blue,
+};
 
 /**
  * The two standing rhythms and the slack each is given before it counts as late (spec §12).

@@ -12,6 +12,7 @@
       "pkg/core/**",
       "pkg/db/**",
       "pkg/domain/**",
+      "pkg/pdf/**",
       "pkg/schema/**",
       "pkg/seed/**"
     ]

@@ -497,3 +497,70 @@ describe('shared devices at the boundary', () => {
     await expect(stores.inventory.quickSwitchActors()).resolves.toEqual({ items: [] });
   });
 });
+
+describe('stocktake procedures', () => {
+  test('splits the walk from the report at the permission boundary', async ({ context }) => {
+    const stores = context.createCaller(mockSession('stores'));
+    const procurement = context.createCaller(mockSession('procurement-manager'));
+
+    // Procurement reads the rhythms and their variance without ever walking a shelf.
+    await expect(procurement.inventory.stocktakeSessions()).resolves.toEqual({ items: [] });
+    await expect(procurement.inventory.stocktakeOverdue()).resolves.toMatchObject({
+      items: [
+        { isOverdue: true, scope: 'raw-material' },
+        { isOverdue: true, scope: 'stores' },
+      ],
+    });
+    await expect(procurement.inventory.openStocktakeSession({ scope: 'stores' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(context.createCaller(mockSession('sales')).inventory.stocktakeSessions()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+
+    const session = await stores.inventory.openStocktakeSession({ scope: 'stores' });
+    expect(session).toMatchObject({ closedAt: null, countedPartCount: 0, scope: 'stores' });
+
+    await expect(stores.inventory.openStocktakeSession({ scope: 'stores' })).rejects.toMatchObject({
+      appCode: 'inventory.stocktake_session_already_open',
+      code: 'BAD_REQUEST',
+    });
+  });
+
+  test('posts a count and strips the variance price from a caller who may not read costs', async ({ context }) => {
+    const stores = context.createCaller(mockSession('stores'));
+    await context
+      .createCaller()
+      .inventory.postAdjustment({ delta: 40, partId: context.part.id, reason: 'opening-balance', unitCost: 10 });
+
+    const session = await stores.inventory.openStocktakeSession({ scope: 'stores' });
+    await expect(
+      stores.inventory.postStockCount({ buckets: [{ observed: 32 }], partId: context.part.id, sessionId: session.id }),
+    ).resolves.toMatchObject({ buckets: [{ delta: -8, expected: 40, observed: 32 }] });
+
+    await expect(stores.inventory.stocktakeSession({ sessionId: session.id })).resolves.toMatchObject({
+      counts: [{ delta: -8, partId: context.part.id, varianceValue: null }],
+      totalVarianceValue: null,
+    });
+    await expect(
+      context.createCaller(mockSession('procurement-manager')).inventory.stocktakeSession({ sessionId: session.id }),
+    ).resolves.toMatchObject({ counts: [{ varianceValue: -80 }], totalVarianceValue: -80 });
+
+    await expect(stores.inventory.closeStocktakeSession({ sessionId: session.id })).resolves.toMatchObject({
+      countedPartCount: 1,
+    });
+    await expect(stores.inventory.stocktakeOverdue()).resolves.toMatchObject({
+      items: [{ scope: 'raw-material' }, { isOverdue: false, scope: 'stores' }],
+    });
+  });
+
+  test('refuses a count from a shared device that has named nobody', async ({ context }) => {
+    await context.db.update(user).set({ isDevice: true }).where(eq(user.id, 'test-user-id'));
+    const tablet = context.createCaller(mockSession('stores'));
+
+    await expect(tablet.inventory.openStocktakeSession({ scope: 'stores' })).rejects.toMatchObject({
+      appCode: 'inventory.actor_required',
+      code: 'BAD_REQUEST',
+    });
+  });
+});

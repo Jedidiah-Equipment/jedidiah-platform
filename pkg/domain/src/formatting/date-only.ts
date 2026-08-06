@@ -14,6 +14,15 @@ export function addDateOnlyDays(date: DateOnlyIso, days: number): DateOnlyIso {
   return toDateOnlyParts(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, shifted.getUTCDate());
 }
 
+/** Calendar months, clamped to the target month's last day so 31 January + 1 month is 28 February. */
+export function addDateOnlyMonths(date: DateOnlyIso, months: number): DateOnlyIso {
+  const { day, month, year } = parseDateOnlyParts(date);
+  const shifted = new Date(Date.UTC(year, month - 1 + months, 1));
+  const lastDayOfMonth = new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, 0)).getUTCDate();
+
+  return toDateOnlyParts(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, Math.min(day, lastDayOfMonth));
+}
+
 export function maxDateOnly(a: DateOnlyIso, b: DateOnlyIso): DateOnlyIso {
   return a >= b ? a : b;
 }

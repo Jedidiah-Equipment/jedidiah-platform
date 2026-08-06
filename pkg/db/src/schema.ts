@@ -14,6 +14,7 @@ export * from './schema/purchase-order.js';
 export * from './schema/purchase-order-amendment.js';
 export * from './schema/quote.js';
 export * from './schema/stock-movement.js';
+export * from './schema/stocktake.js';
 export * from './schema/stored-file.js';
 export * from './schema/supplier.js';
 
@@ -33,6 +34,7 @@ import * as purchaseOrderSchema from './schema/purchase-order.js';
 import * as purchaseOrderAmendmentSchema from './schema/purchase-order-amendment.js';
 import * as quoteSchema from './schema/quote.js';
 import * as stockMovementSchema from './schema/stock-movement.js';
+import * as stocktakeSchema from './schema/stocktake.js';
 import * as supplierSchema from './schema/supplier.js';
 
 export const schema = {
@@ -52,5 +54,6 @@ export const schema = {
   ...purchaseOrderSchema,
   ...quoteSchema,
   ...stockMovementSchema,
+  ...stocktakeSchema,
   ...supplierSchema,
 };

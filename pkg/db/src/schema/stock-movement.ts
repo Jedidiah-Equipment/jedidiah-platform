@@ -6,6 +6,7 @@ import { user } from './auth.js';
 import { jobs } from './job.js';
 import { parts } from './part.js';
 import { purchaseOrderLines } from './purchase-order.js';
+import { stocktakeSessions } from './stocktake.js';
 
 /**
  * One production event: N units of a Built Part came off the rack, consuming its components. Its
@@ -64,6 +65,9 @@ export const stockMovements = pgTable(
     // One widened column carrying two closed sets; each movement type's shape branch below pins the
     // subset it may use, so an adjustment can never claim `defective` nor a return `scrap`.
     reason: text('reason').$type<StockMovementReason>(),
+    // The session a count was walked in, when it was walked in one. Ad-hoc counts outside a session
+    // were always legal and stay so, which is why this is nullable rather than a second table.
+    stocktakeSessionId: uuid('stocktake_session_id').references(() => stocktakeSessions.id, { onDelete: 'restrict' }),
     unitCost: numeric('unit_cost', { mode: 'number', precision: 18, scale: 6 }),
   },
   (table) => [
@@ -86,13 +90,19 @@ export const stockMovements = pgTable(
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NULL
         AND ${table.reason} IN ('opening-balance', 'stock-count', 'damage', 'scrap', 'correction')
-        AND (${table.reason} = 'opening-balance' OR ${table.note} IS NOT NULL)
+        AND (${table.stocktakeSessionId} IS NULL OR ${table.reason} = 'stock-count')
+        AND (
+          ${table.reason} = 'opening-balance'
+          OR ${table.stocktakeSessionId} IS NOT NULL
+          OR ${table.note} IS NOT NULL
+        )
         AND (${table.unitCost} IS NULL OR ${table.reason} = 'opening-balance')
       ) OR (
         ${table.movementType} = 'revaluation'
         AND ${table.jobId} IS NULL
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NULL
+        AND ${table.stocktakeSessionId} IS NULL
         AND ${table.delta} = 0
         AND ${table.unitCost} IS NOT NULL
         AND ${table.reason} IS NULL
@@ -101,6 +111,7 @@ export const stockMovements = pgTable(
         AND ${table.jobId} IS NOT NULL
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NULL
+        AND ${table.stocktakeSessionId} IS NULL
         AND ${table.delta} < 0
         AND ${table.reason} IS NULL
       ) OR (
@@ -108,6 +119,7 @@ export const stockMovements = pgTable(
         AND ${table.jobId} IS NOT NULL
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NULL
+        AND ${table.stocktakeSessionId} IS NULL
         AND ${table.delta} > 0
         AND ${table.reason} IS NULL
       ) OR (
@@ -115,6 +127,7 @@ export const stockMovements = pgTable(
         AND ${table.jobId} IS NULL
         AND ${table.purchaseOrderId} IS NOT NULL
         AND ${table.buildId} IS NULL
+        AND ${table.stocktakeSessionId} IS NULL
         AND ${table.delta} > 0
         AND ${table.reason} IS NULL
         AND ${table.unitCost} IS NOT NULL
@@ -123,6 +136,7 @@ export const stockMovements = pgTable(
         AND ${table.jobId} IS NULL
         AND ${table.purchaseOrderId} IS NOT NULL
         AND ${table.buildId} IS NULL
+        AND ${table.stocktakeSessionId} IS NULL
         AND ${table.delta} < 0
         AND ${table.reason} IN ('wrong-item', 'defective', 'order-error')
       ) OR (
@@ -130,6 +144,7 @@ export const stockMovements = pgTable(
         AND ${table.jobId} IS NULL
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NOT NULL
+        AND ${table.stocktakeSessionId} IS NULL
         AND ${table.delta} < 0
         AND ${table.reason} IS NULL
       ) OR (
@@ -137,6 +152,7 @@ export const stockMovements = pgTable(
         AND ${table.jobId} IS NULL
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NOT NULL
+        AND ${table.stocktakeSessionId} IS NULL
         AND ${table.delta} > 0
         AND ${table.reason} IS NULL
       )`,
@@ -150,6 +166,7 @@ export const stockMovements = pgTable(
     index('stock_movement_purchase_order_part_idx').on(table.purchaseOrderId, table.partId),
     index('stock_movement_part_created_idx').on(table.partId, table.createdAt, table.id),
     index('stock_movement_build_idx').on(table.buildId),
+    index('stock_movement_stocktake_session_idx').on(table.stocktakeSessionId, table.partId),
   ],
 );
 
@@ -165,5 +182,9 @@ export const stockMovementRelations = relations(stockMovements, ({ one }) => ({
   part: one(parts, {
     fields: [stockMovements.partId],
     references: [parts.id],
+  }),
+  stocktakeSession: one(stocktakeSessions, {
+    fields: [stockMovements.stocktakeSessionId],
+    references: [stocktakeSessions.id],
   }),
 }));

@@ -1,17 +1,23 @@
 import {
   closeOutJob,
+  closeStocktakeSession,
   getPartStockByCode,
   getStockMovementHistory,
+  getStocktakeSession,
   listBuyList,
   listCloseOutQueue,
   listInventoryJobOptions,
   listJobStock,
   listQuickSwitchActors,
   listStockOnHand,
+  listStocktakeOverdue,
+  listStocktakeSessions,
+  openStocktakeSession,
   postAdjustment,
   postBuild,
   postJobMovement,
   postRevaluation,
+  postStockCount,
   searchPartStock,
 } from '@pkg/core';
 import {
@@ -19,11 +25,13 @@ import {
   BuyListResult,
   CloseOutJobInput,
   CloseOutQueueResult,
+  CloseStocktakeSessionInput,
   InventoryJobOptionListInput,
   InventoryJobOptionListResult,
   JobCloseOut,
   JobStockInput,
   JobStockResult,
+  OpenStocktakeSessionInput,
   PartSearchInput,
   PartSearchResult,
   PartStockByCodeInput,
@@ -31,7 +39,9 @@ import {
   PostBuildInput,
   PostJobMovementInput,
   PostRevaluationInput,
+  PostStockCountInput,
   QuickSwitchActorListResult,
+  StockCountResult,
   StockMovement,
   StockMovementHistoryInput,
   StockMovementHistoryResult,
@@ -41,6 +51,13 @@ import {
   StockOnHandResult,
   StockOnHandRow,
   StockOnHandRowCostFields,
+  StocktakeOverdueResult,
+  StocktakeSession,
+  StocktakeSessionCountCostFields,
+  StocktakeSessionDetail,
+  StocktakeSessionDetailCostFields,
+  StocktakeSessionInput,
+  StocktakeSessionListResult,
 } from '@pkg/schema';
 
 import { mapCoreErrors } from '../../trpc/errors.js';
@@ -52,6 +69,7 @@ import {
   jobCloseOutErrorFamily,
   stockMovementErrorFamily,
   stockMovementJobErrorFamily,
+  stocktakeErrorFamily,
 } from './inventory-error-families.js';
 import { assertCanWriteInventoryCost, projectMovement } from './stock-movement-transport.js';
 
@@ -143,6 +161,74 @@ export const inventoryRouter = router({
     .mutation(({ ctx, input }) =>
       mapJobStockErrors(() => closeOutJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
+
+  /**
+   * The counting rhythms and their walks. Reading a session is `inventory:read` because the variance
+   * report is a *report* — procurement and management read it without ever walking a shelf — while
+   * opening, counting, and closing are the physical act and stay on `inventory:count` (spec §11).
+   */
+  stocktakeSessions: authorizedProcedure('inventory:read')
+    .output(StocktakeSessionListResult)
+    .query(({ ctx }) => listStocktakeSessions({ db: ctx.db })),
+
+  stocktakeSession: authorizedProcedure('inventory:read')
+    .input(StocktakeSessionInput)
+    .output(StocktakeSessionDetail)
+    .query(async ({ ctx, input }) => {
+      const detail = await mapStocktakeErrors(() => getStocktakeSession({ db: ctx.db, sessionId: input.sessionId }));
+
+      return projectInventoryCostFields({
+        access: ctx.access,
+        costFields: StocktakeSessionDetailCostFields,
+        output: {
+          ...detail,
+          counts: detail.counts.map((count) =>
+            projectInventoryCostFields({
+              access: ctx.access,
+              costFields: StocktakeSessionCountCostFields,
+              output: count,
+            }),
+          ),
+        },
+      });
+    }),
+
+  /**
+   * Quantity-free and cost-free, so the storeman the signal nags reads exactly what the manager
+   * tuning the cadence reads.
+   */
+  stocktakeOverdue: authorizedProcedure('inventory:read')
+    .output(StocktakeOverdueResult)
+    .query(({ ctx }) => listStocktakeOverdue({ db: ctx.db })),
+
+  openStocktakeSession: authorizedProcedure('inventory:count')
+    .input(OpenStocktakeSessionInput)
+    .output(StocktakeSession)
+    .mutation(({ ctx, input }) =>
+      mapStocktakeErrors(() => openStocktakeSession({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
+  closeStocktakeSession: authorizedProcedure('inventory:count')
+    .input(CloseStocktakeSessionInput)
+    .output(StocktakeSession)
+    .mutation(({ ctx, input }) =>
+      mapStocktakeErrors(() => closeStocktakeSession({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
+  /**
+   * A count carries no cost of its own — the correction is priced from the Part's average on the
+   * report — so the movements it returns need only the ordinary ledger projection.
+   */
+  postStockCount: authorizedProcedure('inventory:count')
+    .input(PostStockCountInput)
+    .output(StockCountResult)
+    .mutation(async ({ ctx, input }) => {
+      const result = await mapStocktakeErrors(() =>
+        postStockCount({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+      );
+
+      return { ...result, movements: result.movements.map((movement) => projectMovement(movement, ctx.access)) };
+    }),
 
   postBuild: authorizedProcedure('inventory:build')
     .input(PostBuildInput)
@@ -238,6 +324,14 @@ async function mapJobStockErrors<T>(action: () => Promise<T>): Promise<T> {
     jobCloseOutErrorFamily,
     assertedActorErrorFamily,
   );
+}
+
+/**
+ * A count is a ledger write inside a walk, so it carries the ledger's rules, the walk's own, and
+ * the tablet's quick-switch — but no Job vocabulary at all: a count is about the shelf, not a Job.
+ */
+async function mapStocktakeErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapCoreErrors(action, stocktakeErrorFamily, stockMovementErrorFamily, assertedActorErrorFamily);
 }
 
 /** A build shares the ledger rules and the Part failures it reaches for, but no Job vocabulary. */

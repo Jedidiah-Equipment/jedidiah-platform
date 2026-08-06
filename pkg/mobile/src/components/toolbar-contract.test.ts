@@ -29,6 +29,8 @@ const SIGNED_IN_ROUTE_TOOLBARS = {
   '(tabs)/quotes/index.tsx': toolbar('main', 'app/(protected)/(tabs)/quotes/index.tsx'),
   '(tabs)/stores/close-out/[jobId].tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
   '(tabs)/stores/close-out/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  '(tabs)/stores/stocktake/[sessionId].tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  '(tabs)/stores/stocktake/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
   '(tabs)/stores/index.tsx': toolbar('main', 'app/(protected)/(tabs)/stores/index.tsx'),
   '(tabs)/stores/parts/[partCode]/checkout.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
   '(tabs)/stores/parts/[partCode]/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),

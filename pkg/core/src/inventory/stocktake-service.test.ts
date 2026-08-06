@@ -1,0 +1,376 @@
+import { parts, stockMovements, supplier, user } from '@pkg/db';
+import { and, eq } from 'drizzle-orm';
+import { describe, expect } from 'vitest';
+
+import { createTester } from '../test/create-tester.js';
+import { listBuyList } from './buy-list-service.js';
+import { StockMovementDeltaError } from './stock-movement-errors.js';
+import { listStockOnHand, postAdjustment } from './stock-movement-service.js';
+import {
+  StocktakePartOutOfScopeError,
+  StocktakeSessionAlreadyOpenError,
+  StocktakeSessionClosedError,
+  StocktakeSessionNotFoundError,
+} from './stocktake-errors.js';
+import {
+  closeStocktakeSession,
+  getStocktakeSession,
+  listStocktakeOverdue,
+  listStocktakeSessions,
+  openStocktakeSession,
+  postStockCount,
+} from './stocktake-service.js';
+
+const actorUserId = 'stocktake-test-user';
+
+const test = createTester(async ({ db }) => {
+  const now = new Date('2026-08-01T08:00:00.000Z');
+  await db.insert(user).values({
+    createdAt: now,
+    email: 'stocktake@example.com',
+    emailVerified: true,
+    id: actorUserId,
+    name: 'Stocktake Tester',
+    role: 'admin',
+    updatedAt: now,
+  });
+  const [createdSupplier] = await db.insert(supplier).values({ companyName: 'Stocktake Supplier' }).returning();
+  if (!createdSupplier) throw new Error('Supplier insert did not return a row');
+
+  const partValues = {
+    category: 'Stocktake',
+    description: 'Stocktake part',
+    finish: 'Plain',
+    supplierId: createdSupplier.id,
+  };
+  const [bolt, channel, spare] = await db
+    .insert(parts)
+    .values([
+      { ...partValues, code: 'BOLT', name: 'Bolt', supplierCode: 'S-BOLT', unitOfMeasure: 'piece' },
+      {
+        ...partValues,
+        code: 'CHANNEL',
+        name: 'Channel',
+        standardPurchaseLengthMm: 13_000,
+        stockTrackingMode: 'periodic',
+        supplierCode: 'S-CHANNEL',
+        unitOfMeasure: 'mm',
+      },
+      { ...partValues, code: 'SPARE', name: 'Spare', supplierCode: 'S-SPARE', unitOfMeasure: 'piece' },
+    ])
+    .returning();
+  if (!bolt || !channel || !spare) throw new Error('Part insert did not return every row');
+
+  await postAdjustment({
+    actorUserId,
+    db,
+    input: { delta: 40, lengthMm: null, note: null, partId: bolt.id, reason: 'opening-balance', unitCost: 10 },
+  });
+  await postAdjustment({
+    actorUserId,
+    db,
+    input: { delta: 9, lengthMm: 13_000, note: null, partId: channel.id, reason: 'opening-balance', unitCost: 6.5 },
+  });
+
+  return { boltId: bolt.id, channelId: channel.id, spareId: spare.id };
+});
+
+async function openStoresSession(db: Parameters<typeof openStocktakeSession>[0]['db']) {
+  return openStocktakeSession({ actorUserId, db, input: { scope: 'stores' } });
+}
+
+describe('stocktake sessions', () => {
+  test('opens one session per scope and refuses a second open one', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+
+    expect(session).toMatchObject({
+      closedAt: null,
+      countedPartCount: 0,
+      openedByUserId: actorUserId,
+      scope: 'stores',
+    });
+    await expect(openStoresSession(context.db)).rejects.toBeInstanceOf(StocktakeSessionAlreadyOpenError);
+
+    // The other rhythm is a different walk, so it opens beside this one.
+    const rawMaterial = await openStocktakeSession({ actorUserId, db: context.db, input: { scope: 'raw-material' } });
+    expect(rawMaterial.scope).toBe('raw-material');
+  });
+
+  test('closes once and refuses everything afterwards', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+    const closed = await closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: session.id } });
+
+    expect(closed.closedAt).not.toBeNull();
+    expect(closed.closedByUserId).toBe(actorUserId);
+    await expect(
+      closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: session.id } }),
+    ).rejects.toBeInstanceOf(StocktakeSessionClosedError);
+    await expect(
+      postStockCount({
+        actorUserId,
+        db: context.db,
+        input: { buckets: [{ lengthMm: null, observed: 1 }], partId: context.boltId, sessionId: session.id },
+      }),
+    ).rejects.toBeInstanceOf(StocktakeSessionClosedError);
+
+    // Closing frees the scope: the next walk opens where the last one left off.
+    await expect(openStoresSession(context.db)).resolves.toMatchObject({ scope: 'stores' });
+  });
+
+  test('refuses a session nobody opened', async ({ context }) => {
+    await expect(
+      getStocktakeSession({ db: context.db, sessionId: '00000000-0000-4000-8000-000000000000' }),
+    ).rejects.toBeInstanceOf(StocktakeSessionNotFoundError);
+  });
+});
+
+describe('postStockCount', () => {
+  test('posts the delta between the count and the ledger, never an overwrite', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+    const result = await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 32 }], partId: context.boltId, sessionId: session.id },
+    });
+
+    expect(result.buckets).toEqual([{ delta: -8, expected: 40, lengthMm: null, observed: 32 }]);
+    expect(result.movements).toHaveLength(1);
+    expect(result.movements[0]).toMatchObject({ delta: -8, movementType: 'adjustment', reason: 'stock-count' });
+
+    const onHand = await listStockOnHand({ db: context.db });
+    expect(onHand.items.find((row) => row.partId === context.boltId)?.quantity).toBe(32);
+  });
+
+  test('measures against the ledger at count time, so a mid-session receipt is not counted away', async ({
+    context,
+  }) => {
+    const session = await openStoresSession(context.db);
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: {
+        delta: 10,
+        lengthMm: null,
+        note: 'Found a box',
+        partId: context.boltId,
+        reason: 'correction',
+        unitCost: null,
+      },
+    });
+
+    const result = await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 50 }], partId: context.boltId, sessionId: session.id },
+    });
+
+    expect(result.buckets[0]).toMatchObject({ delta: 0, expected: 50 });
+    expect(await stockOnHandOf(context.db, context.boltId)).toBe(50);
+  });
+
+  test('records a count that agreed, so a perfect count is never read as a skip', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 40 }], partId: context.boltId, sessionId: session.id },
+    });
+
+    const detail = await getStocktakeSession({ db: context.db, sessionId: session.id });
+    expect(detail.counts).toHaveLength(1);
+    expect(detail.counts[0]).toMatchObject({ delta: 0, partCode: 'BOLT' });
+    expect(detail.uncounted.map((row) => row.partCode)).toEqual(['SPARE']);
+  });
+
+  test('counts linear stock per length bucket and empties the buckets nobody named', async ({ context }) => {
+    const session = await openStocktakeSession({ actorUserId, db: context.db, input: { scope: 'raw-material' } });
+    const result = await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: {
+        buckets: [
+          { lengthMm: 13_000, observed: 7 },
+          { lengthMm: 4200, observed: 1 },
+        ],
+        partId: context.channelId,
+        sessionId: session.id,
+      },
+    });
+
+    expect(result.buckets).toEqual([
+      { delta: -2, expected: 9, lengthMm: 13_000, observed: 7 },
+      { delta: 1, expected: 0, lengthMm: 4200, observed: 1 },
+    ]);
+
+    const row = (await listStockOnHand({ db: context.db })).items.find((item) => item.partId === context.channelId);
+    expect(row?.buckets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ lengthMm: 4200, quantity: 1 }),
+        expect.objectContaining({ lengthMm: 13_000, quantity: 7 }),
+      ]),
+    );
+  });
+
+  test('empties a stocked bucket the count did not mention', async ({ context }) => {
+    const session = await openStocktakeSession({ actorUserId, db: context.db, input: { scope: 'raw-material' } });
+    const result = await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: 6000, observed: 2 }], partId: context.channelId, sessionId: session.id },
+    });
+
+    // The 13 m bucket was walked past and found empty; a count covers the whole Part.
+    expect(result.buckets).toEqual([
+      { delta: 2, expected: 0, lengthMm: 6000, observed: 2 },
+      { delta: -9, expected: 9, lengthMm: 13_000, observed: 0 },
+    ]);
+    expect(await stockOnHandOf(context.db, context.channelId)).toBe(2);
+  });
+
+  test('refuses a Part the session’s scope does not cover', async ({ context }) => {
+    const session = await openStocktakeSession({ actorUserId, db: context.db, input: { scope: 'raw-material' } });
+
+    await expect(
+      postStockCount({
+        actorUserId,
+        db: context.db,
+        input: { buckets: [{ lengthMm: null, observed: 1 }], partId: context.boltId, sessionId: session.id },
+      }),
+    ).rejects.toBeInstanceOf(StocktakePartOutOfScopeError);
+  });
+
+  test('refuses a fractional count of a discrete Part', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+
+    await expect(
+      postStockCount({
+        actorUserId,
+        db: context.db,
+        input: { buckets: [{ lengthMm: null, observed: 1.5 }], partId: context.boltId, sessionId: session.id },
+      }),
+    ).rejects.toBeInstanceOf(StockMovementDeltaError);
+  });
+
+  test('stamps the session on the movement and leaves ad-hoc counts sessionless', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 39 }], partId: context.boltId, sessionId: session.id },
+    });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: {
+        delta: -1,
+        lengthMm: null,
+        note: 'Spot count',
+        partId: context.boltId,
+        reason: 'stock-count',
+        unitCost: null,
+      },
+    });
+
+    const rows = await context.db
+      .select({ sessionId: stockMovements.stocktakeSessionId })
+      .from(stockMovements)
+      .where(and(eq(stockMovements.partId, context.boltId), eq(stockMovements.reason, 'stock-count')));
+
+    expect(rows.map((row) => row.sessionId).sort()).toEqual([session.id, null].sort());
+  });
+
+  test('a count to zero reaches the out-of-stock signal', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 0 }], partId: context.boltId, sessionId: session.id },
+    });
+
+    const buyList = await listBuyList({ db: context.db });
+    expect(buyList.items.find((item) => item.partId === context.boltId)?.reasons).toContain('out-of-stock');
+  });
+});
+
+describe('the session variance report', () => {
+  test('reports every counted Part, its variance, and what was skipped', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 32 }], partId: context.boltId, sessionId: session.id },
+    });
+    await closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: session.id } });
+
+    const detail = await getStocktakeSession({ db: context.db, sessionId: session.id });
+
+    expect(detail.session).toMatchObject({ countedPartCount: 1, scope: 'stores' });
+    expect(detail.session.closedAt).not.toBeNull();
+    expect(detail.counts).toHaveLength(1);
+    expect(detail.counts[0]).toMatchObject({
+      buckets: [{ delta: -8, expected: 40, lengthMm: null, observed: 32 }],
+      countedByName: 'Stocktake Tester',
+      delta: -8,
+      partCode: 'BOLT',
+      // Eight bolts at the R10 average they were opened at.
+      varianceValue: -80,
+    });
+    expect(detail.totalVarianceValue).toBe(-80);
+    // SPARE is in scope and was never walked; CHANNEL is periodic and belongs to the other rhythm.
+    expect(detail.uncounted.map((row) => row.partCode)).toEqual(['SPARE']);
+  });
+
+  test('leaves the priced total unpriced when a counted Part has no cost yet', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 3 }], partId: context.spareId, sessionId: session.id },
+    });
+
+    const detail = await getStocktakeSession({ db: context.db, sessionId: session.id });
+    expect(detail.counts[0]?.varianceValue).toBeNull();
+    expect(detail.totalVarianceValue).toBeNull();
+  });
+
+  test('lists sessions newest first with their counted Part counts', async ({ context }) => {
+    const first = await openStoresSession(context.db);
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 40 }], partId: context.boltId, sessionId: first.id },
+    });
+    await closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: first.id } });
+    const second = await openStocktakeSession({ actorUserId, db: context.db, input: { scope: 'raw-material' } });
+
+    const list = await listStocktakeSessions({ db: context.db });
+    expect(list.items.map((item) => item.id)).toEqual([second.id, first.id]);
+    expect(list.items.map((item) => item.countedPartCount)).toEqual([0, 1]);
+  });
+});
+
+describe('listStocktakeOverdue', () => {
+  test('reports both rhythms overdue while neither has ever closed a session', async ({ context }) => {
+    const overdue = await listStocktakeOverdue({ clock: () => new Date('2026-09-30T08:00:00.000Z'), db: context.db });
+
+    expect(overdue.items.map((row) => row.scope)).toEqual(['raw-material', 'stores']);
+    expect(overdue.items.every((row) => row.isOverdue && row.lastClosedOn === null)).toBe(true);
+  });
+
+  test('clears a rhythm the moment its session closes', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+    await closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: session.id } });
+
+    const overdue = await listStocktakeOverdue({ db: context.db });
+    const stores = overdue.items.find((row) => row.scope === 'stores');
+
+    expect(stores).toMatchObject({ isOverdue: false, overdueDays: 0 });
+    expect(stores?.lastClosedOn).not.toBeNull();
+  });
+});
+
+async function stockOnHandOf(db: Parameters<typeof listStockOnHand>[0]['db'], partId: string): Promise<number> {
+  const result = await listStockOnHand({ db });
+
+  return result.items.find((row) => row.partId === partId)?.quantity ?? 0;
+}

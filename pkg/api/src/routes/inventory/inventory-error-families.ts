@@ -5,10 +5,12 @@ import {
   isBuildError,
   isJobCloseOutError,
   isStockMovementCoreError,
+  isStocktakeError,
   JobCancelledError,
   type JobCloseOutError,
   JobNotFoundError,
   type StockMovementCoreError,
+  type StocktakeError,
 } from '@pkg/core';
 
 import { defineCoreErrorFamily } from '../../trpc/errors.js';
@@ -74,6 +76,20 @@ export const jobCloseOutErrorFamily = defineCoreErrorFamily<JobCloseOutError>({
     'inventory.job_not_completed': 'BAD_REQUEST',
   },
   is: isJobCloseOutError,
+});
+
+/**
+ * The counting walk's own rules. Out-of-scope is a bad request rather than a forbidden: the caller
+ * may count, they are just standing in the wrong walk for that shelf.
+ */
+export const stocktakeErrorFamily = defineCoreErrorFamily<StocktakeError>({
+  codes: {
+    'inventory.stocktake_part_out_of_scope': 'BAD_REQUEST',
+    'inventory.stocktake_session_already_open': 'BAD_REQUEST',
+    'inventory.stocktake_session_closed': 'BAD_REQUEST',
+    'inventory.stocktake_session_not_found': 'NOT_FOUND',
+  },
+  is: isStocktakeError,
 });
 
 /** The Job failures a stock movement reaches, which are not the Job router's whole surface. */

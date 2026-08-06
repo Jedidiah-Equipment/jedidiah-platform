@@ -241,7 +241,15 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
   );
 }
 
-function WorkItemRow({ amount, description, name }: { amount: string; description: string | null; name: string }) {
+function WorkItemRow({
+  amount,
+  description,
+  name,
+}: {
+  amount: string | null;
+  description: string | null;
+  name: string;
+}) {
   return (
     <View style={pdfStyles.flexRow}>
       <View style={[pdfStyles.flex1, styles.tableCell]}>
@@ -252,32 +260,61 @@ function WorkItemRow({ amount, description, name }: { amount: string; descriptio
       </View>
       <Text style={[styles.tableCell, styles.qtyCol]} />
       <Text style={[styles.tableCell, styles.priceCol]} />
-      <Text
-        style={[
-          pdfStyles.bgPriceCell,
-          pdfStyles.fontBold,
-          pdfStyles.textBody,
-          pdfStyles.textRight,
-          styles.tableCell,
-          styles.subtotalCol,
-          styles.noRightBorder,
-        ]}
-      >
-        {amount}
-      </Text>
+      {amount === null ? (
+        <Text style={[styles.tableCell, styles.subtotalCol, styles.noRightBorder]} />
+      ) : (
+        <Text
+          style={[
+            pdfStyles.bgPriceCell,
+            pdfStyles.fontBold,
+            pdfStyles.textBody,
+            pdfStyles.textRight,
+            styles.tableCell,
+            styles.subtotalCol,
+            styles.noRightBorder,
+          ]}
+        >
+          {amount}
+        </Text>
+      )}
     </View>
   );
 }
 
+/**
+ * What a Work Item heading prints in the Subtotal column: whatever the Labour and Parts rows beneath
+ * it leave unaccounted for, so every figure in the column sums. That is nothing on a Work Item its
+ * charges cover in full, and an Other Work Item's flat amount — never labour, so never a charge — on
+ * a line that also carries Parts. A Work Item with no rows beneath it prints its own total, down to
+ * the R 0.00 of a no-charge inclusion, because otherwise it would reach the customer with no price.
+ *
+ * The arithmetic runs in whole cents: the column is printed to cents, and subtracting in rands lets
+ * a genuine one-cent remainder come out as 0.00999… and round away.
+ */
+function workItemHeadingAmount(workItem: QuoteDocumentWorkItem): number | null {
+  if (workItem.charges.length === 0) return workItem.amount;
+  const unaccountedCents = workItem.charges.reduce(
+    (cents, charge) => cents - toCents(charge.amount),
+    toCents(workItem.amount),
+  );
+
+  return unaccountedCents === 0 ? null : unaccountedCents / 100;
+}
+
+function toCents(value: number): number {
+  return Math.round(value * 100);
+}
+
 function WorkItemGroup({ currencyCode, workItem }: { currencyCode: string; workItem: QuoteDocumentWorkItem }) {
   const [firstCharge, ...remainingCharges] = workItem.charges;
+  const headingAmount = workItemHeadingAmount(workItem);
 
   return (
     <View>
       {/* The heading rides with its first charge so a page break never strands it alone. */}
       <View wrap={false}>
         <WorkItemRow
-          amount={formatCurrency(workItem.amount, currencyCode)}
+          amount={headingAmount === null ? null : formatCurrency(headingAmount, currencyCode)}
           description={workItem.description}
           name={workItem.name}
         />

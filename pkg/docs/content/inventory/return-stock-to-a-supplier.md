@@ -48,7 +48,9 @@ The reason is not just a label — it decides whether the order is still waiting
 
 - Nothing refused at the dock is returned. A refused delivery was never received, so there is no
   Receipt to reverse and nothing to record.
-- A return needs a Receipt behind it. A line nothing arrived on has nothing to send back.
+- A return reverses a Receipt and takes its cost from the ones the line already holds. A line nothing
+  arrived on is not refused — it warns, as above — but there is nothing to take a cost from, so the
+  return records none and no Part's average moves.
 - Once a line has moved stock either way, its Part can no longer be substituted — the movements
   belong to that line. See [Amend a sent Purchase Order](./amend-a-sent-purchase-order.md).
 - Every return leaves the Supplier owing a credit. Record it when it arrives — see

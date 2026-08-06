@@ -53,17 +53,36 @@ export class StocktakePartOutOfScopeError extends Error {
   }
 }
 
+/**
+ * The count named fewer buckets than the Part is holding stock in. Almost always means something
+ * arrived while the screen was open, so the honest answer is "look again" rather than a write-off
+ * of a bucket the counter never saw.
+ */
+export class StocktakeUncountedBucketError extends Error {
+  readonly code = 'inventory.stocktake_uncounted_bucket';
+  readonly metadata: { lengthsMm: (number | null)[]; partId: string };
+
+  constructor(partId: string, lengthsMm: (number | null)[]) {
+    const lengths = lengthsMm.map((lengthMm) => (lengthMm === null ? 'the shelf' : `${lengthMm} mm`)).join(', ');
+    super(`This Part is still holding stock you did not count (${lengths}). Count it again.`);
+    this.name = 'StocktakeUncountedBucketError';
+    this.metadata = { lengthsMm, partId };
+  }
+}
+
 export type StocktakeError =
   | StocktakePartOutOfScopeError
   | StocktakeSessionAlreadyOpenError
   | StocktakeSessionClosedError
-  | StocktakeSessionNotFoundError;
+  | StocktakeSessionNotFoundError
+  | StocktakeUncountedBucketError;
 
 export function isStocktakeError(error: unknown): error is StocktakeError {
   return (
     error instanceof StocktakePartOutOfScopeError ||
     error instanceof StocktakeSessionAlreadyOpenError ||
     error instanceof StocktakeSessionClosedError ||
-    error instanceof StocktakeSessionNotFoundError
+    error instanceof StocktakeSessionNotFoundError ||
+    error instanceof StocktakeUncountedBucketError
   );
 }

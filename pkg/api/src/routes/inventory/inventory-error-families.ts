@@ -88,6 +88,7 @@ export const stocktakeErrorFamily = defineCoreErrorFamily<StocktakeError>({
     'inventory.stocktake_session_already_open': 'BAD_REQUEST',
     'inventory.stocktake_session_closed': 'BAD_REQUEST',
     'inventory.stocktake_session_not_found': 'NOT_FOUND',
+    'inventory.stocktake_uncounted_bucket': 'BAD_REQUEST',
   },
   is: isStocktakeError,
 });

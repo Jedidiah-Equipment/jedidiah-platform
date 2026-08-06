@@ -17,6 +17,9 @@ import { NoActorNotice } from './StoresPartScreen';
 
 type CountEntry = { key: string; lengthMm: number | null; observed: string };
 
+/** The single bucket a discrete or measured Part has, keyed the way the observed map keys it. */
+const SINGLE_BUCKET = 'single';
+
 /**
  * Blind entry, then informed review (spec §9).
  *
@@ -44,15 +47,24 @@ export function StockCountPanel({
   const actorUserId = useMovementActorUserId();
   const { keepAlive } = useStoresActor();
   const isLinear = row.unitOfMeasure === 'mm';
-  const [entries, setEntries] = useState<CountEntry[]>(() => seedEntries(row));
+  // Keyed figures live in a map and the fields are derived from `row`, rather than the fields being
+  // seeded into state once. That is what lets a refetch — the one that follows a refused post —
+  // bring a newly arrived length onto the screen without discarding what has already been counted.
+  const [observedByBucket, setObservedByBucket] = useState<Record<string, string>>({});
+  const [addedLengths, setAddedLengths] = useState<number[]>([]);
   const [addedLength, setAddedLength] = useState('');
   const [isReviewing, setIsReviewing] = useState(false);
+  const entries = countEntries(row, addedLengths, observedByBucket);
 
   const postCount = useMutation(
     trpc.inventory.postStockCount.mutationOptions({
-      onError: (error) => {
+      onError: async (error) => {
         setIsReviewing(false);
         toast('error', error.message);
+        // The refusal this screen can actually reach is "a bucket arrived while you were counting",
+        // so the useful next step is the fresh stock position — the reload puts the bucket the
+        // server complained about on screen with a field to key it into.
+        await invalidateQueryCache(queryClient);
       },
       onSuccess: async (result) => {
         await invalidateQueryCache(queryClient);
@@ -95,9 +107,7 @@ export function StockCountPanel({
             label={entry.lengthMm === null ? 'Counted' : `Counted at ${entry.lengthMm} mm`}
             onChange={(value) => {
               keepAlive();
-              setEntries((current) =>
-                current.map((item) => (item.key === entry.key ? { ...item, observed: value } : item)),
-              );
+              setObservedByBucket((current) => ({ ...current, [entry.key]: value }));
             }}
             placeholder="0"
             unit={entry.lengthMm === null ? row.unitOfMeasure : undefined}
@@ -130,7 +140,7 @@ export function StockCountPanel({
                 const lengthMm = parseLength(addedLength);
                 if (lengthMm === null || entries.some((entry) => entry.lengthMm === lengthMm)) return;
                 keepAlive();
-                setEntries((current) => [...current, { key: String(lengthMm), lengthMm, observed: '' }]);
+                setAddedLengths((current) => [...current, lengthMm]);
                 setAddedLength('');
               }}
             >
@@ -193,20 +203,32 @@ export function StockCountPanel({
 }
 
 /**
- * The buckets to ask about: the lengths the ledger already knows, plus the Part's standard purchase
- * length. A discrete or measured Part is one question with no length at all.
+ * The buckets to ask about: the lengths the ledger already knows, the Part's standard purchase
+ * length, and any offcut length the counter has added. A discrete or measured Part is one question
+ * with no length at all.
  */
-function seedEntries(row: StockOnHandRow): CountEntry[] {
-  if (row.unitOfMeasure !== 'mm') return [{ key: 'single', lengthMm: null, observed: '' }];
+function countEntries(
+  row: StockOnHandRow,
+  addedLengths: readonly number[],
+  observedByBucket: Record<string, string>,
+): CountEntry[] {
+  if (row.unitOfMeasure !== 'mm') {
+    return [{ key: SINGLE_BUCKET, lengthMm: null, observed: observedByBucket[SINGLE_BUCKET] ?? '' }];
+  }
 
   const lengths = [
     ...new Set([
       ...row.buckets.flatMap((bucket) => (bucket.lengthMm === null ? [] : [bucket.lengthMm])),
       ...(row.standardPurchaseLengthMm === null ? [] : [row.standardPurchaseLengthMm]),
+      ...addedLengths,
     ]),
   ].sort((left, right) => left - right);
 
-  return lengths.map((lengthMm) => ({ key: String(lengthMm), lengthMm, observed: '' }));
+  return lengths.map((lengthMm) => ({
+    key: String(lengthMm),
+    lengthMm,
+    observed: observedByBucket[String(lengthMm)] ?? '',
+  }));
 }
 
 function expectedFor(row: StockOnHandRow, lengthMm: number | null): number {

@@ -44,6 +44,7 @@ import {
   StocktakeSessionAlreadyOpenError,
   StocktakeSessionClosedError,
   StocktakeSessionNotFoundError,
+  StocktakeUncountedBucketError,
 } from './stocktake-errors.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
@@ -137,9 +138,10 @@ export async function closeStocktakeSession({
  * reaching this bin and this post landing is already in `expected`, so the correction is measured
  * against the shelf as the ledger knows it at this instant (spec §9). Never an overwrite.
  *
- * A count covers the whole Part, so a length bucket the ledger holds stock in that the observation
- * does not name is counted as empty. That asymmetry is deliberate: an unmentioned bucket on a rack
- * somebody just walked means the pieces are gone, not that they were skipped.
+ * A count covers the whole Part, so every bucket the ledger holds stock in has to be named — an
+ * empty one by keying zero. The count says it, the server never infers it, and a Part still holding
+ * an unnamed bucket is refused: an inferred zero is indistinguishable from stock that arrived while
+ * the screen was open, and writing that off is the one mistake a stocktake must not make.
  *
  * Every counted bucket appends a row, **including the ones that agreed**. A zero-delta row is what
  * records "counted, and it matched" — the sessions hold no per-Part counted flag, so the movement
@@ -177,11 +179,18 @@ export async function postStockCount({
 
     const onHand = await loadBucketQuantities(tx, [input.partId]);
     const observedByBucket = new Map(input.buckets.map((bucket) => [bucketKey(input.partId, bucket.lengthMm), bucket]));
-    const unmentioned = [...onHand]
+    const unnamed = [...onHand]
       .filter(([key, quantity]) => quantity !== 0 && !observedByBucket.has(key))
-      .map(([key]) => ({ lengthMm: bucketKeyLengthMm(key), observed: 0 }));
+      .map(([key]) => bucketKeyLengthMm(key));
 
-    const buckets: StockCountBucketVariance[] = [...input.buckets, ...unmentioned].map((bucket) => {
+    // A count covers the whole Part, so every stocked bucket must be accounted for — but the count
+    // has to *say* it found one empty rather than have the server infer it. Inferring is what turns
+    // a receipt that landed between the screen loading and the count posting into a silent
+    // write-off of stock nobody looked at: the counter never saw that bucket, so they never counted
+    // it, and zeroing it on their behalf destroys the arrival. Refusing sends them back to the rack.
+    if (unnamed.length > 0) throw new StocktakeUncountedBucketError(input.partId, unnamed);
+
+    const buckets: StockCountBucketVariance[] = input.buckets.map((bucket) => {
       const expected = onHand.get(bucketKey(input.partId, bucket.lengthMm)) ?? 0;
 
       return {
@@ -238,6 +247,7 @@ export async function getStocktakeSession({
   const countRows = await db
     .select({
       actorName: user.name,
+      actorUserId: stockMovements.actorUserId,
       createdAt: stockMovements.createdAt,
       id: stockMovements.id,
       partCode: parts.code,
@@ -273,7 +283,13 @@ export async function getStocktakeSession({
   ]);
 
   const varianceByMovement = deriveSessionVariances(ledgerRows, sessionId);
-  const counts = [...groupBy(countRows, (row) => row.partId).values()].map(([head, ...tail]) => {
+  // One row per *posting*, not per Part. Counting the same Part twice in a session is legal and
+  // documented — the second count corrects against what the first left behind — and rolling both
+  // into one row would credit the whole net variance to whoever happened to go first. Every row of
+  // one post shares its transaction's timestamp and actor, which is what makes this grouping exact.
+  const counts = [
+    ...groupBy(countRows, (row) => `${row.partId}:${row.createdAt.toISOString()}:${row.actorUserId}`).values(),
+  ].map(([head, ...tail]) => {
     const buckets = [head, ...tail].map((row) => {
       const variance = varianceByMovement.get(row.id);
       // The replay covers every movement of every counted Part, so a session row it did not reach

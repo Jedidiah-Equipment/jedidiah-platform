@@ -11,6 +11,7 @@ import {
   StocktakeSessionAlreadyOpenError,
   StocktakeSessionClosedError,
   StocktakeSessionNotFoundError,
+  StocktakeUncountedBucketError,
 } from './stocktake-errors.js';
 import {
   closeStocktakeSession,
@@ -221,20 +222,42 @@ describe('postStockCount', () => {
     );
   });
 
-  test('empties a stocked bucket the count did not mention', async ({ context }) => {
+  test('empties a stocked bucket the count says is empty', async ({ context }) => {
     const session = await openStocktakeSession({ actorUserId, db: context.db, input: { scope: 'raw-material' } });
     const result = await postStockCount({
       actorUserId,
       db: context.db,
-      input: { buckets: [{ lengthMm: 6000, observed: 2 }], partId: context.channelId, sessionId: session.id },
+      input: {
+        buckets: [
+          { lengthMm: 6000, observed: 2 },
+          // The 13 m bucket was walked past and found empty, and the count says so.
+          { lengthMm: 13_000, observed: 0 },
+        ],
+        partId: context.channelId,
+        sessionId: session.id,
+      },
     });
 
-    // The 13 m bucket was walked past and found empty; a count covers the whole Part.
     expect(result.buckets).toEqual([
       { delta: 2, expected: 0, lengthMm: 6000, observed: 2 },
       { delta: -9, expected: 9, lengthMm: 13_000, observed: 0 },
     ]);
     expect(await stockOnHandOf(context.db, context.channelId)).toBe(2);
+  });
+
+  test('refuses a count that leaves a stocked bucket unnamed rather than writing it off', async ({ context }) => {
+    const session = await openStocktakeSession({ actorUserId, db: context.db, input: { scope: 'raw-material' } });
+
+    // Whatever arrived while the counter was at the rack is stock nobody looked at; inferring it
+    // empty would destroy the arrival, so the post is refused and they are sent back to count it.
+    await expect(
+      postStockCount({
+        actorUserId,
+        db: context.db,
+        input: { buckets: [{ lengthMm: 6000, observed: 2 }], partId: context.channelId, sessionId: session.id },
+      }),
+    ).rejects.toBeInstanceOf(StocktakeUncountedBucketError);
+    expect(await stockOnHandOf(context.db, context.channelId)).toBe(9);
   });
 
   test('refuses a Part the session’s scope does not cover', async ({ context }) => {
@@ -328,6 +351,42 @@ describe('the session variance report', () => {
     expect(detail.totalVarianceValue).toBe(-80);
     // SPARE is in scope and was never walked; CHANNEL is periodic and belongs to the other rhythm.
     expect(detail.uncounted.map((row) => row.partCode)).toEqual(['SPARE']);
+  });
+
+  test('reports a Part counted twice as two rows, each with its own counter', async ({ context }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'second-counter@example.com',
+      emailVerified: true,
+      id: 'stocktake-second-counter',
+      name: 'Second Counter',
+      role: 'stores',
+      updatedAt: now,
+    });
+    const session = await openStoresSession(context.db);
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 32 }], partId: context.boltId, sessionId: session.id },
+    });
+    await postStockCount({
+      actorUserId: 'stocktake-second-counter',
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 30 }], partId: context.boltId, sessionId: session.id },
+    });
+
+    const detail = await getStocktakeSession({ db: context.db, sessionId: session.id });
+
+    // The recount corrects against what the first count left behind rather than doubling it, and
+    // neither counter is credited with the other's variance.
+    expect(detail.counts).toHaveLength(2);
+    expect(detail.counts.map((count) => [count.countedByName, count.delta])).toEqual([
+      ['Stocktake Tester', -8],
+      ['Second Counter', -2],
+    ]);
+    expect(detail.session.countedPartCount).toBe(1);
+    expect(await stockOnHandOf(context.db, context.boltId)).toBe(30);
   });
 
   test('leaves the priced total unpriced when a counted Part has no cost yet', async ({ context }) => {

@@ -59,10 +59,22 @@ export const CreditNoteDocumentMetadata = z.object({
   type: z.literal('credit_note'),
 });
 
+/**
+ * The Supplier's bill for what arrived on this order — the document price reconciliation is worked
+ * against (spec §5). Like a credit note it revises nothing, so it carries no revision number; what
+ * it carries instead is an AI extraction, filed beside it rather than in its metadata because the
+ * read is re-runnable and the match against the order's lines is recomputed, never stored.
+ */
+export type SupplierInvoiceDocumentMetadata = z.infer<typeof SupplierInvoiceDocumentMetadata>;
+export const SupplierInvoiceDocumentMetadata = z.object({
+  type: z.literal('supplier_invoice'),
+});
+
 export type PurchaseOrderDocumentMetadata = z.infer<typeof PurchaseOrderDocumentMetadata>;
 export const PurchaseOrderDocumentMetadata = z.discriminatedUnion('type', [
   PurchaseOrderPdfMetadata,
   CreditNoteDocumentMetadata,
+  SupplierInvoiceDocumentMetadata,
 ]);
 
 /**
@@ -71,7 +83,8 @@ export const PurchaseOrderDocumentMetadata = z.discriminatedUnion('type', [
  * document cannot be added there without this failing to compile.
  */
 export type PurchaseOrderDocumentType = PurchaseOrderDocumentMetadata['type'];
-export const PurchaseOrderDocumentType = z.enum(['purchase_order', 'credit_note'] satisfies [
+export const PurchaseOrderDocumentType = z.enum(['purchase_order', 'credit_note', 'supplier_invoice'] satisfies [
+  PurchaseOrderDocumentType,
   PurchaseOrderDocumentType,
   PurchaseOrderDocumentType,
 ]);
@@ -150,8 +163,9 @@ export const PurchaseOrderDocument = DocumentSummary.extend({
 
 /**
  * What a Job's documents tab shows: its own documents, and the order PDFs of the Purchase Orders
- * raised for it. A credit note lives in the same Purchase-Order-owned collection but never reaches
- * a Job — it answers a return to the Supplier, which is nothing to do with the work (spec §4).
+ * raised for it. A credit note and a Supplier invoice live in the same Purchase-Order-owned
+ * collection but neither reaches a Job — one answers a return to the Supplier and the other is the
+ * bill for the order, and neither is anything to do with the work (spec §4, §5).
  */
 export type JobVisibleDocument = z.infer<typeof JobVisibleDocument>;
 export const JobVisibleDocument = z.union([

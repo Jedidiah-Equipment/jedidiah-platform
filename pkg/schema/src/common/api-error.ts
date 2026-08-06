@@ -8,6 +8,7 @@ export const APP_CODE_PREFIXES = [
   'file',
   'job',
   'inventory',
+  'invoice',
   'part',
   'product',
   'product_range',

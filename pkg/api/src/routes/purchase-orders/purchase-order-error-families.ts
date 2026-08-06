@@ -2,8 +2,10 @@ import {
   type CreditNoteCoreError,
   isCreditNoteCoreError,
   isPurchaseOrderCoreError,
+  isSupplierInvoiceCoreError,
   JobNotFoundError,
   type PurchaseOrderCoreError,
+  type SupplierInvoiceCoreError,
 } from '@pkg/core';
 
 import { defineCoreErrorFamily } from '../../trpc/errors.js';
@@ -42,6 +44,20 @@ export const creditNoteErrorFamily = defineCoreErrorFamily<CreditNoteCoreError>(
     'credit_note.return_not_found': 'NOT_FOUND',
   },
   is: isCreditNoteCoreError,
+});
+
+/**
+ * The invoice panel fails on the flag being acted on, never on the extraction. An unreadable
+ * invoice is a state the panel reports, not an error a procedure raises (spec §5).
+ */
+export const supplierInvoiceErrorFamily = defineCoreErrorFamily<SupplierInvoiceCoreError>({
+  codes: {
+    'invoice.flag_already_resolved': 'CONFLICT',
+    'invoice.flag_not_found': 'NOT_FOUND',
+    'invoice.not_found': 'NOT_FOUND',
+    'invoice.price_not_applicable': 'BAD_REQUEST',
+  },
+  is: isSupplierInvoiceCoreError,
 });
 
 /** The one Job failure an order reaches, linking Jobs to a draft. */

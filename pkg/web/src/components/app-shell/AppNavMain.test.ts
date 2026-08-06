@@ -16,6 +16,7 @@ describe('AppNavMain', () => {
       'Inventory',
       'Buy list',
       'Purchase Orders',
+      'PO vs invoiced',
       'Stocktake',
       'Close-out',
     ]);
@@ -43,6 +44,7 @@ describe('AppNavMain', () => {
     expect(isInventoryNavPath('/inventory/close-out')).toBe(false);
     expect(isInventoryNavPath('/inventory/close-out/job-id')).toBe(false);
     expect(isInventoryNavPath('/inventory/buy-list')).toBe(false);
+    expect(isInventoryNavPath('/inventory/price-variance')).toBe(false);
     expect(isInventoryNavPath('/inventory/stocktake')).toBe(false);
     expect(isInventoryNavPath('/inventory/stocktake/session-id')).toBe(false);
   });

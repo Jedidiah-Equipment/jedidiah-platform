@@ -23,6 +23,7 @@ describe('helpTopicForPath', () => {
   it('prefers the longer match when one route nests inside another', () => {
     expect(helpTopicForPath('/inventory/close-out')).toBe('inventoryCloseOut');
     expect(helpTopicForPath('/inventory/close-out/job-7')).toBe('inventoryCloseOut');
+    expect(helpTopicForPath('/inventory/price-variance')).toBe('inventoryPriceVariance');
   });
 
   it('does not treat a route that merely starts with the same characters as a match', () => {

@@ -103,6 +103,32 @@ export async function uploadCreditNote({
   return PurchaseOrderDocumentRow.parse(await response.json());
 }
 
+/**
+ * Files the Supplier's bill against an order. The AI read of it happens server-side during this
+ * request, and an unreadable invoice still uploads — the panel says so rather than failing here.
+ */
+export async function uploadSupplierInvoice({
+  file,
+  purchaseOrderId,
+}: {
+  file: File;
+  purchaseOrderId: UUID;
+}): Promise<PurchaseOrderDocumentRow> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(
+    `${getClientConfig().apiBaseUrl}/api/purchase-orders/${encodeURIComponent(purchaseOrderId)}/supplier-invoices`,
+    { body: formData, credentials: 'include', method: 'POST' },
+  );
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, 'Unable to upload this Supplier invoice.'));
+  }
+
+  return PurchaseOrderDocumentRow.parse(await response.json());
+}
+
 export async function uploadJobPurchaseOrder(jobId: UUID, file: File): Promise<JobDocument> {
   const formData = new FormData();
   formData.append('file', file);

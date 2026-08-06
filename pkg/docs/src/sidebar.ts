@@ -31,6 +31,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { text: 'Amend a sent Purchase Order', link: '/inventory/amend-a-sent-purchase-order' },
       { text: 'Return stock to a Supplier', link: '/inventory/return-stock-to-a-supplier' },
       { text: 'Record a credit note', link: '/inventory/record-a-credit-note' },
+      { text: 'Cross-check a Supplier invoice', link: '/inventory/cross-check-a-supplier-invoice' },
       { text: 'Build stock', link: '/inventory/build-stock' },
       { text: 'Post a stock adjustment', link: '/inventory/post-a-stock-adjustment' },
       { text: 'Revalue a Part', link: '/inventory/revalue-a-part' },

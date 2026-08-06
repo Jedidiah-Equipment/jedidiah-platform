@@ -21,3 +21,20 @@ export function assertCanWriteInventoryCost(access: InventoryCostAccess, unitCos
     message: 'You do not have permission to set inventory cost.',
   });
 }
+
+/**
+ * The second half of a double gate, for a mutation whose own permission is not the cost gate.
+ *
+ * `authorizedProcedure` reads a list as alternatives, so a rule needing *both* rights spends one on
+ * the procedure and asserts the other here — the invoice price correction needs `inventory_cost:
+ * revalue` to write and `inventory_cost:read` to have been able to see what it is confirming.
+ */
+export function assertCanReadInventoryCost(access: InventoryCostAccess): void {
+  if (canReadInventoryCosts(access)) return;
+
+  throw createAuthTRPCError({
+    appCode: 'auth.forbidden',
+    code: 'FORBIDDEN',
+    message: 'You do not have permission to read inventory cost.',
+  });
+}

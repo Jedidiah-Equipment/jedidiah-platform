@@ -33,3 +33,4 @@ export type {
   AiEmailSender,
   AiSession,
 } from './context.js';
+export { extractSupplierInvoice } from './supplier-invoice-extraction.js';

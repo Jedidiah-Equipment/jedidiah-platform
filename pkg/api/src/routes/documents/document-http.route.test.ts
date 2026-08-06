@@ -21,10 +21,10 @@ import {
 import type { UUID } from '@pkg/schema';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
-
 import { createTester } from '@/test/create-tester.js';
 import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
+import type { RegisterDocumentHttpRoutesOptions } from './document-http.route.js';
 
 const routeTestState = vi.hoisted(() => ({
   db: null as unknown,
@@ -572,6 +572,39 @@ describe('document HTTP routes', () => {
     expect([...storage.objects.keys()]).toHaveLength(1);
   });
 
+  test('files a Supplier invoice under the amend right, and keeps it when the read fails', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const [poSupplier] = await context.db
+      .insert(supplier)
+      .values({ companyName: 'Invoice Supplier' })
+      .returning({ id: supplier.id });
+    if (!poSupplier) throw new Error('Supplier fixture was not created');
+    const [purchaseOrder] = await context.db
+      .insert(purchaseOrders)
+      .values({ sentAt: new Date(), status: 'sent', supplierId: poSupplier.id })
+      .returning({ id: purchaseOrders.id });
+    if (!purchaseOrder) throw new Error('Purchase Order fixture was not created');
+    const app = await createDocumentApp(storage, {
+      // The provider is down. The upload is still the desk's document, and must survive (spec §5).
+      extractSupplierInvoice: async () => {
+        throw new Error('provider is down');
+      },
+    });
+    const upload = buildMultipartUpload({ bytes: pdfBytes(), filename: 'INV-7781.pdf' });
+    const url = `/api/purchase-orders/${purchaseOrder.id}/supplier-invoices`;
+
+    // The dock receives the stock; filing the bill for it is procurement's job.
+    routeTestState.session = mockSession('stores');
+    expect((await app.inject({ method: 'POST', url, ...upload })).statusCode).toBe(403);
+
+    routeTestState.session = mockSession('admin');
+    const response = await app.inject({ method: 'POST', url, ...upload });
+
+    expect(response.statusCode, response.body).toBe(201);
+    expect(response.json()).toMatchObject({ filename: 'INV-7781.pdf', revision: null, type: 'supplier_invoice' });
+    expect([...storage.objects.keys()]).toHaveLength(1);
+  });
+
   test('does not register the generic document download route', async ({ context }) => {
     const storage = new MemoryStorage();
     const app = await createDocumentApp(storage);
@@ -604,12 +637,12 @@ describe('document HTTP routes', () => {
   });
 });
 
-async function createDocumentApp(storage: StorageAdapter) {
+async function createDocumentApp(storage: StorageAdapter, options: RegisterDocumentHttpRoutesOptions = {}) {
   const { registerDocumentHttpRoutes } = await import('./document-http.route.js');
   const app = Fastify();
 
   await app.register(fastifyMultipart);
-  await registerDocumentHttpRoutes(app, storage);
+  await registerDocumentHttpRoutes(app, storage, options);
   await app.ready();
   openApps.push(app);
 

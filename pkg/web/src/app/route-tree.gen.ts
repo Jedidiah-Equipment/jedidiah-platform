@@ -49,6 +49,7 @@ import { Route as AuthedJobsListRouteImport } from './../routes/_authed.jobs.lis
 import { Route as AuthedJobsCalendarRouteImport } from './../routes/_authed.jobs.calendar'
 import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
 import { Route as AuthedInventoryStocktakeRouteImport } from './../routes/_authed.inventory.stocktake'
+import { Route as AuthedInventoryPriceVarianceRouteImport } from './../routes/_authed.inventory.price-variance'
 import { Route as AuthedInventoryCloseOutRouteImport } from './../routes/_authed.inventory.close-out'
 import { Route as AuthedInventoryBuyListRouteImport } from './../routes/_authed.inventory.buy-list'
 import { Route as AuthedInventoryPartIdRouteImport } from './../routes/_authed.inventory.$partId'
@@ -266,6 +267,12 @@ const AuthedInventoryStocktakeRoute =
     path: '/stocktake',
     getParentRoute: () => AuthedInventoryRoute,
   } as any)
+const AuthedInventoryPriceVarianceRoute =
+  AuthedInventoryPriceVarianceRouteImport.update({
+    id: '/price-variance',
+    path: '/price-variance',
+    getParentRoute: () => AuthedInventoryRoute,
+  } as any)
 const AuthedInventoryCloseOutRoute = AuthedInventoryCloseOutRouteImport.update({
   id: '/close-out',
   path: '/close-out',
@@ -364,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/inventory/$partId': typeof AuthedInventoryPartIdRoute
   '/inventory/buy-list': typeof AuthedInventoryBuyListRoute
   '/inventory/close-out': typeof AuthedInventoryCloseOutRouteWithChildren
+  '/inventory/price-variance': typeof AuthedInventoryPriceVarianceRoute
   '/inventory/stocktake': typeof AuthedInventoryStocktakeRouteWithChildren
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
@@ -408,6 +416,7 @@ export interface FileRoutesByTo {
   '/users': typeof AuthedUsersRoute
   '/inventory/$partId': typeof AuthedInventoryPartIdRoute
   '/inventory/buy-list': typeof AuthedInventoryBuyListRoute
+  '/inventory/price-variance': typeof AuthedInventoryPriceVarianceRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/jobs/list': typeof AuthedJobsListRoute
@@ -463,6 +472,7 @@ export interface FileRoutesById {
   '/_authed/inventory/$partId': typeof AuthedInventoryPartIdRoute
   '/_authed/inventory/buy-list': typeof AuthedInventoryBuyListRoute
   '/_authed/inventory/close-out': typeof AuthedInventoryCloseOutRouteWithChildren
+  '/_authed/inventory/price-variance': typeof AuthedInventoryPriceVarianceRoute
   '/_authed/inventory/stocktake': typeof AuthedInventoryStocktakeRouteWithChildren
   '/_authed/jobs/$id': typeof AuthedJobsIdRoute
   '/_authed/jobs/calendar': typeof AuthedJobsCalendarRoute
@@ -519,6 +529,7 @@ export interface FileRouteTypes {
     | '/inventory/$partId'
     | '/inventory/buy-list'
     | '/inventory/close-out'
+    | '/inventory/price-variance'
     | '/inventory/stocktake'
     | '/jobs/$id'
     | '/jobs/calendar'
@@ -563,6 +574,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/inventory/$partId'
     | '/inventory/buy-list'
+    | '/inventory/price-variance'
     | '/jobs/$id'
     | '/jobs/calendar'
     | '/jobs/list'
@@ -617,6 +629,7 @@ export interface FileRouteTypes {
     | '/_authed/inventory/$partId'
     | '/_authed/inventory/buy-list'
     | '/_authed/inventory/close-out'
+    | '/_authed/inventory/price-variance'
     | '/_authed/inventory/stocktake'
     | '/_authed/jobs/$id'
     | '/_authed/jobs/calendar'
@@ -938,6 +951,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedInventoryStocktakeRouteImport
       parentRoute: typeof AuthedInventoryRoute
     }
+    '/_authed/inventory/price-variance': {
+      id: '/_authed/inventory/price-variance'
+      path: '/price-variance'
+      fullPath: '/inventory/price-variance'
+      preLoaderRoute: typeof AuthedInventoryPriceVarianceRouteImport
+      parentRoute: typeof AuthedInventoryRoute
+    }
     '/_authed/inventory/close-out': {
       id: '/_authed/inventory/close-out'
       path: '/close-out'
@@ -1083,6 +1103,7 @@ interface AuthedInventoryRouteChildren {
   AuthedInventoryPartIdRoute: typeof AuthedInventoryPartIdRoute
   AuthedInventoryBuyListRoute: typeof AuthedInventoryBuyListRoute
   AuthedInventoryCloseOutRoute: typeof AuthedInventoryCloseOutRouteWithChildren
+  AuthedInventoryPriceVarianceRoute: typeof AuthedInventoryPriceVarianceRoute
   AuthedInventoryStocktakeRoute: typeof AuthedInventoryStocktakeRouteWithChildren
   AuthedInventoryIndexRoute: typeof AuthedInventoryIndexRoute
 }
@@ -1091,6 +1112,7 @@ const AuthedInventoryRouteChildren: AuthedInventoryRouteChildren = {
   AuthedInventoryPartIdRoute: AuthedInventoryPartIdRoute,
   AuthedInventoryBuyListRoute: AuthedInventoryBuyListRoute,
   AuthedInventoryCloseOutRoute: AuthedInventoryCloseOutRouteWithChildren,
+  AuthedInventoryPriceVarianceRoute: AuthedInventoryPriceVarianceRoute,
   AuthedInventoryStocktakeRoute: AuthedInventoryStocktakeRouteWithChildren,
   AuthedInventoryIndexRoute: AuthedInventoryIndexRoute,
 }

@@ -1,4 +1,5 @@
-import { customers, jobs, parts, quotes, supplier, user } from '@pkg/db';
+import type { Db } from '@pkg/db';
+import { customers, documents, invoiceExtractions, jobs, parts, quotes, supplier, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '../../test/create-tester.js';
@@ -360,7 +361,94 @@ describe('amendments, returns, and credit notes', () => {
       ],
     });
   });
+
+  test('gates the invoice cross-check on cost access, and its apply on the right to revalue', async ({ context }) => {
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+    const procurement = context.createCaller(mockSession('procurement-manager'));
+    const purchaseOrder = await sendOrder(admin, 4);
+    await stores.purchaseOrders.receive({
+      lengthMm: null,
+      partId: PART_ID,
+      purchaseOrderId: purchaseOrder.id,
+      quantity: 4,
+      unitCost: null,
+    });
+    const documentId = await fileInvoice(context.db, purchaseOrder.id);
+
+    // The panel is prices from end to end, so the price-blind stores role never reaches it at all.
+    await expect(stores.purchaseOrders.supplierInvoices({ purchaseOrderId: purchaseOrder.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(stores.purchaseOrders.invoicePriceVariance()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    const review = await procurement.purchaseOrders.supplierInvoices({ purchaseOrderId: purchaseOrder.id });
+    expect(review.items[0]).toMatchObject({ invoiceNumber: 'INV-ROUTER-1', readable: true });
+    expect(review.items[0]?.rows[0]).toMatchObject({
+      correction: { canApply: true, newAverageUnitCost: 175 },
+      flags: [{ kind: 'price-mismatch' }],
+      partId: PART_ID,
+    });
+
+    const applyInput = { documentId, partId: PART_ID, purchaseOrderId: purchaseOrder.id };
+    await expect(stores.purchaseOrders.applyInvoicePrice(applyInput)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(procurement.purchaseOrders.applyInvoicePrice(applyInput)).resolves.toMatchObject({ kind: 'applied' });
+    // One flag takes one decision, whoever clicks it.
+    await expect(admin.purchaseOrders.applyInvoicePrice(applyInput)).rejects.toMatchObject({ code: 'CONFLICT' });
+    await expect(
+      admin.purchaseOrders.dismissInvoiceFlag({
+        documentId,
+        flagKey: 'price-mismatch:not-a-part',
+        purchaseOrderId: purchaseOrder.id,
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(procurement.purchaseOrders.invoicePriceVariance()).resolves.toMatchObject({
+      items: [{ partCode: 'PO-ROUTER-PART', resolution: 'applied', varianceValue: 100 }],
+    });
+  });
 });
+
+/**
+ * Files an invoice the way the HTTP upload route would, minus the model call. The panel's own gates
+ * are what this suite is about; the upload route's gate is tested where the route lives.
+ */
+async function fileInvoice(db: Db, purchaseOrderId: string): Promise<string> {
+  const [document] = await db
+    .insert(documents)
+    .values({
+      byteSize: 4,
+      contentType: 'application/pdf',
+      filename: 'INV-ROUTER-1.pdf',
+      metadata: { type: 'supplier_invoice' },
+      ownerType: 'purchase_order',
+      purchaseOrderId,
+      storageKey: `documents/purchase-order/${purchaseOrderId}/INV-ROUTER-1.pdf`,
+      uploaderUserId: 'test-user-id',
+    })
+    .returning({ id: documents.id });
+  if (!document) throw new Error('Supplier invoice fixture was not created');
+
+  await db.insert(invoiceExtractions).values({
+    documentId: document.id,
+    extraction: {
+      invoiceDate: '2026-08-04',
+      invoiceNumber: 'INV-ROUTER-1',
+      jobCodes: [],
+      lines: [
+        {
+          description: 'Router Part',
+          jobCodes: [],
+          lineTotal: 700,
+          partCode: 'PO-ROUTER-PART',
+          quantity: 4,
+          unitPrice: 175,
+        },
+      ],
+    },
+  });
+
+  return document.id;
+}
 
 async function sendOrder(admin: AppRouterCaller, quantity: number) {
   const purchaseOrder = await admin.purchaseOrders.create({ supplierId: SUPPLIER_ID });

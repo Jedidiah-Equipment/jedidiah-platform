@@ -1,0 +1,51 @@
+{
+  "releasedAt": "2026-08-06T07:50:07.060Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Keep feedback review focused",
+          "description": "The Feedback inbox and its alert now focus on private feedback requiring review. Public Job feedback remains on the Job without workflow status controls."
+        },
+        {
+          "title": "See more useful dashboard context",
+          "description": "The streamlined dashboard now shows up to ten scheduled Jobs with the operator and product together, while upcoming deliveries present their key details more compactly."
+        },
+        {
+          "title": "Understand sidebar alerts at a glance",
+          "description": "Hover over warning dots to see exact counts and what needs attention. The sidebar also shows clear loading and retry states when access cannot be checked."
+        },
+        {
+          "title": "Browse long lists more smoothly",
+          "description": "The Buy List now loads rows incrementally, and wide tables scroll within their cards instead of stretching the entire page."
+        },
+        {
+          "title": "Review purchasing details more clearly",
+          "description": "Purchase Order statuses have clearer colors, tables have improved spacing, and quantity and cost fields are easier to read and complete."
+        },
+        {
+          "title": "Use a roomier Job view",
+          "description": "The Job details panel is wider, giving feedback, documents, assemblies, and other information more space."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Reach every area on smaller screens",
+          "description": "Tabs that cannot fit now move into a More menu, keeping every permitted area accessible without truncated labels."
+        },
+        {
+          "title": "Follow Job progress in a clearer order",
+          "description": "On phones, routing now appears directly after overall progress, while redundant status chips are removed. Job feedback also reads as straightforward notes without workflow badges."
+        },
+        {
+          "title": "Scan prices and operators faster",
+          "description": "Product and Quote lists now show rounded whole-currency values, and Stores displays the selected operator’s photo when available."
+        }
+      ]
+    }
+  ]
+}

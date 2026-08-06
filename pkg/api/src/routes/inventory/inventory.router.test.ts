@@ -1,4 +1,4 @@
-import { customers, eq, jobStockCloseOuts, jobs, parts, quotes, supplier, user } from '@pkg/db';
+import { customers, eq, jobStockCloseOuts, jobs, partBom, parts, quotes, supplier, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
@@ -320,6 +320,47 @@ describe('inventory cost projection', () => {
     await expect(
       context.createCaller(mockSession('sales')).inventory.jobVariance({ jobId: context.job.id }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('cost-gates the unit cost a build stamps on what it produced', async ({ context }) => {
+    const [builtPart] = await context.db
+      .insert(parts)
+      .values({
+        category: 'Assemblies',
+        code: 'P-200',
+        description: 'Bearing housing assembly',
+        finish: 'None',
+        isInternallyFabricated: true,
+        name: 'Housing assembly',
+        supplierCode: 'BUILT-200',
+        unitOfMeasure: 'piece',
+      })
+      .returning();
+    if (!builtPart) throw new Error('Built part insert did not return a row');
+    await context.db
+      .insert(partBom)
+      .values({ componentPartId: context.part.id, parentPartId: builtPart.id, quantity: 2 });
+
+    await context.createCaller().inventory.postAdjustment({
+      delta: 10,
+      partId: context.part.id,
+      reason: 'opening-balance',
+      unitCost: 25,
+    });
+
+    const sharedBuildInput = {
+      builtPartId: builtPart.id,
+      consumption: [{ componentPartId: context.part.id, quantity: 2 }],
+    };
+    const admin = await context.createCaller().inventory.postBuild({ ...sharedBuildInput, quantity: 1 });
+    const stores = await context
+      .createCaller(mockSession('stores'))
+      .inventory.postBuild({ ...sharedBuildInput, quantity: 1 });
+
+    // `stores` holds `inventory:build` and no cost right at all, so the produced average is exactly
+    // what the gate exists to hold back.
+    expect(admin).toMatchObject({ producedUnitCost: 50, warnings: [] });
+    expect(stores).toMatchObject({ producedUnitCost: null, warnings: [] });
   });
 
   test('cost-gates checkout and return stamps without changing their warnings', async ({ context }) => {

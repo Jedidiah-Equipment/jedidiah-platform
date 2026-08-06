@@ -114,4 +114,51 @@ describe('supplier invoice extraction', () => {
     await expect(extract(model)).rejects.toThrow('provider refused');
     expect(model.doGenerateCalls).toHaveLength(1);
   });
+
+  /**
+   * The mock model accepts any schema, so nothing above notices a schema the real provider would
+   * refuse. Strict structured outputs require every property to be listed in `required` — and a
+   * schema built from `.default()` fields converts to one with no `required` at all, which fails
+   * for every document regardless of what it says. This asserts the request as sent.
+   */
+  test('asks for a schema strict structured outputs will accept', async () => {
+    const model = new MockLanguageModelV3({
+      doGenerate: async () => generatedJson({ invoiceDate: null, invoiceNumber: null, jobCodes: [], lines: [] }),
+    });
+
+    await extract(model);
+
+    type JsonSchema = { properties?: Record<string, JsonSchema>; items?: JsonSchema; required?: string[] };
+    const responseFormat = model.doGenerateCalls[0]?.responseFormat;
+    const schema = (responseFormat?.type === 'json' ? responseFormat.schema : undefined) as JsonSchema | undefined;
+    expect(schema?.required).toEqual(['invoiceDate', 'invoiceNumber', 'jobCodes', 'lines']);
+    expect(schema?.required).toEqual(Object.keys(schema?.properties ?? {}));
+
+    const lineSchema = schema?.properties?.lines?.items;
+    expect(lineSchema?.required).toEqual(Object.keys(lineSchema?.properties ?? {}));
+    expect(lineSchema?.required).toHaveLength(6);
+  });
+
+  test('normalises a messy transcription instead of losing the lines that came back clean', async () => {
+    const model = new MockLanguageModelV3({
+      doGenerate: async () =>
+        generatedJson({
+          // The formats a real invoice provokes: a date the model rewrote, a blank code, an empty
+          // Job reference. None of them is a failed read, and none may sink the line beside them.
+          invoiceDate: '04/08/2026',
+          invoiceNumber: '  INV-2  ',
+          jobCodes: ['', ' JOB-9 '],
+          lines: [
+            { description: ' Pipe ', jobCodes: [''], lineTotal: 100, partCode: '  ', quantity: 2, unitPrice: 50 },
+          ],
+        }),
+    });
+
+    await expect(extract(model)).resolves.toEqual({
+      invoiceDate: null,
+      invoiceNumber: 'INV-2',
+      jobCodes: ['JOB-9'],
+      lines: [{ description: 'Pipe', jobCodes: [], lineTotal: 100, partCode: null, quantity: 2, unitPrice: 50 }],
+    });
+  });
 });

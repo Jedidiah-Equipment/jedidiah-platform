@@ -107,6 +107,10 @@ function SupplierInvoicePanel({
     }),
   );
   const isPending = applyMutation.isPending || dismissMutation.isPending;
+  // The mutation objects are new on every render, so depending on them made the memo below never
+  // hit. `mutate` is the stable half of each, and the only half the columns actually call.
+  const applyPrice = applyMutation.mutate;
+  const dismissFlag = dismissMutation.mutate;
   const outstanding = invoice.rows.flatMap((row) =>
     row.flags.filter((flag) => !invoice.resolutions[flag.key]).map((flag) => flag),
   );
@@ -156,10 +160,8 @@ function SupplierInvoicePanel({
             canApplyPrices={canApplyPrices}
             invoice={invoice}
             isPending={isPending}
-            onApply={(partId) => applyMutation.mutate({ documentId: invoice.documentId, partId, purchaseOrderId })}
-            onDismiss={(flagKey) =>
-              dismissMutation.mutate({ documentId: invoice.documentId, flagKey, purchaseOrderId })
-            }
+            onApply={(partId) => applyPrice({ documentId: invoice.documentId, partId, purchaseOrderId })}
+            onDismiss={(flagKey) => dismissFlag({ documentId: invoice.documentId, flagKey, purchaseOrderId })}
             row={row.original}
           />
         ),
@@ -168,7 +170,7 @@ function SupplierInvoicePanel({
         id: 'actions',
       },
     ],
-    [applyMutation, canApplyPrices, dismissMutation, invoice, isPending, purchaseOrderId],
+    [applyPrice, canApplyPrices, dismissFlag, invoice, isPending, purchaseOrderId],
   );
   const table = useReactTable({
     columns,
@@ -233,12 +235,15 @@ function RowActions({
 
   const priceFlag = open.find((flag) => flag.kind === 'price-mismatch');
   const correction = row.correction;
+  // Bound once so the narrowing survives into the click handler; re-reading `row.partId` there
+  // would need a cast to re-assert what this branch has already established.
+  const partId = row.partId;
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      {priceFlag && canApplyPrices && row.partId ? (
+      {priceFlag && canApplyPrices && partId ? (
         correction?.canApply ? (
-          <Button disabled={isPending} onClick={() => onApply(row.partId as UUID)} size="sm" type="button">
+          <Button disabled={isPending} onClick={() => onApply(partId)} size="sm" type="button">
             {isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
             Apply — average to {formatCurrency(correction.newAverageUnitCost ?? 0, 'ZAR')}
           </Button>

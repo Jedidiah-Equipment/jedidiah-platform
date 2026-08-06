@@ -23,11 +23,11 @@ import { createPurchaseOrder } from './purchase-order-service.js';
 import {
   applyInvoicePrice,
   dismissInvoiceFlag,
-  listInvoicePriceVariance,
   loadSupplierInvoiceReviews,
   type SupplierInvoiceExtractor,
   uploadSupplierInvoice,
 } from './supplier-invoice-service.js';
+import { listInvoicePriceVariance } from './supplier-invoice-variance-read.js';
 
 function extraction(overrides: Partial<SupplierInvoiceExtraction> = {}): SupplierInvoiceExtraction {
   return {

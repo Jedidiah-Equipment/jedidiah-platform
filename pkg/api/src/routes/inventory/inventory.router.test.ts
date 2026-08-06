@@ -538,13 +538,26 @@ describe('stocktake procedures', () => {
       stores.inventory.postStockCount({ buckets: [{ observed: 32 }], partId: context.part.id, sessionId: session.id }),
     ).resolves.toMatchObject({ buckets: [{ delta: -8, expected: 40, observed: 32 }] });
 
-    await expect(stores.inventory.stocktakeSession({ sessionId: session.id })).resolves.toMatchObject({
+    await expect(stores.inventory.stocktakeSessionReport({ sessionId: session.id })).resolves.toMatchObject({
       counts: [{ delta: -8, partId: context.part.id, varianceValue: null }],
       totalVarianceValue: null,
     });
     await expect(
-      context.createCaller(mockSession('procurement-manager')).inventory.stocktakeSession({ sessionId: session.id }),
+      context
+        .createCaller(mockSession('procurement-manager'))
+        .inventory.stocktakeSessionReport({ sessionId: session.id }),
     ).resolves.toMatchObject({ counts: [{ varianceValue: -80 }], totalVarianceValue: -80 });
+
+    // The tablet's two reads: the cheap header, and the walk's remaining work a page at a time.
+    await expect(stores.inventory.stocktakeSession({ sessionId: session.id })).resolves.toMatchObject({
+      countedPartCount: 1,
+      scope: 'stores',
+    });
+    await expect(stores.inventory.stocktakeUncounted({ limit: 10, sessionId: session.id })).resolves.toMatchObject({
+      items: [],
+      nextCursor: null,
+      total: 0,
+    });
 
     await expect(stores.inventory.closeStocktakeSession({ sessionId: session.id })).resolves.toMatchObject({
       countedPartCount: 1,

@@ -6,6 +6,7 @@ import {
   stockMovements,
   stocktakeSessions,
   user,
+  withPagination,
 } from '@pkg/db';
 import type { MovingAverageMovement } from '@pkg/domain';
 import { deriveMovingAverageTimeline, deriveStocktakeOverdue, toPlantDateOnly, valueStockMovement } from '@pkg/domain';
@@ -17,23 +18,26 @@ import type {
   StockCountBucketVariance,
   StockCountResult,
   StocktakeOverdueResult,
-  StocktakeScope,
   StocktakeSession,
-  StocktakeSessionDetail,
   StocktakeSessionListResult,
+  StocktakeSessionReport,
+  StocktakeUncountedInput,
+  StocktakeUncountedResult,
   UUID,
 } from '@pkg/schema';
 import {
+  getNextCursor,
   STOCKTAKE_SCOPE_TRACKING_MODE,
   StockCountResult as StockCountResultSchema,
   StocktakeOverdueResult as StocktakeOverdueResultSchema,
   StocktakeScope as StocktakeScopeSchema,
-  StocktakeSessionDetail as StocktakeSessionDetailSchema,
   StocktakeSessionListResult as StocktakeSessionListResultSchema,
+  StocktakeSessionReport as StocktakeSessionReportSchema,
   StocktakeSession as StocktakeSessionSchema,
+  StocktakeUncountedResult as StocktakeUncountedResultSchema,
   unitClassFor,
 } from '@pkg/schema';
-import { aliasedTable, and, asc, desc, eq, inArray, isNotNull, isNull, ne, notInArray, sql } from 'drizzle-orm';
+import { aliasedTable, and, asc, desc, eq, inArray, isNotNull, isNull, ne, type SQL, sql } from 'drizzle-orm';
 
 import { createOrgWorkingCalendar, listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
 import { bucketKey, bucketKeyLengthMm, insertMovement, loadBucketQuantities, loadStockPart } from './ledger.js';
@@ -227,22 +231,32 @@ export async function listStocktakeSessions({ db }: { db: Db }): Promise<Stockta
   return StocktakeSessionListResultSchema.parse({ items: rows });
 }
 
+/** One session's own facts, and nothing that costs a ledger replay to produce. */
+export async function getStocktakeSession({ db, sessionId }: { db: Db; sessionId: UUID }): Promise<StocktakeSession> {
+  return loadSession({ db, sessionId });
+}
+
 /**
- * One session as its report: every counted Part with its variance, what is still uncounted, and the
- * priced total for a cost reader (spec §9's session variance report).
+ * One session as its report: every counted Part with its variance, and the priced total for a cost
+ * reader (spec §9's session variance report).
  *
  * Observed and expected are **replayed from the ledger** rather than stored beside the delta. The
  * running balance in a bucket immediately after a count row is by definition what was counted, and
  * that number minus the row's delta is what the shelf was believed to hold — so the ledger stays the
  * single record, and a second copy of the same fact can never disagree with it.
+ *
+ * That replay is why this read is deliberately *not* what the tablet asks between counts: it loads
+ * every movement of every Part the session has touched, which by the end of a stores walk is most
+ * of the ledger. The tablet takes the cheap session header and the paged uncounted list instead;
+ * this is a desk-side report, read once.
  */
-export async function getStocktakeSession({
+export async function getStocktakeSessionReport({
   db,
   sessionId,
 }: {
   db: Db;
   sessionId: UUID;
-}): Promise<StocktakeSessionDetail> {
+}): Promise<StocktakeSessionReport> {
   const session = await loadSession({ db, sessionId });
   const countRows = await db
     .select({
@@ -262,10 +276,10 @@ export async function getStocktakeSession({
     .orderBy(asc(parts.code), asc(stockMovements.createdAt), asc(stockMovements.id));
 
   const countedPartIds = [...new Set(countRows.map((row) => row.partId))];
-  const [ledgerRows, uncounted] = await Promise.all([
+  const ledgerRows =
     countedPartIds.length === 0
-      ? Promise.resolve([])
-      : db
+      ? []
+      : await db
           .select({
             delta: stockMovements.delta,
             id: stockMovements.id,
@@ -278,9 +292,7 @@ export async function getStocktakeSession({
           })
           .from(stockMovements)
           .where(inArray(stockMovements.partId, countedPartIds))
-          .orderBy(asc(stockMovements.partId), asc(stockMovements.createdAt), asc(stockMovements.id)),
-    listUncountedParts({ countedPartIds, db, scope: session.scope }),
-  ]);
+          .orderBy(asc(stockMovements.partId), asc(stockMovements.createdAt), asc(stockMovements.id));
 
   const varianceByMovement = deriveSessionVariances(ledgerRows, sessionId);
   // One row per *posting*, not per Part. Counting the same Part twice in a session is legal and
@@ -317,11 +329,10 @@ export async function getStocktakeSession({
     };
   });
 
-  return StocktakeSessionDetailSchema.parse({
+  return StocktakeSessionReportSchema.parse({
     counts,
     session,
     totalVarianceValue: sumValues(counts.map((count) => count.varianceValue)),
-    uncounted,
   });
 }
 
@@ -368,37 +379,59 @@ export async function listStocktakeOverdue({
  * The session's to-do while it is open, and its skip list once it closes — the same query, read at
  * two moments. Nothing about it is stored: membership follows the Part's Stock Tracking Mode, so a
  * Part re-classified mid-session simply belongs to the other walk from then on.
+ *
+ * Paged, because the list starts as long as the scope. A stores walk covers every perpetual Part
+ * the plant stocks and the tablet re-reads what is left after every single count, so an unpaged
+ * read here would ship the whole catalogue down a shared device dozens of times an hour.
+ *
+ * "Not counted" is a `NOT EXISTS` against the session's own movements rather than an id list the
+ * caller assembles: by the end of a walk that list *is* the catalogue, and passing it back into the
+ * query as a literal would grow the request with every count posted.
  */
-async function listUncountedParts({
-  countedPartIds,
+export async function listStocktakeUncounted({
   db,
-  scope,
+  input,
 }: {
-  countedPartIds: readonly string[];
   db: Db;
-  scope: StocktakeScope;
-}) {
-  const rows = await db
+  input: StocktakeUncountedInput;
+}): Promise<StocktakeUncountedResult> {
+  const session = await loadSession({ db, sessionId: input.sessionId });
+  const where = and(
+    eq(parts.stockTrackingMode, STOCKTAKE_SCOPE_TRACKING_MODE[session.scope]),
+    isUncountedInSession(input.sessionId),
+  );
+  const page = db
     .select({
       partCode: parts.code,
       partId: parts.id,
       partName: parts.name,
+      // A revaluation moves cost and never quantity, so it must not reach a stock-on-hand sum.
       quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
       unitOfMeasure: parts.unitOfMeasure,
     })
     .from(parts)
-    // A revaluation moves cost and never quantity, so it must not reach a stock-on-hand sum.
     .leftJoin(stockMovements, and(eq(stockMovements.partId, parts.id), ne(stockMovements.movementType, 'revaluation')))
-    .where(
-      and(
-        eq(parts.stockTrackingMode, STOCKTAKE_SCOPE_TRACKING_MODE[scope]),
-        countedPartIds.length === 0 ? undefined : notInArray(parts.id, [...countedPartIds]),
-      ),
-    )
+    .where(where)
     .groupBy(parts.id, parts.code, parts.name, parts.unitOfMeasure)
-    .orderBy(asc(parts.code));
+    .orderBy(asc(parts.code), asc(parts.id))
+    .$dynamic();
 
-  return rows;
+  const [rows, total] = await Promise.all([withPagination(page, input), db.$count(parts, where)]);
+
+  return StocktakeUncountedResultSchema.parse({
+    items: rows,
+    nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }),
+    total,
+  });
+}
+
+/** Aliased: callers already have `stock_movement` joined in for the stock-on-hand sum. */
+function isUncountedInSession(sessionId: UUID): SQL {
+  return sql`NOT EXISTS (
+    SELECT 1 FROM ${stockMovements} AS session_count
+    WHERE session_count.stocktake_session_id = ${sessionId}
+      AND session_count.part_id = ${parts.id}
+  )`;
 }
 
 type SessionVariance = StockCountBucketVariance & { value: number | null };

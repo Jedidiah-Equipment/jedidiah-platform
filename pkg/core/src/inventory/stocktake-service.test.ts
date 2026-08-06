@@ -16,8 +16,10 @@ import {
 import {
   closeStocktakeSession,
   getStocktakeSession,
+  getStocktakeSessionReport,
   listStocktakeOverdue,
   listStocktakeSessions,
+  listStocktakeUncounted,
   openStocktakeSession,
   postStockCount,
 } from './stocktake-service.js';
@@ -187,10 +189,10 @@ describe('postStockCount', () => {
       input: { buckets: [{ lengthMm: null, observed: 40 }], partId: context.boltId, sessionId: session.id },
     });
 
-    const detail = await getStocktakeSession({ db: context.db, sessionId: session.id });
+    const detail = await getStocktakeSessionReport({ db: context.db, sessionId: session.id });
     expect(detail.counts).toHaveLength(1);
     expect(detail.counts[0]).toMatchObject({ delta: 0, partCode: 'BOLT' });
-    expect(detail.uncounted.map((row) => row.partCode)).toEqual(['SPARE']);
+    expect(await uncountedCodes(context.db, session.id)).toEqual(['SPARE']);
   });
 
   test('counts linear stock per length bucket and empties the buckets nobody named', async ({ context }) => {
@@ -335,7 +337,7 @@ describe('the session variance report', () => {
     });
     await closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: session.id } });
 
-    const detail = await getStocktakeSession({ db: context.db, sessionId: session.id });
+    const detail = await getStocktakeSessionReport({ db: context.db, sessionId: session.id });
 
     expect(detail.session).toMatchObject({ countedPartCount: 1, scope: 'stores' });
     expect(detail.session.closedAt).not.toBeNull();
@@ -350,7 +352,7 @@ describe('the session variance report', () => {
     });
     expect(detail.totalVarianceValue).toBe(-80);
     // SPARE is in scope and was never walked; CHANNEL is periodic and belongs to the other rhythm.
-    expect(detail.uncounted.map((row) => row.partCode)).toEqual(['SPARE']);
+    expect(await uncountedCodes(context.db, session.id)).toEqual(['SPARE']);
   });
 
   test('reports a Part counted twice as two rows, each with its own counter', async ({ context }) => {
@@ -376,7 +378,7 @@ describe('the session variance report', () => {
       input: { buckets: [{ lengthMm: null, observed: 30 }], partId: context.boltId, sessionId: session.id },
     });
 
-    const detail = await getStocktakeSession({ db: context.db, sessionId: session.id });
+    const detail = await getStocktakeSessionReport({ db: context.db, sessionId: session.id });
 
     // The recount corrects against what the first count left behind rather than doubling it, and
     // neither counter is credited with the other's variance.
@@ -397,9 +399,40 @@ describe('the session variance report', () => {
       input: { buckets: [{ lengthMm: null, observed: 3 }], partId: context.spareId, sessionId: session.id },
     });
 
-    const detail = await getStocktakeSession({ db: context.db, sessionId: session.id });
+    const detail = await getStocktakeSessionReport({ db: context.db, sessionId: session.id });
     expect(detail.counts[0]?.varianceValue).toBeNull();
     expect(detail.totalVarianceValue).toBeNull();
+  });
+
+  test('pages the uncounted list rather than shipping the whole scope', async ({ context }) => {
+    const session = await openStoresSession(context.db);
+
+    const firstPage = await listStocktakeUncounted({
+      db: context.db,
+      input: { cursor: 0, limit: 1, sessionId: session.id },
+    });
+
+    // BOLT and SPARE are both perpetual and neither is counted yet.
+    expect(firstPage).toMatchObject({ nextCursor: 1, total: 2 });
+    expect(firstPage.items.map((row) => row.partCode)).toEqual(['BOLT']);
+
+    const secondPage = await listStocktakeUncounted({
+      db: context.db,
+      input: { cursor: 1, limit: 1, sessionId: session.id },
+    });
+    expect(secondPage.items.map((row) => row.partCode)).toEqual(['SPARE']);
+    expect(secondPage.nextCursor).toBeNull();
+
+    // Counting one drops it out of the list and off the total, without the caller naming what it
+    // has already covered.
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 40 }], partId: context.boltId, sessionId: session.id },
+    });
+    await expect(
+      listStocktakeUncounted({ db: context.db, input: { cursor: 0, limit: 10, sessionId: session.id } }),
+    ).resolves.toMatchObject({ nextCursor: null, total: 1 });
   });
 
   test('lists sessions newest first with their counted Part counts', async ({ context }) => {
@@ -442,4 +475,10 @@ async function stockOnHandOf(db: Parameters<typeof listStockOnHand>[0]['db'], pa
   const result = await listStockOnHand({ db });
 
   return result.items.find((row) => row.partId === partId)?.quantity ?? 0;
+}
+
+async function uncountedCodes(db: Parameters<typeof listStocktakeUncounted>[0]['db'], sessionId: string) {
+  const result = await listStocktakeUncounted({ db, input: { cursor: 0, limit: 100, sessionId } });
+
+  return result.items.map((row) => row.partCode);
 }

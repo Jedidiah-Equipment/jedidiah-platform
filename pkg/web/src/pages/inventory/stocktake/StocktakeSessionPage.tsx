@@ -19,10 +19,10 @@ import { StocktakeUncountedTable } from './components/StocktakeUncountedTable.js
 export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
   const trpc = useTRPC();
   const accessQuery = useAccess();
-  const detailQuery = useQuery(trpc.inventory.stocktakeSession.queryOptions({ sessionId }));
+  const reportQuery = useQuery(trpc.inventory.stocktakeSessionReport.queryOptions({ sessionId }));
   const showCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
 
-  if (detailQuery.isPending) {
+  if (reportQuery.isPending) {
     return (
       <PageLayout size="lg" title="Stocktake session">
         <Skeleton className="h-40 w-full" />
@@ -30,7 +30,7 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
     );
   }
 
-  if (detailQuery.error) {
+  if (reportQuery.error) {
     return (
       <PageLayout size="lg" title="Stocktake session">
         <p className="text-destructive text-sm">Unable to load this stocktake session.</p>
@@ -38,7 +38,7 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
     );
   }
 
-  const { counts, session, totalVarianceValue, uncounted } = detailQuery.data;
+  const { counts, session, totalVarianceValue } = reportQuery.data;
   const isClosed = session.closedAt !== null;
 
   return (
@@ -65,7 +65,7 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
 
       <section className="space-y-2">
         <h2 className="font-medium text-sm">{isClosed ? 'Skipped' : 'Still to count'}</h2>
-        <StocktakeUncountedTable isClosed={isClosed} isLoading={false} items={uncounted} />
+        <StocktakeUncountedTable isClosed={isClosed} sessionId={sessionId} />
       </section>
     </PageLayout>
   );

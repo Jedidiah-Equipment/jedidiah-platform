@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
+import { CursorQueryInput, createCursorQueryResult } from '../common/pagination.js';
 import { UUID } from '../common/uuid.js';
 import { type PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
 import { declareInventoryCostFields, InventoryValue } from './inventory-cost.js';
@@ -144,17 +145,32 @@ export const StocktakeUncountedPart = z.object({
   unitOfMeasure: PartUnitOfMeasure,
 });
 
-export type StocktakeSessionDetail = z.infer<typeof StocktakeSessionDetail>;
-export const StocktakeSessionDetail = z.object({
+/**
+ * Paged, because this list is the length of the scope: a stores walk covers every perpetual Part
+ * the plant stocks, which is thousands, and the tablet re-reads it after every single count. Not
+ * `.strict()`, like every other cursor input here — tRPC's infinite query appends its own
+ * `direction` key to the page params, and a strict schema rejects the whole request over it.
+ */
+export type StocktakeUncountedInput = z.infer<typeof StocktakeUncountedInput>;
+export const StocktakeUncountedInput = CursorQueryInput.extend({ sessionId: UUID });
+
+export type StocktakeUncountedResult = z.infer<typeof StocktakeUncountedResult>;
+export const StocktakeUncountedResult = createCursorQueryResult(StocktakeUncountedPart);
+
+/**
+ * The session variance report. Deliberately does **not** carry the uncounted list: that list is
+ * paged on its own, and the tablet reads it far more often than it reads this.
+ */
+export type StocktakeSessionReport = z.infer<typeof StocktakeSessionReport>;
+export const StocktakeSessionReport = z.object({
   counts: z.array(StocktakeSessionCount),
   session: StocktakeSession,
   /** Σ of every counted Part's variance value; null as soon as one counted Part has no cost. */
   totalVarianceValue: InventoryValue,
-  uncounted: z.array(StocktakeUncountedPart),
 });
 
-export const StocktakeSessionDetailCostFields = declareInventoryCostFields(
-  StocktakeSessionDetail,
+export const StocktakeSessionReportCostFields = declareInventoryCostFields(
+  StocktakeSessionReport,
   'totalVarianceValue',
 );
 

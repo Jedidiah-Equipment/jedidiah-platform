@@ -4,6 +4,7 @@ import {
   getPartStockByCode,
   getStockMovementHistory,
   getStocktakeSession,
+  getStocktakeSessionReport,
   listBuyList,
   listCloseOutQueue,
   listInventoryJobOptions,
@@ -12,6 +13,7 @@ import {
   listStockOnHand,
   listStocktakeOverdue,
   listStocktakeSessions,
+  listStocktakeUncounted,
   openStocktakeSession,
   postAdjustment,
   postBuild,
@@ -54,10 +56,12 @@ import {
   StocktakeOverdueResult,
   StocktakeSession,
   StocktakeSessionCountCostFields,
-  StocktakeSessionDetail,
-  StocktakeSessionDetailCostFields,
   StocktakeSessionInput,
   StocktakeSessionListResult,
+  StocktakeSessionReport,
+  StocktakeSessionReportCostFields,
+  StocktakeUncountedInput,
+  StocktakeUncountedResult,
 } from '@pkg/schema';
 
 import { mapCoreErrors } from '../../trpc/errors.js';
@@ -171,18 +175,32 @@ export const inventoryRouter = router({
     .output(StocktakeSessionListResult)
     .query(({ ctx }) => listStocktakeSessions({ db: ctx.db })),
 
+  /** The session's own facts, cheap enough for the tablet to hold while it works through a walk. */
   stocktakeSession: authorizedProcedure('inventory:read')
     .input(StocktakeSessionInput)
-    .output(StocktakeSessionDetail)
+    .output(StocktakeSession)
+    .query(({ ctx, input }) =>
+      mapStocktakeErrors(() => getStocktakeSession({ db: ctx.db, sessionId: input.sessionId })),
+    ),
+
+  /**
+   * The variance report, which replays the ledger of every Part the walk touched. Desk-side and
+   * read once — the tablet takes the session header and the paged uncounted list instead.
+   */
+  stocktakeSessionReport: authorizedProcedure('inventory:read')
+    .input(StocktakeSessionInput)
+    .output(StocktakeSessionReport)
     .query(async ({ ctx, input }) => {
-      const detail = await mapStocktakeErrors(() => getStocktakeSession({ db: ctx.db, sessionId: input.sessionId }));
+      const report = await mapStocktakeErrors(() =>
+        getStocktakeSessionReport({ db: ctx.db, sessionId: input.sessionId }),
+      );
 
       return projectInventoryCostFields({
         access: ctx.access,
-        costFields: StocktakeSessionDetailCostFields,
+        costFields: StocktakeSessionReportCostFields,
         output: {
-          ...detail,
-          counts: detail.counts.map((count) =>
+          ...report,
+          counts: report.counts.map((count) =>
             projectInventoryCostFields({
               access: ctx.access,
               costFields: StocktakeSessionCountCostFields,
@@ -192,6 +210,15 @@ export const inventoryRouter = router({
         },
       });
     }),
+
+  /**
+   * What the walk still has to reach, and afterwards what it skipped. Paged and quantity-only, so
+   * the tablet can re-read it after every count without shipping the catalogue each time.
+   */
+  stocktakeUncounted: authorizedProcedure('inventory:read')
+    .input(StocktakeUncountedInput)
+    .output(StocktakeUncountedResult)
+    .query(({ ctx, input }) => mapStocktakeErrors(() => listStocktakeUncounted({ db: ctx.db, input }))),
 
   /**
    * Quantity-free and cost-free, so the storeman the signal nags reads exactly what the manager

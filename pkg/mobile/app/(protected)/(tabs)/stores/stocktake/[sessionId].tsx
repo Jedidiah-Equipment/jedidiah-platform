@@ -1,7 +1,7 @@
 import { STOCKTAKE_SCOPE_LABELS, type StocktakeUncountedPart } from '@pkg/schema';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { ScanField } from '@/components/stores/ScanField';
@@ -25,8 +25,15 @@ import { loadingSpinnerColor } from '@/theme/brand-colors';
  * bins in a row, and the list of what is left is the thing a counter navigates by; pushing a screen
  * per Part would take that list away at exactly the moment it is being worked from.
  */
-/** How much of the skip list the close dialog shows before summarising the rest. */
+/** How much of the skip list the close dialog names before summarising the rest. */
 const SKIP_LIST_PREVIEW = 8;
+
+/**
+ * One screenful at a time. The uncounted list starts as long as the scope — a stores walk covers
+ * every perpetual Part the plant stocks — and it is re-read after every count, so it is paged
+ * rather than held whole. The page grows as the counter scrolls toward the end of it.
+ */
+const UNCOUNTED_PAGE_SIZE = 20;
 
 export default function StoresStocktakeSessionRoute() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
@@ -40,6 +47,17 @@ export default function StoresStocktakeSessionRoute() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const detail = useQuery(trpc.inventory.stocktakeSession.queryOptions({ sessionId }));
+  const uncountedPages = useInfiniteQuery(
+    trpc.inventory.stocktakeUncounted.infiniteQueryOptions(
+      { limit: UNCOUNTED_PAGE_SIZE, sessionId },
+      { getNextPageParam: (page) => page.nextCursor, initialCursor: 0 },
+    ),
+  );
+  const uncounted = useMemo(
+    () => uncountedPages.data?.pages.flatMap((page) => page.items) ?? [],
+    [uncountedPages.data?.pages],
+  );
+  const uncountedTotal = uncountedPages.data?.pages.at(-1)?.total ?? 0;
 
   const closeSession = useMutation(
     trpc.inventory.closeStocktakeSession.mutationOptions({
@@ -98,14 +116,17 @@ export default function StoresStocktakeSessionRoute() {
     );
   }
 
-  const { counts, session, uncounted } = detail.data;
+  const session = detail.data;
   const isClosed = session.closedAt !== null;
 
   return (
     <StoresScreen
       onBack={() => router.dismissTo('/stores/stocktake')}
+      onNearScrollEnd={() => {
+        if (uncountedPages.hasNextPage && !uncountedPages.isFetchingNextPage) void uncountedPages.fetchNextPage();
+      }}
       parentLabel="Stocktake"
-      subtitle={`${counts.length} COUNTED · ${uncounted.length} TO GO`}
+      subtitle={`${session.countedPartCount} COUNTED · ${uncountedTotal} TO GO`}
       title={`${STOCKTAKE_SCOPE_LABELS[session.scope]} count`}
     >
       {isClosed ? (
@@ -136,7 +157,15 @@ export default function StoresStocktakeSessionRoute() {
             <Text className="text-[11px] text-muted-foreground" mono>
               STILL TO COUNT
             </Text>
-            {uncounted.length === 0 ? (
+            {uncountedPages.isPending ? (
+              <View className="items-center py-6">
+                <ActivityIndicator
+                  accessibilityLabel="Loading what is left to count"
+                  color={loadingSpinnerColor}
+                  size="small"
+                />
+              </View>
+            ) : uncounted.length === 0 ? (
               <Text className="py-4 text-sm text-muted-foreground">
                 Everything in scope has been counted. Close the session when you are done.
               </Text>
@@ -145,6 +174,20 @@ export default function StoresStocktakeSessionRoute() {
                 {uncounted.map((row) => (
                   <UncountedRow key={row.partId} onPress={() => setPartCode(row.partCode)} row={row} />
                 ))}
+                {uncountedPages.hasNextPage ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    className="items-center rounded-xl border border-border bg-surface px-4 py-3"
+                    disabled={uncountedPages.isFetchingNextPage}
+                    onPress={() => void uncountedPages.fetchNextPage()}
+                  >
+                    <Text className="text-sm text-surface-foreground" weight="semibold">
+                      {uncountedPages.isFetchingNextPage
+                        ? 'Loading…'
+                        : `Load more (${uncounted.length} of ${uncountedTotal})`}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             )}
           </View>
@@ -179,19 +222,19 @@ export default function StoresStocktakeSessionRoute() {
         {/* The skip list is the whole point of the close: whatever is named here goes uncorrected
             until the next walk, and on periodic stock that means a number that stays too high. */}
         <Text className="text-base text-surface-foreground">
-          {uncounted.length === 0
+          {uncountedTotal === 0
             ? 'Everything in scope was counted.'
-            : `${uncounted.length} ${uncounted.length === 1 ? 'Part was' : 'Parts were'} skipped:`}
+            : `${uncountedTotal} ${uncountedTotal === 1 ? 'Part was' : 'Parts were'} skipped:`}
         </Text>
-        {uncounted.length === 0 ? null : (
+        {uncountedTotal === 0 ? null : (
           <View className="gap-1">
             {uncounted.slice(0, SKIP_LIST_PREVIEW).map((row) => (
               <Text className="text-sm text-muted-foreground" key={row.partId} mono numberOfLines={1}>
                 {row.partCode}
               </Text>
             ))}
-            {uncounted.length > SKIP_LIST_PREVIEW ? (
-              <Text className="text-sm text-muted-foreground">and {uncounted.length - SKIP_LIST_PREVIEW} more</Text>
+            {uncountedTotal > SKIP_LIST_PREVIEW ? (
+              <Text className="text-sm text-muted-foreground">and {uncountedTotal - SKIP_LIST_PREVIEW} more</Text>
             ) : null}
           </View>
         )}

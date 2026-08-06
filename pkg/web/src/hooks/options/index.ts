@@ -2,6 +2,7 @@ export { mergeSelectedOption, type SelectOption, stringsToSelectOptions, toSelec
 export { useAssemblyNameOptions } from './use-assembly-name-options.js';
 export { useCustomerForQuoteOptions } from './use-customer-for-quote-options.js';
 export { type CustomerOption, useCustomerOptions } from './use-customer-options.js';
+export { useInventoryJobOptions } from './use-inventory-job-options.js';
 export { usePartCategoryOptions } from './use-part-category-options.js';
 export { usePartOptions } from './use-part-options.js';
 export { usePartStorageLocationOptions } from './use-part-storage-location-options.js';

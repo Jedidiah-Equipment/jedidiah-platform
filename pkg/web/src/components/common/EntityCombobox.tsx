@@ -1,5 +1,6 @@
 import type React from 'react';
 
+import { Button } from '@/components/ui/button.js';
 import {
   Combobox,
   ComboboxContent,
@@ -9,6 +10,15 @@ import {
   ComboboxList,
 } from '@/components/ui/combobox.js';
 
+type EntityComboboxLoadMoreProps = {
+  hasNextPage: boolean;
+  isFetchingNextPage?: boolean;
+  loadedCount: number;
+  onLoadMore: () => void;
+  total: number;
+  totalLabel: (total: number) => React.ReactNode;
+};
+
 type EntityComboboxProps<TOption extends { id: string }> = {
   disabled: boolean;
   emptyMessage: string;
@@ -16,6 +26,8 @@ type EntityComboboxProps<TOption extends { id: string }> = {
   inputValue: string;
   isFetching: boolean;
   itemToLabel: (option: TOption) => string;
+  /** Paged option reads pass this so the popup says what it has loaded instead of stopping silently. */
+  loadMore?: EntityComboboxLoadMoreProps;
   onInputValueChange: (value: string) => void;
   onSelected: (option: TOption | null) => void;
   options: TOption[];
@@ -34,6 +46,7 @@ export function EntityCombobox<TOption extends { id: string }>({
   inputValue,
   isFetching,
   itemToLabel,
+  loadMore,
   onInputValueChange,
   onSelected,
   options,
@@ -85,8 +98,47 @@ export function EntityCombobox<TOption extends { id: string }>({
             </ComboboxItem>
           )}
         </ComboboxList>
+        {loadMore ? <EntityComboboxLoadMore {...loadMore} /> : null}
       </ComboboxContent>
     </Combobox>
+  );
+}
+
+/**
+ * The paged picker's footer. It sits under the list rather than inside it so paging never reads as
+ * a selectable option, and a pointer press is swallowed before focus leaves the input, which would
+ * otherwise take the caret out of the search field on the way to the next page. Paging is deliberately
+ * this button alone: the list's scroll position cannot tell a reader reaching the end from Base UI
+ * scrolling the selected option into view on open, so paging on scroll fetches pages nobody asked for.
+ */
+export function EntityComboboxLoadMore({
+  hasNextPage,
+  isFetchingNextPage = false,
+  loadedCount,
+  onLoadMore,
+  total,
+  totalLabel,
+}: EntityComboboxLoadMoreProps) {
+  if (loadedCount === 0) return null;
+
+  return (
+    <div className="flex items-center justify-between gap-2 border-t px-2 py-1 text-xs text-muted-foreground">
+      <span>
+        {loadedCount} of {totalLabel(total)}
+      </span>
+      {hasNextPage ? (
+        <Button
+          disabled={isFetchingNextPage}
+          onClick={onLoadMore}
+          onMouseDown={(event) => event.preventDefault()}
+          size="sm"
+          type="button"
+          variant="link"
+        >
+          {isFetchingNextPage ? 'Loading…' : 'Load more'}
+        </Button>
+      ) : null}
+    </div>
   );
 }
 

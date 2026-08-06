@@ -2,7 +2,6 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { deriveStockMovementWarnings, type StockMovementContext } from '@pkg/domain';
 import type {
   InventoryJobOption,
-  InventoryJobOptionListInput,
   JobStockMovementType,
   JobStockRow,
   StockMovementWarningCode,
@@ -15,6 +14,7 @@ import { toast } from 'sonner';
 import { EntityCombobox } from '@/components/common/EntityCombobox.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
+import { useInventoryJobOptions } from '@/hooks/options/index.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -28,14 +28,6 @@ import {
   stockJobMovementValidator,
   toJobMovementInput,
 } from './types.js';
-
-const inventoryJobsInput = (search: string, movementType: JobStockMovementType) =>
-  ({
-    cursor: 0,
-    limit: 20,
-    movementType,
-    search,
-  }) satisfies InventoryJobOptionListInput;
 
 type FixedJob = { code: string; id: string };
 
@@ -71,11 +63,12 @@ export function StockMovementDialog({
   const verb = type === 'checkout' ? 'Check out' : 'Return';
   const jobId = fixedJob?.id ?? selectedJob?.id ?? '';
 
-  const jobsQuery = useQuery(
-    trpc.inventory.jobOptions.queryOptions(inventoryJobsInput(debouncedJobSearch, type), {
-      enabled: fixedJob === undefined,
-    }),
-  );
+  const jobOptions = useInventoryJobOptions({
+    enabled: fixedJob === undefined,
+    movementType: type,
+    search: debouncedJobSearch,
+    selected: selectedJob,
+  });
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }, { enabled: jobId !== '' }));
   const mutation = useMutation(
     (type === 'checkout' ? trpc.inventory.postCheckout : trpc.inventory.postReturnToStore).mutationOptions({
@@ -164,15 +157,19 @@ export function StockMovementDialog({
                     emptyMessage="No Jobs found"
                     inputId="inventory-job-movement-job"
                     inputValue={jobSearch}
-                    isFetching={jobsQuery.isFetching}
+                    isFetching={jobOptions.isFetching}
                     itemToLabel={jobOptionLabel}
+                    loadMore={{
+                      ...jobOptions.pagination,
+                      totalLabel: (total) => `${total} ${total === 1 ? 'Job' : 'Jobs'}`,
+                    }}
                     onInputValueChange={setJobSearch}
                     onSelected={(job) => {
                       setSelectedJob(job);
                       setJobSearch('');
                       field.handleChange(job?.id ?? '');
                     }}
-                    options={mergeSelectedJobOption(jobsQuery.data?.items ?? [], selectedJob)}
+                    options={jobOptions.options}
                     placeholder="Search Jobs"
                     renderItem={(job) => jobOptionLabel(job)}
                     searchPlaceholder="Searching Jobs..."
@@ -242,11 +239,4 @@ export function StockMovementDialog({
 
 function jobOptionLabel(job: InventoryJobOption): string {
   return `${job.code} · ${job.displayName}`;
-}
-
-function mergeSelectedJobOption(
-  options: readonly InventoryJobOption[],
-  selected: InventoryJobOption | null,
-): InventoryJobOption[] {
-  return selected && !options.some((option) => option.id === selected.id) ? [...options, selected] : [...options];
 }

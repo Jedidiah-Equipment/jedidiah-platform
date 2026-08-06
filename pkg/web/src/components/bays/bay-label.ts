@@ -5,11 +5,26 @@ export function bayOperatorName(bay: Pick<Bay, 'currentOperator'>): string | nul
   return bay.currentOperator?.name ?? null;
 }
 
-/** Card/select label that adds the current Operator without duplicating a legacy embedded suffix. */
+/** Card/select label naming the Bay and its current Operator. */
 export function bayNameWithOperator(bay: Pick<Bay, 'currentOperator' | 'name'>): string {
-  const operator = bayOperatorName(bay);
-  if (!operator) return bay.name;
+  return withOperatorSuffix(bay.name, bayOperatorName(bay));
+}
 
-  const suffix = ` - ${operator}`;
-  return bay.name.endsWith(suffix) ? bay.name : `${bay.name}${suffix}`;
+/**
+ * The planner's Bay row: the Bay plus the first name the floor calls its Operator by. First name
+ * only because the row is narrow and the shop has one Ayanda per Bay, not one Ayanda Ndlovu.
+ */
+export function bayNameWithOperatorFirstName(bay: Pick<Bay, 'currentOperator' | 'name'>): string {
+  const operator = bayOperatorName(bay);
+
+  return withOperatorSuffix(bay.name, operator === null ? null : firstNameOf(operator));
+}
+
+/** The Bay's own name is the whole label while no Operator is assigned. */
+function withOperatorSuffix(name: string, operator: string | null): string {
+  return operator === null ? name : `${name} - ${operator}`;
+}
+
+function firstNameOf(name: string): string {
+  return name.trim().split(/\s+/)[0] ?? name;
 }

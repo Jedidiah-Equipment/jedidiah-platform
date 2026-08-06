@@ -35,3 +35,6 @@
   to rot, and nobody reads it mid-task.
 - **Docs trail landed features.** Document a workflow once it has shipped; unlanded work brings its own
   docs in its own PR.
+- **Pages carry procedure, not chrome.** Where a control sits, how a bar reflows, what a menu is called at
+  a narrow width — the screen in front of the user answers all of it, and a sentence here only rots. Edit a
+  page when its steps change or it has gone wrong, and then only the part that is wrong.

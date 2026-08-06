@@ -35,6 +35,12 @@ describe('formatCurrency', () => {
     expect(formatCurrency(1000.56, 'USD')).toBe('USD 1 000.56');
   });
 
+  it('rounds to the nearest whole unit when asked for no decimals', () => {
+    expect(formatCurrency(646006.75, 'ZAR', { decimals: 0 })).toBe('R 646 007');
+    expect(formatCurrency(1201.25, 'ZAR', { decimals: 0 })).toBe('R 1 201');
+    expect(formatCurrency(0, 'ZAR', { decimals: 0 })).toBe('R 0');
+  });
+
   it('formats non-finite values as empty text', () => {
     expect(formatCurrency(NaN)).toBe('');
     expect(formatCurrency(Infinity)).toBe('');

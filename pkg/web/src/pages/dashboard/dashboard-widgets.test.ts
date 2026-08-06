@@ -120,6 +120,19 @@ describe('dashboardWidgets', () => {
     expect(widgetIds(dashboardWidgets)).not.toContain('products');
   });
 
+  /** The stock and purchasing band is off the dashboard; the Buy list and Close-out pages own it. */
+  it('leaves the inventory band off the registry', () => {
+    for (const widgetId of [
+      'close-out-queue',
+      'out-of-stock',
+      'below-minimum-stock',
+      'short-for-jobs',
+      'late-purchase-orders',
+    ]) {
+      expect(widgetIds(dashboardWidgets)).not.toContain(widgetId);
+    }
+  });
+
   it('registers Recent activity behind audit read access', () => {
     const recentActivityWidget = dashboardWidgets.find((widget) => widget.id === 'recent-activity');
 

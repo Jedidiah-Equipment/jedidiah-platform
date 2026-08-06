@@ -179,7 +179,7 @@ export function BuyListTable({
       errorMessage={errorMessage}
       globalFilterPlaceholder="Search the buy list..."
       isLoading={isLoading}
-      paginationMode="complete"
+      paginationMode="incremental"
       table={table}
       total={table.getFilteredRowModel().rows.length}
       totalLabel={(value) => `${value} ${value === 1 ? 'Part' : 'Parts'}`}

@@ -26,6 +26,7 @@ export * from './inventory/commitment.js';
 export * from './inventory/draw-cost.js';
 export * from './inventory/movement-warnings.js';
 export * from './inventory/moving-average.js';
+export * from './inventory/purchase-order-display.js';
 export * from './inventory/purchase-order-progress.js';
 export * from './inventory/scan-token.js';
 export * from './jobs/bay-active-job.js';

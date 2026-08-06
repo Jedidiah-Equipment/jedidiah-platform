@@ -121,11 +121,9 @@ export function PurchaseOrderReceiveDialog({
           {canReadCosts ? (
             <form.AppField name="unitCost">
               {(field) => (
-                <field.NumberField
-                  description="ZAR per unit; leave blank to use the Purchase Order price."
+                <field.CurrencyField
+                  description="Cost per unit; leave blank to use the Purchase Order price."
                   label="Unit cost override"
-                  min={0}
-                  step="any"
                 />
               )}
             </form.AppField>

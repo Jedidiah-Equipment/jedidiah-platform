@@ -1,25 +1,26 @@
 import type { JobFeedbackItem, UUID } from '@pkg/schema';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { FeedbackStatusBadge, FeedbackStatusSelect } from '@/components/feedback/FeedbackStatusBadge.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Card, CardContent } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 type JobFeedbackListProps = {
-  /** Render the status as a picker wired to `feedback.updateJobFeedback` instead of a read-only badge. */
-  canUpdateStatus?: boolean;
   jobId: UUID;
 };
 
-/** A Job's public (general) feedback, oldest first. Corrective feedback never appears here. */
-export const JobFeedbackList: React.FC<JobFeedbackListProps> = ({ canUpdateStatus = false, jobId }) => {
+/**
+ * A Job's public (general) feedback, oldest first. Corrective feedback never appears here.
+ *
+ * General feedback carries a status in the data and on `feedback.updateJobFeedback`, but the card
+ * does not show it: a note on the shop floor is read, not triaged, and a row of Open pills says
+ * nothing anybody acts on. Triage stays on the `/feedback` inbox, where it means something.
+ */
+export const JobFeedbackList: React.FC<JobFeedbackListProps> = ({ jobId }) => {
   const trpc = useTRPC();
   const feedbackQuery = useQuery(trpc.feedback.listJobFeedback.queryOptions({ jobId }));
   const items = feedbackQuery.data?.items ?? [];
@@ -32,13 +33,13 @@ export const JobFeedbackList: React.FC<JobFeedbackListProps> = ({ canUpdateStatu
         <p className="text-sm text-muted-foreground">No feedback submitted for this job.</p>
       ) : null}
       {items.map((item) => (
-        <JobFeedbackCard canUpdateStatus={canUpdateStatus} item={item} key={item.id} />
+        <JobFeedbackCard item={item} key={item.id} />
       ))}
     </div>
   );
 };
 
-const JobFeedbackCard: React.FC<{ canUpdateStatus: boolean; item: JobFeedbackItem }> = ({ canUpdateStatus, item }) => (
+const JobFeedbackCard: React.FC<{ item: JobFeedbackItem }> = ({ item }) => (
   <Card size="sm">
     <CardContent>
       <article className="grid gap-2">
@@ -50,34 +51,9 @@ const JobFeedbackCard: React.FC<{ canUpdateStatus: boolean; item: JobFeedbackIte
           <span className="text-xs text-muted-foreground">
             <DateDisplay date={item.createdAt} />
           </span>
-          <span className="ml-auto">
-            {canUpdateStatus ? <JobFeedbackStatusSelect item={item} /> : <FeedbackStatusBadge status={item.status} />}
-          </span>
         </div>
         <p className="whitespace-pre-wrap text-sm leading-6">{item.text}</p>
       </article>
     </CardContent>
   </Card>
 );
-
-const JobFeedbackStatusSelect: React.FC<{ item: JobFeedbackItem }> = ({ item }) => {
-  const trpc = useTRPC();
-  const { invalidateFeedback } = useQueryInvalidation();
-  const showMutationError = useApiMutationErrorToast();
-  const updateMutation = useMutation(
-    trpc.feedback.updateJobFeedback.mutationOptions({
-      onSuccess: () => invalidateFeedback(),
-      onError: (error) => {
-        showMutationError(error, 'Unable to update feedback status.');
-      },
-    }),
-  );
-
-  return (
-    <FeedbackStatusSelect
-      disabled={updateMutation.isPending}
-      value={item.status}
-      onValueChange={(status) => updateMutation.mutate({ id: item.id, status })}
-    />
-  );
-};

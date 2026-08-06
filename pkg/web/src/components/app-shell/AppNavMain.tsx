@@ -1,6 +1,7 @@
 import { hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import {
+  IconAlertTriangle,
   IconBriefcase2,
   IconBuilding,
   IconBuildingWarehouse,
@@ -31,6 +32,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSkeleton,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
@@ -279,6 +281,39 @@ const NavCollapsibleItem: React.FC<{
   );
 };
 
+/** Placeholder rows while the first access check is in flight, so an unresolved nav never reads as an empty one. */
+const NavAccessSkeleton: React.FC = () => (
+  <SidebarGroup aria-busy="true" aria-label="Checking access">
+    <SidebarMenu className="gap-1">
+      {SKELETON_ROWS.map((row) => (
+        <SidebarMenuItem key={row}>
+          <SidebarMenuSkeleton showIcon />
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  </SidebarGroup>
+);
+
+const SKELETON_ROWS = ['one', 'two', 'three', 'four', 'five', 'six'];
+
+/** Stands in for the permissions the first access check never delivered; see {@link navAccessState}. */
+const NavAccessError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <SidebarGroup>
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          className={cn(biggerIconClass, 'text-sidebar-foreground/70')}
+          onClick={onRetry}
+          tooltip="Couldn’t load your access. Retry."
+        >
+          <IconAlertTriangle />
+          <span>Access unavailable — retry</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  </SidebarGroup>
+);
+
 export const AppNavMain: React.FC = () => {
   const accessQuery = useAccess();
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -286,6 +321,7 @@ export const AppNavMain: React.FC = () => {
   const canSee = (permission?: AppPermission) =>
     permission === undefined || hasPermission(accessQuery.data, permission);
   const visibleSections = getVisibleNavSections(canSee);
+  const accessState = navAccessState(accessQuery);
 
   return (
     <>
@@ -337,9 +373,27 @@ export const AppNavMain: React.FC = () => {
           </SidebarMenu>
         </SidebarGroup>
       ))}
+
+      {accessState === 'checking' ? <NavAccessSkeleton /> : null}
+      {accessState === 'unavailable' ? <NavAccessError onRetry={() => void accessQuery.refetch()} /> : null}
     </>
   );
 };
+
+/**
+ * What the nav can honestly say about permissions it has not got. Every item but Dashboard is gated,
+ * so an unresolved access check used to render as a permission-less account: a sidebar holding nothing
+ * but Dashboard, with no hint anything had gone wrong and nothing to retry. React Query keeps the last
+ * good permissions through a later failure, so `unavailable` only ever stands for a first check that
+ * never landed — a genuinely permission-less account still reads as `ready`.
+ */
+export function navAccessState(access: { isLoadingError: boolean; isPending: boolean }): NavAccessState {
+  if (access.isLoadingError) return 'unavailable';
+
+  return access.isPending ? 'checking' : 'ready';
+}
+
+export type NavAccessState = 'checking' | 'ready' | 'unavailable';
 
 export function getVisibleNavSections(canSee: (permission?: AppPermission) => boolean): NavSection[] {
   return navSections

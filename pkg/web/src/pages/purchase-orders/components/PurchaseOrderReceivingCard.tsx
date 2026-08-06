@@ -81,7 +81,7 @@ export function PurchaseOrderReceivingCard({
           Confirm what arrived at the dock. The Purchase Order price is used unless an authorized receiver overrides it.
         </CardDescription>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent>
         <DataTable
           emptyMessage="No Parts to receive."
           hideGlobalFilter

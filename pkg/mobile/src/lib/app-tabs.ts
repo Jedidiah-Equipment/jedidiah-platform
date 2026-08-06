@@ -33,3 +33,38 @@ export function appTabHref(tab: AppTab): '/jobs' | '/plan' | '/products' | '/quo
 
   return hrefs[tab];
 }
+
+const TAB_LABELS = {
+  jobs: 'JOBS',
+  plan: 'PLAN',
+  products: 'PRODUCTS',
+  quotes: 'QUOTES',
+  stores: 'STORES',
+  units: 'UNITS',
+} as const satisfies Record<AppTab, string>;
+
+export function appTabLabel(tab: AppTab): string {
+  return TAB_LABELS[tab];
+}
+
+// The route directly under the `(tabs)` group, so Plan carries its route-group parentheses.
+const TAB_ROUTE_SEGMENTS = {
+  jobs: 'jobs',
+  plan: '(plan)',
+  products: 'products',
+  quotes: 'quotes',
+  stores: 'stores',
+  units: 'units',
+} as const satisfies Record<AppTab, string>;
+
+/**
+ * The tab owning the current route, read from Expo Router segments. Keyed on the segment
+ * below `(tabs)` rather than the pathname so a Bay schedule still counts as Plan.
+ */
+export function activeAppTab(segments: readonly string[]): AppTab | null {
+  const groupIndex = segments.indexOf('(tabs)');
+  const segment = groupIndex === -1 ? undefined : segments[groupIndex + 1];
+  const tab = (Object.keys(TAB_ROUTE_SEGMENTS) as AppTab[]).find((key) => TAB_ROUTE_SEGMENTS[key] === segment);
+
+  return tab ?? null;
+}

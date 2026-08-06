@@ -23,9 +23,10 @@ export function formatNumber(value: number, options: FormatNumberOptions = {}): 
     .replaceAll(',', ' ');
 }
 
-export function formatCurrency(value: number, currencyCode?: string): string {
+/** `decimals: 0` rounds to the nearest whole unit, for lists where cents are noise. */
+export function formatCurrency(value: number, currencyCode?: string, options: FormatNumberOptions = {}): string {
   if (!Number.isFinite(value)) return '';
-  const formattedValue = formatNumber(value, { decimals: 2 });
+  const formattedValue = formatNumber(value, { decimals: options.decimals ?? 2 });
 
   if (!currencyCode) {
     return formattedValue;

@@ -125,7 +125,7 @@ function Ready({
             refreshControl={<RefreshControl {...refresh} />}
             style={{ flex: 58 }}
           >
-            <DetailPane jobId={jobId} state={state} />
+            <DetailPane isWide jobId={jobId} state={state} />
           </ScrollView>
         </View>
       </>
@@ -136,9 +136,7 @@ function Ready({
     <>
       {header}
       <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
-        <DetailPane jobId={jobId} state={state} />
-        <View className="my-5 h-px bg-border" />
-        <RoutePane isCancelled={isJobCancelled(state)} route={state.route} />
+        <DetailPane isWide={false} jobId={jobId} state={state} />
       </ScrollView>
     </>
   );
@@ -280,8 +278,15 @@ function routeDaysLabel(stop: JobRouteStopCard, isCancelled: boolean): string {
   return `Starts ${formatDate(stop.firstWorkDay, 'd MMM')}`;
 }
 
-/** Right pane: status chips, work card, progress, facts, feedback, documents, and assemblies. */
-function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
+/**
+ * Right pane: work card, progress, facts, feedback, documents, and assemblies.
+ *
+ * On a phone the route is not a second pane but the next card down, directly under overall progress,
+ * where it answers "who has it and when" while that number is still on screen. It also makes the
+ * status chips redundant — the route stop says NEXT · Bay and the days left itself — so the narrow
+ * layout drops them. Wide keeps both: the chips head the detail pane while the route sits left.
+ */
+function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; state: ReadyState }) {
   const { progress } = state;
   const { resolved } = useColorMode();
   const overallPercent = progress?.overallPercent ?? (state.totalCount === 0 ? 0 : 100);
@@ -291,10 +296,12 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
 
   return (
     <View className="gap-4">
-      <View className="flex-row flex-wrap items-center gap-2">
-        <StatusChip label={status.label} tone={status.tone} />
-        {!isCancelled && progress ? <DaysLeftChip color={accent} daysLeft={progress.daysLeft} /> : null}
-      </View>
+      {isWide ? (
+        <View className="flex-row flex-wrap items-center gap-2">
+          <StatusChip label={status.label} tone={status.tone} />
+          {!isCancelled && progress ? <DaysLeftChip color={accent} daysLeft={progress.daysLeft} /> : null}
+        </View>
+      ) : null}
 
       <JobWorkCard
         customerCompanyName={state.customerCompanyName}
@@ -319,6 +326,8 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
           {state.totalCount === 0 ? 'No Bays scheduled' : `${state.doneCount} of ${state.totalCount} Bays complete`}
         </Text>
       </View>
+
+      {isWide ? null : <RoutePane isCancelled={isCancelled} route={state.route} />}
 
       <JobDetailSections
         customerCompanyName={state.customerCompanyName}

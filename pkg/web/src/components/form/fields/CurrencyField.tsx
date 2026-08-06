@@ -1,6 +1,6 @@
 import { CURRENCY_SYMBOL_BY_CODE, formatCurrency, formatNumber } from '@pkg/domain';
 import * as React from 'react';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group.js';
 import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
@@ -12,10 +12,11 @@ type CurrencyFieldInputProps = Omit<
 
 export type CurrencyFieldProps = {
   currencyCode?: string;
+  description?: React.ReactNode;
   label: React.ReactNode;
 } & CurrencyFieldInputProps;
 
-export function CurrencyField({ currencyCode = 'ZAR', label, ...inputProps }: CurrencyFieldProps) {
+export function CurrencyField({ currencyCode = 'ZAR', description, label, ...inputProps }: CurrencyFieldProps) {
   const field = useFieldContext<number>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
@@ -59,6 +60,7 @@ export function CurrencyField({ currencyCode = 'ZAR', label, ...inputProps }: Cu
           <InputGroupText>{CURRENCY_SYMBOL_BY_CODE[currencyCode]}</InputGroupText>
         </InputGroupAddon>
       </InputGroup>
+      {description ? <FieldDescription>{description}</FieldDescription> : null}
       <FieldError errors={fieldErrors} />
     </Field>
   );

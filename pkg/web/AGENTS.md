@@ -1,20 +1,21 @@
 # web (@pkg/web)
 
 - Browser access checks are UX only; the server/API is the authorization boundary.
-- Whenever making a change in this package, review `pkg/docs` for affected user guidance and update
-  it in the same change. User-facing behavior is not done until the docs match; add or repoint the
-  corresponding `HELP_TOPICS` entry and docs page together when contextual Help changes.
 - Login is email/password only unless asked otherwise.
 - Use `@pkg/domain` `formatDate` and `formatCurrency`; do not add one-off `Intl` or locale formatting in components.
 - Route all React Query invalidation through `src/hooks/use-query-invalidation.ts`; invalidate whole affected tRPC root paths.
 - Use shared UI primitives for standard surfaces: `Card` composition from `src/components/ui/card.tsx` and `ScrollArea` for page/panel scrolling.
 - Whenever the UI presents tabular data, render it through `src/components/data-table/DataTable.tsx`;
   feature and page code must not compose `src/components/ui/table.tsx` directly. `DataTable` supports
-  both list shapes: use the server-side cursor/infinite-query pattern from
-  `src/pages/products/components/ProductTable.tsx` when the API owns filtering, sorting, and
-  pagination, and use the fully populated client-side pattern from
-  `src/pages/users/components/UserTable.tsx` when the browser owns them. In both cases, configure the
-  TanStack table in the feature and pass it to `DataTable`.
+  three list shapes, all configured by building the TanStack table in the feature and passing it in:
+  - `paginationMode="cursor"` — the API owns filtering, sorting, and pagination. Follow
+    `src/pages/products/components/ProductTable.tsx`.
+  - `paginationMode="complete"` — the browser owns them and every row renders. Follow
+    `src/pages/users/components/UserTable.tsx`.
+  - `paginationMode="incremental"` — the browser owns them but only a window of rows paints, with a
+    Load more button (`pageSize`, default 25). Follow `src/pages/inventory/buy-list/components/BuyListTable.tsx`.
+    Reach for it over `complete` when one server snapshot must stay whole — sorting, searching and
+    row selection still span every row — but the row count would flood the DOM.
 - For TanStack Form descendants, use `useTypedAppFormContext` from `src/components/form/use-app-form.ts`.
 - Keep `vite.config.ts` `resolve.dedupe: ['react', 'react-dom']`. `pkg/mobile` pins a different React version than web; without deduping a second React copy leaks into the bundle and breaks hooks ("Invalid hook call" / `useRef` of null). If you still see that error after a branch switch, clear the stale Vite cache (`rm -rf node_modules/.vite`) and restart the dev server.
 

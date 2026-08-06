@@ -60,7 +60,7 @@ export function PurchaseOrderAmendmentsCard({ purchaseOrderId }: { purchaseOrder
         <CardTitle>Amendment history</CardTitle>
         <CardDescription>Every change made since this order was sent, and who agreed it.</CardDescription>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent>
         <DataTable
           emptyMessage="This order has not been amended."
           hideGlobalFilter

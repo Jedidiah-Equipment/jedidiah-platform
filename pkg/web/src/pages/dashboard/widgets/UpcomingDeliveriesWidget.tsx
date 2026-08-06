@@ -64,7 +64,9 @@ export const UpcomingDeliveriesWidget: React.FC = () => {
       <ScrollArea className="max-h-80">
         <ul className="flex flex-col divide-y pr-3">
           {visibleDeliveries.map((quote) => (
-            <li key={quote.id}>
+            // Spacing on the `li`: on the row `div` inside it, `first:`/`last:` match every row —
+            // it is an only child — and cancel the padding out.
+            <li className="py-3 first:pt-0 last:pb-0" key={quote.id}>
               <UpcomingDeliveryRow
                 finishDatesByJobId={finishDatesByJobId}
                 canOpenJobs={jobAccess.can}
@@ -107,14 +109,16 @@ function UpcomingDeliveryRow({
       : false;
 
   return (
-    <div className="grid min-w-0 grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 py-3 text-sm first:pt-0 last:pb-0">
+    <div className="grid min-w-0 grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 text-sm">
       <EntityThumbnail label={quote.customerCompanyName} size="sm" thumbnailDataUrl={quote.customerThumbnailDataUrl} />
       <span className="min-w-0">
         <Link className="block truncate font-medium hover:underline" params={{ id: quote.id }} to="/quotes/$id/edit">
           {quote.code}
         </Link>
-        <span className="block truncate text-muted-foreground">{quote.customerCompanyName}</span>
+        {/* Customer, what they ordered, and the Job on one line: three short facts that read as one. */}
         <span className="block truncate text-muted-foreground text-xs">
+          {quote.customerCompanyName}
+          <span className="px-1">·</span>
           {quoteName}
           {quote.job ? (
             <>
@@ -143,8 +147,7 @@ function UpcomingDeliveriesWidgetSkeleton() {
           <Skeleton className="size-6 rounded-md" />
           <span className="flex min-w-0 flex-col gap-2">
             <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-3 w-36 max-w-full" />
-            <Skeleton className="h-3 w-28 max-w-full" />
+            <Skeleton className="h-3 w-40 max-w-full" />
           </span>
           <span className="flex flex-col items-end gap-2">
             <Skeleton className="h-4 w-14" />

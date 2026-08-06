@@ -248,7 +248,8 @@ describe('feedback review reads', () => {
       text: 'Open feedback should appear.',
     });
     const closedFeedback = await submitterCaller.feedback.submit({
-      kind: 'general',
+      kind: 'corrective-feedback-department',
+      departments: ['fabrication'],
       subject: { subjectType: 'job', jobId: context.job.id },
       text: 'Closed feedback should filter out.',
     });
@@ -272,6 +273,43 @@ describe('feedback review reads', () => {
     });
     await expect(reviewerCaller.feedback.list({ status: 'open' })).resolves.toMatchObject({
       items: [{ id: openFeedback.id, status: 'open' }],
+    });
+  });
+
+  /**
+   * A Job's general feedback is read and closed on the Job (ADR 0010), so the inbox that exists for
+   * corrective review does not repeat it. Quote general feedback has no public surface and stays.
+   */
+  test('keeps public Job feedback out of the review inbox and its open count', async ({ context }) => {
+    const submitterCaller = context.createCaller(mockSession('sales'));
+    const jobGeneral = await submitterCaller.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'job', jobId: context.job.id },
+      text: 'Public on the Job, not inbox work.',
+    });
+    const quoteGeneral = await submitterCaller.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'quote', quoteId: context.quote.id },
+      text: 'Private: the inbox is its only reader.',
+    });
+    const jobCorrective = await submitterCaller.feedback.submit({
+      kind: 'corrective-feedback-department',
+      departments: ['fabrication'],
+      subject: { subjectType: 'job', jobId: context.job.id },
+      text: 'Corrective stays behind the super-admin wall.',
+    });
+
+    const reviewerCaller = context.createCaller(mockSession('super-admin'));
+    const listed = await reviewerCaller.feedback.list({});
+    const listedIds = listed.items.map((item) => item.id);
+
+    expect(listedIds).toContain(quoteGeneral.id);
+    expect(listedIds).toContain(jobCorrective.id);
+    expect(listedIds).not.toContain(jobGeneral.id);
+    await expect(reviewerCaller.feedback.openCount()).resolves.toBe(2);
+    // The Job keeps reading its own general feedback, on the endpoint that owns it.
+    await expect(reviewerCaller.feedback.listJobFeedback({ jobId: context.job.id })).resolves.toMatchObject({
+      items: [{ id: jobGeneral.id }],
     });
   });
 

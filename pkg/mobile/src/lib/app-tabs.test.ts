@@ -1,7 +1,7 @@
 import { createUserAccessSummary } from '@pkg/domain';
 import { describe, expect, it } from 'vitest';
 
-import { type AppTab, appTabHref, showTabBar, visibleTabs } from './app-tabs';
+import { type AppTab, activeAppTab, appTabHref, showTabBar, visibleTabs } from './app-tabs';
 
 describe('visibleTabs', () => {
   it('shows no tabs while access is unresolved', () => {
@@ -76,5 +76,21 @@ describe('appTabHref', () => {
     const tabs: AppTab[] = ['jobs', 'plan', 'stores', 'quotes', 'products', 'units'];
 
     expect(tabs.map(appTabHref)).toEqual(['/jobs', '/plan', '/stores', '/quotes', '/products', '/units']);
+  });
+});
+
+describe('activeAppTab', () => {
+  it('reads the tab from the segment below the tabs group', () => {
+    expect(activeAppTab(['(protected)', '(tabs)', 'jobs', '[jobId]'])).toBe('jobs');
+    expect(activeAppTab(['(protected)', '(tabs)', 'stores', 'parts', '[partCode]', 'checkout'])).toBe('stores');
+  });
+
+  it('keeps a Bay schedule on Plan, which owns the route group', () => {
+    expect(activeAppTab(['(protected)', '(tabs)', '(plan)', 'bays', '[bayId]'])).toBe('plan');
+  });
+
+  it('has no active tab outside the tabs group', () => {
+    expect(activeAppTab(['login'])).toBeNull();
+    expect(activeAppTab([])).toBeNull();
   });
 });

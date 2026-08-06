@@ -388,7 +388,7 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
                 </Button>
               </CardAction>
             </CardHeader>
-            <CardContent className="px-0">
+            <CardContent>
               <PurchaseOrderLinesDataTable
                 commit={commit}
                 eligibleParts={eligibleParts}
@@ -628,7 +628,7 @@ const ReadOnlyLinesCard: React.FC<{
           </CardAction>
         ) : null}
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent>
         <PurchaseOrderReadOnlyLinesTable
           canReadCosts={canReadCosts}
           items={purchaseOrder.lines}

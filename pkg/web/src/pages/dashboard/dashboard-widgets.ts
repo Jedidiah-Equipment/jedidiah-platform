@@ -3,9 +3,6 @@ import { ActiveJobsWidget } from './widgets/ActiveJobsWidget.js';
 import { AwaitingJobCreationWidget } from './widgets/AwaitingJobCreationWidget.js';
 import { BayLoadTodayWidget } from './widgets/BayLoadTodayWidget.js';
 import { BayRunwayWidget } from './widgets/BayRunwayWidget.js';
-import { BelowMinimumStockWidget, OutOfStockWidget, ShortForJobsWidget } from './widgets/BuyListSignalWidgets.js';
-import { CloseOutQueueWidget } from './widgets/CloseOutQueueWidget.js';
-import { LatePurchaseOrdersWidget } from './widgets/LatePurchaseOrdersWidget.js';
 import { OpenPipelineWidget } from './widgets/OpenPipelineWidget.js';
 import { QuoteFlowWidget } from './widgets/QuoteFlowWidget.js';
 import { QuotesByStatusWidget } from './widgets/QuotesByStatusWidget.js';
@@ -43,41 +40,6 @@ export const dashboardWidgets = [
     requires: 'job:read',
     size: 'xs',
     title: 'Bay load today',
-  },
-  {
-    Component: CloseOutQueueWidget,
-    id: 'close-out-queue',
-    requires: 'inventory:close-out',
-    size: 'xs',
-    title: 'Awaiting close-out',
-  },
-  {
-    Component: OutOfStockWidget,
-    id: 'out-of-stock',
-    requires: 'inventory:read',
-    size: 'xs',
-    title: 'Out of stock',
-  },
-  {
-    Component: BelowMinimumStockWidget,
-    id: 'below-minimum-stock',
-    requires: 'inventory:read',
-    size: 'xs',
-    title: 'Below minimum',
-  },
-  {
-    Component: ShortForJobsWidget,
-    id: 'short-for-jobs',
-    requires: 'inventory:read',
-    size: 'xs',
-    title: 'Short for Jobs',
-  },
-  {
-    Component: LatePurchaseOrdersWidget,
-    id: 'late-purchase-orders',
-    requires: 'purchase_order:read',
-    size: 'xs',
-    title: 'Late Purchase Orders',
   },
   {
     Component: QuotesByStatusWidget,

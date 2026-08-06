@@ -4,7 +4,6 @@ import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { FactCard } from '@/components/bays/job-facts';
-import { FeedbackStatusBadge } from '@/components/feedback/FeedbackStatusBadge';
 import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -13,6 +12,8 @@ import { useTRPC } from '@/lib/trpc';
 /**
  * A Job's public (general) feedback, oldest first, read-only. Mirrors web's `JobFeedbackList`;
  * corrective feedback never appears here (`feedback.listJobFeedback` is general-only, ADR 0010).
+ * The status the item carries stays off the card for the same reason it does on web: this is a note
+ * to read, not a queue to triage.
  */
 export function JobFeedbackList({ jobCode, jobId }: { jobCode: string; jobId: string }) {
   const trpc = useTRPC();
@@ -37,7 +38,6 @@ export function JobFeedbackList({ jobCode, jobId }: { jobCode: string; jobId: st
               <Text className="text-[10px] text-muted-foreground" mono>
                 {formatDate(item.createdAt, 'd MMM yyyy')}
               </Text>
-              <FeedbackStatusBadge status={item.status} />
             </View>
             <Text className="text-sm leading-5 text-surface-foreground">{item.text}</Text>
           </View>

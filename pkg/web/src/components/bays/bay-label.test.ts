@@ -11,12 +11,13 @@ const bay = (name: string, operatorName: string | null) =>
 
 describe('bayNameWithOperator', () => {
   it('shows the current Operator after the Bay name', () => {
-    expect(bayNameWithOperator(bay('Fabrication Bay 2', 'Mkhukhu'))).toBe('Fabrication Bay 2 - Mkhukhu');
+    expect(bayNameWithOperator(bay('Fabrication Bay 2', 'Mkhukhu Dlamini'))).toBe(
+      'Fabrication Bay 2 - Mkhukhu Dlamini',
+    );
   });
 
-  it('leaves unassigned and already-suffixed Bay names unchanged', () => {
+  it('leaves an unassigned Bay name unchanged', () => {
     expect(bayNameWithOperator(bay('Supply', null))).toBe('Supply');
-    expect(bayNameWithOperator(bay('Fabrication Bay 2 - Mkhukhu', 'Mkhukhu'))).toBe('Fabrication Bay 2 - Mkhukhu');
   });
 });
 
@@ -29,13 +30,5 @@ describe('bayNameWithOperatorFirstName', () => {
 
   it('falls back to the Bay name when no Operator is assigned', () => {
     expect(bayNameWithOperatorFirstName(bay('Supply', null))).toBe('Supply');
-  });
-
-  it('does not repeat a first name the Bay name already ends with, however it was typed', () => {
-    expect(bayNameWithOperatorFirstName(bay('Fabrication Bay 1 - Ayanda', 'Ayanda Nkosi'))).toBe(
-      'Fabrication Bay 1 - Ayanda',
-    );
-    // Hand-typed legacy Bay names are not consistent about the spacing around the dash.
-    expect(bayNameWithOperatorFirstName(bay('Repairs- Mjabulisi', 'Mjabulisi Zulu'))).toBe('Repairs- Mjabulisi');
   });
 });

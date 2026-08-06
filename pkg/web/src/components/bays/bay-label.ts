@@ -5,7 +5,7 @@ export function bayOperatorName(bay: Pick<Bay, 'currentOperator'>): string | nul
   return bay.currentOperator?.name ?? null;
 }
 
-/** Card/select label that adds the current Operator without duplicating a legacy embedded suffix. */
+/** Card/select label naming the Bay and its current Operator. */
 export function bayNameWithOperator(bay: Pick<Bay, 'currentOperator' | 'name'>): string {
   return withOperatorSuffix(bay.name, bayOperatorName(bay));
 }
@@ -20,18 +20,9 @@ export function bayNameWithOperatorFirstName(bay: Pick<Bay, 'currentOperator' | 
   return withOperatorSuffix(bay.name, operator === null ? null : firstNameOf(operator));
 }
 
-/**
- * Bay names predate the Operator record and many already end in one, so a second copy is skipped.
- * The match reads the name's last dash-separated segment rather than the exact ` - Name` string:
- * those legacy names were hand-typed, and "Repairs- Mjabulisi" is as much a name already carrying
- * its Operator as "Fabrication Bay 1 - Ayanda" is.
- */
+/** The Bay's own name is the whole label while no Operator is assigned. */
 function withOperatorSuffix(name: string, operator: string | null): string {
-  if (!operator) return name;
-
-  const lastSegment = name.slice(name.lastIndexOf('-') + 1).trim();
-
-  return lastSegment.toLowerCase() === operator.toLowerCase() ? name : `${name} - ${operator}`;
+  return operator === null ? name : `${name} - ${operator}`;
 }
 
 function firstNameOf(name: string): string {

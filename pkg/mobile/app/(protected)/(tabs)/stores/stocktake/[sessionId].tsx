@@ -120,11 +120,11 @@ export default function StoresStocktakeSessionRoute() {
   const isClosed = session.closedAt !== null;
 
   return (
+    // Paging is the Load more button and nothing else. Fetching on scroll-end would put this
+    // screen's own controls — Close this session, below the list — permanently out of reach: every
+    // scroll toward them appends rows and pushes them further down.
     <StoresScreen
       onBack={() => router.dismissTo('/stores/stocktake')}
-      onNearScrollEnd={() => {
-        if (uncountedPages.hasNextPage && !uncountedPages.isFetchingNextPage) void uncountedPages.fetchNextPage();
-      }}
       parentLabel="Stocktake"
       subtitle={`${session.countedPartCount} COUNTED · ${uncountedTotal} TO GO`}
       title={`${STOCKTAKE_SCOPE_LABELS[session.scope]} count`}

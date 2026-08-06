@@ -1,16 +1,15 @@
-import { type DatabaseTransaction, type Db, purchaseOrderLines, purchaseOrders, stockMovements } from '@pkg/db';
-import { deriveReceiptWarnings } from '@pkg/domain';
+import { type DatabaseTransaction, type Db, purchaseOrderLines, purchaseOrders } from '@pkg/db';
+import { derivePurchaseOrderActions, deriveReceiptWarnings } from '@pkg/domain';
 import type { AuthId, PostReceiptInput, StockMovementPostResult, UUID } from '@pkg/schema';
 import { StockMovementPostResult as StockMovementPostResultSchema, unitClassFor } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
 
 import {
-  PurchaseOrderClosedShortError,
+  assertPurchaseOrderAction,
   PurchaseOrderLineNotFoundError,
   PurchaseOrderNotFoundError,
-  PurchaseOrderNotSentError,
 } from '../purchase-orders/purchase-order-errors.js';
-import { loadLineReceivedQuantity } from '../purchase-orders/purchase-order-service.js';
+import { loadLineReceivedQuantity, loadPurchaseOrderActionFacts } from '../purchase-orders/purchase-order-service.js';
 import { insertMovement, loadStockPart } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
@@ -90,9 +89,10 @@ async function lockReceivablePurchaseOrder(tx: DatabaseTransaction, id: UUID) {
     // The same row lock cancel and close-short take, so a receipt cannot race either decision.
     .for('update');
   if (!row) throw new PurchaseOrderNotFoundError(id);
-  if (row.status !== 'sent') throw new PurchaseOrderNotSentError(id);
-  // Close-short asserted that the remainder will never come; a later receipt would make that a lie.
-  if (row.closedShortAt !== null) throw new PurchaseOrderClosedShortError(id);
+  // Read under the lock and judged by the one derivation: close-short asserted the remainder will
+  // never come, and a later receipt would make that a lie.
+  const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row }));
+  assertPurchaseOrderAction(actions.receive, id);
 
   return row;
 }

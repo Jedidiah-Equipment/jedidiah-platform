@@ -68,7 +68,6 @@ async function upload(
   return uploadSupplierInvoice({
     actorUserId: ACTOR_ID,
     bytes: pdfBytes(),
-    contentType: 'application/pdf',
     db: context.db,
     extract,
     filename,
@@ -401,9 +400,8 @@ describe('supplier invoice cross-check', () => {
     await expect(
       uploadSupplierInvoice({
         actorUserId: ACTOR_ID,
+        // Not a PDF. The bytes are the only thing that decides — nothing the upload claims is read.
         bytes: new Uint8Array([0x6e, 0x6f, 0x70, 0x65]),
-        // What the upload *claims* to be. The bytes are what decides.
-        contentType: 'application/pdf',
         db: context.db,
         extract: async () => {
           called = true;

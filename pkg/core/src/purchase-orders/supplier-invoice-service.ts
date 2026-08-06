@@ -2,7 +2,6 @@ import {
   type DatabaseTransaction,
   type Db,
   documents,
-  getUniqueViolationConstraint,
   invoiceExtractions,
   invoiceFlagResolutions,
   parts,
@@ -12,13 +11,7 @@ import {
   supplier,
   user,
 } from '@pkg/db';
-import {
-  deriveInvoicePriceCorrection,
-  getDocumentPolicy,
-  matchInvoiceLines,
-  sniffDocumentContentType,
-  validateDocumentPolicy,
-} from '@pkg/domain';
+import { deriveInvoicePriceCorrection, matchInvoiceLines } from '@pkg/domain';
 import type {
   AuthId,
   InvoiceFlagResolution,
@@ -39,8 +32,7 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
-import { DocumentPolicyViolationError, DuplicateDocumentFilenameError } from '../documents/document-errors.js';
-import { collectDocumentErrorText, createDocumentRecord, mapDocumentSummary } from '../documents/document-service.js';
+import { assertDocumentAcceptable } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import {
   assertBuiltPartCostIsDerived,
@@ -48,13 +40,9 @@ import {
   loadMovingAverages,
   loadStockPart,
 } from '../inventory/ledger.js';
+import { filePurchaseOrderDocument } from './purchase-order-document-filing.js';
 import { PurchaseOrderNotSentError } from './purchase-order-errors.js';
-import {
-  getPurchaseOrder,
-  newestPurchaseOrderDocumentFirst,
-  type PurchaseOrderDb,
-  purchaseOrderDocumentStorageKey,
-} from './purchase-order-service.js';
+import { getPurchaseOrder, newestPurchaseOrderDocumentFirst, type PurchaseOrderDb } from './purchase-order-service.js';
 import {
   InvoiceFlagAlreadyResolvedError,
   InvoiceFlagNotFoundError,
@@ -93,20 +81,25 @@ export type SupplierInvoiceExtractor = (input: {
 export async function uploadSupplierInvoice({
   actorUserId,
   bytes,
-  contentType,
   db,
   extract,
   filename,
   input,
+  onExtractionError,
   storage,
 }: {
   actorUserId: AuthId;
   bytes: Uint8Array;
-  contentType: string;
   db: Db;
   extract: SupplierInvoiceExtractor;
   filename: string;
   input: { purchaseOrderId: UUID };
+  /**
+   * Where a failed read goes. The panel only ever says "couldn't read this invoice", which is the
+   * right thing to tell the desk and useless to whoever has to find out why — so the reason is
+   * handed out here rather than swallowed.
+   */
+  onExtractionError?: (error: unknown) => void;
   storage: StorageAdapter;
 }): Promise<PurchaseOrderDocumentRow> {
   const purchaseOrder = await getPurchaseOrder({ db, id: input.purchaseOrderId });
@@ -117,80 +110,39 @@ export async function uploadSupplierInvoice({
   if (purchaseOrder.status !== 'sent') throw new PurchaseOrderNotSentError(input.purchaseOrderId);
 
   // Validated against the *sniffed* bytes rather than the multipart content type, and before the
-  // model is called: `createDocumentRecord` would refuse a spoofed PDF anyway, but only after this
-  // function had already sent its bytes to a third-party provider. What the file claims to be is
-  // not a reason to disclose it.
-  const verifiedContentType = sniffDocumentContentType(bytes);
-  if (!verifiedContentType) {
-    // Bytes matching nothing we accept, refused the same way `createDocumentRecord` refuses them.
-    // Falling back to the declared type here would hand exactly the spoofed upload this guards
-    // against straight to the provider.
-    throw new DocumentPolicyViolationError({
-      code: 'document.content_type_not_allowed',
-      message: `Uploaded file content does not match an allowed document type: ${getDocumentPolicy('purchase_order').allowedContentTypes.join(', ')}.`,
-    });
-  }
-
-  const policyResult = validateDocumentPolicy({
-    byteSize: bytes.byteLength,
-    contentType: verifiedContentType,
+  // model is called: filing would refuse a spoofed PDF anyway, but only after this function had
+  // already sent its bytes to a third-party provider. What a file claims to be is not a reason to
+  // disclose it, so the same gate filing applies runs first, here.
+  const verifiedContentType = assertDocumentAcceptable({
+    bytes,
     metadata: { type: 'supplier_invoice' },
     ownerType: 'purchase_order',
   });
-  if (!policyResult.ok) throw new DocumentPolicyViolationError(policyResult);
 
-  const extraction = await readInvoice({ bytes, contentType: verifiedContentType, extract });
-  const storageKey = purchaseOrderDocumentStorageKey(input.purchaseOrderId, filename);
+  const extraction = await readInvoice({
+    bytes,
+    contentType: verifiedContentType,
+    extract,
+    onError: onExtractionError,
+  });
 
-  try {
-    return await db.transaction(async (tx) => {
-      const document = await createDocumentRecord({
-        actorUserId,
-        db: tx,
-        input: {
-          bytes,
-          filename,
-          metadata: { type: 'supplier_invoice' },
-          ownerType: 'purchase_order',
-          purchaseOrderId: input.purchaseOrderId,
-          storageKey,
-        },
-        mapInsertError: (error) =>
-          mapPurchaseOrderDocumentUniqueViolation(error, { filename, purchaseOrderId: input.purchaseOrderId }),
-        storage,
-      });
-
+  return filePurchaseOrderDocument({
+    actorUserId,
+    bytes,
+    db,
+    filename,
+    metadata: { type: 'supplier_invoice' },
+    purchaseOrderId: input.purchaseOrderId,
+    storage,
+    writeReferences: async (tx, document) => {
       await tx
         .insert(invoiceExtractions)
         .values({ documentId: document.id, extraction })
         // Re-reading the same document replaces the earlier attempt rather than failing: the read is
         // the disposable half of this pair, and the PDF it read is not.
         .onConflictDoUpdate({ set: { extraction }, target: invoiceExtractions.documentId });
-
-      const [actor] = await tx.select({ name: user.name }).from(user).where(eq(user.id, actorUserId));
-
-      return {
-        byteSize: document.byteSize,
-        createdAt: mapDocumentSummary({ ...document, uploaderEmail: null, uploaderName: null }).createdAt,
-        filename: document.filename,
-        id: document.id,
-        revision: null,
-        settledReturnIds: [],
-        type: 'supplier_invoice' as const,
-        uploaderName: actor?.name ?? null,
-      };
-    });
-  } catch (error) {
-    // The bytes are stored before the row that points at them, so a failure after that would
-    // otherwise leave an object nobody can reach (see the credit-note path).
-    try {
-      await storage.deleteObject(storageKey);
-    } catch {
-      // The upload may never have got as far as storing anything; the original failure is the news.
-    }
-
-    throw error;
-  }
+    },
+  });
 }
 
 /** Every Supplier invoice on an order, each cross-checked against the order as it stands now. */
@@ -685,14 +637,20 @@ async function readInvoice({
   bytes,
   contentType,
   extract,
+  onError,
 }: {
   bytes: Uint8Array;
   contentType: string;
   extract: SupplierInvoiceExtractor;
+  onError: ((error: unknown) => void) | undefined;
 }): Promise<SupplierInvoiceExtraction | null> {
   try {
     return await extract({ bytes, contentType });
-  } catch {
+  } catch (error) {
+    // Degrading to an unreadable invoice is the contract (spec §5) — losing the reason it failed
+    // is not. An operator with a configured key and an empty panel has nothing else to go on.
+    onError?.(error);
+
     return null;
   }
 }
@@ -706,28 +664,4 @@ function collectJobCodes(extraction: SupplierInvoiceExtraction | null): string[]
 /** What the revaluation's note says it answered, so the ledger row explains itself years later. */
 function formatNote(row: SupplierInvoiceMatchRow): string {
   return `${row.partCode ?? row.description} invoiced at ${row.invoiceUnitPrice}, ordered at ${row.unitPrice}`;
-}
-
-const PURCHASE_ORDER_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_purchase_order_id_filename_ci_unique';
-
-/** The order's own filename-uniqueness index, reported as the conflict it is (see the credit note). */
-function mapPurchaseOrderDocumentUniqueViolation(
-  error: unknown,
-  input: { filename: string; purchaseOrderId: UUID },
-): Error {
-  const constraint = getUniqueViolationConstraint(error);
-  const text = collectDocumentErrorText(error).join('\n');
-
-  if (
-    constraint?.includes(PURCHASE_ORDER_DOCUMENT_FILENAME_UNIQUE_INDEX) ||
-    (text.includes('documents') && text.includes('purchase_order_id') && text.includes('lower(filename)'))
-  ) {
-    return new DuplicateDocumentFilenameError({
-      filename: input.filename,
-      ownerId: input.purchaseOrderId,
-      ownerType: 'purchase_order',
-    });
-  }
-
-  return error instanceof Error ? error : new Error(String(error));
 }

@@ -35,6 +35,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
 import { getApiConfig } from '@/env.js';
+import { log } from '@/logger.js';
 import {
   createContentDisposition,
   RouteHttpError,
@@ -388,11 +389,18 @@ export async function registerDocumentHttpRoutes(
         uploadSupplierInvoice({
           actorUserId: auth.session.user.id,
           bytes,
-          contentType: file.mimetype,
           db,
           extract: extractInvoice,
           filename: file.filename,
           input: { purchaseOrderId: params.purchaseOrderId },
+          // The desk is told only that the invoice could not be read, which is all it can act on.
+          // Why it could not be read is an operator's question, and belongs in the log — the same
+          // way catalog translation reports a failed read (`server.ts`).
+          onExtractionError: (error) =>
+            log.ai.error(
+              { error, filename: file.filename, purchaseOrderId: params.purchaseOrderId },
+              'Supplier invoice extraction failed',
+            ),
           storage,
         }),
       );

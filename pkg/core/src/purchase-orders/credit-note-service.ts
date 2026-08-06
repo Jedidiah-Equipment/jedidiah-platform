@@ -3,7 +3,6 @@ import {
   type DatabaseTransaction,
   type Db,
   documents,
-  getUniqueViolationConstraint,
   parts,
   purchaseOrders,
   stockMovements,
@@ -29,15 +28,10 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
-import { DuplicateDocumentFilenameError } from '../documents/document-errors.js';
-import { collectDocumentErrorText, createDocumentRecord, mapDocumentSummary } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { CreditNoteAlreadySettledError, CreditNoteReturnNotFoundError } from './credit-note-errors.js';
-import {
-  getPurchaseOrder,
-  newestPurchaseOrderDocumentFirst,
-  purchaseOrderDocumentStorageKey,
-} from './purchase-order-service.js';
+import { filePurchaseOrderDocument } from './purchase-order-document-filing.js';
+import { getPurchaseOrder, newestPurchaseOrderDocumentFirst } from './purchase-order-service.js';
 
 /**
  * Credit notes and the returns they answer (spec §4).
@@ -72,60 +66,26 @@ export async function uploadCreditNote({
   storage: StorageAdapter;
 }): Promise<PurchaseOrderDocumentRow> {
   await getPurchaseOrder({ db, id: input.purchaseOrderId });
-  const storageKey = purchaseOrderDocumentStorageKey(input.purchaseOrderId, filename);
 
-  try {
-    return await db.transaction(async (tx) => {
-      await assertReturnsAreSettleable(tx, input);
-      const document = await createDocumentRecord({
-        actorUserId,
-        db: tx,
-        input: {
-          bytes,
-          filename,
-          metadata: { type: 'credit_note' },
-          ownerType: 'purchase_order',
-          purchaseOrderId: input.purchaseOrderId,
-          storageKey,
-        },
-        // Two credit notes filed under one name on one order is a conflict the uploader can fix by
-        // renaming, the same way the Job, Quote and Product paths report it — not a 500.
-        mapInsertError: (error) =>
-          mapPurchaseOrderDocumentUniqueViolation(error, { filename, purchaseOrderId: input.purchaseOrderId }),
-        storage,
-      });
-
+  return filePurchaseOrderDocument({
+    actorUserId,
+    assertWritable: (tx) => assertReturnsAreSettleable(tx, input),
+    bytes,
+    db,
+    filename,
+    metadata: { type: 'credit_note' },
+    purchaseOrderId: input.purchaseOrderId,
+    settledReturnIds: input.stockMovementIds,
+    storage,
+    writeReferences: async (tx, document) => {
       await tx.insert(creditNoteSettlements).values(
         input.stockMovementIds.map((stockMovementId) => ({
           documentId: document.id,
           stockMovementId,
         })),
       );
-
-      const [actor] = await tx.select({ name: user.name }).from(user).where(eq(user.id, actorUserId));
-
-      return {
-        byteSize: document.byteSize,
-        createdAt: mapDocumentSummary({ ...document, uploaderEmail: null, uploaderName: null }).createdAt,
-        filename: document.filename,
-        id: document.id,
-        revision: null,
-        settledReturnIds: [...input.stockMovementIds],
-        type: 'credit_note' as const,
-        uploaderName: actor?.name ?? null,
-      };
-    });
-  } catch (error) {
-    // createDocumentRecord stores the object before its own insert, so a settlement failure after it
-    // would otherwise leave an orphaned file nobody can reach.
-    try {
-      await storage.deleteObject(storageKey);
-    } catch {
-      // The upload may never have got as far as storing anything; the original failure is the news.
-    }
-
-    throw error;
-  }
+    },
+  });
 }
 
 /** An order's whole document collection: its PDF revisions and the credit notes filed against it. */
@@ -317,33 +277,4 @@ async function assertReturnsAreSettleable(tx: DatabaseTransaction, input: Credit
     .where(inArray(creditNoteSettlements.stockMovementId, [...input.stockMovementIds]))
     .limit(1);
   if (settled) throw new CreditNoteAlreadySettledError(settled.stockMovementId);
-}
-
-const PURCHASE_ORDER_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_purchase_order_id_filename_ci_unique';
-
-/** The order's own filename-uniqueness index, reported as the conflict it is (see the Quote path). */
-function mapPurchaseOrderDocumentUniqueViolation(
-  error: unknown,
-  input: { filename: string; purchaseOrderId: UUID },
-): Error {
-  const constraint = getUniqueViolationConstraint(error);
-
-  if (
-    constraint?.includes(PURCHASE_ORDER_DOCUMENT_FILENAME_UNIQUE_INDEX) ||
-    isPurchaseOrderDocumentFilenameUniqueDetail(error)
-  ) {
-    return new DuplicateDocumentFilenameError({
-      filename: input.filename,
-      ownerId: input.purchaseOrderId,
-      ownerType: 'purchase_order',
-    });
-  }
-
-  return error instanceof Error ? error : new Error(String(error));
-}
-
-function isPurchaseOrderDocumentFilenameUniqueDetail(error: unknown): boolean {
-  const text = collectDocumentErrorText(error).join('\n');
-
-  return text.includes('documents') && text.includes('purchase_order_id') && text.includes('lower(filename)');
 }

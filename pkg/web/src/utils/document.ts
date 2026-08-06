@@ -53,25 +53,51 @@ export function getReadyProductDocumentUpload(draft: ProductDocumentUploadDraft)
   return { file: draft.file, type: draft.type };
 }
 
-export async function uploadProductDocument(
-  productId: UUID,
-  upload: ReadyProductDocumentUpload,
-): Promise<ProductDocument> {
+/**
+ * One multipart upload: post the form, read the API's own message out of a failure, and parse the
+ * row it returns. Every upload on this page differs only in its path, its fields and what it parses.
+ */
+async function postDocumentUpload<T>({
+  fallbackMessage,
+  fields = {},
+  file,
+  path,
+  schema,
+}: {
+  fallbackMessage: string;
+  fields?: Record<string, string>;
+  file: File;
+  path: string;
+  schema: { parse: (value: unknown) => T };
+}): Promise<T> {
   const formData = new FormData();
-  formData.append('type', upload.type);
-  formData.append('file', upload.file);
+  for (const [name, value] of Object.entries(fields)) formData.append(name, value);
+  formData.append('file', file);
 
-  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/products/${productId}/documents`, {
+  const response = await fetch(`${getClientConfig().apiBaseUrl}${path}`, {
     body: formData,
     credentials: 'include',
     method: 'POST',
   });
 
   if (!response.ok) {
-    throw new Error(await readApiErrorMessage(response, 'Unable to upload document.'));
+    throw new Error(await readApiErrorMessage(response, fallbackMessage));
   }
 
-  return ProductDocument.parse(await response.json());
+  return schema.parse(await response.json());
+}
+
+export async function uploadProductDocument(
+  productId: UUID,
+  upload: ReadyProductDocumentUpload,
+): Promise<ProductDocument> {
+  return postDocumentUpload({
+    fallbackMessage: 'Unable to upload document.',
+    fields: { type: upload.type },
+    file: upload.file,
+    path: `/api/products/${productId}/documents`,
+    schema: ProductDocument,
+  });
 }
 
 /**
@@ -87,20 +113,13 @@ export async function uploadCreditNote({
   purchaseOrderId: UUID;
   stockMovementIds: readonly UUID[];
 }): Promise<PurchaseOrderDocumentRow> {
-  const formData = new FormData();
-  formData.append('stockMovementIds', JSON.stringify(stockMovementIds));
-  formData.append('file', file);
-
-  const response = await fetch(
-    `${getClientConfig().apiBaseUrl}/api/purchase-orders/${encodeURIComponent(purchaseOrderId)}/credit-notes`,
-    { body: formData, credentials: 'include', method: 'POST' },
-  );
-
-  if (!response.ok) {
-    throw new Error(await readApiErrorMessage(response, 'Unable to upload credit note.'));
-  }
-
-  return PurchaseOrderDocumentRow.parse(await response.json());
+  return postDocumentUpload({
+    fallbackMessage: 'Unable to upload credit note.',
+    fields: { stockMovementIds: JSON.stringify(stockMovementIds) },
+    file,
+    path: `/api/purchase-orders/${encodeURIComponent(purchaseOrderId)}/credit-notes`,
+    schema: PurchaseOrderDocumentRow,
+  });
 }
 
 /**
@@ -114,36 +133,21 @@ export async function uploadSupplierInvoice({
   file: File;
   purchaseOrderId: UUID;
 }): Promise<PurchaseOrderDocumentRow> {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const response = await fetch(
-    `${getClientConfig().apiBaseUrl}/api/purchase-orders/${encodeURIComponent(purchaseOrderId)}/supplier-invoices`,
-    { body: formData, credentials: 'include', method: 'POST' },
-  );
-
-  if (!response.ok) {
-    throw new Error(await readApiErrorMessage(response, 'Unable to upload this Supplier invoice.'));
-  }
-
-  return PurchaseOrderDocumentRow.parse(await response.json());
+  return postDocumentUpload({
+    fallbackMessage: 'Unable to upload this Supplier invoice.',
+    file,
+    path: `/api/purchase-orders/${encodeURIComponent(purchaseOrderId)}/supplier-invoices`,
+    schema: PurchaseOrderDocumentRow,
+  });
 }
 
 export async function uploadJobPurchaseOrder(jobId: UUID, file: File): Promise<JobDocument> {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/jobs/${jobId}/documents`, {
-    body: formData,
-    credentials: 'include',
-    method: 'POST',
+  return postDocumentUpload({
+    fallbackMessage: 'Unable to upload Purchase Order.',
+    file,
+    path: `/api/jobs/${jobId}/documents`,
+    schema: JobDocument,
   });
-
-  if (!response.ok) {
-    throw new Error(await readApiErrorMessage(response, 'Unable to upload Purchase Order.'));
-  }
-
-  return JobDocument.parse(await response.json());
 }
 
 export async function downloadProductDocument(productId: UUID, document: DocumentSummary): Promise<void> {

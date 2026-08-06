@@ -80,6 +80,43 @@ export const documentBaseSelect = {
   uploaderUserId: documents.uploaderUserId,
 };
 
+/**
+ * The policy gate `createDocumentRecord` applies, callable on its own, returning the content type
+ * sniffed from the bytes themselves — never the one the upload claimed.
+ *
+ * A path that hands bytes to a third party before filing them has to refuse the same uploads
+ * *first*, so that what a file claims to be is never a reason to disclose it. One implementation is
+ * what keeps that early refusal and the filing refusal from disagreeing about what is acceptable.
+ */
+export function assertDocumentAcceptable(input: {
+  bytes: Uint8Array;
+  metadata: DocumentRecordCreateInput['metadata'];
+  ownerType: DocumentOwnerType;
+}): string {
+  const verifiedContentType = sniffDocumentContentType(input.bytes);
+
+  if (!verifiedContentType) {
+    const policy = getDocumentPolicy(input.ownerType, input.metadata);
+    throw new DocumentPolicyViolationError({
+      code: 'document.content_type_not_allowed',
+      message: `Uploaded file content does not match an allowed document type: ${policy.allowedContentTypes.join(', ')}.`,
+    });
+  }
+
+  const policyResult = validateDocumentPolicy({
+    byteSize: input.bytes.byteLength,
+    contentType: verifiedContentType,
+    metadata: input.metadata,
+    ownerType: input.ownerType,
+  });
+
+  if (!policyResult.ok) {
+    throw new DocumentPolicyViolationError(policyResult);
+  }
+
+  return verifiedContentType;
+}
+
 export async function createDocumentRecord({
   actorUserId,
   db,
@@ -96,26 +133,7 @@ export async function createDocumentRecord({
   storage: StorageAdapter;
 }): Promise<DocumentBaseRow> {
   const byteSize = input.bytes.byteLength;
-  const verifiedContentType = sniffDocumentContentType(input.bytes);
-
-  if (!verifiedContentType) {
-    const policy = getDocumentPolicy(input.ownerType, input.metadata);
-    throw new DocumentPolicyViolationError({
-      code: 'document.content_type_not_allowed',
-      message: `Uploaded file content does not match an allowed document type: ${policy.allowedContentTypes.join(', ')}.`,
-    });
-  }
-
-  const policyResult = validateDocumentPolicy({
-    byteSize,
-    contentType: verifiedContentType,
-    metadata: input.metadata,
-    ownerType: input.ownerType,
-  });
-
-  if (!policyResult.ok) {
-    throw new DocumentPolicyViolationError(policyResult);
-  }
+  const verifiedContentType = assertDocumentAcceptable(input);
 
   try {
     await storage.put({

@@ -28,6 +28,17 @@ const DESCRIPTION_MATCH_THRESHOLD = 0.5;
 /** A number agreeing lends weight to a description that nearly matches; it can never carry one alone. */
 const PROXIMITY_BONUS = 0.1;
 
+/**
+ * How many words the two descriptions have to share before repeating them counts as a match at all.
+ *
+ * Coverage alone has no floor on how much text there is: a two-word Part name — `Door Cylinder`,
+ * `Junction Box`, `Rear Mudflap`, sixteen of them in the catalog — is half covered by one shared
+ * word, which would let `Door hinge kit` claim `Door Cylinder` and offer to revalue it at a price
+ * billed for something else. Two words is the floor; a genuinely short name still matches on the
+ * character comparison below, which a single accidental word does not carry.
+ */
+const MIN_SHARED_TOKENS = 2;
+
 export type InvoiceMatchOrderLine = {
   orderedQuantity: number;
   partCode: string;
@@ -243,13 +254,14 @@ function normalizeText(text: string): string {
     .trim();
 }
 
-/** The share of the Part's own words the invoice line repeats. */
+/** The share of the Part's own words the invoice line repeats, once enough of them are shared. */
 function tokenCoverage(partText: string, invoiceText: string): number {
   const partTokens = new Set(partText.split(' ').filter(Boolean));
   if (partTokens.size === 0) return 0;
 
   const invoiceTokens = new Set(invoiceText.split(' ').filter(Boolean));
   const shared = [...partTokens].filter((token) => invoiceTokens.has(token)).length;
+  if (shared < MIN_SHARED_TOKENS) return 0;
 
   return shared / partTokens.size;
 }

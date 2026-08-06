@@ -1,4 +1,4 @@
-import { stockMovements } from '@pkg/db';
+import { parts, stockMovements } from '@pkg/db';
 import type { SupplierInvoiceExtraction } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
@@ -221,6 +221,28 @@ describe('supplier invoice cross-check', () => {
       .from(stockMovements)
       .where(eq(stockMovements.id, resolution.stockMovementId ?? ''));
     expect(revaluation).toMatchObject({ delta: 0, movementType: 'revaluation', unitCost: 30 });
+  });
+
+  test('refuses to apply an invoiced price onto a Built Part, whose cost comes from its build', async ({ context }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 25 }]);
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 10);
+    await upload(context, purchaseOrder.id, reads(extraction({ lines: [line({ unitPrice: 30 })] })));
+    const review = await reviewOf(context, purchaseOrder.id);
+    // The Part becomes a Built Part after its receipts. Every other ledger writer refuses a keyed
+    // cost on one, and this path is held to the same rule (spec §5) rather than trusting that no
+    // route into this state exists.
+    await context.db
+      .update(parts)
+      .set({ isInternallyFabricated: true, supplierId: null })
+      .where(eq(parts.id, PIECE_PART_ID));
+
+    await expect(
+      applyInvoicePrice({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: { documentId: review.documentId, partId: PIECE_PART_ID, purchaseOrderId: purchaseOrder.id },
+      }),
+    ).rejects.toMatchObject({ code: 'inventory.fabricated_part_cost' });
   });
 
   test('refuses to apply the same flag twice', async ({ context }) => {

@@ -79,7 +79,7 @@ export const PurchaseOrderDocumentMetadata = z.discriminatedUnion('type', [
 
 /**
  * The discriminant of the union above, on its own, for readers that label a document without
- * caring what else its metadata carries. Typed off the union, so a third kind of Purchase-Order
+ * caring what else its metadata carries. Typed off the union, so a further kind of Purchase-Order
  * document cannot be added there without this failing to compile.
  */
 export type PurchaseOrderDocumentType = PurchaseOrderDocumentMetadata['type'];
@@ -88,6 +88,18 @@ export const PurchaseOrderDocumentType = z.enum(['purchase_order', 'credit_note'
   PurchaseOrderDocumentType,
   PurchaseOrderDocumentType,
 ]);
+
+/**
+ * What each kind of Purchase-Order document is called on screen. Typed as a total record so a
+ * fourth type cannot be added without naming it — the union above already refuses to *parse* an
+ * unknown type, and this is the same refusal on the rendering side, where a two-way check would
+ * otherwise quietly label the new one as whatever its `else` branch says.
+ */
+export const PURCHASE_ORDER_DOCUMENT_TYPE_LABELS: Record<PurchaseOrderDocumentType, string> = {
+  credit_note: 'Credit note',
+  purchase_order: 'Purchase Order',
+  supplier_invoice: 'Supplier invoice',
+};
 
 export type DocumentMetadata = z.infer<typeof DocumentMetadata>;
 export const DocumentMetadata = z.union([

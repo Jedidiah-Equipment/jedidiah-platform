@@ -84,6 +84,42 @@ describe('matchInvoiceLines', () => {
     expect(rows[0]).toMatchObject({ matchMethod: 'description', partId: BOLT.partId, flags: [] });
   });
 
+  it('refuses a short Part name that shares one accidental word with the invoice line', () => {
+    // `Door Cylinder` is half covered by `Door` alone. Matching there would raise a price flag on
+    // the wrong pairing — and its Apply would revalue the Cylinder at a price billed for a hinge.
+    const cylinder: InvoiceMatchOrderLine = {
+      orderedQuantity: 4,
+      partCode: 'CYL-DOOR',
+      partId: '00000000-0000-4000-8000-000000000003',
+      partName: 'Door Cylinder',
+      supplierCode: null,
+      unitPrice: 900,
+    };
+    const rows = matchInvoiceLines({
+      invoiceLines: [invoiceLine({ description: 'Door hinge kit', quantity: 4, unitPrice: 250 })],
+      orderLines: [cylinder],
+    });
+
+    expect(flagKinds(rows)).toEqual([['unmatched-po-line'], ['unmatched-invoice-line']]);
+  });
+
+  it('still matches a short Part name the invoice spells out, on the characters rather than the words', () => {
+    const mudflap: InvoiceMatchOrderLine = {
+      orderedQuantity: 2,
+      partCode: 'MF-REAR',
+      partId: '00000000-0000-4000-8000-000000000004',
+      partName: 'Rear Mudflap',
+      supplierCode: null,
+      unitPrice: 120,
+    };
+    const rows = matchInvoiceLines({
+      invoiceLines: [invoiceLine({ description: 'rear mudflap', quantity: 2, unitPrice: 120 })],
+      orderLines: [mudflap],
+    });
+
+    expect(rows[0]).toMatchObject({ matchMethod: 'description', partId: mudflap.partId, flags: [] });
+  });
+
   it('leaves a description too far from anything on the order unmatched, both ways', () => {
     const rows = matchInvoiceLines({
       invoiceLines: [invoiceLine({ description: 'delivery surcharge', quantity: 1, unitPrice: 450 })],

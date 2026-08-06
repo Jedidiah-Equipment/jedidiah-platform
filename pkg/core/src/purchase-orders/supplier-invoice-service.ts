@@ -36,7 +36,12 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { DocumentPolicyViolationError, DuplicateDocumentFilenameError } from '../documents/document-errors.js';
 import { collectDocumentErrorText, createDocumentRecord, mapDocumentSummary } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { insertMovement, loadMovingAverages } from '../inventory/ledger.js';
+import {
+  assertBuiltPartCostIsDerived,
+  insertMovement,
+  loadMovingAverages,
+  loadStockPart,
+} from '../inventory/ledger.js';
 import {
   getPurchaseOrder,
   newestPurchaseOrderDocumentFirst,
@@ -244,9 +249,9 @@ export async function applyInvoicePrice({
   input: SupplierInvoiceCorrectionInput;
 }): Promise<InvoiceFlagResolution> {
   return db.transaction(async (tx) => {
-    // The same Part lock every ledger writer takes, so the average this reads is the average the
-    // revaluation lands on.
-    await tx.select({ id: parts.id }).from(parts).where(eq(parts.id, input.partId)).for('update');
+    // The same Part read every ledger writer takes, under the same lock, so the average this reads
+    // is the average the revaluation lands on — and so this path is held to the same Part rules.
+    const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
 
     const { flag, row } = await requireFlaggedRow(tx, {
       documentId: input.documentId,
@@ -257,6 +262,11 @@ export async function applyInvoicePrice({
     if (!row.correction?.canApply || row.correction.newAverageUnitCost === null) {
       throw new InvoicePriceNotApplicableError(input.partId);
     }
+    // `postRevaluation` opens its own transaction, so this path appends the row itself — but it is
+    // held to the same rule: a Built Part's cost is derived from its build and never keyed, whatever
+    // a Supplier's paperwork says (spec §5). A Part flipped to internally-fabricated after its
+    // receipts is exactly how an invoiced price would otherwise reach one.
+    assertBuiltPartCostIsDerived(part.isInternallyFabricated, row.correction.newAverageUnitCost);
 
     const movement = await insertMovement(tx, {
       actorUserId,

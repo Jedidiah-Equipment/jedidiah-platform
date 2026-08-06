@@ -56,6 +56,7 @@ import { getJobCloseOutAt } from './close-out-service.js';
 
 import { loadOpenCommitments, sumCommitmentsByPart } from './commitment-read.js';
 import {
+  assertBuiltPartCostIsDerived,
   bucketMatches,
   insertMovement,
   loadMovingAverages,
@@ -67,7 +68,6 @@ import {
 import { resolveMovementActor } from './movement-actor.js';
 import { groupBy, sumBy } from './row-grouping.js';
 import {
-  FabricatedPartCostError,
   PeriodicStockMovementError,
   ScannedPartNotFoundError,
   StockMovementPartNotFoundError,
@@ -617,20 +617,4 @@ async function loadStockPartDetails({ db, partId }: { db: Db; partId: UUID }) {
   }
 
   return part;
-}
-
-/**
- * A Built Part's cost is *derived*, never keyed. Its only costed row is the `build-produce` the
- * build itself writes, which divides the value the consume rows took out across the units made — so
- * the two facts hold together: a build may stamp any cost it derived, and no hand-entered figure
- * may reach the same Part through an adjustment or a revaluation.
- *
- * Correcting a wrong built-part average therefore means correcting the build, not overwriting the
- * number. That is deliberate: overwriting would assert a price for something we never bought, and
- * for sheet metal cut from plate it would pay for the plate twice (spec §5).
- */
-function assertBuiltPartCostIsDerived(isInternallyFabricated: boolean, unitCost: number | null): void {
-  if (isInternallyFabricated && unitCost !== null && unitCost !== 0) {
-    throw new FabricatedPartCostError();
-  }
 }

@@ -1,5 +1,5 @@
 import { formatBytes, formatDate } from '@pkg/domain';
-import type { PurchaseOrderDocumentRow, UUID } from '@pkg/schema';
+import { PURCHASE_ORDER_DOCUMENT_TYPE_LABELS, type PurchaseOrderDocumentRow, type UUID } from '@pkg/schema';
 import { IconDownload } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -14,8 +14,9 @@ import { purchaseOrderDocumentDownloadUrl } from './purchase-order-pdf.js';
 
 /**
  * The order's whole paper trail: the as-sent PDF, every revision an amendment filed after it, and
- * the credit notes filed against it. Documents are immutable, so this is a history rather than a
- * folder — the newest revision is the one to send, and the older ones are what was agreed before.
+ * the credit notes and Supplier invoices filed against it. Documents are immutable, so this is a
+ * history rather than a folder — the newest revision is the one to send, and the older ones are
+ * what was agreed before.
  */
 export function PurchaseOrderDocumentsCard({
   canReadCosts,
@@ -42,9 +43,7 @@ export function PurchaseOrderDocumentsCard({
         id: 'filename',
       },
       {
-        cell: ({ row }) => (
-          <Badge variant="outline">{row.original.type === 'credit_note' ? 'Credit note' : 'Purchase Order'}</Badge>
-        ),
+        cell: ({ row }) => <Badge variant="outline">{PURCHASE_ORDER_DOCUMENT_TYPE_LABELS[row.original.type]}</Badge>,
         header: 'Type',
         id: 'type',
       },
@@ -105,7 +104,7 @@ export function PurchaseOrderDocumentsCard({
     <Card>
       <CardHeader>
         <CardTitle>Documents</CardTitle>
-        <CardDescription>Every revision of this order, and the credit notes filed against it.</CardDescription>
+        <CardDescription>Every revision of this order, and the paperwork filed against it.</CardDescription>
       </CardHeader>
       <CardContent>
         <DataTable

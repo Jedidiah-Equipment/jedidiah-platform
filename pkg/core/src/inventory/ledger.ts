@@ -4,7 +4,7 @@ import type { StockMovement, UUID } from '@pkg/schema';
 import { StockMovement as StockMovementSchema } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull, ne, type SQL, sql } from 'drizzle-orm';
 
-import { StockMovementPartNotFoundError } from './stock-movement-errors.js';
+import { FabricatedPartCostError, StockMovementPartNotFoundError } from './stock-movement-errors.js';
 
 export type LedgerDb = Db | DatabaseTransaction;
 
@@ -148,4 +148,20 @@ export async function scalar(query: PromiseLike<Array<{ value: number }>>): Prom
   const [row] = await query;
 
   return row?.value ?? 0;
+}
+
+/**
+ * A Built Part's cost is *derived*, never keyed. Its only costed row is the `build-produce` the
+ * build itself writes, which divides the value the consume rows took out across the units made — so
+ * the two facts hold together: a build may stamp any cost it derived, and no hand-entered figure
+ * may reach the same Part through an adjustment or a revaluation.
+ *
+ * Correcting a wrong built-part average therefore means correcting the build, not overwriting the
+ * number. That is deliberate: overwriting would assert a price for something we never bought, and
+ * for sheet metal cut from plate it would pay for the plate twice (spec §5).
+ */
+export function assertBuiltPartCostIsDerived(isInternallyFabricated: boolean, unitCost: number | null): void {
+  if (isInternallyFabricated && unitCost !== null && unitCost !== 0) {
+    throw new FabricatedPartCostError();
+  }
 }

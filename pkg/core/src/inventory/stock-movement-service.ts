@@ -3,9 +3,11 @@ import {
   type Db,
   jobCfoAssemblies,
   jobCfoParts,
+  jobs,
   parts,
   purchaseOrders,
   stockMovements,
+  stocktakeSessions,
   supplier,
   user,
 } from '@pkg/db';
@@ -441,6 +443,7 @@ export async function getStockMovementHistory({
       createdAt: stockMovements.createdAt,
       delta: stockMovements.delta,
       id: stockMovements.id,
+      jobCode: jobs.code,
       jobId: stockMovements.jobId,
       lengthMm: stockMovements.lengthMm,
       movementType: stockMovements.movementType,
@@ -450,11 +453,15 @@ export async function getStockMovementHistory({
       purchaseOrderCode: purchaseOrders.code,
       reason: stockMovements.reason,
       runningBalance: sql<number>`(sum(${stockMovements.delta}) over (order by ${stockMovements.createdAt}, ${stockMovements.id}))::double precision`,
+      stocktakeSessionId: stockMovements.stocktakeSessionId,
+      stocktakeSessionScope: stocktakeSessions.scope,
       unitCost: stockMovements.unitCost,
     })
     .from(stockMovements)
     .innerJoin(user, eq(user.id, stockMovements.actorUserId))
     .leftJoin(purchaseOrders, eq(purchaseOrders.id, stockMovements.purchaseOrderId))
+    .leftJoin(jobs, eq(jobs.id, stockMovements.jobId))
+    .leftJoin(stocktakeSessions, eq(stocktakeSessions.id, stockMovements.stocktakeSessionId))
     .where(eq(stockMovements.partId, partId))
     .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
 

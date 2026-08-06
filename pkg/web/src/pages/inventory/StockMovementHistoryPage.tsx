@@ -14,6 +14,9 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
   const accessQuery = useAccess();
   const historyQuery = useQuery(trpc.inventory.history.queryOptions({ partId }));
   const showCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
+  // Stores reads this ledger and holds no `job:read`, so a Job link would only ever land them on a
+  // sheet that refuses to load. The code still shows — it is what the row was drawn against.
+  const canReadJobs = hasPermission(accessQuery.data, 'job:read');
   const part = historyQuery.data?.part;
 
   return (
@@ -29,6 +32,7 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
       ) : null}
       {historyQuery.data?.items.length ? (
         <StockMovementHistoryTable
+          canReadJobs={canReadJobs}
           items={historyQuery.data.items}
           showCosts={showCosts}
           unitOfMeasure={historyQuery.data.part.unitOfMeasure}

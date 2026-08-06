@@ -307,7 +307,7 @@ describe('amendments, returns, and credit notes', () => {
     });
     await stores.purchaseOrders.returnToSupplier({
       lengthMm: null,
-      note: 'All four defective',
+      note: 'Both defective',
       partId: PART_ID,
       purchaseOrderId: purchaseOrder.id,
       quantity: 2,

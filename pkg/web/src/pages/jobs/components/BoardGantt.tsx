@@ -13,6 +13,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { bayNameWithOperatorFirstName } from '@/components/bays/bay-label.js';
 import { BayOperatorIndicator } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import {
@@ -443,7 +444,7 @@ const BoardSidebar: React.FC<{
             >
               <BayOperatorIndicator operator={bay.currentOperator} />
               <div className="flex min-w-40 flex-1 flex-col gap-1">
-                <p className="truncate text-base text-foreground leading-tight">{bay.name}</p>
+                <p className="truncate text-base text-foreground leading-tight">{bayNameWithOperatorFirstName(bay)}</p>
                 <p className="truncate font-mono text-muted-foreground text-xs leading-tight">{statusText}</p>
               </div>
               {warning ? <MaintainedHorizonWarningBadge warning={warning} /> : null}

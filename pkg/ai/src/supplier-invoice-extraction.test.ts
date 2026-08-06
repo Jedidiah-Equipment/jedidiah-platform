@@ -161,4 +161,24 @@ describe('supplier invoice extraction', () => {
       lines: [{ description: 'Pipe', jobCodes: [], lineTotal: 100, partCode: null, quantity: 2, unitPrice: 50 }],
     });
   });
+
+  test('drops a date that is shaped right but is not a day, keeping the lines', async () => {
+    const model = new MockLanguageModelV3({
+      doGenerate: async () =>
+        generatedJson({
+          // ISO-shaped and not a date. Checking the shape rather than the rule would let this reach
+          // the contract, which rejects it — costing the whole invoice over its header.
+          invoiceDate: '2026-02-30',
+          invoiceNumber: 'INV-3',
+          jobCodes: [],
+          lines: [{ description: 'Bar', jobCodes: [], lineTotal: 10, partCode: 'B-1', quantity: 1, unitPrice: 10 }],
+        }),
+    });
+
+    await expect(extract(model)).resolves.toMatchObject({
+      invoiceDate: null,
+      invoiceNumber: 'INV-3',
+      lines: [{ description: 'Bar', partCode: 'B-1' }],
+    });
+  });
 });

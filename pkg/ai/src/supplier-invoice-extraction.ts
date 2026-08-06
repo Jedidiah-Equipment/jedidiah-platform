@@ -1,4 +1,4 @@
-import { SupplierInvoiceExtraction } from '@pkg/schema';
+import { DateOnlyIsoString, SupplierInvoiceExtraction } from '@pkg/schema';
 import type { LanguageModel } from 'ai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
@@ -76,10 +76,13 @@ function finiteOrNull(value: number | null): number | null {
 export function toSupplierInvoiceExtraction(
   raw: z.infer<typeof ModelSupplierInvoiceExtraction>,
 ): SupplierInvoiceExtraction {
-  const invoiceDate = blankToNull(raw.invoiceDate);
+  // Checked against the rule the contract itself owns rather than a shape test of our own: the
+  // 30th of February is ISO-shaped and is not a date, and a model that writes one must cost us the
+  // header, not every clean line on the invoice.
+  const invoiceDate = DateOnlyIsoString.safeParse(blankToNull(raw.invoiceDate));
 
   return SupplierInvoiceExtraction.parse({
-    invoiceDate: invoiceDate !== null && /^\d{4}-\d{2}-\d{2}$/.test(invoiceDate) ? invoiceDate : null,
+    invoiceDate: invoiceDate.success ? invoiceDate.data : null,
     invoiceNumber: blankToNull(raw.invoiceNumber),
     jobCodes: raw.jobCodes.map((code) => code.trim()).filter(Boolean),
     lines: raw.lines.map((line) => ({

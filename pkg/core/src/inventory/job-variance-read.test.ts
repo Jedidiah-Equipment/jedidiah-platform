@@ -163,6 +163,38 @@ describe('getJobMaterialVariance', () => {
     expect(report.totalActualCost).toBe(600);
   });
 
+  test('keeps a Job priced when a Part carries nothing but an uncosted return', async ({ context }) => {
+    // The Job is priced on one Part and has, on another, only a return with no value to reverse.
+    // That Part cost this Job nothing — not "an amount we cannot know" — so it must not unprice the
+    // Job's total. Summing over rows and letting a null mean both was what made it do exactly that.
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+      movementType: 'checkout',
+    });
+    const returned = await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.measured.id, quantity: 1 },
+      movementType: 'return-to-store',
+    });
+
+    const report = await getJobMaterialVariance({ db: context.db, jobId: context.jobs.custom.id });
+
+    expect(returned.movement.unitCost).toBeNull();
+    expect(report.items).toMatchObject([
+      { actualCost: 0, drawnQuantity: -1, partCode: 'MEASURED' },
+      { actualCost: 20, drawnQuantity: 2, partCode: 'PIECE' },
+    ]);
+    expect(report.totalActualCost).toBe(20);
+  });
+
   test('reports an uncosted draw as no cost yet rather than as free material', async ({ context }) => {
     await postJobMovement({
       actorUserId,

@@ -317,6 +317,15 @@ export const JobMaterialVarianceRow = z.object({
 export const JobMaterialVarianceRowCostFields = declareInventoryCostFields(JobMaterialVarianceRow, 'actualCost');
 
 /**
+ * A Part the Job drew but never planned for — every draw on a Custom Job reads this way. Defined
+ * once because the server totals it, the report counts it, and the table badges it, and the three
+ * must agree about what "unplanned" means.
+ */
+export function isOffCfo(row: Pick<JobMaterialVarianceRow, 'plannedQuantity'>): boolean {
+  return row.plannedQuantity === 0;
+}
+
+/**
  * The Job's material variance report. Off-CFO cost is called out beside the total that contains it:
  * parts drawn against a Job its CFO never planned — every draw on a Custom Job — are the unplanned
  * cost eating the margin, and a lone total would bury exactly that.

@@ -1,11 +1,9 @@
 import type { UUID } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { useCan } from '@/hooks/use-access.js';
-import { useTRPC } from '@/lib/trpc.js';
-import { describeVarianceJob, JobVarianceReport } from '../../jobs/components/JobVarianceReport.js';
+import { describeVarianceJob, JobVarianceReport } from './components/JobVarianceReport.js';
+import { useJobVariance } from './use-job-variance.js';
 
 /**
  * One Job's material variance as an inventory screen (spec §3, §12). It exists beside the Job
@@ -14,11 +12,9 @@ import { describeVarianceJob, JobVarianceReport } from '../../jobs/components/Jo
  * the Job facts it needs itself rather than asking a Job procedure for them.
  */
 export function JobVarianceReportPage({ jobId }: { jobId: UUID }) {
-  const trpc = useTRPC();
-  const showCosts = useCan('inventory_cost:read').can;
-  const varianceQuery = useQuery(trpc.inventory.jobVariance.queryOptions({ jobId }));
+  const { query, showCosts } = useJobVariance(jobId);
 
-  if (varianceQuery.isPending) {
+  if (query.isPending) {
     return (
       <PageLayout size="lg" title="Material variance">
         <Skeleton className="h-40 w-full" />
@@ -26,7 +22,7 @@ export function JobVarianceReportPage({ jobId }: { jobId: UUID }) {
     );
   }
 
-  if (varianceQuery.error) {
+  if (query.error) {
     return (
       <PageLayout size="lg" title="Material variance">
         <p className="text-destructive text-sm">Unable to load this Job’s variance.</p>
@@ -36,11 +32,11 @@ export function JobVarianceReportPage({ jobId }: { jobId: UUID }) {
 
   return (
     <PageLayout
-      description={describeVarianceJob(varianceQuery.data.job)}
+      description={describeVarianceJob(query.data.job)}
       size="lg"
-      title={`Material variance · ${varianceQuery.data.job.displayName}`}
+      title={`Material variance · ${query.data.job.displayName}`}
     >
-      <JobVarianceReport report={varianceQuery.data} showCosts={showCosts} />
+      <JobVarianceReport report={query.data} showCosts={showCosts} />
     </PageLayout>
   );
 }

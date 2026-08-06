@@ -42,7 +42,15 @@ export async function getJobMaterialVariance({
         partId: stockMovements.partId,
         // A null `unitCost` drops out of the SQL sum silently, which would price unpriced material
         // at zero. Counting those rows is what lets the whole Part report as "no cost yet" instead.
-        uncostedDraws: sql<number>`count(*) filter (where ${stockMovements.unitCost} is null)::int`,
+        //
+        // Draws only. A return is stamped null whenever its bucket's pool has nothing outstanding
+        // left to reverse — the offcut handed back in a length the Job never drew, or the piece
+        // returned past what it still held — and both of those give back exactly no value, which
+        // the sum already reflects. Counting them would let one returned offcut wipe the money off
+        // a Job whose every draw was priced, at close-out, which is when returns get posted.
+        uncostedDraws: sql<number>`count(*) filter (
+          where ${stockMovements.unitCost} is null and ${stockMovements.movementType} = 'checkout'
+        )::int`,
       })
       .from(stockMovements)
       .where(and(eq(stockMovements.jobId, jobId), inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES)))

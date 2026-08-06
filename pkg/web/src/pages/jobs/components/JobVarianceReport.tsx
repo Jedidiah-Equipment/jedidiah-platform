@@ -56,8 +56,8 @@ export function JobVarianceReport({ report, showCosts }: { report: JobMaterialVa
 /**
  * Job-level totals. Quantities are **counted, never summed** — one Job's Parts span pieces, lengths
  * and weights, so a single number across them would mean nothing. Money does sum, and the off-CFO
- * share is shown beside the total rather than inside it: unplanned material is the thing this report
- * exists to surface, and one figure would hide it.
+ * share is called out beside the total that contains it: unplanned material is the thing this report
+ * exists to surface, and a lone total would bury it.
  */
 function JobVarianceTotals({ report, showCosts }: { report: JobMaterialVarianceResult; showCosts: boolean }) {
   const overPlanCount = report.items.filter((item) => item.varianceQuantity > 0).length;

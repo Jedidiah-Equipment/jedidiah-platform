@@ -317,9 +317,9 @@ export const JobMaterialVarianceRow = z.object({
 export const JobMaterialVarianceRowCostFields = declareInventoryCostFields(JobMaterialVarianceRow, 'actualCost');
 
 /**
- * The Job's material variance report. Off-CFO cost is carried beside the total rather than folded
- * into it: parts drawn against a Job its CFO never planned — every draw on a Custom Job — are the
- * unplanned cost eating the margin, and a single total would hide exactly that.
+ * The Job's material variance report. Off-CFO cost is called out beside the total that contains it:
+ * parts drawn against a Job its CFO never planned — every draw on a Custom Job — are the unplanned
+ * cost eating the margin, and a lone total would bury exactly that.
  */
 export type JobMaterialVarianceResult = z.infer<typeof JobMaterialVarianceResult>;
 export const JobMaterialVarianceResult = z.object({

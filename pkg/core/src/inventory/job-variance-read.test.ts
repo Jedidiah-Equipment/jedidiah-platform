@@ -135,6 +135,34 @@ describe('getJobMaterialVariance', () => {
     expect(report.items).toMatchObject([{ actualCost: 1_500, drawnQuantity: 3, varianceQuantity: 3 }]);
   });
 
+  test('keeps a priced Job priced when an offcut goes back in a length it never drew', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.linear.id, { delta: 2, lengthMm: 6_000, unitCost: 600 }),
+    });
+    await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: 6_000, partId: context.parts.linear.id, quantity: 1 },
+      movementType: 'checkout',
+    });
+    // Nothing was ever drawn in the 3 m bucket, so this return has no outstanding value to reverse
+    // and is stamped uncosted — which must not take the priced 6 m draw's cost down with it.
+    const returned = await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: 3_000, partId: context.parts.linear.id, quantity: 1 },
+      movementType: 'return-to-store',
+    });
+
+    const report = await getJobMaterialVariance({ db: context.db, jobId: context.jobs.custom.id });
+
+    expect(returned.movement.unitCost).toBeNull();
+    expect(report.items).toMatchObject([{ actualCost: 600, drawnQuantity: 0 }]);
+    expect(report.totalActualCost).toBe(600);
+  });
+
   test('reports an uncosted draw as no cost yet rather than as free material', async ({ context }) => {
     await postJobMovement({
       actorUserId,

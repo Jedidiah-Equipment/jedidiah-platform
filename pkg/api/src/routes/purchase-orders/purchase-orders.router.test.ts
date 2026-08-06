@@ -293,6 +293,42 @@ describe('amendments, returns, and credit notes', () => {
     });
   });
 
+  test('closes an order short once everything it took in has gone back as replacement-owed', async ({ context }) => {
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+    const purchaseOrder = await sendOrder(admin, 4);
+
+    await stores.purchaseOrders.receive({
+      lengthMm: null,
+      partId: PART_ID,
+      purchaseOrderId: purchaseOrder.id,
+      quantity: 2,
+      unitCost: null,
+    });
+    await stores.purchaseOrders.returnToSupplier({
+      lengthMm: null,
+      note: 'All four defective',
+      partId: PART_ID,
+      purchaseOrderId: purchaseOrder.id,
+      quantity: 2,
+      reason: 'defective',
+    });
+
+    // The Supplier owes all four again, so the order reads as freshly sent — but its rows are real,
+    // and cancelling would disown them. Close short has to be the way out.
+    await expect(admin.purchaseOrders.get({ id: purchaseOrder.id })).resolves.toMatchObject({
+      derivedStatus: 'sent',
+      lines: [{ hasStockMovements: true, receivedQuantity: 0 }],
+    });
+    await expect(admin.purchaseOrders.cancel({ id: purchaseOrder.id })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+    await expect(admin.purchaseOrders.closeShort({ id: purchaseOrder.id })).resolves.toMatchObject({
+      derivedStatus: 'closed-short',
+      status: 'sent',
+    });
+  });
+
   test('lets stores and procurement return stock, refuses sales, and applies the cost gate', async ({ context }) => {
     const admin = context.createCaller();
     const stores = context.createCaller(mockSession('stores'));

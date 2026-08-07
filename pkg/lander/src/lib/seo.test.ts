@@ -1,6 +1,8 @@
+import { IMAGE_TRANSFORMS, SOCIAL_CARD_SIZE } from '@pkg/core';
 import { describe, expect, test, vi } from 'vitest';
 
-import { absoluteUrl, DEFAULT_OG_IMAGE, seoHead, truncateDescription } from './seo.js';
+import { OG_CARD } from '../assets/images.js';
+import { absoluteUrl, DEFAULT_OG_IMAGE, OG_IMAGE_META, seoHead, truncateDescription } from './seo.js';
 
 // The isomorphic request-origin lookup needs a live request (server) or window (client); tests pin it to a
 // fixed origin so seoHead's output is deterministic.
@@ -32,6 +34,29 @@ describe('DEFAULT_OG_IMAGE', () => {
   });
 });
 
+describe('OG_IMAGE_META', () => {
+  test('declares the type and both dimensions', () => {
+    expect(OG_IMAGE_META).toEqual([
+      { property: 'og:image:type', content: 'image/jpeg' },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '630' },
+    ]);
+  });
+
+  // One set of dimension tags covers two different producers: the asset script's static card, and the
+  // `jpeg` transform that renders a Product's own. Nothing in either path forces them to agree, so this is
+  // what keeps the tags honest — regenerating the card at another size fails here rather than shipping meta
+  // that lies about the bytes.
+  test('matches the box the @pkg/core card transform crops to', () => {
+    expect({ width: OG_CARD.width, height: OG_CARD.height }).toEqual({
+      width: SOCIAL_CARD_SIZE.width,
+      height: SOCIAL_CARD_SIZE.height,
+    });
+    expect(IMAGE_TRANSFORMS.jpeg.maxWidth).toBe(OG_CARD.width);
+    expect(IMAGE_TRANSFORMS.jpeg.exactHeight).toBe(OG_CARD.height);
+  });
+});
+
 describe('truncateDescription', () => {
   test('returns short text unchanged (whitespace collapsed)', () => {
     expect(truncateDescription('A  tidy   description')).toBe('A tidy description');
@@ -58,6 +83,8 @@ describe('seoHead', () => {
     expect(meta).toContainEqual({ name: 'description', content: 'The full range.' });
     expect(meta).toContainEqual({ property: 'og:url', content: `${ORIGIN}/products` });
     expect(meta).toContainEqual({ property: 'og:image', content: `${ORIGIN}${DEFAULT_OG_IMAGE}` });
+    expect(meta).toContainEqual({ property: 'og:image:width', content: '1200' });
+    expect(meta).toContainEqual({ property: 'og:image:height', content: '630' });
     expect(meta).toContainEqual({ name: 'twitter:title', content: 'Products — Jedidiah Equipment' });
     expect(meta).toContainEqual({ property: 'og:locale', content: 'en_ZA' });
     expect(links).toContainEqual({ rel: 'canonical', href: `${ORIGIN}/products` });

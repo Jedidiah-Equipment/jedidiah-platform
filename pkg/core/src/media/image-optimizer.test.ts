@@ -2,7 +2,7 @@ import sharp from 'sharp';
 import { describe, expect, test } from 'vitest';
 
 import { optimizeImage } from './image-optimizer.js';
-import { IMAGE_TRANSFORMS } from './image-transform.js';
+import { IMAGE_TRANSFORMS, SOCIAL_CARD_SIZE } from './image-transform.js';
 
 // Solid-colour rasters exercise the real encoder without binary fixtures.
 function source(width: number, height: number, format: 'png' | 'jpeg'): Promise<Buffer> {
@@ -38,12 +38,22 @@ describe('optimizeImage', () => {
     expect(meta.height).toBe(480);
   });
 
-  test('re-encodes to JPEG at its own smaller width for social previews', async () => {
+  test('crops to the social card box, whatever ratio the source has', async () => {
     const output = await optimizeImage(await source(4000, 3000, 'png'), 'jpeg');
     const meta = await sharp(output).metadata();
 
     expect(meta.format).toBe('jpeg');
-    expect(meta.width).toBe(IMAGE_TRANSFORMS.jpeg.maxWidth);
+    expect(meta.width).toBe(SOCIAL_CARD_SIZE.width);
+    expect(meta.height).toBe(SOCIAL_CARD_SIZE.height);
+  });
+
+  // The head tags state these dimensions for every Product, so a small upload has to be enlarged into the
+  // box rather than served at its own size and made a liar of.
+  test('fills the card box from a source narrower than it', async () => {
+    const meta = await sharp(await optimizeImage(await source(600, 600, 'jpeg'), 'jpeg')).metadata();
+
+    expect(meta.width).toBe(SOCIAL_CARD_SIZE.width);
+    expect(meta.height).toBe(SOCIAL_CARD_SIZE.height);
   });
 
   test("flattens a transparent PNG onto white for JPEG, not sharp's default black", async () => {

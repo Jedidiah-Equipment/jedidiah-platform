@@ -14,6 +14,19 @@ export const SITE_URL = (import.meta.env.VITE_SITE_URL ?? 'https://jedidiahequip
 // with their own. Content-hashed, so it stays a root-relative path that absoluteUrl() can qualify.
 export const DEFAULT_OG_IMAGE: string = OG_CARD.src;
 
+// The type and dimensions of whatever this site puts in an og:image. Declaring them lets WhatsApp and
+// LinkedIn reserve the card's box before the bytes arrive, instead of laying it out twice or skipping it.
+//
+// Every og:image here is the same shape, which is what makes one shared set of tags honest: the static card
+// above is cropped to Open Graph's size by the asset script, and a Product's own card comes from @pkg/core's
+// `jpeg` transform, cropped to the same box. seo.test.ts holds those two sizes together — declaring
+// dimensions that disagree with the bytes is worse than declaring none.
+export const OG_IMAGE_META = [
+  { property: 'og:image:type', content: 'image/jpeg' },
+  { property: 'og:image:width', content: String(OG_CARD.width) },
+  { property: 'og:image:height', content: String(OG_CARD.height) },
+];
+
 // Qualifies a root-relative path against the origin of the host serving this response. Open Graph and
 // Twitter Card scrapers (Slack, WhatsApp, X, LinkedIn, ...) do not resolve relative URLs in meta tags, so
 // every URL-valued head tag must go through this.
@@ -66,6 +79,7 @@ export function seoHead({ title, description, locale, path, image = DEFAULT_OG_I
       { property: 'og:url', content: url },
       { property: 'og:locale', content: LOCALE_METADATA[locale].openGraphLocale },
       { property: 'og:image', content: imageUrl },
+      ...OG_IMAGE_META,
       { name: 'twitter:title', content: title },
       { name: 'twitter:description', content: description },
       { name: 'twitter:image', content: imageUrl },

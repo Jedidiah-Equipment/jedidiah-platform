@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 
 import { initAnalytics, initAnalyticsWhenIdle } from '../lib/analytics.js';
 import { CANONICAL_LOCALE, type Locale } from '../lib/locale.js';
-import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
+import { absoluteUrl, DEFAULT_OG_IMAGE, OG_IMAGE_META } from '../lib/seo.js';
 import { getSiteMeta } from '../server/site/site-meta.js';
 import appCss from '../styles/app.css?url';
 
@@ -25,6 +25,7 @@ export const Route = createRootRoute({
       // Site-wide social-card defaults. Localized page heads add their own title, description, locale and URL.
       { property: 'og:type', content: 'website' },
       { property: 'og:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
+      ...OG_IMAGE_META,
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
     ],

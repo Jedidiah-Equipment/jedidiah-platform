@@ -82,6 +82,41 @@ describe('analytics delivery', { timeout: 15_000 }, () => {
     );
   });
 
+  // The deferral leaves a window between hydration and the idle callback. A navigation inside that window
+  // must start PostHog while the landing URL is still current, or PostHog's first pageview reports the
+  // destination and the landing page is never recorded — see the `onBeforeNavigate` subscription in
+  // __root.tsx, which calls initAnalytics for exactly this reason.
+  test('starts on demand before the idle callback, and only once', async () => {
+    const { initAnalytics, initAnalyticsWhenIdle } = await import('./analytics.js');
+    const cancel = initAnalyticsWhenIdle('en');
+
+    expect(posthog.init).not.toHaveBeenCalled();
+
+    // Stands in for the router's onBeforeNavigate firing first.
+    initAnalytics('en');
+    expect(posthog.init).toHaveBeenCalledTimes(1);
+
+    // The idle callback still runs afterwards; it must not start a second client.
+    initAnalytics('en');
+    expect(posthog.init).toHaveBeenCalledTimes(1);
+
+    cancel();
+  });
+
+  // Without this, an interaction inside the deferral window finds no language recorded yet and drops the
+  // event instead of starting the SDK.
+  test('captures an event that beats the idle callback', async () => {
+    const { captureEvent, initAnalyticsWhenIdle } = await import('./analytics.js');
+    const cancel = initAnalyticsWhenIdle('en');
+
+    captureEvent('brochure_downloaded', { modelCode: 'JM-2400' });
+
+    expect(posthog.init).toHaveBeenCalledTimes(1);
+    expect(posthog.capture).toHaveBeenCalledWith('brochure_downloaded', { modelCode: 'JM-2400' });
+
+    cancel();
+  });
+
   test('does not initialise or capture when the PostHog token is unset', async () => {
     resolvePosthogToken.mockReturnValue(null);
     const { captureEvent, initAnalytics } = await import('./analytics.js');

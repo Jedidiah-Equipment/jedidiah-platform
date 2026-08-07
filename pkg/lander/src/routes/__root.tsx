@@ -2,10 +2,10 @@ import faviconUrl from '@pkg/domain/assets/brand/jedidiah-favicon-yellow.png';
 import barlowRegularUrl from '@pkg/domain/fonts/barlow/Barlow-Regular-latin.woff2';
 import sairaBoldUrl from '@pkg/domain/fonts/saira-condensed/SairaCondensed-Bold-latin.woff2';
 import sairaExtraBoldUrl from '@pkg/domain/fonts/saira-condensed/SairaCondensed-ExtraBold-latin.woff2';
-import { createRootRoute, HeadContent, Outlet, Scripts, useMatch } from '@tanstack/react-router';
+import { createRootRoute, HeadContent, Outlet, Scripts, useMatch, useRouter } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
-import { initAnalyticsWhenIdle } from '../lib/analytics.js';
+import { initAnalytics, initAnalyticsWhenIdle } from '../lib/analytics.js';
 import { CANONICAL_LOCALE, type Locale } from '../lib/locale.js';
 import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
 import { getSiteMeta } from '../server/site/site-meta.js';
@@ -47,7 +47,22 @@ export const Route = createRootRoute({
 // posthog-js itself via `capture_pageview: 'history_change'` (set by the `defaults` snapshot), so no manual
 // wiring is needed. No-ops entirely when PostHog is unset.
 function AnalyticsTracker({ locale }: { locale: Locale }) {
-  useEffect(() => initAnalyticsWhenIdle(locale), [locale]);
+  const router = useRouter();
+
+  useEffect(() => {
+    const cancelIdle = initAnalyticsWhenIdle(locale);
+    // A client navigation rewrites the URL before PostHog would otherwise start, and PostHog's first
+    // pageview reports whatever URL is current when it loads. Without this, a visitor who follows an
+    // untracked link inside the deferral window has their landing page recorded as the destination — the
+    // one attribution a campaign cannot afford to lose. `onBeforeNavigate` fires while the landing URL is
+    // still the current one; init is idempotent, so this is a no-op once analytics is already running.
+    const unsubscribe = router.subscribe('onBeforeNavigate', () => initAnalytics(locale));
+
+    return () => {
+      cancelIdle();
+      unsubscribe();
+    };
+  }, [locale, router]);
 
   return null;
 }

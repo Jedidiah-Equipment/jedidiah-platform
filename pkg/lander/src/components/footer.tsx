@@ -144,8 +144,8 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
         <DungBeetle />
 
         <div className="flex flex-wrap items-center justify-between gap-3 py-[26px] max-nav:flex-col max-nav:items-start max-nav:gap-2.5">
-          <span className="font-body text-[13px] text-[#6a6a6a]">{m.footer.copyright}</span>
-          <span className="font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#6a6a6a]">
+          <span className="font-body text-[13px] text-[#8a8a8a]">{m.footer.copyright}</span>
+          <span className="font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#8a8a8a]">
             {m.footer.tagline}
           </span>
           <a

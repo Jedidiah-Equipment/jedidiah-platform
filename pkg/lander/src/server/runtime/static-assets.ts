@@ -74,7 +74,7 @@ export function createStaticAssetServer(clientDirUrl: URL): (request: Request) =
     const { pathname } = new URL(request.url);
 
     if (isPrecompressed(pathname)) {
-      return servePrecompressed(dir, pathname, request.method);
+      return servePrecompressed(dir, pathname, request);
     }
 
     let matched = true;
@@ -99,8 +99,12 @@ export function createStaticAssetServer(clientDirUrl: URL): (request: Request) =
 // compressing: its middleware decides that from the request's `accept-encoding`, and a request rebuilt
 // without that header cannot be handed back to it — the server's Request and Headers classes are its own,
 // and the platform constructors reject them.
-async function servePrecompressed(dir: string, pathname: string, method: string): Promise<Response | null> {
-  if (method !== 'GET' && method !== 'HEAD') {
+//
+// Owning this path is also what lets it answer a conditional or partial request. srvx's `serveStatic` sends
+// no validators and ignores `Range`, and the formats routed here are exactly the ones that need it: a video
+// element will not play a source that answers a range request with the whole file.
+async function servePrecompressed(dir: string, pathname: string, request: Request): Promise<Response | null> {
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
     return null;
   }
 
@@ -115,17 +119,75 @@ async function servePrecompressed(dir: string, pathname: string, method: string)
     return null;
   }
 
-  const headers = {
+  // Size and mtime identify these bytes closely enough to revalidate against: the build writes each file
+  // exactly once. Weak, because a byte-identical rebuild moves the mtime without changing the content.
+  // Truncated to whole milliseconds — `mtimeMs` carries a fraction on macOS, which would otherwise put a
+  // decimal point inside the tag.
+  const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
+  const headers = new Headers({
+    'accept-ranges': 'bytes',
     'cache-control': cacheControlFor(pathname),
-    'content-length': String(info.size),
-    'content-type': PRECOMPRESSED_TYPES[extensionOf(pathname)] ?? 'application/octet-stream',
-  };
+    etag,
+    'last-modified': new Date(info.mtimeMs).toUTCString(),
+  });
 
-  if (method === 'HEAD') {
-    return new Response(null, { headers });
+  if (isUnmodified(request, etag, info.mtimeMs)) {
+    return new Response(null, { status: 304, headers });
   }
 
-  return new Response(Readable.toWeb(createReadStream(filePath)) as ReadableStream<Uint8Array>, { headers });
+  headers.set('content-type', PRECOMPRESSED_TYPES[extensionOf(pathname)] ?? 'application/octet-stream');
+
+  const range = parseRange(request.headers.get('range'), info.size);
+  if (range === 'unsatisfiable') {
+    headers.set('content-range', `bytes */${info.size}`);
+
+    return new Response(null, { status: 416, headers });
+  }
+
+  headers.set('content-length', String(range ? range.end - range.start + 1 : info.size));
+  if (range) {
+    headers.set('content-range', `bytes ${range.start}-${range.end}/${info.size}`);
+  }
+
+  if (request.method === 'HEAD') {
+    return new Response(null, { status: range ? 206 : 200, headers });
+  }
+
+  return new Response(Readable.toWeb(createReadStream(filePath, range ?? {})) as ReadableStream<Uint8Array>, {
+    status: range ? 206 : 200,
+    headers,
+  });
+}
+
+// True when the client already holds these bytes. `If-None-Match` wins whenever it is offered, per RFC 9110;
+// `If-Modified-Since` is only consulted in its absence, at the one-second resolution an HTTP date carries.
+function isUnmodified(request: Request, etag: string, mtimeMs: number): boolean {
+  const ifNoneMatch = request.headers.get('if-none-match');
+  if (ifNoneMatch) {
+    return ifNoneMatch.split(',').some((candidate) => candidate.trim() === etag);
+  }
+
+  const ifModifiedSince = Date.parse(request.headers.get('if-modified-since') ?? '');
+
+  return !Number.isNaN(ifModifiedSince) && Math.floor(mtimeMs / 1000) * 1000 <= ifModifiedSince;
+}
+
+// A single `bytes=` range — what a media element seeking and a download resuming both send. Returns null for
+// anything else, including a multi-range request: serving the whole file is always a legal answer, and the
+// formats here are large rather than expensive to assemble.
+function parseRange(header: string | null, size: number): { end: number; start: number } | 'unsatisfiable' | null {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header?.trim() ?? '');
+  if (!match || (match[1] === '' && match[2] === '')) {
+    return null;
+  }
+
+  const [, rawStart, rawEnd] = match;
+  // `bytes=-500` asks for the final 500 bytes rather than naming an offset.
+  const suffixRange = rawStart === '';
+  const start = suffixRange ? Math.max(0, size - Number(rawEnd)) : Number(rawStart);
+  const end = suffixRange || rawEnd === '' ? size - 1 : Math.min(Number(rawEnd), size - 1);
+
+  return start > end || start >= size ? 'unsatisfiable' : { end, start };
 }
 
 function safeRelativePath(pathname: string): string {

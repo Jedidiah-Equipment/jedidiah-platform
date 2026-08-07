@@ -2,7 +2,7 @@ import type { Changelog } from '@pkg/schema';
 
 import { parseJson, validateChangelog } from './validate.js';
 
-export interface CodexInput {
+export interface AgentInput {
   /** The versioned generation prompt. */
   prompt: string;
   /** The released commit log, oldest first. */
@@ -10,10 +10,10 @@ export interface CodexInput {
 }
 
 /** Runs the model and returns its raw text output. Injected so tests supply synthetic output. */
-export type CodexRunner = (input: CodexInput) => Promise<string>;
+export type AgentRunner = (input: AgentInput) => Promise<string>;
 
 export interface GenerateDeps {
-  runCodex: CodexRunner;
+  runAgent: AgentRunner;
   prompt: string;
   /** The release clock. `releasedAt` is stamped from this, never trusted from the model. */
   now: Date;
@@ -43,7 +43,7 @@ export function extractJson(raw: string): string {
  * Never throws on bad output — returns an `invalid` outcome so the caller can block the release.
  */
 export async function generateChangelog(commitLog: string, deps: GenerateDeps): Promise<GenerateOutcome> {
-  const raw = await deps.runCodex({ prompt: deps.prompt, commitLog });
+  const raw = await deps.runAgent({ prompt: deps.prompt, commitLog });
 
   const parsed = parseJson(extractJson(raw));
   if (!parsed.ok) return { status: 'invalid', errors: [parsed.error], raw };

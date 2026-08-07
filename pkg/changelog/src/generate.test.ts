@@ -5,7 +5,7 @@ import { extractJson, generateChangelog } from './generate.js';
 const now = new Date('2026-07-13T09:00:00.000Z');
 const sections = [{ surface: 'app', entries: [{ title: 'Faster search', description: 'Instant results.' }] }];
 
-const deps = (raw: string) => ({ runCodex: vi.fn(async () => raw), prompt: 'PROMPT', now });
+const deps = (raw: string) => ({ runAgent: vi.fn(async () => raw), prompt: 'PROMPT', now });
 
 describe('extractJson', () => {
   it('returns trimmed text when there is no code fence', () => {
@@ -25,7 +25,7 @@ describe('generateChangelog', () => {
   it('passes the prompt and commit log to the model', async () => {
     const d = deps(JSON.stringify({ sections }));
     await generateChangelog('abc123 feat: thing', d);
-    expect(d.runCodex).toHaveBeenCalledWith({ prompt: 'PROMPT', commitLog: 'abc123 feat: thing' });
+    expect(d.runAgent).toHaveBeenCalledWith({ prompt: 'PROMPT', commitLog: 'abc123 feat: thing' });
   });
 
   it('validates model output and stamps the release time from the clock, not the model', async () => {

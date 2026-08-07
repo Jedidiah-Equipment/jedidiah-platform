@@ -41,6 +41,10 @@ export type AnalyticsEventProperties<Event extends AnalyticsEventName> = Analyti
 // Tracks whether posthog-js has been initialised this session so init runs at most once.
 let started = false;
 let activeLanguage: Locale | undefined;
+// The locale the page rendered in, known from the moment analytics is armed. `activeLanguage` is only set
+// once PostHog has actually loaded, so without this an interaction during the deferral window would find no
+// language and drop the event instead of starting the SDK.
+let pendingLanguage: Locale | undefined;
 
 // Lazily initialises posthog-js the first time analytics is used, but only in the browser and only when a
 // PostHog token is configured. Returns whether analytics is live so every public helper no-ops cleanly when
@@ -87,16 +91,43 @@ function ensureStarted(language: Locale | undefined): boolean {
 }
 
 export function initAnalytics(language: Locale): void {
+  pendingLanguage = language;
   if (ensureStarted(language)) {
     setLanguage(language);
   }
+}
+
+// Arms analytics without paying for it during the load. Evaluating and starting posthog-js is a few hundred
+// milliseconds of main-thread work that lands squarely in the window Total Blocking Time measures, and
+// nothing about a pageview needs it to happen before the page is interactive. The language is recorded
+// synchronously, so a click that beats the idle callback starts the SDK itself rather than being lost.
+//
+// Returns a cancel function for the caller's effect cleanup.
+export function initAnalyticsWhenIdle(language: Locale): () => void {
+  pendingLanguage = language;
+
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
+  // requestIdleCallback is still unimplemented in Safari; the timeout also bounds how long a busy main
+  // thread can postpone the first pageview.
+  if (typeof window.requestIdleCallback !== 'function') {
+    const handle = window.setTimeout(() => initAnalytics(language), 1);
+
+    return () => window.clearTimeout(handle);
+  }
+
+  const handle = window.requestIdleCallback(() => initAnalytics(language), { timeout: 2000 });
+
+  return () => window.cancelIdleCallback(handle);
 }
 
 export function captureEvent<Event extends AnalyticsEventName>(
   event: Event,
   properties: AnalyticsEventProperties<Event>,
 ): void {
-  if (ensureStarted(activeLanguage)) {
+  if (ensureStarted(activeLanguage ?? pendingLanguage)) {
     posthog.capture(event, properties);
   }
 }
@@ -105,7 +136,7 @@ export function captureEventForNavigation<Event extends AnalyticsEventName>(
   event: Event,
   properties: AnalyticsEventProperties<Event>,
 ): void {
-  if (ensureStarted(activeLanguage)) {
+  if (ensureStarted(activeLanguage ?? pendingLanguage)) {
     // Full-page and outbound links must not wait on the normal request queue during document teardown.
     posthog.capture(event, properties, { send_instantly: true, transport: 'sendBeacon' });
   }

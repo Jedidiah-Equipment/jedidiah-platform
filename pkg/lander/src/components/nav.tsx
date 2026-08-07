@@ -1,8 +1,8 @@
 import { contactNumberE164, formatContactNumber, JEDIDIAH_LOCATION } from '@pkg/domain';
-import logoUrl from '@pkg/domain/assets/brand/jedidiah-logo.png';
 import { IconMapPin, IconMenu2, IconPhone, IconSwitchHorizontal, IconX } from '@tabler/icons-react';
 import { Link, useMatch, useMatchRoute, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
+import { NAV_LOGO } from '../assets/images.js';
 import { captureEventForNavigation } from '../lib/analytics.js';
 import { CANONICAL_LOCALE } from '../lib/locale.js';
 import { localePreferenceHref } from '../lib/locale-preference.js';
@@ -30,7 +30,15 @@ function Logo({ onNavigate }: { onNavigate: () => void }) {
 
   return (
     <Link to="/{-$locale}" onClick={onNavigate} className="flex flex-none items-center no-underline">
-      <img src={logoUrl} alt={m.site.logoAlt} className="h-11 w-auto max-header:h-9" />
+      {/* `w-auto` means the width is only known once the bytes arrive, so the intrinsic ratio has to come
+          from the attributes or the header reflows around it. */}
+      <img
+        src={NAV_LOGO.src}
+        width={NAV_LOGO.width}
+        height={NAV_LOGO.height}
+        alt={m.site.logoAlt}
+        className="h-11 w-auto max-header:h-9"
+      />
     </Link>
   );
 }

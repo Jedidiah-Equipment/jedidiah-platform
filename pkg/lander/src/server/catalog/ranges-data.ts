@@ -3,7 +3,7 @@ import type { Db } from '@pkg/db';
 import { isLanderReady, localizeFields } from '@pkg/domain';
 
 import type { Locale } from '../../lib/locale.js';
-import { imageUrl, toRangeLabel, toRangeSlug } from './products-data.js';
+import { imageSrcSet, imageUrl, toRangeLabel, toRangeSlug } from './products-data.js';
 
 export type HomeRange = {
   id: string;
@@ -14,6 +14,7 @@ export type HomeRange = {
   // Feeds the Products page `?range=` filter so a card lands on its own range, not the full catalog.
   slug: string;
   imageUrl: string;
+  imageSrcSet: string | undefined;
 };
 
 // Equipment Ranges for the Home grid. Real data only: a Range with no marketing blurb renders an empty
@@ -39,6 +40,7 @@ export async function loadHomeRanges(db: Db, locale: Locale): Promise<HomeRange[
         href: '/products',
         slug: toRangeSlug(range.name),
         imageUrl: imageUrl(`/images/ranges/${range.id}`, range.image?.updatedAt),
+        imageSrcSet: imageSrcSet(`/images/ranges/${range.id}`, range.image?.updatedAt),
       };
     });
 }

@@ -118,7 +118,7 @@ export async function readMobileProductImage({
   storage: StorageAdapter;
 }): Promise<StoredObject> {
   const ref = await readProductImageReference({ db, productId, slot });
-  const optimized = await readOptimizedImage(cache, ref.storageKey, 'mobileWebp', () =>
+  const optimized = await readOptimizedImage(cache, ref.storageKey, 'webp640', () =>
     readStoredObject(storage, ref.storageKey),
   );
 

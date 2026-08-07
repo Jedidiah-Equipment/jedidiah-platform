@@ -2,17 +2,17 @@ import { readOptimizedImage, readStoredObject, StorageObjectNotFoundError } from
 import { getDb } from '../runtime/db.js';
 import { getImageCacheDir } from '../runtime/env.js';
 import { getStorage } from '../runtime/storage.js';
-import { parseImageFormat } from './image-format.js';
+import { resolveImageTransform } from './image-format.js';
 import { imageResponse } from './image-response.js';
 import { type ResolvedImageRef, resolveProductImageRef, resolveRangeImageRef } from './images.js';
 
 // Server-only orchestration shared by the public image routes: resolve the image reference, serve an
-// optimized (downscaled WebP, or JPEG via `?format=jpeg` for og:image consumers) copy through the local
-// cache, and fall back to the neutral placeholder when there is nothing to show. Kept out of the route
-// modules so the route tree, which the client bundle imports, never pulls in @pkg/core, the S3 client, or
-// sharp. `versioned` reflects whether the request carried the `?v=` cache-busting token and drives the
-// response cache window.
-type ServeOptions = { versioned: boolean; format?: string | null };
+// optimized copy through the local cache — WebP at the `?w=` candidate width, or JPEG via `?format=jpeg`
+// for og:image consumers — and fall back to the neutral placeholder when there is nothing to show. Kept out
+// of the route modules so the route tree, which the client bundle imports, never pulls in @pkg/core, the S3
+// client, or sharp. `versioned` reflects whether the request carried the `?v=` cache-busting token and
+// drives the response cache window.
+type ServeOptions = { versioned: boolean; format?: string | null; width?: string | null };
 
 export async function serveRangeImage(rangeId: string, options: ServeOptions): Promise<Response> {
   return serve(await resolveRangeImageRef(getDb(), rangeId), options);
@@ -35,7 +35,7 @@ async function serve(ref: ResolvedImageRef | null, options: ServeOptions): Promi
     const optimized = await readOptimizedImage(
       { cacheDir: getImageCacheDir() },
       ref.storageKey,
-      parseImageFormat(options.format),
+      resolveImageTransform(options.format, options.width),
       () => readStoredObject(getStorage(), ref.storageKey),
     );
 

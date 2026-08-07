@@ -1,6 +1,7 @@
 import { IconArrowRight } from '@tabler/icons-react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 
+import { ABOUT_STAFF_IMAGE } from '../../assets/images.js';
 import { PageHero } from '../../components/page-hero.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
 import { seoHead } from '../../lib/seo.js';
@@ -53,7 +54,7 @@ function Story() {
       <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
         <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-14 max-nav:grid-cols-1 max-nav:gap-7">
           <div>
-            <Eyebrow label={m.about.storyEyebrow} color="text-[#8a7a2a]" />
+            <Eyebrow label={m.about.storyEyebrow} color="text-bronze" />
             <h2 className="m-0 font-display text-[46px] font-extrabold uppercase leading-[0.98] tracking-[0.5px] text-ink max-nav:text-[34px]">
               {m.about.storyTitle}
             </h2>
@@ -70,7 +71,16 @@ function Story() {
         </div>
         <figure className="mt-14 max-nav:mt-9">
           <div className="aspect-[2048/946] overflow-hidden border border-line bg-[#dcdcd6]">
-            <img src="/about-staff.webp" alt={m.about.teamImageAlt} className="h-full w-full object-cover" />
+            <img
+              src={ABOUT_STAFF_IMAGE.src}
+              srcSet={ABOUT_STAFF_IMAGE.srcSet}
+              sizes="(min-width: 1320px) 1224px, 100vw"
+              width={ABOUT_STAFF_IMAGE.width}
+              height={ABOUT_STAFF_IMAGE.height}
+              loading="lazy"
+              alt={m.about.teamImageAlt}
+              className="h-full w-full object-cover"
+            />
           </div>
         </figure>
       </div>
@@ -109,7 +119,7 @@ function Values() {
   return (
     <SandWatermarkSection variant="about-values" className="py-22 max-nav:py-14">
       <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
-        <Eyebrow label={m.about.valuesEyebrow} color="text-[#8a7a2a]" />
+        <Eyebrow label={m.about.valuesEyebrow} color="text-bronze" />
         <h2 className="m-0 mb-11 font-display text-[46px] font-extrabold uppercase leading-[0.98] tracking-[0.5px] text-ink max-nav:text-[34px]">
           {m.about.valuesTitle}
         </h2>

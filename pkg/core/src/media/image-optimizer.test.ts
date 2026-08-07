@@ -13,16 +13,16 @@ function source(width: number, height: number, format: 'png' | 'jpeg'): Promise<
 
 describe('optimizeImage', () => {
   test('downscales an oversized source to the target width and re-encodes as WebP', async () => {
-    const output = await optimizeImage(await source(4000, 3000, 'jpeg'), 'webp');
+    const output = await optimizeImage(await source(4000, 3000, 'jpeg'), 'webp1280');
     const meta = await sharp(output).metadata();
 
     expect(meta.format).toBe('webp');
-    expect(meta.width).toBe(IMAGE_TRANSFORMS.webp.maxWidth);
-    expect(meta.height).toBe(Math.round((IMAGE_TRANSFORMS.webp.maxWidth * 3000) / 4000));
+    expect(meta.width).toBe(IMAGE_TRANSFORMS.webp1280.maxWidth);
+    expect(meta.height).toBe(Math.round((IMAGE_TRANSFORMS.webp1280.maxWidth * 3000) / 4000));
   });
 
   test('re-encodes a small source to WebP without enlarging it', async () => {
-    const output = await optimizeImage(await source(640, 480, 'png'), 'webp');
+    const output = await optimizeImage(await source(640, 480, 'png'), 'webp1280');
     const meta = await sharp(output).metadata();
 
     expect(meta.format).toBe('webp');
@@ -30,11 +30,11 @@ describe('optimizeImage', () => {
   });
 
   test('produces the mobile WebP variant at its smaller target width', async () => {
-    const output = await optimizeImage(await source(1600, 1200, 'jpeg'), 'mobileWebp');
+    const output = await optimizeImage(await source(1600, 1200, 'jpeg'), 'webp640');
     const meta = await sharp(output).metadata();
 
     expect(meta.format).toBe('webp');
-    expect(meta.width).toBe(IMAGE_TRANSFORMS.mobileWebp.maxWidth);
+    expect(meta.width).toBe(IMAGE_TRANSFORMS.webp640.maxWidth);
     expect(meta.height).toBe(480);
   });
 
@@ -63,6 +63,6 @@ describe('optimizeImage', () => {
   });
 
   test('throws on non-raster input', async () => {
-    await expect(optimizeImage(new TextEncoder().encode('not an image'), 'webp')).rejects.toThrow();
+    await expect(optimizeImage(new TextEncoder().encode('not an image'), 'webp1280')).rejects.toThrow();
   });
 });

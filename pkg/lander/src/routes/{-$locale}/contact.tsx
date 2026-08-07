@@ -43,7 +43,7 @@ export const Route = createFileRoute('/{-$locale}/contact')({
 
 const FIELD_CLASS =
   'w-full border-[1.5px] border-[#d9d7d1] bg-cream px-[15px] py-[13px] font-body text-[16px] text-ink outline-none focus:border-gold';
-const LABEL_CLASS = 'mb-2 block font-display text-[13px] font-semibold uppercase tracking-[1.5px] text-[#888]';
+const LABEL_CLASS = 'mb-2 block font-display text-[13px] font-semibold uppercase tracking-[1.5px] text-[#666]';
 
 type FormStatus = 'idle' | 'submitting' | 'sent' | 'error';
 
@@ -187,7 +187,7 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
                 <option>{m.contact.equipmentNotSure}</option>
               </select>
               <IconChevronDown
-                className="pointer-events-none absolute top-1/2 right-[15px] -translate-y-1/2 text-[#888]"
+                className="pointer-events-none absolute top-1/2 right-[15px] -translate-y-1/2 text-[#666]"
                 size={18}
                 stroke={2}
                 aria-hidden="true"

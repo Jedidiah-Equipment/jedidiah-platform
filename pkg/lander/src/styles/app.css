@@ -1,11 +1,19 @@
 @import "tailwindcss";
 
+/* Self-hosted so first paint needs no cross-origin round trip. The critical faces are preloaded from
+   __root.tsx; the rest arrive with the stylesheet. */
+@import "@pkg/domain/fonts/barlow/barlow.css";
+@import "@pkg/domain/fonts/saira-condensed/saira-condensed.css";
+
 /* Prototype palette + fonts lifted into theme tokens (docs/design/lander). */
 @theme {
   --color-ink: #161616;
   --color-ink-soft: #101010;
   --color-yellow: #fff000;
   --color-gold: #f8d300;
+  /* The eyebrow gold, for light backgrounds. `--color-yellow`/`--color-gold` are legible on ink but nowhere
+     near 4.5:1 on sand, so section eyebrows need their own darkened token rather than a tint of those. */
+  --color-bronze: #786924;
   --color-sand: #f4f3f0;
   --color-cream: #faf9f6;
   --color-line: #e7e5e0;

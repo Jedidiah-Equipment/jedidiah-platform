@@ -1,6 +1,7 @@
 import { IconArrowRight } from '@tabler/icons-react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 
+import { HERO_IMAGE } from '../../assets/images.js';
 import { FeatureBar } from '../../components/feature-bar.js';
 import { RangeCard } from '../../components/range-card.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
@@ -31,8 +32,15 @@ function Hero() {
   return (
     <section className="relative overflow-hidden bg-ink">
       <div className="absolute inset-0">
+        {/* The LCP element. `fetchPriority` both raises its own priority and, because React hoists a
+            matching preload for every eagerly-rendered image, keeps it ahead of the rest. */}
         <img
-          src="/hero-silage-harvest.jpg"
+          src={HERO_IMAGE.src}
+          srcSet={HERO_IMAGE.srcSet}
+          sizes="100vw"
+          width={HERO_IMAGE.width}
+          height={HERO_IMAGE.height}
+          fetchPriority="high"
           alt={m.home.heroImageAlt}
           className="h-full w-full object-cover object-center"
         />
@@ -87,7 +95,7 @@ function EquipmentRanges({ ranges }: { ranges: Awaited<ReturnType<typeof getHome
           <div>
             <div className="mb-3.5 flex items-center gap-3.5">
               <span className="h-1 w-[42px] bg-yellow" />
-              <span className="font-display text-[15px] font-semibold uppercase tracking-[3px] text-[#8a7a2a]">
+              <span className="font-display text-[15px] font-semibold uppercase tracking-[3px] text-bronze">
                 {m.home.rangesEyebrow}
               </span>
             </div>

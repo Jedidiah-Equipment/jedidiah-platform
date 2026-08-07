@@ -32,9 +32,9 @@ describe('readOptimizedImage', () => {
   test('optimizes and caches a source on a miss', async () => {
     const load = loaderFor(await rasterSource());
 
-    const result = await readOptimizedImage({ cacheDir }, 'products/a/primary/x.png', 'webp', load);
+    const result = await readOptimizedImage({ cacheDir }, 'products/a/primary/x.png', 'webp1280', load);
 
-    expect(result.contentType).toBe(IMAGE_TRANSFORMS.webp.contentType);
+    expect(result.contentType).toBe(IMAGE_TRANSFORMS.webp1280.contentType);
     expect((await sharp(result.body).metadata()).format).toBe('webp');
     expect(load).toHaveBeenCalledTimes(1);
     expect((await readdir(cacheDir)).filter((name) => name.endsWith('.webp'))).toHaveLength(1);
@@ -42,13 +42,13 @@ describe('readOptimizedImage', () => {
 
   test('serves a hit from disk without reloading the source', async () => {
     const key = 'products/a/primary/x.png';
-    await readOptimizedImage({ cacheDir }, key, 'webp', loaderFor(await rasterSource()));
+    await readOptimizedImage({ cacheDir }, key, 'webp1280', loaderFor(await rasterSource()));
     const second = loaderFor(await rasterSource());
 
-    const result = await readOptimizedImage({ cacheDir }, key, 'webp', second);
+    const result = await readOptimizedImage({ cacheDir }, key, 'webp1280', second);
 
     expect(second).not.toHaveBeenCalled();
-    expect(result.contentType).toBe(IMAGE_TRANSFORMS.webp.contentType);
+    expect(result.contentType).toBe(IMAGE_TRANSFORMS.webp1280.contentType);
   });
 
   test('coalesces concurrent misses for the same key into one optimization', async () => {
@@ -57,8 +57,8 @@ describe('readOptimizedImage', () => {
     const load = loaderFor(bytes);
 
     const [a, b] = await Promise.all([
-      readOptimizedImage({ cacheDir, optimize }, 'products/a/primary/x.png', 'webp', load),
-      readOptimizedImage({ cacheDir, optimize }, 'products/a/primary/x.png', 'webp', load),
+      readOptimizedImage({ cacheDir, optimize }, 'products/a/primary/x.png', 'webp1280', load),
+      readOptimizedImage({ cacheDir, optimize }, 'products/a/primary/x.png', 'webp1280', load),
     ]);
 
     expect(load).toHaveBeenCalledTimes(1);
@@ -73,14 +73,14 @@ describe('readOptimizedImage', () => {
       throw new Error('unsupported source');
     });
 
-    const result = await readOptimizedImage({ cacheDir, optimize }, 'products/a/primary/x.png', 'webp', load);
+    const result = await readOptimizedImage({ cacheDir, optimize }, 'products/a/primary/x.png', 'webp1280', load);
 
     expect(result).toEqual({ body: original, byteSize: 4, contentType: 'image/png' });
     expect((await readdir(cacheDir)).filter((name) => name.endsWith('.webp'))).toHaveLength(0);
   });
 
   test('does not leave temp files behind after a successful write', async () => {
-    await readOptimizedImage({ cacheDir }, 'products/a/primary/x.png', 'webp', loaderFor(await rasterSource()));
+    await readOptimizedImage({ cacheDir }, 'products/a/primary/x.png', 'webp1280', loaderFor(await rasterSource()));
 
     expect((await readdir(cacheDir)).filter((name) => name.endsWith('.tmp'))).toHaveLength(0);
   });
@@ -88,8 +88,8 @@ describe('readOptimizedImage', () => {
   test('a different storage key produces a different cache entry', async () => {
     const load = loaderFor(await rasterSource());
 
-    await readOptimizedImage({ cacheDir }, 'products/a/primary/v1.png', 'webp', load);
-    await readOptimizedImage({ cacheDir }, 'products/a/primary/v2.png', 'webp', load);
+    await readOptimizedImage({ cacheDir }, 'products/a/primary/v1.png', 'webp1280', load);
+    await readOptimizedImage({ cacheDir }, 'products/a/primary/v2.png', 'webp1280', load);
 
     expect((await readdir(cacheDir)).filter((name) => name.endsWith('.webp'))).toHaveLength(2);
   });
@@ -98,10 +98,10 @@ describe('readOptimizedImage', () => {
     const key = 'products/a/primary/x.png';
     const load = loaderFor(await rasterSource());
 
-    const webp = await readOptimizedImage({ cacheDir }, key, 'webp', load);
+    const webp = await readOptimizedImage({ cacheDir }, key, 'webp1280', load);
     const jpeg = await readOptimizedImage({ cacheDir }, key, 'jpeg', load);
 
-    expect(webp.contentType).toBe(IMAGE_TRANSFORMS.webp.contentType);
+    expect(webp.contentType).toBe(IMAGE_TRANSFORMS.webp1280.contentType);
     expect(jpeg.contentType).toBe(IMAGE_TRANSFORMS.jpeg.contentType);
     expect((await sharp(jpeg.body).metadata()).format).toBe('jpeg');
     const files = await readdir(cacheDir);
@@ -111,13 +111,13 @@ describe('readOptimizedImage', () => {
 
   test('serves a pre-existing cache file without invoking the loader', async () => {
     const key = 'products/a/primary/x.png';
-    await readOptimizedImage({ cacheDir }, key, 'webp', loaderFor(await rasterSource()));
+    await readOptimizedImage({ cacheDir }, key, 'webp1280', loaderFor(await rasterSource()));
     expect(await readdir(cacheDir)).toHaveLength(1);
     const load = vi.fn(async (): Promise<LoadedImage> => {
       throw new Error('loader should not run on a hit');
     });
 
-    await expect(readOptimizedImage({ cacheDir }, key, 'webp', load)).resolves.toBeDefined();
+    await expect(readOptimizedImage({ cacheDir }, key, 'webp1280', load)).resolves.toBeDefined();
     expect(load).not.toHaveBeenCalled();
   });
 });
@@ -130,11 +130,11 @@ describe('cache directory', () => {
     const result = await readOptimizedImage(
       { cacheDir: nested },
       'products/a/primary/x.png',
-      'webp',
+      'webp1280',
       loaderFor(await rasterSource()),
     );
 
-    expect(result.contentType).toBe(IMAGE_TRANSFORMS.webp.contentType);
+    expect(result.contentType).toBe(IMAGE_TRANSFORMS.webp1280.contentType);
     expect((await readdir(nested)).filter((name) => name.endsWith('.webp'))).toHaveLength(1);
   });
 });

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "start": "srvx --prod --static ../client dist/server/server.js",
+    "assets:optimize": "tsx scripts/optimize-assets.ts",
+    "start": "srvx --prod dist/server/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },

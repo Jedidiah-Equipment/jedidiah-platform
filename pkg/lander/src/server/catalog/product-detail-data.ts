@@ -7,12 +7,13 @@ import { OG_IMAGE_FORMAT } from '../media/image-format.js';
 import {
   type CatalogProduct,
   compareProductDisplayOrder,
+  imageSrcSet,
   imageUrl,
   toCatalogProduct,
   toRangeSlug,
 } from './products-data.js';
 
-export type ProductGalleryImage = { imageUrl: string; slot: ProductImageSlot };
+export type ProductGalleryImage = { imageUrl: string; imageSrcSet: string | undefined; slot: ProductImageSlot };
 export type ProductGalleryImages = [ProductGalleryImage, ProductGalleryImage, ProductGalleryImage];
 
 export type ProductDetail = {
@@ -98,7 +99,7 @@ export async function loadProductDetail(db: Db, modelCode: string, locale: Local
     }),
     galleryImages: DETAIL_IMAGE_SLOTS.map((slot) => ({
       slot,
-      imageUrl: productImageUrl(fullProduct.id, slot, fullProduct.images[slot]?.updatedAt),
+      ...productImage(fullProduct.id, slot, fullProduct.images[slot]?.updatedAt),
     })) as ProductGalleryImages,
     standardAssemblies: assemblyNames('standard'),
     optionalAssemblies: assemblyNames('optional'),
@@ -118,6 +119,13 @@ function brochureHref(productId: string, locale: Locale): string {
   return locale === CANONICAL_LOCALE ? canonicalHref : `${canonicalHref}?locale=${locale}`;
 }
 
-function productImageUrl(productId: string, slot: ProductImageSlot, updatedAt: string | null | undefined): string {
-  return imageUrl(`/images/products/${productId}`, updatedAt, slot === 'primary' ? {} : { slot });
+function productImage(
+  productId: string,
+  slot: ProductImageSlot,
+  updatedAt: string | null | undefined,
+): { imageUrl: string; imageSrcSet: string | undefined } {
+  const path = `/images/products/${productId}`;
+  const params = slot === 'primary' ? {} : { slot };
+
+  return { imageUrl: imageUrl(path, updatedAt, params), imageSrcSet: imageSrcSet(path, updatedAt, params) };
 }

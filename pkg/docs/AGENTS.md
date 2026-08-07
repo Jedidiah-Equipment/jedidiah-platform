@@ -1,8 +1,10 @@
 # docs (@pkg/docs)
 
-- VitePress site of user-facing documentation, public but unindexed (`noindex` head plus a disallow-all
-  `robots.txt`). It is read mid-task, often from a shared tablet with no session. Nothing too sensitive to
-  publish belongs here; it belongs in the app, near the data.
+- VitePress site of user-facing documentation, public but unindexed. The `noindex` head is the whole
+  mechanism; `robots.txt` deliberately allows crawling, because a crawler that cannot fetch a page never
+  reads that page's noindex and will index an externally-linked URL anyway. Never add a `Disallow` here.
+  It is read mid-task, often from a shared tablet with no session. Nothing too sensitive to publish belongs
+  here; it belongs in the app, near the data.
 - Markdown pages live in `content/`; the site config and its tests live in `src/`. `.vitepress/config.ts`
   only re-exports `src/config.ts`.
 - The dev server takes port 7006 — after the lander's 7004 — but is not slot-allocated: it steps to the next

@@ -43,9 +43,17 @@ describe('docs site navigation', () => {
 });
 
 describe('robots.txt', () => {
-  it('disallows every crawler', () => {
+  // The `noindex` head tag above is the directive that keeps this site out of search results, and a crawler
+  // has to be able to fetch a page to read it. Blocking here would strand any externally-linked URL in the
+  // index permanently, which is the opposite of the intent.
+  it('allows every crawler, so the noindex on each page is actually read', () => {
     const robots = readFileSync(join(CONTENT_DIR, 'public', 'robots.txt'), 'utf8');
     expect(robots).toMatch(/^User-agent: \*$/m);
-    expect(robots).toMatch(/^Disallow: \/$/m);
+    expect(robots).toMatch(/^Allow: \/$/m);
+  });
+
+  it('carries no Disallow rule, in the file body or a stray comment', () => {
+    const robots = readFileSync(join(CONTENT_DIR, 'public', 'robots.txt'), 'utf8');
+    expect(robots).not.toMatch(/^\s*Disallow:/im);
   });
 });

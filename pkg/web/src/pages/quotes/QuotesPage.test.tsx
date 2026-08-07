@@ -77,6 +77,19 @@ describe('Quote table priority rows', () => {
     expect(html.match(/sticky/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
   });
 
+  it('renders the invoice number after the product, and marks a quote that has none', () => {
+    const html = renderQuoteTableRows([
+      createQuoteTableRow(buildPriorityQuote({ invoiceNumber: 'INV-4821' })),
+      createQuoteTableRow(buildPriorityQuote({ invoiceNumber: null })),
+    ]);
+
+    expect(html).toContain('Invoice number');
+    expect(html).toContain('INV-4821');
+    expect(html).toContain('Not invoiced');
+    expect(html.indexOf('>Product<')).toBeLessThan(html.indexOf('>Invoice number<'));
+    expect(html.indexOf('>Invoice number<')).toBeLessThan(html.indexOf('>Dates<'));
+  });
+
   it('renders whether delivery is included in the sale price or charged separately', () => {
     const html = renderQuoteTableRows([
       createQuoteTableRow(buildPriorityQuote({ deliveryIncluded: true, deliveryPrice: 0 })),

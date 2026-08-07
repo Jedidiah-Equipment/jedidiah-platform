@@ -625,15 +625,21 @@ export const QuoteSortBy = z.enum([
   'code',
   'createdAt',
   'customerCompanyName',
+  'invoiceNumber',
   'productName',
   'salesPersonName',
   'status',
 ]);
 
+/** Whether a Quote carries an Invoice Number at all, which is how the books tell billed work from unbilled. */
+export type QuoteInvoicedFilter = z.infer<typeof QuoteInvoicedFilter>;
+export const QuoteInvoicedFilter = z.enum(['invoiced', 'not-invoiced']);
+
 export type QuoteListFilters = z.infer<typeof QuoteListFilters>;
 export const QuoteListFilters = z
   .object({
     customerId: UUID.optional(),
+    invoiced: QuoteInvoicedFilter.optional(),
     kind: QuoteKind.optional(),
     productId: UUID.optional(),
     quoteCode: QuoteCode.optional(),

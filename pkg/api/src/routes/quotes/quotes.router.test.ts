@@ -1541,6 +1541,72 @@ describe('quotes.list', () => {
     expect(customerEndpointResult.map((quote) => quote.code)).toEqual([overdueAlert.code]);
   });
 
+  test('separates invoiced from uninvoiced quotes, sorts by invoice number, and searches it', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const firstInvoiced = await caller.quotes.update({
+      ...toUpdateInput(
+        await createNamedQuote(caller, {
+          customerCompanyName: 'Invoiced Alpha',
+          discountPercent: 0,
+          productId: context.product.id,
+        }),
+      ),
+      invoiceNumber: 'INV-1099-A',
+    });
+    const secondInvoiced = await caller.quotes.update({
+      ...toUpdateInput(
+        await createNamedQuote(caller, {
+          customerCompanyName: 'Invoiced Beta',
+          discountPercent: 0,
+          productId: context.product.id,
+        }),
+      ),
+      invoiceNumber: 'INV-1099-B',
+    });
+    const uninvoiced = await createNamedQuote(caller, {
+      customerCompanyName: 'Uninvoiced Gamma',
+      discountPercent: 0,
+      productId: context.product.id,
+    });
+    const listInput = {
+      cursor: 0,
+      limit: 10,
+      search: '',
+      sortDirection: 'asc',
+      sortBy: 'invoiceNumber',
+    } as const;
+
+    const invoicedResult = await caller.quotes.list({
+      ...listInput,
+      filters: { invoiced: 'invoiced', statuses: [] },
+    });
+    const uninvoicedResult = await caller.quotes.list({
+      ...listInput,
+      filters: { invoiced: 'not-invoiced', statuses: [] },
+    });
+    const unfilteredResult = await caller.quotes.list({
+      ...listInput,
+      filters: { statuses: [] },
+    });
+    const searchResult = await caller.quotes.list({
+      ...listInput,
+      filters: { statuses: [] },
+      search: 'INV-1099-B',
+    });
+
+    expect(invoicedResult).toMatchObject({ total: 2 });
+    expect(invoicedResult.items.map((quote) => quote.invoiceNumber)).toEqual(['INV-1099-A', 'INV-1099-B']);
+    expect(uninvoicedResult).toMatchObject({ total: 1 });
+    expect(uninvoicedResult.items.map((quote) => quote.id)).toEqual([uninvoiced.id]);
+    // Ascending by invoice number puts the quotes with no invoice ahead of the invoiced ones.
+    expect(unfilteredResult.items.map((quote) => quote.id)).toEqual([
+      uninvoiced.id,
+      firstInvoiced.id,
+      secondInvoiced.id,
+    ]);
+    expect(searchResult.items.map((quote) => quote.id)).toEqual([secondInvoiced.id]);
+  });
+
   test('keeps list pricing facts based on the frozen quote snapshot when product prices change', async ({
     context,
   }) => {

@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import type { IncomingHttpHeaders } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -195,6 +195,43 @@ describe('web server', () => {
     expect(response.body).toContain('/favicon-yellow.png');
     expect(response.body).not.toContain('/favicon-pink.png');
     await app.close();
+  });
+
+  // Google had indexed this app. Only the Lander belongs in search results.
+  describe('search indexing', () => {
+    it('sends X-Robots-Tag on the SPA document, an asset route, and a JSON endpoint alike', async () => {
+      const app = await buildAppWithEnv('production');
+
+      for (const url of ['/jobs', '/app-version', '/robots.txt']) {
+        const response = await app.inject(url);
+
+        expect(response.headers['x-robots-tag'], url).toBe('noindex, nofollow');
+      }
+
+      await app.close();
+    });
+
+    // The fixtures above write their own minimal shell, so the header tests cannot speak for the real one.
+    // Every route serves this single document, which makes its meta tag the app-wide directive.
+    it('carries a noindex meta in the shipped HTML shell', async () => {
+      const shell = await readFile(join(import.meta.dirname, '..', '..', 'index.html'), 'utf8');
+
+      expect(shell).toMatch(/<meta name="robots" content="noindex, nofollow" \/>/);
+    });
+
+    // A crawler has to be allowed to fetch a page to learn that it must not index it, so the one thing this
+    // file must never grow is a `Disallow`.
+    it('allows crawling, so the noindex directive is actually read', async () => {
+      const app = await buildAppWithEnv('production');
+
+      const response = await app.inject('/robots.txt');
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-type']).toContain('text/plain');
+      expect(response.body).toBe('User-agent: *\nAllow: /\n');
+      expect(response.body).not.toMatch(/Disallow/i);
+      await app.close();
+    });
   });
 
   it('returns the current app deployment version without caching', async () => {

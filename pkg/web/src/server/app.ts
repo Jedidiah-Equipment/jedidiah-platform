@@ -15,6 +15,23 @@ export function buildWebServer(config: ServerConfig, options: WebServerOptions =
   const distDir = options.distDir ?? join(process.cwd(), 'dist');
   const app = Fastify();
 
+  // Only the Lander is meant to appear in search results, and this app was being indexed. `index.html`
+  // carries the same directive, but a header covers what an HTML tag cannot: an asset, a JSON response, or
+  // any URL a crawler fetches without parsing a document.
+  app.addHook('onSend', async (_request, reply) => {
+    reply.header('X-Robots-Tag', 'noindex, nofollow');
+  });
+
+  // Deliberately permissive. `Disallow: /` would be the wrong tool here: it stops a crawler fetching the
+  // page, and a page it cannot fetch is one where it never sees the `noindex` — so anything already indexed
+  // would stay indexed, on the strength of inbound links alone. Crawling has to stay open for the directive
+  // above to be read and obeyed.
+  app.get('/robots.txt', async (_request, reply) => {
+    reply.type('text/plain; charset=utf-8');
+
+    return 'User-agent: *\nAllow: /\n';
+  });
+
   app.register(fastifyStatic, {
     prefix: '/__static__/',
     root: distDir,

@@ -2,6 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- This is an internal operations app; only the Lander belongs in search results. Every route serves
+         this one shell, so the tag covers the whole app. The server sends a matching X-Robots-Tag, which is
+         what covers responses a crawler never parses as HTML. -->
+    <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon-yellow.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Jedidah Ops</title>

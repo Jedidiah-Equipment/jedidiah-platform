@@ -1,2 +1,8 @@
+# Crawling is allowed on purpose. Every page carries `<meta name="robots" content="noindex, nofollow">`,
+# and that tag is what keeps this site out of search results.
+#
+# A `Disallow` here would defeat it: a crawler that cannot fetch a page never reads the page's noindex, so a
+# URL linked from anywhere else gets indexed on the strength of that link alone — and stays indexed, because
+# the instruction to drop it is behind the door we shut. Never add a Disallow to this file.
 User-agent: *
-Disallow: /
+Allow: /

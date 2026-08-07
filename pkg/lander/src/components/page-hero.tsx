@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { HERO_BACKDROP_IMAGE } from '../assets/images.js';
+
 type PageHeroProps = {
   eyebrow: string;
   title: string;
@@ -13,7 +15,11 @@ export function PageHero({ children, eyebrow, showBackgroundImage = true, title 
       {showBackgroundImage ? (
         <>
           <img
-            src="/hero-silage-harvest.jpg"
+            src={HERO_BACKDROP_IMAGE.src}
+            srcSet={HERO_BACKDROP_IMAGE.srcSet}
+            sizes="100vw"
+            width={HERO_BACKDROP_IMAGE.width}
+            height={HERO_BACKDROP_IMAGE.height}
             alt=""
             aria-hidden="true"
             className="absolute inset-0 h-full w-full scale-[1.01] object-cover object-[58%_52%] blur-[1.5px]"

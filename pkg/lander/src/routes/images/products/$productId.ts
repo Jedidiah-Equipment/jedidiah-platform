@@ -14,6 +14,7 @@ export const Route = createFileRoute('/images/products/$productId')({
         return serveProductImage(params.productId, search.get('slot'), {
           versioned: search.has('v'),
           format: search.get('format'),
+          width: search.get('w'),
         });
       },
     },

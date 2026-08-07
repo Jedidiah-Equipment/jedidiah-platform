@@ -1,8 +1,11 @@
 import faviconUrl from '@pkg/domain/assets/brand/jedidiah-favicon-yellow.png';
-import { createRootRoute, HeadContent, Outlet, Scripts, useMatch } from '@tanstack/react-router';
+import barlowRegularUrl from '@pkg/domain/fonts/barlow/Barlow-Regular-latin.woff2';
+import sairaBoldUrl from '@pkg/domain/fonts/saira-condensed/SairaCondensed-Bold-latin.woff2';
+import sairaExtraBoldUrl from '@pkg/domain/fonts/saira-condensed/SairaCondensed-ExtraBold-latin.woff2';
+import { createRootRoute, HeadContent, Outlet, Scripts, useMatch, useRouter } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
-import { initAnalytics } from '../lib/analytics.js';
+import { initAnalytics, initAnalyticsWhenIdle } from '../lib/analytics.js';
 import { CANONICAL_LOCALE, type Locale } from '../lib/locale.js';
 import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
 import { getSiteMeta } from '../server/site/site-meta.js';
@@ -27,25 +30,39 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: 'icon', type: 'image/png', href: faviconUrl },
-      { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-      { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
-      {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&display=swap',
-      },
+      // The faces that set the first screenful — display 800 for the page heading, display 700 for buttons
+      // and section headings, body 400 for prose. The remaining faces are declared in the stylesheet and
+      // load on demand. Fonts are always fetched in CORS mode, so an uncredentialed preload needs
+      // `crossOrigin` to match the later request and not fetch twice.
+      ...[sairaExtraBoldUrl, sairaBoldUrl, barlowRegularUrl].map(
+        (href) => ({ rel: 'preload', as: 'font', type: 'font/woff2', href, crossOrigin: 'anonymous' }) as const,
+      ),
       { rel: 'stylesheet', href: appCss },
     ],
   }),
   component: RootDocument,
 });
 
-// Initialises PostHog on mount. Pageviews — including SPA route changes — are captured by posthog-js itself
-// via `capture_pageview: 'history_change'` (set by the `defaults` snapshot), so no manual wiring is needed.
-// No-ops entirely when PostHog is unset.
+// Initialises PostHog once the browser is idle. Pageviews — including SPA route changes — are captured by
+// posthog-js itself via `capture_pageview: 'history_change'` (set by the `defaults` snapshot), so no manual
+// wiring is needed. No-ops entirely when PostHog is unset.
 function AnalyticsTracker({ locale }: { locale: Locale }) {
+  const router = useRouter();
+
   useEffect(() => {
-    initAnalytics(locale);
-  }, [locale]);
+    const cancelIdle = initAnalyticsWhenIdle(locale);
+    // A client navigation rewrites the URL before PostHog would otherwise start, and PostHog's first
+    // pageview reports whatever URL is current when it loads. Without this, a visitor who follows an
+    // untracked link inside the deferral window has their landing page recorded as the destination — the
+    // one attribution a campaign cannot afford to lose. `onBeforeNavigate` fires while the landing URL is
+    // still the current one; init is idempotent, so this is a no-op once analytics is already running.
+    const unsubscribe = router.subscribe('onBeforeNavigate', () => initAnalytics(locale));
+
+    return () => {
+      cancelIdle();
+      unsubscribe();
+    };
+  }, [locale, router]);
 
   return null;
 }

@@ -1,17 +1,18 @@
+import { FEATURE_ICONS, type FixedImage } from '../assets/images.js';
+import { useMessages } from '../messages/index.js';
+
 type Feature = {
-  iconSrc: string;
+  icon: FixedImage;
   title: string;
   body: string;
 };
 
-import { useMessages } from '../messages/index.js';
-
 export function FeatureBar() {
   const m = useMessages();
   const features: Feature[] = [
-    { iconSrc: '/feature-icons/sa-built.png', ...m.featureBar.southAfricanBuilt },
-    { iconSrc: '/feature-icons/heavy-duty.png', ...m.featureBar.heavyDutyEquipment },
-    { iconSrc: '/feature-icons/trailer.png', ...m.featureBar.equipmentRange },
+    { icon: FEATURE_ICONS.saBuilt, ...m.featureBar.southAfricanBuilt },
+    { icon: FEATURE_ICONS.heavyDuty, ...m.featureBar.heavyDutyEquipment },
+    { icon: FEATURE_ICONS.trailer, ...m.featureBar.equipmentRange },
   ];
 
   return (
@@ -23,7 +24,17 @@ export function FeatureBar() {
             index < features.length - 1 ? 'border-r border-white/[0.12] max-nav:border-r-0 max-nav:border-b' : ''
           }`}
         >
-          <img src={feature.iconSrc} alt="" className="h-14 w-14 flex-none object-contain" aria-hidden="true" />
+          {/* Decorative, and sits at the fold on desktop. `low` keeps it out of React's preload set without
+              deferring it the way `loading="lazy"` would. */}
+          <img
+            src={feature.icon.src}
+            width={feature.icon.width}
+            height={feature.icon.height}
+            fetchPriority="low"
+            alt=""
+            aria-hidden="true"
+            className="h-14 w-14 flex-none object-contain"
+          />
           <div>
             <h4 className="m-0 mb-1.5 font-display text-[20px] font-bold uppercase tracking-[1px] text-white">
               {feature.title}

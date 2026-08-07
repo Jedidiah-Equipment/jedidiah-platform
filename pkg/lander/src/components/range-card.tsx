@@ -18,9 +18,12 @@ export function RangeCard({ position, range }: { position: number; range: HomeRa
       <div className="flex h-full flex-col border border-line bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[translate,box-shadow,border-color] duration-[450ms] ease-in-out group-hover:-translate-y-1.5 group-hover:border-gold group-hover:shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
         <div className="relative aspect-[16/11] overflow-hidden bg-ink">
           {/* The image route streams the real Range image or a neutral brand placeholder, so this never
-              renders broken. */}
+              renders broken. `sizes` tracks the grid this card sits in: four across the 1224px content
+              column, two below the `nav` breakpoint, one below `xs`. */}
           <img
             src={range.imageUrl}
+            srcSet={range.imageSrcSet}
+            sizes="(min-width: 1320px) 288px, (min-width: 860px) 22vw, (min-width: 520px) 46vw, 92vw"
             alt={range.name}
             loading="lazy"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-[450ms] ease-in-out group-hover:scale-[1.06]"

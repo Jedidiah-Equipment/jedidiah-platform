@@ -25,9 +25,10 @@ variants of API routes whose normal contract is session-gated.
 - The Lander serves images through public cache-friendly routes that stream source bytes from object
   storage through existing product/range image services, and brochure PDFs through
   `generateProductBrochureIfComplete`.
-- Image optimization stays local to `@pkg/lander`: it downscales raster images to a 1280px-wide WebP
-  variant, caches by immutable storage key plus transform signature, and falls back to streaming the
-  original bytes if optimization fails. The cache directory remains ephemeral on Railway for now.
+- Image optimization stays local to `@pkg/lander`: it downscales raster images to WebP at one of a fixed
+  set of candidate widths, chosen by the requesting layout, plus a JPEG variant for social scrapers. It
+  caches by immutable storage key plus transform signature, and falls back to streaming the original bytes
+  if optimization fails. The cache directory remains ephemeral on Railway for now.
 - A future Railway Volume for the Lander image cache remains deferred until cache re-warm cost justifies
   the added infrastructure.
 - The contact form sends lead email via Resend directly from a Lander server route because `@pkg/api`'s

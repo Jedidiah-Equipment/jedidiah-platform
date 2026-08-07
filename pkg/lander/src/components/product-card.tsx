@@ -19,8 +19,12 @@ export function ProductCard({ onClick, product }: { onClick?: () => void; produc
     >
       <div className="flex h-full flex-col border border-line bg-white shadow-[0_1px_3px_rgba(0,0,0,0.07)] transition-[translate,box-shadow,border-color] duration-[450ms] ease-in-out group-hover:-translate-y-1.5 group-hover:border-gold group-hover:shadow-[0_14px_34px_rgba(0,0,0,0.14)]">
         <div className="relative aspect-[16/10] overflow-hidden bg-ink">
+          {/* `sizes` tracks the grid: three across the 1224px content column, two below the `nav`
+              breakpoint, one below `xs`. */}
           <img
             src={product.imageUrl}
+            srcSet={product.imageSrcSet}
+            sizes="(min-width: 1320px) 392px, (min-width: 860px) 30vw, (min-width: 520px) 46vw, 92vw"
             alt={product.name}
             loading="lazy"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-[450ms] ease-in-out group-hover:scale-[1.05]"

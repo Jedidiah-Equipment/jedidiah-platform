@@ -1,4 +1,4 @@
-import { transformSignature } from '@pkg/core';
+import { CATALOG_IMAGE_WIDTHS, transformSignature } from '@pkg/core';
 import { productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db';
 import { expect } from 'vitest';
 import { translationEnvelope } from '../../test/catalog-translation.js';
@@ -186,17 +186,38 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
   expect(detail?.description).toBe('Flagship 14-ton tipping trailer.');
   // Each image URL carries its slot's `updatedAt` plus the transform signature as a `?v=` cache-busting
   // token (issue #647).
-  const primaryV = `${Date.parse(product.images.primary?.updatedAt ?? '')}-${transformSignature('webp')}`;
-  const secondary1V = `${Date.parse(product.images.secondary1?.updatedAt ?? '')}-${transformSignature('webp')}`;
-  const secondary2V = `${Date.parse(product.images.secondary2?.updatedAt ?? '')}-${transformSignature('webp')}`;
+  const primaryV = `${Date.parse(product.images.primary?.updatedAt ?? '')}-${transformSignature('webp1280')}`;
+  const secondary1V = `${Date.parse(product.images.secondary1?.updatedAt ?? '')}-${transformSignature('webp1280')}`;
+  const secondary2V = `${Date.parse(product.images.secondary2?.updatedAt ?? '')}-${transformSignature('webp1280')}`;
   expect(detail?.imageUrl).toBe(`/images/products/${product.id}?v=${primaryV}`);
   // The og:image variant is JPEG: social scrapers refuse to render WebP preview images.
   const primaryOgV = `${Date.parse(product.images.primary?.updatedAt ?? '')}-${transformSignature('jpeg')}`;
   expect(detail?.ogImageUrl).toBe(`/images/products/${product.id}?format=jpeg&v=${primaryOgV}`);
+  // Every gallery slot also carries a per-width candidate list, so the thumbnails stop pulling the same
+  // 1280px encode as the main image.
+  const gallerySrcSet = (slot: 'primary' | 'secondary1' | 'secondary2') =>
+    CATALOG_IMAGE_WIDTHS.map(
+      (width) =>
+        `/images/products/${product.id}?${slot === 'primary' ? '' : `slot=${slot}&`}w=${width}&v=${Date.parse(
+          product.images[slot]?.updatedAt ?? '',
+        )}-${transformSignature(`webp${width}`)} ${width}w`,
+    ).join(', ');
   expect(detail?.galleryImages).toEqual([
-    { slot: 'primary', imageUrl: `/images/products/${product.id}?v=${primaryV}` },
-    { slot: 'secondary1', imageUrl: `/images/products/${product.id}?slot=secondary1&v=${secondary1V}` },
-    { slot: 'secondary2', imageUrl: `/images/products/${product.id}?slot=secondary2&v=${secondary2V}` },
+    {
+      slot: 'primary',
+      imageUrl: `/images/products/${product.id}?v=${primaryV}`,
+      imageSrcSet: gallerySrcSet('primary'),
+    },
+    {
+      slot: 'secondary1',
+      imageUrl: `/images/products/${product.id}?slot=secondary1&v=${secondary1V}`,
+      imageSrcSet: gallerySrcSet('secondary1'),
+    },
+    {
+      slot: 'secondary2',
+      imageUrl: `/images/products/${product.id}?slot=secondary2&v=${secondary2V}`,
+      imageSrcSet: gallerySrcSet('secondary2'),
+    },
   ]);
   expect(detail?.keyFeatures).toEqual(['Heavy-duty monocoque body', 'Twin-ram hydraulic tipping']);
   expect(detail).not.toHaveProperty('highlights');
@@ -277,7 +298,11 @@ test('loadProductDetail lists other Products in the same Range as related cards'
       description: 'Mid-size field bowser.',
       variantId: null,
       href: `/products/${encodeURIComponent(earlierSibling.modelCode)}`,
-      imageUrl: `/images/products/${earlierSibling.id}?v=${Date.parse(earlierSibling.images.primary?.updatedAt ?? '')}-${transformSignature('webp')}`,
+      imageUrl: `/images/products/${earlierSibling.id}?v=${Date.parse(earlierSibling.images.primary?.updatedAt ?? '')}-${transformSignature('webp1280')}`,
+      imageSrcSet: CATALOG_IMAGE_WIDTHS.map(
+        (width) =>
+          `/images/products/${earlierSibling.id}?w=${width}&v=${Date.parse(earlierSibling.images.primary?.updatedAt ?? '')}-${transformSignature(`webp${width}`)} ${width}w`,
+      ).join(', '),
     },
     {
       id: sibling.id,
@@ -286,7 +311,11 @@ test('loadProductDetail lists other Products in the same Range as related cards'
       description: 'Compact field bowser.',
       variantId: null,
       href: `/products/${encodeURIComponent(sibling.modelCode)}`,
-      imageUrl: `/images/products/${sibling.id}?v=${Date.parse(sibling.images.primary?.updatedAt ?? '')}-${transformSignature('webp')}`,
+      imageUrl: `/images/products/${sibling.id}?v=${Date.parse(sibling.images.primary?.updatedAt ?? '')}-${transformSignature('webp1280')}`,
+      imageSrcSet: CATALOG_IMAGE_WIDTHS.map(
+        (width) =>
+          `/images/products/${sibling.id}?w=${width}&v=${Date.parse(sibling.images.primary?.updatedAt ?? '')}-${transformSignature(`webp${width}`)} ${width}w`,
+      ).join(', '),
     },
   ]);
 });

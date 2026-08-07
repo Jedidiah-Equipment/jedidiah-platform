@@ -95,9 +95,9 @@ function productDetail(overrides: Partial<ProductDetail> = {}): ProductDetail {
     imageUrl: '/images/products/product-1',
     ogImageUrl: '/images/products/product-1?format=og',
     galleryImages: [
-      { imageUrl: '/images/products/product-1', slot: 'primary' },
-      { imageUrl: '/images/products/product-1?slot=secondary1', slot: 'secondary1' },
-      { imageUrl: '/images/products/product-1?slot=secondary2', slot: 'secondary2' },
+      { imageUrl: '/images/products/product-1', imageSrcSet: undefined, slot: 'primary' },
+      { imageUrl: '/images/products/product-1?slot=secondary1', imageSrcSet: undefined, slot: 'secondary1' },
+      { imageUrl: '/images/products/product-1?slot=secondary2', imageSrcSet: undefined, slot: 'secondary2' },
     ],
     standardAssemblies: [],
     optionalAssemblies: [],

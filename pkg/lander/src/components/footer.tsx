@@ -5,9 +5,9 @@ import {
   JEDIDIAH_INSTAGRAM_URL,
   JEDIDIAH_LOCATION,
 } from '@pkg/domain';
-import logoFullUrl from '@pkg/domain/assets/brand/jedidiah-logo-full.png';
 import { IconBrandFacebook, IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
+import { FOOTER_LOGO } from '../assets/images.js';
 import { captureEventForNavigation } from '../lib/analytics.js';
 import { LOCALES } from '../lib/locale.js';
 import { localePreferenceHref } from '../lib/locale-preference.js';
@@ -46,7 +46,14 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
         <div className="grid grid-cols-[1.4fr_1fr_1fr_1.2fr] gap-14 pb-14 max-nav:grid-cols-2 max-nav:gap-y-9 max-nav:gap-x-7 max-xs:grid-cols-1">
           <div>
             <div className="mb-[22px]">
-              <img src={logoFullUrl} alt={m.site.logoAlt} className="h-10 w-auto" />
+              <img
+                src={FOOTER_LOGO.src}
+                width={FOOTER_LOGO.width}
+                height={FOOTER_LOGO.height}
+                loading="lazy"
+                alt={m.site.logoAlt}
+                className="h-10 w-auto"
+              />
             </div>
             <p className="m-0 max-w-[330px] font-body text-[15px] leading-[1.7] text-[#9a9a9a]">
               {m.footer.description}

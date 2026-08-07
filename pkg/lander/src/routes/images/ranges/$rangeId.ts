@@ -8,9 +8,9 @@ export const Route = createFileRoute('/images/ranges/$rangeId')({
     handlers: {
       GET: async ({ params, request }) => {
         const { serveRangeImage } = await import('../../../server/media/image-handlers.js');
-        const versioned = new URL(request.url).searchParams.has('v');
+        const search = new URL(request.url).searchParams;
 
-        return serveRangeImage(params.rangeId, { versioned });
+        return serveRangeImage(params.rangeId, { versioned: search.has('v'), width: search.get('w') });
       },
     },
   },

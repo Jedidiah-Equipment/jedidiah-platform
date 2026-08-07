@@ -1,5 +1,6 @@
-import beetleMarkUrl from '@pkg/domain/assets/brand/jedidiah-mark-black.png';
 import type { ReactNode } from 'react';
+
+import { WATERMARK_MARK } from '../assets/images.js';
 
 type SandWatermarkVariant =
   | 'about-story'
@@ -36,8 +37,12 @@ const WATERMARK_VARIANTS: Record<SandWatermarkVariant, string> = {
 export function SandWatermarkSection({ children, className, variant }: SandWatermarkSectionProps) {
   return (
     <section className={`relative isolate overflow-hidden bg-sand ${className ?? ''}`}>
+      {/* Decoration at 4.5% opacity: never worth a byte of the initial load. */}
       <img
-        src={beetleMarkUrl}
+        src={WATERMARK_MARK.src}
+        width={WATERMARK_MARK.width}
+        height={WATERMARK_MARK.height}
+        loading="lazy"
         alt=""
         aria-hidden="true"
         className={`pointer-events-none absolute z-0 -translate-y-1/2 opacity-[0.045] mix-blend-multiply ${WATERMARK_VARIANTS[variant]}`}

@@ -159,5 +159,6 @@ function product({ id, variantId }: { id: string; variantId: string | null }) {
     description: '',
     href: `/products/${id}`,
     imageUrl: `/images/products/${id}`,
+    imageSrcSet: undefined,
   };
 }

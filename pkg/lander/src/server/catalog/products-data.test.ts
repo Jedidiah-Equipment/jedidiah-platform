@@ -1,4 +1,4 @@
-import { transformSignature } from '@pkg/core';
+import { CATALOG_IMAGE_WIDTHS, transformSignature } from '@pkg/core';
 import { productAssemblies, productRanges, productRangeVariants, products, sql } from '@pkg/db';
 import { expect } from 'vitest';
 import { translationEnvelope } from '../../test/catalog-translation.js';
@@ -206,7 +206,13 @@ test('loadProductsCatalog groups Products under their Range with a model count',
     // The card image URL carries the primary image's `updatedAt` plus the transform signature as a `?v=`
     // cache-busting token so a replaced photo (or a transform change) appears immediately on the public
     // site (issue #647).
-    imageUrl: `/images/products/${product.id}?v=${Date.parse(product.images.primary?.updatedAt ?? '')}-${transformSignature('webp')}`,
+    imageUrl: `/images/products/${product.id}?v=${Date.parse(product.images.primary?.updatedAt ?? '')}-${transformSignature('webp1280')}`,
+    // One candidate per published catalog width, each with its own `?v=` token because the bytes differ per
+    // width. Cards paint a few hundred pixels wide, so this is what stops them pulling the 1280px encode.
+    imageSrcSet: CATALOG_IMAGE_WIDTHS.map(
+      (width) =>
+        `/images/products/${product.id}?w=${width}&v=${Date.parse(product.images.primary?.updatedAt ?? '')}-${transformSignature(`webp${width}`)} ${width}w`,
+    ).join(', '),
   });
 });
 

@@ -191,7 +191,7 @@ function FilterBar({
       <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-header:top-16">
         {showRangeFilter ? (
           <div className="mx-auto flex max-w-[1320px] items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
-            <span className="mr-1.5 flex-none font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999] max-nav:sr-only">
+            <span className="mr-1.5 flex-none font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#666] max-nav:sr-only">
               {m.products.filterByRange}
             </span>
             <FilterChipRow chips={rangeChips} />
@@ -226,8 +226,8 @@ function ProductGroup({
         <h2 className="m-0 font-display text-[40px] font-extrabold uppercase leading-[0.9] tracking-[0.5px] text-ink max-nav:text-[32px]">
           {group.name}
         </h2>
-        {group.description ? <span className="pb-1 font-body text-[15px] text-[#777]">{group.description}</span> : null}
-        <span className="ml-auto pb-1 font-display text-[14px] font-semibold uppercase tracking-[1px] text-[#999] max-nav:ml-0">
+        {group.description ? <span className="pb-1 font-body text-[15px] text-[#666]">{group.description}</span> : null}
+        <span className="ml-auto pb-1 font-display text-[14px] font-semibold uppercase tracking-[1px] text-[#666] max-nav:ml-0">
           {m.products.modelCount(group.count)}
         </span>
       </div>

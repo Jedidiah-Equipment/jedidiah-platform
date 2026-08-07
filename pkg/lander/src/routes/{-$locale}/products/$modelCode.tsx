@@ -111,6 +111,8 @@ function Gallery({ images, name }: { images: ProductDetail['galleryImages']; nam
       >
         <img
           src={activeImage.imageUrl}
+          srcSet={activeImage.imageSrcSet}
+          sizes="(min-width: 1320px) 620px, (min-width: 860px) 48vw, 92vw"
           alt={name}
           className="h-full w-full object-cover transition-transform duration-[1500ms] ease-out group-hover:scale-[1.035]"
         />
@@ -133,8 +135,11 @@ function Gallery({ images, name }: { images: ProductDetail['galleryImages']; nam
             >
               <img
                 src={image.imageUrl}
+                srcSet={image.imageSrcSet}
+                sizes="(min-width: 1320px) 197px, (min-width: 860px) 16vw, 30vw"
                 alt=""
                 aria-hidden="true"
+                loading="lazy"
                 className={`h-full w-full object-cover transition-transform duration-[1500ms] ease-out ${
                   index === active ? 'scale-[1.04]' : 'group-hover:scale-[1.04]'
                 }`}
@@ -463,7 +468,7 @@ function ProductNotFound() {
     <main className="bg-sand">
       <SandWatermarkSection variant="product-not-found" className="py-32 text-center max-nav:py-20">
         <div className="mx-auto max-w-[1320px] px-12 max-nav:px-5">
-          <span className="font-display text-[15px] font-semibold uppercase tracking-[3px] text-[#8a7a2a]">
+          <span className="font-display text-[15px] font-semibold uppercase tracking-[3px] text-bronze">
             {m.productDetail.notFoundEyebrow}
           </span>
           <h1 className="mt-3.5 mb-4 font-display text-[56px] font-extrabold uppercase leading-[0.94] tracking-[0.5px] text-ink max-nav:text-[40px]">

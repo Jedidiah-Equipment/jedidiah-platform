@@ -1,10 +1,10 @@
-import { listAllProducts, listProductRanges, transformSignature } from '@pkg/core';
+import { CATALOG_IMAGE_WIDTHS, listAllProducts, listProductRanges, transformSignature } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import { isLanderReady, localizeFields } from '@pkg/domain';
 import type { Product, ProductRangeVariantTranslations, ProductTranslations } from '@pkg/schema';
 
 import type { Locale } from '../../lib/locale.js';
-import { parseImageFormat } from '../media/image-format.js';
+import { resolveImageTransform } from '../media/image-format.js';
 
 export type CatalogProduct = {
   id: string;
@@ -14,6 +14,7 @@ export type CatalogProduct = {
   variantId: string | null;
   href: string;
   imageUrl: string;
+  imageSrcSet: string | undefined;
 };
 
 export type CatalogVariant = {
@@ -127,11 +128,30 @@ export function imageUrl(
   const search = new URLSearchParams(params);
   const epochMs = updatedAt ? Date.parse(updatedAt) : Number.NaN;
   if (!Number.isNaN(epochMs)) {
-    search.set('v', `${epochMs}-${transformSignature(parseImageFormat(params.format))}`);
+    search.set('v', `${epochMs}-${transformSignature(resolveImageTransform(params.format, params.w))}`);
   }
 
   const query = search.toString();
   return query ? `${path}?${query}` : path;
+}
+
+// The candidate list for an `<img srcSet>`, so a card painted 272px wide stops downloading the 1280px
+// encode. Each candidate carries its own `?v=` token because the bytes genuinely differ per width.
+//
+// A missing image yields undefined rather than a candidate list: there is no token to tell the candidates
+// apart, and the bare URL already in `src` streams the neutral placeholder at its own short cache window.
+export function imageSrcSet(
+  path: string,
+  updatedAt: string | null | undefined,
+  params: Record<string, string> = {},
+): string | undefined {
+  if (!updatedAt || Number.isNaN(Date.parse(updatedAt))) {
+    return undefined;
+  }
+
+  return CATALOG_IMAGE_WIDTHS.map(
+    (width) => `${imageUrl(path, updatedAt, { ...params, w: String(width) })} ${width}w`,
+  ).join(', ');
 }
 
 export function compareProductDisplayOrder(
@@ -174,6 +194,7 @@ export function toCatalogProduct(
     variantId: row.variantId ?? null,
     href: `/products/${encodeURIComponent(row.modelCode)}`,
     imageUrl: imageUrl(`/images/products/${row.id}`, row.images?.primary?.updatedAt),
+    imageSrcSet: imageSrcSet(`/images/products/${row.id}`, row.images?.primary?.updatedAt),
   };
 }
 

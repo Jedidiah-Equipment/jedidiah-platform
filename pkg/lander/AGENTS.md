@@ -4,6 +4,27 @@
   and storage adapter rather than the authenticated API, and must never run migrations. See ADR 0007.
 - Keep `ANALYTICS.md` in sync with the typed event registry whenever Lander analytics change.
 
+## Presentation images and fonts
+
+- Full-resolution masters live in `assets/sources/` (and `@pkg/domain/assets/brand`) and are never served.
+  `pnpm --filter @pkg/lander assets:optimize` writes the sized WebP variants and `dimensions.ts` into
+  `src/assets/generated/`; re-run it after replacing a master and commit the output. Reach for those
+  variants through `src/assets/images.ts`, never a `public/` path — a generated file is content-hashed by
+  Vite and served immutably, a `public/` file is not.
+- Every `<img>` reserves its box before the bytes land: a generated asset knows its intrinsic size, so it
+  carries `width`/`height`; a catalog image does not, so its wrapper carries an `aspect-*` class instead.
+  Neither is optional — an image that reserves nothing shifts the layout under the reader.
+- Above the fold, the one element that is the LCP gets `fetchPriority="high"`; everything else gets
+  `loading="lazy"` (below the fold) or `fetchPriority="low"` (decorative, at the fold). React hoists a
+  preload for any other eagerly-rendered image, and those preloads compete with the LCP for bandwidth.
+- Web fonts are self-hosted from `@pkg/domain/fonts` and declared per weight. Adding a weight to a
+  `font-display`/`font-body` element means adding a face; do not re-introduce a webfont CDN.
+- Catalog imagery (Range and Product photos) is resized on demand by the image routes, at the widths in
+  `CATALOG_IMAGE_WIDTHS` (`@pkg/core`) and no others — an open width parameter would let any caller mint
+  unbounded cache entries and sharp work. A view model exposes both `imageUrl` and `imageSrcSet`; render
+  both, and give the `<img>` a `sizes` that describes the grid it actually sits in. A URL naming no width
+  still serves the 1280px encode, so older links keep working.
+
 ## Localization
 
 - Follow `docs/adr/0011-lander-localization.md` and the Lander Localization vocabulary in `CONTEXT.md`.

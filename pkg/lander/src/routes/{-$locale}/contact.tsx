@@ -19,6 +19,7 @@ import {
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
+import { HERO_BACKDROP_IMAGE } from '../../assets/images.js';
 import { PageHero } from '../../components/page-hero.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
 import { captureEvent, captureEventForNavigation } from '../../lib/analytics.js';
@@ -364,7 +365,12 @@ function MapStrip() {
   return (
     <section className="relative h-[340px] overflow-hidden bg-[#cfcdc6]">
       <img
-        src="/hero-silage-harvest.jpg"
+        src={HERO_BACKDROP_IMAGE.src}
+        srcSet={HERO_BACKDROP_IMAGE.srcSet}
+        sizes="100vw"
+        width={HERO_BACKDROP_IMAGE.width}
+        height={HERO_BACKDROP_IMAGE.height}
+        loading="lazy"
         alt=""
         aria-hidden="true"
         className="h-full w-full scale-[1.01] object-cover brightness-[0.7] grayscale-[0.6] blur-[1.5px]"

@@ -32,11 +32,21 @@ const GRAPHIC = { quality: 90, effort: 6 } as const;
 
 type Job = {
   source: string;
-  /** Output basename; each width is emitted as `<name>-<width>.webp`. */
+  /** Output basename; each width is emitted as `<name>-<width>.<format>`. */
   name: string;
   widths: number[];
   encode: { effort: number; quality: number };
+  /** Defaults to WebP. JPEG exists for the social card, which scrapers will not render as WebP. */
+  format?: 'webp' | 'jpeg';
+  /**
+   * Width-to-height ratio to crop to, instead of preserving the source's. Only the social card sets this:
+   * its dimensions are dictated by the platforms, not by the photograph.
+   */
+  aspect?: number;
 };
+
+// Open Graph's documented card size. Anything else gets letterboxed or cropped by the platform.
+const OG_CARD = { width: 1200, height: 630 };
 
 const JOBS: Job[] = [
   // Homepage hero, full-bleed. Also reused, at its narrow widths, as the blurred backdrop behind every
@@ -48,6 +58,16 @@ const JOBS: Job[] = [
     name: 'hero-silage-harvest',
     widths: [640, 960, 1280, 1600],
     encode: OVERLAID_PHOTO,
+  },
+  // The site-wide Open Graph card, for every page that does not supply its own image. JPEG because the
+  // social scrapers still refuse WebP — the same reason @pkg/core keeps a `jpeg` catalog transform.
+  {
+    source: join(sourceDir, 'hero-silage-harvest.jpg'),
+    name: 'og-card',
+    widths: [OG_CARD.width],
+    aspect: OG_CARD.width / OG_CARD.height,
+    format: 'jpeg',
+    encode: PHOTO,
   },
   // About page team photo, below the fold, painted at most ~1224px wide.
   {
@@ -94,18 +114,29 @@ async function run(): Promise<void> {
     }
     totalIn += (await stat(job.source)).size;
 
+    const format = job.format ?? 'webp';
+
     for (const width of job.widths) {
       if (width > sourceWidth) {
         throw new Error(`${job.name}: requested ${width}px from a ${sourceWidth}px source — upscaling is never right`);
       }
 
-      const buffer = await sharp(job.source).resize({ width }).webp(job.encode).toBuffer();
-      await writeFile(join(outDir, `${job.name}-${width}.webp`), buffer);
+      // `cover` on a cropped job: the card must be exactly the platform's size, so the photograph is
+      // trimmed rather than letterboxed.
+      const pipeline = sharp(job.source).resize(
+        job.aspect ? { width, height: Math.round(width / job.aspect), fit: 'cover' } : { width },
+      );
+      const buffer = await (format === 'jpeg' ? pipeline.jpeg(job.encode) : pipeline.webp(job.encode)).toBuffer();
+      await writeFile(join(outDir, `${job.name}-${width}.${format}`), buffer);
       totalOut += buffer.byteLength;
     }
 
-    aspects.push(`  '${job.name}': { width: ${sourceWidth}, height: ${sourceHeight} },`);
-    console.log(`${job.name}: ${sourceWidth}x${sourceHeight} -> ${job.widths.join(', ')}`);
+    // A cropped job reports the box it was cropped to; everything else reports its master's ratio.
+    const [reportedWidth, reportedHeight] = job.aspect
+      ? [job.widths[0] ?? sourceWidth, Math.round((job.widths[0] ?? sourceWidth) / job.aspect)]
+      : [sourceWidth, sourceHeight];
+    aspects.push(`  '${job.name}': { width: ${reportedWidth}, height: ${reportedHeight} },`);
+    console.log(`${job.name}: ${sourceWidth}x${sourceHeight} -> ${job.widths.join(', ')} (${format})`);
   }
 
   // Emitted rather than hand-maintained: an `<img>` needs the intrinsic ratio to reserve its box before the

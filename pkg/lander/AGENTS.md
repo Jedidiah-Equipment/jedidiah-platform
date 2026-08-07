@@ -11,10 +11,12 @@
   `src/assets/generated/`; re-run it after replacing a master and commit the output. Reach for those
   variants through `src/assets/images.ts`, never a `public/` path — a generated file is content-hashed by
   Vite and served immutably, a `public/` file is not.
-- Every `<img>` carries `width`/`height`. Above the fold, the one element that is the LCP gets
-  `fetchPriority="high"`; everything else gets `loading="lazy"` (below the fold) or `fetchPriority="low"`
-  (decorative, at the fold). React hoists a preload for any other eagerly-rendered image, and those
-  preloads compete with the LCP for bandwidth.
+- Every `<img>` reserves its box before the bytes land: a generated asset knows its intrinsic size, so it
+  carries `width`/`height`; a catalog image does not, so its wrapper carries an `aspect-*` class instead.
+  Neither is optional — an image that reserves nothing shifts the layout under the reader.
+- Above the fold, the one element that is the LCP gets `fetchPriority="high"`; everything else gets
+  `loading="lazy"` (below the fold) or `fetchPriority="low"` (decorative, at the fold). React hoists a
+  preload for any other eagerly-rendered image, and those preloads compete with the LCP for bandwidth.
 - Web fonts are self-hosted from `@pkg/domain/fonts` and declared per weight. Adding a weight to a
   `font-display`/`font-body` element means adding a face; do not re-introduce a webfont CDN.
 - Catalog imagery (Range and Product photos) is resized on demand by the image routes, at the widths in

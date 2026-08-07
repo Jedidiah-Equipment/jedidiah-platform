@@ -1,3 +1,4 @@
+import { OG_CARD } from '../assets/images.js';
 import { CANONICAL_LOCALE, LOCALE_METADATA, LOCALES, type Locale, localePath } from './locale.js';
 import { siteOrigin } from './site-origin.js';
 
@@ -8,9 +9,10 @@ import { siteOrigin } from './site-origin.js';
 // environment via the build-time, client-safe VITE_SITE_URL, defaulting to the live domain.
 export const SITE_URL = (import.meta.env.VITE_SITE_URL ?? 'https://jedidiahequipment.co.za').replace(/\/+$/, '');
 
-// Open Graph fallback for every page without its own image (Home, Products, About, Contact). The hero photo
-// ships in public/ and reads well as a representative brand card; product pages override it with their hero.
-export const DEFAULT_OG_IMAGE = '/hero-silage-harvest.jpg';
+// Open Graph fallback for every page without its own image (Home, Products, About, Contact). A JPEG crop of
+// the hero photo at Open Graph's card size, built by scripts/optimize-assets.ts; product pages override it
+// with their own. Content-hashed, so it stays a root-relative path that absoluteUrl() can qualify.
+export const DEFAULT_OG_IMAGE: string = OG_CARD.src;
 
 // Qualifies a root-relative path against the origin of the host serving this response. Open Graph and
 // Twitter Card scrapers (Slack, WhatsApp, X, LinkedIn, ...) do not resolve relative URLs in meta tags, so

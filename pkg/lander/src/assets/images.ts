@@ -18,6 +18,7 @@ import hero1600 from './generated/hero-silage-harvest-1600.webp';
 import logo480 from './generated/jedidiah-logo-480.webp';
 import logoFull560 from './generated/jedidiah-logo-full-560.webp';
 import markBlack583 from './generated/jedidiah-mark-black-583.webp';
+import ogCard1200 from './generated/og-card-1200.jpeg';
 
 /** An image the browser picks a width for, plus the ratio it needs to reserve space. */
 export type ResponsiveImage = {
@@ -68,6 +69,10 @@ export const ABOUT_STAFF_IMAGE: ResponsiveImage = {
   ]),
   ...SOURCE_DIMENSIONS['about-staff'],
 };
+
+// The site-wide social card. JPEG at Open Graph's documented 1200x630, because the scrapers still refuse
+// WebP and crop anything that is not that shape.
+export const OG_CARD: FixedImage = { src: ogCard1200, ...SOURCE_DIMENSIONS['og-card'] };
 
 export const NAV_LOGO: FixedImage = { src: logo480, ...SOURCE_DIMENSIONS['jedidiah-logo'] };
 export const FOOTER_LOGO: FixedImage = { src: logoFull560, ...SOURCE_DIMENSIONS['jedidiah-logo-full'] };

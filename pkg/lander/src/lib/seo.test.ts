@@ -14,6 +14,24 @@ describe('absoluteUrl', () => {
   });
 });
 
+describe('DEFAULT_OG_IMAGE', () => {
+  // Asserted against the resolved asset rather than against itself: a social card that 404s still produces
+  // a perfectly well-formed og:image tag, so comparing the constant to the constant proves nothing. Pointing
+  // this at a file the build does not emit is what silently kills every preview card.
+  //
+  // The path is matched loosely because Vite serves an unhashed `/src/...` URL in dev and a hashed
+  // `/assets/...` one from a build. What both forms share — and what a hand-written public path lacks — is
+  // the generated basename.
+  test('resolves to a generated asset, not a bare path that nothing serves', () => {
+    expect(DEFAULT_OG_IMAGE).toMatch(/\/og-card-\d+[\w.-]*\.jpeg$/);
+  });
+
+  // Scrapers refuse WebP — the same reason @pkg/core keeps a `jpeg` catalog transform for product cards.
+  test('is a JPEG', () => {
+    expect(DEFAULT_OG_IMAGE.endsWith('.jpeg')).toBe(true);
+  });
+});
+
 describe('truncateDescription', () => {
   test('returns short text unchanged (whitespace collapsed)', () => {
     expect(truncateDescription('A  tidy   description')).toBe('A tidy description');

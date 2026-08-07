@@ -15,9 +15,12 @@ describe('cacheControlFor', () => {
     );
   });
 
+  // This branch covers anything dropped into `public/`, which keeps its filename across deploys. The
+  // Lander's own robots.txt and favicon are not examples: robots.txt is a server route and the favicon is
+  // a hashed import, so neither reaches here.
   test('gives stable-named static files a day of freshness they can outlive', () => {
-    expect(cacheControlFor('/robots.txt')).toBe('public, max-age=86400, stale-while-revalidate=604800');
-    expect(cacheControlFor('/favicon.ico')).toBe('public, max-age=86400, stale-while-revalidate=604800');
+    expect(cacheControlFor('/apple-touch-icon.png')).toBe('public, max-age=86400, stale-while-revalidate=604800');
+    expect(cacheControlFor('/brochures/catalogue.pdf')).toBe('public, max-age=86400, stale-while-revalidate=604800');
   });
 
   test('never holds a document, which is what carries the new asset URLs', () => {

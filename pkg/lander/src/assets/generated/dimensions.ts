@@ -3,6 +3,7 @@
 
 export const SOURCE_DIMENSIONS = {
   'hero-silage-harvest': { width: 1833, height: 858 },
+  'og-card': { width: 1200, height: 630 },
   'about-staff': { width: 2048, height: 946 },
   'jedidiah-logo': { width: 3793, height: 1038 },
   'jedidiah-logo-full': { width: 4807, height: 1038 },

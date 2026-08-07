@@ -97,10 +97,12 @@ export function initAnalytics(language: Locale): void {
   }
 }
 
-// Arms analytics without paying for it during the load. Evaluating and starting posthog-js is a few hundred
-// milliseconds of main-thread work that lands squarely in the window Total Blocking Time measures, and
-// nothing about a pageview needs it to happen before the page is interactive. The language is recorded
-// synchronously, so a click that beats the idle callback starts the SDK itself rather than being lost.
+// Arms analytics without paying for it during the load. `posthog.init` is the expensive half — it installs
+// autocapture listeners, reads storage and opens the ingestion connection — and it lands squarely in the
+// window Total Blocking Time measures, while nothing about a pageview needs it before the page is
+// interactive. (Evaluating the module itself is not deferred: posthog-js is a static import here, reached
+// from nav and footer, so it is in the entry bundle either way.) The language is recorded synchronously, so
+// a click that beats the idle callback starts the SDK itself rather than being lost.
 //
 // Returns a cancel function for the caller's effect cleanup.
 export function initAnalyticsWhenIdle(language: Locale): () => void {

@@ -38,7 +38,7 @@ import {
   UserSummary,
   UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
 
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
@@ -533,6 +533,12 @@ export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
     conditions.push(eq(quotes.customerId, input.filters.customerId));
   }
 
+  if (input.filters.invoiced) {
+    conditions.push(
+      input.filters.invoiced === 'invoiced' ? isNotNull(quotes.invoiceNumber) : isNull(quotes.invoiceNumber),
+    );
+  }
+
   if (input.filters.kind) {
     conditions.push(eq(quotes.kind, input.filters.kind));
   }
@@ -561,6 +567,7 @@ export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
         sql`${quotes.id}::text`,
         sql`${quotes.code}::text`,
         sql`${customers.companyName}`,
+        sql`${quotes.invoiceNumber}`,
         sql`${quotes.workTitle}`,
         sql`${products.name}`,
         sql`${products.modelCode}`,
@@ -591,6 +598,8 @@ export function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
     code: sql`${quotes.code}`,
     createdAt: sql`${quotes.createdAt}`,
     customerCompanyName: sql`${customers.companyName}`,
+    // Sorted as blank rather than null so an uninvoiced Quote sorts alongside the other empty values.
+    invoiceNumber: sql`coalesce(${quotes.invoiceNumber}, '')`,
     productName: sql`coalesce(${products.name}, ${quotes.workTitle}, '')`,
     salesPersonName: sql`${user.name}`,
     status: sql`${quotes.status}`,

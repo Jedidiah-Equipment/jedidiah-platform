@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import { QuoteKind, type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary, type UUID } from '@pkg/schema';
+import { type QuoteListInput, QuoteSortBy, type UUID } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -27,6 +27,7 @@ import {
   quoteTablePinnedLeftColumns,
   quoteTablePinnedRightColumns,
 } from './components/QuoteTableColumns.js';
+import { getQuoteIdFilterValue, getQuoteListInputExtras } from './components/quote-table-input.js';
 import { QuoteCreateDialog } from './QuoteCreateDialog.js';
 
 export const useQuoteTableStore = createQuoteTableStore('quotes-table');
@@ -97,7 +98,7 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
     sortOptions: quoteSortOptions,
     getListInputExtras,
   });
-  const productFilterValue = getIdFilterValue(tableController.columnFilters, 'productName');
+  const productFilterValue = getQuoteIdFilterValue(tableController.columnFilters, 'productName');
   const productOptions = useProductForQuoteOptions({
     includeHistoricalSelected: true,
     limit: 0,
@@ -184,46 +185,10 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
         onLoadMore: () => void quotesQuery.fetchNextPage(),
       }}
       onRowClick={quoteRowClick}
-      tableClassName={customerId ? 'min-w-[1084px]' : 'min-w-[1260px]'}
+      tableClassName={customerId ? 'min-w-[1244px]' : 'min-w-[1420px]'}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'quote' : 'quotes'}`}
     />
   );
 };
-
-function getStatusFilterValues(columnFilters: ColumnFiltersState) {
-  const value = columnFilters.find((filter) => filter.id === 'status')?.value;
-
-  return Array.isArray(value)
-    ? value.filter((item): item is QuoteSummary['status'] => QuoteStatus.safeParse(item).success)
-    : [];
-}
-
-function getKindFilterValue(columnFilters: ColumnFiltersState) {
-  const value = columnFilters.find((filter) => filter.id === 'kind')?.value;
-  const parsed = typeof value === 'string' ? QuoteKind.safeParse(value) : null;
-
-  return parsed?.success ? parsed.data : undefined;
-}
-
-function getQuoteListInputExtras(columnFilters: ColumnFiltersState, customerId?: UUID) {
-  return {
-    filters: {
-      customerId: customerId ?? getIdFilterValue(columnFilters, 'customerCompanyName'),
-      kind: getKindFilterValue(columnFilters),
-      productId: getIdFilterValue(columnFilters, 'productName'),
-      salesPersonId: getIdFilterValue(columnFilters, 'salesPersonName'),
-      statuses: getStatusFilterValues(columnFilters),
-    },
-  } satisfies Pick<QuoteListInput, 'filters'>;
-}
-
-function getIdFilterValue(
-  columnFilters: ColumnFiltersState,
-  id: 'customerCompanyName' | 'productName' | 'salesPersonName',
-) {
-  const value = columnFilters.find((filter) => filter.id === id)?.value;
-
-  return typeof value === 'string' && value ? value : undefined;
-}

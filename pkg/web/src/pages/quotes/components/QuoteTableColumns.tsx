@@ -6,7 +6,7 @@ import {
   pricePersistedQuote,
   quoteStatusLabels,
 } from '@pkg/domain';
-import { type PriorityQuote, QuoteKind, QuoteStatus, type QuoteSummary } from '@pkg/schema';
+import { type PriorityQuote, QuoteInvoicedFilter, QuoteKind, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -46,6 +46,16 @@ export const quoteKindLabels = {
 export const quoteKindFilterOptions = QuoteKind.options.map((kind) => ({
   label: quoteKindLabels[kind],
   value: kind,
+}));
+
+export const quoteInvoicedLabels = {
+  invoiced: 'With invoice',
+  'not-invoiced': 'Without invoice',
+} as const satisfies Record<QuoteInvoicedFilter, string>;
+
+export const quoteInvoicedFilterOptions = QuoteInvoicedFilter.options.map((invoiced) => ({
+  label: quoteInvoicedLabels[invoiced],
+  value: invoiced,
 }));
 
 export const quoteTablePinnedLeftColumns = ['code'];
@@ -154,6 +164,21 @@ export function createQuoteTableColumns({
         filterVariant: 'select',
         headerClassName: 'min-w-60',
       },
+    },
+    {
+      accessorFn: (row) => row.quote.invoiceNumber,
+      cell: ({ row }) => <InvoiceNumberCell isPriority={row.original.kind === 'priority'} quote={row.original.quote} />,
+      enableColumnFilter: true,
+      enableSorting: true,
+      header: 'Invoice number',
+      id: 'invoiceNumber',
+      meta: {
+        cellClassName: 'max-w-40 overflow-hidden',
+        filterOptions: quoteInvoicedFilterOptions,
+        filterVariant: 'select',
+        headerClassName: 'min-w-40 max-w-40',
+      },
+      size: 160,
     },
     {
       accessorFn: (row) => row.quote.validUntil,
@@ -307,6 +332,14 @@ function ProductCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteS
       </span>
     </div>
   );
+}
+
+function InvoiceNumberCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {
+  if (!quote.invoiceNumber) {
+    return <span className={cn(isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>No invoice</span>;
+  }
+
+  return <span className="block truncate font-mono tabular-nums">{quote.invoiceNumber}</span>;
 }
 
 function QuoteKindBadge({ className, kind }: { className?: string; kind: QuoteSummary['kind'] }) {

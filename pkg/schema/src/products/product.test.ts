@@ -490,4 +490,9 @@ describe('PRODUCT_IMAGE_SLOT_SPECS', () => {
   it('keeps technical drawings uncropped for editor preview and PDF output', () => {
     expect(PRODUCT_IMAGE_SLOT_SPECS.technicalDrawing.fit).toBe('contain');
   });
+
+  it('recommends the wide landscape source technical drawings are actually drawn at', () => {
+    expect(PRODUCT_IMAGE_SLOT_SPECS.technicalDrawing.recommendedWidth).toBe(2400);
+    expect(PRODUCT_IMAGE_SLOT_SPECS.technicalDrawing.recommendedHeight).toBe(880);
+  });
 });

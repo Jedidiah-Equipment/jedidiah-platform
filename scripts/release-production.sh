@@ -10,10 +10,11 @@ CHANGELOG_DIR="$ROOT/changelogs"
 DRY_RUN=0
 YES=0
 SKIP_CHANGELOG=0
+AGENT=${CHANGELOG_AGENT:-codex}
 
 usage() {
   cat <<USAGE
-Usage: pnpm release:production [--dry-run] [--yes] [--skip-changelog]
+Usage: pnpm release:production [--dry-run] [--yes] [--skip-changelog] [--agent <codex|claude>]
 
 Generate the release Changelog, commit it to $SOURCE_BRANCH, then fast-forward the
 $TARGET_BRANCH branch to it.
@@ -23,6 +24,8 @@ Options:
   --yes              Skip the interactive confirmation prompt.
   --skip-changelog   Release without generating a Changelog (pure fast-forward of
                      $SOURCE_BRANCH to $TARGET_BRANCH; does not touch your working tree).
+  --agent <name>     Coding-agent CLI that writes the Changelog: codex (default) or claude.
+                     Also settable as CHANGELOG_AGENT.
 USAGE
 }
 
@@ -39,6 +42,17 @@ while [ "$#" -gt 0 ]; do
     --skip-changelog)
       SKIP_CHANGELOG=1
       ;;
+    --agent)
+      if [ "$#" -lt 2 ]; then
+        echo "--agent requires a value (codex or claude)" >&2
+        exit 2
+      fi
+      AGENT=$2
+      shift
+      ;;
+    --agent=*)
+      AGENT=${1#--agent=}
+      ;;
     --help|-h)
       usage
       exit 0
@@ -51,6 +65,14 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+
+case "$AGENT" in
+  codex|claude) ;;
+  *)
+    echo "Unknown agent: $AGENT (expected codex or claude)" >&2
+    exit 2
+    ;;
+esac
 
 SOURCE_REF="refs/remotes/$REMOTE/$SOURCE_BRANCH"
 TARGET_REF="refs/remotes/$REMOTE/$TARGET_BRANCH"
@@ -93,7 +115,8 @@ if [ "$DRY_RUN" -eq 1 ]; then
     echo
     echo "Changelog preview ($TARGET_BRANCH..$SOURCE_BRANCH):"
     # Generation failure aborts the check (set -e), matching the real release, which blocks here too.
-    changelog_cli generate --from "$TARGET_REF" --to "$SOURCE_REF" --dir "$CHANGELOG_DIR" --repo "$ROOT" --dry-run
+    changelog_cli generate --from "$TARGET_REF" --to "$SOURCE_REF" --dir "$CHANGELOG_DIR" --repo "$ROOT" \
+      --agent "$AGENT" --dry-run
   fi
   echo
   echo "Dry run only; no push performed."
@@ -141,7 +164,8 @@ if [ "$SKIP_CHANGELOG" -eq 0 ]; then
 
   echo
   echo "Generating changelog for $TARGET_BRANCH..$SOURCE_BRANCH ..."
-  changelog_cli generate --from "$TARGET_REF" --to "$SOURCE_REF" --dir "$CHANGELOG_DIR" --repo "$ROOT"
+  changelog_cli generate --from "$TARGET_REF" --to "$SOURCE_REF" --dir "$CHANGELOG_DIR" --repo "$ROOT" \
+    --agent "$AGENT"
   echo "Review (and edit if needed) the changelog above before confirming the release."
 fi
 

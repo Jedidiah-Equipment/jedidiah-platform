@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 
-import { runCodexCli } from './codex.js';
+import { AGENT_NAMES, isAgentName, runAgentCli } from './agent.js';
 import { deriveChangelogBasename } from './filename.js';
 import { existingBasenames, listChangelogFiles, listJsonPaths, removeFiles, writeChangelogFile } from './files.js';
 import { generateChangelog } from './generate.js';
@@ -17,7 +17,7 @@ function fail(message: string): never {
 }
 
 /**
- * `generate --from <ref> --to <ref> --dir <changelogs> [--repo <root>] [--dry-run]`
+ * `generate --from <ref> --to <ref> --dir <changelogs> [--repo <root>] [--agent <name>] [--dry-run]`
  * Generates and validates a changelog for the `from..to` release. Prints it. Writes it under
  * `--dir` unless `--dry-run`. Exits non-zero (blocking the release) on generation or validation
  * failure. Exits 0 without writing when the release has no user-visible changes.
@@ -30,6 +30,7 @@ async function generate(argv: string[]): Promise<void> {
       to: { type: 'string' },
       dir: { type: 'string' },
       repo: { type: 'string' },
+      agent: { type: 'string' },
       'dry-run': { type: 'boolean', default: false },
     },
   });
@@ -37,6 +38,9 @@ async function generate(argv: string[]): Promise<void> {
   const to = values.to ?? fail('generate: --to <ref> is required');
   const dir = values.dir ?? fail('generate: --dir <changelogs-dir> is required');
   const repo = values.repo ?? process.cwd();
+  const requested = values.agent ?? process.env.CHANGELOG_AGENT ?? 'codex';
+  if (!isAgentName(requested)) fail(`generate: unknown --agent '${requested}' (expected ${AGENT_NAMES.join(' or ')})`);
+  const agent = requested;
 
   const commitLog = await readReleaseCommitLog(from, to, repo);
   if (commitLog.length === 0) {
@@ -45,8 +49,9 @@ async function generate(argv: string[]): Promise<void> {
   }
 
   const prompt = readFileSync(PROMPT_PATH, 'utf8');
+  process.stdout.write(`Generating with ${agent}.\n`);
   const outcome = await generateChangelog(commitLog, {
-    runCodex: (input) => runCodexCli(input, repo),
+    runAgent: (input) => runAgentCli(input, repo, agent),
     prompt,
     now: new Date(),
   });

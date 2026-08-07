@@ -23,12 +23,13 @@ content is never written to the production database.
   `production` must stay a strict ancestor-advance of `main`; a commit made only on `production` would
   diverge the two branches and the next release's ancestry check would refuse to fast-forward. Committing
   to `main` first and then fast-forwarding keeps `production` a pure ancestor of `main`.
-- **Generate with an in-process AI client (`@pkg/ai`) instead of the local codex CLI.** Rejected for now:
+- **Generate with an in-process AI client (`@pkg/ai`) instead of a local coding-agent CLI.** Rejected for now:
   generation is a once-per-release, human-supervised step run from a developer machine, not a request path.
-  The local codex CLI can inspect the working tree — reading a vague commit's diff before summarising it —
+  A local agent CLI can inspect the working tree — reading a vague commit's diff before summarising it —
   which an in-process call would have to reimplement, and it keeps model credentials out of the release
-  script. The codex invocation is injected into the pure generator, so this can change without touching the
-  generation, validation, or pruning logic.
+  script. The agent invocation is injected into the pure generator, so which CLI runs is a release-time
+  choice (`--agent codex|claude`) and can change without touching the generation, validation, or pruning
+  logic.
 - **Keep every Changelog forever.** Rejected: a Changelog is only shown for 30 days (the display window),
   so retaining older files would bloat every deploy with content no user can see. The release commit prunes
   files past the window; git history still holds them if ever needed.

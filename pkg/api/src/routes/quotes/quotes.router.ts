@@ -23,6 +23,7 @@ import {
   summarizeQuoteWeeklyFlow,
   updateQuote,
 } from '@pkg/core';
+import { hasPermission } from '@pkg/domain';
 import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf';
 import {
   CustomerListInput,
@@ -112,7 +113,14 @@ export const quotesRouter = router({
   update: authorizedProcedure('quote:update')
     .input(QuoteUpdateInput)
     .mutation(({ ctx, input }) =>
-      mapQuoteMutationErrors(() => updateQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapQuoteMutationErrors(() =>
+        updateQuote({
+          actorUserId: ctx.session.user.id,
+          canDiscountAllocationQuote: hasPermission(ctx.access, 'quote:discount'),
+          db: ctx.db,
+          input,
+        }),
+      ),
     ),
 
   generateDocument: authorizedProcedure('quote:update')

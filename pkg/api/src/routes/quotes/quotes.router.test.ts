@@ -737,6 +737,48 @@ describe('quotes.update', () => {
     });
   });
 
+  test('lets only an admin discount an accepted Allocation Quote', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const [unit] = await context.db
+      .insert(productUnits)
+      .values({
+        productId: context.product.id,
+        productSerialNumber: 'QUOTE-001260047',
+        productSerialPrefix: 'QUOTE-001',
+        productSerialSequence: 47,
+        productSerialYear: 26,
+      })
+      .returning();
+    if (!unit) throw new Error('Product Unit insert did not return a row');
+
+    const created = await salesCaller.quotes.create({
+      customer: { type: 'inline', companyName: 'Discount Lock Customer' },
+      notes: null,
+      documentNotes: null,
+      offering: { kind: 'product', productId: context.product.id, productUnitId: unit.id },
+      salesPersonId: 'test-user-id',
+      status: 'sent',
+    });
+    const accepted = await salesCaller.quotes.update({ ...toUpdateInput(created), status: 'accepted' });
+
+    // Sales holds quote:update but not quote:discount, so the lock still refuses it.
+    await expect(salesCaller.quotes.update({ ...toUpdateInput(accepted), discountPercent: 5 })).rejects.toMatchObject({
+      appCode: 'quote.locked',
+      message: 'Quote is locked because it has been accepted; discountPercent cannot be changed.',
+    });
+
+    const discounted = await adminCaller.quotes.update({ ...toUpdateInput(accepted), discountPercent: 5 });
+    expect(discounted.discountPercent).toBe(5);
+
+    await expect(adminCaller.quotes.update({ ...toUpdateInput(discounted), depositPercent: 10 })).rejects.toMatchObject(
+      {
+        appCode: 'quote.locked',
+        message: 'Quote is locked because it has been accepted; depositPercent cannot be changed.',
+      },
+    );
+  });
+
   test('edits and reprices Work Items after acceptance and Job creation', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const adminCaller = context.createCaller(mockSession('admin'));

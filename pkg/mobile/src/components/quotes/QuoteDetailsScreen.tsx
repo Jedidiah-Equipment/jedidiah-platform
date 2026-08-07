@@ -1,4 +1,4 @@
-import { computeQuoteSummary, EDITABLE_LOCKED_QUOTE_FIELDS, getQuoteOfferingName, isQuoteLocked } from '@pkg/domain';
+import { computeQuoteSummary, editableLockedQuoteFields, getQuoteOfferingName, isQuoteLocked } from '@pkg/domain';
 import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInput, UUID } from '@pkg/schema';
 import { IconLayoutSidebarRight } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
@@ -46,6 +46,7 @@ function QuoteDetailsData({ id }: { id: UUID }) {
   const queryClient = useQueryClient();
   const readAccess = useCan('quote:read');
   const updateAccess = useCan('quote:update');
+  const discountAccess = useCan('quote:discount');
   const quoteOptions = trpc.quotes.get.queryOptions({ id }, { enabled: readAccess.can });
   const quoteQuery = useQuery(quoteOptions);
   const priorityQuery = useQuery(trpc.quotes.priorityList.queryOptions(undefined, { enabled: readAccess.can }));
@@ -71,6 +72,7 @@ function QuoteDetailsData({ id }: { id: UUID }) {
 
   return (
     <QuoteEditor
+      canDiscountAllocationQuote={discountAccess.can}
       canUpdate={updateAccess.can}
       key={quote.id}
       onReconcile={async () => (await quoteQuery.refetch()).data}
@@ -82,12 +84,14 @@ function QuoteDetailsData({ id }: { id: UUID }) {
 }
 
 function QuoteEditor({
+  canDiscountAllocationQuote,
   canUpdate,
   onReconcile,
   onSave,
   priorityQuote,
   quote,
 }: {
+  canDiscountAllocationQuote: boolean;
   canUpdate: boolean;
   onReconcile: () => Promise<QuoteDetail | undefined>;
   onSave: (input: QuoteUpdateInput) => Promise<QuoteDetail>;
@@ -124,7 +128,13 @@ function QuoteEditor({
     [quote, values],
   );
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
-  const canEdit = (field: string) => canUpdate && (!isLocked || EDITABLE_LOCKED_QUOTE_FIELDS.has(field));
+  const lockEditableFields = editableLockedQuoteFields({
+    canDiscountAllocationQuote,
+    hasProductUnit: quote.productUnitId !== null,
+    kind: quote.kind,
+    status: quote.status,
+  });
+  const canEdit = (field: string) => canUpdate && (!isLocked || lockEditableFields.has(field));
   const setupReadOnly = !canUpdate || isLocked;
 
   return (
@@ -173,13 +183,7 @@ function QuoteEditor({
                 {!canUpdate ? (
                   <InfoBanner message="You have read-only access. Quote fields cannot be changed." />
                 ) : isLocked ? (
-                  <InfoBanner
-                    message={
-                      canEdit('workItems')
-                        ? 'This Quote is locked. Work items, hourly rate, invoice number, notes, and delivery dates remain editable.'
-                        : 'This Quote is locked. Only invoice number, notes, and delivery dates remain editable.'
-                    }
-                  />
+                  <InfoBanner message={describeLockedQuote({ canEdit, kind: quote.kind })} />
                 ) : null}
                 {priorityQuote ? <QuotePriorityAlert quote={priorityQuote} /> : null}
 
@@ -322,7 +326,7 @@ function QuoteEditor({
                       <form.AppField name="discountPercent">
                         {(field) => (
                           <field.NumberField
-                            disabled={setupReadOnly}
+                            disabled={!canEdit('discountPercent')}
                             label="Discount percent"
                             onValueCommit={autosave.commit}
                           />
@@ -509,6 +513,23 @@ function AutosaveStatus({
       ) : null}
     </View>
   );
+}
+
+/**
+ * Work Items are always in the locked-editable set, so only a Custom Quote actually renders an
+ * editor for them — the field alone cannot tell the two Quote kinds apart here.
+ */
+function describeLockedQuote({ canEdit, kind }: { canEdit: (field: string) => boolean; kind: QuoteDetail['kind'] }) {
+  const editable = [
+    ...(kind === 'custom' ? ['work items', 'hourly rate'] : []),
+    'invoice number',
+    'notes',
+    'delivery dates',
+    ...(canEdit('discountPercent') ? ['discount'] : []),
+  ];
+  const last = editable.pop();
+
+  return `This Quote is locked. Still editable: ${editable.join(', ')}, and ${last}.`;
 }
 
 function InfoBanner({ message }: { message: string }) {

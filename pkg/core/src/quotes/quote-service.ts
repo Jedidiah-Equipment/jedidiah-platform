@@ -226,10 +226,12 @@ export async function createQuote({
 
 export async function updateQuote({
   actorUserId,
+  canDiscountAllocationQuote,
   db,
   input,
 }: {
   actorUserId: AuthId;
+  canDiscountAllocationQuote: boolean;
   db: Db;
   input: QuoteUpdateInput;
 }): Promise<QuoteDetail> {
@@ -306,6 +308,7 @@ export async function updateQuote({
     }
 
     const editable = assertQuoteEditable({
+      canDiscountAllocationQuote,
       changedFields,
       hasJob: await quoteHasJob({ quoteId: before.id, tx }),
       hasProductUnit: before.productUnitId !== null,

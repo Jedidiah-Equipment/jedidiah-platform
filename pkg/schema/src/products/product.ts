@@ -347,9 +347,9 @@ export const PRODUCT_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 
 // Recommended source dimensions and render fit per slot, shown on the form as upload guidance.
 // `cover` photos fill their slot; the `contain` technical drawing preserves the whole image.
-// A `cover` slot's recommendation is its brochure frame's ratio, so nothing is cropped away. The
-// `contain` technical drawing is never cropped, so its recommendation is the wide landscape the
-// drawings themselves are produced at rather than the narrower frame they are scaled into.
+// The `banner` recommendation is its brochure frame's ratio, the one slot where a `cover` render crops
+// nothing. The `contain` technical drawing is never cropped either, so its recommendation is the wide
+// landscape the drawings are produced at rather than the narrower frame they are scaled into.
 export type ProductImageSlotSpec = {
   fit: 'contain' | 'cover';
   // Overrides the editor's default 16:9 preview when a slot renders into a distinct fixed frame.

@@ -85,7 +85,7 @@ describe('Quote table priority rows', () => {
 
     expect(html).toContain('Invoice number');
     expect(html).toContain('INV-4821');
-    expect(html).toContain('Not invoiced');
+    expect(html).toContain('No invoice');
     expect(html.indexOf('>Product<')).toBeLessThan(html.indexOf('>Invoice number<'));
     expect(html.indexOf('>Invoice number<')).toBeLessThan(html.indexOf('>Dates<'));
   });

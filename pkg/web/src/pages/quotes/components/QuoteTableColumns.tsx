@@ -335,9 +335,7 @@ function ProductCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteS
 
 function InvoiceNumberCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {
   if (!quote.invoiceNumber) {
-    return (
-      <span className={cn(isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>Not invoiced</span>
-    );
+    return <span className={cn(isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>No invoice</span>;
   }
 
   return <span className="truncate font-mono tabular-nums">{quote.invoiceNumber}</span>;

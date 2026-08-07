@@ -27,7 +27,7 @@ import {
   quoteTablePinnedLeftColumns,
   quoteTablePinnedRightColumns,
 } from './components/QuoteTableColumns.js';
-import { getQuoteListInputExtras, getQuoteProductFilterValue } from './components/quote-table-input.js';
+import { getQuoteIdFilterValue, getQuoteListInputExtras } from './components/quote-table-input.js';
 import { QuoteCreateDialog } from './QuoteCreateDialog.js';
 
 export const useQuoteTableStore = createQuoteTableStore('quotes-table');
@@ -98,7 +98,7 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
     sortOptions: quoteSortOptions,
     getListInputExtras,
   });
-  const productFilterValue = getQuoteProductFilterValue(tableController.columnFilters);
+  const productFilterValue = getQuoteIdFilterValue(tableController.columnFilters, 'productName');
   const productOptions = useProductForQuoteOptions({
     includeHistoricalSelected: true,
     limit: 0,

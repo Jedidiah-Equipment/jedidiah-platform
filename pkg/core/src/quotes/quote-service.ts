@@ -226,12 +226,12 @@ export async function createQuote({
 
 export async function updateQuote({
   actorUserId,
-  canDiscountAllocationQuote = false,
+  canDiscountAllocationQuote,
   db,
   input,
 }: {
   actorUserId: AuthId;
-  canDiscountAllocationQuote?: boolean;
+  canDiscountAllocationQuote: boolean;
   db: Db;
   input: QuoteUpdateInput;
 }): Promise<QuoteDetail> {

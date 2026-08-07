@@ -183,7 +183,7 @@ function QuoteEditor({
                 {!canUpdate ? (
                   <InfoBanner message="You have read-only access. Quote fields cannot be changed." />
                 ) : isLocked ? (
-                  <InfoBanner message={describeLockedQuote({ canEdit })} />
+                  <InfoBanner message={describeLockedQuote({ canEdit, kind: quote.kind })} />
                 ) : null}
                 {priorityQuote ? <QuotePriorityAlert quote={priorityQuote} /> : null}
 
@@ -515,13 +515,17 @@ function AutosaveStatus({
   );
 }
 
-function describeLockedQuote({ canEdit }: { canEdit: (field: string) => boolean }) {
+/**
+ * Work Items are always in the locked-editable set, so only a Custom Quote actually renders an
+ * editor for them — the field alone cannot tell the two Quote kinds apart here.
+ */
+function describeLockedQuote({ canEdit, kind }: { canEdit: (field: string) => boolean; kind: QuoteDetail['kind'] }) {
   const editable = [
-    ...(canEdit('workItems') ? ['work items', 'hourly rate'] : []),
+    ...(kind === 'custom' ? ['work items', 'hourly rate'] : []),
     'invoice number',
     'notes',
     'delivery dates',
-    ...(canEdit('discountPercent') ? ['the discount'] : []),
+    ...(canEdit('discountPercent') ? ['discount'] : []),
   ];
   const last = editable.pop();
 

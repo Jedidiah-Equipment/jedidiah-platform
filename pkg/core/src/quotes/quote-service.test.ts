@@ -265,6 +265,7 @@ describe('quote collections', () => {
 
     await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: buildQuoteUpdateInput(quote, {
         selectedAssemblies: [{ type: 'catalog', productAssemblyId: optionalAssembly.id }],
@@ -313,6 +314,7 @@ describe('allocation quotes', () => {
 
     const accepted = await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: buildQuoteUpdateInput(winner, { status: 'accepted' }),
     });
@@ -333,6 +335,7 @@ describe('allocation quotes', () => {
     await expect(
       updateQuote({
         actorUserId: context.salesPerson.id,
+        canDiscountAllocationQuote: false,
         db: context.db,
         input: buildQuoteUpdateInput(loser, { status: 'accepted' }),
       }),
@@ -341,6 +344,7 @@ describe('allocation quotes', () => {
     await expect(
       updateQuote({
         actorUserId: context.salesPerson.id,
+        canDiscountAllocationQuote: false,
         db: context.db,
         input: buildQuoteUpdateInput(loser, { status: 'rejected' }),
       }),
@@ -435,6 +439,7 @@ describe('allocation quotes', () => {
 
     const invoiced = await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: QuoteUpdateInput.parse({
         ...buildQuoteUpdateInput(accepted),
@@ -446,6 +451,7 @@ describe('allocation quotes', () => {
     await expect(
       updateQuote({
         actorUserId: context.salesPerson.id,
+        canDiscountAllocationQuote: false,
         db: context.db,
         input: buildQuoteUpdateInput(invoiced, { discountPercent: 5 }),
       }),
@@ -599,6 +605,7 @@ describe('allocation quotes', () => {
 
     const withFurtherAssembly = await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: buildQuoteUpdateInput(readBack, {
         selectedAssemblies: [
@@ -617,6 +624,7 @@ describe('allocation quotes', () => {
 
     const withoutSeededAssembly = await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: buildQuoteUpdateInput(withFurtherAssembly, {
         selectedAssemblies: [{ type: 'existing', id: furtherSelection.id }],
@@ -817,6 +825,7 @@ describe('custom quotes', () => {
     await expect(
       updateQuote({
         actorUserId: context.salesPerson.id,
+        canDiscountAllocationQuote: false,
         db: context.db,
         input: buildQuoteUpdateInput(customQuote, {
           selectedAssemblies: [{ type: 'catalog', productAssemblyId: '00000000-0000-4000-8000-000000000901' }],
@@ -840,6 +849,7 @@ describe('custom quotes', () => {
 
     const updated = await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: buildQuoteUpdateInput(customQuote, {
         discountPercent: 5,
@@ -898,6 +908,7 @@ describe('custom quotes', () => {
     await expect(
       updateQuote({
         actorUserId: context.salesPerson.id,
+        canDiscountAllocationQuote: false,
         db: context.db,
         input: buildQuoteUpdateInput(productQuote, {
           offering: { kind: 'custom', workTitle: 'Repair work' },
@@ -924,6 +935,7 @@ describe('custom quotes', () => {
 
     const updated = await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: buildQuoteUpdateInput(customQuote, {
         notes: 'Accepted custom follow-up',
@@ -1052,6 +1064,7 @@ describe('custom quotes', () => {
 
     await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: buildQuoteUpdateInput(customQuote, {
         offering: { kind: 'custom', workTitle: 'Audit repair revised' },
@@ -1091,6 +1104,7 @@ describe('cancelled quotes', () => {
     });
     const cancelled = await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: buildQuoteUpdateInput(quote, {
         cancellationReason: 'Customer withdrew the project',
@@ -1100,6 +1114,7 @@ describe('cancelled quotes', () => {
 
     const annotated = await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: buildQuoteUpdateInput(cancelled, {
         documentNotes: 'Cancelled document note',
@@ -1125,6 +1140,7 @@ describe('cancelled quotes', () => {
     await expect(
       updateQuote({
         actorUserId: context.salesPerson.id,
+        canDiscountAllocationQuote: false,
         db: context.db,
         input: buildQuoteUpdateInput(annotated, { cancellationReason: null, status: 'draft' }),
       }),
@@ -1336,6 +1352,7 @@ describe('patchQuote', () => {
     });
     await updateQuote({
       actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: false,
       db: context.db,
       input: buildQuoteUpdateInput(quote, {
         deliveryIncluded: false,

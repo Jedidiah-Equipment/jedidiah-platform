@@ -1,0 +1,68 @@
+{
+  "releasedAt": "2026-08-07T05:43:44.971Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Clarify quote totals",
+          "description": "Quote documents now show work-item amounts without duplicating Labour and Parts costs, while preserving any remaining charge."
+        },
+        {
+          "title": "Run stocktakes",
+          "description": "Open and manage stocktake sessions, review count variances, and follow count records from stock movement history."
+        },
+        {
+          "title": "Cross-check supplier invoices",
+          "description": "Upload supplier invoices to purchase orders and review extracted details against the order, including any differences that need attention."
+        },
+        {
+          "title": "Review job material variance",
+          "description": "See the material quantities and costs used against each job, with more accurate pricing when material is returned."
+        },
+        {
+          "title": "Identify bay operators",
+          "description": "Planner bay rows now show each operator’s first name."
+        },
+        {
+          "title": "Load more jobs when issuing stock",
+          "description": "The Checkout and Return to Store job picker can now load eligible jobs beyond its initial list."
+        },
+        {
+          "title": "Close fully returned orders",
+          "description": "Purchase orders whose received goods were all returned can now be closed short when a replacement will not arrive."
+        },
+        {
+          "title": "Use the correct drawing dimensions",
+          "description": "Product image guidance now recommends the correct wide technical-drawing dimensions."
+        },
+        {
+          "title": "Manage quotes by invoice number",
+          "description": "Quote lists now display invoice numbers and let you search, sort, and filter by whether a quote has been invoiced."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Find slurry tank products",
+          "description": "Visits to the legacy slurry tank flyer now take you to the products page."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Count stock on the shop floor",
+          "description": "Use guided stocktake sessions to count parts, review corrections, recount items, and close a completed walk."
+        },
+        {
+          "title": "Find Stores at the end of navigation",
+          "description": "The Stores tab now appears at the end of the toolbar."
+        }
+      ]
+    }
+  ]
+}

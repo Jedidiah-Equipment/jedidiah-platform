@@ -1,0 +1,48 @@
+{
+  "releasedAt": "2026-08-07T09:38:44.543Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Discount an accepted allocation quote",
+          "description": "Admins can now adjust the discount on a quote for stock equipment after it has been accepted, so a price can still be negotiated before the sale is settled. Cancelled quotes, build-to-order quotes tied to a job, and custom quotes stay locked as before."
+        },
+        {
+          "title": "See the permission matrix on the Users page",
+          "description": "A new tab on the Users page shows exactly which permissions each role has, with a description and code for every permission. It reads from the same rules the system enforces, so it always matches what users can actually do."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Clearer message on locked quotes",
+          "description": "A locked quote no longer claims you can edit work items and hourly rates on quotes that never had them. The message now matches the kind of quote you are looking at."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Faster page loads",
+          "description": "Images are now delivered at the size the page actually displays and fonts load directly from the site, so pages appear more quickly and text no longer flickers while loading."
+        },
+        {
+          "title": "Better link previews when sharing",
+          "description": "Product links shared to social media and messaging apps now show a correctly proportioned preview image instead of being cropped unpredictably by each platform."
+        },
+        {
+          "title": "Reliable video playback and downloads",
+          "description": "Videos, audio, and PDFs can now be scrubbed, streamed, and resumed properly instead of having to download in full before playing."
+        },
+        {
+          "title": "Easier-to-read footer",
+          "description": "Footer text now meets accessibility contrast standards against the dark background."
+        }
+      ]
+    }
+  ]
+}

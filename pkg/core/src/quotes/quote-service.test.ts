@@ -452,6 +452,37 @@ describe('allocation quotes', () => {
     ).rejects.toThrow('Quote is locked because it has been accepted; discountPercent cannot be changed.');
   });
 
+  test('lets a quote:discount holder change the discount on a locked Allocation Quote', async ({ context }) => {
+    const unitId = await createUnit(context.db, context.product.id, 46);
+    const accepted = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+
+    const discounted = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      canDiscountAllocationQuote: true,
+      db: context.db,
+      input: buildQuoteUpdateInput(accepted, { discountPercent: 7.5 }),
+    });
+
+    expect(discounted.discountPercent).toBe(7.5);
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        canDiscountAllocationQuote: true,
+        db: context.db,
+        input: buildQuoteUpdateInput(discounted, { depositPercent: 10 }),
+      }),
+    ).rejects.toThrow('Quote is locked because it has been accepted; depositPercent cannot be changed.');
+  });
+
   test('quotes a held Product Unit, seeds its As-Built Spec at catalog prices, and shows live competitors', async ({
     context,
   }) => {

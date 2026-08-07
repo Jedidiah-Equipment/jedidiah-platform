@@ -1,6 +1,6 @@
 import {
   computeQuoteSummary,
-  EDITABLE_LOCKED_QUOTE_FIELDS,
+  editableLockedQuoteFields,
   formatDate,
   isQuoteLocked,
   quoteStatusLabels,
@@ -49,6 +49,7 @@ type QuoteFormProps = {
 };
 
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
+  const discountAccess = useCan('quote:discount');
   const isCustom = quote.kind === 'custom';
   const isLocked = isQuoteLocked({
     hasJob: quote.job !== null,
@@ -56,7 +57,13 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
     kind: quote.kind,
     status: quote.status,
   });
-  const canEdit = (field: string) => !isLocked || EDITABLE_LOCKED_QUOTE_FIELDS.has(field);
+  const lockEditableFields = editableLockedQuoteFields({
+    canDiscountAllocationQuote: discountAccess.can,
+    hasProductUnit: quote.productUnitId !== null,
+    kind: quote.kind,
+    status: quote.status,
+  });
+  const canEdit = (field: string) => !isLocked || lockEditableFields.has(field);
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const catalogAssemblies = quote.product?.assemblies ?? [];
   const salespeopleOptions = useSalesPersonOptions();
@@ -230,7 +237,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         {(field) => (
                           <field.NumberField
                             decimals={2}
-                            disabled={isLocked}
+                            disabled={!canEdit('discountPercent')}
                             emptyValue={0}
                             label="Discount percent"
                             max={100}

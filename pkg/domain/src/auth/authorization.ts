@@ -64,6 +64,7 @@ export const permissionLabels = {
   'purchase_order:close': 'Close purchase orders',
   'quote:create': 'Create quotes',
   'quote:cancel': 'Cancel quotes',
+  'quote:discount': 'Discount locked stock sales',
   'quote:read': 'View quotes',
   'quote:update': 'Update quotes',
   'supplier:read': 'View suppliers',
@@ -120,6 +121,8 @@ export const permissionDescriptions = {
   'purchase_order:close': 'Close completed Purchase Orders.',
   'quote:create': 'Create new sales quotes.',
   'quote:cancel': 'Cancel locked quotes and cascade-cancel their job and future slots.',
+  'quote:discount':
+    'Change the discount on an accepted stock sale, which locks before the sale is settled and has no later window to negotiate in.',
   'quote:read': 'View sales quotes.',
   'quote:update': 'Update sales quote details and decisions.',
   'supplier:read': 'View supplier records.',
@@ -148,7 +151,7 @@ export const authorizationStatement = {
   // No create action: Units are born from Job creation, never on their own.
   product_unit: ['read', 'update', 'transfer'],
   purchase_order: ['read', 'create', 'send', 'amend', 'receive', 'close'],
-  quote: ['read', 'create', 'update', 'cancel'],
+  quote: ['read', 'create', 'update', 'cancel', 'discount'],
   supplier: ['read', 'update', 'remove'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const;
@@ -172,7 +175,7 @@ const adminAccess = {
   product_range: ['read', 'create', 'update'],
   product_unit: ['read', 'update', 'transfer'],
   purchase_order: ['read', 'create', 'send', 'amend', 'receive', 'close'],
-  quote: ['read', 'create', 'update', 'cancel'],
+  quote: ['read', 'create', 'update', 'cancel', 'discount'],
   supplier: ['read', 'update', 'remove'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const satisfies RoleAccess;

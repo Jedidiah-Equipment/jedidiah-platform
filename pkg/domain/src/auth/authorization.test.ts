@@ -54,6 +54,7 @@ describe('getRolePermissions', () => {
       'purchase_order:send',
       'quote:cancel',
       'quote:create',
+      'quote:discount',
       'quote:read',
       'quote:update',
       'supplier:read',
@@ -245,6 +246,17 @@ describe('quote cancellation authorization policy', () => {
 
     for (const role of ['sales', 'procurement-manager', 'job-viewer', 'stores', 'bay-operator'] as const) {
       expect(getRolePermissions(role), role).not.toContain('quote:cancel');
+    }
+  });
+});
+
+describe('locked stock sale discount authorization policy', () => {
+  it('grants the locked discount only to administrators', () => {
+    expect(getRolePermissions('admin')).toContain('quote:discount');
+    expect(getRolePermissions('super-admin')).toContain('quote:discount');
+
+    for (const role of ['sales', 'procurement-manager', 'job-viewer', 'stores', 'bay-operator'] as const) {
+      expect(getRolePermissions(role), role).not.toContain('quote:discount');
     }
   });
 });

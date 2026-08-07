@@ -173,9 +173,10 @@ export function createQuoteTableColumns({
       header: 'Invoice number',
       id: 'invoiceNumber',
       meta: {
+        cellClassName: 'max-w-40 overflow-hidden',
         filterOptions: quoteInvoicedFilterOptions,
         filterVariant: 'select',
-        headerClassName: 'min-w-40',
+        headerClassName: 'min-w-40 max-w-40',
       },
       size: 160,
     },
@@ -338,7 +339,7 @@ function InvoiceNumberCell({ isPriority, quote }: { isPriority: boolean; quote: 
     return <span className={cn(isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>No invoice</span>;
   }
 
-  return <span className="truncate font-mono tabular-nums">{quote.invoiceNumber}</span>;
+  return <span className="block truncate font-mono tabular-nums">{quote.invoiceNumber}</span>;
 }
 
 function QuoteKindBadge({ className, kind }: { className?: string; kind: QuoteSummary['kind'] }) {

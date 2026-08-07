@@ -83,11 +83,13 @@ describe('Quote table priority rows', () => {
       createQuoteTableRow(buildPriorityQuote({ invoiceNumber: null })),
     ]);
 
-    expect(html).toContain('Invoice number');
+    const headerPositions = ['>Product<', '>Invoice number<', '>Dates<'].map((header) => html.indexOf(header));
+
     expect(html).toContain('INV-4821');
     expect(html).toContain('No invoice');
-    expect(html.indexOf('>Product<')).toBeLessThan(html.indexOf('>Invoice number<'));
-    expect(html.indexOf('>Invoice number<')).toBeLessThan(html.indexOf('>Dates<'));
+    // A missing header indexes at -1, so assert every header is present before comparing positions.
+    expect(headerPositions.every((position) => position >= 0)).toBe(true);
+    expect(headerPositions).toEqual([...headerPositions].sort((first, second) => first - second));
   });
 
   it('renders whether delivery is included in the sale price or charged separately', () => {

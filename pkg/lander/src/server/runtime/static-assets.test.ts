@@ -133,6 +133,56 @@ describe('createStaticAssetServer', () => {
       expect(response?.headers.get('content-range')).toBe('bytes */16');
     });
 
+    // A client resuming an interrupted download sends the validator it started with. If the file was
+    // replaced in between, answering with 206 from the new bytes lets the client splice two representations
+    // into a file that is corrupt and reports success (RFC 9110 §13.1.5).
+    describe('If-Range', () => {
+      const withIfRange = (value: string) => get('/assets/hero-abc123.webp', { range: 'bytes=4-7', 'if-range': value });
+
+      test('serves the whole file rather than a slice when an entity-tag is offered', async () => {
+        const etag = (await get('/assets/hero-abc123.webp'))?.headers.get('etag') ?? '';
+        const response = await withIfRange(etag);
+
+        // Our validator is weak, which cannot satisfy the strong comparison this requires — so even our own
+        // current tag correctly declines to authorise a partial response.
+        expect(response?.status).toBe(200);
+        expect(response?.headers.get('content-range')).toBeNull();
+        expect(await response?.text()).toBe('RIFF____WEBPVP8 ');
+      });
+
+      test('serves the whole file for a stale strong entity-tag', async () => {
+        const response = await withIfRange('"something-else"');
+
+        expect(response?.status).toBe(200);
+        expect(await response?.text()).toBe('RIFF____WEBPVP8 ');
+      });
+
+      test('honours the range when the date still describes this file', async () => {
+        const lastModified = (await get('/assets/hero-abc123.webp'))?.headers.get('last-modified') ?? '';
+        const response = await withIfRange(lastModified);
+
+        expect(response?.status).toBe(206);
+        expect(await response?.text()).toBe('____');
+      });
+
+      test('ignores the range when the date does not', async () => {
+        const response = await withIfRange(new Date(0).toUTCString());
+
+        expect(response?.status).toBe(200);
+        expect(response?.headers.get('content-range')).toBeNull();
+      });
+
+      // Ignoring the Range means ignoring it entirely — an out-of-bounds range stops being a 416 too.
+      test('answers 200, not 416, when a failed If-Range accompanies an impossible range', async () => {
+        const response = await get('/assets/hero-abc123.webp', {
+          range: 'bytes=99-200',
+          'if-range': '"stale"',
+        });
+
+        expect(response?.status).toBe(200);
+      });
+    });
+
     test('falls back to the whole file for a form it does not parse', async () => {
       for (const value of ['bytes=0-1,4-5', 'items=0-1', 'bytes=-', 'nonsense']) {
         const response = await range(value);

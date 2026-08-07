@@ -137,7 +137,7 @@ async function servePrecompressed(dir: string, pathname: string, request: Reques
 
   headers.set('content-type', PRECOMPRESSED_TYPES[extensionOf(pathname)] ?? 'application/octet-stream');
 
-  const range = parseRange(request.headers.get('range'), info.size);
+  const range = mayServePartial(request, info.mtimeMs) ? parseRange(request.headers.get('range'), info.size) : null;
   if (range === 'unsatisfiable') {
     headers.set('content-range', `bytes */${info.size}`);
 
@@ -170,6 +170,29 @@ function isUnmodified(request: Request, etag: string, mtimeMs: number): boolean 
   const ifModifiedSince = Date.parse(request.headers.get('if-modified-since') ?? '');
 
   return !Number.isNaN(ifModifiedSince) && Math.floor(mtimeMs / 1000) * 1000 <= ifModifiedSince;
+}
+
+// Whether a `Range` may be honoured at all, given the client's `If-Range` (RFC 9110 §13.1.5). A client
+// resuming an interrupted download sends the validator it started with; if the file has been replaced since,
+// splicing the new bytes onto the old prefix yields a file that is corrupt and reports success. When the
+// validator does not still describe this representation the range must be ignored and the whole file sent.
+//
+// An entity-tag never matches: ours is weak, this comparison has to be strong, and a client is not permitted
+// to put a weak tag here in the first place. A date matches only when it is exactly our `Last-Modified`.
+// Media seeking is unaffected either way — a video element sends `Range` with no `If-Range`.
+function mayServePartial(request: Request, mtimeMs: number): boolean {
+  const ifRange = request.headers.get('if-range')?.trim();
+  if (!ifRange) {
+    return true;
+  }
+
+  if (ifRange.startsWith('"') || ifRange.startsWith('W/')) {
+    return false;
+  }
+
+  const asDate = Date.parse(ifRange);
+
+  return !Number.isNaN(asDate) && Math.floor(mtimeMs / 1000) * 1000 === asDate;
 }
 
 // A single `bytes=` range — what a media element seeking and a download resuming both send. Returns null for

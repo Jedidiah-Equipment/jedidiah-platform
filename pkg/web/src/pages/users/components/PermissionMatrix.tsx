@@ -6,7 +6,7 @@ import {
   roleLabels,
 } from '@pkg/domain';
 import { APP_PERMISSIONS, APP_ROLES, type AppPermission, type AppRole } from '@pkg/schema';
-import { IconCheck, IconHelpCircle, IconMinus } from '@tabler/icons-react';
+import { IconCheck, IconMinus } from '@tabler/icons-react';
 import { type ColumnDef, getCoreRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo } from 'react';
@@ -96,27 +96,14 @@ export const PermissionMatrix: React.FC = () => {
 
 /**
  * The description carries the meaning, so it takes the line under the name and truncates to keep
- * every row one height; the code stays reachable behind the icon for anyone matching a grant to code.
+ * every row one height; the code stays behind the name for anyone matching a grant back to code.
  */
 const PermissionCell: React.FC<{ permission: AppPermission }> = ({ permission }) => (
   <div className="flex max-w-md flex-col">
-    <span className="flex items-center gap-1 font-medium">
-      {permissionLabels[permission]}
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <button
-              aria-label={`Permission code for ${permissionLabels[permission]}`}
-              className="text-muted-foreground hover:text-foreground"
-              type="button"
-            />
-          }
-        >
-          <IconHelpCircle size={14} />
-        </TooltipTrigger>
-        <TooltipContent className="font-mono">{permission}</TooltipContent>
-      </Tooltip>
-    </span>
+    <Tooltip>
+      <TooltipTrigger render={<span className="w-fit font-medium" />}>{permissionLabels[permission]}</TooltipTrigger>
+      <TooltipContent className="font-mono">{permission}</TooltipContent>
+    </Tooltip>
     <Tooltip>
       <TooltipTrigger render={<span className="block truncate text-xs text-muted-foreground" />}>
         {permissionDescriptions[permission]}

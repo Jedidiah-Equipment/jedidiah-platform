@@ -16,6 +16,30 @@ function imageRef(slot: string) {
   };
 }
 
+async function insertRange(db: Db, suffix: string) {
+  const [range] = await db
+    .insert(productRanges)
+    .values({ name: `Crosshaul ${suffix} Range`, displayOrder: 0 })
+    .returning();
+  if (!range) throw new Error('range insert did not return a row');
+
+  return range;
+}
+
+// A stored translation envelope, which is what carries the timestamp a translated page is dated by.
+function envelope(value: string, translatedAt: string) {
+  return { isManual: true, sourceHash: 'hash', translatedAt, value };
+}
+
+// A timestamp comfortably after the row's own, so "newest" has one unambiguous answer.
+function isoAfter(instant: Date): string {
+  return new Date(instant.getTime() + 60_000).toISOString();
+}
+
+async function entryFor(db: Db, path: string) {
+  return (await listSitemapEntries(db)).find((entry) => entry.path === path);
+}
+
 // Inserts a lander-ready Product (so it appears in the sitemap) unless `landerEnabled` is overridden off.
 async function insertProduct(
   db: Db,
@@ -69,38 +93,64 @@ test('listSitemapPaths lists the static pages plus every lander-ready Product, s
   expect(paths).not.toContain(`/products/${encodeURIComponent(`CH12-${suffix}`)}`);
 });
 
-test('dates a Product entry by its own row, and the index by the freshest of them', async ({ db }) => {
+test('dates a Product entry by its own row', async ({ db }) => {
   const suffix = crypto.randomUUID();
-  const [range] = await db
-    .insert(productRanges)
-    .values({ name: `Crosshaul ${suffix} Range`, displayOrder: 0 })
-    .returning();
-  if (!range) throw new Error('range insert did not return a row');
+  const range = await insertRange(db, suffix);
+  const product = await insertProduct(db, range.id, { name: `CH14 ${suffix}`, modelCode: `CH14-${suffix}` });
 
-  const older = await insertProduct(db, range.id, { name: `CH14 ${suffix}`, modelCode: `CH14-${suffix}` });
-  const newer = await insertProduct(db, range.id, { name: `CH16 ${suffix}`, modelCode: `CH16-${suffix}` });
-  // Move one row's clock forward so "freshest" has a single unambiguous answer.
-  const movedOn = new Date(Date.now() + 60_000);
-  await db.update(products).set({ updatedAt: movedOn }).where(eq(products.id, newer.id));
+  const entry = await entryFor(db, `/products/${encodeURIComponent(`CH14-${suffix}`)}`);
 
-  const entries = await listSitemapEntries(db);
-  const entryFor = (path: string) => entries.find((entry) => entry.path === path);
-
-  expect(entryFor(`/products/${encodeURIComponent(`CH14-${suffix}`)}`)?.lastModified).toBe(
-    older.updatedAt.toISOString(),
-  );
-  expect(entryFor(`/products/${encodeURIComponent(`CH16-${suffix}`)}`)?.lastModified).toBe(movedOn.toISOString());
-  // The index renders every Product, so it inherits the most recently edited one.
-  expect(entryFor('/products')?.lastModified).toBe(movedOn.toISOString());
+  expect(entry?.lastModified).toBe(product.updatedAt.toISOString());
 });
 
-// A page whose copy lives in the static dictionaries has no data-driven date. Emitting one anyway would move
-// it on every deploy, and an inaccurate lastmod is worse than none — search engines stop trusting the
-// element site-wide rather than per-URL.
-test('leaves the dictionary-backed pages undated', async ({ db }) => {
+// The translation write paths set only the `translations` column, so `updatedAt` does not move when the
+// Afrikaans copy changes. Dating the page by `updatedAt` alone would pin the `/af/` URL to the last English
+// edit and never move for the change a crawler is being asked to come back for.
+test('moves a Product entry when only its translation changed', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, suffix);
+  const product = await insertProduct(db, range.id, { name: `CH14 ${suffix}`, modelCode: `CH14-${suffix}` });
+  const translatedAt = isoAfter(product.updatedAt);
+
+  await db
+    .update(products)
+    .set({ translations: { af: { name: envelope('Houtsleepwa', translatedAt) } } })
+    .where(eq(products.id, product.id));
+
+  const entry = await entryFor(db, `/products/${encodeURIComponent(`CH14-${suffix}`)}`);
+
+  expect(entry?.lastModified).toBe(translatedAt);
+});
+
+// Assembly names translate into a different table entirely, so this one cannot be caught by watching the
+// Product row at all — and it still changes the page that renders those names.
+test('moves a Product entry when only an Assembly translation changed', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, suffix);
+  const product = await insertProduct(db, range.id, { name: `CH14 ${suffix}`, modelCode: `CH14-${suffix}` });
+  const translatedAt = isoAfter(product.updatedAt);
+
+  await db
+    .update(productAssemblies)
+    .set({ translations: { af: { name: envelope('Raam', translatedAt) } } })
+    .where(eq(productAssemblies.productId, product.id));
+
+  const entry = await entryFor(db, `/products/${encodeURIComponent(`CH14-${suffix}`)}`);
+
+  expect(entry?.lastModified).toBe(translatedAt);
+});
+
+// `/products` is as fresh as its newest Product, but unpublishing that Product removes it from the set the
+// maximum is taken over — so the index's date would move *backwards* on the edit that changed it. An absent
+// element beats one that lies about direction, so the index is undated like the dictionary-backed pages.
+test('leaves the index and the dictionary-backed pages undated', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, suffix);
+  await insertProduct(db, range.id, { name: `CH14 ${suffix}`, modelCode: `CH14-${suffix}` });
+
   const entries = await listSitemapEntries(db);
 
-  for (const path of ['/', '/about', '/contact']) {
+  for (const path of ['/', '/products', '/about', '/contact']) {
     expect(entries.find((entry) => entry.path === path)?.lastModified, path).toBeUndefined();
   }
 });

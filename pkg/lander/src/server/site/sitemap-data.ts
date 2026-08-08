@@ -1,6 +1,7 @@
 import { listAllProducts } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import { isLanderReady } from '@pkg/domain';
+import type { Product, ProductAssemblyTranslations, ProductTranslations } from '@pkg/schema';
 import { LOCALES, localePath } from '../../lib/locale.js';
 import { SITE_URL } from '../../lib/seo.js';
 
@@ -12,8 +13,9 @@ export type SitemapEntry = {
   /**
    * W3C-datetime `lastmod`, omitted when nothing in the data can honestly date the page. Search engines use
    * it to decide what is worth re-crawling and in what order, but only for as long as it stays accurate — a
-   * value that moves on every deploy teaches them to disregard the element across the whole site. So a page
-   * whose copy lives in the static dictionaries carries none rather than a manufactured timestamp.
+   * value that moves on every deploy, or one that moves backwards, teaches them to disregard the element
+   * across the whole site. Only the Product pages carry one; see `listSitemapEntries` for why the index and
+   * the dictionary-backed pages do not.
    */
   lastModified?: string;
 };
@@ -22,35 +24,64 @@ export type SitemapEntry = {
 // lander-ready Product detail URL, keyed by model code like the route (`/products/:modelCode`). Only
 // lander-ready Products are listed — an unready Product's detail page 404s, so listing it would point
 // crawlers at a dead URL. Sorted deterministically so the generated XML is stable across requests.
+//
+// Only the Product pages are dated. `/products` looks like it should be — it is as fresh as its newest
+// Product — but the events that change it include a Product leaving the visible set, which the visible set
+// cannot witness: unpublishing the newest one would drop the maximum back to an older Product and move the
+// page's `lastmod` backwards on the very edit that changed it. Widening the maximum to every Product fixes
+// the direction and breaks the meaning instead, moving the index whenever an unpublished draft is touched.
+// Neither is worth shipping over an absent element. `/`, `/about` and `/contact` are undated for the plainer
+// reason that their copy lives in the static dictionaries, where nothing in the data dates them at all.
 export async function listSitemapEntries(db: Db): Promise<SitemapEntry[]> {
   const landerReady = (await listAllProducts({ db })).filter(isLanderReady);
 
   const productEntries = landerReady
     .slice()
     .sort((left, right) => left.modelCode.localeCompare(right.modelCode))
-    .map((product) => ({
-      path: `/products/${encodeURIComponent(product.modelCode)}`,
-      lastModified: product.updatedAt,
-    }));
+    .map((product) => {
+      const lastModified = productLastModified(product);
 
-  // The index renders every Product, so it is exactly as fresh as the most recently edited one.
-  const catalogLastModified = newest(landerReady.map((product) => product.updatedAt));
+      return {
+        path: `/products/${encodeURIComponent(product.modelCode)}`,
+        // Spread rather than assigned: the key is absent when there is no date, not present and undefined.
+        ...(lastModified ? { lastModified } : {}),
+      };
+    });
 
-  return [
-    ...SITEMAP_STATIC_PATHS.map((path) => ({
-      path,
-      ...(path === '/products' && catalogLastModified ? { lastModified: catalogLastModified } : {}),
-    })),
-    ...productEntries,
-  ];
+  return [...SITEMAP_STATIC_PATHS.map((path) => ({ path })), ...productEntries];
+}
+
+// When a Product's rendered pages last changed, across every source that feeds them.
+//
+// `updatedAt` alone is not that instant. It moves only when a write sets it, and the translation paths do
+// not: they set the `translations` column and nothing else, while Assembly names translate into a separate
+// table. Dating an `/af/` page by `updatedAt` would therefore hold it at the last English edit and never
+// move when the Afrikaans copy actually changed. Every stored envelope carries its own `translatedAt`, so
+// the honest answer is the newest of all of them and the row's own timestamp.
+function productLastModified(product: Product): string | undefined {
+  return newest([
+    product.updatedAt,
+    ...translationTimestamps(product.translations),
+    ...product.assemblies.flatMap((assembly) => translationTimestamps(assembly.translations)),
+  ]);
+}
+
+// Every `translatedAt` held in a stored translations column, across each Locale and field. Walked
+// structurally rather than field by field, so adding a translatable field cannot quietly stop dating the
+// page it renders on.
+function translationTimestamps(translations: ProductTranslations | ProductAssemblyTranslations | undefined): string[] {
+  return Object.values(translations ?? {}).flatMap((fields) =>
+    // A stored translations object is partial in both directions: a Locale may be absent, and within one,
+    // any field may be untranslated.
+    Object.values(fields ?? {}).flatMap((envelope) => (envelope ? [envelope.translatedAt] : [])),
+  );
 }
 
 // Renders both Locale trees for every crawlable entry. Paths are already percent-encoded by
 // listSitemapEntries, so no further XML escaping of the origin is needed.
 //
-// Both Locale variants of a Product share its `lastModified`, which is accurate rather than convenient:
-// translations are a `jsonb` column on the Product row, so editing either language moves the same row's
-// `updatedAt`.
+// Both Locale variants of a Product share its `lastModified`. That is accurate rather than convenient: the
+// value already folds in every translation's own timestamp, so it moves for a change to either language.
 export function renderSitemap(entries: SitemapEntry[]): string {
   const urls = entries
     .flatMap(({ lastModified, path }) => LOCALES.map((locale) => ({ lastModified, path: localePath(path, locale) })))

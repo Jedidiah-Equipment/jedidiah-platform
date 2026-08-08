@@ -48,6 +48,18 @@ const LABEL_CLASS = 'mb-2 block font-display text-[13px] font-semibold uppercase
 
 type FormStatus = 'idle' | 'submitting' | 'sent' | 'error';
 
+// Required fields, in DOM order. A blank one blocks the submit and paints an error next to the field.
+const REQUIRED_FIELDS = ['name', 'email', 'message'] as const;
+type RequiredField = (typeof REQUIRED_FIELDS)[number];
+
+function FieldError({ id, message }: { id: string; message: string }) {
+  return (
+    <p id={id} className="m-0 mt-1.5 font-body text-[13px] text-[#b3261e]">
+      {message}
+    </p>
+  );
+}
+
 function ArrowIcon() {
   return <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />;
 }
@@ -78,15 +90,41 @@ function SentState() {
   );
 }
 
-function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
+export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
   const m = useMessages();
   const locale = useLocale();
   const [status, setStatus] = useState<FormStatus>('idle');
+  const [missingFields, setMissingFields] = useState<RequiredField[]>([]);
+
+  const errorMessages: Record<RequiredField, string> = {
+    name: m.contact.validation.enterName,
+    email: m.contact.validation.enterEmail,
+    message: m.contact.validation.enterMessage,
+  };
+
+  function clearField(field: RequiredField) {
+    setMissingFields((current) => current.filter((other) => other !== field));
+  }
+
+  function fieldClass(field: RequiredField) {
+    return `${FIELD_CLASS}${missingFields.includes(field) ? ' border-[#b3261e] focus:border-[#b3261e]' : ''}`;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
+
+    // Native `required` would cancel the submit before this handler ran, so nothing rendered and no event
+    // fired. `noValidate` on the form hands validation to us instead, and a blocked submit is now captured.
+    const missing = REQUIRED_FIELDS.filter((field) => !String(data.get(field) ?? '').trim());
+    if (missing.length > 0) {
+      setMissingFields(missing);
+      captureEvent('contact_submit_blocked', { missingFields: missing });
+      return;
+    }
+
+    setMissingFields([]);
     setStatus('submitting');
 
     try {
@@ -128,7 +166,7 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
       <h2 className="m-0 mb-7 font-display text-[34px] font-extrabold uppercase tracking-[0.5px] text-ink">
         {m.contact.formTitle}
       </h2>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <div className="mb-5 grid grid-cols-2 gap-5 max-xs:grid-cols-1">
           <div>
             <label htmlFor="contact-name" className={LABEL_CLASS}>
@@ -139,9 +177,15 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
               name="name"
               type="text"
               required
+              aria-invalid={missingFields.includes('name')}
+              aria-describedby={missingFields.includes('name') ? 'contact-name-error' : undefined}
+              onChange={() => clearField('name')}
               placeholder={m.contact.namePlaceholder}
-              className={FIELD_CLASS}
+              className={fieldClass('name')}
             />
+            {missingFields.includes('name') ? (
+              <FieldError id="contact-name-error" message={errorMessages.name} />
+            ) : null}
           </div>
           <div>
             <label htmlFor="contact-phone" className={LABEL_CLASS}>
@@ -166,9 +210,15 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
               name="email"
               type="email"
               required
+              aria-invalid={missingFields.includes('email')}
+              aria-describedby={missingFields.includes('email') ? 'contact-email-error' : undefined}
+              onChange={() => clearField('email')}
               placeholder={m.contact.emailPlaceholder}
-              className={FIELD_CLASS}
+              className={fieldClass('email')}
             />
+            {missingFields.includes('email') ? (
+              <FieldError id="contact-email-error" message={errorMessages.email} />
+            ) : null}
           </div>
           <div>
             <label htmlFor="contact-equipment" className={LABEL_CLASS}>
@@ -205,9 +255,15 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
             name="message"
             rows={5}
             required
+            aria-invalid={missingFields.includes('message')}
+            aria-describedby={missingFields.includes('message') ? 'contact-message-error' : undefined}
+            onChange={() => clearField('message')}
             placeholder={m.contact.messagePlaceholder}
-            className={`${FIELD_CLASS} resize-y`}
+            className={`${fieldClass('message')} resize-y`}
           />
+          {missingFields.includes('message') ? (
+            <FieldError id="contact-message-error" message={errorMessages.message} />
+          ) : null}
         </div>
         {status === 'error' ? (
           <p className="m-0 mb-5 font-body text-[15px] text-[#b3261e]">{m.contact.sendError}</p>

@@ -64,6 +64,14 @@ export async function buildServer(
     },
   });
 
+  // Only the Lander belongs in search results. Google already crawls this host — it reports the 404 at `/`
+  // — and `/health` answers 200 to anyone, so a directive has to cover every response rather than the routes
+  // we happen to think of. There is no HTML shell to carry a `<meta name="robots">` here, which makes the
+  // header the only mechanism available.
+  app.addHook('onSend', async (_request, reply) => {
+    reply.header('X-Robots-Tag', 'noindex, nofollow');
+  });
+
   await app.register(fastifyCors, {
     origin: config.AUTH_TRUSTED_ORIGINS,
     credentials: true,

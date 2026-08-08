@@ -207,6 +207,7 @@ export const af: Messages = {
     visitByAppointment: 'Besoek per afspraak',
     validation: {
       enterName: 'Voer asseblief jou naam in',
+      enterEmail: 'Voer asseblief jou e-posadres in',
       enterMessage: 'Voer asseblief ’n boodskap in',
       expectedJson: '’n JSON-versoekliggaam is verwag',
       checkForm: 'Gaan asseblief die vorm na en probeer weer',

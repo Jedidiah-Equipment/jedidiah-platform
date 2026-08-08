@@ -159,6 +159,7 @@ export type Messages = {
     visitByAppointment: string;
     validation: {
       enterName: string;
+      enterEmail: string;
       enterMessage: string;
       expectedJson: string;
       checkForm: string;

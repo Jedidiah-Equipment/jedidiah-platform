@@ -7,7 +7,12 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
-import { loadCfoQuantitiesByPart, loadJobStockJob } from './job-stock-facts.js';
+import {
+  drawnCostedValueExpression,
+  loadCfoQuantitiesByPart,
+  loadJobStockJob,
+  uncostedDrawnQuantityExpression,
+} from './job-stock-facts.js';
 import { toLedgerQuantity } from './ledger.js';
 import { sumBy } from './row-grouping.js';
 
@@ -46,27 +51,12 @@ export async function getJobMaterialVariance({
     loadCfoQuantitiesByPart({ db, jobId }),
     db
       .select({
-        // Draws leave stock, so their deltas are negative and a return's is positive: negating the
-        // sums turns the ledger's signs into what the Job is holding, in quantity and in money.
-        //
-        // Only the costed rows are summed, and the total starts at zero rather than null, so what
-        // comes back is always "the value we can account for" — never a null standing in for both
-        // "nothing was drawn" and "something was drawn we cannot price".
-        costedValue: sql<number>`(-coalesce(sum(${stockMovements.delta} * ${stockMovements.unitCost})
-          filter (where ${stockMovements.unitCost} is not null), 0))::double precision`,
+        // Both money expressions are `job-stock-facts`', so this report and the whole-Job cost read
+        // price a draw identically and only the grouping differs — per Part here, per Job there.
+        costedValue: drawnCostedValueExpression,
         drawnQuantity: sql<number>`(-coalesce(sum(${stockMovements.delta}), 0))::double precision`,
         partId: stockMovements.partId,
-        // How much unpriced material the Job is *still holding* — the one fact that makes its cost
-        // unknowable rather than merely small. Netted rather than counted, because what matters is
-        // what is outstanding: an unpriced draw handed straight back leaves nothing to price, and a
-        // Part whose every draw was priced must not be unpriced by it.
-        //
-        // The sign does the work that naming a movement type used to. A return is stamped null
-        // whenever its bucket's pool has nothing outstanding left to reverse — an offcut handed back
-        // in a length the Job never drew, a piece returned past what it still held — and each of
-        // those is a positive delta, so it can only ever reduce this figure, never raise it.
-        uncostedDrawnQuantity: sql<number>`(-coalesce(sum(${stockMovements.delta})
-          filter (where ${stockMovements.unitCost} is null), 0))::double precision`,
+        uncostedDrawnQuantity: uncostedDrawnQuantityExpression,
       })
       .from(stockMovements)
       .where(and(eq(stockMovements.jobId, jobId), inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES)))

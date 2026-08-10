@@ -14,6 +14,7 @@ import {
   listBayOperatorAssignmentHistory,
   listBayOperators,
   listBays,
+  listCompletedJobSales,
   listJobBays,
   listJobCustomerOptions,
   listJobs,
@@ -49,6 +50,7 @@ import {
   JobCreateInput,
   JobCustomerOptionListInput,
   JobListInput,
+  JobSalesExportInput,
   JobUpdateInput,
   MoveJobSlotInput,
   RemoveBayCalendarExceptionInput,
@@ -60,7 +62,7 @@ import {
 import { z } from 'zod';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../trpc/init.js';
+import { authorizedProcedure, fullyAuthorizedProcedure, router } from '../../trpc/init.js';
 
 export const jobsRouter = router({
   listBays: authorizedProcedure('job:read')
@@ -124,6 +126,17 @@ export const jobsRouter = router({
   list: authorizedProcedure('job:read')
     .input(JobListInput)
     .query(({ ctx, input }) => listJobs({ db: ctx.db, input })),
+
+  /**
+   * One row of this report crosses three gates at once — the ledger's cost, the Job, and the Quote's
+   * Customer, invoice number and price — so it demands all three rather than any of them. An any-of
+   * gate would hand `procurement-manager`, which reads costs and Jobs but no Quotes, a spreadsheet
+   * of commercial facts it can reach on no other screen. Gated whole rather than field by field: a
+   * caller who cannot read cost would be downloading the report with its point cut out of it.
+   */
+  salesExport: fullyAuthorizedProcedure(['inventory_cost:read', 'job:read', 'quote:read'])
+    .input(JobSalesExportInput)
+    .query(({ ctx, input }) => listCompletedJobSales({ db: ctx.db, input })),
 
   customerOptions: authorizedProcedure('job:read')
     .input(JobCustomerOptionListInput)

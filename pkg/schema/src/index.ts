@@ -33,6 +33,7 @@ export * from './inventory/inventory-cost.js';
 export * from './inventory/stock-movement.js';
 export * from './inventory/stocktake.js';
 export * from './jobs/job.js';
+export * from './jobs/job-sales-export.js';
 export * from './parts/part.js';
 export * from './parts/part-bom.js';
 export * from './products/brochure-document.js';

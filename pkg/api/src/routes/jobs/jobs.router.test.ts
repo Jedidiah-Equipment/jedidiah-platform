@@ -1344,6 +1344,32 @@ describe('jobs.customerOptions', () => {
   });
 });
 
+describe('jobs.salesExport', () => {
+  test('exports completed Jobs to cost readers and refuses everyone else', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const job = await adminCaller.jobs.create({ quoteId: context.quote.id });
+    await adminCaller.jobs.update({ completedOn: '2026-06-04', id: job.id });
+
+    await expect(adminCaller.jobs.salesExport({ columnFilters: {}, search: '' })).resolves.toEqual([
+      expect.objectContaining({
+        completedOn: '2026-06-04',
+        costExVat: 0,
+        customerCompanyName: 'Job Test Customer',
+        retailExVat: 1_000,
+        retailIncVat: 1_150,
+      }),
+    ]);
+    // Job readers without the cost gate are refused the whole report rather than a hollowed-out one,
+    // and so is a cost reader who cannot read Quotes — the row carries the Customer and the price.
+    await expect(
+      context.createCaller(mockSession('job-viewer')).jobs.salesExport({ columnFilters: {}, search: '' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      context.createCaller(mockSession('procurement-manager')).jobs.salesExport({ columnFilters: {}, search: '' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+});
+
 describe('jobs.bookSlot', () => {
   test('books an authorized Job onto a fabrication bay', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));

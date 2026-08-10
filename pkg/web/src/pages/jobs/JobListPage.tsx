@@ -1,11 +1,11 @@
 import { hasPermission } from '@pkg/domain';
 import { DateOnlyIso, type JobListInput, JobSortBy, type UUID } from '@pkg/schema';
-import { IconPlus } from '@tabler/icons-react';
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { IconDownload, IconLoader2, IconPlus } from '@tabler/icons-react';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button.js';
 import { Switch } from '@/components/ui/switch.js';
 import { toSelectOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { jobListPageDescription } from '@/utils/page-descriptions.js';
@@ -26,6 +27,7 @@ import {
   jobTablePinnedRightColumns,
 } from './components/JobListTableColumns.js';
 import { JobSheet } from './components/JobSheet.js';
+import { downloadJobSalesExport } from './job-sales-export.js';
 
 export const useJobListTableStore = createJobListTableStore('jobs-list-table');
 
@@ -87,6 +89,8 @@ export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ se
 export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
   const canEditJobs = hasPermission(accessQuery.data, 'job:update');
@@ -127,6 +131,24 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
       sortDirection: 'asc',
     }),
   );
+
+  // One row crosses the ledger, the Job and the Quote, so the button mirrors the API's all-of gate
+  // rather than `job:read` alone — see `jobs.salesExport`.
+  const canExportSales =
+    hasPermission(accessQuery.data, 'inventory_cost:read') &&
+    hasPermission(accessQuery.data, 'job:read') &&
+    hasPermission(accessQuery.data, 'quote:read');
+  const salesExportMutation = useMutation({
+    mutationFn: () =>
+      queryClient.fetchQuery(
+        trpc.jobs.salesExport.queryOptions({
+          columnFilters: tableController.listInput.columnFilters,
+          search: tableController.listInput.search,
+        }),
+      ),
+    onError: (error) => showMutationError(error, 'Unable to export completed jobs.'),
+    onSuccess: (rows) => downloadJobSalesExport(rows),
+  });
 
   const jobsQuery = useInfiniteQuery(
     trpc.jobs.list.infiniteQueryOptions(tableController.listInput, {
@@ -177,14 +199,28 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
     },
   });
 
+  const dropCompletedOnFilter = useCallback(() => {
+    tableController.setColumnFilters((filters) => filters.filter((filter) => filter.id !== 'completedOn'));
+  }, [tableController.setColumnFilters]);
+
   const handleIncludeCompletedChange = (checked: boolean) => {
     setIncludeCompleted(checked);
     // Hiding completed Jobs also retires the Complete date filter, so a stale range cannot survive
     // in persisted table state and silently narrow the next look at completed work.
     if (!checked) {
-      tableController.setColumnFilters((filters) => filters.filter((filter) => filter.id !== 'completedOn'));
+      dropCompletedOnFilter();
     }
   };
+
+  // The same cleanup on arrival. Column filters persist to storage but `includeCompleted` resets to
+  // off on every mount, so a range set before a reload would otherwise sit in the store unseen —
+  // its control is hidden while the switch is off — and quietly widen the next export to every
+  // completed Job in the plant's history.
+  useEffect(() => {
+    if (!includeCompleted) {
+      dropCompletedOnFilter();
+    }
+  }, [dropCompletedOnFilter, includeCompleted]);
 
   return (
     <DataTable
@@ -211,6 +247,21 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
             />
             Include Completed
           </label>
+          {canExportSales ? (
+            <Button
+              disabled={salesExportMutation.isPending}
+              onClick={() => salesExportMutation.mutate()}
+              size="sm"
+              variant="outline"
+            >
+              {salesExportMutation.isPending ? (
+                <IconLoader2 className="animate-spin" data-icon="inline-start" />
+              ) : (
+                <IconDownload data-icon="inline-start" />
+              )}
+              Export Completed
+            </Button>
+          ) : null}
         </div>
       }
       tableClassName={customerId ? 'min-w-[784px]' : 'min-w-[960px]'}

@@ -60,6 +60,29 @@ export function authorizedProcedure(permission: AppPermission | readonly AppPerm
   });
 }
 
+/**
+ * Every permission, where {@link authorizedProcedure} takes any one of them. For a read that
+ * composes facts several gates own separately: a caller holding one of them is not thereby entitled
+ * to the rest, and an any-of gate on such a read hands a role data it can reach nowhere else.
+ */
+export function fullyAuthorizedProcedure(permissions: readonly AppPermission[]) {
+  return protectedProcedure.use(({ ctx, next }) => {
+    if (!ctx.access || !permissions.every((candidate) => hasPermission(ctx.access, candidate))) {
+      throw createAuthTRPCError({
+        appCode: 'auth.forbidden',
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to perform this action.',
+      });
+    }
+
+    return next({
+      ctx: {
+        access: ctx.access,
+      },
+    });
+  });
+}
+
 type InventoryCostProjection<TOutput, TCostField extends keyof TOutput> = Omit<TOutput, TCostField> & {
   [Field in TCostField]: TOutput[Field] | null;
 };

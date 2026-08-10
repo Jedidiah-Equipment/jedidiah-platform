@@ -34,6 +34,7 @@ export * from './jobs/job-display.js';
 export * from './jobs/job-document-service.js';
 export * from './jobs/job-errors.js';
 export * from './jobs/job-read-service.js';
+export * from './jobs/job-sales-export.js';
 export * from './jobs/job-service.js';
 export * from './jobs/working-calendar-service.js';
 export * from './media/image-cache.js';

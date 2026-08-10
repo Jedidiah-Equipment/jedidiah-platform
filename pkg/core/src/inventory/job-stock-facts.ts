@@ -1,4 +1,4 @@
-import { type Db, jobCfoAssemblies, jobCfoParts, jobs, products, productUnits, quotes } from '@pkg/db';
+import { type Db, jobCfoAssemblies, jobCfoParts, jobs, products, productUnits, quotes, stockMovements } from '@pkg/db';
 import type { JobStockJob, UUID } from '@pkg/schema';
 import { JobStockJob as JobStockJobSchema } from '@pkg/schema';
 import { eq, sql } from 'drizzle-orm';
@@ -38,6 +38,36 @@ export async function loadJobStockJob({ db, jobId }: { db: Db; jobId: UUID }): P
     id: job.id,
   });
 }
+
+/**
+ * What a Job's draws are worth, in SQL, at the price each was stamped with — never re-priced at
+ * today's average, so a receipt landing after the draw cannot move a figure the plant has read.
+ *
+ * Draws leave stock, so their deltas are negative and a return's is positive: negating the sums
+ * turns the ledger's signs into what the Job is holding, in quantity and in money. Only costed rows
+ * are summed and the total starts at zero rather than null, so what comes back is always "the value
+ * we can account for" — never a null standing in for both "nothing was drawn" and "something was
+ * drawn we cannot price".
+ *
+ * Shared by the per-Part variance report and the per-Job cost read, which group the same rows
+ * differently and must never come to different conclusions about what a draw was worth.
+ */
+export const drawnCostedValueExpression = sql<number>`(-coalesce(sum(${stockMovements.delta} * ${stockMovements.unitCost})
+  filter (where ${stockMovements.unitCost} is not null), 0))::double precision`;
+
+/**
+ * How much unpriced material a Job is *still holding* — the one fact that makes its cost unknowable
+ * rather than merely small. Netted rather than counted, because what matters is what is outstanding:
+ * an unpriced draw handed straight back leaves nothing to price, and a Part whose every draw was
+ * priced must not be unpriced by it.
+ *
+ * The sign does the work that naming a movement type used to. A return is stamped null whenever its
+ * bucket's pool has nothing outstanding left to reverse — an offcut handed back in a length the Job
+ * never drew, a piece returned past what it still held — and each of those is a positive delta, so
+ * it can only ever reduce this figure, never raise it.
+ */
+export const uncostedDrawnQuantityExpression = sql<number>`(-coalesce(sum(${stockMovements.delta})
+  filter (where ${stockMovements.unitCost} is null), 0))::double precision`;
 
 /**
  * What the Job's CFO demands per Part, summed across its assemblies — a Part appearing on a standard

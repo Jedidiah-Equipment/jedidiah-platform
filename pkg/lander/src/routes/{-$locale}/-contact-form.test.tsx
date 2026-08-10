@@ -60,6 +60,7 @@ describe('EnquiryForm', () => {
     expect(container.querySelector('#contact-name-error')?.textContent).toBe('Please enter your name');
     expect(container.querySelector('#contact-email-error')?.textContent).toBe('Please enter your email address');
     expect(container.querySelector('#contact-message-error')?.textContent).toBe('Please enter a message');
+    expect(document.activeElement).toBe(field('name'));
   });
 
   test('sends a completed form without a blocked event', async () => {

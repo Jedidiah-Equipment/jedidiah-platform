@@ -140,6 +140,14 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
       if (missing.length > 0) {
         captureEvent('contact_submit_blocked', { missingFields: missing });
       }
+
+      // Native constraint validation focused the first invalid control. Preserve that discovery behavior
+      // now that inline validation owns the submit, especially when the error is above the viewport.
+      const firstInvalidField = REQUIRED_FIELDS.find((field) => errors[field]);
+      const firstInvalidControl = firstInvalidField ? form.elements.namedItem(firstInvalidField) : null;
+      if (firstInvalidControl instanceof HTMLElement) {
+        firstInvalidControl.focus();
+      }
       return;
     }
 

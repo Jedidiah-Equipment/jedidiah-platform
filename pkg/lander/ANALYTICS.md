@@ -38,7 +38,7 @@ The active Locale is registered as a PostHog super property and is also set as a
 | | | `method` | string | `native`, `clipboard` |
 | `brochure_downloaded` | Brochure download link clicked on Product detail (pre-existing, unchanged) | `modelCode` | string | e.g. `JM-2400` |
 | `contact_submitted` | Contact form submitted successfully (pre-existing, unchanged) | `equipment` | string | selected equipment, or the localized "not specified" text |
-| `contact_submit_blocked` | Contact form submit is stopped by inline validation before any request | `missingFields` | string[] | names of the empty required fields, e.g. `["name","message"]` — never field values |
+| `contact_submit_blocked` | Contact form submit is stopped because required fields are empty | `missingFields` | string[] | names of the empty required fields, e.g. `["name","message"]` — never field values |
 | `contact_submit_failed` | Contact form submission fails | `errorCategory` | string | `network`, `server` — never form content |
 | `social_link_clicked` | An outbound social or messaging link is clicked | `platform` | string | `facebook`, `instagram`, `whatsapp` |
 | | | `placement` | string | `footer`, `contact_page` |

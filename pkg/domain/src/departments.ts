@@ -6,6 +6,7 @@ export const departmentLabels: Record<Department, string> = {
   fabrication: 'Fabrication',
   paint: 'Paint',
   assembly: 'Assembly',
+  workshop: 'Workshop',
 };
 
 export const departmentShortLabels: Record<Department, string> = {
@@ -14,6 +15,7 @@ export const departmentShortLabels: Record<Department, string> = {
   fabrication: 'Fab',
   paint: 'Paint',
   assembly: 'Asm',
+  workshop: 'Wksp',
 };
 
 /**
@@ -28,4 +30,5 @@ export const quoteDepartmentLabels: Record<Department, string> = {
   fabrication: 'Fabrication',
   paint: 'Paintshop',
   assembly: 'Workshop',
+  workshop: 'Workshop',
 };

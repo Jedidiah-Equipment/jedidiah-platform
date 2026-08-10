@@ -54,7 +54,7 @@ export const feedbackDepartment = pgTable(
     primaryKey({ columns: [table.feedbackId, table.department], name: 'feedback_department_pkey' }),
     check(
       'feedback_department_value_check',
-      sql`${table.department} IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly')`,
+      sql`${table.department} IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly', 'workshop')`,
     ),
   ],
 );

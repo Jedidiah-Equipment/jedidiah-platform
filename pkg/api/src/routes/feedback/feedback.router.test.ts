@@ -117,8 +117,8 @@ describe('feedback.submit', () => {
     const submitted = await caller.feedback.submit({
       kind: 'corrective-feedback-department',
       subject: { subjectType: 'quote', quoteId: context.quote.id },
-      text: 'Paint and assembly both missed the spec.',
-      departments: ['paint', 'assembly'],
+      text: 'Paint and workshop both missed the spec.',
+      departments: ['paint', 'workshop'],
     });
 
     const [row] = await context.db.select().from(feedback).where(eq(feedback.id, submitted.id));
@@ -128,7 +128,7 @@ describe('feedback.submit', () => {
       .select()
       .from(feedbackDepartment)
       .where(eq(feedbackDepartment.feedbackId, submitted.id));
-    expect(new Set(departmentTargets.map((target) => target.department))).toEqual(new Set(['paint', 'assembly']));
+    expect(new Set(departmentTargets.map((target) => target.department))).toEqual(new Set(['paint', 'workshop']));
 
     const userTargets = await context.db.select().from(feedbackUser).where(eq(feedbackUser.feedbackId, submitted.id));
     expect(userTargets).toEqual([]);

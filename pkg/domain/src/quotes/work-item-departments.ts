@@ -12,6 +12,7 @@ export const WORK_ITEM_DEPARTMENT_RATES = {
   fabrication: 550,
   paint: 375,
   assembly: 320,
+  workshop: 320,
 } as const satisfies Partial<Record<Department, number>>;
 
 export type WorkItemDepartment = keyof typeof WORK_ITEM_DEPARTMENT_RATES;

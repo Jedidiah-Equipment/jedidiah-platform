@@ -9,11 +9,19 @@ describe('sortBaysByDepartmentPipeline', () => {
       buildBay({ department: 'paint', name: 'Paint Bay 1' }),
       buildBay({ department: 'procurement', name: 'Procurement Bay 1' }),
       buildBay({ department: 'assembly', name: 'Assembly Bay 1' }),
+      buildBay({ department: 'workshop', name: 'Workshop Bay 1' }),
       buildBay({ department: 'fabrication', name: 'Fabrication Bay 1' }),
       buildBay({ department: 'supply', name: 'Supply Bay 1' }),
     ]);
 
-    expect(sorted.map((bay) => bay.department)).toEqual(['procurement', 'supply', 'fabrication', 'paint', 'assembly']);
+    expect(sorted.map((bay) => bay.department)).toEqual([
+      'procurement',
+      'supply',
+      'fabrication',
+      'paint',
+      'assembly',
+      'workshop',
+    ]);
   });
 
   it('breaks department ties by Bay name', () => {

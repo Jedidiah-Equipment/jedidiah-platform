@@ -347,20 +347,20 @@ describe('jobs bay management', () => {
     const caller = context.createCaller(mockSession('admin'));
 
     const created = await caller.jobs.createBay({
-      department: 'paint',
-      name: '  Paint Bay 1  ',
+      department: 'workshop',
+      name: '  Workshop Bay 1  ',
     });
     expect(created.bay).toMatchObject({
-      department: 'paint',
+      department: 'workshop',
       disabledAt: null,
-      name: 'Paint Bay 1',
+      name: 'Workshop Bay 1',
     });
 
-    await expect(caller.jobs.renameBay({ id: created.bay.id, name: '  Paint Prep Bay  ' })).resolves.toMatchObject({
+    await expect(caller.jobs.renameBay({ id: created.bay.id, name: '  Workshop Prep Bay  ' })).resolves.toMatchObject({
       bay: {
-        department: 'paint',
+        department: 'workshop',
         id: created.bay.id,
-        name: 'Paint Prep Bay',
+        name: 'Workshop Prep Bay',
       },
     });
     await expect(caller.jobs.setBayDisabled({ disabled: true, id: created.bay.id })).resolves.toMatchObject({
@@ -961,6 +961,7 @@ describe('jobs.create', () => {
       'fabrication',
       'paint',
       'assembly',
+      'workshop',
     ]);
     expect(job.schedule.every((item) => item.bays.length === 0)).toBe(true);
   });

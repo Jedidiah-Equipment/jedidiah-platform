@@ -6,8 +6,8 @@ import { resolvePosthogToken } from './analytics-config.js';
 export type AnalyticsEventRegistry = {
   range_card_clicked: { rangeSlug: string; rangeName: string; position: number };
   cta_clicked: {
-    cta: 'hero_contact' | 'hero_products' | 'bottom_band_contact';
-    placement: 'hero' | 'bottom_band';
+    cta: 'hero_contact' | 'hero_products' | 'bottom_band_contact' | 'footer_contact';
+    placement: 'hero' | 'bottom_band' | 'footer';
   };
   catalog_filter_changed: {
     range: string | null;
@@ -25,6 +25,7 @@ export type AnalyticsEventRegistry = {
   product_shared: { modelCode: string; method: 'native' | 'clipboard' };
   brochure_downloaded: { modelCode: string };
   contact_submitted: { equipment: string };
+  contact_submit_blocked: { missingFields: string[] };
   contact_submit_failed: { errorCategory: 'network' | 'server' };
   social_link_clicked: {
     platform: 'facebook' | 'instagram' | 'whatsapp';

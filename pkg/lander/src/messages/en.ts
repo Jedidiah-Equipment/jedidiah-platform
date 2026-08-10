@@ -203,6 +203,8 @@ export const en: Messages = {
     visitByAppointment: 'Visit by appointment',
     validation: {
       enterName: 'Please enter your name',
+      enterEmail: 'Please enter your email address',
+      enterValidEmail: 'Please enter a valid email address',
       enterMessage: 'Please enter a message',
       expectedJson: 'Expected a JSON request body',
       checkForm: 'Please check the form and try again',

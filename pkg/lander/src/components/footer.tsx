@@ -7,8 +7,9 @@ import {
 } from '@pkg/domain';
 import { IconBrandFacebook, IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
+import { type MouseEvent, useEffect, useState } from 'react';
 import { FOOTER_LOGO } from '../assets/images.js';
-import { captureEventForNavigation } from '../lib/analytics.js';
+import { captureEvent, captureEventForNavigation } from '../lib/analytics.js';
 import { LOCALES } from '../lib/locale.js';
 import { localePreferenceHref } from '../lib/locale-preference.js';
 import { useLocale, useMessages } from '../messages/index.js';
@@ -36,9 +37,31 @@ function FooterLink({ label, to }: { label: string; to: (typeof EXPLORE)[number]
 export function Footer({ ranges }: { ranges: FooterRange[] }) {
   const m = useMessages();
   const locale = useLocale();
+  const [switchingLanguage, setSwitchingLanguage] = useState(false);
   const currentHref = useRouterState({ select: (state) => state.location.href });
   const targetLocale = LOCALES.find((other) => other !== locale) ?? locale;
   const targetLanguage = m.language.names[targetLocale];
+
+  useEffect(() => {
+    // A language switch can be restored from the back-forward cache with React state intact.
+    const resetLanguageSwitch = () => setSwitchingLanguage(false);
+    window.addEventListener('pageshow', resetLanguageSwitch);
+    return () => window.removeEventListener('pageshow', resetLanguageSwitch);
+  }, []);
+
+  function handleLanguageSwitch(event: MouseEvent<HTMLAnchorElement>) {
+    const staysInCurrentPage =
+      event.button === 0 && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+    if (staysInCurrentPage) {
+      setSwitchingLanguage(true);
+    }
+
+    captureEventForNavigation('language_switched', {
+      fromLocale: locale,
+      toLocale: targetLocale,
+      placement: 'footer',
+    });
+  }
 
   return (
     <footer className="bg-ink-soft text-white">
@@ -81,7 +104,6 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
                   key={range.slug}
                   to="/{-$locale}/products"
                   search={{ range: range.slug }}
-                  resetScroll={false}
                   className={footerLinkClass}
                 >
                   {range.label}
@@ -133,6 +155,7 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
               </a>
               <Link
                 to="/{-$locale}/contact"
+                onClick={() => captureEvent('cta_clicked', { cta: 'footer_contact', placement: 'footer' })}
                 className="mt-1.5 self-start bg-yellow px-[22px] py-[11px] font-display text-[15px] font-bold uppercase tracking-[1px] text-ink no-underline"
               >
                 {m.footer.contactUs}
@@ -151,14 +174,11 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
           <a
             href={localePreferenceHref(currentHref, targetLocale)}
             aria-label={m.language.switchTo(targetLanguage)}
-            onClick={() =>
-              captureEventForNavigation('language_switched', {
-                fromLocale: locale,
-                toLocale: targetLocale,
-                placement: 'footer',
-              })
-            }
-            className="font-body text-[13px] text-[#8a8a8a] underline decoration-[#5a5a5a] underline-offset-4 hover:text-yellow"
+            aria-busy={switchingLanguage}
+            onClick={handleLanguageSwitch}
+            className={`font-body text-[13px] text-[#8a8a8a] underline decoration-[#5a5a5a] underline-offset-4 hover:text-yellow ${
+              switchingLanguage ? 'pointer-events-none opacity-60' : ''
+            }`}
           >
             {targetLanguage}
           </a>

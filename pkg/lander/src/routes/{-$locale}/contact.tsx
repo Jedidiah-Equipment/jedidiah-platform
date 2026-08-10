@@ -48,6 +48,18 @@ const LABEL_CLASS = 'mb-2 block font-display text-[13px] font-semibold uppercase
 
 type FormStatus = 'idle' | 'submitting' | 'sent' | 'error';
 
+// Required fields, in DOM order. A blank one blocks the submit and paints an error next to the field.
+const REQUIRED_FIELDS = ['name', 'email', 'message'] as const;
+type RequiredField = (typeof REQUIRED_FIELDS)[number];
+
+function FieldError({ id, message }: { id: string; message: string }) {
+  return (
+    <p id={id} className="m-0 mt-1.5 font-body text-[13px] text-[#b3261e]">
+      {message}
+    </p>
+  );
+}
+
 function ArrowIcon() {
   return <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />;
 }
@@ -78,15 +90,68 @@ function SentState() {
   );
 }
 
-function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
+export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
   const m = useMessages();
   const locale = useLocale();
   const [status, setStatus] = useState<FormStatus>('idle');
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<RequiredField, string>>>({});
+
+  const errorMessages: Record<RequiredField, string> = {
+    name: m.contact.validation.enterName,
+    email: m.contact.validation.enterEmail,
+    message: m.contact.validation.enterMessage,
+  };
+
+  function clearField(field: RequiredField) {
+    setFieldErrors((current) => {
+      const remaining = { ...current };
+      delete remaining[field];
+      return remaining;
+    });
+  }
+
+  function fieldClass(field: RequiredField) {
+    return `${FIELD_CLASS}${fieldErrors[field] ? ' border-[#b3261e] focus:border-[#b3261e]' : ''}`;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
+
+    // Native `required` would cancel the submit before this handler ran, so nothing rendered and no event
+    // fired. `noValidate` on the form hands validation to us instead, and a blocked submit is now captured.
+    const missing = REQUIRED_FIELDS.filter((field) => !String(data.get(field) ?? '').trim());
+    const errors: Partial<Record<RequiredField, string>> = {};
+    for (const field of missing) {
+      errors[field] = errorMessages[field];
+    }
+
+    // `noValidate` suppresses automatic constraint validation, but the element validity state still
+    // preserves the browser's email-format check that existed before inline validation took over.
+    const emailInput = form.elements.namedItem('email');
+    if (emailInput instanceof HTMLInputElement && emailInput.validity.typeMismatch) {
+      errors.email = m.contact.validation.enterValidEmail;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      // This event's contract intentionally describes empty fields only, never entered values.
+      if (missing.length > 0) {
+        captureEvent('contact_submit_blocked', { missingFields: missing });
+      }
+
+      // Native constraint validation focused the first invalid control. Preserve that discovery behavior
+      // now that inline validation owns the submit, especially when the error is above the viewport.
+      const firstInvalidField = REQUIRED_FIELDS.find((field) => errors[field]);
+      const firstInvalidControl = firstInvalidField ? form.elements.namedItem(firstInvalidField) : null;
+      if (firstInvalidControl instanceof HTMLElement) {
+        firstInvalidControl.focus();
+      }
+      return;
+    }
+
+    setFieldErrors({});
     setStatus('submitting');
 
     try {
@@ -128,7 +193,7 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
       <h2 className="m-0 mb-7 font-display text-[34px] font-extrabold uppercase tracking-[0.5px] text-ink">
         {m.contact.formTitle}
       </h2>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <div className="mb-5 grid grid-cols-2 gap-5 max-xs:grid-cols-1">
           <div>
             <label htmlFor="contact-name" className={LABEL_CLASS}>
@@ -139,9 +204,13 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
               name="name"
               type="text"
               required
+              aria-invalid={Boolean(fieldErrors.name)}
+              aria-describedby={fieldErrors.name ? 'contact-name-error' : undefined}
+              onChange={() => clearField('name')}
               placeholder={m.contact.namePlaceholder}
-              className={FIELD_CLASS}
+              className={fieldClass('name')}
             />
+            {fieldErrors.name ? <FieldError id="contact-name-error" message={fieldErrors.name} /> : null}
           </div>
           <div>
             <label htmlFor="contact-phone" className={LABEL_CLASS}>
@@ -166,9 +235,13 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
               name="email"
               type="email"
               required
+              aria-invalid={Boolean(fieldErrors.email)}
+              aria-describedby={fieldErrors.email ? 'contact-email-error' : undefined}
+              onChange={() => clearField('email')}
               placeholder={m.contact.emailPlaceholder}
-              className={FIELD_CLASS}
+              className={fieldClass('email')}
             />
+            {fieldErrors.email ? <FieldError id="contact-email-error" message={fieldErrors.email} /> : null}
           </div>
           <div>
             <label htmlFor="contact-equipment" className={LABEL_CLASS}>
@@ -205,9 +278,13 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
             name="message"
             rows={5}
             required
+            aria-invalid={Boolean(fieldErrors.message)}
+            aria-describedby={fieldErrors.message ? 'contact-message-error' : undefined}
+            onChange={() => clearField('message')}
             placeholder={m.contact.messagePlaceholder}
-            className={`${FIELD_CLASS} resize-y`}
+            className={`${fieldClass('message')} resize-y`}
           />
+          {fieldErrors.message ? <FieldError id="contact-message-error" message={fieldErrors.message} /> : null}
         </div>
         {status === 'error' ? (
           <p className="m-0 mb-5 font-body text-[15px] text-[#b3261e]">{m.contact.sendError}</p>

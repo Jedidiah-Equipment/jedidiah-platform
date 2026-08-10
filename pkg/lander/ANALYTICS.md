@@ -21,8 +21,8 @@ The active Locale is registered as a PostHog super property and is also set as a
 | `range_card_clicked` | A home-page Range card is clicked | `rangeSlug` | string | e.g. `feed-mixers` |
 | | | `rangeName` | string | e.g. `Feed Mixers` |
 | | | `position` | number | 0-based index in the grid |
-| `cta_clicked` | A home-page CTA button is clicked | `cta` | string | `hero_contact`, `hero_products`, `bottom_band_contact` |
-| | | `placement` | string | `hero`, `bottom_band` |
+| `cta_clicked` | A CTA button is clicked | `cta` | string | `hero_contact`, `hero_products`, `bottom_band_contact`, `footer_contact` |
+| | | `placement` | string | `hero`, `bottom_band`, `footer` |
 | `catalog_filter_changed` | The catalog filter selection changes in-page (not on initial load of a filtered URL) | `range` | string \| null | new Range slug; `null` = cleared via All chip |
 | | | `variant` | string \| null | new Variant slug; `null` = no Variant filter |
 | | | `previousRange` | string \| null | Range slug before the change |
@@ -38,6 +38,7 @@ The active Locale is registered as a PostHog super property and is also set as a
 | | | `method` | string | `native`, `clipboard` |
 | `brochure_downloaded` | Brochure download link clicked on Product detail (pre-existing, unchanged) | `modelCode` | string | e.g. `JM-2400` |
 | `contact_submitted` | Contact form submitted successfully (pre-existing, unchanged) | `equipment` | string | selected equipment, or the localized "not specified" text |
+| `contact_submit_blocked` | Contact form submit is stopped because required fields are empty | `missingFields` | string[] | names of the empty required fields, e.g. `["name","message"]` — never field values |
 | `contact_submit_failed` | Contact form submission fails | `errorCategory` | string | `network`, `server` — never form content |
 | `social_link_clicked` | An outbound social or messaging link is clicked | `platform` | string | `facebook`, `instagram`, `whatsapp` |
 | | | `placement` | string | `footer`, `contact_page` |

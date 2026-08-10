@@ -33,6 +33,7 @@ describe('analytics event registry', () => {
       | 'product_shared'
       | 'brochure_downloaded'
       | 'contact_submitted'
+      | 'contact_submit_blocked'
       | 'contact_submit_failed'
       | 'social_link_clicked'
       | 'email_linked_clicked'

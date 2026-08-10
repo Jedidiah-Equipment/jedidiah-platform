@@ -28,7 +28,8 @@ export function getPartQuantityUnitDisplay(unitOfMeasure: PartUnitOfMeasure | un
  */
 export function formatPartQuantity(quantity: number, unitOfMeasure: PartUnitOfMeasure): string {
   if (unitOfMeasure === 'mm') {
-    return `${formatNumber(quantity, { decimals: 0 })} pieces`;
+    const decimals = Math.min(3, (quantity.toString().split('.')[1] ?? '').length);
+    return `${formatNumber(quantity, { decimals })} pieces`;
   }
 
   return `${quantity} ${UNIT_SUFFIXES[unitOfMeasure]}`;

@@ -36,6 +36,10 @@ describe('formatPartQuantity', () => {
   it('counts linear stock in pieces, never in millimetres', () => {
     expect(formatPartQuantity(2, 'mm')).toBe('2 pieces');
   });
+
+  it('preserves fractional linear stock quantities', () => {
+    expect(formatPartQuantity(0.5, 'mm')).toBe('0.5 pieces');
+  });
 });
 
 describe('length formatting', () => {

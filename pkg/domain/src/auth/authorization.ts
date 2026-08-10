@@ -94,7 +94,7 @@ export const permissionDescriptions = {
   'job:update': 'Update production job details and resolve general job feedback.',
   'job:update-calendar': 'Manage org-wide production Off-Days.',
   'job_bay:read': 'View durable production Bay configuration.',
-  'job_bay:update': 'Create, rename, disable, and re-enable production Bays.',
+  'job_bay:update': 'Create, rename, disable, re-enable, and delete production Bays.',
   'inventory:read': 'View inventory quantities and movement history.',
   'inventory:move': 'Check stock out, return it to stock, or return it to a supplier.',
   'inventory:adjust': 'Post inventory quantity adjustments.',

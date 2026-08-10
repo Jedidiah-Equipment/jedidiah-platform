@@ -50,6 +50,18 @@ export class JobBayNotFoundError extends Error {
   }
 }
 
+/** A Bay was asked to be deleted while something still references it; disable it instead. */
+export class JobBayInUseError extends Error {
+  readonly code = 'job.bay_in_use';
+  readonly metadata: { id: string };
+
+  constructor(id: string, message: string) {
+    super(message);
+    this.name = 'JobBayInUseError';
+    this.metadata = { id };
+  }
+}
+
 export class JobBayOperatorNotFoundError extends Error {
   readonly code = 'job.bay_operator_not_found';
   readonly metadata: { id: string };
@@ -132,6 +144,7 @@ export class JobCompletedOnInFutureError extends Error {
 
 export type JobCoreError =
   | JobBayAlreadyAssignedError
+  | JobBayInUseError
   | JobBayNotFoundError
   | JobBayOperatorAssignmentDeniedError
   | JobBayOperatorAssignmentNotFoundError
@@ -147,6 +160,7 @@ export type JobCoreError =
 
 export function isJobCoreError(error: unknown): error is JobCoreError {
   return (
+    error instanceof JobBayInUseError ||
     error instanceof JobBayNotFoundError ||
     error instanceof JobBayOperatorAssignmentDeniedError ||
     error instanceof JobBayOperatorAssignmentNotFoundError ||

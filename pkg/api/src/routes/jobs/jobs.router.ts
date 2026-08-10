@@ -5,6 +5,7 @@ import {
   bookJobSlot,
   createJob,
   createJobBay,
+  deleteJobBay,
   getJob,
   isJobCoreError,
   isProductUnitCoreError,
@@ -39,6 +40,7 @@ import {
   BookJobSlotInput,
   JobBayAssignOperatorInput,
   JobBayCreateInput,
+  JobBayDeleteInput,
   JobBayListInput,
   JobBayOperatorAssignmentHistoryInput,
   JobBayRenameInput,
@@ -83,6 +85,12 @@ export const jobsRouter = router({
     .input(JobBayRenameInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => renameJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+    ),
+
+  deleteBay: authorizedProcedure('job_bay:update')
+    .input(JobBayDeleteInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => deleteJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
     ),
 
   setBayDisabled: authorizedProcedure('job_bay:update')
@@ -259,6 +267,12 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Job bay not found.',
+      };
+    case 'job.bay_in_use':
+      return {
+        appCode: error.code,
+        code: 'CONFLICT',
+        message: error.message,
       };
     case 'job.bay_operator_not_found':
       return {

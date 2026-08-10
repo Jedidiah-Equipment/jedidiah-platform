@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { UserSummary } from '../auth/authorization.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
-import { Department } from '../common/departments.js';
+import { DEPARTMENTS, Department } from '../common/departments.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
@@ -725,7 +725,7 @@ export const JobDetail = JobSummary.extend({
     }),
   ),
   documents: z.array(JobVisibleDocument),
-  schedule: z.array(JobDetailDepartmentSchedule).length(5),
+  schedule: z.array(JobDetailDepartmentSchedule).length(DEPARTMENTS.length),
 });
 
 export type JobBaySeedInput = z.infer<typeof JobBaySeedInput>;

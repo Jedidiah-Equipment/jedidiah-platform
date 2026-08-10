@@ -147,7 +147,7 @@ export const quoteWorkItems = pgTable(
     // further department is a rate-card line rather than a migration.
     check(
       'quote_work_items_department_value_check',
-      sql`${table.department} is null or ${table.department} in ('procurement', 'supply', 'fabrication', 'paint', 'assembly')`,
+      sql`${table.department} is null or ${table.department} in ('procurement', 'supply', 'fabrication', 'paint', 'assembly', 'workshop')`,
     ),
     check('quote_work_items_position_nonnegative', sql`${table.position} >= 0`),
     check('quote_work_items_hours_nonnegative', sql`${table.hours} >= 0`),

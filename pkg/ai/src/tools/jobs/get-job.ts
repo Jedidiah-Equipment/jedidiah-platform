@@ -1,6 +1,7 @@
 import * as jobsCore from '@pkg/core';
 import {
   BayOperator,
+  DEPARTMENTS,
   JobDetail,
   JobDetailDepartmentSchedule,
   JobScheduleBayQueue,
@@ -52,7 +53,7 @@ export const GetJobResponse = JobDetail.pick({
   workTitle: true,
 }).extend({
   links: JobLinks,
-  schedule: z.array(GetJobDepartmentSchedule).length(5),
+  schedule: z.array(GetJobDepartmentSchedule).length(DEPARTMENTS.length),
 });
 
 export function toGetJobResponse(job: JobDetail, access: UserAccessSummary | null): GetJobResponse {

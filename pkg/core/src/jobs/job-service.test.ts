@@ -637,6 +637,7 @@ describe('createJob', () => {
       'fabrication',
       'paint',
       'assembly',
+      'workshop',
     ]);
     expect(job.schedule.every((item) => item.bays.length === 0)).toBe(true);
     expect(events).toMatchObject([

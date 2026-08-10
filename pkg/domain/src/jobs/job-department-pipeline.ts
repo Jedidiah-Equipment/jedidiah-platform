@@ -12,4 +12,5 @@ export const JOB_DEPARTMENT_PIPELINE = [
   { sequence: 3, department: 'fabrication' },
   { sequence: 4, department: 'paint' },
   { sequence: 5, department: 'assembly' },
+  { sequence: 6, department: 'workshop' },
 ] as const satisfies readonly JobDepartmentPipelineStep[];

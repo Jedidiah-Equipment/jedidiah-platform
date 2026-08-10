@@ -30,7 +30,7 @@ const job = JobDetail.parse({
   quoteCode: 'QUO-00001',
   quoteId: QUOTE_ID,
   quoteKind: 'custom',
-  schedule: ['procurement', 'supply', 'fabrication', 'paint', 'assembly'].map((department) => ({
+  schedule: ['procurement', 'supply', 'fabrication', 'paint', 'assembly', 'workshop'].map((department) => ({
     bays: [],
     department,
   })),
@@ -82,6 +82,7 @@ describe('getJob contract', () => {
         { department: 'fabrication' },
         { department: 'paint' },
         { department: 'assembly' },
+        { department: 'workshop' },
       ],
       workRows: [{ name: 'Assembly' }, { name: 'Install replacement pump' }],
       workTitle: 'Hydraulic repair',

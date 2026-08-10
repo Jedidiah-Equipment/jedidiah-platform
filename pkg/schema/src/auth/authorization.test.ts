@@ -8,6 +8,7 @@ describe('Department', () => {
     expect(Department.parse('fabrication')).toBe('fabrication');
     expect(Department.parse('paint')).toBe('paint');
     expect(Department.parse('assembly')).toBe('assembly');
+    expect(Department.parse('workshop')).toBe('workshop');
     expect(Department.parse('supply')).toBe('supply');
   });
 

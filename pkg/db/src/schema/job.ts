@@ -49,7 +49,7 @@ export const jobBays = pgTable(
   (table) => [
     check(
       'job_bay_department_check',
-      sql`${table.department} IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly')`,
+      sql`${table.department} IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly', 'workshop')`,
     ),
     check('job_bay_name_nonempty', sql`length(trim(${table.name})) > 0`),
   ],

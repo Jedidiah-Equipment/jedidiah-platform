@@ -533,6 +533,12 @@ describe('JobCreateInput', () => {
 });
 
 describe('JobDetail', () => {
+  it('carries one schedule group for every Department', () => {
+    const departments = ['procurement', 'supply', 'fabrication', 'paint', 'assembly', 'workshop'];
+
+    expect(JobDetail.shape.schedule.parse(departments.map((department) => ({ bays: [], department })))).toHaveLength(6);
+  });
+
   it('carries the Department, description, and estimated hours shown with the Job assemblies', () => {
     const workRow = {
       id: '00000000-0000-4000-8000-000000000001',

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { quoteDepartmentLabels } from '../departments.js';
 import { getWorkItemFormTotal, quoteWorkItemSummaryRows, toQuoteWorkItemFormState } from './quote-work-item-form.js';
+import { WORK_ITEM_DEPARTMENTS, workItemDepartmentRate } from './work-item-departments.js';
 
 describe('Quote Work Item form helpers', () => {
   const workItem = {
@@ -80,7 +82,7 @@ describe('Quote Work Item form helpers', () => {
     });
 
     expect(rows.map((row) => ({ description: row.description, name: row.name, total: row.total }))).toEqual([
-      { description: 'Strip and assemble', name: 'Workshop', total: 11520 },
+      { description: 'Strip and assemble', name: 'Assembly', total: 11520 },
       { description: null, name: 'Paintshop', total: 3750 },
     ]);
   });
@@ -94,5 +96,16 @@ describe('Quote Work Item form helpers', () => {
     });
 
     expect(rows.map((row) => row.total)).toEqual([30800, 11520]);
+  });
+
+  it('adds Workshop to the rate card without changing the existing departments', () => {
+    expect(WORK_ITEM_DEPARTMENTS).toEqual(['fabrication', 'paint', 'assembly', 'workshop']);
+    expect(workItemDepartmentRate('assembly')).toBe(320);
+    expect(workItemDepartmentRate('workshop')).toBe(320);
+    expect(quoteDepartmentLabels.assembly).toBe('Assembly');
+    expect(quoteDepartmentLabels.workshop).toBe('Workshop');
+    expect(new Set(WORK_ITEM_DEPARTMENTS.map((department) => quoteDepartmentLabels[department])).size).toBe(
+      WORK_ITEM_DEPARTMENTS.length,
+    );
   });
 });

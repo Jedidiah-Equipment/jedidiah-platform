@@ -6,6 +6,7 @@ import { FabricationDepartmentIcon } from './FabricationDepartmentIcon.js';
 import { PaintDepartmentIcon } from './PaintDepartmentIcon.js';
 import { ProcurementDepartmentIcon } from './ProcurementDepartmentIcon.js';
 import { SupplyDepartmentIcon } from './SupplyDepartmentIcon.js';
+import { WorkshopDepartmentIcon } from './WorkshopDepartmentIcon.js';
 
 type DepartmentIconProps = {
   department: Department;
@@ -23,5 +24,10 @@ export function DepartmentIcon({ department, ...props }: DepartmentIconProps) {
       return <ProcurementDepartmentIcon {...props} />;
     case 'supply':
       return <SupplyDepartmentIcon {...props} />;
+    case 'workshop':
+      return <WorkshopDepartmentIcon {...props} />;
   }
+
+  department satisfies never;
+  throw new Error('Unknown Department');
 }

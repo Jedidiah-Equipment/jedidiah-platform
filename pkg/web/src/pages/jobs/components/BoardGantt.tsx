@@ -554,7 +554,16 @@ const BaySlotBars: React.FC<{
           <BaySlotBar
             // Split halves carry synthetic ids that must never reach a mutation.
             canEditSchedule={canEditScheduleByBayId.has(bay.id) && !slot.previewSplit}
-            isDimmed={isFilterActive && !slotMatchesBoardFilter({ bayId: bay.id, filter, jobsById, slot })}
+            isDimmed={
+              isFilterActive &&
+              !slotMatchesBoardFilter({
+                bayDepartment: bay.department,
+                bayId: bay.id,
+                filter,
+                jobsById,
+                slot,
+              })
+            }
             isNext={slot.id === nextSlotId}
             isScheduleMutationPending={isScheduleMutationPending}
             job={slot.kind === 'work' ? (jobsById.get(slot.jobId) ?? null) : null}

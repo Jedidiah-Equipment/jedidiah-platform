@@ -59,34 +59,49 @@ const jobSortOptions: SortOptions<JobListInput> = {
 export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ selectedJobId }) => {
   const navigate = useNavigate();
   const accessQuery = useAccess();
+  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
 
   return (
-    <PageLayout
-      actions={
-        hasPermission(accessQuery.data, 'job:create') ? (
-          <Button render={<Link to="/jobs/stock-build" />}>
-            <IconPlus data-icon="inline-start" />
-            New Stock Build
-          </Button>
-        ) : null
-      }
-      description={jobListPageDescription}
-      size="full"
-      title="Job List"
-    >
-      <JobListTable />
-      {selectedJobId ? (
-        <JobSheet
-          key={selectedJobId}
-          jobId={selectedJobId}
-          onClose={() => navigate({ search: {}, to: '/jobs/list' })}
-        />
-      ) : null}
-    </PageLayout>
+    <JobListTable
+      render={({ exportAction, tableContent }) => (
+        <PageLayout
+          actions={
+            exportAction || canCreateJob ? (
+              <>
+                {exportAction}
+                {canCreateJob ? (
+                  <Button render={<Link to="/jobs/stock-build" />} size="default">
+                    <IconPlus data-icon="inline-start" />
+                    New Stock Build
+                  </Button>
+                ) : null}
+              </>
+            ) : null
+          }
+          description={jobListPageDescription}
+          size="full"
+          title="Job List"
+        >
+          {tableContent}
+          {selectedJobId ? (
+            <JobSheet
+              key={selectedJobId}
+              jobId={selectedJobId}
+              onClose={() => navigate({ search: {}, to: '/jobs/list' })}
+            />
+          ) : null}
+        </PageLayout>
+      )}
+    />
   );
 };
 
-export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
+type JobListTableProps = {
+  customerId?: UUID;
+  render?: ((view: { exportAction: React.ReactNode; tableContent: React.ReactNode }) => React.ReactNode) | undefined;
+};
+
+export const JobListTable: React.FC<JobListTableProps> = ({ customerId, render }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -222,7 +237,23 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
     }
   }, [dropCompletedOnFilter, includeCompleted]);
 
-  return (
+  const exportAction = canExportSales ? (
+    <Button
+      disabled={salesExportMutation.isPending}
+      onClick={() => salesExportMutation.mutate()}
+      size={render ? 'default' : 'sm'}
+      variant="outline"
+    >
+      {salesExportMutation.isPending ? (
+        <IconLoader2 className="animate-spin" data-icon="inline-start" />
+      ) : (
+        <IconDownload data-icon="inline-start" />
+      )}
+      Export Completed
+    </Button>
+  ) : null;
+
+  const tableContent = (
     <DataTable
       emptyMessage={getJobsEmptyMessage({ includeCompleted })}
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
@@ -247,21 +278,7 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
             />
             Include Completed
           </label>
-          {canExportSales ? (
-            <Button
-              disabled={salesExportMutation.isPending}
-              onClick={() => salesExportMutation.mutate()}
-              size="sm"
-              variant="outline"
-            >
-              {salesExportMutation.isPending ? (
-                <IconLoader2 className="animate-spin" data-icon="inline-start" />
-              ) : (
-                <IconDownload data-icon="inline-start" />
-              )}
-              Export Completed
-            </Button>
-          ) : null}
+          {render ? null : exportAction}
         </div>
       }
       tableClassName={customerId ? 'min-w-[784px]' : 'min-w-[960px]'}
@@ -270,6 +287,8 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
       totalLabel={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`}
     />
   );
+
+  return render ? render({ exportAction, tableContent }) : tableContent;
 };
 
 function getJobsEmptyMessage({ includeCompleted }: { includeCompleted: boolean }): string {

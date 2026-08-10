@@ -1,11 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import {
-  type BayCalendarExceptionDirection,
-  BoardMaxHistoryInput,
-  type DateOnlyIso,
-  type OffDay,
-  type UUID,
-} from '@pkg/schema';
+import { type BayCalendarExceptionDirection, BoardMaxHistoryInput, type DateOnlyIso, type OffDay } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
@@ -26,13 +20,11 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { jobCalendarPageDescription } from '@/utils/page-descriptions.js';
-import { JobSheet } from '../jobs/components/JobSheet.js';
 import { toJobCalendarDateKey } from '../jobs/components/job-date-key.js';
 import { getBayCalendarException, groupBayExceptionChipsByDate } from './bay-exceptions.js';
 import { BayExceptionDialog } from './components/BayExceptionDialog.js';
 import { JobCalendarDayCell } from './components/JobCalendarDayCell.js';
 import { OffDayDialog } from './components/OffDayDialog.js';
-import { groupJobCalendarSlotsByDate } from './job-calendar-slots.js';
 import type { BayExceptionChip, BayExceptionDialogState, SelectedCalendarDay } from './types.js';
 
 export const JobCalendarPage: React.FC = () => {
@@ -58,15 +50,10 @@ export const JobCalendarPage: React.FC = () => {
     [offDays],
   );
   const bayExceptionChipsByDate = useMemo(() => groupBayExceptionChipsByDate(bays), [bays]);
-  const jobSlotChipsByDate = useMemo(
-    () => groupJobCalendarSlotsByDate(baysQuery.data?.items ?? [], baysQuery.data?.jobs ?? []),
-    [baysQuery.data?.items, baysQuery.data?.jobs],
-  );
   const canEditCalendar = hasPermission(accessQuery.data, 'job:update-calendar');
   const canEditBaySchedule = schedulableBays.length > 0;
   const [selectedDay, setSelectedDay] = useState<SelectedCalendarDay | null>(null);
   const [bayExceptionDialog, setBayExceptionDialog] = useState<BayExceptionDialogState | null>(null);
-  const [selectedJobId, setSelectedJobId] = useState<UUID | null>(null);
   const toggleOffDayMutation = useMutation(
     trpc.jobs.toggleOffDay.mutationOptions({
       onSuccess: async (_result, variables) => {
@@ -176,11 +163,9 @@ export const JobCalendarPage: React.FC = () => {
               hasBays={schedulableBays.length > 0}
               isBayExceptionMutationPending={isBayExceptionMutationPending}
               isCurrentMonth={isCurrentMonth}
-              jobSlotChips={jobSlotChipsByDate.get(dateKey) ?? []}
               offDay={offDaysByDate.get(dateKey) ?? null}
               onAddBayException={(direction) => openBayExceptionDialog(toJobCalendarDateKey(date), direction)}
               onSelectBayException={openBayExceptionForChip}
-              onSelectJob={setSelectedJobId}
               onSelectDay={(selectedDate, offDay) => setSelectedDay({ date: selectedDate, offDay })}
             />
           )}
@@ -236,7 +221,6 @@ export const JobCalendarPage: React.FC = () => {
         }}
         state={bayExceptionDialog}
       />
-      {selectedJobId ? <JobSheet jobId={selectedJobId} onClose={() => setSelectedJobId(null)} /> : null}
     </PageLayout>
   );
 };

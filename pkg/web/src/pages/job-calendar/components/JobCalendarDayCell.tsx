@@ -11,19 +11,16 @@ import {
 } from '@/components/ui/context-menu.js';
 import { cn } from '@/lib/utils.js';
 import { isToday } from '../bay-exceptions.js';
-import type { JobCalendarSlotChip } from '../job-calendar-slots.js';
 import type { BayExceptionChip } from '../types.js';
 import { BayExceptionCalendarChip } from './BayExceptionCalendarChip.js';
 
 const visibleBayExceptionLimit = 3;
-const visibleJobSlotLimit = 2;
 
 type JobCalendarDayCellProps = {
   date: Date;
   isCurrentMonth: boolean;
   offDay: OffDay | null;
   bayExceptionChips: BayExceptionChip[];
-  jobSlotChips: JobCalendarSlotChip[];
   canEditCalendar: boolean;
   canEditBayException: (chip: BayExceptionChip) => boolean;
   canEditBaySchedule: boolean;
@@ -32,7 +29,6 @@ type JobCalendarDayCellProps = {
   onSelectDay: (date: Date, offDay: OffDay | null) => void;
   onAddBayException: (direction: BayCalendarExceptionDirection) => void;
   onSelectBayException: (chip: BayExceptionChip) => void;
-  onSelectJob: (jobId: JobCalendarSlotChip['jobId']) => void;
 };
 
 export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
@@ -40,7 +36,6 @@ export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
   isCurrentMonth,
   offDay,
   bayExceptionChips,
-  jobSlotChips,
   canEditCalendar,
   canEditBayException,
   canEditBaySchedule,
@@ -49,13 +44,10 @@ export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
   onSelectDay,
   onAddBayException,
   onSelectBayException,
-  onSelectJob,
 }) => {
   const visibleBayExceptionChips = bayExceptionChips.slice(0, visibleBayExceptionLimit);
   const hiddenBayExceptionCount = bayExceptionChips.length - visibleBayExceptionChips.length;
   const editableBayExceptionChips = bayExceptionChips.filter(canEditBayException);
-  const visibleJobSlotChips = jobSlotChips.slice(0, visibleJobSlotLimit);
-  const hiddenJobSlotCount = jobSlotChips.length - visibleJobSlotChips.length;
 
   const dayCell = (
     <div
@@ -92,28 +84,6 @@ export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
           >
             <div className="size-1.5 shrink-0 rounded-full bg-destructive" />
             <span className="truncate">{offDay.label ?? 'Off-Day'}</span>
-          </div>
-        ) : null}
-        {visibleJobSlotChips.map((chip) => (
-          <button
-            className={cn(
-              'pointer-events-auto flex min-w-0 items-center gap-1.5 rounded-sm border px-1.5 py-1 text-left text-xs',
-              chip.cancelled
-                ? 'border-muted-foreground/30 bg-muted text-muted-foreground grayscale'
-                : 'border-primary/20 bg-primary/10 text-foreground',
-            )}
-            key={`${chip.slotId}-${chip.jobId}`}
-            title={`${chip.jobCode} · ${chip.bayName}${chip.cancelled ? ' · Cancelled' : ''}`}
-            onClick={() => onSelectJob(chip.jobId)}
-            type="button"
-          >
-            <span className="truncate font-mono">{chip.jobCode}</span>
-            {chip.cancelled ? <span className="shrink-0">Cancelled</span> : null}
-          </button>
-        ))}
-        {hiddenJobSlotCount > 0 ? (
-          <div className="rounded-sm bg-muted px-1.5 py-1 text-muted-foreground text-xs">
-            +{hiddenJobSlotCount} more slots
           </div>
         ) : null}
         {visibleBayExceptionChips.map((exception) => (

@@ -18,6 +18,7 @@ import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from './all-jobs-input.js';
+import { BookSlotJobFilterSelect } from './BookSlotJobFilterSelect.js';
 import { createBoardPreviewRequest } from './board-ghosts.js';
 import {
   createBayNonWorkingDateMatcher,
@@ -123,8 +124,8 @@ export const BookSlotDialog: React.FC = () => {
     );
   };
 
-  const handleJobFilterSelect = (value: string) => {
-    setJobFilter(value as BookSlotJobFilter);
+  const handleJobFilterSelect = (value: BookSlotJobFilter) => {
+    setJobFilter(value);
     setSelectedJobId('');
     setDurationDays(1);
   };
@@ -226,25 +227,11 @@ export const BookSlotDialog: React.FC = () => {
                   ) : null}
                 </Field>
               ) : null}
-              <Field>
-                <FieldLabel htmlFor="book-slot-job-filter">Jobs shown</FieldLabel>
-                <Select
-                  disabled={isPending || jobsQuery.isLoading}
-                  onValueChange={(value) => handleJobFilterSelect(String(value))}
-                  value={jobFilter}
-                >
-                  <SelectTrigger id="book-slot-job-filter" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="start">
-                    <SelectGroup>
-                      <SelectItem value="active">Active jobs</SelectItem>
-                      <SelectItem value="all">All jobs</SelectItem>
-                      <SelectItem value="unscheduled">Unscheduled jobs</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
+              <BookSlotJobFilterSelect
+                disabled={isPending || jobsQuery.isLoading}
+                onValueChange={handleJobFilterSelect}
+                value={jobFilter}
+              />
               <Field>
                 <FieldLabel htmlFor="book-slot-job">Job</FieldLabel>
                 <Select

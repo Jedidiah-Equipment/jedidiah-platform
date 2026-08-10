@@ -21,7 +21,7 @@ export const HELP_TOPICS = {
   jobs: '/production/find-a-job',
   parts: '/inventory/print-part-labels',
   plan: '/production/open-a-bay-plan',
-  products: '/',
+  products: '/inventory/maintain-a-product-cost-estimate',
   purchaseOrders: '/inventory/post-a-receipt',
   quotes: '/',
   storesTablet: '/inventory/work-the-stores-tablet',

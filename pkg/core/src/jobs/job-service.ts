@@ -5,6 +5,7 @@ import {
   jobBuildSpecAssemblies,
   jobCfoAssemblies,
   jobCfoParts,
+  jobEstimateSnapshots,
   jobSlots,
   jobs,
   productUnits,
@@ -53,6 +54,7 @@ import { documentBaseSelect } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { snapshotJobBrochureDocument } from '../products/product-brochure-document.js';
+import { getProductCostEstimate } from '../products/product-cost-estimate-service.js';
 import { createProductUnit } from '../units/product-unit-service.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
@@ -147,6 +149,15 @@ export async function createJob({
         productId: blueprint.productId,
         tx,
       });
+      await snapshotJobEstimate({
+        jobId: job.id,
+        kind: blueprint.kind === 'rework' ? 'rework' : 'build',
+        productId: blueprint.productId,
+        selectedAssemblyIds: blueprint.buildSpec.flatMap((assembly) =>
+          assembly.productAssemblyId === null ? [] : [assembly.productAssemblyId],
+        ),
+        tx,
+      });
     }
 
     // Canonical lock order: concurrent creates seeding the same Bays must not deadlock.
@@ -176,6 +187,33 @@ export async function createJob({
 
     return getJob({ db: tx, id: job.id });
   });
+}
+
+async function snapshotJobEstimate({
+  jobId,
+  kind,
+  productId,
+  selectedAssemblyIds,
+  tx,
+}: {
+  jobId: UUID;
+  kind: 'build' | 'rework';
+  productId: UUID;
+  selectedAssemblyIds: readonly UUID[];
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  // Accepted Quotes remain buildable after catalog retirement, so their immutable Job snapshot may
+  // read that retired Product while the live catalog estimate endpoint still cannot.
+  const payload = await getProductCostEstimate({
+    db: tx,
+    includeRemovedProduct: true,
+    lockProductRevision: true,
+    productId,
+    scope: kind,
+    selectedAssemblyIds,
+  });
+
+  await tx.insert(jobEstimateSnapshots).values({ jobId, payload });
 }
 
 export async function cancelJobForQuote({

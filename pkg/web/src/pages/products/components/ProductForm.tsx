@@ -10,16 +10,18 @@ import { useProductRangeVariantOptions } from '@/hooks/options/index.js';
 import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 import { ProductBaysEditor } from './ProductBaysEditor.js';
+import { ProductCostingEditor } from './ProductCostingEditor.js';
 import { ProductKeyFeaturesEditor } from './ProductKeyFeaturesEditor.js';
 import { ProductFormValues, toProductFormValues, toProductUpdateInput } from './types.js';
 
 type ProductFormProps = {
+  costingFooter?: React.ReactNode;
   detailsFooter?: React.ReactNode;
   onSave: (value: ProductUpdateInput) => Promise<unknown>;
   product: Product;
 };
 
-export const ProductForm: React.FC<ProductFormProps> = ({ detailsFooter, onSave, product }) => {
+export const ProductForm: React.FC<ProductFormProps> = ({ costingFooter, detailsFooter, onSave, product }) => {
   const defaultValues = toProductFormValues(product);
   const [selectedRangeId, setSelectedRangeId] = useState(defaultValues.rangeId);
   const productRangeOptions = useProductRangeOptions();
@@ -241,6 +243,25 @@ export const ProductForm: React.FC<ProductFormProps> = ({ detailsFooter, onSave,
                 />
               )}
             </form.Field>
+          </div>
+        </TabsContent>
+        <TabsContent className="pt-4" value="costing">
+          <div className="flex flex-col gap-4">
+            <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
+            <form.Field name="materialLines" mode="array">
+              {(materialLinesField) => (
+                <form.Field name="laborHours" mode="array">
+                  {(laborHoursField) => (
+                    <ProductCostingEditor
+                      laborHoursField={laborHoursField}
+                      materialLinesField={materialLinesField}
+                      onStructuralChange={saveCommittedField}
+                    />
+                  )}
+                </form.Field>
+              )}
+            </form.Field>
+            {costingFooter}
           </div>
         </TabsContent>
       </form>

@@ -29,7 +29,7 @@ type QuoteWorkItemsEditorProps = {
   workItemsField: ArrayFieldApi<QuoteWorkItemFormInput>;
 };
 
-const DEFAULT_DEPARTMENT = WORK_ITEM_DEPARTMENTS[0] ?? OTHER_WORK_ITEM_DEPARTMENT;
+const DEFAULT_DEPARTMENT: QuoteWorkItemFormInput['department'] = WORK_ITEM_DEPARTMENTS[0] ?? OTHER_WORK_ITEM_DEPARTMENT;
 
 const DEPARTMENT_OPTIONS = [
   ...WORK_ITEM_DEPARTMENTS.map((department) => ({ label: quoteDepartmentLabels[department], value: department })),
@@ -39,11 +39,15 @@ const DEPARTMENT_OPTIONS = [
 const DEFAULT_WORK_ITEM: QuoteWorkItemFormInput = {
   department: DEFAULT_DEPARTMENT,
   description: '',
-  hourlyRate: DEFAULT_DEPARTMENT === OTHER_WORK_ITEM_DEPARTMENT ? 0 : workItemDepartmentRate(DEFAULT_DEPARTMENT),
+  hourlyRate: defaultWorkItemRate(DEFAULT_DEPARTMENT),
   hours: 0,
   name: '',
   parts: [],
 };
+
+function defaultWorkItemRate(department: QuoteWorkItemFormInput['department']): number {
+  return department === OTHER_WORK_ITEM_DEPARTMENT ? 0 : workItemDepartmentRate(department);
+}
 const DEFAULT_WORK_ITEM_PART: QuoteWorkItemFormInput['parts'][number] = { name: '', quantity: 1, unitPrice: 0 };
 const getWorkItemKey = createStableRowKeys<QuoteWorkItemFormInput>('quote-work-item');
 const getWorkItemPartKey = createStableRowKeys<QuoteWorkItemFormInput['parts'][number]>('quote-work-item-part');

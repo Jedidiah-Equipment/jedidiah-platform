@@ -1,7 +1,19 @@
-import { parts, stockMovements, supplier, user } from '@pkg/db';
+import {
+  jobEstimateSnapshots,
+  jobs,
+  parts,
+  productMaterialLines,
+  productRanges,
+  products,
+  productUnits,
+  stockMovements,
+  stocktakeSessions,
+  supplier,
+  user,
+} from '@pkg/db';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
+import { getProductCostEstimate } from '../products/product-cost-estimate-service.js';
 import { createTester } from '../test/create-tester.js';
 import { listBuyList } from './buy-list-service.js';
 import { StockMovementDeltaError } from './stock-movement-errors.js';
@@ -343,6 +355,105 @@ describe('postStockCount', () => {
 });
 
 describe('the session variance report', () => {
+  test('compares raw-material depletion with completed Product Jobs and states the undated-Job floor', async ({
+    context,
+  }) => {
+    const [range] = await context.db
+      .insert(productRanges)
+      .values({ displayOrder: 0, name: 'Stocktake range' })
+      .returning();
+    if (!range) throw new Error('Product Range insert did not return a row');
+    const [product] = await context.db
+      .insert(products)
+      .values({ basePrice: 0, buildTimeDays: 1, modelCode: 'STOCKTAKE', name: 'Stocktake product', rangeId: range.id })
+      .returning();
+    if (!product) throw new Error('Product insert did not return a row');
+    await context.db
+      .insert(productMaterialLines)
+      .values({ partId: context.channelId, productId: product.id, quantityPerUnit: 2.5 });
+    const units = await context.db
+      .insert(productUnits)
+      .values(
+        [1, 2, 3].map((sequence) => ({
+          productId: product.id,
+          productSerialNumber: `STOCKTAKE-${sequence}`,
+          productSerialPrefix: 'STOCKTAKE',
+          productSerialSequence: sequence,
+          productSerialYear: 26,
+        })),
+      )
+      .returning();
+    const [firstUnit, secondUnit, undatedUnit] = units;
+    if (!firstUnit || !secondUnit || !undatedUnit) throw new Error('Product Unit inserts did not return every row');
+    const [firstBuild, secondBuild, rework, undatedBuild] = await context.db
+      .insert(jobs)
+      .values([
+        { completedOn: '2026-08-05', productUnitId: firstUnit.id },
+        { completedOn: '2026-08-06', productUnitId: secondUnit.id },
+        { completedOn: '2026-08-07', productUnitId: firstUnit.id },
+        // This Unit consumed material too, but an undated Job cannot be placed in the window.
+        { completedOn: null, productUnitId: undatedUnit.id },
+      ])
+      .returning();
+    if (!firstBuild || !secondBuild || !rework || !undatedBuild) throw new Error('Job inserts did not return rows');
+    const buildEstimate = await getProductCostEstimate({ db: context.db, productId: product.id });
+    const reworkEstimate = await getProductCostEstimate({ db: context.db, productId: product.id, scope: 'rework' });
+    await context.db.insert(jobEstimateSnapshots).values([
+      { jobId: firstBuild.id, payload: buildEstimate },
+      { jobId: secondBuild.id, payload: buildEstimate },
+      { jobId: rework.id, payload: reworkEstimate },
+    ]);
+    await context.db
+      .update(productMaterialLines)
+      .set({ quantityPerUnit: 99 })
+      .where(eq(productMaterialLines.productId, product.id));
+    const previousSession = await openStocktakeSession({
+      actorUserId,
+      db: context.db,
+      input: { scope: 'raw-material' },
+    });
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: {
+        buckets: [{ lengthMm: 13_000, observed: 9 }],
+        partId: context.channelId,
+        sessionId: previousSession.id,
+      },
+    });
+    await closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: previousSession.id } });
+    await context.db
+      .update(stocktakeSessions)
+      .set({ closedAt: new Date('2026-08-01T10:00:00.000Z'), openedAt: new Date('2026-08-01T08:00:00.000Z') })
+      .where(eq(stocktakeSessions.id, previousSession.id));
+    const session = await openStocktakeSession({
+      actorUserId,
+      db: context.db,
+      input: { scope: 'raw-material' },
+    });
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: 13_000, observed: 4 }], partId: context.channelId, sessionId: session.id },
+    });
+    await closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: session.id } });
+
+    const report = await getStocktakeSessionReport({ db: context.db, sessionId: session.id });
+
+    expect(report.rawMaterialDrift).toMatchObject({
+      fromCompletedOnExclusive: '2026-08-01',
+      isFloor: true,
+      items: [
+        {
+          actualConsumption: 5,
+          driftFromExpectedFloor: 0,
+          expectedConsumptionFloor: 5,
+          partCode: 'CHANNEL',
+        },
+      ],
+    });
+  });
+
   test('reports every counted Part, its variance, and what was skipped', async ({ context }) => {
     const session = await openStoresSession(context.db);
     await postStockCount({

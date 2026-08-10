@@ -3,6 +3,7 @@ import {
   createProduct,
   exportProductAssemblies,
   getProduct,
+  getProductCostEstimate,
   isProductCoreError,
   listAssemblyNames,
   listProductRangeOptions,
@@ -13,7 +14,7 @@ import {
   updateProduct,
 } from '@pkg/core';
 import { catalogTranslationKey } from '@pkg/domain';
-import { ProductCreateInput, ProductListInput, ProductUpdateInput, UUID } from '@pkg/schema';
+import { ProductCostEstimate, ProductCreateInput, ProductListInput, ProductUpdateInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 import { log } from '@/logger.js';
 
@@ -28,6 +29,13 @@ export const productsRouter = router({
   get: authorizedProcedure('product:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapProductErrors(() => getProduct({ db: ctx.db, id: input.id }))),
+
+  costEstimate: authorizedProcedure('inventory_cost:read')
+    .input(z.object({ productId: UUID }).strict())
+    .output(ProductCostEstimate)
+    .query(({ ctx, input }) =>
+      mapProductErrors(() => getProductCostEstimate({ db: ctx.db, productId: input.productId })),
+    ),
 
   rangeOptions: authorizedProcedure('product:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),
 
@@ -147,6 +155,12 @@ function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductC
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Product not found.',
+      };
+    case 'product.material_part.invalid':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'Product raw materials must use periodic stock tracking.',
       };
     case 'product.range.not_found':
       return {

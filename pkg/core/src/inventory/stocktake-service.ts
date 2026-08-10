@@ -2,6 +2,8 @@ import {
   type DatabaseTransaction,
   type Db,
   isUniqueViolation,
+  jobEstimateSnapshots,
+  jobs,
   parts,
   stockMovements,
   stocktakeSessions,
@@ -15,10 +17,12 @@ import type {
   CloseStocktakeSessionInput,
   OpenStocktakeSessionInput,
   PostStockCountInput,
+  RawMaterialDriftReport,
   StockCountBucketVariance,
   StockCountResult,
   StocktakeOverdueResult,
   StocktakeSession,
+  StocktakeSessionCount,
   StocktakeSessionListResult,
   StocktakeSessionReport,
   StocktakeUncountedInput,
@@ -37,7 +41,22 @@ import {
   StocktakeUncountedResult as StocktakeUncountedResultSchema,
   unitClassFor,
 } from '@pkg/schema';
-import { aliasedTable, and, asc, desc, eq, inArray, isNotNull, ne, type SQL, sql } from 'drizzle-orm';
+import {
+  aliasedTable,
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
 
 import { createOrgWorkingCalendar, listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
 import { bucketKey, insertMovement, loadBucketQuantities, loadStockPart, toLedgerQuantity } from './ledger.js';
@@ -329,12 +348,130 @@ async function readStocktakeSessionReport(db: DatabaseTransaction, sessionId: UU
       varianceValue: sumNullableBy(buckets, (bucket) => bucket.value),
     };
   });
+  const rawMaterialDrift = await readRawMaterialDrift({ counts, db, session });
 
   return StocktakeSessionReportSchema.parse({
     counts,
+    rawMaterialDrift,
     session,
     totalVarianceValue: sumNullableBy(counts, (count) => count.varianceValue),
   });
+}
+
+async function readRawMaterialDrift({
+  counts,
+  db,
+  session,
+}: {
+  counts: Array<Pick<StocktakeSessionCount, 'delta' | 'partCode' | 'partId' | 'partName' | 'unitOfMeasure'>>;
+  db: DatabaseTransaction;
+  session: StocktakeSession;
+}): Promise<RawMaterialDriftReport | null> {
+  if (session.scope !== 'raw-material' || session.closedAt === null) return null;
+
+  const currentClosedAt = new Date(session.closedAt);
+  const [previous] = await db
+    .select({ closedAt: stocktakeSessions.closedAt, id: stocktakeSessions.id })
+    .from(stocktakeSessions)
+    .where(
+      and(
+        eq(stocktakeSessions.scope, 'raw-material'),
+        isNotNull(stocktakeSessions.closedAt),
+        ne(stocktakeSessions.id, session.id),
+        lt(stocktakeSessions.closedAt, currentClosedAt),
+      ),
+    )
+    .orderBy(desc(stocktakeSessions.closedAt), desc(stocktakeSessions.id))
+    .limit(1);
+  if (!previous?.closedAt) return null;
+
+  const fromCompletedOnExclusive = toPlantDateOnly(previous.closedAt);
+  const throughCompletedOn = toPlantDateOnly(currentClosedAt);
+  const [previousCountRows, estimateRows] = await Promise.all([
+    db
+      .selectDistinct({ partId: stockMovements.partId })
+      .from(stockMovements)
+      .where(eq(stockMovements.stocktakeSessionId, previous.id)),
+    db
+      .select({ payload: jobEstimateSnapshots.payload })
+      .from(jobEstimateSnapshots)
+      .innerJoin(jobs, eq(jobs.id, jobEstimateSnapshots.jobId))
+      .where(
+        and(
+          isNull(jobs.cancelledAt),
+          isNotNull(jobs.completedOn),
+          gt(jobs.completedOn, fromCompletedOnExclusive),
+          lte(jobs.completedOn, throughCompletedOn),
+        ),
+      ),
+  ]);
+  const previouslyCountedPartIds = new Set(previousCountRows.map((row) => row.partId));
+  // Job snapshots are the only revision-stable record of what that Job was expected to consume.
+  // Rework snapshots intentionally carry no Product-level material, so they cannot inflate this floor.
+  const expectedByPartId = new Map<
+    UUID,
+    {
+      expectedConsumptionFloor: number;
+      partCode: string;
+      partId: UUID;
+      partName: string;
+      unitOfMeasure: StocktakeSessionCount['unitOfMeasure'];
+    }
+  >();
+  for (const { payload } of estimateRows) {
+    for (const line of payload.materialLines) {
+      const current = expectedByPartId.get(line.partId);
+      expectedByPartId.set(line.partId, {
+        expectedConsumptionFloor: (current?.expectedConsumptionFloor ?? 0) + line.quantityPerUnit,
+        partCode: line.partCode,
+        partId: line.partId,
+        partName: line.partName,
+        unitOfMeasure: line.unitOfMeasure,
+      });
+    }
+  }
+  const expectedRows = [...expectedByPartId.values()];
+  const actualByPartId = new Map(
+    [...groupBy(counts, (count) => count.partId)].map(([partId, partCounts]) => [
+      partId,
+      -sumBy(partCounts, (count) => count.delta),
+    ]),
+  );
+  const factsByPartId = new Map(
+    [...expectedRows, ...counts].map((row) => [
+      row.partId,
+      {
+        partCode: row.partCode,
+        partId: row.partId,
+        partName: row.partName,
+        unitOfMeasure: row.unitOfMeasure,
+      },
+    ]),
+  );
+  const items = [...factsByPartId.values()]
+    .map((part) => {
+      const actualConsumption = previouslyCountedPartIds.has(part.partId)
+        ? (actualByPartId.get(part.partId) ?? null)
+        : null;
+      const expectedConsumptionFloor = expectedByPartId.get(part.partId)?.expectedConsumptionFloor ?? 0;
+
+      return {
+        actualConsumption,
+        driftFromExpectedFloor: actualConsumption === null ? null : actualConsumption - expectedConsumptionFloor,
+        expectedConsumptionFloor,
+        ...part,
+      };
+    })
+    .toSorted((left, right) => left.partCode.localeCompare(right.partCode));
+
+  return {
+    fromCompletedOnExclusive,
+    fromSessionId: previous.id,
+    isFloor: true,
+    items,
+    throughCompletedOn,
+    toSessionId: session.id,
+  };
 }
 
 /**

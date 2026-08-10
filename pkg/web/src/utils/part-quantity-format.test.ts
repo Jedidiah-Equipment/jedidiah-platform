@@ -36,6 +36,15 @@ describe('formatPartQuantity', () => {
   it('counts linear stock in pieces, never in millimetres', () => {
     expect(formatPartQuantity(2, 'mm')).toBe('2 pieces');
   });
+
+  it('preserves fractional linear stock quantities', () => {
+    expect(formatPartQuantity(0.5, 'mm')).toBe('0.5 pieces');
+    expect(formatPartQuantity(1e-3, 'mm')).toBe('0.001 pieces');
+  });
+
+  it('normalizes floating-point residue at the supported quantity precision', () => {
+    expect(formatPartQuantity(-1e-10, 'mm')).toBe('0 pieces');
+  });
 });
 
 describe('length formatting', () => {
@@ -46,5 +55,6 @@ describe('length formatting', () => {
 
   it('reads a bucket as its length and its piece count', () => {
     expect(formatLengthBucket(13_000, 9)).toBe('13 m × 9');
+    expect(formatLengthBucket(13_000, 0.5)).toBe('13 m × 0.5');
   });
 });

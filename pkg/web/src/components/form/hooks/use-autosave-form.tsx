@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'r
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import { getApiMutationErrorMessage } from '@/lib/api-errors.js';
+import { flushAfterFormStateCommit } from './autosave-timing.js';
 import { useAppForm } from './use-app-form.js';
 
 type AutosaveTrigger = 'blur' | 'change' | 'none';
@@ -96,7 +97,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
   // after the field's onChange has committed its value into form state.
   const commit = useCallback(() => {
     markChanged();
-    queueMicrotask(() => {
+    flushAfterFormStateCommit(() => {
       void flush();
     });
   }, [flush, markChanged]);
@@ -118,7 +119,9 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
       onBlur: (event: React.FocusEvent<HTMLFormElement>) => {
         if (getAutosaveTrigger(event.target) === 'blur') {
           markChanged();
-          void flush();
+          flushAfterFormStateCommit(() => {
+            void flush();
+          });
         }
       },
       onChange: (event: React.ChangeEvent<HTMLFormElement>) => {

@@ -15,13 +15,20 @@ those draws cost. It reads the same whether the Job is still running, completed,
    unplanned material the report exists to surface.
 5. If you may read costs, read **Actual cost** per Part, plus **Drawn cost** and **Off-CFO cost**
    above the table.
+6. For a Product Job, read **Estimate vs actual**. The estimate terms were frozen when the Job was
+   created. **Parts variance** compares only the Assembly Part estimate with values stamped on its
+   Checkouts; Product-level material and labor remain context because they have no comparable drawn
+   total. An estimate beginning with **≥** was incomplete when frozen, so the Parts variance is a
+   **≤** ceiling against that floor.
 
 ## Notes
 
 - Every figure is priced at what each Checkout was stamped with at the time — see
   [How stock costs work](./how-stock-costs-work.md). A Receipt landing later at a different price
   never moves a number here.
-- There is no planned cost, only actual: the CFO fixes quantities, not money.
+- A Rework Job's estimate covers only the Optional Assembly Parts being fitted. Product-level raw
+  material and labor cannot be attributed to that Rework, so its estimate remains an incomplete floor.
+- A Custom Job has no Product Cost Estimate snapshot, so it has no estimate-vs-actual comparison.
 - A Part drawn in two lengths reports as one row. The variance is on the Part, not on a length.
 - A total reads **not priced** as soon as one drawn Part has no cost yet, rather than quietly
   reporting a smaller number.

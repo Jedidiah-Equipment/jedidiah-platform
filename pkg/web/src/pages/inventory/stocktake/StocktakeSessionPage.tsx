@@ -6,7 +6,7 @@ import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-
+import { RawMaterialDriftTable } from './components/RawMaterialDriftTable.js';
 import { StocktakeCountsTable } from './components/StocktakeCountsTable.js';
 import { StocktakeSessionStatusBadge } from './components/StocktakeSessionStatusBadge.js';
 import { StocktakeUncountedTable } from './components/StocktakeUncountedTable.js';
@@ -38,7 +38,7 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
     );
   }
 
-  const { counts, session, totalVarianceValue } = reportQuery.data;
+  const { counts, rawMaterialDrift, session, totalVarianceValue } = reportQuery.data;
   const isClosed = session.closedAt !== null;
 
   return (
@@ -62,6 +62,13 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
         </div>
         <StocktakeCountsTable isLoading={false} items={counts} showCosts={showCosts} />
       </section>
+
+      {showCosts && rawMaterialDrift ? (
+        <section className="space-y-2">
+          <h2 className="font-medium text-sm">Expected vs actual raw-material consumption</h2>
+          <RawMaterialDriftTable report={rawMaterialDrift} />
+        </section>
+      ) : null}
 
       <section className="space-y-2">
         <h2 className="font-medium text-sm">{isClosed ? 'Skipped' : 'Still to count'}</h2>

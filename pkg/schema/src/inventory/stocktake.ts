@@ -148,6 +148,27 @@ export const StocktakeUncountedInput = CursorQueryInput.extend({ sessionId: UUID
 export type StocktakeUncountedResult = z.infer<typeof StocktakeUncountedResult>;
 export const StocktakeUncountedResult = createCursorQueryResult(StocktakeUncountedPart);
 
+export type RawMaterialDriftRow = z.infer<typeof RawMaterialDriftRow>;
+export const RawMaterialDriftRow = z.object({
+  actualConsumption: z.number().finite().nullable(),
+  driftFromExpectedFloor: z.number().finite().nullable(),
+  expectedConsumptionFloor: z.number().finite().nonnegative(),
+  partCode: z.string(),
+  partId: UUID,
+  partName: z.string(),
+  unitOfMeasure: PartUnitOfMeasure,
+});
+
+export type RawMaterialDriftReport = z.infer<typeof RawMaterialDriftReport>;
+export const RawMaterialDriftReport = z.object({
+  fromCompletedOnExclusive: DateOnlyIso,
+  fromSessionId: UUID,
+  isFloor: z.literal(true),
+  items: z.array(RawMaterialDriftRow),
+  throughCompletedOn: DateOnlyIso,
+  toSessionId: UUID,
+});
+
 /**
  * The session variance report. Deliberately does **not** carry the uncounted list: that list is
  * paged on its own, and the tablet reads it far more often than it reads this.
@@ -155,6 +176,7 @@ export const StocktakeUncountedResult = createCursorQueryResult(StocktakeUncount
 export type StocktakeSessionReport = z.infer<typeof StocktakeSessionReport>;
 export const StocktakeSessionReport = z.object({
   counts: z.array(StocktakeSessionCount),
+  rawMaterialDrift: RawMaterialDriftReport.nullable(),
   session: StocktakeSession,
   /** Σ of every counted Part's variance value; null as soon as one counted Part has no cost. */
   totalVarianceValue: InventoryValue,

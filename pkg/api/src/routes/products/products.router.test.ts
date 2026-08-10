@@ -251,6 +251,17 @@ describe('products.create', () => {
     ]);
   });
 
+  test('rejects a perpetual Part in the Product Material List', async ({ context }) => {
+    const caller = context.createCaller();
+    const { bucket: partId } = await createParts(context.db);
+
+    await expect(
+      createProduct(caller, 'Invalid raw material', context.rangeId, {
+        materialLines: [{ partId, quantityPerUnit: 1 }],
+      }),
+    ).rejects.toMatchObject({ appCode: 'product.material_part.invalid', code: 'BAD_REQUEST' });
+  });
+
   test('rejects duplicate and disabled Product Bays', async ({ context }) => {
     const caller = context.createCaller();
     const bayId = await createBay(context.db, {
@@ -279,6 +290,29 @@ describe('products.create', () => {
         productBays: [{ bayId: disabledBayId, defaultWorkingDays: 5 }],
       }),
     ).rejects.toThrow('Only enabled Bays can be added to Product Bays.');
+  });
+});
+
+describe('products.costEstimate', () => {
+  test('requires inventory cost access for the full estimate and breakdown', async ({ context }) => {
+    const admin = context.createCaller();
+    const created = await createProduct(admin, 'Cost Estimate Product', context.rangeId);
+    const productReaderWithoutCost = context.createCaller(mockSession(), {
+      access: {
+        permissions: ['product:read'],
+        role: 'admin',
+        userId: 'test-user-id',
+      },
+    });
+
+    await expect(admin.products.costEstimate({ productId: created.id })).resolves.toMatchObject({
+      complete: false,
+      productId: created.id,
+      totalCostFloor: 0,
+    });
+    await expect(productReaderWithoutCost.products.costEstimate({ productId: created.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
   });
 });
 

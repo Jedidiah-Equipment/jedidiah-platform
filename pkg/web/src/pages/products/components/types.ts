@@ -14,7 +14,9 @@ import {
   ProductDescription,
   ProductDisplayOrder,
   ProductKeyFeatures,
+  ProductLaborHoursFormValue,
   ProductLanderEnabled,
+  ProductMaterialQuantityPerUnitValue,
   ProductModelCode,
   ProductName,
   ProductNameHighlight,
@@ -22,8 +24,11 @@ import {
   ProductUpdateInput,
   refineProductAssemblies,
   refineProductBays,
+  refineProductLaborHours,
+  refineProductMaterialLines,
   UUID,
   type UUID as UUIDType,
+  WorkItemDepartment,
 } from '@pkg/schema';
 import { z } from 'zod';
 
@@ -59,6 +64,14 @@ export const ProductBayFormInput = ProductBayInput.extend({
   defaultWorkingDays: ProductBayDefaultWorkingDays,
 });
 
+const ProductMaterialLinesFormInput = z
+  .array(z.object({ partId: UUID, quantityPerUnit: ProductMaterialQuantityPerUnitValue }))
+  .superRefine(refineProductMaterialLines);
+
+const ProductLaborHoursFormInput = z
+  .array(z.object({ department: WorkItemDepartment, hours: ProductLaborHoursFormValue }))
+  .superRefine(refineProductLaborHours);
+
 const ProductFormFields = z.object({
   basePrice: Price,
   // `category` holds `''` for "no value" like other nullable text inputs.
@@ -84,6 +97,8 @@ export const ProductFormValues = ProductFormFields.extend({
   assemblies: z.array(ProductAssemblyFormInput).superRefine(refineProductAssemblies),
   // Key-feature lines reuse the schema-owned content + cap rules.
   keyFeatures: ProductKeyFeatures,
+  laborHours: ProductLaborHoursFormInput,
+  materialLines: ProductMaterialLinesFormInput,
   productBays: z.array(ProductBayFormInput).superRefine(refineProductBays),
 });
 
@@ -105,6 +120,8 @@ export const emptyProductFormValues: ProductFormValues = {
   displayOrder: 0,
   buildTimeDays: NaN,
   keyFeatures: [],
+  laborHours: [],
+  materialLines: [],
   modelCode: '',
   name: '',
   nameHighlight: '',
@@ -128,6 +145,8 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
     displayOrder: initialProduct?.displayOrder ?? 0,
     buildTimeDays: initialProduct?.buildTimeDays ?? NaN,
     keyFeatures: initialProduct?.keyFeatures ?? [],
+    laborHours: initialProduct?.laborHours ?? [],
+    materialLines: initialProduct?.materialLines ?? [],
     modelCode: initialProduct?.modelCode ?? '',
     name: initialProduct?.name ?? '',
     nameHighlight: initialProduct?.nameHighlight ?? '',

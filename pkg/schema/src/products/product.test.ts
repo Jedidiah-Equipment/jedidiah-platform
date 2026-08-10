@@ -14,7 +14,9 @@ import {
   ProductCategoryInput,
   ProductCreateInput,
   ProductKeyFeatures,
+  ProductLaborHoursInput,
   ProductListInput,
+  ProductMaterialLinesInput,
   ProductSortBy,
   ProductTranslations,
   ProductUpdateInput,
@@ -39,6 +41,23 @@ const RANGE_ID = '00000000-0000-4000-8000-000000000301';
 const VARIANT_ID = '00000000-0000-4000-8000-000000000302';
 
 describe('ProductCreateInput', () => {
+  it('accepts positive per-unit material quantities and department labor hours', () => {
+    expect(
+      ProductCreateInput.parse({
+        basePrice: 120_000,
+        buildTimeDays: 14,
+        laborHours: [{ department: 'fabrication', hours: 12.5 }],
+        materialLines: [{ partId: '00000000-0000-4000-8000-000000000401', quantityPerUnit: 2.5 }],
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+        rangeId: RANGE_ID,
+      }),
+    ).toMatchObject({
+      laborHours: [{ department: 'fabrication', hours: 12.5 }],
+      materialLines: [{ partId: '00000000-0000-4000-8000-000000000401', quantityPerUnit: 2.5 }],
+    });
+  });
+
   it('rejects the removed technical details field from create and update payloads', () => {
     expect(() =>
       ProductCreateInput.parse({
@@ -88,6 +107,8 @@ describe('ProductCreateInput', () => {
       displayOrder: 0,
       buildTimeDays: 14,
       keyFeatures: [],
+      laborHours: [],
+      materialLines: [],
       modelCode: 'WL-100',
       name: 'Wheel Loader',
       nameHighlight: null,
@@ -147,7 +168,7 @@ describe('ProductCreateInput', () => {
         name: 'Wheel Loader',
         rangeId: RANGE_ID,
       }),
-    ).toMatchObject({ assemblies: [], productBays: [] });
+    ).toMatchObject({ assemblies: [], laborHours: [], materialLines: [], productBays: [] });
   });
 
   it('accepts an optional Range Variant reference', () => {
@@ -218,6 +239,30 @@ describe('ProductCreateInput', () => {
         name: 'Wheel Loader',
       }),
     ).toThrow();
+  });
+});
+
+describe('Product costing inputs', () => {
+  it('rejects non-positive material quantities and labor hours', () => {
+    expect(() =>
+      ProductMaterialLinesInput.parse([{ partId: '00000000-0000-4000-8000-000000000401', quantityPerUnit: 0 }]),
+    ).toThrow();
+    expect(() => ProductLaborHoursInput.parse([{ department: 'fabrication', hours: -1 }])).toThrow();
+  });
+
+  it('rejects duplicate material Parts and labor Departments', () => {
+    expect(() =>
+      ProductMaterialLinesInput.parse([
+        { partId: '00000000-0000-4000-8000-000000000401', quantityPerUnit: 1 },
+        { partId: '00000000-0000-4000-8000-000000000401', quantityPerUnit: 2 },
+      ]),
+    ).toThrow('Material can only be added once per Product');
+    expect(() =>
+      ProductLaborHoursInput.parse([
+        { department: 'paint', hours: 1 },
+        { department: 'paint', hours: 2 },
+      ]),
+    ).toThrow('Department can only be added once per Product');
   });
 });
 

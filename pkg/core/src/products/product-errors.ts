@@ -99,6 +99,17 @@ export class ProductBayDisabledError extends Error {
   }
 }
 
+export class ProductMaterialPartInvalidError extends Error {
+  readonly code = 'product.material_part.invalid';
+  readonly metadata: { partId: string };
+
+  constructor(partId: string) {
+    super(`Product Material List Part must use periodic stock tracking: ${partId}`);
+    this.name = 'ProductMaterialPartInvalidError';
+    this.metadata = { partId };
+  }
+}
+
 export class DuplicateAssemblyNameError extends Error {
   readonly code = 'product.assembly.duplicate_name';
   readonly metadata: { name: string };
@@ -190,6 +201,7 @@ export type ProductCoreError =
   | ProductBayDisabledError
   | ProductBayNotFoundError
   | ProductBrochureIncompleteError
+  | ProductMaterialPartInvalidError
   | ProductNotFoundError
   | ProductRangeReferenceNotFoundError
   | ProductRangeVariantReferenceNotFoundError;
@@ -209,6 +221,7 @@ export function isProductCoreError(error: unknown): error is ProductCoreError {
     error instanceof ProductBayDisabledError ||
     error instanceof ProductBayNotFoundError ||
     error instanceof ProductBrochureIncompleteError ||
+    error instanceof ProductMaterialPartInvalidError ||
     error instanceof ProductNotFoundError ||
     error instanceof ProductRangeReferenceNotFoundError ||
     error instanceof ProductRangeVariantReferenceNotFoundError

@@ -1,10 +1,11 @@
-import type { Department } from '@pkg/schema';
+import type { Department, ProductCostEstimate } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
   check,
   date,
   index,
   integer,
+  jsonb,
   pgSequence,
   pgTable,
   primaryKey,
@@ -170,6 +171,14 @@ export const jobs = pgTable(
   ],
 );
 
+export const jobEstimateSnapshots = pgTable('job_estimate_snapshot', {
+  createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  jobId: uuid('job_id')
+    .primaryKey()
+    .references(() => jobs.id, { onDelete: 'cascade' }),
+  payload: jsonb('payload').$type<ProductCostEstimate>().notNull(),
+});
+
 // A Job's own selection of Optional Assemblies, and the only source its CFO is snapshotted from.
 // It carries no price: pricing stays a Quote concern.
 export const jobBuildSpecAssemblies = pgTable(
@@ -299,7 +308,18 @@ export const jobsRelations = relations(jobs, ({ many, one }) => ({
   }),
   buildSpecAssemblies: many(jobBuildSpecAssemblies),
   cfoAssemblies: many(jobCfoAssemblies),
+  estimateSnapshot: one(jobEstimateSnapshots, {
+    fields: [jobs.id],
+    references: [jobEstimateSnapshots.jobId],
+  }),
   slots: many(jobSlots),
+}));
+
+export const jobEstimateSnapshotsRelations = relations(jobEstimateSnapshots, ({ one }) => ({
+  job: one(jobs, {
+    fields: [jobEstimateSnapshots.jobId],
+    references: [jobs.id],
+  }),
 }));
 
 export const jobBuildSpecAssembliesRelations = relations(jobBuildSpecAssemblies, ({ one }) => ({

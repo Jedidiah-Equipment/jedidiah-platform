@@ -94,7 +94,7 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
   const m = useMessages();
   const locale = useLocale();
   const [status, setStatus] = useState<FormStatus>('idle');
-  const [missingFields, setMissingFields] = useState<RequiredField[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<RequiredField, string>>>({});
 
   const errorMessages: Record<RequiredField, string> = {
     name: m.contact.validation.enterName,
@@ -103,11 +103,15 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
   };
 
   function clearField(field: RequiredField) {
-    setMissingFields((current) => current.filter((other) => other !== field));
+    setFieldErrors((current) => {
+      const remaining = { ...current };
+      delete remaining[field];
+      return remaining;
+    });
   }
 
   function fieldClass(field: RequiredField) {
-    return `${FIELD_CLASS}${missingFields.includes(field) ? ' border-[#b3261e] focus:border-[#b3261e]' : ''}`;
+    return `${FIELD_CLASS}${fieldErrors[field] ? ' border-[#b3261e] focus:border-[#b3261e]' : ''}`;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -118,13 +122,28 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
     // Native `required` would cancel the submit before this handler ran, so nothing rendered and no event
     // fired. `noValidate` on the form hands validation to us instead, and a blocked submit is now captured.
     const missing = REQUIRED_FIELDS.filter((field) => !String(data.get(field) ?? '').trim());
-    if (missing.length > 0) {
-      setMissingFields(missing);
-      captureEvent('contact_submit_blocked', { missingFields: missing });
+    const errors: Partial<Record<RequiredField, string>> = {};
+    for (const field of missing) {
+      errors[field] = errorMessages[field];
+    }
+
+    // `noValidate` suppresses automatic constraint validation, but the element validity state still
+    // preserves the browser's email-format check that existed before inline validation took over.
+    const emailInput = form.elements.namedItem('email');
+    if (emailInput instanceof HTMLInputElement && emailInput.validity.typeMismatch) {
+      errors.email = m.contact.validation.enterValidEmail;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      // This event's contract intentionally describes empty fields only, never entered values.
+      if (missing.length > 0) {
+        captureEvent('contact_submit_blocked', { missingFields: missing });
+      }
       return;
     }
 
-    setMissingFields([]);
+    setFieldErrors({});
     setStatus('submitting');
 
     try {
@@ -177,15 +196,13 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
               name="name"
               type="text"
               required
-              aria-invalid={missingFields.includes('name')}
-              aria-describedby={missingFields.includes('name') ? 'contact-name-error' : undefined}
+              aria-invalid={Boolean(fieldErrors.name)}
+              aria-describedby={fieldErrors.name ? 'contact-name-error' : undefined}
               onChange={() => clearField('name')}
               placeholder={m.contact.namePlaceholder}
               className={fieldClass('name')}
             />
-            {missingFields.includes('name') ? (
-              <FieldError id="contact-name-error" message={errorMessages.name} />
-            ) : null}
+            {fieldErrors.name ? <FieldError id="contact-name-error" message={fieldErrors.name} /> : null}
           </div>
           <div>
             <label htmlFor="contact-phone" className={LABEL_CLASS}>
@@ -210,15 +227,13 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
               name="email"
               type="email"
               required
-              aria-invalid={missingFields.includes('email')}
-              aria-describedby={missingFields.includes('email') ? 'contact-email-error' : undefined}
+              aria-invalid={Boolean(fieldErrors.email)}
+              aria-describedby={fieldErrors.email ? 'contact-email-error' : undefined}
               onChange={() => clearField('email')}
               placeholder={m.contact.emailPlaceholder}
               className={fieldClass('email')}
             />
-            {missingFields.includes('email') ? (
-              <FieldError id="contact-email-error" message={errorMessages.email} />
-            ) : null}
+            {fieldErrors.email ? <FieldError id="contact-email-error" message={fieldErrors.email} /> : null}
           </div>
           <div>
             <label htmlFor="contact-equipment" className={LABEL_CLASS}>
@@ -255,15 +270,13 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
             name="message"
             rows={5}
             required
-            aria-invalid={missingFields.includes('message')}
-            aria-describedby={missingFields.includes('message') ? 'contact-message-error' : undefined}
+            aria-invalid={Boolean(fieldErrors.message)}
+            aria-describedby={fieldErrors.message ? 'contact-message-error' : undefined}
             onChange={() => clearField('message')}
             placeholder={m.contact.messagePlaceholder}
             className={`${fieldClass('message')} resize-y`}
           />
-          {missingFields.includes('message') ? (
-            <FieldError id="contact-message-error" message={errorMessages.message} />
-          ) : null}
+          {fieldErrors.message ? <FieldError id="contact-message-error" message={fieldErrors.message} /> : null}
         </div>
         {status === 'error' ? (
           <p className="m-0 mb-5 font-body text-[15px] text-[#b3261e]">{m.contact.sendError}</p>

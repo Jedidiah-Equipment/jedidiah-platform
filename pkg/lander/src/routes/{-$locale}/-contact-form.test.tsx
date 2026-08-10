@@ -80,4 +80,24 @@ describe('EnquiryForm', () => {
     expect(fetchStub).toHaveBeenCalledTimes(1);
     expect(captureEvent).not.toHaveBeenCalledWith('contact_submit_blocked', expect.anything());
   });
+
+  test('blocks a malformed email before sending', async () => {
+    const fetchStub = vi.fn();
+    vi.stubGlobal('fetch', fetchStub);
+
+    const container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    await renderForm(root);
+
+    field('name').value = 'Ann';
+    field('email').value = 'ann@';
+    field('message').value = 'Hello';
+
+    await submit();
+
+    expect(fetchStub).not.toHaveBeenCalled();
+    expect(container.querySelector('#contact-email-error')?.textContent).toBe('Please enter a valid email address');
+    expect(captureEvent).not.toHaveBeenCalledWith('contact_submit_blocked', expect.anything());
+  });
 });

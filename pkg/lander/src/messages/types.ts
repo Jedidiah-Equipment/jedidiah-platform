@@ -160,6 +160,7 @@ export type Messages = {
     validation: {
       enterName: string;
       enterEmail: string;
+      enterValidEmail: string;
       enterMessage: string;
       expectedJson: string;
       checkForm: string;

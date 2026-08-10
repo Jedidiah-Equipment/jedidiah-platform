@@ -132,9 +132,12 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
     }),
   );
 
-  // The report is cost against retail, so it follows the inventory cost gate the API puts on it
-  // rather than `job:read`: a reader who cannot see cost has nothing to download.
-  const canReadCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
+  // One row crosses the ledger, the Job and the Quote, so the button mirrors the API's all-of gate
+  // rather than `job:read` alone — see `jobs.salesExport`.
+  const canExportSales =
+    hasPermission(accessQuery.data, 'inventory_cost:read') &&
+    hasPermission(accessQuery.data, 'job:read') &&
+    hasPermission(accessQuery.data, 'quote:read');
   const salesExportMutation = useMutation({
     mutationFn: () =>
       queryClient.fetchQuery(
@@ -230,7 +233,7 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
             />
             Include Completed
           </label>
-          {canReadCosts ? (
+          {canExportSales ? (
             <Button
               disabled={salesExportMutation.isPending}
               onClick={() => salesExportMutation.mutate()}

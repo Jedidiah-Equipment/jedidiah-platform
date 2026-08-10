@@ -1,10 +1,12 @@
-import type { JobSalesExportRow } from '@pkg/schema';
+import { JobSalesExportRow } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { buildJobSalesExportCsv, createJobSalesExportFilename } from './job-sales-export.js';
 
+// Parsed rather than cast: the contract brands half these fields, and a cast would let the fixture
+// keep compiling against a shape the server can no longer produce.
 function row(overrides: Partial<JobSalesExportRow> = {}): JobSalesExportRow {
-  return {
+  return JobSalesExportRow.parse({
     completedOn: '2026-07-15',
     costExVat: 4_000,
     costIncVat: 4_600,
@@ -18,7 +20,7 @@ function row(overrides: Partial<JobSalesExportRow> = {}): JobSalesExportRow {
     retailExVat: 94_500,
     retailIncVat: 108_675,
     ...overrides,
-  } as JobSalesExportRow;
+  });
 }
 
 describe('job sales export', () => {

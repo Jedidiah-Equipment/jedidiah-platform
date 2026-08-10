@@ -32,7 +32,7 @@ export async function listCompletedJobSales({
     // Oldest completion first: the export reads as a period, and a period reads forwards.
     orderBy: [asc(jobs.completedOn), asc(jobs.code)],
     where: and(
-      buildJobListWhere({ columnFilters: input.columnFilters, filters: {}, search: input.search }),
+      buildJobListWhere({ columnFilters: input.columnFilters, search: input.search }),
       isNotNull(jobs.completedOn),
     ),
     with: {

@@ -1359,9 +1359,13 @@ describe('jobs.salesExport', () => {
         retailIncVat: 1_150,
       }),
     ]);
-    // Job readers without the cost gate are refused the whole report rather than a hollowed-out one.
+    // Job readers without the cost gate are refused the whole report rather than a hollowed-out one,
+    // and so is a cost reader who cannot read Quotes — the row carries the Customer and the price.
     await expect(
       context.createCaller(mockSession('job-viewer')).jobs.salesExport({ columnFilters: {}, search: '' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      context.createCaller(mockSession('procurement-manager')).jobs.salesExport({ columnFilters: {}, search: '' }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });

@@ -19,7 +19,11 @@ Sheets.
 - Cost is material only, priced at what each Checkout was stamped with — see
   [How stock costs work](../inventory/how-stock-costs-work.md). It carries no labour, so it is not a
   full cost of sale, and the CSV puts it beside the retail figures rather than working out a margin.
+- **cost_inc_vat** is the ex-VAT figure at the standard rate, not the VAT any Supplier actually
+  billed. Reconcile against a Supplier invoice on the ex-VAT column.
 - A cost cell is **blank**, not zero, when the Job still holds material nobody has priced yet. A Job
   that drew nothing at all costs zero.
-- Retail comes from the Job's Quote. A Stock Build has no Quote, so its retail cells are blank.
-- **Export Completed** appears only if you can read inventory costs.
+- Retail comes from the Job's Quote and is the whole sale, delivery and custom work included.
+- A Stock Build has no Quote, so its retail cells are blank while its cost still reports — a total
+  of the cost column therefore includes machines nobody has bought yet.
+- **Export Completed** appears only if you can read inventory costs, Jobs, and Quotes.

@@ -1,16 +1,18 @@
 import { type Db, stockMovements } from '@pkg/db';
 import { JOB_STOCK_MOVEMENT_TYPES, type UUID } from '@pkg/schema';
-import { and, inArray, sql } from 'drizzle-orm';
+import { and, inArray } from 'drizzle-orm';
 
+import { drawnCostedValueExpression, uncostedDrawnQuantityExpression } from './job-stock-facts.js';
 import { toLedgerQuantity } from './ledger.js';
 
 /**
  * What a set of Jobs drew in material, in money, at the price each draw was stamped with.
  *
  * The per-Part answer to the same question is `getJobMaterialVariance`, which one Job's report
- * reads; this is the whole-Job total several Jobs at a time, for callers that want a cost beside a
- * Job rather than a breakdown inside it. Both obey the same two rules, which is why the money rule
- * lives here rather than being written out again at each caller:
+ * reads; this is the whole-Job total, several Jobs at a time, for callers that want a cost beside a
+ * Job rather than a breakdown inside it. The two group the same rows differently and read the same
+ * money off the same two expressions in `job-stock-facts.ts`, so neither can drift into pricing a
+ * draw the other way:
  *
  * - **Never re-priced.** The sum comes off the stamped `unitCost` on the Job's own movement rows,
  *   so a receipt landing after the draw cannot move a figure the plant has already read.
@@ -34,14 +36,9 @@ export async function sumJobDrawnCosts({
 
   const rows = await db
     .select({
-      // Draws leave stock, so their deltas are negative and a return's is positive: negating the
-      // sums turns the ledger's signs into what the Job is holding, in quantity and in money.
-      costedValue: sql<number>`(-coalesce(sum(${stockMovements.delta} * ${stockMovements.unitCost})
-        filter (where ${stockMovements.unitCost} is not null), 0))::double precision`,
+      costedValue: drawnCostedValueExpression,
       jobId: stockMovements.jobId,
-      // Netted rather than counted: an unpriced draw handed straight back leaves nothing to price.
-      uncostedDrawnQuantity: sql<number>`(-coalesce(sum(${stockMovements.delta})
-        filter (where ${stockMovements.unitCost} is null), 0))::double precision`,
+      uncostedDrawnQuantity: uncostedDrawnQuantityExpression,
     })
     .from(stockMovements)
     .where(and(inArray(stockMovements.jobId, jobIds), inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES)))

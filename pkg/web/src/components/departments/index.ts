@@ -4,3 +4,4 @@ export { FabricationDepartmentIcon } from './FabricationDepartmentIcon.js';
 export { PaintDepartmentIcon } from './PaintDepartmentIcon.js';
 export { ProcurementDepartmentIcon } from './ProcurementDepartmentIcon.js';
 export { SupplyDepartmentIcon } from './SupplyDepartmentIcon.js';
+export { WorkshopDepartmentIcon } from './WorkshopDepartmentIcon.js';

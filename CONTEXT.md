@@ -52,7 +52,7 @@ A Part's moving average cost is derived from ordered cost-bearing movements, is 
 
 ## Manufacturing
 
-The visual pipeline is fixed: Procurement -> Supply -> Fabrication -> Paint -> Assembly -> Workshop. A **Department** groups **Bays**, but is not an authorization boundary. **Workshop** is a distinct Department from Assembly.
+The visual pipeline is fixed: Procurement -> Supply -> Fabrication -> Paint -> Assembly -> Workshop. A **Department** groups **Bays**, but is not an authorization boundary. **Workshop** is distinct from Assembly, and the two retain distinct names on Quotes.
 
 **Bay** is a durable physical workspace. Avoid Station, Workstation, Cell, or Machine. Bays are created, renamed, disabled, and re-enabled by admins. Disabled Bays reject new bookings but keep existing schedule history. Deleting is only for a Bay added in error: a Bay any Slot, Product Bay, or Operator Assignment references — open or closed — is refused and disabled instead, while its Bay Calendar Exceptions go with it.
 

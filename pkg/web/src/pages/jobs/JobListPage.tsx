@@ -5,7 +5,7 @@ import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClie
 import { Link, useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
@@ -199,14 +199,28 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
     },
   });
 
+  const dropCompletedOnFilter = useCallback(() => {
+    tableController.setColumnFilters((filters) => filters.filter((filter) => filter.id !== 'completedOn'));
+  }, [tableController.setColumnFilters]);
+
   const handleIncludeCompletedChange = (checked: boolean) => {
     setIncludeCompleted(checked);
     // Hiding completed Jobs also retires the Complete date filter, so a stale range cannot survive
     // in persisted table state and silently narrow the next look at completed work.
     if (!checked) {
-      tableController.setColumnFilters((filters) => filters.filter((filter) => filter.id !== 'completedOn'));
+      dropCompletedOnFilter();
     }
   };
+
+  // The same cleanup on arrival. Column filters persist to storage but `includeCompleted` resets to
+  // off on every mount, so a range set before a reload would otherwise sit in the store unseen —
+  // its control is hidden while the switch is off — and quietly widen the next export to every
+  // completed Job in the plant's history.
+  useEffect(() => {
+    if (!includeCompleted) {
+      dropCompletedOnFilter();
+    }
+  }, [dropCompletedOnFilter, includeCompleted]);
 
   return (
     <DataTable

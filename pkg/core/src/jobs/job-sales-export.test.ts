@@ -17,7 +17,7 @@ import {
 import { DateOnlyIso, UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
+import { getJobMaterialVariance } from '../inventory/job-variance-read.js';
 import { postAdjustment, postJobMovement } from '../inventory/stock-movement-service.js';
 import { createTester } from '../test/create-tester.js';
 import { partValues } from '../test/part-fixtures.js';
@@ -85,6 +85,39 @@ describe('listCompletedJobSales', () => {
     const stockBuild = rows.find((row) => row.completedOn === '2026-07-10');
 
     expect(stockBuild).toMatchObject({ costExVat: 0, costIncVat: 0 });
+  });
+
+  /**
+   * The unpriced test is per Part, not per Job. A return against an empty pool is stamped null and
+   * carries a *positive* delta, so on a whole-Job net it cancels an unpriced draw on some unrelated
+   * Part — and the Job would report a costed total while material nobody has priced rode along free.
+   */
+  test('does not let one Part null-stamped return cancel another Part unpriced draw', async ({ context }) => {
+    // Empty the costed Part's pool (4 still out), then over-return one more: nothing is left to
+    // reverse, so that row is stamped null with a positive delta.
+    for (const quantity of [4, 1]) {
+      await postJobMovement({
+        actorUserId: ACTOR_USER_ID,
+        db: context.db,
+        input: { jobId: context.jobs.build, lengthMm: null, partId: context.parts.costed, quantity },
+        movementType: 'return-to-store',
+      });
+    }
+    await postJobMovement({
+      actorUserId: ACTOR_USER_ID,
+      db: context.db,
+      input: { jobId: context.jobs.build, lengthMm: null, partId: context.parts.unpriced, quantity: 1 },
+      movementType: 'checkout',
+    });
+
+    const rows = await listCompletedJobSales({ db: context.db, input: NO_FILTERS });
+    const build = rows.find((row) => row.completedOn === '2026-07-15');
+
+    expect(build).toMatchObject({ costExVat: null, costIncVat: null });
+    // The invariant the shared expressions exist for: both reads call this Job unpriced, or neither.
+    await expect(
+      getJobMaterialVariance({ db: context.db, jobId: UUID.parse(context.jobs.build) }),
+    ).resolves.toMatchObject({ totalActualCost: null });
   });
 
   test('reports completed Jobs only, and never a Cancelled one', async ({ context }) => {
@@ -317,5 +350,9 @@ async function seedSalesShape(db: Db) {
   await db.update(jobs).set({ completedOn: '2026-07-10' }).where(eq(jobs.id, stockBuildJob.id));
   await db.update(jobs).set({ completedOn: '2026-07-18' }).where(eq(jobs.id, cancelledJob.id));
 
-  return { customers: { hilltop: hilltop.id, riverside: riverside.id } };
+  return {
+    customers: { hilltop: hilltop.id, riverside: riverside.id },
+    jobs: { build: buildJob.id },
+    parts: { costed: costedPart.id, unpriced: unpricedPart.id },
+  };
 }

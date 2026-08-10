@@ -15,15 +15,15 @@ export async function getJobCostComparison({ db, jobId }: { db: Db; jobId: UUID 
       .limit(1)
       .then(([row]) => row ?? null),
   ]);
-  const estimatedCostFloor = snapshotRow?.payload.totalCostFloor ?? null;
+  const estimatedPartsCostFloor = snapshotRow?.payload.partsCostFloor ?? null;
 
   return JobCostComparisonSchema.parse({
     actualCost: variance.totalActualCost,
-    estimatedCostFloor,
-    estimateVariance:
-      estimatedCostFloor === null || variance.totalActualCost === null
+    estimatedPartsCostFloor,
+    partsCostVariance:
+      estimatedPartsCostFloor === null || variance.totalActualCost === null
         ? null
-        : variance.totalActualCost - estimatedCostFloor,
+        : variance.totalActualCost - estimatedPartsCostFloor,
     snapshot: snapshotRow ? { createdAt: snapshotRow.createdAt.toISOString(), estimate: snapshotRow.payload } : null,
   });
 }

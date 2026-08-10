@@ -5,7 +5,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatEstimateFloor, missingEstimateLabels } from '../../../products/product-cost-estimate-display.js';
+import {
+  estimateTermCompleteness,
+  formatEstimateCeiling,
+  formatEstimateFloor,
+  missingEstimateLabels,
+} from '../../../products/product-cost-estimate-display.js';
 
 export function JobCostComparisonSummary({ jobId }: { jobId: UUID }) {
   const trpc = useTRPC();
@@ -17,31 +22,35 @@ export function JobCostComparisonSummary({ jobId }: { jobId: UUID }) {
     return <p className="text-muted-foreground text-sm">This Job has no Product estimate snapshot.</p>;
   }
 
-  const { actualCost, estimateVariance, snapshot } = query.data;
+  const { actualCost, partsCostVariance, snapshot } = query.data;
   const estimate = snapshot.estimate;
   const missing = missingEstimateLabels(estimate.missing);
+  const termComplete = estimateTermCompleteness(estimate);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Estimate vs actual</CardTitle>
         <CardDescription>
-          Estimate frozen {formatDate(snapshot.createdAt)}; actual cost uses the values stamped on this Job's draws.
+          Estimate frozen {formatDate(snapshot.createdAt)}; Assembly Parts compare with values stamped on this Job's
+          draws. Product-level material and labor are context only.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-          <CostTerm label="Materials" value={formatCurrency(estimate.materialCostFloor, 'ZAR')} />
-          <CostTerm label="Assembly parts" value={formatCurrency(estimate.partsCostFloor, 'ZAR')} />
-          <CostTerm label="Labor" value={formatCurrency(estimate.laborCostFloor, 'ZAR')} />
+          <CostTerm label="Materials" value={formatEstimateFloor(estimate.materialCostFloor, termComplete.material)} />
+          <CostTerm label="Assembly parts" value={formatEstimateFloor(estimate.partsCostFloor, termComplete.parts)} />
+          <CostTerm label="Labor" value={formatEstimateFloor(estimate.laborCostFloor, termComplete.labor)} />
           <CostTerm label="Estimate total" value={formatEstimateFloor(estimate.totalCostFloor, estimate.complete)} />
           <CostTerm
-            label="Actual drawn"
+            label="Actual drawn parts"
             value={actualCost === null ? 'Not priced' : formatCurrency(actualCost, 'ZAR')}
           />
           <CostTerm
-            label={estimate.complete ? 'Variance' : 'Variance from floor'}
-            value={estimateVariance === null ? 'Not priced' : formatCurrency(estimateVariance, 'ZAR')}
+            label={termComplete.parts ? 'Parts variance' : 'Parts variance ceiling'}
+            value={
+              partsCostVariance === null ? 'Not priced' : formatEstimateCeiling(partsCostVariance, termComplete.parts)
+            }
           />
         </div>
         {missing.length > 0 ? (

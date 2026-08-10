@@ -1,5 +1,6 @@
-import { parts, supplier, user } from '@pkg/db';
+import { auditEvents, parts, supplier, user } from '@pkg/db';
 import type { ProductCreateInput, ProductUpdateInput } from '@pkg/schema';
+import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { postAdjustment } from '../inventory/stock-movement-service.js';
 import { createTester } from '../test/create-tester.js';
@@ -142,6 +143,23 @@ describe('Product costing child collections', () => {
       laborHours: [{ department: 'paint', hours: 12.5 }],
       materialLines: [{ partId: context.channel.id, quantityPerUnit: 3 }],
     });
+    await expect(
+      context.db
+        .select({ changes: auditEvents.changes })
+        .from(auditEvents)
+        .where(and(eq(auditEvents.entityType, 'product'), eq(auditEvents.entityId, created.id))),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          changes: expect.objectContaining({
+            'laborHour:fabrication': expect.any(Object),
+            'laborHour:paint': expect.any(Object),
+            'materialLine:CHANNEL': expect.any(Object),
+            'materialLine:PLATE': expect.any(Object),
+          }),
+        }),
+      ]),
+    );
   });
 });
 

@@ -2,10 +2,9 @@ import {
   type DatabaseTransaction,
   type Db,
   isUniqueViolation,
+  jobEstimateSnapshots,
   jobs,
   parts,
-  productMaterialLines,
-  productUnits,
   stockMovements,
   stocktakeSessions,
   user,
@@ -388,23 +387,15 @@ async function readRawMaterialDrift({
 
   const fromCompletedOnExclusive = toPlantDateOnly(previous.closedAt);
   const throughCompletedOn = toPlantDateOnly(currentClosedAt);
-  const [previousCountRows, expectedRows] = await Promise.all([
+  const [previousCountRows, estimateRows] = await Promise.all([
     db
       .selectDistinct({ partId: stockMovements.partId })
       .from(stockMovements)
       .where(eq(stockMovements.stocktakeSessionId, previous.id)),
     db
-      .select({
-        expectedConsumptionFloor: sql<number>`sum(${productMaterialLines.quantityPerUnit})`.mapWith(Number),
-        partCode: parts.code,
-        partId: parts.id,
-        partName: parts.name,
-        unitOfMeasure: parts.unitOfMeasure,
-      })
-      .from(jobs)
-      .innerJoin(productUnits, eq(productUnits.id, jobs.productUnitId))
-      .innerJoin(productMaterialLines, eq(productMaterialLines.productId, productUnits.productId))
-      .innerJoin(parts, eq(parts.id, productMaterialLines.partId))
+      .select({ payload: jobEstimateSnapshots.payload })
+      .from(jobEstimateSnapshots)
+      .innerJoin(jobs, eq(jobs.id, jobEstimateSnapshots.jobId))
       .where(
         and(
           isNull(jobs.cancelledAt),
@@ -412,12 +403,34 @@ async function readRawMaterialDrift({
           gt(jobs.completedOn, fromCompletedOnExclusive),
           lte(jobs.completedOn, throughCompletedOn),
         ),
-      )
-      .groupBy(parts.id, parts.code, parts.name, parts.unitOfMeasure)
-      .orderBy(asc(parts.code), asc(parts.id)),
+      ),
   ]);
   const previouslyCountedPartIds = new Set(previousCountRows.map((row) => row.partId));
-  const expectedByPartId = new Map(expectedRows.map((row) => [row.partId, row]));
+  // Job snapshots are the only revision-stable record of what that Job was expected to consume.
+  // Rework snapshots intentionally carry no Product-level material, so they cannot inflate this floor.
+  const expectedByPartId = new Map<
+    UUID,
+    {
+      expectedConsumptionFloor: number;
+      partCode: string;
+      partId: UUID;
+      partName: string;
+      unitOfMeasure: StocktakeSessionCount['unitOfMeasure'];
+    }
+  >();
+  for (const { payload } of estimateRows) {
+    for (const line of payload.materialLines) {
+      const current = expectedByPartId.get(line.partId);
+      expectedByPartId.set(line.partId, {
+        expectedConsumptionFloor: (current?.expectedConsumptionFloor ?? 0) + line.quantityPerUnit,
+        partCode: line.partCode,
+        partId: line.partId,
+        partName: line.partName,
+        unitOfMeasure: line.unitOfMeasure,
+      });
+    }
+  }
+  const expectedRows = [...expectedByPartId.values()];
   const actualByPartId = new Map(
     [...groupBy(counts, (count) => count.partId)].map(([partId, partCounts]) => [
       partId,

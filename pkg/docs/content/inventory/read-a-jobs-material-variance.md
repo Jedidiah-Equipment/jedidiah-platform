@@ -16,8 +16,10 @@ those draws cost. It reads the same whether the Job is still running, completed,
 5. If you may read costs, read **Actual cost** per Part, plus **Drawn cost** and **Off-CFO cost**
    above the table.
 6. For a Product Job, read **Estimate vs actual**. The estimate terms were frozen when the Job was
-   created; actual cost comes from the values stamped on its Checkouts. An estimate beginning with
-   **≥** was incomplete when it was frozen, so its variance is explicitly against that floor.
+   created. **Parts variance** compares only the Assembly Part estimate with values stamped on its
+   Checkouts; Product-level material and labor remain context because they have no comparable drawn
+   total. An estimate beginning with **≥** was incomplete when frozen, so the Parts variance is a
+   **≤** ceiling against that floor.
 
 ## Notes
 

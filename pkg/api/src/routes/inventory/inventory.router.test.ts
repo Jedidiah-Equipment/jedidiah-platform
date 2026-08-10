@@ -147,7 +147,7 @@ describe('inventory procedure permissions', () => {
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(
       context.createCaller(mockSession('procurement-manager')).inventory.jobCostComparison({ jobId: context.job.id }),
-    ).resolves.toMatchObject({ actualCost: expect.any(Number), estimatedCostFloor: null, snapshot: null });
+    ).resolves.toMatchObject({ actualCost: expect.any(Number), estimatedPartsCostFloor: null, snapshot: null });
 
     await expect(
       context

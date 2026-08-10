@@ -6,7 +6,7 @@ import { ProductMaterialPartInvalidError } from './product-errors.js';
 
 export type ProductCostingInputs = {
   laborHours: ProductLaborHour[];
-  materialLines: ProductMaterialLine[];
+  materialLines: Array<ProductMaterialLine & { partCode: string }>;
 };
 
 export async function listProductCostingInputs({
@@ -18,8 +18,13 @@ export async function listProductCostingInputs({
 }): Promise<ProductCostingInputs> {
   const [materialLines, laborRows] = await Promise.all([
     db
-      .select({ partId: productMaterialLines.partId, quantityPerUnit: productMaterialLines.quantityPerUnit })
+      .select({
+        partCode: parts.code,
+        partId: productMaterialLines.partId,
+        quantityPerUnit: productMaterialLines.quantityPerUnit,
+      })
       .from(productMaterialLines)
+      .innerJoin(parts, eq(parts.id, productMaterialLines.partId))
       .where(eq(productMaterialLines.productId, productId))
       .orderBy(asc(productMaterialLines.partId)),
     db
@@ -42,7 +47,7 @@ export async function syncProductCostingInputs({
   productId,
   tx,
 }: {
-  desired: ProductCostingInputs;
+  desired: { laborHours: ProductLaborHour[]; materialLines: ProductMaterialLine[] };
   productId: UUID;
   tx: DatabaseTransaction;
 }): Promise<ProductCostingInputs> {

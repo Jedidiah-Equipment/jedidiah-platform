@@ -1,4 +1,5 @@
 import {
+  jobEstimateSnapshots,
   jobs,
   parts,
   productMaterialLines,
@@ -12,7 +13,7 @@ import {
 } from '@pkg/db';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
+import { getProductCostEstimate } from '../products/product-cost-estimate-service.js';
 import { createTester } from '../test/create-tester.js';
 import { listBuyList } from './buy-list-service.js';
 import { StockMovementDeltaError } from './stock-movement-errors.js';
@@ -384,12 +385,28 @@ describe('the session variance report', () => {
       .returning();
     const [firstUnit, secondUnit, undatedUnit] = units;
     if (!firstUnit || !secondUnit || !undatedUnit) throw new Error('Product Unit inserts did not return every row');
-    await context.db.insert(jobs).values([
-      { completedOn: '2026-08-05', productUnitId: firstUnit.id },
-      { completedOn: '2026-08-06', productUnitId: secondUnit.id },
-      // This Unit consumed material too, but an undated Job cannot be placed in the window.
-      { completedOn: null, productUnitId: undatedUnit.id },
+    const [firstBuild, secondBuild, rework, undatedBuild] = await context.db
+      .insert(jobs)
+      .values([
+        { completedOn: '2026-08-05', productUnitId: firstUnit.id },
+        { completedOn: '2026-08-06', productUnitId: secondUnit.id },
+        { completedOn: '2026-08-07', productUnitId: firstUnit.id },
+        // This Unit consumed material too, but an undated Job cannot be placed in the window.
+        { completedOn: null, productUnitId: undatedUnit.id },
+      ])
+      .returning();
+    if (!firstBuild || !secondBuild || !rework || !undatedBuild) throw new Error('Job inserts did not return rows');
+    const buildEstimate = await getProductCostEstimate({ db: context.db, productId: product.id });
+    const reworkEstimate = await getProductCostEstimate({ db: context.db, productId: product.id, scope: 'rework' });
+    await context.db.insert(jobEstimateSnapshots).values([
+      { jobId: firstBuild.id, payload: buildEstimate },
+      { jobId: secondBuild.id, payload: buildEstimate },
+      { jobId: rework.id, payload: reworkEstimate },
     ]);
+    await context.db
+      .update(productMaterialLines)
+      .set({ quantityPerUnit: 99 })
+      .where(eq(productMaterialLines.productId, product.id));
     const previousSession = await openStocktakeSession({
       actorUserId,
       db: context.db,

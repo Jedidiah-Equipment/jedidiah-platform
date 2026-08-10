@@ -53,16 +53,16 @@ describe('getJobCostComparison', () => {
 
     await expect(getJobCostComparison({ db: context.db, jobId: context.jobs.cfo.id })).resolves.toMatchObject({
       actualCost: 40,
-      estimatedCostFloor: 1_000,
-      estimateVariance: -960,
+      estimatedPartsCostFloor: 300,
+      partsCostVariance: -260,
       snapshot: { estimate: { totalCostFloor: 1_000 } },
     });
   });
 
   test('returns no estimate for a Job without a snapshot', async ({ context }) => {
     await expect(getJobCostComparison({ db: context.db, jobId: context.jobs.custom.id })).resolves.toMatchObject({
-      estimatedCostFloor: null,
-      estimateVariance: null,
+      estimatedPartsCostFloor: null,
+      partsCostVariance: null,
       snapshot: null,
     });
   });

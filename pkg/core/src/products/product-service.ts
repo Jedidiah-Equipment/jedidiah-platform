@@ -172,7 +172,7 @@ const productListWith = {
 type ProductAuditInput = typeof products.$inferSelect & {
   assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']>;
   laborHours: ProductLaborHour[];
-  materialLines: ProductMaterialLine[];
+  materialLines: Array<ProductMaterialLine & { partCode?: string }>;
   productBays: ProductBay[] | ProductBayInput[];
 };
 type ProductBayFlatRow = typeof productBays.$inferSelect & {
@@ -224,15 +224,15 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
       label: feature,
       value: { position: index, text: feature },
     })),
-    laborHours: input.laborHours.map((line) => ({
+    laborHour: input.laborHours.map((line) => ({
       key: line.department,
       label: line.department,
       value: line,
     })),
     materialLine: input.materialLines.map((line) => ({
       key: line.partId,
-      label: line.partId,
-      value: line,
+      label: line.partCode,
+      value: { partId: line.partId, quantityPerUnit: line.quantityPerUnit },
     })),
     productBay: input.productBays.map((productBay) => ({
       key: productBay.bayId,
@@ -965,13 +965,13 @@ export async function updateProduct({
         materialLines: desiredMaterialLines,
         productBays: desiredProductBays,
       };
-      const changes = diffAuditUpdate(
+      const preliminaryChanges = diffAuditUpdate(
         productAuditDescriptor,
         { ...before, ...beforeCostingInputs, assemblies: beforeAssemblies, productBays: beforeProductBays },
         after,
       );
 
-      if (!changes) {
+      if (!preliminaryChanges) {
         return mapProduct({
           ...before,
           ...beforeCostingInputs,
@@ -1028,6 +1028,12 @@ export async function updateProduct({
         range,
         variant,
       };
+      const changes = diffAuditUpdate(
+        productAuditDescriptor,
+        { ...before, ...beforeCostingInputs, assemblies: beforeAssemblies, productBays: beforeProductBays },
+        { ...after, laborHours: costingInputs.laborHours, materialLines: costingInputs.materialLines },
+      );
+      if (!changes) throw new Error('Product audit changes disappeared after child collection sync');
 
       await recordAuditUpdate({
         db: tx,

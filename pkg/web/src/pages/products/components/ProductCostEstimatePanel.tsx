@@ -18,7 +18,12 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
-import { formatEstimateCeiling, formatEstimateFloor, missingEstimateLabels } from '../product-cost-estimate-display.js';
+import {
+  estimateTermCompleteness,
+  formatEstimateCeiling,
+  formatEstimateFloor,
+  missingEstimateLabels,
+} from '../product-cost-estimate-display.js';
 
 export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
   const trpc = useTRPC();
@@ -32,6 +37,7 @@ export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
 
   const estimate = query.data;
   const missing = missingEstimateLabels(estimate.missing);
+  const termComplete = estimateTermCompleteness(estimate);
 
   return (
     <Card>
@@ -45,9 +51,9 @@ export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
       <CardSeparator />
       <CardContent className="grid gap-6">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <EstimateTerm label="Materials per unit" value={estimate.materialCostFloor} />
-          <EstimateTerm label="Assembly parts" value={estimate.partsCostFloor} />
-          <EstimateTerm label="Labor per unit" value={estimate.laborCostFloor} />
+          <EstimateTerm floor={!termComplete.material} label="Materials per unit" value={estimate.materialCostFloor} />
+          <EstimateTerm floor={!termComplete.parts} label="Assembly parts" value={estimate.partsCostFloor} />
+          <EstimateTerm floor={!termComplete.labor} label="Labor per unit" value={estimate.laborCostFloor} />
           <EstimateTerm label="Estimated total" value={estimate.totalCostFloor} floor={!estimate.complete} />
           <EstimateTerm label="Base price" value={estimate.basePrice} />
           <EstimateTerm ceiling={!estimate.complete} label="Estimated margin" value={estimate.estimatedMarginCeiling} />

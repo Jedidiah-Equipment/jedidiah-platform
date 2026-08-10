@@ -101,8 +101,8 @@ export const JobEstimateSnapshot = z.object({
 export type JobCostComparison = z.infer<typeof JobCostComparison>;
 export const JobCostComparison = z.object({
   actualCost: InventoryValue,
-  estimatedCostFloor: z.number().finite().nonnegative().nullable(),
-  estimateVariance: PriceDelta.nullable(),
+  estimatedPartsCostFloor: z.number().finite().nonnegative().nullable(),
+  partsCostVariance: PriceDelta.nullable(),
   snapshot: JobEstimateSnapshot.nullable(),
 });
 

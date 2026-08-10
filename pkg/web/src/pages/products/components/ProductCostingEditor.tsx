@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/card.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { usePartOptions } from '@/hooks/options/index.js';
-import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
+import { formatPurchaseUnitLabel } from '@/utils/part-quantity-format.js';
 import { emptyProductFormValues } from './types.js';
 
 type ProductCostingEditorProps = {
@@ -106,7 +106,7 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
                   {(field) => (
                     <field.NumberField
                       inputMode="decimal"
-                      label={`Quantity per unit${part ? ` (${getPartQuantityUnitDisplay(part.unitOfMeasure)})` : ''}`}
+                      label={`Quantity per unit${part ? ` (${formatPurchaseUnitLabel(part)})` : ''}`}
                       min={0.001}
                       step={0.001}
                     />

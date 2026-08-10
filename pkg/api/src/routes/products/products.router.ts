@@ -156,6 +156,12 @@ function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductC
         code: 'NOT_FOUND',
         message: 'Product not found.',
       };
+    case 'product.material_part.invalid':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'Product raw materials must use periodic stock tracking.',
+      };
     case 'product.range.not_found':
       return {
         appCode: error.code,

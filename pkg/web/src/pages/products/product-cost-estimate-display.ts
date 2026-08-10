@@ -5,6 +5,7 @@ export function missingEstimateLabels(missing: ProductCostEstimate['missing']): 
   return [
     ...(missing.materialList ? ['material list'] : []),
     ...(missing.laborHours ? ['labor hours'] : []),
+    ...(missing.unattributedProductTerms ? ['rework material and labor attribution'] : []),
     ...(missing.uncostedParts.length > 0
       ? [`${missing.uncostedParts.length} uncosted ${missing.uncostedParts.length === 1 ? 'part' : 'parts'}`]
       : []),
@@ -13,4 +14,8 @@ export function missingEstimateLabels(missing: ProductCostEstimate['missing']): 
 
 export function formatEstimateFloor(value: number, complete: boolean): string {
   return `${complete ? '' : '≥ '}${formatCurrency(value, 'ZAR')}`;
+}
+
+export function formatEstimateCeiling(value: number, complete: boolean): string {
+  return `${complete ? '' : '≤ '}${formatCurrency(value, 'ZAR')}`;
 }

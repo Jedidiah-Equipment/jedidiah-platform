@@ -74,7 +74,7 @@ export const ProductCostEstimate = z.object({
   basePrice: z.number().finite().nonnegative(),
   complete: z.boolean(),
   currencyCode: z.literal('ZAR'),
-  estimatedMarginFloor: z.number().finite(),
+  estimatedMarginCeiling: z.number().finite(),
   laborCostFloor: z.number().finite().nonnegative(),
   laborHours: z.array(ProductCostEstimateLaborLine),
   materialCostFloor: z.number().finite().nonnegative(),
@@ -82,11 +82,13 @@ export const ProductCostEstimate = z.object({
   missing: z.object({
     laborHours: z.boolean(),
     materialList: z.boolean(),
+    unattributedProductTerms: z.boolean(),
     uncostedParts: z.array(ProductCostEstimateMissingPart),
   }),
   optionalAssemblies: z.array(ProductCostEstimateAssembly),
   partsCostFloor: z.number().finite().nonnegative(),
   productId: UUID,
+  scope: z.enum(['build', 'rework']),
   totalCostFloor: z.number().finite().nonnegative(),
 });
 

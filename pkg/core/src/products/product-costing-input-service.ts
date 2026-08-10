@@ -1,7 +1,8 @@
-import { type DatabaseTransaction, type Db, productLaborHours, productMaterialLines } from '@pkg/db';
+import { type DatabaseTransaction, type Db, parts, productLaborHours, productMaterialLines } from '@pkg/db';
 import { WORK_ITEM_DEPARTMENTS } from '@pkg/domain';
 import type { ProductLaborHour, ProductMaterialLine, UUID } from '@pkg/schema';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
+import { ProductMaterialPartInvalidError } from './product-errors.js';
 
 export type ProductCostingInputs = {
   laborHours: ProductLaborHour[];
@@ -45,6 +46,8 @@ export async function syncProductCostingInputs({
   productId: UUID;
   tx: DatabaseTransaction;
 }): Promise<ProductCostingInputs> {
+  await assertPeriodicMaterialParts({ materialLines: desired.materialLines, tx });
+
   await Promise.all([
     tx.delete(productMaterialLines).where(eq(productMaterialLines.productId, productId)),
     tx.delete(productLaborHours).where(eq(productLaborHours.productId, productId)),
@@ -67,4 +70,24 @@ export async function syncProductCostingInputs({
   }
 
   return listProductCostingInputs({ db: tx, productId });
+}
+
+async function assertPeriodicMaterialParts({
+  materialLines,
+  tx,
+}: {
+  materialLines: ProductMaterialLine[];
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  if (materialLines.length === 0) return;
+
+  const partIds = materialLines.map((line) => line.partId);
+  const rows = await tx
+    .select({ id: parts.id, stockTrackingMode: parts.stockTrackingMode })
+    .from(parts)
+    .where(inArray(parts.id, partIds));
+  const periodicPartIds = new Set(rows.filter((row) => row.stockTrackingMode === 'periodic').map((row) => row.id));
+  const invalidPartId = partIds.find((partId) => !periodicPartIds.has(partId));
+
+  if (invalidPartId) throw new ProductMaterialPartInvalidError(invalidPartId);
 }

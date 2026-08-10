@@ -151,6 +151,7 @@ export async function createJob({
       });
       await snapshotJobEstimate({
         jobId: job.id,
+        kind: blueprint.kind === 'rework' ? 'rework' : 'build',
         productId: blueprint.productId,
         selectedAssemblyIds: blueprint.buildSpec.flatMap((assembly) =>
           assembly.productAssemblyId === null ? [] : [assembly.productAssemblyId],
@@ -190,11 +191,13 @@ export async function createJob({
 
 async function snapshotJobEstimate({
   jobId,
+  kind,
   productId,
   selectedAssemblyIds,
   tx,
 }: {
   jobId: UUID;
+  kind: 'build' | 'rework';
   productId: UUID;
   selectedAssemblyIds: readonly UUID[];
   tx: DatabaseTransaction;
@@ -204,7 +207,9 @@ async function snapshotJobEstimate({
   const payload = await getProductCostEstimate({
     db: tx,
     includeRemovedProduct: true,
+    lockProductRevision: true,
     productId,
+    scope: kind,
     selectedAssemblyIds,
   });
 

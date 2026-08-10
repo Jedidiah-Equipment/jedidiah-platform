@@ -390,13 +390,25 @@ describe('the session variance report', () => {
       // This Unit consumed material too, but an undated Job cannot be placed in the window.
       { completedOn: null, productUnitId: undatedUnit.id },
     ]);
-    await context.db.insert(stocktakeSessions).values({
-      closedAt: new Date('2026-08-01T10:00:00.000Z'),
-      closedByUserId: actorUserId,
-      openedAt: new Date('2026-08-01T08:00:00.000Z'),
-      openedByUserId: actorUserId,
-      scope: 'raw-material',
+    const previousSession = await openStocktakeSession({
+      actorUserId,
+      db: context.db,
+      input: { scope: 'raw-material' },
     });
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: {
+        buckets: [{ lengthMm: 13_000, observed: 9 }],
+        partId: context.channelId,
+        sessionId: previousSession.id,
+      },
+    });
+    await closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: previousSession.id } });
+    await context.db
+      .update(stocktakeSessions)
+      .set({ closedAt: new Date('2026-08-01T10:00:00.000Z'), openedAt: new Date('2026-08-01T08:00:00.000Z') })
+      .where(eq(stocktakeSessions.id, previousSession.id));
     const session = await openStocktakeSession({
       actorUserId,
       db: context.db,

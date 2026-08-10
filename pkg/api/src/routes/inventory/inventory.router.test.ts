@@ -718,7 +718,7 @@ describe('stocktake procedures', () => {
     await expect(procurement.inventory.stocktakeSessionReport({ sessionId: session.id })).resolves.toMatchObject({
       rawMaterialDrift: {
         isFloor: true,
-        items: [{ actualConsumption: 2, expectedConsumptionFloor: 0, partId: context.part.id }],
+        items: [{ actualConsumption: null, expectedConsumptionFloor: 0, partId: context.part.id }],
       },
     });
   });

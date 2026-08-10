@@ -24,6 +24,8 @@ those draws cost. It reads the same whether the Job is still running, completed,
 - Every figure is priced at what each Checkout was stamped with at the time — see
   [How stock costs work](./how-stock-costs-work.md). A Receipt landing later at a different price
   never moves a number here.
+- A Rework Job's estimate covers only the Optional Assembly Parts being fitted. Product-level raw
+  material and labor cannot be attributed to that Rework, so its estimate remains an incomplete floor.
 - A Custom Job has no Product Cost Estimate snapshot, so it has no estimate-vs-actual comparison.
 - A Part drawn in two lengths reports as one row. The variance is on the Part, not on a length.
 - A total reads **not priced** as soon as one drawn Part has no cost yet, rather than quietly

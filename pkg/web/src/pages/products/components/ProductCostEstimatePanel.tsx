@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
-import { formatEstimateFloor, missingEstimateLabels } from '../product-cost-estimate-display.js';
+import { formatEstimateCeiling, formatEstimateFloor, missingEstimateLabels } from '../product-cost-estimate-display.js';
 
 export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
   const trpc = useTRPC();
@@ -50,7 +50,7 @@ export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
           <EstimateTerm label="Labor per unit" value={estimate.laborCostFloor} />
           <EstimateTerm label="Estimated total" value={estimate.totalCostFloor} floor={!estimate.complete} />
           <EstimateTerm label="Base price" value={estimate.basePrice} />
-          <EstimateTerm label="Estimated margin" value={estimate.estimatedMarginFloor} floor={!estimate.complete} />
+          <EstimateTerm ceiling={!estimate.complete} label="Estimated margin" value={estimate.estimatedMarginCeiling} />
         </div>
 
         {missing.length > 0 ? (
@@ -102,11 +102,23 @@ export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
   );
 }
 
-function EstimateTerm({ floor = false, label, value }: { floor?: boolean; label: string; value: number }) {
+function EstimateTerm({
+  ceiling = false,
+  floor = false,
+  label,
+  value,
+}: {
+  ceiling?: boolean;
+  floor?: boolean;
+  label: string;
+  value: number;
+}) {
   return (
     <div className="rounded-lg border p-3">
       <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="font-semibold tabular-nums">{formatEstimateFloor(value, !floor)}</p>
+      <p className="font-semibold tabular-nums">
+        {ceiling ? formatEstimateCeiling(value, false) : formatEstimateFloor(value, !floor)}
+      </p>
     </div>
   );
 }
@@ -206,7 +218,12 @@ const partColumns: ColumnDef<ProductCostEstimatePartLine>[] = [
   },
   {
     accessorKey: 'unitCost',
-    cell: ({ row }) => (row.original.unitCost === null ? 'No cost yet' : formatCurrency(row.original.unitCost, 'ZAR')),
+    cell: ({ row }) =>
+      row.original.unitCost !== null
+        ? formatCurrency(row.original.unitCost, 'ZAR')
+        : row.original.isInternallyFabricated
+          ? 'Included via raw materials'
+          : 'No cost yet',
     header: 'Unit cost',
   },
   { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor, 'ZAR'), header: 'Cost' },

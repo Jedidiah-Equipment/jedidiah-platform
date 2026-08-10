@@ -3,10 +3,9 @@ import type { Department, WorkItemDepartment } from '@pkg/schema';
 import { quoteDepartmentLabels } from '../departments.js';
 
 /**
- * Default ex-VAT hourly rate per Department. A Department becomes quotable by gaining a rate here —
- * the `quote_work_items_department_value_check` constraint already permits the full enum, so no
- * migration is involved. These rates only *seed* a Work Item: each row snapshots the amount it was
- * priced at, so editing this map never reprices an existing Quote.
+ * Default ex-VAT hourly rate for every schema-owned Work Item Department. Membership lives in
+ * `WORK_ITEM_DEPARTMENTS`; this exhaustive map owns only the rates. These rates seed a Work Item,
+ * so editing one never reprices an existing Quote.
  */
 export const WORK_ITEM_DEPARTMENT_RATES = {
   fabrication: 550,

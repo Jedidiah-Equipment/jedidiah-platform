@@ -251,6 +251,17 @@ describe('products.create', () => {
     ]);
   });
 
+  test('rejects a perpetual Part in the Product Material List', async ({ context }) => {
+    const caller = context.createCaller();
+    const { bucket: partId } = await createParts(context.db);
+
+    await expect(
+      createProduct(caller, 'Invalid raw material', context.rangeId, {
+        materialLines: [{ partId, quantityPerUnit: 1 }],
+      }),
+    ).rejects.toMatchObject({ appCode: 'product.material_part.invalid', code: 'BAD_REQUEST' });
+  });
+
   test('rejects duplicate and disabled Product Bays', async ({ context }) => {
     const caller = context.createCaller();
     const bayId = await createBay(context.db, {

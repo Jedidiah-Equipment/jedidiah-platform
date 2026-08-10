@@ -6,6 +6,7 @@ import { createTester } from '../test/create-tester.js';
 import { partValues } from '../test/part-fixtures.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { getProductCostEstimate } from './product-cost-estimate-service.js';
+import { ProductMaterialPartInvalidError } from './product-errors.js';
 import { createProduct, getProduct, updateProduct } from './product-service.js';
 
 const actorUserId = 'product-costing-test-user';
@@ -99,6 +100,18 @@ function updateInput(product: Awaited<ReturnType<typeof createProduct>>): Produc
 }
 
 describe('Product costing child collections', () => {
+  test('rejects a perpetual Part in the Product Material List', async ({ context }) => {
+    await expect(
+      createProduct({
+        actorUserId,
+        db: context.db,
+        input: productInput(context.rangeId, {
+          materialLines: [{ partId: context.bought.id, quantityPerUnit: 1 }],
+        }),
+      }),
+    ).rejects.toBeInstanceOf(ProductMaterialPartInvalidError);
+  });
+
   test('creates, replaces, preserves, and reads per-unit materials and labor hours', async ({ context }) => {
     const created = await createProduct({
       actorUserId,
@@ -225,10 +238,10 @@ describe('getProductCostEstimate', () => {
 
     expect(base).toMatchObject({
       complete: true,
-      estimatedMarginFloor: 68_800,
+      estimatedMarginCeiling: 68_800,
       laborCostFloor: 26_500,
       materialCostFloor: 4_400,
-      missing: { laborHours: false, materialList: false, uncostedParts: [] },
+      missing: { laborHours: false, materialList: false, unattributedProductTerms: false, uncostedParts: [] },
       partsCostFloor: 300,
       totalCostFloor: 31_200,
     });

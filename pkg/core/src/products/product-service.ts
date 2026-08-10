@@ -21,7 +21,7 @@ import {
   user,
   withPagination,
 } from '@pkg/db';
-import { JOB_DEPARTMENT_PIPELINE, validateDocumentMetadata } from '@pkg/domain';
+import { JOB_DEPARTMENT_PIPELINE, validateDocumentMetadata, WORK_ITEM_DEPARTMENTS } from '@pkg/domain';
 import type {
   Assembly,
   AuthId,
@@ -105,6 +105,10 @@ type ProductRow = typeof products.$inferSelect & {
   variant: ProductRangeVariantOption | null;
 };
 type ProductListRow = ProductRow & { assemblies: AssemblyListRow[] };
+type ProductDetailRow = ProductListRow & {
+  laborHours: Array<{ department: ProductLaborHour['department']; hours: number }>;
+  materialLines: Array<{ partId: UUID; quantityPerUnit: number }>;
+};
 
 // Shared relational read shape for full Product reads — the paged list and the unpaged catalog read. The
 // column set is everything {@link mapProduct} needs; the `with` pulls kind-ordered assemblies plus their
@@ -526,11 +530,7 @@ function buildProductListWhere(listInput: ProductListInput): SQL {
 }
 
 export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Product> {
-  const {
-    costingInputs,
-    row,
-    productBays: productBaysForProduct,
-  } = await loadProductDetailRow({
+  const { row, productBays: productBaysForProduct } = await loadProductDetailRow({
     db,
     id,
     includeRemoved: false,
@@ -538,18 +538,14 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
 
   return mapProduct({
     ...row,
-    ...costingInputs,
+    ...costingInputsFromDetailRow(row),
     assemblies: row.assemblies.map(mapAssembly),
     productBays: productBaysForProduct,
   });
 }
 
 export async function getQuoteProductOption({ db, id }: { db: Db; id: UUID }): Promise<Product> {
-  const {
-    costingInputs,
-    row,
-    productBays: productBaysForProduct,
-  } = await loadProductDetailRow({
+  const { row, productBays: productBaysForProduct } = await loadProductDetailRow({
     db,
     id,
     includeRemoved: true,
@@ -557,7 +553,7 @@ export async function getQuoteProductOption({ db, id }: { db: Db; id: UUID }): P
 
   return mapProduct({
     ...row,
-    ...costingInputs,
+    ...costingInputsFromDetailRow(row),
     assemblies: row.assemblies.map(mapAssembly),
     productBays: productBaysForProduct,
   });
@@ -622,14 +618,13 @@ async function loadProductDetailRow({
   includeRemoved: boolean;
 }): Promise<{
   productBays: ProductBay[];
-  costingInputs: Awaited<ReturnType<typeof listProductCostingInputs>>;
   rangeLogo: StoredFile | null;
-  row: ProductListRow;
+  row: ProductDetailRow;
 }> {
   const productWhere = includeRemoved ? eq(products.id, id) : and(eq(products.id, id), notRemoved(products));
   // The Product's Bays key off the same id as the main read, so load both in parallel rather than
   // waiting on the Product row before fetching its Bays.
-  const [row, productBays, costingInputs] = await Promise.all([
+  const [row, productBays] = await Promise.all([
     db.query.products.findFirst({
       where: productWhere,
       with: {
@@ -649,6 +644,11 @@ async function loadProductDetailRow({
             optionalOverrides: true,
           },
         },
+        laborHours: { columns: { department: true, hours: true } },
+        materialLines: {
+          columns: { partId: true, quantityPerUnit: true },
+          orderBy: (lines, { asc }) => [asc(lines.partId)],
+        },
         // The brochure's top-right logo is the owning Range's logo; load it here so the brochure source
         // resolves it from the same read. Other callers (getProduct) ignore it.
         range: { columns: { id: true, logo: true, name: true } },
@@ -656,14 +656,24 @@ async function loadProductDetailRow({
       },
     }),
     listProductBays({ db, productId: id }),
-    listProductCostingInputs({ db, productId: id }),
   ]);
 
   if (!row) {
     throw new ProductNotFoundError(id);
   }
 
-  return { costingInputs, productBays, rangeLogo: row.range?.logo ?? null, row };
+  return { productBays, rangeLogo: row.range?.logo ?? null, row };
+}
+
+function costingInputsFromDetailRow(row: ProductDetailRow) {
+  const departmentOrder = new Map(WORK_ITEM_DEPARTMENTS.map((department, index) => [department, index]));
+
+  return {
+    laborHours: row.laborHours.toSorted(
+      (left, right) => (departmentOrder.get(left.department) ?? 0) - (departmentOrder.get(right.department) ?? 0),
+    ),
+    materialLines: row.materialLines,
+  };
 }
 
 export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<ProductDocument[]> {

@@ -1,5 +1,5 @@
 import { type DatabaseTransaction, type Db, notRemoved, parts, products } from '@pkg/db';
-import { buildCfo, WORK_ITEM_DEPARTMENT_RATES } from '@pkg/domain';
+import { buildCfo, buildReworkCfo, WORK_ITEM_DEPARTMENT_RATES } from '@pkg/domain';
 import type {
   Assembly,
   PartUnitOfMeasure,
@@ -31,16 +31,22 @@ type CostedPartFacts = {
 export async function getProductCostEstimate({
   db,
   includeRemovedProduct = false,
+  lockProductRevision = false,
   productId,
+  scope = 'build',
   selectedAssemblyIds = [],
 }: {
   db: Db | DatabaseTransaction;
   includeRemovedProduct?: boolean;
+  lockProductRevision?: boolean;
   productId: UUID;
+  scope?: 'build' | 'rework';
   selectedAssemblyIds?: readonly UUID[];
 }): Promise<ProductCostEstimate> {
-  const [product, catalogAssemblies, costingInputs] = await Promise.all([
-    loadProductHeader(db, productId, includeRemovedProduct),
+  // The Job snapshot path locks the Product first, before any child query starts. Product updates
+  // update that same row before replacing children, so the lock freezes one whole Product revision.
+  const product = await loadProductHeader(db, productId, includeRemovedProduct, lockProductRevision);
+  const [catalogAssemblies, costingInputs] = await Promise.all([
     listAssemblies({ tx: db, productId }),
     listProductCostingInputs({ db, productId }),
   ]);
@@ -48,7 +54,8 @@ export async function getProductCostEstimate({
     assemblyName: catalogAssemblies.find((assembly) => assembly.id === productAssemblyId)?.name ?? 'Unknown Assembly',
     productAssemblyId,
   }));
-  const cfoResult = buildCfo({ buildSpec, catalogAssemblies });
+  const cfoResult =
+    scope === 'rework' ? buildReworkCfo({ buildSpec, catalogAssemblies }) : buildCfo({ buildSpec, catalogAssemblies });
   if (!cfoResult.ok) throw new Error(`Cannot estimate stale Assemblies: ${cfoResult.staleAssemblyNames.join(', ')}`);
 
   const partIds = [
@@ -64,7 +71,7 @@ export async function getProductCostEstimate({
       { ...part, averageUnitCost: averages.get(part.id) ?? null },
     ]),
   );
-  const materialLines = costingInputs.materialLines
+  const materialLines = (scope === 'build' ? costingInputs.materialLines : [])
     .map((line) => {
       const part = requiredPart(factsById, line.partId);
       const unitCost = scaleUnitCost(part.averageUnitCost, part.standardPurchaseLengthMm);
@@ -90,7 +97,7 @@ export async function getProductCostEstimate({
   const optionalAssemblies = catalogAssemblies
     .filter((assembly) => assembly.kind === 'optional')
     .map((assembly) => costAssembly(assembly, factsById, true));
-  const laborHours = costingInputs.laborHours.map((line) => ({
+  const laborHours = (scope === 'build' ? costingInputs.laborHours : []).map((line) => ({
     cost: line.hours * WORK_ITEM_DEPARTMENT_RATES[line.department],
     department: line.department,
     hourlyRate: WORK_ITEM_DEPARTMENT_RATES[line.department],
@@ -105,17 +112,23 @@ export async function getProductCostEstimate({
   const laborCostFloor = sumBy(laborHours, (line) => line.cost);
   const totalCostFloor = materialCostFloor + partsCostFloor + laborCostFloor;
   const missing = {
-    laborHours: laborHours.length === 0,
-    materialList: materialLines.length === 0,
+    laborHours: scope === 'build' && laborHours.length === 0,
+    materialList: scope === 'build' && materialLines.length === 0,
+    unattributedProductTerms: scope === 'rework',
     uncostedParts,
   };
+  const complete =
+    !missing.laborHours &&
+    !missing.materialList &&
+    !missing.unattributedProductTerms &&
+    missing.uncostedParts.length === 0;
 
   return ProductCostEstimateSchema.parse({
     assemblies,
     basePrice: product.basePrice,
-    complete: !missing.laborHours && !missing.materialList && missing.uncostedParts.length === 0,
+    complete,
     currencyCode: product.currencyCode,
-    estimatedMarginFloor: product.basePrice - totalCostFloor,
+    estimatedMarginCeiling: product.basePrice - totalCostFloor,
     laborCostFloor,
     laborHours,
     materialCostFloor,
@@ -124,6 +137,7 @@ export async function getProductCostEstimate({
     optionalAssemblies,
     partsCostFloor,
     productId,
+    scope,
     totalCostFloor,
   });
 }
@@ -176,12 +190,17 @@ function collectUncostedParts(partsToCheck: readonly CostedPartFacts[]): Product
   ].toSorted((left, right) => left.partCode.localeCompare(right.partCode));
 }
 
-async function loadProductHeader(db: Db | DatabaseTransaction, productId: UUID, includeRemovedProduct: boolean) {
-  const [product] = await db
+async function loadProductHeader(
+  db: Db | DatabaseTransaction,
+  productId: UUID,
+  includeRemovedProduct: boolean,
+  lockProductRevision: boolean,
+) {
+  const query = db
     .select({ basePrice: products.basePrice, currencyCode: products.currencyCode })
     .from(products)
-    .where(includeRemovedProduct ? eq(products.id, productId) : and(eq(products.id, productId), notRemoved(products)))
-    .limit(1);
+    .where(includeRemovedProduct ? eq(products.id, productId) : and(eq(products.id, productId), notRemoved(products)));
+  const [product] = await (lockProductRevision ? query.for('share').limit(1) : query.limit(1));
   if (!product) throw new ProductNotFoundError(productId);
 
   return { ...product, currencyCode: 'ZAR' as const };

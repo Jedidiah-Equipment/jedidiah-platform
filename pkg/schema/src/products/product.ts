@@ -281,11 +281,12 @@ export type ProductBaysInput = z.infer<typeof ProductBaysInput>;
 export const ProductBaysInput = ProductBays.default([]);
 
 export type ProductMaterialQuantityPerUnit = z.infer<typeof ProductMaterialQuantityPerUnit>;
-export const ProductMaterialQuantityPerUnit = z.coerce
+export const ProductMaterialQuantityPerUnitValue = z
   .number()
   .positive('Quantity per unit must be greater than 0')
   .max(99_999_999_999.999)
   .multipleOf(0.001, 'Quantity per unit may have at most 3 decimal places');
+export const ProductMaterialQuantityPerUnit = z.coerce.number().pipe(ProductMaterialQuantityPerUnitValue);
 
 export type ProductMaterialLine = z.infer<typeof ProductMaterialLine>;
 export const ProductMaterialLine = z.object({
@@ -313,19 +314,22 @@ function rejectDuplicateField<T extends Record<TKey, string>, TKey extends keyof
   });
 }
 
-export const ProductMaterialLines = z
-  .array(ProductMaterialLine)
-  .superRefine((rows, ctx) => rejectDuplicateField(rows, 'partId', 'Material can only be added once per Product', ctx));
+export function refineProductMaterialLines(rows: Array<{ partId: string }>, ctx: z.RefinementCtx): void {
+  rejectDuplicateField(rows, 'partId', 'Material can only be added once per Product', ctx);
+}
+
+export const ProductMaterialLines = z.array(ProductMaterialLine).superRefine(refineProductMaterialLines);
 
 export type ProductMaterialLinesInput = z.infer<typeof ProductMaterialLinesInput>;
 export const ProductMaterialLinesInput = ProductMaterialLines.default([]);
 
 export type ProductLaborHoursValue = z.infer<typeof ProductLaborHoursValue>;
-export const ProductLaborHoursValue = z.coerce
+export const ProductLaborHoursFormValue = z
   .number()
   .positive('Labor hours must be greater than 0')
   .max(9_999.99)
   .multipleOf(0.01, 'Labor hours may have at most 2 decimal places');
+export const ProductLaborHoursValue = z.coerce.number().pipe(ProductLaborHoursFormValue);
 
 export type ProductLaborHour = z.infer<typeof ProductLaborHour>;
 export const ProductLaborHour = z.object({
@@ -333,11 +337,11 @@ export const ProductLaborHour = z.object({
   hours: ProductLaborHoursValue,
 });
 
-export const ProductLaborHours = z
-  .array(ProductLaborHour)
-  .superRefine((rows, ctx) =>
-    rejectDuplicateField(rows, 'department', 'Department can only be added once per Product', ctx),
-  );
+export function refineProductLaborHours(rows: Array<{ department: string }>, ctx: z.RefinementCtx): void {
+  rejectDuplicateField(rows, 'department', 'Department can only be added once per Product', ctx);
+}
+
+export const ProductLaborHours = z.array(ProductLaborHour).superRefine(refineProductLaborHours);
 
 export type ProductLaborHoursInput = z.infer<typeof ProductLaborHoursInput>;
 export const ProductLaborHoursInput = ProductLaborHours.default([]);

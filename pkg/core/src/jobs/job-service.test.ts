@@ -953,6 +953,19 @@ describe('createJob', () => {
         ],
       },
     ]);
+    await expect(
+      context.db.select().from(jobEstimateSnapshots).where(eq(jobEstimateSnapshots.jobId, rework.id)),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          assemblies: [expect.objectContaining({ assemblyName: 'Heavy Axle Upgrade' })],
+          laborHours: [],
+          materialLines: [],
+          missing: expect.objectContaining({ unattributedProductTerms: true }),
+          scope: 'rework',
+        }),
+      }),
+    ]);
     expect(rework.documents).toEqual([]);
     expect(rendererCalls).toBe(0);
     expect(

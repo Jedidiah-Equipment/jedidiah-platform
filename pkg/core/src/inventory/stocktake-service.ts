@@ -388,28 +388,35 @@ async function readRawMaterialDrift({
 
   const fromCompletedOnExclusive = toPlantDateOnly(previous.closedAt);
   const throughCompletedOn = toPlantDateOnly(currentClosedAt);
-  const expectedRows = await db
-    .select({
-      expectedConsumptionFloor: sql<number>`sum(${productMaterialLines.quantityPerUnit})`.mapWith(Number),
-      partCode: parts.code,
-      partId: parts.id,
-      partName: parts.name,
-      unitOfMeasure: parts.unitOfMeasure,
-    })
-    .from(jobs)
-    .innerJoin(productUnits, eq(productUnits.id, jobs.productUnitId))
-    .innerJoin(productMaterialLines, eq(productMaterialLines.productId, productUnits.productId))
-    .innerJoin(parts, eq(parts.id, productMaterialLines.partId))
-    .where(
-      and(
-        isNull(jobs.cancelledAt),
-        isNotNull(jobs.completedOn),
-        gt(jobs.completedOn, fromCompletedOnExclusive),
-        lte(jobs.completedOn, throughCompletedOn),
-      ),
-    )
-    .groupBy(parts.id, parts.code, parts.name, parts.unitOfMeasure)
-    .orderBy(asc(parts.code), asc(parts.id));
+  const [previousCountRows, expectedRows] = await Promise.all([
+    db
+      .selectDistinct({ partId: stockMovements.partId })
+      .from(stockMovements)
+      .where(eq(stockMovements.stocktakeSessionId, previous.id)),
+    db
+      .select({
+        expectedConsumptionFloor: sql<number>`sum(${productMaterialLines.quantityPerUnit})`.mapWith(Number),
+        partCode: parts.code,
+        partId: parts.id,
+        partName: parts.name,
+        unitOfMeasure: parts.unitOfMeasure,
+      })
+      .from(jobs)
+      .innerJoin(productUnits, eq(productUnits.id, jobs.productUnitId))
+      .innerJoin(productMaterialLines, eq(productMaterialLines.productId, productUnits.productId))
+      .innerJoin(parts, eq(parts.id, productMaterialLines.partId))
+      .where(
+        and(
+          isNull(jobs.cancelledAt),
+          isNotNull(jobs.completedOn),
+          gt(jobs.completedOn, fromCompletedOnExclusive),
+          lte(jobs.completedOn, throughCompletedOn),
+        ),
+      )
+      .groupBy(parts.id, parts.code, parts.name, parts.unitOfMeasure)
+      .orderBy(asc(parts.code), asc(parts.id)),
+  ]);
+  const previouslyCountedPartIds = new Set(previousCountRows.map((row) => row.partId));
   const expectedByPartId = new Map(expectedRows.map((row) => [row.partId, row]));
   const actualByPartId = new Map(
     [...groupBy(counts, (count) => count.partId)].map(([partId, partCounts]) => [
@@ -430,7 +437,9 @@ async function readRawMaterialDrift({
   );
   const items = [...factsByPartId.values()]
     .map((part) => {
-      const actualConsumption = actualByPartId.get(part.partId) ?? null;
+      const actualConsumption = previouslyCountedPartIds.has(part.partId)
+        ? (actualByPartId.get(part.partId) ?? null)
+        : null;
       const expectedConsumptionFloor = expectedByPartId.get(part.partId)?.expectedConsumptionFloor ?? 0;
 
       return {

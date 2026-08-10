@@ -14,15 +14,16 @@ function estimateSnapshot(totalCostFloor: number): ProductCostEstimate {
     basePrice: 2_000,
     complete: true,
     currencyCode: 'ZAR',
-    estimatedMarginFloor: 2_000 - totalCostFloor,
+    estimatedMarginCeiling: 2_000 - totalCostFloor,
     laborCostFloor: 300,
     laborHours: [],
     materialCostFloor: 400,
     materialLines: [],
-    missing: { laborHours: false, materialList: false, uncostedParts: [] },
+    missing: { laborHours: false, materialList: false, unattributedProductTerms: false, uncostedParts: [] },
     optionalAssemblies: [],
     partsCostFloor: totalCostFloor - 700,
     productId: PRODUCT_ID,
+    scope: 'build',
     totalCostFloor,
   };
 }

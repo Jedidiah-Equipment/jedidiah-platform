@@ -14,7 +14,9 @@ import {
   ProductDescription,
   ProductDisplayOrder,
   ProductKeyFeatures,
+  ProductLaborHoursFormValue,
   ProductLanderEnabled,
+  ProductMaterialQuantityPerUnitValue,
   ProductModelCode,
   ProductName,
   ProductNameHighlight,
@@ -22,6 +24,8 @@ import {
   ProductUpdateInput,
   refineProductAssemblies,
   refineProductBays,
+  refineProductLaborHours,
+  refineProductMaterialLines,
   UUID,
   type UUID as UUIDType,
   WorkItemDepartment,
@@ -61,21 +65,12 @@ export const ProductBayFormInput = ProductBayInput.extend({
 });
 
 const ProductMaterialLinesFormInput = z
-  .array(
-    z.object({
-      partId: UUID,
-      quantityPerUnit: z.number().positive().max(99_999_999_999.999).multipleOf(0.001),
-    }),
-  )
-  .superRefine((lines, context) =>
-    refineUnique(lines, 'partId', 'Material can only be added once per Product', context),
-  );
+  .array(z.object({ partId: UUID, quantityPerUnit: ProductMaterialQuantityPerUnitValue }))
+  .superRefine(refineProductMaterialLines);
 
 const ProductLaborHoursFormInput = z
-  .array(z.object({ department: WorkItemDepartment, hours: z.number().positive().max(9_999.99).multipleOf(0.01) }))
-  .superRefine((lines, context) =>
-    refineUnique(lines, 'department', 'Department can only be added once per Product', context),
-  );
+  .array(z.object({ department: WorkItemDepartment, hours: ProductLaborHoursFormValue }))
+  .superRefine(refineProductLaborHours);
 
 const ProductFormFields = z.object({
   basePrice: Price,
@@ -213,20 +208,6 @@ function toProductApiInput(value: ProductFormValues) {
     ...value,
     variantId: value.variantId || null,
   };
-}
-
-function refineUnique<T extends Record<K, string>, K extends keyof T>(
-  rows: T[],
-  key: K,
-  message: string,
-  context: z.RefinementCtx,
-) {
-  const seen = new Set<string>();
-
-  rows.forEach((row, index) => {
-    if (seen.has(row[key])) context.addIssue({ code: 'custom', message, path: [index, key] });
-    seen.add(row[key]);
-  });
 }
 
 /**

@@ -43,6 +43,11 @@ Open **Stocktake** in the web app for the session history. A session's page list
 counted, what was expected, what was counted, and the variance — priced, if you can see inventory
 costs — followed by what the walk skipped.
 
+For a closed raw-material session with an earlier raw-material session, a cost reader also sees
+**Expected vs actual raw-material consumption**. Expected consumption adds the Product Material
+Lists for Product Jobs completed between those sessions; actual depletion comes from the physical
+count. Expected is a floor because a Job without a completion date cannot be placed in the window.
+
 The two tiles at the top of that page say whether each scope is up to date. Raw material is due a
 week after the last close; stores is due a month after it. Each gets a couple of working days'
 grace before it is called overdue.

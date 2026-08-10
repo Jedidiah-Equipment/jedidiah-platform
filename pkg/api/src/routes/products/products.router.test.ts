@@ -282,6 +282,29 @@ describe('products.create', () => {
   });
 });
 
+describe('products.costEstimate', () => {
+  test('requires inventory cost access for the full estimate and breakdown', async ({ context }) => {
+    const admin = context.createCaller();
+    const created = await createProduct(admin, 'Cost Estimate Product', context.rangeId);
+    const productReaderWithoutCost = context.createCaller(mockSession(), {
+      access: {
+        permissions: ['product:read'],
+        role: 'admin',
+        userId: 'test-user-id',
+      },
+    });
+
+    await expect(admin.products.costEstimate({ productId: created.id })).resolves.toMatchObject({
+      complete: false,
+      productId: created.id,
+      totalCostFloor: 0,
+    });
+    await expect(productReaderWithoutCost.products.costEstimate({ productId: created.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+});
+
 describe('products.read', () => {
   test('lists Range options through Product read access', async ({ context }) => {
     const visibleRange = await createRange(context.db, {

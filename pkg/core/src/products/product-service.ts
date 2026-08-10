@@ -31,8 +31,10 @@ import type {
   ProductCreateInput,
   ProductDocument,
   ProductImageSlot,
+  ProductLaborHour,
   ProductListInput,
   ProductListResult,
+  ProductMaterialLine,
   ProductRangeOption,
   ProductRangeVariantOption,
   ProductUpdateInput,
@@ -82,6 +84,7 @@ import {
   productAssemblyOrderBy,
   syncAssemblies,
 } from './product-assembly-service.js';
+import { listProductCostingInputs, syncProductCostingInputs } from './product-costing-input-service.js';
 import {
   DuplicateProductBayError,
   DuplicateProductModelCodeError,
@@ -164,6 +167,8 @@ const productListWith = {
 } as const;
 type ProductAuditInput = typeof products.$inferSelect & {
   assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']>;
+  laborHours: ProductLaborHour[];
+  materialLines: ProductMaterialLine[];
   productBays: ProductBay[] | ProductBayInput[];
 };
 type ProductBayFlatRow = typeof productBays.$inferSelect & {
@@ -215,6 +220,16 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
       label: feature,
       value: { position: index, text: feature },
     })),
+    laborHours: input.laborHours.map((line) => ({
+      key: line.department,
+      label: line.department,
+      value: line,
+    })),
+    materialLine: input.materialLines.map((line) => ({
+      key: line.partId,
+      label: line.partId,
+      value: line,
+    })),
     productBay: input.productBays.map((productBay) => ({
       key: productBay.bayId,
       // ProductBayInput carries no bay name; the diff falls back to the persisted side's label, so
@@ -232,7 +247,14 @@ export type ProductDocumentCreateInput = {
   productId: UUID;
 };
 
-export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productBays?: ProductBay[] }): Product {
+export function mapProduct(
+  row: ProductRow & {
+    assemblies?: Assembly[];
+    laborHours?: ProductLaborHour[];
+    materialLines?: ProductMaterialLine[];
+    productBays?: ProductBay[];
+  },
+): Product {
   return Product.parse({
     assemblies: row.assemblies ?? [],
     basePrice: row.basePrice,
@@ -244,10 +266,12 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
     id: row.id,
     images: mapProductImages(row.images),
     keyFeatures: row.keyFeatures,
+    laborHours: row.laborHours ?? [],
     buildTimeDays: row.buildTimeDays,
     modelCode: row.modelCode,
     name: row.name,
     nameHighlight: row.nameHighlight,
+    materialLines: row.materialLines ?? [],
     productBays: row.productBays ?? [],
     range: row.range,
     rangeId: row.rangeId,
@@ -502,15 +526,41 @@ function buildProductListWhere(listInput: ProductListInput): SQL {
 }
 
 export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Product> {
-  const { row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id, includeRemoved: false });
+  const {
+    costingInputs,
+    row,
+    productBays: productBaysForProduct,
+  } = await loadProductDetailRow({
+    db,
+    id,
+    includeRemoved: false,
+  });
 
-  return mapProductListRow(row, productBaysForProduct);
+  return mapProduct({
+    ...row,
+    ...costingInputs,
+    assemblies: row.assemblies.map(mapAssembly),
+    productBays: productBaysForProduct,
+  });
 }
 
 export async function getQuoteProductOption({ db, id }: { db: Db; id: UUID }): Promise<Product> {
-  const { row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id, includeRemoved: true });
+  const {
+    costingInputs,
+    row,
+    productBays: productBaysForProduct,
+  } = await loadProductDetailRow({
+    db,
+    id,
+    includeRemoved: true,
+  });
 
-  return mapProductListRow(row, productBaysForProduct);
+  return mapProduct({
+    ...row,
+    ...costingInputs,
+    assemblies: row.assemblies.map(mapAssembly),
+    productBays: productBaysForProduct,
+  });
 }
 
 // Reads the Product detail row plus the stored Product image references and the owning Range's logo in a
@@ -572,13 +622,14 @@ async function loadProductDetailRow({
   includeRemoved: boolean;
 }): Promise<{
   productBays: ProductBay[];
+  costingInputs: Awaited<ReturnType<typeof listProductCostingInputs>>;
   rangeLogo: StoredFile | null;
   row: ProductListRow;
 }> {
   const productWhere = includeRemoved ? eq(products.id, id) : and(eq(products.id, id), notRemoved(products));
   // The Product's Bays key off the same id as the main read, so load both in parallel rather than
   // waiting on the Product row before fetching its Bays.
-  const [row, productBays] = await Promise.all([
+  const [row, productBays, costingInputs] = await Promise.all([
     db.query.products.findFirst({
       where: productWhere,
       with: {
@@ -605,13 +656,14 @@ async function loadProductDetailRow({
       },
     }),
     listProductBays({ db, productId: id }),
+    listProductCostingInputs({ db, productId: id }),
   ]);
 
   if (!row) {
     throw new ProductNotFoundError(id);
   }
 
-  return { productBays, rangeLogo: row.range?.logo ?? null, row };
+  return { costingInputs, productBays, rangeLogo: row.range?.logo ?? null, row };
 }
 
 export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<ProductDocument[]> {
@@ -786,7 +838,13 @@ export async function createProduct({
 }): Promise<Product> {
   try {
     return await db.transaction(async (tx) => {
-      const { assemblies: desiredAssemblies, productBays: desiredProductBays, ...productInput } = input;
+      const {
+        assemblies: desiredAssemblies,
+        laborHours: desiredLaborHours,
+        materialLines: desiredMaterialLines,
+        productBays: desiredProductBays,
+        ...productInput
+      } = input;
       const range = await assertActiveProductRange({ rangeId: productInput.rangeId, tx });
 
       const [row] = await tx.insert(products).values(productInput).returning();
@@ -805,12 +863,17 @@ export async function createProduct({
         productId: row.id,
         desired: desiredProductBays,
       });
+      const costingInputs = await syncProductCostingInputs({
+        desired: { laborHours: desiredLaborHours, materialLines: desiredMaterialLines },
+        productId: row.id,
+        tx,
+      });
       const variant = await assertActiveProductRangeVariant({
         rangeId: row.rangeId,
         tx,
         variantId: row.variantId,
       });
-      const after = { ...row, assemblies, productBays: syncedProductBays, range, variant };
+      const after = { ...row, ...costingInputs, assemblies, productBays: syncedProductBays, range, variant };
 
       await recordAuditCreate({ db: tx, descriptor: productAuditDescriptor, actorUserId, input: after });
 
@@ -849,10 +912,15 @@ export async function updateProduct({
         variantId: before.variantId,
       });
 
-      const beforeAssemblies = await listAssemblies({ tx, productId: input.id });
-      const beforeProductBays = await listProductBays({ db: tx, productId: input.id });
+      const [beforeAssemblies, beforeProductBays, beforeCostingInputs] = await Promise.all([
+        listAssemblies({ tx, productId: input.id }),
+        listProductBays({ db: tx, productId: input.id }),
+        listProductCostingInputs({ db: tx, productId: input.id }),
+      ]);
       const desiredAssemblies = input.assemblies ?? beforeAssemblies;
       const desiredProductBays = input.productBays ?? beforeProductBays;
+      const desiredLaborHours = input.laborHours ?? beforeCostingInputs.laborHours;
+      const desiredMaterialLines = input.materialLines ?? beforeCostingInputs.materialLines;
       const patch = {
         basePrice: input.basePrice,
         // Marketing text fields fold into the Product update; omitting them preserves the stored value.
@@ -879,16 +947,24 @@ export async function updateProduct({
         landerEnabled: input.landerEnabled,
         thumbnailDataUrl: input.thumbnailDataUrl,
       };
-      const after = { ...before, ...patch, assemblies: desiredAssemblies, productBays: desiredProductBays };
+      const after = {
+        ...before,
+        ...patch,
+        assemblies: desiredAssemblies,
+        laborHours: desiredLaborHours,
+        materialLines: desiredMaterialLines,
+        productBays: desiredProductBays,
+      };
       const changes = diffAuditUpdate(
         productAuditDescriptor,
-        { ...before, assemblies: beforeAssemblies, productBays: beforeProductBays },
+        { ...before, ...beforeCostingInputs, assemblies: beforeAssemblies, productBays: beforeProductBays },
         after,
       );
 
       if (!changes) {
         return mapProduct({
           ...before,
+          ...beforeCostingInputs,
           assemblies: beforeAssemblies,
           productBays: beforeProductBays,
           range,
@@ -921,12 +997,27 @@ export async function updateProduct({
               productId: row.id,
               desired: input.productBays,
             });
+      const costingInputs =
+        input.laborHours === undefined && input.materialLines === undefined
+          ? beforeCostingInputs
+          : await syncProductCostingInputs({
+              desired: { laborHours: desiredLaborHours, materialLines: desiredMaterialLines },
+              productId: row.id,
+              tx,
+            });
       const variant = await assertActiveProductRangeVariant({
         rangeId: row.rangeId,
         tx,
         variantId: row.variantId,
       });
-      const afterWithChildren = { ...row, assemblies, productBays: syncedProductBays, range, variant };
+      const afterWithChildren = {
+        ...row,
+        ...costingInputs,
+        assemblies,
+        productBays: syncedProductBays,
+        range,
+        variant,
+      };
 
       await recordAuditUpdate({
         db: tx,
@@ -955,9 +1046,10 @@ export async function removeProduct({ db, id, actorUserId }: { db: Db; id: UUID;
       throw new ProductNotFoundError(id);
     }
 
-    const [assemblies, productBaysForProduct] = await Promise.all([
+    const [assemblies, productBaysForProduct, costingInputs] = await Promise.all([
       listAssemblies({ tx, productId: id }),
       listProductBays({ db: tx, productId: id }),
+      listProductCostingInputs({ db: tx, productId: id }),
     ]);
     const now = new Date();
 
@@ -966,7 +1058,7 @@ export async function removeProduct({ db, id, actorUserId }: { db: Db; id: UUID;
       db: tx,
       descriptor: productAuditDescriptor,
       actorUserId,
-      input: { ...before, assemblies, productBays: productBaysForProduct },
+      input: { ...before, ...costingInputs, assemblies, productBays: productBaysForProduct },
     });
   });
 }

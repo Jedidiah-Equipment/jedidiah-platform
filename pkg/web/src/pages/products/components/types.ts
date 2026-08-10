@@ -24,6 +24,7 @@ import {
   refineProductBays,
   UUID,
   type UUID as UUIDType,
+  WorkItemDepartment,
 } from '@pkg/schema';
 import { z } from 'zod';
 
@@ -59,6 +60,23 @@ export const ProductBayFormInput = ProductBayInput.extend({
   defaultWorkingDays: ProductBayDefaultWorkingDays,
 });
 
+const ProductMaterialLinesFormInput = z
+  .array(
+    z.object({
+      partId: UUID,
+      quantityPerUnit: z.number().positive().max(99_999_999_999.999).multipleOf(0.001),
+    }),
+  )
+  .superRefine((lines, context) =>
+    refineUnique(lines, 'partId', 'Material can only be added once per Product', context),
+  );
+
+const ProductLaborHoursFormInput = z
+  .array(z.object({ department: WorkItemDepartment, hours: z.number().positive().max(9_999.99).multipleOf(0.01) }))
+  .superRefine((lines, context) =>
+    refineUnique(lines, 'department', 'Department can only be added once per Product', context),
+  );
+
 const ProductFormFields = z.object({
   basePrice: Price,
   // `category` holds `''` for "no value" like other nullable text inputs.
@@ -84,6 +102,8 @@ export const ProductFormValues = ProductFormFields.extend({
   assemblies: z.array(ProductAssemblyFormInput).superRefine(refineProductAssemblies),
   // Key-feature lines reuse the schema-owned content + cap rules.
   keyFeatures: ProductKeyFeatures,
+  laborHours: ProductLaborHoursFormInput,
+  materialLines: ProductMaterialLinesFormInput,
   productBays: z.array(ProductBayFormInput).superRefine(refineProductBays),
 });
 
@@ -105,6 +125,8 @@ export const emptyProductFormValues: ProductFormValues = {
   displayOrder: 0,
   buildTimeDays: NaN,
   keyFeatures: [],
+  laborHours: [],
+  materialLines: [],
   modelCode: '',
   name: '',
   nameHighlight: '',
@@ -128,6 +150,8 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
     displayOrder: initialProduct?.displayOrder ?? 0,
     buildTimeDays: initialProduct?.buildTimeDays ?? NaN,
     keyFeatures: initialProduct?.keyFeatures ?? [],
+    laborHours: initialProduct?.laborHours ?? [],
+    materialLines: initialProduct?.materialLines ?? [],
     modelCode: initialProduct?.modelCode ?? '',
     name: initialProduct?.name ?? '',
     nameHighlight: initialProduct?.nameHighlight ?? '',
@@ -189,6 +213,20 @@ function toProductApiInput(value: ProductFormValues) {
     ...value,
     variantId: value.variantId || null,
   };
+}
+
+function refineUnique<T extends Record<K, string>, K extends keyof T>(
+  rows: T[],
+  key: K,
+  message: string,
+  context: z.RefinementCtx,
+) {
+  const seen = new Set<string>();
+
+  rows.forEach((row, index) => {
+    if (seen.has(row[key])) context.addIssue({ code: 'custom', message, path: [index, key] });
+    seen.add(row[key]);
+  });
 }
 
 /**

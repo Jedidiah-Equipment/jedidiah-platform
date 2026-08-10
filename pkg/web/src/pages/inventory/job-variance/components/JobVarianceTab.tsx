@@ -2,6 +2,7 @@ import type { UUID } from '@pkg/schema';
 
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useJobVariance } from '../use-job-variance.js';
+import { JobCostComparisonSummary } from './JobCostComparisonSummary.js';
 import { describeVarianceJob, JobVarianceReport } from './JobVarianceReport.js';
 
 /**
@@ -25,6 +26,7 @@ export function JobVarianceTab({ jobId }: { jobId: UUID }) {
       {/* Where the Job's stock life stands, the same line the inventory screen leads with: a variance
           read after close-out means something different from one read mid-build. */}
       <p className="text-muted-foreground text-sm">{describeVarianceJob(query.data.job)}</p>
+      {showCosts ? <JobCostComparisonSummary jobId={jobId} /> : null}
       <JobVarianceReport report={query.data} showCosts={showCosts} />
     </div>
   );

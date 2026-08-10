@@ -15,13 +15,16 @@ those draws cost. It reads the same whether the Job is still running, completed,
    unplanned material the report exists to surface.
 5. If you may read costs, read **Actual cost** per Part, plus **Drawn cost** and **Off-CFO cost**
    above the table.
+6. For a Product Job, read **Estimate vs actual**. The estimate terms were frozen when the Job was
+   created; actual cost comes from the values stamped on its Checkouts. An estimate beginning with
+   **≥** was incomplete when it was frozen, so its variance is explicitly against that floor.
 
 ## Notes
 
 - Every figure is priced at what each Checkout was stamped with at the time — see
   [How stock costs work](./how-stock-costs-work.md). A Receipt landing later at a different price
   never moves a number here.
-- There is no planned cost, only actual: the CFO fixes quantities, not money.
+- A Custom Job has no Product Cost Estimate snapshot, so it has no estimate-vs-actual comparison.
 - A Part drawn in two lengths reports as one row. The variance is on the Part, not on a length.
 - A total reads **not priced** as soon as one drawn Part has no cost yet, rather than quietly
   reporting a smaller number.

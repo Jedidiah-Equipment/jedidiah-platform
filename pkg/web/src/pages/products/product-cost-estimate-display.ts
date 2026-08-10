@@ -1,0 +1,16 @@
+import { formatCurrency } from '@pkg/domain';
+import type { ProductCostEstimate } from '@pkg/schema';
+
+export function missingEstimateLabels(missing: ProductCostEstimate['missing']): string[] {
+  return [
+    ...(missing.materialList ? ['material list'] : []),
+    ...(missing.laborHours ? ['labor hours'] : []),
+    ...(missing.uncostedParts.length > 0
+      ? [`${missing.uncostedParts.length} uncosted ${missing.uncostedParts.length === 1 ? 'part' : 'parts'}`]
+      : []),
+  ];
+}
+
+export function formatEstimateFloor(value: number, complete: boolean): string {
+  return `${complete ? '' : '≥ '}${formatCurrency(value, 'ZAR')}`;
+}

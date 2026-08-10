@@ -1,4 +1,15 @@
-import { customers, eq, jobStockCloseOuts, jobs, partBom, parts, quotes, supplier, user } from '@pkg/db';
+import {
+  customers,
+  eq,
+  jobStockCloseOuts,
+  jobs,
+  partBom,
+  parts,
+  quotes,
+  stocktakeSessions,
+  supplier,
+  user,
+} from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
@@ -130,6 +141,13 @@ describe('inventory procedure permissions', () => {
     await expect(
       context.createCaller(mockSession('stores')).inventory.jobStock({ jobId: context.job.id }),
     ).resolves.toMatchObject({ items: [{ drawnQuantity: 1, partId: context.part.id }] });
+
+    await expect(
+      context.createCaller(mockSession('stores')).inventory.jobCostComparison({ jobId: context.job.id }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      context.createCaller(mockSession('procurement-manager')).inventory.jobCostComparison({ jobId: context.job.id }),
+    ).resolves.toMatchObject({ actualCost: expect.any(Number), estimatedCostFloor: null, snapshot: null });
 
     await expect(
       context
@@ -669,6 +687,39 @@ describe('stocktake procedures', () => {
     });
     await expect(stores.inventory.stocktakeOverdue()).resolves.toMatchObject({
       items: [{ scope: 'raw-material' }, { isOverdue: false, scope: 'stores' }],
+    });
+  });
+
+  test('keeps raw-material drift behind the inventory cost permission', async ({ context }) => {
+    const stores = context.createCaller(mockSession('stores'));
+    const procurement = context.createCaller(mockSession('procurement-manager'));
+    await context.db.update(parts).set({ stockTrackingMode: 'periodic' }).where(eq(parts.id, context.part.id));
+    await context
+      .createCaller()
+      .inventory.postAdjustment({ delta: 10, partId: context.part.id, reason: 'opening-balance', unitCost: 10 });
+    await context.db.insert(stocktakeSessions).values({
+      closedAt: new Date('2026-08-01T10:00:00.000Z'),
+      closedByUserId: 'test-user-id',
+      openedAt: new Date('2026-08-01T08:00:00.000Z'),
+      openedByUserId: 'test-user-id',
+      scope: 'raw-material',
+    });
+    const session = await stores.inventory.openStocktakeSession({ scope: 'raw-material' });
+    await stores.inventory.postStockCount({
+      buckets: [{ observed: 8 }],
+      partId: context.part.id,
+      sessionId: session.id,
+    });
+    await stores.inventory.closeStocktakeSession({ sessionId: session.id });
+
+    await expect(stores.inventory.stocktakeSessionReport({ sessionId: session.id })).resolves.toMatchObject({
+      rawMaterialDrift: null,
+    });
+    await expect(procurement.inventory.stocktakeSessionReport({ sessionId: session.id })).resolves.toMatchObject({
+      rawMaterialDrift: {
+        isFloor: true,
+        items: [{ actualConsumption: 2, expectedConsumptionFloor: 0, partId: context.part.id }],
+      },
     });
   });
 

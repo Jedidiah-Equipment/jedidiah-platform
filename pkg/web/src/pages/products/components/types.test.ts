@@ -81,6 +81,8 @@ describe('toProductFormValues', () => {
     expect(values.variantId).toBe('');
     expect(values.requiresVinNumber).toBe(false);
     expect(values.assemblies).toEqual([]);
+    expect(values.laborHours).toEqual([]);
+    expect(values.materialLines).toEqual([]);
     expect(values.productBays).toEqual([]);
     expect(Number.isNaN(values.basePrice)).toBe(true);
     expect(Number.isNaN(values.buildTimeDays)).toBe(true);
@@ -193,6 +195,8 @@ describe('toProductCreateInput', () => {
       description: null,
       displayOrder: 20,
       keyFeatures: [],
+      laborHours: [],
+      materialLines: [],
       modelCode: 'MOD-1',
       name: 'Widget',
       nameHighlight: null,
@@ -254,6 +258,8 @@ describe('toProductMinimalCreateInput', () => {
       description: null,
       displayOrder: 0,
       keyFeatures: [],
+      laborHours: [],
+      materialLines: [],
       modelCode: 'WL-100',
       name: 'Wheel Loader',
       nameHighlight: null,
@@ -309,6 +315,8 @@ describe('toProductUpdateInput', () => {
       currencyCode: 'ZAR',
       modelCode: 'MOD-1',
       name: 'Widget',
+      laborHours: [],
+      materialLines: [],
       productBays: [{ bayId: BAY_ID, defaultWorkingDays: 5 }],
       rangeId: RANGE_ID,
       variantId: null,

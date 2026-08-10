@@ -17,6 +17,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { ProductAssembliesTabTrigger } from './components/ProductAssembliesTabTrigger.js';
 import { ProductBaysTabTrigger } from './components/ProductBaysTabTrigger.js';
+import { ProductCostEstimatePanel } from './components/ProductCostEstimatePanel.js';
 import { ProductDocumentsSection } from './components/ProductDocumentsSection.js';
 import { ProductDocumentsTabTrigger } from './components/ProductDocumentsTabTrigger.js';
 import { ProductForm } from './components/ProductForm.js';
@@ -105,12 +106,14 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabC
           <TabsTrigger value="details">Details</TabsTrigger>
           <ProductBaysTabTrigger productId={product.id} />
           <ProductAssembliesTabTrigger productId={product.id} />
+          <TabsTrigger value="costing">Costing</TabsTrigger>
           <TabsTrigger value="images">Images</TabsTrigger>
           <ProductDocumentsTabTrigger productId={product.id} />
           <ProductTranslationsTabTrigger productId={product.id} />
           {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
         </TabsList>
         <ProductForm
+          costingFooter={<ProductCostEstimatePanel productId={product.id} />}
           detailsFooter={
             canRemoveProduct ? (
               <div className="mt-4 flex justify-end border-t pt-4">

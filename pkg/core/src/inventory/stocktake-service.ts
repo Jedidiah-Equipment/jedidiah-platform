@@ -2,7 +2,10 @@ import {
   type DatabaseTransaction,
   type Db,
   isUniqueViolation,
+  jobs,
   parts,
+  productMaterialLines,
+  productUnits,
   stockMovements,
   stocktakeSessions,
   user,
@@ -15,10 +18,12 @@ import type {
   CloseStocktakeSessionInput,
   OpenStocktakeSessionInput,
   PostStockCountInput,
+  RawMaterialDriftReport,
   StockCountBucketVariance,
   StockCountResult,
   StocktakeOverdueResult,
   StocktakeSession,
+  StocktakeSessionCount,
   StocktakeSessionListResult,
   StocktakeSessionReport,
   StocktakeUncountedInput,
@@ -37,7 +42,22 @@ import {
   StocktakeUncountedResult as StocktakeUncountedResultSchema,
   unitClassFor,
 } from '@pkg/schema';
-import { aliasedTable, and, asc, desc, eq, inArray, isNotNull, ne, type SQL, sql } from 'drizzle-orm';
+import {
+  aliasedTable,
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
 
 import { createOrgWorkingCalendar, listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
 import { bucketKey, insertMovement, loadBucketQuantities, loadStockPart, toLedgerQuantity } from './ledger.js';
@@ -329,12 +349,107 @@ async function readStocktakeSessionReport(db: DatabaseTransaction, sessionId: UU
       varianceValue: sumNullableBy(buckets, (bucket) => bucket.value),
     };
   });
+  const rawMaterialDrift = await readRawMaterialDrift({ counts, db, session });
 
   return StocktakeSessionReportSchema.parse({
     counts,
+    rawMaterialDrift,
     session,
     totalVarianceValue: sumNullableBy(counts, (count) => count.varianceValue),
   });
+}
+
+async function readRawMaterialDrift({
+  counts,
+  db,
+  session,
+}: {
+  counts: Array<Pick<StocktakeSessionCount, 'delta' | 'partCode' | 'partId' | 'partName' | 'unitOfMeasure'>>;
+  db: DatabaseTransaction;
+  session: StocktakeSession;
+}): Promise<RawMaterialDriftReport | null> {
+  if (session.scope !== 'raw-material' || session.closedAt === null) return null;
+
+  const currentClosedAt = new Date(session.closedAt);
+  const [previous] = await db
+    .select({ closedAt: stocktakeSessions.closedAt, id: stocktakeSessions.id })
+    .from(stocktakeSessions)
+    .where(
+      and(
+        eq(stocktakeSessions.scope, 'raw-material'),
+        isNotNull(stocktakeSessions.closedAt),
+        ne(stocktakeSessions.id, session.id),
+        lt(stocktakeSessions.closedAt, currentClosedAt),
+      ),
+    )
+    .orderBy(desc(stocktakeSessions.closedAt), desc(stocktakeSessions.id))
+    .limit(1);
+  if (!previous?.closedAt) return null;
+
+  const fromCompletedOnExclusive = toPlantDateOnly(previous.closedAt);
+  const throughCompletedOn = toPlantDateOnly(currentClosedAt);
+  const expectedRows = await db
+    .select({
+      expectedConsumptionFloor: sql<number>`sum(${productMaterialLines.quantityPerUnit})`.mapWith(Number),
+      partCode: parts.code,
+      partId: parts.id,
+      partName: parts.name,
+      unitOfMeasure: parts.unitOfMeasure,
+    })
+    .from(jobs)
+    .innerJoin(productUnits, eq(productUnits.id, jobs.productUnitId))
+    .innerJoin(productMaterialLines, eq(productMaterialLines.productId, productUnits.productId))
+    .innerJoin(parts, eq(parts.id, productMaterialLines.partId))
+    .where(
+      and(
+        isNull(jobs.cancelledAt),
+        isNotNull(jobs.completedOn),
+        gt(jobs.completedOn, fromCompletedOnExclusive),
+        lte(jobs.completedOn, throughCompletedOn),
+      ),
+    )
+    .groupBy(parts.id, parts.code, parts.name, parts.unitOfMeasure)
+    .orderBy(asc(parts.code), asc(parts.id));
+  const expectedByPartId = new Map(expectedRows.map((row) => [row.partId, row]));
+  const actualByPartId = new Map(
+    [...groupBy(counts, (count) => count.partId)].map(([partId, partCounts]) => [
+      partId,
+      -sumBy(partCounts, (count) => count.delta),
+    ]),
+  );
+  const factsByPartId = new Map(
+    [...expectedRows, ...counts].map((row) => [
+      row.partId,
+      {
+        partCode: row.partCode,
+        partId: row.partId,
+        partName: row.partName,
+        unitOfMeasure: row.unitOfMeasure,
+      },
+    ]),
+  );
+  const items = [...factsByPartId.values()]
+    .map((part) => {
+      const actualConsumption = actualByPartId.get(part.partId) ?? null;
+      const expectedConsumptionFloor = expectedByPartId.get(part.partId)?.expectedConsumptionFloor ?? 0;
+
+      return {
+        actualConsumption,
+        driftFromExpectedFloor: actualConsumption === null ? null : actualConsumption - expectedConsumptionFloor,
+        expectedConsumptionFloor,
+        ...part,
+      };
+    })
+    .toSorted((left, right) => left.partCode.localeCompare(right.partCode));
+
+  return {
+    fromCompletedOnExclusive,
+    fromSessionId: previous.id,
+    isFloor: true,
+    items,
+    throughCompletedOn,
+    toSessionId: session.id,
+  };
 }
 
 /**

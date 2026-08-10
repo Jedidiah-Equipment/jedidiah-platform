@@ -1,3 +1,4 @@
+import { WORK_ITEM_DEPARTMENTS, type WorkItemDepartment } from '@pkg/domain';
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
@@ -128,6 +129,41 @@ export const assemblyParts = pgTable(
   ],
 );
 
+export const productMaterialLines = pgTable(
+  'product_material_line',
+  {
+    partId: uuid('part_id')
+      .notNull()
+      .references(() => parts.id, { onDelete: 'restrict' }),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    quantityPerUnit: numeric('quantity_per_unit', { mode: 'number', precision: 14, scale: 3 }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.productId, table.partId], name: 'product_material_line_pkey' }),
+    check('product_material_line_quantity_per_unit_positive', sql`${table.quantityPerUnit} > 0`),
+  ],
+);
+
+const workItemDepartmentSql = WORK_ITEM_DEPARTMENTS.map((department) => `'${department}'`).join(', ');
+
+export const productLaborHours = pgTable(
+  'product_labor_hours',
+  {
+    department: text('department').notNull().$type<WorkItemDepartment>(),
+    hours: numeric('hours', { mode: 'number', precision: 6, scale: 2 }).notNull(),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.productId, table.department], name: 'product_labor_hours_pkey' }),
+    check('product_labor_hours_department_check', sql`${table.department} IN (${sql.raw(workItemDepartmentSql)})`),
+    check('product_labor_hours_hours_positive', sql`${table.hours} > 0`),
+  ],
+);
+
 export const assemblyOverrides = pgTable(
   'assembly_overrides',
   {
@@ -157,6 +193,8 @@ export const assemblyOverrides = pgTable(
 
 export const productsRelations = relations(products, ({ many, one }) => ({
   assemblies: many(productAssemblies),
+  laborHours: many(productLaborHours),
+  materialLines: many(productMaterialLines),
   range: one(productRanges, {
     fields: [products.rangeId],
     references: [productRanges.id],
@@ -164,6 +202,24 @@ export const productsRelations = relations(products, ({ many, one }) => ({
   variant: one(productRangeVariants, {
     fields: [products.variantId, products.rangeId],
     references: [productRangeVariants.id, productRangeVariants.rangeId],
+  }),
+}));
+
+export const productMaterialLinesRelations = relations(productMaterialLines, ({ one }) => ({
+  part: one(parts, {
+    fields: [productMaterialLines.partId],
+    references: [parts.id],
+  }),
+  product: one(products, {
+    fields: [productMaterialLines.productId],
+    references: [products.id],
+  }),
+}));
+
+export const productLaborHoursRelations = relations(productLaborHours, ({ one }) => ({
+  product: one(products, {
+    fields: [productLaborHours.productId],
+    references: [products.id],
   }),
 }));
 

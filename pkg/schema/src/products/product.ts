@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DateIso } from '../common/date.js';
+import { WorkItemDepartment } from '../common/departments.js';
 import { EntityFile } from '../common/file.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { Price, PriceDelta, PriceDeltaInput } from '../common/price.js';
@@ -279,6 +280,68 @@ const ProductBays = z.array(ProductBayInput).superRefine(refineProductBays);
 export type ProductBaysInput = z.infer<typeof ProductBaysInput>;
 export const ProductBaysInput = ProductBays.default([]);
 
+export type ProductMaterialQuantityPerUnit = z.infer<typeof ProductMaterialQuantityPerUnit>;
+export const ProductMaterialQuantityPerUnit = z.coerce
+  .number()
+  .positive('Quantity per unit must be greater than 0')
+  .max(99_999_999_999.999)
+  .multipleOf(0.001, 'Quantity per unit may have at most 3 decimal places');
+
+export type ProductMaterialLine = z.infer<typeof ProductMaterialLine>;
+export const ProductMaterialLine = z.object({
+  partId: UUID,
+  quantityPerUnit: ProductMaterialQuantityPerUnit,
+});
+
+function rejectDuplicateField<T extends Record<TKey, string>, TKey extends keyof T>(
+  rows: T[],
+  key: TKey,
+  message: string,
+  ctx: z.RefinementCtx,
+): void {
+  const seen = new Map<string, number>();
+
+  rows.forEach((row, index) => {
+    const duplicateIndex = seen.get(row[key]);
+    if (duplicateIndex === undefined) {
+      seen.set(row[key], index);
+      return;
+    }
+
+    ctx.addIssue({ code: 'custom', message, path: [index, key] });
+    ctx.addIssue({ code: 'custom', message, path: [duplicateIndex, key] });
+  });
+}
+
+export const ProductMaterialLines = z
+  .array(ProductMaterialLine)
+  .superRefine((rows, ctx) => rejectDuplicateField(rows, 'partId', 'Material can only be added once per Product', ctx));
+
+export type ProductMaterialLinesInput = z.infer<typeof ProductMaterialLinesInput>;
+export const ProductMaterialLinesInput = ProductMaterialLines.default([]);
+
+export type ProductLaborHoursValue = z.infer<typeof ProductLaborHoursValue>;
+export const ProductLaborHoursValue = z.coerce
+  .number()
+  .positive('Labor hours must be greater than 0')
+  .max(9_999.99)
+  .multipleOf(0.01, 'Labor hours may have at most 2 decimal places');
+
+export type ProductLaborHour = z.infer<typeof ProductLaborHour>;
+export const ProductLaborHour = z.object({
+  department: WorkItemDepartment,
+  hours: ProductLaborHoursValue,
+});
+
+export const ProductLaborHours = z
+  .array(ProductLaborHour)
+  .superRefine((rows, ctx) =>
+    rejectDuplicateField(rows, 'department', 'Department can only be added once per Product', ctx),
+  );
+
+export type ProductLaborHoursInput = z.infer<typeof ProductLaborHoursInput>;
+export const ProductLaborHoursInput = ProductLaborHours.default([]);
+
 // Soft caps on the freeform key-feature list. Tuned so a typical brochure stays within its "Key Features"
 // block; the renderer reflows rather than clips, so these are guardrails, not hard limits.
 export const PRODUCT_KEY_FEATURE_MAX_LENGTH = 120;
@@ -463,6 +526,8 @@ export const Product = z.object({
   landerEnabled: ProductLanderEnabled.default(false),
   assemblies: z.array(Assembly).default([]),
   productBays: z.array(ProductBay).default([]),
+  materialLines: ProductMaterialLines.default([]),
+  laborHours: ProductLaborHours.default([]),
   category: ProductCategory.default(null),
   keyFeatures: ProductKeyFeatures.default([]),
   translations: ProductTranslations.optional(),
@@ -511,6 +576,8 @@ export const ProductCreateInput = z
     variantId: UUID.nullable().default(null),
     assemblies: ProductAssembliesInput,
     productBays: ProductBaysInput,
+    materialLines: ProductMaterialLinesInput,
+    laborHours: ProductLaborHoursInput,
     category: ProductCategoryInput,
     keyFeatures: ProductKeyFeatures.default([]),
     buildTimeDays: ProductBuildTimeDaysInput,
@@ -528,6 +595,8 @@ export const ProductUpdateInput = z
     id: UUID,
     assemblies: ProductAssemblies.optional(),
     productBays: ProductBays.optional(),
+    materialLines: ProductMaterialLines.optional(),
+    laborHours: ProductLaborHours.optional(),
     // Text marketing fields fold into the Product update; omitting them preserves the stored value,
     // mirroring how assemblies and product bays are preserved when absent.
     category: nullableTrimmedTextInputOptional(),

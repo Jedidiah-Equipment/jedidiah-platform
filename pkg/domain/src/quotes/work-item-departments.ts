@@ -1,4 +1,4 @@
-import type { Department } from '@pkg/schema';
+import type { Department, WorkItemDepartment } from '@pkg/schema';
 
 import { quoteDepartmentLabels } from '../departments.js';
 
@@ -13,12 +13,9 @@ export const WORK_ITEM_DEPARTMENT_RATES = {
   paint: 375,
   assembly: 320,
   workshop: 320,
-} as const satisfies Partial<Record<Department, number>>;
+} as const satisfies Record<WorkItemDepartment, number>;
 
-export type WorkItemDepartment = keyof typeof WORK_ITEM_DEPARTMENT_RATES;
-
-/** The Departments offered in the Work Item picker, in the order the shop quotes them. */
-export const WORK_ITEM_DEPARTMENTS = Object.keys(WORK_ITEM_DEPARTMENT_RATES) as WorkItemDepartment[];
+export { WORK_ITEM_DEPARTMENTS, type WorkItemDepartment } from '@pkg/schema';
 
 export function isWorkItemDepartment(department: Department): department is WorkItemDepartment {
   return department in WORK_ITEM_DEPARTMENT_RATES;

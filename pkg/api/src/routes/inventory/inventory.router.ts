@@ -1,6 +1,7 @@
 import {
   closeOutJob,
   closeStocktakeSession,
+  getJobCostComparison,
   getJobMaterialVariance,
   getPartStockByCode,
   getStockMovementHistory,
@@ -33,6 +34,7 @@ import {
   InventoryJobOptionListInput,
   InventoryJobOptionListResult,
   JobCloseOut,
+  JobCostComparison,
   JobMaterialVarianceResult,
   JobMaterialVarianceResultCostFields,
   JobMaterialVarianceRowCostFields,
@@ -72,6 +74,7 @@ import {
 import { mapCoreErrors } from '../../trpc/errors.js';
 import {
   authorizedProcedure,
+  canReadInventoryCosts,
   type InventoryCostAccess,
   projectInventoryCostFields,
   projectInventoryCostReport,
@@ -186,6 +189,11 @@ export const inventoryRouter = router({
       });
     }),
 
+  jobCostComparison: authorizedProcedure('inventory_cost:read')
+    .input(JobStockInput)
+    .output(JobCostComparison)
+    .query(({ ctx, input }) => mapJobStockErrors(() => getJobCostComparison({ db: ctx.db, jobId: input.jobId }))),
+
   closeOutQueue: authorizedProcedure('inventory:close-out')
     .output(CloseOutQueueResult)
     .query(({ ctx }) => listCloseOutQueue({ db: ctx.db })),
@@ -229,7 +237,10 @@ export const inventoryRouter = router({
       return projectInventoryCostReport({
         access: ctx.access,
         costFields: StocktakeSessionReportCostFields,
-        report,
+        report: {
+          ...report,
+          rawMaterialDrift: canReadInventoryCosts(ctx.access) ? report.rawMaterialDrift : null,
+        },
         rowCostFields: StocktakeSessionCountCostFields,
         rowsField: 'counts',
       });

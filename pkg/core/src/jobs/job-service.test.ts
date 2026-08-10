@@ -10,6 +10,7 @@ import {
   jobBuildSpecAssemblies,
   jobCfoAssemblies,
   jobCfoParts,
+  jobEstimateSnapshots,
   jobSlots,
   jobs,
   parts,
@@ -366,6 +367,32 @@ describe('createJob', () => {
     expect(transferRows).toEqual([]);
     expect(jobRows[0]?.productUnitId).toBeNull();
     expect(job.productUnit).toBeNull();
+    await expect(context.db.select().from(jobEstimateSnapshots)).resolves.toEqual([]);
+  });
+
+  test('snapshots the full honest estimate for a Product Job', async ({ context }) => {
+    const job = await createJob({
+      actorUserId,
+      db: context.db,
+      input: {
+        baySeeds: [],
+        buildSpecAssemblyIds: [context.catalog.heavyAxle.id],
+        productId: context.catalog.product.id,
+      },
+    });
+
+    await expect(
+      context.db.select().from(jobEstimateSnapshots).where(eq(jobEstimateSnapshots.jobId, job.id)),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        jobId: job.id,
+        payload: expect.objectContaining({
+          complete: false,
+          missing: expect.objectContaining({ laborHours: true, materialList: true }),
+          productId: context.catalog.product.id,
+        }),
+      }),
+    ]);
   });
 
   test('builds for stock with no Quote, minting a Unit that stays unowned', async ({ context }) => {

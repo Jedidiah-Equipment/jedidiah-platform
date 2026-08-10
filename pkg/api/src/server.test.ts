@@ -82,6 +82,23 @@ describe('API server', () => {
     }
   });
 
+  // Only the Lander belongs in search results. Google crawls this host already — it reports the 404 at `/` —
+  // and `/health` answers 200 to anyone, so the directive has to ride every response rather than the routes
+  // someone remembered to annotate. There is no HTML here to carry a meta tag, so the header is all there is.
+  it('marks every response noindex, whatever its route or status', async () => {
+    const app = await buildServer(config, observability, new MemoryStorage());
+
+    try {
+      for (const url of ['/health', '/', '/trpc/auth.session']) {
+        const response = await app.inject(url);
+
+        expect(response.headers['x-robots-tag'], `${url} -> ${response.statusCode}`).toBe('noindex, nofollow');
+      }
+    } finally {
+      await app.close();
+    }
+  });
+
   it('allows the local Expo dev server through CORS', async () => {
     const app = await buildServer(config, observability, new MemoryStorage());
 

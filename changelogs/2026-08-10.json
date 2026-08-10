@@ -1,0 +1,51 @@
+{
+  "releasedAt": "2026-08-10T11:06:57.134Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Estimate material cost on a product",
+          "description": "Products now carry a material cost estimate you can build and maintain, and jobs show how their actual cost compares against it."
+        },
+        {
+          "title": "Export completed jobs as a sales spreadsheet",
+          "description": "The job list has a download button that exports completed jobs, with their pricing and cost, as a CSV you can open in a spreadsheet."
+        },
+        {
+          "title": "Filter the planning board by department",
+          "description": "The planning board can be narrowed to a single department so you only see the work that belongs to your team."
+        },
+        {
+          "title": "Add the workshop department",
+          "description": "Workshop joins the existing departments, with its own icon, so quotes, jobs and bays can be assigned to it."
+        },
+        {
+          "title": "Delete a bay added by mistake",
+          "description": "A bay that has never been used can now be deleted outright instead of only disabled, and a bay still referenced by scheduled or completed work explains what is holding it."
+        },
+        {
+          "title": "Tidier job list and calendar",
+          "description": "The job calendar no longer crowds each day with job chips, and the job list keeps its export and create buttons together in the page header."
+        },
+        {
+          "title": "Clearer job filter when booking a slot",
+          "description": "The Jobs shown filter now displays the readable option name instead of its underlying value."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Clearer contact form errors",
+          "description": "Submitting the contact form with missing details now highlights each field that still needs an answer instead of silently doing nothing."
+        },
+        {
+          "title": "Footer links land in the right place",
+          "description": "Clicking a footer link now takes you to the top of the destination page, and the Contact us link and language switch give immediate feedback when clicked."
+        }
+      ]
+    }
+  ]
+}

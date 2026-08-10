@@ -1,5 +1,5 @@
-import { getJobOptionHint } from '@pkg/domain';
-import type { Bay, JobSummary, UUID } from '@pkg/schema';
+import { departmentLabels, getJobOptionHint, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
+import type { Bay, Department, JobSummary, UUID } from '@pkg/schema';
 import { IconFilterOff } from '@tabler/icons-react';
 import type React from 'react';
 import type { ReactNode } from 'react';
@@ -23,7 +23,7 @@ type FilterOption<TId extends string> = {
 };
 
 type BoardFilterBarProps = {
-  bays: ReadonlyArray<Pick<Bay, 'id' | 'name' | 'currentOperator'>>;
+  bays: ReadonlyArray<Pick<Bay, 'id' | 'name' | 'currentOperator' | 'department'>>;
   filter: BoardFilter;
   jobs: ReadonlyArray<
     Pick<
@@ -68,6 +68,13 @@ export const BoardFilterBar: React.FC<BoardFilterBarProps> = ({
       }),
     [bays],
   );
+  const departmentOptions = useMemo<FilterOption<Department>[]>(() => {
+    const availableDepartments = new Set(bays.map((bay) => bay.department));
+
+    return JOB_DEPARTMENT_PIPELINE.filter(({ department }) => availableDepartments.has(department)).map(
+      ({ department }) => ({ id: department, label: departmentLabels[department] }),
+    );
+  }, [bays]);
   const isActive = hasActiveBoardFilter(filter);
 
   return (
@@ -92,6 +99,13 @@ export const BoardFilterBar: React.FC<BoardFilterBarProps> = ({
         options={bayOptions}
         placeholder="Filter by bay"
         value={filter.bayId}
+      />
+      <FilterCombobox
+        inputId="board-filter-department"
+        onChange={(department) => onFilterChange({ ...filter, department })}
+        options={departmentOptions}
+        placeholder="Filter by department"
+        value={filter.department}
       />
       {isActive ? (
         <Button onClick={() => onFilterChange(emptyBoardFilter)} size="sm" type="button" variant="ghost">

@@ -1,4 +1,4 @@
-import { DateOnlyIso, type UUID } from '@pkg/schema';
+import { DateOnlyIso, type Department, type UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,7 +7,7 @@ import {
   emptyBoardFilter,
   getEarliestBoardFilterMatchStart,
   hasActiveBoardFilter,
-  slotMatchesBoardFilter,
+  slotMatchesBoardFilter as rawSlotMatchesBoardFilter,
 } from './board-filter.js';
 
 const id = (value: string) => value as UUID;
@@ -15,6 +15,8 @@ const day = (value: string) => DateOnlyIso.parse(value);
 
 const bay1 = id('bay-1');
 const bay2 = id('bay-2');
+const fabrication: Department = 'fabrication';
+const paint: Department = 'paint';
 const job1 = id('job-1');
 const job2 = id('job-2');
 
@@ -25,6 +27,16 @@ const jobsById = new Map([
   [job1, { customerId: customerA }],
   [job2, { customerId: customerB }],
 ]);
+
+const slotMatchesBoardFilter = (
+  input: Omit<Parameters<typeof rawSlotMatchesBoardFilter>[0], 'bayDepartment'> & {
+    bayDepartment?: Department;
+  },
+) => {
+  const { bayDepartment = fabrication, ...rest } = input;
+
+  return rawSlotMatchesBoardFilter({ ...rest, bayDepartment });
+};
 
 const filterWith = (overrides: Partial<BoardFilter>): BoardFilter => ({
   ...emptyBoardFilter,
@@ -39,6 +51,7 @@ describe('hasActiveBoardFilter', () => {
   it('is true when any dimension is set', () => {
     expect(hasActiveBoardFilter(filterWith({ bayId: bay1 }))).toBe(true);
     expect(hasActiveBoardFilter(filterWith({ customerId: customerA }))).toBe(true);
+    expect(hasActiveBoardFilter(filterWith({ department: fabrication }))).toBe(true);
     expect(hasActiveBoardFilter(filterWith({ jobId: job1 }))).toBe(true);
   });
 });
@@ -60,6 +73,29 @@ describe('slotMatchesBoardFilter', () => {
 
     expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: null } })).toBe(true);
     expect(slotMatchesBoardFilter({ bayId: bay2, filter, jobsById, slot: { jobId: null } })).toBe(false);
+  });
+
+  it('matches the department dimension against the slot owning bay', () => {
+    const filter = filterWith({ department: fabrication });
+
+    expect(
+      slotMatchesBoardFilter({
+        bayDepartment: fabrication,
+        bayId: bay1,
+        filter,
+        jobsById,
+        slot: { jobId: null },
+      }),
+    ).toBe(true);
+    expect(
+      slotMatchesBoardFilter({
+        bayDepartment: paint,
+        bayId: bay2,
+        filter,
+        jobsById,
+        slot: { jobId: null },
+      }),
+    ).toBe(false);
   });
 
   it('matches the job dimension only for the booked job', () => {
@@ -97,18 +133,51 @@ describe('slotMatchesBoardFilter', () => {
   });
 
   it('requires every active dimension to match', () => {
-    const filter = filterWith({ bayId: bay1, customerId: customerA, jobId: job1 });
+    const filter = filterWith({ bayId: bay1, customerId: customerA, department: fabrication, jobId: job1 });
 
-    expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job1 } })).toBe(true);
-    expect(slotMatchesBoardFilter({ bayId: bay2, filter, jobsById, slot: { jobId: job1 } })).toBe(false);
-    expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job2 } })).toBe(false);
+    expect(
+      slotMatchesBoardFilter({
+        bayDepartment: fabrication,
+        bayId: bay1,
+        filter,
+        jobsById,
+        slot: { jobId: job1 },
+      }),
+    ).toBe(true);
+    expect(
+      slotMatchesBoardFilter({
+        bayDepartment: fabrication,
+        bayId: bay2,
+        filter,
+        jobsById,
+        slot: { jobId: job1 },
+      }),
+    ).toBe(false);
+    expect(
+      slotMatchesBoardFilter({
+        bayDepartment: paint,
+        bayId: bay1,
+        filter,
+        jobsById,
+        slot: { jobId: job1 },
+      }),
+    ).toBe(false);
+    expect(
+      slotMatchesBoardFilter({
+        bayDepartment: fabrication,
+        bayId: bay1,
+        filter,
+        jobsById,
+        slot: { jobId: job2 },
+      }),
+    ).toBe(false);
   });
 });
 
 describe('countBoardFilterMatches', () => {
   const bays = [
-    { id: bay1, slots: [{ jobId: job1 }, { jobId: null }] },
-    { id: bay2, slots: [{ jobId: job2 }] },
+    { department: fabrication, id: bay1, slots: [{ jobId: job1 }, { jobId: null }] },
+    { department: paint, id: bay2, slots: [{ jobId: job2 }] },
   ];
 
   it('counts every slot for the empty filter', () => {
@@ -118,6 +187,7 @@ describe('countBoardFilterMatches', () => {
   it('counts only slots matching all active dimensions', () => {
     expect(countBoardFilterMatches({ bays, filter: filterWith({ bayId: bay1 }), jobsById })).toBe(2);
     expect(countBoardFilterMatches({ bays, filter: filterWith({ customerId: customerA }), jobsById })).toBe(1);
+    expect(countBoardFilterMatches({ bays, filter: filterWith({ department: fabrication }), jobsById })).toBe(2);
     expect(
       countBoardFilterMatches({
         bays,
@@ -131,6 +201,7 @@ describe('countBoardFilterMatches', () => {
 describe('getEarliestBoardFilterMatchStart', () => {
   const bays = [
     {
+      department: paint,
       id: bay2,
       slots: [
         { jobId: job2, startDate: day('2026-06-14') },
@@ -138,6 +209,7 @@ describe('getEarliestBoardFilterMatchStart', () => {
       ],
     },
     {
+      department: fabrication,
       id: bay1,
       slots: [
         { jobId: job1, startDate: day('2026-06-12') },
@@ -212,6 +284,17 @@ describe('getEarliestBoardFilterMatchStart', () => {
     ).toBe('2026-06-14');
   });
 
+  it('prioritizes the earliest future match for department filters', () => {
+    expect(
+      getEarliestBoardFilterMatchStart({
+        bays,
+        filter: filterWith({ department: fabrication }),
+        jobsById,
+        today: day('2026-06-11'),
+      }),
+    ).toBe('2026-06-12');
+  });
+
   it('includes today slots when prioritizing customer and bay filters', () => {
     const todaySlot = {
       jobId: job1,
@@ -222,6 +305,7 @@ describe('getEarliestBoardFilterMatchStart', () => {
       getEarliestBoardFilterMatchStart({
         bays: [
           {
+            department: fabrication,
             id: bay1,
             slots: [
               { jobId: job1, startDate: day('2026-06-12') },

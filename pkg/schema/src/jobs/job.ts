@@ -254,6 +254,13 @@ export const JobBayRenameResult = z.object({
   bay: Bay,
 });
 
+export type JobBayDeleteInput = z.infer<typeof JobBayDeleteInput>;
+export const JobBayDeleteInput = z
+  .object({
+    id: UUID,
+  })
+  .strict();
+
 export type JobBaySetDisabledInput = z.infer<typeof JobBaySetDisabledInput>;
 export const JobBaySetDisabledInput = z
   .object({

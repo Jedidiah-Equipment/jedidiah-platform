@@ -54,7 +54,7 @@ A Part's moving average cost is derived from ordered cost-bearing movements, is 
 
 The visual pipeline is fixed: Procurement -> Supply -> Fabrication -> Paint -> Assembly. A **Department** groups **Bays**, but is not an authorization boundary.
 
-**Bay** is a durable physical workspace. Avoid Station, Workstation, Cell, or Machine. Bays are created, renamed, disabled, and re-enabled by admins. Disabled Bays reject new bookings but keep existing schedule history.
+**Bay** is a durable physical workspace. Avoid Station, Workstation, Cell, or Machine. Bays are created, renamed, disabled, and re-enabled by admins. Disabled Bays reject new bookings but keep existing schedule history. Deleting is only for a Bay added in error: a Bay any Slot, Product Bay, or Operator Assignment references — open or closed — is refused and disabled instead, while its Bay Calendar Exceptions go with it.
 
 **Bay Operator** is a permissionless shop-floor user role. An **Operator Assignment** attaches one Bay Operator to one Bay until unassigned; the current operator is the open assignment interval, not a column on the Bay.
 

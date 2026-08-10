@@ -8,7 +8,7 @@ import {
   type JobBayOperatorAssignmentHistoryItem,
   JobBayRenameInput,
 } from '@pkg/schema';
-import { IconHistory, IconLoader2, IconPencil, IconPlus, IconUserMinus } from '@tabler/icons-react';
+import { IconHistory, IconLoader2, IconPencil, IconPlus, IconTrash, IconUserMinus } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
@@ -102,6 +102,7 @@ export const BaysPage: React.FC = () => {
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [editingBayId, setEditingBayId] = useState<string | null>(null);
   const [historyBay, setHistoryBay] = useState<Bay | null>(null);
+  const [deletingBay, setDeletingBay] = useState<Bay | null>(null);
 
   // Derived from the live query so a partial save never leaves the edit dialog showing stale state.
   const editingBay = editingBayId ? (bays.find((bay) => bay.id === editingBayId) ?? null) : null;
@@ -197,15 +198,40 @@ export const BaysPage: React.FC = () => {
                               </Tooltip>
                             ) : null}
                             {canManageBays ? (
-                              <Button
-                                aria-label={`Edit ${bay.name}`}
-                                onClick={() => setEditingBayId(bay.id)}
-                                size="icon-sm"
-                                type="button"
-                                variant="ghost"
-                              >
-                                <IconPencil />
-                              </Button>
+                              <>
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <Button
+                                        aria-label={`Edit ${bay.name}`}
+                                        onClick={() => setEditingBayId(bay.id)}
+                                        size="icon-sm"
+                                        type="button"
+                                        variant="ghost"
+                                      />
+                                    }
+                                  >
+                                    <IconPencil />
+                                  </TooltipTrigger>
+                                  <TooltipContent>Edit Bay</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <Button
+                                        aria-label={`Delete ${bay.name}`}
+                                        onClick={() => setDeletingBay(bay)}
+                                        size="icon-sm"
+                                        type="button"
+                                        variant="ghost"
+                                      />
+                                    }
+                                  >
+                                    <IconTrash />
+                                  </TooltipTrigger>
+                                  <TooltipContent>Delete Bay</TooltipContent>
+                                </Tooltip>
+                              </>
                             ) : null}
                           </CardAction>
                         </CardHeader>
@@ -236,7 +262,58 @@ export const BaysPage: React.FC = () => {
         operatorsLoading={operatorsQuery.isLoading}
       />
       <BayOperatorHistoryDialog bay={historyBay} onClose={() => setHistoryBay(null)} />
+      <DeleteBayDialog bay={deletingBay} onClose={() => setDeletingBay(null)} onDeleted={refreshBayData} />
     </>
+  );
+};
+
+const DeleteBayDialog: React.FC<{ bay: Bay | null; onClose: () => void; onDeleted: () => Promise<void> }> = ({
+  bay,
+  onClose,
+  onDeleted,
+}) => {
+  const trpc = useTRPC();
+  const showMutationError = useApiMutationErrorToast();
+
+  // Only a Bay nothing references can go; the server owns that judgment and says what still holds it.
+  const deleteBayMutation = useMutation(
+    trpc.jobs.deleteBay.mutationOptions({
+      onSuccess: async () => {
+        onClose();
+        await onDeleted();
+        toast.success('Bay deleted');
+      },
+      onError: (error) => showMutationError(error, 'Unable to delete Bay.'),
+    }),
+  );
+
+  return (
+    <Dialog onOpenChange={(open) => !open && onClose()} open={bay !== null}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Delete Bay</DialogTitle>
+          <DialogDescription>
+            {bay
+              ? `Delete ${bay.name} for good, along with its Calendar Exceptions. Only a Bay nothing else references can go — disable it instead to retire a Bay that has been worked.`
+              : null}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button disabled={deleteBayMutation.isPending} onClick={onClose} type="button" variant="outline">
+            Cancel
+          </Button>
+          <Button
+            disabled={deleteBayMutation.isPending || bay === null}
+            onClick={() => bay && deleteBayMutation.mutate({ id: bay.id })}
+            type="button"
+            variant="destructive"
+          >
+            {deleteBayMutation.isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
+            Delete Bay
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

@@ -4,6 +4,8 @@ import {
   getUniqueViolationConstraint,
   jobBayOperatorAssignments,
   jobBays,
+  jobSlots,
+  productBays,
   user,
 } from '@pkg/db';
 import { getPlantDateNow } from '@pkg/domain';
@@ -16,6 +18,7 @@ import {
   JobBayAssignOperatorResult,
   type JobBayCreateInput,
   JobBayCreateResult,
+  type JobBayDeleteInput,
   type JobBayListInput,
   type JobBayListResult,
   type JobBayOperatorAssignmentHistoryInput,
@@ -29,10 +32,16 @@ import {
 } from '@pkg/schema';
 import { and, asc, desc, eq, isNotNull, isNull, type SQL } from 'drizzle-orm';
 
-import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../audit/audit-service.js';
+import {
+  defineAuditDescriptor,
+  recordAuditCreate,
+  recordAuditDelete,
+  recordAuditEvent,
+} from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
 import {
   JobBayAlreadyAssignedError,
+  JobBayInUseError,
   JobBayNotFoundError,
   JobBayOperatorAssignmentDeniedError,
   JobBayOperatorAssignmentNotFoundError,
@@ -154,6 +163,33 @@ export async function setJobBayDisabled({
       updatedAt: new Date(),
     }),
     table: jobBays,
+  });
+}
+
+/**
+ * Removes a Bay added in error, which is the only Bay a delete can reach.
+ *
+ * A Bay that any Slot, Product Bay, or Operator Assignment references — open or closed — carries
+ * history the plant still reads, so it is refused here and disabled instead. Bay Calendar Exceptions
+ * are per-Bay overrides that mean nothing without their Bay, and the schema already cascades them.
+ */
+export async function deleteJobBay({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: JobBayDeleteInput;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const bay = await getJobBayForUpdate(tx, input.id);
+
+    await assertJobBayUnreferenced(tx, input.id);
+
+    await tx.delete(jobBays).where(eq(jobBays.id, input.id));
+
+    await recordAuditDelete({ db: tx, descriptor: jobBayAuditDescriptor, actorUserId, input: bay });
   });
 }
 
@@ -315,6 +351,34 @@ async function getJobBayForUpdate(tx: DatabaseTransaction, id: string): Promise<
   }
 
   return bay;
+}
+
+async function assertJobBayUnreferenced(tx: DatabaseTransaction, id: string): Promise<void> {
+  const [slot] = await tx.select({ id: jobSlots.id }).from(jobSlots).where(eq(jobSlots.bayId, id)).limit(1);
+
+  if (slot) {
+    throw new JobBayInUseError(id, 'This Bay has Slots on its queue. Disable it instead of deleting it.');
+  }
+
+  const [productBay] = await tx
+    .select({ productId: productBays.productId })
+    .from(productBays)
+    .where(eq(productBays.bayId, id))
+    .limit(1);
+
+  if (productBay) {
+    throw new JobBayInUseError(id, 'This Bay is a default Bay for a Product. Disable it instead of deleting it.');
+  }
+
+  const [assignment] = await tx
+    .select({ id: jobBayOperatorAssignments.id })
+    .from(jobBayOperatorAssignments)
+    .where(eq(jobBayOperatorAssignments.bayId, id))
+    .limit(1);
+
+  if (assignment) {
+    throw new JobBayInUseError(id, 'This Bay has Operator history. Disable it instead of deleting it.');
+  }
 }
 
 async function assertJobBayExists(db: Db | DatabaseTransaction, id: string): Promise<void> {

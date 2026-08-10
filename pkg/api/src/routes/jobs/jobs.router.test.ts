@@ -3,10 +3,12 @@ import {
   customers,
   type Db,
   eq,
+  jobBayCalendarExceptions,
   jobBayOperatorAssignments,
   jobBays,
   jobSlots,
   jobs,
+  productBays,
   products,
   productUnits,
   quotes,
@@ -395,12 +397,83 @@ describe('jobs bay management', () => {
     await expect(salesCaller.jobs.createBay({ department: 'paint', name: 'Paint Bay' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
+    await expect(salesCaller.jobs.deleteBay({ id: '00000000-0000-4000-8000-000000000b01' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
     await expect(
       adminCaller.jobs.renameBay({
         id: '00000000-0000-4000-8000-00000000dead',
         name: 'Missing Bay',
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(adminCaller.jobs.deleteBay({ id: '00000000-0000-4000-8000-00000000dead' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+  });
+
+  test('deletes a Bay nothing references, with audit', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const created = await caller.jobs.createBay({ department: 'paint', name: 'Paint Bay 9' });
+
+    await expect(caller.jobs.deleteBay({ id: created.bay.id })).resolves.toBeUndefined();
+    await expect(caller.jobs.listJobBays({ filters: {} })).resolves.toMatchObject({
+      items: expect.not.arrayContaining([expect.objectContaining({ id: created.bay.id })]),
+    });
+
+    const events = await context.db.select().from(auditEvents).where(eq(auditEvents.entityId, created.bay.id));
+    expect(events.map((event) => event.action)).toEqual(['created', 'deleted']);
+  });
+
+  test('keeps a Bay a Slot, Product Bay, or Operator Assignment still references', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    const slotBayId = '00000000-0000-4000-8000-000000000b01';
+    const productBayId = '00000000-0000-4000-8000-000000000b02';
+    const operatorBayId = '00000000-0000-4000-8000-000000000b03';
+
+    await caller.jobs.bookSlot({ bayId: slotBayId, durationDays: 1, jobId: job.id });
+    await context.db
+      .insert(productBays)
+      .values({ bayId: productBayId, defaultWorkingDays: 3, productId: context.product.id });
+    await createUser(context.db, {
+      email: 'delete.operator@example.com',
+      id: 'delete-operator-user-id',
+      name: 'Delete Operator',
+      role: 'bay-operator',
+    });
+    await caller.jobs.assignBayOperator({ bayId: operatorBayId, operatorUserId: 'delete-operator-user-id' });
+    // Closed assignments are history worth keeping, so an unassigned Bay still refuses the delete.
+    await caller.jobs.unassignBayOperator({ bayId: operatorBayId });
+
+    for (const bayId of [slotBayId, productBayId, operatorBayId]) {
+      await expect(caller.jobs.deleteBay({ id: bayId })).rejects.toMatchObject({
+        code: 'CONFLICT',
+        cause: { code: 'job.bay_in_use' },
+      });
+    }
+
+    await expect(caller.jobs.listJobBays({ filters: {} })).resolves.toMatchObject({
+      items: expect.arrayContaining(
+        [slotBayId, productBayId, operatorBayId].map((id) => expect.objectContaining({ id })),
+      ),
+    });
+  });
+
+  test('deletes a Bay together with its Calendar Exceptions', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const created = await caller.jobs.createBay({ department: 'paint', name: 'Paint Bay 10' });
+
+    await caller.jobs.addBayException({
+      bayId: created.bay.id,
+      date: '2026-06-06',
+      direction: 'work',
+      label: 'Saturday push',
+    });
+
+    await expect(caller.jobs.deleteBay({ id: created.bay.id })).resolves.toBeUndefined();
+    await expect(
+      context.db.select().from(jobBayCalendarExceptions).where(eq(jobBayCalendarExceptions.bayId, created.bay.id)),
+    ).resolves.toEqual([]);
   });
 
   test('rejects new bookings for disabled Bays while Board reads still include them', async ({ context }) => {

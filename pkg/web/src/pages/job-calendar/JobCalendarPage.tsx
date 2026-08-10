@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import { type BayCalendarExceptionDirection, BoardMaxHistoryInput, type DateOnlyIso, type OffDay } from '@pkg/schema';
+import type { BayCalendarExceptionDirection, DateOnlyIso, OffDay } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
@@ -32,7 +32,7 @@ export const JobCalendarPage: React.FC = () => {
   const { invalidateJobs } = useQueryInvalidation();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(BoardMaxHistoryInput));
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const bays = baysQuery.data?.items ?? [];
   const enabledBayIds = useMemo(

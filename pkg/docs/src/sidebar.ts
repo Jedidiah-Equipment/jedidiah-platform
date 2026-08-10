@@ -19,6 +19,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     items: [
       { text: 'Find a Job', link: '/production/find-a-job' },
       { text: 'Open a Bay plan', link: '/production/open-a-bay-plan' },
+      { text: 'Delete a Bay', link: '/production/delete-a-bay' },
     ],
   },
   {

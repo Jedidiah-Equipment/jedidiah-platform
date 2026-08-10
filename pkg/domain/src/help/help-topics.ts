@@ -10,6 +10,7 @@ import { isRemoteAppEnv } from '../environment.js';
  * `pnpm verify`. Repoint an entry in the same PR that writes its page.
  */
 export const HELP_TOPICS = {
+  bays: '/production/delete-a-bay',
   home: '/',
   inventory: '/inventory/stock-on-hand-and-free-stock',
   inventoryBuyList: '/inventory/raise-purchase-orders-from-the-buy-list',

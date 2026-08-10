@@ -1,6 +1,7 @@
 import {
   type DatabaseTransaction,
   type Db,
+  getForeignKeyViolationConstraint,
   getUniqueViolationConstraint,
   jobBayOperatorAssignments,
   jobBays,
@@ -187,7 +188,17 @@ export async function deleteJobBay({
 
     await assertJobBayUnreferenced(tx, input.id);
 
-    await tx.delete(jobBays).where(eq(jobBays.id, input.id));
+    // The checks above name what is holding the Bay; the FK is the backstop that keeps a referrer
+    // added later failing closed as a refusal rather than a 500.
+    try {
+      await tx.delete(jobBays).where(eq(jobBays.id, input.id));
+    } catch (error) {
+      if (getForeignKeyViolationConstraint(error)) {
+        throw new JobBayInUseError(input.id, 'Something still references this Bay. Disable it instead of deleting it.');
+      }
+
+      throw error;
+    }
 
     await recordAuditDelete({ db: tx, descriptor: jobBayAuditDescriptor, actorUserId, input: bay });
   });

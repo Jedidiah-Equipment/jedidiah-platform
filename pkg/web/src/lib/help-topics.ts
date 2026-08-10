@@ -6,6 +6,7 @@ import type { HelpTopic } from '@pkg/domain';
  * wins, so a route nested under another area (`/inventory/close-out`) beats the area it sits in.
  */
 const TOPIC_ROUTES: ReadonlyArray<readonly [prefix: string, topic: HelpTopic]> = [
+  ['/bays', 'bays'],
   ['/inventory', 'inventory'],
   ['/inventory/buy-list', 'inventoryBuyList'],
   ['/inventory/close-out', 'inventoryCloseOut'],

@@ -97,7 +97,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
   // after the field's onChange has committed its value into form state.
   const commit = useCallback(() => {
     markChanged();
-    queueMicrotask(() => {
+    flushAfterFormStateCommit(() => {
       void flush();
     });
   }, [flush, markChanged]);

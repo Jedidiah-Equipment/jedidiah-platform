@@ -16,6 +16,8 @@ const UNIT_SUFFIXES = {
   set: 'set',
 } as const satisfies Record<PartUnitOfMeasure, string>;
 
+const MAX_QUANTITY_DECIMALS = 3;
+
 export function getPartQuantityUnitDisplay(unitOfMeasure: PartUnitOfMeasure | undefined): PartQuantityUnitDisplay {
   const unit = unitOfMeasure ?? 'piece';
 
@@ -28,8 +30,7 @@ export function getPartQuantityUnitDisplay(unitOfMeasure: PartUnitOfMeasure | un
  */
 export function formatPartQuantity(quantity: number, unitOfMeasure: PartUnitOfMeasure): string {
   if (unitOfMeasure === 'mm') {
-    const decimals = Math.min(3, (quantity.toString().split('.')[1] ?? '').length);
-    return `${formatNumber(quantity, { decimals })} pieces`;
+    return `${formatQuantityValue(quantity)} pieces`;
   }
 
   return `${quantity} ${UNIT_SUFFIXES[unitOfMeasure]}`;
@@ -59,5 +60,15 @@ export function formatLengthMetres(lengthMm: number): string {
 
 /** One length bucket of linear stock, read as "6 m x 3". */
 export function formatLengthBucket(lengthMm: number, quantity: number): string {
-  return `${formatLengthMetres(lengthMm)} × ${formatNumber(quantity, { decimals: 0 })}`;
+  return `${formatLengthMetres(lengthMm)} × ${formatQuantityValue(quantity)}`;
+}
+
+function formatQuantityValue(quantity: number): string {
+  const roundedQuantity = Math.round(quantity * 10 ** MAX_QUANTITY_DECIMALS) / 10 ** MAX_QUANTITY_DECIMALS;
+  const normalizedQuantity = Object.is(roundedQuantity, -0) ? 0 : roundedQuantity;
+  const [coefficient = '', exponentText = '0'] = normalizedQuantity.toString().toLowerCase().split('e');
+  const fractionLength = coefficient.split('.')[1]?.length ?? 0;
+  const decimals = Math.min(MAX_QUANTITY_DECIMALS, Math.max(0, fractionLength - Number(exponentText)));
+
+  return formatNumber(normalizedQuantity, { decimals });
 }

@@ -480,7 +480,13 @@ function jobProductSerialCondition(search: string): SQL {
   )`;
 }
 
-function buildJobListWhere(input: JobListInput): SQL | undefined {
+/**
+ * The Job List's filter, exported because the sales export answers for the rows the list is
+ * showing: two where-builders would drift, and a CSV that disagrees with the table above it is
+ * worse than no CSV. Takes only the filtering half of the input so a caller that has no pagination
+ * or sort to offer can still ask the question.
+ */
+export function buildJobListWhere(input: Pick<JobListInput, 'columnFilters' | 'filters' | 'search'>): SQL | undefined {
   const conditions: SQL[] = [isNull(jobs.cancelledAt)];
 
   if (input.filters.jobId) {

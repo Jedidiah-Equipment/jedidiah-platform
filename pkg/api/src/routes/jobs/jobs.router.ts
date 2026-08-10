@@ -14,6 +14,7 @@ import {
   listBayOperatorAssignmentHistory,
   listBayOperators,
   listBays,
+  listCompletedJobSales,
   listJobBays,
   listJobCustomerOptions,
   listJobs,
@@ -49,6 +50,7 @@ import {
   JobCreateInput,
   JobCustomerOptionListInput,
   JobListInput,
+  JobSalesExportInput,
   JobUpdateInput,
   MoveJobSlotInput,
   RemoveBayCalendarExceptionInput,
@@ -124,6 +126,15 @@ export const jobsRouter = router({
   list: authorizedProcedure('job:read')
     .input(JobListInput)
     .query(({ ctx, input }) => listJobs({ db: ctx.db, input })),
+
+  /**
+   * Gated on `inventory_cost:read` as a whole rather than field by field: the report exists to put
+   * cost beside retail, so a caller who cannot read cost would be downloading a spreadsheet with
+   * its point cut out of it. The Job List button follows the same permission.
+   */
+  salesExport: authorizedProcedure('inventory_cost:read')
+    .input(JobSalesExportInput)
+    .query(({ ctx, input }) => listCompletedJobSales({ db: ctx.db, input })),
 
   customerOptions: authorizedProcedure('job:read')
     .input(JobCustomerOptionListInput)

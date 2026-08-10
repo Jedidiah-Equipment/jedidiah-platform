@@ -4,7 +4,6 @@ import {
   diffDateOnlyDays,
   foldJobScheduleStates,
   JOHANNESBURG_TIME_ZONE,
-  pricePersistedQuote,
   startOfDateOnlyWeek,
   toPlantDateOnly,
   zonedDateStartToUtcInstant,
@@ -23,6 +22,7 @@ import { and, asc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { findBoardBayRows, toProjectedBoard } from '../jobs/board-read.js';
 import { listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
 import { loadQuoteAssociations } from './quote-read-service.js';
+import { priceReportQuote, type ReportQuotePricingRow } from './quote-report-pricing.js';
 
 // Aggregate Quote reads for the dashboard: counts, sums, and week buckets that project to their own
 // summary shapes. QuoteSummary-shaped list reads (including upcoming deliveries) stay in
@@ -33,22 +33,7 @@ const QUOTE_NEWLY_SENT_WINDOW_DAYS = 30;
 const QUOTE_DECISION_WINDOW_DAYS = 90;
 const STALE_SENT_QUOTE_LIMIT = 8;
 
-type ReportQuotePricingRow = {
-  deliveryIncluded: boolean;
-  deliveryPrice: number;
-  discountPercent: number;
-  kind: 'custom' | 'product';
-  quotedBasePrice: number;
-};
-
 type ReportQuoteRow = ReportQuotePricingRow & { id: UUID };
-
-type ReportQuotePricingSelection = { productAssemblyId: UUID | null; quotedPrice: number };
-type ReportQuotePricingWorkItem = {
-  hourlyRate: number;
-  hours: number;
-  parts: readonly { quantity: number; unitPrice: number }[];
-};
 
 export async function summarizeQuotesByStatus({ db }: { db: Db }): Promise<QuoteStatusSummary> {
   const rows = await db
@@ -276,28 +261,6 @@ export async function listStaleSentQuotes({
       }).total,
     })),
   });
-}
-
-function priceReportQuote({
-  row,
-  selectedAssemblies,
-  workItems,
-}: {
-  row: ReportQuotePricingRow;
-  selectedAssemblies: readonly ReportQuotePricingSelection[];
-  workItems: readonly ReportQuotePricingWorkItem[];
-}) {
-  const commonFacts = {
-    deliveryIncluded: row.deliveryIncluded,
-    deliveryPrice: row.deliveryPrice,
-    discountPercent: row.discountPercent,
-    quotedBasePrice: row.quotedBasePrice,
-    selectedAssemblies,
-  };
-
-  if (row.kind === 'product') return pricePersistedQuote({ ...commonFacts, kind: 'product' });
-
-  return pricePersistedQuote({ ...commonFacts, kind: 'custom', workItems });
 }
 
 function getPlantWeekRange({ now, weekCount }: { now: Date; weekCount: number }) {

@@ -1,7 +1,7 @@
 import { hasPermission } from '@pkg/domain';
 import { DateOnlyIso, type JobListInput, JobSortBy, type UUID } from '@pkg/schema';
-import { IconPlus } from '@tabler/icons-react';
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { IconDownload, IconLoader2, IconPlus } from '@tabler/icons-react';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button.js';
 import { Switch } from '@/components/ui/switch.js';
 import { toSelectOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { jobListPageDescription } from '@/utils/page-descriptions.js';
@@ -26,6 +27,7 @@ import {
   jobTablePinnedRightColumns,
 } from './components/JobListTableColumns.js';
 import { JobSheet } from './components/JobSheet.js';
+import { downloadJobSalesExport } from './job-sales-export.js';
 
 export const useJobListTableStore = createJobListTableStore('jobs-list-table');
 
@@ -87,6 +89,8 @@ export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ se
 export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
   const canEditJobs = hasPermission(accessQuery.data, 'job:update');
@@ -127,6 +131,21 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
       sortDirection: 'asc',
     }),
   );
+
+  // The report is cost against retail, so it follows the inventory cost gate the API puts on it
+  // rather than `job:read`: a reader who cannot see cost has nothing to download.
+  const canReadCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
+  const salesExportMutation = useMutation({
+    mutationFn: () =>
+      queryClient.fetchQuery(
+        trpc.jobs.salesExport.queryOptions({
+          columnFilters: tableController.listInput.columnFilters,
+          search: tableController.listInput.search,
+        }),
+      ),
+    onError: (error) => showMutationError(error, 'Unable to export completed jobs.'),
+    onSuccess: (rows) => downloadJobSalesExport(rows),
+  });
 
   const jobsQuery = useInfiniteQuery(
     trpc.jobs.list.infiniteQueryOptions(tableController.listInput, {
@@ -211,6 +230,21 @@ export const JobListTable: React.FC<{ customerId?: UUID }> = ({ customerId }) =>
             />
             Include Completed
           </label>
+          {canReadCosts ? (
+            <Button
+              disabled={salesExportMutation.isPending}
+              onClick={() => salesExportMutation.mutate()}
+              size="sm"
+              variant="outline"
+            >
+              {salesExportMutation.isPending ? (
+                <IconLoader2 className="animate-spin" data-icon="inline-start" />
+              ) : (
+                <IconDownload data-icon="inline-start" />
+              )}
+              Export Completed
+            </Button>
+          ) : null}
         </div>
       }
       tableClassName={customerId ? 'min-w-[784px]' : 'min-w-[960px]'}

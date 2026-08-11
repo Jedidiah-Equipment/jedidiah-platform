@@ -1,0 +1,18 @@
+{
+  "releasedAt": "2026-08-11T11:33:12.850Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Edit discounts on accepted allocation quotes",
+          "description": "Anyone who can update quotes can now change the discount on an accepted allocation quote, reopening it for review."
+        },
+        {
+          "title": "Review activity across all jobs",
+          "description": "Open Jobs → Activity to see general feedback from every job in one reverse-chronological feed, with job, product, serial, customer or stock ownership, submitter, and time details."
+        }
+      ]
+    }
+  ]
+}

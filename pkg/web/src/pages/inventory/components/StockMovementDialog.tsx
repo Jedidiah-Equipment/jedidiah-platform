@@ -1,5 +1,5 @@
 import { useDebouncedValue } from '@mantine/hooks';
-import { deriveStockMovementWarnings, type StockMovementContext } from '@pkg/domain';
+import { deriveMovementWarnings, type JobMovementFacts } from '@pkg/domain';
 import type {
   InventoryJobOption,
   JobStockMovementType,
@@ -8,7 +8,7 @@ import type {
   StockOnHandRow,
 } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { EntityCombobox } from '@/components/common/EntityCombobox.js';
@@ -16,10 +16,11 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { useInventoryJobOptions } from '@/hooks/options/index.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useMovementWarnings } from '@/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { StockMovementWarningPrompt, warningMessageFor } from './StockMovementWarningPrompt.js';
+import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
   partQuantityValidationMessage,
   partSelectOptions,
@@ -58,7 +59,7 @@ export function StockMovementDialog({
   const [jobSearch, setJobSearch] = useState('');
   const [debouncedJobSearch] = useDebouncedValue(jobSearch, 250);
   const [selectedJob, setSelectedJob] = useState<InventoryJobOption | null>(null);
-  const acknowledgedWarnings = useRef<readonly StockMovementWarningCode[]>([]);
+  const movementWarningsOutcome = useMovementWarnings();
   const validator = useMemo(() => stockJobMovementValidator(parts), [parts]);
   const verb = type === 'checkout' ? 'Check out' : 'Return';
   const jobId = fixedJob?.id ?? selectedJob?.id ?? '';
@@ -77,7 +78,7 @@ export function StockMovementDialog({
     }),
   );
 
-  function movementContext(values: StockJobMovementFormValues): StockMovementContext {
+  function movementFacts(values: StockJobMovementFormValues): JobMovementFacts {
     const lengthMm = Number.isNaN(values.lengthMm) ? null : values.lengthMm;
     const jobStock: JobStockRow | undefined = jobStockQuery.data?.items.find((row) => row.partId === values.partId);
     const bucket = items
@@ -105,11 +106,7 @@ export function StockMovementDialog({
     // Staying quiet is the honest state: the post still returns the ledger's own verdict.
     if (jobStockQuery.isPending) return [];
 
-    return deriveStockMovementWarnings({
-      context: movementContext(values),
-      movementType: type,
-      quantity: values.quantity,
-    });
+    return deriveMovementWarnings({ facts: { ...movementFacts(values), kind: type }, quantity: values.quantity });
   }
 
   return (
@@ -122,17 +119,14 @@ export function StockMovementDialog({
         const part = parts.find((candidate) => candidate.partId === values.partId);
         if (!part) throw new Error('Select a Part');
 
-        acknowledgedWarnings.current = movementWarnings(values);
+        movementWarningsOutcome.acknowledge(movementWarnings(values));
         return mutation.mutateAsync(toJobMovementInput(values, part));
       }}
       onCreated={async (result) => {
         await invalidateInventory();
         onOpenChange(false);
         toast.success(type === 'checkout' ? 'Stock checked out' : 'Stock returned to store');
-        // The prompt already showed what the dialog could see; only raise what its snapshot missed.
-        for (const warning of result.warnings) {
-          if (!acknowledgedWarnings.current.includes(warning)) toast.warning(warningMessageFor(warning));
-        }
+        movementWarningsOutcome.reconcile(result.warnings);
       }}
       onOpenChange={onOpenChange}
       open={open}

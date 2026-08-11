@@ -1,134 +1,168 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, test } from 'vitest';
+import { deriveMovementWarnings, unacknowledgedWarnings } from './movement-warnings.js';
 
-import {
-  deriveReceiptWarnings,
-  deriveReturnToSupplierWarnings,
-  deriveStockMovementWarnings,
-  type StockMovementContext,
-} from './movement-warnings.js';
-
-const stocked: StockMovementContext = {
+const jobFacts = {
   bucketQuantityOnHand: 10,
-  cfoQuantity: 4,
+  cfoQuantity: 0,
   drawnBucketQuantity: 0,
   drawnQuantity: 0,
-};
+} as const;
 
-describe('deriveStockMovementWarnings', () => {
-  it('stays quiet for a draw inside the CFO with stock to cover it', () => {
-    expect(deriveStockMovementWarnings({ context: stocked, movementType: 'checkout', quantity: 4 })).toEqual([]);
+describe('deriveMovementWarnings — a Job draw', () => {
+  test('stays quiet inside the CFO and the rack', () => {
+    expect(deriveMovementWarnings({ facts: { ...jobFacts, cfoQuantity: 5, kind: 'checkout' }, quantity: 4 })).toEqual(
+      [],
+    );
   });
 
-  it('warns once a draw takes the Job past its CFO', () => {
-    expect(deriveStockMovementWarnings({ context: stocked, movementType: 'checkout', quantity: 5 })).toEqual([
-      'exceeds-cfo',
-    ]);
+  test('warns past a CFO that planned the Part, counting what the Job already drew', () => {
+    expect(
+      deriveMovementWarnings({
+        facts: { ...jobFacts, cfoQuantity: 5, drawnQuantity: 4, kind: 'checkout' },
+        quantity: 2,
+      }),
+    ).toEqual(['exceeds-cfo']);
   });
 
-  it('counts earlier draws towards the CFO', () => {
-    const context = { ...stocked, drawnQuantity: 3 };
-
-    expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 2 })).toEqual(['exceeds-cfo']);
-  });
-
-  it('stays quiet on an off-CFO draw, which no CFO figure can be exceeded on', () => {
-    const context = { ...stocked, cfoQuantity: 0 };
-
-    expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 1 })).toEqual([]);
-    // No draw size reintroduces it: past the rack it is the stock that is wrong, never the plan.
-    expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 500 })).toEqual([
+  test('says nothing about a CFO on a Job that never planned the Part', () => {
+    // "Past the CFO" means nothing where there is no CFO; the variance report answers unplanned draws.
+    expect(deriveMovementWarnings({ facts: { ...jobFacts, kind: 'checkout' }, quantity: 99 })).toEqual([
       'negative-stock-on-hand',
     ]);
   });
 
-  it('warns when a draw would take the length bucket negative', () => {
-    const context = { ...stocked, bucketQuantityOnHand: 1, cfoQuantity: 10 };
-
-    expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 2 })).toEqual([
-      'negative-stock-on-hand',
-    ]);
+  test('warns when the draw takes its own length bucket negative', () => {
+    expect(
+      deriveMovementWarnings({ facts: { ...jobFacts, bucketQuantityOnHand: 2, kind: 'checkout' }, quantity: 3 }),
+    ).toEqual(['negative-stock-on-hand']);
   });
 
-  it('raises both draw warnings together', () => {
-    const context = { ...stocked, bucketQuantityOnHand: 0, cfoQuantity: 1 };
-
-    expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 2 })).toEqual([
-      'exceeds-cfo',
-      'negative-stock-on-hand',
-    ]);
+  test('reports both draw warnings when one movement earns them together', () => {
+    expect(
+      deriveMovementWarnings({
+        facts: { ...jobFacts, bucketQuantityOnHand: 1, cfoQuantity: 2, kind: 'checkout' },
+        quantity: 3,
+      }),
+    ).toEqual(['exceeds-cfo', 'negative-stock-on-hand']);
   });
 
-  it('still flags a short rack on the off-CFO draw it no longer flags the CFO for', () => {
-    const context = { ...stocked, bucketQuantityOnHand: 0, cfoQuantity: 0 };
+  test('judges a return against its own length bucket, not the Part total', () => {
+    const facts = { ...jobFacts, drawnBucketQuantity: 2, drawnQuantity: 9, kind: 'return-to-store' } as const;
 
-    expect(deriveStockMovementWarnings({ context, movementType: 'checkout', quantity: 1 })).toEqual([
-      'negative-stock-on-hand',
-    ]);
+    expect(deriveMovementWarnings({ facts, quantity: 2 })).toEqual([]);
+    expect(deriveMovementWarnings({ facts, quantity: 3 })).toEqual(['exceeds-drawn']);
   });
 
-  it('never warns about stock on hand for a return, which only ever adds', () => {
-    const context = { ...stocked, bucketQuantityOnHand: -5, drawnBucketQuantity: 3 };
-
-    expect(deriveStockMovementWarnings({ context, movementType: 'return-to-store', quantity: 3 })).toEqual([]);
-  });
-
-  it('warns when a return exceeds what this Job still has drawn', () => {
-    const context = { ...stocked, drawnBucketQuantity: 2 };
-
-    expect(deriveStockMovementWarnings({ context, movementType: 'return-to-store', quantity: 3 })).toEqual([
-      'exceeds-drawn',
-    ]);
-  });
-
-  it('judges a return against its own length bucket, not the Part total', () => {
-    const context = { ...stocked, drawnBucketQuantity: 0, drawnQuantity: 6 };
-
-    expect(deriveStockMovementWarnings({ context, movementType: 'return-to-store', quantity: 1 })).toEqual([
-      'exceeds-drawn',
-    ]);
+  test('never calls the rack short on a return, which puts stock back', () => {
+    expect(
+      deriveMovementWarnings({
+        facts: { ...jobFacts, bucketQuantityOnHand: 0, drawnBucketQuantity: 5, kind: 'return-to-store' },
+        quantity: 5,
+      }),
+    ).toEqual([]);
   });
 });
 
-describe('deriveReceiptWarnings', () => {
-  it('stays quiet while the delivery is still inside the ordered quantity', () => {
-    expect(deriveReceiptWarnings({ orderedQuantity: 10, quantity: 4, receivedQuantity: 0 })).toEqual([]);
-  });
+describe('deriveMovementWarnings — a Receipt', () => {
+  test('warns only past what the line ordered, counting earlier receipts', () => {
+    const facts = { kind: 'receipt', orderedQuantity: 10, receivedQuantity: 8 } as const;
 
-  it('stays quiet on the receipt that completes the line exactly', () => {
-    expect(deriveReceiptWarnings({ orderedQuantity: 10, quantity: 6, receivedQuantity: 4 })).toEqual([]);
-  });
-
-  it('warns once the delivery would take the line past what was ordered', () => {
-    expect(deriveReceiptWarnings({ orderedQuantity: 10, quantity: 7, receivedQuantity: 4 })).toEqual([
-      'exceeds-ordered',
-    ]);
-  });
-
-  it('counts earlier receipts, so a small over-receipt on a nearly full line still warns', () => {
-    expect(deriveReceiptWarnings({ orderedQuantity: 10, quantity: 1, receivedQuantity: 10 })).toEqual([
-      'exceeds-ordered',
-    ]);
+    expect(deriveMovementWarnings({ facts, quantity: 2 })).toEqual([]);
+    expect(deriveMovementWarnings({ facts, quantity: 3 })).toEqual(['exceeds-ordered']);
   });
 });
 
-describe('deriveReturnToSupplierWarnings', () => {
-  it('stays quiet while the return is inside what the line still holds', () => {
-    expect(deriveReturnToSupplierWarnings({ outstandingReceivedQuantity: 10, quantity: 4 })).toEqual([]);
+describe('deriveMovementWarnings — a Return to Supplier', () => {
+  test('warns past what the line still holds, and posts either way', () => {
+    const facts = { kind: 'return-to-supplier', outstandingReceivedQuantity: 4 } as const;
+
+    expect(deriveMovementWarnings({ facts, quantity: 4 })).toEqual([]);
+    expect(deriveMovementWarnings({ facts, quantity: 5 })).toEqual(['exceeds-received']);
+  });
+});
+
+describe('deriveMovementWarnings — a Build', () => {
+  const bom = [
+    { componentPartId: 'plate', isInformational: false, quantity: 2 },
+    { componentPartId: 'bolt', isInformational: false, quantity: 4 },
+  ];
+
+  test('stays quiet when every component came off the rack at BOM quantity', () => {
+    expect(
+      deriveMovementWarnings({
+        facts: {
+          bom,
+          kind: 'build',
+          lines: [
+            { componentPartId: 'plate', isInformational: false, quantity: 4, quantityOnHand: 10 },
+            { componentPartId: 'bolt', isInformational: false, quantity: 8, quantityOnHand: 20 },
+          ],
+        },
+        quantity: 2,
+      }),
+    ).toEqual([]);
   });
 
-  it('stays quiet on the return that sends the whole receipt back', () => {
-    expect(deriveReturnToSupplierWarnings({ outstandingReceivedQuantity: 10, quantity: 10 })).toEqual([]);
+  test('warns on a deviation from the BOM and on a short rack, once each across components', () => {
+    expect(
+      deriveMovementWarnings({
+        facts: {
+          bom,
+          kind: 'build',
+          lines: [
+            { componentPartId: 'plate', isInformational: false, quantity: 5, quantityOnHand: 1 },
+            { componentPartId: 'bolt', isInformational: false, quantity: 8, quantityOnHand: 20 },
+          ],
+        },
+        quantity: 2,
+      }),
+    ).toEqual(['bom-deviation', 'negative-stock-on-hand']);
   });
 
-  it('warns — and never blocks — when more goes back than the line ever took in', () => {
-    expect(deriveReturnToSupplierWarnings({ outstandingReceivedQuantity: 10, quantity: 11 })).toEqual([
-      'exceeds-received',
-    ]);
+  test('warns about a BOM component the builder left off the list entirely', () => {
+    // The rule the browser could not reach before: it lived inside the cost-deriving `deriveBuild`.
+    expect(
+      deriveMovementWarnings({
+        facts: {
+          bom,
+          kind: 'build',
+          lines: [{ componentPartId: 'plate', isInformational: false, quantity: 4, quantityOnHand: 10 }],
+        },
+        quantity: 2,
+      }),
+    ).toEqual(['bom-deviation']);
   });
 
-  it('counts earlier returns, so a second return past the remainder still warns', () => {
-    expect(deriveReturnToSupplierWarnings({ outstandingReceivedQuantity: 0, quantity: 1 })).toEqual([
-      'exceeds-received',
-    ]);
+  test('keeps a raw-material line out of the rack judgement but not out of the deviation', () => {
+    const lines = [{ componentPartId: 'plate', isInformational: true, quantity: 5, quantityOnHand: 0 }];
+
+    expect(
+      deriveMovementWarnings({
+        facts: { bom: [{ componentPartId: 'plate', isInformational: true, quantity: 2 }], kind: 'build', lines },
+        quantity: 2,
+      }),
+    ).toEqual(['bom-deviation']);
+  });
+});
+
+describe('unacknowledgedWarnings', () => {
+  test('is empty when the post said nothing the operator had not already confirmed', () => {
+    expect(unacknowledgedWarnings({ acknowledged: ['exceeds-cfo'], posted: ['exceeds-cfo'] })).toEqual([]);
+  });
+
+  test('names what the post added, which is what moved under the preview', () => {
+    expect(
+      unacknowledgedWarnings({ acknowledged: ['exceeds-cfo'], posted: ['exceeds-cfo', 'negative-stock-on-hand'] }),
+    ).toEqual(['negative-stock-on-hand']);
+  });
+
+  test('says nothing about a warning the preview raised and the post did not', () => {
+    // The facts moved in the operator's favour between the preview and the post; there is nothing
+    // to tell them, because what they confirmed simply did not happen.
+    expect(unacknowledgedWarnings({ acknowledged: ['exceeds-drawn'], posted: [] })).toEqual([]);
+  });
+
+  test('treats an unpreviewed post as entirely unacknowledged', () => {
+    expect(unacknowledgedWarnings({ acknowledged: [], posted: ['exceeds-received'] })).toEqual(['exceeds-received']);
   });
 });

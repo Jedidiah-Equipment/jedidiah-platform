@@ -9,9 +9,11 @@ import { PostButton } from '@/components/stores/PostButton';
 import { PurchaseOrderLinePicker } from '@/components/stores/PurchaseOrderLinePicker';
 import { hasRequiredLength, parseQuantity, QuantityField } from '@/components/stores/QuantityField';
 import { NoActorNotice, StoresPartScreen } from '@/components/stores/StoresPartScreen';
+import { previewReceiptWarnings } from '@/lib/movement-preview';
 import { useMovementActorUserId } from '@/lib/stores-actor';
 import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
+import { useMovementConfirm } from '@/lib/use-movement-confirm';
 import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
 /**
@@ -46,6 +48,7 @@ function ReceiveForm({ row }: { row: StockOnHandRow }) {
     trpc.purchaseOrders.receive.mutationOptions({ onError: outcome.onError, onSuccess: outcome.onSuccess }),
   );
 
+  const confirmFlow = useMovementConfirm({ acknowledge: outcome.acknowledge });
   const isLinear = row.unitOfMeasure === 'mm';
   const lengthMm = keyedLengthMm ?? (row.standardPurchaseLengthMm === null ? '' : String(row.standardPurchaseLengthMm));
   const parsedQuantity = parseQuantity(quantity);
@@ -93,17 +96,27 @@ function ReceiveForm({ row }: { row: StockOnHandRow }) {
         onPress={() => {
           if (parsedQuantity === null || line === null || actorUserId === null) return;
 
-          mutation.mutate({
-            actorUserId,
-            lengthMm: parsedLength,
-            partId: row.partId,
-            purchaseOrderId: line.purchaseOrderId,
-            quantity: parsedQuantity,
+          confirmFlow.submit({
+            post: () =>
+              mutation.mutate({
+                actorUserId,
+                lengthMm: parsedLength,
+                partId: row.partId,
+                purchaseOrderId: line.purchaseOrderId,
+                quantity: parsedQuantity,
+              }),
+            warnings: previewReceiptWarnings({ line, quantity: parsedQuantity }),
           });
         }}
       />
 
-      <MovementWarningModal onClose={outcome.acknowledgeWarnings} warnings={outcome.warnings} />
+      <MovementWarningModal
+        mode="confirm"
+        onClose={confirmFlow.cancel}
+        onConfirm={confirmFlow.confirm}
+        warnings={confirmFlow.pendingWarnings}
+      />
+      <MovementWarningModal mode="posted" onClose={outcome.acknowledgeWarnings} warnings={outcome.warnings} />
     </>
   );
 }

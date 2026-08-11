@@ -13,9 +13,11 @@ import { hasRequiredLength, parseQuantity, QuantityField } from '@/components/st
 import { NoActorNotice, StoresPartScreen } from '@/components/stores/StoresPartScreen';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
+import { previewReturnToSupplierWarnings } from '@/lib/movement-preview';
 import { useMovementActorUserId } from '@/lib/stores-actor';
 import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
+import { useMovementConfirm } from '@/lib/use-movement-confirm';
 import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
 /**
@@ -52,6 +54,7 @@ function ReturnToSupplierForm({ row }: { row: StockOnHandRow }) {
     trpc.purchaseOrders.returnToSupplier.mutationOptions({ onError: outcome.onError, onSuccess: outcome.onSuccess }),
   );
 
+  const confirmFlow = useMovementConfirm({ acknowledge: outcome.acknowledge });
   const isLinear = row.unitOfMeasure === 'mm';
   const lengthMm = keyedLengthMm ?? (row.standardPurchaseLengthMm === null ? '' : String(row.standardPurchaseLengthMm));
   const parsedQuantity = parseQuantity(quantity);
@@ -139,19 +142,29 @@ function ReturnToSupplierForm({ row }: { row: StockOnHandRow }) {
           if (parsedQuantity === null || line === null || reason === null || actorUserId === null) return;
 
           outcome.keepAlive();
-          mutation.mutate({
-            actorUserId,
-            lengthMm: parsedLength,
-            note: note.trim() === '' ? null : note.trim(),
-            partId: row.partId,
-            purchaseOrderId: line.purchaseOrderId,
-            quantity: parsedQuantity,
-            reason,
+          confirmFlow.submit({
+            post: () =>
+              mutation.mutate({
+                actorUserId,
+                lengthMm: parsedLength,
+                note: note.trim() === '' ? null : note.trim(),
+                partId: row.partId,
+                purchaseOrderId: line.purchaseOrderId,
+                quantity: parsedQuantity,
+                reason,
+              }),
+            warnings: previewReturnToSupplierWarnings({ lengthMm: parsedLength, line, quantity: parsedQuantity }),
           });
         }}
       />
 
-      <MovementWarningModal onClose={outcome.acknowledgeWarnings} warnings={outcome.warnings} />
+      <MovementWarningModal
+        mode="confirm"
+        onClose={confirmFlow.cancel}
+        onConfirm={confirmFlow.confirm}
+        warnings={confirmFlow.pendingWarnings}
+      />
+      <MovementWarningModal mode="posted" onClose={outcome.acknowledgeWarnings} warnings={outcome.warnings} />
     </>
   );
 }

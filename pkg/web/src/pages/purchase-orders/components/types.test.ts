@@ -3,9 +3,8 @@ import { PurchaseOrderView, type StockMovementWarningCode } from '@pkg/schema';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  confirmMovementWarnings,
   outstandingQuantity,
-  outstandingReceivedQuantity,
+  outstandingReceivedForLength,
   PurchaseOrderCreateFormValues,
   PurchaseOrderDraftFormValues,
   PurchaseOrderReceiveFormValues,
@@ -30,6 +29,7 @@ const lines = [
     partId: PART_ID,
     partName: 'Bearing',
     quantity: 4,
+    receiptBuckets: [{ lengthMm: null, outstandingReceivedQuantity: 1 }],
     receivedQuantity: 1,
     standardPurchaseLengthMm: null,
     unitOfMeasure: 'piece',
@@ -41,6 +41,10 @@ const lines = [
     partId: LINEAR_PART_ID,
     partName: 'Channel',
     quantity: 3,
+    receiptBuckets: [
+      { lengthMm: 3_000, outstandingReceivedQuantity: 2 },
+      { lengthMm: 6_000, outstandingReceivedQuantity: 5 },
+    ],
     receivedQuantity: 5,
     standardPurchaseLengthMm: 6_000,
     unitOfMeasure: 'mm',
@@ -138,25 +142,6 @@ describe('Purchase Order draft form values', () => {
 });
 
 describe('Purchase Order receiving values', () => {
-  it("requires explicit confirmation only when a warning is present, in the caller's words", () => {
-    const confirm = vi.fn(() => false);
-    const messageFor = vi.fn(() => 'This receipt takes the line past the quantity ordered.');
-    const receipt = (warnings: StockMovementWarningCode[]) =>
-      confirmMovementWarnings({ action: 'Receive it anyway?', confirm, messageFor, warnings });
-
-    expect(receipt([])).toBe(true);
-    expect(confirm).not.toHaveBeenCalled();
-    expect(receipt(['exceeds-ordered'])).toBe(false);
-    expect(confirm).toHaveBeenCalledWith('This receipt takes the line past the quantity ordered. Receive it anyway?');
-    confirm.mockReturnValue(true);
-    expect(receipt(['exceeds-ordered'])).toBe(true);
-
-    // The same helper carries the return's own verb, so the two prompts cannot drift apart.
-    expect(
-      confirmMovementWarnings({ action: 'Post it anyway?', confirm, messageFor, warnings: ['exceeds-received'] }),
-    ).toBe(true);
-    expect(confirm).toHaveBeenLastCalledWith('This receipt takes the line past the quantity ordered. Post it anyway?');
-  });
   const [pieceLine, linearLine] = purchaseOrder.lines;
   if (!pieceLine || !linearLine) throw new Error('Purchase Order fixture is missing its lines');
 
@@ -262,42 +247,20 @@ describe('Purchase Order return values', () => {
   const [pieceLine, linearLine] = purchaseOrder.lines;
   if (!pieceLine || !linearLine) throw new Error('Purchase Order fixture is missing its lines');
 
-  it('counts what a line can still send back without double-counting the netted returns', () => {
-    // The linear line's `receivedQuantity` of 5 is what the server says it has *kept*.
-    expect(outstandingReceivedQuantity({ line: linearLine, returns: [] })).toBe(5);
+  it('reads what a line can still send back from the bucket the return would post against', () => {
+    // The figure is served per bucket by the order read; picking the bucket is all this does.
+    expect(outstandingReceivedForLength({ lengthMm: 3_000, line: linearLine })).toBe(2);
+    expect(outstandingReceivedForLength({ lengthMm: 6_000, line: linearLine })).toBe(5);
 
-    // A defective return has already been netted out of that 5 server-side, because it re-opens the
-    // line. Subtracting it again here would report less stock on hand than the shelf holds.
-    expect(
-      outstandingReceivedQuantity({
-        line: linearLine,
-        returns: [{ partId: LINEAR_PART_ID, quantity: 2, reason: 'defective' }],
-      }),
-    ).toBe(5);
+    // A blank length on a linear line means the length we buy it in.
+    expect(outstandingReceivedForLength({ lengthMm: null, line: linearLine })).toBe(5);
 
-    // An `order-error` return is deliberately left in the received figure, so it comes off here.
-    expect(
-      outstandingReceivedQuantity({
-        line: linearLine,
-        returns: [{ partId: LINEAR_PART_ID, quantity: 2, reason: 'order-error' }],
-      }),
-    ).toBe(3);
+    // A discrete line holds one bucket, which no keyed length can move it off.
+    expect(outstandingReceivedForLength({ lengthMm: null, line: pieceLine })).toBe(1);
+    expect(outstandingReceivedForLength({ lengthMm: 6_000, line: pieceLine })).toBe(1);
 
-    // Another line's returns are none of this line's business.
-    expect(
-      outstandingReceivedQuantity({
-        line: linearLine,
-        returns: [{ partId: PART_ID, quantity: 2, reason: 'order-error' }],
-      }),
-    ).toBe(5);
-
-    // And it never goes negative, however the two figures happen to line up.
-    expect(
-      outstandingReceivedQuantity({
-        line: linearLine,
-        returns: [{ partId: LINEAR_PART_ID, quantity: 9, reason: 'order-error' }],
-      }),
-    ).toBe(0);
+    // A bucket nothing arrived in can still be keyed, and reads as nothing to send back.
+    expect(outstandingReceivedForLength({ lengthMm: 9_000, line: linearLine })).toBe(0);
   });
 
   it('sends no length for a discrete line and blanks an empty note', () => {

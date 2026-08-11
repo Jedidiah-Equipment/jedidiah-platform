@@ -1,5 +1,5 @@
 import { type DatabaseTransaction, type Db, purchaseOrderLines, purchaseOrders } from '@pkg/db';
-import { derivePurchaseOrderActions, deriveReceiptWarnings } from '@pkg/domain';
+import { deriveMovementWarnings, derivePurchaseOrderActions } from '@pkg/domain';
 import type { AuthId, PostReceiptInput, StockMovementPostResult, UUID } from '@pkg/schema';
 import { StockMovementPostResult as StockMovementPostResultSchema, unitClassFor } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
@@ -72,10 +72,9 @@ export async function postReceipt({
 
     return StockMovementPostResultSchema.parse({
       movement,
-      warnings: deriveReceiptWarnings({
-        orderedQuantity: line.quantity,
+      warnings: deriveMovementWarnings({
+        facts: { kind: 'receipt', orderedQuantity: line.quantity, receivedQuantity },
         quantity: input.quantity,
-        receivedQuantity,
       }),
     });
   });

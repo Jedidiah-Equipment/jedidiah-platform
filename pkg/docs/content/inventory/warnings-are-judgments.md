@@ -6,10 +6,12 @@ with the same sentence every time:
 
 > You can still post this movement.
 
-On a Checkout, a Return to Store, or a build, the submit button changes to say so — **Check out
-stock** becomes **Check out anyway**, **Return stock** becomes **Return anyway**, **Post build**
-becomes **Build anyway**. Receiving a delivery asks in a browser confirmation box instead, ending
-*"Receive it anyway?"*, and the button stays **Receive** either way.
+The submit button changes to say so, wherever you are: **Check out stock** becomes **Check out
+anyway**, **Return stock** becomes **Return anyway**, **Post build** becomes **Build anyway**,
+**Receive** becomes **Receive it anyway**, and **Post return** becomes **Post it anyway**.
+
+On the stores tablet the same warning opens **Check this movement** before anything is posted, with
+**Post anyway** and **Go back**. Going back records nothing at all.
 
 Nothing is disabled. Nothing needs an override code or someone else's password.
 

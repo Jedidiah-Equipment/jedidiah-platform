@@ -13,12 +13,12 @@ import {
 } from '@pkg/db';
 import {
   deriveCommitment,
+  deriveMovementWarnings,
   deriveMovingAverage,
   deriveMovingAverageTimeline,
   deriveOutstandingDrawUnitCost,
   derivePartStockActions,
-  deriveStockMovementWarnings,
-  type StockMovementContext,
+  type JobMovementFacts,
   valueStockBucket,
   valueStockMovement,
 } from '@pkg/domain';
@@ -196,7 +196,7 @@ export async function postJobMovement({
 
     return StockMovementPostResultSchema.parse({
       movement,
-      warnings: deriveStockMovementWarnings({ context, movementType, quantity: input.quantity }),
+      warnings: deriveMovementWarnings({ facts: { ...context, kind: movementType }, quantity: input.quantity }),
     });
   });
 }
@@ -497,7 +497,7 @@ export async function getStockMovementHistory({
 async function loadStockMovementContext(
   db: DatabaseTransaction,
   input: PostJobMovementInput,
-): Promise<StockMovementContext> {
+): Promise<JobMovementFacts> {
   const bucketCondition = bucketMatches(input.lengthMm);
   const drawnCondition = and(
     eq(stockMovements.jobId, input.jobId),

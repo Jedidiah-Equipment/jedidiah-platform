@@ -16,16 +16,15 @@ the moment the stock exists — there is no separate paper step afterwards.
    standard one. Leave it blank otherwise; the field tells you which length it will assume.
 6. If you have cost access, leave **Unit cost override** blank to use the Purchase Order price. Fill
    it only when the invoice disagrees with the order.
-7. Click **Receive**.
-8. If a browser confirmation box appears asking *"Receive it anyway?"*, read what it says and accept
-   it if the delivery really was that size.
+7. Click **Receive**. If the delivery is bigger than the line ordered, the button reads **Receive it
+   anyway** — click it once you have read the panel and the delivery really was that size.
 
 A **Delivery received** toast confirms it, and the Part's stock on hand goes up immediately.
 
 ## If it warns you
 
 Receiving more than the line ordered raises *This receipt takes the line past the quantity ordered.*
-— in the yellow panel while you type, and again in the confirmation box at step 8. Accepting is
+in the yellow panel while you type, and the button becomes **Receive it anyway**. Posting it is
 usually right; suppliers round up to a full box. See
 [Warnings are judgments, not blocks](./warnings-are-judgments.md).
 

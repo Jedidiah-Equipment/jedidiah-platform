@@ -1,4 +1,5 @@
-import type { StockMovementPostResult } from '@pkg/schema';
+import { unacknowledgedWarnings } from '@pkg/domain';
+import type { StockMovementPostResult, StockMovementWarningCode } from '@pkg/schema';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -24,9 +25,10 @@ export function usePartByCode(partCode: string) {
  * and a generic wrapper over them buys nothing a screen cannot spell out in one line — so this owns
  * the outcome and the screen owns the call.
  *
- * The warnings held here are the ones the *server* returned. Nothing in the tablet re-derives them
- * (see `MovementWarningModal`), so this is the only place they can come from — and holding them in
- * state rather than toasting them is what lets the screen block until they have been read.
+ * The warnings held here are what the post added on top of whatever the screen already confirmed.
+ * The preview and the post read the same served facts through the same derivation, so agreement is
+ * the normal case and this stays empty; what lands here is the ledger having moved under the scan.
+ * Holding it in state rather than toasting it is what lets the screen block until it has been read.
  */
 export function useStoresPostOutcome({ successMessage, returnTo }: { successMessage: string; returnTo: Href }) {
   const queryClient = useQueryClient();
@@ -34,16 +36,20 @@ export function useStoresPostOutcome({ successMessage, returnTo }: { successMess
   const toast = useAppToast();
   const { keepAlive } = useStoresActor();
   const [warnings, setWarnings] = useState<StockMovementPostResult['warnings']>([]);
+  const [acknowledged, setAcknowledged] = useState<readonly StockMovementWarningCode[]>([]);
 
   const onError = (error: { message: string }) => toast('error', error.message);
 
   const onSuccess = async (result: StockMovementPostResult) => {
     await invalidateQueryCache(queryClient);
     toast('success', successMessage);
-    setWarnings(result.warnings);
-    // A clean post returns the tablet to the scan field for the next item straight away; a warned
-    // one waits, so the dialog is not dismissed by the navigation that would follow it.
-    if (result.warnings.length === 0) router.dismissTo(returnTo);
+
+    const unseen = unacknowledgedWarnings({ acknowledged, posted: result.warnings });
+    setWarnings(unseen);
+    // A post that said nothing the operator had not already agreed to returns the tablet to the scan
+    // field for the next item; one that found something waits, so the dialog is not dismissed by the
+    // navigation that would otherwise follow it.
+    if (unseen.length === 0) router.dismissTo(returnTo);
   };
 
   const acknowledgeWarnings = () => {
@@ -51,5 +57,5 @@ export function useStoresPostOutcome({ successMessage, returnTo }: { successMess
     router.dismissTo(returnTo);
   };
 
-  return { acknowledgeWarnings, keepAlive, onError, onSuccess, warnings };
+  return { acknowledge: setAcknowledged, acknowledgeWarnings, keepAlive, onError, onSuccess, warnings };
 }

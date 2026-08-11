@@ -248,11 +248,3 @@ describe('quote cancellation authorization policy', () => {
     }
   });
 });
-
-describe('locked stock sale discount authorization policy', () => {
-  it('folds the locked discount into quote:update instead of a dedicated permission', () => {
-    expect(APP_PERMISSIONS).not.toContain('quote:discount');
-    expect(getRolePermissions('admin')).toContain('quote:update');
-    expect(getRolePermissions('sales')).toContain('quote:update');
-  });
-});

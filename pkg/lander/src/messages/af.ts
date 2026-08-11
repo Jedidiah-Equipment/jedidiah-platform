@@ -30,6 +30,8 @@ export const af: Messages = {
     facebookHandle: '@jedidiahequipment',
     instagramHandle: '@jedidiahequipment',
     contactUs: 'Kontak Ons',
+    beetleLabel: 'Miskruier',
+    internalAnalyticsDisabled: 'Internal User: Posthog Disabled',
     copyright: '© 2026 Jedidiah Equipment. Alle regte voorbehou.',
     tagline: 'Suid-Afrikaans gebou · Deur boere bewys',
   },

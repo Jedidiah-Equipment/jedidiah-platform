@@ -16,7 +16,6 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { useTRPC } from '@/lib/trpc.js';
 import { PurchaseOrderCreditNoteDialog } from './PurchaseOrderCreditNoteDialog.js';
 import { PurchaseOrderReturnDialog } from './PurchaseOrderReturnDialog.js';
-import { outstandingReceivedQuantity } from './types.js';
 
 /**
  * What has gone back to the Supplier off this order, and whether a credit note has answered it yet.
@@ -158,7 +157,6 @@ export function PurchaseOrderReturnsCard({
           key={returningLine.partId}
           line={returningLine}
           onOpenChange={(open) => setReturningPartId(open ? returningPartId : null)}
-          outstandingReceived={outstandingReceivedQuantity({ line: returningLine, returns })}
           purchaseOrder={purchaseOrder}
         />
       ) : null}

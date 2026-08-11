@@ -1,19 +1,15 @@
-import { deriveReceiptWarnings } from '@pkg/domain';
+import { deriveMovementWarnings } from '@pkg/domain';
 import type { PurchaseOrderLineView, PurchaseOrderView, StockMovementWarningCode } from '@pkg/schema';
 import { useMutation } from '@tanstack/react-query';
-import { useRef } from 'react';
 import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useMovementWarnings } from '@/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { StockMovementWarningPrompt } from '../../inventory/components/StockMovementWarningPrompt.js';
 import {
-  StockMovementWarningPrompt,
-  warningMessageFor,
-} from '../../inventory/components/StockMovementWarningPrompt.js';
-import {
-  confirmMovementWarnings,
   isLinearLine,
   outstandingQuantity,
   type PurchaseOrderReceiveFormValues,
@@ -41,7 +37,7 @@ export function PurchaseOrderReceiveDialog({
   const trpc = useTRPC();
   const { invalidateInventory, invalidatePurchaseOrders } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const acknowledgedWarnings = useRef<readonly StockMovementWarningCode[]>([]);
+  const movementWarnings = useMovementWarnings();
   const outstanding = outstandingQuantity(line);
 
   const mutation = useMutation(
@@ -54,10 +50,9 @@ export function PurchaseOrderReceiveDialog({
   function receiptWarnings(values: PurchaseOrderReceiveFormValues): StockMovementWarningCode[] {
     if (!Number.isFinite(values.quantity)) return [];
 
-    return deriveReceiptWarnings({
-      orderedQuantity: line.quantity,
+    return deriveMovementWarnings({
+      facts: { kind: 'receipt', orderedQuantity: line.quantity, receivedQuantity: line.receivedQuantity },
       quantity: values.quantity,
-      receivedQuantity: line.receivedQuantity,
     });
   }
 
@@ -70,29 +65,19 @@ export function PurchaseOrderReceiveDialog({
       }}
       description={`${line.partCode} · ${line.partName} — ${line.receivedQuantity} of ${line.quantity} received so far.`}
       onCreate={(values) => {
-        acknowledgedWarnings.current = receiptWarnings(values);
+        movementWarnings.acknowledge(receiptWarnings(values));
 
         return mutation.mutateAsync(toReceiptInput({ canReadCosts, line, purchaseOrderId: purchaseOrder.id, values }));
       }}
-      onBeforeCreate={(values) =>
-        confirmMovementWarnings({
-          action: 'Receive it anyway?',
-          confirm: (message) => window.confirm(message),
-          messageFor: warningMessageFor,
-          warnings: receiptWarnings(values),
-        })
-      }
       onCreated={async (result) => {
         await Promise.all([invalidatePurchaseOrders(), invalidateInventory()]);
         onOpenChange(false);
         toast.success('Delivery received');
-        for (const warning of result.warnings) {
-          if (!acknowledgedWarnings.current.includes(warning)) toast.warning(warningMessageFor(warning));
-        }
+        movementWarnings.reconcile(result.warnings);
       }}
       onOpenChange={onOpenChange}
       open={open}
-      submitLabel="Receive"
+      submitLabel={(values) => (receiptWarnings(values).length > 0 ? 'Receive it anyway' : 'Receive')}
       title="Receive delivery"
       validator={PurchaseOrderReceiveFormValuesSchema}
     >

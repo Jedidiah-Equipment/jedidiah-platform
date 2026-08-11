@@ -1,6 +1,6 @@
 import type { StockMovementWarningCode, StockOnHandRow } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
@@ -8,10 +8,11 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useMovementWarnings } from '@/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { StockMovementWarningPrompt, warningMessageFor } from './StockMovementWarningPrompt.js';
+import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
   deriveStockBuildRows,
   deriveStockBuildWarnings,
@@ -44,7 +45,7 @@ export function StockBuildDialog({
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [builtPartId, setBuiltPartId] = useState(buildableParts[0]?.partId ?? '');
-  const acknowledgedWarnings = useRef<readonly StockMovementWarningCode[]>([]);
+  const movementWarnings = useMovementWarnings();
   const bomQuery = useQuery(trpc.parts.bom.queryOptions({ partId: builtPartId }, { enabled: builtPartId !== '' }));
 
   const bomLines = useMemo(
@@ -68,7 +69,9 @@ export function StockBuildDialog({
    * screen stays quiet. The post still returns the ledger's own verdict either way.
    */
   function warningsFor(values: StockBuildFormValues) {
-    return bomQuery.isPending ? [] : deriveStockBuildWarnings(rowsFor(values));
+    return bomQuery.isPending
+      ? []
+      : deriveStockBuildWarnings({ bomLines, quantity: values.quantity, rows: rowsFor(values) });
   }
 
   return (
@@ -79,7 +82,7 @@ export function StockBuildDialog({
       defaultValues={{ consumption: {}, quantity: 1 }}
       description="Record what came off the rack, and what it took to make it."
       onCreate={(values) => {
-        acknowledgedWarnings.current = warningsFor(values);
+        movementWarnings.acknowledge(warningsFor(values));
 
         return mutation.mutateAsync(toBuildInput(builtPartId, rowsFor(values), values.quantity));
       }}
@@ -87,11 +90,7 @@ export function StockBuildDialog({
         await invalidateInventory();
         onOpenChange(false);
         toast.success('Build posted');
-        // The prompt already showed what the dialog could see, judged at the size actually built;
-        // only what this snapshot missed is worth raising again once the ledger has ruled.
-        for (const code of new Set(result.warnings.flatMap((warning) => warning.codes))) {
-          if (!acknowledgedWarnings.current.includes(code)) toast.warning(warningMessageFor(code));
-        }
+        movementWarnings.reconcile([...new Set(result.warnings.flatMap((warning) => warning.codes))]);
       }}
       onOpenChange={onOpenChange}
       open={open}

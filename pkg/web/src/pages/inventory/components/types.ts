@@ -1,4 +1,4 @@
-import { type BuildBomLine, deriveBuildConsumption, deriveBuildWarnings, derivePartStockActions } from '@pkg/domain';
+import { type BuildBomLine, deriveBuildConsumption, deriveMovementWarnings, derivePartStockActions } from '@pkg/domain';
 import {
   CloseOutJobInput,
   InventoryUnitCost,
@@ -176,21 +176,37 @@ export function deriveStockBuildRows({
 
 /**
  * The same judgement the ledger applies on post, run against what this screen has loaded so the
- * builder sees it before committing rather than only afterwards.
+ * builder sees it before committing rather than only afterwards. The BOM goes in whole, not just
+ * the keyed rows: a component dropped from the list deviates from the BOM as surely as an edited
+ * quantity, and that half of the rule used to live where only the server could reach it.
  */
-export function deriveStockBuildWarnings(rows: readonly StockBuildRow[]): StockMovementWarningCode[] {
-  return [
-    ...new Set(
-      rows.flatMap((row) =>
-        deriveBuildWarnings({
-          expectedQuantity: row.expectedQuantity,
-          isInformational: row.isInformational,
-          quantity: Number(row.keyedQuantity),
-          quantityOnHand: row.quantityOnHand,
-        }),
-      ),
-    ),
-  ];
+export function deriveStockBuildWarnings({
+  bomLines,
+  quantity,
+  rows,
+}: {
+  bomLines: readonly BuildBomLine[];
+  quantity: number;
+  rows: readonly StockBuildRow[];
+}): StockMovementWarningCode[] {
+  const informationalByComponent = new Map(rows.map((row) => [row.componentPartId, row.isInformational]));
+
+  return deriveMovementWarnings({
+    facts: {
+      bom: bomLines.map((line) => ({
+        ...line,
+        isInformational: informationalByComponent.get(line.componentPartId) ?? false,
+      })),
+      kind: 'build',
+      lines: rows.map((row) => ({
+        componentPartId: row.componentPartId,
+        isInformational: row.isInformational,
+        quantity: Number(row.keyedQuantity),
+        quantityOnHand: row.quantityOnHand,
+      })),
+    },
+    quantity: Number.isFinite(quantity) ? quantity : 0,
+  });
 }
 
 /** A row the builder zeroed means none of it left the rack — a dropped line, not a zero movement. */

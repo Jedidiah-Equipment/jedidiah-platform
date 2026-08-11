@@ -1,10 +1,12 @@
-import type { InventoryJobOption, JobStockMovementType, StockOnHandRow } from '@pkg/schema';
-import { useMutation } from '@tanstack/react-query';
+import { deriveMovementWarnings } from '@pkg/domain';
+import type { InventoryJobOption, JobStockMovementType, StockMovementWarningCode, StockOnHandRow } from '@pkg/schema';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { type RefObject, useRef, useState } from 'react';
 
 import { useMovementActorUserId } from '@/lib/stores-actor';
 import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
+import { useMovementConfirm } from '@/lib/use-movement-confirm';
 import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
 import { JobPicker, type JobPickerHandle } from './JobPicker';
@@ -79,6 +81,7 @@ function JobMovementForm({
     }),
   );
 
+  const confirmFlow = useMovementConfirm({ acknowledge: outcome.acknowledge });
   const isLinear = row.unitOfMeasure === 'mm';
   // A full stick is what usually leaves the rack, so the Part's standard purchase length opens the
   // length question. Unlike a receipt, a Job movement has no server-side fallback for it.
@@ -88,6 +91,37 @@ function JobMovementForm({
   const jobIdToPost = fixedJobId ?? job?.id ?? null;
   const canPost =
     parsedQuantity !== null && jobIdToPost !== null && hasRequiredLength({ isLinear, lengthMm: parsedLength });
+
+  // The facts this movement is judged against, served by the same read the Job's stock tab uses.
+  const jobStockQuery = useQuery(
+    trpc.inventory.jobStock.queryOptions({ jobId: jobIdToPost ?? '' }, { enabled: jobIdToPost !== null }),
+  );
+
+  /**
+   * The ledger's own judgement, run here against what the server served. Silent until the Job's
+   * stock arrives: every figure would read zero, which warns on any draw at all — and the post
+   * returns the real verdict either way.
+   */
+  function previewWarnings(): StockMovementWarningCode[] {
+    if (parsedQuantity === null || jobStockQuery.data === undefined) return [];
+
+    const jobStock = jobStockQuery.data.items.find((item) => item.partId === row.partId);
+    const bucket = row.buckets.find((candidate) => candidate.lengthMm === parsedLength);
+
+    return deriveMovementWarnings({
+      facts: {
+        bucketQuantityOnHand: bucket?.quantity ?? 0,
+        cfoQuantity: jobStock?.cfoQuantity ?? 0,
+        drawnBucketQuantity:
+          parsedLength === null
+            ? (jobStock?.drawnQuantity ?? 0)
+            : (jobStock?.lengthBuckets.find((candidate) => candidate.lengthMm === parsedLength)?.drawnQuantity ?? 0),
+        drawnQuantity: jobStock?.drawnQuantity ?? 0,
+        kind: movementType,
+      },
+      quantity: parsedQuantity,
+    });
+  }
 
   return (
     <>
@@ -128,17 +162,27 @@ function JobMovementForm({
         onPress={() => {
           if (parsedQuantity === null || jobIdToPost === null || actorUserId === null) return;
 
-          mutation.mutate({
-            actorUserId,
-            jobId: jobIdToPost,
-            lengthMm: parsedLength,
-            partId: row.partId,
-            quantity: parsedQuantity,
+          confirmFlow.submit({
+            post: () =>
+              mutation.mutate({
+                actorUserId,
+                jobId: jobIdToPost,
+                lengthMm: parsedLength,
+                partId: row.partId,
+                quantity: parsedQuantity,
+              }),
+            warnings: previewWarnings(),
           });
         }}
       />
 
-      <MovementWarningModal onClose={outcome.acknowledgeWarnings} warnings={outcome.warnings} />
+      <MovementWarningModal
+        mode="confirm"
+        onClose={confirmFlow.cancel}
+        onConfirm={confirmFlow.confirm}
+        warnings={confirmFlow.pendingWarnings}
+      />
+      <MovementWarningModal mode="posted" onClose={outcome.acknowledgeWarnings} warnings={outcome.warnings} />
     </>
   );
 }

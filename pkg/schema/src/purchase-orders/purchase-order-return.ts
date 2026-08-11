@@ -8,6 +8,7 @@ import { PurchaseOrderDocumentType } from '../documents/document.js';
 import { declareInventoryCostFields, InventoryValue } from '../inventory/inventory-cost.js';
 import { StockMovementLengthMm, StockReturnToSupplierReason } from '../inventory/stock-movement.js';
 import { SupplierCompanyName } from '../suppliers/supplier.js';
+import { PurchaseOrderReceiptBucket } from './purchase-order.js';
 
 /**
  * One `return-to-supplier` movement on an order, with whether a credit note has answered it yet.
@@ -125,6 +126,8 @@ export const PartPurchaseOrderLine = z.object({
   outstandingQuantity: z.number().finite(),
   purchaseOrderCode: PurchaseOrderCode,
   purchaseOrderId: UUID,
+  /** Per length bucket, what a return can still send back — the tablet's preview threshold. */
+  receiptBuckets: z.array(PurchaseOrderReceiptBucket).default([]),
   receivedQuantity: z.number().finite(),
   supplierName: SupplierCompanyName,
 });

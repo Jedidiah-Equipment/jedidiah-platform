@@ -5,6 +5,7 @@ import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '.
 import { PurchaseOrderCode } from '../common/public-code.js';
 import { UUID } from '../common/uuid.js';
 import { declareInventoryCostFields, InventoryCost } from '../inventory/inventory-cost.js';
+import { StockMovementLengthMm } from '../inventory/stock-movement.js';
 import { JobCode } from '../jobs/job.js';
 import { PartStandardPurchaseLengthMm, PartUnitOfMeasure } from '../parts/part.js';
 
@@ -51,6 +52,19 @@ export const PurchaseOrderLineInput = z
   })
   .strict();
 
+/**
+ * What one length bucket of a line has taken in and kept — received less everything returned off it,
+ * every reason. This is the served fact a Return to Supplier is judged against, bucket-scoped
+ * because a return names a length: judging it against another length's receipts is what let the
+ * browser confirm one number while the post warned about another. Quantity-only, so a price-blind
+ * reader previews the same warning as anyone else.
+ */
+export type PurchaseOrderReceiptBucket = z.infer<typeof PurchaseOrderReceiptBucket>;
+export const PurchaseOrderReceiptBucket = z.object({
+  lengthMm: StockMovementLengthMm.nullable(),
+  outstandingReceivedQuantity: z.number().finite(),
+});
+
 /** A stored line always has an agreed price; only the API's cost gate can take it away (see the View). */
 export type PurchaseOrderLine = z.infer<typeof PurchaseOrderLine>;
 export const PurchaseOrderLine = PurchaseOrderLineInput.extend({
@@ -62,6 +76,8 @@ export const PurchaseOrderLine = PurchaseOrderLineInput.extend({
    * again but still carries the ledger rows a Part substitution would orphan.
    */
   hasStockMovements: z.boolean().default(false),
+  /** Per length bucket, what a return can still send back. Empty where nothing has arrived. */
+  receiptBuckets: z.array(PurchaseOrderReceiptBucket).default([]),
   /** What the line has received and kept — the number the derived states are read from. */
   receivedQuantity: z.number().finite(),
   standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
@@ -234,7 +250,7 @@ export const PurchaseOrderPdfModel = PurchaseOrder.pick({
   jobCodes: z.array(JobCode),
   // What the order asked for. Neither what has arrived against it nor whether anything has moved
   // belongs on the page the Supplier is sent.
-  lines: z.array(PurchaseOrderLine.omit({ hasStockMovements: true, receivedQuantity: true })),
+  lines: z.array(PurchaseOrderLine.omit({ hasStockMovements: true, receiptBuckets: true, receivedQuantity: true })),
   /**
    * Which rendering of the order this is. Amendments file further revisions rather than replacing
    * the original, so the printed number is how the Supplier knows the page in their hand is the

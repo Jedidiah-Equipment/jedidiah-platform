@@ -1,4 +1,7 @@
+import { deriveMovementWarnings } from '@pkg/domain';
 import { describe, expect } from 'vitest';
+
+import { postReceipt } from '../inventory/receipt-service.js';
 
 import { postReturnToSupplier } from '../inventory/return-to-supplier-service.js';
 import { listStockOnHand } from '../inventory/stock-movement-service.js';
@@ -248,5 +251,99 @@ describe('postReturnToSupplier', () => {
         },
       }),
     ).rejects.toMatchObject({ code: 'purchase_order.line_not_found' });
+  });
+});
+
+describe('what a preview is served against what the post judges', () => {
+  test('serves the same bucket verdict the post reaches, on a line received in two lengths', async ({ context }) => {
+    // The property the shared derivation exists for. The served facts and the post's own pool are
+    // two queries over the same rows, so this is where they could drift apart — and a linear line
+    // received in two lengths is where a Part-wide threshold used to disagree with the ledger.
+    const purchaseOrder = await sendOrder(context, [{ partId: LINEAR_PART_ID, quantity: 20, unitPrice: 40 }]);
+    await postReceipt({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { lengthMm: 6_000, partId: LINEAR_PART_ID, purchaseOrderId: purchaseOrder.id, quantity: 5, unitCost: 40 },
+    });
+    await postReceipt({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { lengthMm: 3_000, partId: LINEAR_PART_ID, purchaseOrderId: purchaseOrder.id, quantity: 2, unitCost: 20 },
+    });
+
+    const served = await getPurchaseOrder({ db: context.db, id: purchaseOrder.id });
+    const line = served.lines.find((candidate) => candidate.partId === LINEAR_PART_ID);
+    const bucketFor = (lengthMm: number) =>
+      line?.receiptBuckets.find((bucket) => bucket.lengthMm === lengthMm)?.outstandingReceivedQuantity ?? 0;
+
+    // Part-wide there are seven pieces, so a Part-wide threshold would call this return fine.
+    expect(bucketFor(6_000)).toBe(5);
+    expect(bucketFor(3_000)).toBe(2);
+
+    const previewed = deriveMovementWarnings({
+      facts: { kind: 'return-to-supplier', outstandingReceivedQuantity: bucketFor(3_000) },
+      quantity: 3,
+    });
+    const posted = await postReturnToSupplier({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        lengthMm: 3_000,
+        note: null,
+        partId: LINEAR_PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 3,
+        reason: 'wrong-item',
+      },
+    });
+
+    expect(previewed).toEqual(['exceeds-received']);
+    expect(posted.warnings).toEqual(previewed);
+  });
+
+  test('serves a bucket the next return will be judged against, once one has gone back', async ({ context }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 25 }]);
+    await receive(context, purchaseOrder.id, PIECE_PART_ID, 10);
+    await postReturnToSupplier({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: null,
+        partId: PIECE_PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 4,
+        reason: 'order-error',
+      },
+    });
+
+    const served = await getPurchaseOrder({ db: context.db, id: purchaseOrder.id });
+    const outstandingReceivedQuantity =
+      served.lines
+        .find((candidate) => candidate.partId === PIECE_PART_ID)
+        ?.receiptBuckets.find((bucket) => bucket.lengthMm === null)?.outstandingReceivedQuantity ?? 0;
+
+    // Every reason nets out of the pool, `order-error` included — what is left is what can go back.
+    expect(outstandingReceivedQuantity).toBe(6);
+
+    const previewed = deriveMovementWarnings({
+      facts: { kind: 'return-to-supplier', outstandingReceivedQuantity },
+      quantity: 7,
+    });
+    const posted = await postReturnToSupplier({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: null,
+        partId: PIECE_PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 7,
+        reason: 'defective',
+      },
+    });
+
+    expect(previewed).toEqual(['exceeds-received']);
+    expect(posted.warnings).toEqual(previewed);
   });
 });

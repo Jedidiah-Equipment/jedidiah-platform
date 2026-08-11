@@ -1,9 +1,5 @@
 import { type DatabaseTransaction, type Db, purchaseOrderLines, purchaseOrders, stockMovements } from '@pkg/db';
-import {
-  deriveOutstandingReceiptUnitCost,
-  derivePurchaseOrderActions,
-  deriveReturnToSupplierWarnings,
-} from '@pkg/domain';
+import { deriveMovementWarnings, deriveOutstandingReceiptUnitCost, derivePurchaseOrderActions } from '@pkg/domain';
 import type { AuthId, PostReturnToSupplierInput, StockMovementPostResult, UUID } from '@pkg/schema';
 import { StockMovementPostResult as StockMovementPostResultSchema, unitClassFor } from '@pkg/schema';
 import { and, asc, eq, inArray } from 'drizzle-orm';
@@ -14,12 +10,10 @@ import {
   PurchaseOrderNotFoundError,
 } from '../purchase-orders/purchase-order-errors.js';
 import { loadPurchaseOrderActionFacts } from '../purchase-orders/purchase-order-service.js';
+import { RECEIPT_POOL_MOVEMENT_TYPES } from '../purchase-orders/receipt-pool.js';
 import { bucketMatches, insertMovement, loadStockPart } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
-
-/** The two ways a PO line's stock moves. A return spends the pool the receipts filled. */
-const RECEIPT_POOL_MOVEMENT_TYPES = ['receipt', 'return-to-supplier'] as const;
 
 /**
  * Sends stock back to the Supplier off one received Purchase Order line (spec §4).
@@ -70,7 +64,7 @@ export async function postReturnToSupplier({
           eq(stockMovements.purchaseOrderId, purchaseOrder.id),
           eq(stockMovements.partId, input.partId),
           bucketMatches(lengthMm),
-          inArray(stockMovements.movementType, RECEIPT_POOL_MOVEMENT_TYPES),
+          inArray(stockMovements.movementType, [...RECEIPT_POOL_MOVEMENT_TYPES]),
         ),
       )
       .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
@@ -90,7 +84,10 @@ export async function postReturnToSupplier({
 
     return StockMovementPostResultSchema.parse({
       movement,
-      warnings: deriveReturnToSupplierWarnings({ outstandingReceivedQuantity, quantity: input.quantity }),
+      warnings: deriveMovementWarnings({
+        facts: { kind: 'return-to-supplier', outstandingReceivedQuantity },
+        quantity: input.quantity,
+      }),
     });
   });
 }

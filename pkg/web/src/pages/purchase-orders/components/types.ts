@@ -162,44 +162,22 @@ export function toReturnToSupplierInput({
 }
 
 /**
- * What a line can still send back: everything it took in, less everything already returned. Over
- * that only warns, so this is the prompt's threshold rather than a limit on the field.
+ * What this line can still send back in the bucket a return of this length would post against. The
+ * figure is served by `purchaseOrders.get`, computed by the same pool the post sums under its lock —
+ * read rather than re-derived, because a threshold computed here from netted totals is what let the
+ * dialog confirm one number while the post warned about another.
  */
-export function outstandingReceivedQuantity({
+export function outstandingReceivedForLength({
+  lengthMm,
   line,
-  returns,
 }: {
-  line: Pick<PurchaseOrderLineView, 'partId' | 'receivedQuantity'>;
-  returns: readonly Pick<PurchaseOrderReturnRow, 'partId' | 'quantity' | 'reason'>[];
+  lengthMm: number | null;
+  line: Pick<PurchaseOrderLineView, 'receiptBuckets' | 'standardPurchaseLengthMm' | 'unitOfMeasure'>;
 }): number {
-  // `receivedQuantity` has already had the replacement-owed returns netted out of it server-side,
-  // because those re-open the line. Subtracting them again here would count them twice — so only
-  // the `order-error` returns, which the server deliberately left in, come off.
-  const unnettedReturns = returns.reduce(
-    (total, row) => (row.partId === line.partId && row.reason === 'order-error' ? total + row.quantity : total),
-    0,
-  );
+  // A return keys nothing for a Part bought in one standard length; a short piece keys its own.
+  const bucketLength = line.unitOfMeasure === 'mm' ? (lengthMm ?? line.standardPurchaseLengthMm) : null;
 
-  return Math.max(0, line.receivedQuantity - unnettedReturns);
-}
-
-/**
- * The loud confirm a warned movement earns before it posts. One helper for both directions off a
- * Purchase Order line, because a warning never blocks either of them — it only asks (spec §3).
- */
-export function confirmMovementWarnings({
-  action,
-  confirm,
-  messageFor,
-  warnings,
-}: {
-  /** The verb the prompt ends on: "Receive it anyway?", "Post it anyway?". */
-  action: string;
-  confirm: (message: string) => boolean;
-  messageFor: (warning: StockMovementWarningCode) => string;
-  warnings: readonly StockMovementWarningCode[];
-}): boolean {
-  return warnings.length === 0 || confirm(`${warnings.map(messageFor).join('\n')} ${action}`);
+  return line.receiptBuckets.find((bucket) => bucket.lengthMm === bucketLength)?.outstandingReceivedQuantity ?? 0;
 }
 
 /**

@@ -1,4 +1,5 @@
-import type { PartPurchaseOrderLine, StockOnHandRow } from '@pkg/schema';
+import { deriveMovementWarnings } from '@pkg/domain';
+import type { PartPurchaseOrderLine, StockMovementWarningCode, StockOnHandRow } from '@pkg/schema';
 import { useMutation } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -12,6 +13,7 @@ import { NoActorNotice, StoresPartScreen } from '@/components/stores/StoresPartS
 import { useMovementActorUserId } from '@/lib/stores-actor';
 import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
+import { useMovementConfirm } from '@/lib/use-movement-confirm';
 import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
 /**
@@ -46,11 +48,22 @@ function ReceiveForm({ row }: { row: StockOnHandRow }) {
     trpc.purchaseOrders.receive.mutationOptions({ onError: outcome.onError, onSuccess: outcome.onSuccess }),
   );
 
+  const confirmFlow = useMovementConfirm({ acknowledge: outcome.acknowledge });
   const isLinear = row.unitOfMeasure === 'mm';
   const lengthMm = keyedLengthMm ?? (row.standardPurchaseLengthMm === null ? '' : String(row.standardPurchaseLengthMm));
   const parsedQuantity = parseQuantity(quantity);
   const parsedLength = isLinear ? parseQuantity(lengthMm) : null;
   const hasLength = hasRequiredLength({ isLinear, lengthMm: parsedLength });
+
+  /** Both facts a receipt is judged against ride the line the dock just picked. */
+  function previewWarnings(): StockMovementWarningCode[] {
+    if (parsedQuantity === null || line === null) return [];
+
+    return deriveMovementWarnings({
+      facts: { kind: 'receipt', orderedQuantity: line.orderedQuantity, receivedQuantity: line.receivedQuantity },
+      quantity: parsedQuantity,
+    });
+  }
 
   return (
     <>
@@ -93,17 +106,27 @@ function ReceiveForm({ row }: { row: StockOnHandRow }) {
         onPress={() => {
           if (parsedQuantity === null || line === null || actorUserId === null) return;
 
-          mutation.mutate({
-            actorUserId,
-            lengthMm: parsedLength,
-            partId: row.partId,
-            purchaseOrderId: line.purchaseOrderId,
-            quantity: parsedQuantity,
+          confirmFlow.submit({
+            post: () =>
+              mutation.mutate({
+                actorUserId,
+                lengthMm: parsedLength,
+                partId: row.partId,
+                purchaseOrderId: line.purchaseOrderId,
+                quantity: parsedQuantity,
+              }),
+            warnings: previewWarnings(),
           });
         }}
       />
 
-      <MovementWarningModal onClose={outcome.acknowledgeWarnings} warnings={outcome.warnings} />
+      <MovementWarningModal
+        mode="confirm"
+        onClose={confirmFlow.cancel}
+        onConfirm={confirmFlow.confirm}
+        warnings={confirmFlow.pendingWarnings}
+      />
+      <MovementWarningModal mode="posted" onClose={outcome.acknowledgeWarnings} warnings={outcome.warnings} />
     </>
   );
 }

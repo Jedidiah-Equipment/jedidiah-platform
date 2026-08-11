@@ -37,6 +37,7 @@ import {
   type PurchaseOrderPdfModel,
   type PurchaseOrderPdfRenderer,
   type PurchaseOrderProgress,
+  type PurchaseOrderReceiptBucket,
   type PurchaseOrderSaveDraftInput,
   PurchaseOrder as PurchaseOrderSchema,
   type UUID,
@@ -73,6 +74,7 @@ import {
   PurchaseOrderPartSupplierMismatchError,
   PurchaseOrderSupplierNotFoundError,
 } from './purchase-order-errors.js';
+import { loadReceiptBuckets, receiptBucketKey } from './receipt-pool.js';
 
 type PurchaseOrderRow = typeof purchaseOrders.$inferSelect;
 export type PurchaseOrderDb = Db | DatabaseTransaction;
@@ -159,13 +161,20 @@ export async function getPurchaseOrder({ db, id }: { db: PurchaseOrderDb; id: UU
   const aggregate = await loadPurchaseOrderAggregate({ db, id });
   if (!aggregate) throw new PurchaseOrderNotFoundError(id);
 
-  const [documentIds, receivedQuantities, linesWithMovements] = await Promise.all([
+  const [documentIds, receivedQuantities, linesWithMovements, receiptBuckets] = await Promise.all([
     loadLatestDocumentIds({ db, purchaseOrderIds: [id] }),
     loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
     loadLinesWithStockMovements({ db, purchaseOrderIds: [id] }),
+    loadReceiptBuckets({ db, purchaseOrderIds: [id] }),
   ]);
 
-  return mapPurchaseOrder(aggregate, documentIds.get(id) ?? null, receivedQuantities, linesWithMovements);
+  return mapPurchaseOrder(
+    aggregate,
+    documentIds.get(id) ?? null,
+    receivedQuantities,
+    linesWithMovements,
+    receiptBuckets,
+  );
 }
 
 /**
@@ -560,15 +569,16 @@ export async function listPurchaseOrders({
     where,
     with: purchaseOrderWith,
   });
-  const [[totalRow], documentIds, receivedQuantities, linesWithMovements] = await Promise.all([
+  const [[totalRow], documentIds, receivedQuantities, linesWithMovements, receiptBuckets] = await Promise.all([
     db.select({ value: count() }).from(purchaseOrders).where(where),
     loadLatestDocumentIds({ db, purchaseOrderIds: rows.map((row) => row.id) }),
     loadReceivedQuantities({ db, purchaseOrderIds: rows.map((row) => row.id) }),
     loadLinesWithStockMovements({ db, purchaseOrderIds: rows.map((row) => row.id) }),
+    loadReceiptBuckets({ db, purchaseOrderIds: rows.map((row) => row.id) }),
   ]);
   const total = totalRow?.value ?? 0;
   const items = rows.map((row) =>
-    mapPurchaseOrder(row, documentIds.get(row.id) ?? null, receivedQuantities, linesWithMovements),
+    mapPurchaseOrder(row, documentIds.get(row.id) ?? null, receivedQuantities, linesWithMovements, receiptBuckets),
   );
 
   return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
@@ -827,6 +837,7 @@ function mapPurchaseOrder(
   documentId: UUID | null,
   receivedQuantities: ReadonlyMap<string, number>,
   linesWithMovements: ReadonlySet<string>,
+  receiptBuckets: ReadonlyMap<string, PurchaseOrderReceiptBucket[]>,
 ): PurchaseOrder {
   const receivedByPartId = new Map(
     row.lines.map((line) => [line.partId, receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0]),
@@ -863,6 +874,7 @@ function mapPurchaseOrder(
         partId: line.partId,
         partName: line.part.name,
         quantity: line.quantity,
+        receiptBuckets: receiptBuckets.get(receiptBucketKey(row.id, line.partId)) ?? [],
         receivedQuantity: receivedByPartId.get(line.partId) ?? 0,
         standardPurchaseLengthMm: line.part.standardPurchaseLengthMm,
         supplierCode: line.part.supplierCode,

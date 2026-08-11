@@ -5,6 +5,7 @@ import { PartPurchaseOrderLineResult as PartPurchaseOrderLineResultSchema } from
 import { and, eq } from 'drizzle-orm';
 
 import { loadReceivedQuantities, type PurchaseOrderDb, receivedQuantityKey } from './purchase-order-service.js';
+import { loadReceiptBuckets, receiptBucketKey } from './receipt-pool.js';
 
 /**
  * Every sent Purchase Order line carrying one Part, with what has arrived against it.
@@ -41,10 +42,11 @@ export async function listPartPurchaseOrderLines({
     .innerJoin(supplier, eq(supplier.id, purchaseOrders.supplierId))
     .where(and(eq(purchaseOrderLines.partId, partId), eq(purchaseOrders.status, 'sent')));
 
-  const received = await loadReceivedQuantities({
-    db,
-    purchaseOrderIds: [...new Set(lines.map((line) => line.purchaseOrderId))],
-  });
+  const purchaseOrderIds = [...new Set(lines.map((line) => line.purchaseOrderId))];
+  const [received, receiptBuckets] = await Promise.all([
+    loadReceivedQuantities({ db, purchaseOrderIds }),
+    loadReceiptBuckets({ db, purchaseOrderIds }),
+  ]);
 
   return PartPurchaseOrderLineResultSchema.parse({
     items: lines
@@ -54,6 +56,7 @@ export async function listPartPurchaseOrderLines({
         return {
           ...line,
           outstandingQuantity: Math.max(0, line.orderedQuantity - receivedQuantity),
+          receiptBuckets: receiptBuckets.get(receiptBucketKey(line.purchaseOrderId, partId)) ?? [],
           receivedQuantity,
         };
       })

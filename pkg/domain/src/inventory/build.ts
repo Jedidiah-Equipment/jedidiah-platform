@@ -34,14 +34,22 @@ export type BuildBomComponent = BuildBomLine & {
   isInformational: boolean;
 };
 
-/** One component the builder says actually left the rack, with the ledger facts it is judged against. */
-export type BuildPostedLine = {
+/**
+ * One component the builder says actually left the rack, with the facts its warnings are judged
+ * against. Deliberately carries no cost: a price-blind reader previews the same warnings as anyone
+ * else, so the judgement cannot depend on a figure their payload nulls out.
+ */
+export type BuildWarningLine = {
   componentPartId: string;
   isInformational: boolean;
-  lengthMm: number | null;
   quantity: number;
   /** Stock on hand for this component's own length bucket, before the build. */
   quantityOnHand: number;
+};
+
+/** A posted line, which the ledger also needs a length and a cost for. */
+export type BuildPostedLine = BuildWarningLine & {
+  lengthMm: number | null;
   /** The component's current average, already scaled to the piece length; null when never costed. */
   unitCost: number | null;
 };
@@ -78,11 +86,45 @@ export function deriveBuild({
   posted: readonly BuildPostedLine[];
   quantity: number;
 }): BuildDerivation {
+  const consumption: BuildConsumptionRow[] = posted.flatMap((line) =>
+    line.isInformational
+      ? []
+      : [
+          {
+            componentPartId: line.componentPartId,
+            lengthMm: line.lengthMm,
+            quantity: line.quantity,
+            unitCost: line.unitCost,
+          },
+        ],
+  );
+
+  return {
+    consumption,
+    producedUnitCost: deriveBuildProducedUnitCost({ consumed: consumption, quantity }),
+    warnings: deriveBuildComponentWarnings({ bom, lines: posted, quantity }),
+  };
+}
+
+/**
+ * Every component's warnings, attributed to the component that earned them. Split out of
+ * `deriveBuild` so a preview can reach it: the whole build derivation also stamps costs, which a
+ * price-blind builder never receives, and the dropped-line rule below used to be reachable only
+ * through it — so the browser judged a build by a rule the post did not use.
+ */
+export function deriveBuildComponentWarnings({
+  bom,
+  lines,
+  quantity,
+}: {
+  bom: readonly BuildBomComponent[];
+  lines: readonly BuildWarningLine[];
+  quantity: number;
+}): BuildDerivation['warnings'] {
   const expectedByComponent = new Map(bom.map((line) => [line.componentPartId, line.quantity * quantity]));
-  const consumption: BuildConsumptionRow[] = [];
   const warnings: BuildDerivation['warnings'] = [];
 
-  for (const line of posted) {
+  for (const line of lines) {
     const codes = deriveBuildWarnings({
       // A component the BOM never asked for is expected at zero, so posting any of it deviates.
       expectedQuantity: expectedByComponent.get(line.componentPartId) ?? 0,
@@ -91,26 +133,17 @@ export function deriveBuild({
       quantityOnHand: line.quantityOnHand,
     });
     if (codes.length > 0) warnings.push({ codes, componentPartId: line.componentPartId });
-
-    if (line.isInformational) continue;
-
-    consumption.push({
-      componentPartId: line.componentPartId,
-      lengthMm: line.lengthMm,
-      quantity: line.quantity,
-      unitCost: line.unitCost,
-    });
   }
 
   // A BOM component the builder left off the list entirely consumed none of what the BOM asked for,
   // which is as much a deviation as an edited quantity — and the loop above never sees it.
-  const postedComponentIds = new Set(posted.map((line) => line.componentPartId));
+  const keyedComponentIds = new Set(lines.map((line) => line.componentPartId));
   for (const line of bom) {
-    if (line.isInformational || postedComponentIds.has(line.componentPartId)) continue;
+    if (line.isInformational || keyedComponentIds.has(line.componentPartId)) continue;
     warnings.push({ codes: ['bom-deviation'], componentPartId: line.componentPartId });
   }
 
-  return { consumption, producedUnitCost: deriveBuildProducedUnitCost({ consumed: consumption, quantity }), warnings };
+  return warnings;
 }
 
 /**

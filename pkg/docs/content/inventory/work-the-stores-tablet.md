@@ -61,9 +61,15 @@ leftover row opens Return to Store with the Job already filled in. See
 
 ## If it warns you
 
-Some posts come back with **Check this movement**. It has already been posted — the stock physically
-moved, and the ledger records what happened. Read it, tap **Got it**, and tell the office if it was
-not what you meant. See [Warnings are judgments, not blocks](./warnings-are-judgments.md).
+Key a movement the ledger thinks is worth a second look — more than the Job drew, past what the line
+ordered, a rack that would go negative — and **Check this movement** appears before anything is
+posted. Read it, then tap **Post anyway** to record it or **Go back** to fix what you keyed. Nothing
+is written until you choose, and choosing **Go back** records nothing at all.
+
+Occasionally the same box appears *after* a post, saying it has already been posted. That means the
+stock moved under the tablet between your reading the screen and tapping the button — someone else
+drew the same Part, or a delivery landed. Read it, tap **Got it**, and tell the office if it was not
+what you meant. See [Warnings are judgments, not blocks](./warnings-are-judgments.md).
 
 ## Notes
 

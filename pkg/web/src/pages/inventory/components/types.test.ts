@@ -264,10 +264,10 @@ describe('stock build rows', () => {
     // The plate is periodic and only 1 piece is on hand, but 6 are keyed. The server posts nothing
     // for it and never calls its rack short, so the screen must not either.
     const rows = deriveStockBuildRows({ bomLines, items, values: { consumption: {}, quantity: 3 } });
-    expect(deriveStockBuildWarnings(rows)).toEqual([]);
+    expect(deriveStockBuildWarnings({ bomLines, quantity: 3, rows })).toEqual([]);
 
     const deviating = deriveStockBuildRows({ bomLines, items, values: { consumption: { [PLATE]: '7' }, quantity: 3 } });
-    expect(deriveStockBuildWarnings(deviating)).toEqual(['bom-deviation']);
+    expect(deriveStockBuildWarnings({ bomLines, quantity: 3, rows: deviating })).toEqual(['bom-deviation']);
   });
 
   it('drops a zeroed row rather than posting a zero-quantity movement', () => {

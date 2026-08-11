@@ -1,4 +1,10 @@
-import type { PartPurchaseOrderLine, StockOnHandRow, StockReturnToSupplierReason } from '@pkg/schema';
+import { deriveMovementWarnings } from '@pkg/domain';
+import type {
+  PartPurchaseOrderLine,
+  StockMovementWarningCode,
+  StockOnHandRow,
+  StockReturnToSupplierReason,
+} from '@pkg/schema';
 import { StockReturnToSupplierReason as ReasonEnum, STOCK_RETURN_TO_SUPPLIER_REASON_LABELS } from '@pkg/schema';
 import { useMutation } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
@@ -16,6 +22,7 @@ import { TextInput } from '@/components/ui/text-input';
 import { useMovementActorUserId } from '@/lib/stores-actor';
 import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
+import { useMovementConfirm } from '@/lib/use-movement-confirm';
 import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
 /**
@@ -52,11 +59,29 @@ function ReturnToSupplierForm({ row }: { row: StockOnHandRow }) {
     trpc.purchaseOrders.returnToSupplier.mutationOptions({ onError: outcome.onError, onSuccess: outcome.onSuccess }),
   );
 
+  const confirmFlow = useMovementConfirm({ acknowledge: outcome.acknowledge });
   const isLinear = row.unitOfMeasure === 'mm';
   const lengthMm = keyedLengthMm ?? (row.standardPurchaseLengthMm === null ? '' : String(row.standardPurchaseLengthMm));
   const parsedQuantity = parseQuantity(quantity);
   const parsedLength = isLinear ? parseQuantity(lengthMm) : null;
   const hasLength = hasRequiredLength({ isLinear, lengthMm: parsedLength });
+
+  /**
+   * What this line can still send back in the bucket the return would post against, served by the
+   * order read and judged here exactly as the post judges it. Read rather than computed: netting a
+   * threshold out of Part-wide totals is what let the browser and this screen disagree with the
+   * ledger about a line received in two lengths.
+   */
+  function previewWarnings(): StockMovementWarningCode[] {
+    if (parsedQuantity === null || line === null) return [];
+
+    const bucket = line.receiptBuckets.find((candidate) => candidate.lengthMm === parsedLength);
+
+    return deriveMovementWarnings({
+      facts: { kind: 'return-to-supplier', outstandingReceivedQuantity: bucket?.outstandingReceivedQuantity ?? 0 },
+      quantity: parsedQuantity,
+    });
+  }
 
   return (
     <>
@@ -139,19 +164,29 @@ function ReturnToSupplierForm({ row }: { row: StockOnHandRow }) {
           if (parsedQuantity === null || line === null || reason === null || actorUserId === null) return;
 
           outcome.keepAlive();
-          mutation.mutate({
-            actorUserId,
-            lengthMm: parsedLength,
-            note: note.trim() === '' ? null : note.trim(),
-            partId: row.partId,
-            purchaseOrderId: line.purchaseOrderId,
-            quantity: parsedQuantity,
-            reason,
+          confirmFlow.submit({
+            post: () =>
+              mutation.mutate({
+                actorUserId,
+                lengthMm: parsedLength,
+                note: note.trim() === '' ? null : note.trim(),
+                partId: row.partId,
+                purchaseOrderId: line.purchaseOrderId,
+                quantity: parsedQuantity,
+                reason,
+              }),
+            warnings: previewWarnings(),
           });
         }}
       />
 
-      <MovementWarningModal onClose={outcome.acknowledgeWarnings} warnings={outcome.warnings} />
+      <MovementWarningModal
+        mode="confirm"
+        onClose={confirmFlow.cancel}
+        onConfirm={confirmFlow.confirm}
+        warnings={confirmFlow.pendingWarnings}
+      />
+      <MovementWarningModal mode="posted" onClose={outcome.acknowledgeWarnings} warnings={outcome.warnings} />
     </>
   );
 }

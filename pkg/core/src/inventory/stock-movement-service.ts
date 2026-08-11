@@ -125,7 +125,7 @@ export async function postRevaluation({
 
     // A Built Part is costed by what its build consumed, so there is no price for a revaluation to
     // correct — the Part is refused rather than only the cost it was asked to assert.
-    assertPartStockAction(derivePartStockActions(part).revalue, { partId: input.partId });
+    assertPartStockAction(derivePartStockActions(part).revalue, { action: 'revalue', partId: input.partId });
 
     return insertMovement(tx, {
       actorUserId,
@@ -174,12 +174,10 @@ export async function postJobMovement({
 
     assertDeltaMatchesUnitClass(input.quantity, unitClass);
     assertLengthMatchesUnitClass(input.lengthMm, unitClass);
-    const actions = derivePartStockActions(part);
+    // One lookup names both the verdict read and the words a refusal is phrased in.
+    const action = movementType === 'checkout' ? 'checkout' : 'returnToStore';
 
-    assertPartStockAction(movementType === 'checkout' ? actions.checkout : actions.returnToStore, {
-      movement: movementType,
-      partId: input.partId,
-    });
+    assertPartStockAction(derivePartStockActions(part)[action], { action, partId: input.partId });
 
     const [context, unitCost] = await Promise.all([
       loadStockMovementContext(tx, input),
@@ -236,6 +234,7 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
         isInternallyFabricated: parts.isInternallyFabricated,
         name: parts.name,
         standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
+        stockTrackingMode: parts.stockTrackingMode,
         supplierName: supplier.companyName,
         unitOfMeasure: parts.unitOfMeasure,
       })
@@ -268,6 +267,7 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
         partId: part.id,
         partName: part.name,
         standardPurchaseLengthMm: part.standardPurchaseLengthMm,
+        stockTrackingMode: part.stockTrackingMode,
         supplierName: part.supplierName,
         unitOfMeasure: part.unitOfMeasure,
       };

@@ -126,7 +126,7 @@ export async function postBuild({
 }
 
 function assertBuildable(part: BuildPart): void {
-  assertPartStockAction(derivePartStockActions(part).build, { partId: part.id });
+  assertPartStockAction(derivePartStockActions(part).build, { action: 'build', partId: part.id });
 }
 
 /**

@@ -69,6 +69,7 @@ import {
   PurchaseOrderLineNotPricedError,
   PurchaseOrderNotFoundError,
   PurchaseOrderPartNotFoundError,
+  PurchaseOrderPartNotPurchasableError,
   PurchaseOrderPartSupplierMismatchError,
   PurchaseOrderSupplierNotFoundError,
 } from './purchase-order-errors.js';
@@ -964,7 +965,11 @@ export async function assertLinePartsMatchSupplier({
   for (const line of lines) {
     const part = byId.get(line.partId);
     if (!part) throw new PurchaseOrderPartNotFoundError(line.partId);
-    assertPartStockAction(derivePartStockActions(part).purchase, { partId: line.partId });
+    assertPartStockAction(derivePartStockActions(part).purchase, { action: 'purchase', partId: line.partId });
+    // The verdict reads the fabricated flag; `parts_supplier_or_bom` is what makes that the same
+    // question as having a Supplier. Asked directly too, so a Part with neither still reads as
+    // unbuyable rather than as belonging to some other Supplier.
+    if (part.supplierId === null) throw new PurchaseOrderPartNotPurchasableError(line.partId);
     if (part.supplierId !== supplierId) throw new PurchaseOrderPartSupplierMismatchError(line.partId);
     if (!isWholeUnitQuantity(line.quantity, unitClassFor(part.unitOfMeasure))) {
       throw new PurchaseOrderInvalidQuantityError(line.partId);

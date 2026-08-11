@@ -110,7 +110,7 @@ async function groupSelectionBySupplier({
   for (const line of input.lines) {
     const part = partsById.get(line.partId);
     if (!part) throw new PurchaseOrderPartNotFoundError(line.partId);
-    assertPartStockAction(derivePartStockActions(part).purchase, { partId: line.partId });
+    assertPartStockAction(derivePartStockActions(part).purchase, { action: 'purchase', partId: line.partId });
     // The Supplier is left-joined on a column the purchasable verdict has already vouched for; this
     // narrows the pair the group is keyed and named by.
     if (part.supplierId === null || part.supplierName === null) {

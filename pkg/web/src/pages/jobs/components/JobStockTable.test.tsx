@@ -20,6 +20,7 @@ describe('JobStockTable', () => {
           partId: '00000000-0000-4000-8000-000000000001',
           partName: 'Channel',
           standardPurchaseLengthMm: 6_000,
+          stockTrackingMode: 'perpetual',
           supplierName: 'Acme Steel',
           unitOfMeasure: 'mm',
         },

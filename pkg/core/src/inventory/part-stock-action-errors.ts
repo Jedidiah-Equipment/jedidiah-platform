@@ -1,4 +1,4 @@
-import type { JobStockMovementType, PartStockActionVerdict, UUID } from '@pkg/schema';
+import type { JobStockMovementType, PartStockActions, PartStockActionVerdict, UUID } from '@pkg/schema';
 import { PartNotBuiltError } from '../parts/part-bom-errors.js';
 import { PurchaseOrderPartNotPurchasableError } from '../purchase-orders/purchase-order-errors.js';
 import { BuildLinearPartError, BuildPeriodicPartError } from './build-errors.js';
@@ -6,12 +6,18 @@ import { FabricatedPartCostError, PeriodicStockMovementError } from './stock-mov
 
 export type PartStockActionContext = {
   /**
-   * The Job movement being posted, when the action is one. A periodic Part is refused in the words
-   * of the write that asked: a build says it is counted rather than built, a draw names the movement
-   * its ledger does not record.
+   * The verdict being asserted, named. Every reason maps to one error except `periodic`, which a
+   * build and a Job movement refuse in their own words — so the caller names what it read rather
+   * than the mapping inferring it from which fields happened to be passed.
    */
-  movement?: JobStockMovementType;
+  action: keyof PartStockActions;
   partId: UUID;
+};
+
+/** The movement a `periodic` refusal names, for the actions that post one. */
+const PERIODIC_JOB_MOVEMENT: Partial<Record<keyof PartStockActions, JobStockMovementType>> = {
+  checkout: 'checkout',
+  returnToStore: 'return-to-store',
 };
 
 /**
@@ -20,10 +26,11 @@ export type PartStockActionContext = {
  * offer stock controls, and this gate — so a control can no longer offer an action the post then
  * refuses. The mapping is a lookup and nothing more: judgement lives in the derivation.
  */
-export function assertPartStockAction(verdict: PartStockActionVerdict, context: PartStockActionContext): void {
+export function assertPartStockAction(
+  verdict: PartStockActionVerdict,
+  { action, partId }: PartStockActionContext,
+): void {
   if (verdict.allowed) return;
-
-  const { movement, partId } = context;
 
   switch (verdict.reason) {
     case 'built-part':
@@ -34,7 +41,10 @@ export function assertPartStockAction(verdict: PartStockActionVerdict, context: 
       throw new BuildLinearPartError(partId);
     case 'not-built':
       throw new PartNotBuiltError(partId);
-    case 'periodic':
+    case 'periodic': {
+      const movement = PERIODIC_JOB_MOVEMENT[action];
+
       throw movement === undefined ? new BuildPeriodicPartError(partId) : new PeriodicStockMovementError(movement);
+    }
   }
 }

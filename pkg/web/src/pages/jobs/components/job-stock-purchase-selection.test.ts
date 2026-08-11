@@ -14,6 +14,7 @@ const stockRow = (
   partId,
   partName: `Part ${partId}`,
   standardPurchaseLengthMm: null,
+  stockTrackingMode: 'perpetual' as const,
   supplierName: facts.supplier === undefined ? 'Acme Supplies' : facts.supplier,
   unitOfMeasure: 'piece' as const,
 });

@@ -241,7 +241,7 @@ export async function applyInvoicePrice({
     // held to the same rule: a Built Part's cost is derived from its build and never keyed, whatever
     // a Supplier's paperwork says (spec §5). A Part flipped to internally-fabricated after its
     // receipts is exactly how an invoiced price would otherwise reach one.
-    assertPartStockAction(derivePartStockActions(part).revalue, { partId: input.partId });
+    assertPartStockAction(derivePartStockActions(part).revalue, { action: 'revalue', partId: input.partId });
 
     const movement = await insertMovement(tx, {
       actorUserId,

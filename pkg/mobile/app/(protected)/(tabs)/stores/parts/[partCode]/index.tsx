@@ -58,7 +58,6 @@ export default function StoresPartRoute() {
 
   const row = part.data;
   const isLinear = row.unitOfMeasure === 'mm';
-  const isPeriodic = row.stockTrackingMode === 'periodic';
   const actions = derivePartStockActions(row);
 
   return (
@@ -94,17 +93,15 @@ export default function StoresPartRoute() {
         ) : null}
       </View>
 
-      {isPeriodic ? (
+      {!actions.checkout.allowed && actions.checkout.reason === 'periodic' ? (
         <Text className="text-sm text-muted-foreground">
-          This Part is counted, not tracked movement by movement. It can be received and returned to its Supplier, but
-          not checked out to a Job.
+          This Part is counted, not tracked movement by movement, so it is not checked out to a Job.
         </Text>
       ) : null}
 
-      {row.isInternallyFabricated ? (
+      {!actions.receive.allowed && actions.receive.reason === 'built-part' ? (
         <Text className="text-sm text-muted-foreground">
-          This Part is made in-house and bought from nobody, so it never arrives on a Purchase Order. It is checked out
-          and returned like any other stock.
+          This Part is made in-house and bought from nobody, so it never arrives on a Purchase Order.
         </Text>
       ) : null}
 

@@ -67,7 +67,7 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
     }
 
     beetleClickTimes.current = [];
-    setInternalUserState((current) => setInternalUser(!current));
+    setInternalUserState(setInternalUser(!internalUser));
   }
 
   function handleLanguageSwitch(event: MouseEvent<HTMLAnchorElement>) {
@@ -185,7 +185,7 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
           </div>
         </div>
 
-        <DungBeetle label={m.footer.beetleLabel} onClick={handleBeetleClick} />
+        <DungBeetle onClick={handleBeetleClick} />
 
         <div className="flex flex-wrap items-center justify-between gap-3 py-[26px] max-nav:flex-col max-nav:items-start max-nav:gap-2.5">
           <span className="font-body text-[13px] text-[#8a8a8a]">{m.footer.copyright}</span>

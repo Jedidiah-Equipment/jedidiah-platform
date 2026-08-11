@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, type MouseEventHandler, type ReactNode } from 'react';
+import { act, type MouseEventHandler, type ReactNode, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
@@ -56,7 +56,13 @@ describe('Footer', () => {
     const container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
-    await act(async () => root?.render(<Footer ranges={[]} />));
+    await act(async () =>
+      root?.render(
+        <StrictMode>
+          <Footer ranges={[]} />
+        </StrictMode>,
+      ),
+    );
 
     const beetle = container.querySelector('[data-testid="dung-beetle"]');
     if (!(beetle instanceof HTMLButtonElement)) {
@@ -71,12 +77,14 @@ describe('Footer', () => {
 
     await act(async () => beetle.click());
     expect(analytics.setInternalUser).toHaveBeenLastCalledWith(true);
+    expect(analytics.setInternalUser).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain('Internal User: Posthog Disabled');
 
     for (let click = 0; click < 6; click += 1) {
       await act(async () => beetle.click());
     }
     expect(analytics.setInternalUser).toHaveBeenLastCalledWith(false);
+    expect(analytics.setInternalUser).toHaveBeenCalledTimes(2);
     expect(container.textContent).not.toContain('Internal User: Posthog Disabled');
   });
 

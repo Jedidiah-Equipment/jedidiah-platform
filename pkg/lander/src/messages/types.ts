@@ -33,7 +33,6 @@ export type Messages = {
     facebookHandle: string;
     instagramHandle: string;
     contactUs: string;
-    beetleLabel: string;
     internalAnalyticsDisabled: string;
     copyright: string;
     tagline: string;

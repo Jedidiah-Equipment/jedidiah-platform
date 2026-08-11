@@ -33,7 +33,7 @@ function pickMood(prev: Mood, fleeing: boolean): Mood {
   return pool[Math.floor(Math.random() * pool.length)] ?? 'push';
 }
 
-export function DungBeetle({ label, onClick }: { label: string; onClick: MouseEventHandler<HTMLButtonElement> }) {
+export function DungBeetle({ onClick }: { onClick: MouseEventHandler<HTMLButtonElement> }) {
   const maskId = useId();
   const stripRef = useRef<HTMLDivElement>(null);
   const walkerRef = useRef<HTMLButtonElement>(null);
@@ -147,13 +147,13 @@ export function DungBeetle({ label, onClick }: { label: string; onClick: MouseEv
   }, []);
 
   return (
-    <div ref={stripRef} className="relative h-10 overflow-hidden border-b border-[#2a2a2a]">
+    <div ref={stripRef} aria-hidden="true" className="relative h-10 overflow-hidden border-b border-[#2a2a2a]">
       <button
         ref={walkerRef}
         type="button"
-        aria-label={label}
+        tabIndex={-1}
         onClick={onClick}
-        className="absolute bottom-0 left-0 cursor-pointer border-0 bg-transparent p-0 opacity-0 will-change-transform"
+        className="absolute bottom-0 left-0 border-0 bg-transparent p-0 opacity-0 will-change-transform"
       >
         <svg
           aria-hidden="true"

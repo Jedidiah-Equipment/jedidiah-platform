@@ -16,7 +16,7 @@ The active Locale is registered as a PostHog super property and is also set as a
 
 ## Internal traffic opt-out
 
-Clicking the footer dung beetle six times within two seconds toggles the browser's internal-user status. While enabled, the footer displays `Internal User: Posthog Disabled`, local storage contains `is_internal=true`, and the PostHog client does not start or capture events. Repeating the click sequence removes the flag and resumes capture.
+Clicking the footer dung beetle six times within two seconds toggles the browser's internal-user status. While enabled, the footer displays a localized disabled message (`Internal User: Posthog Disabled` in English), local storage contains `is_internal=true`, and the PostHog client does not start or capture events. Repeating the click sequence removes the flag and resumes capture.
 
 ## Custom events
 

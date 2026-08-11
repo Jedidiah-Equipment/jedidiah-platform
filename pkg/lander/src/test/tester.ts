@@ -13,7 +13,7 @@ export const test = testBase.extend<{ db: Db }>({
   db: async ({ task: _task }, use) => {
     const templateDatabaseUrl = getTestTemplateDatabaseUrl();
     const { databaseName, databaseUrl } = await createEphemeralTestDatabase({ templateDatabaseUrl });
-    const client = createDatabaseClient(databaseUrl);
+    const client = createDatabaseClient(databaseUrl, { max: 4 });
 
     try {
       await use(client.db);

@@ -55,7 +55,7 @@ export function createTester<T extends object = Record<string, never>>(
       const { databaseName, databaseUrl } = await createEphemeralTestDatabase({
         templateDatabaseUrl,
       });
-      const databaseClient = createDatabaseClient(databaseUrl);
+      const databaseClient = createDatabaseClient(databaseUrl, { max: 4 });
       const auth = createAuth(databaseClient.db);
       const cleanups: Cleanup[] = [];
 

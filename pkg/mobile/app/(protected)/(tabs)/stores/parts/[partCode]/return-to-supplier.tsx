@@ -1,10 +1,4 @@
-import { deriveMovementWarnings } from '@pkg/domain';
-import type {
-  PartPurchaseOrderLine,
-  StockMovementWarningCode,
-  StockOnHandRow,
-  StockReturnToSupplierReason,
-} from '@pkg/schema';
+import type { PartPurchaseOrderLine, StockOnHandRow, StockReturnToSupplierReason } from '@pkg/schema';
 import { StockReturnToSupplierReason as ReasonEnum, STOCK_RETURN_TO_SUPPLIER_REASON_LABELS } from '@pkg/schema';
 import { useMutation } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
@@ -19,6 +13,7 @@ import { hasRequiredLength, parseQuantity, QuantityField } from '@/components/st
 import { NoActorNotice, StoresPartScreen } from '@/components/stores/StoresPartScreen';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
+import { previewReturnToSupplierWarnings } from '@/lib/movement-preview';
 import { useMovementActorUserId } from '@/lib/stores-actor';
 import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
@@ -65,23 +60,6 @@ function ReturnToSupplierForm({ row }: { row: StockOnHandRow }) {
   const parsedQuantity = parseQuantity(quantity);
   const parsedLength = isLinear ? parseQuantity(lengthMm) : null;
   const hasLength = hasRequiredLength({ isLinear, lengthMm: parsedLength });
-
-  /**
-   * What this line can still send back in the bucket the return would post against, served by the
-   * order read and judged here exactly as the post judges it. Read rather than computed: netting a
-   * threshold out of Part-wide totals is what let the browser and this screen disagree with the
-   * ledger about a line received in two lengths.
-   */
-  function previewWarnings(): StockMovementWarningCode[] {
-    if (parsedQuantity === null || line === null) return [];
-
-    const bucket = line.receiptBuckets.find((candidate) => candidate.lengthMm === parsedLength);
-
-    return deriveMovementWarnings({
-      facts: { kind: 'return-to-supplier', outstandingReceivedQuantity: bucket?.outstandingReceivedQuantity ?? 0 },
-      quantity: parsedQuantity,
-    });
-  }
 
   return (
     <>
@@ -175,7 +153,7 @@ function ReturnToSupplierForm({ row }: { row: StockOnHandRow }) {
                 quantity: parsedQuantity,
                 reason,
               }),
-            warnings: previewWarnings(),
+            warnings: previewReturnToSupplierWarnings({ lengthMm: parsedLength, line, quantity: parsedQuantity }),
           });
         }}
       />

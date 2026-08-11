@@ -1,6 +1,6 @@
 import { type DatabaseTransaction, type Db, stockMovements } from '@pkg/db';
 import type { PurchaseOrderReceiptBucket, UUID } from '@pkg/schema';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, inArray, sql } from 'drizzle-orm';
 
 /**
  * The movements that make up what a line still holds. Both directions, every return reason: a
@@ -36,10 +36,12 @@ export async function loadReceiptBuckets({
 }): Promise<Map<string, PurchaseOrderReceiptBucket[]>> {
   if (purchaseOrderIds.length === 0) return new Map();
 
+  // Summed and grouped in SQL, one row per bucket: the same shape `loadReceivedQuantities` reads
+  // beside it, and a cost that grows with a line's lengths rather than with its delivery history.
   const rows = await db
     .select({
       lengthMm: stockMovements.lengthMm,
-      outstandingReceivedQuantity: stockMovements.delta,
+      outstandingReceivedQuantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
       partId: stockMovements.partId,
       purchaseOrderId: stockMovements.purchaseOrderId,
     })
@@ -49,7 +51,9 @@ export async function loadReceiptBuckets({
         inArray(stockMovements.purchaseOrderId, [...purchaseOrderIds]),
         inArray(stockMovements.movementType, [...RECEIPT_POOL_MOVEMENT_TYPES]),
       ),
-    );
+    )
+    .groupBy(stockMovements.purchaseOrderId, stockMovements.partId, stockMovements.lengthMm)
+    .orderBy(stockMovements.purchaseOrderId, stockMovements.partId, stockMovements.lengthMm);
 
   const byLine = new Map<string, PurchaseOrderReceiptBucket[]>();
 
@@ -57,20 +61,11 @@ export async function loadReceiptBuckets({
     if (row.purchaseOrderId === null) continue;
 
     const key = receiptBucketKey(row.purchaseOrderId, row.partId);
-    const buckets = byLine.get(key) ?? [];
-    const bucket = buckets.find((candidate) => candidate.lengthMm === row.lengthMm);
 
-    if (bucket) {
-      bucket.outstandingReceivedQuantity += row.outstandingReceivedQuantity;
-    } else {
-      buckets.push({ lengthMm: row.lengthMm, outstandingReceivedQuantity: row.outstandingReceivedQuantity });
-    }
-
-    byLine.set(key, buckets);
-  }
-
-  for (const buckets of byLine.values()) {
-    buckets.sort((left, right) => (left.lengthMm ?? 0) - (right.lengthMm ?? 0));
+    byLine.set(key, [
+      ...(byLine.get(key) ?? []),
+      { lengthMm: row.lengthMm, outstandingReceivedQuantity: row.outstandingReceivedQuantity },
+    ]);
   }
 
   return byLine;

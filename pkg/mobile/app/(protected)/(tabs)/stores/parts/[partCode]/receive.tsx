@@ -1,5 +1,4 @@
-import { deriveMovementWarnings } from '@pkg/domain';
-import type { PartPurchaseOrderLine, StockMovementWarningCode, StockOnHandRow } from '@pkg/schema';
+import type { PartPurchaseOrderLine, StockOnHandRow } from '@pkg/schema';
 import { useMutation } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -10,6 +9,7 @@ import { PostButton } from '@/components/stores/PostButton';
 import { PurchaseOrderLinePicker } from '@/components/stores/PurchaseOrderLinePicker';
 import { hasRequiredLength, parseQuantity, QuantityField } from '@/components/stores/QuantityField';
 import { NoActorNotice, StoresPartScreen } from '@/components/stores/StoresPartScreen';
+import { previewReceiptWarnings } from '@/lib/movement-preview';
 import { useMovementActorUserId } from '@/lib/stores-actor';
 import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
@@ -54,16 +54,6 @@ function ReceiveForm({ row }: { row: StockOnHandRow }) {
   const parsedQuantity = parseQuantity(quantity);
   const parsedLength = isLinear ? parseQuantity(lengthMm) : null;
   const hasLength = hasRequiredLength({ isLinear, lengthMm: parsedLength });
-
-  /** Both facts a receipt is judged against ride the line the dock just picked. */
-  function previewWarnings(): StockMovementWarningCode[] {
-    if (parsedQuantity === null || line === null) return [];
-
-    return deriveMovementWarnings({
-      facts: { kind: 'receipt', orderedQuantity: line.orderedQuantity, receivedQuantity: line.receivedQuantity },
-      quantity: parsedQuantity,
-    });
-  }
 
   return (
     <>
@@ -115,7 +105,7 @@ function ReceiveForm({ row }: { row: StockOnHandRow }) {
                 purchaseOrderId: line.purchaseOrderId,
                 quantity: parsedQuantity,
               }),
-            warnings: previewWarnings(),
+            warnings: previewReceiptWarnings({ line, quantity: parsedQuantity }),
           });
         }}
       />

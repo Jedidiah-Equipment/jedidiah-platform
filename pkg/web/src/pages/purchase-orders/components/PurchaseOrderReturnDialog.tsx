@@ -62,17 +62,20 @@ export function PurchaseOrderReturnDialog({
     });
   }
 
-  const defaultOutstanding = outstandingReceivedForLength({ lengthMm: null, line });
+  // The line's own total, which is what the Returns card offered a return against. What one length
+  // still holds is bucket-scoped and follows the keyed length, so it is shown live below instead.
+  const lineOutstanding = line.receiptBuckets.reduce((total, bucket) => total + bucket.outstandingReceivedQuantity, 0);
+  const standardLengthOutstanding = outstandingReceivedForLength({ lengthMm: null, line });
 
   return (
     <CreateEntityDialog<PurchaseOrderReturnFormValues, { warnings: StockMovementWarningCode[] }>
       defaultValues={{
         lengthMm: Number.NaN,
         note: '',
-        quantity: defaultOutstanding > 0 ? defaultOutstanding : Number.NaN,
+        quantity: standardLengthOutstanding > 0 ? standardLengthOutstanding : Number.NaN,
         reason: 'defective',
       }}
-      description={`${line.partCode} · ${line.partName} — ${defaultOutstanding} received and not yet returned.`}
+      description={`${line.partCode} · ${line.partName} — ${lineOutstanding} received and not yet returned.`}
       onCreate={(values) => {
         movementWarnings.acknowledge(returnWarnings(values));
 
@@ -129,7 +132,19 @@ export function PurchaseOrderReturnDialog({
             )}
           </form.AppField>
           <form.Subscribe selector={(state) => state.values}>
-            {(values) => <StockMovementWarningPrompt warnings={returnWarnings(values)} />}
+            {(values) => (
+              <>
+                {isLinearLine(line) ? (
+                  <p className="text-muted-foreground text-sm">
+                    {`This length has ${outstandingReceivedForLength({
+                      lengthMm: Number.isNaN(values.lengthMm) ? null : values.lengthMm,
+                      line,
+                    })} received and not yet returned.`}
+                  </p>
+                ) : null}
+                <StockMovementWarningPrompt warnings={returnWarnings(values)} />
+              </>
+            )}
           </form.Subscribe>
         </>
       )}

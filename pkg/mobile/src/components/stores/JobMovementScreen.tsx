@@ -1,8 +1,7 @@
-import { deriveMovementWarnings } from '@pkg/domain';
 import type { InventoryJobOption, JobStockMovementType, StockMovementWarningCode, StockOnHandRow } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type RefObject, useRef, useState } from 'react';
-
+import { previewJobMovementWarnings } from '@/lib/movement-preview';
 import { useMovementActorUserId } from '@/lib/stores-actor';
 import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
@@ -97,32 +96,6 @@ function JobMovementForm({
     trpc.inventory.jobStock.queryOptions({ jobId: jobIdToPost ?? '' }, { enabled: jobIdToPost !== null }),
   );
 
-  /**
-   * The ledger's own judgement, run here against what the server served. Silent until the Job's
-   * stock arrives: every figure would read zero, which warns on any draw at all — and the post
-   * returns the real verdict either way.
-   */
-  function previewWarnings(): StockMovementWarningCode[] {
-    if (parsedQuantity === null || jobStockQuery.data === undefined) return [];
-
-    const jobStock = jobStockQuery.data.items.find((item) => item.partId === row.partId);
-    const bucket = row.buckets.find((candidate) => candidate.lengthMm === parsedLength);
-
-    return deriveMovementWarnings({
-      facts: {
-        bucketQuantityOnHand: bucket?.quantity ?? 0,
-        cfoQuantity: jobStock?.cfoQuantity ?? 0,
-        drawnBucketQuantity:
-          parsedLength === null
-            ? (jobStock?.drawnQuantity ?? 0)
-            : (jobStock?.lengthBuckets.find((candidate) => candidate.lengthMm === parsedLength)?.drawnQuantity ?? 0),
-        drawnQuantity: jobStock?.drawnQuantity ?? 0,
-        kind: movementType,
-      },
-      quantity: parsedQuantity,
-    });
-  }
-
   return (
     <>
       {fixedJobId === undefined ? (
@@ -171,7 +144,13 @@ function JobMovementForm({
                 partId: row.partId,
                 quantity: parsedQuantity,
               }),
-            warnings: previewWarnings(),
+            warnings: previewJobMovementWarnings({
+              jobStock: jobStockQuery.data,
+              lengthMm: parsedLength,
+              movementType,
+              quantity: parsedQuantity,
+              row,
+            }),
           });
         }}
       />

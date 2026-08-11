@@ -187,12 +187,16 @@ export function parsePartBulkImportCsv(
       for (const issue of result.error.issues) {
         const key = issue.path[0];
         const label = typeof key === 'string' ? columnLabelsByKey.get(key as PartBulkImportColumnKey) : undefined;
+        // A rule that judges the row rather than the cell states its own reason; only a cell the
+        // parser could not read at all is answered with the list of values it accepts.
         const message =
-          key === 'unitOfMeasure'
-            ? `Unit must be one of ${PartUnitOfMeasure.options.join(', ')}.`
-            : key === 'isInternallyFabricated'
-              ? 'Internally Fabricated must be one of true, false, yes, no, y, n, 1, or 0.'
-              : issue.message;
+          issue.code === 'custom'
+            ? issue.message
+            : key === 'unitOfMeasure'
+              ? `Unit must be one of ${PartUnitOfMeasure.options.join(', ')}.`
+              : key === 'isInternallyFabricated'
+                ? 'Internally Fabricated must be one of true, false, yes, no, y, n, 1, or 0.'
+                : issue.message;
         errors.push(`Row ${rowNumber}: ${label ?? 'Value'} - ${message}`);
       }
       return;

@@ -1,3 +1,4 @@
+import { derivePartStockActions } from '@pkg/domain';
 import { IconArrowBackUp, IconArrowDownToArc, IconTruckReturn, IconWheel } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -58,6 +59,7 @@ export default function StoresPartRoute() {
   const row = part.data;
   const isLinear = row.unitOfMeasure === 'mm';
   const isPeriodic = row.stockTrackingMode === 'periodic';
+  const actions = derivePartStockActions(row);
 
   return (
     <StoresScreen
@@ -99,6 +101,13 @@ export default function StoresPartRoute() {
         </Text>
       ) : null}
 
+      {row.isInternallyFabricated ? (
+        <Text className="text-sm text-muted-foreground">
+          This Part is made in-house and bought from nobody, so it never arrives on a Purchase Order. It is checked out
+          and returned like any other stock.
+        </Text>
+      ) : null}
+
       {actor === null ? (
         <Text className="text-sm text-danger" weight="semibold">
           Choose who is at the tablet before moving any stock.
@@ -108,28 +117,28 @@ export default function StoresPartRoute() {
       <View className="gap-3">
         <ActionTile
           caption="Draw this Part from stock against a Job"
-          disabled={actor === null || isPeriodic}
+          disabled={actor === null || !actions.checkout.allowed}
           icon={IconWheel}
           onPress={() => router.push({ params: { partCode }, pathname: '/stores/parts/[partCode]/checkout' })}
           title="Check out to a Job"
         />
         <ActionTile
           caption="Put leftovers back on the rack"
-          disabled={actor === null || isPeriodic}
+          disabled={actor === null || !actions.returnToStore.allowed}
           icon={IconArrowBackUp}
           onPress={() => router.push({ params: { partCode }, pathname: '/stores/parts/[partCode]/return-to-store' })}
           title="Return to store"
         />
         <ActionTile
           caption="Sign for a delivery against its Purchase Order"
-          disabled={actor === null}
+          disabled={actor === null || !actions.receive.allowed}
           icon={IconArrowDownToArc}
           onPress={() => router.push({ params: { partCode }, pathname: '/stores/parts/[partCode]/receive' })}
           title="Receive against an order"
         />
         <ActionTile
           caption="Send stock back off a Purchase Order line"
-          disabled={actor === null}
+          disabled={actor === null || !actions.returnToSupplier.allowed}
           icon={IconTruckReturn}
           onPress={() => router.push({ params: { partCode }, pathname: '/stores/parts/[partCode]/return-to-supplier' })}
           title="Return to Supplier"

@@ -9,7 +9,7 @@ import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CreatePurchaseOrdersDialog } from '../../inventory/components/CreatePurchaseOrdersDialog.js';
 import { StockMovementDialog } from '../../inventory/components/StockMovementDialog.js';
-import { perpetualPartOptions } from '../../inventory/components/types.js';
+import { partOptionsAllowing } from '../../inventory/components/types.js';
 import { JobStockTable } from './JobStockTable.js';
 import { toJobStockPurchaseCandidates } from './job-stock-purchase-selection.js';
 
@@ -26,7 +26,7 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
     trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove && movementType !== null }),
   );
   const stockOnHandItems = useMemo(() => stockOnHandQuery.data?.items ?? [], [stockOnHandQuery.data?.items]);
-  const parts = useMemo(() => perpetualPartOptions(stockOnHandItems), [stockOnHandItems]);
+  const parts = useMemo(() => partOptionsAllowing(stockOnHandItems, 'checkout'), [stockOnHandItems]);
   const purchaseCandidates = useMemo(
     () => toJobStockPurchaseCandidates(jobStockQuery.data?.items ?? []),
     [jobStockQuery.data?.items],

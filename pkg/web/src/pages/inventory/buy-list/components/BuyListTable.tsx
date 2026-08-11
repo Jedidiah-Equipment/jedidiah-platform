@@ -1,4 +1,4 @@
-import { compareNullableDateOnly, formatDate } from '@pkg/domain';
+import { compareNullableDateOnly, derivePartStockActions, formatDate } from '@pkg/domain';
 import { BUY_LIST_REASONS, type BuyListReason, type BuyListRow } from '@pkg/schema';
 import {
   type ColumnDef,
@@ -162,7 +162,7 @@ export function BuyListTable({
     columns: canSelect ? buyListColumns : buyListColumns.filter((column) => column.id !== 'select'),
     data: items,
     enableColumnFilters: false,
-    enableRowSelection: (row) => !row.original.isInternallyFabricated,
+    enableRowSelection: (row) => derivePartStockActions(row.original).purchase.allowed,
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),

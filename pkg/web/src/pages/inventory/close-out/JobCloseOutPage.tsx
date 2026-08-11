@@ -12,7 +12,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { JobStockTable } from '../../jobs/components/JobStockTable.js';
 import { StockMovementDialog } from '../components/StockMovementDialog.js';
-import { perpetualPartOptions } from '../components/types.js';
+import { partOptionsAllowing } from '../components/types.js';
 import { JobCloseOutDialog } from './components/JobCloseOutDialog.js';
 
 /**
@@ -35,7 +35,10 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
   const stockOnHandQuery = useQuery(
     trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove && returningPartId !== null }),
   );
-  const parts = useMemo(() => perpetualPartOptions(stockOnHandQuery.data?.items ?? []), [stockOnHandQuery.data?.items]);
+  const parts = useMemo(
+    () => partOptionsAllowing(stockOnHandQuery.data?.items ?? [], 'checkout'),
+    [stockOnHandQuery.data?.items],
+  );
 
   if (jobStockQuery.isPending) {
     return (

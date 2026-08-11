@@ -1,8 +1,9 @@
-import { type BuildBomLine, deriveBuildConsumption, deriveBuildWarnings } from '@pkg/domain';
+import { type BuildBomLine, deriveBuildConsumption, deriveBuildWarnings, derivePartStockActions } from '@pkg/domain';
 import {
   CloseOutJobInput,
   InventoryUnitCost,
   isWholeUnitQuantity,
+  type PartStockActions,
   PostAdjustmentInput,
   PostBuildInput,
   PostJobMovementInput,
@@ -272,12 +273,15 @@ export function toStockPartOption(item: StockOnHandRow): StockPartOption {
   };
 }
 
-export function perpetualPartOptions(items: readonly StockOnHandRow[]): StockPartOption[] {
-  return items.filter((item) => item.stockTrackingMode === 'perpetual').map(toStockPartOption);
-}
-
-export function revaluablePartOptions(parts: readonly StockPartOption[]): StockPartOption[] {
-  return parts.filter((part) => !part.isInternallyFabricated);
+/**
+ * The Parts a stock control may be offered for, named by the action it posts. The rule is the same
+ * derivation the server gates on, so a picker cannot offer a Part the post would refuse.
+ */
+export function partOptionsAllowing(
+  items: readonly StockOnHandRow[],
+  action: keyof PartStockActions,
+): StockPartOption[] {
+  return items.filter((item) => derivePartStockActions(item)[action].allowed).map(toStockPartOption);
 }
 
 export function partSelectOptions(parts: readonly StockPartOption[]) {

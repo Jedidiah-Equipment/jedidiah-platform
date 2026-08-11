@@ -16,6 +16,7 @@ import {
   deriveMovingAverage,
   deriveMovingAverageTimeline,
   deriveOutstandingDrawUnitCost,
+  derivePartStockActions,
   deriveStockMovementWarnings,
   type StockMovementContext,
   valueStockBucket,
@@ -63,6 +64,7 @@ import {
   sumDelta,
 } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
+import { assertPartStockAction } from './part-stock-action-errors.js';
 import { groupBy, sumBy, sumNullableBy } from './row-grouping.js';
 import {
   PeriodicStockMovementError,
@@ -121,7 +123,9 @@ export async function postRevaluation({
   return db.transaction(async (tx) => {
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
 
-    assertBuiltPartCostIsDerived(part.isInternallyFabricated, input.unitCost);
+    // A Built Part is costed by what its build consumed, so there is no price for a revaluation to
+    // correct — the Part is refused rather than only the cost it was asked to assert.
+    assertPartStockAction(derivePartStockActions(part).revalue, { partId: input.partId });
 
     return insertMovement(tx, {
       actorUserId,
@@ -170,7 +174,12 @@ export async function postJobMovement({
 
     assertDeltaMatchesUnitClass(input.quantity, unitClass);
     assertLengthMatchesUnitClass(input.lengthMm, unitClass);
-    if (part.stockTrackingMode === 'periodic') throw new PeriodicStockMovementError(movementType);
+    const actions = derivePartStockActions(part);
+
+    assertPartStockAction(movementType === 'checkout' ? actions.checkout : actions.returnToStore, {
+      movement: movementType,
+      partId: input.partId,
+    });
 
     const [context, unitCost] = await Promise.all([
       loadStockMovementContext(tx, input),

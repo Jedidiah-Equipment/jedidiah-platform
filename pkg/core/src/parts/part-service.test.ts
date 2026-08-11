@@ -40,12 +40,18 @@ describe('listParts', () => {
           importRow(),
           importRow({
             code: 'P-200',
-            isInternallyFabricated: true,
             name: 'Linear rail',
             standardPurchaseLengthMm: 6000,
             supplierCode: 'SUP-200',
-            supplierName: null,
             unitOfMeasure: 'mm',
+          }),
+          // A Built Part is counted in pieces: linear stock is bought and cut, never made.
+          importRow({
+            code: 'P-300',
+            isInternallyFabricated: true,
+            name: 'Weld bracket',
+            supplierCode: 'SUP-300',
+            supplierName: null,
           }),
         ],
       },
@@ -65,8 +71,8 @@ describe('listParts', () => {
     });
 
     expect(lengthParts.items.map((part) => part.code)).toEqual(['P-200']);
-    expect(countedParts.items.map((part) => part.code)).toEqual(['P-100']);
-    expect(internallyFabricatedParts.items.map((part) => part.code)).toEqual(['P-200']);
+    expect(countedParts.items.map((part) => part.code)).toEqual(['P-100', 'P-300']);
+    expect(internallyFabricatedParts.items.map((part) => part.code)).toEqual(['P-300']);
   });
 
   test('filters parts by storage location and lists distinct locations in order', async ({ context }) => {

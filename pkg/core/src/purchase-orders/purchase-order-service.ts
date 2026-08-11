@@ -18,6 +18,7 @@ import {
 } from '@pkg/db';
 import {
   compareNullableDateOnly,
+  derivePartStockActions,
   derivePurchaseOrderActions,
   derivePurchaseOrderProgress,
   derivePurchaseOrderStatus,
@@ -59,6 +60,7 @@ import {
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
+import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import {
   assertPurchaseOrderAction,
@@ -67,7 +69,6 @@ import {
   PurchaseOrderLineNotPricedError,
   PurchaseOrderNotFoundError,
   PurchaseOrderPartNotFoundError,
-  PurchaseOrderPartNotPurchasableError,
   PurchaseOrderPartSupplierMismatchError,
   PurchaseOrderSupplierNotFoundError,
 } from './purchase-order-errors.js';
@@ -942,7 +943,13 @@ export async function assertLinePartsMatchSupplier({
 }): Promise<void> {
   if (lines.length === 0) return;
   const rows = await db
-    .select({ id: parts.id, supplierId: parts.supplierId, unitOfMeasure: parts.unitOfMeasure })
+    .select({
+      id: parts.id,
+      isInternallyFabricated: parts.isInternallyFabricated,
+      stockTrackingMode: parts.stockTrackingMode,
+      supplierId: parts.supplierId,
+      unitOfMeasure: parts.unitOfMeasure,
+    })
     .from(parts)
     .where(
       inArray(
@@ -957,7 +964,7 @@ export async function assertLinePartsMatchSupplier({
   for (const line of lines) {
     const part = byId.get(line.partId);
     if (!part) throw new PurchaseOrderPartNotFoundError(line.partId);
-    if (part.supplierId === null) throw new PurchaseOrderPartNotPurchasableError(line.partId);
+    assertPartStockAction(derivePartStockActions(part).purchase, { partId: line.partId });
     if (part.supplierId !== supplierId) throw new PurchaseOrderPartSupplierMismatchError(line.partId);
     if (!isWholeUnitQuantity(line.quantity, unitClassFor(part.unitOfMeasure))) {
       throw new PurchaseOrderInvalidQuantityError(line.partId);

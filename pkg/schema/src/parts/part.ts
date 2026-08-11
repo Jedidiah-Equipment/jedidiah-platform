@@ -189,7 +189,29 @@ export function refinePartStandardPurchaseLength(
   }
 }
 
+/** The one wording for the rule, so the entity form and the CSV row agree. */
+export const PART_BUILT_IS_NOT_LINEAR_MESSAGE = 'A built Part cannot be measured in millimetres';
+
+/**
+ * A Built Part is never linear. A Build posts a single row at consumed value ÷ units built, which
+ * names no length bucket, so linear stock has no build to post — the state the Build event cannot
+ * produce is refused here rather than left creatable and refused later.
+ */
+export function refinePartBuiltIsNotLinear(
+  input: Pick<z.infer<typeof PartInputFields>, 'isInternallyFabricated' | 'unitOfMeasure'>,
+  context: z.RefinementCtx,
+): void {
+  if (input.isInternallyFabricated && input.unitOfMeasure === 'mm') {
+    context.addIssue({
+      code: 'custom',
+      message: PART_BUILT_IS_NOT_LINEAR_MESSAGE,
+      path: ['unitOfMeasure'],
+    });
+  }
+}
+
 function refinePartInput(input: z.infer<typeof PartInputFields>, context: z.RefinementCtx): void {
+  refinePartBuiltIsNotLinear(input, context);
   refinePartStandardPurchaseLength(input, context);
   refinePartSupplier(input, context);
 }
@@ -218,6 +240,7 @@ export const PartBulkImportRow = z
     unitOfMeasure: PartUnitOfMeasure,
   })
   .superRefine((input, context) => {
+    refinePartBuiltIsNotLinear(input, context);
     refinePartStandardPurchaseLength(
       {
         standardPurchaseLengthMm: input.standardPurchaseLengthMm ?? null,

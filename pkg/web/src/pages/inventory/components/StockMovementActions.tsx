@@ -1,3 +1,4 @@
+import { derivePartStockActions } from '@pkg/domain';
 import type { StockOnHandRow } from '@pkg/schema';
 import { IconAdjustments, IconArrowDown, IconArrowUp, IconCash, IconTool } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
@@ -8,7 +9,7 @@ import { StockAdjustmentDialog } from './StockAdjustmentDialog.js';
 import { StockBuildDialog } from './StockBuildDialog.js';
 import { StockMovementDialog } from './StockMovementDialog.js';
 import { StockRevaluationDialog } from './StockRevaluationDialog.js';
-import { perpetualPartOptions, revaluablePartOptions, toStockPartOption } from './types.js';
+import { partOptionsAllowing, toStockPartOption } from './types.js';
 
 export function StockMovementActions({
   canAdjust,
@@ -30,14 +31,10 @@ export function StockMovementActions({
   const [revaluationOpen, setRevaluationOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [buildOpen, setBuildOpen] = useState(false);
-  // Only a built, perpetual Part can be produced into; bought stock arrives on a Purchase Order.
-  const buildableParts = useMemo(
-    () => items.filter((item) => item.isInternallyFabricated && item.stockTrackingMode === 'perpetual'),
-    [items],
-  );
+  const buildableParts = useMemo(() => items.filter((item) => derivePartStockActions(item).build.allowed), [items]);
   const allParts = useMemo(() => items.map(toStockPartOption), [items]);
-  const movementParts = useMemo(() => perpetualPartOptions(items), [items]);
-  const revaluableParts = useMemo(() => revaluablePartOptions(allParts), [allParts]);
+  const movementParts = useMemo(() => partOptionsAllowing(items, 'checkout'), [items]);
+  const revaluableParts = useMemo(() => partOptionsAllowing(items, 'revalue'), [items]);
 
   return (
     <>

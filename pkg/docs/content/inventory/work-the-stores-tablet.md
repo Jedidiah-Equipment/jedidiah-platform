@@ -69,5 +69,8 @@ not what you meant. See [Warnings are judgments, not blocks](./warnings-are-judg
 
 - Periodic Parts can be received and returned to their Supplier, but not checked out. See
   [Perpetual and periodic Parts](./perpetual-and-periodic-stock.md).
+- Built Parts are made here and bought from nobody, so they never arrive on a Purchase Order: Receive
+  and Return to Supplier are switched off on them. Check out and Return to store work as usual. See
+  [Build stock](./build-stock.md).
 - The tablet needs its dock connection. There is no offline mode.
 - Badge cards are printed from the user's record. See [Print Part Labels](./print-part-labels.md).

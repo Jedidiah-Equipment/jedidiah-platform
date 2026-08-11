@@ -37,6 +37,9 @@ export const parts = pgTable(
     unitOfMeasure: text('unit_of_measure').notNull().$type<PartUnitOfMeasure>(),
   },
   (table) => [
+    // A Build posts one row at consumed value ÷ units built and names no length bucket, so a Built
+    // Part measured in millimetres is a Part the Build event could never produce.
+    check('parts_fabricated_not_linear', sql`NOT (${table.isInternallyFabricated} AND ${table.unitOfMeasure} = 'mm')`),
     check('parts_minimum_stock_nonnegative', sql`${table.minimumStock} IS NULL OR ${table.minimumStock} >= 0`),
     check(
       'parts_standard_purchase_length_mm_positive',

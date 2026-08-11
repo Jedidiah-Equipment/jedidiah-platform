@@ -1,0 +1,1 @@
+ALTER TABLE "parts" ADD CONSTRAINT "parts_fabricated_not_linear" CHECK (NOT ("parts"."is_internally_fabricated" AND "parts"."unit_of_measure" = 'mm'));

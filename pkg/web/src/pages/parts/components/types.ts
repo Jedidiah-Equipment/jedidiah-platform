@@ -15,6 +15,7 @@ import {
   PartStorageLocation,
   PartSupplierCode,
   PartUnitOfMeasure,
+  refinePartBuiltIsNotLinear,
   refinePartStandardPurchaseLength,
   refinePartSupplier,
   type UUID,
@@ -43,6 +44,7 @@ const PartFormFields = z.object({
 
 export type PartFormValues = z.infer<typeof PartFormValues>;
 export const PartFormValues = PartFormFields.superRefine((values, context) => {
+  refinePartBuiltIsNotLinear(values, context);
   refinePartStandardPurchaseLength(
     {
       standardPurchaseLengthMm: Number.isNaN(values.standardPurchaseLengthMm) ? null : values.standardPurchaseLengthMm,

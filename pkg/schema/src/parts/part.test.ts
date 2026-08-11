@@ -110,6 +110,38 @@ describe('PartCreateInput', () => {
     ).toMatchObject({ standardPurchaseLengthMm: 6000 });
   });
 
+  it('refuses a built part measured in millimetres, because no build can produce length buckets', () => {
+    const baseInput = {
+      category: 'Bracket',
+      code: 'FAB1-0009',
+      description: 'Fabricated bracket',
+      drawingCode: null,
+      finish: 'A/I',
+      isInternallyFabricated: true,
+      name: 'Mounting bracket',
+      supplierCode: 'FAB1-0009',
+      supplierId: null,
+    };
+
+    expect(() =>
+      PartCreateInput.parse({ ...baseInput, standardPurchaseLengthMm: 6000, unitOfMeasure: 'mm' }),
+    ).toThrow();
+    expect(PartCreateInput.parse({ ...baseInput, unitOfMeasure: 'piece' })).toMatchObject({
+      isInternallyFabricated: true,
+    });
+    // A bought Part in millimetres is the ordinary linear stock the plant cuts from.
+    expect(
+      PartCreateInput.parse({
+        ...baseInput,
+        isInternallyFabricated: false,
+        standardPurchaseLengthMm: 6000,
+        supplierCode: 'S3693',
+        supplierId: '00000000-0000-4000-8000-000000000001',
+        unitOfMeasure: 'mm',
+      }),
+    ).toMatchObject({ standardPurchaseLengthMm: 6000 });
+  });
+
   it('requires required part fields', () => {
     expect(() =>
       PartCreateInput.parse({

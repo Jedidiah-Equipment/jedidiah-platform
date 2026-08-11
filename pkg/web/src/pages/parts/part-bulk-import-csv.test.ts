@@ -7,7 +7,7 @@ describe('parsePartBulkImportCsv', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated,Standard Purchase Length (mm)',
-        ' P-100, DR-100, Main bearing, , SUP-100, BLACK, PLAIN NUT, M30 PLAIN NUT, mm, yes, 6000 ',
+        ' P-100, DR-100, Main bearing, Acme Supplies, SUP-100, BLACK, PLAIN NUT, M30 PLAIN NUT, mm, no, 6000 ',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -21,12 +21,12 @@ describe('parsePartBulkImportCsv', () => {
           description: 'Main bearing',
           drawingCode: 'DR-100',
           finish: 'Black',
-          isInternallyFabricated: true,
+          isInternallyFabricated: false,
           lineNumber: 2,
           name: 'M30 Plain Nut',
           standardPurchaseLengthMm: 6000,
           supplierCode: 'SUP-100',
-          supplierName: null,
+          supplierName: 'Acme Supplies',
           unitOfMeasure: 'mm',
         },
       ],
@@ -201,6 +201,19 @@ describe('parsePartBulkImportCsv', () => {
       'Row 2: Internally Fabricated - Internally Fabricated must be one of true, false, yes, no, y, n, 1, or 0.',
       'Row 3: Internally Fabricated - Internally Fabricated must be one of true, false, yes, no, y, n, 1, or 0.',
     ]);
+  });
+
+  it('states why a built Part cannot be linear rather than listing the units it accepts', () => {
+    const result = parsePartBulkImportCsv(
+      [
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated,Standard Purchase Length (mm)',
+        'FAB1-0009,,Mounting bracket,,FAB1-0009,Zinc,Brackets,Bracket,mm,yes,6000',
+      ].join('\n'),
+      { hasHeader: true },
+    );
+
+    expect(result.rows).toEqual([]);
+    expect(result.errors).toEqual(['Row 2: Unit - A built Part cannot be measured in millimetres']);
   });
 
   it('reports invalid column counts without a header', () => {

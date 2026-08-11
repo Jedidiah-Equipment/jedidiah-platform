@@ -1,5 +1,5 @@
 import { type DatabaseTransaction, type Db, partBom, parts, stockBuilds, stockMovements } from '@pkg/db';
-import { type BuildBomComponent, type BuildPostedLine, deriveBuild } from '@pkg/domain';
+import { type BuildBomComponent, type BuildPostedLine, deriveBuild, derivePartStockActions } from '@pkg/domain';
 import type {
   AuthId,
   BuildPostResult,
@@ -11,16 +11,11 @@ import type {
 import { BuildPostResult as BuildPostResultSchema, unitClassFor } from '@pkg/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 
-import { PartNotBuiltError } from '../parts/part-bom-errors.js';
 import { PartNotFoundError } from '../parts/part-errors.js';
-import {
-  BuildComponentNotFoundError,
-  BuildLinearPartError,
-  BuildPeriodicPartError,
-  BuildSelfComponentError,
-} from './build-errors.js';
+import { BuildComponentNotFoundError, BuildSelfComponentError } from './build-errors.js';
 import { loadBucketQuantities, loadMovingAverages, scaleUnitCost } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
+import { assertPartStockAction } from './part-stock-action-errors.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
 type BuildPart = {
@@ -131,9 +126,7 @@ export async function postBuild({
 }
 
 function assertBuildable(part: BuildPart): void {
-  if (!part.isInternallyFabricated) throw new PartNotBuiltError(part.id);
-  if (part.stockTrackingMode === 'periodic') throw new BuildPeriodicPartError(part.id);
-  if (unitClassFor(part.unitOfMeasure) === 'linear') throw new BuildLinearPartError(part.id);
+  assertPartStockAction(derivePartStockActions(part).build, { action: 'build', partId: part.id });
 }
 
 /**

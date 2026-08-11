@@ -4,9 +4,8 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveStockBuildRows,
   deriveStockBuildWarnings,
+  partOptionsAllowing,
   partQuantityValidationMessage,
-  perpetualPartOptions,
-  revaluablePartOptions,
   type StockPartOption,
   stockAdjustmentValidator,
   stockJobMovementValidator,
@@ -189,13 +188,13 @@ describe('Part option lists', () => {
     expect(toStockPartOption(row)).toEqual(linear);
   });
 
-  it('removes internally fabricated Parts from revaluation choices', () => {
-    expect(revaluablePartOptions([piece, { ...linear, isInternallyFabricated: true }])).toEqual([piece]);
-  });
+  it('offers only the Parts the named action allows', () => {
+    // Which Parts each action allows is `derivePartStockActions`; this is the wiring to it.
+    const periodic = stockRow({ stockTrackingMode: 'periodic' });
 
-  it('excludes periodic Parts from Job movements, which they never record', () => {
-    expect(perpetualPartOptions([stockRow({ stockTrackingMode: 'periodic' })])).toEqual([]);
-    expect(perpetualPartOptions([stockRow()])).toEqual([linear]);
+    expect(partOptionsAllowing([periodic], 'checkout')).toEqual([]);
+    expect(partOptionsAllowing([periodic], 'receive')).toEqual([linear]);
+    expect(partOptionsAllowing([stockRow()], 'checkout')).toEqual([linear]);
   });
 });
 

@@ -270,6 +270,7 @@ export const JobStockRow = z.object({
   partId: UUID,
   partName: z.string(),
   standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
+  stockTrackingMode: PartStockTrackingMode,
   supplierName: SupplierCompanyName.nullable(),
   unitOfMeasure: PartUnitOfMeasure,
 });

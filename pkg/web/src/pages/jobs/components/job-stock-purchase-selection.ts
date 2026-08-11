@@ -1,3 +1,4 @@
+import { derivePartStockActions } from '@pkg/domain';
 import type { JobStockRow } from '@pkg/schema';
 
 import type { PurchaseSelectionCandidate } from '../../inventory/components/CreatePurchaseOrdersDialog.js';
@@ -12,6 +13,7 @@ type JobStockPurchaseRow = Pick<
   | 'partId'
   | 'partName'
   | 'standardPurchaseLengthMm'
+  | 'stockTrackingMode'
   | 'supplierName'
   | 'unitOfMeasure'
 >;
@@ -30,7 +32,7 @@ type JobStockPurchaseRow = Pick<
  */
 export function toJobStockPurchaseCandidates(items: readonly JobStockPurchaseRow[]): PurchaseSelectionCandidate[] {
   return items.flatMap((item) => {
-    if (item.committedQuantity <= 0 || item.isInternallyFabricated) return [];
+    if (item.committedQuantity <= 0 || !derivePartStockActions(item).purchase.allowed) return [];
 
     return [
       {

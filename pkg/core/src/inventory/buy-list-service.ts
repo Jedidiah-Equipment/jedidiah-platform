@@ -54,6 +54,7 @@ async function listBuyListSnapshot(db: DatabaseTransaction, today: DateOnlyIso):
         partId: parts.id,
         partName: parts.name,
         standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
+        stockTrackingMode: parts.stockTrackingMode,
         // A Part with no ledger at all has never been stocked, so it has not run out (spec §9).
         hasStockHistory: sql<boolean>`count(${stockMovements.id}) > 0`,
         // A revaluation moves cost, never quantity, so it must not reach a stock-on-hand sum.

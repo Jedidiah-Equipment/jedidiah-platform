@@ -58,6 +58,7 @@ describe('AppPermission', () => {
 
   it('rejects retired permissions', () => {
     expect(() => AppPermission.parse('user:assign-departments')).toThrow();
+    expect(() => AppPermission.parse('quote:discount')).toThrow();
   });
 });
 

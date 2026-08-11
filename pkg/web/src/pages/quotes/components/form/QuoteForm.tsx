@@ -49,7 +49,6 @@ type QuoteFormProps = {
 };
 
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
-  const discountAccess = useCan('quote:discount');
   const isCustom = quote.kind === 'custom';
   const isLocked = isQuoteLocked({
     hasJob: quote.job !== null,
@@ -58,7 +57,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
     status: quote.status,
   });
   const lockEditableFields = editableLockedQuoteFields({
-    canDiscountAllocationQuote: discountAccess.can,
     hasProductUnit: quote.productUnitId !== null,
     kind: quote.kind,
     status: quote.status,

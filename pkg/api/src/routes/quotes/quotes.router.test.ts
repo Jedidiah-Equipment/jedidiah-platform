@@ -737,9 +737,8 @@ describe('quotes.update', () => {
     });
   });
 
-  test('lets only an admin discount an accepted Allocation Quote', async ({ context }) => {
+  test('lets a quote:update holder discount an accepted Allocation Quote', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const adminCaller = context.createCaller(mockSession('admin'));
     const [unit] = await context.db
       .insert(productUnits)
       .values({
@@ -762,16 +761,11 @@ describe('quotes.update', () => {
     });
     const accepted = await salesCaller.quotes.update({ ...toUpdateInput(created), status: 'accepted' });
 
-    // Sales holds quote:update but not quote:discount, so the lock still refuses it.
-    await expect(salesCaller.quotes.update({ ...toUpdateInput(accepted), discountPercent: 5 })).rejects.toMatchObject({
-      appCode: 'quote.locked',
-      message: 'Quote is locked because it has been accepted; discountPercent cannot be changed.',
-    });
-
-    const discounted = await adminCaller.quotes.update({ ...toUpdateInput(accepted), discountPercent: 5 });
+    // quote:update alone reopens the discount on an accepted Allocation Quote; the lock holds elsewhere.
+    const discounted = await salesCaller.quotes.update({ ...toUpdateInput(accepted), discountPercent: 5 });
     expect(discounted.discountPercent).toBe(5);
 
-    await expect(adminCaller.quotes.update({ ...toUpdateInput(discounted), depositPercent: 10 })).rejects.toMatchObject(
+    await expect(salesCaller.quotes.update({ ...toUpdateInput(discounted), depositPercent: 10 })).rejects.toMatchObject(
       {
         appCode: 'quote.locked',
         message: 'Quote is locked because it has been accepted; depositPercent cannot be changed.',

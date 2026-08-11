@@ -146,25 +146,9 @@ describe('assertQuoteEditable', () => {
     ).toEqual({ allowed: true });
   });
 
-  it('rejects a discount change on an accepted stock sale without the capability', () => {
+  it('allows a discount change on an accepted stock sale', () => {
     expect(
       assertQuoteEditable({
-        changedFields: ['discountPercent'],
-        hasJob: false,
-        hasProductUnit: true,
-        kind: 'product',
-        status: 'accepted',
-      }),
-    ).toEqual({
-      allowed: false,
-      reason: 'Quote is locked because it has been accepted; discountPercent cannot be changed.',
-    });
-  });
-
-  it('allows a discount change on an accepted stock sale with the capability', () => {
-    expect(
-      assertQuoteEditable({
-        canDiscountAllocationQuote: true,
         changedFields: ['discountPercent'],
         hasJob: false,
         hasProductUnit: true,
@@ -177,7 +161,6 @@ describe('assertQuoteEditable', () => {
   it('allows a discount change on a stock sale that went on to source a rework job', () => {
     expect(
       assertQuoteEditable({
-        canDiscountAllocationQuote: true,
         changedFields: ['discountPercent'],
         hasJob: true,
         hasProductUnit: true,
@@ -189,10 +172,9 @@ describe('assertQuoteEditable', () => {
 
   it.each(
     lockedFields.filter((field) => field !== 'discountPercent'),
-  )('still rejects %s on an accepted stock sale with the capability', (field) => {
+  )('still rejects %s on an accepted stock sale', (field) => {
     expect(
       assertQuoteEditable({
-        canDiscountAllocationQuote: true,
         changedFields: [field],
         hasJob: false,
         hasProductUnit: true,
@@ -205,10 +187,9 @@ describe('assertQuoteEditable', () => {
     });
   });
 
-  it('rejects a discount change on a cancelled stock sale even with the capability', () => {
+  it('rejects a discount change on a cancelled stock sale', () => {
     expect(
       assertQuoteEditable({
-        canDiscountAllocationQuote: true,
         changedFields: ['discountPercent'],
         hasJob: false,
         hasProductUnit: true,
@@ -221,10 +202,9 @@ describe('assertQuoteEditable', () => {
     });
   });
 
-  it('rejects a discount change on a job-locked build-to-order quote even with the capability', () => {
+  it('rejects a discount change on a job-locked build-to-order quote', () => {
     expect(
       assertQuoteEditable({
-        canDiscountAllocationQuote: true,
         changedFields: ['discountPercent'],
         hasJob: true,
         hasProductUnit: false,
@@ -237,10 +217,9 @@ describe('assertQuoteEditable', () => {
     });
   });
 
-  it('rejects a discount change on an accepted custom quote even with the capability', () => {
+  it('rejects a discount change on an accepted custom quote', () => {
     expect(
       assertQuoteEditable({
-        canDiscountAllocationQuote: true,
         changedFields: ['discountPercent'],
         hasJob: false,
         hasProductUnit: false,
@@ -255,16 +234,9 @@ describe('assertQuoteEditable', () => {
 });
 
 describe('editableLockedQuoteFields', () => {
-  it('returns the always-editable set when the capability is absent', () => {
-    expect([...editableLockedQuoteFields({ hasProductUnit: true, kind: 'product', status: 'accepted' })]).toEqual(
-      alwaysEditableFields,
-    );
-  });
-
-  it('adds the discount on an accepted stock sale when the capability is present', () => {
+  it('adds the discount on an accepted stock sale', () => {
     expect([
       ...editableLockedQuoteFields({
-        canDiscountAllocationQuote: true,
         hasProductUnit: true,
         kind: 'product',
         status: 'accepted',
@@ -277,9 +249,7 @@ describe('editableLockedQuoteFields', () => {
     ['a build-to-order quote', { hasProductUnit: false, kind: 'product', status: 'accepted' }],
     ['a custom quote', { hasProductUnit: false, kind: 'custom', status: 'accepted' }],
   ] as const)('withholds the discount on %s', (_label, quote) => {
-    expect([...editableLockedQuoteFields({ canDiscountAllocationQuote: true, ...quote })]).toEqual(
-      alwaysEditableFields,
-    );
+    expect([...editableLockedQuoteFields(quote)]).toEqual(alwaysEditableFields);
   });
 });
 

@@ -194,7 +194,6 @@ describe('createJob', () => {
 
     await updateQuote({
       actorUserId,
-      canDiscountAllocationQuote: false,
       db: context.db,
       input: QuoteUpdateInput.parse({
         ...draftUpdateInput,
@@ -216,7 +215,6 @@ describe('createJob', () => {
 
     await updateQuote({
       actorUserId,
-      canDiscountAllocationQuote: false,
       db: context.db,
       input: QuoteUpdateInput.parse({
         ...draftUpdateInput,
@@ -232,7 +230,6 @@ describe('createJob', () => {
     });
     await updateQuote({
       actorUserId,
-      canDiscountAllocationQuote: false,
       db: context.db,
       input: QuoteUpdateInput.parse({
         ...draftUpdateInput,
@@ -679,7 +676,6 @@ describe('createJob', () => {
     await expect(
       updateQuote({
         actorUserId,
-        canDiscountAllocationQuote: false,
         db: context.db,
         input: QuoteUpdateInput.parse({
           ...quoteUpdateInput(quote),

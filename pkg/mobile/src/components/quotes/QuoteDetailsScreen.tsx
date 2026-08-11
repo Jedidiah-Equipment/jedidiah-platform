@@ -46,7 +46,6 @@ function QuoteDetailsData({ id }: { id: UUID }) {
   const queryClient = useQueryClient();
   const readAccess = useCan('quote:read');
   const updateAccess = useCan('quote:update');
-  const discountAccess = useCan('quote:discount');
   const quoteOptions = trpc.quotes.get.queryOptions({ id }, { enabled: readAccess.can });
   const quoteQuery = useQuery(quoteOptions);
   const priorityQuery = useQuery(trpc.quotes.priorityList.queryOptions(undefined, { enabled: readAccess.can }));
@@ -72,7 +71,6 @@ function QuoteDetailsData({ id }: { id: UUID }) {
 
   return (
     <QuoteEditor
-      canDiscountAllocationQuote={discountAccess.can}
       canUpdate={updateAccess.can}
       key={quote.id}
       onReconcile={async () => (await quoteQuery.refetch()).data}
@@ -84,14 +82,12 @@ function QuoteDetailsData({ id }: { id: UUID }) {
 }
 
 function QuoteEditor({
-  canDiscountAllocationQuote,
   canUpdate,
   onReconcile,
   onSave,
   priorityQuote,
   quote,
 }: {
-  canDiscountAllocationQuote: boolean;
   canUpdate: boolean;
   onReconcile: () => Promise<QuoteDetail | undefined>;
   onSave: (input: QuoteUpdateInput) => Promise<QuoteDetail>;
@@ -129,7 +125,6 @@ function QuoteEditor({
   );
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const lockEditableFields = editableLockedQuoteFields({
-    canDiscountAllocationQuote,
     hasProductUnit: quote.productUnitId !== null,
     kind: quote.kind,
     status: quote.status,

@@ -52,6 +52,9 @@ describe('snapshot table registry', () => {
       'job_cfo_assembly',
       'job_cfo_part',
       'job_slot',
+      'feedback',
+      'feedback_department',
+      'feedback_user',
     ]);
   });
 
@@ -90,6 +93,9 @@ describe('snapshot table registry', () => {
       'job_cfo_assembly.json',
       'job_cfo_part.json',
       'job_slot.json',
+      'feedback.json',
+      'feedback_department.json',
+      'feedback_user.json',
     ]);
   });
 
@@ -154,6 +160,13 @@ describe('snapshot table registry', () => {
 
   it('keeps the rollout Build Spec table optional until the source migration deploys', () => {
     expect(configFor('job_build_spec_assembly').optionalReadTable).toBe(true);
+  });
+
+  it('keeps the rollout Feedback tables optional until the source migration deploys', () => {
+    expect(configFor('feedback').optionalReadTable).toBe(true);
+    expect(configFor('feedback_department').optionalReadTable).toBe(true);
+    expect(configFor('feedback_user').optionalReadTable).toBe(true);
+    expect(configFor('feedback').timestampColumns).toEqual(['createdAt', 'updatedAt']);
   });
 
   it('projects generated assembly override columns out before import', () => {

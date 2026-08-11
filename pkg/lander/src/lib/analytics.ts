@@ -3,6 +3,8 @@ import posthog from 'posthog-js';
 
 import { resolvePosthogToken } from './analytics-config.js';
 
+const INTERNAL_USER_STORAGE_KEY = 'is_internal';
+
 export type AnalyticsEventRegistry = {
   range_card_clicked: { rangeSlug: string; rangeName: string; position: number };
   cta_clicked: {
@@ -47,6 +49,18 @@ let activeLanguage: Locale | undefined;
 // language and drop the event instead of starting the SDK.
 let pendingLanguage: Locale | undefined;
 
+export function isInternalUser(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(INTERNAL_USER_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 // Lazily initialises posthog-js the first time analytics is used, but only in the browser and only when a
 // PostHog token is configured. Returns whether analytics is live so every public helper no-ops cleanly when
 // unconfigured (issue #569).
@@ -67,6 +81,9 @@ function setLanguage(language: Locale): void {
 }
 
 function ensureStarted(language: Locale | undefined): boolean {
+  if (isInternalUser()) {
+    return false;
+  }
   if (started) {
     return true;
   }
@@ -89,6 +106,33 @@ function ensureStarted(language: Locale | undefined): boolean {
   });
   started = true;
   return true;
+}
+
+export function setInternalUser(internal: boolean): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    if (internal) {
+      window.localStorage.setItem(INTERNAL_USER_STORAGE_KEY, 'true');
+    } else {
+      window.localStorage.removeItem(INTERNAL_USER_STORAGE_KEY);
+    }
+  } catch {
+    return isInternalUser();
+  }
+
+  if (internal) {
+    if (started) {
+      posthog.opt_out_capturing();
+    }
+  } else if (ensureStarted(activeLanguage ?? pendingLanguage)) {
+    // Resuming capture should not create a synthetic consent event for this hidden internal control.
+    posthog.opt_in_capturing({ captureEventName: false });
+  }
+
+  return internal;
 }
 
 export function initAnalytics(language: Locale): void {

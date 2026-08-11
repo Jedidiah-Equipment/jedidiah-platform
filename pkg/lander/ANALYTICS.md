@@ -14,6 +14,10 @@ The active Locale is registered as a PostHog super property and is also set as a
 
 `$pageview` is PostHog's built-in event, fired on initial load and on SPA navigations (`history_change`). It has no custom properties beyond PostHog defaults and `language`.
 
+## Internal traffic opt-out
+
+Clicking the footer dung beetle six times within two seconds toggles the browser's internal-user status. While enabled, the footer displays a localized disabled message (`Internal User: Posthog Disabled` in English), local storage contains `is_internal=true`, and the PostHog client does not start or capture events. Repeating the click sequence removes the flag and resumes capture.
+
 ## Custom events
 
 | Event | Fired when | Property | Type | Values / example |

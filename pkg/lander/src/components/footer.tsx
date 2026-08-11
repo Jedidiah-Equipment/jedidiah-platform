@@ -7,9 +7,9 @@ import {
 } from '@pkg/domain';
 import { IconBrandFacebook, IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { type MouseEvent, useEffect, useState } from 'react';
+import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { FOOTER_LOGO } from '../assets/images.js';
-import { captureEvent, captureEventForNavigation } from '../lib/analytics.js';
+import { captureEvent, captureEventForNavigation, isInternalUser, setInternalUser } from '../lib/analytics.js';
 import { LOCALES } from '../lib/locale.js';
 import { localePreferenceHref } from '../lib/locale-preference.js';
 import { useLocale, useMessages } from '../messages/index.js';
@@ -25,6 +25,8 @@ const EXPLORE = [
 ] as const;
 
 const footerLinkClass = 'font-body text-[15px] text-[#a8a8a8] no-underline transition-colors hover:text-yellow';
+const INTERNAL_TOGGLE_CLICKS = 6;
+const INTERNAL_TOGGLE_WINDOW_MS = 2000;
 
 function FooterLink({ label, to }: { label: string; to: (typeof EXPLORE)[number]['to'] }) {
   return (
@@ -38,6 +40,8 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
   const m = useMessages();
   const locale = useLocale();
   const [switchingLanguage, setSwitchingLanguage] = useState(false);
+  const [internalUser, setInternalUserState] = useState(false);
+  const beetleClickTimes = useRef<number[]>([]);
   const currentHref = useRouterState({ select: (state) => state.location.href });
   const targetLocale = LOCALES.find((other) => other !== locale) ?? locale;
   const targetLanguage = m.language.names[targetLocale];
@@ -48,6 +52,23 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
     window.addEventListener('pageshow', resetLanguageSwitch);
     return () => window.removeEventListener('pageshow', resetLanguageSwitch);
   }, []);
+
+  useEffect(() => setInternalUserState(isInternalUser()), []);
+
+  function handleBeetleClick() {
+    const now = performance.now();
+    beetleClickTimes.current = [
+      ...beetleClickTimes.current.filter((click) => now - click < INTERNAL_TOGGLE_WINDOW_MS),
+      now,
+    ];
+
+    if (beetleClickTimes.current.length < INTERNAL_TOGGLE_CLICKS) {
+      return;
+    }
+
+    beetleClickTimes.current = [];
+    setInternalUserState(setInternalUser(!internalUser));
+  }
 
   function handleLanguageSwitch(event: MouseEvent<HTMLAnchorElement>) {
     const staysInCurrentPage =
@@ -164,10 +185,13 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
           </div>
         </div>
 
-        <DungBeetle />
+        <DungBeetle onClick={handleBeetleClick} />
 
         <div className="flex flex-wrap items-center justify-between gap-3 py-[26px] max-nav:flex-col max-nav:items-start max-nav:gap-2.5">
           <span className="font-body text-[13px] text-[#8a8a8a]">{m.footer.copyright}</span>
+          {internalUser ? (
+            <span className="font-body text-[13px] text-yellow">{m.footer.internalAnalyticsDisabled}</span>
+          ) : null}
           <span className="font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#8a8a8a]">
             {m.footer.tagline}
           </span>

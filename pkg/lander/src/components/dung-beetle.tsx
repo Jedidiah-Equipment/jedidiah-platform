@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { type MouseEventHandler, useEffect, useId, useRef } from 'react';
 
 // The beetle rolls its ball along the footer divider in a classic dung-beetle
 // handstand: nearly vertical, head down, front legs braced on the ground,
@@ -33,10 +33,10 @@ function pickMood(prev: Mood, fleeing: boolean): Mood {
   return pool[Math.floor(Math.random() * pool.length)] ?? 'push';
 }
 
-export function DungBeetle() {
+export function DungBeetle({ onClick }: { onClick: MouseEventHandler<HTMLButtonElement> }) {
   const maskId = useId();
   const stripRef = useRef<HTMLDivElement>(null);
-  const walkerRef = useRef<HTMLDivElement>(null);
+  const walkerRef = useRef<HTMLButtonElement>(null);
   const ballSpinRef = useRef<SVGGElement>(null);
   const bodyRef = useRef<SVGGElement>(null);
   const frontLegARef = useRef<SVGPathElement>(null);
@@ -148,7 +148,13 @@ export function DungBeetle() {
 
   return (
     <div ref={stripRef} aria-hidden="true" className="relative h-10 overflow-hidden border-b border-[#2a2a2a]">
-      <div ref={walkerRef} className="absolute bottom-0 left-0 opacity-0 will-change-transform">
+      <button
+        ref={walkerRef}
+        type="button"
+        tabIndex={-1}
+        onClick={onClick}
+        className="absolute bottom-0 left-0 border-0 bg-transparent p-0 opacity-0 will-change-transform"
+      >
         <svg
           aria-hidden="true"
           width={SVG_WIDTH}
@@ -194,7 +200,7 @@ export function DungBeetle() {
             </g>
           </g>
         </svg>
-      </div>
+      </button>
     </div>
   );
 }

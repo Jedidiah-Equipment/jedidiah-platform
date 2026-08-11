@@ -7,6 +7,8 @@ import type { AnalyticsEventName, AnalyticsEventProperties, captureEvent as Capt
 const posthog = vi.hoisted(() => ({
   capture: vi.fn(),
   init: vi.fn(),
+  opt_in_capturing: vi.fn(),
+  opt_out_capturing: vi.fn(),
   register: vi.fn(),
   setPersonProperties: vi.fn(),
 }));
@@ -16,6 +18,7 @@ vi.mock('posthog-js', () => ({ default: posthog }));
 vi.mock('./analytics-config.js', () => ({ resolvePosthogToken }));
 
 beforeEach(() => {
+  window.localStorage.clear();
   vi.clearAllMocks();
   vi.resetModules();
   resolvePosthogToken.mockReturnValue('phc_test');
@@ -127,6 +130,36 @@ describe('analytics delivery', { timeout: 15_000 }, () => {
 
     expect(posthog.init).not.toHaveBeenCalled();
     expect(posthog.capture).not.toHaveBeenCalled();
+  });
+
+  test('does not start PostHog for a persisted internal user', async () => {
+    window.localStorage.setItem('is_internal', 'true');
+    const { captureEvent, initAnalytics } = await import('./analytics.js');
+
+    initAnalytics('en');
+    captureEvent('brochure_downloaded', { modelCode: 'JM-2400' });
+
+    expect(posthog.init).not.toHaveBeenCalled();
+    expect(posthog.capture).not.toHaveBeenCalled();
+  });
+
+  test('opts a running client out and back in when internal status changes', async () => {
+    const { captureEvent, initAnalytics, setInternalUser } = await import('./analytics.js');
+    initAnalytics('en');
+
+    expect(setInternalUser(true)).toBe(true);
+    expect(window.localStorage.getItem('is_internal')).toBe('true');
+    expect(posthog.opt_out_capturing).toHaveBeenCalledOnce();
+
+    captureEvent('brochure_downloaded', { modelCode: 'JM-2400' });
+    expect(posthog.capture).not.toHaveBeenCalled();
+
+    expect(setInternalUser(false)).toBe(false);
+    expect(window.localStorage.getItem('is_internal')).toBeNull();
+    expect(posthog.opt_in_capturing).toHaveBeenCalledWith({ captureEventName: false });
+
+    captureEvent('brochure_downloaded', { modelCode: 'JM-2400' });
+    expect(posthog.capture).toHaveBeenCalledWith('brochure_downloaded', { modelCode: 'JM-2400' });
   });
 });
 

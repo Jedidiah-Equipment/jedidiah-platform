@@ -30,6 +30,7 @@ export const en: Messages = {
     facebookHandle: '@jedidiahequipment',
     instagramHandle: '@jedidiahequipment',
     contactUs: 'Contact Us',
+    internalAnalyticsDisabled: 'Internal User: Posthog Disabled',
     copyright: '© 2026 Jedidiah Equipment. All rights reserved.',
     tagline: 'South African Built · Farmer Proven',
   },

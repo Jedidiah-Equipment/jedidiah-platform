@@ -113,6 +113,11 @@ const navSections = [
             permission: 'job:read',
             link: linkOptions({ to: '/jobs/calendar' }),
           },
+          {
+            title: 'Activity',
+            permission: 'job:read',
+            link: linkOptions({ to: '/jobs/activity' }),
+          },
         ],
       },
       {

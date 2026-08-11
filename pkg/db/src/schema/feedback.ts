@@ -1,6 +1,6 @@
 import type { Department, FeedbackKind, FeedbackStatus, FeedbackSubjectType } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, index, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { jobs } from './job.js';
@@ -37,6 +37,10 @@ export const feedback = pgTable(
       sql`(${table.subjectType} = 'quote' AND ${table.quoteId} IS NOT NULL AND ${table.jobId} IS NULL)
         OR (${table.subjectType} = 'job' AND ${table.jobId} IS NOT NULL AND ${table.quoteId} IS NULL)`,
     ),
+    // Serves the Job Activity feed, which pages on (created_at, id) in one direction at a time. The
+    // inbox reads want their own indexes: one sorts the pair in mixed directions, the other leads
+    // with job_id.
+    index('feedback_created_at_idx').on(table.createdAt, table.id),
   ],
 );
 

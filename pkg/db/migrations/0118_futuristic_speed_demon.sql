@@ -1,0 +1,1 @@
+CREATE INDEX "feedback_created_at_idx" ON "feedback" USING btree ("created_at","id");

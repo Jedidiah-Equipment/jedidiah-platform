@@ -8,6 +8,7 @@ import { customersRouter } from '../routes/customers/customers.router.js';
 import { documentsRouter } from '../routes/documents/documents.router.js';
 import { feedbackRouter } from '../routes/feedback/feedback.router.js';
 import { inventoryRouter } from '../routes/inventory/inventory.router.js';
+import { jobActivityRouter } from '../routes/job-activity/job-activity.router.js';
 import { jobsRouter } from '../routes/jobs/jobs.router.js';
 import { partsRouter } from '../routes/parts/parts.router.js';
 import { productRangesRouter } from '../routes/product-ranges/product-ranges.router.js';
@@ -30,6 +31,7 @@ type AppRouterRecord = {
   documents: (typeof documentsRouter)['_def']['record'];
   feedback: (typeof feedbackRouter)['_def']['record'];
   inventory: (typeof inventoryRouter)['_def']['record'];
+  jobActivity: (typeof jobActivityRouter)['_def']['record'];
   jobs: (typeof jobsRouter)['_def']['record'];
   parts: (typeof partsRouter)['_def']['record'];
   productRanges: (typeof productRangesRouter)['_def']['record'];
@@ -54,6 +56,7 @@ function createAppRouter(): AppRouter {
     documents: documentsRouter,
     feedback: feedbackRouter,
     inventory: inventoryRouter,
+    jobActivity: jobActivityRouter,
     jobs: jobsRouter,
     parts: partsRouter,
     productRanges: productRangesRouter,

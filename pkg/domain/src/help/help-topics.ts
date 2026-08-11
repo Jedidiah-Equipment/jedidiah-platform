@@ -18,6 +18,7 @@ export const HELP_TOPICS = {
   inventoryJobVariance: '/inventory/read-a-jobs-material-variance',
   inventoryPriceVariance: '/inventory/cross-check-a-supplier-invoice',
   inventoryStocktake: '/inventory/run-a-stocktake-session',
+  jobActivity: '/production/catch-up-on-job-activity',
   jobs: '/production/find-a-job',
   parts: '/inventory/print-part-labels',
   plan: '/production/open-a-bay-plan',

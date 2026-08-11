@@ -42,6 +42,14 @@ export function getJobOptionHint(job: JobOptionHintSource): string {
   return job.productUnit?.productSerialNumber ?? getJobDisplayName(job);
 }
 
+/**
+ * How a Job reads when it is named as something else's subject — its code, then the hint that tells
+ * two Jobs apart. `code` is already the formatted Job Code.
+ */
+export function getJobCodeWithHint(job: JobOptionHintSource): string {
+  return `${job.code} · ${getJobOptionHint(job)}`;
+}
+
 export function getJobWorkLabel(job: Pick<JobDisplaySource, 'quoteKind'>): 'Product' | 'Work title' {
   return job.quoteKind === 'custom' ? 'Work title' : 'Product';
 }

@@ -93,7 +93,7 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
 }) => {
   const trpc = useTRPC();
   const [open, setOpen] = useState(false);
-  const { invalidateFeedback } = useQueryInvalidation();
+  const { invalidateFeedback, invalidateJobActivity } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
 
   const targetUsersQuery = useQuery(trpc.feedback.listTargetUsers.queryOptions(undefined, { enabled: open }));
@@ -121,7 +121,9 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
         onCreated={async () => {
           setOpen(false);
           toast.success('Feedback submitted');
-          await invalidateFeedback();
+          // Job Activity reads the same rows from its own root path, so it needs its own
+          // invalidation — submitting from a Job Sheet opened over the feed must reach the feed.
+          await Promise.all([invalidateFeedback(), invalidateJobActivity()]);
         }}
         onOpenChange={setOpen}
         open={open}

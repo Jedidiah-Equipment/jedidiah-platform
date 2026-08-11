@@ -28,6 +28,7 @@ export * from './inventory/stock-movement-errors.js';
 export * from './inventory/stock-movement-service.js';
 export * from './inventory/stocktake-errors.js';
 export * from './inventory/stocktake-service.js';
+export * from './job-activity/job-activity-service.js';
 export * from './jobs/board-preview-service.js';
 export * from './jobs/job-bay-service.js';
 export * from './jobs/job-completion-service.js';

@@ -6,7 +6,7 @@ import {
   stockMovements,
   user,
 } from '@pkg/db';
-import { deriveInvoicePriceCorrection } from '@pkg/domain';
+import { deriveInvoicePriceCorrection, derivePartStockActions } from '@pkg/domain';
 import type {
   AuthId,
   InvoiceFlagResolution,
@@ -26,12 +26,8 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 import { assertDocumentAcceptable } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import {
-  assertBuiltPartCostIsDerived,
-  insertMovement,
-  loadMovingAverages,
-  loadStockPart,
-} from '../inventory/ledger.js';
+import { insertMovement, loadMovingAverages, loadStockPart } from '../inventory/ledger.js';
+import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
 import { filePurchaseOrderDocument } from './purchase-order-document-filing.js';
 import { PurchaseOrderNotSentError } from './purchase-order-errors.js';
 import { getPurchaseOrder, type PurchaseOrderDb } from './purchase-order-service.js';
@@ -245,7 +241,7 @@ export async function applyInvoicePrice({
     // held to the same rule: a Built Part's cost is derived from its build and never keyed, whatever
     // a Supplier's paperwork says (spec §5). A Part flipped to internally-fabricated after its
     // receipts is exactly how an invoiced price would otherwise reach one.
-    assertBuiltPartCostIsDerived(part.isInternallyFabricated, row.correction.newAverageUnitCost);
+    assertPartStockAction(derivePartStockActions(part).revalue, { partId: input.partId });
 
     const movement = await insertMovement(tx, {
       actorUserId,

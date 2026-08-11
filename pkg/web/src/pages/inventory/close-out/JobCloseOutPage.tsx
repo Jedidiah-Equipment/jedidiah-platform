@@ -36,7 +36,7 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
     trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove && returningPartId !== null }),
   );
   const parts = useMemo(
-    () => partOptionsAllowing(stockOnHandQuery.data?.items ?? [], 'checkout'),
+    () => partOptionsAllowing(stockOnHandQuery.data?.items ?? [], 'returnToStore'),
     [stockOnHandQuery.data?.items],
   );
 

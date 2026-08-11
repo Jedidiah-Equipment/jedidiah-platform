@@ -1,4 +1,5 @@
 import { type Db, parts, supplier } from '@pkg/db';
+import { derivePartStockActions } from '@pkg/domain';
 import type { AuthId, PurchaseOrderSelectionInput, PurchaseOrderSelectionResult, UUID } from '@pkg/schema';
 import {
   isWholeUnitQuantity,
@@ -7,6 +8,7 @@ import {
 } from '@pkg/schema';
 import { eq, inArray } from 'drizzle-orm';
 
+import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
 import {
   PurchaseOrderInvalidQuantityError,
   PurchaseOrderPartNotFoundError,
@@ -88,6 +90,8 @@ async function groupSelectionBySupplier({
   const partRows = await db
     .select({
       id: parts.id,
+      isInternallyFabricated: parts.isInternallyFabricated,
+      stockTrackingMode: parts.stockTrackingMode,
       supplierId: parts.supplierId,
       supplierName: supplier.companyName,
       unitOfMeasure: parts.unitOfMeasure,
@@ -106,7 +110,9 @@ async function groupSelectionBySupplier({
   for (const line of input.lines) {
     const part = partsById.get(line.partId);
     if (!part) throw new PurchaseOrderPartNotFoundError(line.partId);
-    // A Built Part is made in-house; it can carry a shortfall on the buy list but never a PO line.
+    assertPartStockAction(derivePartStockActions(part).purchase, { partId: line.partId });
+    // The Supplier is left-joined on a column the purchasable verdict has already vouched for; this
+    // narrows the pair the group is keyed and named by.
     if (part.supplierId === null || part.supplierName === null) {
       throw new PurchaseOrderPartNotPurchasableError(line.partId);
     }

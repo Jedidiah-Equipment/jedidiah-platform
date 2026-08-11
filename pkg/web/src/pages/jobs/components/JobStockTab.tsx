@@ -26,7 +26,10 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
     trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove && movementType !== null }),
   );
   const stockOnHandItems = useMemo(() => stockOnHandQuery.data?.items ?? [], [stockOnHandQuery.data?.items]);
-  const parts = useMemo(() => partOptionsAllowing(stockOnHandItems, 'checkout'), [stockOnHandItems]);
+  const parts = useMemo(
+    () => partOptionsAllowing(stockOnHandItems, movementType === 'return-to-store' ? 'returnToStore' : 'checkout'),
+    [movementType, stockOnHandItems],
+  );
   const purchaseCandidates = useMemo(
     () => toJobStockPurchaseCandidates(jobStockQuery.data?.items ?? []),
     [jobStockQuery.data?.items],

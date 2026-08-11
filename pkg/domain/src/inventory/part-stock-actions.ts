@@ -43,7 +43,7 @@ export function derivePartStockActions(facts: PartStockActionFacts): PartStockAc
 
   return {
     adjust: ALLOWED,
-    build: deriveBuild(),
+    build: deriveBuildVerdict(),
     checkout: whileConsumable,
     count: ALLOWED,
     purchase: whilePurchasable,
@@ -54,7 +54,7 @@ export function derivePartStockActions(facts: PartStockActionFacts): PartStockAc
     revalue: isInternallyFabricated ? blocked('cost-derived') : ALLOWED,
   };
 
-  function deriveBuild(): PartStockActionVerdict {
+  function deriveBuildVerdict(): PartStockActionVerdict {
     // Ordered so the reason names the one fact that could change: a bought Part reads as bought
     // whatever else is true of it, and only a Built Part is judged on how it is stocked.
     if (!isInternallyFabricated) return blocked('not-built');

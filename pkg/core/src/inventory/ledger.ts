@@ -170,6 +170,10 @@ export async function scalar(query: PromiseLike<Array<{ value: number }>>): Prom
  * Correcting a wrong built-part average therefore means correcting the build, not overwriting the
  * number. That is deliberate: overwriting would assert a price for something we never bought, and
  * for sheet metal cut from plate it would pay for the plate twice (spec §5).
+ *
+ * This judges the *cost keyed onto an adjustment*, which is why a zero passes: adjusting a Built
+ * Part's quantity is ordinary, and a zero asserts no price. Whether the Part may be revalued at all
+ * is the Part's own question, answered by `derivePartStockActions(...).revalue`.
  */
 export function assertBuiltPartCostIsDerived(isInternallyFabricated: boolean, unitCost: number | null): void {
   if (isInternallyFabricated && unitCost !== null && unitCost !== 0) {

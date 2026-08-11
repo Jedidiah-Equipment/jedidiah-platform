@@ -9,7 +9,7 @@ import { StockAdjustmentDialog } from './StockAdjustmentDialog.js';
 import { StockBuildDialog } from './StockBuildDialog.js';
 import { StockMovementDialog } from './StockMovementDialog.js';
 import { StockRevaluationDialog } from './StockRevaluationDialog.js';
-import { partOptionsAllowing, toStockPartOption } from './types.js';
+import { partOptionsAllowing } from './types.js';
 
 export function StockMovementActions({
   canAdjust,
@@ -32,20 +32,21 @@ export function StockMovementActions({
   const [returnOpen, setReturnOpen] = useState(false);
   const [buildOpen, setBuildOpen] = useState(false);
   const buildableParts = useMemo(() => items.filter((item) => derivePartStockActions(item).build.allowed), [items]);
-  const allParts = useMemo(() => items.map(toStockPartOption), [items]);
-  const movementParts = useMemo(() => partOptionsAllowing(items, 'checkout'), [items]);
+  const adjustableParts = useMemo(() => partOptionsAllowing(items, 'adjust'), [items]);
+  const checkoutParts = useMemo(() => partOptionsAllowing(items, 'checkout'), [items]);
+  const returnParts = useMemo(() => partOptionsAllowing(items, 'returnToStore'), [items]);
   const revaluableParts = useMemo(() => partOptionsAllowing(items, 'revalue'), [items]);
 
   return (
     <>
       {canMove ? (
-        <Button disabled={movementParts.length === 0} onClick={() => setCheckoutOpen(true)} variant="outline">
+        <Button disabled={checkoutParts.length === 0} onClick={() => setCheckoutOpen(true)} variant="outline">
           <IconArrowDown data-icon="inline-start" />
           Check out
         </Button>
       ) : null}
       {canMove ? (
-        <Button disabled={movementParts.length === 0} onClick={() => setReturnOpen(true)} variant="outline">
+        <Button disabled={returnParts.length === 0} onClick={() => setReturnOpen(true)} variant="outline">
           <IconArrowUp data-icon="inline-start" />
           Return to store
         </Button>
@@ -57,7 +58,7 @@ export function StockMovementActions({
         </Button>
       ) : null}
       {canAdjust ? (
-        <Button disabled={allParts.length === 0} onClick={() => setAdjustmentOpen(true)} variant="outline">
+        <Button disabled={adjustableParts.length === 0} onClick={() => setAdjustmentOpen(true)} variant="outline">
           <IconAdjustments data-icon="inline-start" />
           Post adjustment
         </Button>
@@ -76,7 +77,7 @@ export function StockMovementActions({
           canReadCost={canReadCost}
           onOpenChange={setAdjustmentOpen}
           open={true}
-          parts={allParts}
+          parts={adjustableParts}
         />
       ) : null}
       {revaluationOpen ? (
@@ -87,7 +88,7 @@ export function StockMovementActions({
           items={items}
           onOpenChange={setCheckoutOpen}
           open={true}
-          parts={movementParts}
+          parts={checkoutParts}
           type="checkout"
         />
       ) : null}
@@ -96,7 +97,7 @@ export function StockMovementActions({
           items={items}
           onOpenChange={setReturnOpen}
           open={true}
-          parts={movementParts}
+          parts={returnParts}
           type="return-to-store"
         />
       ) : null}

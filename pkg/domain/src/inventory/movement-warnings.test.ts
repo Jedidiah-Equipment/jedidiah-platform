@@ -37,6 +37,15 @@ describe('deriveMovementWarnings — a Job draw', () => {
     ).toEqual(['negative-stock-on-hand']);
   });
 
+  test('reports both draw warnings when one movement earns them together', () => {
+    expect(
+      deriveMovementWarnings({
+        facts: { ...jobFacts, bucketQuantityOnHand: 1, cfoQuantity: 2, kind: 'checkout' },
+        quantity: 3,
+      }),
+    ).toEqual(['exceeds-cfo', 'negative-stock-on-hand']);
+  });
+
   test('judges a return against its own length bucket, not the Part total', () => {
     const facts = { ...jobFacts, drawnBucketQuantity: 2, drawnQuantity: 9, kind: 'return-to-store' } as const;
 

@@ -82,6 +82,19 @@ describe('EnquiryForm', () => {
     expect(captureEvent).not.toHaveBeenCalledWith('contact_submit_blocked', expect.anything());
   });
 
+  test('captures a single form-start event on first interaction', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    await renderForm(root);
+
+    await act(async () => field('name').focus());
+    await act(async () => field('email').focus());
+
+    const starts = vi.mocked(captureEvent).mock.calls.filter(([event]) => event === 'contact_form_started');
+    expect(starts).toEqual([['contact_form_started', {}]]);
+  });
+
   test('blocks a malformed email before sending', async () => {
     const fetchStub = vi.fn();
     vi.stubGlobal('fetch', fetchStub);

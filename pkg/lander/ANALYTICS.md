@@ -41,6 +41,7 @@ Clicking the footer dung beetle six times within two seconds toggles the browser
 | `product_shared` | A Product is successfully shared through the native share sheet or its link is copied | `modelCode` | string | e.g. `JM-2400` |
 | | | `method` | string | `native`, `clipboard` |
 | `brochure_downloaded` | Brochure download link clicked on Product detail (pre-existing, unchanged) | `modelCode` | string | e.g. `JM-2400` |
+| `contact_form_started` | The visitor first focuses any contact form control, fired once per mount | — | — | no properties — never form content |
 | `contact_submitted` | Contact form submitted successfully (pre-existing, unchanged) | `equipment` | string | selected equipment, or the localized "not specified" text |
 | `contact_submit_blocked` | Contact form submit is stopped because required fields are empty | `missingFields` | string[] | names of the empty required fields, e.g. `["name","message"]` — never field values |
 | `contact_submit_failed` | Contact form submission fails | `errorCategory` | string | `network`, `server` — never form content |

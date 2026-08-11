@@ -32,25 +32,18 @@ describe('JobActivityCard', () => {
     expect(html).toContain('href="/jobs?job=30000000-0000-4000-8000-000000000000"');
   });
 
-  it('leaves short feedback unclamped and offers no toggle', async () => {
-    const html = await renderWithRouter(<JobActivityCard item={buildItem()} />);
-
-    expect(html).not.toContain('line-clamp-4');
-    expect(html).not.toContain('Show more');
-  });
-
-  it('clamps long feedback behind a Show more toggle', async () => {
+  // The toggle itself is driven by measuring the clamped paragraph, which needs layout — so it is
+  // verified in the browser, and what static markup can pin is that the clamp is on to begin with.
+  it('clamps the feedback so one long note cannot run away with the feed', async () => {
     const html = await renderWithRouter(<JobActivityCard item={buildItem({ text: 'A note. '.repeat(60) })} />);
 
     expect(html).toContain('line-clamp-4');
-    expect(html).toContain('Show more');
   });
 
-  it('clamps feedback that is short but runs past four lines', async () => {
-    const html = await renderWithRouter(<JobActivityCard item={buildItem({ text: 'Line.\n'.repeat(6) })} />);
+  it('clamps short feedback too, since how many lines it wraps to depends on the column', async () => {
+    const html = await renderWithRouter(<JobActivityCard item={buildItem()} />);
 
     expect(html).toContain('line-clamp-4');
-    expect(html).toContain('Show more');
   });
 });
 

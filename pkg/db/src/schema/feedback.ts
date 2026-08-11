@@ -37,7 +37,9 @@ export const feedback = pgTable(
       sql`(${table.subjectType} = 'quote' AND ${table.quoteId} IS NOT NULL AND ${table.jobId} IS NULL)
         OR (${table.subjectType} = 'job' AND ${table.jobId} IS NOT NULL AND ${table.quoteId} IS NULL)`,
     ),
-    // The Job Activity feed pages newest-first on (created_at, id); the inbox reads share the order.
+    // Serves the Job Activity feed, which pages on (created_at, id) in one direction at a time. The
+    // inbox reads want their own indexes: one sorts the pair in mixed directions, the other leads
+    // with job_id.
     index('feedback_created_at_idx').on(table.createdAt, table.id),
   ],
 );

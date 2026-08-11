@@ -2,7 +2,7 @@ import type { GeneralFeedbackActivityItem, JobActivityItem } from '@pkg/schema';
 import { IconTimeline } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { StockBadge } from '@/components/common/StockBadge.js';
@@ -12,16 +12,40 @@ import { Card, CardContent } from '@/components/ui/card.js';
 import { cn } from '@/lib/utils.js';
 
 /**
- * Roughly the four clamped lines a card shows before the toggle earns its place. Measuring the real
- * line count needs layout, and a feed of mostly-short notes should not pay for that.
+ * Whether the clamped feedback is actually hiding anything, measured rather than guessed from the
+ * text: how many lines a note wraps to depends on the column it lands in, so a character count
+ * offers a toggle that reveals nothing on a wide screen and withholds one on a narrow screen.
+ * Only meaningful while clamped — an expanded paragraph always reports that it fits.
  */
-const EXPANDABLE_TEXT_LENGTH = 280;
+function useIsTextClipped(enabled: boolean): [React.RefObject<HTMLParagraphElement | null>, boolean] {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [clipped, setClipped] = useState(false);
 
-/** The clamp shows four lines, so feedback that already breaks past four needs the toggle too. */
-const CLAMPED_LINES = 4;
+  useEffect(() => {
+    const element = ref.current;
 
-function isExpandable(text: string): boolean {
-  return text.length > EXPANDABLE_TEXT_LENGTH || text.split('\n').length > CLAMPED_LINES;
+    if (!element || !enabled) {
+      return;
+    }
+
+    const measure = () => setClipped(element.scrollHeight > element.clientHeight);
+
+    measure();
+
+    // Re-measure when the column changes under a still window (the Job Sheet opening beside the
+    // feed) and when the window itself changes: the clamp holds the paragraph's height fixed, so
+    // its box can report no change while the text inside it reflows across the clamp boundary.
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    window.addEventListener('resize', measure);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [enabled]);
+
+  return [ref, clipped];
 }
 
 /** One feed entry, rendered by its discriminator. Each activity type of #1169 adds a case here. */
@@ -34,7 +58,10 @@ export const JobActivityCard: React.FC<{ item: JobActivityItem }> = ({ item }) =
 
 export const GeneralFeedbackActivityCard: React.FC<{ item: GeneralFeedbackActivityItem }> = ({ item }) => {
   const [expanded, setExpanded] = useState(false);
-  const expandable = isExpandable(item.feedback.text);
+  const [textRef, clipped] = useIsTextClipped(!expanded);
+  // Keep the toggle once expanded: the unclamped paragraph reads as fitting, and dropping it there
+  // would strand the reader with no way back.
+  const expandable = expanded || clipped;
   const jobLabel = `${item.job.code} · ${item.job.displayName}`;
 
   return (
@@ -80,7 +107,7 @@ export const GeneralFeedbackActivityCard: React.FC<{ item: GeneralFeedbackActivi
               )}
             </span>
           </div>
-          <p className={cn('whitespace-pre-wrap text-sm leading-6', expandable && !expanded && 'line-clamp-4')}>
+          <p className={cn('whitespace-pre-wrap text-sm leading-6', !expanded && 'line-clamp-4')} ref={textRef}>
             {item.feedback.text}
           </p>
           {expandable ? (

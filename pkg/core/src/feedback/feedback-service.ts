@@ -1,5 +1,5 @@
 import { type Db, feedback, feedbackDepartment, feedbackUser, jobs, quotes, user } from '@pkg/db';
-import { getJobOptionHint } from '@pkg/domain';
+import { getJobCodeWithHint } from '@pkg/domain';
 import type {
   AuthId,
   Department,
@@ -371,18 +371,15 @@ function mapFeedbackSubject(row: FeedbackReadRow): FeedbackListItem['subject'] {
   }
 
   if (row.subjectType === 'job' && row.job) {
-    const jobCode = JobCode.parse(row.job.code);
-    const jobLabel = getJobOptionHint({
-      code: jobCode,
-      productName: null,
-      productUnit: row.job.productUnit ?? null,
-      quoteKind: row.job.quote?.kind ?? null,
-      workTitle: row.job.quote?.workTitle ?? null,
-    });
-
     return {
       id: row.job.id,
-      label: `${jobCode} · ${jobLabel}`,
+      label: getJobCodeWithHint({
+        code: JobCode.parse(row.job.code),
+        productName: null,
+        productUnit: row.job.productUnit ?? null,
+        quoteKind: row.job.quote?.kind ?? null,
+        workTitle: row.job.quote?.workTitle ?? null,
+      }),
       subjectType: 'job',
     };
   }

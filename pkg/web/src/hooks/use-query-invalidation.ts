@@ -27,6 +27,10 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.feedback.pathKey() }),
     [queryClient, trpc],
   );
+  const invalidateJobActivity = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: trpc.jobActivity.pathKey() }),
+    [queryClient, trpc],
+  );
   const invalidateJobs = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() }),
     [queryClient, trpc],
@@ -82,6 +86,7 @@ export function useQueryInvalidation() {
       invalidateCustomers,
       invalidateDocuments,
       invalidateFeedback,
+      invalidateJobActivity,
       invalidateJobs,
       invalidateInventory,
       invalidateParts,
@@ -101,6 +106,7 @@ export function useQueryInvalidation() {
       invalidateCustomers,
       invalidateDocuments,
       invalidateFeedback,
+      invalidateJobActivity,
       invalidateJobs,
       invalidateInventory,
       invalidateParts,

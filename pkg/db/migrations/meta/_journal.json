@@ -827,6 +827,13 @@
       "when": 1786343815688,
       "tag": "0117_clear_proemial_gods",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1786435949222,
+      "tag": "0118_futuristic_speed_demon",
+      "breakpoints": true
     }
   ]
 }

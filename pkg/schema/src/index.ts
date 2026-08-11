@@ -32,6 +32,7 @@ export * from './inventory/close-out.js';
 export * from './inventory/inventory-cost.js';
 export * from './inventory/stock-movement.js';
 export * from './inventory/stocktake.js';
+export * from './job-activity/job-activity.js';
 export * from './jobs/job.js';
 export * from './jobs/job-sales-export.js';
 export * from './parts/part.js';

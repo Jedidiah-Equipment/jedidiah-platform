@@ -47,6 +47,7 @@ import { Route as AuthedPurchaseOrdersIdRouteImport } from './../routes/_authed.
 import { Route as AuthedJobsStockBuildRouteImport } from './../routes/_authed.jobs.stock-build'
 import { Route as AuthedJobsListRouteImport } from './../routes/_authed.jobs.list'
 import { Route as AuthedJobsCalendarRouteImport } from './../routes/_authed.jobs.calendar'
+import { Route as AuthedJobsActivityRouteImport } from './../routes/_authed.jobs.activity'
 import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
 import { Route as AuthedInventoryStocktakeRouteImport } from './../routes/_authed.inventory.stocktake'
 import { Route as AuthedInventoryPriceVarianceRouteImport } from './../routes/_authed.inventory.price-variance'
@@ -257,6 +258,11 @@ const AuthedJobsCalendarRoute = AuthedJobsCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthedJobsRoute,
 } as any)
+const AuthedJobsActivityRoute = AuthedJobsActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AuthedJobsRoute,
+} as any)
 const AuthedJobsIdRoute = AuthedJobsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -381,6 +387,7 @@ export interface FileRoutesByFullPath {
   '/inventory/price-variance': typeof AuthedInventoryPriceVarianceRoute
   '/inventory/stocktake': typeof AuthedInventoryStocktakeRouteWithChildren
   '/jobs/$id': typeof AuthedJobsIdRoute
+  '/jobs/activity': typeof AuthedJobsActivityRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/jobs/list': typeof AuthedJobsListRoute
   '/jobs/stock-build': typeof AuthedJobsStockBuildRoute
@@ -426,6 +433,7 @@ export interface FileRoutesByTo {
   '/inventory/buy-list': typeof AuthedInventoryBuyListRoute
   '/inventory/price-variance': typeof AuthedInventoryPriceVarianceRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
+  '/jobs/activity': typeof AuthedJobsActivityRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/jobs/list': typeof AuthedJobsListRoute
   '/jobs/stock-build': typeof AuthedJobsStockBuildRoute
@@ -484,6 +492,7 @@ export interface FileRoutesById {
   '/_authed/inventory/price-variance': typeof AuthedInventoryPriceVarianceRoute
   '/_authed/inventory/stocktake': typeof AuthedInventoryStocktakeRouteWithChildren
   '/_authed/jobs/$id': typeof AuthedJobsIdRoute
+  '/_authed/jobs/activity': typeof AuthedJobsActivityRoute
   '/_authed/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/_authed/jobs/list': typeof AuthedJobsListRoute
   '/_authed/jobs/stock-build': typeof AuthedJobsStockBuildRoute
@@ -542,6 +551,7 @@ export interface FileRouteTypes {
     | '/inventory/price-variance'
     | '/inventory/stocktake'
     | '/jobs/$id'
+    | '/jobs/activity'
     | '/jobs/calendar'
     | '/jobs/list'
     | '/jobs/stock-build'
@@ -587,6 +597,7 @@ export interface FileRouteTypes {
     | '/inventory/buy-list'
     | '/inventory/price-variance'
     | '/jobs/$id'
+    | '/jobs/activity'
     | '/jobs/calendar'
     | '/jobs/list'
     | '/jobs/stock-build'
@@ -644,6 +655,7 @@ export interface FileRouteTypes {
     | '/_authed/inventory/price-variance'
     | '/_authed/inventory/stocktake'
     | '/_authed/jobs/$id'
+    | '/_authed/jobs/activity'
     | '/_authed/jobs/calendar'
     | '/_authed/jobs/list'
     | '/_authed/jobs/stock-build'
@@ -950,6 +962,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedJobsCalendarRouteImport
       parentRoute: typeof AuthedJobsRoute
     }
+    '/_authed/jobs/activity': {
+      id: '/_authed/jobs/activity'
+      path: '/activity'
+      fullPath: '/jobs/activity'
+      preLoaderRoute: typeof AuthedJobsActivityRouteImport
+      parentRoute: typeof AuthedJobsRoute
+    }
     '/_authed/jobs/$id': {
       id: '/_authed/jobs/$id'
       path: '/$id'
@@ -1145,6 +1164,7 @@ const AuthedInventoryRouteWithChildren = AuthedInventoryRoute._addFileChildren(
 
 interface AuthedJobsRouteChildren {
   AuthedJobsIdRoute: typeof AuthedJobsIdRoute
+  AuthedJobsActivityRoute: typeof AuthedJobsActivityRoute
   AuthedJobsCalendarRoute: typeof AuthedJobsCalendarRoute
   AuthedJobsListRoute: typeof AuthedJobsListRoute
   AuthedJobsStockBuildRoute: typeof AuthedJobsStockBuildRoute
@@ -1153,6 +1173,7 @@ interface AuthedJobsRouteChildren {
 
 const AuthedJobsRouteChildren: AuthedJobsRouteChildren = {
   AuthedJobsIdRoute: AuthedJobsIdRoute,
+  AuthedJobsActivityRoute: AuthedJobsActivityRoute,
   AuthedJobsCalendarRoute: AuthedJobsCalendarRoute,
   AuthedJobsListRoute: AuthedJobsListRoute,
   AuthedJobsStockBuildRoute: AuthedJobsStockBuildRoute,

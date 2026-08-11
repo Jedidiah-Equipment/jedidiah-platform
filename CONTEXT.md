@@ -132,7 +132,7 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Feedback Kind** is exactly one of `general`, `corrective-feedback-department`, or `corrective-feedback-user`. It selects which targets the Feedback carries and who may see it.
 
-**General Feedback** (`general`) is public only when a subject-scoped read/update surface exists. Today that is Job Feedback: anyone who can read the Job can read it with attribution (submitter, date, text). Status is carried but never shown on a subject surface — a note read on the shop floor is not a queue to triage — so `feedback.updateJobFeedback` has no caller today. Quote General Feedback remains private until the quote surface gets matching endpoints, and the Feedback inbox is its only reader. General Feedback carries no targets and never exposes Internal Notes.
+**General Feedback** (`general`) is public only when a subject-scoped read/update surface exists. Today that is Job Feedback: anyone who can read the Job can read it with attribution (submitter, date, text), on the Job itself and in the Job Activity feed. Status is carried but never shown on a subject surface — a note read on the shop floor is not a queue to triage — so `feedback.updateJobFeedback` has no caller today. Quote General Feedback remains private until the quote surface gets matching endpoints, and the Feedback inbox is its only reader. General Feedback carries no targets and never exposes Internal Notes.
 
 **Corrective Feedback** is Private Feedback that attributes a problem to one or more **Departments** (`corrective-feedback-department`) or one or more **Users** (`corrective-feedback-user`). Both targets are multi-select. Avoid Blame. Department targets reference the fixed Department enum; User targets reference Users. Only super-admins can read or act on it, through the Feedback inbox; the submission form marks it PRIVATE.
 
@@ -167,6 +167,8 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 ## Cross-Cutting
 
 **Audit Event** records boundary-visible changes for Customers, Jobs, Job Bays, Product Units, Products, Purchase Orders, Quotes, Suppliers, and Users. Slot create/resize/remove are not audited; Slot reorders are. Feedback is not audited.
+
+**Job Activity** is the cross-Job feed of what has been said and done about Jobs, newest first, read by anyone with `job:read`. An **activity item** is one entry in it. Today the only kind of item is Job General Feedback; the feed's contract is a discriminated union so entity change events can join it without reshaping the surface. It reads existing records and stores none of its own.
 
 **Dashboard** is the single signed-in landing surface. Widgets are permission-gated registry entries, and Dashboard Metrics are computed live rather than stored in reporting tables.
 

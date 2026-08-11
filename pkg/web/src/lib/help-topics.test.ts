@@ -25,6 +25,13 @@ describe('helpTopicForPath', () => {
     expect(helpTopicForPath('/inventory/close-out')).toBe('inventoryCloseOut');
     expect(helpTopicForPath('/inventory/close-out/job-7')).toBe('inventoryCloseOut');
     expect(helpTopicForPath('/inventory/price-variance')).toBe('inventoryPriceVariance');
+    expect(helpTopicForPath('/jobs/activity')).toBe('jobActivity');
+  });
+
+  it('keeps the other Job screens on the Jobs topic', () => {
+    expect(helpTopicForPath('/jobs')).toBe('jobs');
+    expect(helpTopicForPath('/jobs/list')).toBe('jobs');
+    expect(helpTopicForPath('/jobs/calendar')).toBe('jobs');
   });
 
   it('does not treat a route that merely starts with the same characters as a match', () => {

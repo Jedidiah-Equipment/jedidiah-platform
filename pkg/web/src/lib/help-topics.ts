@@ -14,6 +14,7 @@ const TOPIC_ROUTES: ReadonlyArray<readonly [prefix: string, topic: HelpTopic]> =
   ['/inventory/price-variance', 'inventoryPriceVariance'],
   ['/inventory/stocktake', 'inventoryStocktake'],
   ['/jobs', 'jobs'],
+  ['/jobs/activity', 'jobActivity'],
   ['/parts', 'parts'],
   ['/products', 'products'],
   ['/purchase-orders', 'purchaseOrders'],

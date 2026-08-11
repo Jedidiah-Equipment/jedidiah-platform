@@ -6,6 +6,8 @@ export const baySchedulePageDescription = 'Bay-by-bay projected queues for booki
 
 export const customersPageDescription = 'Companies receiving Quotes and buying Jobs';
 
+export const jobActivityPageDescription = 'General Feedback across every Job, newest first';
+
 export const jobCalendarPageDescription = 'Org Off-Days and per-Bay calendar exceptions for slot projection';
 
 export const jobListPageDescription =

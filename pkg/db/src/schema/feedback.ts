@@ -1,6 +1,6 @@
 import type { Department, FeedbackKind, FeedbackStatus, FeedbackSubjectType } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, index, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { jobs } from './job.js';
@@ -37,6 +37,8 @@ export const feedback = pgTable(
       sql`(${table.subjectType} = 'quote' AND ${table.quoteId} IS NOT NULL AND ${table.jobId} IS NULL)
         OR (${table.subjectType} = 'job' AND ${table.jobId} IS NOT NULL AND ${table.quoteId} IS NULL)`,
     ),
+    // The Job Activity feed pages newest-first on (created_at, id); the inbox reads share the order.
+    index('feedback_created_at_idx').on(table.createdAt, table.id),
   ],
 );
 

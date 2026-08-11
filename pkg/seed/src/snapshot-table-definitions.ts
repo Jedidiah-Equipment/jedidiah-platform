@@ -274,6 +274,25 @@ export const snapshotTableDefinitions = [
     tableName: 'job_slot',
     timestampColumns: ['createdAt', 'updatedAt'],
   },
+  {
+    // References Users, Quotes, and Jobs, so it follows all of them.
+    fileName: 'feedback.json',
+    tableName: 'feedback',
+    timestampColumns: standardTimestampColumns,
+    optionalReadTable: true,
+  },
+  {
+    fileName: 'feedback_department.json',
+    tableName: 'feedback_department',
+    timestampColumns: [],
+    optionalReadTable: true,
+  },
+  {
+    fileName: 'feedback_user.json',
+    tableName: 'feedback_user',
+    timestampColumns: [],
+    optionalReadTable: true,
+  },
 ] as const satisfies readonly SnapshotTableDefinition[];
 
 // Extracts the doc-store object references for every row of a table, de-duplicated by storage key.

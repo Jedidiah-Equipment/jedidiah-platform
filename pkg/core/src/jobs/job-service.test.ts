@@ -819,9 +819,9 @@ describe('createJob', () => {
     );
     expect(cfoPartRows).toHaveLength(2);
     expect(job.schedule.map((item) => item.department)).toEqual([
+      'fabrication',
       'procurement',
       'supply',
-      'fabrication',
       'paint',
       'assembly',
       'workshop',

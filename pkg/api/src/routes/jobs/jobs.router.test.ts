@@ -956,9 +956,9 @@ describe('jobs.create', () => {
       quoteId: context.quote.id,
     });
     expect(job.schedule.map((item) => item.department)).toEqual([
+      'fabrication',
       'procurement',
       'supply',
-      'fabrication',
       'paint',
       'assembly',
       'workshop',

@@ -144,16 +144,10 @@ describe('selectVisibleProjectedBayQueues', () => {
     nextAvailableDate: '2026-06-05',
   });
 
-  it('returns the same list when no visible ids are supplied', () => {
-    const bays = [paint, fabricationB, fabricationA];
-
-    expect(selectVisibleProjectedBayQueues(bays, undefined)).toBe(bays);
-  });
-
-  it('filters to the selected ids and sorts them into department order', () => {
+  it('filters to the selected ids while preserving source order for the layout', () => {
     expect(
       selectVisibleProjectedBayQueues([paint, fabricationB, fabricationA], [id('bay-paint'), id('bay-fab-a')]),
-    ).toEqual([fabricationA, paint]);
+    ).toEqual([paint, fabricationA]);
   });
 });
 

@@ -25,7 +25,10 @@ export function listEnabledBays(bays: readonly ProjectedBayQueue[]): ProjectedBa
 const bayDepartmentOrder = new Map(JOB_DEPARTMENT_PIPELINE.map((step, index) => [step.department, index] as const));
 
 /** Bay ordering shared across viewers: department pipeline order, then Bay name within a department. */
-export function byBayDepartmentPipeline(left: ProjectedBayQueue, right: ProjectedBayQueue): number {
+export function byBayDepartmentPipeline(
+  left: Pick<ProjectedBayQueue, 'department' | 'name'>,
+  right: Pick<ProjectedBayQueue, 'department' | 'name'>,
+): number {
   const order =
     (bayDepartmentOrder.get(left.department) ?? Number.MAX_SAFE_INTEGER) -
     (bayDepartmentOrder.get(right.department) ?? Number.MAX_SAFE_INTEGER);

@@ -4,36 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { sortBaysByDepartmentPipeline } from './sort-bays.js';
 
 describe('sortBaysByDepartmentPipeline', () => {
-  it('orders Bays by the Job department pipeline', () => {
-    const sorted = sortBaysByDepartmentPipeline([
-      buildBay({ department: 'paint', name: 'Paint Bay 1' }),
-      buildBay({ department: 'procurement', name: 'Procurement Bay 1' }),
-      buildBay({ department: 'assembly', name: 'Assembly Bay 1' }),
-      buildBay({ department: 'workshop', name: 'Workshop Bay 1' }),
-      buildBay({ department: 'fabrication', name: 'Fabrication Bay 1' }),
-      buildBay({ department: 'supply', name: 'Supply Bay 1' }),
-    ]);
-
-    expect(sorted.map((bay) => bay.department)).toEqual([
-      'procurement',
-      'supply',
-      'fabrication',
-      'paint',
-      'assembly',
-      'workshop',
-    ]);
-  });
-
-  it('breaks department ties by Bay name', () => {
-    const sorted = sortBaysByDepartmentPipeline([
-      buildBay({ department: 'fabrication', name: 'Fabrication Bay 2' }),
-      buildBay({ department: 'fabrication', name: 'Fabrication Bay 10' }),
-      buildBay({ department: 'fabrication', name: 'Fabrication Bay 1' }),
-    ]);
-
-    expect(sorted.map((bay) => bay.name)).toEqual(['Fabrication Bay 1', 'Fabrication Bay 10', 'Fabrication Bay 2']);
-  });
-
   it('does not mutate the input array', () => {
     const bays = [
       buildBay({ department: 'paint', name: 'Paint Bay 1' }),

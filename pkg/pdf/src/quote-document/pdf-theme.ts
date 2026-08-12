@@ -24,6 +24,7 @@ export const pdfSpacing = {
   cardPadding: 12,
   tableCellX: 8,
   tableCellY: 8,
+  pricingCellY: 4,
   summaryCellX: 10,
   summaryCellY: 9,
 } as const;

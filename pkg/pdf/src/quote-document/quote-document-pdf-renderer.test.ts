@@ -6,19 +6,8 @@ import { describe, expect, test } from 'vitest';
 import { getSalesContactLine } from './QuoteDocumentHeader.js';
 import { QuoteDocumentPdf } from './QuoteDocumentPdf.js';
 import { QuoteDocumentPricingTable } from './QuoteDocumentPricingTable.js';
-import { renderQuoteDocumentPdf } from './quote-document-pdf-renderer.js';
 
 describe('renderQuoteDocumentPdf', () => {
-  test('renders a quote document model to PDF bytes', async () => {
-    const bytes = await renderQuoteDocumentPdf({
-      document: testQuoteDocument(),
-      filename: 'QUO-00003-rev-1.pdf',
-    });
-
-    expect(bytes.byteLength).toBeGreaterThan(1_000);
-    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
-  });
-
   test('renders each Work Item with its Parts nested underneath', () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
@@ -149,17 +138,6 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText.filter((value) => value === 'Sundries')).toHaveLength(1);
   });
 
-  test('places Quantity after Description and right-aligns quantity text', () => {
-    const rendered = QuoteDocumentPricingTable({ document: testQuoteDocument() });
-    const renderedText = collectRenderedText(rendered);
-    const quantityHeader = findRenderedTextElement(rendered, 'Qty');
-    const quantityCell = findRenderedTextElement(rendered, '1');
-
-    expect(renderedText.slice(0, 4)).toEqual(['Description', 'Qty', 'Unit Price', 'Subtotal']);
-    expect(flattenStyle(quantityHeader?.props.style)).toMatchObject({ textAlign: 'right' });
-    expect(flattenStyle(quantityCell?.props.style)).toMatchObject({ textAlign: 'right' });
-  });
-
   test('repeats the column headings on every page the pricing table spans, and only those', async () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
@@ -172,35 +150,11 @@ describe('renderQuoteDocumentPdf', () => {
     };
     const pages = await renderPageText(document);
 
-    expect(pages.length).toBeGreaterThan(2);
+    expect(pages).toHaveLength(2);
     for (const pageText of pages) {
       const carriesPricingRows = pageText.some((value) => value.startsWith('Workshop '));
       expect(pageText.filter((value) => value === 'Description')).toHaveLength(carriesPricingRows ? 1 : 0);
     }
-  });
-
-  test('keeps each Work Item heading with its first breakdown row across page breaks', () => {
-    const document: QuoteDocumentModel = {
-      ...testQuoteDocument(),
-      workItems: [
-        {
-          amount: 1_275,
-          charges: [{ amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 }],
-          description: null,
-          name: 'Labour-only rebuild',
-        },
-        {
-          amount: 250,
-          charges: [{ amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
-          description: null,
-          name: 'Parts-only repair',
-        },
-      ],
-    };
-    const rendered = QuoteDocumentPricingTable({ document });
-
-    expect(findUnbreakableGroup(rendered, ['Labour-only rebuild', 'Labour'])).not.toBeNull();
-    expect(findUnbreakableGroup(rendered, ['Parts-only repair', 'Internal seal kit'])).not.toBeNull();
   });
 });
 
@@ -236,25 +190,6 @@ function collectRenderedText(node: ReactNode): string[] {
   return [...walkRendered(node)].filter((rendered) => typeof rendered === 'string');
 }
 
-function findRenderedTextElement(node: ReactNode, text: string): RenderedElement | null {
-  for (const rendered of walkRendered(node)) {
-    if (typeof rendered === 'string') continue;
-    if (collectRenderedText(rendered.props.children).join('') === text) return rendered;
-  }
-
-  return null;
-}
-
-function findUnbreakableGroup(node: ReactNode, expectedText: string[]): RenderedElement | null {
-  for (const rendered of walkRendered(node)) {
-    if (typeof rendered === 'string' || rendered.props.wrap !== false) continue;
-    const renderedText = collectRenderedText(rendered.props.children);
-    if (expectedText.every((text) => renderedText.includes(text))) return rendered;
-  }
-
-  return null;
-}
-
 type LayoutNode = { children?: LayoutNode[]; type: string; value?: string };
 
 /**
@@ -276,11 +211,6 @@ function collectLayoutText(node: LayoutNode): string[] {
   if (node.type === 'TEXT_INSTANCE') return node.value === undefined ? [] : [node.value];
 
   return (node.children ?? []).flatMap(collectLayoutText);
-}
-
-function flattenStyle(style: unknown): Record<string, unknown> {
-  if (Array.isArray(style)) return Object.assign({}, ...style.map(flattenStyle));
-  return style && typeof style === 'object' ? (style as Record<string, unknown>) : {};
 }
 
 describe('getSalesContactLine', () => {

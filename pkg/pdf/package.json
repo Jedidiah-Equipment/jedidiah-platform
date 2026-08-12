@@ -14,6 +14,7 @@
     "render:brochure-fixture": "tsx scripts/render-brochure-fixture.ts",
     "render:part-label-fixture": "tsx scripts/render-part-label-fixture.ts",
     "render:purchase-order-fixture": "tsx scripts/render-purchase-order-fixture.ts",
+    "render:quote-document-fixture": "tsx scripts/render-quote-document-fixture.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },

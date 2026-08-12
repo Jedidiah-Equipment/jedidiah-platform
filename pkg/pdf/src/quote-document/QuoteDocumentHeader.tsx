@@ -11,13 +11,19 @@ type QuoteDocumentHeaderProps = {
 };
 
 const layout = {
-  documentPanelWidth: 210,
-  logoHeight: 46,
-  logoWidth: 178,
+  bankPanelWidth: 210,
+  headerHeight: 122,
+  logoHeight: 34,
+  logoWidth: 132,
+  panelPadding: 8,
 } as const;
 
 const styles = StyleSheet.create({
+  header: {
+    height: layout.headerHeight,
+  },
   brandPanel: {
+    padding: layout.panelPadding,
     position: 'relative',
   },
   brandStripe: {
@@ -29,7 +35,7 @@ const styles = StyleSheet.create({
   },
   logoFrame: {
     height: layout.logoHeight,
-    marginBottom: 4,
+    marginBottom: 2,
     width: layout.logoWidth,
   },
   logo: {
@@ -39,33 +45,46 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontFamily: pdfTitleFontFamily,
-    fontSize: 12,
-    marginBottom: 13,
+    fontSize: 10,
+    marginBottom: 7,
   },
   brandLine: {
-    marginBottom: 3,
+    marginBottom: 2,
   },
-  documentPanel: {
+  bankPanel: {
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    width: layout.documentPanelWidth,
+    paddingBottom: 6,
+    paddingHorizontal: layout.panelPadding,
+    paddingTop: 4,
+    width: layout.bankPanelWidth,
   },
-  documentPanelTitle: {
+  documentHeading: {
     alignItems: 'flex-end',
+    lineHeight: 1,
+  },
+  documentDate: {
+    lineHeight: 1,
+    marginBottom: 0,
   },
   documentTitleText: {
     fontFamily: pdfTitleFontFamily,
+    lineHeight: 1.1,
+    marginBottom: 6,
   },
   quoteCode: {
-    fontFamily: pdfTitleFontFamily,
-    marginTop: 12,
+    lineHeight: 1,
   },
-  headerMeta: {
+  bankDetails: {
     alignItems: 'flex-end',
+    lineHeight: 1,
   },
-  metaBlock: {
-    alignItems: 'flex-end',
-    marginTop: 12,
+  bankTitle: {
+    lineHeight: 1.2,
+    marginBottom: 1,
+  },
+  bankLine: {
+    lineHeight: 1.2,
   },
 });
 
@@ -73,10 +92,8 @@ export function QuoteDocumentHeader({ document }: QuoteDocumentHeaderProps) {
   const contactLine = getSalesContactLine(document);
 
   return (
-    <View style={pdfStyles.flexRow}>
-      <View
-        style={[pdfStyles.bgBlack, pdfStyles.colorWhite, pdfStyles.flex1, pdfStyles.panelPadding, styles.brandPanel]}
-      >
+    <View style={[pdfStyles.flexRow, styles.header]}>
+      <View style={[pdfStyles.bgBlack, pdfStyles.colorWhite, pdfStyles.flex1, styles.brandPanel]}>
         <View style={styles.logoFrame}>
           <Image src={jedidiahLogoSrc} style={styles.logo} />
         </View>
@@ -103,29 +120,31 @@ export function QuoteDocumentHeader({ document }: QuoteDocumentHeaderProps) {
         </Text>
         <View style={[pdfStyles.bgBrandYellow, styles.brandStripe]} />
       </View>
-      <View
-        style={[
-          pdfStyles.bgBrandYellow,
-          pdfStyles.colorBlack,
-          pdfStyles.panelPadding,
-          pdfStyles.textRight,
-          styles.documentPanel,
-        ]}
-      >
-        <View style={styles.documentPanelTitle}>
+      <View style={[pdfStyles.bgBrandYellow, pdfStyles.colorBlack, pdfStyles.textRight, styles.bankPanel]}>
+        <View style={styles.documentHeading}>
+          <Text style={[pdfStyles.fontMedium, pdfStyles.textBodyXs, styles.documentDate]}>
+            {formatDate(document.issueDate, 'short')}
+          </Text>
           <Text
             style={[pdfStyles.fontBold, pdfStyles.textTitle, pdfStyles.uppercase, styles.documentTitleText]}
             wrap={false}
           >
             Quotation
           </Text>
-          <Text style={[pdfStyles.fontSemibold, pdfStyles.textHeading, styles.quoteCode]} wrap={false}>
+          <Text style={[pdfStyles.fontSemibold, pdfStyles.textBodyLg, styles.quoteCode]} wrap={false}>
             {document.quoteCode}
           </Text>
         </View>
-        <View style={styles.headerMeta}>
-          <HeaderMeta label="Quote Date" value={formatDate(document.issueDate, 'short')} />
-          <HeaderMeta label="Prepared By" value={document.salesPerson?.name ?? 'Jedidiah Equipment'} />
+        <View style={styles.bankDetails}>
+          <Text style={[pdfStyles.fontBold, pdfStyles.textEyebrow, pdfStyles.uppercase, styles.bankTitle]}>
+            Banking Details
+          </Text>
+          <Text style={[pdfStyles.fontMedium, pdfStyles.textBodyXs, styles.bankLine]}>Bank: FNB</Text>
+          <Text style={[pdfStyles.fontMedium, pdfStyles.textBodyXs, styles.bankLine]}>Acc no: 62835496599</Text>
+          <Text style={[pdfStyles.fontMedium, pdfStyles.textBodyXs, styles.bankLine]}>Branch: 220-122</Text>
+          <Text style={[pdfStyles.fontMedium, pdfStyles.textBodyXs, styles.bankLine]}>
+            Reference: {document.quoteCode}
+          </Text>
         </View>
       </View>
     </View>
@@ -140,13 +159,4 @@ export function getSalesContactLine(document: QuoteDocumentModel): string | null
   );
 
   return contactParts.length > 0 ? contactParts.join(' | ') : null;
-}
-
-function HeaderMeta({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.metaBlock}>
-      <Text style={[pdfStyles.fontBold, pdfStyles.textBodyXs, pdfStyles.uppercase]}>{label}</Text>
-      <Text style={[pdfStyles.fontMedium, pdfStyles.textBodyLg]}>{value}</Text>
-    </View>
-  );
 }

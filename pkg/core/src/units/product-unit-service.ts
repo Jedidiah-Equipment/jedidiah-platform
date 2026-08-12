@@ -2,6 +2,7 @@ import {
   customers,
   type DatabaseTransaction,
   type Db,
+  getForeignKeyViolationConstraint,
   jobs,
   productSerialSequences,
   products,
@@ -33,6 +34,7 @@ import {
 } from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
 import { CustomerNotFoundError } from '../customers/customer-errors.js';
+import { jobAuditDescriptor } from '../jobs/job-audit.js';
 import {
   ProductUnitInUseError,
   ProductUnitNotFoundError,
@@ -443,7 +445,13 @@ export async function removeProductUnit({
     }
 
     const unitJobs = await tx
-      .select({ cancelledAt: jobs.cancelledAt, completedOn: jobs.completedOn, id: jobs.id, quoteId: jobs.quoteId })
+      .select({
+        cancelledAt: jobs.cancelledAt,
+        code: jobs.code,
+        completedOn: jobs.completedOn,
+        id: jobs.id,
+        quoteId: jobs.quoteId,
+      })
       .from(jobs)
       .where(eq(jobs.productUnitId, id));
 
@@ -470,11 +478,33 @@ export async function removeProductUnit({
       throw new Error('Product Unit disappeared from under its own removal lock');
     }
 
-    if (unitJobs.length > 0) {
-      await tx.update(jobs).set({ productUnitId: null, updatedAt: new Date() }).where(eq(jobs.productUnitId, id));
+    // `productUnitId` is an audited Job field, so each Job records losing its machine against its own
+    // history — the Unit's delete event is on another entity and would leave a dangling id behind.
+    for (const job of unitJobs) {
+      await tx.update(jobs).set({ productUnitId: null, updatedAt: new Date() }).where(eq(jobs.id, job.id));
+      await recordAuditEvent({
+        action: 'updated',
+        actorUserId,
+        changes: { productUnitId: { from: id, to: null } },
+        db: tx,
+        descriptor: jobAuditDescriptor,
+        entityId: job.id,
+        record: { code: job.code },
+      });
     }
 
-    await tx.delete(productUnits).where(eq(productUnits.id, id));
+    // The guards above name what is holding the Unit; the FK is the backstop that keeps a referrer
+    // added later failing closed as a refusal rather than a 500.
+    try {
+      await tx.delete(productUnits).where(eq(productUnits.id, id));
+    } catch (error) {
+      if (getForeignKeyViolationConstraint(error)) {
+        throw new ProductUnitInUseError(id, 'referenced');
+      }
+
+      throw error;
+    }
+
     await recordAuditDelete({ db: tx, descriptor: productUnitAuditDescriptor, actorUserId, input: unit });
   });
 }

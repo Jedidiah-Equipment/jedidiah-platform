@@ -59,7 +59,7 @@ export class ProductUnitTransferBackdatedError extends Error {
 }
 
 /** Why a Unit cannot be removed. Each reason names something that would be wrong afterwards. */
-export type ProductUnitInUseReason = 'live-job' | 'built' | 'owned' | 'quoted' | 'job-without-quote';
+export type ProductUnitInUseReason = 'live-job' | 'built' | 'owned' | 'quoted' | 'job-without-quote' | 'referenced';
 
 const productUnitInUseMessages = {
   'live-job': 'This unit has a Job that is still live, so the machine is being built or has been.',
@@ -68,6 +68,8 @@ const productUnitInUseMessages = {
   quoted: 'This unit is named on a Quote, which would be left pointing at nothing.',
   'job-without-quote':
     'This unit carries a cancelled Job with no Quote behind it, which would be left describing no work at all.',
+  // The reasons above each name a holder; this one is the foreign key catching a holder they do not know.
+  referenced: 'Something still references this unit, so it cannot be removed.',
 } as const satisfies Record<ProductUnitInUseReason, string>;
 
 /**

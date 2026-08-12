@@ -515,6 +515,29 @@ describe('removeProductUnit', () => {
     ]);
   });
 
+  // Without this the Job's own history ends on a Unit id that resolves to nothing, and the only record
+  // of the detach sits on an entity that no longer exists.
+  test('records losing the machine against the Job that was detached', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context);
+
+    await removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId });
+
+    const jobEvents = await context.db
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.entityType, 'job'))
+      .orderBy(asc(auditEvents.occurredAt), asc(auditEvents.id));
+
+    expect(jobEvents).toEqual([
+      expect.objectContaining({
+        action: 'updated',
+        actorUserId: ACTOR_USER_ID,
+        changes: { productUnitId: { from: phantom.unitId, to: null } },
+        entityId: phantom.jobId,
+      }),
+    ]);
+  });
+
   test('refuses a machine whose build is still live, and leaves it whole', async ({ context }) => {
     await expect(
       removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: context.seed.unitId }),

@@ -6,7 +6,9 @@ cancelled. A machine the plant actually built keeps its record, whatever happene
 Only an administrator can remove a Unit.
 
 1. Open **Units** and pick the Unit.
-2. Check the **Jobs** card: every Job on it should read **Cancelled**.
+2. Check the **Jobs** card: every Job on it should read **Cancelled**. This is a first look, not proof —
+   a Job that finished before its Quote was cancelled reads **Cancelled** too, and the removal will
+   refuse it.
 3. Click **Remove unit**.
 4. Read the confirmation: the Unit goes for good, and its ownership history goes with it.
 5. Click **Remove** to confirm.

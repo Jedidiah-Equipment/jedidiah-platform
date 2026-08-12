@@ -1,0 +1,2 @@
+ALTER TABLE "job" ADD COLUMN "cancellation_reason" text;--> statement-breakpoint
+ALTER TABLE "job" ADD CONSTRAINT "job_cancellation_reason_shape" CHECK ("job"."cancellation_reason" IS NULL OR ("job"."cancelled_at" IS NOT NULL AND length(trim("job"."cancellation_reason")) > 0));

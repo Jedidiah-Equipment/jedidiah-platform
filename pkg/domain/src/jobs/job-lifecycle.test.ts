@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatJobLifecycleStatus, isJobCancelled, resolveJobLifecycleState } from './job-lifecycle.js';
+import {
+  formatJobLifecycleStatus,
+  isJobCancellable,
+  isJobCancelled,
+  resolveJobLifecycleState,
+} from './job-lifecycle.js';
 
 describe('isJobCancelled', () => {
   it('is true when cancelledAt is set, as a Date or an ISO string', () => {
@@ -50,5 +55,13 @@ describe('formatJobLifecycleStatus', () => {
       'Completed 16 Jul 2026',
     );
     expect(formatJobLifecycleStatus({ cancelledAt: null, completedOn: null }, 'short')).toBe('In progress');
+  });
+});
+
+describe('isJobCancellable', () => {
+  it('offers cancellation only on a Job still in progress', () => {
+    expect(isJobCancellable({ cancelledAt: null, completedOn: null })).toBe(true);
+    expect(isJobCancellable({ cancelledAt: null, completedOn: '2026-07-16' })).toBe(false);
+    expect(isJobCancellable({ cancelledAt: '2026-07-17T00:00:00.000Z', completedOn: null })).toBe(false);
   });
 });

@@ -34,6 +34,7 @@ import {
   type Department,
   JobBayCreateInput,
   JobBayRenameInput,
+  JobCancelInput,
   type JobCreateInput,
   type JobDetail,
   JobUpdateInput,
@@ -66,6 +67,7 @@ import { getJob, listBayQueueAvailability, listBays, listJobCustomerOptions, lis
 import {
   addIdleJobSlot,
   bookJobSlot,
+  cancelJob,
   createJob as createJobCore,
   moveJobSlot,
   removeJobSlot,
@@ -3039,6 +3041,87 @@ describe('moveJobSlot', () => {
         },
       }),
     ).rejects.toThrow('Job slot not found');
+  });
+});
+
+describe('cancelJob', () => {
+  test('cancels the Job with its reason, drops future Slots, and leaves the Quote alone', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-02' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const downstreamJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const [doneSlot, activeSlot, scheduledSlot, downstreamSlot] = await context.db
+      .insert(jobSlots)
+      .values([
+        { bayId: bay.id, durationDays: 2, jobId: job.id, kind: 'work', sequence: 1 },
+        { bayId: bay.id, durationDays: 3, jobId: job.id, kind: 'work', sequence: 2 },
+        { bayId: bay.id, durationDays: 2, jobId: job.id, kind: 'work', sequence: 3 },
+        { bayId: bay.id, durationDays: 1, jobId: downstreamJob.id, kind: 'work', sequence: 4 },
+      ])
+      .returning();
+    if (!doneSlot || !activeSlot || !scheduledSlot || !downstreamSlot) {
+      throw new Error('Slot insert did not return every row');
+    }
+
+    await cancelJob({
+      actorUserId,
+      db: context.db,
+      input: JobCancelInput.parse({ cancellationReason: '  Raised against the wrong Customer  ', id: job.id }),
+    });
+
+    const [cancelled] = await context.db.select().from(jobs).where(eq(jobs.id, job.id));
+    expect(cancelled).toMatchObject({
+      cancellationReason: 'Raised against the wrong Customer',
+      completedOn: null,
+    });
+    expect(cancelled?.cancelledAt).toBeInstanceOf(Date);
+
+    // Work already under way stays on record; only the Slots that had not started are given back.
+    const remaining = await context.db.select().from(jobSlots).orderBy(asc(jobSlots.sequence));
+    expect(remaining).toEqual([
+      expect.objectContaining({ id: doneSlot.id, sequence: 1 }),
+      expect.objectContaining({ id: activeSlot.id, sequence: 2 }),
+      expect.objectContaining({ id: downstreamSlot.id, sequence: 3 }),
+    ]);
+
+    const [quote] = await context.db
+      .select()
+      .from(quotes)
+      .where(eq(quotes.id, job.quoteId ?? ''));
+    expect(quote).toMatchObject({ cancellationReason: null, status: 'accepted' });
+
+    // The audit trail is the only record of why, so it snapshots the cancelled row rather than the
+    // live one it replaced.
+    const events = await context.db
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.entityId, job.id), eq(auditEvents.entityType, 'job')));
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        action: 'deleted',
+        actorUserId,
+        changes: expect.objectContaining({
+          cancellationReason: { from: 'Raised against the wrong Customer', to: null },
+        }),
+      }),
+    );
+  });
+
+  test('refuses a Job that already carries a completion date', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db.update(jobs).set({ completedOn: '2026-06-04' }).where(eq(jobs.id, job.id));
+
+    await expect(
+      cancelJob({ actorUserId, db: context.db, input: { cancellationReason: 'Too late', id: job.id } }),
+    ).rejects.toMatchObject({ code: 'job.already_completed', metadata: { id: job.id } });
+  });
+
+  test('refuses an already-cancelled Job rather than passing silently', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
+
+    await expect(
+      cancelJob({ actorUserId, db: context.db, input: { cancellationReason: 'Again', id: job.id } }),
+    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
   });
 });
 

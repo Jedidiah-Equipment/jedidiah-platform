@@ -28,6 +28,7 @@ describe('getRolePermissions', () => {
       'inventory:read',
       'inventory_cost:read',
       'inventory_cost:revalue',
+      'job:cancel',
       'job:create',
       'job:read',
       'job:schedule',
@@ -257,6 +258,17 @@ describe('quote cancellation authorization policy', () => {
 
     for (const role of ['sales', 'procurement-manager', 'job-viewer', 'stores', 'bay-operator'] as const) {
       expect(getRolePermissions(role), role).not.toContain('quote:cancel');
+    }
+  });
+});
+
+describe('job cancellation authorization policy', () => {
+  it('grants cancellation only to administrators', () => {
+    expect(getRolePermissions('admin')).toContain('job:cancel');
+    expect(getRolePermissions('super-admin')).toContain('job:cancel');
+
+    for (const role of ['sales', 'procurement-manager', 'job-viewer', 'stores', 'bay-operator'] as const) {
+      expect(getRolePermissions(role), role).not.toContain('job:cancel');
     }
   });
 });

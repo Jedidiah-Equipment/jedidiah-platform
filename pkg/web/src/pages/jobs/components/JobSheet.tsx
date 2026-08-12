@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils.js';
 import { JOB_DOCUMENT_ACCEPT, uploadJobPurchaseOrder, validateSelectedFile } from '@/utils/document.js';
 import { JobVarianceTab } from '../../inventory/job-variance/components/JobVarianceTab.js';
 import { CustomJobWorkItems } from './CustomJobWorkItems.js';
+import { JobCancellationAction } from './JobCancellationAction.js';
 import { InfoList, InfoRow } from './JobInfoList.js';
 import { JobStockTab } from './JobStockTab.js';
 import { JobEditFormValues, toJobEditFormValues, toJobUpdateInput } from './job-edit-form.js';
@@ -170,6 +171,7 @@ const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
       >
         <JobFeedbackList jobId={job.id} />
       </Section>
+      <JobCancellationAction job={job} />
     </div>
   );
 };
@@ -232,6 +234,13 @@ const ReadOnlyJobDetails: React.FC<{ job: JobDetail }> = ({ job }) => (
     <InfoList className="rounded-none border-0">
       <ImmutableJobRows job={job} />
       <InfoRow label="Completed" value={job.completedOn ? formatDate(job.completedOn, 'short') : 'Not completed'} />
+      {/* Only a direct cancel records one — a Job cancelled through its Quote keeps the reason there. */}
+      {job.cancellationReason ? (
+        <InfoRow
+          label="Cancellation reason"
+          value={<span className="whitespace-pre-wrap text-left leading-6">{job.cancellationReason}</span>}
+        />
+      ) : null}
       <InfoRow
         label="Description"
         value={

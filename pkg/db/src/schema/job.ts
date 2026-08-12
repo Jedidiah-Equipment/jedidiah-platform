@@ -149,11 +149,18 @@ export const jobs = pgTable(
     // never recomputed. Distinct from derived schedule completeness, which still drives the Board.
     completedOn: date('completed_on', { mode: 'string' }),
     cancelledAt: timestamp('cancelled_at', { mode: 'date', withTimezone: true }),
+    // Why a person cancelled this Job outright. Null on a Job cancelled by the Quote cascade, which
+    // records its reason on the Quote, so the check below only forbids a reason without a cancellation.
+    cancellationReason: text('cancellation_reason'),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     check('job_description_nonempty', sql`${table.description} IS NULL OR length(trim(${table.description})) > 0`),
+    check(
+      'job_cancellation_reason_shape',
+      sql`${table.cancellationReason} IS NULL OR (${table.cancelledAt} IS NOT NULL AND length(trim(${table.cancellationReason})) > 0)`,
+    ),
     // Every Job is either about a machine or about a sale, and usually both: a Stock Build has only a
     // Unit, a Custom Job only a Quote, and a Job with neither describes no work at all.
     check(

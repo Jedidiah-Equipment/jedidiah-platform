@@ -31,6 +31,7 @@ import {
   JobBaySetDisabledResult,
   JobBayUnassignOperatorInput,
   JobBayUnassignOperatorResult,
+  JobCancelInput,
   JobCode,
   JobColumnFilters,
   JobCreateInput,
@@ -71,6 +72,7 @@ describe('Job', () => {
   it('carries the machine facts as one Product Unit object', () => {
     expect(
       Job.parse({
+        cancellationReason: null,
         cancelledAt: null,
         code: 1,
         completedOn: null,
@@ -101,6 +103,7 @@ describe('Job', () => {
   it('accepts unitless custom job facts', () => {
     expect(
       Job.parse({
+        cancellationReason: 'Raised in error',
         cancelledAt: '2026-06-10T12:00:00.000Z',
         code: 2,
         completedOn: null,
@@ -997,6 +1000,18 @@ describe('JobSlot schemas', () => {
         label: null,
         sequence: 2,
       },
+    });
+  });
+});
+
+describe('JobCancelInput', () => {
+  const id = '00000000-0000-4000-8000-000000000001';
+
+  it('requires a reason and trims it', () => {
+    expect(() => JobCancelInput.parse({ id, cancellationReason: '   ' })).toThrow('Cancellation reason is required');
+    expect(JobCancelInput.parse({ id, cancellationReason: '  Raised in error  ' })).toEqual({
+      id,
+      cancellationReason: 'Raised in error',
     });
   });
 });

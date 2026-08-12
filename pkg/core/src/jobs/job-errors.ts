@@ -39,6 +39,22 @@ export class JobCancelledError extends Error {
   }
 }
 
+/**
+ * Only the direct cancel refuses this. Cancelling a Quote still cascades onto a completed Job — that
+ * says the deal died, while cancelling the Job says the work will never happen, which a completion
+ * date has already contradicted.
+ */
+export class JobAlreadyCompletedError extends Error {
+  readonly code = 'job.already_completed';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super('Completed Job cannot be cancelled.');
+    this.name = 'JobAlreadyCompletedError';
+    this.metadata = { id };
+  }
+}
+
 export class JobBayNotFoundError extends Error {
   readonly code = 'job.bay_not_found';
   readonly metadata: { id: string };
@@ -143,6 +159,7 @@ export class JobCompletedOnInFutureError extends Error {
 }
 
 export type JobCoreError =
+  | JobAlreadyCompletedError
   | JobBayAlreadyAssignedError
   | JobBayInUseError
   | JobBayNotFoundError
@@ -160,6 +177,7 @@ export type JobCoreError =
 
 export function isJobCoreError(error: unknown): error is JobCoreError {
   return (
+    error instanceof JobAlreadyCompletedError ||
     error instanceof JobBayInUseError ||
     error instanceof JobBayNotFoundError ||
     error instanceof JobBayOperatorAssignmentDeniedError ||

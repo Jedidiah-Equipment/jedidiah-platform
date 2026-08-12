@@ -17,6 +17,7 @@ export type JobProductUnitRow = {
  */
 export function mapJob(row: JobRow, productUnit: JobProductUnitRow | null): Job {
   return Job.parse({
+    cancellationReason: row.cancellationReason,
     cancelledAt: row.cancelledAt?.toISOString() ?? null,
     code: row.code,
     completedOn: row.completedOn,

@@ -3,6 +3,7 @@ import { type JobSummary, JobSummary as JobSummarySchema } from '@pkg/schema';
 /** A parsed {@link JobSummary} for board/list/calendar unit tests; pass `overrides` for the fields under test. */
 export function buildJobSummary(overrides: Partial<Record<keyof JobSummary, unknown>> = {}): JobSummary {
   return JobSummarySchema.parse({
+    cancellationReason: null,
     cancelledAt: null,
     code: 1,
     completedOn: null,

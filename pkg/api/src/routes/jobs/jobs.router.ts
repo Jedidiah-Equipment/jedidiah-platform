@@ -3,6 +3,7 @@ import {
   addIdleJobSlot,
   assignJobBayOperator,
   bookJobSlot,
+  cancelJob,
   createJob,
   createJobBay,
   deleteJobBay,
@@ -47,6 +48,7 @@ import {
   JobBayRenameInput,
   JobBaySetDisabledInput,
   JobBayUnassignOperatorInput,
+  JobCancelInput,
   JobCreateInput,
   JobCustomerOptionListInput,
   JobListInput,
@@ -173,6 +175,16 @@ export const jobsRouter = router({
       mapJobErrors(() => updateJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
+  /**
+   * Its own gate rather than `job:update`: this is terminal and irreversible, so it sits with
+   * `quote:cancel` and `product_unit:remove` rather than with day-to-day Job edits.
+   */
+  cancel: authorizedProcedure('job:cancel')
+    .input(JobCancelInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => cancelJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
   bookSlot: authorizedProcedure('job:schedule')
     .input(BookJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => bookJobSlot({ db: ctx.db, input }))),
@@ -264,6 +276,12 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         message: error.message,
       };
     case 'job.cancelled':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: error.message,
+      };
+    case 'job.already_completed':
       return {
         appCode: error.code,
         code: 'BAD_REQUEST',

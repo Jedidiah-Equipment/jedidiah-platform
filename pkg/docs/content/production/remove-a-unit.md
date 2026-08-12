@@ -21,3 +21,7 @@ The removal is refused while the machine is still real, and the message names wh
 is not cancelled, a Job that was completed before it was cancelled, a Customer who owns it, or a Quote
 that names it. If a Quote is the only thing holding a machine that was never built, deal with the
 Quote first.
+
+One refusal has no way past it today: a Unit whose only Job is a cancelled **Stock Build**. That Job
+has no Quote, so detaching the machine would leave it describing nothing at all, and the removal stops
+there. Such a Unit stays on the Units list as Stock.

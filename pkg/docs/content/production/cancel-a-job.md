@@ -6,12 +6,21 @@ carries the Job into the completed-Jobs sales export alongside real builds.
 
 A Job can be cancelled two ways, and both end in the same place: the Job reads **Cancelled**, it drops
 out of every live list, search, and picker, and nothing on it can be edited again. There is no
-un-cancel. If a Job is cancelled by mistake, raise a new one.
+un-cancel.
+
+Cancel deliberately. A **Stock Build** can simply be raised again, but a Job that came from a Quote
+cannot: that Quote has already sourced its one Job, and cancelling the Job does not give it back. To
+get the work back on the floor you have to cancel the Quote and re-quote the sale.
 
 ## Cancel the Job itself
 
 Use this when the Job is what went wrong — including a **Stock Build**, which has no Quote to cancel.
 The Quote behind the Job, if there is one, is left exactly as it was.
+
+Cancelling a Stock Build leaves its Product Unit standing, because only a person can say whether metal
+was cut. That Unit keeps its serial and stays on the Units list as Stock, and it cannot be removed
+afterwards — Unit Removal refuses a machine whose only Job has no Quote. Cancel a Stock Build knowing
+its serial stays on the books.
 
 Only an administrator can cancel a Job, and only in the web app.
 

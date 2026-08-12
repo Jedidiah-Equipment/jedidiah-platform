@@ -306,6 +306,7 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
       <JobWorkCard
         customerCompanyName={state.customerCompanyName}
         jobDisplayName={state.jobDisplayName}
+        offeringKind={state.offeringKind}
         productSerialNumber={state.productSerialNumber}
         productThumbnailDataUrl={state.productThumbnailDataUrl}
       />

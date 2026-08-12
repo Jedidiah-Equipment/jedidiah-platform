@@ -2,6 +2,7 @@ import {
   createStableRowKeys,
   formatCurrency,
   formatPercent,
+  getQuoteOfferingName,
   type QuoteComputedSummary,
   quoteWorkItemSummaryRows,
 } from '@pkg/domain';
@@ -11,6 +12,7 @@ import type React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { OfferingAvatar } from '@/components/OfferingAvatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
@@ -47,7 +49,7 @@ export function QuoteSummaryDrawer({
         <ScrollView contentContainerClassName="gap-3.5 p-4">
           <TotalCard quote={quote} summary={summary} />
           <CustomerCard quote={quote} />
-          {quote.kind === 'product' ? <ProductCard quote={quote} /> : null}
+          {quote.kind === 'product' ? <ProductCard quote={quote} /> : <CustomWorkCard quote={quote} />}
         </ScrollView>
       </View>
     </ThemedModal>
@@ -101,7 +103,12 @@ function ProductCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'product' 
             </View>
           </View>
         </View>
-        <Avatar className="h-11 w-11 rounded-xl" name={productName} uri={quote.product?.thumbnailDataUrl} />
+        <OfferingAvatar
+          className="h-11 w-11 rounded-xl"
+          kind="product"
+          name={productName}
+          uri={quote.product?.thumbnailDataUrl}
+        />
       </View>
       <View className="mt-3 flex-row flex-wrap gap-2">
         <MiniMetric label="Base price" value={formatCurrency(quote.quotedBasePrice, summaryCurrency(quote))} />
@@ -120,6 +127,27 @@ function ProductCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'product' 
         <Text className="text-xs leading-5 text-muted-foreground">
           {quote.product?.description ?? 'No product description captured.'}
         </Text>
+      </View>
+    </SummaryCard>
+  );
+}
+
+function CustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'custom' }> }) {
+  const workTitle = getQuoteOfferingName(quote);
+
+  return (
+    <SummaryCard>
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="min-w-0 flex-1">
+          <CardLabel>Custom work</CardLabel>
+          <Text className="mt-1 text-[15px] text-foreground" numberOfLines={2} weight="bold">
+            {workTitle}
+          </Text>
+        </View>
+        <OfferingAvatar className="h-11 w-11 rounded-xl" kind="custom" name={workTitle} uri={null} />
+      </View>
+      <View className="mt-3 flex-row flex-wrap gap-2">
+        <MiniMetric label="Work items" value={String(quote.workItems.length)} />
       </View>
     </SummaryCard>
   );

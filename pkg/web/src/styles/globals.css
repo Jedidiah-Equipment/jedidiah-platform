@@ -4,6 +4,10 @@
 @import "shadcn/tailwind.css";
 @import "@pkg/domain/fonts/geist-sans/geist.css";
 
+/* Shared palettes are authored in `@pkg/domain`, which automatic source detection skips. Without
+   this, a domain class only paints when some file under `src/` happens to spell it out too. */
+@source "../../../domain/src";
+
 @custom-variant dark (&:is(.dark *));
 
 html {

@@ -1,8 +1,14 @@
-import { getJobDisplayName, isJobCancelled, type SlotCalendarDaySegment, type SlotCalendarDays } from '@pkg/domain';
+import {
+  getJobDisplayName,
+  getJobOfferingKind,
+  isJobCancelled,
+  type SlotCalendarDaySegment,
+  type SlotCalendarDays,
+} from '@pkg/domain';
 import type { DateOnlyIso, JobSummary } from '@pkg/schema';
 import type React from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
-import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { getJobGanttOffsetDistance, getJobGanttWidth } from './job-gantt-geometry.js';
 
@@ -20,8 +26,9 @@ export const BaySlotJobCard: React.FC<BaySlotJobCardProps> = ({ dayBreakdown, jo
 
   return (
     <div className="@container flex h-full min-w-0 items-center gap-2.5">
-      <EntityThumbnail
+      <OfferingThumbnail
         className="shrink-0"
+        kind={getJobOfferingKind({ quoteKind: job?.quoteKind ?? null })}
         label={displayName || jobCode}
         size="lg"
         thumbnailDataUrl={job?.productThumbnailDataUrl}

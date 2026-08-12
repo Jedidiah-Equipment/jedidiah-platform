@@ -1,4 +1,4 @@
-import type { QuoteStatus } from '@pkg/schema';
+import type { QuoteKind, QuoteStatus } from '@pkg/schema';
 
 import { statusBadgeColorClassNames } from '../theme/status-badge.js';
 
@@ -17,6 +17,21 @@ export const quoteStatusColorClassNames: Record<QuoteStatus, { chip: string; tex
   draft: statusBadgeColorClassNames.gray,
   rejected: statusBadgeColorClassNames.red,
   sent: statusBadgeColorClassNames.blue,
+};
+
+export const quoteKindLabels: Record<QuoteKind, string> = {
+  custom: 'Custom',
+  product: 'Product',
+};
+
+/**
+ * The one colour language for what a Quote or Job is selling: orange for Custom work, brand-adjacent
+ * yellow for a Product build. Deliberately not the `primary` token — web's staging theme repaints
+ * that pink, and the offering kind must not follow brand chrome.
+ */
+export const quoteKindColorClassNames: Record<QuoteKind, { chip: string; text: string }> = {
+  custom: statusBadgeColorClassNames.orange,
+  product: statusBadgeColorClassNames.yellow,
 };
 
 export type QuoteOfferingDisplaySource = {

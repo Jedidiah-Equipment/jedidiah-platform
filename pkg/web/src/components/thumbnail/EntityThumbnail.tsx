@@ -10,6 +10,9 @@ const PREVIEW_DELAY_MS = 1500;
 
 type EntityThumbnailProps = {
   className?: string;
+  /** Replaces the initials when there is no image, for entities an icon identifies better than a name. */
+  fallback?: React.ReactNode;
+  fallbackClassName?: string;
   label: string;
   preview?: boolean;
   thumbnailDataUrl?: string | null | undefined;
@@ -18,6 +21,8 @@ type EntityThumbnailProps = {
 
 export const EntityThumbnail: React.FC<EntityThumbnailProps> = ({
   className,
+  fallback,
+  fallbackClassName,
   label,
   preview = true,
   size = 'default',
@@ -26,7 +31,9 @@ export const EntityThumbnail: React.FC<EntityThumbnailProps> = ({
   const avatar = (
     <Avatar className={cn('rounded-md after:rounded-md', className)} size={size}>
       {thumbnailDataUrl ? <AvatarImage alt="" className="rounded-md" src={thumbnailDataUrl} /> : null}
-      <AvatarFallback className="rounded-md font-medium">{getInitials(label)}</AvatarFallback>
+      <AvatarFallback className={cn('rounded-md font-medium', fallbackClassName)}>
+        {fallback ?? getInitials(label)}
+      </AvatarFallback>
     </Avatar>
   );
 

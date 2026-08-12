@@ -4,6 +4,7 @@ import {
   deriveJobProgress,
   deriveJobRouteStop,
   getJobDisplayName,
+  getJobOfferingKind,
   getNextJobIds,
   type JobProgress,
   type JobRouteStop,
@@ -35,6 +36,7 @@ export type JobDetailReadyState = {
   jobCode: string;
   quoteCode: string;
   jobDisplayName: string;
+  offeringKind: 'product' | 'custom';
   productSerialNumber: string | null;
   productThumbnailDataUrl: string | null;
   customerCompanyName: string | null;
@@ -90,6 +92,7 @@ export function projectJobDetail(job: JobDetail, board: BoardListResult): JobDet
     // A Stock Build has no Quote; the Customer field already reads Stock, so the code just blanks.
     quoteCode: job.quoteCode ?? '—',
     jobDisplayName: getJobDisplayName(job),
+    offeringKind: getJobOfferingKind(job),
     productSerialNumber: job.productUnit?.productSerialNumber ?? null,
     productThumbnailDataUrl: job.productThumbnailDataUrl,
     customerCompanyName: job.customerCompanyName,

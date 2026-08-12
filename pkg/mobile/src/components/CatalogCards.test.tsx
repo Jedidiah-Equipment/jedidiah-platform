@@ -1,4 +1,4 @@
-import { statusBadgeColorClassNames } from '@pkg/domain';
+import { quoteKindColorClassNames, statusBadgeColorClassNames } from '@pkg/domain';
 import type { JobSummary, Product, ProductUnitSummary, QuoteSummary } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -13,6 +13,7 @@ vi.mock('@tabler/icons-react-native', () => ({
   IconArrowsSort: 'IconArrowsSort',
   IconCheck: 'IconCheck',
   IconFilter: 'IconFilter',
+  IconPackage: 'IconPackage',
   IconPlus: 'IconPlus',
   IconTools: 'IconTools',
 }));
@@ -319,6 +320,7 @@ describe('catalog card mappings', () => {
       monoText: 'QUO-00042 · 5 Aug 2026',
       subText: 'Trailer rebuild',
     });
+    expect(card.props.avatarClassName).toBe(quoteKindColorClassNames.custom.chip);
     expect(asElement(card.props.avatarFallback).props).toMatchObject({ icon: 'IconTools', size: 22 });
     expect(trailingChildren[0].props.children).toBe('ZAR 125000');
     expect(trailingChildren[1].props.status).toBe('sent');
@@ -350,5 +352,6 @@ describe('catalog card mappings', () => {
       mainText: 'Acme Farms',
       subText: 'Gravel 18 ton',
     });
+    expect(asElement(card.props.avatarFallback).props).toMatchObject({ icon: 'IconPackage' });
   });
 });

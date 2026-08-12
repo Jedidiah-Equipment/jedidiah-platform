@@ -7,6 +7,7 @@ import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { SlotDetailPane } from '@/components/bays/SlotDetailPane';
 import { CustomerName } from '@/components/CustomerName';
+import { OfferingAvatar } from '@/components/OfferingAvatar';
 import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
@@ -296,8 +297,10 @@ function ActiveHero({
       onPress={onSelect}
     >
       <View className="flex-row items-start gap-3.5">
-        <Avatar
+        <OfferingAvatar
           className="h-[52px] w-[52px] rounded-xl"
+          iconSize={26}
+          kind={active.offeringKind}
           name={active.jobDisplayName}
           uri={active.productThumbnailDataUrl}
         />
@@ -439,7 +442,13 @@ function TimelineItem({
               {rangeLabel}
             </Text>
             <View className="mt-2.5 flex-row items-center gap-3">
-              <Avatar className="h-10 w-10 rounded-lg" name={slot.jobDisplayName} uri={slot.productThumbnailDataUrl} />
+              <OfferingAvatar
+                className="h-10 w-10 rounded-lg"
+                iconSize={20}
+                kind={slot.offeringKind}
+                name={slot.jobDisplayName}
+                uri={slot.productThumbnailDataUrl}
+              />
               <View className="min-w-0 flex-1">
                 <Text className="text-sm text-surface-foreground" mono weight="semibold">
                   {slot.jobCode}

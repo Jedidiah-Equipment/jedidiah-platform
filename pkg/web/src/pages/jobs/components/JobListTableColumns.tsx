@@ -1,4 +1,4 @@
-import { formatDate, getJobDisplayName, getJobDisplaySubtitle } from '@pkg/domain';
+import { formatDate, getJobDisplayName, getJobDisplaySubtitle, getJobOfferingKind } from '@pkg/domain';
 import type { JobSummary } from '@pkg/schema';
 import { IconCheck, IconPencil, IconTimeline } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -6,6 +6,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 
 import { StockBadge } from '@/components/common/StockBadge.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 
 import { JobCodeDisplay } from './JobCodeDisplay.js';
@@ -228,7 +229,12 @@ function ProductCell({ job }: { job: JobSummary }) {
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <EntityThumbnail label={displayName} size="sm" thumbnailDataUrl={job.productThumbnailDataUrl} />
+      <OfferingThumbnail
+        kind={getJobOfferingKind(job)}
+        label={displayName}
+        size="sm"
+        thumbnailDataUrl={job.productThumbnailDataUrl}
+      />
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="truncate font-medium">{displayName}</span>
         {subtitle ? (

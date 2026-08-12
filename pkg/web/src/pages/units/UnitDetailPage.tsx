@@ -1,18 +1,20 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, formatJobLifecycleStatus } from '@pkg/domain';
 import type { ProductUnitDetail, ProductUnitOwnershipTransfer, ProductUnitUpdateInput, UUID } from '@pkg/schema';
 import { IconArrowsExchange } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductUnitBuildStateCell } from './components/ProductUnitBuildStateCell.js';
@@ -45,6 +47,7 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
   const canReadJobs = useCan('job:read').can;
   const canUpdateUnit = useCan('product_unit:update').can;
   const canTransferUnit = useCan('product_unit:transfer').can;
+  const canRemoveUnit = useCan('product_unit:remove').can;
   const [isTransferOpen, setIsTransferOpen] = useState(false);
 
   return (
@@ -113,10 +116,7 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
                   ) : (
                     <span className="font-medium">{job.code}</span>
                   )}
-                  <span className="text-muted-foreground">
-                    {job.completedOn ? `Completed ${formatDate(job.completedOn, 'short')}` : 'In progress'}
-                  </span>
-                  {job.cancelledAt ? <span className="text-muted-foreground">Cancelled</span> : null}
+                  <span className="text-muted-foreground">{formatJobLifecycleStatus(job, 'short')}</span>
                 </li>
               ))}
             </ul>
@@ -124,10 +124,54 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
         </CardContent>
       </Card>
 
+      {canRemoveUnit ? (
+        <div className="mt-4 flex justify-end border-t pt-4">
+          <RemoveUnitButton unit={unit} />
+        </div>
+      ) : null}
+
       {canTransferUnit ? (
         <UnitTransferDialog onOpenChange={setIsTransferOpen} open={isTransferOpen} unit={unit} />
       ) : null}
     </div>
+  );
+};
+
+/**
+ * The one way a Unit leaves the workspace. It reaches only a machine that was never built, so the
+ * server refuses anything still real and the message it returns is what the person reads.
+ */
+const RemoveUnitButton: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
+  const trpc = useTRPC();
+  const navigate = useNavigate();
+  const { invalidateProductUnits, invalidateJobs } = useQueryInvalidation();
+  const showMutationError = useApiMutationErrorToast();
+
+  const removeUnitMutation = useMutation(
+    trpc.productUnits.remove.mutationOptions({
+      onSuccess: async () => {
+        await Promise.all([invalidateProductUnits(), invalidateJobs()]);
+        await navigate({ to: '/units' });
+      },
+      onError: (error) => {
+        showMutationError(error, 'Unable to remove unit.');
+      },
+    }),
+  );
+
+  return (
+    <RemoveEntityButton
+      description={
+        <>
+          Delete {unit.productSerialNumber} for good. Do this only when the machine was never built — its cancelled Jobs
+          stay, and the serial is never issued again.
+        </>
+      }
+      isPending={removeUnitMutation.isPending}
+      onConfirm={() => removeUnitMutation.mutate({ id: unit.id })}
+      title="Remove unit"
+      triggerLabel="Remove unit"
+    />
   );
 };
 

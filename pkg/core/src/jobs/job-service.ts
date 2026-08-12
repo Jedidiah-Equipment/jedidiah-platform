@@ -27,8 +27,6 @@ import {
   BookJobSlotResult,
   type BrochurePdfRenderer,
   DateOnlyIso,
-  formatJobCode,
-  JobCode,
   type JobCreateInput,
   type JobDetail,
   type JobUpdateInput,
@@ -43,12 +41,7 @@ import {
 } from '@pkg/schema';
 import { and, asc, desc, eq, gt, inArray, lt } from 'drizzle-orm';
 
-import {
-  defineAuditDescriptor,
-  recordAuditCreate,
-  recordAuditDelete,
-  recordAuditEvent,
-} from '../audit/audit-service.js';
+import { recordAuditCreate, recordAuditDelete, recordAuditEvent } from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
 import { documentBaseSelect } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
@@ -57,6 +50,7 @@ import { snapshotJobBrochureDocument } from '../products/product-brochure-docume
 import { getProductCostEstimate } from '../products/product-cost-estimate-service.js';
 import { createProductUnit } from '../units/product-unit-service.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
+import { jobAuditDescriptor } from './job-audit.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
 import { createsProductUnit, hasProductWork, resolveJobBlueprint } from './job-blueprint.js';
 import {
@@ -70,30 +64,7 @@ import { assertJobIsMutable, lockMutableJob } from './job-mutation-guards.js';
 import { getJob } from './job-read-service.js';
 import { loadBayWorkingCalendar } from './working-calendar-service.js';
 
-export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
-  entityType: 'job',
-  noun: 'job',
-  primaryLabelField: 'code',
-  primaryLabelFormatter: formatJobAuditLabel,
-  entityId: (row) => row.id,
-  label: (row) => row.code,
-  toRecord: (row) => ({
-    completedOn: row.completedOn,
-    description: row.description,
-    productUnitId: row.productUnitId,
-    quoteId: row.quoteId,
-  }),
-});
-
-function formatJobAuditLabel(value: unknown): string {
-  if (typeof value === 'number') {
-    return formatJobCode(value);
-  }
-
-  const result = JobCode.safeParse(value);
-
-  return result.success ? result.data : String(value);
-}
+export { jobAuditDescriptor };
 
 export async function createJob({
   actorUserId,

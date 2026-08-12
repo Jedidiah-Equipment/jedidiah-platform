@@ -44,6 +44,7 @@ describe('getRolePermissions', () => {
       'product_range:read',
       'product_range:update',
       'product_unit:read',
+      'product_unit:remove',
       'product_unit:transfer',
       'product_unit:update',
       'purchase_order:amend',
@@ -96,6 +97,17 @@ describe('getRolePermissions', () => {
 
     expect(getRolePermissions('admin')).toContain('product_unit:transfer');
     expect(getRolePermissions('super-admin')).toContain('product_unit:transfer');
+  });
+
+  // Removing a Unit destroys the record of a minted serial, so it stays with administrators rather than
+  // the roles that read Units or merely start the Jobs that mint them.
+  it('lets only administrators remove a Product Unit', () => {
+    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'stores', 'bay-operator'] as const) {
+      expect(getRolePermissions(role), `role ${role}`).not.toContain('product_unit:remove');
+    }
+
+    expect(getRolePermissions('admin')).toContain('product_unit:remove');
+    expect(getRolePermissions('super-admin')).toContain('product_unit:remove');
   });
 
   it('grants procurement permissions to procurement managers', () => {

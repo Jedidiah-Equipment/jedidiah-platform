@@ -50,6 +50,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     customerPhone: '+27110000000',
     customerThumbnailDataUrl: null,
     customerVatNumber: 'VAT-123',
+    hasEverSourcedJob: false,
     job: null,
     product: {
       assemblies: [],

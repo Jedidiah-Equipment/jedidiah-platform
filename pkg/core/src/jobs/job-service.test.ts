@@ -40,6 +40,7 @@ import {
   JobUpdateInput,
   type PartUnitOfMeasure,
   type ProductDocumentType,
+  ProductUnitTransferInput,
   type QuoteStatus,
   QuoteUpdateInput,
   ToggleOffDayInput,
@@ -52,6 +53,7 @@ import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { getProductUnit } from '../units/product-unit-read-service.js';
+import { removeProductUnit, transferProductUnitOwnership } from '../units/product-unit-service.js';
 import {
   assignJobBayOperator,
   createJobBay,
@@ -344,6 +346,102 @@ describe('createJob', () => {
     expect(resolveProductUnitOwnerId(transfers)).toBe(quote.customerId);
   });
 
+  test('reuses the sold Product Unit each time a cancelled Job is replaced', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+    const first = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+    const originalTransfers = await context.db
+      .select()
+      .from(productUnitOwnershipTransfers)
+      .where(eq(productUnitOwnershipTransfers.productUnitId, first.productUnit?.id ?? ''));
+
+    await cancelJob({
+      actorUserId,
+      db: context.db,
+      input: { cancellationReason: 'Raised with the wrong build details', id: first.id },
+    });
+    await expect(
+      updateQuote({
+        actorUserId,
+        db: context.db,
+        input: QuoteUpdateInput.parse({
+          ...quoteUpdateInput(quote),
+          discountPercent: 25,
+        }),
+      }),
+    ).rejects.toThrow('Quote is locked because it has already sourced a Job; discountPercent cannot be changed.');
+    const replacement = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+    await cancelJob({
+      actorUserId,
+      db: context.db,
+      input: { cancellationReason: 'Replacement was also raised incorrectly', id: replacement.id },
+    });
+    const third = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+
+    expect(replacement.productUnit?.id).toBe(first.productUnit?.id);
+    expect(third.productUnit?.id).toBe(first.productUnit?.id);
+    await expect(
+      context.db
+        .select()
+        .from(productUnitOwnershipTransfers)
+        .where(eq(productUnitOwnershipTransfers.productUnitId, first.productUnit?.id ?? '')),
+    ).resolves.toEqual(originalTransfers);
+  });
+
+  test('mints a fresh Product Unit when the cancelled Job orphan was removed', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+    const cancelled = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+    const orphanUnitId = cancelled.productUnit?.id;
+    if (!orphanUnitId) throw new Error('Build-to-order Job did not return its Product Unit');
+
+    await cancelJob({
+      actorUserId,
+      db: context.db,
+      input: { cancellationReason: 'Raised against the wrong machine', id: cancelled.id },
+    });
+    await transferProductUnitOwnership({
+      actorUserId,
+      db: context.db,
+      input: ProductUnitTransferInput.parse({
+        id: orphanUnitId,
+        note: 'The machine was never built',
+        occurredOn: '2026-06-05',
+        toCustomerId: null,
+      }),
+    });
+    await removeProductUnit({ actorUserId, db: context.db, id: orphanUnitId });
+
+    const replacement = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+
+    expect(replacement.productUnit?.id).not.toBe(orphanUnitId);
+    expect(replacement.productUnit?.productSerialNumber).toBe('CFO-001260002');
+  });
+
   test('creates no Product Unit or Ownership Transfer for a Custom Job', async ({ context }) => {
     const quote = await createCustomQuote(context.db, {
       status: 'accepted',
@@ -424,7 +522,7 @@ describe('createJob', () => {
     });
   });
 
-  // `job_quote_id_unique` still guards one Job per Quote; a quoteless Job must not trip it, or the
+  // The quote uniqueness rule ignores null quote ids; a quoteless Job must not trip it, or the
   // showroom could only ever hold one machine.
   test('lets the floor hold several Stock Builds at once', async ({ context }) => {
     const input = { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id };
@@ -436,6 +534,29 @@ describe('createJob', () => {
       { productSerialNumber: 'CFO-001260001' },
       { productSerialNumber: 'CFO-001260002' },
     ]);
+  });
+
+  test('enforces at most one live Job per Quote at the database boundary', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    await context.db
+      .insert(jobs)
+      .values([
+        { cancelledAt: new Date('2026-06-03T08:00:00.000Z'), quoteId: quote.id },
+        { cancelledAt: new Date('2026-06-04T08:00:00.000Z'), quoteId: quote.id },
+        { quoteId: quote.id },
+      ]);
+
+    const failure = await context.db
+      .insert(jobs)
+      .values({ quoteId: quote.id })
+      .then(() => null)
+      .catch((error: unknown) => error);
+
+    expect(String((failure as { cause?: unknown } | null)?.cause)).toContain('job_quote_id_live_unique');
   });
 
   test('snapshots a Stock Build CFO from the Build Spec it was specced with', async ({ context }) => {
@@ -684,7 +805,7 @@ describe('createJob', () => {
           discountPercent: 25,
         }),
       }),
-    ).rejects.toThrow('Quote is locked because it already has a Job; discountPercent cannot be changed.');
+    ).rejects.toThrow('Quote is locked because it has already sourced a Job; discountPercent cannot be changed.');
   });
 
   test('seeds the job build spec from the quote selection and snapshots the CFO from it', async ({ context }) => {

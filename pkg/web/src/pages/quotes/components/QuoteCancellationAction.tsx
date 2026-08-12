@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea.js';
 
 type QuoteCancellationActionProps = {
   canCancel: boolean;
+  hasEverSourcedJob: boolean;
   isPending: boolean;
   job: QuoteLinkedJob | null;
   kind: QuoteKind;
@@ -30,6 +31,7 @@ type QuoteCancellationActionProps = {
 
 export const QuoteCancellationAction: React.FC<QuoteCancellationActionProps> = ({
   canCancel,
+  hasEverSourcedJob,
   isPending,
   job,
   kind,
@@ -40,7 +42,12 @@ export const QuoteCancellationAction: React.FC<QuoteCancellationActionProps> = (
   if (
     !canCancel ||
     status === 'cancelled' ||
-    !isQuoteLocked({ hasJob: job !== null, hasProductUnit: productUnitId !== null, kind, status })
+    !isQuoteLocked({
+      hasEverSourcedJob,
+      hasProductUnit: productUnitId !== null,
+      kind,
+      status,
+    })
   ) {
     return null;
   }

@@ -307,7 +307,7 @@ export async function updateQuote({
 
     const editable = assertQuoteEditable({
       changedFields,
-      hasJob: await quoteHasJob({ quoteId: before.id, tx }),
+      hasEverSourcedJob: await quoteHasEverSourcedJob({ quoteId: before.id, tx }),
       hasProductUnit: before.productUnitId !== null,
       kind: before.kind,
       status: before.status,
@@ -434,7 +434,7 @@ export async function patchQuote({
 
     const editable = assertQuoteEditable({
       changedFields,
-      hasJob: await quoteHasJob({ quoteId: before.id, tx }),
+      hasEverSourcedJob: await quoteHasEverSourcedJob({ quoteId: before.id, tx }),
       hasProductUnit: before.productUnitId !== null,
       kind: before.kind,
       status: before.status,
@@ -756,7 +756,7 @@ function assertValidDiscount({ discountPercent }: { discountPercent: number }): 
   }
 }
 
-async function quoteHasJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {
+async function quoteHasEverSourcedJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {
   const [job] = await tx
     .select({
       id: jobs.id,

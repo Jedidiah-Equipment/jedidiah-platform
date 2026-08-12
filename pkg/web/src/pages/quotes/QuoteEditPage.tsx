@@ -53,6 +53,7 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
           <div className="flex items-center gap-2">
             <QuoteCancellationAction
               canCancel={canCancelQuote}
+              hasEverSourcedJob={quote.hasEverSourcedJob}
               isPending={cancelMutation.isPending}
               job={quote.job}
               kind={quote.kind}

@@ -25,6 +25,7 @@ const quote = QuoteDetail.parse({
   deliveryPrice: 0,
   discountPercent: 10,
   documentNotes: 'Deposit on order',
+  hasEverSourcedJob: false,
   id: QUOTE_ID,
   job: null,
   kind: 'product',

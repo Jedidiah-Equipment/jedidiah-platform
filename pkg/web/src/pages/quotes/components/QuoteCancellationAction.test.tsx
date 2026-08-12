@@ -20,6 +20,7 @@ describe('QuoteCancellationAction', () => {
     const visible = renderToStaticMarkup(
       <QuoteCancellationAction
         canCancel
+        hasEverSourcedJob
         isPending={false}
         job={job}
         kind="product"
@@ -31,6 +32,7 @@ describe('QuoteCancellationAction', () => {
     const noPermission = renderToStaticMarkup(
       <QuoteCancellationAction
         canCancel={false}
+        hasEverSourcedJob
         isPending={false}
         job={job}
         kind="product"
@@ -42,6 +44,7 @@ describe('QuoteCancellationAction', () => {
     const unlocked = renderToStaticMarkup(
       <QuoteCancellationAction
         canCancel
+        hasEverSourcedJob={false}
         isPending={false}
         job={null}
         kind="product"
@@ -53,6 +56,7 @@ describe('QuoteCancellationAction', () => {
     const alreadyCancelled = renderToStaticMarkup(
       <QuoteCancellationAction
         canCancel
+        hasEverSourcedJob={false}
         isPending={false}
         job={null}
         kind="custom"
@@ -66,6 +70,24 @@ describe('QuoteCancellationAction', () => {
     expect(noPermission).toBe('');
     expect(unlocked).toBe('');
     expect(alreadyCancelled).toBe('');
+  });
+
+  it('offers quote-only cancellation after the Job was cancelled', () => {
+    const html = renderToStaticMarkup(
+      <QuoteCancellationAction
+        canCancel
+        hasEverSourcedJob
+        isPending={false}
+        job={null}
+        kind="product"
+        onConfirm={vi.fn()}
+        productUnitId={null}
+        status="accepted"
+      />,
+    );
+
+    expect(html).toContain('Cancel Quote');
+    expect(html).not.toContain('Cancel Quote and Job');
   });
 
   it('names the Job and consequences, or describes a Quote-only cancellation', () => {

@@ -46,18 +46,18 @@ export type QuoteEditableResult =
 
 export function assertQuoteEditable({
   changedFields,
-  hasJob,
+  hasEverSourcedJob,
   hasProductUnit,
   kind,
   status,
 }: {
   changedFields: Iterable<string>;
-  hasJob: boolean;
+  hasEverSourcedJob: boolean;
   hasProductUnit: boolean;
   kind: QuoteKind;
   status: QuoteStatus;
 }): QuoteEditableResult {
-  if (!isQuoteLocked({ hasJob, hasProductUnit, kind, status })) {
+  if (!isQuoteLocked({ hasEverSourcedJob, hasProductUnit, kind, status })) {
     return { allowed: true };
   }
 
@@ -65,7 +65,7 @@ export function assertQuoteEditable({
     status === 'cancelled'
       ? 'it has been cancelled'
       : kind === 'product' && !hasProductUnit
-        ? 'it already has a Job'
+        ? 'it has already sourced a Job'
         : 'it has been accepted';
   const editableFields = editableLockedQuoteFields({ hasProductUnit, kind, status });
 
@@ -82,12 +82,12 @@ export function assertQuoteEditable({
 }
 
 export function isQuoteLocked({
-  hasJob,
+  hasEverSourcedJob,
   hasProductUnit,
   kind,
   status,
 }: {
-  hasJob: boolean;
+  hasEverSourcedJob: boolean;
   hasProductUnit: boolean;
   kind: QuoteKind;
   status: QuoteStatus;
@@ -95,5 +95,5 @@ export function isQuoteLocked({
   // Cancellation is terminal regardless of the quote kind or whether a Job exists.
   if (status === 'cancelled') return true;
 
-  return kind === 'product' ? hasJob || (hasProductUnit && status === 'accepted') : status === 'accepted';
+  return kind === 'product' ? hasEverSourcedJob || (hasProductUnit && status === 'accepted') : status === 'accepted';
 }

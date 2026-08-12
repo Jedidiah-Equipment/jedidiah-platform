@@ -30,7 +30,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: ['status'],
-        hasJob: false,
+        hasEverSourcedJob: false,
         hasProductUnit: false,
         kind,
         status: 'cancelled',
@@ -45,7 +45,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
-        hasJob: false,
+        hasEverSourcedJob: false,
         hasProductUnit: false,
         kind: 'product',
         status: 'accepted',
@@ -57,14 +57,14 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
-        hasJob: true,
+        hasEverSourcedJob: true,
         hasProductUnit: false,
         kind: 'product',
         status: 'accepted',
       }),
     ).toEqual({
       allowed: false,
-      reason: `Quote is locked because it already has a Job; ${field} cannot be changed.`,
+      reason: `Quote is locked because it has already sourced a Job; ${field} cannot be changed.`,
     });
   });
 
@@ -72,7 +72,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
-        hasJob: true,
+        hasEverSourcedJob: true,
         hasProductUnit: false,
         kind: 'product',
         status: 'accepted',
@@ -84,14 +84,14 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: ['futureCommercialField'],
-        hasJob: true,
+        hasEverSourcedJob: true,
         hasProductUnit: false,
         kind: 'product',
         status: 'accepted',
       }),
     ).toEqual({
       allowed: false,
-      reason: 'Quote is locked because it already has a Job; futureCommercialField cannot be changed.',
+      reason: 'Quote is locked because it has already sourced a Job; futureCommercialField cannot be changed.',
     });
   });
 
@@ -99,7 +99,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
-        hasJob: true,
+        hasEverSourcedJob: true,
         hasProductUnit: false,
         kind: 'custom',
         status: 'sent',
@@ -111,7 +111,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
-        hasJob: false,
+        hasEverSourcedJob: false,
         hasProductUnit: false,
         kind: 'custom',
         status: 'accepted',
@@ -126,7 +126,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
-        hasJob: false,
+        hasEverSourcedJob: false,
         hasProductUnit: false,
         kind: 'custom',
         status: 'accepted',
@@ -138,7 +138,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
-        hasJob: true,
+        hasEverSourcedJob: true,
         hasProductUnit: false,
         kind: 'custom',
         status: 'cancelled',
@@ -150,7 +150,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: ['discountPercent'],
-        hasJob: false,
+        hasEverSourcedJob: false,
         hasProductUnit: true,
         kind: 'product',
         status: 'accepted',
@@ -162,7 +162,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: ['discountPercent'],
-        hasJob: true,
+        hasEverSourcedJob: true,
         hasProductUnit: true,
         kind: 'product',
         status: 'accepted',
@@ -176,7 +176,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
-        hasJob: false,
+        hasEverSourcedJob: false,
         hasProductUnit: true,
         kind: 'product',
         status: 'accepted',
@@ -191,7 +191,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: ['discountPercent'],
-        hasJob: false,
+        hasEverSourcedJob: false,
         hasProductUnit: true,
         kind: 'product',
         status: 'cancelled',
@@ -206,14 +206,14 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: ['discountPercent'],
-        hasJob: true,
+        hasEverSourcedJob: true,
         hasProductUnit: false,
         kind: 'product',
         status: 'accepted',
       }),
     ).toEqual({
       allowed: false,
-      reason: 'Quote is locked because it already has a Job; discountPercent cannot be changed.',
+      reason: 'Quote is locked because it has already sourced a Job; discountPercent cannot be changed.',
     });
   });
 
@@ -221,7 +221,7 @@ describe('assertQuoteEditable', () => {
     expect(
       assertQuoteEditable({
         changedFields: ['discountPercent'],
-        hasJob: false,
+        hasEverSourcedJob: false,
         hasProductUnit: false,
         kind: 'custom',
         status: 'accepted',
@@ -254,22 +254,45 @@ describe('editableLockedQuoteFields', () => {
 });
 
 describe('isQuoteLocked', () => {
+  it('keeps a product quote locked after its only job is cancelled', () => {
+    expect(
+      isQuoteLocked({
+        hasEverSourcedJob: true,
+        hasProductUnit: false,
+        kind: 'product',
+        status: 'accepted',
+      }),
+    ).toBe(true);
+  });
+
   it.each(['product', 'custom'] as const)('locks cancelled %s quotes', (kind) => {
-    expect(isQuoteLocked({ hasJob: false, hasProductUnit: false, kind, status: 'cancelled' })).toBe(true);
+    expect(isQuoteLocked({ hasEverSourcedJob: false, hasProductUnit: false, kind, status: 'cancelled' })).toBe(true);
   });
 
   it('locks product quotes only after a job exists', () => {
-    expect(isQuoteLocked({ hasJob: false, hasProductUnit: false, kind: 'product', status: 'accepted' })).toBe(false);
-    expect(isQuoteLocked({ hasJob: true, hasProductUnit: false, kind: 'product', status: 'sent' })).toBe(true);
+    expect(
+      isQuoteLocked({ hasEverSourcedJob: false, hasProductUnit: false, kind: 'product', status: 'accepted' }),
+    ).toBe(false);
+    expect(isQuoteLocked({ hasEverSourcedJob: true, hasProductUnit: false, kind: 'product', status: 'sent' })).toBe(
+      true,
+    );
   });
 
   it('locks allocation quotes on acceptance before a job exists', () => {
-    expect(isQuoteLocked({ hasJob: false, hasProductUnit: true, kind: 'product', status: 'sent' })).toBe(false);
-    expect(isQuoteLocked({ hasJob: false, hasProductUnit: true, kind: 'product', status: 'accepted' })).toBe(true);
+    expect(isQuoteLocked({ hasEverSourcedJob: false, hasProductUnit: true, kind: 'product', status: 'sent' })).toBe(
+      false,
+    );
+    expect(isQuoteLocked({ hasEverSourcedJob: false, hasProductUnit: true, kind: 'product', status: 'accepted' })).toBe(
+      true,
+    );
   });
 
   it('locks custom quotes only after acceptance', () => {
-    expect(isQuoteLocked({ hasJob: true, hasProductUnit: false, kind: 'custom', status: 'sent' })).toBe(false);
-    expect(isQuoteLocked({ hasJob: false, hasProductUnit: false, kind: 'custom', status: 'accepted' })).toBe(true);
+    expect(isQuoteLocked({ hasEverSourcedJob: true, hasProductUnit: false, kind: 'custom', status: 'sent' })).toBe(
+      false,
+    );
+    expect(isQuoteLocked({ hasEverSourcedJob: false, hasProductUnit: false, kind: 'custom', status: 'accepted' })).toBe(
+      true,
+    );
   });
 });

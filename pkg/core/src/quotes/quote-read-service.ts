@@ -166,6 +166,7 @@ export async function listPriorityQuotes({
           select 1
           from ${jobs}
           where ${jobs.quoteId} = ${quotes.id}
+            and ${jobs.cancelledAt} is null
         )`,
       ),
     )
@@ -263,6 +264,7 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
       },
       jobs: {
         columns: {
+          cancelledAt: true,
           code: true,
           description: true,
           id: true,
@@ -507,7 +509,7 @@ export async function getJobByQuoteId({
       quoteId: jobs.quoteId,
     })
     .from(jobs)
-    .where(inArray(jobs.quoteId, quoteIds));
+    .where(and(inArray(jobs.quoteId, quoteIds), isNull(jobs.cancelledAt)));
   const byQuoteId = new Map<UUID, QuoteLinkedJobRow>();
 
   for (const row of rows) {
@@ -577,6 +579,7 @@ export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
         select 1
         from ${jobs}
         where ${jobs.quoteId} = ${quotes.id}
+          and ${jobs.cancelledAt} is null
           and ${
             jobCodeSearch === undefined
               ? createGlobalSearchCondition(input.search, [sql`${jobs.code}::text`])

@@ -16,7 +16,6 @@ import {
   buildReworkCfo,
   type CfoEntry,
   getPlantDateNow,
-  isJobCancelled,
   projectJobSlots,
 } from '@pkg/domain';
 import {
@@ -40,7 +39,7 @@ import {
   ResizeJobSlotResult,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gt, inArray, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, lt } from 'drizzle-orm';
 
 import { recordAuditCreate, recordAuditDelete, recordAuditEvent } from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
@@ -85,20 +84,23 @@ export async function createJob({
     const plantToday = getPlantDateNow();
     const blueprint = await resolveJobBlueprint({ input, tx });
 
-    const productUnit = createsProductUnit(blueprint)
-      ? await createProductUnit({
-          actorUserId,
-          // Build-to-order creates its sold Unit; Stock Build creates Stock. Allocation acceptance
-          // already transferred an existing Unit, and Rework never reaches this creation path.
-          initialOwner: blueprint.quote
-            ? { customerId: blueprint.quote.customerId, sourceQuoteId: blueprint.quote.id }
-            : null,
-          plantToday,
-          productId: blueprint.productId,
-          tx,
-        })
-      : null;
-    const productUnitId = productUnit?.id ?? (blueprint.kind === 'rework' ? blueprint.productUnitId : null);
+    const reusedProductUnitId = blueprint.kind === 'product' ? blueprint.reuseProductUnitId : null;
+    const productUnit =
+      createsProductUnit(blueprint) && reusedProductUnitId === null
+        ? await createProductUnit({
+            actorUserId,
+            // Build-to-order creates its sold Unit; Stock Build creates Stock. Allocation acceptance
+            // already transferred an existing Unit, and Rework never reaches this creation path.
+            initialOwner: blueprint.quote
+              ? { customerId: blueprint.quote.customerId, sourceQuoteId: blueprint.quote.id }
+              : null,
+            plantToday,
+            productId: blueprint.productId,
+            tx,
+          })
+        : null;
+    const productUnitId =
+      reusedProductUnitId ?? productUnit?.id ?? (blueprint.kind === 'rework' ? blueprint.productUnitId : null);
 
     const [job] = await tx
       .insert(jobs)
@@ -202,9 +204,13 @@ export async function cancelJobForQuote({
   quoteId: UUID;
   tx: DatabaseTransaction;
 }): Promise<void> {
-  const [job] = await tx.select().from(jobs).where(eq(jobs.quoteId, quoteId)).for('update');
+  const [job] = await tx
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.quoteId, quoteId), isNull(jobs.cancelledAt)))
+    .for('update');
 
-  if (!job || isJobCancelled(job)) {
+  if (!job) {
     return;
   }
 

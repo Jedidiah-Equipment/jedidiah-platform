@@ -56,6 +56,7 @@ function buildQuoteDetail() {
     customerPhone: '+27110000000',
     customerThumbnailDataUrl: null,
     customerVatNumber: 'VAT-123',
+    hasEverSourcedJob: false,
     job: null,
     product: {
       assemblies: [

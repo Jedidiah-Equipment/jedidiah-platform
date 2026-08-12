@@ -169,7 +169,35 @@ describe('getQuote', () => {
     }
 
     await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+      hasEverSourcedJob: true,
       job: { jobCode: formatJobCode(job.code), jobId: job.id },
+    });
+  });
+
+  test('keeps cancelled Jobs as lock history while exposing only the live replacement', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    const [cancelled] = await context.db
+      .insert(jobs)
+      .values({ cancelledAt: new Date('2026-06-01T08:00:00.000Z'), quoteId: quote.id })
+      .returning();
+    if (!cancelled) throw new Error('Cancelled Job insert did not return a row');
+
+    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+      hasEverSourcedJob: true,
+      job: null,
+    });
+
+    const [replacement] = await context.db.insert(jobs).values({ quoteId: quote.id }).returning();
+    if (!replacement) throw new Error('Replacement Job insert did not return a row');
+
+    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+      hasEverSourcedJob: true,
+      job: { jobCode: formatJobCode(replacement.code), jobId: replacement.id },
     });
   });
 });
@@ -1174,6 +1202,36 @@ describe('cancelled quotes', () => {
 });
 
 describe('listQuotes', () => {
+  test('searches by the live replacement Job code but not a cancelled Job code', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    const [cancelled] = await context.db
+      .insert(jobs)
+      .values({ cancelledAt: new Date('2026-06-01T08:00:00.000Z'), quoteId: quote.id })
+      .returning();
+    const [replacement] = await context.db.insert(jobs).values({ quoteId: quote.id }).returning();
+    if (!cancelled || !replacement) throw new Error('Job inserts did not return rows');
+    const search = (jobCode: number) =>
+      listQuotes({
+        db: context.db,
+        input: {
+          filters: { statuses: [] },
+          cursor: 0,
+          limit: 10,
+          search: formatJobCode(jobCode),
+          sortBy: 'createdAt',
+          sortDirection: 'asc',
+        },
+      });
+
+    await expect(search(cancelled.code)).resolves.toMatchObject({ items: [], total: 0 });
+    await expect(search(replacement.code)).resolves.toMatchObject({ items: [{ id: quote.id }], total: 1 });
+  });
+
   test('excludes cancelled quotes when no status filter is applied', async ({ context }) => {
     const visible = await createQuoteService({
       actorUserId: context.salesPerson.id,
@@ -1438,6 +1496,62 @@ describe('patchQuote', () => {
 });
 
 describe('cancelQuote', () => {
+  test('cancels only the live Job when historical cancelled Jobs share the Quote', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    const historicalCancelledAt = new Date('2026-05-01T08:00:00.000Z');
+    const [historical] = await context.db
+      .insert(jobs)
+      .values({ cancelledAt: historicalCancelledAt, quoteId: quote.id })
+      .returning();
+    const [live] = await context.db.insert(jobs).values({ quoteId: quote.id }).returning();
+    if (!historical || !live) throw new Error('Job inserts did not return rows');
+
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancellationReason: 'Customer withdrew after the replacement was raised',
+      db: context.db,
+      id: quote.id,
+    });
+
+    const [historicalAfter, liveAfter] = await Promise.all([
+      context.db.query.jobs.findFirst({ where: eq(jobs.id, historical.id) }),
+      context.db.query.jobs.findFirst({ where: eq(jobs.id, live.id) }),
+    ]);
+    expect(historicalAfter?.cancelledAt).toEqual(historicalCancelledAt);
+    expect(liveAfter?.cancelledAt).toBeInstanceOf(Date);
+  });
+
+  test('cancels a Quote with only historical Jobs without rewriting them', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    const historicalCancelledAt = new Date('2026-05-01T08:00:00.000Z');
+    const [historical] = await context.db
+      .insert(jobs)
+      .values({ cancelledAt: historicalCancelledAt, quoteId: quote.id })
+      .returning();
+    if (!historical) throw new Error('Historical Job insert did not return a row');
+
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancellationReason: 'Customer withdrew after the Job was already cancelled',
+      db: context.db,
+      id: quote.id,
+    });
+
+    await expect(context.db.query.jobs.findFirst({ where: eq(jobs.id, historical.id) })).resolves.toMatchObject({
+      cancelledAt: historicalCancelledAt,
+    });
+  });
+
   test('returns a sold Allocation Quote Unit to Stock without erasing either transfer', async ({ context }) => {
     const unitId = await createUnit(context.db, context.product.id, 911);
     const quote = await createQuoteService({
@@ -1713,6 +1827,31 @@ describe('cancelQuote', () => {
 });
 
 describe('listPriorityQuotes', () => {
+  test('restores a freed accepted Quote until it sources a live replacement', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      plannedDeliveryDate: '2026-02-01',
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    await context.db.insert(jobs).values({
+      cancelledAt: new Date('2026-01-01T08:00:00.000Z'),
+      quoteId: quote.id,
+    });
+    const list = () =>
+      listPriorityQuotes({
+        clock: () => new Date('2026-01-01T10:00:00.000+02:00'),
+        db: context.db,
+      });
+
+    await expect(list()).resolves.toMatchObject([{ id: quote.id, job: null }]);
+
+    await context.db.insert(jobs).values({ quoteId: quote.id });
+
+    await expect(list()).resolves.toEqual([]);
+  });
+
   test('excludes accepted Allocation Quotes because a stock sale does not need a Job', async ({ context }) => {
     const ordinary = await createQuote(context.db, {
       customerId: context.customer.id,

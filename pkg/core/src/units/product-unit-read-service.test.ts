@@ -362,7 +362,7 @@ async function seedUnits(db: Db) {
   const [customer] = await db.insert(customers).values({ companyName: 'Riverside Farm', email: null }).returning();
   if (!customer) throw new Error('Customer insert did not return a row');
 
-  // One Quote per Job: `job_quote_id_unique` still holds a Job to exactly one Quote.
+  // The live-only Quote index still leaves quoteless Stock Builds independent.
   const quoteRows = await db
     .insert(quotes)
     .values(

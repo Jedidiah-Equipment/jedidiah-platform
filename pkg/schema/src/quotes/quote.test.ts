@@ -409,6 +409,7 @@ describe('QuoteDetail', () => {
         customerEmail: null,
         customerPhone: null,
         customerVatNumber: null,
+        hasEverSourcedJob: false,
       }),
     ).toMatchObject({
       product: null,
@@ -433,6 +434,7 @@ describe('QuoteDetail', () => {
         depositPercent: 0,
         discountPercent: 0,
         documentNotes: null,
+        hasEverSourcedJob: false,
         id: '550e8400-e29b-41d4-a716-446655440010',
         job: null,
         kind: 'product',

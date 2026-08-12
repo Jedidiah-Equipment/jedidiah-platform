@@ -28,16 +28,6 @@ import { toLedgerQuantity } from './ledger.js';
  * A Job with no draws at all cost nothing, so it is absent from the map and its caller reads zero —
  * distinct from the null a Job earns by holding material nobody has priced yet.
  */
-/**
- * One Job's cost off {@link sumJobDrawnCosts}' map, under the absence rule the map's own contract
- * states: a Job that is missing entirely drew nothing at all and cost zero, while a Job present with
- * `null` holds material nobody has priced. Every reader of the map goes through this, so no caller can
- * read an absent Job as unpriced or an unpriced one as free.
- */
-export function readJobDrawnCost(costByJobId: Map<UUID, number | null>, jobId: UUID): number | null {
-  return costByJobId.has(jobId) ? (costByJobId.get(jobId) ?? null) : 0;
-}
-
 export async function sumJobDrawnCosts({
   db,
   jobIds,
@@ -78,4 +68,14 @@ export async function sumJobDrawnCosts({
   }
 
   return new Map([...costedTotals].map(([jobId, total]) => [jobId, unpricedJobIds.has(jobId) ? null : total] as const));
+}
+
+/**
+ * One Job's cost off {@link sumJobDrawnCosts}' map, under the absence rule that function's contract
+ * states: a Job missing from the map entirely drew nothing at all and cost zero, while a Job present
+ * with `null` holds material nobody has priced. Every reader goes through this, so no caller can read an
+ * absent Job as unpriced or an unpriced one as free.
+ */
+export function readJobDrawnCost(costByJobId: Map<UUID, number | null>, jobId: UUID): number | null {
+  return costByJobId.has(jobId) ? (costByJobId.get(jobId) ?? null) : 0;
 }

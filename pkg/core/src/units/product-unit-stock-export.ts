@@ -5,7 +5,11 @@ import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { readJobDrawnCost, sumJobDrawnCosts } from '../inventory/job-cost-read.js';
 import { groupBy, sumNullableBy } from '../inventory/row-grouping.js';
-import { buildProductUnitListWhere, productUnitBuildCompletedOn } from './product-unit-read-service.js';
+import {
+  buildProductUnitListWhere,
+  productUnitBuildCompletedOn,
+  productUnitBuildJobCode,
+} from './product-unit-read-service.js';
 
 /**
  * Every On Hand Product Unit as one spreadsheet line: what the machine cost us in material off the
@@ -39,6 +43,10 @@ export async function listOnHandProductUnitStock({
 }): Promise<ProductUnitStockExportRow[]> {
   const rows = await db
     .select({
+      // Both build facts come out of this one statement, so the Job code a row names is always the Job
+      // whose completion admitted it — a Job cancelled mid-export cannot leave the two disagreeing.
+      buildCompletedOn: productUnitBuildCompletedOn,
+      buildJobCode: productUnitBuildJobCode,
       id: productUnits.id,
       productBasePrice: products.basePrice,
       productModelCode: products.modelCode,
@@ -57,13 +65,11 @@ export async function listOnHandProductUnitStock({
 
   const unitIds = rows.map((row) => row.id);
   const [liveJobs, transfers] = await Promise.all([
+    // Only for the cost: what the machine is made of is every live Job's draws, not the Build Job's.
     db
-      .select({ code: jobs.code, completedOn: jobs.completedOn, id: jobs.id, productUnitId: jobs.productUnitId })
+      .select({ id: jobs.id, productUnitId: jobs.productUnitId })
       .from(jobs)
-      .where(and(inArray(jobs.productUnitId, unitIds), isNull(jobs.cancelledAt)))
-      // Ordered as `productUnitBuildCompletedOn` reads them, so each Unit's first is its Build Job and
-      // the date this report puts against a machine is the one that admitted it.
-      .orderBy(asc(jobs.createdAt), asc(jobs.id)),
+      .where(and(inArray(jobs.productUnitId, unitIds), isNull(jobs.cancelledAt))),
     db.query.productUnitOwnershipTransfers.findMany({
       columns: { createdAt: true, id: true, occurredOn: true, productUnitId: true, toCustomerId: true },
       where: inArray(productUnitOwnershipTransfers.productUnitId, unitIds),
@@ -79,38 +85,38 @@ export async function listOnHandProductUnitStock({
   const costByJobId = await sumJobDrawnCosts({ db, jobIds: liveJobs.map((job) => UUID.parse(job.id)) });
 
   return rows.map((row) => {
-    const unitJobs = jobsByUnitId.get(row.id);
-    const buildJob = unitJobs?.[0];
-
-    if (!unitJobs || !buildJob?.completedOn) {
-      // Unreachable: a Unit is admitted only when its earliest live Job carries a Job Completion.
-      throw new Error(`Product Unit ${row.id} reads as On Hand with no completed live Job behind it`);
-    }
-
     // Every Job the machine has been through, summed. One unpriced Job latches the whole Unit
     // unpriced, exactly as one unpriced Part latches a Job: a machine is no better priced than its
     // worst known Job, and a total quietly counting that material as free would read as authoritative.
-    const costExVat = sumNullableBy(unitJobs, (job) => readJobDrawnCost(costByJobId, UUID.parse(job.id)));
-    // The Transfer that decides who holds the machine also names the sale that put it there: the
-    // build's Quote for one built to order, the Allocation Quote for one sold out of stock. A
-    // hand-recorded transfer carries neither, because we were not part of that transaction.
+    const costExVat = sumNullableBy(jobsByUnitId.get(row.id) ?? [], (job) =>
+      readJobDrawnCost(costByJobId, UUID.parse(job.id)),
+    );
     const owningTransfer = resolveNewestOwnershipTransfer(transfersByUnitId.get(row.id) ?? []);
+    /**
+     * The Transfer that decides who holds the machine also names the sale that put it there — the
+     * build's Quote for one built to order, the Allocation Quote for one sold out of stock — but only
+     * when it placed the machine with somebody. A Transfer with no destination is a return to Stock,
+     * and it still carries the Quote it reverses: reading the sale off that would print a cancelled
+     * Quote's number and invoice against a machine we have taken back. A hand-recorded resale names no
+     * Quote either way, because we were not part of that transaction.
+     */
+    const owningSale = owningTransfer?.toCustomer ? owningTransfer : null;
 
     return ProductUnitStockExportRow.parse({
-      buildCompletedOn: buildJob.completedOn,
+      buildCompletedOn: row.buildCompletedOn,
       costExVat,
       // Grossed up through the same helper Quote Pricing uses, so every figure on the line answers to
       // one VAT rule rather than several that could drift apart.
       costIncVat: costExVat === null ? null : costExVat + computeQuoteVatAmount(costExVat),
-      customerCompanyName: owningTransfer?.toCustomer?.companyName ?? null,
-      invoiceNumber: owningTransfer?.sourceQuote?.invoiceNumber ?? null,
-      jobCode: buildJob.code,
+      customerCompanyName: owningSale?.toCustomer?.companyName ?? null,
+      invoiceNumber: owningSale?.sourceQuote?.invoiceNumber ?? null,
+      jobCode: row.buildJobCode,
       productModelCode: row.productModelCode,
       productName: row.productName,
       productRetailExVat: row.productBasePrice,
       productRetailIncVat: row.productBasePrice + computeQuoteVatAmount(row.productBasePrice),
       productSerialNumber: row.productSerialNumber,
-      quoteCode: owningTransfer?.sourceQuote?.code ?? null,
+      quoteCode: owningSale?.sourceQuote?.code ?? null,
     });
   });
 }

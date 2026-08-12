@@ -98,6 +98,28 @@ describe('listOnHandProductUnitStock', () => {
   });
 
   /**
+   * A return to Stock is recorded as a Transfer with no destination that still names the Quote it
+   * reverses — `returnQuoteProductUnitToStock` writes exactly that. Reading the sale off the newest
+   * Transfer alone would print a cancelled Quote's number and invoice against a machine we have taken
+   * back, while its Customer cell sat empty.
+   */
+  test('names no sale on a machine taken back into Stock, whatever Quote the reversal cites', async ({ context }) => {
+    await context.db.insert(productUnitOwnershipTransfers).values({
+      actorUserId: ACTOR_USER_ID,
+      fromCustomerId: context.riversideId,
+      occurredOn: '2026-07-20',
+      productUnitId: context.allocatedUnitId,
+      sourceQuoteId: context.allocationQuoteId,
+      toCustomerId: null,
+    });
+
+    const rows = await listOnHandProductUnitStock({ db: context.db, input: NO_FILTERS });
+    const returned = rows.find((row) => row.productSerialNumber === 'SR-100260005');
+
+    expect(returned).toMatchObject({ customerCompanyName: null, invoiceNumber: null, quoteCode: null });
+  });
+
+  /**
    * The filter that contradicts the report's subject. Narrowing to In Build cannot make the report
    * smaller, so it is dropped rather than allowed to empty it — a headers-only CSV with no
    * explanation is the one outcome an export button must not have.
@@ -315,5 +337,10 @@ async function seedStockShape(db: Db) {
   }
   await db.update(jobs).set({ cancelledAt: now }).where(eq(jobs.id, cancelledReworkJob.id));
 
-  return { allocationQuoteCode: formatQuoteCode(allocationQuote.code) };
+  return {
+    allocatedUnitId: allocatedUnit.id,
+    allocationQuoteCode: formatQuoteCode(allocationQuote.code),
+    allocationQuoteId: allocationQuote.id,
+    riversideId: riverside.id,
+  };
 }

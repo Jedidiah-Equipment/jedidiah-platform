@@ -11,6 +11,7 @@ All are `pnpm --filter @pkg/mobile <script>`:
   `https://staging-api.jedidiahequipment.co.za` instead of a local API
 - `doctor` — Expo Doctor for the staging variant
 - `typecheck`, `test`
+- `version:bump patch` — bump the store-facing app version (`minor` and `major` are also supported)
 - `android-eas-build-staging` / `ios-eas-build-staging` and the matching `…-eas-submit-staging` scripts
 
 ## Local API

@@ -32,7 +32,7 @@ import { useTRPC } from '@/lib/trpc.js';
 export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => {
   const trpc = useTRPC();
   const canCancel = useCan('job:cancel').can;
-  const { invalidateInventory, invalidateJobs, invalidateProductUnits } = useQueryInvalidation();
+  const { invalidateInventory, invalidateJobs, invalidateProductUnits, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -47,7 +47,7 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
         setIsOpen(false);
         // Cancelling releases the Job's outstanding stock commitment and drops it out of its Unit's
         // As-Built Spec and build state, so free stock and Unit reads move with it.
-        await Promise.all([invalidateJobs(), invalidateInventory(), invalidateProductUnits()]);
+        await Promise.all([invalidateJobs(), invalidateInventory(), invalidateProductUnits(), invalidateQuotes()]);
         toast.success(`${job.code} cancelled`);
       },
       onError: (error) => {

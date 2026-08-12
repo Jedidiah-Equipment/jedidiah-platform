@@ -402,6 +402,45 @@ describe('createJob', () => {
     ).resolves.toEqual(originalTransfers);
   });
 
+  test('mints a fresh Product Unit when ownership moved away from the Quote customer', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+    const cancelled = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+    const originalUnitId = cancelled.productUnit?.id;
+    if (!originalUnitId) throw new Error('Build-to-order Job did not return its Product Unit');
+
+    await cancelJob({
+      actorUserId,
+      db: context.db,
+      input: { cancellationReason: 'Raised against the wrong machine', id: cancelled.id },
+    });
+    await transferProductUnitOwnership({
+      actorUserId,
+      db: context.db,
+      input: ProductUnitTransferInput.parse({
+        id: originalUnitId,
+        note: 'The sale still needs a replacement machine',
+        occurredOn: '2026-06-05',
+        toCustomerId: null,
+      }),
+    });
+
+    const replacement = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+
+    expect(replacement.productUnit?.id).not.toBe(originalUnitId);
+    expect(replacement.customerId).toBe(quote.customerId);
+  });
+
   test('mints a fresh Product Unit when the cancelled Job orphan was removed', async ({ context }) => {
     const quote = await createQuote(context.db, {
       productId: context.catalog.product.id,

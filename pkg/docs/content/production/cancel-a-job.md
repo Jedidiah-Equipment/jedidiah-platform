@@ -11,8 +11,8 @@ un-cancel.
 Cancel deliberately. A **Stock Build** can simply be raised again. When a Job came from a Quote,
 cancelling the Job frees that same Quote to start a replacement while keeping the accepted terms
 Locked. Open the Quote, click **Start Job**, and raise the work again. A replacement Build Job keeps the
-same Product Unit and Product Serial Number; if the never-built Unit was removed first, it receives a
-new one.
+same Product Unit and Product Serial Number while the Customer still owns that Unit. If the never-built
+Unit was removed or its ownership moved elsewhere first, the replacement receives a new one.
 
 ## Cancel the Job itself
 

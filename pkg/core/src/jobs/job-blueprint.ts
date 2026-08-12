@@ -12,6 +12,7 @@ import { and, asc, desc, eq } from 'drizzle-orm';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { narrowQuoteOffering } from '../quotes/quote-offering.js';
 import { loadAsBuiltSpec } from '../units/product-unit-as-built.js';
+import { lockUnitForOwnership } from '../units/product-unit-service.js';
 import { JobCreateFromQuoteDeniedError, StockBuildDeniedError } from './job-errors.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
@@ -201,15 +202,26 @@ async function lockQuoteForJobCreate({ quoteId, tx }: { quoteId: UUID; tx: Datab
     .orderBy(desc(jobs.cancelledAt), desc(jobs.id));
 
   const hasLiveJob = quoteJobs.some((job) => job.cancelledAt === null);
-  const reuseProductUnitId = quoteJobs.find(
+  const reuseCandidateId = quoteJobs.find(
     (job) => job.cancelledAt !== null && job.productUnitId !== null,
   )?.productUnitId;
+  let reuseProductUnitId: UUID | null = null;
+
+  if (reuseCandidateId) {
+    const ownership = await lockUnitForOwnership(tx, reuseCandidateId);
+
+    // Ownership can move independently of the Locked Quote. Reuse is transfer-free only while the
+    // original sale still owns the machine; otherwise replacement creation must mint a newly sold Unit.
+    if (ownership?.currentOwnerId === quote.customerId) {
+      reuseProductUnitId = ownership.unit.id;
+    }
+  }
 
   return {
     hasLiveJob,
     offering: narrowQuoteOffering(quote),
     quote,
-    reuseProductUnitId: reuseProductUnitId ?? null,
+    reuseProductUnitId,
   };
 }
 

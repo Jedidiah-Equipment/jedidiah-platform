@@ -77,22 +77,19 @@ describe('filterBookSlotJobs', () => {
     expect(filterBookSlotJobs(jobs, 'unscheduled').map((job) => job.id)).toEqual(['unscheduled']);
   });
 
-  it('drops a completed Job from unscheduled jobs, which is the only way one ever leaves that list', () => {
+  it('drops a completed Job from unscheduled jobs', () => {
     const jobs = [bookSlotJob('open', { total: 0 }), bookSlotJob('completed', { total: 0 }, '2026-08-03')];
 
     expect(filterBookSlotJobs(jobs, 'unscheduled').map((job) => job.id)).toEqual(['open']);
   });
 
-  it('drops a completed Job from active jobs even while its Work Slots are unfinished', () => {
-    const jobs = [
-      bookSlotJob('open', { active: 1, total: 1 }),
-      bookSlotJob('completed', { active: 1, total: 1 }, '2026-08-03'),
-    ];
+  it('keeps a completed Job in active jobs while its Work Slots are unfinished, as the Board does', () => {
+    const jobs = [bookSlotJob('completed', { active: 1, total: 1 }, '2026-08-03')];
 
-    expect(filterBookSlotJobs(jobs, 'active').map((job) => job.id)).toEqual(['open']);
+    expect(filterBookSlotJobs(jobs, 'active').map((job) => job.id)).toEqual(['completed']);
   });
 
-  it('still offers a completed Job under all jobs, so one can be booked for rework', () => {
+  it('keeps a completed Job in all jobs', () => {
     const jobs = [bookSlotJob('completed', { total: 0 }, '2026-08-03')];
 
     expect(filterBookSlotJobs(jobs, 'all').map((job) => job.id)).toEqual(['completed']);

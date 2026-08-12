@@ -1,5 +1,5 @@
 import { type Db, feedback, getPaginationQueryOptions } from '@pkg/db';
-import { getJobDisplayName, resolveJobCustomer, resolveNewestOwnershipTransfer } from '@pkg/domain';
+import { getJobDisplayName, getJobOfferingKind, resolveJobCustomer, resolveNewestOwnershipTransfer } from '@pkg/domain';
 import type { JobActivityItem, JobActivityListInput, JobActivityListResult } from '@pkg/schema';
 import { getNextCursor, JobActivityItem as JobActivityItemSchema, JobCode } from '@pkg/schema';
 import { and, asc, desc, eq } from 'drizzle-orm';
@@ -19,14 +19,14 @@ const activityReadRelations = {
     },
     with: {
       productUnit: {
-        columns: { productSerialNumber: true },
+        columns: {},
         with: {
           // Ownership is the log, not a stored field, so the Owner comes from the newest transfer.
           ownershipTransfers: {
             columns: { createdAt: true, id: true, occurredOn: true, toCustomerId: true },
             with: { toCustomer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
           },
-          product: { columns: { name: true } },
+          product: { columns: { name: true, thumbnailDataUrl: true } },
         },
       },
       quote: {
@@ -108,7 +108,8 @@ function mapGeneralFeedbackActivityItem(row: JobActivityRow): JobActivityItem {
         quoteKind: job.quote?.kind ?? null,
         workTitle: job.quote?.workTitle ?? null,
       }),
-      serialNumber: job.productUnit?.productSerialNumber ?? null,
+      offeringKind: getJobOfferingKind({ quoteKind: job.quote?.kind ?? null }),
+      thumbnailDataUrl: job.productUnit?.product?.thumbnailDataUrl ?? null,
       customerCompanyName: owner?.companyName ?? null,
     },
     feedback: {

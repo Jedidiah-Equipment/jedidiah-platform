@@ -8,14 +8,15 @@ import { JobActivityCard } from './JobActivityCard.js';
 const THUMBNAIL_DATA_URL = 'data:image/webp;base64,YWN0b3I=';
 
 describe('JobActivityCard', () => {
-  // Placing the entry — which Job, which machine, whose it is — is what the feed adds over the Job's
+  // Placing the entry — which Job, which offering, whose it is — is what the feed adds over the Job's
   // own feedback list, and nothing below this card pins that those facts reach the screen.
-  it('places the entry by Job, Product, serial, and Customer', async () => {
+  it('places the entry by offering, Job, Product, and Customer without its serial', async () => {
     const html = await renderWithRouter(<JobActivityCard item={buildItem()} />);
 
-    expect(html).toContain('JOB-00042');
+    expect(html).toContain('aria-label="Cane 8 ton"');
+    expect(html).toContain('class="font-mono font-medium text-muted-foreground">JOB-00042');
     expect(html).toContain('Cane 8 ton');
-    expect(html).toContain('SN-2026-0042');
+    expect(html).not.toContain('SN-2026-0042');
     expect(html).toContain('Acme Mining');
   });
 
@@ -59,7 +60,8 @@ function buildItem(
       code: 'JOB-00042' as GeneralFeedbackActivityItem['job']['code'],
       customerCompanyName: overrides.customerCompanyName === undefined ? 'Acme Mining' : overrides.customerCompanyName,
       displayName: 'Cane 8 ton',
-      serialNumber: 'SN-2026-0042',
+      offeringKind: 'product',
+      thumbnailDataUrl: null,
     },
     feedback: {
       submitter: {

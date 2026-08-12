@@ -1,6 +1,8 @@
+import { statusBadgeColorClassNames } from '@pkg/domain';
 import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';
+import { cn } from '@/lib/utils.js';
 
 /**
  * Shown wherever a Customer would be, for a Product Unit nobody owns. Stock is a derived state of the
@@ -8,7 +10,10 @@ import { Badge } from '@/components/ui/badge.js';
  * or a placeholder company name.
  */
 export const StockBadge: React.FC = () => (
-  <Badge className="border-amber-500/50 bg-amber-500/15 text-amber-800 dark:text-amber-200" variant="outline">
+  <Badge
+    className={cn(statusBadgeColorClassNames.yellow.chip, statusBadgeColorClassNames.yellow.text)}
+    variant="outline"
+  >
     Stock
   </Badge>
 );

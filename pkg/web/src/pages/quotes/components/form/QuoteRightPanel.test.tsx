@@ -57,6 +57,8 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
 
   const html = renderToStaticMarkup(<QuoteRightPanel quote={quote} summary={summary} />);
 
+  expect(html).toContain('aria-label="Hydraulic pump overhaul"');
+  expect(html).not.toContain('>Custom<');
   // A departmental Work Item is labelled by the shop's quoting wording for its Department.
   expect(html).toContain('Fabrication');
   expect(html).toContain('Labour');

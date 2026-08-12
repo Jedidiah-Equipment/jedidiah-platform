@@ -33,6 +33,7 @@ const STOCK_OWNER_VALUE = 'stock';
 
 type ProductUnitTableProps = {
   onOpenUnit: (unit: ProductUnitSummary) => void;
+  render?: ((view: { exportAction: React.ReactNode; tableContent: React.ReactNode }) => React.ReactNode) | undefined;
 };
 
 export const useProductUnitTableStore = createPersistedDataTableStore({
@@ -47,7 +48,7 @@ const productUnitSortOptions: SortOptions<ProductUnitListInput> = {
   defaultSort: { id: 'createdAt', desc: true },
 };
 
-export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }) => {
+export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit, render }) => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const accessQuery = useAccess();
@@ -197,7 +198,23 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
     },
   });
 
-  return (
+  const exportAction = canExportStock ? (
+    <Button
+      disabled={stockExportMutation.isPending}
+      onClick={() => stockExportMutation.mutate()}
+      size={render ? 'default' : 'sm'}
+      variant="outline"
+    >
+      {stockExportMutation.isPending ? (
+        <IconLoader2 className="animate-spin" data-icon="inline-start" />
+      ) : (
+        <IconDownload data-icon="inline-start" />
+      )}
+      Export Units
+    </Button>
+  ) : null;
+
+  const tableContent = (
     <DataTable
       emptyMessage="No units found."
       errorMessage={getApiQueryErrorMessage(unitsQuery.error, 'Unable to load units.')}
@@ -212,28 +229,14 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
         onLoadMore: () => void unitsQuery.fetchNextPage(),
       }}
       onRowClick={onOpenUnit}
-      rightSection={
-        canExportStock ? (
-          <Button
-            disabled={stockExportMutation.isPending}
-            onClick={() => stockExportMutation.mutate()}
-            size="sm"
-            variant="outline"
-          >
-            {stockExportMutation.isPending ? (
-              <IconLoader2 className="animate-spin" data-icon="inline-start" />
-            ) : (
-              <IconDownload data-icon="inline-start" />
-            )}
-            Export Units
-          </Button>
-        ) : null
-      }
+      rightSection={render ? null : exportAction}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'unit' : 'units'}`}
     />
   );
+
+  return render ? render({ exportAction, tableContent }) : tableContent;
 };
 
 function getProductUnitListInputExtras(columnFilters: ColumnFiltersState) {

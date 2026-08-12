@@ -192,6 +192,11 @@ function uniqueValues(values: readonly string[]): boolean {
 
 export const PURCHASE_ORDER_DUPLICATE_PART_MESSAGE = 'A Part can appear only once on a Purchase Order';
 
+/** Zero is the Draft-only sentinel for a line whose Supplier price has not been keyed yet. */
+export function isPurchaseOrderLineUnpriced(line: { unitPrice: number | null }): boolean {
+  return line.unitPrice === 0;
+}
+
 /** Shared with the draft form so a duplicate reads as a field error, not a rejected save. */
 export function hasUniquePartIds(lines: readonly { partId: string }[]): boolean {
   return uniqueValues(lines.map((line) => line.partId));

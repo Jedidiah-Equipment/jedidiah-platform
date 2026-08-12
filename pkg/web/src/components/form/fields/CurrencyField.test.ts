@@ -1,11 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { formatCurrencyFieldValue, formatCurrencyInputText, hasCurrencyFieldValueChanged } from './CurrencyField.js';
+import {
+  formatCurrencyFieldValue,
+  formatCurrencyInputText,
+  hasCurrencyFieldValueChanged,
+  parseCurrencyFieldValue,
+} from './CurrencyField.js';
 
 describe('formatCurrencyFieldValue', () => {
   it('can present the stored zero sentinel as an unpriced blank', () => {
     expect(formatCurrencyFieldValue(0, true)).toBe('');
     expect(formatCurrencyFieldValue(0, false)).toBe('0.00');
     expect(formatCurrencyFieldValue(12.5, true)).toBe('12.50');
+  });
+});
+
+describe('parseCurrencyFieldValue', () => {
+  it('round-trips an unpriced blank to the stored zero sentinel', () => {
+    expect(parseCurrencyFieldValue('', true)).toBe(0);
+    expect(parseCurrencyFieldValue('', false)).toBeNaN();
+    expect(parseCurrencyFieldValue('12.50', true)).toBe(12.5);
   });
 });
 

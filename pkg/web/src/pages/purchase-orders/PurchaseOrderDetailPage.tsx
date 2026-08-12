@@ -7,6 +7,7 @@ import type {
   PurchaseOrderView,
   UUID,
 } from '@pkg/schema';
+import { isPurchaseOrderLineUnpriced } from '@pkg/schema';
 import { IconBan, IconDownload, IconEye, IconFlagCheck, IconPlus, IconSend, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -399,8 +400,7 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
               />
             </CardContent>
             <div className="border-t px-4 pt-4 text-right font-medium">
-              Total{' '}
-              {lines.some((line) => line.unitPrice === 0) ? 'Not priced' : formatCurrency(lineTotal(lines), 'ZAR')}
+              Total {lines.some(isPurchaseOrderLineUnpriced) ? 'Not priced' : formatCurrency(lineTotal(lines), 'ZAR')}
             </div>
           </Card>
         );
@@ -645,7 +645,10 @@ const ReadOnlyLinesCard: React.FC<{
       </CardContent>
       {canReadCosts ? (
         <div className="border-t px-4 pt-4 text-right font-medium">
-          Total {formatCurrency(lineTotal(purchaseOrder.lines), 'ZAR')}
+          Total{' '}
+          {purchaseOrder.status === 'draft' && purchaseOrder.lines.some(isPurchaseOrderLineUnpriced)
+            ? 'Not priced'
+            : formatCurrency(lineTotal(purchaseOrder.lines), 'ZAR')}
         </div>
       ) : null}
       {amendment ? (

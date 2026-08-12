@@ -60,7 +60,7 @@ export function CurrencyField({
           }}
           onChange={(event) => {
             const text = formatCurrencyInputText(event.target.value);
-            const nextValue = parseCurrencyInputText(text);
+            const nextValue = parseCurrencyFieldValue(text, displayZeroAsEmpty);
             setDisplayValue(text);
             previousFieldValue.current = nextValue;
             field.handleChange(nextValue);
@@ -108,6 +108,11 @@ export function formatCurrencyInputText(text: string): string {
 function parseCurrencyInputText(text: string): number {
   const normalizedText = normalizeCurrencyInputText(text);
   return normalizedText.trim() === '' ? NaN : Number.parseFloat(normalizedText);
+}
+
+export function parseCurrencyFieldValue(text: string, displayZeroAsEmpty: boolean): number {
+  const value = parseCurrencyInputText(text);
+  return displayZeroAsEmpty && Number.isNaN(value) ? 0 : value;
 }
 
 function formatCurrencyIntegerText(integerDigits: string): string {

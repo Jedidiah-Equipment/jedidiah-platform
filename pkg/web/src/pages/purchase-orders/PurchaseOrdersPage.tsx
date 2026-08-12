@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
-import type { PurchaseOrderView } from '@pkg/schema';
+import { isPurchaseOrderLineUnpriced, type PurchaseOrderView } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -155,5 +155,5 @@ function totalFor(purchaseOrder: PurchaseOrderView): number {
 }
 
 function purchaseOrderHasUnpricedLines(purchaseOrder: PurchaseOrderView): boolean {
-  return purchaseOrder.status === 'draft' && purchaseOrder.lines.some((line) => line.unitPrice === 0);
+  return purchaseOrder.status === 'draft' && purchaseOrder.lines.some(isPurchaseOrderLineUnpriced);
 }

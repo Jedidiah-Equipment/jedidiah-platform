@@ -1,6 +1,7 @@
 import {
   AssemblyName,
   AssemblyPart,
+  AssemblyPubliclyVisible,
   NullableThumbnailDataUrl,
   Price,
   PriceDelta,
@@ -36,9 +37,10 @@ import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-s
 
 // Form representation of an assembly: like the API `AssemblyInput` but without its coercion
 // and defaults, so the controlled value shape matches what the editor holds. Field rules still
-// come from the schema scalars (`AssemblyName`, `AssemblyPart`, `PriceDelta`, `UUID`).
+// come from the schema scalars (`AssemblyName`, `AssemblyPart`, `AssemblyPubliclyVisible`, `PriceDelta`, `UUID`).
 const StandardAssemblyFormInput = z.object({
   id: UUID.optional(),
+  isPubliclyVisible: AssemblyPubliclyVisible,
   kind: z.literal('standard'),
   name: AssemblyName,
   parts: z.array(AssemblyPart),
@@ -46,6 +48,7 @@ const StandardAssemblyFormInput = z.object({
 
 const OptionalAssemblyFormInput = z.object({
   id: UUID.optional(),
+  isPubliclyVisible: AssemblyPubliclyVisible,
   kind: z.literal('optional'),
   name: AssemblyName,
   overrideStandardAssemblyIds: z.array(UUID),
@@ -166,12 +169,14 @@ export function toProductAssemblyInputs(initialProduct?: Product): ProductAssemb
     assembly.kind === 'standard'
       ? {
           id: assembly.id,
+          isPubliclyVisible: assembly.isPubliclyVisible,
           kind: assembly.kind,
           name: assembly.name,
           parts: assembly.parts,
         }
       : {
           id: assembly.id,
+          isPubliclyVisible: assembly.isPubliclyVisible,
           kind: assembly.kind,
           name: assembly.name,
           overrideStandardAssemblyIds: assembly.overrideStandardAssemblyIds,

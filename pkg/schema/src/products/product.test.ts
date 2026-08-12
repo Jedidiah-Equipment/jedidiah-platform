@@ -290,6 +290,18 @@ describe('ProductBaysInput', () => {
 });
 
 describe('ProductAssembliesInput', () => {
+  it('preserves omitted visibility for legacy clients', () => {
+    expect(
+      ProductAssembliesInput.parse([
+        { kind: 'standard', name: 'Base frame', parts: [] },
+        { kind: 'optional', name: 'Air brakes', overrideStandardAssemblyIds: [], parts: [], price: 250 },
+      ]),
+    ).toEqual([
+      { kind: 'standard', name: 'Base frame', parts: [] },
+      { kind: 'optional', name: 'Air brakes', overrideStandardAssemblyIds: [], parts: [], price: 250 },
+    ]);
+  });
+
   it('accepts negative optional assembly prices as product price adjustments', () => {
     expect(
       ProductAssembliesInput.parse([

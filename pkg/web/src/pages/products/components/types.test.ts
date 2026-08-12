@@ -35,9 +35,17 @@ function buildProduct(overrides: Record<string, unknown> = {}): Product {
     brochureEnabled: false,
     landerEnabled: false,
     assemblies: [
-      { id: STANDARD_ID, productId: PRODUCT_ID, kind: 'standard', name: 'Base', parts: [] },
+      {
+        id: STANDARD_ID,
+        isPubliclyVisible: true,
+        productId: PRODUCT_ID,
+        kind: 'standard',
+        name: 'Base',
+        parts: [],
+      },
       {
         id: OPTIONAL_ID,
+        isPubliclyVisible: false,
         productId: PRODUCT_ID,
         kind: 'optional',
         name: 'Extra',
@@ -147,9 +155,10 @@ describe('toProductFormValues marketing fields', () => {
 describe('toProductAssemblyInputs', () => {
   it('maps standard and optional assemblies into editor inputs', () => {
     expect(toProductAssemblyInputs(buildProduct())).toEqual([
-      { id: STANDARD_ID, kind: 'standard', name: 'Base', parts: [] },
+      { id: STANDARD_ID, isPubliclyVisible: true, kind: 'standard', name: 'Base', parts: [] },
       {
         id: OPTIONAL_ID,
+        isPubliclyVisible: false,
         kind: 'optional',
         name: 'Extra',
         price: 250,
@@ -178,9 +187,10 @@ describe('toProductCreateInput', () => {
   it('maps full form values through the create schema', () => {
     expect(toProductCreateInput(toProductFormValues(buildProduct({ description: null })))).toEqual({
       assemblies: [
-        { id: STANDARD_ID, kind: 'standard', name: 'Base', parts: [] },
+        { id: STANDARD_ID, isPubliclyVisible: true, kind: 'standard', name: 'Base', parts: [] },
         {
           id: OPTIONAL_ID,
+          isPubliclyVisible: false,
           kind: 'optional',
           name: 'Extra',
           overrideStandardAssemblyIds: [STANDARD_ID],
@@ -214,9 +224,17 @@ describe('toProductCreateInput', () => {
     const values = toProductFormValues(
       buildProduct({
         assemblies: [
-          { id: STANDARD_ID, productId: PRODUCT_ID, kind: 'standard', name: 'Base', parts: [] },
+          {
+            id: STANDARD_ID,
+            isPubliclyVisible: true,
+            productId: PRODUCT_ID,
+            kind: 'standard',
+            name: 'Base',
+            parts: [],
+          },
           {
             id: OPTIONAL_ID,
+            isPubliclyVisible: false,
             productId: PRODUCT_ID,
             kind: 'optional',
             name: 'Manual controls credit',
@@ -230,6 +248,7 @@ describe('toProductCreateInput', () => {
 
     expect(toProductCreateInput(values).assemblies).toContainEqual({
       id: OPTIONAL_ID,
+      isPubliclyVisible: false,
       kind: 'optional',
       name: 'Manual controls credit',
       overrideStandardAssemblyIds: [STANDARD_ID],
@@ -299,9 +318,10 @@ describe('toProductUpdateInput', () => {
     expect(toProductUpdateInput(PRODUCT_ID, toProductFormValues(buildProduct()))).toMatchObject({
       id: PRODUCT_ID,
       assemblies: [
-        { id: STANDARD_ID, kind: 'standard', name: 'Base', parts: [] },
+        { id: STANDARD_ID, isPubliclyVisible: true, kind: 'standard', name: 'Base', parts: [] },
         {
           id: OPTIONAL_ID,
+          isPubliclyVisible: false,
           kind: 'optional',
           name: 'Extra',
           overrideStandardAssemblyIds: [STANDARD_ID],

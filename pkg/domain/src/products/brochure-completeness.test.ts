@@ -144,4 +144,21 @@ describe('evaluateProductBrochureCompleteness', () => {
       missingFields: ['category', 'assemblies'],
     });
   });
+
+  it('does not treat public visibility as a readiness requirement', () => {
+    const hiddenOnly = completeProduct({
+      assemblies: [
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          isPubliclyVisible: false,
+          productId: PRODUCT_ID,
+          kind: 'standard',
+          name: 'Internal frame grouping',
+          parts: [],
+        },
+      ],
+    });
+
+    expect(evaluateProductBrochureCompleteness(hiddenOnly)).toEqual({ complete: true, missingFields: [] });
+  });
 });

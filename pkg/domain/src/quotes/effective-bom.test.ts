@@ -128,9 +128,18 @@ describe('resolveEffectiveBom', () => {
 });
 
 function standard(id: UUID, name: string): StandardAssembly {
-  return { id, kind: 'standard', name, parts: [], productId: PRODUCT_ID };
+  return { id, isPubliclyVisible: true, kind: 'standard', name, parts: [], productId: PRODUCT_ID };
 }
 
 function optional(id: UUID, name: string, overrideStandardAssemblyIds: UUID[]): OptionalAssembly {
-  return { id, kind: 'optional', name, overrideStandardAssemblyIds, parts: [], price: 100, productId: PRODUCT_ID };
+  return {
+    id,
+    isPubliclyVisible: true,
+    kind: 'optional',
+    name,
+    overrideStandardAssemblyIds,
+    parts: [],
+    price: 100,
+    productId: PRODUCT_ID,
+  };
 }

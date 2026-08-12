@@ -927,7 +927,17 @@ export async function updateProduct({
         listProductBays({ db: tx, productId: input.id }),
         listProductCostingInputs({ db: tx, productId: input.id }),
       ]);
-      const desiredAssemblies = input.assemblies ?? beforeAssemblies;
+      const visibilityByAssemblyId = new Map(
+        beforeAssemblies.map((assembly) => [assembly.id, assembly.isPubliclyVisible]),
+      );
+      // A pre-deploy client cannot send this rollout field. Existing rows retain their stored value;
+      // only genuinely new Assemblies fall back to hidden.
+      const desiredAssemblies =
+        input.assemblies?.map((assembly) => ({
+          ...assembly,
+          isPubliclyVisible:
+            assembly.isPubliclyVisible ?? (assembly.id ? visibilityByAssemblyId.get(assembly.id) : undefined) ?? false,
+        })) ?? beforeAssemblies;
       const desiredProductBays = input.productBays ?? beforeProductBays;
       const desiredLaborHours = input.laborHours ?? beforeCostingInputs.laborHours;
       const desiredMaterialLines = input.materialLines ?? beforeCostingInputs.materialLines;
@@ -996,7 +1006,7 @@ export async function updateProduct({
         ? await syncAssemblies({
             tx,
             productId: row.id,
-            desired: input.assemblies,
+            desired: desiredAssemblies,
           })
         : beforeAssemblies;
       const syncedProductBays =
@@ -1315,6 +1325,7 @@ function toAuditAssemblies(assemblies: Assembly[] | NonNullable<ProductUpdateInp
     if (assembly.kind === 'standard') {
       return {
         id: assembly.id,
+        isPubliclyVisible: assembly.isPubliclyVisible ?? false,
         kind: 'standard' as const,
         name: assembly.name,
         displayOrder,
@@ -1324,6 +1335,7 @@ function toAuditAssemblies(assemblies: Assembly[] | NonNullable<ProductUpdateInp
 
     return {
       id: assembly.id,
+      isPubliclyVisible: assembly.isPubliclyVisible ?? false,
       kind: 'optional' as const,
       name: assembly.name,
       displayOrder,

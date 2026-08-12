@@ -194,6 +194,9 @@ export const snapshotTableDefinitions = [
     fileName: 'product_assemblies.json',
     tableName: 'product_assemblies',
     timestampColumns: standardTimestampColumns,
+    // Existing Assemblies are backfilled visible; preserve that behavior before and after remote rollout.
+    optionalReadColumns: ['isPubliclyVisible'],
+    seedRowDefaults: () => ({ isPubliclyVisible: true }),
   },
   {
     fileName: 'assembly_parts.json',

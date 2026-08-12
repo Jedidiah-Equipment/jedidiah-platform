@@ -16,6 +16,7 @@ import {
 function optionalAssembly(id: string, price: number): OptionalAssembly {
   return {
     id,
+    isPubliclyVisible: true,
     kind: 'optional',
     name: `Assembly ${id}`,
     overrideStandardAssemblyIds: [],

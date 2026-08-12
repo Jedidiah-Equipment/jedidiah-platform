@@ -88,6 +88,7 @@ export const productAssemblies = pgTable(
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     displayOrder: integer('display_order').notNull(),
     id: uuid('id').defaultRandom().primaryKey(),
+    isPubliclyVisible: boolean('is_publicly_visible').notNull().default(false),
     kind: text('kind', { enum: ['standard', 'optional'] }).notNull(),
     name: text('name').notNull(),
     price: numeric('price', { mode: 'number', precision: 12, scale: 2 }),

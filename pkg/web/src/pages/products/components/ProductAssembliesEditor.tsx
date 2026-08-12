@@ -2,14 +2,14 @@ import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor,
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { createStableRowKeys, formatCurrency } from '@pkg/domain';
-import { type AssemblyInput, AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
+import { AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import React, { useMemo } from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
-import { CreatableComboboxField, CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
+import { CreatableComboboxField, CurrencyField, SwitchField, useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { validateStructuralFieldOnMount } from '@/components/form/utils/field-validators.js';
@@ -48,7 +48,11 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
-import { emptyProductFormValues, getEligibleAssemblyNames } from './types.js';
+import {
+  emptyProductFormValues,
+  getEligibleAssemblyNames,
+  type ProductAssemblyFormInput as AssemblyInput,
+} from './types.js';
 
 const ALL_CATEGORIES = '__all__';
 const AssemblyPartSelection = requiredSelection(UUID, 'Select a part');
@@ -396,13 +400,27 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                       : 'grid gap-3'
                   }
                 >
-                  <FormField name={`assemblies[${index}].name`} validators={ASSEMBLY_NAME_FIELD_VALIDATORS}>
-                    {(field) => (
-                      <fieldContext.Provider value={field}>
-                        <AssemblyNameField assemblyNames={assemblyNames} index={index} />
-                      </fieldContext.Provider>
-                    )}
-                  </FormField>
+                  <div className="flex flex-col gap-3">
+                    <FormField name={`assemblies[${index}].name`} validators={ASSEMBLY_NAME_FIELD_VALIDATORS}>
+                      {(field) => (
+                        <fieldContext.Provider value={field}>
+                          <AssemblyNameField assemblyNames={assemblyNames} index={index} />
+                        </fieldContext.Provider>
+                      )}
+                    </FormField>
+                    <FormField name={`assemblies[${index}].isPubliclyVisible`}>
+                      {(field) => (
+                        <fieldContext.Provider value={field}>
+                          <SwitchField
+                            label={
+                              <FieldUsageLabel usage={PRODUCT_FIELD_USAGE.assemblies}>Publicly visible</FieldUsageLabel>
+                            }
+                            onValueCommit={onStructuralChange}
+                          />
+                        </fieldContext.Provider>
+                      )}
+                    </FormField>
+                  </div>
                   {assembly.kind === 'optional' ? (
                     <FormField name={`assemblies[${index}].price`} validators={ASSEMBLY_PRICE_FIELD_VALIDATORS}>
                       {(field) => (
@@ -979,6 +997,7 @@ function createAssembly(kind: AssemblyInput['kind']): AssemblyInput {
   if (kind === 'standard') {
     return {
       id: crypto.randomUUID(),
+      isPubliclyVisible: false,
       kind,
       name: '',
       parts: [],
@@ -987,6 +1006,7 @@ function createAssembly(kind: AssemblyInput['kind']): AssemblyInput {
 
   return {
     id: crypto.randomUUID(),
+    isPubliclyVisible: false,
     kind,
     name: '',
     overrideStandardAssemblyIds: [],

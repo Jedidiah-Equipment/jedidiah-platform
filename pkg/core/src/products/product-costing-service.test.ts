@@ -207,6 +207,7 @@ describe('getProductCostEstimate', () => {
       input: productInput(context.rangeId, {
         assemblies: [
           {
+            isPubliclyVisible: false,
             kind: 'standard',
             name: 'Base',
             parts: [
@@ -214,8 +215,14 @@ describe('getProductCostEstimate', () => {
               { partId: context.fabricated.id, quantity: 4 },
             ],
           },
-          { kind: 'standard', name: 'Replaceable', parts: [{ partId: context.bought.id, quantity: 1 }] },
           {
+            isPubliclyVisible: false,
+            kind: 'standard',
+            name: 'Replaceable',
+            parts: [{ partId: context.bought.id, quantity: 1 }],
+          },
+          {
+            isPubliclyVisible: false,
             kind: 'optional',
             name: 'Premium',
             overrideStandardAssemblyIds: [],
@@ -281,6 +288,7 @@ describe('getProductCostEstimate', () => {
       input: productInput(context.rangeId, {
         assemblies: [
           {
+            isPubliclyVisible: false,
             kind: 'standard',
             name: 'Base',
             parts: [

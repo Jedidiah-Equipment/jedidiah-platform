@@ -32,7 +32,7 @@ import { useTRPC } from '@/lib/trpc.js';
 export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => {
   const trpc = useTRPC();
   const canCancel = useCan('job:cancel').can;
-  const { invalidateJobs } = useQueryInvalidation();
+  const { invalidateInventory, invalidateJobs, invalidateProductUnits } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -45,7 +45,9 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
     trpc.jobs.cancel.mutationOptions({
       onSuccess: async () => {
         setIsOpen(false);
-        await invalidateJobs();
+        // Cancelling releases the Job's outstanding stock commitment and drops it out of its Unit's
+        // As-Built Spec and build state, so free stock and Unit reads move with it.
+        await Promise.all([invalidateJobs(), invalidateInventory(), invalidateProductUnits()]);
         toast.success(`${job.code} cancelled`);
       },
       onError: (error) => {
@@ -71,8 +73,11 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
           <DialogHeader>
             <DialogTitle>Cancel job</DialogTitle>
             <DialogDescription>
-              This permanently cancels {job.code}. {describeSlotRelease(countScheduledSlots(job))} The quote behind this
-              Job is left alone. This cannot be undone.
+              This permanently cancels {job.code}. {describeSlotRelease(countScheduledSlots(job))} Stock already checked
+              out to it stays on its ledger.{' '}
+              {/* A Stock Build has no sale behind it, so there is no Quote to reassure anyone about. */}
+              {job.quoteCode === null ? null : 'The quote behind this Job is left alone. '}
+              This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <Field>

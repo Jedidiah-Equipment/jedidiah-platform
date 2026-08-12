@@ -33,7 +33,7 @@ const STOCK_OWNER_VALUE = 'stock';
 
 type ProductUnitTableProps = {
   onOpenUnit: (unit: ProductUnitSummary) => void;
-  render?: ((view: { exportAction: React.ReactNode; tableContent: React.ReactNode }) => React.ReactNode) | undefined;
+  render: (view: { exportAction: React.ReactNode; tableContent: React.ReactNode }) => React.ReactNode;
 };
 
 export const useProductUnitTableStore = createPersistedDataTableStore({
@@ -202,7 +202,7 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit, 
     <Button
       disabled={stockExportMutation.isPending}
       onClick={() => stockExportMutation.mutate()}
-      size={render ? 'default' : 'sm'}
+      size="default"
       variant="outline"
     >
       {stockExportMutation.isPending ? (
@@ -229,14 +229,13 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit, 
         onLoadMore: () => void unitsQuery.fetchNextPage(),
       }}
       onRowClick={onOpenUnit}
-      rightSection={render ? null : exportAction}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'unit' : 'units'}`}
     />
   );
 
-  return render ? render({ exportAction, tableContent }) : tableContent;
+  return render({ exportAction, tableContent });
 };
 
 function getProductUnitListInputExtras(columnFilters: ColumnFiltersState) {

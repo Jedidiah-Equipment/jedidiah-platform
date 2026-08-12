@@ -16,12 +16,12 @@ vi.mock('./components/ProductUnitTable.js', () => ({
   ProductUnitTable: ({
     render,
   }: {
-    render?: (view: { exportAction: React.ReactNode; tableContent: React.ReactNode }) => React.ReactNode;
+    render: (view: { exportAction: React.ReactNode; tableContent: React.ReactNode }) => React.ReactNode;
   }) => {
     const exportAction = <button type="button">Export Units</button>;
     const tableContent = <div>Units table</div>;
 
-    return render ? render({ exportAction, tableContent }) : <div data-table-toolbar>{exportAction}</div>;
+    return render({ exportAction, tableContent });
   },
 }));
 
@@ -33,6 +33,5 @@ describe('UnitsPage', () => {
 
     expect(html).toContain('<header data-page-actions="true"><button type="button">Export Units</button></header>');
     expect(html).toContain('<main><div>Units table</div></main>');
-    expect(html).not.toContain('data-table-toolbar');
   });
 });

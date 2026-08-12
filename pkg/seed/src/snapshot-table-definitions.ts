@@ -246,6 +246,13 @@ export const snapshotTableDefinitions = [
     resetSequence: { sequenceName: 'job_code_seq', columnName: 'code' },
   },
   {
+    // References Jobs and Users, so cleanup must reach close-outs before either parent.
+    fileName: 'job_stock_close_out.json',
+    tableName: 'job_stock_close_out',
+    timestampColumns: ['createdAt'],
+    optionalReadTable: true,
+  },
+  {
     // References Units, Customers, Quotes, and Users, so it follows every one of them.
     fileName: 'product_unit_ownership_transfer.json',
     tableName: 'product_unit_ownership_transfer',

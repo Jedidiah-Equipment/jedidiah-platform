@@ -12,7 +12,8 @@
   (`PRODUCTION_DATABASE_URL` + `PRODUCTION_DOCUMENT_STORAGE_*`); use `seed:read:staging`
   (`STAGING_*`) when staging is intentionally the source.
 - Write commands (`seed:write`, `seed:users`, `reset-remote`) load `pkg/seed/.env` via `load-write-env.ts`
-  and target the **local** DB + doc store (`DATABASE_URL`, `DOCUMENT_STORAGE_*`).
+  and target the **local** DB + doc store (`DATABASE_URL`, `DOCUMENT_STORAGE_*`). In a parallel checkout,
+  the generated root `.env.dev` ports retarget those defaults to the assigned slot.
 - Both loaders run without `override`, so externally provided env still wins. Keep the loader import above
   the `@pkg/db` import so env is set before `@pkg/db` reads it.
 

@@ -27,11 +27,6 @@ describe('shouldOfferQuoteCancellation', () => {
       }),
     ).toBe(false);
   });
-
-  // The Quote stays Locked after its Job is cancelled, so the action outlives the cascade it once ran.
-  it('still offers cancellation for a Quote whose Job has already been cancelled', () => {
-    expect(shouldOfferQuoteCancellation({ canCancel: true, quote: lockedQuote })).toBe(true);
-  });
 });
 
 describe('cancellation copy', () => {

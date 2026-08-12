@@ -68,8 +68,10 @@ export const ProductUnitStockExportRowCostFields = declareInventoryCostFields(
 
 /**
  * The Units list's own filters, minus every pagination and sort concern: the export answers for the
- * rows the reader is looking at. Build State stays among them — unlike Job completion, it is a filter
- * a person drives — so narrowing to the machines we still hold is the list's own **On Hand** choice.
+ * rows the reader is looking at. Build State stays among them — unlike Job completion, it is a filter a
+ * person drives — so narrowing to the machines we still hold is the list's own **On Hand** choice. The
+ * report is On Hand Units, so `in-build` is the one value it cannot honour and drops rather than
+ * returning an empty report; `listOnHandProductUnitStock` owns that rule, beside the subject it serves.
  */
 export type ProductUnitStockExportInput = z.infer<typeof ProductUnitStockExportInput>;
 export const ProductUnitStockExportInput = z

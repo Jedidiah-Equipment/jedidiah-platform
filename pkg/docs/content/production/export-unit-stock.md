@@ -14,9 +14,10 @@ Excel or Sheets.
 
 ## Notes
 
-- The export is always On Hand Units, whatever the **Build** filter is showing. A Unit still **In
-  Build** never appears — it has no completion date, and what it has drawn so far is work in
-  progress rather than what a machine cost.
+- The export is always On Hand Units. A Unit still **In Build** never appears — it has no completion
+  date, and what it has drawn so far is work in progress rather than what a machine cost. Setting
+  **Build** to **In Build** therefore narrows nothing: you get every On Hand Unit rather than an empty
+  file.
 - **date_completed** is the Job Completion of the Unit's Build Job, which is what makes it On Hand.
 - Cost is material only, summed across every live Job the machine has been through and priced at what
   each Checkout was stamped with — see
@@ -24,6 +25,8 @@ Excel or Sheets.
   it beside the retail figures rather than working out a margin.
 - A cost cell is **blank**, not zero, when one of those Jobs still holds material nobody has priced
   yet. A machine whose Jobs drew nothing at all costs zero.
+- A machine under an **open Rework Job** counts that Job's draws too, so its cost is still moving. Take
+  a valuation you intend to keep once the Bays are done with it.
 - **cost_inc_vat** is the ex-VAT figure at the standard rate, not the VAT any Supplier actually
   billed. Reconcile against a Supplier invoice on the ex-VAT column.
 - **product_retail_ex_vat** is the Product's base price as the catalog holds it **today** — the list

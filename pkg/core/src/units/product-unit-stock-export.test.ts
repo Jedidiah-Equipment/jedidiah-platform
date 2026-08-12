@@ -34,6 +34,8 @@ describe('listOnHandProductUnitStock', () => {
   test('puts the ledger cost beside the Product retail price on one line per On Hand Unit', async ({ context }) => {
     const rows = await listOnHandProductUnitStock({ db: context.db, input: NO_FILTERS });
 
+    // Exhaustive and ordered, so it also pins the subject: the In Build Unit is absent, and the
+    // Cancelled rework's 3 drawn units are absent from the machine we still hold, which cost zero.
     expect(rows).toEqual([
       // A machine we still hold: no Customer, no Quote, and its retail is what the model lists for.
       expect.objectContaining({
@@ -72,30 +74,11 @@ describe('listOnHandProductUnitStock', () => {
     ]);
   });
 
-  test('reports On Hand Units only, never one still In Build', async ({ context }) => {
-    const rows = await listOnHandProductUnitStock({ db: context.db, input: NO_FILTERS });
-
-    expect(rows.map((row) => row.productSerialNumber)).toEqual([
-      'SR-100260002',
-      'SR-100260004',
-      'SR-100260001',
-      'SR-100260005',
-    ]);
-  });
-
   test('leaves the cost empty rather than short when a Unit holds material nobody has priced', async ({ context }) => {
     const rows = await listOnHandProductUnitStock({ db: context.db, input: NO_FILTERS });
     const unpriced = rows.find((row) => row.productSerialNumber === 'SR-100260004');
 
     expect(unpriced).toMatchObject({ costExVat: null, costIncVat: null });
-  });
-
-  /** A cancelled build never happened, so what it drew is not what the machine in the yard cost. */
-  test('costs the machine off its live Jobs and never a Cancelled one', async ({ context }) => {
-    const rows = await listOnHandProductUnitStock({ db: context.db, input: NO_FILTERS });
-    const stock = rows.find((row) => row.productSerialNumber === 'SR-100260002');
-
-    expect(stock).toMatchObject({ costExVat: 0 });
   });
 
   test('names the Quote that sold a machine out of stock rather than its build', async ({ context }) => {
@@ -112,6 +95,25 @@ describe('listOnHandProductUnitStock', () => {
     });
 
     expect(rows.map((row) => row.productSerialNumber)).toEqual(['SR-100260002', 'SR-100260004']);
+  });
+
+  /**
+   * The filter that contradicts the report's subject. Narrowing to In Build cannot make the report
+   * smaller, so it is dropped rather than allowed to empty it — a headers-only CSV with no
+   * explanation is the one outcome an export button must not have.
+   */
+  test('drops an In Build filter instead of exporting nothing at all', async ({ context }) => {
+    const rows = await listOnHandProductUnitStock({
+      db: context.db,
+      input: { columnFilters: { buildState: 'in-build' }, search: '' },
+    });
+
+    expect(rows.map((row) => row.productSerialNumber)).toEqual([
+      'SR-100260002',
+      'SR-100260004',
+      'SR-100260001',
+      'SR-100260005',
+    ]);
   });
 
   test('searches the way the Units list does', async ({ context }) => {
@@ -313,5 +315,5 @@ async function seedStockShape(db: Db) {
   }
   await db.update(jobs).set({ cancelledAt: now }).where(eq(jobs.id, cancelledReworkJob.id));
 
-  return { allocationQuoteCode: formatQuoteCode(allocationQuote.code), customers: { riverside: riverside.id } };
+  return { allocationQuoteCode: formatQuoteCode(allocationQuote.code) };
 }

@@ -3,7 +3,7 @@ import { computeQuoteVatAmount, resolveJobCustomer, resolveNewestOwnershipTransf
 import { type JobSalesExportInput, JobSalesExportRow, UUID } from '@pkg/schema';
 import { and, asc, isNotNull } from 'drizzle-orm';
 
-import { sumJobDrawnCosts } from '../inventory/job-cost-read.js';
+import { readJobDrawnCost, sumJobDrawnCosts } from '../inventory/job-cost-read.js';
 import { loadQuoteAssociations } from '../quotes/quote-read-service.js';
 import { priceReportQuote } from '../quotes/quote-report-pricing.js';
 import { buildJobListWhere } from './job-read-service.js';
@@ -80,9 +80,7 @@ export async function listCompletedJobSales({
             workItems: workItemsByQuoteId.get(quoteId) ?? [],
           })
         : null;
-    // A Job absent from the map drew nothing at all, which cost zero; only material nobody has
-    // priced yet makes a cost unknowable, and that arrives as an explicit null against the Job.
-    const costExVat = costByJobId.has(jobId) ? (costByJobId.get(jobId) ?? null) : 0;
+    const costExVat = readJobDrawnCost(costByJobId, jobId);
     const customer = resolveJobCustomer({
       productUnit: row.productUnit
         ? { owner: resolveNewestOwnershipTransfer(row.productUnit.ownershipTransfers)?.toCustomer ?? null }

@@ -18,12 +18,12 @@ const test = createTester(async ({ db }) => {
   return { db, rangeId };
 });
 
-function standard(name: string): AssemblyInput {
-  return { kind: 'standard', name, parts: [] };
+function standard(name: string, isPubliclyVisible = false): AssemblyInput {
+  return { isPubliclyVisible, kind: 'standard', name, parts: [] };
 }
 
-function optional(name: string, price = 100): AssemblyInput {
-  return { kind: 'optional', name, overrideStandardAssemblyIds: [], parts: [], price };
+function optional(name: string, price = 100, isPubliclyVisible = false): AssemblyInput {
+  return { isPubliclyVisible, kind: 'optional', name, overrideStandardAssemblyIds: [], parts: [], price };
 }
 
 function productInput(
@@ -71,6 +71,19 @@ async function selectDisplayOrders(db: Db, productId: string) {
 }
 
 describe('assembly display order', () => {
+  test('persists public visibility for standard and optional assemblies', async ({ context }) => {
+    const created = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [standard('Base frame', true), optional('Air brakes', 100, true)]),
+    });
+
+    expect(created.assemblies).toMatchObject([
+      { name: 'Base frame', isPubliclyVisible: true },
+      { name: 'Air brakes', isPubliclyVisible: true },
+    ]);
+  });
+
   test('persists negative optional assembly price adjustments', async ({ context }) => {
     const created = await createProduct({
       actorUserId,
@@ -152,10 +165,11 @@ describe('assembly display order', () => {
         landerEnabled: false,
         thumbnailDataUrl: null,
         assemblies: [
-          { id: standards[1]?.id, kind: 'standard', name: 'Alpha', parts: [] },
-          { id: standards[0]?.id, kind: 'standard', name: 'Zebra', parts: [] },
+          { id: standards[1]?.id, isPubliclyVisible: false, kind: 'standard', name: 'Alpha', parts: [] },
+          { id: standards[0]?.id, isPubliclyVisible: false, kind: 'standard', name: 'Zebra', parts: [] },
           {
             id: optionals[1]?.id,
+            isPubliclyVisible: false,
             kind: 'optional',
             name: 'Beta',
             overrideStandardAssemblyIds: [],
@@ -164,6 +178,7 @@ describe('assembly display order', () => {
           },
           {
             id: optionals[0]?.id,
+            isPubliclyVisible: false,
             kind: 'optional',
             name: 'Yak',
             overrideStandardAssemblyIds: [],
@@ -231,11 +246,20 @@ describe('assembly audit events', () => {
       input: updateInput(created.id, context.rangeId, [
         {
           id: created.assemblies.find((assembly) => assembly.name === 'Alpha')?.id,
+          isPubliclyVisible: false,
           kind: 'standard',
           name: 'Alpha',
           parts: [],
         },
-        { id: yak?.id, kind: 'optional', name: 'Yak', overrideStandardAssemblyIds: [], parts: [], price: 150 },
+        {
+          id: yak?.id,
+          isPubliclyVisible: false,
+          kind: 'optional',
+          name: 'Yak',
+          overrideStandardAssemblyIds: [],
+          parts: [],
+          price: 150,
+        },
       ]),
     });
 
@@ -245,6 +269,7 @@ describe('assembly audit events', () => {
     const yakRecord = {
       displayOrder: 0,
       id: yak?.id,
+      isPubliclyVisible: false,
       kind: 'optional',
       name: 'Yak',
       overrideStandardAssemblyIds: [],
@@ -272,7 +297,7 @@ describe('assembly audit events', () => {
       actorUserId,
       db: context.db,
       input: updateInput(created.id, context.rangeId, [
-        { id: alpha?.id, kind: 'standard', name: 'Alpha', parts: [] },
+        { id: alpha?.id, isPubliclyVisible: false, kind: 'standard', name: 'Alpha', parts: [] },
         optional('Beta', 200),
       ]),
     });
@@ -283,12 +308,21 @@ describe('assembly audit events', () => {
     expect(updateEvent?.changes).toEqual({
       'assembly:Beta': {
         from: null,
-        to: { displayOrder: 0, kind: 'optional', name: 'Beta', overrideStandardAssemblyIds: [], parts: [], price: 200 },
+        to: {
+          displayOrder: 0,
+          isPubliclyVisible: false,
+          kind: 'optional',
+          name: 'Beta',
+          overrideStandardAssemblyIds: [],
+          parts: [],
+          price: 200,
+        },
       },
       'assembly:Yak': {
         from: {
           displayOrder: 0,
           id: yak?.id,
+          isPubliclyVisible: false,
           kind: 'optional',
           name: 'Yak',
           overrideStandardAssemblyIds: [],
@@ -356,7 +390,15 @@ describe('assembly kind immutability', () => {
         actorUserId,
         db: context.db,
         input: updateInput(created.id, context.rangeId, [
-          { id: alpha?.id, kind: 'optional', name: 'Alpha', overrideStandardAssemblyIds: [], parts: [], price: 100 },
+          {
+            id: alpha?.id,
+            isPubliclyVisible: false,
+            kind: 'optional',
+            name: 'Alpha',
+            overrideStandardAssemblyIds: [],
+            parts: [],
+            price: 100,
+          },
         ]),
       }),
     ).rejects.toThrow(AssemblyKindChangedError);
@@ -374,7 +416,9 @@ describe('assembly kind immutability', () => {
       updateProduct({
         actorUserId,
         db: context.db,
-        input: updateInput(created.id, context.rangeId, [{ id: yak?.id, kind: 'standard', name: 'Yak', parts: [] }]),
+        input: updateInput(created.id, context.rangeId, [
+          { id: yak?.id, isPubliclyVisible: false, kind: 'standard', name: 'Yak', parts: [] },
+        ]),
       }),
     ).rejects.toThrow(AssemblyKindChangedError);
   });
@@ -392,7 +436,15 @@ describe('assembly kind immutability', () => {
         actorUserId,
         db: context.db,
         input: updateInput(created.id, context.rangeId, [
-          { id: yak?.id, kind: 'optional', name: 'Yak', overrideStandardAssemblyIds: [], parts: [], price: 150 },
+          {
+            id: yak?.id,
+            isPubliclyVisible: false,
+            kind: 'optional',
+            name: 'Yak',
+            overrideStandardAssemblyIds: [],
+            parts: [],
+            price: 150,
+          },
         ]),
       }),
     ).resolves.toMatchObject({ assemblies: [{ id: yak?.id, kind: 'optional', price: 150 }] });

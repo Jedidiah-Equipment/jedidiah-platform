@@ -15,6 +15,7 @@ describe('getBrochureDocumentModel', () => {
       assemblies: [
         {
           id: '33333333-3333-4333-8333-333333333333',
+          isPubliclyVisible: true,
           kind: 'standard',
           name: 'Hydraulic tailgate',
           parts: [],
@@ -27,8 +28,27 @@ describe('getBrochureDocumentModel', () => {
         },
         {
           id: '44444444-4444-4444-8444-444444444444',
+          isPubliclyVisible: true,
           kind: 'optional',
           name: 'Working lights',
+          overrideStandardAssemblyIds: [],
+          parts: [],
+          price: 100,
+          productId: PRODUCT_ID,
+        },
+        {
+          id: '55555555-5555-4555-8555-555555555555',
+          isPubliclyVisible: false,
+          kind: 'standard',
+          name: 'Internal chassis grouping',
+          parts: [],
+          productId: PRODUCT_ID,
+        },
+        {
+          id: '66666666-6666-4666-8666-666666666666',
+          isPubliclyVisible: false,
+          kind: 'optional',
+          name: 'Dealer-only package',
           overrideStandardAssemblyIds: [],
           parts: [],
           price: 100,

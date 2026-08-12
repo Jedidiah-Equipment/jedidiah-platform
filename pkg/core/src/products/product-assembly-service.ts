@@ -65,6 +65,7 @@ export async function syncAssemblies({
   for (const assembly of desired) {
     const rowValues = {
       displayOrder: displayOrderByKind[assembly.kind]++,
+      isPubliclyVisible: assembly.isPubliclyVisible ?? false,
       kind: assembly.kind,
       name: assembly.name,
       price: assembly.kind === 'optional' ? assembly.price : null,
@@ -193,6 +194,7 @@ export function mapAssembly(row: AssemblyListRow): Assembly {
   if (row.kind === 'standard') {
     return {
       id: row.id,
+      isPubliclyVisible: row.isPubliclyVisible,
       kind: 'standard',
       name: row.name,
       parts: assemblyPartsForRow,
@@ -203,6 +205,7 @@ export function mapAssembly(row: AssemblyListRow): Assembly {
 
   return {
     id: row.id,
+    isPubliclyVisible: row.isPubliclyVisible,
     kind: 'optional',
     name: row.name,
     overrideStandardAssemblyIds: row.optionalOverrides.map((override) => override.standardAssemblyId),

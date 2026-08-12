@@ -194,9 +194,9 @@ async function renderBrochureForProduct({
 /**
  * Assembles the renderer input model from a Product read plus its stored Brochure images and the owning
  * Range's image. The title comes from the product name, body copy from the description (one paragraph per
- * non-empty line), the Standard/Optional columns from the product's assemblies, and the top-right logo
- * from the Range image. Image bytes are read from object storage and inlined as data URIs so the renderer
- * stays a pure function over the model.
+ * non-empty line), the Standard/Optional columns from the product's publicly visible assemblies, and the
+ * top-right logo from the Range image. Image bytes are read from object storage and inlined as data URIs
+ * so the renderer stays a pure function over the model.
  */
 export async function getBrochureDocumentModel({
   images,
@@ -228,7 +228,7 @@ export async function getBrochureDocumentModel({
   );
   const assemblyNames = (kind: AssemblyKind) =>
     product.assemblies
-      .filter((assembly) => assembly.kind === kind)
+      .filter((assembly) => assembly.kind === kind && assembly.isPubliclyVisible)
       .map((assembly) => localizeFields({ name: assembly.name }, assembly.translations, locale).name);
 
   return {

@@ -94,6 +94,9 @@ export const AssemblyKind = z.enum(['standard', 'optional']);
 export type AssemblyName = z.infer<typeof AssemblyName>;
 export const AssemblyName = requiredTrimmedText('Assembly name is required');
 
+export type AssemblyPubliclyVisible = z.infer<typeof AssemblyPubliclyVisible>;
+export const AssemblyPubliclyVisible = z.boolean();
+
 export type ProductAssemblyTranslation = z.infer<typeof ProductAssemblyTranslation>;
 export const ProductAssemblyTranslation = z
   .object({ name: catalogTranslationEnvelope(TranslatableAssemblyFields.shape.name) })
@@ -118,12 +121,14 @@ export const AssemblyPart = z.object({
 });
 
 export type StandardAssembly = z.infer<typeof StandardAssembly>;
+// Serialized pre-column Product reads match the migration backfill; write inputs default off independently.
 export const StandardAssembly = z.object({
   id: UUID,
   productId: UUID,
   kind: z.literal('standard'),
   name: AssemblyName,
   parts: z.array(AssemblyPart),
+  isPubliclyVisible: AssemblyPubliclyVisible.default(true),
   translations: ProductAssemblyTranslations.optional(),
 });
 
@@ -135,6 +140,7 @@ export const OptionalAssembly = z.object({
   name: AssemblyName,
   price: PriceDelta,
   parts: z.array(AssemblyPart),
+  isPubliclyVisible: AssemblyPubliclyVisible.default(true),
   translations: ProductAssemblyTranslations.optional(),
   overrideStandardAssemblyIds: z.array(UUID),
 });
@@ -148,6 +154,7 @@ export const StandardAssemblyInput = z.object({
   kind: z.literal('standard'),
   name: AssemblyName,
   parts: z.array(AssemblyPart),
+  isPubliclyVisible: AssemblyPubliclyVisible.default(false),
 });
 
 export type OptionalAssemblyInput = z.infer<typeof OptionalAssemblyInput>;
@@ -157,6 +164,7 @@ export const OptionalAssemblyInput = z.object({
   name: AssemblyName,
   price: PriceDeltaInput,
   parts: z.array(AssemblyPart),
+  isPubliclyVisible: AssemblyPubliclyVisible.default(false),
   overrideStandardAssemblyIds: z.array(UUID).default([]),
 });
 

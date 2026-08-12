@@ -163,7 +163,7 @@ describe('buildCfo', () => {
 });
 
 function standard(id: UUID, name: string, parts: AssemblyPart[]): StandardAssembly {
-  return { id, kind: 'standard', name, parts, productId: PRODUCT_ID };
+  return { id, isPubliclyVisible: true, kind: 'standard', name, parts, productId: PRODUCT_ID };
 }
 
 function optional(
@@ -172,5 +172,14 @@ function optional(
   overrideStandardAssemblyIds: UUID[],
   parts: AssemblyPart[],
 ): OptionalAssembly {
-  return { id, kind: 'optional', name, overrideStandardAssemblyIds, parts, price: 100, productId: PRODUCT_ID };
+  return {
+    id,
+    isPubliclyVisible: true,
+    kind: 'optional',
+    name,
+    overrideStandardAssemblyIds,
+    parts,
+    price: 100,
+    productId: PRODUCT_ID,
+  };
 }

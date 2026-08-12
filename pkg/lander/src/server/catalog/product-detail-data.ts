@@ -68,7 +68,7 @@ export async function loadProductDetail(db: Db, modelCode: string, locale: Local
   );
   const assemblyNames = (kind: AssemblyKind) =>
     fullProduct.assemblies
-      .filter((assembly) => assembly.kind === kind)
+      .filter((assembly) => assembly.kind === kind && assembly.isPubliclyVisible)
       .map((assembly) => localizeFields({ name: assembly.name }, assembly.translations, locale).name);
 
   // Keep the related strip in the same manual order as the catalog. Unready siblings are excluded so the

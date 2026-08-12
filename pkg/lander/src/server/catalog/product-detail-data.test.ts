@@ -86,9 +86,14 @@ async function insertProduct(
 async function insertAssembly(
   db: Db,
   productId: string,
-  values: { kind: 'standard' | 'optional'; name: string; displayOrder: number },
+  values: { kind: 'standard' | 'optional'; name: string; displayOrder: number; isPubliclyVisible?: boolean },
 ) {
-  await db.insert(productAssemblies).values({ productId, price: values.kind === 'optional' ? 100 : null, ...values });
+  await db.insert(productAssemblies).values({
+    productId,
+    price: values.kind === 'optional' ? 100 : null,
+    isPubliclyVisible: true,
+    ...values,
+  });
 }
 
 test('loadProductDetail selects Afrikaans fields with per-field canonical fallback and serves stale blobs', async ({
@@ -130,6 +135,7 @@ test('loadProductDetail selects Afrikaans fields with per-field canonical fallba
   });
   await db.insert(productAssemblies).values({
     productId: product.id,
+    isPubliclyVisible: true,
     kind: 'standard',
     name: 'Hydraulic tailgate',
     displayOrder: 0,
@@ -263,6 +269,34 @@ test('loadProductDetail splits assemblies by kind in display order', async ({ db
   const detail = await loadProductDetail(db, product.modelCode, 'en');
 
   expect(detail?.standardAssemblies).toEqual(['Bugle eye hitch', 'Sprung drawbar']);
+  expect(detail?.optionalAssemblies).toEqual(['Air brakes']);
+});
+
+test('loadProductDetail excludes standard and optional assemblies that are not publicly visible', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, `Crosshaul ${suffix} Range`);
+  const product = await insertProduct(db, range.id, {
+    name: `CH12 Tipping Trailer ${suffix}`,
+    modelCode: `CH12-${suffix}`,
+  });
+  await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
+  await insertAssembly(db, product.id, {
+    kind: 'standard',
+    name: 'Internal chassis grouping',
+    displayOrder: 1,
+    isPubliclyVisible: false,
+  });
+  await insertAssembly(db, product.id, { kind: 'optional', name: 'Air brakes', displayOrder: 0 });
+  await insertAssembly(db, product.id, {
+    kind: 'optional',
+    name: 'Dealer-only package',
+    displayOrder: 1,
+    isPubliclyVisible: false,
+  });
+
+  const detail = await loadProductDetail(db, product.modelCode, 'en');
+
+  expect(detail?.standardAssemblies).toEqual(['Sprung drawbar']);
   expect(detail?.optionalAssemblies).toEqual(['Air brakes']);
 });
 

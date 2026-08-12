@@ -11,6 +11,7 @@ const PRODUCT_ASSEMBLY_ID = '550e8400-e29b-41d4-a716-446655440011';
 
 const optionalAssembly: Assembly = {
   id: PRODUCT_ASSEMBLY_ID,
+  isPubliclyVisible: true,
   productId: PRODUCT_ID,
   kind: 'optional',
   name: 'Optional A',

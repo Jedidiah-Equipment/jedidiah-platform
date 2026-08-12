@@ -1315,6 +1315,7 @@ function toAuditAssemblies(assemblies: Assembly[] | NonNullable<ProductUpdateInp
     if (assembly.kind === 'standard') {
       return {
         id: assembly.id,
+        isPubliclyVisible: assembly.isPubliclyVisible ?? false,
         kind: 'standard' as const,
         name: assembly.name,
         displayOrder,
@@ -1324,6 +1325,7 @@ function toAuditAssemblies(assemblies: Assembly[] | NonNullable<ProductUpdateInp
 
     return {
       id: assembly.id,
+      isPubliclyVisible: assembly.isPubliclyVisible ?? false,
       kind: 'optional' as const,
       name: assembly.name,
       displayOrder,

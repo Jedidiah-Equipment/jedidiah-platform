@@ -290,6 +290,15 @@ describe('ProductBaysInput', () => {
 });
 
 describe('ProductAssembliesInput', () => {
+  it('defaults new standard and optional assemblies to hidden from public outputs', () => {
+    expect(
+      ProductAssembliesInput.parse([
+        { kind: 'standard', name: 'Base frame', parts: [] },
+        { kind: 'optional', name: 'Air brakes', overrideStandardAssemblyIds: [], parts: [], price: 250 },
+      ]),
+    ).toMatchObject([{ isPubliclyVisible: false }, { isPubliclyVisible: false }]);
+  });
+
   it('accepts negative optional assembly prices as product price adjustments', () => {
     expect(
       ProductAssembliesInput.parse([
@@ -308,6 +317,7 @@ describe('ProductAssembliesInput', () => {
         overrideStandardAssemblyIds: [],
         parts: [],
         price: -250,
+        isPubliclyVisible: false,
       },
     ]);
   });

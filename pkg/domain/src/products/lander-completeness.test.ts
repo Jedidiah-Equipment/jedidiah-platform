@@ -143,6 +143,7 @@ describe('evaluateProductLanderCompleteness', () => {
       assemblies: [
         {
           id: '44444444-4444-4444-8444-444444444444',
+          isPubliclyVisible: true,
           productId: PRODUCT_ID,
           kind: 'optional',
           name: 'Add-on',
@@ -157,6 +158,23 @@ describe('evaluateProductLanderCompleteness', () => {
       complete: false,
       missingFields: ['standardAssembly'],
     });
+  });
+
+  it('does not treat public visibility as a readiness requirement', () => {
+    const hiddenOnly = completeProduct({
+      assemblies: [
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          isPubliclyVisible: false,
+          productId: PRODUCT_ID,
+          kind: 'standard',
+          name: 'Internal frame grouping',
+          parts: [],
+        },
+      ],
+    });
+
+    expect(evaluateProductLanderCompleteness(hiddenOnly)).toEqual({ complete: true, missingFields: [] });
   });
 });
 

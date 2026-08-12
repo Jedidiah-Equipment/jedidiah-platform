@@ -9,7 +9,7 @@ import React, { useMemo } from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
-import { CreatableComboboxField, CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
+import { CreatableComboboxField, CurrencyField, SwitchField, useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { validateStructuralFieldOnMount } from '@/components/form/utils/field-validators.js';
@@ -396,13 +396,22 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                       : 'grid gap-3'
                   }
                 >
-                  <FormField name={`assemblies[${index}].name`} validators={ASSEMBLY_NAME_FIELD_VALIDATORS}>
-                    {(field) => (
-                      <fieldContext.Provider value={field}>
-                        <AssemblyNameField assemblyNames={assemblyNames} index={index} />
-                      </fieldContext.Provider>
-                    )}
-                  </FormField>
+                  <div className="flex flex-col gap-3">
+                    <FormField name={`assemblies[${index}].name`} validators={ASSEMBLY_NAME_FIELD_VALIDATORS}>
+                      {(field) => (
+                        <fieldContext.Provider value={field}>
+                          <AssemblyNameField assemblyNames={assemblyNames} index={index} />
+                        </fieldContext.Provider>
+                      )}
+                    </FormField>
+                    <FormField name={`assemblies[${index}].isPubliclyVisible`}>
+                      {(field) => (
+                        <fieldContext.Provider value={field}>
+                          <SwitchField label="Publicly visible" onValueCommit={onStructuralChange} />
+                        </fieldContext.Provider>
+                      )}
+                    </FormField>
+                  </div>
                   {assembly.kind === 'optional' ? (
                     <FormField name={`assemblies[${index}].price`} validators={ASSEMBLY_PRICE_FIELD_VALIDATORS}>
                       {(field) => (
@@ -979,6 +988,7 @@ function createAssembly(kind: AssemblyInput['kind']): AssemblyInput {
   if (kind === 'standard') {
     return {
       id: crypto.randomUUID(),
+      isPubliclyVisible: false,
       kind,
       name: '',
       parts: [],
@@ -987,6 +997,7 @@ function createAssembly(kind: AssemblyInput['kind']): AssemblyInput {
 
   return {
     id: crypto.randomUUID(),
+    isPubliclyVisible: false,
     kind,
     name: '',
     overrideStandardAssemblyIds: [],

@@ -3,7 +3,7 @@
 Removing is for a machine that was never built — a Unit left holding a serial after its build was
 cancelled. A machine the plant actually built keeps its record, whatever happened to the sale.
 
-Only an administrator can remove a Unit.
+Only an administrator can remove a Unit, and only in the web app — there is no removal on a tablet.
 
 1. Open **Units** and pick the Unit.
 2. Check the **Jobs** card: every Job on it should read **Cancelled**. This is a first look, not proof —

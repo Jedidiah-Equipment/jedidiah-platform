@@ -26,6 +26,7 @@ import {
 import {
   createProductUnit,
   lockUnitForOwnership,
+  removeProductUnit,
   transferProductUnitOwnership,
   updateProductUnit,
 } from './product-unit-service.js';
@@ -470,6 +471,161 @@ describe('transferProductUnitOwnership', () => {
     ]);
   });
 });
+
+describe('removeProductUnit', () => {
+  test('deletes a machine that was never built, leaving its cancelled Job and Quote standing', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context);
+
+    await removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId });
+
+    await expect(context.db.select().from(productUnits).where(eq(productUnits.id, phantom.unitId))).resolves.toEqual(
+      [],
+    );
+    // The Job keeps its Quote — which the Quote's own foreign key then keeps standing — and loses only
+    // its link to a machine that no longer exists.
+    const [job] = await context.db.select().from(jobs).where(eq(jobs.id, phantom.jobId));
+    expect(job).toMatchObject({ productUnitId: null, quoteId: phantom.quoteId });
+    expect(job?.quoteId).not.toBeNull();
+  });
+
+  // The real phantom from a cancelled build-to-order sale: allocated to the Customer when the Unit was
+  // minted, then handed back to Stock by the cancellation. Both Transfers go with the machine.
+  test('takes the reversed allocation history of the machine that never was with it', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context, { owner: 'sold-then-returned' });
+
+    await removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId });
+
+    await expect(
+      context.db.$count(productUnitOwnershipTransfers, eq(productUnitOwnershipTransfers.productUnitId, phantom.unitId)),
+    ).resolves.toBe(0);
+  });
+
+  test('records the removal in the workspace audit feed, naming the serial that is gone', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context);
+
+    await removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId });
+
+    expect((await readAuditEvents(context.db)).filter((event) => event.action === 'deleted')).toEqual([
+      expect.objectContaining({
+        action: 'deleted',
+        actorUserId: ACTOR_USER_ID,
+        entityId: phantom.unitId,
+        summary: `Deleted product unit "${phantom.productSerialNumber}"`,
+      }),
+    ]);
+  });
+
+  test('refuses a machine whose build is still live, and leaves it whole', async ({ context }) => {
+    await expect(
+      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: context.seed.unitId }),
+    ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'live-job' } });
+
+    await expect(context.db.$count(productUnits, eq(productUnits.id, context.seed.unitId))).resolves.toBe(1);
+  });
+
+  test('refuses a machine a Customer holds, however its Jobs ended', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context, { owner: 'sold' });
+
+    await expect(
+      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
+    ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'owned' } });
+  });
+
+  // Cancelling a Quote does not care whether its Job already finished, and a Job Completion latches. A
+  // machine that was built and then handed back to Stock must not look like one that never existed.
+  test('refuses a machine whose Job was completed before it was cancelled', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context, { completedOn: '2026-05-04', owner: 'sold-then-returned' });
+
+    await expect(
+      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
+    ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'built' } });
+  });
+
+  test('refuses when detaching a cancelled Job would leave it describing no work at all', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context, { quote: 'none' });
+
+    await expect(
+      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
+    ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'job-without-quote' } });
+  });
+
+  test('refuses a machine a Quote still points at', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context, { quote: 'allocation' });
+
+    await expect(
+      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
+    ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'quoted' } });
+  });
+
+  test('reports a machine that does not exist as not found', async ({ context }) => {
+    await expect(
+      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: MISSING_UNIT_ID }),
+    ).rejects.toMatchObject({ code: 'product_unit.not_found' });
+  });
+});
+
+/**
+ * A Unit that was minted by a build that never ran: the Job is cancelled, and nothing else claims it.
+ * The options each break one precondition so a guard has something real to refuse.
+ */
+async function seedPhantomUnit(
+  context: { db: Db; seed: Awaited<ReturnType<typeof seedUnit>> },
+  options: {
+    completedOn?: string;
+    owner?: 'stock' | 'sold' | 'sold-then-returned';
+    quote?: 'build-to-order' | 'none' | 'allocation';
+  } = {},
+) {
+  const { completedOn = null, owner = 'stock', quote: quoteKind = 'build-to-order' } = options;
+  const { db, seed } = context;
+  const now = new Date('2026-05-02T08:00:00.000Z');
+
+  const unit = await db.transaction((tx) =>
+    createProductUnit({
+      actorUserId: ACTOR_USER_ID,
+      initialOwner: owner === 'stock' ? null : { customerId: seed.riversideId, sourceQuoteId: seed.quoteId },
+      plantToday: DateOnlyIso.parse('2026-05-02'),
+      productId: seed.serialProductId,
+      tx,
+    }),
+  );
+
+  if (owner === 'sold-then-returned') {
+    await db.transaction(async (tx) => {
+      const ownership = await lockUnitForOwnership(tx, unit.id);
+      if (!ownership) throw new Error('Seeded Unit was not found under its ownership lock');
+      await ownership.record({ actorUserId: ACTOR_USER_ID, occurredOn: '2026-05-03', toCustomerId: null });
+    });
+  }
+
+  let quoteId: string | null = null;
+
+  if (quoteKind !== 'none') {
+    const [quote] = await db
+      .insert(quotes)
+      .values({
+        customerId: seed.riversideId,
+        productId: seed.serialProductId,
+        productUnitId: quoteKind === 'allocation' ? unit.id : null,
+        quotedBasePrice: 1_000,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: ACTOR_USER_ID,
+        status: 'cancelled',
+        cancellationReason: 'Buyer withdrew',
+      })
+      .returning();
+    if (!quote) throw new Error('Phantom Quote insert did not return a row');
+    quoteId = quote.id;
+  }
+
+  const [job] = await db
+    .insert(jobs)
+    .values({ cancelledAt: now, completedOn, createdAt: now, productUnitId: unit.id, quoteId, updatedAt: now })
+    .returning();
+  if (!job) throw new Error('Phantom Job insert did not return a row');
+
+  return { jobId: job.id, productSerialNumber: unit.productSerialNumber, quoteId, unitId: unit.id };
+}
 
 async function seedUnit(db: Db) {
   const now = new Date('2026-05-01T08:00:00.000Z');

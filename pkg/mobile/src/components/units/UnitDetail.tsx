@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, formatJobLifecycleStatus } from '@pkg/domain';
 import type { ProductUnitDetail, ProductUnitJob, ProductUnitOwnershipTransfer } from '@pkg/schema';
 import { IconChevronRight } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
@@ -138,13 +138,6 @@ function UnitJobsCard({ unit }: { unit: ProductUnitDetail }) {
   );
 }
 
-/** A cancelled Job never ran, so it never also reads as in progress or complete. */
-function jobStatusLine(job: ProductUnitJob): string {
-  if (job.cancelledAt) return 'Cancelled';
-
-  return job.completedOn ? `Completed ${formatDate(job.completedOn, 'd MMM yyyy')}` : 'In progress';
-}
-
 function UnitJobRow({ canOpen, job }: { canOpen: boolean; job: ProductUnitJob }) {
   const router = useRouter();
   const details = (
@@ -153,7 +146,7 @@ function UnitJobRow({ canOpen, job }: { canOpen: boolean; job: ProductUnitJob })
         {job.code}
       </Text>
       <Text className="mt-1 text-[10px] text-muted-foreground" mono numberOfLines={1}>
-        {jobStatusLine(job)}
+        {formatJobLifecycleStatus(job, 'd MMM yyyy')}
       </Text>
     </>
   );

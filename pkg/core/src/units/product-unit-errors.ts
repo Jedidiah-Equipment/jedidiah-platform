@@ -58,7 +58,35 @@ export class ProductUnitTransferBackdatedError extends Error {
   }
 }
 
+/** Why a Unit cannot be removed. Each reason names something that would be wrong afterwards. */
+export type ProductUnitInUseReason = 'live-job' | 'built' | 'owned' | 'quoted' | 'job-without-quote';
+
+const productUnitInUseMessages = {
+  'live-job': 'This unit has a Job that is still live, so the machine is being built or has been.',
+  built: 'This unit has a Job that was completed, so the machine was built and its record stands.',
+  owned: 'This unit belongs to a customer, so the machine exists and cannot be removed.',
+  quoted: 'This unit is named on a Quote, which would be left pointing at nothing.',
+  'job-without-quote':
+    'This unit carries a cancelled Job with no Quote behind it, which would be left describing no work at all.',
+} as const satisfies Record<ProductUnitInUseReason, string>;
+
+/**
+ * Removal only ever reaches a machine that never came to exist, so every way a Unit can still be real —
+ * a live build, an Owner, a Quote naming it — refuses here rather than at a foreign key.
+ */
+export class ProductUnitInUseError extends Error {
+  readonly code = 'product_unit.in_use';
+  readonly metadata: { id: string; reason: ProductUnitInUseReason };
+
+  constructor(id: string, reason: ProductUnitInUseReason) {
+    super(productUnitInUseMessages[reason]);
+    this.name = 'ProductUnitInUseError';
+    this.metadata = { id, reason };
+  }
+}
+
 export type ProductUnitCoreError =
+  | ProductUnitInUseError
   | ProductUnitNotFoundError
   | ProductUnitOwnerUnchangedError
   | ProductUnitProductNotFoundError
@@ -67,6 +95,7 @@ export type ProductUnitCoreError =
 
 export function isProductUnitCoreError(error: unknown): error is ProductUnitCoreError {
   return (
+    error instanceof ProductUnitInUseError ||
     error instanceof ProductUnitNotFoundError ||
     error instanceof ProductUnitOwnerUnchangedError ||
     error instanceof ProductUnitProductNotFoundError ||

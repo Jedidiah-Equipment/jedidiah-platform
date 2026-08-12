@@ -6,6 +6,7 @@ import {
   listProductUnitFilterOptions,
   listProductUnits,
   type ProductUnitCoreError,
+  removeProductUnit,
   transferProductUnitOwnership,
   updateProductUnit,
 } from '@pkg/core';
@@ -39,6 +40,12 @@ export const productUnitsRouter = router({
     .mutation(({ ctx, input }) =>
       mapTransferErrors(() => transferProductUnitOwnership({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
+
+  remove: authorizedProcedure('product_unit:remove')
+    .input(z.object({ id: UUID }))
+    .mutation(({ ctx, input }) =>
+      mapProductUnitErrors(() => removeProductUnit({ actorUserId: ctx.session.user.id, db: ctx.db, id: input.id })),
+    ),
 });
 
 async function mapProductUnitErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -64,6 +71,15 @@ function mapProductUnitCoreError(error: ProductUnitCoreError): CoreErrorMapping<
       appCode: error.code,
       code: 'NOT_FOUND',
       message: 'Product unit not found.',
+    };
+  }
+
+  // Removal refused because the machine is still real: the message names which claim holds it.
+  if (error.code === 'product_unit.in_use') {
+    return {
+      appCode: error.code,
+      code: 'CONFLICT',
+      message: error.message,
     };
   }
 

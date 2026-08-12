@@ -399,7 +399,8 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
               />
             </CardContent>
             <div className="border-t px-4 pt-4 text-right font-medium">
-              Total {formatCurrency(lineTotal(lines), 'ZAR')}
+              Total{' '}
+              {lines.some((line) => line.unitPrice === 0) ? 'Not priced' : formatCurrency(lineTotal(lines), 'ZAR')}
             </div>
           </Card>
         );
@@ -479,7 +480,13 @@ const PurchaseOrderLinesDataTable: React.FC<{
       {
         cell: ({ row }) => (
           <form.AppField name={`lines[${row.original.index}].unitPrice`}>
-            {(field) => <field.CurrencyField label={<span className="sr-only">Unit price</span>} />}
+            {(field) => (
+              <field.CurrencyField
+                displayZeroAsEmpty
+                label={<span className="sr-only">Unit price</span>}
+                placeholder="Not priced"
+              />
+            )}
           </form.AppField>
         ),
         header: 'Unit price',

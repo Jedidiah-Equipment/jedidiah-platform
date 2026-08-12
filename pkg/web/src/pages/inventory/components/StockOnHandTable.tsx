@@ -110,6 +110,14 @@ function createStockOnHandColumns({
       },
     },
     {
+      accessorKey: 'onOrder',
+      cell: ({ row }) => formatPartQuantity(row.original.onOrder, row.original.unitOfMeasure),
+      header: 'On order',
+      meta: {
+        cellClassName: 'tabular-nums',
+      },
+    },
+    {
       accessorFn: formatCountStatus,
       header: 'Count status',
       id: 'countStatus',

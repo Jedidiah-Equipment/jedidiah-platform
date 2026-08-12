@@ -129,7 +129,10 @@ function createPurchaseOrderColumns(canReadCosts: boolean): ColumnDef<PurchaseOr
       ? [
           {
             accessorFn: totalFor,
-            cell: ({ row }) => formatCurrency(totalFor(row.original), 'ZAR'),
+            cell: ({ row }) =>
+              purchaseOrderHasUnpricedLines(row.original)
+                ? 'Not priced'
+                : formatCurrency(totalFor(row.original), 'ZAR'),
             header: 'Total',
             id: 'total',
             meta: {
@@ -149,4 +152,8 @@ function createPurchaseOrderColumns(canReadCosts: boolean): ColumnDef<PurchaseOr
 
 function totalFor(purchaseOrder: PurchaseOrderView): number {
   return purchaseOrder.lines.reduce((total, line) => total + line.quantity * (line.unitPrice ?? 0), 0);
+}
+
+function purchaseOrderHasUnpricedLines(purchaseOrder: PurchaseOrderView): boolean {
+  return purchaseOrder.status === 'draft' && purchaseOrder.lines.some((line) => line.unitPrice === 0);
 }

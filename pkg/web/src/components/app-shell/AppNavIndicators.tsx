@@ -90,6 +90,21 @@ export const StocktakeOverdueNavIndicator: React.FC = () => {
   ) : null;
 };
 
+/** Returns are settled per movement, so the dot counts the same unresolved rows as the PO chase list. */
+export const ReturnsAwaitingCreditNavIndicator: React.FC = () => {
+  const trpc = useTRPC();
+  const purchaseOrderAccess = useCan('purchase_order:read');
+  const returnsQuery = useQuery({
+    ...trpc.purchaseOrders.returnsAwaitingCredit.queryOptions(),
+    enabled: purchaseOrderAccess.can,
+  });
+  const count = returnsQuery.data?.items.length ?? 0;
+
+  return count > 0 ? (
+    <NavWarningDot label={`${count} ${plural(count, 'return is', 'returns are')} awaiting credit`} />
+  ) : null;
+};
+
 export const FeedbackOpenNavIndicator: React.FC = () => {
   const trpc = useTRPC();
   const feedbackAccess = useCan('feedback:read');

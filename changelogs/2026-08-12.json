@@ -1,0 +1,80 @@
+{
+  "releasedAt": "2026-08-12T12:52:25.383Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "See valid stock actions",
+          "description": "Inventory controls now consistently show which actions each Part can take, with clearer validation for fabricated, linear, and Built Parts."
+        },
+        {
+          "title": "Review stock warnings before posting",
+          "description": "Movement dialogs now warn consistently about unusual quantities, including returns for specific purchase lines and length buckets."
+        },
+        {
+          "title": "Track purchasing at a glance",
+          "description": "Inventory now shows quantities on order, Purchase Orders flag returns awaiting credit, and unpriced drafts are labelled clearly instead of appearing free."
+        },
+        {
+          "title": "Book only unfinished unscheduled jobs",
+          "description": "Completed Jobs no longer appear in the Unscheduled Book Slot list, while remaining available through the All filter."
+        },
+        {
+          "title": "Remove abandoned units",
+          "description": "Administrators can permanently remove a Product Unit that was never built after its Jobs have been cancelled."
+        },
+        {
+          "title": "Export on-hand unit values",
+          "description": "Download a priced CSV of On Hand units with material cost, list price, serial, build, customer, Quote, and Invoice details."
+        },
+        {
+          "title": "Cancel work cleanly",
+          "description": "Cancel Jobs with a recorded reason, release upcoming bay slots and stock commitments, and optionally clean up linked Jobs or unbuilt units when cancelling Quotes and Stock Builds."
+        },
+        {
+          "title": "Recognise offerings at a glance",
+          "description": "Custom work and Product builds now use consistent colours, icons, and Product photos across Quotes, Jobs, the Board, and activity."
+        },
+        {
+          "title": "Scan the Board by department",
+          "description": "Production bays are now grouped and ordered by department on the Gantt Board."
+        },
+        {
+          "title": "Fit more into quote PDFs",
+          "description": "Quote documents use a more compact header, customer summary, and pricing table for cleaner pagination and fewer pages."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Complete enquiries faster on mobile",
+          "description": "The contact form now supports phone autofill and appropriate mobile keyboards, with a corrected Afrikaans email placeholder."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Confirm stock warnings before posting",
+          "description": "The Stores tablet now previews unusual checkouts, returns, and receipts before posting, using accurate purchase-line and length-bucket quantities."
+        },
+        {
+          "title": "Use only valid stock actions",
+          "description": "Receive, supplier-return, build, and other stock controls now follow the same Part rules as the web app and show more accurate explanations when unavailable."
+        },
+        {
+          "title": "Recognise offerings at a glance",
+          "description": "Custom work and Product builds now use consistent colours, icons, and Product photos across Job, Quote, and bay views."
+        },
+        {
+          "title": "Cancel quotes reliably",
+          "description": "Quote cancellation now reliably cancels the linked Job and remaining schedule, while clearly explaining that any unbuilt machine must be removed from the web app."
+        }
+      ]
+    }
+  ]
+}

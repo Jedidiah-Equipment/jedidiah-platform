@@ -3,6 +3,7 @@ import {
   getProductUnit,
   isCustomerCoreError,
   isProductUnitCoreError,
+  listOnHandProductUnitStock,
   listProductUnitFilterOptions,
   listProductUnits,
   type ProductUnitCoreError,
@@ -10,11 +11,17 @@ import {
   transferProductUnitOwnership,
   updateProductUnit,
 } from '@pkg/core';
-import { ProductUnitListInput, ProductUnitTransferInput, ProductUnitUpdateInput, UUID } from '@pkg/schema';
+import {
+  ProductUnitListInput,
+  ProductUnitStockExportInput,
+  ProductUnitTransferInput,
+  ProductUnitUpdateInput,
+  UUID,
+} from '@pkg/schema';
 import { z } from 'zod';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../trpc/init.js';
+import { authorizedProcedure, fullyAuthorizedProcedure, router } from '../../trpc/init.js';
 
 export const productUnitsRouter = router({
   list: authorizedProcedure('product_unit:read')
@@ -24,6 +31,18 @@ export const productUnitsRouter = router({
   filterOptions: authorizedProcedure('product_unit:read').query(({ ctx }) =>
     listProductUnitFilterOptions({ db: ctx.db }),
   ),
+
+  /**
+   * One row of this report crosses four gates at once — the ledger's cost, the Unit, the Product's
+   * base price and the sourcing Quote's Customer and Invoice Number — so it demands all four rather
+   * than any of them. An any-of gate would hand Sales, which reads Units and Quotes but no costs, a
+   * spreadsheet of what the yard cost us. Gated whole rather than field by field, like
+   * `jobs.salesExport`: a caller who cannot read cost would be downloading a valuation with its point
+   * cut out of it.
+   */
+  stockExport: fullyAuthorizedProcedure(['inventory_cost:read', 'product:read', 'product_unit:read', 'quote:read'])
+    .input(ProductUnitStockExportInput)
+    .query(({ ctx, input }) => listOnHandProductUnitStock({ db: ctx.db, input })),
 
   get: authorizedProcedure('product_unit:read')
     .input(z.object({ id: UUID }))

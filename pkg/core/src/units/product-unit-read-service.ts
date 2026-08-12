@@ -22,6 +22,7 @@ import {
   UUID,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
+import type { PgColumn } from 'drizzle-orm/pg-core';
 
 import { loadAsBuiltSpec } from './product-unit-as-built.js';
 import { ProductUnitNotFoundError } from './product-unit-errors.js';
@@ -30,22 +31,35 @@ import { ProductUnitNotFoundError } from './product-unit-errors.js';
 const currentOwnerId = currentOwnerCustomerId(productUnits.id);
 
 /**
- * The Job Completion of the Unit's Build Job — its earliest live Job, since a rework can only follow a
- * build. A Unit is On Hand once that date exists, and still in build before it. Cancelled Jobs are
- * skipped: a cancelled build never happened, so leaving it in would strand a rebuilt Unit in build
- * forever behind a Job that will never complete. `id` breaks ties so same-instant Jobs order stably.
+ * One column off the Unit's Build Job — its earliest live Job, since a rework can only follow a build.
+ * Cancelled Jobs are skipped: a cancelled build never happened, so leaving it in would strand a rebuilt
+ * Unit in build forever behind a Job that will never complete. `id` breaks ties so same-instant Jobs
+ * order stably. Every caller reads its column through this, so no two facts about a machine's build can
+ * come from different Jobs.
  */
-const buildCompletedOn = sql<string | null>`(
-  select ${jobs.completedOn}
+function buildJobColumn<TValue>(column: PgColumn): SQL<TValue | null> {
+  return sql<TValue | null>`(
+  select ${column}
   from ${jobs}
   where ${jobs.productUnitId} = ${productUnits.id} and ${jobs.cancelledAt} is null
   order by ${jobs.createdAt} asc, ${jobs.id} asc
   limit 1
 )`;
+}
+
+/** A Unit is On Hand once this date exists, and In Build before it. */
+export const productUnitBuildCompletedOn = buildJobColumn<string>(jobs.completedOn);
+
+/**
+ * The Build Job's code, for readers that name the Job beside its completion. Read here rather than off a
+ * follow-up query so both facts come out of one statement: a Job cancelled between two reads would
+ * otherwise leave a Unit that is On Hand in the first with no Build Job at all in the second.
+ */
+export const productUnitBuildJobCode = buildJobColumn<number>(jobs.code);
 
 /** One projection for both reads, so the list and the detail can never drift apart. */
 const productUnitSelection = {
-  buildCompletedOn: buildCompletedOn.as('build_completed_on'),
+  buildCompletedOn: productUnitBuildCompletedOn.as('build_completed_on'),
   createdAt: productUnits.createdAt,
   id: productUnits.id,
   ownerId: currentOwnerId.as('owner_id'),
@@ -248,7 +262,15 @@ function ownerSearchCondition(search: string): SQL {
   )`;
 }
 
-function buildProductUnitListWhere(input: ProductUnitListInput): SQL | undefined {
+/**
+ * Shared with the stock export, so one filter set serves the screen and the CSV. The export narrows the
+ * Build States it hands in — see `listOnHandProductUnitStock` — because On Hand is its subject rather
+ * than a filter, so the two agree on every filter this builder is given rather than on every filter the
+ * list can hold.
+ */
+export function buildProductUnitListWhere(
+  input: Pick<ProductUnitListInput, 'columnFilters' | 'search'>,
+): SQL | undefined {
   const conditions: SQL[] = [];
 
   if (input.search) {
@@ -275,11 +297,11 @@ function buildProductUnitListWhere(input: ProductUnitListInput): SQL | undefined
   }
 
   if (input.columnFilters.buildState === 'on-hand') {
-    conditions.push(sql`${buildCompletedOn} is not null and ${currentOwnerId} is null`);
+    conditions.push(sql`${productUnitBuildCompletedOn} is not null and ${currentOwnerId} is null`);
   } else if (input.columnFilters.buildState === 'complete') {
-    conditions.push(sql`${buildCompletedOn} is not null and ${currentOwnerId} is not null`);
+    conditions.push(sql`${productUnitBuildCompletedOn} is not null and ${currentOwnerId} is not null`);
   } else if (input.columnFilters.buildState === 'in-build') {
-    conditions.push(sql`${buildCompletedOn} is null`);
+    conditions.push(sql`${productUnitBuildCompletedOn} is null`);
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;

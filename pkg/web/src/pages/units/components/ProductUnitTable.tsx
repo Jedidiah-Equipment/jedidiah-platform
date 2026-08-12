@@ -1,11 +1,12 @@
-import { productUnitBuildStateLabels } from '@pkg/domain';
+import { hasPermission, productUnitBuildStateLabels } from '@pkg/domain';
 import {
   ProductUnitDisplayBuildState,
   type ProductUnitListInput,
   ProductUnitSortBy,
   type ProductUnitSummary,
 } from '@pkg/schema';
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { IconDownload, IconLoader2 } from '@tabler/icons-react';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo } from 'react';
@@ -17,9 +18,13 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { Button } from '@/components/ui/button.js';
 import { toSelectOptions } from '@/hooks/options/helpers.js';
+import { useAccess } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { downloadProductUnitStockExport } from '../product-unit-stock-export.js';
 import { ProductUnitBuildStateCell } from './ProductUnitBuildStateCell.js';
 import { ProductUnitOwnerCell } from './ProductUnitOwnerCell.js';
 
@@ -44,11 +49,33 @@ const productUnitSortOptions: SortOptions<ProductUnitListInput> = {
 
 export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }) => {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const accessQuery = useAccess();
+  const showMutationError = useApiMutationErrorToast();
 
   const tableController = useServerSideTableController({
     store: useProductUnitTableStore,
     sortOptions: productUnitSortOptions,
     getListInputExtras: getProductUnitListInputExtras,
+  });
+
+  // One row crosses the ledger, the Unit, the Product's price and the sourcing Quote, so the button
+  // mirrors the API's all-of gate rather than `product_unit:read` alone — see `productUnits.stockExport`.
+  const canExportStock =
+    hasPermission(accessQuery.data, 'inventory_cost:read') &&
+    hasPermission(accessQuery.data, 'product:read') &&
+    hasPermission(accessQuery.data, 'product_unit:read') &&
+    hasPermission(accessQuery.data, 'quote:read');
+  const stockExportMutation = useMutation({
+    mutationFn: () =>
+      queryClient.fetchQuery(
+        trpc.productUnits.stockExport.queryOptions({
+          columnFilters: tableController.listInput.columnFilters,
+          search: tableController.listInput.search,
+        }),
+      ),
+    onError: (error) => showMutationError(error, 'Unable to export units.'),
+    onSuccess: (rows) => downloadProductUnitStockExport(rows),
   });
 
   const filterOptionsQuery = useQuery(trpc.productUnits.filterOptions.queryOptions());
@@ -185,6 +212,23 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit }
         onLoadMore: () => void unitsQuery.fetchNextPage(),
       }}
       onRowClick={onOpenUnit}
+      rightSection={
+        canExportStock ? (
+          <Button
+            disabled={stockExportMutation.isPending}
+            onClick={() => stockExportMutation.mutate()}
+            size="sm"
+            variant="outline"
+          >
+            {stockExportMutation.isPending ? (
+              <IconLoader2 className="animate-spin" data-icon="inline-start" />
+            ) : (
+              <IconDownload data-icon="inline-start" />
+            )}
+            Export Units
+          </Button>
+        ) : null
+      }
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'unit' : 'units'}`}

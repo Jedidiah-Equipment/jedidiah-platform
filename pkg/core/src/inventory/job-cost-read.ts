@@ -69,3 +69,13 @@ export async function sumJobDrawnCosts({
 
   return new Map([...costedTotals].map(([jobId, total]) => [jobId, unpricedJobIds.has(jobId) ? null : total] as const));
 }
+
+/**
+ * One Job's cost off {@link sumJobDrawnCosts}' map, under the absence rule that function's contract
+ * states: a Job missing from the map entirely drew nothing at all and cost zero, while a Job present
+ * with `null` holds material nobody has priced. Every reader goes through this, so no caller can read an
+ * absent Job as unpriced or an unpriced one as free.
+ */
+export function readJobDrawnCost(costByJobId: Map<UUID, number | null>, jobId: UUID): number | null {
+  return costByJobId.has(jobId) ? (costByJobId.get(jobId) ?? null) : 0;
+}

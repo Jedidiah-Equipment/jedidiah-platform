@@ -3,8 +3,10 @@ import { z } from 'zod';
 import { DateIso } from '../common/date.js';
 import { createCursorQueryResult, createSortedCursorQueryInput } from '../common/pagination.js';
 import { JobCode } from '../common/public-code.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { FeedbackSubmitter, FeedbackText } from '../feedback/feedback.js';
+import { QuoteKind } from '../quotes/quote-shared.js';
 
 /** The Job an activity item is about, carrying what the feed needs to place it without a second read. */
 export type JobActivityJobRef = z.infer<typeof JobActivityJobRef>;
@@ -13,8 +15,9 @@ export const JobActivityJobRef = z.object({
   code: JobCode,
   /** The Product being built, or a Custom Job's work title. */
   displayName: z.string().trim().min(1),
-  /** Null on a Custom Job, which builds no machine to carry a serial. */
-  serialNumber: z.string().trim().min(1).nullable(),
+  offeringKind: QuoteKind,
+  /** The Product thumbnail; null on Custom work or a Product without one. */
+  thumbnailDataUrl: NullableThumbnailDataUrl,
   /** Null means Stock: the machine behind this Job belongs to no Customer. */
   customerCompanyName: z.string().trim().min(1).nullable(),
 });

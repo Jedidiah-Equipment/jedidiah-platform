@@ -1,3 +1,5 @@
+import { statusBadgeColorClassNames } from '@pkg/domain';
+
 import { type AppTextProps, Text } from '@/components/ui/text';
 
 /** The colour a real Customer name carries, chosen by the surface it sits on. */
@@ -6,7 +8,7 @@ const NAME_TONE = {
   surface: 'text-surface-foreground',
 } as const;
 
-const STOCK_TONE = 'text-amber-700 dark:text-amber-300';
+const STOCK_TONE = statusBadgeColorClassNames.yellow.text;
 
 export type CustomerNameTone = keyof typeof NAME_TONE;
 

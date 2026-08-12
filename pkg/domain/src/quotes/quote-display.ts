@@ -25,12 +25,12 @@ export const quoteKindLabels: Record<QuoteKind, string> = {
 };
 
 /**
- * The one colour language for what a Quote or Job is selling: orange for Custom work, brand-adjacent
+ * The one colour language for what a Quote or Job is selling: teal for Custom work, brand-adjacent
  * yellow for a Product build. Deliberately not the `primary` token — web's staging theme repaints
  * that pink, and the offering kind must not follow brand chrome.
  */
 export const quoteKindColorClassNames: Record<QuoteKind, { chip: string; text: string }> = {
-  custom: statusBadgeColorClassNames.orange,
+  custom: statusBadgeColorClassNames.teal,
   product: statusBadgeColorClassNames.yellow,
 };
 

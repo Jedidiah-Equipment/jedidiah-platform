@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { StockBadge } from '@/components/common/StockBadge.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent } from '@/components/ui/card.js';
 import { cn } from '@/lib/utils.js';
@@ -94,11 +95,15 @@ export const GeneralFeedbackActivityCard: React.FC<{ item: GeneralFeedbackActivi
           </div>
           {/* The Job on the left, who it is for on the right — the two facts that place an entry. */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-            <span className="font-medium">{item.job.code}</span>
+            <OfferingThumbnail
+              kind={item.job.offeringKind}
+              label={item.job.displayName}
+              preview={false}
+              size="sm"
+              thumbnailDataUrl={item.job.thumbnailDataUrl}
+            />
+            <span className="font-mono font-medium text-muted-foreground">{item.job.code}</span>
             <span className="min-w-0 truncate text-muted-foreground">{item.job.displayName}</span>
-            {item.job.serialNumber ? (
-              <span className="truncate font-mono text-xs text-muted-foreground">{item.job.serialNumber}</span>
-            ) : null}
             <span className="ms-auto min-w-0 shrink-0">
               {item.job.customerCompanyName ? (
                 <span className="truncate text-muted-foreground">{item.job.customerCompanyName}</span>

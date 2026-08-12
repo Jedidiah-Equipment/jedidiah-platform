@@ -27,7 +27,6 @@ import { Badge } from '@/components/ui/badge.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
-import { QuoteKindBadge } from '../QuoteKindBadge.js';
 import { StartJobLink } from '../StartJobLink.js';
 
 // The summary prices the API-shaped Work Items the form maps into, not the browser shape itself.
@@ -222,12 +221,7 @@ function QuoteCustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'c
     <Card size="sm">
       <CardHeader>
         <CardDescription>Custom work</CardDescription>
-        <CardTitle className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="block truncate">{workTitle}</span>
-            <QuoteKindBadge kind="custom" />
-          </div>
-        </CardTitle>
+        <CardTitle className="min-w-0 truncate">{workTitle}</CardTitle>
         <CardAction>
           <OfferingThumbnail className="size-10" kind="custom" label={workTitle} size="lg" thumbnailDataUrl={null} />
         </CardAction>

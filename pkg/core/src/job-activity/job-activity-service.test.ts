@@ -17,6 +17,7 @@ import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listJobActivity } from './job-activity-service.js';
 
 const SUBMITTER_THUMBNAIL_DATA_URL = 'data:image/webp;base64,YWN0b3I=';
+const PRODUCT_THUMBNAIL_DATA_URL = 'data:image/webp;base64,cHJvZHVjdA==';
 
 const test = createTester(async ({ db }) => {
   await createSubmitter(db);
@@ -54,7 +55,7 @@ describe('listJobActivity', () => {
     });
   });
 
-  test('places the item by Job code, Product, serial, and the Customer who bought it', async ({ context }) => {
+  test('places the item by Job code, offering, Product, and the Customer who bought it', async ({ context }) => {
     await insertFeedback(context.db, {
       jobId: context.job.id,
       kind: 'general',
@@ -68,7 +69,8 @@ describe('listJobActivity', () => {
       code: formatJobCode(context.job.code),
       customerCompanyName: 'Activity Customer',
       displayName: 'Job Activity Test Product',
-      serialNumber: 'FB-26-0001',
+      offeringKind: 'product',
+      thumbnailDataUrl: PRODUCT_THUMBNAIL_DATA_URL,
     });
   });
 
@@ -87,7 +89,8 @@ describe('listJobActivity', () => {
     expect(result.items[0]?.job).toMatchObject({
       customerCompanyName: null,
       displayName: 'Job Activity Test Product',
-      serialNumber: 'FB-26-0002',
+      offeringKind: 'product',
+      thumbnailDataUrl: PRODUCT_THUMBNAIL_DATA_URL,
     });
   });
 
@@ -277,6 +280,7 @@ async function createProduct(db: Db) {
       modelCode: 'ACTIVITY-001',
       name: 'Job Activity Test Product',
       rangeId,
+      thumbnailDataUrl: PRODUCT_THUMBNAIL_DATA_URL,
     })
     .returning();
 

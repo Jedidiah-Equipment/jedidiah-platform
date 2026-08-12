@@ -1921,6 +1921,26 @@ describe('cancelQuote', () => {
     expect(job?.cancelledAt).toBeNull();
   });
 
+  // The machine is stranded in Customer ownership if the reversal turns on what this call cancelled
+  // rather than on whether a live build is left owing one.
+  test('hands the Unit back even when its Job was already cancelled directly', async ({ context }) => {
+    const built = await seedBuildToOrderJob(context);
+    await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, built.jobId));
+
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancellationReason: 'Buyer withdrew after the build was abandoned',
+      db: context.db,
+      id: built.quoteId,
+      mayCancelLockedQuote: true,
+    });
+
+    expect(await readOwnerships(context.db, built.unitId)).toEqual([
+      { from: null, to: context.customer.id },
+      { from: context.customer.id, to: null },
+    ]);
+  });
+
   test('removes the build-to-order Unit when asked, leaving the cancelled Job standing', async ({ context }) => {
     const built = await seedBuildToOrderJob(context);
 

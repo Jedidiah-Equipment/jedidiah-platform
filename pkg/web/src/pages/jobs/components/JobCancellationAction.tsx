@@ -41,18 +41,24 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
 
   const planQuery = useQuery({ ...trpc.jobs.cancellationPlan.queryOptions({ id: job.id }), enabled: isOpen });
   const plan = planQuery.data;
+  const [defaultsApplied, setDefaultsApplied] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       setReason('');
       setRemoveUnit(false);
+      setDefaultsApplied(false);
     }
   }, [isOpen]);
 
-  // Whether the shop has already touched this build is the server's answer, not the browser's.
+  // Whether the shop has already touched this build is the server's answer, not the browser's — and it
+  // seeds the box once, so a refetch cannot re-tick a removal the person cleared.
   useEffect(() => {
-    if (plan) setRemoveUnit(plan.unit?.removeByDefault ?? false);
-  }, [plan]);
+    if (plan && !defaultsApplied) {
+      setRemoveUnit(plan.unit?.removeByDefault ?? false);
+      setDefaultsApplied(true);
+    }
+  }, [defaultsApplied, plan]);
 
   const cancelJobMutation = useMutation(
     trpc.jobs.cancel.mutationOptions({
@@ -77,6 +83,8 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
   // Only a Stock Build's machine is ever on offer: while a Quote stands, the Unit is the sale's, and a
   // replacement Job will reuse it. The server refuses the request either way.
   const unitOnOffer = plan?.unit?.canRemove === true ? plan.unit : null;
+  // Until the plan lands the dialog cannot say what cancelling releases, so it cannot be confirmed.
+  const isReady = plan !== undefined;
 
   return (
     <div className="mt-4 flex justify-end border-t pt-4">
@@ -89,8 +97,9 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
           <DialogHeader>
             <DialogTitle>Cancel job</DialogTitle>
             <DialogDescription>
-              This permanently cancels {job.code}. {describeSlotRelease(plan?.releasableSlotCount ?? 0)} Stock already
-              checked out to it stays on its ledger.{' '}
+              This permanently cancels {job.code}.{' '}
+              {plan ? `${describeSlotRelease(plan.releasableSlotCount)} ` : 'Checking what this releases… '}
+              Stock already checked out to it stays on its ledger.{' '}
               {/* A Stock Build has no sale behind it, so there is no Quote to reassure anyone about. */}
               {job.quoteCode === null ? null : 'The quote behind this Job is left alone. '}
               This cannot be undone.
@@ -123,7 +132,7 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
               Keep job
             </DialogClose>
             <Button
-              disabled={cancelJobMutation.isPending || !parsedReason.success}
+              disabled={!isReady || cancelJobMutation.isPending || !parsedReason.success}
               onClick={() => {
                 if (parsedReason.success) {
                   cancelJobMutation.mutate({

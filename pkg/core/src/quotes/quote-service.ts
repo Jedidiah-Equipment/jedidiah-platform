@@ -14,7 +14,7 @@ import {
   type QuoteWorkItemInput,
   type UUID,
 } from '@pkg/schema';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
@@ -145,11 +145,14 @@ export async function cancelQuote({
     const cancelledJob = cancelJob
       ? await cancelJobForQuote({ actorUserId, now, plantToday, quoteId: before.id, tx })
       : null;
+    // What becomes of the machine turns on whether a live build is left owing one — not on whether
+    // this call is what cancelled it. A Job cancelled earlier, directly, leaves none.
+    const liveJobRemains = cancelJob ? false : await quoteHasLiveJob({ quoteId: before.id, tx });
 
     // An Allocation Quote sold a machine that already existed, so the sale dying hands it back whatever
-    // becomes of any Job. A build-to-order Unit belongs to the Job that minted it and returns only when
-    // that Job goes too — otherwise a live build would be left owing a machine we had taken back.
-    if (before.productUnitId !== null || cancelledJob !== null) {
+    // becomes of any Job. A build-to-order Unit belongs to the Job that minted it and returns once no
+    // live build is left — otherwise that build would be owing a machine we had taken back.
+    if (before.productUnitId !== null || !liveJobRemains) {
       await returnQuoteProductUnitToStock({
         actorUserId,
         customerId: before.customerId,
@@ -818,6 +821,16 @@ function assertNotCancellingByUpdate({ before, next }: { before: QuoteStatus; ne
   if (next === 'cancelled' && before !== 'cancelled') {
     throw new QuoteCancelNotAnUpdateError();
   }
+}
+
+async function quoteHasLiveJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {
+  const [job] = await tx
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(and(eq(jobs.quoteId, quoteId), isNull(jobs.cancelledAt)))
+    .limit(1);
+
+  return Boolean(job);
 }
 
 async function quoteHasEverSourcedJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {

@@ -76,18 +76,23 @@ export function QuoteCancellationDialog({
     enabled: dialogOpen,
   });
   const plan = planQuery.data;
+  const [defaultsApplied, setDefaultsApplied] = useState(false);
 
-  // The defaults are the server's answer, applied once it arrives rather than guessed at while the
-  // dialog waits. A person who has already ticked something keeps their choice on re-render.
+  // The server's answer seeds the boxes exactly once per opening. A refetch — this app refetches on
+  // window focus — must never re-tick a destructive box the person deliberately cleared.
   useEffect(() => {
-    if (plan) setRemoveUnit(plan.unit?.removeByDefault ?? false);
-  }, [plan]);
+    if (plan && !defaultsApplied) {
+      setRemoveUnit(plan.unit?.removeByDefault ?? false);
+      setDefaultsApplied(true);
+    }
+  }, [defaultsApplied, plan]);
 
   useEffect(() => {
     if (!dialogOpen) {
       setReason('');
       setCancelJob(true);
       setRemoveUnit(false);
+      setDefaultsApplied(false);
     }
   }, [dialogOpen]);
 
@@ -112,6 +117,9 @@ export function QuoteCancellationDialog({
   const parsedReason = QuoteCancellationReason.safeParse(reason);
   // Only the Job's own machine is ever on offer here, and only while that Job is going too.
   const unitOnOffer = cancelJob && plan?.unit?.canRemove === true ? plan.unit : null;
+  // Nothing is confirmable until the plan lands: until then the dialog has not yet shown what it is
+  // about to cancel, and submitting would carry choices nobody was offered.
+  const isReady = plan !== undefined;
 
   return (
     <Dialog onOpenChange={setOpen} open={dialogOpen}>
@@ -121,6 +129,8 @@ export function QuoteCancellationDialog({
           <DialogTitle>Cancel quote</DialogTitle>
           <DialogDescription>This permanently cancels {quote.code}. This cannot be undone.</DialogDescription>
         </DialogHeader>
+
+        {planQuery.isPending ? <p className="text-muted-foreground text-sm">Checking what this affects…</p> : null}
 
         {plan?.job ? (
           <CancellationChoice
@@ -153,7 +163,7 @@ export function QuoteCancellationDialog({
             Keep quote
           </DialogClose>
           <Button
-            disabled={cancelMutation.isPending || !parsedReason.success}
+            disabled={!isReady || cancelMutation.isPending || !parsedReason.success}
             onClick={() => {
               if (parsedReason.success) {
                 cancelMutation.mutate({

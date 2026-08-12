@@ -164,7 +164,12 @@ const RemoveUnitButton: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
       description={
         <>
           Delete {unit.productSerialNumber} for good. Do this only when the machine was never built — its cancelled Jobs
-          stay, and the serial is never issued again.
+          and Quotes stay, and the serial is never issued again.{' '}
+          {/* Ownership no longer refuses removal, so the holder has to be on the confirmation: a
+              build-to-order phantom is owned from the moment it is minted. */}
+          {unit.owner === null
+            ? 'It is held as stock.'
+            : `${unit.owner.companyName} currently holds it, and that ownership history goes with it.`}
         </>
       }
       isPending={removeUnitMutation.isPending}

@@ -13,24 +13,37 @@ type CurrencyFieldInputProps = Omit<
 export type CurrencyFieldProps = {
   currencyCode?: string;
   description?: React.ReactNode;
+  displayZeroAsEmpty?: boolean;
   label: React.ReactNode;
 } & CurrencyFieldInputProps;
 
-export function CurrencyField({ currencyCode = 'ZAR', description, label, ...inputProps }: CurrencyFieldProps) {
+export function CurrencyField({
+  currencyCode = 'ZAR',
+  description,
+  displayZeroAsEmpty = false,
+  label,
+  ...inputProps
+}: CurrencyFieldProps) {
   const field = useFieldContext<number>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
 
-  const [displayValue, setDisplayValue] = React.useState(() => formatCurrency(field.state.value));
+  const [displayValue, setDisplayValue] = React.useState(() =>
+    formatCurrencyFieldValue(field.state.value, displayZeroAsEmpty),
+  );
 
   // Sync display when the field value changes externally (e.g. form reset)
   const previousFieldValue = React.useRef(field.state.value);
+  const previousDisplayZeroAsEmpty = React.useRef(displayZeroAsEmpty);
   React.useEffect(() => {
-    if (!hasCurrencyFieldValueChanged(previousFieldValue.current, field.state.value)) return;
+    const valueChanged = hasCurrencyFieldValueChanged(previousFieldValue.current, field.state.value);
+    const displayModeChanged = previousDisplayZeroAsEmpty.current !== displayZeroAsEmpty;
+    if (!valueChanged && !displayModeChanged) return;
 
     previousFieldValue.current = field.state.value;
-    setDisplayValue(formatCurrency(field.state.value));
-  }, [field.state.value]);
+    previousDisplayZeroAsEmpty.current = displayZeroAsEmpty;
+    setDisplayValue(formatCurrencyFieldValue(field.state.value, displayZeroAsEmpty));
+  }, [displayZeroAsEmpty, field.state.value]);
 
   return (
     <Field data-disabled={inputProps.disabled} data-invalid={isInvalid}>
@@ -43,11 +56,11 @@ export function CurrencyField({ currencyCode = 'ZAR', description, label, ...inp
           name={field.name}
           onBlur={() => {
             field.handleBlur();
-            setDisplayValue(formatCurrency(field.state.value));
+            setDisplayValue(formatCurrencyFieldValue(field.state.value, displayZeroAsEmpty));
           }}
           onChange={(event) => {
             const text = formatCurrencyInputText(event.target.value);
-            const nextValue = parseCurrencyInputText(text);
+            const nextValue = parseCurrencyFieldValue(text, displayZeroAsEmpty);
             setDisplayValue(text);
             previousFieldValue.current = nextValue;
             field.handleChange(nextValue);
@@ -64,6 +77,10 @@ export function CurrencyField({ currencyCode = 'ZAR', description, label, ...inp
       <FieldError errors={fieldErrors} />
     </Field>
   );
+}
+
+export function formatCurrencyFieldValue(value: number, displayZeroAsEmpty: boolean): string {
+  return displayZeroAsEmpty && value === 0 ? '' : formatCurrency(value);
 }
 
 export function hasCurrencyFieldValueChanged(previousValue: number, nextValue: number): boolean {
@@ -91,6 +108,11 @@ export function formatCurrencyInputText(text: string): string {
 function parseCurrencyInputText(text: string): number {
   const normalizedText = normalizeCurrencyInputText(text);
   return normalizedText.trim() === '' ? NaN : Number.parseFloat(normalizedText);
+}
+
+export function parseCurrencyFieldValue(text: string, displayZeroAsEmpty: boolean): number {
+  const value = parseCurrencyInputText(text);
+  return displayZeroAsEmpty && Number.isNaN(value) ? 0 : value;
 }
 
 function formatCurrencyIntegerText(integerDigits: string): string {

@@ -1,6 +1,6 @@
 # Stock on hand, Commitment, and Free Stock
 
-The **Stock on hand** screen shows two quantity columns per Part, and they answer different
+The **Stock on hand** screen shows three quantity columns per Part, and they answer different
 questions.
 
 ## Stock on hand
@@ -31,6 +31,12 @@ building that has not collected its material yet.
 Free can go negative while stock on hand is comfortably positive. That means the Jobs already
 running have specced more than the rack holds, and it is a signal for procurement rather than a
 counting error.
+
+## On order
+
+What Suppliers still owe on open Sent Purchase Order lines. It stays separate from **Free** because
+ordered stock is not on the rack yet. A Receipt reduces **On order** and increases **Stock on hand**
+when the delivery actually arrives.
 
 ## How a commitment ends
 

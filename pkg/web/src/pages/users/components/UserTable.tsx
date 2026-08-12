@@ -107,16 +107,10 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
   }, [currentUserId]);
 
   const constrainedSorting = useMemo(() => constrainSorting(sorting, userSortOptions), [sorting]);
-  /**
-   * Devices ahead of people, whatever column the reader is sorting by. This is the one screen that
-   * administers them, so they belong at the top here — and it stays in the table rather than in the
-   * shared `users.list` read, which also feeds pickers that want a plain alphabetical list.
-   */
-  const rows = useMemo(() => [...users].sort((left, right) => Number(right.isDevice) - Number(left.isDevice)), [users]);
 
   const table = useReactTable({
     columns,
-    data: rows,
+    data: users,
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),

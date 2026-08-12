@@ -16,6 +16,7 @@ const result = StockOnHandResult.parse({
       committed: 3,
       free: 3,
       isInternallyFabricated: false,
+      onOrder: 2,
       partCode: 'RAW-100',
       partId: '00000000-0000-4000-8000-000000000001',
       partName: 'Channel',
@@ -32,6 +33,7 @@ const result = StockOnHandResult.parse({
       committed: 1,
       free: 3,
       isInternallyFabricated: false,
+      onOrder: 0,
       partCode: 'P-100',
       partId: '00000000-0000-4000-8000-000000000002',
       partName: 'Bearing',
@@ -62,6 +64,8 @@ describe('StockOnHandTable', () => {
     expect(html).toContain('R 1 500.00');
     expect(html).toContain('No cost yet');
     expect(html).toContain('Free');
+    expect(html).toContain('On order');
+    expect(html).toContain('2 pieces');
     expect(html.match(/3 pieces/g)).toHaveLength(2);
     expect(html).toContain('3 pc');
     expect(html.match(/View history/g)).toHaveLength(2);
@@ -80,6 +84,7 @@ describe('StockOnHandTable', () => {
           committed: 0,
           free: -2,
           isInternallyFabricated: false,
+          onOrder: 0,
           partCode: 'P-200',
           partId: '00000000-0000-4000-8000-000000000003',
           partName: 'Wheel kit',
@@ -112,6 +117,7 @@ describe('StockOnHandTable', () => {
           committed: 6,
           free: -2,
           isInternallyFabricated: false,
+          onOrder: 0,
           partCode: 'P-300',
           partId: '00000000-0000-4000-8000-000000000004',
           partName: 'Auger pin',

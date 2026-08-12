@@ -13,6 +13,7 @@ const purchaseOrder = {
   id: '00000000-0000-4000-8000-000000000001',
   jobs: [],
   lines: [{ quantity: 2, unitPrice: 5 }],
+  status: 'draft',
   supplier: { companyName: 'Bearing & Bolt' },
 } as unknown as PurchaseOrderView;
 
@@ -35,5 +36,17 @@ describe('PurchaseOrderTable', () => {
 
     expect(html).not.toContain('>Total<');
     expect(html).not.toContain('R 10.00');
+  });
+
+  it('labels zero-sentinel draft prices as not priced rather than free', () => {
+    const unpriced = {
+      ...purchaseOrder,
+      lines: [{ quantity: 2, unitPrice: 0 }],
+    } as unknown as PurchaseOrderView;
+
+    const html = renderToStaticMarkup(<PurchaseOrderTable canReadCosts items={[unpriced]} onOpen={vi.fn()} />);
+
+    expect(html).toContain('Not priced');
+    expect(html).not.toContain('R 0.00');
   });
 });

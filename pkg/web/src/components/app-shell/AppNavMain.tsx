@@ -45,6 +45,7 @@ import {
   BuyListSignalNavIndicator,
   FeedbackOpenNavIndicator,
   QuotesPriorityNavIndicator,
+  ReturnsAwaitingCreditNavIndicator,
   StocktakeOverdueNavIndicator,
 } from './AppNavIndicators.js';
 
@@ -174,6 +175,7 @@ const navSections = [
         permission: 'purchase_order:read',
         link: linkOptions({ to: '/purchase-orders' }),
         icon: IconShoppingCart,
+        indicator: ReturnsAwaitingCreditNavIndicator,
       },
       {
         title: 'PO vs invoiced',

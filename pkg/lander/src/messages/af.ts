@@ -180,7 +180,7 @@ export const af: Messages = {
     phoneLabel: 'Telefoon',
     phonePlaceholder: '+27 ...',
     emailLabel: 'E-pos',
-    emailPlaceholder: 'jy@epos.co.za',
+    emailPlaceholder: 'jou@epos.co.za',
     equipmentLabel: 'Toerusting van Belang',
     equipmentPlaceholder: 'Kies toerusting (opsioneel)',
     equipmentNotSure: 'Nog nie seker nie',

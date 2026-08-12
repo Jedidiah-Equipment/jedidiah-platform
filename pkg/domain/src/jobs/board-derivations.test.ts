@@ -138,12 +138,12 @@ describe('listEnabledBays', () => {
 
 describe('byBayDepartmentPipeline', () => {
   it('orders by department pipeline then bay name', () => {
-    // 'procurement' precedes 'fabrication' in the pipeline; names tiebreak within a department.
+    // 'fabrication' precedes 'procurement' in the pipeline; names tiebreak within a department.
     const fabB = buildBay({ department: 'fabrication', id: 'bay-1', name: 'Bay B' });
     const fabA = buildBay({ department: 'fabrication', id: 'bay-2', name: 'Bay A' });
     const procurement = buildBay({ department: 'procurement', id: 'bay-3', name: 'Bay Z' });
 
-    expect([fabB, fabA, procurement].sort(byBayDepartmentPipeline)).toEqual([procurement, fabA, fabB]);
+    expect([fabB, fabA, procurement].sort(byBayDepartmentPipeline)).toEqual([fabA, fabB, procurement]);
   });
 });
 

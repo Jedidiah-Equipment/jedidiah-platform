@@ -15,9 +15,9 @@ describe('sortBaysByDepartmentPipeline', () => {
     ]);
 
     expect(sorted.map((bay) => bay.department)).toEqual([
+      'fabrication',
       'procurement',
       'supply',
-      'fabrication',
       'paint',
       'assembly',
       'workshop',

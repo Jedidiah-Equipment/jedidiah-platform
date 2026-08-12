@@ -1,4 +1,4 @@
-import { formatDate, hasPermission, type WorkingCalendar } from '@pkg/domain';
+import { departmentLabels, formatDate, hasPermission, type WorkingCalendar } from '@pkg/domain';
 import type {
   DateOnlyIso,
   JobSlotMoveDirection,
@@ -47,6 +47,12 @@ import {
   slotMatchesBoardFilter,
 } from './board-filter.js';
 import {
+  BAY_ROW_HEIGHT,
+  type BoardGanttLayout,
+  createBoardGanttLayout,
+  DEPARTMENT_HEADER_HEIGHT,
+} from './board-gantt-layout.js';
+import {
   type BoardGhostSeed,
   createBoardPreviewRequest,
   deriveGhostProjectedBayQueues,
@@ -57,8 +63,6 @@ import { fromJobCalendarDateKey } from './job-date-key.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 import { useBoardHistoryFloor } from './use-board-history-floor.js';
 
-// Taller rows give each booked slot room for the rich job card (thumbnails + details).
-const BAY_ROW_HEIGHT = 72;
 const EMPTY_WORKING_CALENDARS = new Map<string, WorkingCalendar>();
 
 type FilterScrollRequest = {
@@ -174,6 +178,7 @@ export const BoardGantt: React.FC<{
     [ghostPreviewQuery.data, ghostPreviewRequest, visibleBays],
   );
   const renderedBays: ProjectedBayQueue[] = ghostDerivation?.bays ?? visibleBays;
+  const ganttLayout = useMemo(() => createBoardGanttLayout(renderedBays), [renderedBays]);
   const isFilterActive = hasActiveBoardFilter(filter);
   const filterMatchCount = useMemo(
     () => (isFilterActive ? countBoardFilterMatches({ bays: displayedBays, filter, jobsById }) : 0),
@@ -354,7 +359,7 @@ export const BoardGantt: React.FC<{
         <div
           className="w-full overflow-hidden"
           style={{
-            height: Math.max(220, 60 + renderedBays.length * (BAY_ROW_HEIGHT + 10)),
+            height: Math.max(220, 60 + ganttLayout.contentHeight + 16),
           }}
         >
           <GanttProvider
@@ -368,12 +373,13 @@ export const BoardGantt: React.FC<{
           >
             <BoardFilterScrollController request={filterScrollRequest} />
             <BoardZoomAnchorController onReady={registerAnchoredZoomChange} zoom={zoom} />
-            <BoardSidebar bays={renderedBays} horizonWarnings={horizonWarnings} />
+            <BoardSidebar horizonWarnings={horizonWarnings} layout={ganttLayout} />
             <GanttTimeline>
               <GanttHeader />
               <OffDayBands offDays={offDays} />
-              <BayLaneRows bays={renderedBays} />
+              <BayLaneRows layout={ganttLayout} />
               <BaySlotBars
+                bayTopById={ganttLayout.bayTopById}
                 bays={renderedBays}
                 canEditScheduleByBayId={schedulableBayIds}
                 today={plantToday}
@@ -389,7 +395,12 @@ export const BoardGantt: React.FC<{
                 workingCalendarsByBayId={bayCalendars?.workingCalendarsByBayId ?? EMPTY_WORKING_CALENDARS}
               />
               {ghostDerivation && ghostDerivation.ghosts.length > 0 ? (
-                <BoardGhostBars bays={renderedBays} ghosts={ghostDerivation.ghosts} label={ghostLabel ?? 'New Job'} />
+                <BoardGhostBars
+                  bays={renderedBays}
+                  bayTopById={ganttLayout.bayTopById}
+                  ghosts={ghostDerivation.ghosts}
+                  label={ghostLabel ?? 'New Job'}
+                />
               ) : null}
               <GanttToday className="bg-primary text-primary-foreground" />
             </GanttTimeline>
@@ -422,35 +433,49 @@ const BoardFilterScrollController: React.FC<{
 };
 
 const BoardSidebar: React.FC<{
-  bays: ProjectedBayQueue[];
   horizonWarnings: ReadonlyMap<string, MaintainedHorizonWarning>;
-}> = ({ bays, horizonWarnings }) => {
+  layout: BoardGanttLayout;
+}> = ({ horizonWarnings, layout }) => {
   return (
     <GanttSidebar secondaryTitle={null} title="Bay">
-      <div className="divide-y divide-border/50">
-        {bays.map((bay) => {
-          const warning = horizonWarnings.get(bay.id);
-          const currentSlot = getCurrentBaySlot(bay.slots);
-          const statusText =
-            currentSlot?.kind === 'work'
-              ? `Busy on ${currentSlot.jobCode}`
-              : ['Idle', currentSlot?.label].filter(Boolean).join(' ');
-
-          return (
-            <div
-              className="flex items-center gap-3 px-3 text-xs"
-              key={bay.id}
-              style={{ height: 'var(--gantt-row-height)' }}
+      <div>
+        {layout.groups.map((group) => (
+          <section key={group.department}>
+            <h3
+              className="flex items-end border-border/50 border-b bg-muted/40 px-3 pb-1.5 font-semibold text-muted-foreground text-xs"
+              style={{ height: DEPARTMENT_HEADER_HEIGHT }}
             >
-              <BayOperatorIndicator operator={bay.currentOperator} />
-              <div className="flex min-w-40 flex-1 flex-col gap-1">
-                <p className="truncate text-base text-foreground leading-tight">{bayNameWithOperatorFirstName(bay)}</p>
-                <p className="truncate font-mono text-muted-foreground text-xs leading-tight">{statusText}</p>
-              </div>
-              {warning ? <MaintainedHorizonWarningBadge warning={warning} /> : null}
+              {departmentLabels[group.department]}
+            </h3>
+            <div className="divide-y divide-border/50">
+              {group.bays.map((bay) => {
+                const warning = horizonWarnings.get(bay.id);
+                const currentSlot = getCurrentBaySlot(bay.slots);
+                const statusText =
+                  currentSlot?.kind === 'work'
+                    ? `Busy on ${currentSlot.jobCode}`
+                    : ['Idle', currentSlot?.label].filter(Boolean).join(' ');
+
+                return (
+                  <div
+                    className="flex items-center gap-3 px-3 pl-5 text-xs"
+                    key={bay.id}
+                    style={{ height: BAY_ROW_HEIGHT }}
+                  >
+                    <BayOperatorIndicator operator={bay.currentOperator} />
+                    <div className="flex min-w-40 flex-1 flex-col gap-1">
+                      <p className="truncate text-base text-foreground leading-tight">
+                        {bayNameWithOperatorFirstName(bay)}
+                      </p>
+                      <p className="truncate font-mono text-muted-foreground text-xs leading-tight">{statusText}</p>
+                    </div>
+                    {warning ? <MaintainedHorizonWarningBadge warning={warning} /> : null}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </section>
+        ))}
       </div>
     </GanttSidebar>
   );
@@ -484,17 +509,16 @@ const MaintainedHorizonWarningBadge: React.FC<{
 };
 
 const BayLaneRows: React.FC<{
-  bays: ProjectedBayQueue[];
-}> = ({ bays }) => (
+  layout: BoardGanttLayout;
+}> = ({ layout }) => (
   <div className="pointer-events-none absolute top-(--gantt-header-height) left-0 z-10 w-full">
-    {bays.map((bay) => (
-      <div
-        className="border-border/50 border-b"
-        key={bay.id}
-        style={{
-          height: 'var(--gantt-row-height)',
-        }}
-      />
+    {layout.groups.map((group) => (
+      <div key={group.department}>
+        <div className="border-border/50 border-b bg-muted/20" style={{ height: DEPARTMENT_HEADER_HEIGHT }} />
+        {group.bays.map((bay) => (
+          <div className="border-border/50 border-b" key={bay.id} style={{ height: BAY_ROW_HEIGHT }} />
+        ))}
+      </div>
     ))}
   </div>
 );
@@ -514,6 +538,7 @@ const findNextBaySlotId = (slots: readonly Pick<ProjectedJobSlot, 'id' | 'state'
 };
 
 const BaySlotBars: React.FC<{
+  bayTopById: ReadonlyMap<string, number>;
   bays: ProjectedBayQueue[];
   canEditScheduleByBayId: ReadonlySet<string>;
   today: DateOnlyIso;
@@ -528,6 +553,7 @@ const BaySlotBars: React.FC<{
   optimisticResizeDaysBySlotId: Record<string, number>;
   workingCalendarsByBayId: ReadonlyMap<string, WorkingCalendar>;
 }> = ({
+  bayTopById,
   bays,
   canEditScheduleByBayId,
   filter,
@@ -547,7 +573,7 @@ const BaySlotBars: React.FC<{
 
   return (
     <div className="pointer-events-none absolute top-0 left-0 z-20">
-      {bays.flatMap((bay, bayIndex) => {
+      {bays.flatMap((bay) => {
         const nextSlotId = findNextBaySlotId(bay.slots);
 
         return bay.slots.map((slot, slotIndex) => (
@@ -574,7 +600,7 @@ const BaySlotBars: React.FC<{
             onResize={onResizeSlot}
             onSelectSlot={onSelectSlot}
             optimisticDurationDays={optimisticResizeDaysBySlotId[slot.id] ?? null}
-            rowTop={gantt.headerHeight + bayIndex * gantt.rowHeight}
+            rowTop={gantt.headerHeight + (bayTopById.get(bay.id) ?? 0)}
             slot={slot}
             slotIndex={slotIndex}
             slotCount={bay.slots.length}

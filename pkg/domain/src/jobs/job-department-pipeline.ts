@@ -7,9 +7,9 @@ export type JobDepartmentPipelineStep = {
 
 // Display order only. Departments no longer imply persisted per-job stage rows.
 export const JOB_DEPARTMENT_PIPELINE = [
-  { sequence: 1, department: 'procurement' },
-  { sequence: 2, department: 'supply' },
-  { sequence: 3, department: 'fabrication' },
+  { sequence: 1, department: 'fabrication' },
+  { sequence: 2, department: 'procurement' },
+  { sequence: 3, department: 'supply' },
   { sequence: 4, department: 'paint' },
   { sequence: 5, department: 'assembly' },
   { sequence: 6, department: 'workshop' },

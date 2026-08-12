@@ -144,10 +144,10 @@ describe('selectVisibleProjectedBayQueues', () => {
     nextAvailableDate: '2026-06-05',
   });
 
-  it('returns the same list when no visible ids are supplied', () => {
+  it('sorts all lanes into department order when no visible ids are supplied', () => {
     const bays = [paint, fabricationB, fabricationA];
 
-    expect(selectVisibleProjectedBayQueues(bays, undefined)).toBe(bays);
+    expect(selectVisibleProjectedBayQueues(bays, undefined)).toEqual([fabricationA, fabricationB, paint]);
   });
 
   it('filters to the selected ids and sorts them into department order', () => {

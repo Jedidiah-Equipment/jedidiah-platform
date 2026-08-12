@@ -69,16 +69,15 @@ export function deriveGhostProjectedBayQueues({
 }
 
 /**
- * Lane filter for the embedded Gantt: `undefined` keeps the page behavior
- * (same reference, all Bays); otherwise only the given Bays render, sorted
- * into Department pipeline order. Ids without a matching Bay are ignored.
+ * Lane filter for the Gantt: every surface follows Department pipeline order;
+ * embedded surfaces can additionally limit the visible Bays. Unknown ids are ignored.
  */
 export function selectVisibleProjectedBayQueues(
   bays: ProjectedBayQueue[],
   visibleBayIds: readonly UUID[] | undefined,
 ): ProjectedBayQueue[] {
   if (visibleBayIds === undefined) {
-    return bays;
+    return sortBaysByDepartmentPipeline(bays);
   }
 
   const visibleIds = new Set<string>(visibleBayIds);

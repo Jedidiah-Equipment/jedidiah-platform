@@ -15,11 +15,11 @@ import { getJobGanttOffset, getJobGanttWidth } from './job-gantt-geometry.js';
  */
 export const BoardGhostBars: React.FC<{
   bays: ProjectedBayQueue[];
+  bayTopById: ReadonlyMap<string, number>;
   ghosts: GhostSlot[];
   label: string;
-}> = ({ bays, ghosts, label }) => {
+}> = ({ bays, bayTopById, ghosts, label }) => {
   const gantt = useGanttContext();
-  const rowIndexByBayId = new Map(bays.map((bay, index) => [bay.id, index]));
   const bayNamesById = new Map(bays.map((bay) => [bay.id, bay.name]));
 
   useGhostStartDateScroll(ghosts);
@@ -27,16 +27,16 @@ export const BoardGhostBars: React.FC<{
   return (
     <div aria-hidden className="pointer-events-none absolute top-0 left-0 z-30">
       {ghosts.map((ghost) => {
-        const rowIndex = rowIndexByBayId.get(ghost.bayId);
+        const bayTop = bayTopById.get(ghost.bayId);
 
-        if (rowIndex === undefined) {
+        if (bayTop === undefined) {
           return null;
         }
 
         const bayName = bayNamesById.get(ghost.bayId);
         const left = getJobGanttOffset(ghost.startDate, gantt);
         const width = Math.max(getJobGanttWidth(ghost.startDate, ghost.endDate, gantt), 28);
-        const top = gantt.headerHeight + rowIndex * gantt.rowHeight + (gantt.rowHeight - SLOT_CARD_HEIGHT) / 2;
+        const top = gantt.headerHeight + bayTop + (gantt.rowHeight - SLOT_CARD_HEIGHT) / 2;
 
         return (
           <div

@@ -11,7 +11,7 @@ import {
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
-import { offeringAvatarChrome } from '@/components/OfferingAvatar';
+import { offeringAvatarProps } from '@/components/OfferingAvatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { getJobSchedulePresentation, type JobCatalogSort, type JobCompletionFilter } from '@/lib/job-catalog';
@@ -81,7 +81,7 @@ export function JobCatalogCard({ job }: { job: JobSummary }) {
   const displayName = getJobDisplayName(job);
   const owner = job.customerCompanyName ?? 'Stock';
   const serial = job.productUnit?.productSerialNumber;
-  const avatar = offeringAvatarChrome(getJobOfferingKind(job));
+  const avatar = offeringAvatarProps(getJobOfferingKind(job));
 
   return (
     <CatalogListCard

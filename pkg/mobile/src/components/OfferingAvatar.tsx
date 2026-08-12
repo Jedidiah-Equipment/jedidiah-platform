@@ -1,4 +1,5 @@
 import { quoteKindColorClassNames } from '@pkg/domain';
+import type { QuoteKind } from '@pkg/schema';
 import type { Icon as TablerIcon } from '@tabler/icons-react-native';
 import { IconPackage, IconTools } from '@tabler/icons-react-native';
 import type { ReactNode } from 'react';
@@ -6,10 +7,7 @@ import type { ReactNode } from 'react';
 import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/ui/icon';
 
-/** What a Quote or Job sells, when there is no Product photo to show for it. */
-type OfferingKind = 'custom' | 'product';
-
-const offeringKindIcons: Record<OfferingKind, TablerIcon> = {
+const offeringKindIcons: Record<QuoteKind, TablerIcon> = {
   custom: IconTools,
   product: IconPackage,
 };
@@ -18,7 +16,7 @@ const offeringKindIcons: Record<OfferingKind, TablerIcon> = {
  * Tile tint and icon for an offering avatar, for surfaces that build their own `Avatar` — including
  * `CatalogListCard`, which owns its avatar's size and shape. Offerings never fall back to initials.
  */
-export function offeringAvatarChrome(kind: OfferingKind, iconSize = 22): { className: string; fallback: ReactNode } {
+export function offeringAvatarProps(kind: QuoteKind, iconSize = 22): { className: string; fallback: ReactNode } {
   const { chip, text } = quoteKindColorClassNames[kind];
 
   return {
@@ -36,11 +34,11 @@ export function OfferingAvatar({
 }: {
   className?: string;
   iconSize?: number;
-  kind: OfferingKind;
+  kind: QuoteKind;
   name: string;
   uri: string | null | undefined;
 }) {
-  const chrome = offeringAvatarChrome(kind, iconSize);
+  const offering = offeringAvatarProps(kind, iconSize);
 
-  return <Avatar className={`${className} ${chrome.className}`} fallback={chrome.fallback} name={name} uri={uri} />;
+  return <Avatar className={`${className} ${offering.className}`} fallback={offering.fallback} name={name} uri={uri} />;
 }

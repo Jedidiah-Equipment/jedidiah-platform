@@ -1,3 +1,4 @@
+import type { QuoteKind } from '@pkg/schema';
 import { View } from 'react-native';
 
 import { CustomerName } from '@/components/CustomerName';
@@ -7,7 +8,7 @@ import { Text } from '@/components/ui/text';
 export type JobWorkCardProps = {
   customerCompanyName: string | null;
   jobDisplayName: string;
-  offeringKind: 'product' | 'custom';
+  offeringKind: QuoteKind;
   productSerialNumber: string | null;
   productThumbnailDataUrl: string | null;
 };

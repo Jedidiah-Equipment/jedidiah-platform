@@ -11,7 +11,7 @@ import {
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
-import { offeringAvatarChrome } from '@/components/OfferingAvatar';
+import { offeringAvatarProps } from '@/components/OfferingAvatar';
 import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -114,7 +114,7 @@ export function QuoteCatalogCard({ quote }: { quote: QuoteSummary }) {
   const router = useRouter();
   const offering = quote.kind === 'custom' ? quote.workTitle : (quote.product?.name ?? 'Product unavailable');
   const total = pricePersistedQuote(quote).total;
-  const avatar = offeringAvatarChrome(quote.kind);
+  const avatar = offeringAvatarProps(quote.kind);
 
   return (
     <CatalogListCard

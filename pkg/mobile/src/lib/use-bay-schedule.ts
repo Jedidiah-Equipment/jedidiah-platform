@@ -8,7 +8,7 @@ import {
   isJobCancelled,
   listUpcomingWorkSlots,
 } from '@pkg/domain';
-import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
+import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot, QuoteKind } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
@@ -22,7 +22,7 @@ export type BayQueueActiveJob = ActiveJobProgress & {
   slotId: string;
   jobCode: string;
   jobDisplayName: string;
-  offeringKind: 'product' | 'custom';
+  offeringKind: QuoteKind;
   productThumbnailDataUrl: string | null;
   productSerialNumber: string | null;
   customerCompanyName: string | null;
@@ -41,7 +41,7 @@ export type BaySlotDetail = {
   jobCode: string;
   quoteCode: string;
   jobDisplayName: string;
-  offeringKind: 'product' | 'custom';
+  offeringKind: QuoteKind;
   productThumbnailDataUrl: string | null;
   productSerialNumber: string | null;
   customerCompanyName: string | null;
@@ -66,7 +66,7 @@ export type BayQueueTimelineSlot = {
   slotId: string;
   jobCode: string;
   jobDisplayName: string;
-  offeringKind: 'product' | 'custom';
+  offeringKind: QuoteKind;
   productThumbnailDataUrl: string | null;
   /** The first booked working day; the Slot's queue span can open on an off-day. */
   firstWorkDay: DateOnlyIso;

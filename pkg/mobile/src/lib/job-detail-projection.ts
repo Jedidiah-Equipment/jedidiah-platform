@@ -14,7 +14,7 @@ import {
   listNextWorkSlots,
   resolveJobStatusTone,
 } from '@pkg/domain';
-import type { BayOperator, BoardListResult, DateOnlyIso, Department, JobDetail, UUID } from '@pkg/schema';
+import type { BayOperator, BoardListResult, DateOnlyIso, Department, JobDetail, QuoteKind, UUID } from '@pkg/schema';
 
 /** One Bay on the Job's production-route timeline, projected from its Work Slot. */
 export type JobRouteStopCard = JobRouteStop & {
@@ -36,7 +36,7 @@ export type JobDetailReadyState = {
   jobCode: string;
   quoteCode: string;
   jobDisplayName: string;
-  offeringKind: 'product' | 'custom';
+  offeringKind: QuoteKind;
   productSerialNumber: string | null;
   productThumbnailDataUrl: string | null;
   customerCompanyName: string | null;

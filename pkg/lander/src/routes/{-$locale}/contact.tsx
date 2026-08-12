@@ -17,7 +17,7 @@ import {
   IconPhone,
 } from '@tabler/icons-react';
 import { createFileRoute } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useRef, useState } from 'react';
 
 import { HERO_BACKDROP_IMAGE } from '../../assets/images.js';
 import { PageHero } from '../../components/page-hero.js';
@@ -95,12 +95,23 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
   const locale = useLocale();
   const [status, setStatus] = useState<FormStatus>('idle');
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<RequiredField, string>>>({});
+  const started = useRef(false);
 
   const errorMessages: Record<RequiredField, string> = {
     name: m.contact.validation.enterName,
     email: m.contact.validation.enterEmail,
     message: m.contact.validation.enterMessage,
   };
+
+  // Fires once when the visitor first touches any control, so form starts become a countable event rather
+  // than a session-replay-only signal. The contract carries no field values.
+  function handleFormStart() {
+    if (started.current) {
+      return;
+    }
+    started.current = true;
+    captureEvent('contact_form_started', {});
+  }
 
   function clearField(field: RequiredField) {
     setFieldErrors((current) => {
@@ -193,7 +204,7 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
       <h2 className="m-0 mb-7 font-display text-[34px] font-extrabold uppercase tracking-[0.5px] text-ink">
         {m.contact.formTitle}
       </h2>
-      <form onSubmit={handleSubmit} noValidate>
+      <form onSubmit={handleSubmit} onFocus={handleFormStart} noValidate>
         <div className="mb-5 grid grid-cols-2 gap-5 max-xs:grid-cols-1">
           <div>
             <label htmlFor="contact-name" className={LABEL_CLASS}>
@@ -204,6 +215,9 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
               name="name"
               type="text"
               required
+              autoComplete="name"
+              autoCapitalize="words"
+              enterKeyHint="next"
               aria-invalid={Boolean(fieldErrors.name)}
               aria-describedby={fieldErrors.name ? 'contact-name-error' : undefined}
               onChange={() => clearField('name')}
@@ -220,6 +234,9 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
               id="contact-phone"
               name="phone"
               type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              enterKeyHint="next"
               placeholder={m.contact.phonePlaceholder}
               className={FIELD_CLASS}
             />
@@ -235,6 +252,9 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
               name="email"
               type="email"
               required
+              autoComplete="email"
+              inputMode="email"
+              enterKeyHint="next"
               aria-invalid={Boolean(fieldErrors.email)}
               aria-describedby={fieldErrors.email ? 'contact-email-error' : undefined}
               onChange={() => clearField('email')}

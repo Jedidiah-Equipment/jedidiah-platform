@@ -26,6 +26,7 @@ export type AnalyticsEventRegistry = {
   product_viewed: { modelCode: string; range: string; variant: string | null };
   product_shared: { modelCode: string; method: 'native' | 'clipboard' };
   brochure_downloaded: { modelCode: string };
+  contact_form_started: Record<string, never>;
   contact_submitted: { equipment: string };
   contact_submit_blocked: { missingFields: string[] };
   contact_submit_failed: { errorCategory: 'network' | 'server' };

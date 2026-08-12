@@ -795,6 +795,9 @@ export const JobCancelInput = z
   .object({
     cancellationReason: JobCancellationReason,
     id: UUID,
+    // Only a Stock Build's Unit can go this way. While a sale still stands its machine belongs to the
+    // Quote, which may yet start a replacement Job on the same Unit.
+    removeUnit: z.boolean().default(false),
   })
   .strict();
 

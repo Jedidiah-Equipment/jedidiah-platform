@@ -47,6 +47,7 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
+import { getJobCancellationPlan } from '../cancellation/cancellation-plan-service.js';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
@@ -364,7 +365,7 @@ describe('createJob', () => {
     await cancelJob({
       actorUserId,
       db: context.db,
-      input: { cancellationReason: 'Raised with the wrong build details', id: first.id },
+      input: { cancellationReason: 'Raised with the wrong build details', id: first.id, removeUnit: false },
     });
     await expect(
       updateQuote({
@@ -384,7 +385,7 @@ describe('createJob', () => {
     await cancelJob({
       actorUserId,
       db: context.db,
-      input: { cancellationReason: 'Replacement was also raised incorrectly', id: replacement.id },
+      input: { cancellationReason: 'Replacement was also raised incorrectly', id: replacement.id, removeUnit: false },
     });
     const third = await createJob({
       actorUserId,
@@ -418,7 +419,7 @@ describe('createJob', () => {
     await cancelJob({
       actorUserId,
       db: context.db,
-      input: { cancellationReason: 'Raised against the wrong machine', id: cancelled.id },
+      input: { cancellationReason: 'Raised against the wrong machine', id: cancelled.id, removeUnit: false },
     });
     await transferProductUnitOwnership({
       actorUserId,
@@ -457,7 +458,7 @@ describe('createJob', () => {
     await cancelJob({
       actorUserId,
       db: context.db,
-      input: { cancellationReason: 'Raised against the wrong machine', id: cancelled.id },
+      input: { cancellationReason: 'Raised against the wrong machine', id: cancelled.id, removeUnit: false },
     });
     await transferProductUnitOwnership({
       actorUserId,
@@ -3271,7 +3272,11 @@ describe('cancelJob', () => {
     await context.db.update(jobs).set({ completedOn: '2026-06-04' }).where(eq(jobs.id, job.id));
 
     await expect(
-      cancelJob({ actorUserId, db: context.db, input: { cancellationReason: 'Too late', id: job.id } }),
+      cancelJob({
+        actorUserId,
+        db: context.db,
+        input: { cancellationReason: 'Too late', id: job.id, removeUnit: false },
+      }),
     ).rejects.toMatchObject({ code: 'job.already_completed', metadata: { id: job.id } });
   });
 
@@ -3280,8 +3285,88 @@ describe('cancelJob', () => {
     await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, job.id));
 
     await expect(
-      cancelJob({ actorUserId, db: context.db, input: { cancellationReason: 'Again', id: job.id } }),
+      cancelJob({ actorUserId, db: context.db, input: { cancellationReason: 'Again', id: job.id, removeUnit: false } }),
     ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+  });
+
+  // A Stock Build has no sale behind it, so the machine it minted has nobody else to belong to. This
+  // is the only cancellation that may take a Unit with it.
+  test('removes the Stock Build Unit when asked, leaving the Job holding neither', async ({ context }) => {
+    const stockBuild = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id },
+    });
+    const unitId = stockBuild.productUnit?.id;
+    if (!unitId) throw new Error('Stock Build did not mint a Product Unit');
+
+    await cancelJob({
+      actorUserId,
+      db: context.db,
+      input: JobCancelInput.parse({ cancellationReason: 'Never started', id: stockBuild.id, removeUnit: true }),
+    });
+
+    await expect(context.db.$count(productUnits, eq(productUnits.id, unitId))).resolves.toBe(0);
+    const [cancelled] = await context.db.select().from(jobs).where(eq(jobs.id, stockBuild.id));
+    expect(cancelled).toMatchObject({ productUnitId: null, quoteId: null });
+    expect(cancelled?.cancelledAt).toBeInstanceOf(Date);
+  });
+
+  test('leaves the Stock Build Unit standing when removal is not asked for', async ({ context }) => {
+    const stockBuild = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id },
+    });
+    const unitId = stockBuild.productUnit?.id;
+    if (!unitId) throw new Error('Stock Build did not mint a Product Unit');
+
+    await cancelJob({
+      actorUserId,
+      db: context.db,
+      input: JobCancelInput.parse({ cancellationReason: 'Deferred', id: stockBuild.id }),
+    });
+
+    await expect(context.db.$count(productUnits, eq(productUnits.id, unitId))).resolves.toBe(1);
+  });
+
+  test('plans a Stock Build cancellation with its machine already ticked', async ({ context }) => {
+    const stockBuild = await createJob({
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], buildSpecAssemblyIds: [], productId: context.catalog.product.id },
+    });
+
+    await expect(getJobCancellationPlan({ db: context.db, id: stockBuild.id })).resolves.toMatchObject({
+      unit: { canRemove: true, ownerName: null, removeByDefault: true },
+    });
+  });
+
+  test('offers no machine when a Quote still stands behind the Job', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    await expect(getJobCancellationPlan({ db: context.db, id: job.id })).resolves.toMatchObject({ unit: null });
+  });
+
+  // The sale still stands, and the #1195 replacement Job reuses this very Unit. Removing it here would
+  // leave the Quote pointing at a machine that no longer exists.
+  test('refuses to remove the Unit of a Job whose Quote still stands', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const unitId = job.productUnit?.id;
+    if (!unitId) throw new Error('Build-to-order Job did not mint a Product Unit');
+
+    await expect(
+      cancelJob({
+        actorUserId,
+        db: context.db,
+        input: { cancellationReason: 'Wrong spec', id: job.id, removeUnit: true },
+      }),
+    ).rejects.toMatchObject({ code: 'job.unit_removal_denied', metadata: { id: job.id } });
+
+    // Refused whole: the Job is still live and the machine is still there.
+    const [untouched] = await context.db.select().from(jobs).where(eq(jobs.id, job.id));
+    expect(untouched?.cancelledAt).toBeNull();
+    await expect(context.db.$count(productUnits, eq(productUnits.id, unitId))).resolves.toBe(1);
   });
 });
 

@@ -59,22 +59,20 @@ export class ProductUnitTransferBackdatedError extends Error {
 }
 
 /** Why a Unit cannot be removed. Each reason names something that would be wrong afterwards. */
-export type ProductUnitInUseReason = 'live-job' | 'built' | 'owned' | 'quoted' | 'job-without-quote' | 'referenced';
+export type ProductUnitInUseReason = 'live-job' | 'built' | 'quoted' | 'referenced';
 
 const productUnitInUseMessages = {
   'live-job': 'This unit has a Job that is still live, so the machine is being built or has been.',
   built: 'This unit has a Job that was completed, so the machine was built and its record stands.',
-  owned: 'This unit belongs to a customer, so the machine exists and cannot be removed.',
-  quoted: 'This unit is named on a Quote, which would be left pointing at nothing.',
-  'job-without-quote':
-    'This unit carries a cancelled Job with no Quote behind it, which would be left describing no work at all.',
+  quoted: 'This unit is named on a Quote that still stands, which would be left pointing at nothing.',
   // The reasons above each name a holder; this one is the foreign key catching a holder they do not know.
   referenced: 'Something still references this unit, so it cannot be removed.',
 } as const satisfies Record<ProductUnitInUseReason, string>;
 
 /**
  * Removal only ever reaches a machine that never came to exist, so every way a Unit can still be real —
- * a live build, an Owner, a Quote naming it — refuses here rather than at a foreign key.
+ * a live build, a build that finished, a Quote still selling it — refuses here rather than at a foreign
+ * key. An Owner does not: a build-to-order phantom is owned from the moment it is minted.
  */
 export class ProductUnitInUseError extends Error {
   readonly code = 'product_unit.in_use';

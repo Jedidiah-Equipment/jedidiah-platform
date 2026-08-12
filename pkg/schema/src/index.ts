@@ -5,6 +5,7 @@ export * from './ai/reasoning-effort.js';
 export * from './audit/audit.js';
 export * from './auth/auth-id.js';
 export * from './auth/authorization.js';
+export * from './cancellation/cancellation-plan.js';
 export * from './changelog/changelog.js';
 export * from './common/api-error.js';
 export * from './common/date.js';

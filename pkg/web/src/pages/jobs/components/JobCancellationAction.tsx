@@ -1,11 +1,12 @@
 import { isJobCancellable } from '@pkg/domain';
 import { JobCancellationReason, type JobDetail } from '@pkg/schema';
 import { IconLoader2, IconTrash } from '@tabler/icons-react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { CancellationChoice, describeSlotRelease, describeUnit } from '@/components/common/cancellation.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
@@ -36,10 +37,28 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
   const [reason, setReason] = useState('');
+  const [removeUnit, setRemoveUnit] = useState(false);
+
+  const planQuery = useQuery({ ...trpc.jobs.cancellationPlan.queryOptions({ id: job.id }), enabled: isOpen });
+  const plan = planQuery.data;
+  const [defaultsApplied, setDefaultsApplied] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) setReason('');
+    if (!isOpen) {
+      setReason('');
+      setRemoveUnit(false);
+      setDefaultsApplied(false);
+    }
   }, [isOpen]);
+
+  // Whether the shop has already touched this build is the server's answer, not the browser's — and it
+  // seeds the box once, so a refetch cannot re-tick a removal the person cleared.
+  useEffect(() => {
+    if (plan && !defaultsApplied) {
+      setRemoveUnit(plan.unit?.removeByDefault ?? false);
+      setDefaultsApplied(true);
+    }
+  }, [defaultsApplied, plan]);
 
   const cancelJobMutation = useMutation(
     trpc.jobs.cancel.mutationOptions({
@@ -61,6 +80,11 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
   }
 
   const parsedReason = JobCancellationReason.safeParse(reason);
+  // Only a Stock Build's machine is ever on offer: while a Quote stands, the Unit is the sale's, and a
+  // replacement Job will reuse it. The server refuses the request either way.
+  const unitOnOffer = plan?.unit?.canRemove === true ? plan.unit : null;
+  // Until the plan lands the dialog cannot say what cancelling releases, so it cannot be confirmed.
+  const isReady = plan !== undefined;
 
   return (
     <div className="mt-4 flex justify-end border-t pt-4">
@@ -73,13 +97,24 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
           <DialogHeader>
             <DialogTitle>Cancel job</DialogTitle>
             <DialogDescription>
-              This permanently cancels {job.code}. {describeSlotRelease(countScheduledSlots(job))} Stock already checked
-              out to it stays on its ledger.{' '}
+              This permanently cancels {job.code}.{' '}
+              {plan ? `${describeSlotRelease(plan.releasableSlotCount)} ` : 'Checking what this releases… '}
+              Stock already checked out to it stays on its ledger.{' '}
               {/* A Stock Build has no sale behind it, so there is no Quote to reassure anyone about. */}
               {job.quoteCode === null ? null : 'The quote behind this Job is left alone. '}
               This cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          {unitOnOffer ? (
+            <CancellationChoice
+              checked={removeUnit}
+              description={describeUnit(unitOnOffer)}
+              disabled={cancelJobMutation.isPending}
+              id="job-remove-unit"
+              label={`Also remove unit ${unitOnOffer.productSerialNumber}`}
+              onCheckedChange={setRemoveUnit}
+            />
+          ) : null}
           <Field>
             <FieldLabel htmlFor="job-cancellation-reason">Cancellation reason</FieldLabel>
             <Textarea
@@ -97,10 +132,14 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
               Keep job
             </DialogClose>
             <Button
-              disabled={cancelJobMutation.isPending || !parsedReason.success}
+              disabled={!isReady || cancelJobMutation.isPending || !parsedReason.success}
               onClick={() => {
                 if (parsedReason.success) {
-                  cancelJobMutation.mutate({ cancellationReason: parsedReason.data, id: job.id });
+                  cancelJobMutation.mutate({
+                    cancellationReason: parsedReason.data,
+                    id: job.id,
+                    removeUnit: unitOnOffer !== null && removeUnit,
+                  });
                 }
               }}
               type="button"
@@ -115,26 +154,3 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
     </div>
   );
 };
-
-/** Slots that have not started yet are the only ones cancellation gives back. */
-function countScheduledSlots(job: JobDetail): number {
-  return job.schedule.reduce(
-    (total, department) =>
-      total +
-      department.bays.reduce(
-        (bayTotal, bay) => bayTotal + bay.slots.filter((slot) => slot.state === 'scheduled').length,
-        0,
-      ),
-    0,
-  );
-}
-
-function describeSlotRelease(scheduledSlots: number): string {
-  if (scheduledSlots === 0) {
-    return 'It has no upcoming slots to release, and any work already done or under way stays on record.';
-  }
-
-  const slotLabel = scheduledSlots === 1 ? 'slot' : 'slots';
-
-  return `${scheduledSlots} upcoming ${slotLabel} ${scheduledSlots === 1 ? 'is' : 'are'} removed from bay schedules; work already done or under way stays on record.`;
-}

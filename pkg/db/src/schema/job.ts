@@ -161,11 +161,13 @@ export const jobs = pgTable(
       'job_cancellation_reason_shape',
       sql`${table.cancellationReason} IS NULL OR (${table.cancelledAt} IS NOT NULL AND length(trim(${table.cancellationReason})) > 0)`,
     ),
-    // Every Job is either about a machine or about a sale, and usually both: a Stock Build has only a
-    // Unit, a Custom Job only a Quote, and a Job with neither describes no work at all.
+    // Every live Job is either about a machine or about a sale, and usually both: a Stock Build has
+    // only a Unit, a Custom Job only a Quote. A cancelled Job may hold neither: Unit Removal detaches
+    // the machine from the builds that were abandoned, and the Job stays as the record that someone
+    // once meant to build it.
     check(
       'job_product_unit_or_quote_required',
-      sql`${table.productUnitId} IS NOT NULL OR ${table.quoteId} IS NOT NULL`,
+      sql`${table.productUnitId} IS NOT NULL OR ${table.quoteId} IS NOT NULL OR ${table.cancelledAt} IS NOT NULL`,
     ),
     // The Unit's build state is a correlated lookup of its Jobs, so this FK is read per Unit row.
     index('job_product_unit_id_idx').on(table.productUnitId),

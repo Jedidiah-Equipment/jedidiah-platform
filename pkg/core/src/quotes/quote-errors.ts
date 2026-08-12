@@ -65,6 +65,33 @@ export class QuoteAlreadyCancelledError extends Error {
   }
 }
 
+/**
+ * Cancelling a Quote nobody has acted on is undoing paperwork, and whoever may edit the Quote may undo
+ * it. Once it is Locked there is an accepted sale, a build under way or a machine allocated behind it,
+ * and unwinding those is the administrator's call rather than the salesperson's.
+ */
+export class QuoteCancelDeniedError extends Error {
+  readonly code = 'quote.cancel_denied';
+
+  constructor() {
+    super('This quote has been accepted or has started a job, so only an administrator can cancel it.');
+    this.name = 'QuoteCancelDeniedError';
+  }
+}
+
+/**
+ * Cancelling decides what becomes of the Job and the machine underneath, so it is its own act with its
+ * own surface. A status edit that slipped through would cancel the paper and leave both standing.
+ */
+export class QuoteCancelNotAnUpdateError extends Error {
+  readonly code = 'quote.cancel_not_an_update';
+
+  constructor() {
+    super('Cancelling a quote also settles its job and machine, so it cannot be done by changing the status.');
+    this.name = 'QuoteCancelNotAnUpdateError';
+  }
+}
+
 export class QuoteAllocationConflictError extends Error {
   readonly code = 'quote.allocation_conflict';
 
@@ -95,6 +122,8 @@ export class QuoteProductBayAvailabilityNotApplicableError extends Error {
 export type QuoteCoreError =
   | QuoteAlreadyCancelledError
   | QuoteAllocationConflictError
+  | QuoteCancelDeniedError
+  | QuoteCancelNotAnUpdateError
   | QuoteCustomSelectedAssembliesError
   | QuoteDocumentGenerationNotAllowedError
   | QuoteProductBayAvailabilityNotApplicableError
@@ -108,6 +137,8 @@ export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
   return (
     error instanceof QuoteAlreadyCancelledError ||
     error instanceof QuoteAllocationConflictError ||
+    error instanceof QuoteCancelDeniedError ||
+    error instanceof QuoteCancelNotAnUpdateError ||
     error instanceof QuoteDocumentGenerationNotAllowedError ||
     error instanceof QuoteProductBayAvailabilityNotApplicableError ||
     error instanceof QuoteCustomSelectedAssembliesError ||

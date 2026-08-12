@@ -50,6 +50,7 @@ function QuoteDetailsData({ id }: { id: UUID }) {
   const quoteQuery = useQuery(quoteOptions);
   const priorityQuery = useQuery(trpc.quotes.priorityList.queryOptions(undefined, { enabled: readAccess.can }));
   const updateQuote = useMutation(trpc.quotes.update.mutationOptions());
+  const cancelQuote = useMutation(trpc.quotes.cancel.mutationOptions());
 
   if (readAccess.isPending) return <StateMessage loading message="Loading quote…" />;
   if (!readAccess.can) return <StateMessage message="You do not have access to this Quote." />;
@@ -69,10 +70,22 @@ function QuoteDetailsData({ id }: { id: UUID }) {
     return updated;
   };
 
+  // Its own mutation, never an autosaved status: cancelling settles the Quote's Job and machine, and
+  // the update path refuses to be what cancels.
+  const cancel = async (cancellationReason: string) => {
+    await cancelQuote.mutateAsync({ cancellationReason, id: quote.id });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: trpc.quotes.get.pathKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.quotes.list.pathKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.quotes.priorityList.pathKey() }),
+    ]);
+  };
+
   return (
     <QuoteEditor
       canUpdate={updateAccess.can}
       key={quote.id}
+      onCancel={cancel}
       onReconcile={async () => (await quoteQuery.refetch()).data}
       onSave={save}
       priorityQuote={priorityQuote}
@@ -83,11 +96,13 @@ function QuoteDetailsData({ id }: { id: UUID }) {
 
 function QuoteEditor({
   canUpdate,
+  onCancel,
   onReconcile,
   onSave,
   priorityQuote,
   quote,
 }: {
+  onCancel: (cancellationReason: string) => Promise<void>;
   canUpdate: boolean;
   onReconcile: () => Promise<QuoteDetail | undefined>;
   onSave: (input: QuoteUpdateInput) => Promise<QuoteDetail>;
@@ -413,11 +428,14 @@ function QuoteEditor({
       <QuoteSummaryDrawer onClose={() => setSummaryOpen(false)} open={summaryOpen} quote={quote} summary={summary} />
       <QuoteCancellationConfirmation
         onClose={() => setCancelConfirmationOpen(false)}
-        onConfirm={(cancellationReason) => {
-          form.setFieldValue('cancellationReason', cancellationReason);
-          form.setFieldValue('status', 'cancelled');
+        onConfirm={async (cancellationReason) => {
           setCancelConfirmationOpen(false);
-          autosave.commit();
+          try {
+            await onCancel(cancellationReason);
+            showToast('success', `${quote.code} cancelled`);
+          } catch {
+            showToast('error', 'Unable to cancel quote.');
+          }
         }}
         open={cancelConfirmationOpen}
         quote={quote}

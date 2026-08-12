@@ -36,7 +36,8 @@ export function QuoteCancellationConfirmation({
         </Text>
         {quote.job ? (
           <Text className="mt-2 text-sm leading-5 text-danger">
-            This will also cancel Job {quote.job.jobCode} and remove its remaining scheduled slots.
+            This will also cancel Job {quote.job.jobCode} and remove its remaining scheduled slots. The machine it was
+            building stays on the books — remove it on the web if it was never made.
           </Text>
         ) : null}
         <View className="mt-4 gap-2">

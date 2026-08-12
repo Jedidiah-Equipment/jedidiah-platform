@@ -349,13 +349,17 @@ describe('Quote cancellation inputs', () => {
     });
   });
 
-  it('requires and trims the dedicated cancellation reason', () => {
+  // The cascade defaults are the conservative ones: the Job has always gone with the sale, and
+  // nothing is ever destroyed unless the person cancelling said so.
+  it('requires and trims the reason, cancels the Job by default, and removes nothing', () => {
     const id = '550e8400-e29b-41d4-a716-446655440010';
 
     expect(() => QuoteCancelInput.parse({ id, cancellationReason: '   ' })).toThrow('Cancellation reason is required');
     expect(QuoteCancelInput.parse({ id, cancellationReason: '  Budget withdrawn  ' })).toEqual({
-      id,
+      cancelJob: true,
       cancellationReason: 'Budget withdrawn',
+      id,
+      removeUnit: false,
     });
   });
 });

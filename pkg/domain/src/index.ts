@@ -67,3 +67,4 @@ export * from './quotes/work-item-departments.js';
 export * from './theme/index.js';
 export * from './units/product-unit-build-state.js';
 export * from './units/product-unit-ownership.js';
+export * from './units/product-unit-removal-offer.js';

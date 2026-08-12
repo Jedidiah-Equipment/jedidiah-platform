@@ -225,7 +225,7 @@ describe('productUnits.remove', () => {
   test('reports a machine that is still real as a conflict, saying what holds it', async ({ context }) => {
     await expect(
       context.createCaller(mockSession('admin')).productUnits.remove({ id: context.seed.unitId }),
-    ).rejects.toMatchObject({ code: 'CONFLICT', message: expect.stringContaining('belongs to a customer') });
+    ).rejects.toMatchObject({ code: 'CONFLICT', message: expect.stringContaining('Job that is still live') });
   });
 });
 

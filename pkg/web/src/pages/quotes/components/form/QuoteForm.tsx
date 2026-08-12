@@ -34,7 +34,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useCan } from '@/hooks/use-access.js';
-import { getQuoteCancellationDialogCopy, QuoteCancellationDialog } from '../QuoteCancellationAction.js';
+import { QuoteCancellationDialog } from '../QuoteCancellationAction.js';
 import { getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput, toQuoteWorkItemInput } from '../types.js';
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
 import { QuoteDocumentsSection } from './QuoteDocumentsSection.js';
@@ -354,18 +354,9 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
           </div>
         </FieldGroup>
       </form>
-      <QuoteCancellationDialog
-        copy={getQuoteCancellationDialogCopy(quote.job)}
-        isPending={false}
-        onConfirm={(cancellationReason) => {
-          form.setFieldValue('cancellationReason', cancellationReason);
-          form.setFieldValue('status', 'cancelled');
-          setCancellationDialogOpen(false);
-          autosave.commit();
-        }}
-        onOpenChange={setCancellationDialogOpen}
-        open={cancellationDialogOpen}
-      />
+      {/* Cancelling settles the Job and the machine too, so the status field hands the whole act to
+          the one mutation that knows how rather than autosaving a status change. */}
+      <QuoteCancellationDialog onOpenChange={setCancellationDialogOpen} open={cancellationDialogOpen} quote={quote} />
     </form.AppForm>
   );
 };

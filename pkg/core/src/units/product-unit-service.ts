@@ -35,6 +35,7 @@ import {
 import { mutateEntity } from '../audit/mutate-entity.js';
 import { CustomerNotFoundError } from '../customers/customer-errors.js';
 import { jobAuditDescriptor } from '../jobs/job-audit.js';
+import { quoteAuditDescriptor } from '../quotes/quote-audit.js';
 import {
   ProductUnitInUseError,
   ProductUnitNotFoundError,
@@ -409,11 +410,13 @@ export async function updateProductUnit({
 /**
  * Deletes a Product Unit that never became a machine: a serial minted by a build that was cancelled
  * before anything was made. The Unit is otherwise permanent — it is born with its Build Job and has no
- * soft-delete — so this is the one way out, and every guard below refuses a Unit that is still real.
+ * soft-delete — so this is the one way out.
  *
- * The cancelled Jobs survive with their Quotes and history intact; only their link to the machine goes,
- * because `job.product_unit_id` restricts the delete and there is no machine left to point at. A Job
- * needs a Unit or a Quote, so one with neither left is refused rather than detached.
+ * One rule governs what survives: cancelled records stand, losing only their link to the machine.
+ * Cancelled Jobs and cancelled Quotes are both detached, and a cancelled Job left holding neither Unit
+ * nor Quote still records that someone once meant to build this. Anything not cancelled refuses —
+ * a live Job, a live Quote, a Job that ever completed. Ownership does not refuse: a phantom from a
+ * dead build-to-order sale is born owned, and only a person can say the machine never existed.
  *
  * The serial is not reclaimed. Its per-Product sequence never rewinds, so the number stays spent and no
  * later machine can be confused for this one.
@@ -427,86 +430,112 @@ export async function removeProductUnit({
   db: Db;
   id: UUID;
 }): Promise<void> {
-  await db.transaction(async (tx) => {
-    const ownership = await lockUnitForOwnership(tx, id);
+  await db.transaction((tx) => removeProductUnitWithin({ actorUserId, id, tx }));
+}
 
-    if (!ownership) {
-      throw new ProductUnitNotFoundError(id);
-    }
+/**
+ * The removal itself, for callers already holding a transaction. Cancelling a Quote or a Stock Build
+ * may take the machine with it, and those cascades must succeed or fail whole: a Unit deleted beside a
+ * cancellation that then rolled back would be the very phantom this all exists to prevent.
+ */
+export async function removeProductUnitWithin({
+  actorUserId,
+  id,
+  tx,
+}: {
+  actorUserId: AuthId;
+  id: UUID;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  // The lock still matters with ownership no longer a refusal: it serializes removal against the
+  // sale, reversal and hand-recorded transfer that could otherwise write against a vanishing Unit.
+  const ownership = await lockUnitForOwnership(tx, id);
 
-    if (ownership.currentOwnerId !== null) {
-      throw new ProductUnitInUseError(id, 'owned');
-    }
+  if (!ownership) {
+    throw new ProductUnitNotFoundError(id);
+  }
 
-    const [quote] = await tx.select({ id: quotes.id }).from(quotes).where(eq(quotes.productUnitId, id)).limit(1);
+  const unitQuotes = await tx
+    .select({ code: quotes.code, id: quotes.id, status: quotes.status })
+    .from(quotes)
+    .where(eq(quotes.productUnitId, id));
 
-    if (quote) {
+  for (const quote of unitQuotes) {
+    if (quote.status !== 'cancelled') {
       throw new ProductUnitInUseError(id, 'quoted');
     }
+  }
 
-    const unitJobs = await tx
-      .select({
-        cancelledAt: jobs.cancelledAt,
-        code: jobs.code,
-        completedOn: jobs.completedOn,
-        id: jobs.id,
-        quoteId: jobs.quoteId,
-      })
-      .from(jobs)
-      .where(eq(jobs.productUnitId, id));
+  const unitJobs = await tx
+    .select({
+      cancelledAt: jobs.cancelledAt,
+      code: jobs.code,
+      completedOn: jobs.completedOn,
+      id: jobs.id,
+    })
+    .from(jobs)
+    .where(eq(jobs.productUnitId, id));
 
-    for (const job of unitJobs) {
-      if (!isJobCancelled(job)) {
-        throw new ProductUnitInUseError(id, 'live-job');
-      }
-
-      // A Job Completion latches, so a Job cancelled after it finished still carries the date it
-      // finished on. That date is the record that metal was cut, whatever became of the sale.
-      if (job.completedOn !== null) {
-        throw new ProductUnitInUseError(id, 'built');
-      }
-
-      if (job.quoteId === null) {
-        throw new ProductUnitInUseError(id, 'job-without-quote');
-      }
+  for (const job of unitJobs) {
+    if (!isJobCancelled(job)) {
+      throw new ProductUnitInUseError(id, 'live-job');
     }
 
-    // Re-read for the whole row the audit event snapshots; the ownership handle carries only identity.
-    const [unit] = await tx.select().from(productUnits).where(eq(productUnits.id, id));
+    // A Job Completion latches, so a Job cancelled after it finished still carries the date it
+    // finished on. That date is the record that metal was cut, whatever became of the sale.
+    if (job.completedOn !== null) {
+      throw new ProductUnitInUseError(id, 'built');
+    }
+  }
 
-    if (!unit) {
-      throw new Error('Product Unit disappeared from under its own removal lock');
+  // Re-read for the whole row the audit event snapshots; the ownership handle carries only identity.
+  const [unit] = await tx.select().from(productUnits).where(eq(productUnits.id, id));
+
+  if (!unit) {
+    throw new Error('Product Unit disappeared from under its own removal lock');
+  }
+
+  // `productUnitId` is an audited field on both, so each record loses its machine against its own
+  // history — the Unit's delete event is on another entity and would leave a dangling id behind.
+  for (const quote of unitQuotes) {
+    await tx.update(quotes).set({ productUnitId: null, updatedAt: new Date() }).where(eq(quotes.id, quote.id));
+    await recordAuditEvent({
+      action: 'updated',
+      actorUserId,
+      changes: { productUnitId: { from: id, to: null } },
+      db: tx,
+      descriptor: quoteAuditDescriptor,
+      entityId: quote.id,
+      record: { code: quote.code },
+    });
+  }
+
+  for (const job of unitJobs) {
+    await tx.update(jobs).set({ productUnitId: null, updatedAt: new Date() }).where(eq(jobs.id, job.id));
+    await recordAuditEvent({
+      action: 'updated',
+      actorUserId,
+      changes: { productUnitId: { from: id, to: null } },
+      db: tx,
+      descriptor: jobAuditDescriptor,
+      entityId: job.id,
+      record: { code: job.code },
+    });
+  }
+
+  // The guards above name what is holding the Unit; the FK is the backstop that keeps a referrer
+  // added later failing closed as a refusal rather than a 500.
+  try {
+    await tx.delete(productUnits).where(eq(productUnits.id, id));
+  } catch (error) {
+    if (getForeignKeyViolationConstraint(error)) {
+      throw new ProductUnitInUseError(id, 'referenced');
     }
 
-    // `productUnitId` is an audited Job field, so each Job records losing its machine against its own
-    // history — the Unit's delete event is on another entity and would leave a dangling id behind.
-    for (const job of unitJobs) {
-      await tx.update(jobs).set({ productUnitId: null, updatedAt: new Date() }).where(eq(jobs.id, job.id));
-      await recordAuditEvent({
-        action: 'updated',
-        actorUserId,
-        changes: { productUnitId: { from: id, to: null } },
-        db: tx,
-        descriptor: jobAuditDescriptor,
-        entityId: job.id,
-        record: { code: job.code },
-      });
-    }
+    throw error;
+  }
 
-    // The guards above name what is holding the Unit; the FK is the backstop that keeps a referrer
-    // added later failing closed as a refusal rather than a 500.
-    try {
-      await tx.delete(productUnits).where(eq(productUnits.id, id));
-    } catch (error) {
-      if (getForeignKeyViolationConstraint(error)) {
-        throw new ProductUnitInUseError(id, 'referenced');
-      }
-
-      throw error;
-    }
-
-    await recordAuditDelete({ db: tx, descriptor: productUnitAuditDescriptor, actorUserId, input: unit });
-  });
+  await recordAuditDelete({ db: tx, descriptor: productUnitAuditDescriptor, actorUserId, input: unit });
 }
 
 /**

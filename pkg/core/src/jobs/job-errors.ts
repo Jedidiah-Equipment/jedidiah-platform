@@ -18,6 +18,24 @@ export class JobCreateFromQuoteDeniedError extends Error {
   }
 }
 
+/**
+ * Deciding the machine's fate belongs to whoever is ending the sale. While a Quote still stands its
+ * Job's Unit is the sale's to keep — cancelling frees the Quote to start a replacement Job on that
+ * very Unit — so only a Stock Build, which has no sale behind it, may take its Unit with it.
+ */
+export class JobUnitRemovalDeniedError extends Error {
+  readonly code = 'job.unit_removal_denied';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super(
+      'This job has a quote behind it, so its machine belongs to the sale. Cancel the quote to decide what happens to the unit.',
+    );
+    this.name = 'JobUnitRemovalDeniedError';
+    this.metadata = { id };
+  }
+}
+
 /** A Stock Build was asked for against a Product or an Optional Assembly that cannot supply it. */
 export class StockBuildDeniedError extends Error {
   readonly code = 'job.stock_build_denied';
@@ -173,6 +191,7 @@ export type JobCoreError =
   | JobNotFoundError
   | JobSlotBookingDeniedError
   | JobSlotNotFoundError
+  | JobUnitRemovalDeniedError
   | StockBuildDeniedError;
 
 export function isJobCoreError(error: unknown): error is JobCoreError {
@@ -191,6 +210,7 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobNotFoundError ||
     error instanceof JobSlotBookingDeniedError ||
     error instanceof JobSlotNotFoundError ||
+    error instanceof JobUnitRemovalDeniedError ||
     error instanceof StockBuildDeniedError
   );
 }

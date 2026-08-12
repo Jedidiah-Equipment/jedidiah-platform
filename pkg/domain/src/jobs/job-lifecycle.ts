@@ -62,3 +62,12 @@ export function formatJobLifecycleStatus(
       return 'In progress';
   }
 }
+
+/**
+ * The one rule for what cancelling a Job gives back. A Work Slot is released only when it has not
+ * started: done and active work stays on record as history. Both the path that does the releasing and
+ * the surfaces that warn about it read this, so they can never drift on what "future" means.
+ */
+export function isReleasableJobSlot({ plantToday, startDate }: { plantToday: string; startDate: string }): boolean {
+  return startDate > plantToday;
+}

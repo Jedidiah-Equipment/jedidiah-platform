@@ -8,6 +8,7 @@ import {
   createJobBay,
   deleteJobBay,
   getJob,
+  getJobCancellationPlan,
   isJobCoreError,
   isProductUnitCoreError,
   isQuoteCoreError,
@@ -174,6 +175,11 @@ export const jobsRouter = router({
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => updateJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
+
+  /** What the cancel dialog is about to touch. A Job with a Quote is never offered its machine. */
+  cancellationPlan: authorizedProcedure('job:read')
+    .input(z.object({ id: UUID }))
+    .query(({ ctx, input }) => mapJobErrors(() => getJobCancellationPlan({ db: ctx.db, id: input.id }))),
 
   /**
    * Its own gate rather than `job:update`: this is terminal and irreversible, so it sits with
@@ -346,6 +352,13 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Job slot not found.',
+      };
+    // A request the product never offers: only a Stock Build shows the remove-the-unit option.
+    case 'job.unit_removal_denied':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: error.message,
       };
     default:
       return assertNever(error);

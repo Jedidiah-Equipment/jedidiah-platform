@@ -12,7 +12,12 @@ export function getDefaultSlotDurationDays(job: BookSlotJob): number {
   return 1;
 }
 
-export function filterBookSlotJobs<TJob extends Pick<JobSummary, 'scheduleState'>>(
+/**
+ * The Jobs the picker offers under each filter. `active` retires a Job on schedule completeness alone,
+ * so it agrees with the Board; `unscheduled` has no schedule signal to retire one, so it reads the
+ * stored completion date instead. See CONTEXT.md, Job Completion.
+ */
+export function filterBookSlotJobs<TJob extends Pick<JobSummary, 'completedOn' | 'scheduleState'>>(
   jobs: readonly TJob[],
   filter: BookSlotJobFilter,
 ): readonly TJob[] {
@@ -26,5 +31,5 @@ export function filterBookSlotJobs<TJob extends Pick<JobSummary, 'scheduleState'
     );
   }
 
-  return jobs.filter((job) => job.scheduleState?.total === 0);
+  return jobs.filter((job) => job.completedOn === null && job.scheduleState?.total === 0);
 }

@@ -2,7 +2,7 @@ import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor,
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { createStableRowKeys, formatCurrency } from '@pkg/domain';
-import { type AssemblyInput, AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
+import { AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import React, { useMemo } from 'react';
@@ -48,7 +48,11 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
-import { emptyProductFormValues, getEligibleAssemblyNames } from './types.js';
+import {
+  emptyProductFormValues,
+  getEligibleAssemblyNames,
+  type ProductAssemblyFormInput as AssemblyInput,
+} from './types.js';
 
 const ALL_CATEGORIES = '__all__';
 const AssemblyPartSelection = requiredSelection(UUID, 'Select a part');
@@ -407,7 +411,12 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                     <FormField name={`assemblies[${index}].isPubliclyVisible`}>
                       {(field) => (
                         <fieldContext.Provider value={field}>
-                          <SwitchField label="Publicly visible" onValueCommit={onStructuralChange} />
+                          <SwitchField
+                            label={
+                              <FieldUsageLabel usage={PRODUCT_FIELD_USAGE.assemblies}>Publicly visible</FieldUsageLabel>
+                            }
+                            onValueCommit={onStructuralChange}
+                          />
                         </fieldContext.Provider>
                       )}
                     </FormField>

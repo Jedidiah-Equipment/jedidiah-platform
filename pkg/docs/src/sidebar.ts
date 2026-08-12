@@ -49,6 +49,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { text: 'Build stock', link: '/inventory/build-stock' },
       { text: 'Post a stock adjustment', link: '/inventory/post-a-stock-adjustment' },
       { text: 'Revalue a Part', link: '/inventory/revalue-a-part' },
+      { text: 'Control public Product Assemblies', link: '/inventory/control-public-product-assemblies' },
       { text: 'Maintain a Product cost estimate', link: '/inventory/maintain-a-product-cost-estimate' },
       { text: "Read a Job's material variance", link: '/inventory/read-a-jobs-material-variance' },
       { text: "Close out a Job's stock", link: '/inventory/close-out-a-job' },

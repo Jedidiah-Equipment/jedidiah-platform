@@ -122,6 +122,20 @@ describe('snapshot table registry', () => {
     ).toMatchObject({ cancellationReason: 'Captured' });
   });
 
+  it('backfills assembly visibility while the rollout column is absent from the source snapshot', () => {
+    const assemblyConfig = configFor('product_assemblies');
+
+    expect(assemblyConfig.optionalReadColumns).toEqual(['isPubliclyVisible']);
+    expect(prepareSnapshotRow(assemblyConfig, { name: 'Base frame' }, 0)).toMatchObject({
+      isPubliclyVisible: true,
+    });
+    expect(
+      prepareSnapshotRow(assemblyConfig, { isPubliclyVisible: false, name: 'Internal grouping' }, 0),
+    ).toMatchObject({
+      isPubliclyVisible: false,
+    });
+  });
+
   it('normalizes legacy part inventory values while preparing snapshots', () => {
     const partsConfig = configFor('parts');
 

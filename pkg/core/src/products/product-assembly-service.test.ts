@@ -1,5 +1,5 @@
 import { auditEvents, type Db, productAssemblies, user } from '@pkg/db';
-import type { AssemblyInput, ProductCreateInput, ProductUpdateInput } from '@pkg/schema';
+import { type AssemblyInput, ProductCreateInput, ProductUpdateInput } from '@pkg/schema';
 import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -82,6 +82,37 @@ describe('assembly display order', () => {
       { name: 'Base frame', isPubliclyVisible: true },
       { name: 'Air brakes', isPubliclyVisible: true },
     ]);
+  });
+
+  test('preserves public visibility when a legacy update omits the field', async ({ context }) => {
+    const created = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [standard('Base frame', true)]),
+    });
+    const assembly = created.assemblies[0];
+    if (!assembly) throw new Error('Expected the created Product to have an Assembly');
+
+    const legacyInput = ProductUpdateInput.parse({
+      ...productInput(context.rangeId, []),
+      assemblies: [{ id: assembly.id, kind: 'standard', name: assembly.name, parts: [] }],
+      id: created.id,
+    });
+
+    const updated = await updateProduct({ actorUserId, db: context.db, input: legacyInput });
+
+    expect(updated.assemblies).toMatchObject([{ name: 'Base frame', isPubliclyVisible: true }]);
+  });
+
+  test('defaults a new assembly with omitted visibility to hidden', async ({ context }) => {
+    const input = ProductCreateInput.parse({
+      ...productInput(context.rangeId, []),
+      assemblies: [{ kind: 'standard', name: 'Base frame', parts: [] }],
+    });
+
+    const created = await createProduct({ actorUserId, db: context.db, input });
+
+    expect(created.assemblies).toMatchObject([{ name: 'Base frame', isPubliclyVisible: false }]);
   });
 
   test('persists negative optional assembly price adjustments', async ({ context }) => {

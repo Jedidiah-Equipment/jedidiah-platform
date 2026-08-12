@@ -154,7 +154,7 @@ export const StandardAssemblyInput = z.object({
   kind: z.literal('standard'),
   name: AssemblyName,
   parts: z.array(AssemblyPart),
-  isPubliclyVisible: AssemblyPubliclyVisible.default(false),
+  isPubliclyVisible: AssemblyPubliclyVisible.optional(),
 });
 
 export type OptionalAssemblyInput = z.infer<typeof OptionalAssemblyInput>;
@@ -164,7 +164,7 @@ export const OptionalAssemblyInput = z.object({
   name: AssemblyName,
   price: PriceDeltaInput,
   parts: z.array(AssemblyPart),
-  isPubliclyVisible: AssemblyPubliclyVisible.default(false),
+  isPubliclyVisible: AssemblyPubliclyVisible.optional(),
   overrideStandardAssemblyIds: z.array(UUID).default([]),
 });
 

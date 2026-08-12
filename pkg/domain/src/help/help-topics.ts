@@ -22,7 +22,7 @@ export const HELP_TOPICS = {
   jobs: '/production/find-a-job',
   parts: '/inventory/print-part-labels',
   plan: '/production/open-a-bay-plan',
-  products: '/inventory/maintain-a-product-cost-estimate',
+  products: '/inventory/control-public-product-assemblies',
   purchaseOrders: '/inventory/post-a-receipt',
   quotes: '/sales/cancel-a-quote',
   storesTablet: '/inventory/work-the-stores-tablet',

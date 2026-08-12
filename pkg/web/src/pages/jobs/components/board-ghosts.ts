@@ -1,8 +1,6 @@
 import type { BoardPreviewInput, BoardPreviewResult, ProjectedBayQueue, UUID } from '@pkg/schema';
 import { DateOnlyIso } from '@pkg/schema';
 
-import { sortBaysByDepartmentPipeline } from '@/components/bays/sort-bays.js';
-
 export type BoardGhostSeed = {
   bayId: UUID;
   /** Rows with a non-positive or non-integer (NaN-until-typed) duration produce no ghost. */
@@ -69,18 +67,18 @@ export function deriveGhostProjectedBayQueues({
 }
 
 /**
- * Lane filter for the Gantt: every surface follows Department pipeline order;
- * embedded surfaces can additionally limit the visible Bays. Unknown ids are ignored.
+ * Lane filter for the Gantt's embedded surfaces. Ordering belongs to the shared
+ * Gantt layout so sidebar lanes and timeline offsets cannot diverge.
  */
 export function selectVisibleProjectedBayQueues(
   bays: ProjectedBayQueue[],
   visibleBayIds: readonly UUID[] | undefined,
 ): ProjectedBayQueue[] {
   if (visibleBayIds === undefined) {
-    return sortBaysByDepartmentPipeline(bays);
+    return bays;
   }
 
   const visibleIds = new Set<string>(visibleBayIds);
 
-  return sortBaysByDepartmentPipeline(bays.filter((bay) => visibleIds.has(bay.id)));
+  return bays.filter((bay) => visibleIds.has(bay.id));
 }

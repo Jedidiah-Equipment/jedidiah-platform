@@ -14,10 +14,7 @@ export function getDefaultSlotDurationDays(job: BookSlotJob): number {
 
 /**
  * The Jobs the picker offers under each filter. `active` and `unscheduled` are working lists, so a Job
- * with a stored `completedOn` drops out of both — for an unscheduled Job that stamp is the only thing
- * that ever retires it, since it has no Work Slot for the completion sweep to read and would otherwise
- * sit in the list forever (#1178). `all` stays literally all, so a Job completed by mistake can still
- * be found and booked.
+ * carrying a completion date drops out of both; `all` stays literally all. See CONTEXT.md, Job Completion.
  */
 export function filterBookSlotJobs<TJob extends Pick<JobSummary, 'completedOn' | 'scheduleState'>>(
   jobs: readonly TJob[],
@@ -27,13 +24,13 @@ export function filterBookSlotJobs<TJob extends Pick<JobSummary, 'completedOn' |
     return jobs;
   }
 
-  const open = jobs.filter((job) => job.completedOn === null);
+  const openJobs = jobs.filter((job) => job.completedOn === null);
 
   if (filter === 'active') {
-    return open.filter(
+    return openJobs.filter(
       (job) => job.scheduleState !== null && job.scheduleState.total > 0 && !isJobScheduleComplete(job.scheduleState),
     );
   }
 
-  return open.filter((job) => job.scheduleState?.total === 0);
+  return openJobs.filter((job) => job.scheduleState?.total === 0);
 }

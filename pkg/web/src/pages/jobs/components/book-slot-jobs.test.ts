@@ -55,55 +55,56 @@ describe('getDefaultSlotDurationDays', () => {
 
 describe('filterBookSlotJobs', () => {
   it('keeps every Job when showing all jobs', () => {
-    const jobs = [job('unscheduled', { total: 0 }), job('active', { scheduled: 1, total: 1 })];
+    const jobs = [bookSlotJob('unscheduled', { total: 0 }), bookSlotJob('active', { scheduled: 1, total: 1 })];
 
     expect(filterBookSlotJobs(jobs, 'all')).toEqual(jobs);
   });
 
   it('keeps unfinished scheduled Jobs when showing active jobs', () => {
     const jobs = [
-      job('unscheduled', { total: 0 }),
-      job('in-progress', { active: 1, total: 1 }),
-      job('upcoming', { scheduled: 1, total: 1 }),
-      job('complete', { done: 1, total: 1 }),
+      bookSlotJob('unscheduled', { total: 0 }),
+      bookSlotJob('in-progress', { active: 1, total: 1 }),
+      bookSlotJob('upcoming', { scheduled: 1, total: 1 }),
+      bookSlotJob('complete', { done: 1, total: 1 }),
     ];
 
-    expect(filterBookSlotJobs(jobs, 'active').map((entry) => entry.id)).toEqual(['in-progress', 'upcoming']);
+    expect(filterBookSlotJobs(jobs, 'active').map((job) => job.id)).toEqual(['in-progress', 'upcoming']);
   });
 
   it('keeps only Jobs without Work Slots when showing unscheduled jobs', () => {
-    const jobs = [job('unscheduled', { total: 0 }), job('scheduled', { scheduled: 1, total: 1 })];
+    const jobs = [bookSlotJob('unscheduled', { total: 0 }), bookSlotJob('scheduled', { scheduled: 1, total: 1 })];
 
-    expect(filterBookSlotJobs(jobs, 'unscheduled').map((entry) => entry.id)).toEqual(['unscheduled']);
+    expect(filterBookSlotJobs(jobs, 'unscheduled').map((job) => job.id)).toEqual(['unscheduled']);
   });
 
   it('drops a completed Job from unscheduled jobs, which is the only way one ever leaves that list', () => {
-    const jobs = [
-      job('open', { total: 0 }),
-      { ...job('completed', { total: 0 }), completedOn: DateOnlyIso.parse('2026-08-03') },
-    ];
+    const jobs = [bookSlotJob('open', { total: 0 }), bookSlotJob('completed', { total: 0 }, '2026-08-03')];
 
-    expect(filterBookSlotJobs(jobs, 'unscheduled').map((entry) => entry.id)).toEqual(['open']);
+    expect(filterBookSlotJobs(jobs, 'unscheduled').map((job) => job.id)).toEqual(['open']);
   });
 
   it('drops a completed Job from active jobs even while its Work Slots are unfinished', () => {
     const jobs = [
-      job('open', { active: 1, total: 1 }),
-      { ...job('completed', { active: 1, total: 1 }), completedOn: DateOnlyIso.parse('2026-08-03') },
+      bookSlotJob('open', { active: 1, total: 1 }),
+      bookSlotJob('completed', { active: 1, total: 1 }, '2026-08-03'),
     ];
 
-    expect(filterBookSlotJobs(jobs, 'active').map((entry) => entry.id)).toEqual(['open']);
+    expect(filterBookSlotJobs(jobs, 'active').map((job) => job.id)).toEqual(['open']);
   });
 
-  it('still offers a completed Job under all jobs, so a Job marked complete by mistake can be rebooked', () => {
-    const jobs = [{ ...job('completed', { total: 0 }), completedOn: DateOnlyIso.parse('2026-08-03') }];
+  it('still offers a completed Job under all jobs, so one can be booked for rework', () => {
+    const jobs = [bookSlotJob('completed', { total: 0 }, '2026-08-03')];
 
-    expect(filterBookSlotJobs(jobs, 'all').map((entry) => entry.id)).toEqual(['completed']);
+    expect(filterBookSlotJobs(jobs, 'all').map((job) => job.id)).toEqual(['completed']);
   });
 });
 
-function job(id: string, schedule: Parameters<typeof scheduleState>[0]) {
-  return { completedOn: null, id, scheduleState: scheduleState(schedule) };
+function bookSlotJob(id: string, schedule: Parameters<typeof scheduleState>[0], completedOn: string | null = null) {
+  return {
+    completedOn: completedOn === null ? null : DateOnlyIso.parse(completedOn),
+    id,
+    scheduleState: scheduleState(schedule),
+  };
 }
 
 function scheduleState(overrides: Partial<{ active: number; done: number; scheduled: number; total: number }>) {

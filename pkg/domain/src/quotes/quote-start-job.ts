@@ -28,19 +28,19 @@ export function isReworkQuote(quote: { productUnitId: UUID | null }): boolean {
 }
 
 export function canStartJobFromQuote({
-  hasJob,
+  hasLiveJob,
   hasProductUnit,
   kind,
   reworkRequired,
   status,
 }: {
-  hasJob: boolean;
+  hasLiveJob: boolean;
   hasProductUnit: boolean;
   kind: QuoteKind;
   reworkRequired: boolean;
   status: QuoteStatus;
 }): QuoteStartJobEligibility {
-  if (hasJob) {
+  if (hasLiveJob) {
     return { allowed: false, reason: 'Quote already has a Job.' };
   }
 

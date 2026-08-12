@@ -51,7 +51,7 @@ export type QuoteDetailRow = QuoteRow & {
     typeof customers.$inferSelect,
     'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'thumbnailDataUrl' | 'vatNumber'
   >;
-  jobs: Pick<typeof jobs.$inferSelect, 'code' | 'description' | 'id'>[];
+  jobs: Pick<typeof jobs.$inferSelect, 'cancelledAt' | 'code' | 'description' | 'id'>[];
   product: Pick<
     typeof products.$inferSelect,
     'buildTimeDays' | 'currencyCode' | 'description' | 'modelCode' | 'name' | 'requiresVinNumber' | 'thumbnailDataUrl'
@@ -144,6 +144,8 @@ export function mapQuoteDetail(
   competingAllocationQuotes: CompetingAllocationQuote[],
   reworkRequired: boolean,
 ): QuoteDetail {
+  const liveJob = row.jobs.find((job) => job.cancelledAt === null);
+
   return QuoteDetail.parse({
     ...mapQuote(row),
     customerAddress: row.customer.address,
@@ -153,11 +155,12 @@ export function mapQuoteDetail(
     customerPhone: row.customer.phone,
     customerThumbnailDataUrl: row.customer.thumbnailDataUrl,
     customerVatNumber: row.customer.vatNumber,
-    job: row.jobs[0]
+    hasEverSourcedJob: row.jobs.length > 0,
+    job: liveJob
       ? mapQuoteLinkedJob({
-          jobCode: row.jobs[0].code,
-          jobDescription: row.jobs[0].description,
-          jobId: row.jobs[0].id,
+          jobCode: liveJob.code,
+          jobDescription: liveJob.description,
+          jobId: liveJob.id,
         })
       : null,
     product: mapQuoteDetailProduct(row, productAssembliesForQuote, productBaysForQuote),

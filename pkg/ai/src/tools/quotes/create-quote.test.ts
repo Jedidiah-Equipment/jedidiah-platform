@@ -34,6 +34,7 @@ const quote = QuoteDetail.parse({
   deliveryPrice: 0,
   discountPercent: 0,
   documentNotes: null,
+  hasEverSourcedJob: false,
   id: QUOTE_ID,
   job: null,
   kind: 'product',

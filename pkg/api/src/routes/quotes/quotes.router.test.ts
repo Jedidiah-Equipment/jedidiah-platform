@@ -2107,7 +2107,7 @@ describe('jobs.create with quote links', () => {
       }),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
-      message: 'Quote is locked because it already has a Job; discountPercent cannot be changed.',
+      message: 'Quote is locked because it has already sourced a Job; discountPercent cannot be changed.',
     });
   });
 
@@ -2193,7 +2193,7 @@ describe('jobs.create with quote links', () => {
 
       await expect(salesCaller.quotes.update(input(accepted))).rejects.toMatchObject({
         code: 'BAD_REQUEST',
-        message: `Quote is locked because it already has a Job; ${field} cannot be changed.`,
+        message: `Quote is locked because it has already sourced a Job; ${field} cannot be changed.`,
       });
     }
   });

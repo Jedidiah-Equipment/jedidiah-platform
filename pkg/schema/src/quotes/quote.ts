@@ -380,6 +380,7 @@ const quoteDetailShape = {
   customerEmail: CustomerEmail.nullable(),
   customerPhone: CustomerOptionalText,
   customerVatNumber: CustomerVatNumber,
+  hasEverSourcedJob: z.boolean(),
   product: QuoteProductDetailFacts.nullable(),
 };
 

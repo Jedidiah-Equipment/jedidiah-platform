@@ -174,7 +174,7 @@ export const jobs = pgTable(
       .on(table.completedOn)
       .where(sql`${table.completedOn} IS NOT NULL AND ${table.cancelledAt} IS NULL`),
     uniqueIndex('job_code_unique').on(table.code),
-    uniqueIndex('job_quote_id_unique').on(table.quoteId),
+    uniqueIndex('job_quote_id_live_unique').on(table.quoteId).where(sql`${table.cancelledAt} IS NULL`),
   ],
 );
 

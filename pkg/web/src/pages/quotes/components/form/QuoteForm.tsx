@@ -51,7 +51,7 @@ type QuoteFormProps = {
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
   const isCustom = quote.kind === 'custom';
   const isLocked = isQuoteLocked({
-    hasJob: quote.job !== null,
+    hasEverSourcedJob: quote.hasEverSourcedJob,
     hasProductUnit: quote.productUnitId !== null,
     kind: quote.kind,
     status: quote.status,

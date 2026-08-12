@@ -8,7 +8,7 @@ describe('canStartJobFromQuote', () => {
   it('rejects quotes that already have a job', () => {
     expect(
       canStartJobFromQuote({
-        hasJob: true,
+        hasLiveJob: true,
         hasProductUnit: false,
         kind: 'custom',
         reworkRequired: false,
@@ -22,7 +22,7 @@ describe('canStartJobFromQuote', () => {
 
   it.each(['draft', 'sent', 'accepted'] as const)('allows custom %s quotes to start a job', (status) => {
     expect(
-      canStartJobFromQuote({ hasJob: false, hasProductUnit: false, kind: 'custom', reworkRequired: false, status }),
+      canStartJobFromQuote({ hasLiveJob: false, hasProductUnit: false, kind: 'custom', reworkRequired: false, status }),
     ).toEqual({
       allowed: true,
     });
@@ -30,7 +30,7 @@ describe('canStartJobFromQuote', () => {
 
   it.each(['rejected', 'cancelled'] as const)('rejects custom %s quotes', (status) => {
     expect(
-      canStartJobFromQuote({ hasJob: false, hasProductUnit: false, kind: 'custom', reworkRequired: false, status }),
+      canStartJobFromQuote({ hasLiveJob: false, hasProductUnit: false, kind: 'custom', reworkRequired: false, status }),
     ).toEqual({
       allowed: false,
       reason: 'Rejected or cancelled quotes cannot start a Job.',
@@ -40,7 +40,7 @@ describe('canStartJobFromQuote', () => {
   it('allows accepted product quotes to start a job', () => {
     expect(
       canStartJobFromQuote({
-        hasJob: false,
+        hasLiveJob: false,
         hasProductUnit: false,
         kind: 'product',
         reworkRequired: false,
@@ -53,7 +53,13 @@ describe('canStartJobFromQuote', () => {
 
   it.each(['draft', 'sent', 'rejected', 'cancelled'] as const)('rejects product %s quotes', (status) => {
     expect(
-      canStartJobFromQuote({ hasJob: false, hasProductUnit: false, kind: 'product', reworkRequired: false, status }),
+      canStartJobFromQuote({
+        hasLiveJob: false,
+        hasProductUnit: false,
+        kind: 'product',
+        reworkRequired: false,
+        status,
+      }),
     ).toEqual({
       allowed: false,
       reason: 'Only accepted quotes can start a Job.',
@@ -63,7 +69,7 @@ describe('canStartJobFromQuote', () => {
   it('allows an Allocation Quote to start a Rework Job when it adds Assemblies', () => {
     expect(
       canStartJobFromQuote({
-        hasJob: false,
+        hasLiveJob: false,
         hasProductUnit: true,
         kind: 'product',
         reworkRequired: true,
@@ -77,7 +83,7 @@ describe('canStartJobFromQuote', () => {
   it('rejects an Allocation Quote that adds no Assemblies', () => {
     expect(
       canStartJobFromQuote({
-        hasJob: false,
+        hasLiveJob: false,
         hasProductUnit: true,
         kind: 'product',
         reworkRequired: false,
@@ -92,7 +98,7 @@ describe('canStartJobFromQuote', () => {
   it('keeps the status denial ahead of the Allocation rule', () => {
     expect(
       canStartJobFromQuote({
-        hasJob: false,
+        hasLiveJob: false,
         hasProductUnit: true,
         kind: 'product',
         reworkRequired: false,

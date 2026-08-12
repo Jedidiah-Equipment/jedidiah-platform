@@ -8,9 +8,11 @@ A Job can be cancelled two ways, and both end in the same place: the Job reads *
 out of every live list, search, and picker, and nothing on it can be edited again. There is no
 un-cancel.
 
-Cancel deliberately. A **Stock Build** can simply be raised again, but a Job that came from a Quote
-cannot: that Quote has already sourced its one Job, and cancelling the Job does not give it back. To
-get the work back on the floor you have to cancel the Quote and re-quote the sale.
+Cancel deliberately. A **Stock Build** can simply be raised again. When a Job came from a Quote,
+cancelling the Job frees that same Quote to start a replacement while keeping the accepted terms
+Locked. Open the Quote, click **Start Job**, and raise the work again. A replacement Build Job keeps the
+same Product Unit and Product Serial Number while the Customer still owns that Unit. If the never-built
+Unit was removed or its ownership moved elsewhere first, the replacement receives a new one.
 
 ## Cancel the Job itself
 

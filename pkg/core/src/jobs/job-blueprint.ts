@@ -7,11 +7,12 @@ import {
   type QuoteOffering,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { narrowQuoteOffering } from '../quotes/quote-offering.js';
 import { loadAsBuiltSpec } from '../units/product-unit-as-built.js';
+import { lockUnitForOwnership } from '../units/product-unit-service.js';
 import { JobCreateFromQuoteDeniedError, StockBuildDeniedError } from './job-errors.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
@@ -23,6 +24,7 @@ export type JobBlueprint =
       kind: 'product';
       quote: QuoteRow;
       productId: UUID;
+      reuseProductUnitId: UUID | null;
       buildSpec: BuildSpecAssembly[];
     }
   | {
@@ -74,10 +76,13 @@ export async function resolveJobBlueprint({
     };
   }
 
-  const { hasJob, offering, quote } = await lockQuoteForJobCreate({ quoteId: input.quoteId, tx });
+  const { hasLiveJob, offering, quote, reuseProductUnitId } = await lockQuoteForJobCreate({
+    quoteId: input.quoteId,
+    tx,
+  });
 
   if (offering.kind === 'custom') {
-    assertQuoteCanStartJob({ hasJob, hasProductUnit: false, kind: 'custom', reworkRequired: false, quote });
+    assertQuoteCanStartJob({ hasLiveJob, hasProductUnit: false, kind: 'custom', reworkRequired: false, quote });
 
     return { kind: 'custom', quote };
   }
@@ -94,7 +99,7 @@ export async function resolveJobBlueprint({
     });
 
     assertQuoteCanStartJob({
-      hasJob,
+      hasLiveJob,
       hasProductUnit: true,
       kind: 'product',
       reworkRequired: reworkBuildSpec.length > 0,
@@ -110,9 +115,9 @@ export async function resolveJobBlueprint({
     };
   }
 
-  assertQuoteCanStartJob({ hasJob, hasProductUnit: false, kind: 'product', reworkRequired: false, quote });
+  assertQuoteCanStartJob({ hasLiveJob, hasProductUnit: false, kind: 'product', reworkRequired: false, quote });
 
-  return { kind: 'product', quote, productId: offering.productId, buildSpec };
+  return { kind: 'product', quote, productId: offering.productId, reuseProductUnitId, buildSpec };
 }
 
 /**
@@ -175,45 +180,72 @@ async function resolveStockBuildSpec({
   }));
 }
 
-async function lockQuoteForJobCreate({
-  quoteId,
-  tx,
-}: {
-  quoteId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<{ hasJob: boolean; offering: QuoteOffering; quote: QuoteRow }> {
+async function lockQuoteForJobCreate({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<{
+  hasLiveJob: boolean;
+  offering: QuoteOffering;
+  quote: QuoteRow;
+  reuseProductUnitId: UUID | null;
+}> {
   const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
   if (!quote) {
     throw new JobCreateFromQuoteDeniedError('Quote not found.');
   }
 
-  const [existingJob] = await tx
+  const quoteJobs = await tx
     .select({
-      id: jobs.id,
+      cancelledAt: jobs.cancelledAt,
+      productUnitId: jobs.productUnitId,
     })
     .from(jobs)
     .where(eq(jobs.quoteId, quoteId))
-    .limit(1);
+    .orderBy(desc(jobs.cancelledAt), desc(jobs.id));
 
-  return { hasJob: Boolean(existingJob), offering: narrowQuoteOffering(quote), quote };
+  const hasLiveJob = quoteJobs.some((job) => job.cancelledAt === null);
+  const reuseCandidateId = quoteJobs.find(
+    (job) => job.cancelledAt !== null && job.productUnitId !== null,
+  )?.productUnitId;
+  let reuseProductUnitId: UUID | null = null;
+
+  if (reuseCandidateId) {
+    const ownership = await lockUnitForOwnership(tx, reuseCandidateId);
+
+    // Ownership can move independently of the Locked Quote. Reuse is transfer-free only while the
+    // original sale still owns the machine; otherwise replacement creation must mint a newly sold Unit.
+    if (ownership?.currentOwnerId === quote.customerId) {
+      reuseProductUnitId = ownership.unit.id;
+    }
+  }
+
+  return {
+    hasLiveJob,
+    offering: narrowQuoteOffering(quote),
+    quote,
+    reuseProductUnitId,
+  };
 }
 
 /** The one place a Quote's own facts decide whether it may source a Job; the rule itself is domain policy. */
 function assertQuoteCanStartJob({
-  hasJob,
+  hasLiveJob,
   hasProductUnit,
   kind,
   reworkRequired,
   quote,
 }: {
-  hasJob: boolean;
+  hasLiveJob: boolean;
   hasProductUnit: boolean;
   kind: QuoteKind;
   reworkRequired: boolean;
   quote: QuoteRow;
 }): void {
-  const eligibility = canStartJobFromQuote({ hasJob, hasProductUnit, kind, reworkRequired, status: quote.status });
+  const eligibility = canStartJobFromQuote({
+    hasLiveJob,
+    hasProductUnit,
+    kind,
+    reworkRequired,
+    status: quote.status,
+  });
 
   if (!eligibility.allowed) {
     throw new JobCreateFromQuoteDeniedError(eligibility.reason);

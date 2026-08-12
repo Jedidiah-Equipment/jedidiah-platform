@@ -31,7 +31,7 @@ export function getStartJobUnavailableMessage(quote: StartableQuote, canCreateJo
 
 function resolveStartJobEligibility(quote: StartableQuote) {
   return getStartJobEligibility({
-    hasJob: quote.job !== null,
+    hasLiveJob: quote.job !== null,
     hasProductUnit: quote.productUnitId !== null,
     kind: quote.kind,
     reworkRequired: quote.kind === 'product' ? quote.reworkRequired : false,

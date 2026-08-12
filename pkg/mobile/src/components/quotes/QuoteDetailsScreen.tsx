@@ -100,7 +100,7 @@ function QuoteEditor({
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
   const isLocked = isQuoteLocked({
-    hasJob: quote.job !== null,
+    hasEverSourcedJob: quote.hasEverSourcedJob,
     hasProductUnit: quote.productUnitId !== null,
     kind: quote.kind,
     status: quote.status,

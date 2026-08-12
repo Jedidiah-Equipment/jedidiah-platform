@@ -4,6 +4,12 @@
 @import "shadcn/tailwind.css";
 @import "@pkg/domain/fonts/geist-sans/geist.css";
 
+/* `@pkg/domain` authors the shared palettes (`statusBadgeColorClassNames` and friends) as Tailwind
+   class strings, and automatic source detection does not look inside a dependency. Both apps must
+   therefore scan it: this is web's half, `content` in `pkg/mobile/tailwind.config.js` is mobile's.
+   Miss either and the class still reaches the DOM, so only the missing paint reveals it. */
+@source "../../../domain/src";
+
 @custom-variant dark (&:is(.dark *));
 
 html {

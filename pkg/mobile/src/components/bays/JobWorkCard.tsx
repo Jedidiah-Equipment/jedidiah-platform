@@ -1,12 +1,14 @@
+import type { QuoteKind } from '@pkg/schema';
 import { View } from 'react-native';
 
-import { Avatar } from '@/components/Avatar';
 import { CustomerName } from '@/components/CustomerName';
+import { OfferingAvatar } from '@/components/OfferingAvatar';
 import { Text } from '@/components/ui/text';
 
 export type JobWorkCardProps = {
   customerCompanyName: string | null;
   jobDisplayName: string;
+  offeringKind: QuoteKind;
   productSerialNumber: string | null;
   productThumbnailDataUrl: string | null;
 };
@@ -14,12 +16,19 @@ export type JobWorkCardProps = {
 export function JobWorkCard({
   customerCompanyName,
   jobDisplayName,
+  offeringKind,
   productSerialNumber,
   productThumbnailDataUrl,
 }: JobWorkCardProps) {
   return (
     <View className="flex-row items-center gap-3.5 rounded-2xl border border-border bg-surface p-3.5">
-      <Avatar className="h-[52px] w-[52px] rounded-xl" name={jobDisplayName} uri={productThumbnailDataUrl} />
+      <OfferingAvatar
+        className="h-[52px] w-[52px] rounded-xl"
+        iconSize={26}
+        kind={offeringKind}
+        name={jobDisplayName}
+        uri={productThumbnailDataUrl}
+      />
       <View className="min-w-0 flex-1">
         <Text className="text-base text-surface-foreground" numberOfLines={1} weight="bold">
           {jobDisplayName}

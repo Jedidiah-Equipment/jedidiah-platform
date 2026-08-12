@@ -14,6 +14,7 @@ const CATALOG_CARD_FRAME_CLASS_NAME =
 export function CatalogListCard({
   accessibilityHint,
   accessibilityLabel,
+  avatarClassName = '',
   avatarFallback,
   avatarName,
   avatarUri,
@@ -25,6 +26,8 @@ export function CatalogListCard({
 }: {
   accessibilityHint: string;
   accessibilityLabel: string;
+  /** Tile styling that rides with `avatarFallback`, e.g. an offering kind's tint. */
+  avatarClassName?: string;
   avatarFallback?: ReactNode;
   avatarName: string;
   avatarUri?: string | null;
@@ -43,7 +46,7 @@ export function CatalogListCard({
       onPress={onPress}
     >
       <Avatar
-        className="h-11 w-11 shrink-0 rounded-lg"
+        className={`h-11 w-11 shrink-0 rounded-lg ${avatarClassName}`}
         fallback={avatarFallback}
         name={avatarName}
         textClassName="text-[10px]"

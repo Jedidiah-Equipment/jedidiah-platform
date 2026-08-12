@@ -5,6 +5,7 @@ export const statusBadgeColorClassNames = {
   green: { chip: 'border-emerald-500/50 bg-emerald-500/15', text: 'text-emerald-800 dark:text-emerald-200' },
   orange: { chip: 'border-orange-500/50 bg-orange-500/15', text: 'text-orange-800 dark:text-orange-200' },
   red: { chip: 'border-red-500/50 bg-red-500/15', text: 'text-red-800 dark:text-red-200' },
+  yellow: { chip: 'border-yellow-500/50 bg-yellow-500/15', text: 'text-yellow-800 dark:text-yellow-200' },
 } as const;
 
 export type StatusBadgeColor = keyof typeof statusBadgeColorClassNames;

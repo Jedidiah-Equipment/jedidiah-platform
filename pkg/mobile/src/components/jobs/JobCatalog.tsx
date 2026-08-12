@@ -1,6 +1,6 @@
-import { formatDate, getJobDisplayName, statusBadgeColorClassNames } from '@pkg/domain';
+import { formatDate, getJobDisplayName, getJobOfferingKind, statusBadgeColorClassNames } from '@pkg/domain';
 import type { JobSummary } from '@pkg/schema';
-import { IconArrowsSort, IconCheck, IconFilter, IconTools } from '@tabler/icons-react-native';
+import { IconArrowsSort, IconCheck, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
@@ -11,6 +11,7 @@ import {
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
+import { offeringAvatarProps } from '@/components/OfferingAvatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { getJobSchedulePresentation, type JobCatalogSort, type JobCompletionFilter } from '@/lib/job-catalog';
@@ -80,14 +81,14 @@ export function JobCatalogCard({ job }: { job: JobSummary }) {
   const displayName = getJobDisplayName(job);
   const owner = job.customerCompanyName ?? 'Stock';
   const serial = job.productUnit?.productSerialNumber;
+  const avatar = offeringAvatarProps(getJobOfferingKind(job));
 
   return (
     <CatalogListCard
       accessibilityHint="Opens Job details"
       accessibilityLabel={`Job ${job.code}`}
-      avatarFallback={
-        job.quoteKind === 'custom' ? <Icon className="text-muted-foreground" icon={IconTools} size={22} /> : undefined
-      }
+      avatarClassName={avatar.className}
+      avatarFallback={avatar.fallback}
       avatarName={displayName}
       avatarUri={job.productThumbnailDataUrl}
       mainText={job.code}

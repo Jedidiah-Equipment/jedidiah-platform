@@ -1,6 +1,6 @@
 import { formatCurrency, formatDate, pricePersistedQuote } from '@pkg/domain';
 import type { QuoteSummary } from '@pkg/schema';
-import { IconAlertTriangle, IconArrowsSort, IconFilter, IconPlus, IconTools } from '@tabler/icons-react-native';
+import { IconAlertTriangle, IconArrowsSort, IconFilter, IconPlus } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 
@@ -11,6 +11,7 @@ import {
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
+import { offeringAvatarProps } from '@/components/OfferingAvatar';
 import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -113,14 +114,14 @@ export function QuoteCatalogCard({ quote }: { quote: QuoteSummary }) {
   const router = useRouter();
   const offering = quote.kind === 'custom' ? quote.workTitle : (quote.product?.name ?? 'Product unavailable');
   const total = pricePersistedQuote(quote).total;
+  const avatar = offeringAvatarProps(quote.kind);
 
   return (
     <CatalogListCard
       accessibilityHint="Opens Quote details"
       accessibilityLabel={`Quote ${quote.code}`}
-      avatarFallback={
-        quote.kind === 'custom' ? <Icon className="text-muted-foreground" icon={IconTools} size={22} /> : undefined
-      }
+      avatarClassName={avatar.className}
+      avatarFallback={avatar.fallback}
       avatarName={offering}
       avatarUri={quote.kind === 'product' ? quote.product?.thumbnailDataUrl : null}
       mainText={quote.customerCompanyName}

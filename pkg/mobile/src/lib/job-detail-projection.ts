@@ -4,6 +4,7 @@ import {
   deriveJobProgress,
   deriveJobRouteStop,
   getJobDisplayName,
+  getJobOfferingKind,
   getNextJobIds,
   type JobProgress,
   type JobRouteStop,
@@ -13,7 +14,7 @@ import {
   listNextWorkSlots,
   resolveJobStatusTone,
 } from '@pkg/domain';
-import type { BayOperator, BoardListResult, DateOnlyIso, Department, JobDetail, UUID } from '@pkg/schema';
+import type { BayOperator, BoardListResult, DateOnlyIso, Department, JobDetail, QuoteKind, UUID } from '@pkg/schema';
 
 /** One Bay on the Job's production-route timeline, projected from its Work Slot. */
 export type JobRouteStopCard = JobRouteStop & {
@@ -35,6 +36,7 @@ export type JobDetailReadyState = {
   jobCode: string;
   quoteCode: string;
   jobDisplayName: string;
+  offeringKind: QuoteKind;
   productSerialNumber: string | null;
   productThumbnailDataUrl: string | null;
   customerCompanyName: string | null;
@@ -90,6 +92,7 @@ export function projectJobDetail(job: JobDetail, board: BoardListResult): JobDet
     // A Stock Build has no Quote; the Customer field already reads Stock, so the code just blanks.
     quoteCode: job.quoteCode ?? '—',
     jobDisplayName: getJobDisplayName(job),
+    offeringKind: getJobOfferingKind(job),
     productSerialNumber: job.productUnit?.productSerialNumber ?? null,
     productThumbnailDataUrl: job.productThumbnailDataUrl,
     customerCompanyName: job.customerCompanyName,

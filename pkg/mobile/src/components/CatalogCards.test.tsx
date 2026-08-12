@@ -13,6 +13,7 @@ vi.mock('@tabler/icons-react-native', () => ({
   IconArrowsSort: 'IconArrowsSort',
   IconCheck: 'IconCheck',
   IconFilter: 'IconFilter',
+  IconPackage: 'IconPackage',
   IconPlus: 'IconPlus',
   IconTools: 'IconTools',
 }));

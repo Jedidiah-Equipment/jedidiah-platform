@@ -3,11 +3,12 @@ import {
   deriveActiveJobProgress,
   findActiveWorkSlot,
   getJobDisplayName,
+  getJobOfferingKind,
   hasPermission,
   isJobCancelled,
   listUpcomingWorkSlots,
 } from '@pkg/domain';
-import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
+import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot, QuoteKind } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
@@ -21,6 +22,7 @@ export type BayQueueActiveJob = ActiveJobProgress & {
   slotId: string;
   jobCode: string;
   jobDisplayName: string;
+  offeringKind: QuoteKind;
   productThumbnailDataUrl: string | null;
   productSerialNumber: string | null;
   customerCompanyName: string | null;
@@ -39,6 +41,7 @@ export type BaySlotDetail = {
   jobCode: string;
   quoteCode: string;
   jobDisplayName: string;
+  offeringKind: QuoteKind;
   productThumbnailDataUrl: string | null;
   productSerialNumber: string | null;
   customerCompanyName: string | null;
@@ -63,6 +66,7 @@ export type BayQueueTimelineSlot = {
   slotId: string;
   jobCode: string;
   jobDisplayName: string;
+  offeringKind: QuoteKind;
   productThumbnailDataUrl: string | null;
   /** The first booked working day; the Slot's queue span can open on an off-day. */
   firstWorkDay: DateOnlyIso;
@@ -128,6 +132,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
             slotId: activeSlot.id,
             jobCode: activeSlot.jobCode,
             jobDisplayName: getJobDisplayName(activeJob),
+            offeringKind: getJobOfferingKind(activeJob),
             productThumbnailDataUrl: activeJob.productThumbnailDataUrl,
             productSerialNumber: activeJob.productUnit?.productSerialNumber ?? null,
             customerCompanyName: activeJob.customerCompanyName,
@@ -153,6 +158,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
         jobCode: slot.jobCode,
         quoteCode: job?.quoteCode ?? '—',
         jobDisplayName: job ? getJobDisplayName(job) : slot.jobCode,
+        offeringKind: getJobOfferingKind({ quoteKind: job?.quoteKind ?? null }),
         productThumbnailDataUrl: job?.productThumbnailDataUrl ?? null,
         productSerialNumber: job?.productUnit?.productSerialNumber ?? null,
         customerCompanyName: job?.customerCompanyName ?? null,
@@ -186,6 +192,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
           jobCode: detail.jobCode,
           jobDisplayName: detail.jobDisplayName,
           lastWorkDay: detail.lastWorkDay,
+          offeringKind: detail.offeringKind,
           productThumbnailDataUrl: detail.productThumbnailDataUrl,
           slotId: slot.id,
           status: 'done',
@@ -207,6 +214,7 @@ export function useBaySchedule(bayId: string): BayQueueState {
         slotId: slot.id,
         jobCode: detail.jobCode,
         jobDisplayName: detail.jobDisplayName,
+        offeringKind: detail.offeringKind,
         productThumbnailDataUrl: detail.productThumbnailDataUrl,
         firstWorkDay: detail.firstWorkDay,
         lastWorkDay: detail.lastWorkDay,

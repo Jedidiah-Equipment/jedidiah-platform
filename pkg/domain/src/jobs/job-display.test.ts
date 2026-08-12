@@ -4,6 +4,7 @@ import {
   getJobDisplayName,
   getJobDisplayNameWithModel,
   getJobDisplaySubtitle,
+  getJobOfferingKind,
   getJobOptionHint,
   getJobWorkLabel,
 } from './job-display.js';
@@ -84,5 +85,11 @@ describe('job display helpers', () => {
     expect(getJobOptionHint(customJob)).toBe('Pump skid rebuild');
     expect(getJobWorkLabel(productJob)).toBe('Product');
     expect(getJobWorkLabel(customJob)).toBe('Work title');
+  });
+
+  it('reads a Stock Build with no Quote as a Product offering', () => {
+    expect(getJobOfferingKind({ quoteKind: 'custom' })).toBe('custom');
+    expect(getJobOfferingKind({ quoteKind: 'product' })).toBe('product');
+    expect(getJobOfferingKind({ quoteKind: null })).toBe('product');
   });
 });

@@ -4,6 +4,7 @@ import {
   getQuoteOfferingName,
   getQuoteOfferingSubtitle,
   pricePersistedQuote,
+  quoteKindLabels,
   quoteStatusLabels,
 } from '@pkg/domain';
 import { type PriorityQuote, QuoteInvoicedFilter, QuoteKind, QuoteStatus, type QuoteSummary } from '@pkg/schema';
@@ -12,9 +13,10 @@ import type { ColumnDef } from '@tanstack/react-table';
 
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
-import { Badge } from '@/components/ui/badge.js';
+import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
 
+import { QuoteKindBadge } from './QuoteKindBadge.js';
 import { QuoteLinkedJob } from './QuoteLinkedJob.js';
 import { QuoteStatusBadge } from './QuoteStatusBadge.js';
 
@@ -37,11 +39,6 @@ export const quoteStatusFilterOptions = QuoteStatus.options.map((status) => ({
   label: quoteStatusLabels[status],
   value: status,
 }));
-
-export const quoteKindLabels = {
-  custom: 'Custom',
-  product: 'Product',
-} as const satisfies Record<QuoteSummary['kind'], string>;
 
 export const quoteKindFilterOptions = QuoteKind.options.map((kind) => ({
   label: quoteKindLabels[kind],
@@ -306,30 +303,26 @@ function SalesPersonCell({ isPriority, quote }: { isPriority: boolean; quote: Qu
 function ProductCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {
   const offeringName = getQuoteOfferingName(quote);
   const offeringSubtitle = getQuoteOfferingSubtitle(quote);
-
-  if (quote.kind === 'custom') {
-    return (
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate font-medium">{offeringName}</span>
-          <QuoteKindBadge className="shrink-0" kind={quote.kind} />
-        </span>
-        <span className={cn('truncate text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
-          {offeringSubtitle?.text}
-        </span>
-      </div>
-    );
-  }
-
-  const selectedAssemblyCount = getLiveSelectedAssemblyCount(quote);
+  const selectedAssemblyCount = quote.kind === 'custom' ? 0 : getLiveSelectedAssemblyCount(quote);
 
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate font-medium">{offeringName}</span>
-      <span className={cn('truncate text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
-        {offeringSubtitle?.text}
-        {selectedAssemblyCount > 0 ? ` / ${selectedAssemblyCount} option${selectedAssemblyCount === 1 ? '' : 's'}` : ''}
-      </span>
+    <div className="flex min-w-0 items-center gap-2">
+      <OfferingThumbnail
+        className="shrink-0"
+        kind={quote.kind}
+        label={offeringName}
+        size="sm"
+        thumbnailDataUrl={quote.kind === 'custom' ? null : quote.product?.thumbnailDataUrl}
+      />
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate font-medium">{offeringName}</span>
+        <span className={cn('truncate text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
+          {offeringSubtitle?.text}
+          {selectedAssemblyCount > 0
+            ? ` / ${selectedAssemblyCount} option${selectedAssemblyCount === 1 ? '' : 's'}`
+            : ''}
+        </span>
+      </div>
     </div>
   );
 }
@@ -340,14 +333,6 @@ function InvoiceNumberCell({ isPriority, quote }: { isPriority: boolean; quote: 
   }
 
   return <span className="block truncate font-mono tabular-nums">{quote.invoiceNumber}</span>;
-}
-
-function QuoteKindBadge({ className, kind }: { className?: string; kind: QuoteSummary['kind'] }) {
-  return (
-    <Badge className={className} variant="outline">
-      {quoteKindLabels[kind]}
-    </Badge>
-  );
 }
 
 function CommercialCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {

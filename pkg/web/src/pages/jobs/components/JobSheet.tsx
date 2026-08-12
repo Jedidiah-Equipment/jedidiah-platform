@@ -2,6 +2,7 @@ import {
   departmentLabels,
   formatDate,
   getJobDisplayName,
+  getJobOfferingKind,
   getJobWorkLabel,
   getPlantDateNow,
   isJobCancelled,
@@ -21,6 +22,7 @@ import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton.js'
 import { JobFeedbackList } from '@/components/feedback/JobFeedbackList.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
@@ -121,8 +123,9 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
 const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
   <SheetHeader className="border-b pr-12">
     <div className="flex min-w-0 items-center gap-3">
-      <EntityThumbnail
+      <OfferingThumbnail
         className="shrink-0"
+        kind={job ? getJobOfferingKind(job) : null}
         label={job ? getJobDisplayName(job) : 'Job'}
         size="lg"
         thumbnailDataUrl={job?.productThumbnailDataUrl}

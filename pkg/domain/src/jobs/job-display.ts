@@ -50,6 +50,11 @@ export function getJobCodeWithHint(job: JobOptionHintSource): string {
   return `${job.code} · ${getJobOptionHint(job)}`;
 }
 
+/** The Quote kind a Job presents as, so Job surfaces can reuse the Quote kind palette. */
+export function getJobOfferingKind(job: Pick<JobDisplaySource, 'quoteKind'>): 'product' | 'custom' {
+  return job.quoteKind === 'custom' ? 'custom' : 'product';
+}
+
 export function getJobWorkLabel(job: Pick<JobDisplaySource, 'quoteKind'>): 'Product' | 'Work title' {
-  return job.quoteKind === 'custom' ? 'Work title' : 'Product';
+  return getJobOfferingKind(job) === 'custom' ? 'Work title' : 'Product';
 }

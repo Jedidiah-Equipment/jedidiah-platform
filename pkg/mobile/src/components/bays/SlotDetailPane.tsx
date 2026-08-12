@@ -42,6 +42,7 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
       <JobWorkCard
         customerCompanyName={slot.customerCompanyName}
         jobDisplayName={slot.jobDisplayName}
+        offeringKind={slot.offeringKind}
         productSerialNumber={slot.productSerialNumber}
         productThumbnailDataUrl={slot.productThumbnailDataUrl}
       />

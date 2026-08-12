@@ -22,10 +22,12 @@ import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
+import { QuoteKindBadge } from '../QuoteKindBadge.js';
 import { StartJobLink } from '../StartJobLink.js';
 
 // The summary prices the API-shaped Work Items the form maps into, not the browser shape itself.
@@ -182,8 +184,9 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
           </div>
         </CardTitle>
         <CardAction>
-          <EntityThumbnail
+          <OfferingThumbnail
             className="size-10"
+            kind="product"
             label={productName}
             size="lg"
             thumbnailDataUrl={quote.product?.thumbnailDataUrl ?? null}
@@ -222,11 +225,11 @@ function QuoteCustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'c
         <CardTitle className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="block truncate">{workTitle}</span>
-            <Badge variant="outline">Custom</Badge>
+            <QuoteKindBadge kind="custom" />
           </div>
         </CardTitle>
         <CardAction>
-          <EntityThumbnail className="size-10" label={workTitle} size="lg" thumbnailDataUrl={null} />
+          <OfferingThumbnail className="size-10" kind="custom" label={workTitle} size="lg" thumbnailDataUrl={null} />
         </CardAction>
       </CardHeader>
       <CardContent className="grid gap-3">

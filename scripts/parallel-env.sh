@@ -273,11 +273,7 @@ run_up() {
   pnpm compose:up
   pnpm --filter @pkg/db db:up:template
   pnpm db:migrate
-  base=$(base_for_slot "$slot")
-  # The seed package's tracked defaults target slot 0; dotenv preserves these command-scoped overrides.
-  DATABASE_URL="postgres://postgres:postgres@localhost:$((base + 5))/${DB}" \
-    DOCUMENT_STORAGE_ENDPOINT="http://localhost:$((base + 6))" \
-    pnpm db:seed
+  pnpm db:seed
 }
 
 run_down() {

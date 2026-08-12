@@ -15,10 +15,9 @@ describe('JOB_DEPARTMENT_PIPELINE', () => {
     ]);
   });
 
-  it('covers every valid department exactly once', () => {
+  it('matches the canonical Department order exactly', () => {
     const pipelineDepartments = JOB_DEPARTMENT_PIPELINE.map(({ department }) => department);
 
-    expect(new Set(pipelineDepartments)).toHaveProperty('size', DEPARTMENTS.length);
-    expect([...pipelineDepartments].sort()).toEqual([...DEPARTMENTS].sort());
+    expect(pipelineDepartments).toEqual(DEPARTMENTS);
   });
 });

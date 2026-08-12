@@ -64,6 +64,8 @@ import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './m
 import { useBoardHistoryFloor } from './use-board-history-floor.js';
 
 const EMPTY_WORKING_CALENDARS = new Map<string, WorkingCalendar>();
+// ScrollArea overlays its horizontal scrollbar at the bottom of the fixed-height Gantt viewport.
+const GANTT_SCROLLBAR_CLEARANCE = 16;
 
 type FilterScrollRequest = {
   date: Date;
@@ -359,7 +361,7 @@ export const BoardGantt: React.FC<{
         <div
           className="w-full overflow-hidden"
           style={{
-            height: Math.max(220, 60 + ganttLayout.contentHeight + 16),
+            height: Math.max(220, 60 + ganttLayout.contentHeight + GANTT_SCROLLBAR_CLEARANCE),
           }}
         >
           <GanttProvider
@@ -447,7 +449,7 @@ const BoardSidebar: React.FC<{
             >
               {departmentLabels[group.department]}
             </h3>
-            <div className="divide-y divide-border/50">
+            <div>
               {group.bays.map((bay) => {
                 const warning = horizonWarnings.get(bay.id);
                 const currentSlot = getCurrentBaySlot(bay.slots);
@@ -458,7 +460,7 @@ const BoardSidebar: React.FC<{
 
                 return (
                   <div
-                    className="flex items-center gap-3 px-3 pl-5 text-xs"
+                    className="flex items-center gap-3 border-border/50 border-b pr-3 pl-5 text-xs"
                     key={bay.id}
                     style={{ height: BAY_ROW_HEIGHT }}
                   >
@@ -574,6 +576,12 @@ const BaySlotBars: React.FC<{
   return (
     <div className="pointer-events-none absolute top-0 left-0 z-20">
       {bays.flatMap((bay) => {
+        const bayTop = bayTopById.get(bay.id);
+
+        if (bayTop === undefined) {
+          return [];
+        }
+
         const nextSlotId = findNextBaySlotId(bay.slots);
 
         return bay.slots.map((slot, slotIndex) => (
@@ -600,7 +608,7 @@ const BaySlotBars: React.FC<{
             onResize={onResizeSlot}
             onSelectSlot={onSelectSlot}
             optimisticDurationDays={optimisticResizeDaysBySlotId[slot.id] ?? null}
-            rowTop={gantt.headerHeight + (bayTopById.get(bay.id) ?? 0)}
+            rowTop={gantt.headerHeight + bayTop}
             slot={slot}
             slotIndex={slotIndex}
             slotCount={bay.slots.length}

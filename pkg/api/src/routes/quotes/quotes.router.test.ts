@@ -155,9 +155,10 @@ describe('quotes.create', () => {
         validUntil: null,
       } as never),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    // A status edit can never be what cancels: that decision settles the Job and machine too.
     await expect(
-      salesCaller.quotes.update({ ...toUpdateInput(quote), status: 'cancelled' } as never),
-    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+      salesCaller.quotes.update({ ...toUpdateInput(quote), cancellationReason: 'Changed mind', status: 'cancelled' }),
+    ).rejects.toMatchObject({ appCode: 'quote.cancel_not_an_update', code: 'BAD_REQUEST' });
     await expect(
       context.createCaller(mockSession('admin')).quotes.cancel({ cancellationReason: '   ', id: quote.id }),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
@@ -534,27 +535,22 @@ describe('quotes.create', () => {
 
     const updated = await caller.quotes.update({
       ...toUpdateInput(created),
-      cancellationReason: 'Customer withdrew the order',
       notes: 'Editable after sent',
-      status: 'cancelled',
     });
+    // Cancelling is its own act, never a status edit — the sale's Job and machine ride on it.
+    await caller.quotes.cancel({ cancellationReason: 'Customer withdrew the order', id: created.id });
     const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
-    const updateEvent = events.findLast((event) => event.entityType === 'quote' && event.action === 'updated');
+    const quoteUpdates = events.filter((event) => event.entityType === 'quote' && event.action === 'updated');
 
     expect(updated).toMatchObject({
       notes: 'Editable after sent',
-      status: 'cancelled',
+      status: 'sent',
     });
-    expect(updateEvent?.changes).toMatchObject({
-      notes: {
-        from: null,
-        to: 'Editable after sent',
-      },
-      status: {
-        from: 'sent',
-        to: 'cancelled',
-      },
-    });
+    // Two acts, two events: the field edit, then the cancellation that ended the sale.
+    expect(quoteUpdates.map((event) => event.changes)).toEqual([
+      expect.objectContaining({ notes: { from: null, to: 'Editable after sent' } }),
+      expect.objectContaining({ status: { from: 'sent', to: 'cancelled' } }),
+    ]);
   });
 
   test('snapshots selected optional assemblies and preserves stale selections', async ({ context }) => {
@@ -1230,11 +1226,11 @@ describe('quotes.list', () => {
       discountPercent: 0,
       productId: context.product.id,
     });
-    const cancelledQuote = await salesCaller.quotes.update({
-      ...toUpdateInput(createdCancelledQuote),
+    await salesCaller.quotes.cancel({
       cancellationReason: 'Customer withdrew the order',
-      status: 'cancelled',
+      id: createdCancelledQuote.id,
     });
+    const cancelledQuote = await salesCaller.quotes.get({ id: createdCancelledQuote.id });
     const job = await adminCaller.jobs.create({
       quoteId: finalQuote.id,
     });
@@ -2056,16 +2052,12 @@ describe('quotes.generateDocument', () => {
   test('maps blocked Quote statuses to a public bad request error', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const created = await createReadyQuote(salesCaller, context.product.id);
-    const cancelled = await salesCaller.quotes.update({
-      ...toUpdateInput(created),
-      cancellationReason: 'Customer withdrew the order',
-      status: 'cancelled',
-    });
+    await salesCaller.quotes.cancel({ cancellationReason: 'Customer withdrew the order', id: created.id });
 
     await expect(
       salesCaller.quotes.generateDocument({
         leadTime: '14 working days',
-        quoteId: cancelled.id,
+        quoteId: created.id,
       }),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
@@ -2255,15 +2247,11 @@ describe('jobs.create with quote links', () => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const adminCaller = context.createCaller(mockSession('admin'));
     const created = await createReadyQuote(salesCaller, context.product.id);
-    const cancelled = await salesCaller.quotes.update({
-      ...toUpdateInput(created),
-      cancellationReason: 'Customer withdrew the order',
-      status: 'cancelled',
-    });
+    await salesCaller.quotes.cancel({ cancellationReason: 'Customer withdrew the order', id: created.id });
 
     await expect(
       adminCaller.jobs.create({
-        quoteId: cancelled.id,
+        quoteId: created.id,
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',

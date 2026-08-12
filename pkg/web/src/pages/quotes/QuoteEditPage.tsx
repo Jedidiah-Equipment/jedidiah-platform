@@ -7,7 +7,6 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteForm } from './components/form/QuoteForm.js';
@@ -21,8 +20,7 @@ type QuoteEditPageProps = {
 export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
   const canCancelQuote = useCan('quote:cancel').can;
-  const { invalidateJobs, invalidateQuotes } = useQueryInvalidation();
-  const showMutationError = useApiMutationErrorToast();
+  const { invalidateQuotes } = useQueryInvalidation();
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
   const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions());
   const quote = quoteQuery.data;
@@ -35,32 +33,13 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
       },
     }),
   );
-  const cancelMutation = useMutation(
-    trpc.quotes.cancel.mutationOptions({
-      onError: (error) => {
-        showMutationError(error, 'Unable to cancel quote.');
-      },
-      onSuccess: async () => {
-        await Promise.all([invalidateQuotes(), invalidateJobs()]);
-      },
-    }),
-  );
 
   return (
     <PageLayout
       actions={
         quote ? (
           <div className="flex items-center gap-2">
-            <QuoteCancellationAction
-              canCancel={canCancelQuote}
-              hasEverSourcedJob={quote.hasEverSourcedJob}
-              isPending={cancelMutation.isPending}
-              job={quote.job}
-              kind={quote.kind}
-              onConfirm={(cancellationReason) => cancelMutation.mutate({ cancellationReason, id: quote.id })}
-              productUnitId={quote.productUnitId}
-              status={quote.status}
-            />
+            <QuoteCancellationAction canCancel={canCancelQuote} quote={quote} />
             <QuoteStatusBadge size="lg" status={quote.status} />
           </div>
         ) : undefined

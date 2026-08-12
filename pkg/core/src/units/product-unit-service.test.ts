@@ -546,12 +546,17 @@ describe('removeProductUnit', () => {
     await expect(context.db.$count(productUnits, eq(productUnits.id, context.seed.unitId))).resolves.toBe(1);
   });
 
-  test('refuses a machine a Customer holds, however its Jobs ended', async ({ context }) => {
+  // Ownership is no longer a refusal: a phantom from a dead sale is born owned, and an administrator
+  // is the one who can say the machine never existed. The build guards below still hold the line.
+  test('deletes a machine a Customer still holds, taking its ownership history with it', async ({ context }) => {
     const phantom = await seedPhantomUnit(context, { owner: 'sold' });
 
+    await removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId });
+
+    await expect(context.db.$count(productUnits, eq(productUnits.id, phantom.unitId))).resolves.toBe(0);
     await expect(
-      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
-    ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'owned' } });
+      context.db.$count(productUnitOwnershipTransfers, eq(productUnitOwnershipTransfers.productUnitId, phantom.unitId)),
+    ).resolves.toBe(0);
   });
 
   // Cancelling a Quote does not care whether its Job already finished, and a Job Completion latches. A
@@ -564,16 +569,55 @@ describe('removeProductUnit', () => {
     ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'built' } });
   });
 
-  test('refuses when detaching a cancelled Job would leave it describing no work at all', async ({ context }) => {
+  // The cancelled Stock Build: no sale behind it, so detaching leaves a Job holding neither machine
+  // nor Quote. It survives anyway as the record that someone once meant to build this.
+  test('deletes the machine of a cancelled Stock Build, leaving the Job standing with neither', async ({ context }) => {
     const phantom = await seedPhantomUnit(context, { quote: 'none' });
 
-    await expect(
-      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
-    ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'job-without-quote' } });
+    await removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId });
+
+    await expect(context.db.$count(productUnits, eq(productUnits.id, phantom.unitId))).resolves.toBe(0);
+    const [job] = await context.db.select().from(jobs).where(eq(jobs.id, phantom.jobId));
+    expect(job).toMatchObject({ productUnitId: null, quoteId: null });
+    expect(job?.cancelledAt).not.toBeNull();
   });
 
-  test('refuses a machine a Quote still points at', async ({ context }) => {
+  test('detaches a cancelled Quote that named the machine, leaving the Quote standing', async ({ context }) => {
     const phantom = await seedPhantomUnit(context, { quote: 'allocation' });
+
+    await removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId });
+
+    await expect(context.db.$count(productUnits, eq(productUnits.id, phantom.unitId))).resolves.toBe(0);
+    const [quote] = await context.db
+      .select()
+      .from(quotes)
+      .where(eq(quotes.id, phantom.quoteId ?? ''));
+    expect(quote).toMatchObject({ productUnitId: null, status: 'cancelled' });
+  });
+
+  test('records losing the machine against the cancelled Quote that was detached', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context, { quote: 'allocation' });
+
+    await removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId });
+
+    const quoteEvents = await context.db
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.entityType, 'quote'))
+      .orderBy(asc(auditEvents.occurredAt), asc(auditEvents.id));
+
+    expect(quoteEvents).toEqual([
+      expect.objectContaining({
+        action: 'updated',
+        actorUserId: ACTOR_USER_ID,
+        changes: { productUnitId: { from: phantom.unitId, to: null } },
+        entityId: phantom.quoteId,
+      }),
+    ]);
+  });
+
+  test('refuses a machine a live Quote still points at', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context, { quote: 'allocation-live' });
 
     await expect(
       removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
@@ -596,7 +640,7 @@ async function seedPhantomUnit(
   options: {
     completedOn?: string;
     owner?: 'stock' | 'sold' | 'sold-then-returned';
-    quote?: 'build-to-order' | 'none' | 'allocation';
+    quote?: 'build-to-order' | 'none' | 'allocation' | 'allocation-live';
   } = {},
 ) {
   const { completedOn = null, owner = 'stock', quote: quoteKind = 'build-to-order' } = options;
@@ -624,17 +668,18 @@ async function seedPhantomUnit(
   let quoteId: string | null = null;
 
   if (quoteKind !== 'none') {
+    const live = quoteKind === 'allocation-live';
     const [quote] = await db
       .insert(quotes)
       .values({
         customerId: seed.riversideId,
         productId: seed.serialProductId,
-        productUnitId: quoteKind === 'allocation' ? unit.id : null,
+        productUnitId: quoteKind === 'allocation' || live ? unit.id : null,
         quotedBasePrice: 1_000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
-        status: 'cancelled',
-        cancellationReason: 'Buyer withdrew',
+        status: live ? 'sent' : 'cancelled',
+        cancellationReason: live ? null : 'Buyer withdrew',
       })
       .returning();
     if (!quote) throw new Error('Phantom Quote insert did not return a row');

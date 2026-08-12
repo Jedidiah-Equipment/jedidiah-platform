@@ -24,7 +24,7 @@ export const HELP_TOPICS = {
   plan: '/production/open-a-bay-plan',
   products: '/inventory/maintain-a-product-cost-estimate',
   purchaseOrders: '/inventory/post-a-receipt',
-  quotes: '/',
+  quotes: '/sales/cancel-a-quote',
   storesTablet: '/inventory/work-the-stores-tablet',
   suppliers: '/inventory/maintain-suppliers',
   units: '/production/remove-a-unit',

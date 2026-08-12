@@ -3,6 +3,7 @@ import {
   createQuote,
   generateQuoteDocument,
   getQuote,
+  getQuoteCancellationPlan,
   getQuoteProductBayAvailability,
   getQuoteProductOption,
   isProductUnitCoreError,
@@ -23,6 +24,7 @@ import {
   summarizeQuoteWeeklyFlow,
   updateQuote,
 } from '@pkg/core';
+import { hasPermission } from '@pkg/domain';
 import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf';
 import {
   CustomerListInput,
@@ -58,6 +60,11 @@ export const quotesRouter = router({
   get: authorizedProcedure('quote:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapQuoteErrors(() => getQuote({ db: ctx.db, id: input.id }))),
+
+  /** What the cancel dialog is about to touch: the live Job, and the machine that Job is building. */
+  cancellationPlan: authorizedProcedure('quote:read')
+    .input(z.object({ id: UUID }))
+    .query(({ ctx, input }) => mapQuoteErrors(() => getQuoteCancellationPlan({ db: ctx.db, id: input.id }))),
 
   salespeople: authorizedProcedure('quote:read').query(({ ctx }) => listQuoteSalespeople({ db: ctx.db })),
 
@@ -103,10 +110,22 @@ export const quotesRouter = router({
       mapQuoteMutationErrors(() => createQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  cancel: authorizedProcedure('quote:cancel')
+  /**
+   * One mutation for both surfaces, gated by the weaker permission and narrowed inside. Cancelling a
+   * Quote nobody has acted on is undoing paperwork, which `quote:update` covers; once it is Locked the
+   * cascade unwinds a sale or a build, and core refuses without `quote:cancel`.
+   */
+  cancel: authorizedProcedure(['quote:update', 'quote:cancel'])
     .input(QuoteCancelInput)
     .mutation(({ ctx, input }) =>
-      mapQuoteMutationErrors(() => cancelQuote({ actorUserId: ctx.session.user.id, db: ctx.db, ...input })),
+      mapQuoteMutationErrors(() =>
+        cancelQuote({
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          mayCancelLockedQuote: hasPermission(ctx.access, 'quote:cancel'),
+          ...input,
+        }),
+      ),
     ),
 
   update: authorizedProcedure('quote:update')
@@ -179,8 +198,15 @@ function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreErr
         code: 'CONFLICT',
         message: error.message,
       };
+    case 'quote.cancel_denied':
+      return {
+        appCode: error.code,
+        code: 'FORBIDDEN',
+        message: error.message,
+      };
     case 'quote.offering_invariant':
     case 'quote.already_cancelled':
+    case 'quote.cancel_not_an_update':
     case 'quote.custom_selected_assemblies':
     case 'quote.locked':
     case 'quote.document_generation_not_allowed':

@@ -28,10 +28,11 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
+import { getQuoteCancellationPlan } from '../cancellation/cancellation-plan-service.js';
 import { getJob } from '../jobs/job-read-service.js';
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
+import { createProductUnit } from '../units/product-unit-service.js';
 import {
   getQuote,
   getQuoteProductBayAvailability,
@@ -1095,7 +1096,33 @@ describe('custom quotes', () => {
 });
 
 describe('cancelled quotes', () => {
-  test('updateQuote can cancel an unlocked quote, keeps lock-editable fields writable, and cannot leave cancelled', async ({
+  test('updateQuote refuses to be what cancels a quote, however unlocked it is', async ({ context }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(quote, {
+          cancellationReason: 'Customer withdrew the project',
+          status: 'cancelled',
+        }),
+      }),
+    ).rejects.toMatchObject({ code: 'quote.cancel_not_an_update' });
+
+    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({ status: 'draft' });
+  });
+
+  test('updateQuote keeps lock-editable fields writable on a cancelled quote, and cannot leave cancelled', async ({
     context,
   }) => {
     const quote = await createQuoteService({
@@ -1108,14 +1135,14 @@ describe('cancelled quotes', () => {
         status: 'draft',
       }),
     });
-    const cancelled = await updateQuote({
+    await cancelQuote({
       actorUserId: context.salesPerson.id,
+      cancellationReason: 'Customer withdrew the project',
       db: context.db,
-      input: buildQuoteUpdateInput(quote, {
-        cancellationReason: 'Customer withdrew the project',
-        status: 'cancelled',
-      }),
+      id: quote.id,
+      mayCancelLockedQuote: false,
     });
+    const cancelled = await getQuote({ db: context.db, id: quote.id });
 
     const annotated = await updateQuote({
       actorUserId: context.salesPerson.id,
@@ -1150,7 +1177,28 @@ describe('cancelled quotes', () => {
     ).rejects.toThrow('Quote is locked because it has been cancelled; cancellationReason cannot be changed.');
   });
 
-  test('patchQuote can cancel an unlocked quote, keeps lock-editable fields writable, and cannot leave cancelled', async ({
+  test('patchQuote refuses to be what cancels a quote, however unlocked it is', async ({ context }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Cancelled repair' },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    await expect(
+      patchQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: { cancellationReason: 'Customer withdrew the repair', id: quote.id, status: 'cancelled' },
+      }),
+    ).rejects.toMatchObject({ code: 'quote.cancel_not_an_update' });
+  });
+
+  test('patchQuote keeps lock-editable fields writable on a cancelled quote, and cannot leave cancelled', async ({
     context,
   }) => {
     const quote = await createQuoteService({
@@ -1163,11 +1211,14 @@ describe('cancelled quotes', () => {
         status: 'draft',
       }),
     });
-    const cancelled = await patchQuote({
+    await cancelQuote({
       actorUserId: context.salesPerson.id,
+      cancellationReason: 'Customer withdrew the repair',
       db: context.db,
-      input: { cancellationReason: 'Customer withdrew the repair', id: quote.id, status: 'cancelled' },
+      id: quote.id,
+      mayCancelLockedQuote: false,
     });
+    const cancelled = await getQuote({ db: context.db, id: quote.id });
 
     const annotated = await patchQuote({
       actorUserId: context.salesPerson.id,
@@ -1513,6 +1564,7 @@ describe('cancelQuote', () => {
 
     await cancelQuote({
       actorUserId: context.salesPerson.id,
+      mayCancelLockedQuote: true,
       cancellationReason: 'Customer withdrew after the replacement was raised',
       db: context.db,
       id: quote.id,
@@ -1542,6 +1594,7 @@ describe('cancelQuote', () => {
 
     await cancelQuote({
       actorUserId: context.salesPerson.id,
+      mayCancelLockedQuote: true,
       cancellationReason: 'Customer withdrew after the Job was already cancelled',
       db: context.db,
       id: quote.id,
@@ -1567,6 +1620,7 @@ describe('cancelQuote', () => {
 
     await cancelQuote({
       actorUserId: context.salesPerson.id,
+      mayCancelLockedQuote: true,
       cancellationReason: 'Customer withdrew from the stock sale',
       db: context.db,
       id: quote.id,
@@ -1628,6 +1682,7 @@ describe('cancelQuote', () => {
 
     await cancelQuote({
       actorUserId: context.salesPerson.id,
+      mayCancelLockedQuote: true,
       cancellationReason: 'Customer withdrew the project',
       db: context.db,
       id: quote.id,
@@ -1744,6 +1799,7 @@ describe('cancelQuote', () => {
 
     await cancelQuote({
       actorUserId: context.salesPerson.id,
+      mayCancelLockedQuote: true,
       cancellationReason: 'Customer cancelled after production began',
       db: context.db,
       id: quote.id,
@@ -1818,11 +1874,137 @@ describe('cancelQuote', () => {
     await expect(
       cancelQuote({
         actorUserId: context.salesPerson.id,
+        mayCancelLockedQuote: true,
         cancellationReason: 'Duplicate cancellation attempt',
         db: context.db,
         id: quote.id,
       }),
     ).rejects.toMatchObject({ code: 'quote.already_cancelled' });
+  });
+
+  // The Unit a build-to-order Job mints is owned by the Customer from the moment it exists, and the
+  // sale dying hands it back. The Transfer the mint wrote carries this Quote, which is what the
+  // reversal matches on, so build-to-order and Allocation return by the same path.
+  test('hands a build-to-order Unit back to Stock when the cascade cancels its Job', async ({ context }) => {
+    const built = await seedBuildToOrderJob(context);
+
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancellationReason: 'Buyer withdrew before anything was made',
+      db: context.db,
+      id: built.quoteId,
+      mayCancelLockedQuote: true,
+    });
+
+    expect(await readOwnerships(context.db, built.unitId)).toEqual([
+      { from: null, to: context.customer.id },
+      { from: context.customer.id, to: null },
+    ]);
+  });
+
+  // Declining the cascade leaves a live build standing, and its machine is still the Customer's: the
+  // Job that owes them a machine has not gone anywhere.
+  test('leaves a build-to-order Unit with its Customer when the Job is kept', async ({ context }) => {
+    const built = await seedBuildToOrderJob(context);
+
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancelJob: false,
+      cancellationReason: 'Paperwork redone, build continues',
+      db: context.db,
+      id: built.quoteId,
+      mayCancelLockedQuote: true,
+    });
+
+    expect(await readOwnerships(context.db, built.unitId)).toEqual([{ from: null, to: context.customer.id }]);
+    const [job] = await context.db.select().from(jobs).where(eq(jobs.id, built.jobId));
+    expect(job?.cancelledAt).toBeNull();
+  });
+
+  test('removes the build-to-order Unit when asked, leaving the cancelled Job standing', async ({ context }) => {
+    const built = await seedBuildToOrderJob(context);
+
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancellationReason: 'Buyer withdrew before anything was made',
+      db: context.db,
+      id: built.quoteId,
+      mayCancelLockedQuote: true,
+      removeUnit: true,
+    });
+
+    await expect(context.db.$count(productUnits, eq(productUnits.id, built.unitId))).resolves.toBe(0);
+    const [job] = await context.db.select().from(jobs).where(eq(jobs.id, built.jobId));
+    expect(job).toMatchObject({ productUnitId: null, quoteId: built.quoteId });
+    expect(job?.cancelledAt).toBeInstanceOf(Date);
+  });
+
+  test('refuses a Locked Quote from a caller who may only update Quotes', async ({ context }) => {
+    const built = await seedBuildToOrderJob(context);
+
+    await expect(
+      cancelQuote({
+        actorUserId: context.salesPerson.id,
+        cancellationReason: 'Sales tried to unwind a sale that had started',
+        db: context.db,
+        id: built.quoteId,
+        mayCancelLockedQuote: false,
+      }),
+    ).rejects.toMatchObject({ code: 'quote.cancel_denied' });
+
+    const [quote] = await context.db.select().from(quotes).where(eq(quotes.id, built.quoteId));
+    expect(quote?.status).toBe('accepted');
+  });
+
+  test('plans the cascade, offering the build-to-order machine already ticked', async ({ context }) => {
+    const built = await seedBuildToOrderJob(context);
+
+    const plan = await getQuoteCancellationPlan({ db: context.db, id: built.quoteId });
+
+    expect(plan.job).toMatchObject({ id: built.jobId, releasableSlotCount: 0 });
+    expect(plan.unit).toMatchObject({
+      canRemove: true,
+      ownerName: 'Acme Mining',
+      productUnitId: built.unitId,
+      removeByDefault: true,
+    });
+  });
+
+  // The machine was ours before this sale and stays ours after it: cancelling returns it to Stock
+  // rather than deleting it, so there is nothing to offer.
+  test('offers no machine when the Quote merely allocated one that already existed', async ({ context }) => {
+    const unitId = await createUnit(context.db, context.product.id, 4242);
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      productUnitId: unitId,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    await context.db.insert(jobs).values({ productUnitId: unitId, quoteId: quote.id });
+
+    await expect(getQuoteCancellationPlan({ db: context.db, id: quote.id })).resolves.toMatchObject({ unit: null });
+  });
+
+  // The quote raised in error, which is the whole reason cancelling is not admin-only.
+  test('cancels an unlocked Quote for a caller who may only update Quotes', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'draft',
+    });
+
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancellationReason: 'Raised against the wrong Customer',
+      db: context.db,
+      id: quote.id,
+      mayCancelLockedQuote: false,
+    });
+
+    const [cancelled] = await context.db.select().from(quotes).where(eq(quotes.id, quote.id));
+    expect(cancelled?.status).toBe('cancelled');
   });
 });
 
@@ -2065,6 +2247,7 @@ async function createQuote(
   {
     customerId,
     productId,
+    productUnitId,
     salesPersonId,
     plannedDeliveryDate,
     preferredDeliveryDate,
@@ -2074,6 +2257,7 @@ async function createQuote(
     plannedDeliveryDate?: string;
     preferredDeliveryDate?: string;
     productId: string;
+    productUnitId?: string;
     salesPersonId: string;
     status?: QuoteStatus;
   },
@@ -2086,6 +2270,7 @@ async function createQuote(
       plannedDeliveryDate,
       preferredDeliveryDate,
       productId,
+      productUnitId,
       quotedBasePrice: 1000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId,
@@ -2100,7 +2285,50 @@ async function createQuote(
   return quote;
 }
 
-/** The machine a Product Job builds. A Job is a Product Job because it has one, so fixtures need one. */
+/**
+ * An accepted Quote whose Job minted the machine it sells, exactly as `createJob` does it: the Unit is
+ * created owned by the Customer, carrying this Quote as the source of the sale.
+ */
+async function seedBuildToOrderJob(context: {
+  customer: { id: string };
+  db: Db;
+  product: { id: string };
+  salesPerson: { id: string };
+}) {
+  const quote = await createQuote(context.db, {
+    customerId: context.customer.id,
+    productId: context.product.id,
+    salesPersonId: context.salesPerson.id,
+    status: 'accepted',
+  });
+  const unit = await context.db.transaction((tx) =>
+    createProductUnit({
+      actorUserId: context.salesPerson.id,
+      initialOwner: { customerId: context.customer.id, sourceQuoteId: quote.id },
+      plantToday: getPlantDateNow(),
+      productId: context.product.id,
+      tx,
+    }),
+  );
+  const [job] = await context.db
+    .insert(jobs)
+    .values({ productUnitId: unit.id, quoteId: quote.id })
+    .returning({ id: jobs.id });
+  if (!job) throw new Error('Build-to-order Job insert did not return a row');
+
+  return { jobId: job.id, quoteId: quote.id, unitId: unit.id };
+}
+
+async function readOwnerships(db: Db, productUnitId: string) {
+  const transfers = await db
+    .select()
+    .from(productUnitOwnershipTransfers)
+    .where(eq(productUnitOwnershipTransfers.productUnitId, productUnitId))
+    .orderBy(asc(productUnitOwnershipTransfers.createdAt));
+
+  return transfers.map((transfer) => ({ from: transfer.fromCustomerId, to: transfer.toCustomerId }));
+}
+
 async function createUnit(db: Db, productId: string, sequence: number) {
   const [unit] = await db
     .insert(productUnits)

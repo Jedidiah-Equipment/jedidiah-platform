@@ -1007,11 +1007,12 @@ describe('JobSlot schemas', () => {
 describe('JobCancelInput', () => {
   const id = '00000000-0000-4000-8000-000000000001';
 
-  it('requires a reason and trims it', () => {
+  it('requires a reason, trims it, and never removes the machine unless asked', () => {
     expect(() => JobCancelInput.parse({ id, cancellationReason: '   ' })).toThrow('Cancellation reason is required');
     expect(JobCancelInput.parse({ id, cancellationReason: '  Raised in error  ' })).toEqual({
       id,
       cancellationReason: 'Raised in error',
+      removeUnit: false,
     });
   });
 });

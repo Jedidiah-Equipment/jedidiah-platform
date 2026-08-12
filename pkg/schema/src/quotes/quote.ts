@@ -579,11 +579,19 @@ export const QuotePatchInput = z
     }
   });
 
+/**
+ * Cancelling a Quote is the death of the sale, and the two records underneath it come along only
+ * because the person cancelling said so. The defaults are the conservative ones: the live Job goes,
+ * matching the cascade that has always run, and nothing is ever destroyed unless asked for. The
+ * surface computes what to tick; the server never assumes destruction.
+ */
 export type QuoteCancelInput = z.infer<typeof QuoteCancelInput>;
 export const QuoteCancelInput = z
   .object({
+    cancelJob: z.boolean().default(true),
     cancellationReason: QuoteCancellationReason,
     id: UUID,
+    removeUnit: z.boolean().default(false),
   })
   .strict();
 

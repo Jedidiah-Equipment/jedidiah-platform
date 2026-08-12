@@ -1,5 +1,5 @@
 import { customers, type DatabaseTransaction, type Db, jobs, notRemoved, products, quotes, user } from '@pkg/db';
-import { assertQuoteEditable, getPlantDateNow, validateDiscount } from '@pkg/domain';
+import { assertQuoteEditable, getPlantDateNow, isQuoteLocked, validateDiscount } from '@pkg/domain';
 import {
   type AuditChanges,
   type AuthId,
@@ -9,6 +9,7 @@ import {
   type QuoteKind,
   type QuotePatchInput,
   type QuoteSelectedAssemblyInput,
+  type QuoteStatus,
   type QuoteUpdateInput,
   type QuoteWorkItemInput,
   type UUID,
@@ -18,6 +19,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { cancelJobForQuote } from '../jobs/job-service.js';
+import { removeProductUnitWithin } from '../units/product-unit-service.js';
 import {
   mergeAllocationSeed,
   resolveAllocationQuoteSeed,
@@ -27,6 +29,8 @@ import {
 import { quoteAuditDescriptor } from './quote-audit.js';
 import {
   QuoteAlreadyCancelledError,
+  QuoteCancelDeniedError,
+  QuoteCancelNotAnUpdateError,
   QuoteCustomSelectedAssembliesError,
   QuoteDiscountInvalidError,
   QuoteInvalidReferenceError,
@@ -67,16 +71,34 @@ type QuoteCollectionPatch = {
   workItemsChanged: boolean;
 };
 
+/**
+ * The one way a Quote is cancelled, and the only place that decides what the death of a sale does to
+ * the records underneath it. Both the header action and the status field come here.
+ *
+ * What always happens: the Quote is cancelled, and a machine this Quote sold goes back to Stock. What
+ * the caller chooses: whether the live Job goes with it, and whether the machine that Job was building
+ * — a serial for something nobody ever made — is deleted. Neither is assumed; `removeUnit` in
+ * particular defaults off, so the destructive half only ever happens because someone asked.
+ *
+ * `mayCancelLockedQuote` is the caller's authority for the harder half, not a preference: cancelling an
+ * untouched Quote is undoing paperwork, while a Locked one has an accepted sale or a build behind it.
+ */
 export async function cancelQuote({
   actorUserId,
+  cancelJob = true,
   cancellationReason,
   db,
   id,
+  mayCancelLockedQuote,
+  removeUnit = false,
 }: {
   actorUserId: AuthId;
+  cancelJob?: boolean;
   cancellationReason: string;
   db: Db;
   id: UUID;
+  mayCancelLockedQuote: boolean;
+  removeUnit?: boolean;
 }): Promise<void> {
   await db.transaction(async (tx) => {
     const [before] = await tx.select().from(quotes).where(eq(quotes.id, id)).for('update');
@@ -87,6 +109,18 @@ export async function cancelQuote({
 
     if (before.status === 'cancelled') {
       throw new QuoteAlreadyCancelledError();
+    }
+
+    if (
+      !mayCancelLockedQuote &&
+      isQuoteLocked({
+        hasEverSourcedJob: await quoteHasEverSourcedJob({ quoteId: before.id, tx }),
+        hasProductUnit: before.productUnitId !== null,
+        kind: before.kind,
+        status: before.status,
+      })
+    ) {
+      throw new QuoteCancelDeniedError();
     }
 
     const [selectedAssemblies, workItems] = await Promise.all([
@@ -108,14 +142,22 @@ export async function cancelQuote({
     );
 
     const plantToday = getPlantDateNow();
-    await cancelJobForQuote({ actorUserId, now, plantToday, quoteId: before.id, tx });
-    await returnQuoteProductUnitToStock({
-      actorUserId,
-      customerId: before.customerId,
-      occurredOn: plantToday,
-      quoteId: before.id,
-      tx,
-    });
+    const cancelledJob = cancelJob
+      ? await cancelJobForQuote({ actorUserId, now, plantToday, quoteId: before.id, tx })
+      : null;
+
+    // An Allocation Quote sold a machine that already existed, so the sale dying hands it back whatever
+    // becomes of any Job. A build-to-order Unit belongs to the Job that minted it and returns only when
+    // that Job goes too — otherwise a live build would be left owing a machine we had taken back.
+    if (before.productUnitId !== null || cancelledJob !== null) {
+      await returnQuoteProductUnitToStock({
+        actorUserId,
+        customerId: before.customerId,
+        occurredOn: plantToday,
+        quoteId: before.id,
+        tx,
+      });
+    }
 
     const [row] = await tx
       .update(quotes)
@@ -135,6 +177,13 @@ export async function cancelQuote({
         after: { row, selectedAssemblies, workItems },
         changes,
       });
+    }
+
+    // Last, so Unit Removal reads a world where the Quote is already cancelled and its Job with it —
+    // both of which its own guards insist on. Only ever the machine this Quote's Job minted: an
+    // Allocation Quote's Unit existed before the sale and outlives it.
+    if (removeUnit && cancelledJob?.productUnitId && before.productUnitId === null) {
+      await removeProductUnitWithin({ actorUserId, id: cancelledJob.productUnitId, tx });
     }
   });
 }
@@ -249,6 +298,8 @@ export async function updateQuote({
     if (beforeOffering.kind === 'custom') {
       assertNoCustomSelectedAssemblies(input);
     }
+
+    assertNotCancellingByUpdate({ before: before.status, next: input.status });
 
     const collectionInput: QuoteCollectionPatchInput = {
       selectedAssemblies: input.selectedAssemblies,
@@ -391,6 +442,8 @@ export async function patchQuote({
     if (input.salesPersonId !== undefined && input.salesPersonId !== before.salesPersonId) {
       await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
     }
+
+    assertNotCancellingByUpdate({ before: before.status, next: input.status });
 
     // `undefined` keeps the current value; an explicit `null` clears a nullable field.
     const patch = {
@@ -753,6 +806,17 @@ function assertValidDiscount({ discountPercent }: { discountPercent: number }): 
 
   if (!result.allowed) {
     throw new QuoteDiscountInvalidError(result.reason);
+  }
+}
+
+/**
+ * An edit may carry `cancelled` because the Quote was already cancelled — its notes stay editable
+ * afterwards — but it may never be what does the cancelling. That decision settles the Job and the
+ * machine too, and only {@link cancelQuote} knows how.
+ */
+function assertNotCancellingByUpdate({ before, next }: { before: QuoteStatus; next: QuoteStatus | undefined }): void {
+  if (next === 'cancelled' && before !== 'cancelled') {
+    throw new QuoteCancelNotAnUpdateError();
   }
 }
 

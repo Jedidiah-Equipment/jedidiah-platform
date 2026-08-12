@@ -16,6 +16,7 @@ import {
   buildReworkCfo,
   type CfoEntry,
   getPlantDateNow,
+  isReleasableJobSlot,
   projectJobSlots,
 } from '@pkg/domain';
 import {
@@ -48,7 +49,7 @@ import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { snapshotJobBrochureDocument } from '../products/product-brochure-document.js';
 import { getProductCostEstimate } from '../products/product-cost-estimate-service.js';
-import { createProductUnit } from '../units/product-unit-service.js';
+import { createProductUnit, removeProductUnitWithin } from '../units/product-unit-service.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobAuditDescriptor } from './job-audit.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
@@ -59,6 +60,7 @@ import {
   JobCreateFromQuoteDeniedError,
   JobNotFoundError,
   JobSlotNotFoundError,
+  JobUnitRemovalDeniedError,
 } from './job-errors.js';
 import { type JobProductUnitRow, type JobRow, mapJob } from './job-mappers.js';
 import { assertJobIsMutable, lockMutableJob } from './job-mutation-guards.js';
@@ -191,6 +193,10 @@ async function snapshotJobEstimate({
   await tx.insert(jobEstimateSnapshots).values({ jobId, payload });
 }
 
+/**
+ * The Job cascade behind a Quote cancellation. Returns the Job it cancelled, or null when the Quote had
+ * no live one, so the caller can decide what becomes of the machine that Job was building.
+ */
 export async function cancelJobForQuote({
   actorUserId,
   now,
@@ -203,7 +209,7 @@ export async function cancelJobForQuote({
   plantToday: DateOnlyIso;
   quoteId: UUID;
   tx: DatabaseTransaction;
-}): Promise<void> {
+}): Promise<{ id: UUID; productUnitId: UUID | null } | null> {
   const [job] = await tx
     .select()
     .from(jobs)
@@ -211,13 +217,15 @@ export async function cancelJobForQuote({
     .for('update');
 
   if (!job) {
-    return;
+    return null;
   }
 
   await releaseFutureJobSlots({ jobId: job.id, plantToday, tx });
 
   await tx.update(jobs).set({ cancelledAt: now, updatedAt: now }).where(eq(jobs.id, job.id));
   await recordAuditDelete({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
+
+  return { id: job.id, productUnitId: job.productUnitId };
 }
 
 /**
@@ -255,7 +263,7 @@ async function releaseFutureJobSlots({
     }).slots;
 
     for (const slot of projectedSlots.filter((slot) => slot.kind === 'work' && slot.jobId === jobId)) {
-      if (slot.startDate > plantToday) {
+      if (isReleasableJobSlot({ plantToday, startDate: slot.startDate })) {
         await queue.remove(slot.id);
       }
     }
@@ -266,6 +274,9 @@ async function releaseFutureJobSlots({
  * Cancel a Job outright, without touching the Quote behind it. Unlike the Quote cascade this refuses a
  * Job that has already been completed or cancelled: a cascade follows a decision made elsewhere, while
  * this is the decision itself, and an explicit request deserves an explicit answer.
+ *
+ * A Stock Build may take its Unit with it, because nothing else has a claim on that machine. A Job with
+ * a Quote may not: the sale still stands and may start a replacement Job on the same Unit.
  */
 export async function cancelJob({
   actorUserId,
@@ -284,6 +295,12 @@ export async function cancelJob({
       throw new JobAlreadyCompletedError(job.id);
     }
 
+    // Refused before anything is written, so a request the product should never have sent leaves the
+    // Job live rather than cancelled-but-not-as-asked.
+    if (input.removeUnit && job.quoteId !== null) {
+      throw new JobUnitRemovalDeniedError(job.id);
+    }
+
     const now = new Date();
     await releaseFutureJobSlots({ jobId: job.id, plantToday, tx });
 
@@ -300,6 +317,12 @@ export async function cancelJob({
     // The cancelled row rather than the row before it, so the reason the Job was abandoned is what the
     // audit trail carries — the only place it is recorded besides the Job itself.
     await recordAuditDelete({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: cancelled });
+
+    // After the cancellation lands, so Unit Removal's own live-Job guard sees the Job it is being asked
+    // to abandon. Its remaining guards still apply: a build that finished is refused here too.
+    if (input.removeUnit && job.productUnitId !== null) {
+      await removeProductUnitWithin({ actorUserId, id: job.productUnitId, tx });
+    }
   });
 }
 

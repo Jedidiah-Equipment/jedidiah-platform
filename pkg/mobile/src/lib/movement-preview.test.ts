@@ -18,6 +18,7 @@ function stockRow(overrides: Partial<StockOnHandRow> = {}): StockOnHandRow {
     committed: 0,
     free: 4,
     isInternallyFabricated: false,
+    onOrder: 0,
     partCode: 'RAW-100',
     partId: PART_ID,
     partName: 'Channel',

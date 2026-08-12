@@ -21,6 +21,7 @@ describe('AppNavMain', () => {
       'Close-out',
     ]);
     expect(inventory?.items.find((item) => item.title === 'Inventory')?.link.activeOptions).toEqual({ exact: true });
+    expect(inventory?.items.find((item) => item.title === 'Purchase Orders')?.indicator).toBeDefined();
   });
 
   it('shows the Inventory section when any permitted item is visible', () => {

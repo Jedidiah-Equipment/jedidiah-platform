@@ -353,7 +353,7 @@ export async function getPartStockByCode({ code, db }: { code: string; db: Db })
 
 async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): Promise<StockOnHandResult> {
   const partCondition = partId === undefined ? undefined : eq(parts.id, partId);
-  const [bucketRows, movementRows, committedByPart] = await Promise.all([
+  const [bucketRows, movementRows, committedByPart, openOrderLines] = await Promise.all([
     db
       .select({
         isInternallyFabricated: parts.isInternallyFabricated,
@@ -397,12 +397,17 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): 
       .where(partId === undefined ? undefined : eq(stockMovements.partId, partId))
       .orderBy(asc(stockMovements.partId), asc(stockMovements.createdAt), asc(stockMovements.id)),
     loadOpenCommitments(db, partId === undefined ? undefined : [partId]).then(sumCommitmentsByPart),
+    loadOpenOrderLines(partId === undefined ? { db } : { db, partIds: [partId] }),
   ]);
 
   const movementsByPart = groupBy(movementRows, (row) => row.partId);
   const lastCountByPart = new Map(
     movementRows.flatMap((row) => (row.reason === 'stock-count' ? [[row.partId, row.createdAt] as const] : [])),
   );
+  const onOrderByPart = new Map<UUID, number>();
+  for (const line of openOrderLines) {
+    onOrderByPart.set(line.partId, (onOrderByPart.get(line.partId) ?? 0) + line.outstandingQuantity);
+  }
 
   return StockOnHandResultSchema.parse({
     // Grouping preserves the query's ordering, so the head bucket carries the Part's own columns.
@@ -423,6 +428,7 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): 
         committed,
         free: quantity - committed,
         isInternallyFabricated: part.isInternallyFabricated,
+        onOrder: onOrderByPart.get(part.partId) ?? 0,
         partCode: part.partCode,
         partId: part.partId,
         partName: part.partName,

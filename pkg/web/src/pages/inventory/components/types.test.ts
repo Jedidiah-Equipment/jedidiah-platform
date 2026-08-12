@@ -50,6 +50,7 @@ function stockRow(overrides: Partial<StockOnHandRow> = {}): StockOnHandRow {
     committed: 0,
     free: 2,
     isInternallyFabricated: false,
+    onOrder: 0,
     partCode: linear.partCode,
     partId: linear.partId,
     partName: linear.partName,

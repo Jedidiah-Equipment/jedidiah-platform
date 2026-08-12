@@ -230,6 +230,7 @@ export const StockOnHandRow = z.object({
   committed: z.number().finite(),
   free: z.number().finite(),
   isInternallyFabricated: z.boolean(),
+  onOrder: z.number().finite(),
   partCode: z.string(),
   partId: UUID,
   partName: z.string(),

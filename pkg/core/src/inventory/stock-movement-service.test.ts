@@ -2,7 +2,7 @@ import { jobs, stockMovements } from '@pkg/db';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { actorUserId, adjustmentInput, test } from '../test/inventory-fixtures.js';
+import { actorUserId, adjustmentInput, seedSentPurchaseOrder, test } from '../test/inventory-fixtures.js';
 import {
   getStockMovementHistory,
   listJobStock,
@@ -528,6 +528,19 @@ describe('stock movement database constraints', () => {
 });
 
 describe('listStockOnHand', () => {
+  test('reports open sent Purchase Order quantities beside Free Stock', async ({ context }) => {
+    await seedSentPurchaseOrder(context.db, context.supplierId, [
+      { partId: context.parts.piece.id, quantity: 7, unitPrice: 10 },
+    ]);
+
+    const result = await listStockOnHand({ db: context.db });
+
+    expect(result.items.find((row) => row.partId === context.parts.piece.id)).toMatchObject({
+      free: -5,
+      onOrder: 7,
+    });
+  });
+
   test('subtracts commitments across Jobs to report free stock', async ({ context }) => {
     await postAdjustment({
       actorUserId,

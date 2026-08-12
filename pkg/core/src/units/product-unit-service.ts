@@ -2,12 +2,15 @@ import {
   customers,
   type DatabaseTransaction,
   type Db,
+  getForeignKeyViolationConstraint,
+  jobs,
   productSerialSequences,
   products,
   productUnitOwnershipTransfers,
   productUnits,
+  quotes,
 } from '@pkg/db';
-import { getPlantDateNow, resolveNewestOwnershipTransfer } from '@pkg/domain';
+import { getPlantDateNow, isJobCancelled, resolveNewestOwnershipTransfer } from '@pkg/domain';
 import {
   type AuthId,
   type DateOnlyIso,
@@ -23,10 +26,17 @@ import {
 } from '@pkg/schema';
 import { eq, sql } from 'drizzle-orm';
 
-import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../audit/audit-service.js';
+import {
+  defineAuditDescriptor,
+  recordAuditCreate,
+  recordAuditDelete,
+  recordAuditEvent,
+} from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
 import { CustomerNotFoundError } from '../customers/customer-errors.js';
+import { jobAuditDescriptor } from '../jobs/job-audit.js';
 import {
+  ProductUnitInUseError,
   ProductUnitNotFoundError,
   ProductUnitOwnerUnchangedError,
   ProductUnitProductNotFoundError,
@@ -393,6 +403,109 @@ export async function updateProductUnit({
     project: async (tx, row) => ({ unit: await getProductUnit({ db: tx, id: row.id }) }),
     set: () => ({ updatedAt: new Date(), vinNumber: input.vinNumber }),
     table: productUnits,
+  });
+}
+
+/**
+ * Deletes a Product Unit that never became a machine: a serial minted by a build that was cancelled
+ * before anything was made. The Unit is otherwise permanent — it is born with its Build Job and has no
+ * soft-delete — so this is the one way out, and every guard below refuses a Unit that is still real.
+ *
+ * The cancelled Jobs survive with their Quotes and history intact; only their link to the machine goes,
+ * because `job.product_unit_id` restricts the delete and there is no machine left to point at. A Job
+ * needs a Unit or a Quote, so one with neither left is refused rather than detached.
+ *
+ * The serial is not reclaimed. Its per-Product sequence never rewinds, so the number stays spent and no
+ * later machine can be confused for this one.
+ */
+export async function removeProductUnit({
+  actorUserId,
+  db,
+  id,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  id: UUID;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const ownership = await lockUnitForOwnership(tx, id);
+
+    if (!ownership) {
+      throw new ProductUnitNotFoundError(id);
+    }
+
+    if (ownership.currentOwnerId !== null) {
+      throw new ProductUnitInUseError(id, 'owned');
+    }
+
+    const [quote] = await tx.select({ id: quotes.id }).from(quotes).where(eq(quotes.productUnitId, id)).limit(1);
+
+    if (quote) {
+      throw new ProductUnitInUseError(id, 'quoted');
+    }
+
+    const unitJobs = await tx
+      .select({
+        cancelledAt: jobs.cancelledAt,
+        code: jobs.code,
+        completedOn: jobs.completedOn,
+        id: jobs.id,
+        quoteId: jobs.quoteId,
+      })
+      .from(jobs)
+      .where(eq(jobs.productUnitId, id));
+
+    for (const job of unitJobs) {
+      if (!isJobCancelled(job)) {
+        throw new ProductUnitInUseError(id, 'live-job');
+      }
+
+      // A Job Completion latches, so a Job cancelled after it finished still carries the date it
+      // finished on. That date is the record that metal was cut, whatever became of the sale.
+      if (job.completedOn !== null) {
+        throw new ProductUnitInUseError(id, 'built');
+      }
+
+      if (job.quoteId === null) {
+        throw new ProductUnitInUseError(id, 'job-without-quote');
+      }
+    }
+
+    // Re-read for the whole row the audit event snapshots; the ownership handle carries only identity.
+    const [unit] = await tx.select().from(productUnits).where(eq(productUnits.id, id));
+
+    if (!unit) {
+      throw new Error('Product Unit disappeared from under its own removal lock');
+    }
+
+    // `productUnitId` is an audited Job field, so each Job records losing its machine against its own
+    // history — the Unit's delete event is on another entity and would leave a dangling id behind.
+    for (const job of unitJobs) {
+      await tx.update(jobs).set({ productUnitId: null, updatedAt: new Date() }).where(eq(jobs.id, job.id));
+      await recordAuditEvent({
+        action: 'updated',
+        actorUserId,
+        changes: { productUnitId: { from: id, to: null } },
+        db: tx,
+        descriptor: jobAuditDescriptor,
+        entityId: job.id,
+        record: { code: job.code },
+      });
+    }
+
+    // The guards above name what is holding the Unit; the FK is the backstop that keeps a referrer
+    // added later failing closed as a refusal rather than a 500.
+    try {
+      await tx.delete(productUnits).where(eq(productUnits.id, id));
+    } catch (error) {
+      if (getForeignKeyViolationConstraint(error)) {
+        throw new ProductUnitInUseError(id, 'referenced');
+      }
+
+      throw error;
+    }
+
+    await recordAuditDelete({ db: tx, descriptor: productUnitAuditDescriptor, actorUserId, input: unit });
   });
 }
 

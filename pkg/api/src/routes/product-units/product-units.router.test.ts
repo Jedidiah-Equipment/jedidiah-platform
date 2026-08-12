@@ -1,4 +1,14 @@
-import { customers, type Db, jobs, products, productUnitOwnershipTransfers, productUnits, quotes, user } from '@pkg/db';
+import {
+  customers,
+  type Db,
+  eq,
+  jobs,
+  products,
+  productUnitOwnershipTransfers,
+  productUnits,
+  quotes,
+  user,
+} from '@pkg/db';
 import { describe, expect } from 'vitest';
 import { createActorUser } from '@/test/actor-user.js';
 import { createTester } from '@/test/create-tester.js';
@@ -184,6 +194,56 @@ describe('productUnits.transfer', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 });
+
+describe('productUnits.remove', () => {
+  test('deletes a machine whose build was cancelled before it was ever made', async ({ context }) => {
+    await abandonSeededBuild(context.db, context.seed);
+
+    await context.createCaller(mockSession('admin')).productUnits.remove({ id: context.seed.unitId });
+
+    await expect(
+      context.createCaller(mockSession('admin')).productUnits.get({ id: context.seed.unitId }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  // Destroying the record of a minted serial is the narrowest action on a Unit, so it stays with admins.
+  test('rejects every role that may read Units but not remove them', async ({ context }) => {
+    for (const role of ['sales', 'procurement-manager', 'job-viewer'] as const) {
+      await expect(
+        context.createCaller(mockSession(role)).productUnits.remove({ id: context.seed.unitId }),
+        `role ${role}`,
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+  });
+
+  test('rejects unauthenticated removals', async ({ context }) => {
+    await expect(context.createAnonCaller().productUnits.remove({ id: context.seed.unitId })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+  });
+
+  test('reports a machine that is still real as a conflict, saying what holds it', async ({ context }) => {
+    await expect(
+      context.createCaller(mockSession('admin')).productUnits.remove({ id: context.seed.unitId }),
+    ).rejects.toMatchObject({ code: 'CONFLICT', message: expect.stringContaining('belongs to a customer') });
+  });
+});
+
+/** Turns the seeded machine into one that was never built: its Job cancelled and nobody holding it. */
+async function abandonSeededBuild(db: Db, seed: Awaited<ReturnType<typeof seedUnit>>) {
+  await db
+    .update(jobs)
+    .set({ cancelledAt: new Date('2026-05-03T08:00:00.000Z') })
+    .where(eq(jobs.productUnitId, seed.unitId));
+
+  await db.insert(productUnitOwnershipTransfers).values({
+    actorUserId: ACTOR_USER_ID,
+    fromCustomerId: seed.riversideId,
+    occurredOn: '2026-05-03',
+    productUnitId: seed.unitId,
+    toCustomerId: null,
+  });
+}
 
 async function seedUnit(db: Db) {
   const now = new Date('2026-05-01T08:00:00.000Z');

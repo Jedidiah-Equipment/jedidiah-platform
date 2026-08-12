@@ -23,6 +23,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { text: 'Export Unit stock', link: '/production/export-unit-stock' },
       { text: 'Open a Bay plan', link: '/production/open-a-bay-plan' },
       { text: 'Delete a Bay', link: '/production/delete-a-bay' },
+      { text: 'Remove a Unit', link: '/production/remove-a-unit' },
     ],
   },
   {

@@ -27,7 +27,7 @@ export const HELP_TOPICS = {
   quotes: '/',
   storesTablet: '/inventory/work-the-stores-tablet',
   suppliers: '/',
-  units: '/',
+  units: '/production/export-unit-stock',
 } as const satisfies Record<string, string>;
 
 export type HelpTopic = keyof typeof HELP_TOPICS;

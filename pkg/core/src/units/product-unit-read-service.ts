@@ -35,7 +35,7 @@ const currentOwnerId = currentOwnerCustomerId(productUnits.id);
  * skipped: a cancelled build never happened, so leaving it in would strand a rebuilt Unit in build
  * forever behind a Job that will never complete. `id` breaks ties so same-instant Jobs order stably.
  */
-const buildCompletedOn = sql<string | null>`(
+export const productUnitBuildCompletedOn = sql<string | null>`(
   select ${jobs.completedOn}
   from ${jobs}
   where ${jobs.productUnitId} = ${productUnits.id} and ${jobs.cancelledAt} is null
@@ -45,7 +45,7 @@ const buildCompletedOn = sql<string | null>`(
 
 /** One projection for both reads, so the list and the detail can never drift apart. */
 const productUnitSelection = {
-  buildCompletedOn: buildCompletedOn.as('build_completed_on'),
+  buildCompletedOn: productUnitBuildCompletedOn.as('build_completed_on'),
   createdAt: productUnits.createdAt,
   id: productUnits.id,
   ownerId: currentOwnerId.as('owner_id'),
@@ -248,7 +248,10 @@ function ownerSearchCondition(search: string): SQL {
   )`;
 }
 
-function buildProductUnitListWhere(input: ProductUnitListInput): SQL | undefined {
+/** Shared with the stock export, so the CSV can only ever answer for the rows the list is showing. */
+export function buildProductUnitListWhere(
+  input: Pick<ProductUnitListInput, 'columnFilters' | 'search'>,
+): SQL | undefined {
   const conditions: SQL[] = [];
 
   if (input.search) {
@@ -275,11 +278,11 @@ function buildProductUnitListWhere(input: ProductUnitListInput): SQL | undefined
   }
 
   if (input.columnFilters.buildState === 'on-hand') {
-    conditions.push(sql`${buildCompletedOn} is not null and ${currentOwnerId} is null`);
+    conditions.push(sql`${productUnitBuildCompletedOn} is not null and ${currentOwnerId} is null`);
   } else if (input.columnFilters.buildState === 'complete') {
-    conditions.push(sql`${buildCompletedOn} is not null and ${currentOwnerId} is not null`);
+    conditions.push(sql`${productUnitBuildCompletedOn} is not null and ${currentOwnerId} is not null`);
   } else if (input.columnFilters.buildState === 'in-build') {
-    conditions.push(sql`${buildCompletedOn} is null`);
+    conditions.push(sql`${productUnitBuildCompletedOn} is null`);
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;

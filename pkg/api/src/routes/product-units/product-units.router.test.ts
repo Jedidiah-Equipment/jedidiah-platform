@@ -39,6 +39,36 @@ describe('productUnits.list', () => {
   });
 });
 
+describe('productUnits.stockExport', () => {
+  test('exports On Hand Units to readers holding every gate the row crosses', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    // Completing the Build Job is what makes the machine On Hand, so the report has a row at all.
+    await caller.jobs.update({ completedOn: '2026-06-04', id: context.seed.buildJobId });
+
+    await expect(caller.productUnits.stockExport({ columnFilters: {}, search: '' })).resolves.toEqual([
+      expect.objectContaining({
+        buildCompletedOn: '2026-06-04',
+        costExVat: 0,
+        customerCompanyName: 'Riverside Farm',
+        productRetailExVat: 1_000,
+        productRetailIncVat: 1_150,
+        productSerialNumber: 'RT-001260001',
+      }),
+    ]);
+  });
+
+  // Every role that reads Units is still refused the valuation: Sales reads Units and Quotes but no
+  // costs, procurement reads costs and Units but no Quotes. Neither gets a hollowed-out report.
+  test("refuses a Unit reader missing any one of the row's other gates", async ({ context }) => {
+    for (const role of ['sales', 'procurement-manager', 'job-viewer'] as const) {
+      await expect(
+        context.createCaller(mockSession(role)).productUnits.stockExport({ columnFilters: {}, search: '' }),
+        `role ${role}`,
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+  });
+});
+
 describe('productUnits.get', () => {
   test('rejects unauthenticated reads', async ({ context }) => {
     await expect(context.createAnonCaller().productUnits.get({ id: context.seed.unitId })).rejects.toMatchObject({
@@ -216,7 +246,11 @@ async function seedUnit(db: Db) {
     .returning();
   if (!unit) throw new Error('Product unit insert did not return a row');
 
-  await db.insert(jobs).values({ createdAt: now, productUnitId: unit.id, quoteId: quote.id, updatedAt: now });
+  const [job] = await db
+    .insert(jobs)
+    .values({ createdAt: now, productUnitId: unit.id, quoteId: quote.id, updatedAt: now })
+    .returning();
+  if (!job) throw new Error('Job insert did not return a row');
 
   await db.insert(productUnitOwnershipTransfers).values({
     actorUserId: ACTOR_USER_ID,
@@ -226,5 +260,5 @@ async function seedUnit(db: Db) {
     toCustomerId: customer.id,
   });
 
-  return { hilltopId: hilltop.id, riversideId: customer.id, unitId: unit.id };
+  return { buildJobId: job.id, hilltopId: hilltop.id, riversideId: customer.id, unitId: unit.id };
 }

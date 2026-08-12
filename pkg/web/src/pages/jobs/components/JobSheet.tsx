@@ -125,7 +125,7 @@ const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
     <div className="flex min-w-0 items-center gap-3">
       <OfferingThumbnail
         className="shrink-0"
-        kind={getJobOfferingKind({ quoteKind: job?.quoteKind ?? null })}
+        kind={job ? getJobOfferingKind(job) : null}
         label={job ? getJobDisplayName(job) : 'Job'}
         size="lg"
         thumbnailDataUrl={job?.productThumbnailDataUrl}

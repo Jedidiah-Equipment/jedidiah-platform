@@ -146,9 +146,6 @@ function CustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'custom
         </View>
         <OfferingAvatar className="h-11 w-11 rounded-xl" kind="custom" name={workTitle} uri={null} />
       </View>
-      <View className="mt-3 flex-row flex-wrap gap-2">
-        <MiniMetric label="Work items" value={String(quote.workItems.length)} />
-      </View>
     </SummaryCard>
   );
 }

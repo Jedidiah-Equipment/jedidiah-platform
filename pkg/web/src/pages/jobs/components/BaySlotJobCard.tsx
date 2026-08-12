@@ -28,7 +28,7 @@ export const BaySlotJobCard: React.FC<BaySlotJobCardProps> = ({ dayBreakdown, jo
     <div className="@container flex h-full min-w-0 items-center gap-2.5">
       <OfferingThumbnail
         className="shrink-0"
-        kind={getJobOfferingKind({ quoteKind: job?.quoteKind ?? null })}
+        kind={job ? getJobOfferingKind(job) : null}
         label={displayName || jobCode}
         size="lg"
         thumbnailDataUrl={job?.productThumbnailDataUrl}

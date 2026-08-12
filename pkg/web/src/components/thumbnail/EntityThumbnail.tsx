@@ -13,6 +13,8 @@ type EntityThumbnailProps = {
   /** Replaces the initials when there is no image, for entities an icon identifies better than a name. */
   fallback?: React.ReactNode;
   fallbackClassName?: string;
+  /** Accessible name for an icon `fallback`, which carries no text of its own. */
+  fallbackLabel?: string;
   label: string;
   preview?: boolean;
   thumbnailDataUrl?: string | null | undefined;
@@ -23,6 +25,7 @@ export const EntityThumbnail: React.FC<EntityThumbnailProps> = ({
   className,
   fallback,
   fallbackClassName,
+  fallbackLabel,
   label,
   preview = true,
   size = 'default',
@@ -31,7 +34,11 @@ export const EntityThumbnail: React.FC<EntityThumbnailProps> = ({
   const avatar = (
     <Avatar className={cn('rounded-md after:rounded-md', className)} size={size}>
       {thumbnailDataUrl ? <AvatarImage alt="" className="rounded-md" src={thumbnailDataUrl} /> : null}
-      <AvatarFallback className={cn('rounded-md font-medium', fallbackClassName)}>
+      <AvatarFallback
+        aria-label={fallback ? fallbackLabel : undefined}
+        className={cn('rounded-md font-medium', fallbackClassName)}
+        role={fallback ? 'img' : undefined}
+      >
         {fallback ?? getInitials(label)}
       </AvatarFallback>
     </Avatar>

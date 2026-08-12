@@ -34,10 +34,14 @@ export function CurrencyField({
 
   // Sync display when the field value changes externally (e.g. form reset)
   const previousFieldValue = React.useRef(field.state.value);
+  const previousDisplayZeroAsEmpty = React.useRef(displayZeroAsEmpty);
   React.useEffect(() => {
-    if (!hasCurrencyFieldValueChanged(previousFieldValue.current, field.state.value)) return;
+    const valueChanged = hasCurrencyFieldValueChanged(previousFieldValue.current, field.state.value);
+    const displayModeChanged = previousDisplayZeroAsEmpty.current !== displayZeroAsEmpty;
+    if (!valueChanged && !displayModeChanged) return;
 
     previousFieldValue.current = field.state.value;
+    previousDisplayZeroAsEmpty.current = displayZeroAsEmpty;
     setDisplayValue(formatCurrencyFieldValue(field.state.value, displayZeroAsEmpty));
   }, [displayZeroAsEmpty, field.state.value]);
 

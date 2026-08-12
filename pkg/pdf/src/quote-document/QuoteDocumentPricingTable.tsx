@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     borderRightColor: pdfColors.darkDivider,
     borderRightWidth: pdfBorder.defaultWidth,
     paddingHorizontal: pdfSpacing.tableCellX,
-    paddingVertical: pdfSpacing.tableCellY,
+    paddingVertical: pdfSpacing.pricingCellY,
   },
   tableCell: {
     borderBottomColor: pdfColors.greyBorder,
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     borderRightColor: pdfColors.greyBorder,
     borderRightWidth: pdfBorder.hairlineWidth,
     paddingHorizontal: pdfSpacing.tableCellX,
-    paddingVertical: pdfSpacing.tableCellY,
+    paddingVertical: pdfSpacing.pricingCellY,
   },
   qtyCell: {
     textAlign: 'right',
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   },
   sectionCell: {
     paddingHorizontal: pdfSpacing.tableCellX,
-    paddingVertical: pdfSpacing.tableCellY,
+    paddingVertical: pdfSpacing.pricingCellY,
   },
   noticeRow: {
     backgroundColor: pdfColors.staleNoticeBackground,

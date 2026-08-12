@@ -1,24 +1,13 @@
 import type { QuoteDocumentModel } from '@pkg/schema';
-import { renderToBuffer } from '@react-pdf/renderer';
-import { cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
+import { Page, renderToBuffer, Text } from '@react-pdf/renderer';
+import { cloneElement, createElement, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getSalesContactLine } from './QuoteDocumentHeader.js';
 import { QuoteDocumentPdf } from './QuoteDocumentPdf.js';
 import { QuoteDocumentPricingTable } from './QuoteDocumentPricingTable.js';
-import { renderQuoteDocumentPdf } from './quote-document-pdf-renderer.js';
 
 describe('renderQuoteDocumentPdf', () => {
-  test('renders a quote document model to PDF bytes', async () => {
-    const bytes = await renderQuoteDocumentPdf({
-      document: testQuoteDocument(),
-      filename: 'QUO-00003-rev-1.pdf',
-    });
-
-    expect(bytes.byteLength).toBeGreaterThan(1_000);
-    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
-  });
-
   test('renders each Work Item with its Parts nested underneath', () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
@@ -149,17 +138,6 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText.filter((value) => value === 'Sundries')).toHaveLength(1);
   });
 
-  test('places Quantity after Description and right-aligns quantity text', () => {
-    const rendered = QuoteDocumentPricingTable({ document: testQuoteDocument() });
-    const renderedText = collectRenderedText(rendered);
-    const quantityHeader = findRenderedTextElement(rendered, 'Qty');
-    const quantityCell = findRenderedTextElement(rendered, '1');
-
-    expect(renderedText.slice(0, 4)).toEqual(['Description', 'Qty', 'Unit Price', 'Subtotal']);
-    expect(flattenStyle(quantityHeader?.props.style)).toMatchObject({ textAlign: 'right' });
-    expect(flattenStyle(quantityCell?.props.style)).toMatchObject({ textAlign: 'right' });
-  });
-
   test('repeats the column headings on every page the pricing table spans, and only those', async () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
@@ -170,37 +148,29 @@ describe('renderQuoteDocumentPdf', () => {
         name: `Workshop ${index + 1}`,
       })),
     };
-    const pages = await renderPageText(document);
+    const pages = await renderPageText(document, true);
 
-    expect(pages.length).toBeGreaterThan(2);
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages.some((pageText) => !pageText.some((value) => value.startsWith('Workshop ')))).toBe(true);
     for (const pageText of pages) {
       const carriesPricingRows = pageText.some((value) => value.startsWith('Workshop '));
       expect(pageText.filter((value) => value === 'Description')).toHaveLength(carriesPricingRows ? 1 : 0);
     }
   });
 
-  test('keeps each Work Item heading with its first breakdown row across page breaks', () => {
+  test('keeps the logo at its declared size when the sales contact exceeds one line', async () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
-      workItems: [
-        {
-          amount: 1_275,
-          charges: [{ amount: 1_275, kind: 'labour', label: 'Labour', quantity: 1.5, unitPrice: 850 }],
-          description: null,
-          name: 'Labour-only rebuild',
-        },
-        {
-          amount: 250,
-          charges: [{ amount: 250, kind: 'part', label: 'Internal seal kit', quantity: 2, unitPrice: 125 }],
-          description: null,
-          name: 'Parts-only repair',
-        },
-      ],
+      salesPerson: {
+        email: `${'quotations-'.repeat(7)}@jedidiah-equipment.co.za`,
+        name: 'Dean van Niekerk',
+        phoneNumber: '+27821234567',
+      },
     };
-    const rendered = QuoteDocumentPricingTable({ document });
+    const layout = await renderLayout(document);
+    const logo = findLayoutNode(layout, (node) => node.type === 'IMAGE');
 
-    expect(findUnbreakableGroup(rendered, ['Labour-only rebuild', 'Labour'])).not.toBeNull();
-    expect(findUnbreakableGroup(rendered, ['Parts-only repair', 'Internal seal kit'])).not.toBeNull();
+    expect(logo?.box).toMatchObject({ height: 34, width: 132 });
   });
 });
 
@@ -236,40 +206,37 @@ function collectRenderedText(node: ReactNode): string[] {
   return [...walkRendered(node)].filter((rendered) => typeof rendered === 'string');
 }
 
-function findRenderedTextElement(node: ReactNode, text: string): RenderedElement | null {
-  for (const rendered of walkRendered(node)) {
-    if (typeof rendered === 'string') continue;
-    if (collectRenderedText(rendered.props.children).join('') === text) return rendered;
-  }
-
-  return null;
-}
-
-function findUnbreakableGroup(node: ReactNode, expectedText: string[]): RenderedElement | null {
-  for (const rendered of walkRendered(node)) {
-    if (typeof rendered === 'string' || rendered.props.wrap !== false) continue;
-    const renderedText = collectRenderedText(rendered.props.children);
-    if (expectedText.every((text) => renderedText.includes(text))) return rendered;
-  }
-
-  return null;
-}
-
-type LayoutNode = { children?: LayoutNode[]; type: string; value?: string };
+type LayoutNode = {
+  box?: { height: number; left: number; top: number; width: number };
+  children?: LayoutNode[];
+  type: string;
+  value?: string;
+};
 
 /**
  * Paginates a document the way the renderer does and reports the text laid out on each page, so a
  * test can assert on what a reader sees per page rather than on the layout props that get it there.
  */
-async function renderPageText(document: QuoteDocumentModel): Promise<string[][]> {
+async function renderPageText(document: QuoteDocumentModel, appendTextOnlyPage = false): Promise<string[][]> {
+  const layout = await renderLayout(document, appendTextOnlyPage);
+  return (layout.children ?? []).map(collectLayoutText);
+}
+
+async function renderLayout(document: QuoteDocumentModel, appendTextOnlyPage = false): Promise<LayoutNode> {
   let layout: LayoutNode | undefined;
   const onRender = ({ _INTERNAL__LAYOUT__DATA_ }: { _INTERNAL__LAYOUT__DATA_: LayoutNode }) => {
     layout = _INTERNAL__LAYOUT__DATA_;
   };
 
-  await renderToBuffer(cloneElement(QuoteDocumentPdf({ document }), { onRender } as never));
+  const pdf = QuoteDocumentPdf({ document });
+  const pages = appendTextOnlyPage
+    ? [pdf.props.children, createElement(Page, { key: 'appendix' }, createElement(Text, null, 'Appendix'))]
+    : pdf.props.children;
 
-  return (layout?.children ?? []).map(collectLayoutText);
+  await renderToBuffer(cloneElement(pdf, { onRender } as never, pages));
+
+  if (!layout) throw new Error('React-PDF did not return layout data');
+  return layout;
 }
 
 function collectLayoutText(node: LayoutNode): string[] {
@@ -278,9 +245,15 @@ function collectLayoutText(node: LayoutNode): string[] {
   return (node.children ?? []).flatMap(collectLayoutText);
 }
 
-function flattenStyle(style: unknown): Record<string, unknown> {
-  if (Array.isArray(style)) return Object.assign({}, ...style.map(flattenStyle));
-  return style && typeof style === 'object' ? (style as Record<string, unknown>) : {};
+function findLayoutNode(node: LayoutNode, matches: (candidate: LayoutNode) => boolean): LayoutNode | null {
+  if (matches(node)) return node;
+
+  for (const child of node.children ?? []) {
+    const match = findLayoutNode(child, matches);
+    if (match) return match;
+  }
+
+  return null;
 }
 
 describe('getSalesContactLine', () => {

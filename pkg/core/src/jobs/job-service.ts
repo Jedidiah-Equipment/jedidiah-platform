@@ -27,6 +27,7 @@ import {
   BookJobSlotResult,
   type BrochurePdfRenderer,
   DateOnlyIso,
+  type JobCancelInput,
   type JobCreateInput,
   type JobDetail,
   type JobUpdateInput,
@@ -54,6 +55,7 @@ import { jobAuditDescriptor } from './job-audit.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
 import { createsProductUnit, hasProductWork, resolveJobBlueprint } from './job-blueprint.js';
 import {
+  JobAlreadyCompletedError,
   JobCompletedOnInFutureError,
   JobCreateFromQuoteDeniedError,
   JobNotFoundError,
@@ -206,7 +208,27 @@ export async function cancelJobForQuote({
     return;
   }
 
-  const slots = await tx.select().from(jobSlots).where(eq(jobSlots.jobId, job.id));
+  await releaseFutureJobSlots({ jobId: job.id, plantToday, tx });
+
+  await tx.update(jobs).set({ cancelledAt: now, updatedAt: now }).where(eq(jobs.id, job.id));
+  await recordAuditDelete({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
+}
+
+/**
+ * Cancelling a Job hands back the Bay time it had not started using. Both cancel paths share this so
+ * they can never drift on what "future" means: a Work Slot goes only if it starts strictly after plant
+ * today, leaving done and active Slots as history.
+ */
+async function releaseFutureJobSlots({
+  jobId,
+  plantToday,
+  tx,
+}: {
+  jobId: UUID;
+  plantToday: DateOnlyIso;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  const slots = await tx.select().from(jobSlots).where(eq(jobSlots.jobId, jobId));
   const bayIds = [...new Set(slots.map((slot) => slot.bayId))].sort();
 
   // Bay locks are taken in a stable order so a multi-Bay cancellation cannot deadlock another
@@ -226,15 +248,53 @@ export async function cancelJobForQuote({
       workingCalendar,
     }).slots;
 
-    for (const slot of projectedSlots.filter((slot) => slot.kind === 'work' && slot.jobId === job.id)) {
+    for (const slot of projectedSlots.filter((slot) => slot.kind === 'work' && slot.jobId === jobId)) {
       if (slot.startDate > plantToday) {
         await queue.remove(slot.id);
       }
     }
   }
+}
 
-  await tx.update(jobs).set({ cancelledAt: now, updatedAt: now }).where(eq(jobs.id, job.id));
-  await recordAuditDelete({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
+/**
+ * Cancel a Job outright, without touching the Quote behind it. Unlike the Quote cascade this refuses a
+ * Job that has already been completed or cancelled: a cascade follows a decision made elsewhere, while
+ * this is the decision itself, and an explicit request deserves an explicit answer.
+ */
+export async function cancelJob({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: JobCancelInput;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const plantToday = getPlantDateNow();
+    const job = await lockMutableJob(tx, input.id);
+
+    if (job.completedOn !== null) {
+      throw new JobAlreadyCompletedError(job.id);
+    }
+
+    const now = new Date();
+    await releaseFutureJobSlots({ jobId: job.id, plantToday, tx });
+
+    const [cancelled] = await tx
+      .update(jobs)
+      .set({ cancellationReason: input.cancellationReason, cancelledAt: now, updatedAt: now })
+      .where(eq(jobs.id, job.id))
+      .returning();
+
+    if (!cancelled) {
+      throw new JobNotFoundError(job.id);
+    }
+
+    // The cancelled row rather than the row before it, so the reason the Job was abandoned is what the
+    // audit trail carries — the only place it is recorded besides the Job itself.
+    await recordAuditDelete({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: cancelled });
+  });
 }
 
 async function loadJobProductUnit({

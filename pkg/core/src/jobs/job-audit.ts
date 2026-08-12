@@ -15,6 +15,7 @@ export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityId: (row) => row.id,
   label: (row) => row.code,
   toRecord: (row) => ({
+    cancellationReason: row.cancellationReason,
     completedOn: row.completedOn,
     description: row.description,
     productUnitId: row.productUnitId,

@@ -11,6 +11,7 @@ const UNIT_ID = '00000000-0000-4000-8000-000000000201';
 const PRODUCT_ID = '00000000-0000-4000-8000-000000000202';
 
 const job = JobDetail.parse({
+  cancellationReason: null,
   cancelledAt: null,
   cfo: [],
   code: 'JOB-00001',

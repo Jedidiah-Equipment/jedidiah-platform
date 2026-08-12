@@ -18,6 +18,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     text: 'Production tasks',
     items: [
       { text: 'Find a Job', link: '/production/find-a-job' },
+      { text: 'Cancel a Job', link: '/production/cancel-a-job' },
       { text: 'Catch up on Job Activity', link: '/production/catch-up-on-job-activity' },
       { text: 'Export completed Jobs', link: '/production/export-completed-jobs' },
       { text: 'Open a Bay plan', link: '/production/open-a-bay-plan' },

@@ -2317,6 +2317,41 @@ describe('jobs.moveSlot', () => {
   });
 });
 
+describe('jobs.cancel', () => {
+  test('cancels a Job for an administrator', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+
+    await caller.jobs.cancel({ cancellationReason: 'Raised in error', id: job.id });
+
+    await expect(caller.jobs.get({ id: job.id })).resolves.toMatchObject({
+      cancellationReason: 'Raised in error',
+      cancelledAt: expect.any(String),
+    });
+  });
+
+  test('refuses a Job reader who does not hold the cancel permission', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    const viewerCaller = context.createCaller(mockSession('job-viewer'));
+
+    await expect(
+      viewerCaller.jobs.cancel({ cancellationReason: 'Not mine to make', id: job.id }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('maps a completed Job to the stable app code', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await context.db.update(jobs).set({ completedOn: '2026-06-04' }).where(sql`${jobs.id} = ${job.id}`);
+
+    await expect(caller.jobs.cancel({ cancellationReason: 'Too late', id: job.id })).rejects.toMatchObject({
+      appCode: 'job.already_completed',
+      code: 'BAD_REQUEST',
+    });
+  });
+});
+
 describe('jobs.update', () => {
   test('maps cancelled Job updates to the stable app code', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));

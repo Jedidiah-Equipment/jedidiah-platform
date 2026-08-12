@@ -30,6 +30,7 @@ export const APP_PERMISSIONS = [
   'job:update',
   'job:schedule',
   'job:update-calendar',
+  'job:cancel',
   'job_bay:read',
   'job_bay:update',
   'inventory:read',

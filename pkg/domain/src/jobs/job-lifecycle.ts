@@ -33,6 +33,16 @@ export function resolveJobLifecycleState(
 }
 
 /**
+ * Whether a Job can still be cancelled outright. Only one in progress can: a completion date is the
+ * record that the work happened, and cancelling says it never will. This states the rule once for the
+ * surfaces that decide whether to offer the action; the server refuses the two cases separately so it
+ * can say which one it hit. The Quote cascade is not bound by it — that follows the sale, not the work.
+ */
+export function isJobCancellable(job: JobCancellationFact & { completedOn: Date | string | null }): boolean {
+  return resolveJobLifecycleState(job).kind === 'in-progress';
+}
+
+/**
  * How a Job's lifecycle reads to a person. Every surface takes the words from here so the same Job can
  * never say one thing on a desk and another on a tablet — which is the drift that once let a cancelled
  * Job read as "In progress Cancelled". Only the date format is the caller's to choose.

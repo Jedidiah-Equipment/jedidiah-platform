@@ -235,6 +235,7 @@ async function listJobSummariesByIds({
     const batch = jobIds.slice(start, start + JOB_SUMMARY_LOOKUP_BATCH_SIZE);
     const rows = await db.query.jobs.findMany({
       columns: {
+        cancellationReason: true,
         cancelledAt: true,
         createdAt: true,
         completedOn: true,
@@ -358,6 +359,7 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
 
   const rows = await db.query.jobs.findMany({
     columns: {
+      cancellationReason: true,
       cancelledAt: true,
       createdAt: true,
       completedOn: true,
@@ -550,6 +552,7 @@ export function buildJobListWhere(
 export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<JobDetail> {
   const row = await db.query.jobs.findFirst({
     columns: {
+      cancellationReason: true,
       cancelledAt: true,
       createdAt: true,
       completedOn: true,

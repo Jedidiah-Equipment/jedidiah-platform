@@ -471,11 +471,17 @@ export const JobProductUnitFacts = z.object({
   vinNumber: ProductUnitVinNumber,
 });
 
+export type JobCancellationReason = z.infer<typeof JobCancellationReason>;
+export const JobCancellationReason = requiredTrimmedText('Cancellation reason is required');
+
 export type Job = z.infer<typeof Job>;
 export const Job = z.object({
   id: UUID,
   code: JobCode,
   cancelledAt: DateIso.nullable(),
+  // Set together with `cancelledAt` by a direct cancel, and null on a Job cancelled through its
+  // Quote — the justification for that one lives on the Quote.
+  cancellationReason: JobCancellationReason.nullable(),
   // Null on a Custom Job, which builds no machine.
   productUnit: JobProductUnitFacts.nullable(),
   // Null on a Stock Build: it builds a machine we hold, so there is no sale behind it.
@@ -776,6 +782,19 @@ export const JobUpdateInput = z
      */
     completedOn: JobCompletedOn.optional(),
     description: nullableTrimmedTextInput(),
+  })
+  .strict();
+
+/**
+ * Cancelling a Job outright, as opposed to the cascade from cancelling its Quote. The reason is
+ * mandatory the way a Quote's is: this is the more discretionary of the two acts, so it carries at
+ * least as much justification.
+ */
+export type JobCancelInput = z.infer<typeof JobCancelInput>;
+export const JobCancelInput = z
+  .object({
+    cancellationReason: JobCancellationReason,
+    id: UUID,
   })
   .strict();
 

@@ -34,6 +34,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
   logoFrame: {
+    flexShrink: 0,
     height: layout.logoHeight,
     marginBottom: 2,
     width: layout.logoWidth,
@@ -44,12 +45,18 @@ const styles = StyleSheet.create({
     width: layout.logoWidth,
   },
   tagline: {
+    flexShrink: 0,
     fontFamily: pdfTitleFontFamily,
     fontSize: 10,
     marginBottom: 7,
   },
   brandLine: {
+    flexShrink: 0,
     marginBottom: 2,
+  },
+  salesContactLine: {
+    maxLines: 1,
+    textOverflow: 'ellipsis',
   },
   bankPanel: {
     alignItems: 'flex-end',
@@ -113,7 +120,9 @@ export function QuoteDocumentHeader({ document }: QuoteDocumentHeaderProps) {
           Stoneybrook Farm, Kokstad, 4700
         </Text>
         {contactLine ? (
-          <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine]}>{contactLine}</Text>
+          <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine, styles.salesContactLine]}>
+            {contactLine}
+          </Text>
         ) : null}
         <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine]}>
           C/K 2019/513612/07 | VAT No. 4420294821

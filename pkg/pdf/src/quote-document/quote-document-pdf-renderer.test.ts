@@ -1,6 +1,6 @@
 import type { QuoteDocumentModel } from '@pkg/schema';
-import { renderToBuffer } from '@react-pdf/renderer';
-import { cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
+import { Page, renderToBuffer, Text } from '@react-pdf/renderer';
+import { cloneElement, createElement, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getSalesContactLine } from './QuoteDocumentHeader.js';
@@ -148,13 +148,29 @@ describe('renderQuoteDocumentPdf', () => {
         name: `Workshop ${index + 1}`,
       })),
     };
-    const pages = await renderPageText(document);
+    const pages = await renderPageText(document, true);
 
-    expect(pages).toHaveLength(2);
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages.some((pageText) => !pageText.some((value) => value.startsWith('Workshop ')))).toBe(true);
     for (const pageText of pages) {
       const carriesPricingRows = pageText.some((value) => value.startsWith('Workshop '));
       expect(pageText.filter((value) => value === 'Description')).toHaveLength(carriesPricingRows ? 1 : 0);
     }
+  });
+
+  test('keeps the logo at its declared size when the sales contact exceeds one line', async () => {
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      salesPerson: {
+        email: `${'quotations-'.repeat(7)}@jedidiah-equipment.co.za`,
+        name: 'Dean van Niekerk',
+        phoneNumber: '+27821234567',
+      },
+    };
+    const layout = await renderLayout(document);
+    const logo = findLayoutNode(layout, (node) => node.type === 'IMAGE');
+
+    expect(logo?.box).toMatchObject({ height: 34, width: 132 });
   });
 });
 
@@ -190,27 +206,54 @@ function collectRenderedText(node: ReactNode): string[] {
   return [...walkRendered(node)].filter((rendered) => typeof rendered === 'string');
 }
 
-type LayoutNode = { children?: LayoutNode[]; type: string; value?: string };
+type LayoutNode = {
+  box?: { height: number; left: number; top: number; width: number };
+  children?: LayoutNode[];
+  type: string;
+  value?: string;
+};
 
 /**
  * Paginates a document the way the renderer does and reports the text laid out on each page, so a
  * test can assert on what a reader sees per page rather than on the layout props that get it there.
  */
-async function renderPageText(document: QuoteDocumentModel): Promise<string[][]> {
+async function renderPageText(document: QuoteDocumentModel, appendTextOnlyPage = false): Promise<string[][]> {
+  const layout = await renderLayout(document, appendTextOnlyPage);
+  return (layout.children ?? []).map(collectLayoutText);
+}
+
+async function renderLayout(document: QuoteDocumentModel, appendTextOnlyPage = false): Promise<LayoutNode> {
   let layout: LayoutNode | undefined;
   const onRender = ({ _INTERNAL__LAYOUT__DATA_ }: { _INTERNAL__LAYOUT__DATA_: LayoutNode }) => {
     layout = _INTERNAL__LAYOUT__DATA_;
   };
 
-  await renderToBuffer(cloneElement(QuoteDocumentPdf({ document }), { onRender } as never));
+  const pdf = QuoteDocumentPdf({ document });
+  const pages = appendTextOnlyPage
+    ? [pdf.props.children, createElement(Page, { key: 'appendix' }, createElement(Text, null, 'Appendix'))]
+    : pdf.props.children;
 
-  return (layout?.children ?? []).map(collectLayoutText);
+  await renderToBuffer(cloneElement(pdf, { onRender } as never, pages));
+
+  if (!layout) throw new Error('React-PDF did not return layout data');
+  return layout;
 }
 
 function collectLayoutText(node: LayoutNode): string[] {
   if (node.type === 'TEXT_INSTANCE') return node.value === undefined ? [] : [node.value];
 
   return (node.children ?? []).flatMap(collectLayoutText);
+}
+
+function findLayoutNode(node: LayoutNode, matches: (candidate: LayoutNode) => boolean): LayoutNode | null {
+  if (matches(node)) return node;
+
+  for (const child of node.children ?? []) {
+    const match = findLayoutNode(child, matches);
+    if (match) return match;
+  }
+
+  return null;
 }
 
 describe('getSalesContactLine', () => {

@@ -47,6 +47,7 @@ describe('snapshot table registry', () => {
       'quote_work_item_parts',
       'quote_selected_assemblies',
       'job',
+      'job_stock_close_out',
       'product_unit_ownership_transfer',
       'job_build_spec_assembly',
       'job_cfo_assembly',
@@ -88,6 +89,7 @@ describe('snapshot table registry', () => {
       'quote_work_item_parts.json',
       'quote_selected_assemblies.json',
       'job.json',
+      'job_stock_close_out.json',
       'product_unit_ownership_transfer.json',
       'job_build_spec_assembly.json',
       'job_cfo_assembly.json',
@@ -160,6 +162,11 @@ describe('snapshot table registry', () => {
 
   it('keeps the rollout Build Spec table optional until the source migration deploys', () => {
     expect(configFor('job_build_spec_assembly').optionalReadTable).toBe(true);
+  });
+
+  it('keeps Job stock close-outs rollout-safe and timestamp-aware', () => {
+    expect(configFor('job_stock_close_out').optionalReadTable).toBe(true);
+    expect(configFor('job_stock_close_out').timestampColumns).toEqual(['createdAt']);
   });
 
   it('keeps the rollout Feedback tables optional until the source migration deploys', () => {

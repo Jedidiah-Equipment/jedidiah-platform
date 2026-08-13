@@ -326,6 +326,7 @@ describe('Purchase Order send and cancel', () => {
       input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 0 }]),
     });
 
+    // The message names the Part, which is the only thing that tells the buyer where to go.
     await expect(
       markPurchaseOrderSent({
         actorUserId: ACTOR_ID,
@@ -334,7 +335,6 @@ describe('Purchase Order send and cancel', () => {
         pdfRenderer: async () => pdfBytes(),
         storage: context.storage,
       }),
-      // The message names the Part, which is the only thing that tells the buyer where to go.
     ).rejects.toMatchObject({ code: 'purchase_order.line_not_priced', message: expect.stringContaining('P-100') });
     expect(context.storage.objects.size).toBe(0);
   });

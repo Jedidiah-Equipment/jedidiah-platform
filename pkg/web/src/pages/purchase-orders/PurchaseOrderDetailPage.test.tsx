@@ -46,6 +46,9 @@ const purchaseOrder = {
 const mountedRoots: Array<ReturnType<typeof createRoot>> = [];
 const mountedContainers: HTMLDivElement[] = [];
 
+// Cancel and Close short both ask before they post, and jsdom has no confirm to answer with.
+vi.stubGlobal('confirm', () => true);
+
 afterEach(() => {
   for (const root of mountedRoots) act(() => root.unmount());
   mountedRoots.length = 0;
@@ -54,14 +57,24 @@ afterEach(() => {
   showMutationError.mockClear();
 });
 
+/** Every lifecycle button, and the message the buyer gets when the server refuses that one. */
+const LIFECYCLE_ACTIONS = [
+  { failureMessage: 'Unable to mark this Purchase Order sent.', label: 'Mark sent' },
+  { failureMessage: 'Unable to cancel this Purchase Order.', label: 'Cancel' },
+  { failureMessage: 'Unable to close this Purchase Order short.', label: 'Close short' },
+] as const;
+
 describe('PurchaseOrderActions', () => {
-  it('reports a refused Mark sent instead of leaving the click looking ignored', async () => {
+  it.each(LIFECYCLE_ACTIONS)('$label reports a refusal instead of leaving the click looking ignored', async ({
+    failureMessage,
+    label,
+  }) => {
     const container = await mount();
 
-    await click(container, 'Mark sent');
+    await click(container, label);
 
     await vi.waitFor(() => {
-      expect(showMutationError).toHaveBeenCalledWith(refusal, 'Unable to mark this Purchase Order sent.');
+      expect(showMutationError).toHaveBeenCalledWith(refusal, failureMessage);
     });
   });
 });
@@ -77,8 +90,8 @@ async function mount(): Promise<HTMLDivElement> {
     root.render(
       <QueryClientProvider client={new QueryClient()}>
         <PurchaseOrderActions
-          canCancel={false}
-          canCloseShort={false}
+          canCancel
+          canCloseShort
           canEdit={false}
           canReadCosts={false}
           canSend

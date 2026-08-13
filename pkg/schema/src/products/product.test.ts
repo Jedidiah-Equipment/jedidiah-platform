@@ -20,6 +20,7 @@ import {
   ProductSortBy,
   ProductTranslations,
   ProductUpdateInput,
+  refineProductAssemblies,
 } from './product.js';
 
 describe('LANDER_REQUIRED_FIELDS', () => {
@@ -344,6 +345,59 @@ describe('ProductAssembliesInput', () => {
         },
       ]),
     ).toThrow('Override target can only be selected once per assembly');
+  });
+});
+
+describe('refineProductAssemblies', () => {
+  // The browser form reuses this refinement over rows the user is still filling in, so it sees the
+  // empty values the API input schema would already have rejected.
+  const PartialAssemblies = z.array(z.any()).superRefine(refineProductAssemblies);
+
+  function messagesFor(assemblies: unknown[]): string[] {
+    const result = PartialAssemblies.safeParse(assemblies);
+
+    return result.success ? [] : result.error.issues.map((issue) => issue.message);
+  }
+
+  it('does not call two rows still waiting for a Part duplicates of each other', () => {
+    expect(
+      messagesFor([
+        {
+          kind: 'standard',
+          name: 'Bin',
+          parts: [
+            { partId: '', quantity: 1 },
+            { partId: '', quantity: 1 },
+          ],
+        },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('does not call two unnamed assemblies duplicates of each other', () => {
+    expect(
+      messagesFor([
+        { kind: 'standard', name: '', parts: [] },
+        { kind: 'standard', name: '', parts: [] },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('still rejects the same Part added twice to one assembly', () => {
+    const partId = '00000000-0000-4000-8000-000000000201';
+
+    expect(
+      messagesFor([
+        {
+          kind: 'standard',
+          name: 'Bin',
+          parts: [
+            { partId, quantity: 2 },
+            { partId, quantity: 16 },
+          ],
+        },
+      ]),
+    ).toEqual(['Part can only be added once per assembly', 'Part can only be added once per assembly']);
   });
 });
 

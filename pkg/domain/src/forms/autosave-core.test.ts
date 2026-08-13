@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createAutosaveController } from './autosave-core.js';
 
+const NAME_REQUIRED = { message: 'Name is required', path: 'name' };
+
 type TestValues = {
   name: string;
 };
@@ -22,7 +24,7 @@ describe('createAutosaveController', () => {
     const save = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const controller = createAutosaveController({
       getValues: () => values,
-      isValid: (candidate) => candidate.name.trim().length > 0,
+      validate: (candidate) => (candidate.name.trim().length > 0 ? [] : [NAME_REQUIRED]),
       save,
     });
 
@@ -48,7 +50,7 @@ describe('createAutosaveController', () => {
     let values: TestValues = { name: 'Acme' };
     const controller = createAutosaveController({
       getValues: () => values,
-      isValid: (candidate) => candidate.name.trim().length > 0,
+      validate: (candidate) => (candidate.name.trim().length > 0 ? [] : [NAME_REQUIRED]),
       save: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
     });
 
@@ -62,7 +64,7 @@ describe('createAutosaveController', () => {
     let values: TestValues = { name: 'Acme' };
     const controller = createAutosaveController({
       getValues: () => values,
-      isValid: () => true,
+      validate: () => [],
       save: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
     });
 
@@ -85,7 +87,7 @@ describe('createAutosaveController', () => {
     const save = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const controller = createAutosaveController({
       getValues: () => values,
-      isValid: () => true,
+      validate: () => [],
       save,
     });
 
@@ -110,7 +112,7 @@ describe('createAutosaveController', () => {
     const save = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const controller = createAutosaveController({
       getValues: () => values,
-      isValid: (candidate) => candidate.name.trim().length > 0,
+      validate: (candidate) => (candidate.name.trim().length > 0 ? [] : [NAME_REQUIRED]),
       save,
     });
 
@@ -126,12 +128,36 @@ describe('createAutosaveController', () => {
     });
   });
 
+  it('reports what is blocking the save, and drops it once the values save', async () => {
+    const duplicatePart = {
+      message: 'Part can only be added once per assembly',
+      path: 'assemblies[6].parts[3].partId',
+    };
+    let values: TestValues = { name: 'Acme' };
+    let issues = [duplicatePart];
+    const controller = createAutosaveController({
+      getValues: () => values,
+      save: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      validate: () => issues,
+    });
+
+    values = { name: 'Bolt Co' };
+    controller.markChanged();
+
+    await expect(controller.flush()).resolves.toBe(false);
+    expect(controller.getState().issues).toEqual([duplicatePart]);
+
+    issues = [];
+    await expect(controller.flush()).resolves.toBe(true);
+    expect(controller.getState().issues).toEqual([]);
+  });
+
   it('keeps failed values unsaved until retry succeeds', async () => {
     let values: TestValues = { name: 'Acme' };
     const save = vi.fn<() => Promise<void>>().mockRejectedValueOnce(new Error('Nope')).mockResolvedValueOnce(undefined);
     const controller = createAutosaveController({
       getValues: () => values,
-      isValid: (candidate) => candidate.name.trim().length > 0,
+      validate: (candidate) => (candidate.name.trim().length > 0 ? [] : [NAME_REQUIRED]),
       save,
     });
 
@@ -170,7 +196,7 @@ describe('createAutosaveController', () => {
       .mockResolvedValueOnce(undefined);
     const controller = createAutosaveController({
       getValues: () => values,
-      isValid: (candidate) => candidate.name.trim().length > 0,
+      validate: (candidate) => (candidate.name.trim().length > 0 ? [] : [NAME_REQUIRED]),
       save,
     });
 

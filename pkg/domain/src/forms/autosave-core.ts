@@ -1,17 +1,25 @@
+import type { FormIssue } from './form-issues.js';
 import { stableSerialize } from './stable-serialize.js';
 
 export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'invalid' | 'error';
 
 export type AutosaveSnapshot<TValues> = {
   getValues: () => TValues;
-  isValid: (values: TValues) => boolean;
   save: (values: TValues) => Promise<void>;
   serialize?: (values: TValues) => string;
+  /** Every blocking problem with `values`; empty means saveable. */
+  validate: (values: TValues) => readonly FormIssue[];
 };
 
 export type AutosaveControllerState = {
   errorMessage: string | null;
   hasUnsavedChanges: boolean;
+  /**
+   * What is blocking the save, so the banner can name it and the owning rows can highlight
+   * themselves. Field-level error meta cannot carry cross-field rules (a duplicate part is a
+   * property of the array, not of either row), so this list is the one source both surfaces read.
+   */
+  issues: readonly FormIssue[];
   shouldBlockNavigation: boolean;
   status: AutosaveStatus;
 };
@@ -20,9 +28,9 @@ type AutosaveStateListener = (state: AutosaveControllerState) => void;
 
 export function createAutosaveController<TValues>({
   getValues,
-  isValid,
   save,
   serialize = stableSerialize,
+  validate,
 }: AutosaveSnapshot<TValues>) {
   const listeners = new Set<AutosaveStateListener>();
   let lastSavedSnapshot = serialize(getValues());
@@ -31,6 +39,7 @@ export function createAutosaveController<TValues>({
   let state: AutosaveControllerState = {
     errorMessage: null,
     hasUnsavedChanges: false,
+    issues: [],
     shouldBlockNavigation: false,
     status: 'idle',
   };
@@ -50,17 +59,21 @@ export function createAutosaveController<TValues>({
       updateState({
         errorMessage: null,
         hasUnsavedChanges: false,
+        issues: [],
         shouldBlockNavigation: false,
         status: 'saved',
       });
       return true;
     }
 
-    if (!isValid(values)) {
+    const issues = validate(values);
+
+    if (issues.length > 0) {
       pendingSnapshot = currentSnapshot;
       updateState({
         errorMessage: 'Fix the highlighted fields before leaving this page.',
         hasUnsavedChanges: true,
+        issues,
         shouldBlockNavigation: true,
         status: 'invalid',
       });
@@ -75,6 +88,7 @@ export function createAutosaveController<TValues>({
     updateState({
       errorMessage: null,
       hasUnsavedChanges: true,
+      issues: [],
       shouldBlockNavigation: false,
       status: 'saving',
     });
@@ -91,6 +105,7 @@ export function createAutosaveController<TValues>({
         updateState({
           errorMessage: null,
           hasUnsavedChanges: false,
+          issues: [],
           shouldBlockNavigation: false,
           status: 'saved',
         });
@@ -100,6 +115,7 @@ export function createAutosaveController<TValues>({
         updateState({
           errorMessage: error instanceof Error ? error.message : 'Unable to save.',
           hasUnsavedChanges: true,
+          issues: [],
           shouldBlockNavigation: true,
           status: 'error',
         });
@@ -153,6 +169,7 @@ export function createAutosaveController<TValues>({
       updateState({
         errorMessage: null,
         hasUnsavedChanges: pendingSnapshot !== null,
+        issues: [],
         shouldBlockNavigation: false,
         status: pendingSnapshot === null ? 'saved' : state.status,
       });

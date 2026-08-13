@@ -177,7 +177,10 @@ export function refineProductAssemblies(assemblies: AssemblyInput[], ctx: z.Refi
 
   assemblies.forEach((assembly, assemblyIndex) => {
     const normalizedName = assembly.name.trim().toLowerCase();
-    const duplicateNameIndex = assemblyNames.get(normalizedName);
+    // A row the user has not filled in yet is not a duplicate of another empty row: the required
+    // rule already reports it, and calling two blanks "duplicates" reads as a rule the user cannot
+    // act on. Only filled-in values are compared.
+    const duplicateNameIndex = normalizedName ? assemblyNames.get(normalizedName) : undefined;
 
     if (duplicateNameIndex !== undefined) {
       ctx.addIssue({
@@ -190,7 +193,7 @@ export function refineProductAssemblies(assemblies: AssemblyInput[], ctx: z.Refi
         message: 'Assembly names must be unique within a product',
         path: [duplicateNameIndex, 'name'],
       });
-    } else {
+    } else if (normalizedName) {
       assemblyNames.set(normalizedName, assemblyIndex);
     }
 
@@ -200,7 +203,8 @@ export function refineProductAssemblies(assemblies: AssemblyInput[], ctx: z.Refi
 
     const partIds = new Map<string, number>();
     assembly.parts.forEach((part, partIndex) => {
-      const duplicatePartIndex = partIds.get(part.partId);
+      // Same as the name check above: two rows still waiting for a Part are not duplicates.
+      const duplicatePartIndex = part.partId ? partIds.get(part.partId) : undefined;
 
       if (duplicatePartIndex !== undefined) {
         ctx.addIssue({
@@ -213,7 +217,7 @@ export function refineProductAssemblies(assemblies: AssemblyInput[], ctx: z.Refi
           message: 'Part can only be added once per assembly',
           path: [assemblyIndex, 'parts', duplicatePartIndex, 'partId'],
         });
-      } else {
+      } else if (part.partId) {
         partIds.set(part.partId, partIndex);
       }
     });

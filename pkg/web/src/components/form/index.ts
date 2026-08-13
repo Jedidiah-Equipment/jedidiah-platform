@@ -20,6 +20,7 @@ export { SwitchField, type SwitchFieldProps } from './fields/SwitchField.js';
 export { TextareaField, type TextareaFieldProps } from './fields/TextareaField.js';
 export { TextField, type TextFieldProps } from './fields/TextField.js';
 export { ThumbnailField, type ThumbnailFieldProps } from './fields/ThumbnailField.js';
+export { AutosaveIssuesProvider, useAutosaveIssues } from './hooks/autosave-issues.js';
 export { useFieldContext, useFormContext } from './hooks/form-context.js';
 export { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } from './hooks/use-app-form.js';
 export { useAutosaveForm } from './hooks/use-autosave-form.js';

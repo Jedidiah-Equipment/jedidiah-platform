@@ -6,6 +6,7 @@ function buildState(overrides: Partial<AutosaveControllerState>): AutosaveContro
   return {
     errorMessage: null,
     hasUnsavedChanges: false,
+    issues: [],
     shouldBlockNavigation: false,
     status: 'idle',
     ...overrides,

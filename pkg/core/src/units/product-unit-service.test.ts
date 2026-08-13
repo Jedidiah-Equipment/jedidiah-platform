@@ -585,6 +585,34 @@ describe('removeProductUnit', () => {
     await expect(context.db.$count(productUnits, eq(productUnits.id, phantom.unitId))).resolves.toBe(1);
   });
 
+  // The query does not promise row order. A live Rework may arrive before the completed Build, but
+  // completion anywhere on the Unit is still the stronger fact that says the machine exists.
+  test('prefers a completed Job over a different live Job on the same machine', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context, { cancelled: false });
+    const now = new Date('2026-05-04T08:00:00.000Z');
+    const [completedJob] = await context.db
+      .insert(jobs)
+      .values({
+        cancelledAt: now,
+        completedOn: '2026-05-04',
+        createdAt: now,
+        productUnitId: phantom.unitId,
+        quoteId: null,
+        updatedAt: now,
+      })
+      .returning();
+    if (!completedJob) throw new Error('Completed Job insert did not return a row');
+
+    const completedJobCode = formatJobCode(completedJob.code);
+    await expect(
+      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
+    ).rejects.toMatchObject({
+      code: 'product_unit.in_use',
+      message: `Completed ${completedJobCode} built this unit, so its record stands.`,
+      metadata: { jobCode: completedJobCode, reason: 'built' },
+    });
+  });
+
   test('names the Job that is still live when it refuses an unfinished build', async ({ context }) => {
     const phantom = await seedPhantomUnit(context, { cancelled: false });
 

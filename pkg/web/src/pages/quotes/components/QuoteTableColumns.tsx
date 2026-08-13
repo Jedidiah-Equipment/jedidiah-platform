@@ -100,8 +100,11 @@ export function createQuoteTableColumns({
       header: 'Quote',
       id: 'code',
       meta: {
-        headerClassName: 'min-w-36',
+        headerClassName: 'min-w-48',
       },
+      // Pinned columns take their width from `size`, so it has to hold the widest created line
+      // ("Created Yesterday at 15:28") rather than the table default.
+      size: 192,
     },
     {
       accessorFn: (row) => row.quote.kind,

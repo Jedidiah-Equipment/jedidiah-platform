@@ -46,8 +46,8 @@ export function PurchaseOrderInvoiceCrossCheckCard({
       <CardHeader>
         <CardTitle>Supplier invoices</CardTitle>
         <CardDescription>
-          Every invoice filed against this order, cross-checked against its lines. Flags are advice — the ledger only
-          changes when you confirm a price.
+          Every invoice filed against this order, read by AI and cross-checked against its lines. Flags are advice — the
+          ledger only changes when you confirm a price.
         </CardDescription>
         {canFileInvoice ? (
           <CardAction>

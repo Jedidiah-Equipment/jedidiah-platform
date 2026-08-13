@@ -441,7 +441,7 @@ describe('feedback.update', () => {
 });
 
 describe('feedback.listJobFeedback', () => {
-  test("returns a job's general feedback oldest-first to job readers, without internal notes", async ({ context }) => {
+  test("returns a job's general feedback newest-first to job readers, without internal notes", async ({ context }) => {
     const submitterCaller = context.createCaller(mockSession('sales'));
     const first = await submitterCaller.feedback.submit({
       kind: 'general',
@@ -462,13 +462,13 @@ describe('feedback.listJobFeedback', () => {
       jobId: context.job.id,
     });
 
-    expect(result.items.map((item) => item.id)).toEqual([first.id, second.id]);
-    expect(result.items[0]).toMatchObject({
+    expect(result.items.map((item) => item.id)).toEqual([second.id, first.id]);
+    expect(result.items[1]).toMatchObject({
       status: 'resolved',
       submitter: { email: 'test@example.com', name: 'Test User' },
       text: 'First observation.',
     });
-    expect(result.items[0]).not.toHaveProperty('internalNotes');
+    expect(result.items[1]).not.toHaveProperty('internalNotes');
   });
 
   test('excludes corrective feedback for every caller, super-admin included', async ({ context }) => {

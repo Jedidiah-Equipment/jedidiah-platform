@@ -14,7 +14,7 @@ type JobFeedbackListProps = {
 };
 
 /**
- * A Job's public (general) feedback, oldest first. Corrective feedback never appears here.
+ * A Job's public (general) feedback, newest first. Corrective feedback never appears here.
  *
  * General feedback carries a status in the data and on `feedback.updateJobFeedback`, but the card
  * does not show it: a note on the shop floor is read, not triaged, and a row of Open pills says

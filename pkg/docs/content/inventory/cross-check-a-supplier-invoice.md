@@ -1,15 +1,16 @@
 # Cross-check a Supplier invoice
 
-When the Supplier's bill arrives, file it against the Purchase Order. It is read automatically and
-compared with the order's lines, and every difference becomes a **flag** for you to judge. Nothing on
-the ledger changes until you say so.
+When the Supplier's bill arrives, file it against the Purchase Order. It is
+[read by AI](./how-a-supplier-invoice-is-read.md) and compared with the order's lines, and every
+difference becomes a **flag** for you to judge. Nothing on the ledger changes until you say so.
 
 ## File the invoice
 
 1. Open **Purchase Orders** and select the order the stock arrived on.
 2. On the **Supplier invoices** card, click **File invoice**.
 3. Choose the invoice **PDF**.
-4. Click **File invoice** and wait — the invoice is read during the upload.
+4. Click **File invoice** and wait. The AI reads the invoice during the upload, so this takes longer
+   than filing an ordinary document — leave the dialog open until it finishes.
 
 The invoice joins the **Documents** card alongside the order's PDF revisions, and its cross-check
 appears on the **Supplier invoices** card.

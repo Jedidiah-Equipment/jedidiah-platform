@@ -1,6 +1,6 @@
 import type { QuoteKind, QuoteStatus } from '@pkg/schema';
 
-import { statusBadgeColorClassNames } from '../theme/status-badge.js';
+import { cancelledBadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 
 export const quoteStatusLabels: Record<QuoteStatus, string> = {
   accepted: 'Accepted',
@@ -13,7 +13,7 @@ export const quoteStatusLabels: Record<QuoteStatus, string> = {
 /** Tailwind classes split so native surfaces can put `text` on the Text element. */
 export const quoteStatusColorClassNames: Record<QuoteStatus, { chip: string; text: string }> = {
   accepted: statusBadgeColorClassNames.green,
-  cancelled: statusBadgeColorClassNames.orange,
+  cancelled: cancelledBadgeColorClassNames,
   draft: statusBadgeColorClassNames.gray,
   rejected: statusBadgeColorClassNames.red,
   sent: statusBadgeColorClassNames.blue,

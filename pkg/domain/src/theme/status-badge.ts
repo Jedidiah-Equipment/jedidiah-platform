@@ -10,3 +10,9 @@ export const statusBadgeColorClassNames = {
 } as const;
 
 export type StatusBadgeColor = keyof typeof statusBadgeColorClassNames;
+
+/**
+ * Cancelled reads the same wherever it appears: a cancelled Quote and a cancelled Job are one fact
+ * about different rows, so both chips point here rather than picking a colour each.
+ */
+export const cancelledBadgeColorClassNames = statusBadgeColorClassNames.orange;

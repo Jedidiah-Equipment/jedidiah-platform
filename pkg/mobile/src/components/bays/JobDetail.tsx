@@ -209,7 +209,7 @@ function RoutePane({ isCancelled, route }: { isCancelled: boolean; route: JobRou
 }
 
 function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRouteStopCard }) {
-  const tone = STATUS_TONE[isCancelled ? 'muted' : ROUTE_STATE_TONE[stop.state]];
+  const tone = STATUS_TONE[isCancelled ? 'cancelled' : ROUTE_STATE_TONE[stop.state]];
   const progressTone = isCancelled
     ? 'muted'
     : resolveJobStatusTone({
@@ -241,7 +241,7 @@ function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRoute
               </Text>
             </View>
           </View>
-          <View className={`rounded-full border px-2 py-1 ${decor.chip}`}>
+          <View className={`rounded-full border px-2 py-1 ${isCancelled ? tone.chip : decor.chip}`}>
             <Text className={`text-[9px] tracking-wide ${tone.text}`} weight="semibold">
               {isCancelled ? 'CANCELLED' : STATE_LABELS[stop.state]}
             </Text>
@@ -292,7 +292,9 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
   const overallPercent = progress?.overallPercent ?? (state.totalCount === 0 ? 0 : 100);
   const isCancelled = isJobCancelled(state);
   const accent = jobStatusAccentColor(isCancelled ? 'muted' : state.tone, resolved);
-  const status = isCancelled ? { tone: 'muted' as const, label: 'CANCELLED' } : jobStatus(progress, state.totalCount);
+  const status = isCancelled
+    ? { tone: 'cancelled' as const, label: 'CANCELLED' }
+    : jobStatus(progress, state.totalCount);
 
   return (
     <View className="gap-4">

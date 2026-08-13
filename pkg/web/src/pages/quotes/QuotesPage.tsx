@@ -185,7 +185,7 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
         onLoadMore: () => void quotesQuery.fetchNextPage(),
       }}
       onRowClick={quoteRowClick}
-      tableClassName={customerId ? 'min-w-[1244px]' : 'min-w-[1420px]'}
+      tableClassName={customerId ? 'min-w-[1286px]' : 'min-w-[1462px]'}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'quote' : 'quotes'}`}

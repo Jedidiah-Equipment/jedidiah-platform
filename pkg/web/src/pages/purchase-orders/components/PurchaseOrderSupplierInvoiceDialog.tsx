@@ -28,7 +28,8 @@ const SUPPLIER_INVOICE_ACCEPT = getDocumentPolicy('purchase_order').allowedConte
  *
  * The read happens inside the upload request, so the button stays busy while it runs — and an
  * invoice the model cannot make sense of still uploads, arriving in the list as one nobody could
- * read (spec §5). Nothing about this dialog is a gate.
+ * read (spec §5). Nothing about this dialog is a gate. The copy names the AI and the wait it brings,
+ * because a desk that does not expect either reads a slow upload as a broken one.
  */
 export function PurchaseOrderSupplierInvoiceDialog({
   onOpenChange,
@@ -60,8 +61,8 @@ export function PurchaseOrderSupplierInvoiceDialog({
         <DialogHeader>
           <DialogTitle>File a Supplier invoice</DialogTitle>
           <DialogDescription>
-            The invoice is read and cross-checked against this order's lines. Every difference is a flag to judge, never
-            a change to the order.
+            The invoice is read by AI and cross-checked against this order's lines. Every difference is a flag to judge,
+            never a change to the order.
           </DialogDescription>
         </DialogHeader>
         <Field>
@@ -73,6 +74,12 @@ export function PurchaseOrderSupplierInvoiceDialog({
             type="file"
           />
         </Field>
+        {/* The read runs inside the upload, so the wait is the AI's. Saying so before the click is what
+            stops it reading as a stuck upload. */}
+        <p className="text-muted-foreground text-sm">
+          The PDF is sent to our AI provider to be transcribed, so filing takes longer than a plain upload — keep this
+          open until it finishes. An invoice the AI cannot read is still filed.
+        </p>
         <DialogFooter>
           <DialogClose render={<Button disabled={mutation.isPending} type="button" variant="outline" />}>
             Cancel

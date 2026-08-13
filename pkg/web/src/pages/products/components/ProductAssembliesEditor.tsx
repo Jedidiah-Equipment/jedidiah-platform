@@ -3,7 +3,7 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { createStableRowKeys, formatCurrency } from '@pkg/domain';
 import { AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
-import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconChevronDown, IconGripVertical, IconPlus, IconTrash, IconWorld } from '@tabler/icons-react';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import React, { useMemo } from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
@@ -499,6 +499,15 @@ const AssemblySummary: React.FC<AssemblySummaryProps> = ({ assembly, currencyCod
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center gap-2">
         <h4 className="min-w-0 truncate font-medium text-sm leading-5">{assembly.name || 'Unnamed assembly'}</h4>
+        {assembly.isPubliclyVisible ? (
+          <Badge
+            className="border-blue-600/40 text-blue-600 dark:border-blue-400/40 dark:text-blue-400"
+            variant="outline"
+          >
+            <IconWorld data-icon="inline-start" />
+            Public
+          </Badge>
+        ) : null}
         <Badge variant="outline">{formatPartCount(partCount)}</Badge>
         {assembly.kind === 'optional' ? (
           <Badge variant="outline">{formatAssemblyPriceAdjustment(assembly.price, currencyCode)}</Badge>

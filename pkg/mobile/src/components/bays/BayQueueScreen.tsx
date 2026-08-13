@@ -6,6 +6,7 @@ import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { SlotDetailPane } from '@/components/bays/SlotDetailPane';
+import { STATUS_TONE } from '@/components/bays/status-chip';
 import { CustomerName } from '@/components/CustomerName';
 import { OfferingAvatar } from '@/components/OfferingAvatar';
 import { SecondaryPageToolbar } from '@/components/TopToolbar';
@@ -307,10 +308,10 @@ function ActiveHero({
         <View className="min-w-0 flex-1">
           <View className="flex-row items-center gap-1.5">
             <View
-              className={`h-1.5 w-1.5 rounded-full ${active.isCancelled ? 'bg-muted-foreground' : 'bg-status-in-progress'}`}
+              className={`h-1.5 w-1.5 rounded-full ${active.isCancelled ? STATUS_TONE.cancelled.dot : 'bg-status-in-progress'}`}
             />
             <Text
-              className={`text-[10px] tracking-wide ${active.isCancelled ? 'text-muted-foreground' : 'text-status-in-progress'}`}
+              className={`text-[10px] tracking-wide ${active.isCancelled ? STATUS_TONE.cancelled.text : 'text-status-in-progress'}`}
               weight="semibold"
             >
               {active.isCancelled ? 'CANCELLED' : 'IN PROGRESS'}

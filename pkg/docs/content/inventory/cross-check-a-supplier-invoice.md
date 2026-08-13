@@ -1,8 +1,8 @@
 # Cross-check a Supplier invoice
 
-When the Supplier's bill arrives, file it against the Purchase Order. It is read by AI and compared
-with the order's lines, and every difference becomes a **flag** for you to judge. Nothing on the
-ledger changes until you say so.
+When the Supplier's bill arrives, file it against the Purchase Order. It is
+[read by AI](./how-a-supplier-invoice-is-read.md) and compared with the order's lines, and every
+difference becomes a **flag** for you to judge. Nothing on the ledger changes until you say so.
 
 ## File the invoice
 
@@ -34,22 +34,6 @@ For a **Price differs** flag you have two answers:
 
 Every other flag takes **Dismiss** alone. There is nothing to apply: what the order says is a matter
 for an [amendment](./amend-a-sent-purchase-order.md), not for the invoice.
-
-## What the AI does
-
-Filing an invoice sends the PDF to our AI provider, which transcribes it once: the billed lines with
-their descriptions, quantities, unit prices and line totals, the invoice number and date, and any
-Part or Job codes the Supplier echoed back. That transcription is stored with the invoice and is the
-only thing the AI produces.
-
-It is deliberately kept to reading:
-
-- **It never invents a number.** A figure the invoice does not print comes back empty rather than
-  calculated, so a blank is a blank and a disagreement is a real one.
-- **It does not match, flag, or price anything.** Lines are matched to the order, flags raised, and
-  Revaluations posted by the app and by you — all of it outside the AI, from what the invoice printed.
-- **It changes nothing on its own.** No order, no price, no ledger row moves because of a read.
-- **It reads once.** The transcription is stored, so opening the order again does not re-read the PDF.
 
 ## Notes
 

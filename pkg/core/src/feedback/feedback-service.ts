@@ -189,7 +189,8 @@ export async function updateFeedback({
 
 // General feedback on a Job is public to `job:read` holders (ADR 0010). This read returns only
 // `kind: 'general'` rows for every caller — super-admins included — so the payload never varies by
-// role; corrective feedback stays on the inbox reads above. Ordered oldest-first.
+// role; corrective feedback stays on the inbox reads above. Ordered newest-first, matching the Job
+// activity feed.
 export async function listJobFeedback({
   db,
   input,
@@ -198,7 +199,7 @@ export async function listJobFeedback({
   input: JobFeedbackListInput;
 }): Promise<JobFeedbackListResult> {
   const rows = await db.query.feedback.findMany({
-    orderBy: [asc(feedback.createdAt), asc(feedback.id)],
+    orderBy: [desc(feedback.createdAt), desc(feedback.id)],
     where: and(eq(feedback.jobId, input.jobId), eq(feedback.kind, 'general')),
     with: { submitter: feedbackReadRelations.submitter },
   });

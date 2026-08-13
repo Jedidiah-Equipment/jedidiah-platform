@@ -1,4 +1,4 @@
-import type { JobStatusTone } from '@pkg/domain';
+import { cancelledBadgeColorClassNames, type JobStatusTone } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
@@ -7,10 +7,16 @@ import { Text } from '@/components/ui/text';
 export type StatusTone = JobStatusTone;
 
 /**
+ * `cancelled` is not a board work state — a cancelled Slot is still whatever it was scheduled as —
+ * so it rides beside the work tones rather than inside {@link StatusTone}.
+ */
+export type ChipTone = StatusTone | 'cancelled';
+
+/**
  * Tailwind class fragments per status tone — the single source for the chip/dot/label accents the
  * Bay and Job board screens share, so a status colour is declared once instead of restated inline.
  */
-export const STATUS_TONE: Record<StatusTone, { chip: string; dot: string; text: string }> = {
+export const STATUS_TONE: Record<ChipTone, { chip: string; dot: string; text: string }> = {
   'in-progress': {
     chip: 'border-status-in-progress/30 bg-status-in-progress/10',
     dot: 'bg-status-in-progress',
@@ -26,10 +32,17 @@ export const STATUS_TONE: Record<StatusTone, { chip: string; dot: string; text: 
     dot: 'bg-muted-foreground',
     text: 'text-muted-foreground',
   },
+  // Chip and label come from the shared palette so a cancelled Job reads the same here, on web, and
+  // on a cancelled Quote; only the dot is local, since web badges have none.
+  cancelled: {
+    chip: cancelledBadgeColorClassNames.chip,
+    dot: 'bg-orange-500',
+    text: cancelledBadgeColorClassNames.text,
+  },
 };
 
 /** A bordered status pill with a leading dot — shared by the Bay slot and Job detail panes. */
-export function StatusChip({ tone, label }: { tone: StatusTone; label: string }) {
+export function StatusChip({ tone, label }: { tone: ChipTone; label: string }) {
   const classes = STATUS_TONE[tone];
 
   return (

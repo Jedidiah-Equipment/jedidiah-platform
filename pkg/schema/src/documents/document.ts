@@ -32,6 +32,11 @@ export const ProductDocumentMetadata = z.object({
 export type JobDocumentType = z.infer<typeof JobDocumentType>;
 export const JobDocumentType = z.enum([...PRODUCT_DOCUMENT_TYPES, 'brochure', 'purchase_order']);
 
+// Job document types a user may upload. Everything else a Job shows is inherited from its Product or
+// generated, so the upload picker offers only this set.
+export type JobUploadDocumentType = z.infer<typeof JobUploadDocumentType>;
+export const JobUploadDocumentType = z.enum(['purchase_order']);
+
 export type JobDocumentMetadata = z.infer<typeof JobDocumentMetadata>;
 export const JobDocumentMetadata = z.object({
   type: JobDocumentType,

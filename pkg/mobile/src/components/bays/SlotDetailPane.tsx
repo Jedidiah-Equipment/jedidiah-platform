@@ -32,7 +32,7 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
       <View className="flex-row items-center gap-2">
         <StatusChip
           label={slot.isCancelled ? 'CANCELLED' : isActive ? 'IN PROGRESS' : isDone ? 'DONE' : 'SCHEDULED'}
-          tone={isActive ? 'in-progress' : slot.isCancelled ? 'muted' : slot.isNext ? 'next' : 'muted'}
+          tone={slot.isCancelled ? 'cancelled' : isActive ? 'in-progress' : slot.isNext ? 'next' : 'muted'}
         />
         {!slot.isCancelled && slot.remainingWorkDays !== null && daysLeftColor ? (
           <DaysLeftChip color={daysLeftColor} daysLeft={slot.remainingWorkDays} />

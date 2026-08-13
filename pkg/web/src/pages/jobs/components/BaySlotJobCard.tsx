@@ -1,4 +1,5 @@
 import {
+  cancelledBadgeColorClassNames,
   getJobDisplayName,
   getJobOfferingKind,
   isJobCancelled,
@@ -10,6 +11,7 @@ import type React from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
+import { cn } from '@/lib/utils.js';
 import { getJobGanttOffsetDistance, getJobGanttWidth } from './job-gantt-geometry.js';
 
 type BaySlotJobCardProps = {
@@ -36,7 +38,10 @@ export const BaySlotJobCard: React.FC<BaySlotJobCardProps> = ({ dayBreakdown, jo
       <div className="flex min-w-0 flex-1 flex-col justify-center leading-tight">
         <span className="truncate font-mono font-semibold text-sm">{jobCode}</span>
         {isJobCancelled(job) ? (
-          <Badge className="w-fit border-muted-foreground/40 text-muted-foreground" variant="outline">
+          <Badge
+            className={cn('w-fit', cancelledBadgeColorClassNames.chip, cancelledBadgeColorClassNames.text)}
+            variant="outline"
+          >
             Cancelled
           </Badge>
         ) : null}

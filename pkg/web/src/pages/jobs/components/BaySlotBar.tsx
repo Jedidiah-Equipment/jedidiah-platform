@@ -153,7 +153,9 @@ export const BaySlotBar: React.FC<{
       }[tone];
   // The fill is left to encode work state alone; the slot card's offering avatar tells Custom work
   // from a Product build.
-  const slotFillClass = isCancelled ? 'bg-muted/80 text-muted-foreground grayscale' : 'bg-card';
+  // A cancelled slot reads retired through its muted fill alone: `grayscale` would also desaturate
+  // the Cancelled badge inside it, and that badge is the same orange on every surface.
+  const slotFillClass = isCancelled ? 'bg-muted/80 text-muted-foreground' : 'bg-card';
   const resizeHandleToneClass = {
     active: scheduleResizeHandleToneClass.active,
     default: 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-ring',

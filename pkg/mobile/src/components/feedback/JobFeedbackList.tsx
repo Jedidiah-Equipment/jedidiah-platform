@@ -10,7 +10,7 @@ import { Text } from '@/components/ui/text';
 import { useTRPC } from '@/lib/trpc';
 
 /**
- * A Job's public (general) feedback, oldest first, read-only. Mirrors web's `JobFeedbackList`;
+ * A Job's public (general) feedback, newest first, read-only. Mirrors web's `JobFeedbackList`;
  * corrective feedback never appears here (`feedback.listJobFeedback` is general-only, ADR 0010).
  * The status the item carries stays off the card for the same reason it does on web: this is a note
  * to read, not a queue to triage.

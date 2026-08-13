@@ -1,4 +1,5 @@
 import {
+  cancelledBadgeColorClassNames,
   departmentLabels,
   formatDate,
   getJobDisplayName,
@@ -8,7 +9,13 @@ import {
   isJobCancelled,
   JOB_DOCUMENT_TYPE_LABELS,
 } from '@pkg/domain';
-import type { JobDetail, JobUpdateInput, JobVisibleDocument, UUID } from '@pkg/schema';
+import {
+  type JobDetail,
+  type JobUpdateInput,
+  JobUploadDocumentType,
+  type JobVisibleDocument,
+  type UUID,
+} from '@pkg/schema';
 import { IconInfoCircle, IconLoader2, IconMessageCircle, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -28,6 +35,7 @@ import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { Input } from '@/components/ui/input.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
@@ -46,6 +54,11 @@ import { JobEditFormValues, toJobEditFormValues, toJobUpdateInput } from './job-
 import { scheduleBadgeToneClass, scheduleBarToneClass, scheduleDotToneClass } from './schedule-state-tone.js';
 
 type JobSheetTab = 'details' | 'documents' | 'schedule' | 'stock' | 'variance';
+
+const JOB_UPLOAD_DOCUMENT_TYPE_OPTIONS = JobUploadDocumentType.options.map((type) => ({
+  label: JOB_DOCUMENT_TYPE_LABELS[type],
+  value: type,
+}));
 
 type JobSheetProps = {
   jobId: UUID;
@@ -133,7 +146,14 @@ const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           <SheetTitle className="truncate font-mono text-lg">{job?.code ?? 'Job'}</SheetTitle>
-          {isJobCancelled(job) ? <Badge variant="destructive">Cancelled</Badge> : null}
+          {isJobCancelled(job) ? (
+            <Badge
+              className={cn(cancelledBadgeColorClassNames.chip, cancelledBadgeColorClassNames.text)}
+              variant="outline"
+            >
+              Cancelled
+            </Badge>
+          ) : null}
         </div>
         <SheetDescription className="truncate font-mono">
           {job ? (job.quoteCode ?? 'Stock Build') : 'Loading job...'}
@@ -303,10 +323,12 @@ const JobDocumentsTab: React.FC<{
   const showMutationError = useApiMutationErrorToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedType, setSelectedType] = useState<JobUploadDocumentType | null>(null);
   const uploadMutation = useMutation({
     mutationFn: (file: File) => uploadJobPurchaseOrder(jobId, file),
     onSuccess: async () => {
       setSelectedFile(null);
+      setSelectedType(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -335,7 +357,7 @@ const JobDocumentsTab: React.FC<{
         canEditJobs && document.ownerType === 'job' && document.metadata.type === 'purchase_order'
       }
       documents={documents}
-      emptyActionMessage="Choose a PDF, then upload the first Purchase Order."
+      emptyActionMessage="Choose a PDF and its type, then upload the first Purchase Order."
       emptyMessage="No documents captured."
       isLoading={false}
       metadata={jobDocumentMetadata}
@@ -346,12 +368,14 @@ const JobDocumentsTab: React.FC<{
             fileInputRef={fileInputRef}
             isPending={uploadMutation.isPending}
             selectedFile={selectedFile}
+            selectedType={selectedType}
             onFileChange={setSelectedFile}
             onSubmit={() => {
-              if (selectedFile) {
+              if (selectedFile && selectedType) {
                 void uploadMutation.mutateAsync(selectedFile);
               }
             }}
+            onTypeChange={setSelectedType}
           />
         ) : undefined
       }
@@ -365,8 +389,10 @@ const JobPurchaseOrderUpload: React.FC<{
   isPending: boolean;
   onFileChange: (file: File | null) => void;
   onSubmit: () => void;
+  onTypeChange: (type: JobUploadDocumentType | null) => void;
   selectedFile: File | null;
-}> = ({ fileInputRef, isPending, onFileChange, onSubmit, selectedFile }) => (
+  selectedType: JobUploadDocumentType | null;
+}> = ({ fileInputRef, isPending, onFileChange, onSubmit, onTypeChange, selectedFile, selectedType }) => (
   <form
     className="flex flex-col gap-2 sm:flex-row sm:items-center"
     onSubmit={(event) => {
@@ -378,7 +404,7 @@ const JobPurchaseOrderUpload: React.FC<{
       ref={fileInputRef}
       accept={JOB_DOCUMENT_ACCEPT}
       aria-label="Purchase Order PDF"
-      className="max-w-72"
+      className="max-w-52"
       disabled={isPending}
       type="file"
       onChange={(event) => {
@@ -389,7 +415,29 @@ const JobPurchaseOrderUpload: React.FC<{
         }
       }}
     />
-    <Button disabled={!selectedFile || isPending} type="submit">
+    {/* Purchase Order is the only type a Job upload can carry today, but the picker still has to be
+        answered: naming the type is what stops a file going up as one by accident. */}
+    <Select
+      disabled={isPending}
+      onValueChange={(value) => onTypeChange(value ? JobUploadDocumentType.parse(value) : null)}
+      value={selectedType ?? ''}
+    >
+      <SelectTrigger aria-label="Document type" className="sm:w-40">
+        <SelectValue placeholder="Select type">
+          {selectedType ? JOB_DOCUMENT_TYPE_LABELS[selectedType] : null}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {JOB_UPLOAD_DOCUMENT_TYPE_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+    <Button disabled={!selectedFile || !selectedType || isPending} type="submit">
       {isPending ? (
         <IconLoader2 className="animate-spin" data-icon="inline-start" />
       ) : (

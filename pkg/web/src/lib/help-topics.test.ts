@@ -11,6 +11,7 @@ describe('helpTopicForPath', () => {
 
   it('resolves an area from its route', () => {
     expect(helpTopicForPath('/bays')).toBe('bays');
+    expect(helpTopicForPath('/customers')).toBe('customers');
     expect(helpTopicForPath('/inventory')).toBe('inventory');
     expect(helpTopicForPath('/parts')).toBe('parts');
     expect(helpTopicForPath('/purchase-orders')).toBe('purchaseOrders');
@@ -19,6 +20,7 @@ describe('helpTopicForPath', () => {
 
   it('keeps a detail route on its area topic', () => {
     expect(helpTopicForPath('/inventory/9f1c-part-id')).toBe('inventory');
+    expect(helpTopicForPath('/customers/42/edit')).toBe('customers');
     expect(helpTopicForPath('/quotes/42/edit')).toBe('quotes');
   });
 

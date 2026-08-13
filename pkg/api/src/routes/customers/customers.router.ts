@@ -4,6 +4,7 @@ import {
   getCustomer,
   isCustomerCoreError,
   listCustomers,
+  removeCustomer,
   updateCustomer,
 } from '@pkg/core';
 import { CustomerCreateInput, CustomerListInput, CustomerUpdateInput, UUID } from '@pkg/schema';
@@ -32,6 +33,12 @@ export const customersRouter = router({
     .mutation(({ ctx, input }) =>
       mapCustomerErrors(() => updateCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
+
+  remove: authorizedProcedure('customer:remove')
+    .input(z.object({ id: UUID }))
+    .mutation(({ ctx, input }) =>
+      mapCustomerErrors(() => removeCustomer({ db: ctx.db, id: input.id, actorUserId: ctx.session.user.id })),
+    ),
 });
 
 async function mapCustomerErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -43,6 +50,11 @@ function mapCustomerCoreError(error: CustomerCoreError): CoreErrorMapping<Custom
 }
 
 const customerErrorMappings = {
+  'customer.in_use': {
+    appCode: 'customer.in_use',
+    code: 'CONFLICT',
+    message: 'This customer cannot be removed because another record still references it.',
+  },
   'customer.not_found': {
     appCode: 'customer.not_found',
     code: 'NOT_FOUND',

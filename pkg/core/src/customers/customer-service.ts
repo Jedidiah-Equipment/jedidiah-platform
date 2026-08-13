@@ -3,6 +3,7 @@ import {
   createGlobalSearchCondition,
   customers,
   type Db,
+  getForeignKeyViolationConstraint,
   getPaginationQueryOptions,
   getSortOrder,
 } from '@pkg/db';
@@ -18,9 +19,9 @@ import type {
 import { Customer, getNextCursor } from '@pkg/schema';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
-import { defineAuditDescriptor, recordAuditCreate } from '../audit/audit-service.js';
+import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
-import { CustomerNotFoundError } from './customer-errors.js';
+import { CustomerInUseError, CustomerNotFoundError } from './customer-errors.js';
 
 type CustomerRow = typeof customers.$inferSelect;
 
@@ -175,6 +176,38 @@ export async function updateCustomer({
       vatNumber: input.vatNumber,
     }),
     table: customers,
+  });
+}
+
+export async function removeCustomer({
+  actorUserId,
+  db,
+  id,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  id: UUID;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [before] = await tx.select().from(customers).where(eq(customers.id, id)).for('update');
+
+    if (!before) {
+      throw new CustomerNotFoundError(id);
+    }
+
+    // All Customer references use restrictive foreign keys. Keeping that constraint as the final
+    // guard means a future referring entity also fails closed without duplicating a holder list here.
+    try {
+      await tx.delete(customers).where(eq(customers.id, id));
+    } catch (error) {
+      if (getForeignKeyViolationConstraint(error)) {
+        throw new CustomerInUseError(id);
+      }
+
+      throw error;
+    }
+
+    await recordAuditDelete({ db: tx, descriptor: customerAuditDescriptor, actorUserId, input: before });
   });
 }
 

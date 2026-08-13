@@ -11,6 +11,7 @@ import { isRemoteAppEnv } from '../environment.js';
  */
 export const HELP_TOPICS = {
   bays: '/production/delete-a-bay',
+  customers: '/sales/remove-a-customer',
   home: '/',
   inventory: '/inventory/stock-on-hand-and-free-stock',
   inventoryBuyList: '/inventory/raise-purchase-orders-from-the-buy-list',

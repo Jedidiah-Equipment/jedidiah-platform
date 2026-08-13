@@ -1,8 +1,9 @@
-import { auditEvents, type Db, user } from '@pkg/db';
+import { auditEvents, type Db, products, productUnitOwnershipTransfers, productUnits, quotes, user } from '@pkg/db';
 import type { Customer } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { expectIsoDatetime, mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
@@ -468,6 +469,96 @@ describe('customers.update', () => {
   });
 });
 
+describe('customers.remove', () => {
+  test('rejects unauthenticated removals and roles without Customer update access', async ({ context }) => {
+    const created = await createCustomer(context.createCaller(), 'Protected Customer');
+
+    await expect(context.createAnonCaller().customers.remove({ id: created.id })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+    await expect(context.createCaller(mockSession('sales')).customers.remove({ id: created.id })).rejects.toMatchObject(
+      {
+        code: 'FORBIDDEN',
+      },
+    );
+  });
+
+  test('permanently removes an unreferenced Customer and records an audit event', async ({ context }) => {
+    const session = mockSession('procurement-manager');
+    const caller = context.createCaller(session);
+    const created = await createCustomer(caller, 'Removable Customer');
+
+    await expect(caller.customers.remove({ id: created.id })).resolves.toBeUndefined();
+    await expect(caller.customers.get({ id: created.id })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Customer not found.',
+    });
+
+    expect((await listAuditEvents(context.db)).at(-1)).toMatchObject({
+      action: 'deleted',
+      actorUserId: session.user.id,
+      entityId: created.id,
+      entityType: 'customer',
+      summary: 'Deleted customer "Removable Customer"',
+    });
+  });
+
+  test('returns a conflict when a Quote references the Customer', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createCustomer(caller, 'Quoted Customer');
+    const productId = await createProduct(context.db, 'QUOTED');
+    await context.db.insert(quotes).values({
+      customerId: created.id,
+      productId,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+    });
+
+    await expect(caller.customers.remove({ id: created.id })).rejects.toMatchObject({
+      appCode: 'customer.in_use',
+      code: 'CONFLICT',
+      message: 'This customer cannot be removed because another record still references it.',
+    });
+  });
+
+  test('returns a conflict when another entity references the Customer', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createCustomer(caller, 'Unit Owner');
+    const productId = await createProduct(context.db, 'OWNER');
+    const [unit] = await context.db
+      .insert(productUnits)
+      .values({
+        productId,
+        productSerialNumber: 'OWNER260001',
+        productSerialPrefix: 'OWNER',
+        productSerialSequence: 1,
+        productSerialYear: 26,
+      })
+      .returning({ id: productUnits.id });
+    if (!unit) throw new Error('Product Unit insert did not return a row');
+    await context.db.insert(productUnitOwnershipTransfers).values({
+      occurredOn: '2026-08-13',
+      productUnitId: unit.id,
+      toCustomerId: created.id,
+    });
+
+    await expect(caller.customers.remove({ id: created.id })).rejects.toMatchObject({
+      appCode: 'customer.in_use',
+      code: 'CONFLICT',
+    });
+  });
+
+  test('returns not found when removing a missing Customer', async ({ context }) => {
+    await expect(
+      context.createCaller().customers.remove({ id: '00000000-0000-4000-8000-000000000001' }),
+    ).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Customer not found.',
+    });
+  });
+});
+
 async function listAuditEvents(db: Db) {
   return db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
 }
@@ -484,4 +575,21 @@ async function createActorUser(db: Db) {
     role: 'admin',
     updatedAt: now,
   });
+}
+
+async function createProduct(db: Db, suffix: string): Promise<string> {
+  const [product] = await db
+    .insert(products)
+    .values({
+      basePrice: 1_000,
+      buildTimeDays: 14,
+      modelCode: `CUSTOMER-${suffix}`,
+      name: `Customer ${suffix} Product`,
+      rangeId: await createProductRangeFixture(db),
+    })
+    .returning({ id: products.id });
+
+  if (!product) throw new Error('Product insert did not return a row');
+
+  return product.id;
 }

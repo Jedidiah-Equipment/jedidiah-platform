@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CustomerNotFoundError, isCustomerCoreError } from './customers/customer-errors.js';
+import { CustomerInUseError, CustomerNotFoundError, isCustomerCoreError } from './customers/customer-errors.js';
 import {
   isJobCoreError,
   JobBayNotFoundError,
@@ -81,9 +81,11 @@ describe('core error codes and guards', () => {
   });
 
   it('identifies customer and user core errors', () => {
+    expect(new CustomerInUseError('customer-id').code).toBe('customer.in_use');
     expect(new CustomerNotFoundError('customer-id').code).toBe('customer.not_found');
     expect(new UserNotFoundError('user-id').code).toBe('user.not_found');
     expect(isCustomerCoreError(new CustomerNotFoundError('customer-id'))).toBe(true);
+    expect(isCustomerCoreError(new CustomerInUseError('customer-id'))).toBe(true);
     expect(isUserCoreError(new UserNotFoundError('user-id'))).toBe(true);
   });
 

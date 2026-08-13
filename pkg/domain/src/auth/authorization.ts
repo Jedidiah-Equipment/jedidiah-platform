@@ -26,6 +26,7 @@ export const permissionLabels = {
   'audit:read': 'View audit history',
   'customer:create': 'Create customers',
   'customer:read': 'View customers',
+  'customer:remove': 'Remove customers',
   'customer:update': 'Update customers',
   'email:send': 'Send email',
   'feedback:read': 'View feedback',
@@ -83,6 +84,7 @@ export const permissionDescriptions = {
   'audit:read': 'View audit events across workspace records.',
   'customer:create': 'Add new customer directory records.',
   'customer:read': 'View customer directory records.',
+  'customer:remove': 'Permanently remove unreferenced customer directory records.',
   'customer:update': 'Edit existing customer directory records.',
   'email:send': 'Send assistant-authored email to an explicitly chosen recipient.',
   'feedback:read': 'View all submitted Feedback records, including Corrective Feedback.',
@@ -140,7 +142,7 @@ export const permissionDescriptions = {
 
 export const authorizationStatement = {
   audit: ['read'],
-  customer: ['read', 'create', 'update'],
+  customer: ['read', 'create', 'update', 'remove'],
   email: ['send'],
   feedback: ['read', 'update'],
   job: ['read', 'create', 'update', 'schedule', 'update-calendar', 'cancel'],
@@ -167,7 +169,7 @@ type RoleAccess = Partial<{
 
 const adminAccess = {
   audit: ['read'],
-  customer: ['read', 'create', 'update'],
+  customer: ['read', 'create', 'update', 'remove'],
   email: ['send'],
   job: ['read', 'create', 'update', 'schedule', 'update-calendar', 'cancel'],
   job_bay: ['read', 'update'],
@@ -199,7 +201,7 @@ export const appRoleAccess = {
     feedback: ['read', 'update'],
   },
   'procurement-manager': {
-    customer: ['read', 'create', 'update'],
+    customer: ['read', 'create', 'update', 'remove'],
     inventory: ['read', 'adjust'],
     inventory_cost: ['read', 'revalue'],
     job: ['read'],

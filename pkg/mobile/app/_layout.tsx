@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { OfflineScreen } from '@/components/OfflineScreen';
+import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { ApiProvider } from '@/lib/ApiProvider';
 import { ConnectivityProvider } from '@/lib/connectivity';
@@ -48,6 +49,8 @@ function ThemedAppShell() {
           <Stack screenOptions={{ headerShown: false }} />
           {/* Single offline gate: covers the whole app while offline, so no screen checks connectivity. */}
           <OfflineScreen />
+          {/* Single update prompt: offers a downloaded new version wherever the user is. */}
+          <UpdatePrompt />
           <ThemedStatusBar />
         </ApiProvider>
       </ConnectivityProvider>

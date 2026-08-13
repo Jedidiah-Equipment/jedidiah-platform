@@ -16,7 +16,6 @@ type BrochureDocumentPdfProps = {
 type ImageFit = NonNullable<BrochureDocumentImage>['fit'];
 
 type RangeLogoLayout = {
-  frameHeight: number;
   imageHeight: number;
   imageWidth: number;
 };
@@ -27,7 +26,8 @@ const layout = {
   detailPaddingTop: 24,
   brandLogoHeight: 36,
   brandLogoWidth: 126,
-  rangeLogoCompactHeight: 96,
+  brandRowHeight: 66,
+  rangeLogoCompactHeight: 108,
   rangeLogoWideHeight: 66,
   rangeLogoMaxWidth: 249,
   heroHeight: 384,
@@ -72,8 +72,9 @@ const styles = StyleSheet.create({
   brandRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    height: layout.brandRowHeight,
     marginBottom: 22,
+    position: 'relative',
   },
   brandLogoFrame: {
     backgroundColor: pdfColors.black,
@@ -88,6 +89,9 @@ const styles = StyleSheet.create({
   rangeLogoFrame: {
     alignItems: 'flex-end',
     justifyContent: 'center',
+    position: 'absolute',
+    right: 0,
+    top: 0,
     width: layout.rangeLogoMaxWidth,
   },
   rangeLogo: {
@@ -356,7 +360,6 @@ function getRangeLogoLayout(rangeLogo: BrochureDocumentImage): RangeLogoLayout {
   const imageWidth = Math.min(layout.rangeLogoMaxWidth, frameHeight * aspectRatio);
 
   return {
-    frameHeight,
     imageHeight: imageWidth / aspectRatio,
     imageWidth,
   };
@@ -365,7 +368,7 @@ function getRangeLogoLayout(rangeLogo: BrochureDocumentImage): RangeLogoLayout {
 export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
   const hasColumns = document.standardAssemblies.length > 0 || document.optionalAssemblies.length > 0;
   const rangeLogoLayout = getRangeLogoLayout(document.rangeLogo);
-  const coverLayout = getCoverLayout(document.keyFeatures, document.title, rangeLogoLayout.frameHeight);
+  const coverLayout = getCoverLayout(document.keyFeatures, document.title);
   const detailLayout = getDetailLayout(document);
   const messages = brochureMessages[document.locale];
 
@@ -384,7 +387,7 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
             <View style={styles.brandLogoFrame}>
               <Image src={jedidiahLogoSrc} style={styles.brandLogo} />
             </View>
-            <View style={[styles.rangeLogoFrame, { height: rangeLogoLayout.frameHeight }]}>
+            <View style={[styles.rangeLogoFrame, { height: rangeLogoLayout.imageHeight }]}>
               {document.rangeLogo ? (
                 <Image
                   src={document.rangeLogo.dataUri}
@@ -536,13 +539,8 @@ type DescriptionLayout = {
   paragraphMarginBottom: number;
 };
 
-export function getCoverLayout(
-  keyFeatures: string[],
-  title = '',
-  rangeLogoFrameHeight: number = layout.rangeLogoWideHeight,
-): CoverLayout {
+export function getCoverLayout(keyFeatures: string[], title = ''): CoverLayout {
   const featureCount = keyFeatures.length;
-  const rangeLogoHeightDelta = Math.max(0, rangeLogoFrameHeight - layout.rangeLogoWideHeight);
   const measuredFeatureListWidth = (baseWidth: number, fontSize: number) =>
     measureKeyFeatureListWidth(keyFeatures, baseWidth, fontSize);
 
@@ -553,7 +551,7 @@ export function getCoverLayout(
       featureListWidth: measuredFeatureListWidth(260, 12.5),
       headingFontSize: 24,
       headingMarginBottom: 34,
-      heroHeight: layout.heroHeight - rangeLogoHeightDelta,
+      heroHeight: layout.heroHeight,
       rowMarginBottom: 9,
       sectionMarginTop: 86,
       titleFontSize: fitTitleFontSize(title),
@@ -567,7 +565,7 @@ export function getCoverLayout(
       featureListWidth: measuredFeatureListWidth(310, 10.5),
       headingFontSize: 21,
       headingMarginBottom: 22,
-      heroHeight: 360 - rangeLogoHeightDelta,
+      heroHeight: 360,
       rowMarginBottom: 5,
       sectionMarginTop: 48,
       titleFontSize: fitTitleFontSize(title),
@@ -580,7 +578,7 @@ export function getCoverLayout(
     featureListWidth: measuredFeatureListWidth(340, 8),
     headingFontSize: 18,
     headingMarginBottom: 8,
-    heroHeight: 318 - rangeLogoHeightDelta,
+    heroHeight: 318,
     rowMarginBottom: featureCount >= PRODUCT_KEY_FEATURES_MAX_COUNT ? 2 : 3,
     sectionMarginTop: 30,
     titleFontSize: fitTitleFontSize(title),

@@ -15,15 +15,21 @@ type BrochureDocumentPdfProps = {
 
 type ImageFit = NonNullable<BrochureDocumentImage>['fit'];
 
+type RangeLogoLayout = {
+  imageHeight: number;
+  imageWidth: number;
+};
+
 const layout = {
   pagePaddingX: 18,
   coverPaddingTop: 38,
   detailPaddingTop: 24,
   brandLogoHeight: 36,
   brandLogoWidth: 126,
-  // Scale both bounds together; `contain` would otherwise leave landscape logos constrained by width.
-  rangeLogoHeight: 66,
-  rangeLogoWidth: 249,
+  brandRowHeight: 66,
+  rangeLogoCompactHeight: 120,
+  rangeLogoWideHeight: 66,
+  rangeLogoMaxWidth: 249,
   heroHeight: 384,
   techImageHeight: 142,
   secondaryHeight: 205,
@@ -66,8 +72,9 @@ const styles = StyleSheet.create({
   brandRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    height: layout.brandRowHeight,
     marginBottom: 22,
+    position: 'relative',
   },
   brandLogoFrame: {
     backgroundColor: pdfColors.black,
@@ -79,14 +86,20 @@ const styles = StyleSheet.create({
     objectFit: 'contain',
     width: layout.brandLogoWidth,
   },
+  rangeLogoFrame: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: layout.rangeLogoMaxWidth,
+  },
   rangeLogo: {
-    height: layout.rangeLogoHeight,
     objectFit: 'contain',
-    width: layout.rangeLogoWidth,
   },
   rangeLogoFallback: {
-    height: layout.rangeLogoHeight,
-    width: layout.rangeLogoWidth,
+    height: layout.rangeLogoWideHeight,
+    width: layout.rangeLogoMaxWidth,
   },
   titleBlock: {
     alignItems: 'center',
@@ -337,8 +350,25 @@ const styles = StyleSheet.create({
   },
 });
 
+function getRangeLogoLayout(rangeLogo: BrochureDocumentImage): RangeLogoLayout {
+  const fallbackAspectRatio = layout.rangeLogoMaxWidth / layout.rangeLogoWideHeight;
+  const aspectRatio =
+    rangeLogo?.aspectRatio && Number.isFinite(rangeLogo.aspectRatio) && rangeLogo.aspectRatio > 0
+      ? rangeLogo.aspectRatio
+      : fallbackAspectRatio;
+  // Compact logos overflow the brand row into clearance supplied by the required category/subtitle.
+  const frameHeight = aspectRatio < 2 ? layout.rangeLogoCompactHeight : layout.rangeLogoWideHeight;
+  const imageWidth = Math.min(layout.rangeLogoMaxWidth, frameHeight * aspectRatio);
+
+  return {
+    imageHeight: imageWidth / aspectRatio,
+    imageWidth,
+  };
+}
+
 export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
   const hasColumns = document.standardAssemblies.length > 0 || document.optionalAssemblies.length > 0;
+  const rangeLogoLayout = getRangeLogoLayout(document.rangeLogo);
   const coverLayout = getCoverLayout(document.keyFeatures, document.title);
   const detailLayout = getDetailLayout(document);
   const messages = brochureMessages[document.locale];
@@ -358,11 +388,16 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
             <View style={styles.brandLogoFrame}>
               <Image src={jedidiahLogoSrc} style={styles.brandLogo} />
             </View>
-            {document.rangeLogo ? (
-              <Image src={document.rangeLogo.dataUri} style={styles.rangeLogo} />
-            ) : (
-              <View style={styles.rangeLogoFallback} />
-            )}
+            <View style={[styles.rangeLogoFrame, { height: rangeLogoLayout.imageHeight }]}>
+              {document.rangeLogo ? (
+                <Image
+                  src={document.rangeLogo.dataUri}
+                  style={[styles.rangeLogo, { height: rangeLogoLayout.imageHeight, width: rangeLogoLayout.imageWidth }]}
+                />
+              ) : (
+                <View style={styles.rangeLogoFallback} />
+              )}
+            </View>
           </View>
 
           <View style={styles.titleBlock}>

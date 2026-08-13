@@ -278,41 +278,29 @@ async function resolveRangeLogo({
   }
 
   const bytes = await readStoredObjectBytes(storage, ref.storageKey);
-  const normalizedBytes = await trimExcessRangeLogoPadding(bytes);
-  const dataUri = `data:${ref.contentType};base64,${Buffer.from(normalizedBytes).toString('base64')}`;
+  const aspectRatio = await readImageAspectRatio(bytes);
+  const dataUri = `data:${ref.contentType};base64,${Buffer.from(bytes).toString('base64')}`;
 
-  return { dataUri, fit: 'contain' };
+  return { ...(aspectRatio === undefined ? {} : { aspectRatio }), dataUri, fit: 'contain' };
 }
 
-async function trimExcessRangeLogoPadding(bytes: Uint8Array): Promise<Uint8Array> {
+async function readImageAspectRatio(bytes: Uint8Array): Promise<number | undefined> {
   try {
     const metadata = await sharp(bytes).metadata();
 
     if (!metadata.height || !metadata.width) {
-      return bytes;
+      return undefined;
     }
 
-    const backgroundPixel = await sharp(bytes)
-      .ensureAlpha()
-      .extract({ height: 1, left: 0, top: 0, width: 1 })
-      .raw()
-      .toBuffer();
-    const [red = 0, green = 0, blue = 0, alpha = 255] = backgroundPixel;
-    const hasTrimmableBackground = alpha <= 10 || Math.min(red, green, blue) >= 240;
-
-    if (!hasTrimmableBackground) {
-      return bytes;
+    // React-PDF swaps JPEG dimensions for EXIF orientations 5-8 while embedding the original bytes.
+    if (metadata.format === 'jpeg' && metadata.orientation && metadata.orientation > 4) {
+      return metadata.height / metadata.width;
     }
 
-    const trimmed = await sharp(bytes).trim({ lineArt: true }).toBuffer({ resolveWithObject: true });
-    const hasExcessVerticalPadding = trimmed.info.height <= metadata.height * 0.5;
-
-    // Only collapse strongly vertical padding. Square badge backgrounds are part of their logo artwork
-    // and must keep their canvas rather than being cropped down to their lettering.
-    return hasExcessVerticalPadding ? trimmed.data : bytes;
+    return metadata.width / metadata.height;
   } catch {
-    // Normalization is best-effort; an image React-PDF previously accepted must not block the brochure.
-    return bytes;
+    // Metadata is an enhancement; an image React-PDF accepts must still render if Sharp cannot inspect it.
+    return undefined;
   }
 }
 

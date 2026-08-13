@@ -140,9 +140,26 @@ async function imageFromEnv(
   const bytes = await readFile(imagePath);
 
   return {
+    ...(envName === 'BROCHURE_RANGE_LOGO_IMAGE' ? { aspectRatio: rangeLogoAspectRatio() } : {}),
     dataUri: `data:${mimeType(imagePath)};base64,${bytes.toString('base64')}`,
     fit,
   };
+}
+
+function rangeLogoAspectRatio(): number | undefined {
+  const value = process.env.BROCHURE_RANGE_LOGO_ASPECT_RATIO;
+
+  if (!value) {
+    return undefined;
+  }
+
+  const aspectRatio = Number(value);
+
+  if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) {
+    throw new Error(`Unsupported brochure Range logo aspect ratio: ${value}`);
+  }
+
+  return aspectRatio;
 }
 
 function mimeType(filePath: string): string {

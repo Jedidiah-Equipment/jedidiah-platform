@@ -1,9 +1,11 @@
 import type { Locale } from '../common/locale.js';
 import type { BROCHURE_IMAGE_SLOTS } from './product.js';
 
-// A single Brochure image slot rendered into the PDF: a base64 data URI of the stored image bytes plus
-// the fit the renderer should apply. Null when the slot is empty, so the renderer can omit it and reflow.
+// A single Brochure image slot rendered into the PDF: a base64 data URI of the stored image bytes, the
+// fit the renderer should apply, and optional layout metadata. Null lets the renderer omit it and reflow.
 export type BrochureDocumentImage = {
+  // Present for Range logos so the PDF can size compact badges differently from wide wordmarks.
+  aspectRatio?: number;
   dataUri: string;
   fit: 'contain' | 'cover';
 } | null;

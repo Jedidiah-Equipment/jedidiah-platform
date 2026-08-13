@@ -87,7 +87,7 @@ describe('getBrochureDocumentModel', () => {
     });
   });
 
-  test('trims excessive vertical padding from a landscape Range logo', async () => {
+  test('records the Range logo aspect ratio without changing its source canvas', async () => {
     const logoBytes = await paddedLandscapeLogo();
     const rangeLogo = await storeRangeLogo(logoBytes);
 
@@ -99,16 +99,18 @@ describe('getBrochureDocumentModel', () => {
       storage: rangeLogo.storage,
     });
 
-    expect(await dataUriDimensions(document.rangeLogo?.dataUri)).toEqual({ height: 40, width: 160 });
+    expect(document.rangeLogo?.aspectRatio).toBe(1);
+    expect(await dataUriDimensions(document.rangeLogo?.dataUri)).toEqual({ height: 500, width: 500 });
   });
 
-  test('keeps a tightly cropped square Range logo canvas', async () => {
+  test('records the displayed aspect ratio for an orientation-tagged JPEG Range logo', async () => {
     const logoBytes = await sharp({
-      create: { background: '#111111', channels: 3, height: 100, width: 100 },
+      create: { background: '#111111', channels: 3, height: 40, width: 160 },
     })
-      .png()
+      .jpeg()
+      .withMetadata({ orientation: 6 })
       .toBuffer();
-    const rangeLogo = await storeRangeLogo(logoBytes);
+    const rangeLogo = await storeRangeLogo(logoBytes, 'image/jpeg');
 
     const document = await getBrochureDocumentModel({
       images: {},
@@ -118,7 +120,8 @@ describe('getBrochureDocumentModel', () => {
       storage: rangeLogo.storage,
     });
 
-    expect(await dataUriDimensions(document.rangeLogo?.dataUri)).toEqual({ height: 100, width: 100 });
+    expect(document.rangeLogo?.aspectRatio).toBe(0.25);
+    expect(await dataUriDimensions(document.rangeLogo?.dataUri)).toEqual({ height: 40, width: 160 });
   });
 });
 
@@ -146,19 +149,22 @@ async function paddedLandscapeLogo(): Promise<Uint8Array> {
     .toBuffer();
 }
 
-async function storeRangeLogo(bytes: Uint8Array): Promise<{
+async function storeRangeLogo(
+  bytes: Uint8Array,
+  contentType = 'image/png',
+): Promise<{
   ref: StoredFile;
   storage: InMemoryStorageAdapter;
 }> {
   const storage = new InMemoryStorageAdapter();
-  const storageKey = 'range-logos/product-range/range/logo.png';
+  const storageKey = `range-logos/product-range/range/logo.${contentType === 'image/jpeg' ? 'jpg' : 'png'}`;
 
-  await storage.put({ body: bytes, byteSize: bytes.byteLength, contentType: 'image/png', key: storageKey });
+  await storage.put({ body: bytes, byteSize: bytes.byteLength, contentType, key: storageKey });
 
   return {
     ref: {
       byteSize: bytes.byteLength,
-      contentType: 'image/png',
+      contentType,
       storageKey,
       updatedAt: '2026-07-13T00:00:00.000Z',
     },

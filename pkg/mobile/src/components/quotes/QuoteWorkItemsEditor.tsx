@@ -1,5 +1,4 @@
 import {
-  createStableRowKeys,
   formatCurrency,
   getWorkItemFormTotal,
   quoteDepartmentLabels,
@@ -14,7 +13,12 @@ import { Pressable, View } from 'react-native';
 import type { useAutosaveForm } from '@/components/form';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { OTHER_WORK_ITEM_DEPARTMENT, type QuoteEditFormValues, toQuoteWorkItemInput } from '@/lib/quote-presentation';
+import {
+  createQuoteFormKey,
+  OTHER_WORK_ITEM_DEPARTMENT,
+  type QuoteEditFormValues,
+  toQuoteWorkItemInput,
+} from '@/lib/quote-presentation';
 
 type QuoteEditAutosaveForm = ReturnType<typeof useAutosaveForm<QuoteEditFormValues, QuoteUpdateInput, QuoteDetail>>;
 
@@ -34,17 +38,17 @@ const DEPARTMENT_OPTIONS = [
   { label: 'Other', value: OTHER_WORK_ITEM_DEPARTMENT },
 ];
 
-const DEFAULT_WORK_ITEM: QuoteWorkItemFormValue = {
-  department: FIRST_DEPARTMENT ?? OTHER_WORK_ITEM_DEPARTMENT,
-  description: '',
-  hourlyRate: FIRST_DEPARTMENT ? workItemDepartmentRate(FIRST_DEPARTMENT) : 0,
-  hours: 0,
-  name: '',
-  parts: [],
-};
-
-const getWorkItemKey = createStableRowKeys<QuoteWorkItemFormValue>('quote-work-item');
-const getWorkItemPartKey = createStableRowKeys<QuoteWorkItemFormValue['parts'][number]>('quote-work-item-part');
+function createDefaultWorkItem(): QuoteWorkItemFormValue {
+  return {
+    department: FIRST_DEPARTMENT ?? OTHER_WORK_ITEM_DEPARTMENT,
+    description: '',
+    formKey: createQuoteFormKey('work-item'),
+    hourlyRate: FIRST_DEPARTMENT ? workItemDepartmentRate(FIRST_DEPARTMENT) : 0,
+    hours: 0,
+    name: '',
+    parts: [],
+  };
+}
 
 export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }: QuoteWorkItemsEditorProps) {
   return (
@@ -60,7 +64,7 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
               }`}
               disabled={readOnly}
               onPress={() => {
-                workItemsField.pushValue({ ...DEFAULT_WORK_ITEM });
+                workItemsField.pushValue(createDefaultWorkItem());
                 autosave.markChanged();
               }}
             >
@@ -78,7 +82,7 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
           ) : (
             <View className="gap-3">
               {workItemsField.state.value.map((workItem, workItemIndex) => (
-                <View className="gap-4 rounded-xl border border-border bg-muted/10 p-3" key={getWorkItemKey(workItem)}>
+                <View className="gap-4 rounded-xl border border-border bg-muted/10 p-3" key={workItem.formKey}>
                   <form.AppField name={`workItems[${workItemIndex}].department`}>
                     {(field) => (
                       <field.SelectField
@@ -184,7 +188,12 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
                             }`}
                             disabled={readOnly}
                             onPress={() => {
-                              partsField.pushValue({ name: '', quantity: 1, unitPrice: 0 });
+                              partsField.pushValue({
+                                formKey: createQuoteFormKey('work-item-part'),
+                                name: '',
+                                quantity: 1,
+                                unitPrice: 0,
+                              });
                               autosave.markChanged();
                             }}
                           >
@@ -199,10 +208,7 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
                         ) : (
                           <View className="gap-3">
                             {partsField.state.value.map((part, partIndex) => (
-                              <View
-                                className="gap-3 rounded-xl border border-border bg-surface p-3"
-                                key={getWorkItemPartKey(part)}
-                              >
+                              <View className="gap-3 rounded-xl border border-border bg-surface p-3" key={part.formKey}>
                                 <form.AppField name={`workItems[${workItemIndex}].parts[${partIndex}].name`}>
                                   {(field) => (
                                     <field.TextField

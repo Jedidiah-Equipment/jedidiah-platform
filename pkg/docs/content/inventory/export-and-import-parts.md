@@ -26,15 +26,21 @@ The **Part Code** is the match key, and it is the only one.
   zero of both. Expect a handful of updates the first time round: the import title-cases some cells,
   so a Part typed into the app in lower case is corrected on its first trip through a CSV.
 
-Every other column is yours to edit: change **Name**, Description, Finish, Catagory, or any other
-cell and the Part on that Code is updated to match. The Code cell is the one exception, because it
-is what the match is made on — changing it does not re-code the Part, it creates a **second** Part
-under the new Code and leaves the original standing. Change a Part's Code on the Part itself.
+## What each edit does
 
-A Part is its Code plus who supplies it, so a row whose Code already exists **under a different
-Supplier** is refused as a conflict and reported by line number. The rest of the file still imports.
-Use this when a Supplier Code changes hands: it means the CSV can never quietly re-point a Part at
-someone else.
+The Code cell decides *which* Part a row is about. Every other cell is what that Part is set to.
+
+| You edit | What happens |
+| --- | --- |
+| **Name**, Drawing code, Description, Supplier Code, Finish, Catagory, Internally Fabricated, Standard Purchase Length | The Part on that row's Code is **updated** to match. This is the normal way to correct the catalog in bulk. |
+| **Unit** | Updated the same way, but only while the Part has no stock history. Once stock has moved against it the Unit is frozen, and a row trying to change it stops the whole import (see Notes). |
+| **Code** | Nothing is renamed. The row now describes a Part that does not exist, so it **creates a second Part** under the new Code and leaves the original standing. Change a Part's Code on the Part itself. |
+| **Supplier** | **Refused.** A Part is its Code plus who supplies it, so a row whose Code already exists under a different Supplier is reported as a conflict against its line number and skipped. The CSV can never quietly re-point a Part at someone else; the rest of the file still imports. |
+| **Add a row** | **Creates** a Part, as long as its Code is not already taken by another Supplier's Part. |
+| **Delete a row** | **Nothing.** An import only ever creates and updates — it never removes. A Part left out of the file is untouched, so you can safely cut the file down to just the rows you want to change. |
+
+So yes: to rename a Part, edit its **Name** cell and import. Leave the Code cell exactly as the
+export wrote it — that is what tells the import which Part the new name belongs to.
 
 ## Notes
 

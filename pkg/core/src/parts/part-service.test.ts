@@ -476,6 +476,28 @@ describe('bulkImportParts', () => {
 });
 
 describe('bulkExportParts', () => {
+  test('leaves a Part the imported file left out alone, since an import never removes', async ({ context }) => {
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ code: 'P-100' }), importRow({ code: 'P-200', supplierCode: 'SUP-200' })] },
+    });
+
+    // The user's edited file keeps only one of the two rows.
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ code: 'P-100', name: 'Renamed Bearing' })] },
+    });
+
+    const rows = await bulkExportParts({ db: context.db, input: {} });
+
+    expect(rows.map((row) => [row.code, row.name])).toEqual([
+      ['P-100', 'Renamed Bearing'],
+      ['P-200', 'Bearing'],
+    ]);
+  });
+
   test('gives back what a bulk import put in, ordered by Part code', async ({ context }) => {
     await bulkImportParts({
       actorUserId,

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 beforeEach(() => {
   document.head.innerHTML = '';
@@ -8,6 +8,10 @@ beforeEach(() => {
   delete window._fbq;
   delete window.__jedidiahMetaPixelIds;
   vi.resetModules();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('Meta Pixel', () => {
@@ -55,6 +59,18 @@ describe('Meta Pixel', () => {
 
     expect(first).toMatch(/^[0-9a-f-]{36}$/);
     expect(second).not.toBe(first);
+  });
+
+  test('generates an event ID when randomUUID is unavailable', async () => {
+    const getRandomValues = vi.fn((bytes: Uint8Array) => {
+      bytes.set(Array.from({ length: 16 }, (_, index) => index));
+      return bytes;
+    });
+    vi.stubGlobal('crypto', { getRandomValues });
+    const { createMetaEventId } = await import('./meta-pixel.js');
+
+    expect(createMetaEventId()).toBe('00010203-0405-4607-8809-0a0b0c0d0e0f');
+    expect(getRandomValues).toHaveBeenCalledOnce();
   });
 
   test('sends PageView only for completed client-side navigations', async () => {

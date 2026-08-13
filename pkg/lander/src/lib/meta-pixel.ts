@@ -102,7 +102,18 @@ export function trackMetaViewContent(
 }
 
 export function createMetaEventId(): string {
-  return crypto.randomUUID();
+  if (typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  // Meta only needs a unique deduplication token. getRandomValues covers older browsers that predate
+  // crypto.randomUUID, without letting analytics break catalog views or an already accepted enquiry.
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0'));
+
+  return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`;
 }
 
 export function trackMetaLead(eventId: string, pixelId: string | null = resolveMetaPixelId(import.meta.env)): void {

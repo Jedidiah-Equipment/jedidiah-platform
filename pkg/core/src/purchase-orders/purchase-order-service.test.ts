@@ -314,6 +314,31 @@ describe('Purchase Order send and cancel', () => {
     ).resolves.toMatchObject({ sentAt: null, status: 'cancelled' });
   });
 
+  test('refuses to send a draft whose line still carries the not-priced-yet zero', async ({ context }) => {
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 0 }]),
+    });
+
+    // The message names the Part, which is the only thing that tells the buyer where to go.
+    await expect(
+      markPurchaseOrderSent({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        id: purchaseOrder.id,
+        pdfRenderer: async () => pdfBytes(),
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.line_not_priced', message: expect.stringContaining('P-100') });
+    expect(context.storage.objects.size).toBe(0);
+  });
+
   test('removes the uploaded PDF when the outer send transaction rolls back', async ({ context }) => {
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,

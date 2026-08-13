@@ -25,6 +25,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { usePartOptions, useSupplierOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatPurchaseUnitLabel } from '@/utils/part-quantity-format.js';
@@ -229,7 +230,7 @@ const SupplierField: React.FC<{ commit: () => void; form: DraftForm }> = ({ comm
   );
 };
 
-const PurchaseOrderActions: React.FC<{
+export const PurchaseOrderActions: React.FC<{
   canCancel: boolean;
   canCloseShort: boolean;
   canEdit: boolean;
@@ -241,8 +242,12 @@ const PurchaseOrderActions: React.FC<{
 }> = ({ canCancel, canCloseShort, canEdit, canReadCosts, canSend, isPending, purchaseOrder, runAfterSave }) => {
   const trpc = useTRPC();
   const { invalidatePurchaseOrders } = useQueryInvalidation();
+  // Every lifecycle refusal the server can raise is a state rule the buyer can act on — an unpriced
+  // line names its Part, a cancellation names its receipts. Without this the click just does nothing.
+  const showMutationError = useApiMutationErrorToast();
   const markSentMutation = useMutation(
     trpc.purchaseOrders.markSent.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to mark this Purchase Order sent.'),
       onSuccess: async () => {
         await invalidatePurchaseOrders();
         toast.success('Purchase Order marked sent');
@@ -251,6 +256,7 @@ const PurchaseOrderActions: React.FC<{
   );
   const cancelMutation = useMutation(
     trpc.purchaseOrders.cancel.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to cancel this Purchase Order.'),
       onSuccess: async () => {
         await invalidatePurchaseOrders();
         toast.success('Purchase Order cancelled');
@@ -259,6 +265,7 @@ const PurchaseOrderActions: React.FC<{
   );
   const closeShortMutation = useMutation(
     trpc.purchaseOrders.closeShort.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to close this Purchase Order short.'),
       onSuccess: async () => {
         await invalidatePurchaseOrders();
         toast.success('Purchase Order closed short');

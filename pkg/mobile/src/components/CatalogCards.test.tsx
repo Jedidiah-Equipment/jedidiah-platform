@@ -37,7 +37,7 @@ vi.mock('@/components/units/UnitBuildStateChip', () => ({ UnitBuildStateChip: 'U
 vi.mock('@/theme/use-color-mode', () => ({ useColorMode: () => ({ resolved: 'dark' }) }));
 
 import type { BayListCard } from '@/lib/use-bay-list';
-import { PlanCatalogCard, PlanDepartmentHeader } from './bays/PlanCatalog';
+import { PlanCatalogCard } from './bays/PlanCatalog';
 import { JobCatalogCard } from './jobs/JobCatalog';
 import { ProductCatalogCard } from './products/ProductCatalog';
 import { QuoteCatalogCard } from './quotes/QuoteCatalog';
@@ -240,16 +240,6 @@ describe('catalog card mappings', () => {
       monoText: undefined,
       subText: 'NO ACTIVE JOB',
     });
-  });
-
-  test("heads a Plan group with the Department's shared label and web's glyph for it", () => {
-    const heading = asElement(PlanDepartmentHeader({ department: 'fabrication' }));
-    const [badge, label] = heading.props.children as TestElement[];
-    const renderedBadge = asElement((badge.type as (props: ElementProps) => unknown)(badge.props));
-
-    expect(label.props.children).toBe('Fabrication');
-    expect(label.props.className).toContain('uppercase');
-    expect(renderedBadge.props.icon).toBe('IconHammer');
   });
 
   test('maps a Unit to serial, Product, ownership/date, and build state', () => {

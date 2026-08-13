@@ -16,6 +16,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PurchaseOrderSupplierInvoiceDialog } from './PurchaseOrderSupplierInvoiceDialog.js';
@@ -78,7 +79,7 @@ export function PurchaseOrderInvoiceCrossCheckCard({
   );
 }
 
-function SupplierInvoicePanel({
+export function SupplierInvoicePanel({
   canApplyPrices,
   invoice,
   purchaseOrderId,
@@ -90,8 +91,12 @@ function SupplierInvoicePanel({
   const trpc = useTRPC();
   const { invalidateInventory, invalidatePurchaseOrders } = useQueryInvalidation();
   const refresh = () => Promise.all([invalidatePurchaseOrders(), invalidateInventory()]);
+  // Both buttons post through `mutate`, so a refusal has no promise for a caller to catch: without
+  // this the flag a second pair of hands already judged just goes quiet under the click.
+  const showMutationError = useApiMutationErrorToast();
   const applyMutation = useMutation(
     trpc.purchaseOrders.applyInvoicePrice.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to confirm this price.'),
       onSuccess: async () => {
         await refresh();
         toast.success('Price confirmed and the average corrected');
@@ -100,6 +105,7 @@ function SupplierInvoicePanel({
   );
   const dismissMutation = useMutation(
     trpc.purchaseOrders.dismissInvoiceFlag.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to dismiss this flag.'),
       onSuccess: async () => {
         await refresh();
         toast.success('Flag dismissed');

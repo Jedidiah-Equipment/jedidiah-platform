@@ -1,4 +1,4 @@
-import { user } from '@pkg/db';
+import { sql, user } from '@pkg/db';
 import { CustomerCreateInput } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
@@ -101,5 +101,25 @@ describe('mapCustomer', () => {
       updatedAt: updatedAt.toISOString(),
       vatNumber: 'VAT-123456',
     });
+  });
+});
+
+describe('Customer removal constraints', () => {
+  test('keeps every foreign key to Customers restrictive', async ({ context }) => {
+    const foreignKeys = await context.db.execute<{
+      deleteAction: string;
+      name: string;
+    }>(sql`
+      select
+        constraint_name as "name",
+        delete_rule as "deleteAction"
+      from information_schema.referential_constraints
+      where unique_constraint_schema = current_schema()
+        and unique_constraint_name = 'customers_pkey'
+      order by constraint_name
+    `);
+
+    expect(foreignKeys).not.toHaveLength(0);
+    expect(foreignKeys.every((foreignKey) => foreignKey.deleteAction === 'RESTRICT')).toBe(true);
   });
 });

@@ -8,7 +8,7 @@ Each role declares its full permission set explicitly; there is no role inherita
 
 - `super-admin`: every `admin` permission plus exclusive `feedback:read` and `feedback:update`. The only role that can read or manage Feedback (see ADR 0008).
 - `admin`: full operational access, including Job creation, Bay scheduling, org calendar updates, Bay administration, and Supplier management. "Full access" no longer means literally every permission — Feedback is deliberately reserved for `super-admin`.
-- `procurement-manager`: full Purchase Order access; inventory read/adjust and cost read/revalue; read access to Customers, Products, Parts, Suppliers, Product Units, and Jobs, with no Bay scheduling mutation.
+- `procurement-manager`: full Purchase Order access; inventory read/adjust and cost read/revalue, but no general inventory move; Customer directory and Product, Part, and Supplier management; Product Unit and Job reads; no Bay scheduling mutation.
 - `job-viewer`: Job and Bay schedule reads only.
 - `sales`: Quote create/read/update only.
 - `stores`: Purchase Order read/receive plus physical inventory read/move/adjust/count/build/close-out, with no inventory cost access.

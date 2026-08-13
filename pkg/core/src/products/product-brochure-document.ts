@@ -292,6 +292,11 @@ async function readImageAspectRatio(bytes: Uint8Array): Promise<number | undefin
       return undefined;
     }
 
+    // React-PDF swaps JPEG dimensions for EXIF orientations 5-8 while embedding the original bytes.
+    if (metadata.format === 'jpeg' && metadata.orientation && metadata.orientation > 4) {
+      return metadata.height / metadata.width;
+    }
+
     return metadata.width / metadata.height;
   } catch {
     // Metadata is an enhancement; an image React-PDF accepts must still render if Sharp cannot inspect it.

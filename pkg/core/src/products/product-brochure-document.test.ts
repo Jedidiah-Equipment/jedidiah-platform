@@ -102,6 +102,27 @@ describe('getBrochureDocumentModel', () => {
     expect(document.rangeLogo?.aspectRatio).toBe(1);
     expect(await dataUriDimensions(document.rangeLogo?.dataUri)).toEqual({ height: 500, width: 500 });
   });
+
+  test('records the displayed aspect ratio for an orientation-tagged JPEG Range logo', async () => {
+    const logoBytes = await sharp({
+      create: { background: '#111111', channels: 3, height: 40, width: 160 },
+    })
+      .jpeg()
+      .withMetadata({ orientation: 6 })
+      .toBuffer();
+    const rangeLogo = await storeRangeLogo(logoBytes, 'image/jpeg');
+
+    const document = await getBrochureDocumentModel({
+      images: {},
+      locale: 'en',
+      product: brochureProduct(),
+      rangeLogo: rangeLogo.ref,
+      storage: rangeLogo.storage,
+    });
+
+    expect(document.rangeLogo?.aspectRatio).toBe(0.25);
+    expect(await dataUriDimensions(document.rangeLogo?.dataUri)).toEqual({ height: 40, width: 160 });
+  });
 });
 
 function envelope<Value>(value: Value, sourceHash = 'hash') {
@@ -128,19 +149,22 @@ async function paddedLandscapeLogo(): Promise<Uint8Array> {
     .toBuffer();
 }
 
-async function storeRangeLogo(bytes: Uint8Array): Promise<{
+async function storeRangeLogo(
+  bytes: Uint8Array,
+  contentType = 'image/png',
+): Promise<{
   ref: StoredFile;
   storage: InMemoryStorageAdapter;
 }> {
   const storage = new InMemoryStorageAdapter();
-  const storageKey = 'range-logos/product-range/range/logo.png';
+  const storageKey = `range-logos/product-range/range/logo.${contentType === 'image/jpeg' ? 'jpg' : 'png'}`;
 
-  await storage.put({ body: bytes, byteSize: bytes.byteLength, contentType: 'image/png', key: storageKey });
+  await storage.put({ body: bytes, byteSize: bytes.byteLength, contentType, key: storageKey });
 
   return {
     ref: {
       byteSize: bytes.byteLength,
-      contentType: 'image/png',
+      contentType,
       storageKey,
       updatedAt: '2026-07-13T00:00:00.000Z',
     },

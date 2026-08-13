@@ -1,9 +1,17 @@
 import { auditEvents, type Db, parts, stockMovements, supplier, user } from '@pkg/db';
 import { type PartBulkImportRow, PartListInput } from '@pkg/schema';
+import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
-import { bulkImportParts, createPart, listPartStorageLocations, listParts, updatePart } from './part-service.js';
+import {
+  bulkExportParts,
+  bulkImportParts,
+  createPart,
+  listPartStorageLocations,
+  listParts,
+  updatePart,
+} from './part-service.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
@@ -464,6 +472,108 @@ describe('bulkImportParts', () => {
       updatedCount: 0,
     });
     expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies']);
+  });
+});
+
+describe('bulkExportParts', () => {
+  test('gives back what a bulk import put in, ordered by Part code', async ({ context }) => {
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({ code: 'P-200', name: 'Washer', supplierCode: 'SUP-200' }),
+          importRow({
+            code: 'P-100',
+            drawingCode: 'DR-100',
+            standardPurchaseLengthMm: 6000,
+            unitOfMeasure: 'mm',
+          }),
+        ],
+      },
+    });
+
+    const rows = await bulkExportParts({ db: context.db, input: {} });
+
+    expect(rows).toEqual([
+      {
+        category: 'Bearings',
+        code: 'P-100',
+        description: 'Main bearing',
+        drawingCode: 'DR-100',
+        finish: 'Zinc',
+        isInternallyFabricated: false,
+        name: 'Bearing',
+        standardPurchaseLengthMm: 6000,
+        supplierCode: 'SUP-100',
+        supplierName: 'Acme Supplies',
+        unitOfMeasure: 'mm',
+      },
+      {
+        category: 'Bearings',
+        code: 'P-200',
+        description: 'Main bearing',
+        drawingCode: null,
+        finish: 'Zinc',
+        isInternallyFabricated: false,
+        name: 'Washer',
+        standardPurchaseLengthMm: null,
+        supplierCode: 'SUP-200',
+        supplierName: 'Acme Supplies',
+        unitOfMeasure: 'piece',
+      },
+    ]);
+  });
+
+  test('leaves the Supplier blank on a built Part, which is bought from nobody', async ({ context }) => {
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [importRow({ code: 'B-100', isInternallyFabricated: true, supplierName: null })],
+      },
+    });
+
+    const rows = await bulkExportParts({ db: context.db, input: {} });
+
+    expect(rows).toEqual([expect.objectContaining({ code: 'B-100', supplierName: null })]);
+  });
+
+  test('leaves out a Part whose Supplier is removed, which the import could not read back', async ({ context }) => {
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({ code: 'P-100' }),
+          importRow({ code: 'P-300', supplierCode: 'OTH-300', supplierName: 'Other Supplies' }),
+        ],
+      },
+    });
+    await context.db.update(supplier).set({ deletedAt: new Date() }).where(eq(supplier.companyName, 'Other Supplies'));
+
+    const rows = await bulkExportParts({ db: context.db, input: {} });
+
+    expect(rows.map((row) => row.code)).toEqual(['P-100']);
+  });
+
+  test('narrows to one Supplier when scoped, the same scoping the import accepts', async ({ context }) => {
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({ code: 'P-100' }),
+          importRow({ code: 'P-300', supplierCode: 'OTH-300', supplierName: 'Other Supplies' }),
+        ],
+      },
+    });
+    const [acme] = await context.db.select().from(supplier).where(eq(supplier.companyName, 'Acme Supplies'));
+    if (!acme) throw new Error('Expected the import to have created Acme Supplies');
+
+    const rows = await bulkExportParts({ db: context.db, input: { supplierId: acme.id } });
+
+    expect(rows.map((row) => row.code)).toEqual(['P-100']);
   });
 });
 

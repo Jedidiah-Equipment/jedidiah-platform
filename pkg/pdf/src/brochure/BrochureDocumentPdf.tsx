@@ -21,9 +21,10 @@ const layout = {
   detailPaddingTop: 24,
   brandLogoHeight: 36,
   brandLogoWidth: 126,
-  rangeLogoHeight: 44,
-  rangeLogoWidth: 166,
-  heroHeight: 400,
+  // Scale both bounds together; `contain` would otherwise leave landscape logos constrained by width.
+  rangeLogoHeight: 66,
+  rangeLogoWidth: 249,
+  heroHeight: 384,
   techImageHeight: 142,
   secondaryHeight: 205,
   footerHeight: 98,

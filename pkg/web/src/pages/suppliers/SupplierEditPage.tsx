@@ -14,6 +14,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PartTable } from '../parts/components/PartTable.js';
+import { PartBulkExportButton } from '../parts/PartBulkExportButton.js';
 import { PartBulkImportDialog } from '../parts/PartBulkImportDialog.js';
 import { PartCreateDialog } from '../parts/PartCreateDialog.js';
 import { PartEditDialog } from '../parts/PartEditDialog.js';
@@ -88,12 +89,15 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
           <PartTable
             onEditPart={canUpdatePart ? (part) => setEditingPart(part) : undefined}
             rightSection={
-              canUpdatePart ? (
-                <div className="flex gap-2">
-                  <PartBulkImportDialog supplier={supplier} buttonSize="sm" />
-                  <PartCreateDialog supplier={supplier} buttonSize="sm" />
-                </div>
-              ) : undefined
+              <div className="flex gap-2">
+                <PartBulkExportButton supplier={supplier} buttonSize="sm" />
+                {canUpdatePart ? (
+                  <>
+                    <PartBulkImportDialog supplier={supplier} buttonSize="sm" />
+                    <PartCreateDialog supplier={supplier} buttonSize="sm" />
+                  </>
+                ) : null}
+              </div>
             }
             supplierId={supplier.id}
           />

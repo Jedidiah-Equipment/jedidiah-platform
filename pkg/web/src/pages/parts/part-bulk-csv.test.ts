@@ -1,6 +1,97 @@
+import { PartBulkExportRow } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { parsePartBulkImportCsv } from './part-bulk-import-csv.js';
+import {
+  buildPartBulkExportCsv,
+  createPartBulkExportFilename,
+  PART_BULK_CSV_COLUMN_KEYS,
+  PART_BULK_CSV_COLUMNS,
+  parsePartBulkImportCsv,
+} from './part-bulk-csv.js';
+
+type PartBulkExportRowValue = PartBulkExportRow;
+
+/**
+ * The export writes what the import reads. These rows travel out and back, and a column that moved
+ * on one side without moving on the other lands its value in the wrong field here.
+ */
+const roundTripRows: PartBulkExportRowValue[] = [
+  {
+    category: 'Bearings',
+    code: 'P-100',
+    description: 'Main bearing, front',
+    drawingCode: 'DR-100',
+    finish: 'Galv',
+    isInternallyFabricated: false,
+    name: 'Bearing',
+    standardPurchaseLengthMm: null,
+    supplierCode: 'SUP-100',
+    supplierName: 'Acme Supplies',
+    unitOfMeasure: 'piece',
+  },
+  {
+    category: 'Frames',
+    code: '-450',
+    description: 'Weldment "A" frame',
+    drawingCode: null,
+    finish: 'Powder Coat',
+    isInternallyFabricated: true,
+    name: 'A Frame',
+    standardPurchaseLengthMm: null,
+    supplierCode: 'INT-450',
+    supplierName: null,
+    unitOfMeasure: 'set',
+  },
+  {
+    category: 'Bar Stock',
+    code: 'P-900',
+    description: 'Round bar',
+    drawingCode: 'DR-900',
+    finish: 'Black',
+    isInternallyFabricated: false,
+    name: 'M30 SS Bar',
+    standardPurchaseLengthMm: 6000,
+    supplierCode: 'SUP-900',
+    supplierName: 'Acme Supplies',
+    unitOfMeasure: 'mm',
+  },
+];
+
+describe('bulk Part CSV round trip', () => {
+  it('reads back every exported row unchanged when the header is used', () => {
+    const result = parsePartBulkImportCsv(buildPartBulkExportCsv(roundTripRows), { hasHeader: true });
+
+    expect(result.errors).toEqual([]);
+    expect(result.rows).toEqual(roundTripRows.map((row, index) => ({ ...row, lineNumber: index + 2 })));
+  });
+
+  it('reads back every exported row unchanged by column position alone', () => {
+    const csv = buildPartBulkExportCsv(roundTripRows);
+    const withoutHeader = csv.slice(csv.indexOf('\r\n') + 2);
+
+    const result = parsePartBulkImportCsv(withoutHeader, { hasHeader: false });
+
+    expect(result.errors).toEqual([]);
+    expect(result.rows).toEqual(roundTripRows.map((row, index) => ({ ...row, lineNumber: index + 1 })));
+  });
+
+  it('writes the header the import documents, in the import order', () => {
+    const [header] = buildPartBulkExportCsv(roundTripRows).split('\r\n');
+
+    expect(header).toBe(PART_BULK_CSV_COLUMNS.join(','));
+  });
+
+  it('carries every field of a CSV row in a column', () => {
+    // The round-trip tests above can only catch a field that both sides already know about. This is
+    // what fails when a field is added to the schema and to nothing else: it would be silently
+    // dropped on the way out and left at its old value on the way back in.
+    expect([...PART_BULK_CSV_COLUMN_KEYS].sort()).toEqual(Object.keys(PartBulkExportRow.shape).sort());
+  });
+
+  it('names the file by the day it was taken', () => {
+    expect(createPartBulkExportFilename(new Date('2026-08-13T09:00:00Z'))).toBe('parts-2026-08-13.csv');
+  });
+});
 
 describe('parsePartBulkImportCsv', () => {
   it('parses CSV with the expected header', () => {

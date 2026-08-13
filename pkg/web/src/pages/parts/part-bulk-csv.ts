@@ -1,4 +1,6 @@
+import { formatDate } from '@pkg/domain';
 import {
+  type PartBulkExportRow,
   PartBulkImportRow,
   type PartBulkImportRow as PartBulkImportRowValue,
   PartUnitOfMeasure,
@@ -6,21 +8,9 @@ import {
 } from '@pkg/schema';
 import Papa from 'papaparse';
 
-export const PART_BULK_IMPORT_COLUMNS = [
-  'Code',
-  'Drawing code',
-  'Description',
-  'Supplier',
-  'Supplier Code',
-  'Finish',
-  'Catagory',
-  'Name',
-  'Unit',
-  'Internally Fabricated',
-  'Standard Purchase Length (mm)',
-] as const;
+import { downloadCsv } from '@/utils/csv-export.js';
 
-type PartBulkImportColumnKey =
+type PartBulkCsvColumnKey =
   | 'category'
   | 'code'
   | 'description'
@@ -34,11 +24,13 @@ type PartBulkImportColumnKey =
   | 'unitOfMeasure';
 
 type ColumnDefinition = {
-  key: PartBulkImportColumnKey;
-  label: (typeof PART_BULK_IMPORT_COLUMNS)[number];
+  key: PartBulkCsvColumnKey;
+  label: string;
   normalizedHeaders: readonly string[];
   /** Optional columns sit at the end of the template so a shorter legacy row still lines up. */
   required: boolean;
+  /** What the export writes for this column. Must be a value `normalizedHeaders`' column can read back. */
+  toCell: (row: PartBulkExportRow) => string;
 };
 
 type ParsePartBulkImportCsvOptions = {
@@ -50,41 +42,106 @@ export type ParsePartBulkImportCsvResult = {
   rows: PartBulkImportRowValue[];
 };
 
+/**
+ * The one ordered column contract, read by the import and written by the export.
+ *
+ * Both directions derive their column order, their header text and their cell values from this list,
+ * so the two cannot drift: a column added here appears in the export and is read by the import at the
+ * same index, which is what keeps a headerless file — matched by position alone — lining up.
+ */
 const columnDefinitions: readonly ColumnDefinition[] = [
-  { key: 'code', label: 'Code', normalizedHeaders: ['code'], required: true },
-  { key: 'drawingCode', label: 'Drawing code', normalizedHeaders: ['drawingcode'], required: true },
-  { key: 'description', label: 'Description', normalizedHeaders: ['description'], required: true },
-  { key: 'supplierName', label: 'Supplier', normalizedHeaders: ['supplier'], required: true },
-  { key: 'supplierCode', label: 'Supplier Code', normalizedHeaders: ['suppliercode'], required: true },
-  { key: 'finish', label: 'Finish', normalizedHeaders: ['finish'], required: true },
-  { key: 'category', label: 'Catagory', normalizedHeaders: ['catagory', 'category'], required: true },
-  { key: 'name', label: 'Name', normalizedHeaders: ['name'], required: true },
+  { key: 'code', label: 'Code', normalizedHeaders: ['code'], required: true, toCell: (row) => row.code },
+  {
+    key: 'drawingCode',
+    label: 'Drawing code',
+    normalizedHeaders: ['drawingcode'],
+    required: true,
+    toCell: (row) => row.drawingCode ?? '',
+  },
+  {
+    key: 'description',
+    label: 'Description',
+    normalizedHeaders: ['description'],
+    required: true,
+    toCell: (row) => row.description,
+  },
+  {
+    key: 'supplierName',
+    label: 'Supplier',
+    normalizedHeaders: ['supplier'],
+    required: true,
+    // Blank on a built Part, which the import reads back as "bought from nobody".
+    toCell: (row) => row.supplierName ?? '',
+  },
+  {
+    key: 'supplierCode',
+    label: 'Supplier Code',
+    normalizedHeaders: ['suppliercode'],
+    required: true,
+    toCell: (row) => row.supplierCode,
+  },
+  { key: 'finish', label: 'Finish', normalizedHeaders: ['finish'], required: true, toCell: (row) => row.finish },
+  {
+    key: 'category',
+    label: 'Catagory',
+    normalizedHeaders: ['catagory', 'category'],
+    required: true,
+    toCell: (row) => row.category,
+  },
+  { key: 'name', label: 'Name', normalizedHeaders: ['name'], required: true, toCell: (row) => row.name },
   {
     key: 'unitOfMeasure',
     label: 'Unit',
     normalizedHeaders: ['unit', 'unitofmeasure', 'unitofmeasurement'],
     required: true,
+    toCell: (row) => row.unitOfMeasure,
   },
   {
     key: 'isInternallyFabricated',
     label: 'Internally Fabricated',
     normalizedHeaders: ['internallyfabricated', 'internalfabrication', 'internal'],
     required: true,
+    toCell: (row) => (row.isInternallyFabricated ? 'Yes' : 'No'),
   },
   {
     key: 'standardPurchaseLengthMm',
     label: 'Standard Purchase Length (mm)',
     normalizedHeaders: ['standardpurchaselength', 'standardpurchaselengthmm'],
     required: false,
+    toCell: (row) => (row.standardPurchaseLengthMm == null ? '' : String(row.standardPurchaseLengthMm)),
   },
 ];
 
-const columnLabelsByKey = new Map<PartBulkImportColumnKey, string>(
+/** Derived, never hand-listed: the header the export writes is the header the import documents. */
+export const PART_BULK_CSV_COLUMNS: readonly string[] = columnDefinitions.map((column) => column.label);
+
+/** The column each field of a CSV row is carried by, in file order. Tested against the schema. */
+export const PART_BULK_CSV_COLUMN_KEYS: readonly PartBulkCsvColumnKey[] = columnDefinitions.map((column) => column.key);
+
+const columnLabelsByKey = new Map<PartBulkCsvColumnKey, string>(
   columnDefinitions.map((column) => [column.key, column.label]),
 );
 
+export function buildPartBulkExportCsv(rows: readonly PartBulkExportRow[]): string {
+  return Papa.unparse(
+    {
+      fields: [...PART_BULK_CSV_COLUMNS],
+      data: rows.map((row) => columnDefinitions.map((column) => column.toCell(row))),
+    },
+    { escapeFormulae: true },
+  );
+}
+
+export function createPartBulkExportFilename(date: Date): string {
+  return `parts-${formatDate(date, 'yyyy-MM-dd')}.csv`;
+}
+
+export function downloadPartBulkExport(rows: readonly PartBulkExportRow[]): void {
+  downloadCsv(buildPartBulkExportCsv(rows), createPartBulkExportFilename(new Date()));
+}
+
 const preservedTechnicalTokens = new Set(['CSK', 'HT', 'SHCS', 'SQ', 'SS', 'UNC', 'UNF', 'X']);
-const formattedFieldKeys = new Set<PartBulkImportColumnKey>(['category', 'finish', 'name', 'supplierName']);
+const formattedFieldKeys = new Set<PartBulkCsvColumnKey>(['category', 'finish', 'name', 'supplierName']);
 const unitOfMeasureValues = new Set<string>(PartUnitOfMeasure.options);
 const unitOfMeasureLabels = new Map<string, PartUnitOfMeasureValue>([
   ['box', 'box'],
@@ -186,7 +243,7 @@ export function parsePartBulkImportCsv(
     if (!result.success) {
       for (const issue of result.error.issues) {
         const key = issue.path[0];
-        const label = typeof key === 'string' ? columnLabelsByKey.get(key as PartBulkImportColumnKey) : undefined;
+        const label = typeof key === 'string' ? columnLabelsByKey.get(key as PartBulkCsvColumnKey) : undefined;
         // A rule that judges the row rather than the cell states its own reason; only a cell the
         // parser could not read at all is answered with the list of values it accepts.
         const message =
@@ -211,17 +268,17 @@ export function parsePartBulkImportCsv(
   };
 }
 
-function getPositionColumnIndexes(): { errors: string[]; indexes: Map<PartBulkImportColumnKey, number> } {
+function getPositionColumnIndexes(): { errors: string[]; indexes: Map<PartBulkCsvColumnKey, number> } {
   return { errors: [], indexes: new Map(columnDefinitions.map((column, index) => [column.key, index])) };
 }
 
 function getHeaderColumnIndexes(headers: readonly string[]): {
   errors: string[];
-  indexes: Map<PartBulkImportColumnKey, number>;
+  indexes: Map<PartBulkCsvColumnKey, number>;
 } {
   const normalizedHeaders = headers.map(normalizeHeader);
   const errors: string[] = [];
-  const indexes = new Map<PartBulkImportColumnKey, number>();
+  const indexes = new Map<PartBulkCsvColumnKey, number>();
 
   for (const column of columnDefinitions) {
     const index = normalizedHeaders.findIndex((header) => column.normalizedHeaders.includes(header));
@@ -239,8 +296,8 @@ function getHeaderColumnIndexes(headers: readonly string[]): {
 
 function buildRowInput(
   row: readonly string[],
-  indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
-): Record<PartBulkImportColumnKey, string | number | boolean | null> {
+  indexes: ReadonlyMap<PartBulkCsvColumnKey, number>,
+): Record<PartBulkCsvColumnKey, string | number | boolean | null> {
   return {
     category: getFormattedCell(row, indexes, 'category'),
     code: getCell(row, indexes, 'code'),
@@ -259,18 +316,28 @@ function buildRowInput(
 
 function getCell(
   row: readonly string[],
-  indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
-  key: PartBulkImportColumnKey,
+  indexes: ReadonlyMap<PartBulkCsvColumnKey, number>,
+  key: PartBulkCsvColumnKey,
 ): string {
   const index = indexes.get(key);
 
-  return index === undefined ? '' : (row[index] ?? '');
+  return index === undefined ? '' : unescapeFormulaCell(row[index] ?? '');
+}
+
+/**
+ * Undoes the apostrophe the export writes so a spreadsheet does not read a cell as a formula. It is
+ * the exact inverse of Papa's `escapeFormulae` — only an apostrophe standing in front of a character
+ * that would have triggered the escape is dropped — so a Part code of `-450` survives the round trip
+ * instead of coming back as `'-450`.
+ */
+function unescapeFormulaCell(value: string): string {
+  return value.replace(/^'(?=[=+\-@\t\r])/, '');
 }
 
 function getFormattedCell(
   row: readonly string[],
-  indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
-  key: PartBulkImportColumnKey,
+  indexes: ReadonlyMap<PartBulkCsvColumnKey, number>,
+  key: PartBulkCsvColumnKey,
 ): string {
   const value = getCell(row, indexes, key);
 
@@ -279,8 +346,8 @@ function getFormattedCell(
 
 function getBooleanCell(
   row: readonly string[],
-  indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
-  key: PartBulkImportColumnKey,
+  indexes: ReadonlyMap<PartBulkCsvColumnKey, number>,
+  key: PartBulkCsvColumnKey,
 ): boolean | string {
   const value = getCell(row, indexes, key).trim();
 
@@ -289,8 +356,8 @@ function getBooleanCell(
 
 function getOptionalIntegerCell(
   row: readonly string[],
-  indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
-  key: PartBulkImportColumnKey,
+  indexes: ReadonlyMap<PartBulkCsvColumnKey, number>,
+  key: PartBulkCsvColumnKey,
 ): number | string | null {
   const value = getCell(row, indexes, key).trim();
   if (!value) return null;
@@ -301,7 +368,7 @@ function getOptionalIntegerCell(
 
 function getUnitOfMeasureCell(
   row: readonly string[],
-  indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
+  indexes: ReadonlyMap<PartBulkCsvColumnKey, number>,
 ): PartUnitOfMeasureValue | string {
   const value = getCell(row, indexes, 'unitOfMeasure').trim();
   const normalizedValue = value.toLowerCase();
@@ -357,7 +424,7 @@ function normalizeHeader(header: string): string {
 }
 
 /** How many cells a row must hold to reach every required column at its resolved position. */
-function requiredCellCount(indexes: ReadonlyMap<PartBulkImportColumnKey, number>): number {
+function requiredCellCount(indexes: ReadonlyMap<PartBulkCsvColumnKey, number>): number {
   const requiredIndexes = columnDefinitions.flatMap((column) => {
     const index = indexes.get(column.key);
 

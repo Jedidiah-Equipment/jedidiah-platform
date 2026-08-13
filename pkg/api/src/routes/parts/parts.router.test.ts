@@ -199,6 +199,39 @@ describe('parts.bom', () => {
   });
 });
 
+describe('parts.bulkExport', () => {
+  test('rejects unauthenticated and unauthorized bulk exports', async ({ context }) => {
+    await expect(context.createAnonCaller().parts.bulkExport({})).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+
+    await expect(context.createCaller(mockSession('sales')).parts.bulkExport({})).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('hands back the catalog in the shape the bulk import reads', async ({ context }) => {
+    const caller = context.createCaller();
+    await caller.parts.bulkImport({ rows: [bulkImportRow()] });
+
+    await expect(caller.parts.bulkExport({})).resolves.toEqual([
+      {
+        category: 'Bearings',
+        code: 'P-100',
+        description: 'Main bearing',
+        drawingCode: null,
+        finish: 'Zinc',
+        isInternallyFabricated: false,
+        name: 'Bearing',
+        standardPurchaseLengthMm: null,
+        supplierCode: 'SUP-100',
+        supplierName: 'Acme Supplies',
+        unitOfMeasure: 'piece',
+      },
+    ]);
+  });
+});
+
 describe('parts.bulkImport', () => {
   test('rejects unauthenticated and unauthorized bulk imports', async ({ context }) => {
     await expect(

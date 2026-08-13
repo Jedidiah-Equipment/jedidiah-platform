@@ -25,11 +25,7 @@ import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import {
-  PART_BULK_IMPORT_COLUMNS,
-  type ParsePartBulkImportCsvResult,
-  parsePartBulkImportCsv,
-} from './part-bulk-import-csv.js';
+import { PART_BULK_CSV_COLUMNS, type ParsePartBulkImportCsvResult, parsePartBulkImportCsv } from './part-bulk-csv.js';
 
 type BulkImportResult = {
   errors: string[];
@@ -152,7 +148,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
                 onChange={handleFileChange}
                 type="file"
               />
-              <FieldDescription>Expected columns: {PART_BULK_IMPORT_COLUMNS.join(', ')}.</FieldDescription>
+              <FieldDescription>Expected columns: {PART_BULK_CSV_COLUMNS.join(', ')}.</FieldDescription>
             </Field>
             <Field orientation="horizontal">
               <Checkbox

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button.js';
 import { useCan } from '@/hooks/use-access.js';
 import { partsPageDescription } from '@/utils/page-descriptions.js';
 import { PartTable } from './components/PartTable.js';
+import { PartBulkExportButton } from './PartBulkExportButton.js';
 import { PartBulkImportDialog } from './PartBulkImportDialog.js';
 import { PartEditDialog } from './PartEditDialog.js';
 import { PartLabelBatchDialog } from './PartLabelBatchDialog.js';
@@ -22,6 +23,7 @@ export const PartsPage: React.FC = () => {
     <PageLayout
       actions={
         <div className="flex gap-2">
+          <PartBulkExportButton />
           {canUpdatePart ? <PartBulkImportDialog /> : null}
           <PartLabelBatchDialog />
           {canUpdatePart ? (

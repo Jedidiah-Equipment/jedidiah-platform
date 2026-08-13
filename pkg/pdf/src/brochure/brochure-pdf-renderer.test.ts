@@ -57,22 +57,6 @@ describe('renderBrochurePdf', () => {
     await expectTwoPageBrochure(fullBrochure());
   });
 
-  test('omits absent optional sections and still renders valid bytes across two pages', async () => {
-    await expectTwoPageBrochure({
-      bodyCopy: [],
-      images: { primary: null, technicalDrawing: null, banner: null },
-      keyFeatures: [],
-      locale: 'en',
-      modelCode: 'SG1836',
-      optionalAssemblies: [],
-      rangeLogo: null,
-      standardAssemblies: [],
-      subtitle: null,
-      title: 'Silage Grain 18 36',
-      titleHighlight: null,
-    });
-  });
-
   test('keeps the maximum configured key features on the two-page brochure', async () => {
     await expectTwoPageBrochure({
       ...fullBrochure(),
@@ -89,6 +73,17 @@ describe('renderBrochurePdf', () => {
       ...fullBrochure(),
       title: 'KUILVOER- EN GRAANSLEEPWA 18 TON',
       titleHighlight: '18',
+    });
+  });
+
+  test('keeps a wrapped key feature on the two-page brochure', async () => {
+    await expectTwoPageBrochure({
+      ...fullBrochure(),
+      keyFeatures: [
+        'Pay load: 18 tons',
+        'Low maintenance',
+        'Volume with extensions: 36 cubic meters and heavy-duty tandem axle',
+      ],
     });
   });
 

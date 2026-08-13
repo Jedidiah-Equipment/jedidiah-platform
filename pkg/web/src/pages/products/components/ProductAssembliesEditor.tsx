@@ -49,9 +49,9 @@ import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '
 import { cn } from '@/lib/utils.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 import {
+  type ProductAssemblyFormInput as AssemblyInput,
   emptyProductFormValues,
   getEligibleAssemblyNames,
-  type ProductAssemblyFormInput as AssemblyInput,
 } from './types.js';
 
 const ALL_CATEGORIES = '__all__';

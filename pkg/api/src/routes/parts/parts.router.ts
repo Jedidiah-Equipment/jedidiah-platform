@@ -1,4 +1,5 @@
 import {
+  bulkExportParts,
   bulkImportParts,
   createPart,
   getPart,
@@ -12,6 +13,8 @@ import {
 import {
   PartBomInput,
   PartBomResult,
+  PartBulkExportInput,
+  type PartBulkExportRow,
   PartBulkImportInput,
   PartCreateInput,
   PartListInput,
@@ -68,6 +71,11 @@ export const partsRouter = router({
     .mutation(({ ctx, input }) =>
       mapPartErrors(() => bulkImportParts({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
+
+  // Reading the catalog out, so `part:read` — the same rows `list` already hands a reader.
+  bulkExport: authorizedProcedure('part:read')
+    .input(PartBulkExportInput)
+    .query(({ ctx, input }): Promise<PartBulkExportRow[]> => bulkExportParts({ db: ctx.db, input })),
 });
 
 async function mapPartErrors<T>(action: () => Promise<T>): Promise<T> {

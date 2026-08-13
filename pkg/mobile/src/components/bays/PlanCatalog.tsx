@@ -1,9 +1,11 @@
-import { formatDate } from '@pkg/domain';
+import { departmentLabels, formatDate } from '@pkg/domain';
+import type { Department } from '@pkg/schema';
 import { IconArrowsSort } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { CatalogListCard } from '@/components/CatalogList';
+import { DepartmentIcon } from '@/components/departments/DepartmentIcon';
 import {
   type ListControlOption,
   ListControlRow,
@@ -53,6 +55,18 @@ export function PlanCatalogControls({
         />
       }
     />
+  );
+}
+
+/** The Department heading the Bays below belong to, the grouping the web Board's Gantt sidebar reads. */
+export function PlanDepartmentHeader({ department }: { department: Department }) {
+  return (
+    <View className="flex-row items-center gap-1.5">
+      <DepartmentIcon className="text-muted-foreground" department={department} size={14} />
+      <Text className="text-[11px] uppercase tracking-widest text-muted-foreground" mono weight="semibold">
+        {departmentLabels[department]}
+      </Text>
+    </View>
   );
 }
 

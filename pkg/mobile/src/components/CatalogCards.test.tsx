@@ -11,11 +11,16 @@ vi.mock('@pkg/domain', async (importOriginal) => ({
 vi.mock('@tabler/icons-react-native', () => ({
   IconAlertTriangle: 'IconAlertTriangle',
   IconArrowsSort: 'IconArrowsSort',
+  IconBrush: 'IconBrush',
   IconCheck: 'IconCheck',
+  IconClipboardList: 'IconClipboardList',
   IconFilter: 'IconFilter',
+  IconHammer: 'IconHammer',
   IconPackage: 'IconPackage',
   IconPlus: 'IconPlus',
+  IconTool: 'IconTool',
   IconTools: 'IconTools',
+  IconTruckDelivery: 'IconTruckDelivery',
 }));
 vi.mock('expo-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('react-native', () => ({ Pressable: 'Pressable', useWindowDimensions: () => ({ width: 400 }), View: 'View' }));

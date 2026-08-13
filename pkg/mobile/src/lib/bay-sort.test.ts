@@ -8,6 +8,7 @@ function card(name: string, remainingWorkDays: number | null): BayListCard {
   return {
     id: name,
     name,
+    department: 'assembly',
     operator: null,
     active: remainingWorkDays === null ? null : ({ remainingWorkDays } as BayListCard['active']),
   };
@@ -71,6 +72,7 @@ describe('filterBayCards', () => {
   const searchable: BayListCard = {
     id: 'bay-1',
     name: 'Assembly Bay 2',
+    department: 'assembly',
     operator: { email: 'lindi@example.com', id: 'user-1', name: 'Lindi', thumbnailDataUrl: null },
     active: {
       customerCompanyName: 'Acme Farms',

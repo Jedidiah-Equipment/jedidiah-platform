@@ -1,5 +1,6 @@
 import type {
   DateOnlyIso,
+  Department,
   OffDay,
   ProjectedBayQueue,
   ProjectedIdleJobSlot,
@@ -34,6 +35,40 @@ export function byBayDepartmentPipeline(
     (bayDepartmentOrder.get(right.department) ?? Number.MAX_SAFE_INTEGER);
 
   return order !== 0 ? order : left.name.localeCompare(right.name);
+}
+
+export type BayDepartmentGroup<TBay> = {
+  bays: TBay[];
+  department: Department;
+};
+
+/**
+ * Splits Bays into the Department headings every Board viewer reads top to bottom, in the fixed
+ * pipeline order. Bays keep the order they arrive in within a heading, so a caller that has already
+ * sorted them — by name on the web Board, by the sort control on mobile Plan — still decides it.
+ * A Department with no Bay gets no heading, and each Department appears at most once even if it is
+ * missing from the pipeline.
+ */
+export function groupBaysByDepartmentPipeline<TBay extends Pick<ProjectedBayQueue, 'department'>>(
+  bays: readonly TBay[],
+): BayDepartmentGroup<TBay>[] {
+  const byDepartment = new Map<Department, TBay[]>();
+
+  for (const bay of bays) {
+    const group = byDepartment.get(bay.department);
+
+    if (group) group.push(bay);
+    else byDepartment.set(bay.department, [bay]);
+  }
+
+  // Pipeline order first; a Department the pipeline does not name still gets its Bays, listed after.
+  const ordered = [...byDepartment.keys()].sort(
+    (left, right) =>
+      (bayDepartmentOrder.get(left) ?? Number.MAX_SAFE_INTEGER) -
+      (bayDepartmentOrder.get(right) ?? Number.MAX_SAFE_INTEGER),
+  );
+
+  return ordered.map((department) => ({ bays: byDepartment.get(department) ?? [], department }));
 }
 
 export type BayTodayOccupancy =

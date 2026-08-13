@@ -1,8 +1,9 @@
+import { groupBaysByDepartmentPipeline } from '@pkg/domain';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PlanCatalogCard, PlanCatalogControls } from '@/components/bays/PlanCatalog';
+import { PlanCatalogCard, PlanCatalogControls, PlanDepartmentHeader } from '@/components/bays/PlanCatalog';
 import { CatalogListSkeleton, PaginatedCatalogList } from '@/components/CatalogList';
 import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
@@ -22,6 +23,7 @@ export default function PlanRoute() {
     () => (state.status === 'ready' ? sortBayCards(filterBayCards(state.cards, search), sort) : []),
     [search, sort, state],
   );
+  const departments = useMemo(() => groupBaysByDepartmentPipeline(bays), [bays]);
   const total = state.status === 'ready' ? bays.length : null;
   const emptyContent =
     state.status === 'error' ? (
@@ -56,7 +58,11 @@ export default function PlanRoute() {
         onRefresh={refresh.onRefresh}
         refreshing={refresh.refreshing}
         renderItem={(bay) => <PlanCatalogCard bay={bay} />}
-        sections={[{ data: bays, key: 'bays' }]}
+        sections={departments.map((group) => ({
+          data: group.bays,
+          header: <PlanDepartmentHeader department={group.department} />,
+          key: group.department,
+        }))}
       />
     </SafeAreaView>
   );

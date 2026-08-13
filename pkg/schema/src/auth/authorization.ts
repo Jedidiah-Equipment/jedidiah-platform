@@ -22,6 +22,7 @@ export const APP_PERMISSIONS = [
   'customer:read',
   'customer:create',
   'customer:update',
+  'customer:remove',
   'email:send',
   'feedback:read',
   'feedback:update',

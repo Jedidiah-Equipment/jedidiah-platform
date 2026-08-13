@@ -13,11 +13,20 @@ import {
 } from './authorization.js';
 
 describe('getRolePermissions', () => {
+  it('grants Customer removal to exactly the roles that can update Customers', () => {
+    for (const role of APP_ROLES) {
+      expect(getRolePermissions(role).includes('customer:remove'), `role ${role}`).toBe(
+        getRolePermissions(role).includes('customer:update'),
+      );
+    }
+  });
+
   it('grants all admin permissions to admins', () => {
     expect(getRolePermissions('admin')).toEqual([
       'audit:read',
       'customer:create',
       'customer:read',
+      'customer:remove',
       'customer:update',
       'email:send',
       'inventory:adjust',
@@ -115,6 +124,7 @@ describe('getRolePermissions', () => {
     expect(getRolePermissions('procurement-manager')).toEqual([
       'customer:create',
       'customer:read',
+      'customer:remove',
       'customer:update',
       'inventory:adjust',
       'inventory:read',

@@ -1,13 +1,16 @@
 import type { Customer, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo } from 'react';
 import { AuditTable, useCustomerAuditTableStore } from '@/components/audit/AuditTable.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useCan } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { JobListTable } from '../jobs/JobListPage.js';
@@ -50,6 +53,7 @@ type CustomerEditTabsProps = {
 };
 
 const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustomerSave }) => {
+  const canRemoveCustomer = useCan('customer:remove').can;
   const canReadJobs = useCan('job:read').can;
   const canReadQuotes = useCan('quote:read').can;
   const auditAccess = useCan('audit:read');
@@ -71,6 +75,11 @@ const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustome
       </TabsList>
       <TabsContent className="pt-4" value="details">
         <CustomerForm customer={customer} key={customer.id} onSave={onCustomerSave} />
+        {canRemoveCustomer ? (
+          <div className="mt-8 flex justify-end border-t pt-4">
+            <RemoveCustomerButton customer={customer} />
+          </div>
+        ) : null}
       </TabsContent>
       {canReadQuotes ? (
         <TabsContent className="pt-4" value="quotes">
@@ -93,6 +102,39 @@ const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustome
         </TabsContent>
       ) : null}
     </Tabs>
+  );
+};
+
+const RemoveCustomerButton: React.FC<{ customer: Customer }> = ({ customer }) => {
+  const trpc = useTRPC();
+  const navigate = useNavigate();
+  const { invalidateCustomers } = useQueryInvalidation();
+  const showMutationError = useApiMutationErrorToast();
+  const removeCustomerMutation = useMutation(
+    trpc.customers.remove.mutationOptions({
+      onSuccess: async () => {
+        await invalidateCustomers();
+        await navigate({ to: '/customers' });
+      },
+      onError: (error) => {
+        showMutationError(error, 'Unable to remove customer.');
+      },
+    }),
+  );
+
+  return (
+    <RemoveEntityButton
+      description={
+        <>
+          Permanently remove {customer.companyName} from your customers. Customers linked to Quotes or other records
+          cannot be removed.
+        </>
+      }
+      isPending={removeCustomerMutation.isPending}
+      onConfirm={() => removeCustomerMutation.mutate({ id: customer.id })}
+      title="Remove customer"
+      triggerLabel="Remove customer"
+    />
   );
 };
 

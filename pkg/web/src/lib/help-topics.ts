@@ -7,6 +7,7 @@ import type { HelpTopic } from '@pkg/domain';
  */
 const TOPIC_ROUTES: ReadonlyArray<readonly [prefix: string, topic: HelpTopic]> = [
   ['/bays', 'bays'],
+  ['/customers', 'customers'],
   ['/inventory', 'inventory'],
   ['/inventory/buy-list', 'inventoryBuyList'],
   ['/inventory/close-out', 'inventoryCloseOut'],

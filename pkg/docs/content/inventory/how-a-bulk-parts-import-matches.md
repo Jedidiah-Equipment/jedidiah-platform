@@ -41,9 +41,8 @@ periodic setting are not columns in it, and an import leaves them exactly as it 
 
 Two catalog facts are only conditionally yours to edit:
 
-- A Part's **Unit** freezes once any stock has moved against it, because changing it would rewrite
-  what every past movement counted. A row trying to change a frozen Unit stops the whole import
-  rather than skipping one row.
+- Once a Part has Stock Movements, its **Unit of Measure** cannot be changed. Any import attempting
+  to change it fails without importing any rows.
 - **Standard Purchase Length** belongs to a Part measured in `mm`, and only to such a Part.
 
 A **Built Part** is made in-house and bought from nobody, so it leaves the Supplier cell blank and

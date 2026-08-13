@@ -1,8 +1,9 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
 import { PART_UNIT_OF_MEASURE_LABELS, type PurchaseOrderPdfModel } from '@pkg/schema';
-import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
 import { pdfFontFamily, pdfTitleFontFamily } from '../pdf-fonts.js';
+import { jedidiahLogoSrc } from '../pdf-logo.js';
 import { pdfColors } from '../quote-document/pdf-theme.js';
 
 const styles = StyleSheet.create({
@@ -21,6 +22,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 18,
   },
+  // Sized to render at the same width as the logo on the Quote document.
+  logo: { height: 29, marginBottom: 10, objectFit: 'contain', width: 132 },
   title: { fontFamily: pdfTitleFontFamily, fontSize: 24, fontWeight: 700 },
   code: { color: pdfColors.yellow, fontFamily: pdfTitleFontFamily, fontSize: 18, fontWeight: 700 },
   metaGrid: { flexDirection: 'row', gap: 12, marginBottom: 24 },
@@ -68,7 +71,10 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
     <Document title={document.code}>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.title}>PURCHASE ORDER</Text>
+          <View>
+            <Image src={jedidiahLogoSrc} style={styles.logo} />
+            <Text style={styles.title}>PURCHASE ORDER</Text>
+          </View>
           <Text style={styles.code}>
             {document.revision > 1 ? `${document.code} REV ${document.revision}` : document.code}
           </Text>

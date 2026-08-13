@@ -752,6 +752,9 @@ const AssemblyPartsDataTable: React.FC<AssemblyPartsDataTableProps> = ({
         ),
         header: 'Part',
         id: 'part',
+        // A Part row grows downwards when its picker reports an error, so every cell anchors to the
+        // top of the row and the controls stay on one line instead of drifting apart.
+        meta: { cellClassName: 'align-top' },
       },
       {
         cell: ({ row }) => (
@@ -763,6 +766,7 @@ const AssemblyPartsDataTable: React.FC<AssemblyPartsDataTableProps> = ({
         ),
         header: 'Quantity',
         id: 'quantity',
+        meta: { cellClassName: 'align-top' },
       },
       {
         cell: ({ row }) => (
@@ -779,7 +783,7 @@ const AssemblyPartsDataTable: React.FC<AssemblyPartsDataTableProps> = ({
         enableSorting: false,
         header: () => <span className="sr-only">Remove</span>,
         id: 'remove',
-        meta: { cellClassName: 'text-right' },
+        meta: { cellClassName: 'text-right align-top' },
       },
     ],
     [categories, onRemove, onStructuralChange, parentIndex, partOptions],

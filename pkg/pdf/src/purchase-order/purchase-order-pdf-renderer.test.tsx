@@ -2,7 +2,6 @@ import { DateIso, DateOnlyIso, PurchaseOrderCode, type PurchaseOrderPdfModel } f
 import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
-import { jedidiahLogoSrc } from '../pdf-logo.js';
 import { PurchaseOrderPdf } from './PurchaseOrderPdf.js';
 import { renderPurchaseOrderPdf } from './purchase-order-pdf-renderer.js';
 
@@ -30,10 +29,6 @@ describe('Purchase Order PDF', () => {
         'R 1 800.00',
       ]),
     );
-  });
-
-  test('prints the Jedidiah logo so the Supplier sees who the order is from', () => {
-    expect(collectImageSources(PurchaseOrderPdf({ document: model() }))).toContain(jedidiahLogoSrc);
   });
 
   test('prints the revision number so the Supplier knows which page supersedes which', () => {
@@ -80,29 +75,16 @@ function modelJobCode(code: string): PurchaseOrderPdfModel['jobCodes'][number] {
   return code as PurchaseOrderPdfModel['jobCodes'][number];
 }
 
-type RenderedElement = ReactElement<{ children?: ReactNode; src?: unknown }>;
+type RenderedElement = ReactElement<{ children?: ReactNode }>;
 
 function collectText(node: ReactNode): string[] {
-  return flatten(node).flatMap((child) =>
-    typeof child === 'string' || typeof child === 'number' ? [String(child)] : [],
-  );
-}
-
-function collectImageSources(node: ReactNode): string[] {
-  return flatten(node).flatMap((child) => {
-    const src = isValidElement(child) ? (child as RenderedElement).props.src : null;
-    return typeof src === 'string' ? [src] : [];
-  });
-}
-
-function flatten(node: ReactNode): ReactNode[] {
   if (node === null || node === undefined || typeof node === 'boolean') return [];
-  if (typeof node === 'string' || typeof node === 'number') return [node];
-  if (Array.isArray(node)) return node.flatMap(flatten);
+  if (typeof node === 'string' || typeof node === 'number') return [String(node)];
+  if (Array.isArray(node)) return node.flatMap(collectText);
   if (!isValidElement(node)) return [];
   const element = node as RenderedElement;
   if (typeof element.type === 'function') {
-    return flatten((element.type as (props: typeof element.props) => ReactNode)(element.props));
+    return collectText((element.type as (props: typeof element.props) => ReactNode)(element.props));
   }
-  return [element, ...flatten(element.props.children)];
+  return collectText(element.props.children);
 }

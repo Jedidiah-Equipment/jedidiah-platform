@@ -123,7 +123,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
         Bulk parts import
       </Button>
       <Dialog onOpenChange={handleOpenChange} open={isOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[720px]">
           <DialogHeader>
             <DialogTitle>Bulk import parts</DialogTitle>
             <DialogDescription>

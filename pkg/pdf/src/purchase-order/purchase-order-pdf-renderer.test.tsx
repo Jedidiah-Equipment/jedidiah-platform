@@ -2,6 +2,7 @@ import { DateIso, DateOnlyIso, PurchaseOrderCode, type PurchaseOrderPdfModel } f
 import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
+import { jedidiahLogoSrc } from '../pdf-logo.js';
 import { PurchaseOrderPdf } from './PurchaseOrderPdf.js';
 import { renderPurchaseOrderPdf } from './purchase-order-pdf-renderer.js';
 
@@ -29,6 +30,10 @@ describe('Purchase Order PDF', () => {
         'R 1 800.00',
       ]),
     );
+  });
+
+  test('prints the Jedidiah logo so the Supplier sees who the order is from', () => {
+    expect(collectImageSources(PurchaseOrderPdf({ document: model() }))).toContain(jedidiahLogoSrc);
   });
 
   test('prints the revision number so the Supplier knows which page supersedes which', () => {
@@ -75,7 +80,22 @@ function modelJobCode(code: string): PurchaseOrderPdfModel['jobCodes'][number] {
   return code as PurchaseOrderPdfModel['jobCodes'][number];
 }
 
-type RenderedElement = ReactElement<{ children?: ReactNode }>;
+type RenderedElement = ReactElement<{ children?: ReactNode; src?: unknown }>;
+
+function collectImageSources(node: ReactNode): string[] {
+  return collectElements(node).flatMap((element) => (typeof element.props.src === 'string' ? [element.props.src] : []));
+}
+
+function collectElements(node: ReactNode): RenderedElement[] {
+  if (node === null || node === undefined || typeof node === 'boolean') return [];
+  if (Array.isArray(node)) return node.flatMap(collectElements);
+  if (!isValidElement(node)) return [];
+  const element = node as RenderedElement;
+  if (typeof element.type === 'function') {
+    return collectElements((element.type as (props: typeof element.props) => ReactNode)(element.props));
+  }
+  return [element, ...collectElements(element.props.children)];
+}
 
 function collectText(node: ReactNode): string[] {
   if (node === null || node === undefined || typeof node === 'boolean') return [];

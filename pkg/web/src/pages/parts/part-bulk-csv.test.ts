@@ -54,6 +54,21 @@ const roundTripRows: PartBulkExportRowValue[] = [
     supplierName: 'Acme Supplies',
     unitOfMeasure: 'mm',
   },
+  // A Part whose own value starts with the marker the export writes. Both must survive, or the
+  // export's escape and the import's unescape are not inverses and a Code can be rewritten in transit.
+  {
+    category: 'Bar Stock',
+    code: "'-450",
+    description: "'quoted' stock",
+    drawingCode: null,
+    finish: 'Black',
+    isInternallyFabricated: false,
+    name: "'A' Section",
+    standardPurchaseLengthMm: null,
+    supplierCode: "'INT",
+    supplierName: 'Acme Supplies',
+    unitOfMeasure: 'piece',
+  },
 ];
 
 describe('bulk Part CSV round trip', () => {

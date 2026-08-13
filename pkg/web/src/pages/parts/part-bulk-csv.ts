@@ -122,13 +122,21 @@ const columnLabelsByKey = new Map<PartBulkCsvColumnKey, string>(
   columnDefinitions.map((column) => [column.key, column.label]),
 );
 
+/**
+ * The characters a spreadsheet would read as the start of a formula, plus the apostrophe the export
+ * marks them with. Including the apostrophe is what makes the marking reversible: a value that
+ * already starts with one is marked too, so the import can always strip exactly one and land back on
+ * the original. Papa's own default omits the apostrophe, which loses `'-450` on the way home.
+ */
+const FORMULA_LEAD = /^['=+\-@\t\r]/;
+
 export function buildPartBulkExportCsv(rows: readonly PartBulkExportRow[]): string {
   return Papa.unparse(
     {
       fields: [...PART_BULK_CSV_COLUMNS],
       data: rows.map((row) => columnDefinitions.map((column) => column.toCell(row))),
     },
-    { escapeFormulae: true },
+    { escapeFormulae: FORMULA_LEAD },
   );
 }
 
@@ -325,13 +333,13 @@ function getCell(
 }
 
 /**
- * Undoes the apostrophe the export writes so a spreadsheet does not read a cell as a formula. It is
- * the exact inverse of Papa's `escapeFormulae` — only an apostrophe standing in front of a character
- * that would have triggered the escape is dropped — so a Part code of `-450` survives the round trip
- * instead of coming back as `'-450`.
+ * Undoes the apostrophe the export writes so a spreadsheet does not read a cell as a formula, and
+ * only that apostrophe: it is dropped exactly where `FORMULA_LEAD` would have put one, which makes
+ * the pair a bijection. A Part code of `-450` comes home as `-450` rather than `'-450`, and one that
+ * genuinely reads `'-450` comes home unchanged rather than being rewritten into a different Part.
  */
 function unescapeFormulaCell(value: string): string {
-  return value.replace(/^'(?=[=+\-@\t\r])/, '');
+  return value.startsWith("'") && FORMULA_LEAD.test(value.slice(1)) ? value.slice(1) : value;
 }
 
 function getFormattedCell(

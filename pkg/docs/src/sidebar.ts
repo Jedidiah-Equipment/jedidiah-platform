@@ -67,6 +67,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     text: 'Inventory concepts',
     items: [
       { text: 'Stock on hand, Commitment, and Free Stock', link: '/inventory/stock-on-hand-and-free-stock' },
+      { text: 'How a bulk Parts import matches', link: '/inventory/how-a-bulk-parts-import-matches' },
       { text: 'Perpetual and periodic Parts', link: '/inventory/perpetual-and-periodic-stock' },
       { text: 'Warnings are judgments, not blocks', link: '/inventory/warnings-are-judgments' },
       { text: 'How stock costs work', link: '/inventory/how-stock-costs-work' },

@@ -20,7 +20,7 @@ export const HELP_TOPICS = {
   inventoryStocktake: '/inventory/run-a-stocktake-session',
   jobActivity: '/production/catch-up-on-job-activity',
   jobs: '/production/find-a-job',
-  parts: '/inventory/print-part-labels',
+  parts: '/inventory/export-and-import-parts',
   plan: '/production/open-a-bay-plan',
   products: '/inventory/control-public-product-assemblies',
   purchaseOrders: '/inventory/post-a-receipt',

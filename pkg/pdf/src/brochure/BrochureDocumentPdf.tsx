@@ -356,6 +356,7 @@ function getRangeLogoLayout(rangeLogo: BrochureDocumentImage): RangeLogoLayout {
     rangeLogo?.aspectRatio && Number.isFinite(rangeLogo.aspectRatio) && rangeLogo.aspectRatio > 0
       ? rangeLogo.aspectRatio
       : fallbackAspectRatio;
+  // Compact logos overflow the brand row into clearance supplied by the required category/subtitle.
   const frameHeight = aspectRatio < 2 ? layout.rangeLogoCompactHeight : layout.rangeLogoWideHeight;
   const imageWidth = Math.min(layout.rangeLogoMaxWidth, frameHeight * aspectRatio);
 

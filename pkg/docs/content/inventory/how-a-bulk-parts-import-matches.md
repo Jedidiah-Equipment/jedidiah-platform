@@ -49,6 +49,12 @@ Two catalog facts are only conditionally yours to edit:
 A **Built Part** is made in-house and bought from nobody, so it leaves the Supplier cell blank and
 carries `Yes` under Internally Fabricated. It is never measured in `mm`.
 
+Turning a Built Part into a bought one is not something a CSV can do. Such a row has to name a
+Supplier, and the Part on file has none, so it reads as a Part under a different Supplier and is
+refused by the rule above. That is deliberate: a Built Part is built from a Bill of Materials, and a
+Part may have a Supplier or a BOM but never both. Clear the BOM on the Part first if you really mean
+to start buying it.
+
 ## Text the import tidies
 
 Catagory, Finish, and Name are written back **title-cased**: `bearing housing` becomes

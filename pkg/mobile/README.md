@@ -30,6 +30,12 @@ Staging builds use `APP_VARIANT=staging`, identifier `za.co.jedidiahequipment.op
 or iOS bundle identifier. Android sends staging builds to Google Play closed testing (`alpha`) and
 production builds to the `production` track.
 
+Once an OTA update is published, running apps prompt for it — on launch, and on returning to the
+foreground (throttled) — and install it when the user accepts. Dismissing holds for that session; expo
+applies a downloaded update on the next cold start anyway, so a dismissed update usually lands without
+being asked for twice. A change that moves the native fingerprint is not an OTA update and reaches users
+through the store instead, which nothing prompts for.
+
 JS-only OTA fix:
 
 ```sh

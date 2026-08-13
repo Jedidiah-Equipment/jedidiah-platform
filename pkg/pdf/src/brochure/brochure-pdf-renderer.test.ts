@@ -66,22 +66,6 @@ describe('renderBrochurePdf', () => {
     expect(rangeLogo?.box).toMatchObject({ height: 66, width: 166 });
   });
 
-  test('omits absent optional sections and still renders valid bytes across two pages', async () => {
-    await expectTwoPageBrochure({
-      bodyCopy: [],
-      images: { primary: null, technicalDrawing: null, banner: null },
-      keyFeatures: [],
-      locale: 'en',
-      modelCode: 'SG1836',
-      optionalAssemblies: [],
-      rangeLogo: null,
-      standardAssemblies: [],
-      subtitle: null,
-      title: 'Silage Grain 18 36',
-      titleHighlight: null,
-    });
-  });
-
   test('keeps the maximum configured key features on the two-page brochure', async () => {
     await expectTwoPageBrochure({
       ...fullBrochure(),

@@ -52,7 +52,7 @@ describe('PartsPage actions', () => {
     expect(html).not.toContain('New part');
     expect(html).not.toContain('Bulk parts import');
     expect(html).toContain('Print labels');
-    // Taking the catalogue out is a read, so it survives the gate that removes putting it back.
+    // Taking the catalog out is a read, so it survives the gate that removes putting it back.
     expect(html).toContain('Bulk parts export');
   });
 });

@@ -99,6 +99,15 @@ describe('bulk Part CSV round trip', () => {
   it('names the file by the day it was taken', () => {
     expect(createPartBulkExportFilename(new Date('2026-08-13T09:00:00Z'))).toBe('parts-2026-08-13.csv');
   });
+
+  it('names a Supplier-scoped file after the Supplier, so two taken the same day differ', () => {
+    const date = new Date('2026-08-13T09:00:00Z');
+
+    expect(createPartBulkExportFilename(date, 'Acme Supplies')).toBe('parts-acme-supplies-2026-08-13.csv');
+    expect(createPartBulkExportFilename(date, 'Böhler / Uddeholm (Pty) Ltd')).toBe(
+      'parts-bohler-uddeholm-pty-ltd-2026-08-13.csv',
+    );
+  });
 });
 
 describe('parsePartBulkImportCsv', () => {

@@ -26,7 +26,7 @@ export const PartBulkExportButton: React.FC<PartBulkExportButtonProps> = ({ supp
     mutationFn: () =>
       queryClient.fetchQuery(trpc.parts.bulkExport.queryOptions(supplier ? { supplierId: supplier.id } : {})),
     onError: (error) => showMutationError(error, 'Unable to export parts.'),
-    onSuccess: (rows) => downloadPartBulkExport(rows),
+    onSuccess: (rows) => downloadPartBulkExport(rows, supplier?.companyName),
   });
 
   return (

@@ -140,12 +140,28 @@ export function buildPartBulkExportCsv(rows: readonly PartBulkExportRow[]): stri
   );
 }
 
-export function createPartBulkExportFilename(date: Date): string {
-  return `parts-${formatDate(date, 'yyyy-MM-dd')}.csv`;
+/** A scoped export names its Supplier, so two taken on the same day do not collide in Downloads. */
+export function createPartBulkExportFilename(date: Date, supplierName?: string): string {
+  const scope = supplierName ? `${toFilenameSlug(supplierName)}-` : '';
+
+  return `parts-${scope}${formatDate(date, 'yyyy-MM-dd')}.csv`;
 }
 
-export function downloadPartBulkExport(rows: readonly PartBulkExportRow[]): void {
-  downloadCsv(buildPartBulkExportCsv(rows), createPartBulkExportFilename(new Date()));
+function toFilenameSlug(value: string): string {
+  return (
+    value
+      // Decompose so an accent becomes a separate combining mark, then drop the marks: a Supplier
+      // written "Böhler" slugs to "bohler" rather than losing the letter along with its accent.
+      .normalize('NFD')
+      .replaceAll(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replaceAll(/[^a-z0-9]+/g, '-')
+      .replaceAll(/^-|-$/g, '')
+  );
+}
+
+export function downloadPartBulkExport(rows: readonly PartBulkExportRow[], supplierName?: string): void {
+  downloadCsv(buildPartBulkExportCsv(rows), createPartBulkExportFilename(new Date(), supplierName));
 }
 
 const preservedTechnicalTokens = new Set(['CSK', 'HT', 'SHCS', 'SQ', 'SS', 'UNC', 'UNF', 'X']);

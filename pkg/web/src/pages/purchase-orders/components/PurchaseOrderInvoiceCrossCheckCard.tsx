@@ -79,7 +79,7 @@ export function PurchaseOrderInvoiceCrossCheckCard({
   );
 }
 
-export function SupplierInvoicePanel({
+function SupplierInvoicePanel({
   canApplyPrices,
   invoice,
   purchaseOrderId,

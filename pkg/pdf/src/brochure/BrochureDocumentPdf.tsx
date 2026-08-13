@@ -21,7 +21,7 @@ const layout = {
   detailPaddingTop: 24,
   brandLogoHeight: 36,
   brandLogoWidth: 126,
-  rangeLogoHeight: 44,
+  rangeLogoHeight: 66,
   rangeLogoWidth: 166,
   heroHeight: 400,
   techImageHeight: 142,

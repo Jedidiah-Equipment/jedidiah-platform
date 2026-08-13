@@ -23,11 +23,12 @@ export type AnalyticsEventRegistry = {
     range: string | null;
     variant: string | null;
   };
-  product_viewed: { modelCode: string; range: string; variant: string | null };
+  product_viewed: { modelCode: string; range: string; variant: string | null; metaEventId: string };
+  catalog_viewed: { range: string | null; variant: string | null; metaEventId: string };
   product_shared: { modelCode: string; method: 'native' | 'clipboard' };
   brochure_downloaded: { modelCode: string };
   contact_form_started: Record<string, never>;
-  contact_submitted: { equipment: string };
+  contact_submitted: { equipment: string; metaEventId: string };
   contact_submit_blocked: { missingFields: string[] };
   contact_submit_failed: { errorCategory: 'network' | 'server' };
   social_link_clicked: {

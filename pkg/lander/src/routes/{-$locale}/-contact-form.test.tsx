@@ -5,11 +5,16 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { captureEvent } from '../../lib/analytics.js';
+import { trackMetaLead } from '../../lib/meta-pixel.js';
 import { EnquiryForm } from './contact.js';
 
 vi.mock('../../lib/analytics.js', () => ({
   captureEvent: vi.fn(),
   captureEventForNavigation: vi.fn(),
+}));
+vi.mock('../../lib/meta-pixel.js', () => ({
+  createMetaEventId: () => 'meta-lead-123',
+  trackMetaLead: vi.fn(),
 }));
 
 async function renderForm(root: Root) {
@@ -80,6 +85,29 @@ describe('EnquiryForm', () => {
 
     expect(fetchStub).toHaveBeenCalledTimes(1);
     expect(captureEvent).not.toHaveBeenCalledWith('contact_submit_blocked', expect.anything());
+    expect(captureEvent).toHaveBeenCalledWith('contact_submitted', {
+      equipment: 'Not specified',
+      metaEventId: 'meta-lead-123',
+    });
+    expect(trackMetaLead).toHaveBeenCalledWith('meta-lead-123');
+  });
+
+  test('does not capture a Lead when the contact API rejects the submission', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 502 })));
+
+    const container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    await renderForm(root);
+
+    field('name').value = 'Ann';
+    field('email').value = 'ann@example.com';
+    field('message').value = 'Hello';
+
+    await submit();
+
+    expect(captureEvent).toHaveBeenCalledWith('contact_submit_failed', { errorCategory: 'server' });
+    expect(trackMetaLead).not.toHaveBeenCalled();
   });
 
   test('captures a single form-start event on first interaction', async () => {

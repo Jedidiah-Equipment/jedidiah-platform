@@ -7,3 +7,8 @@ export function resolvePosthogToken(env: ImportMetaEnv): string | null {
   const token = env.VITE_POSTHOG_KEY?.trim();
   return token && token.length > 0 ? token : null;
 }
+
+export function resolveMetaPixelId(env: ImportMetaEnv): string | null {
+  const pixelId = env.VITE_META_PIXEL_ID?.trim();
+  return pixelId && pixelId.length > 0 ? pixelId : null;
+}

@@ -6,10 +6,15 @@ import { createRootRoute, HeadContent, Outlet, Scripts, useMatch, useRouter } fr
 import { useEffect } from 'react';
 
 import { initAnalytics, initAnalyticsWhenIdle } from '../lib/analytics.js';
+import { resolveMetaPixelId } from '../lib/analytics-config.js';
 import { CANONICAL_LOCALE, type Locale } from '../lib/locale.js';
+import { metaPixelBaseCode, metaPixelNoScriptUrl, trackMetaPageViewForNavigation } from '../lib/meta-pixel.js';
 import { absoluteUrl, DEFAULT_OG_IMAGE, OG_IMAGE_META } from '../lib/seo.js';
 import { getSiteMeta } from '../server/site/site-meta.js';
 import appCss from '../styles/app.css?url';
+
+const META_PIXEL_ID = resolveMetaPixelId(import.meta.env);
+const META_PIXEL_NOSCRIPT_URL = metaPixelNoScriptUrl(META_PIXEL_ID);
 
 export const Route = createRootRoute({
   loader: async () => {
@@ -57,11 +62,13 @@ function AnalyticsTracker({ locale }: { locale: Locale }) {
     // untracked link inside the deferral window has their landing page recorded as the destination — the
     // one attribution a campaign cannot afford to lose. `onBeforeNavigate` fires while the landing URL is
     // still the current one; init is idempotent, so this is a no-op once analytics is already running.
-    const unsubscribe = router.subscribe('onBeforeNavigate', () => initAnalytics(locale));
+    const unsubscribePosthog = router.subscribe('onBeforeNavigate', () => initAnalytics(locale));
+    const unsubscribeMeta = router.subscribe('onResolved', trackMetaPageViewForNavigation);
 
     return () => {
       cancelIdle();
-      unsubscribe();
+      unsubscribePosthog();
+      unsubscribeMeta();
     };
   }, [locale, router]);
 
@@ -78,8 +85,15 @@ function RootDocument() {
     <html lang={locale}>
       <head>
         <HeadContent />
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: the build-time Pixel ID is script-escaped by metaPixelBaseCode. */}
+        {META_PIXEL_ID ? <script dangerouslySetInnerHTML={{ __html: metaPixelBaseCode(META_PIXEL_ID) }} /> : null}
       </head>
       <body>
+        {META_PIXEL_NOSCRIPT_URL ? (
+          <noscript>
+            <img height="1" width="1" style={{ display: 'none' }} src={META_PIXEL_NOSCRIPT_URL} alt="" />
+          </noscript>
+        ) : null}
         <AnalyticsTracker locale={locale} />
         <Outlet />
         <Scripts />

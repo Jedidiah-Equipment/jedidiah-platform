@@ -33,6 +33,7 @@ describe('analytics event registry', () => {
       | 'catalog_filter_changed'
       | 'product_card_clicked'
       | 'product_viewed'
+      | 'catalog_viewed'
       | 'product_shared'
       | 'brochure_downloaded'
       | 'contact_form_started'
@@ -51,6 +52,12 @@ describe('analytics event registry', () => {
       modelCode: string;
       range: string;
       variant: string | null;
+      metaEventId: string;
+    }>();
+    expectTypeOf<AnalyticsEventProperties<'catalog_viewed'>>().toEqualTypeOf<{
+      range: string | null;
+      variant: string | null;
+      metaEventId: string;
     }>();
     expectTypeOf<AnalyticsEventProperties<'catalog_filter_changed'>>().toEqualTypeOf<{
       range: string | null;
@@ -65,6 +72,10 @@ describe('analytics event registry', () => {
     expectTypeOf<AnalyticsEventProperties<'social_link_clicked'>>().toEqualTypeOf<{
       platform: 'facebook' | 'instagram' | 'whatsapp';
       placement: 'footer' | 'contact_page';
+    }>();
+    expectTypeOf<AnalyticsEventProperties<'contact_submitted'>>().toEqualTypeOf<{
+      equipment: string;
+      metaEventId: string;
     }>();
     expectTypeOf<AnalyticsEventProperties<'email_linked_clicked'>>().toEqualTypeOf<{
       placement: 'contact_page';

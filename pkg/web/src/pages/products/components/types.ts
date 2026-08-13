@@ -38,12 +38,18 @@ import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-s
 // Form representation of an assembly: like the API `AssemblyInput` but without its coercion
 // and defaults, so the controlled value shape matches what the editor holds. Field rules still
 // come from the schema scalars (`AssemblyName`, `AssemblyPart`, `AssemblyPubliclyVisible`, `PriceDelta`, `UUID`).
+// An unpicked Part holds `''`, so the form states the same "Select a part" the picker field shows
+// rather than letting the raw `UUID` message reach the autosave banner.
+const AssemblyPartFormInput = AssemblyPart.extend({
+  partId: requiredSelection(UUID, 'Select a part'),
+});
+
 const StandardAssemblyFormInput = z.object({
   id: UUID.optional(),
   isPubliclyVisible: AssemblyPubliclyVisible,
   kind: z.literal('standard'),
   name: AssemblyName,
-  parts: z.array(AssemblyPart),
+  parts: z.array(AssemblyPartFormInput),
 });
 
 const OptionalAssemblyFormInput = z.object({
@@ -52,7 +58,7 @@ const OptionalAssemblyFormInput = z.object({
   kind: z.literal('optional'),
   name: AssemblyName,
   overrideStandardAssemblyIds: z.array(UUID),
-  parts: z.array(AssemblyPart),
+  parts: z.array(AssemblyPartFormInput),
   price: PriceDelta,
 });
 
@@ -225,4 +231,24 @@ export function getEligibleAssemblyNames(names: readonly string[], excludedNames
   const excluded = new Set(excludedNames.map((name) => name.trim().toLowerCase()).filter(Boolean));
 
   return names.filter((name) => !excluded.has(name.trim().toLowerCase()));
+}
+
+/**
+ * Parts eligible to pick for one row of an assembly's parts table: everything except the parts the
+ * assembly's *other* rows already hold, mirroring `getEligibleAssemblyNames`. An assembly may hold a
+ * Part once (`refineProductAssemblies`), and that rule is a property of the array rather than of
+ * either row, so no field can highlight it — keeping the duplicate unpickable is the only way the
+ * user sees the constraint at the moment it applies. The row's own Part stays listed so its selection
+ * still renders.
+ */
+export function getEligibleAssemblyParts<TPart extends { id: string }>(
+  parts: readonly TPart[],
+  assemblyParts: readonly { partId: string }[],
+  currentIndex: number,
+): TPart[] {
+  const taken = new Set(
+    assemblyParts.filter((_, index) => index !== currentIndex).map((assemblyPart) => assemblyPart.partId),
+  );
+
+  return parts.filter((part) => !taken.has(part.id));
 }

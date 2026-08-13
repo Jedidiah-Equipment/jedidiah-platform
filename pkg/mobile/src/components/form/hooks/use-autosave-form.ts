@@ -1,4 +1,4 @@
-import { createAutosaveController } from '@pkg/domain';
+import { createAutosaveController, toFormIssues } from '@pkg/domain';
 import { useCallback, useRef, useSyncExternalStore } from 'react';
 import type { z } from 'zod';
 
@@ -40,7 +40,6 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput,
   if (!controllerRef.current) {
     controllerRef.current = createAutosaveController<TValues>({
       getValues: () => formRef.current.state.values as TValues,
-      isValid: (values) => optionsRef.current.validator.safeParse(values).success,
       save: async (values) => {
         try {
           const result = await optionsRef.current.save(optionsRef.current.toInput(values));
@@ -49,6 +48,11 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput,
           lastErrorRef.current = error;
           throw new Error(errorMessage(error, optionsRef.current.failureMessage));
         }
+      },
+      validate: (values) => {
+        const result = optionsRef.current.validator.safeParse(values);
+
+        return result.success ? [] : toFormIssues(result.error.issues);
       },
     });
   }

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getEligibleAssemblyNames,
+  getEligibleAssemblyParts,
   toProductAssemblyInputs,
   toProductBayInputs,
   toProductCreateInput,
@@ -310,6 +311,21 @@ describe('getEligibleAssemblyNames', () => {
     // 'Bucket' exists in the catalogue and was just added to another assembly this session, so live
     // form state excludes it; 'Loader Arm' in form state is irrelevant since it is not a catalogue name.
     expect(getEligibleAssemblyNames(['Hydraulics', 'Bucket'], ['Bucket', 'Loader Arm'])).toEqual(['Hydraulics']);
+  });
+});
+
+describe('getEligibleAssemblyParts', () => {
+  const PARTS = [{ id: 'bolt' }, { id: 'washer' }, { id: 'nut' }];
+
+  it('drops a Part another row of the same assembly already holds', () => {
+    expect(getEligibleAssemblyParts(PARTS, [{ partId: 'washer' }, { partId: '' }], 1)).toEqual([
+      { id: 'bolt' },
+      { id: 'nut' },
+    ]);
+  });
+
+  it('keeps the row own Part listed so its current selection still renders', () => {
+    expect(getEligibleAssemblyParts(PARTS, [{ partId: 'washer' }], 0)).toEqual(PARTS);
   });
 });
 

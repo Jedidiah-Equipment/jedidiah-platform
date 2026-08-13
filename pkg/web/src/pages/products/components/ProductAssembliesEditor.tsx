@@ -1,7 +1,7 @@
 import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { createStableRowKeys, formatCurrency } from '@pkg/domain';
+import { createStableRowKeys, formatCurrency, getFormIssuesForField, hasFormIssuesWithin } from '@pkg/domain';
 import { AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash, IconWorld } from '@tabler/icons-react';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -9,9 +9,15 @@ import React, { useMemo } from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
-import { CreatableComboboxField, CurrencyField, SwitchField, useTypedAppFormContext } from '@/components/form/index.js';
+import {
+  CreatableComboboxField,
+  CurrencyField,
+  SwitchField,
+  useAutosaveIssues,
+  useTypedAppFormContext,
+} from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
-import { getFieldErrors } from '@/components/form/utils/field-errors.js';
+import { getFieldErrors, mergeFieldErrors } from '@/components/form/utils/field-errors.js';
 import { validateStructuralFieldOnMount } from '@/components/form/utils/field-validators.js';
 import { requiredSelection } from '@/components/form/utils/form-schema.js';
 import { Badge } from '@/components/ui/badge.js';
@@ -52,6 +58,7 @@ import {
   type ProductAssemblyFormInput as AssemblyInput,
   emptyProductFormValues,
   getEligibleAssemblyNames,
+  getEligibleAssemblyParts,
 } from './types.js';
 
 const ALL_CATEGORIES = '__all__';
@@ -334,7 +341,9 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
   const productForm = useProductForm();
   const FormField = productForm.Field;
   const partOptions = useMemo(() => parts.toSorted(compareParts), [parts]);
+  const autosaveIssues = useAutosaveIssues();
   const assemblyFieldPrefix = `assemblies[${index}]`;
+  const hasAutosaveIssue = hasFormIssuesWithin(autosaveIssues, assemblyFieldPrefix);
   const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
     id: assembly.id ?? '',
   });
@@ -344,7 +353,9 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
   };
 
   return (
-    <productForm.Subscribe selector={(state) => hasFieldErrorsForPrefix(state.fieldMeta, assemblyFieldPrefix)}>
+    <productForm.Subscribe
+      selector={(state) => hasAutosaveIssue || hasFieldErrorsForPrefix(state.fieldMeta, assemblyFieldPrefix)}
+    >
       {(hasError) => (
         <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
           <Card
@@ -811,10 +822,13 @@ const AssemblyPartPickerCell: React.FC<AssemblyPartPickerCellProps> = ({
   partOptions,
   onStructuralChange,
 }) => {
-  const FormField = useProductForm().Field;
+  const productForm = useProductForm();
+  const FormField = productForm.Field;
+  const autosaveIssues = useAutosaveIssues();
   const selectedPart = partOptions.find((option) => option.id === part.partId);
   const [category, setCategory] = React.useState(selectedPart?.category ?? ALL_CATEGORIES);
-  const visibleParts = partOptions.filter((option) => category === ALL_CATEGORIES || option.category === category);
+  const fieldName = `assemblies[${parentIndex}].parts[${partIndex}].partId`;
+  const issueErrors = getFormIssuesForField(autosaveIssues, fieldName);
 
   return (
     <div className="grid gap-2 md:grid-cols-[13rem_minmax(12rem,1fr)]">
@@ -835,30 +849,39 @@ const AssemblyPartPickerCell: React.FC<AssemblyPartPickerCellProps> = ({
           </SelectGroup>
         </SelectContent>
       </Select>
-      <FormField
-        name={`assemblies[${parentIndex}].parts[${partIndex}].partId`}
-        validators={ASSEMBLY_PART_FIELD_VALIDATORS}
-      >
-        {(field: FieldApi<string>) => {
-          const errors = getFieldErrors(field.state.meta.errors);
-          const isInvalid = errors.length > 0;
-          const selectedPart = partOptions.find((option) => option.id === field.state.value);
-          const visiblePartOptions =
-            selectedPart && !visibleParts.some((option) => option.id === selectedPart.id)
-              ? [selectedPart, ...visibleParts]
-              : visibleParts;
+      <productForm.Subscribe selector={(state) => state.values.assemblies[parentIndex]?.parts ?? []}>
+        {(assemblyParts) => (
+          <FormField
+            name={`assemblies[${parentIndex}].parts[${partIndex}].partId`}
+            validators={ASSEMBLY_PART_FIELD_VALIDATORS}
+          >
+            {(field: FieldApi<string>) => {
+              const errors = mergeFieldErrors(field.state.meta.errors, issueErrors);
+              const isInvalid = errors.length > 0;
+              const selectedPart = partOptions.find((option) => option.id === field.state.value);
+              const eligibleParts = getEligibleAssemblyParts(partOptions, assemblyParts, partIndex);
+              const visibleParts = eligibleParts.filter(
+                (option) => category === ALL_CATEGORIES || option.category === category,
+              );
+              const visiblePartOptions =
+                selectedPart && !visibleParts.some((option) => option.id === selectedPart.id)
+                  ? [selectedPart, ...visibleParts]
+                  : visibleParts;
 
-          return (
-            <AssemblyPartPickerField
-              field={field}
-              isInvalid={isInvalid}
-              options={visiblePartOptions}
-              selectedPart={selectedPart ?? null}
-              onStructuralChange={onStructuralChange}
-            />
-          );
-        }}
-      </FormField>
+              return (
+                <AssemblyPartPickerField
+                  errors={errors}
+                  field={field}
+                  isInvalid={isInvalid}
+                  options={visiblePartOptions}
+                  selectedPart={selectedPart ?? null}
+                  onStructuralChange={onStructuralChange}
+                />
+              );
+            }}
+          </FormField>
+        )}
+      </productForm.Subscribe>
     </div>
   );
 };
@@ -892,6 +915,7 @@ const AssemblyPartQuantityCell: React.FC<{
 };
 
 type AssemblyPartPickerFieldProps = {
+  errors: ReturnType<typeof getFieldErrors>;
   field: FieldApi<string>;
   isInvalid: boolean;
   options: Part[];
@@ -900,6 +924,7 @@ type AssemblyPartPickerFieldProps = {
 };
 
 const AssemblyPartPickerField: React.FC<AssemblyPartPickerFieldProps> = ({
+  errors,
   field,
   isInvalid,
   options,
@@ -935,6 +960,7 @@ const AssemblyPartPickerField: React.FC<AssemblyPartPickerFieldProps> = ({
           </ComboboxList>
         </ComboboxContent>
       </Combobox>
+      <FieldError errors={errors} />
     </Field>
   );
 };

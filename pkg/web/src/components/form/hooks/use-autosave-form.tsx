@@ -1,4 +1,4 @@
-import { createAutosaveController } from '@pkg/domain';
+import { createAutosaveController, toFormIssues } from '@pkg/domain';
 import { useBlocker } from '@tanstack/react-router';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
@@ -48,7 +48,6 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
   if (!controllerRef.current) {
     controllerRef.current = createAutosaveController<TValues>({
       getValues: () => formRef.current.state.values as TValues,
-      isValid: (values) => optionsRef.current.validator.safeParse(values).success,
       save: async (values) => {
         const input = optionsRef.current.toInput(values);
 
@@ -67,6 +66,11 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
           });
           throw new Error(message);
         }
+      },
+      validate: (values) => {
+        const result = optionsRef.current.validator.safeParse(values);
+
+        return result.success ? [] : toFormIssues(result.error.issues);
       },
     });
   }

@@ -1,33 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { describeSlotRelease, describeUnit } from '@/components/common/cancellation.js';
-import { shouldOfferQuoteCancellation } from './quote-cancellation.js';
-
-const lockedQuote = {
-  hasEverSourcedJob: true,
-  kind: 'product',
-  productUnitId: null,
-  status: 'accepted',
-} as const;
-
-describe('shouldOfferQuoteCancellation', () => {
-  it('offers the header action for a locked Quote and administrator access', () => {
-    expect(shouldOfferQuoteCancellation({ canCancel: true, quote: lockedQuote })).toBe(true);
-  });
-
-  it('withholds it without the permission, once cancelled, and while the Quote is still unlocked', () => {
-    expect(shouldOfferQuoteCancellation({ canCancel: false, quote: lockedQuote })).toBe(false);
-    expect(shouldOfferQuoteCancellation({ canCancel: true, quote: { ...lockedQuote, status: 'cancelled' } })).toBe(
-      false,
-    );
-    expect(
-      shouldOfferQuoteCancellation({
-        canCancel: true,
-        quote: { ...lockedQuote, hasEverSourcedJob: false, status: 'sent' },
-      }),
-    ).toBe(false);
-  });
-});
 
 describe('cancellation copy', () => {
   it('names how many bay slots come back, and says none are owed when there are none', () => {

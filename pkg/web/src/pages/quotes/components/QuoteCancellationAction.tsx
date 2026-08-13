@@ -1,3 +1,4 @@
+import { shouldOfferQuoteCancellation } from '@pkg/domain';
 import { QuoteCancellationReason, type QuoteDetail } from '@pkg/schema';
 import { IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -22,7 +23,6 @@ import { Textarea } from '@/components/ui/textarea.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { shouldOfferQuoteCancellation } from './quote-cancellation.js';
 
 /**
  * The header action, for a Locked Quote. An unlocked one is cancelled from the status field instead,

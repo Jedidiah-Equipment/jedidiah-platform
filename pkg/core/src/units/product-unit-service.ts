@@ -14,6 +14,7 @@ import { getPlantDateNow, isJobCancelled, resolveNewestOwnershipTransfer } from 
 import {
   type AuthId,
   type DateOnlyIso,
+  formatJobCode,
   formatProductSerialNumber,
   ProductSerialPrefix,
   ProductSerialSequence,
@@ -477,14 +478,15 @@ export async function removeProductUnitWithin({
     .where(eq(jobs.productUnitId, id));
 
   for (const job of unitJobs) {
-    if (!isJobCancelled(job)) {
-      throw new ProductUnitInUseError(id, 'live-job');
+    // Completion is asked first because it latches and outranks liveness: a Job cancelled after it
+    // finished still carries the date it finished on, and a finished Job nobody cancelled is not
+    // "still live" either. Either way that date is the record that metal was cut.
+    if (job.completedOn !== null) {
+      throw new ProductUnitInUseError(id, 'built', formatJobCode(job.code));
     }
 
-    // A Job Completion latches, so a Job cancelled after it finished still carries the date it
-    // finished on. That date is the record that metal was cut, whatever became of the sale.
-    if (job.completedOn !== null) {
-      throw new ProductUnitInUseError(id, 'built');
+    if (!isJobCancelled(job)) {
+      throw new ProductUnitInUseError(id, 'live-job', formatJobCode(job.code));
     }
   }
 

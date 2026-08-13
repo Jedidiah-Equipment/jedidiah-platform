@@ -10,7 +10,7 @@ import {
   quotes,
   user,
 } from '@pkg/db';
-import { DateOnlyIso, JobListInput, ProductUnitTransferInput } from '@pkg/schema';
+import { DateOnlyIso, formatJobCode, JobListInput, ProductUnitTransferInput } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -569,6 +569,34 @@ describe('removeProductUnit', () => {
     ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'built' } });
   });
 
+  // The ordinary finished build: nobody cancelled it, so liveness would answer first and call a
+  // machine that exists one that is still being made. Completion is the stronger fact and settles it.
+  test('refuses a machine whose Job was completed and never cancelled, naming that Job', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context, { cancelled: false, completedOn: '2026-05-04', owner: 'sold' });
+
+    await expect(
+      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
+    ).rejects.toMatchObject({
+      code: 'product_unit.in_use',
+      message: `Completed ${phantom.jobCode} built this unit, so its record stands.`,
+      metadata: { jobCode: phantom.jobCode, reason: 'built' },
+    });
+
+    await expect(context.db.$count(productUnits, eq(productUnits.id, phantom.unitId))).resolves.toBe(1);
+  });
+
+  test('names the Job that is still live when it refuses an unfinished build', async ({ context }) => {
+    const phantom = await seedPhantomUnit(context, { cancelled: false });
+
+    await expect(
+      removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
+    ).rejects.toMatchObject({
+      code: 'product_unit.in_use',
+      message: `${phantom.jobCode} is still live, so this unit cannot be removed.`,
+      metadata: { jobCode: phantom.jobCode, reason: 'live-job' },
+    });
+  });
+
   // The cancelled Stock Build: no sale behind it, so detaching leaves a Job holding neither machine
   // nor Quote. It survives anyway as the record that someone once meant to build this.
   test('deletes the machine of a cancelled Stock Build, leaving the Job standing with neither', async ({ context }) => {
@@ -638,12 +666,13 @@ describe('removeProductUnit', () => {
 async function seedPhantomUnit(
   context: { db: Db; seed: Awaited<ReturnType<typeof seedUnit>> },
   options: {
+    cancelled?: boolean;
     completedOn?: string;
     owner?: 'stock' | 'sold' | 'sold-then-returned';
     quote?: 'build-to-order' | 'none' | 'allocation' | 'allocation-live';
   } = {},
 ) {
-  const { completedOn = null, owner = 'stock', quote: quoteKind = 'build-to-order' } = options;
+  const { cancelled = true, completedOn = null, owner = 'stock', quote: quoteKind = 'build-to-order' } = options;
   const { db, seed } = context;
   const now = new Date('2026-05-02T08:00:00.000Z');
 
@@ -688,11 +717,24 @@ async function seedPhantomUnit(
 
   const [job] = await db
     .insert(jobs)
-    .values({ cancelledAt: now, completedOn, createdAt: now, productUnitId: unit.id, quoteId, updatedAt: now })
+    .values({
+      cancelledAt: cancelled ? now : null,
+      completedOn,
+      createdAt: now,
+      productUnitId: unit.id,
+      quoteId,
+      updatedAt: now,
+    })
     .returning();
   if (!job) throw new Error('Phantom Job insert did not return a row');
 
-  return { jobId: job.id, productSerialNumber: unit.productSerialNumber, quoteId, unitId: unit.id };
+  return {
+    jobCode: formatJobCode(job.code),
+    jobId: job.id,
+    productSerialNumber: unit.productSerialNumber,
+    quoteId,
+    unitId: unit.id,
+  };
 }
 
 async function seedUnit(db: Db) {

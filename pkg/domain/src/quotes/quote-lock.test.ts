@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertQuoteEditable, editableLockedQuoteFields, isQuoteLocked } from './quote-lock.js';
+import {
+  assertQuoteEditable,
+  editableLockedQuoteFields,
+  isQuoteLocked,
+  shouldOfferQuoteCancellation,
+} from './quote-lock.js';
 
 const alwaysEditableFields = [
   'invoiceNumber',
@@ -294,5 +299,26 @@ describe('isQuoteLocked', () => {
     expect(isQuoteLocked({ hasEverSourcedJob: false, hasProductUnit: false, kind: 'custom', status: 'accepted' })).toBe(
       true,
     );
+  });
+});
+
+describe('shouldOfferQuoteCancellation', () => {
+  const lockedQuote = { hasEverSourcedJob: true, kind: 'product', productUnitId: null, status: 'accepted' } as const;
+
+  it('offers the action for a locked Quote and administrator access', () => {
+    expect(shouldOfferQuoteCancellation({ canCancel: true, quote: lockedQuote })).toBe(true);
+  });
+
+  it('withholds it without the permission, once cancelled, and while the Quote is still unlocked', () => {
+    expect(shouldOfferQuoteCancellation({ canCancel: false, quote: lockedQuote })).toBe(false);
+    expect(shouldOfferQuoteCancellation({ canCancel: true, quote: { ...lockedQuote, status: 'cancelled' } })).toBe(
+      false,
+    );
+    expect(
+      shouldOfferQuoteCancellation({
+        canCancel: true,
+        quote: { ...lockedQuote, hasEverSourcedJob: false, status: 'sent' },
+      }),
+    ).toBe(false);
   });
 });

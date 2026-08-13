@@ -1,0 +1,44 @@
+{
+  "releasedAt": "2026-08-13T09:10:32.509Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Control public assembly visibility",
+          "description": "Choose which standard and optional assemblies appear on the public website and in product brochures while keeping internal assemblies private."
+        },
+        {
+          "title": "Export and re-import Parts",
+          "description": "Download the full Parts catalog, or one supplier’s Parts, as a bulk-import-ready CSV for safer spreadsheet editing and re-importing."
+        },
+        {
+          "title": "Improve brochure branding",
+          "description": "Product brochures now display larger range logos while preserving the two-page layout."
+        },
+        {
+          "title": "Clarify blocked unit removals",
+          "description": "When a unit cannot be removed, the message now identifies the live or completed Job responsible."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Show only approved assemblies",
+          "description": "Public product pages now display only the standard and optional assemblies approved for public visibility."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Cancel locked Quotes",
+          "description": "Authorized users can now cancel locked Quotes directly from the mobile Quote screen, with related Jobs and Units refreshing after cancellation."
+        }
+      ]
+    }
+  ]
+}

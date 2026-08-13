@@ -61,13 +61,27 @@ export class ProductUnitTransferBackdatedError extends Error {
 /** Why a Unit cannot be removed. Each reason names something that would be wrong afterwards. */
 export type ProductUnitInUseReason = 'live-job' | 'built' | 'quoted' | 'referenced';
 
-const productUnitInUseMessages = {
-  'live-job': 'This unit has a Job that is still live, so the machine is being built or has been.',
-  built: 'This unit has a Job that was completed, so the machine was built and its record stands.',
-  quoted: 'This unit is named on a Quote that still stands, which would be left pointing at nothing.',
-  // The reasons above each name a holder; this one is the foreign key catching a holder they do not know.
-  referenced: 'Something still references this unit, so it cannot be removed.',
-} as const satisfies Record<ProductUnitInUseReason, string>;
+/**
+ * The two Job reasons name the Job, because "which build?" is the first thing anyone reads this and
+ * asks, and by then the refusal has already looked it up.
+ */
+function productUnitInUseMessage(reason: ProductUnitInUseReason, jobCode: string | null): string {
+  switch (reason) {
+    case 'live-job':
+      return jobCode
+        ? `${jobCode} is still live, so this unit cannot be removed.`
+        : 'This unit has a Job that is still live, so the machine is being built or has been.';
+    case 'built':
+      return jobCode
+        ? `Completed ${jobCode} built this unit, so its record stands.`
+        : 'This unit has a Job that was completed, so the machine was built and its record stands.';
+    case 'quoted':
+      return 'This unit is named on a Quote that still stands, which would be left pointing at nothing.';
+    // The reasons above each name a holder; this one is the foreign key catching a holder they do not know.
+    case 'referenced':
+      return 'Something still references this unit, so it cannot be removed.';
+  }
+}
 
 /**
  * Removal only ever reaches a machine that never came to exist, so every way a Unit can still be real —
@@ -76,12 +90,12 @@ const productUnitInUseMessages = {
  */
 export class ProductUnitInUseError extends Error {
   readonly code = 'product_unit.in_use';
-  readonly metadata: { id: string; reason: ProductUnitInUseReason };
+  readonly metadata: { id: string; jobCode: string | null; reason: ProductUnitInUseReason };
 
-  constructor(id: string, reason: ProductUnitInUseReason) {
-    super(productUnitInUseMessages[reason]);
+  constructor(id: string, reason: ProductUnitInUseReason, jobCode: string | null = null) {
+    super(productUnitInUseMessage(reason, jobCode));
     this.name = 'ProductUnitInUseError';
-    this.metadata = { id, reason };
+    this.metadata = { id, jobCode, reason };
   }
 }
 

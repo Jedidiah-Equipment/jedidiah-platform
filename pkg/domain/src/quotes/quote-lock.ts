@@ -81,6 +81,31 @@ export function assertQuoteEditable({
   return { allowed: true };
 }
 
+/**
+ * Whether a surface should offer a Quote its own destructive cancel action. A Locked Quote's Status
+ * field is closed, so without this there is no way to reach cancellation at all; an unlocked one is
+ * cancelled from Status, which is the salesperson's path and needs no destructive button beside it.
+ * Both surfaces ask this so a Quote cancellable in the browser is cancellable on a device too.
+ */
+export function shouldOfferQuoteCancellation({
+  canCancel,
+  quote,
+}: {
+  canCancel: boolean;
+  quote: { hasEverSourcedJob: boolean; kind: QuoteKind; productUnitId: string | null; status: QuoteStatus };
+}): boolean {
+  return (
+    canCancel &&
+    quote.status !== 'cancelled' &&
+    isQuoteLocked({
+      hasEverSourcedJob: quote.hasEverSourcedJob,
+      hasProductUnit: quote.productUnitId !== null,
+      kind: quote.kind,
+      status: quote.status,
+    })
+  );
+}
+
 export function isQuoteLocked({
   hasEverSourcedJob,
   hasProductUnit,

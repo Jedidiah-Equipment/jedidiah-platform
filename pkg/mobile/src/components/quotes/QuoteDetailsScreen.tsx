@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAutosaveForm } from '@/components/form';
 import { QuoteAssembliesEditor } from '@/components/quotes/QuoteAssembliesEditor';
+import { QuoteCancellationAction } from '@/components/quotes/QuoteCancellationAction';
 import { QuoteCancellationConfirmation } from '@/components/quotes/QuoteCancellationConfirmation';
 import { QuoteDocumentsTab } from '@/components/quotes/QuoteDocumentsTab';
 import { QuotePriorityAlert } from '@/components/quotes/QuotePriorityAlert';
@@ -46,6 +47,7 @@ function QuoteDetailsData({ id }: { id: UUID }) {
   const queryClient = useQueryClient();
   const readAccess = useCan('quote:read');
   const updateAccess = useCan('quote:update');
+  const cancelAccess = useCan('quote:cancel');
   const quoteOptions = trpc.quotes.get.queryOptions({ id }, { enabled: readAccess.can });
   const quoteQuery = useQuery(quoteOptions);
   const priorityQuery = useQuery(trpc.quotes.priorityList.queryOptions(undefined, { enabled: readAccess.can }));
@@ -74,15 +76,19 @@ function QuoteDetailsData({ id }: { id: UUID }) {
   // the update path refuses to be what cancels.
   const cancel = async (cancellationReason: string) => {
     await cancelQuote.mutateAsync({ cancellationReason, id: quote.id });
+    // Whole roots, because the cascade reaches past this Quote: the Job is cancelled and the machine's
+    // ownership reverses, so a Jobs or Units list opened earlier would otherwise still show both as they
+    // were before.
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: trpc.quotes.get.pathKey() }),
-      queryClient.invalidateQueries({ queryKey: trpc.quotes.list.pathKey() }),
-      queryClient.invalidateQueries({ queryKey: trpc.quotes.priorityList.pathKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.productUnits.pathKey() }),
     ]);
   };
 
   return (
     <QuoteEditor
+      canCancel={cancelAccess.can}
       canUpdate={updateAccess.can}
       key={quote.id}
       onCancel={cancel}
@@ -95,6 +101,7 @@ function QuoteDetailsData({ id }: { id: UUID }) {
 }
 
 function QuoteEditor({
+  canCancel,
   canUpdate,
   onCancel,
   onReconcile,
@@ -103,6 +110,7 @@ function QuoteEditor({
   quote,
 }: {
   onCancel: (cancellationReason: string) => Promise<void>;
+  canCancel: boolean;
   canUpdate: boolean;
   onReconcile: () => Promise<QuoteDetail | undefined>;
   onSave: (input: QuoteUpdateInput) => Promise<QuoteDetail>;
@@ -195,6 +203,11 @@ function QuoteEditor({
                 ) : isLocked ? (
                   <InfoBanner message={describeLockedQuote({ canEdit, kind: quote.kind })} />
                 ) : null}
+                <QuoteCancellationAction
+                  canCancel={canCancel}
+                  onPress={() => setCancelConfirmationOpen(true)}
+                  quote={quote}
+                />
                 {priorityQuote ? <QuotePriorityAlert quote={priorityQuote} /> : null}
 
                 <Section title="Quote setup">

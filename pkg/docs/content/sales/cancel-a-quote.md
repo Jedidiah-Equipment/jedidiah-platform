@@ -18,8 +18,8 @@ rest rather than half-cancelling.
 
 ## Cancel it
 
-An unlocked Quote is cancelled from its **Status** field; a Locked one from the **Cancel Quote** button
-in the header. Both open the same confirmation and do the same thing.
+An unlocked Quote is cancelled from its **Status** field; a Locked one from the **Cancel Quote** button.
+Both open the same confirmation and do the same thing.
 
 1. Open the Quote.
 2. Set **Status** to Cancelled, or click **Cancel Quote**.
@@ -38,6 +38,9 @@ entry means another record now depends on this one, and taking the machine back 
 it from whoever holds it now.
 
 ## What you choose
+
+These are offered on the web. A device cancels with the safe answers already taken — the Job goes, the
+machine stays — so cancel from the web when a machine that was never made should go too.
 
 **Also cancel the Job.** Ticked by default, and almost always right: the sale is dead, so the work is
 too. Upcoming bay slots come off the schedules; work already done or under way stays on record, as does

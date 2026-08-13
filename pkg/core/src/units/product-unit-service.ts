@@ -14,6 +14,7 @@ import { getPlantDateNow, isJobCancelled, resolveNewestOwnershipTransfer } from 
 import {
   type AuthId,
   type DateOnlyIso,
+  formatJobCode,
   formatProductSerialNumber,
   ProductSerialPrefix,
   ProductSerialSequence,
@@ -476,16 +477,16 @@ export async function removeProductUnitWithin({
     .from(jobs)
     .where(eq(jobs.productUnitId, id));
 
-  for (const job of unitJobs) {
-    if (!isJobCancelled(job)) {
-      throw new ProductUnitInUseError(id, 'live-job');
-    }
+  // Completion is asked across the whole Unit before liveness because it latches and outranks every
+  // open Job: one finished build is enough to say the machine exists, even while a Rework Job is live.
+  const completedJob = unitJobs.find((job) => job.completedOn !== null);
+  if (completedJob) {
+    throw new ProductUnitInUseError(id, 'built', formatJobCode(completedJob.code));
+  }
 
-    // A Job Completion latches, so a Job cancelled after it finished still carries the date it
-    // finished on. That date is the record that metal was cut, whatever became of the sale.
-    if (job.completedOn !== null) {
-      throw new ProductUnitInUseError(id, 'built');
-    }
+  const liveJob = unitJobs.find((job) => !isJobCancelled(job));
+  if (liveJob) {
+    throw new ProductUnitInUseError(id, 'live-job', formatJobCode(liveJob.code));
   }
 
   // Re-read for the whole row the audit event snapshots; the ownership handle carries only identity.

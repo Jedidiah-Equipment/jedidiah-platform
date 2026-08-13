@@ -9,6 +9,7 @@ import {
   quotes,
   user,
 } from '@pkg/db';
+import { formatJobCode } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 import { createActorUser } from '@/test/actor-user.js';
 import { createTester } from '@/test/create-tester.js';
@@ -222,10 +223,25 @@ describe('productUnits.remove', () => {
     });
   });
 
-  test('reports a machine that is still real as a conflict, saying what holds it', async ({ context }) => {
+  test('reports a machine that is still real as a conflict, naming the Job that holds it', async ({ context }) => {
     await expect(
       context.createCaller(mockSession('admin')).productUnits.remove({ id: context.seed.unitId }),
-    ).rejects.toMatchObject({ code: 'CONFLICT', message: expect.stringContaining('Job that is still live') });
+    ).rejects.toMatchObject({
+      code: 'CONFLICT',
+      message: `${context.seed.buildJobCode} is still live, so this unit cannot be removed.`,
+    });
+  });
+
+  // The machine that was made: the refusal must say so rather than describe a build still under way.
+  test('reports a finished build as built rather than still live', async ({ context }) => {
+    await context.db.update(jobs).set({ completedOn: '2026-07-16' }).where(eq(jobs.id, context.seed.buildJobId));
+
+    await expect(
+      context.createCaller(mockSession('admin')).productUnits.remove({ id: context.seed.unitId }),
+    ).rejects.toMatchObject({
+      code: 'CONFLICT',
+      message: `Completed ${context.seed.buildJobCode} built this unit, so its record stands.`,
+    });
   });
 });
 
@@ -320,5 +336,11 @@ async function seedUnit(db: Db) {
     toCustomerId: customer.id,
   });
 
-  return { buildJobId: job.id, hilltopId: hilltop.id, riversideId: customer.id, unitId: unit.id };
+  return {
+    buildJobCode: formatJobCode(job.code),
+    buildJobId: job.id,
+    hilltopId: hilltop.id,
+    riversideId: customer.id,
+    unitId: unit.id,
+  };
 }

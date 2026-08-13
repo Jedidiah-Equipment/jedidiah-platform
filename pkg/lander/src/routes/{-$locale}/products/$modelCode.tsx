@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
 import { captureEvent, captureEventForNavigation } from '../../../lib/analytics.js';
+import { createMetaEventId, trackMetaViewContent } from '../../../lib/meta-pixel.js';
 import { seoHead, truncateDescription } from '../../../lib/seo.js';
 import { messagesForLocale, useMessages } from '../../../messages/index.js';
 import { getProductDetail } from '../../../server/catalog/product-detail.js';
@@ -440,16 +441,22 @@ function Related({ rangeName, related }: { rangeName: string; related: ProductDe
   );
 }
 
+export function captureProductView(detail: Pick<ProductDetail, 'modelCode' | 'rangeName' | 'variant'>): void {
+  const metaEventId = createMetaEventId();
+  captureEvent('product_viewed', {
+    modelCode: detail.modelCode,
+    range: detail.rangeName,
+    variant: detail.variant,
+    metaEventId,
+  });
+  trackMetaViewContent(metaEventId);
+}
+
 function ProductDetailPage() {
   const { detail } = Route.useLoaderData();
+  const { modelCode, rangeName, variant } = detail;
 
-  useEffect(() => {
-    captureEvent('product_viewed', {
-      modelCode: detail.modelCode,
-      range: detail.rangeName,
-      variant: detail.variant,
-    });
-  }, [detail.modelCode, detail.rangeName, detail.variant]);
+  useEffect(() => captureProductView({ modelCode, rangeName, variant }), [modelCode, rangeName, variant]);
 
   return (
     <main className="bg-sand">

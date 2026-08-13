@@ -23,6 +23,7 @@ import { HERO_BACKDROP_IMAGE } from '../../assets/images.js';
 import { PageHero } from '../../components/page-hero.js';
 import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
 import { captureEvent, captureEventForNavigation } from '../../lib/analytics.js';
+import { createMetaEventId, trackMetaLead } from '../../lib/meta-pixel.js';
 import { seoHead } from '../../lib/seo.js';
 import { messagesForLocale, useLocale, useMessages } from '../../messages/index.js';
 import { getRangeOptions } from '../../server/catalog/ranges.js';
@@ -186,9 +187,12 @@ export function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }
 
       form.reset();
       setStatus('sent');
+      const metaEventId = createMetaEventId();
       captureEvent('contact_submitted', {
         equipment: String(data.get('equipment') ?? '') || m.contact.notSpecified,
+        metaEventId,
       });
+      trackMetaLead(metaEventId);
     } catch {
       setStatus('error');
       captureEvent('contact_submit_failed', { errorCategory: 'network' });

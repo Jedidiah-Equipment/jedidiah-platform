@@ -7,6 +7,7 @@ import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
 import { hasFilterableVariants, VariantFilterBar } from '../../../components/variant-filter-bar.js';
 import { type AnalyticsEventProperties, captureEvent } from '../../../lib/analytics.js';
+import { createMetaEventId, trackMetaViewContent } from '../../../lib/meta-pixel.js';
 import { seoHead } from '../../../lib/seo.js';
 import { messagesForLocale, useMessages } from '../../../messages/index.js';
 import { getProductsCatalog } from '../../../server/catalog/products.js';
@@ -47,6 +48,12 @@ function useCatalogFilterAnalytics(search: ProductsSearch): void {
       captureEvent('catalog_filter_changed', properties);
     }
   }, [search]);
+}
+
+export function captureCatalogView(range: string | null, variant: string | null): void {
+  const metaEventId = createMetaEventId();
+  captureEvent('catalog_viewed', { range, variant, metaEventId });
+  trackMetaViewContent(metaEventId);
 }
 
 export function useProductsFilterScroll(
@@ -258,6 +265,10 @@ function ProductsPage() {
   const restoredWindowScroll = useElementScrollRestoration({ getElement: () => window });
   const alignFilterBar = useProductsFilterScroll(filterBar, search, restoredWindowScroll !== undefined);
   useCatalogFilterAnalytics(search);
+
+  useEffect(() => {
+    captureCatalogView(search.range ?? null, search.variant ?? null);
+  }, [search.range, search.variant]);
 
   const groups = catalog.groups;
   const { activeGroup, activeSlug, activeVariant, visibleGroups } = resolveProductsCatalogView(groups, search);

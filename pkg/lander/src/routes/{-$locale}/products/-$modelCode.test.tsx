@@ -7,13 +7,18 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { LocaleProvider } from '../../../messages/index.js';
 import type { ProductDetail } from '../../../server/catalog/product-detail-data.js';
-import { AssembliesAndDownloads, Downloads, ProductShareButton } from './$modelCode.js';
+import { AssembliesAndDownloads, captureProductView, Downloads, ProductShareButton } from './$modelCode.js';
 
 const captureEvent = vi.hoisted(() => vi.fn());
+const trackMetaViewContent = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../lib/analytics.js', () => ({
   captureEvent,
   captureEventForNavigation: vi.fn(),
+}));
+vi.mock('../../../lib/meta-pixel.js', () => ({
+  createMetaEventId: () => 'product-view-123',
+  trackMetaViewContent,
 }));
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -63,6 +68,20 @@ describe('ProductShareButton', () => {
     expect(writeText).toHaveBeenCalledWith('http://localhost:3000/products/CH14');
     expect(captureEvent).toHaveBeenCalledWith('product_shared', { modelCode: 'CH14', method: 'clipboard' });
     expect(container.textContent).toContain('Link copied');
+  });
+});
+
+describe('captureProductView', () => {
+  test('reports the existing PostHog view and Meta ViewContent together', () => {
+    captureProductView(productDetail());
+
+    expect(captureEvent).toHaveBeenCalledWith('product_viewed', {
+      modelCode: 'CH14',
+      range: 'Chaser Bins',
+      variant: null,
+      metaEventId: 'product-view-123',
+    });
+    expect(trackMetaViewContent).toHaveBeenCalledWith('product-view-123');
   });
 });
 

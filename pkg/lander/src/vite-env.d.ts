@@ -5,6 +5,9 @@
 // reverse proxy.
 interface ImportMetaEnv {
   readonly VITE_POSTHOG_KEY?: string;
+  // Public Meta Dataset / Pixel ID. Optional so non-production environments do not report into the live
+  // advertising dataset unless they are deliberately configured.
+  readonly VITE_META_PIXEL_ID?: string;
   // Public site origin for the sitemap and robots.txt, the only place a fully-qualified URL is required.
   // Optional and build-time; defaults to the live domain when unset. See lib/seo.ts.
   readonly VITE_SITE_URL?: string;

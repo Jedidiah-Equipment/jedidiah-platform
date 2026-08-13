@@ -1,7 +1,27 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
+import { captureEvent } from '../../../lib/analytics.js';
 import type { CatalogGroup } from '../../../server/catalog/products-data.js';
-import { catalogFilterChangeProperties, resolveProductsCatalogView } from './index.js';
+import { captureCatalogView, catalogFilterChangeProperties, resolveProductsCatalogView } from './index.js';
+
+const trackMetaViewContent = vi.hoisted(() => vi.fn());
+
+vi.mock('../../../lib/analytics.js', () => ({ captureEvent: vi.fn() }));
+vi.mock('../../../lib/meta-pixel.js', () => ({
+  createMetaEventId: () => 'catalog-view-123',
+  trackMetaViewContent,
+}));
+
+test('catalog and filtered Range views send Meta ViewContent', () => {
+  captureCatalogView('trailers', 'wide-body');
+
+  expect(captureEvent).toHaveBeenCalledWith('catalog_viewed', {
+    range: 'trailers',
+    variant: 'wide-body',
+    metaEventId: 'catalog-view-123',
+  });
+  expect(trackMetaViewContent).toHaveBeenCalledWith('catalog-view-123');
+});
 
 describe('catalogFilterChangeProperties', () => {
   test('returns no event properties when the filters have not changed', () => {

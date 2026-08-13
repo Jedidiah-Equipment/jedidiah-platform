@@ -275,10 +275,11 @@ describe('Quote edit presentation', () => {
       {
         department: 'fabrication',
         description: 'Rebuild pump',
+        formKey: WORK_ITEM_ID,
         hourlyRate: 550,
         hours: 1.5,
         name: '',
-        parts: [{ name: 'Seal kit', quantity: 2, unitPrice: 125 }],
+        parts: [{ formKey: WORK_ITEM_PART_ID, name: 'Seal kit', quantity: 2, unitPrice: 125 }],
       },
     ]);
     // 1.5 h x R550 + 2 x R125, labelled by the Department's quote-facing wording.
@@ -324,10 +325,11 @@ describe('Quote edit presentation', () => {
         {
           department: 'other',
           description: '',
+          formKey: 'invalid-work-item',
           hourlyRate: -1,
           hours: -1,
           name: ' ',
-          parts: [{ name: '', quantity: 0, unitPrice: -1 }],
+          parts: [{ formKey: 'invalid-work-item-part', name: '', quantity: 0, unitPrice: -1 }],
         },
       ],
     });

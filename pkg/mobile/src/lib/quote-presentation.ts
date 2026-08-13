@@ -109,10 +109,18 @@ const QuoteWorkItemFormInput = z
   .object({
     department: WorkItemDepartmentSelection,
     description: z.string(),
+    formKey: z.string(),
     hourlyRate: QuoteWorkItemHourlyRate,
     hours: QuoteWorkItemHours,
     name: z.string(),
-    parts: z.array(z.object({ name: QuoteWorkItemPartName, quantity: QuoteWorkItemPartQuantity, unitPrice: Price })),
+    parts: z.array(
+      z.object({
+        formKey: z.string(),
+        name: QuoteWorkItemPartName,
+        quantity: QuoteWorkItemPartQuantity,
+        unitPrice: Price,
+      }),
+    ),
   })
   .superRefine((value, context) => {
     if (value.department === OTHER_WORK_ITEM_DEPARTMENT && !QuoteWorkItemName.safeParse(value.name).success) {
@@ -180,13 +188,20 @@ export function getQuoteEditFormValuesValidator(kind: QuoteKind) {
 }
 
 export function toQuoteEditFormValues(quote: QuoteDetail): QuoteEditFormValues {
+  const persistedWorkItems = quote.kind === 'custom' ? quote.workItems : [];
+
   return {
     cancellationReason: quote.cancellationReason ?? '',
-    workItems: toQuoteWorkItemFormState(quote).workItems.map((workItem) => ({
+    workItems: toQuoteWorkItemFormState(quote).workItems.map((workItem, workItemIndex) => ({
       ...workItem,
       department: workItem.department ?? OTHER_WORK_ITEM_DEPARTMENT,
       description: workItem.description ?? '',
+      formKey: persistedWorkItems[workItemIndex]?.id ?? createQuoteFormKey('work-item'),
       name: workItem.name ?? '',
+      parts: workItem.parts.map((part, partIndex) => ({
+        ...part,
+        formKey: persistedWorkItems[workItemIndex]?.parts[partIndex]?.id ?? createQuoteFormKey('work-item-part'),
+      })),
     })),
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
@@ -210,6 +225,8 @@ export function toQuoteEditFormValues(quote: QuoteDetail): QuoteEditFormValues {
  * Department — so the browser's `''` placeholder never reaches the server as an empty string.
  */
 export function toQuoteWorkItemInput(workItem: QuoteEditFormValues['workItems'][number]): QuoteWorkItemInput {
+  const parts = workItem.parts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice }));
+
   return workItem.department === OTHER_WORK_ITEM_DEPARTMENT
     ? {
         department: null,
@@ -217,7 +234,7 @@ export function toQuoteWorkItemInput(workItem: QuoteEditFormValues['workItems'][
         hourlyRate: workItem.hourlyRate,
         hours: workItem.hours,
         name: workItem.name,
-        parts: workItem.parts,
+        parts,
       }
     : {
         department: workItem.department,
@@ -225,8 +242,17 @@ export function toQuoteWorkItemInput(workItem: QuoteEditFormValues['workItems'][
         hourlyRate: workItem.hourlyRate,
         hours: workItem.hours,
         name: null,
-        parts: workItem.parts,
+        parts,
       };
+}
+
+let nextQuoteFormKey = 0;
+
+/** Client-only identity survives TanStack Form's immutable row clones and is never sent to the API. */
+export function createQuoteFormKey(kind: 'work-item' | 'work-item-part'): string {
+  const key = `${kind}-${nextQuoteFormKey}`;
+  nextQuoteFormKey += 1;
+  return key;
 }
 
 export function toQuoteUpdateInput({

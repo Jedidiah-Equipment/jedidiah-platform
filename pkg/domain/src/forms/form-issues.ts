@@ -41,11 +41,14 @@ export function getFormIssueMessages(issues: readonly FormIssue[]): string[] {
 }
 
 /**
- * Whether any issue sits at or below `prefix`. The `]` and `.` boundaries keep `assemblies[6]` from
- * matching `assemblies[60]`.
+ * Whether any issue sits at or below `prefix`. A match must continue with a path separator, so
+ * `assemblies[6]` covers `assemblies[6].name` but not `assemblies[60].name`, and a prefix naming an
+ * array (`assemblies`) still covers `assemblies[6].name`.
  */
 export function hasFormIssuesWithin(issues: readonly FormIssue[], prefix: string): boolean {
-  return issues.some((issue) => issue.path === prefix || issue.path.startsWith(`${prefix}.`));
+  return issues.some(
+    (issue) => issue.path === prefix || issue.path.startsWith(`${prefix}.`) || issue.path.startsWith(`${prefix}[`),
+  );
 }
 
 export function getFormIssuesForField(issues: readonly FormIssue[], fieldName: string): FormIssue[] {

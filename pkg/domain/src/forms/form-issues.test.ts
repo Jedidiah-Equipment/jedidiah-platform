@@ -35,4 +35,11 @@ describe('hasFormIssuesWithin', () => {
     expect(hasFormIssuesWithin(issues, 'assemblies[60]')).toBe(true);
     expect(hasFormIssuesWithin(issues, 'assemblies[6]')).toBe(false);
   });
+
+  it('covers a row from a prefix naming the array it sits in', () => {
+    const issues = [{ message: 'Assembly name is required', path: 'assemblies[6].name' }];
+
+    expect(hasFormIssuesWithin(issues, 'assemblies')).toBe(true);
+    expect(hasFormIssuesWithin(issues, 'productBays')).toBe(false);
+  });
 });

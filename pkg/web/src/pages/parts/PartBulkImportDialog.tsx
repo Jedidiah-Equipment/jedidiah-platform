@@ -123,7 +123,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
         Bulk parts import
       </Button>
       <Dialog onOpenChange={handleOpenChange} open={isOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[calc(100%-2rem)] md:max-w-[720px]">
           <DialogHeader>
             <DialogTitle>Bulk import parts</DialogTitle>
             <DialogDescription>
@@ -185,7 +185,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
               </Alert>
             ) : null}
             {previewRows.length > 0 && !result ? (
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <div className="text-sm font-medium">Preview</div>
                 <PartBulkImportPreviewTable items={previewRows} total={parseResult.rows.length} />
               </div>

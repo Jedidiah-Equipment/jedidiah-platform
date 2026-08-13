@@ -1,0 +1,75 @@
+{
+  "releasedAt": "2026-08-13T12:06:18.540Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Generate branded Purchase Orders",
+          "description": "Purchase Order PDFs now display the Jedidiah logo, matching Quotes."
+        },
+        {
+          "title": "Keep brochure logos clear",
+          "description": "Product brochures now size compact, wide, and rotated range logos more reliably."
+        },
+        {
+          "title": "Recognize cancelled work quickly",
+          "description": "Cancelled Jobs and Quotes now use a consistent orange status badge across schedules and detail views."
+        },
+        {
+          "title": "Read the latest Job feedback first",
+          "description": "Job feedback now appears newest first."
+        },
+        {
+          "title": "Classify Job documents before upload",
+          "description": "Job document uploads now require you to confirm the document type, preventing accidental misclassification."
+        },
+        {
+          "title": "Understand Supplier invoice processing",
+          "description": "Invoice filing now clearly explains that AI transcribes the PDF, why the upload may take longer, and that unreadable invoices are still filed."
+        },
+        {
+          "title": "Identify public Product assemblies",
+          "description": "Public assemblies now display a clear badge in the Product editor."
+        },
+        {
+          "title": "Add raw materials with confidence",
+          "description": "Product costing now explains that raw materials must use periodic stock tracking and distinguishes loading errors from an empty list."
+        },
+        {
+          "title": "Review bulk Part imports more easily",
+          "description": "The bulk import dialog is wider and keeps large CSV previews contained."
+        },
+        {
+          "title": "Fix Product save problems faster",
+          "description": "Autosave now names the rules blocking a save and highlights the affected assembly fields. Parts already used in an assembly are also excluded from its picker."
+        },
+        {
+          "title": "Remove unused customers safely",
+          "description": "Authorized users can now remove Customers after confirmation. Customers linked to Quotes or other records remain protected."
+        },
+        {
+          "title": "See why Purchase Order actions fail",
+          "description": "Clear messages now explain why an order cannot be sent, cancelled, or closed short, and why an invoice flag cannot be applied or dismissed."
+        },
+        {
+          "title": "Save Purchase Order quantities accurately",
+          "description": "Displayed quantities now match the values saved, including when changing between measured Parts and Parts counted in whole units."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Recognize cancelled work quickly",
+          "description": "Cancelled Jobs and schedule entries now use a consistent orange status treatment."
+        },
+        {
+          "title": "Read the latest Job feedback first",
+          "description": "Job feedback now appears newest first."
+        }
+      ]
+    }
+  ]
+}

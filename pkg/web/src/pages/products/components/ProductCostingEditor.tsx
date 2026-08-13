@@ -4,6 +4,7 @@ import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi } from '@/components/form/types.js';
 import { Button } from '@/components/ui/button.js';
@@ -46,11 +47,13 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
   const availableParts = periodicParts.filter((part) => !selectedPartIds.has(part.id));
   const rawMaterialPlaceholder = partOptions.isLoading
     ? 'Loading Parts...'
-    : periodicParts.length === 0
-      ? 'No periodic-stock Parts available'
-      : availableParts.length === 0
-        ? 'All periodic-stock Parts added'
-        : 'Select raw material';
+    : partOptions.query.isError
+      ? 'Unable to load Parts'
+      : periodicParts.length === 0
+        ? 'No periodic-stock Parts available'
+        : availableParts.length === 0
+          ? 'All periodic-stock Parts added'
+          : 'Select raw material';
   const selectedDepartments = new Set(laborHoursField.state.value.map((line) => line.department));
   const availableDepartments = WORK_ITEM_DEPARTMENTS.filter((department) => !selectedDepartments.has(department));
 
@@ -64,7 +67,7 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
           </CardDescription>
           <CardAction className="flex gap-2">
             <Select
-              disabled={partOptions.isLoading || availableParts.length === 0}
+              disabled={partOptions.isLoading || partOptions.query.isError || availableParts.length === 0}
               onValueChange={(value) => setPartToAdd(value ?? '')}
               value={partToAdd}
             >
@@ -97,7 +100,14 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
         </CardHeader>
         <CardSeparator />
         <CardContent className="grid gap-3">
-          {materialLinesField.state.value.length === 0 ? (
+          {partOptions.query.isError ? (
+            <div className="flex items-center gap-2">
+              <ErrorMessage error={partOptions.query.error} fallbackMessage="Unable to load Parts." />
+              <Button onClick={() => void partOptions.query.refetch()} size="sm" type="button" variant="outline">
+                Retry
+              </Button>
+            </div>
+          ) : materialLinesField.state.value.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               {partOptions.isLoading || periodicParts.length > 0
                 ? 'No raw materials per unit recorded.'

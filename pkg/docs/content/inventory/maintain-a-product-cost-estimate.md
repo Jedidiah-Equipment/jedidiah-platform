@@ -7,6 +7,8 @@ and labor per unit at current inventory costs and the shared labor rates.
 
 1. Open **Parts** and open each raw material that the Product consumes. Set **Stock tracking** to
    **Periodic** and save the Part. Only periodic-stock Parts can be added as Product raw material.
+   A periodic Part cannot be checked out to a Job; read [Perpetual and periodic
+   Parts](./perpetual-and-periodic-stock.md) before changing the setting.
 2. Open **Products**, open the Product, and select **Costing**.
 3. Under **Raw materials per unit**, select a raw material and press **Add**, then enter its
    **Quantity per unit**.

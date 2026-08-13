@@ -10,6 +10,8 @@ import {
   PurchaseOrderReceiveFormValues,
   PurchaseOrderReturnFormValues,
   purchaseOrderAmendmentValidator,
+  quantityDecimals,
+  quantityForPart,
   toPurchaseOrderCreateInput,
   toPurchaseOrderDraftFormValues,
   toPurchaseOrderDraftInput,
@@ -290,5 +292,31 @@ describe('Purchase Order return values', () => {
     expect(forLine(linearLine, 3_000).lengthMm).toBe(3_000);
     expect(forLine(linearLine, Number.NaN).lengthMm).toBeNull();
     expect(forLine(pieceLine, 3_000).lengthMm).toBeNull();
+  });
+});
+
+describe('quantityDecimals', () => {
+  it('gives a measured Part decimals and every whole-unit Part none', () => {
+    expect(quantityDecimals({ unitOfMeasure: 'kg' })).toBe(3);
+    expect(quantityDecimals({ unitOfMeasure: 'litre' })).toBe(3);
+    expect(quantityDecimals({ unitOfMeasure: 'piece' })).toBe(0);
+    expect(quantityDecimals({ unitOfMeasure: 'mm' })).toBe(0);
+  });
+
+  it('declares no precision for a Part that has not resolved', () => {
+    // The row would otherwise round on a guess and autosave a measured quantity as a whole number.
+    expect(quantityDecimals(undefined)).toBeUndefined();
+  });
+});
+
+describe('quantityForPart', () => {
+  it('settles a measured quantity into the whole units its new Part is counted in', () => {
+    expect(quantityForPart(7.5, { unitOfMeasure: 'piece' })).toBe(8);
+    expect(quantityForPart(7.5, { unitOfMeasure: 'mm' })).toBe(8);
+  });
+
+  it('leaves a quantity alone for a measured Part, and for one that has not resolved', () => {
+    expect(quantityForPart(7.5, { unitOfMeasure: 'kg' })).toBe(7.5);
+    expect(quantityForPart(7.5, undefined)).toBe(7.5);
   });
 });

@@ -45,6 +45,8 @@ import {
 import {
   type PurchaseOrderDraftFormValues,
   PurchaseOrderDraftFormValues as PurchaseOrderDraftFormValuesSchema,
+  quantityDecimals,
+  quantityForPart,
   toPurchaseOrderDraftFormValues,
   toPurchaseOrderDraftInput,
 } from './components/types.js';
@@ -447,7 +449,12 @@ const PurchaseOrderLinesDataTable: React.FC<{
                 <field.ComboboxField
                   emptyMessage="No Parts found."
                   label={<span className="sr-only">Part</span>}
-                  onValueCommit={commit}
+                  onValueCommit={(partId) => {
+                    const quantityName = `lines[${index}].quantity` as const;
+                    const nextPart = eligibleParts.find((candidate) => candidate.id === partId);
+                    form.setFieldValue(quantityName, quantityForPart(form.getFieldValue(quantityName), nextPart));
+                    commit();
+                  }}
                   options={options}
                   placeholder="Search Parts"
                 />
@@ -473,7 +480,7 @@ const PurchaseOrderLinesDataTable: React.FC<{
             <form.AppField name={`lines[${row.original.index}].quantity`}>
               {(field) => (
                 <field.NumberField
-                  decimals={part && isMeasuredUnit(part.unitOfMeasure) ? 3 : 0}
+                  decimals={quantityDecimals(part)}
                   label={<span className="sr-only">Quantity</span>}
                 />
               )}
@@ -821,8 +828,4 @@ function statusDescription(purchaseOrder: PurchaseOrderView): string {
   if (purchaseOrder.closedShortAt) return `Closed short ${formatDate(purchaseOrder.closedShortAt)}`;
   if (purchaseOrder.sentAt) return `Sent ${formatDate(purchaseOrder.sentAt)}`;
   return 'Draft';
-}
-
-function isMeasuredUnit(unitOfMeasure: PurchaseOrderView['lines'][number]['unitOfMeasure']): boolean {
-  return unitOfMeasure === 'kg' || unitOfMeasure === 'litre';
 }

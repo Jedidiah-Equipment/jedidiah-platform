@@ -3,6 +3,7 @@ import {
   DateOnlyIsoString,
   hasUniquePartIds,
   InventoryUnitCost,
+  type Part,
   PostReceiptInput,
   PostReturnToSupplierInput,
   PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
@@ -21,9 +22,11 @@ import {
   type StockMovementWarningCode,
   StockReturnToSupplierReason,
   UUID,
+  unitClassFor,
 } from '@pkg/schema';
 import { z } from 'zod';
 
+import { roundNumberFieldValue } from '@/components/form/fields/NumberField.js';
 import { optionalNumber } from '@/components/form/utils/form-schema.js';
 
 export type PurchaseOrderCreateFormValues = z.infer<typeof PurchaseOrderCreateFormValues>;
@@ -43,6 +46,29 @@ export const PurchaseOrderDraftFormValues = PurchaseOrderCreateFormValues.extend
   message: PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
   path: ['lines'],
 });
+
+/**
+ * The decimals a draft line's quantity is keyed and kept in: three where `PurchaseOrderQuantity`
+ * allows them, none where the server counts whole units — the same `unitClassFor` verdict it raises
+ * `PurchaseOrderInvalidQuantityError` on. A Part that has not resolved yet declares no precision at
+ * all; the Parts query is still in flight, and rounding on that guess would round a measured
+ * quantity away.
+ */
+export function quantityDecimals(part: Pick<Part, 'unitOfMeasure'> | undefined): number | undefined {
+  if (!part) return undefined;
+
+  return unitClassFor(part.unitOfMeasure) === 'measured' ? 3 : 0;
+}
+
+/**
+ * What a line's quantity becomes when its Part changes: 7.5 kg swapped for a Part counted in pieces
+ * is 8 of them. The picker settles this itself because the autosave flush is one microtask behind it,
+ * and the field's own rounding is a render pass behind that — long enough to post the old number
+ * against the new Part and earn a refusal the row does not look like it deserves.
+ */
+export function quantityForPart(quantity: number, part: Pick<Part, 'unitOfMeasure'> | undefined): number {
+  return roundNumberFieldValue(quantity, quantityDecimals(part));
+}
 
 export function toPurchaseOrderCreateInput(values: PurchaseOrderCreateFormValues): PurchaseOrderCreateInput {
   return {

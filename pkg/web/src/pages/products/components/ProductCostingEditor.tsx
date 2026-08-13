@@ -4,6 +4,7 @@ import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi } from '@/components/form/types.js';
 import { Button } from '@/components/ui/button.js';
@@ -42,9 +43,17 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
   const [departmentToAdd, setDepartmentToAdd] = useState('');
   const partsById = useMemo(() => new Map(partOptions.items.map((part) => [part.id, part])), [partOptions.items]);
   const selectedPartIds = new Set(materialLinesField.state.value.map((line) => line.partId));
-  const availableParts = partOptions.items.filter(
-    (part) => part.stockTrackingMode === 'periodic' && !selectedPartIds.has(part.id),
-  );
+  const periodicParts = partOptions.items.filter((part) => part.stockTrackingMode === 'periodic');
+  const availableParts = periodicParts.filter((part) => !selectedPartIds.has(part.id));
+  const rawMaterialPlaceholder = partOptions.isLoading
+    ? 'Loading Parts...'
+    : partOptions.query.isError
+      ? 'Unable to load Parts'
+      : periodicParts.length === 0
+        ? 'No periodic-stock Parts available'
+        : availableParts.length === 0
+          ? 'All periodic-stock Parts added'
+          : 'Select raw material';
   const selectedDepartments = new Set(laborHoursField.state.value.map((line) => line.department));
   const availableDepartments = WORK_ITEM_DEPARTMENTS.filter((department) => !selectedDepartments.has(department));
 
@@ -57,9 +66,13 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
             Add the periodic-stock material consumed to build one Product unit. Quantities are always per unit.
           </CardDescription>
           <CardAction className="flex gap-2">
-            <Select onValueChange={(value) => setPartToAdd(value ?? '')} value={partToAdd}>
+            <Select
+              disabled={partOptions.isLoading || partOptions.query.isError || availableParts.length === 0}
+              onValueChange={(value) => setPartToAdd(value ?? '')}
+              value={partToAdd}
+            >
               <SelectTrigger className="w-64 max-w-full">
-                <SelectValue placeholder={partOptions.isLoading ? 'Loading Parts...' : 'Select raw material'} />
+                <SelectValue placeholder={rawMaterialPlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {availableParts.map((part) => (
@@ -87,8 +100,19 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
         </CardHeader>
         <CardSeparator />
         <CardContent className="grid gap-3">
-          {materialLinesField.state.value.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No raw materials per unit recorded.</p>
+          {partOptions.query.isError ? (
+            <div className="flex items-center gap-2">
+              <ErrorMessage error={partOptions.query.error} fallbackMessage="Unable to load Parts." />
+              <Button onClick={() => void partOptions.query.refetch()} size="sm" type="button" variant="outline">
+                Retry
+              </Button>
+            </div>
+          ) : materialLinesField.state.value.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              {partOptions.isLoading || periodicParts.length > 0
+                ? 'No raw materials per unit recorded.'
+                : 'No raw materials can be added yet. Open Parts and set each raw material’s Stock tracking to Periodic first.'}
+            </p>
           ) : null}
           {materialLinesField.state.value.map((line, index) => {
             const part = partsById.get(line.partId);

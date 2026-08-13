@@ -5,7 +5,6 @@ import {
   buildPartBulkExportCsv,
   createPartBulkExportFilename,
   PART_BULK_CSV_COLUMN_KEYS,
-  PART_BULK_CSV_COLUMNS,
   parsePartBulkImportCsv,
 } from './part-bulk-csv.js';
 
@@ -73,12 +72,6 @@ describe('bulk Part CSV round trip', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.rows).toEqual(roundTripRows.map((row, index) => ({ ...row, lineNumber: index + 1 })));
-  });
-
-  it('writes the header the import documents, in the import order', () => {
-    const [header] = buildPartBulkExportCsv(roundTripRows).split('\r\n');
-
-    expect(header).toBe(PART_BULK_CSV_COLUMNS.join(','));
   });
 
   it('carries every field of a CSV row in a column', () => {

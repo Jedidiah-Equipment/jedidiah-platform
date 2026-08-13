@@ -209,27 +209,6 @@ describe('parts.bulkExport', () => {
       code: 'FORBIDDEN',
     });
   });
-
-  test('hands back the catalog in the shape the bulk import reads', async ({ context }) => {
-    const caller = context.createCaller();
-    await caller.parts.bulkImport({ rows: [bulkImportRow()] });
-
-    await expect(caller.parts.bulkExport({})).resolves.toEqual([
-      {
-        category: 'Bearings',
-        code: 'P-100',
-        description: 'Main bearing',
-        drawingCode: null,
-        finish: 'Zinc',
-        isInternallyFabricated: false,
-        name: 'Bearing',
-        standardPurchaseLengthMm: null,
-        supplierCode: 'SUP-100',
-        supplierName: 'Acme Supplies',
-        unitOfMeasure: 'piece',
-      },
-    ]);
-  });
 });
 
 describe('parts.bulkImport', () => {

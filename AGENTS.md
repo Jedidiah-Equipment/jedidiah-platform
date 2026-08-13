@@ -2,6 +2,8 @@
 
 - Read the closest `pkg/*/AGENTS.md` before changing code in that package.
 - Use pnpm scripts. Normal verification is `pnpm verify` (lint + typecheck + build + test).
+- Keep `pnpm test` at `--concurrency=2`: each package's Vitest sizes its worker pool from the whole
+  machine, so more packages in flight oversubscribe the box until DB-backed tests time out.
 - Do not add CI, deployment, or production infrastructure unless explicitly asked.
 - `CONTEXT.md` holds the domain vocabulary and invariants; `docs/adr/` holds the decisions behind them.
   Search both for the term you need rather than loading either wholesale, and use their terms in issues,

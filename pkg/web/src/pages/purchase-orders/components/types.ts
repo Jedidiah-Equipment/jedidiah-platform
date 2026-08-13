@@ -3,6 +3,7 @@ import {
   DateOnlyIsoString,
   hasUniquePartIds,
   InventoryUnitCost,
+  type Part,
   PostReceiptInput,
   PostReturnToSupplierInput,
   PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
@@ -21,6 +22,7 @@ import {
   type StockMovementWarningCode,
   StockReturnToSupplierReason,
   UUID,
+  unitClassFor,
 } from '@pkg/schema';
 import { z } from 'zod';
 
@@ -43,6 +45,19 @@ export const PurchaseOrderDraftFormValues = PurchaseOrderCreateFormValues.extend
   message: PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
   path: ['lines'],
 });
+
+/**
+ * The decimals a draft line's quantity is keyed and kept in: three where `PurchaseOrderQuantity`
+ * allows them, none where the server counts whole units — the same `unitClassFor` verdict it raises
+ * `PurchaseOrderInvalidQuantityError` on. A Part that has not resolved yet declares no precision at
+ * all; the Parts query is still in flight, and rounding on that guess would round a measured
+ * quantity away.
+ */
+export function quantityDecimals(part: Pick<Part, 'unitOfMeasure'> | undefined): number | undefined {
+  if (!part) return undefined;
+
+  return unitClassFor(part.unitOfMeasure) === 'measured' ? 3 : 0;
+}
 
 export function toPurchaseOrderCreateInput(values: PurchaseOrderCreateFormValues): PurchaseOrderCreateInput {
   return {

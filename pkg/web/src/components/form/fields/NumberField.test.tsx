@@ -8,7 +8,7 @@ import {
   formatNumberFieldValue,
   hasNumberFieldValueChanged,
   parseNumberFieldValue,
-  snapNumberFieldValue,
+  roundNumberFieldValue,
 } from './NumberField.js';
 
 describe('formatNumberFieldValue', () => {
@@ -68,25 +68,24 @@ describe('hasNumberFieldValueChanged', () => {
   });
 });
 
-describe('snapNumberFieldValue', () => {
+describe('roundNumberFieldValue', () => {
   it('keeps the keyed value when the field declares no decimals', () => {
-    expect(snapNumberFieldValue(7.5, undefined)).toBe(7.5);
+    expect(roundNumberFieldValue(7.5, undefined)).toBe(7.5);
   });
 
-  it('snaps to the number the field displays', () => {
-    expect(snapNumberFieldValue(7.5, 0)).toBe(8);
-    expect(snapNumberFieldValue(1.2345, 3)).toBe(1.235);
-    expect(snapNumberFieldValue(1234.56, 0)).toBe(1235);
+  it('rounds to the number the field displays', () => {
+    expect(roundNumberFieldValue(7.5, 0)).toBe(8);
+    expect(roundNumberFieldValue(1.2345, 3)).toBe(1.235);
+    expect(roundNumberFieldValue(1234.56, 0)).toBe(1235);
   });
 
   it('rounds the way the display rounds, not the way Math.round does', () => {
-    // Intl rounds half away from zero over the exact decimal value; Math.round would read -7 and 1.
-    expect(snapNumberFieldValue(-7.5, 0)).toBe(-8);
-    expect(snapNumberFieldValue(1.005, 2)).toBe(1.01);
+    expect(roundNumberFieldValue(-7.5, 0)).toBe(-8);
+    expect(roundNumberFieldValue(1.005, 2)).toBe(1.01);
   });
 
   it('leaves an empty field empty', () => {
-    expect(Number.isNaN(snapNumberFieldValue(NaN, 0))).toBe(true);
+    expect(Number.isNaN(roundNumberFieldValue(NaN, 0))).toBe(true);
   });
 });
 
@@ -130,18 +129,30 @@ describe('NumberField', () => {
     expect(input.value).toBe('7.5');
     expect(readQuantity()).toBe(7.5);
   });
+
+  it('rounds the value it already holds once the caller settles on a precision', async () => {
+    const { input, readQuantity, settleDecimals } = await renderQuantityField(undefined);
+
+    act(() => {
+      keyValue(input, '7.5');
+      input.blur();
+    });
+    await settleDecimals(0);
+
+    expect(input.value).toBe('8');
+    expect(readQuantity()).toBe(8);
+  });
 });
 
 async function renderQuantityField(decimals: number | undefined) {
-  const decimalsProp = decimals === undefined ? {} : { decimals };
   let readQuantity = (): number => NaN;
-  const QuantityForm = () => {
+  const QuantityForm = ({ decimals: fieldDecimals }: { decimals: number | undefined }) => {
     const form = useAppForm({ defaultValues: { quantity: 1 } });
     readQuantity = () => form.state.values.quantity;
 
     return (
       <form.AppField name="quantity">
-        {(field) => <field.NumberField {...decimalsProp} label="Quantity" />}
+        {(field) => <field.NumberField decimals={fieldDecimals} label="Quantity" />}
       </form.AppField>
     );
   };
@@ -152,14 +163,17 @@ async function renderQuantityField(decimals: number | undefined) {
   const root = createRoot(container);
   mountedRoots.push(root);
 
-  await act(async () => {
-    root.render(<QuantityForm />);
-  });
+  const render = async (nextDecimals: number | undefined) => {
+    await act(async () => {
+      root.render(<QuantityForm decimals={nextDecimals} />);
+    });
+  };
+  await render(decimals);
 
   const input = container.querySelector('input');
   if (!input) throw new Error('NumberField rendered no input');
 
-  return { input, readQuantity: () => readQuantity() };
+  return { input, readQuantity: () => readQuantity(), settleDecimals: render };
 }
 
 function keyValue(input: HTMLInputElement, value: string): void {

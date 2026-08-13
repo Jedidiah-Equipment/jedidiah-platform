@@ -45,6 +45,7 @@ import {
 import {
   type PurchaseOrderDraftFormValues,
   PurchaseOrderDraftFormValues as PurchaseOrderDraftFormValuesSchema,
+  quantityDecimals,
   toPurchaseOrderDraftFormValues,
   toPurchaseOrderDraftInput,
 } from './components/types.js';
@@ -473,7 +474,7 @@ const PurchaseOrderLinesDataTable: React.FC<{
             <form.AppField name={`lines[${row.original.index}].quantity`}>
               {(field) => (
                 <field.NumberField
-                  decimals={part && isMeasuredUnit(part.unitOfMeasure) ? 3 : 0}
+                  decimals={quantityDecimals(part)}
                   label={<span className="sr-only">Quantity</span>}
                 />
               )}
@@ -821,8 +822,4 @@ function statusDescription(purchaseOrder: PurchaseOrderView): string {
   if (purchaseOrder.closedShortAt) return `Closed short ${formatDate(purchaseOrder.closedShortAt)}`;
   if (purchaseOrder.sentAt) return `Sent ${formatDate(purchaseOrder.sentAt)}`;
   return 'Draft';
-}
-
-function isMeasuredUnit(unitOfMeasure: PurchaseOrderView['lines'][number]['unitOfMeasure']): boolean {
-  return unitOfMeasure === 'kg' || unitOfMeasure === 'litre';
 }

@@ -14,7 +14,8 @@ type NumberFieldInputProps = Omit<
 >;
 
 export type NumberFieldProps = {
-  decimals?: number;
+  /** How many decimals the field shows and keeps. Undefined leaves the keyed value at full precision. */
+  decimals?: number | undefined;
   description?: React.ReactNode;
   emptyValue?: number;
   fieldClassName?: string;
@@ -38,13 +39,28 @@ export function NumberField({
 
   const [displayValue, setDisplayValue] = React.useState(() => formatNumberFieldValue(field.state.value, decimals));
   const previousFieldValue = React.useRef(field.state.value);
+  const previousDecimals = React.useRef(decimals);
 
+  const commitValue = (nextValue: number) => {
+    previousFieldValue.current = nextValue;
+    field.handleChange(nextValue);
+  };
+
+  // Resyncs when the value changes outside the field (a form reset) and when the caller settles on a
+  // precision — a row whose Part is still loading declares none, then declares what that Part counts
+  // in. The settled precision rounds the value as well, or the display would go back to reading a
+  // number the form does not hold.
   React.useEffect(() => {
-    if (!hasNumberFieldValueChanged(previousFieldValue.current, field.state.value)) return;
+    const hasValueChanged = hasNumberFieldValueChanged(previousFieldValue.current, field.state.value);
+    if (!hasValueChanged && previousDecimals.current === decimals) return;
 
-    previousFieldValue.current = field.state.value;
-    setDisplayValue(formatNumberFieldValue(field.state.value, decimals));
-  }, [decimals, field.state.value]);
+    const nextValue = roundNumberFieldValue(field.state.value, decimals);
+    previousDecimals.current = decimals;
+    previousFieldValue.current = nextValue;
+    if (hasNumberFieldValueChanged(field.state.value, nextValue)) field.handleChange(nextValue);
+    setDisplayValue(formatNumberFieldValue(nextValue, decimals));
+    // The guard above makes a re-run on an unstable `handleChange` identity a no-op.
+  }, [decimals, field.handleChange, field.state.value]);
 
   return (
     <Field
@@ -60,22 +76,14 @@ export function NumberField({
         inputMode={inputMode}
         name={field.name}
         onBlur={() => {
-          // A field that declares `decimals` rounds what it shows, so the value has to follow it down.
-          // Left alone the two disagree — the box reads 8 while the form still holds the keyed 7.5 —
-          // and every save from then on is refused over a number nobody can see or correct.
-          const snappedValue = snapNumberFieldValue(field.state.value, decimals);
-          if (hasNumberFieldValueChanged(field.state.value, snappedValue)) {
-            previousFieldValue.current = snappedValue;
-            field.handleChange(snappedValue);
-          }
+          const roundedValue = roundNumberFieldValue(field.state.value, decimals);
+          if (hasNumberFieldValueChanged(field.state.value, roundedValue)) commitValue(roundedValue);
           field.handleBlur();
-          setDisplayValue(formatNumberFieldValue(snappedValue, decimals));
+          setDisplayValue(formatNumberFieldValue(roundedValue, decimals));
         }}
         onChange={(event) => {
-          const nextValue = parseNumberFieldValue(event.target.value, emptyValue);
           setDisplayValue(event.target.value);
-          previousFieldValue.current = nextValue;
-          field.handleChange(nextValue);
+          commitValue(parseNumberFieldValue(event.target.value, emptyValue));
         }}
         type="text"
         value={displayValue}
@@ -92,14 +100,16 @@ export function hasNumberFieldValueChanged(previousValue: number, nextValue: num
 }
 
 /**
- * The value the field is showing, read back off its own display text. Going through the formatter is
- * what keeps the two in step: Intl rounds half away from zero over the exact decimal value, which
- * `Math.round` matches for neither a negative half nor a value like `1.005`.
+ * The value the field is showing, read back off its own display text. A field that declares `decimals`
+ * rounds what it shows, so the value has to follow it down — left alone the two disagree, and a save
+ * is refused over a number nobody can see or correct. Going through the formatter is what keeps them
+ * in step: Intl rounds half away from zero over the exact decimal value, which `Math.round` matches
+ * for neither a negative half nor a value like `1.005`.
  */
-export function snapNumberFieldValue(value: number, decimals?: number): number {
+export function roundNumberFieldValue(value: number, decimals?: number): number {
   if (decimals === undefined || !Number.isFinite(value)) return value;
 
-  return parseNumberFieldValue(formatNumberFieldValue(value, decimals));
+  return parseNumberFieldValue(formatNumberFieldValue(value, decimals), value);
 }
 
 export function formatNumberFieldValue(value: number, decimals?: number): string {

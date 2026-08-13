@@ -93,7 +93,6 @@ function AutosaveNumberForm({
   decimals?: number;
   save: (input: { quantity: number }) => Promise<void>;
 }) {
-  const decimalsProp = decimals === undefined ? {} : { decimals };
   const { form, formProps } = useAutosaveForm({
     defaultValues: { quantity: 5 },
     failureMessage: 'Unable to save quantity.',
@@ -105,7 +104,7 @@ function AutosaveNumberForm({
   return (
     <form {...formProps}>
       <form.AppField name="quantity">
-        {(field) => <field.NumberField {...decimalsProp} label="Quantity" />}
+        {(field) => <field.NumberField decimals={decimals} label="Quantity" />}
       </form.AppField>
     </form>
   );

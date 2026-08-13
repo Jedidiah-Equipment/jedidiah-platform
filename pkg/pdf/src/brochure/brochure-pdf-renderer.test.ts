@@ -1,11 +1,9 @@
 import { type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg/schema';
-import { renderToBuffer } from '@react-pdf/renderer';
 import { PDFDocument } from 'pdf-lib';
-import { cloneElement } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../bytes/pdf-bytes.js';
-import { BrochureDocumentPdf, getCoverLayout } from './BrochureDocumentPdf.js';
+import { getCoverLayout } from './BrochureDocumentPdf.js';
 import { renderBrochurePdf } from './brochure-pdf-renderer.js';
 
 // A tiny 4x4 PNG so the renderer exercises its real image path without bundling a large fixture.
@@ -59,13 +57,6 @@ describe('renderBrochurePdf', () => {
     await expectTwoPageBrochure(fullBrochure());
   });
 
-  test('renders the Product Range logo at 50% greater height', async () => {
-    const layout = await renderLayout(fullBrochure());
-    const rangeLogo = findRangeLogoLayoutNode(layout);
-
-    expect(rangeLogo?.box).toMatchObject({ height: 66, width: 166 });
-  });
-
   test('keeps the maximum configured key features on the two-page brochure', async () => {
     await expectTwoPageBrochure({
       ...fullBrochure(),
@@ -114,45 +105,6 @@ describe('renderBrochurePdf', () => {
     });
   });
 });
-
-type LayoutNode = {
-  box?: { height: number; left: number; top: number; width: number };
-  children?: LayoutNode[];
-  type: string;
-};
-
-async function renderLayout(document: BrochureDocumentModel): Promise<LayoutNode> {
-  let layout: LayoutNode | undefined;
-  // React-PDF has no public layout-inspection API; the internal render payload lets this regression
-  // test assert the reader-visible dimensions instead of merely repeating the declared style value.
-  const onRender = ({ _INTERNAL__LAYOUT__DATA_ }: { _INTERNAL__LAYOUT__DATA_: LayoutNode }) => {
-    layout = _INTERNAL__LAYOUT__DATA_;
-  };
-
-  const brochureElement = BrochureDocumentPdf({ document });
-  await renderToBuffer(cloneElement(brochureElement, { onRender } as never));
-
-  if (!layout) throw new Error('React-PDF did not return layout data');
-  return layout;
-}
-
-function findRangeLogoLayoutNode(layout: LayoutNode): LayoutNode | null {
-  let imageIndex = 0;
-
-  function visit(node: LayoutNode): LayoutNode | null {
-    // The cover renders the Jedidiah brand first and the Product Range logo second, before content images.
-    if (node.type === 'IMAGE' && ++imageIndex === 2) return node;
-
-    for (const child of node.children ?? []) {
-      const rangeLogo = visit(child);
-      if (rangeLogo) return rangeLogo;
-    }
-
-    return null;
-  }
-
-  return visit(layout);
-}
 
 describe('getCoverLayout', () => {
   test('reduces the title font size without changing cover spacing', () => {

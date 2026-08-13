@@ -12,7 +12,7 @@ import {
 import { Icon } from '@/components/ui/icon';
 
 // The same glyph per Department as web's src/components/departments, so a Department
-// reads identically on the Board and on the floor.
+// reads identically on the Bays page and on the floor.
 const departmentIcons: Record<Department, TablerIcon> = {
   assembly: IconTool,
   fabrication: IconHammer,

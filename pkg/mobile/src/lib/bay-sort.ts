@@ -1,3 +1,6 @@
+import { JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
+import type { Department } from '@pkg/schema';
+
 import type { BayListCard } from './use-bay-list';
 import { createLiteralGuard } from './use-persisted-state';
 
@@ -46,4 +49,35 @@ export function sortBayCards(cards: readonly BayListCard[], sort: BaySort): BayL
 
     return left.active.remainingWorkDays - right.active.remainingWorkDays || byName(left, right);
   });
+}
+
+export type BayDepartmentGroup = {
+  bays: BayListCard[];
+  department: Department;
+};
+
+const departmentOrder = new Map(JOB_DEPARTMENT_PIPELINE.map((step, index) => [step.department, index] as const));
+
+/**
+ * Splits the Bay cards into the Board's Department headings — the fixed visual pipeline the web Gantt
+ * already reads top to bottom. Ordering within a heading is whatever the caller handed in, so the sort
+ * control keeps deciding it; Departments with no matching Bay get no heading.
+ */
+export function groupBayCardsByDepartment(cards: readonly BayListCard[]): BayDepartmentGroup[] {
+  // A stable sort by Department alone leaves each Department's Bays in the caller's order, and lands
+  // any Department outside the pipeline in one trailing group rather than dropping its Bays.
+  const ordered = [...cards].sort(
+    (left, right) =>
+      (departmentOrder.get(left.department) ?? Number.MAX_SAFE_INTEGER) -
+      (departmentOrder.get(right.department) ?? Number.MAX_SAFE_INTEGER),
+  );
+
+  return ordered.reduce<BayDepartmentGroup[]>((groups, bay) => {
+    const group = groups.at(-1);
+
+    if (group?.department === bay.department) group.bays.push(bay);
+    else groups.push({ bays: [bay], department: bay.department });
+
+    return groups;
+  }, []);
 }

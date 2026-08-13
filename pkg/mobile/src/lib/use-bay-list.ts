@@ -8,7 +8,7 @@ import {
   isJobCancelled,
   listEnabledBays,
 } from '@pkg/domain';
-import type { BayOperator, DateOnlyIso } from '@pkg/schema';
+import type { BayOperator, DateOnlyIso, Department } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
@@ -27,6 +27,7 @@ export type BayListActiveJob = ActiveJobProgress & {
 export type BayListCard = {
   id: string;
   name: string;
+  department: Department;
   operator: BayOperator | null;
   /** Null when no Work Slot covers today (idle/free/off) — the card shows an idle state. */
   active: BayListActiveJob | null;
@@ -81,6 +82,7 @@ export function useBayList(): UseBayListResult {
       return {
         id: bay.id,
         name: bay.name,
+        department: bay.department,
         operator: bay.currentOperator,
         active:
           slot && job

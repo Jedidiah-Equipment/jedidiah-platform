@@ -1,4 +1,5 @@
-import { formatDate } from '@pkg/domain';
+import { departmentLabels, formatDate } from '@pkg/domain';
+import type { Department } from '@pkg/schema';
 import { IconArrowsSort } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
@@ -53,6 +54,15 @@ export function PlanCatalogControls({
         />
       }
     />
+  );
+}
+
+/** The Department heading the Bays below belong to, mirroring the web Board's Gantt sidebar. */
+export function PlanDepartmentHeader({ department }: { department: Department }) {
+  return (
+    <Text className="text-[10px] tracking-widest text-muted-foreground" mono weight="semibold">
+      {departmentLabels[department].toLocaleUpperCase()}
+    </Text>
   );
 }
 

@@ -32,7 +32,7 @@ vi.mock('@/components/units/UnitBuildStateChip', () => ({ UnitBuildStateChip: 'U
 vi.mock('@/theme/use-color-mode', () => ({ useColorMode: () => ({ resolved: 'dark' }) }));
 
 import type { BayListCard } from '@/lib/use-bay-list';
-import { PlanCatalogCard } from './bays/PlanCatalog';
+import { PlanCatalogCard, PlanDepartmentHeader } from './bays/PlanCatalog';
 import { JobCatalogCard } from './jobs/JobCatalog';
 import { ProductCatalogCard } from './products/ProductCatalog';
 import { QuoteCatalogCard } from './quotes/QuoteCatalog';
@@ -235,6 +235,12 @@ describe('catalog card mappings', () => {
       monoText: undefined,
       subText: 'NO ACTIVE JOB',
     });
+  });
+
+  test('heads a Plan group with the shared Department label, not the raw enum', () => {
+    const heading = asElement(PlanDepartmentHeader({ department: 'fabrication' }));
+
+    expect(heading.props.children).toBe('FABRICATION');
   });
 
   test('maps a Unit to serial, Product, ownership/date, and build state', () => {

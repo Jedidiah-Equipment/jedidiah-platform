@@ -22,6 +22,9 @@ vi.mock('./PartListCreateDialog.js', () => ({ PartListCreateDialog: () => null }
 vi.mock('./PartBulkImportDialog.js', () => ({
   PartBulkImportDialog: () => <button type="button">Bulk parts import</button>,
 }));
+vi.mock('./PartBulkExportButton.js', () => ({
+  PartBulkExportButton: () => <button type="button">Bulk parts export</button>,
+}));
 vi.mock('./PartLabelBatchDialog.js', () => ({
   PartLabelBatchDialog: () => <button type="button">Print labels</button>,
 }));
@@ -49,5 +52,7 @@ describe('PartsPage actions', () => {
     expect(html).not.toContain('New part');
     expect(html).not.toContain('Bulk parts import');
     expect(html).toContain('Print labels');
+    // Taking the catalog out is a read, so it survives the gate that removes putting it back.
+    expect(html).toContain('Bulk parts export');
   });
 });

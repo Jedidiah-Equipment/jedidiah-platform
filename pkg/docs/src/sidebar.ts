@@ -54,6 +54,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { text: "Read a Job's material variance", link: '/inventory/read-a-jobs-material-variance' },
       { text: "Close out a Job's stock", link: '/inventory/close-out-a-job' },
       { text: 'Print Part Labels', link: '/inventory/print-part-labels' },
+      { text: 'Export and import Parts in bulk', link: '/inventory/export-and-import-parts' },
       {
         text: 'Raise Purchase Orders from the buy list',
         link: '/inventory/raise-purchase-orders-from-the-buy-list',
@@ -66,6 +67,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     text: 'Inventory concepts',
     items: [
       { text: 'Stock on hand, Commitment, and Free Stock', link: '/inventory/stock-on-hand-and-free-stock' },
+      { text: 'How a bulk Parts import matches', link: '/inventory/how-a-bulk-parts-import-matches' },
       { text: 'Perpetual and periodic Parts', link: '/inventory/perpetual-and-periodic-stock' },
       { text: 'Warnings are judgments, not blocks', link: '/inventory/warnings-are-judgments' },
       { text: 'How stock costs work', link: '/inventory/how-stock-costs-work' },

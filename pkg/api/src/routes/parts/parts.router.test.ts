@@ -199,6 +199,18 @@ describe('parts.bom', () => {
   });
 });
 
+describe('parts.bulkExport', () => {
+  test('rejects unauthenticated and unauthorized bulk exports', async ({ context }) => {
+    await expect(context.createAnonCaller().parts.bulkExport({})).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+
+    await expect(context.createCaller(mockSession('sales')).parts.bulkExport({})).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+});
+
 describe('parts.bulkImport', () => {
   test('rejects unauthenticated and unauthorized bulk imports', async ({ context }) => {
     await expect(

@@ -222,23 +222,30 @@ export const PartCreateInput = PartInputFields.superRefine(refinePartInput);
 export type PartUpdateInput = z.infer<typeof PartUpdateInput>;
 export const PartUpdateInput = PartInputFields.extend({ id: UUID }).superRefine(refinePartInput);
 
+/**
+ * The catalog fields a bulk CSV carries, in both directions. The export writes exactly these and the
+ * import reads exactly these, so a column can only be added to one by being added to both.
+ */
+export type PartBulkExportRow = z.infer<typeof PartBulkExportRow>;
+export const PartBulkExportRow = z.object({
+  category: PartCategory,
+  code: PartCode,
+  description: PartDescription,
+  drawingCode: PartDrawingCodeInput,
+  finish: PartFinish,
+  isInternallyFabricated: z.boolean(),
+  name: PartName,
+  standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable().optional(),
+  supplierCode: PartSupplierCode,
+  /** Absent on a built Part row, which names no Supplier because it is bought from nobody. */
+  supplierName: SupplierCompanyName.nullable().default(null),
+  unitOfMeasure: PartUnitOfMeasure,
+});
+
 export type PartBulkImportRow = z.infer<typeof PartBulkImportRow>;
-export const PartBulkImportRow = z
-  .object({
-    category: PartCategory,
-    code: PartCode,
-    description: PartDescription,
-    drawingCode: PartDrawingCodeInput,
-    finish: PartFinish,
-    isInternallyFabricated: z.boolean(),
-    lineNumber: z.number().int().min(1),
-    name: PartName,
-    standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable().optional(),
-    supplierCode: PartSupplierCode,
-    /** Absent on a built Part row, which names no Supplier because it is bought from nobody. */
-    supplierName: SupplierCompanyName.nullable().default(null),
-    unitOfMeasure: PartUnitOfMeasure,
-  })
+export const PartBulkImportRow = PartBulkExportRow
+  // Only the import carries a line number: it is where the row came from, not something a Part has.
+  .extend({ lineNumber: z.number().int().min(1) })
   .superRefine((input, context) => {
     refinePartBuiltIsNotLinear(input, context);
     refinePartStandardPurchaseLength(
@@ -262,6 +269,12 @@ export const PartBulkImportRow = z
 export type PartBulkImportInput = z.infer<typeof PartBulkImportInput>;
 export const PartBulkImportInput = z.object({
   rows: z.array(PartBulkImportRow).min(1, 'At least one part row is required'),
+  supplierId: UUID.optional(),
+});
+
+export type PartBulkExportInput = z.infer<typeof PartBulkExportInput>;
+export const PartBulkExportInput = z.object({
+  /** Narrows the export to one Supplier's Parts, the same scoping the import accepts. */
   supplierId: UUID.optional(),
 });
 

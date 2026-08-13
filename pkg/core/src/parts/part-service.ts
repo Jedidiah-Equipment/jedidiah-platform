@@ -16,6 +16,8 @@ import {
 import type {
   AuthId,
   Part,
+  PartBulkExportInput,
+  PartBulkExportRow,
   PartBulkImportInput,
   PartBulkImportResult,
   PartCategoryListResult,
@@ -322,6 +324,46 @@ export async function updatePart({
   } catch (error) {
     throw mapPartUniqueViolation(error, input);
   }
+}
+
+/**
+ * The Parts catalog in the shape the bulk import reads back, so a user can take the file out, edit
+ * it, and put it in again. It carries only what the import writes — the stock policy, location and
+ * minimum a Part also holds are not the CSV's to own, so they are not the CSV's to hand out either.
+ */
+export async function bulkExportParts({
+  db,
+  input,
+}: {
+  db: Db;
+  input: PartBulkExportInput;
+}): Promise<PartBulkExportRow[]> {
+  const { supplierId } = input;
+
+  return (
+    db
+      .select({
+        category: parts.category,
+        code: parts.code,
+        description: parts.description,
+        drawingCode: parts.drawingCode,
+        finish: parts.finish,
+        isInternallyFabricated: parts.isInternallyFabricated,
+        name: parts.name,
+        standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
+        supplierCode: parts.supplierCode,
+        supplierName: supplier.companyName,
+        unitOfMeasure: parts.unitOfMeasure,
+      })
+      .from(parts)
+      .leftJoin(supplier, eq(parts.supplierId, supplier.id))
+      // The same removed-Supplier filter the Parts list applies. Without it the export would write a
+      // row the import cannot read back: the import resolves Suppliers among the live ones only, so a
+      // removed one reads as a Supplier that does not exist yet and the row is refused as a conflict.
+      // A Built Part joins to no Supplier at all, and a null `deletedAt` keeps it in.
+      .where(and(isNull(supplier.deletedAt), supplierId ? eq(parts.supplierId, supplierId) : undefined))
+      .orderBy(asc(parts.code))
+  );
 }
 
 export async function bulkImportParts({

@@ -76,7 +76,7 @@ describe('renderBrochurePdf', () => {
     });
   });
 
-  test('keeps a wrapped key feature on the two-page brochure', async () => {
+  test('keeps a compact Range logo and wrapped key feature on the two-page brochure', async () => {
     await expectTwoPageBrochure({
       ...fullBrochure(),
       keyFeatures: [
@@ -84,6 +84,7 @@ describe('renderBrochurePdf', () => {
         'Low maintenance',
         'Volume with extensions: 36 cubic meters and heavy-duty tandem axle',
       ],
+      rangeLogo: { ...image('contain'), aspectRatio: 1 },
     });
   });
 

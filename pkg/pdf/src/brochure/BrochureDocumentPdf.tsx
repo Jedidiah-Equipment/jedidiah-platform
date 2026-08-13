@@ -15,15 +15,21 @@ type BrochureDocumentPdfProps = {
 
 type ImageFit = NonNullable<BrochureDocumentImage>['fit'];
 
+type RangeLogoLayout = {
+  frameHeight: number;
+  imageHeight: number;
+  imageWidth: number;
+};
+
 const layout = {
   pagePaddingX: 18,
   coverPaddingTop: 38,
   detailPaddingTop: 24,
   brandLogoHeight: 36,
   brandLogoWidth: 126,
-  // Scale both bounds together; `contain` would otherwise leave landscape logos constrained by width.
-  rangeLogoHeight: 66,
-  rangeLogoWidth: 249,
+  rangeLogoCompactHeight: 96,
+  rangeLogoWideHeight: 66,
+  rangeLogoMaxWidth: 249,
   heroHeight: 384,
   techImageHeight: 142,
   secondaryHeight: 205,
@@ -79,14 +85,17 @@ const styles = StyleSheet.create({
     objectFit: 'contain',
     width: layout.brandLogoWidth,
   },
+  rangeLogoFrame: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    width: layout.rangeLogoMaxWidth,
+  },
   rangeLogo: {
-    height: layout.rangeLogoHeight,
     objectFit: 'contain',
-    width: layout.rangeLogoWidth,
   },
   rangeLogoFallback: {
-    height: layout.rangeLogoHeight,
-    width: layout.rangeLogoWidth,
+    height: layout.rangeLogoWideHeight,
+    width: layout.rangeLogoMaxWidth,
   },
   titleBlock: {
     alignItems: 'center',
@@ -337,9 +346,26 @@ const styles = StyleSheet.create({
   },
 });
 
+function getRangeLogoLayout(rangeLogo: BrochureDocumentImage): RangeLogoLayout {
+  const fallbackAspectRatio = layout.rangeLogoMaxWidth / layout.rangeLogoWideHeight;
+  const aspectRatio =
+    rangeLogo?.aspectRatio && Number.isFinite(rangeLogo.aspectRatio) && rangeLogo.aspectRatio > 0
+      ? rangeLogo.aspectRatio
+      : fallbackAspectRatio;
+  const frameHeight = aspectRatio < 2 ? layout.rangeLogoCompactHeight : layout.rangeLogoWideHeight;
+  const imageWidth = Math.min(layout.rangeLogoMaxWidth, frameHeight * aspectRatio);
+
+  return {
+    frameHeight,
+    imageHeight: imageWidth / aspectRatio,
+    imageWidth,
+  };
+}
+
 export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
   const hasColumns = document.standardAssemblies.length > 0 || document.optionalAssemblies.length > 0;
-  const coverLayout = getCoverLayout(document.keyFeatures, document.title);
+  const rangeLogoLayout = getRangeLogoLayout(document.rangeLogo);
+  const coverLayout = getCoverLayout(document.keyFeatures, document.title, rangeLogoLayout.frameHeight);
   const detailLayout = getDetailLayout(document);
   const messages = brochureMessages[document.locale];
 
@@ -358,11 +384,16 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
             <View style={styles.brandLogoFrame}>
               <Image src={jedidiahLogoSrc} style={styles.brandLogo} />
             </View>
-            {document.rangeLogo ? (
-              <Image src={document.rangeLogo.dataUri} style={styles.rangeLogo} />
-            ) : (
-              <View style={styles.rangeLogoFallback} />
-            )}
+            <View style={[styles.rangeLogoFrame, { height: rangeLogoLayout.frameHeight }]}>
+              {document.rangeLogo ? (
+                <Image
+                  src={document.rangeLogo.dataUri}
+                  style={[styles.rangeLogo, { height: rangeLogoLayout.imageHeight, width: rangeLogoLayout.imageWidth }]}
+                />
+              ) : (
+                <View style={styles.rangeLogoFallback} />
+              )}
+            </View>
           </View>
 
           <View style={styles.titleBlock}>
@@ -505,8 +536,13 @@ type DescriptionLayout = {
   paragraphMarginBottom: number;
 };
 
-export function getCoverLayout(keyFeatures: string[], title = ''): CoverLayout {
+export function getCoverLayout(
+  keyFeatures: string[],
+  title = '',
+  rangeLogoFrameHeight: number = layout.rangeLogoWideHeight,
+): CoverLayout {
   const featureCount = keyFeatures.length;
+  const rangeLogoHeightDelta = Math.max(0, rangeLogoFrameHeight - layout.rangeLogoWideHeight);
   const measuredFeatureListWidth = (baseWidth: number, fontSize: number) =>
     measureKeyFeatureListWidth(keyFeatures, baseWidth, fontSize);
 
@@ -517,7 +553,7 @@ export function getCoverLayout(keyFeatures: string[], title = ''): CoverLayout {
       featureListWidth: measuredFeatureListWidth(260, 12.5),
       headingFontSize: 24,
       headingMarginBottom: 34,
-      heroHeight: layout.heroHeight,
+      heroHeight: layout.heroHeight - rangeLogoHeightDelta,
       rowMarginBottom: 9,
       sectionMarginTop: 86,
       titleFontSize: fitTitleFontSize(title),
@@ -531,7 +567,7 @@ export function getCoverLayout(keyFeatures: string[], title = ''): CoverLayout {
       featureListWidth: measuredFeatureListWidth(310, 10.5),
       headingFontSize: 21,
       headingMarginBottom: 22,
-      heroHeight: 360,
+      heroHeight: 360 - rangeLogoHeightDelta,
       rowMarginBottom: 5,
       sectionMarginTop: 48,
       titleFontSize: fitTitleFontSize(title),
@@ -544,7 +580,7 @@ export function getCoverLayout(keyFeatures: string[], title = ''): CoverLayout {
     featureListWidth: measuredFeatureListWidth(340, 8),
     headingFontSize: 18,
     headingMarginBottom: 8,
-    heroHeight: 318,
+    heroHeight: 318 - rangeLogoHeightDelta,
     rowMarginBottom: featureCount >= PRODUCT_KEY_FEATURES_MAX_COUNT ? 2 : 3,
     sectionMarginTop: 30,
     titleFontSize: fitTitleFontSize(title),

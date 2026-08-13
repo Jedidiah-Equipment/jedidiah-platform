@@ -87,7 +87,7 @@ describe('getBrochureDocumentModel', () => {
     });
   });
 
-  test('trims excessive vertical padding from a landscape Range logo', async () => {
+  test('records the Range logo aspect ratio without changing its source canvas', async () => {
     const logoBytes = await paddedLandscapeLogo();
     const rangeLogo = await storeRangeLogo(logoBytes);
 
@@ -99,26 +99,8 @@ describe('getBrochureDocumentModel', () => {
       storage: rangeLogo.storage,
     });
 
-    expect(await dataUriDimensions(document.rangeLogo?.dataUri)).toEqual({ height: 40, width: 160 });
-  });
-
-  test('keeps a tightly cropped square Range logo canvas', async () => {
-    const logoBytes = await sharp({
-      create: { background: '#111111', channels: 3, height: 100, width: 100 },
-    })
-      .png()
-      .toBuffer();
-    const rangeLogo = await storeRangeLogo(logoBytes);
-
-    const document = await getBrochureDocumentModel({
-      images: {},
-      locale: 'en',
-      product: brochureProduct(),
-      rangeLogo: rangeLogo.ref,
-      storage: rangeLogo.storage,
-    });
-
-    expect(await dataUriDimensions(document.rangeLogo?.dataUri)).toEqual({ height: 100, width: 100 });
+    expect(document.rangeLogo?.aspectRatio).toBe(1);
+    expect(await dataUriDimensions(document.rangeLogo?.dataUri)).toEqual({ height: 500, width: 500 });
   });
 });
 

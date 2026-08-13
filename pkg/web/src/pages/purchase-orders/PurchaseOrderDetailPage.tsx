@@ -46,6 +46,7 @@ import {
   type PurchaseOrderDraftFormValues,
   PurchaseOrderDraftFormValues as PurchaseOrderDraftFormValuesSchema,
   quantityDecimals,
+  quantityForPart,
   toPurchaseOrderDraftFormValues,
   toPurchaseOrderDraftInput,
 } from './components/types.js';
@@ -448,7 +449,12 @@ const PurchaseOrderLinesDataTable: React.FC<{
                 <field.ComboboxField
                   emptyMessage="No Parts found."
                   label={<span className="sr-only">Part</span>}
-                  onValueCommit={commit}
+                  onValueCommit={(partId) => {
+                    const quantityName = `lines[${index}].quantity` as const;
+                    const nextPart = eligibleParts.find((candidate) => candidate.id === partId);
+                    form.setFieldValue(quantityName, quantityForPart(form.getFieldValue(quantityName), nextPart));
+                    commit();
+                  }}
                   options={options}
                   placeholder="Search Parts"
                 />

@@ -26,6 +26,7 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
+import { roundNumberFieldValue } from '@/components/form/fields/NumberField.js';
 import { optionalNumber } from '@/components/form/utils/form-schema.js';
 
 export type PurchaseOrderCreateFormValues = z.infer<typeof PurchaseOrderCreateFormValues>;
@@ -57,6 +58,16 @@ export function quantityDecimals(part: Pick<Part, 'unitOfMeasure'> | undefined):
   if (!part) return undefined;
 
   return unitClassFor(part.unitOfMeasure) === 'measured' ? 3 : 0;
+}
+
+/**
+ * What a line's quantity becomes when its Part changes: 7.5 kg swapped for a Part counted in pieces
+ * is 8 of them. The picker settles this itself because the autosave flush is one microtask behind it,
+ * and the field's own rounding is a render pass behind that — long enough to post the old number
+ * against the new Part and earn a refusal the row does not look like it deserves.
+ */
+export function quantityForPart(quantity: number, part: Pick<Part, 'unitOfMeasure'> | undefined): number {
+  return roundNumberFieldValue(quantity, quantityDecimals(part));
 }
 
 export function toPurchaseOrderCreateInput(values: PurchaseOrderCreateFormValues): PurchaseOrderCreateInput {

@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { CatalogListCard } from '@/components/CatalogList';
+import { DepartmentIcon } from '@/components/departments/DepartmentIcon';
 import {
   type ListControlOption,
   ListControlRow,
@@ -60,9 +61,12 @@ export function PlanCatalogControls({
 /** The Department heading the Bays below belong to, mirroring the web Board's Gantt sidebar. */
 export function PlanDepartmentHeader({ department }: { department: Department }) {
   return (
-    <Text className="text-[10px] tracking-widest text-muted-foreground" mono weight="semibold">
-      {departmentLabels[department].toLocaleUpperCase()}
-    </Text>
+    <View className="flex-row items-center gap-1.5">
+      <DepartmentIcon className="text-muted-foreground" department={department} size={14} />
+      <Text className="text-[12px] uppercase tracking-widest text-muted-foreground" mono weight="semibold">
+        {departmentLabels[department]}
+      </Text>
+    </View>
   );
 }
 

@@ -1,3 +1,4 @@
+import { groupBaysByDepartmentPipeline } from '@pkg/domain';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,7 +7,7 @@ import { PlanCatalogCard, PlanCatalogControls, PlanDepartmentHeader } from '@/co
 import { CatalogListSkeleton, PaginatedCatalogList } from '@/components/CatalogList';
 import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
-import { type BaySort, filterBayCards, groupBayCardsByDepartment, isBaySort, sortBayCards } from '@/lib/bay-sort';
+import { type BaySort, filterBayCards, isBaySort, sortBayCards } from '@/lib/bay-sort';
 import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
 import { useBayList } from '@/lib/use-bay-list';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
@@ -22,7 +23,7 @@ export default function PlanRoute() {
     () => (state.status === 'ready' ? sortBayCards(filterBayCards(state.cards, search), sort) : []),
     [search, sort, state],
   );
-  const departments = useMemo(() => groupBayCardsByDepartment(bays), [bays]);
+  const departments = useMemo(() => groupBaysByDepartmentPipeline(bays), [bays]);
   const total = state.status === 'ready' ? bays.length : null;
   const emptyContent =
     state.status === 'error' ? (

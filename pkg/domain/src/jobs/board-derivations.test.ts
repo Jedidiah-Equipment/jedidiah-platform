@@ -11,6 +11,7 @@ import {
   getJobProjectedFinishDates,
   getNextJobIds,
   getOffDayLabel,
+  groupBaysByDepartmentPipeline,
   isJobDeliveryAtRisk,
   listEnabledBays,
   listNextWorkSlots,
@@ -144,6 +145,50 @@ describe('byBayDepartmentPipeline', () => {
     const procurement = buildBay({ department: 'procurement', id: 'bay-3', name: 'Bay Z' });
 
     expect([fabB, fabA, procurement].sort(byBayDepartmentPipeline)).toEqual([fabA, fabB, procurement]);
+  });
+});
+
+describe('groupBaysByDepartmentPipeline', () => {
+  const bay = (department: Department, name: string) => buildBay({ department, id: name, name });
+
+  it('orders groups by the pipeline, not by the order the bays arrive in', () => {
+    const bays = [bay('workshop', 'Wksp 1'), bay('paint', 'Paint 1'), bay('fabrication', 'Fab 1')];
+
+    expect(groupBaysByDepartmentPipeline(bays).map((group) => group.department)).toEqual([
+      'fabrication',
+      'paint',
+      'workshop',
+    ]);
+  });
+
+  it('keeps the incoming order of bays within a department and omits departments with no bays', () => {
+    const bays = [bay('paint', 'Paint Z'), bay('fabrication', 'Fab A'), bay('paint', 'Paint A')];
+
+    expect(groupBaysByDepartmentPipeline(bays).map((group) => group.bays.map((entry) => entry.name))).toEqual([
+      ['Fab A'],
+      ['Paint Z', 'Paint A'],
+    ]);
+  });
+
+  it('gives a department outside the pipeline one trailing group rather than a duplicate heading', () => {
+    const bays = [bay('stores' as Department, 'Stores 1'), bay('paint', 'Paint 1'), bay('stores' as Department, 'S 2')];
+    const groups = groupBaysByDepartmentPipeline(bays);
+
+    expect(groups.map((group) => group.department)).toEqual(['paint', 'stores']);
+    expect(groups[1]?.bays.map((entry) => entry.name)).toEqual(['Stores 1', 'S 2']);
+  });
+
+  it('does not mutate the input array', () => {
+    const bays = [bay('workshop', 'Wksp 1'), bay('fabrication', 'Fab 1')];
+    const original = [...bays];
+
+    groupBaysByDepartmentPipeline(bays);
+
+    expect(bays).toEqual(original);
+  });
+
+  it('handles an empty list', () => {
+    expect(groupBaysByDepartmentPipeline([])).toEqual([]);
   });
 });
 

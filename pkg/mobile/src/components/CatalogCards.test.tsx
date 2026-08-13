@@ -11,11 +11,16 @@ vi.mock('@pkg/domain', async (importOriginal) => ({
 vi.mock('@tabler/icons-react-native', () => ({
   IconAlertTriangle: 'IconAlertTriangle',
   IconArrowsSort: 'IconArrowsSort',
+  IconBrush: 'IconBrush',
   IconCheck: 'IconCheck',
+  IconClipboardList: 'IconClipboardList',
   IconFilter: 'IconFilter',
+  IconHammer: 'IconHammer',
   IconPackage: 'IconPackage',
   IconPlus: 'IconPlus',
+  IconTool: 'IconTool',
   IconTools: 'IconTools',
+  IconTruckDelivery: 'IconTruckDelivery',
 }));
 vi.mock('expo-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('react-native', () => ({ Pressable: 'Pressable', useWindowDimensions: () => ({ width: 400 }), View: 'View' }));
@@ -237,10 +242,14 @@ describe('catalog card mappings', () => {
     });
   });
 
-  test('heads a Plan group with the shared Department label, not the raw enum', () => {
+  test("heads a Plan group with the Department's shared label and web's glyph for it", () => {
     const heading = asElement(PlanDepartmentHeader({ department: 'fabrication' }));
+    const [badge, label] = heading.props.children as TestElement[];
+    const renderedBadge = asElement((badge.type as (props: ElementProps) => unknown)(badge.props));
 
-    expect(heading.props.children).toBe('FABRICATION');
+    expect(label.props.children).toBe('Fabrication');
+    expect(label.props.className).toContain('uppercase');
+    expect(renderedBadge.props.icon).toBe('IconHammer');
   });
 
   test('maps a Unit to serial, Product, ownership/date, and build state', () => {

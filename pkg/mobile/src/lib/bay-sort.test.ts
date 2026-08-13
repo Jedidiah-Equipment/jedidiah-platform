@@ -1,15 +1,14 @@
-import type { Department } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { type BaySort, filterBayCards, groupBayCardsByDepartment, isBaySort, sortBayCards } from './bay-sort';
+import { type BaySort, filterBayCards, isBaySort, sortBayCards } from './bay-sort';
 import type { BayListCard } from './use-bay-list';
 
 // A Bay card reduced to the fields sortBayCards reads; the rest of BayListCard is irrelevant here.
-function card(name: string, remainingWorkDays: number | null, department: Department = 'assembly'): BayListCard {
+function card(name: string, remainingWorkDays: number | null): BayListCard {
   return {
     id: name,
     name,
-    department,
+    department: 'assembly',
     operator: null,
     active: remainingWorkDays === null ? null : ({ remainingWorkDays } as BayListCard['active']),
   };
@@ -66,50 +65,6 @@ describe('sortBayCards', () => {
 
   it('handles an empty list', () => {
     expect(sortBayCards([], 'days-left' satisfies BaySort)).toEqual([]);
-  });
-});
-
-describe('groupBayCardsByDepartment', () => {
-  it('orders groups by the fixed department pipeline, not by encounter order', () => {
-    const cards = [card('Workshop 1', 1, 'workshop'), card('Paint 1', 2, 'paint'), card('Fab 1', 3, 'fabrication')];
-
-    expect(groupBayCardsByDepartment(cards).map((group) => group.department)).toEqual([
-      'fabrication',
-      'paint',
-      'workshop',
-    ]);
-  });
-
-  it('keeps the incoming order of bays within a department, so the sort control still decides it', () => {
-    const cards = sortBayCards(
-      [card('Paint Z', 1, 'paint'), card('Fab A', 9, 'fabrication'), card('Paint A', 4, 'paint')],
-      'days-left',
-    );
-
-    expect(groupBayCardsByDepartment(cards).map((group) => group.bays.map((bay) => bay.name))).toEqual([
-      ['Fab A'],
-      ['Paint Z', 'Paint A'],
-    ]);
-  });
-
-  it('omits departments with no bays', () => {
-    const groups = groupBayCardsByDepartment([card('Supply 1', 1, 'supply')]);
-
-    expect(groups).toHaveLength(1);
-    expect(groups[0]?.department).toBe('supply');
-  });
-
-  it('does not mutate the input array', () => {
-    const cards = [card('Workshop 1', 1, 'workshop'), card('Fab 1', 3, 'fabrication')];
-    const original = [...cards];
-
-    groupBayCardsByDepartment(cards);
-
-    expect(cards).toEqual(original);
-  });
-
-  it('handles an empty list', () => {
-    expect(groupBayCardsByDepartment([])).toEqual([]);
   });
 });
 

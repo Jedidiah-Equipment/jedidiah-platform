@@ -1,4 +1,5 @@
-import type { Department, ProjectedBayQueue, UUID } from '@pkg/schema';
+import { type BayDepartmentGroup, groupBaysByDepartmentPipeline } from '@pkg/domain';
+import type { ProjectedBayQueue, UUID } from '@pkg/schema';
 
 import { sortBaysByDepartmentPipeline } from '@/components/bays/sort-bays.js';
 
@@ -6,10 +7,7 @@ import { sortBaysByDepartmentPipeline } from '@/components/bays/sort-bays.js';
 export const DEPARTMENT_HEADER_HEIGHT = 32;
 export const BAY_ROW_HEIGHT = 72;
 
-export type BoardGanttDepartmentGroup = {
-  bays: ProjectedBayQueue[];
-  department: Department;
-};
+export type BoardGanttDepartmentGroup = BayDepartmentGroup<ProjectedBayQueue>;
 
 export type BoardGanttLayout = {
   bayTopById: ReadonlyMap<UUID, number>;
@@ -18,22 +16,17 @@ export type BoardGanttLayout = {
 };
 
 export function createBoardGanttLayout(bays: ProjectedBayQueue[]): BoardGanttLayout {
-  const groups: BoardGanttDepartmentGroup[] = [];
+  const groups = groupBaysByDepartmentPipeline(sortBaysByDepartmentPipeline(bays));
   const bayTopById = new Map<UUID, number>();
   let top = 0;
 
-  for (const bay of sortBaysByDepartmentPipeline(bays)) {
-    let group = groups.at(-1);
+  for (const group of groups) {
+    top += DEPARTMENT_HEADER_HEIGHT;
 
-    if (group?.department !== bay.department) {
-      group = { bays: [], department: bay.department };
-      groups.push(group);
-      top += DEPARTMENT_HEADER_HEIGHT;
+    for (const bay of group.bays) {
+      bayTopById.set(bay.id, top);
+      top += BAY_ROW_HEIGHT;
     }
-
-    group.bays.push(bay);
-    bayTopById.set(bay.id, top);
-    top += BAY_ROW_HEIGHT;
   }
 
   return { bayTopById, contentHeight: top, groups };

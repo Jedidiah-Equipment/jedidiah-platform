@@ -82,29 +82,27 @@ function modelJobCode(code: string): PurchaseOrderPdfModel['jobCodes'][number] {
 
 type RenderedElement = ReactElement<{ children?: ReactNode; src?: unknown }>;
 
-function collectImageSources(node: ReactNode): string[] {
-  return collectElements(node).flatMap((element) => (typeof element.props.src === 'string' ? [element.props.src] : []));
-}
-
-function collectElements(node: ReactNode): RenderedElement[] {
-  if (node === null || node === undefined || typeof node === 'boolean') return [];
-  if (Array.isArray(node)) return node.flatMap(collectElements);
-  if (!isValidElement(node)) return [];
-  const element = node as RenderedElement;
-  if (typeof element.type === 'function') {
-    return collectElements((element.type as (props: typeof element.props) => ReactNode)(element.props));
-  }
-  return [element, ...collectElements(element.props.children)];
-}
-
 function collectText(node: ReactNode): string[] {
+  return flatten(node).flatMap((child) =>
+    typeof child === 'string' || typeof child === 'number' ? [String(child)] : [],
+  );
+}
+
+function collectImageSources(node: ReactNode): string[] {
+  return flatten(node).flatMap((child) => {
+    const src = isValidElement(child) ? (child as RenderedElement).props.src : null;
+    return typeof src === 'string' ? [src] : [];
+  });
+}
+
+function flatten(node: ReactNode): ReactNode[] {
   if (node === null || node === undefined || typeof node === 'boolean') return [];
-  if (typeof node === 'string' || typeof node === 'number') return [String(node)];
-  if (Array.isArray(node)) return node.flatMap(collectText);
+  if (typeof node === 'string' || typeof node === 'number') return [node];
+  if (Array.isArray(node)) return node.flatMap(flatten);
   if (!isValidElement(node)) return [];
   const element = node as RenderedElement;
   if (typeof element.type === 'function') {
-    return collectText((element.type as (props: typeof element.props) => ReactNode)(element.props));
+    return flatten((element.type as (props: typeof element.props) => ReactNode)(element.props));
   }
-  return collectText(element.props.children);
+  return [element, ...flatten(element.props.children)];
 }

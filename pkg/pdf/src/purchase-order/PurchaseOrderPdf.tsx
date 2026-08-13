@@ -22,8 +22,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 18,
   },
-  brand: { alignItems: 'flex-start' },
-  logo: { height: 26, marginBottom: 10, objectFit: 'contain', width: 120 },
+  // Sized to render at the same width as the logo on the Quote document.
+  logo: { height: 29, marginBottom: 10, objectFit: 'contain', width: 132 },
   title: { fontFamily: pdfTitleFontFamily, fontSize: 24, fontWeight: 700 },
   code: { color: pdfColors.yellow, fontFamily: pdfTitleFontFamily, fontSize: 18, fontWeight: 700 },
   metaGrid: { flexDirection: 'row', gap: 12, marginBottom: 24 },
@@ -71,7 +71,7 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
     <Document title={document.code}>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <View style={styles.brand}>
+          <View>
             <Image src={jedidiahLogoSrc} style={styles.logo} />
             <Text style={styles.title}>PURCHASE ORDER</Text>
           </View>

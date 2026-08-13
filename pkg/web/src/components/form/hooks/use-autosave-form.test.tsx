@@ -55,9 +55,45 @@ describe('useAutosaveForm', () => {
       });
     });
   });
+
+  it('saves the rounded value a whole-unit NumberField displays', async () => {
+    const save = vi.fn<(input: { quantity: number }) => Promise<void>>().mockResolvedValue();
+    const container = document.createElement('div');
+    document.body.append(container);
+    mountedContainers.push(container);
+    const root = createRoot(container);
+    mountedRoots.push(root);
+
+    await act(async () => {
+      root.render(<AutosaveNumberForm decimals={0} save={save} />);
+    });
+
+    const input = container.querySelector('input');
+    expect(input).not.toBeNull();
+
+    act(() => {
+      input?.focus();
+      setNativeInputValue(input as HTMLInputElement, '7.5');
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+      input?.blur();
+    });
+
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(save).toHaveBeenCalledWith({ quantity: 8 });
+      });
+    });
+  });
 });
 
-function AutosaveNumberForm({ save }: { save: (input: { quantity: number }) => Promise<void> }) {
+function AutosaveNumberForm({
+  decimals,
+  save,
+}: {
+  decimals?: number;
+  save: (input: { quantity: number }) => Promise<void>;
+}) {
+  const decimalsProp = decimals === undefined ? {} : { decimals };
   const { form, formProps } = useAutosaveForm({
     defaultValues: { quantity: 5 },
     failureMessage: 'Unable to save quantity.',
@@ -68,7 +104,9 @@ function AutosaveNumberForm({ save }: { save: (input: { quantity: number }) => P
 
   return (
     <form {...formProps}>
-      <form.AppField name="quantity">{(field) => <field.NumberField label="Quantity" />}</form.AppField>
+      <form.AppField name="quantity">
+        {(field) => <field.NumberField {...decimalsProp} label="Quantity" />}
+      </form.AppField>
     </form>
   );
 }

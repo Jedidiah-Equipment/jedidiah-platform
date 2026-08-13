@@ -60,8 +60,16 @@ export function NumberField({
         inputMode={inputMode}
         name={field.name}
         onBlur={() => {
+          // A field that declares `decimals` rounds what it shows, so the value has to follow it down.
+          // Left alone the two disagree — the box reads 8 while the form still holds the keyed 7.5 —
+          // and every save from then on is refused over a number nobody can see or correct.
+          const snappedValue = snapNumberFieldValue(field.state.value, decimals);
+          if (hasNumberFieldValueChanged(field.state.value, snappedValue)) {
+            previousFieldValue.current = snappedValue;
+            field.handleChange(snappedValue);
+          }
           field.handleBlur();
-          setDisplayValue(formatNumberFieldValue(field.state.value, decimals));
+          setDisplayValue(formatNumberFieldValue(snappedValue, decimals));
         }}
         onChange={(event) => {
           const nextValue = parseNumberFieldValue(event.target.value, emptyValue);
@@ -81,6 +89,17 @@ export function NumberField({
 
 export function hasNumberFieldValueChanged(previousValue: number, nextValue: number): boolean {
   return !Object.is(previousValue, nextValue);
+}
+
+/**
+ * The value the field is showing, read back off its own display text. Going through the formatter is
+ * what keeps the two in step: Intl rounds half away from zero over the exact decimal value, which
+ * `Math.round` matches for neither a negative half nor a value like `1.005`.
+ */
+export function snapNumberFieldValue(value: number, decimals?: number): number {
+  if (decimals === undefined || !Number.isFinite(value)) return value;
+
+  return parseNumberFieldValue(formatNumberFieldValue(value, decimals));
 }
 
 export function formatNumberFieldValue(value: number, decimals?: number): string {

@@ -1,9 +1,10 @@
-import { auditEvents, type Db, parts, stockMovements, supplier, user } from '@pkg/db';
+import { auditEvents, type Db, partBom, parts, stockMovements, supplier, user } from '@pkg/db';
 import { type PartBulkImportRow, PartListInput } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
+import { savePartBom } from './part-bom-service.js';
 import {
   bulkExportParts,
   bulkImportParts,
@@ -472,6 +473,57 @@ describe('bulkImportParts', () => {
       updatedCount: 0,
     });
     expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies']);
+  });
+});
+
+describe('bulkImportParts and the Supplier-or-BOM invariant', () => {
+  /**
+   * A Part has either a Supplier or a BOM, never both. `updatePart` protects that with
+   * `assertBomCleared`; the bulk path does not call it, and does not need to — the identity guard
+   * refuses the row first, because a Built Part stores no Supplier and the row must name one. This
+   * pins that refusal, since it is the only thing standing between a CSV and a Part holding both.
+   */
+  test('refuses to make a Built Part bought while its BOM still stands', async ({ context }) => {
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({ code: 'C-100', supplierCode: 'SUP-100' }),
+          importRow({ code: 'B-100', isInternallyFabricated: true, name: 'Weld bracket', supplierName: null }),
+        ],
+      },
+    });
+    const [component] = await context.db.select().from(parts).where(eq(parts.code, 'C-100'));
+    const [built] = await context.db.select().from(parts).where(eq(parts.code, 'B-100'));
+    if (!component || !built) throw new Error('Expected the import to have created both Parts');
+    await savePartBom({
+      actorUserId,
+      db: context.db,
+      input: { lines: [{ componentPartId: component.id, quantity: 2 }], partId: built.id },
+    });
+
+    // The row flips the Built Part back to bought. Its BOM is still stored, and the DB's XOR check
+    // cannot see `part_bom`, so nothing below this guard would stop it.
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({ code: 'B-100', isInternallyFabricated: false, name: 'Weld bracket', supplierCode: 'SUP-900' }),
+        ],
+      },
+    });
+    const [after] = await context.db.select().from(parts).where(eq(parts.code, 'B-100'));
+
+    expect(result.errors).toEqual([
+      'Line 2: Part code B-100 already exists with supplier no supplier (built in-house) / supplier code SUP-100; CSV row has Acme Supplies / SUP-900.',
+    ]);
+    expect(result.updatedCount).toBe(0);
+    // Still built, still supplier-less, so it never comes to hold a Supplier and a BOM at once.
+    expect(after).toMatchObject({ isInternallyFabricated: true, supplierId: null });
+    const bomLines = await context.db.select().from(partBom).where(eq(partBom.parentPartId, built.id));
+    expect(bomLines).toHaveLength(1);
   });
 });
 

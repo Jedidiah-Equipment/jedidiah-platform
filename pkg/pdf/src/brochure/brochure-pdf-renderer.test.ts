@@ -76,6 +76,17 @@ describe('renderBrochurePdf', () => {
     });
   });
 
+  test('keeps a wrapped key feature on the two-page brochure', async () => {
+    await expectTwoPageBrochure({
+      ...fullBrochure(),
+      keyFeatures: [
+        'Pay load: 18 tons',
+        'Low maintenance',
+        'Volume with extensions: 36 cubic meters and heavy-duty tandem axle',
+      ],
+    });
+  });
+
   test('keeps dense assembly columns on the two-page brochure', async () => {
     await expectTwoPageBrochure({
       ...fullBrochure(),

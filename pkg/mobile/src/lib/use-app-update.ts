@@ -4,6 +4,7 @@ import { AppState } from 'react-native';
 
 import {
   resolveUpdatePrompt,
+  selectOfferedUpdate,
   shouldCheckForUpdate,
   type UpdateInstallState,
   type UpdatePromptState,
@@ -20,7 +21,7 @@ import {
  */
 export function useAppUpdate(): {
   dismiss: (updateKey: string) => void;
-  install: () => void;
+  install: (updateKey: string) => void;
   prompt: UpdatePromptState;
 } {
   const {
@@ -33,10 +34,20 @@ export function useAppUpdate(): {
     lastCheckForUpdateTimeSinceRestart,
   } = Updates.useUpdates();
   const [installState, setInstallState] = useState<UpdateInstallState>('idle');
+  const [installUpdateKey, setInstallUpdateKey] = useState<string | null>(null);
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(null);
   // Expo gives no way to abort a download in flight, so backing out bumps this instead: a fetch
   // that lands after the user walked away finds a stale generation and never restarts the app.
   const installGeneration = useRef(0);
+
+  const snapshot = {
+    availableUpdate,
+    downloadedUpdate,
+    isEnabled: Updates.isEnabled,
+    isUpdateAvailable,
+    isUpdatePending,
+  };
+  const isOfferedUpdateDownloaded = selectOfferedUpdate(snapshot)?.isDownloaded ?? false;
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (status) => {
@@ -56,51 +67,49 @@ export function useAppUpdate(): {
     return () => subscription.remove();
   }, [isChecking, isDownloading, lastCheckForUpdateTimeSinceRestart]);
 
-  const install = useCallback(() => {
-    installGeneration.current += 1;
-    const generation = installGeneration.current;
-    const abandoned = () => installGeneration.current !== generation;
-    setInstallState('installing');
+  const install = useCallback(
+    (updateKey: string) => {
+      installGeneration.current += 1;
+      const generation = installGeneration.current;
+      const abandoned = () => installGeneration.current !== generation;
+      setInstallUpdateKey(updateKey);
+      setInstallState('installing');
 
-    void (async () => {
-      try {
-        if (!isUpdatePending) {
-          const fetched = await Updates.fetchUpdateAsync();
-          // The update can expire or be rolled back between the check and the fetch. Reloading then
-          // would restart into the same version and offer it again on the way back up.
-          if (!fetched.isNew && !fetched.isRollBackToEmbedded) {
-            if (!abandoned()) setInstallState('failed');
-            return;
+      void (async () => {
+        try {
+          // Only skip the fetch when the update being offered is the one already on the device —
+          // a pending download can be older than what the last check turned up.
+          if (!isOfferedUpdateDownloaded) {
+            const fetched = await Updates.fetchUpdateAsync();
+            // The update can expire or be rolled back between the check and the fetch.
+            // `fetchUpdateAsync` resolves happily in that case, and reloading would restart into
+            // the same version and offer it again on the way back up.
+            if (!fetched.isNew && !fetched.isRollBackToEmbedded) {
+              if (!abandoned()) setInstallState('failed');
+              return;
+            }
           }
-        }
 
-        if (abandoned()) return;
-        await Updates.reloadAsync();
-      } catch {
-        if (!abandoned()) setInstallState('failed');
-      }
-    })();
-  }, [isUpdatePending]);
+          if (abandoned()) return;
+          await Updates.reloadAsync();
+        } catch {
+          if (!abandoned()) setInstallState('failed');
+        }
+      })();
+    },
+    [isOfferedUpdateDownloaded],
+  );
 
   const dismiss = useCallback((updateKey: string) => {
     installGeneration.current += 1;
     setInstallState('idle');
+    setInstallUpdateKey(null);
     setDismissedUpdateKey(updateKey);
   }, []);
 
   return {
     dismiss,
     install,
-    prompt: resolveUpdatePrompt({
-      dismissedUpdateKey,
-      installState,
-      snapshot: {
-        availableUpdate,
-        downloadedUpdate,
-        isEnabled: Updates.isEnabled,
-        isUpdateAvailable,
-        isUpdatePending,
-      },
-    }),
+    prompt: resolveUpdatePrompt({ dismissedUpdateKey, installState, installUpdateKey, snapshot }),
   };
 }

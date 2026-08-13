@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveUpdatePrompt, shouldCheckForUpdate, type UpdateSnapshot, updateCheckIntervalMs } from './app-update';
 
 const NEXT_UPDATE = { createdAt: new Date('2026-08-13T06:00:00.000Z'), updateId: 'update-2' };
+const LATER_UPDATE = { createdAt: new Date('2026-08-13T07:00:00.000Z'), updateId: 'update-3' };
 
 function snapshot(overrides: Partial<UpdateSnapshot> = {}): UpdateSnapshot {
   return {
@@ -15,11 +16,15 @@ function snapshot(overrides: Partial<UpdateSnapshot> = {}): UpdateSnapshot {
   };
 }
 
+type ResolveInput = Parameters<typeof resolveUpdatePrompt>[0];
+
+function resolve(overrides: Partial<ResolveInput> & Pick<ResolveInput, 'snapshot'>) {
+  return resolveUpdatePrompt({ dismissedUpdateKey: null, installState: 'idle', installUpdateKey: null, ...overrides });
+}
+
 describe('resolveUpdatePrompt', () => {
   it('stays hidden where updates are disabled, so a dev client is never prompted', () => {
-    const prompt = resolveUpdatePrompt({
-      dismissedUpdateKey: null,
-      installState: 'idle',
+    const prompt = resolve({
       snapshot: snapshot({ availableUpdate: NEXT_UPDATE, isEnabled: false, isUpdateAvailable: true }),
     });
 
@@ -27,48 +32,35 @@ describe('resolveUpdatePrompt', () => {
   });
 
   it('stays hidden while the running build is the newest one', () => {
-    const prompt = resolveUpdatePrompt({ dismissedUpdateKey: null, installState: 'idle', snapshot: snapshot() });
-
-    expect(prompt.kind).toBe('hidden');
+    expect(resolve({ snapshot: snapshot() }).kind).toBe('hidden');
   });
 
   it('offers an update that has been found but not downloaded yet', () => {
-    const prompt = resolveUpdatePrompt({
-      dismissedUpdateKey: null,
-      installState: 'idle',
-      snapshot: snapshot({ availableUpdate: NEXT_UPDATE, isUpdateAvailable: true }),
-    });
+    const prompt = resolve({ snapshot: snapshot({ availableUpdate: NEXT_UPDATE, isUpdateAvailable: true }) });
 
     expect(prompt).toEqual({ kind: 'offered', updateKey: 'update-2' });
   });
 
   it('offers an update that expo already downloaded in the background', () => {
-    const prompt = resolveUpdatePrompt({
-      dismissedUpdateKey: null,
-      installState: 'idle',
-      snapshot: snapshot({ downloadedUpdate: NEXT_UPDATE, isUpdatePending: true }),
-    });
+    const prompt = resolve({ snapshot: snapshot({ downloadedUpdate: NEXT_UPDATE, isUpdatePending: true }) });
 
     expect(prompt).toEqual({ kind: 'offered', updateKey: 'update-2' });
   });
 
-  it('keys a rollback directive off its creation time, since it carries no update id', () => {
-    const prompt = resolveUpdatePrompt({
-      dismissedUpdateKey: null,
-      installState: 'idle',
+  it('keys an update with no id off its creation time', () => {
+    const prompt = resolve({
       snapshot: snapshot({
         availableUpdate: { createdAt: new Date('2026-08-13T06:00:00.000Z'), updateId: undefined },
         isUpdateAvailable: true,
       }),
     });
 
-    expect(prompt).toEqual({ kind: 'offered', updateKey: 'rollback:2026-08-13T06:00:00.000Z' });
+    expect(prompt).toEqual({ kind: 'offered', updateKey: 'at:2026-08-13T06:00:00.000Z' });
   });
 
   it('hides an update the user asked to be left alone about', () => {
-    const prompt = resolveUpdatePrompt({
+    const prompt = resolve({
       dismissedUpdateKey: 'update-2',
-      installState: 'idle',
       snapshot: snapshot({ availableUpdate: NEXT_UPDATE, isUpdateAvailable: true }),
     });
 
@@ -76,12 +68,24 @@ describe('resolveUpdatePrompt', () => {
   });
 
   it('asks again once a newer update than the dismissed one arrives', () => {
-    const prompt = resolveUpdatePrompt({
+    const prompt = resolve({
       dismissedUpdateKey: 'update-2',
-      installState: 'idle',
+      snapshot: snapshot({ availableUpdate: LATER_UPDATE, isUpdateAvailable: true }),
+    });
+
+    expect(prompt).toEqual({ kind: 'offered', updateKey: 'update-3' });
+  });
+
+  // Expo refreshes `availableUpdate` on a check but leaves `downloadedUpdate` on the last one it
+  // actually fetched. Preferring the download would strand every update published in a long session.
+  it('offers a newer available update over an older one already downloaded', () => {
+    const prompt = resolve({
+      dismissedUpdateKey: 'update-2',
       snapshot: snapshot({
-        availableUpdate: { createdAt: new Date('2026-08-13T07:00:00.000Z'), updateId: 'update-3' },
+        availableUpdate: LATER_UPDATE,
+        downloadedUpdate: NEXT_UPDATE,
         isUpdateAvailable: true,
+        isUpdatePending: true,
       }),
     });
 
@@ -89,19 +93,31 @@ describe('resolveUpdatePrompt', () => {
   });
 
   it('owes the user the outcome of an install they asked for, dismissed or not', () => {
-    const running = resolveUpdatePrompt({
-      dismissedUpdateKey: 'update-2',
+    const started = { dismissedUpdateKey: 'update-2', installUpdateKey: 'update-2' } as const;
+    const running = resolve({
+      ...started,
       installState: 'installing',
       snapshot: snapshot({ availableUpdate: NEXT_UPDATE, isUpdateAvailable: true }),
     });
-    const failed = resolveUpdatePrompt({
-      dismissedUpdateKey: 'update-2',
+    const failed = resolve({
+      ...started,
       installState: 'failed',
       snapshot: snapshot({ availableUpdate: NEXT_UPDATE, isUpdateAvailable: true }),
     });
 
     expect(running).toEqual({ kind: 'installing', updateKey: 'update-2' });
     expect(failed).toEqual({ kind: 'failed', updateKey: 'update-2' });
+  });
+
+  // Otherwise a standing "Update didn't install" gets re-pointed at an update nobody tried to install.
+  it('does not carry an install outcome over to a different update', () => {
+    const prompt = resolve({
+      installState: 'failed',
+      installUpdateKey: 'update-2',
+      snapshot: snapshot({ availableUpdate: LATER_UPDATE, isUpdateAvailable: true }),
+    });
+
+    expect(prompt).toEqual({ kind: 'offered', updateKey: 'update-3' });
   });
 });
 

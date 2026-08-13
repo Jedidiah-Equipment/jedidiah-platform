@@ -12,7 +12,7 @@ export const updateRetryLabel = 'Try again';
 
 const promptCopy = {
   failed: {
-    message: 'The new version could not be installed. Check your connection and try again.',
+    message: 'The new version did not install. It may no longer be available — check your connection and retry.',
     title: "Update didn't install",
   },
   installing: {
@@ -85,7 +85,7 @@ export function UpdatePrompt() {
             accessibilityState={{ busy: isInstalling, disabled: isInstalling }}
             className={`flex-1 items-center rounded-xl bg-primary px-4 py-3 ${isInstalling ? 'opacity-40' : ''}`}
             disabled={isInstalling}
-            onPress={install}
+            onPress={() => install(prompt.updateKey)}
           >
             <Text className="text-base text-primary-foreground" weight="bold">
               {hasFailed ? updateRetryLabel : updateInstallLabel}

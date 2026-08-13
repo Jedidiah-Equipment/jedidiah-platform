@@ -45,7 +45,7 @@ describe('UpdatePrompt', () => {
     expect(UpdatePrompt()).toBeNull();
   });
 
-  test('offers the update, installs on accept, and names the update it dismisses', () => {
+  test('offers the update, and names that update to both the install and the dismissal', () => {
     const dismiss = vi.fn();
     const install = vi.fn();
     useAppUpdate.mockReturnValue({ dismiss, install, prompt: { kind: 'offered', updateKey: 'update-2' } });
@@ -57,7 +57,7 @@ describe('UpdatePrompt', () => {
     expect(texts(buttons[1])).toEqual([updateInstallLabel]);
 
     press(buttons[1]);
-    expect(install).toHaveBeenCalled();
+    expect(install).toHaveBeenCalledWith('update-2');
 
     press(buttons[0]);
     expect(dismiss).toHaveBeenCalledWith('update-2');
@@ -75,7 +75,6 @@ describe('UpdatePrompt', () => {
     const prompt = UpdatePrompt() as TestElement;
     const buttons = pressables(prompt.props.children);
 
-    expect(prompt.props.dismissDisabled).toBeUndefined();
     expect(buttons[1].props.disabled).toBe(true);
 
     press(buttons[0]);

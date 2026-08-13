@@ -11,6 +11,10 @@ describe('HELP_TOPICS', () => {
   it('always covers the docs landing page', () => {
     expect(HELP_TOPICS.home).toBe('/');
   });
+
+  it('sends Product Help to the Product cost estimate procedure', () => {
+    expect(HELP_TOPICS.products).toBe('/inventory/maintain-a-product-cost-estimate');
+  });
 });
 
 describe('helpUrl', () => {

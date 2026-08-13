@@ -27,7 +27,7 @@ const layout = {
   brandLogoHeight: 36,
   brandLogoWidth: 126,
   brandRowHeight: 66,
-  rangeLogoCompactHeight: 108,
+  rangeLogoCompactHeight: 120,
   rangeLogoWideHeight: 66,
   rangeLogoMaxWidth: 249,
   heroHeight: 384,

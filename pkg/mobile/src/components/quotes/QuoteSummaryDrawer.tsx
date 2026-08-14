@@ -94,10 +94,7 @@ function ProductCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'product' 
     <SummaryCard>
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
-          <View className="flex-row items-center gap-2">
-            <CardLabel>Product</CardLabel>
-            {productSource ? <QuoteProductSourceChip productSource={productSource} /> : null}
-          </View>
+          <CardLabel>Product</CardLabel>
           <View className="mt-1 flex-row flex-wrap items-center gap-2">
             <Text className="min-w-0 text-[15px] text-foreground" numberOfLines={2} weight="bold">
               {productName}
@@ -128,6 +125,13 @@ function ProductCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'product' 
           label="Optional"
           value={String(assemblies.filter((assembly) => assembly.kind === 'optional').length)}
         />
+        {productSource ? (
+          <MiniMetric
+            fullWidth
+            label="Product Source"
+            value={<QuoteProductSourceChip productSource={productSource} />}
+          />
+        ) : null}
       </View>
       <View className="mt-3 border-t border-border pt-3">
         <Text className="text-xs leading-5 text-muted-foreground">
@@ -265,15 +269,29 @@ function Fact({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
+function MiniMetric({
+  fullWidth = false,
+  label,
+  value,
+}: {
+  fullWidth?: boolean;
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
-    <View className="min-w-[46%] flex-1 rounded-xl border border-border bg-background p-2.5">
+    <View
+      className={`${fullWidth ? 'w-full' : 'min-w-[46%] flex-1'} rounded-xl border border-border bg-background p-2.5`}
+    >
       <Text className="text-[9px] uppercase tracking-wide text-muted-foreground" mono>
         {label}
       </Text>
-      <Text className="mt-1 text-xs text-foreground" numberOfLines={1} weight="semibold">
-        {value}
-      </Text>
+      {typeof value === 'string' ? (
+        <Text className="mt-1 text-xs text-foreground" numberOfLines={1} weight="semibold">
+          {value}
+        </Text>
+      ) : (
+        <View className="mt-2 flex-row">{value}</View>
+      )}
     </View>
   );
 }

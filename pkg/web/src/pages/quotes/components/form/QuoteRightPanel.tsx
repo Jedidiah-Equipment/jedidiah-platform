@@ -178,10 +178,7 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
   return (
     <Card size="sm">
       <CardHeader>
-        <CardDescription className="flex items-center gap-2">
-          <span>Product</span>
-          {productSource ? <QuoteProductSourceBadge productSource={productSource} /> : null}
-        </CardDescription>
+        <CardDescription>Product</CardDescription>
         <CardTitle className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="block truncate">{productName}</span>
@@ -208,6 +205,13 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
           <QuoteMiniMetric icon={<IconClock />} label="Build" value={productBuildTimeDays} />
           <QuoteMiniMetric label="Standard Assemblies" value={String(standardCount)} />
           <QuoteMiniMetric label="Optional Assemblies" value={String(optionalCount)} />
+          {productSource ? (
+            <QuoteMiniMetric
+              className="col-span-2"
+              label="Product Source"
+              value={<QuoteProductSourceBadge className="mt-1" productSource={productSource} />}
+            />
+          ) : null}
         </div>
         <Separator />
         <p
@@ -346,9 +350,19 @@ function QuotePanelFact({
   );
 }
 
-function QuoteMiniMetric({ icon, label, value }: { icon?: React.ReactElement; label: string; value: string }) {
+function QuoteMiniMetric({
+  className,
+  icon,
+  label,
+  value,
+}: {
+  className?: string;
+  icon?: React.ReactElement;
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
-    <Card className="min-h-14" size="sm">
+    <Card className={cn('min-h-14', className)} size="sm">
       <CardContent className="grid gap-1">
         <span className="flex items-center gap-1 text-muted-foreground text-xs">
           {icon ? <span className="[&>svg]:size-3.5">{icon}</span> : null}

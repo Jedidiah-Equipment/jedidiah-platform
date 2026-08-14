@@ -1,0 +1,22 @@
+{
+  "releasedAt": "2026-08-14T07:42:51.500Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Scan your plan by department",
+          "description": "The Plan tab now groups Bays under Department headings, making each part of the floor easier to find."
+        },
+        {
+          "title": "Install updates when ready",
+          "description": "The app now alerts you when an update is available and lets you choose when to install it."
+        },
+        {
+          "title": "Keep typing in quote fields",
+          "description": "Quote inputs now retain focus while you type, preventing the keyboard and cursor from being interrupted."
+        }
+      ]
+    }
+  ]
+}

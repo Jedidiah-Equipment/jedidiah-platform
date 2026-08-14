@@ -35,6 +35,8 @@ Meta rejects a server event whose user data holds no usable customer-matching id
 | `metaBrowserId` | Meta's first-party `_fbp` cookie | `fbp` |
 | `metaClickId` | Meta's first-party `_fbc` cookie, or a value derived from the URL's `fbclid` in Meta's documented `fb.1.<timestamp>.<fbclid>` shape when the cookie has not been written yet | `fbc` |
 
+Both properties are also omitted entirely when `VITE_META_PIXEL_ID` is unset, so a build running PostHog without a Pixel cannot forward conversions to Meta.
+
 Both properties are **omitted, never sent empty**, when the browser has neither cookie nor an ad click to derive from — a visitor who has not yet had `fbevents.js` load and did not arrive from an ad. That is what lets the PostHog destination filter skip an event Meta would certainly refuse, leaving the browser Pixel as the sole record of that conversion.
 
 This requires matching configuration on the PostHog Meta Ads destination, which lives outside this repo:

@@ -168,8 +168,11 @@ function resolveClickId(): string | undefined {
   return derivedClickId;
 }
 
-export function metaMatchKeys(): MetaMatchKeys {
-  if (typeof window === 'undefined') {
+export function metaMatchKeys(pixelId: string | null = resolveMetaPixelId(import.meta.env)): MetaMatchKeys {
+  // An unset Pixel ID keeps unconfigured environments out of the live advertising dataset (ANALYTICS.md).
+  // Without this gate an inbound `fbclid` alone would satisfy the destination filter, so a build with
+  // PostHog configured but no Pixel could still forward conversions to Meta.
+  if (typeof window === 'undefined' || !pixelId) {
     return {};
   }
 

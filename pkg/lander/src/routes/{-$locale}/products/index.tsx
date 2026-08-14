@@ -7,7 +7,7 @@ import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
 import { hasFilterableVariants, VariantFilterBar } from '../../../components/variant-filter-bar.js';
 import { type AnalyticsEventProperties, captureEvent } from '../../../lib/analytics.js';
-import { createMetaEventId, trackMetaViewContent } from '../../../lib/meta-pixel.js';
+import { createMetaEventId, metaMatchKeys, trackMetaViewContent } from '../../../lib/meta-pixel.js';
 import { seoHead } from '../../../lib/seo.js';
 import { messagesForLocale, useMessages } from '../../../messages/index.js';
 import { getProductsCatalog } from '../../../server/catalog/products.js';
@@ -52,7 +52,7 @@ function useCatalogFilterAnalytics(search: ProductsSearch): void {
 
 export function captureCatalogView(range: string | null, variant: string | null): void {
   const metaEventId = createMetaEventId();
-  captureEvent('catalog_viewed', { range, variant, metaEventId });
+  captureEvent('catalog_viewed', { range, variant, metaEventId, ...metaMatchKeys() });
   trackMetaViewContent(metaEventId);
 }
 

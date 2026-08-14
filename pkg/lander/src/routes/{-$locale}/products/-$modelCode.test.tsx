@@ -18,6 +18,7 @@ vi.mock('../../../lib/analytics.js', () => ({
 }));
 vi.mock('../../../lib/meta-pixel.js', () => ({
   createMetaEventId: () => 'product-view-123',
+  metaMatchKeys: () => ({ metaBrowserId: 'fb.1.1755000000000.9876543210' }),
   trackMetaViewContent,
 }));
 
@@ -80,6 +81,7 @@ describe('captureProductView', () => {
       range: 'Chaser Bins',
       variant: null,
       metaEventId: 'product-view-123',
+      metaBrowserId: 'fb.1.1755000000000.9876543210',
     });
     expect(trackMetaViewContent).toHaveBeenCalledWith('product-view-123');
   });

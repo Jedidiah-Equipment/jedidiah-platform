@@ -2,6 +2,7 @@ import { type Locale, POSTHOG_CLIENT_API_HOST, POSTHOG_UI_HOST } from '@pkg/sche
 import posthog from 'posthog-js';
 
 import { resolvePosthogToken } from './analytics-config.js';
+import type { MetaMatchKeys } from './meta-pixel.js';
 
 const INTERNAL_USER_STORAGE_KEY = 'is_internal';
 
@@ -23,12 +24,12 @@ export type AnalyticsEventRegistry = {
     range: string | null;
     variant: string | null;
   };
-  product_viewed: { modelCode: string; range: string; variant: string | null; metaEventId: string };
-  catalog_viewed: { range: string | null; variant: string | null; metaEventId: string };
+  product_viewed: MetaMatchKeys & { modelCode: string; range: string; variant: string | null; metaEventId: string };
+  catalog_viewed: MetaMatchKeys & { range: string | null; variant: string | null; metaEventId: string };
   product_shared: { modelCode: string; method: 'native' | 'clipboard' };
   brochure_downloaded: { modelCode: string };
   contact_form_started: Record<string, never>;
-  contact_submitted: { equipment: string; metaEventId: string };
+  contact_submitted: MetaMatchKeys & { equipment: string; metaEventId: string };
   contact_submit_blocked: { missingFields: string[] };
   contact_submit_failed: { errorCategory: 'network' | 'server' };
   social_link_clicked: {

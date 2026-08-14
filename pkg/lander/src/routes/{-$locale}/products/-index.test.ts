@@ -9,6 +9,7 @@ const trackMetaViewContent = vi.hoisted(() => vi.fn());
 vi.mock('../../../lib/analytics.js', () => ({ captureEvent: vi.fn() }));
 vi.mock('../../../lib/meta-pixel.js', () => ({
   createMetaEventId: () => 'catalog-view-123',
+  metaMatchKeys: () => ({ metaBrowserId: 'fb.1.1755000000000.9876543210' }),
   trackMetaViewContent,
 }));
 
@@ -19,6 +20,7 @@ test('catalog and filtered Range views send Meta ViewContent', () => {
     range: 'trailers',
     variant: 'wide-body',
     metaEventId: 'catalog-view-123',
+    metaBrowserId: 'fb.1.1755000000000.9876543210',
   });
   expect(trackMetaViewContent).toHaveBeenCalledWith('catalog-view-123');
 });

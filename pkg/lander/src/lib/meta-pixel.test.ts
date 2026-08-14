@@ -2,11 +2,19 @@
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
+function clearCookies(): void {
+  for (const entry of document.cookie.split(';')) {
+    document.cookie = `${entry.split('=')[0]?.trim()}=; max-age=0; path=/`;
+  }
+}
+
 beforeEach(() => {
   document.head.innerHTML = '';
   delete window.fbq;
   delete window._fbq;
   delete window.__jedidiahMetaPixelIds;
+  clearCookies();
+  window.history.replaceState({}, '', '/');
   vi.resetModules();
 });
 
@@ -93,6 +101,46 @@ describe('Meta Pixel', () => {
     );
     expect(metaPixelBaseCode('27975094252106874')).toContain('fbq(\'init\',"27975094252106874")');
     expect(metaPixelBaseCode('27975094252106874')).toContain("fbq('track','PageView')");
+  });
+
+  describe('customer-matching identifiers', () => {
+    test('reports no identifiers before Meta has written a cookie', async () => {
+      const { metaMatchKeys } = await import('./meta-pixel.js');
+
+      expect(metaMatchKeys()).toEqual({});
+    });
+
+    test('reads the browser and click identifiers Meta stores in first-party cookies', async () => {
+      document.cookie = '_fbp=fb.1.1755000000000.9876543210; path=/';
+      document.cookie = '_fbc=fb.1.1755000000000.IwAR-click; path=/';
+      const { metaMatchKeys } = await import('./meta-pixel.js');
+
+      expect(metaMatchKeys()).toEqual({
+        metaBrowserId: 'fb.1.1755000000000.9876543210',
+        metaClickId: 'fb.1.1755000000000.IwAR-click',
+      });
+    });
+
+    test('derives the click identifier from fbclid until Meta writes its cookie', async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(1_755_000_000_000);
+      window.history.replaceState({}, '', '/products?fbclid=IwAR-from-url');
+      const { metaMatchKeys } = await import('./meta-pixel.js');
+
+      expect(metaMatchKeys()).toEqual({ metaClickId: 'fb.1.1755000000000.IwAR-from-url' });
+
+      // The visitor moves to a URL without the ad parameter before submitting the enquiry.
+      window.history.replaceState({}, '', '/contact');
+
+      expect(metaMatchKeys()).toEqual({ metaClickId: 'fb.1.1755000000000.IwAR-from-url' });
+    });
+
+    test('prefers the click cookie Meta wrote over the fbclid parameter', async () => {
+      document.cookie = '_fbc=fb.1.1755000000001.IwAR-cookie; path=/';
+      window.history.replaceState({}, '', '/products?fbclid=IwAR-from-url');
+      const { metaMatchKeys } = await import('./meta-pixel.js');
+
+      expect(metaMatchKeys()).toEqual({ metaClickId: 'fb.1.1755000000001.IwAR-cookie' });
+    });
   });
 
   test('recognises initialization performed by the head base code', async () => {

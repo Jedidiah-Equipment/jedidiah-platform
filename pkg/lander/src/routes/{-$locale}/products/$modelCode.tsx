@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import { ProductCard } from '../../../components/product-card.js';
 import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
 import { captureEvent, captureEventForNavigation } from '../../../lib/analytics.js';
-import { createMetaEventId, trackMetaViewContent } from '../../../lib/meta-pixel.js';
+import { createMetaEventId, metaMatchKeys, trackMetaViewContent } from '../../../lib/meta-pixel.js';
 import { seoHead, truncateDescription } from '../../../lib/seo.js';
 import { messagesForLocale, useMessages } from '../../../messages/index.js';
 import { getProductDetail } from '../../../server/catalog/product-detail.js';
@@ -448,6 +448,7 @@ export function captureProductView(detail: Pick<ProductDetail, 'modelCode' | 'ra
     range: detail.rangeName,
     variant: detail.variant,
     metaEventId,
+    ...metaMatchKeys(),
   });
   trackMetaViewContent(metaEventId);
 }

@@ -47,17 +47,23 @@ describe('analytics event registry', () => {
     >();
   });
 
+  // The three Conversions API events carry optional Meta match keys, and expectTypeOf cannot compare
+  // optional properties structurally without `.branded`.
   test('associates each event name with its required properties', () => {
-    expectTypeOf<AnalyticsEventProperties<'product_viewed'>>().toEqualTypeOf<{
+    expectTypeOf<AnalyticsEventProperties<'product_viewed'>>().branded.toEqualTypeOf<{
       modelCode: string;
       range: string;
       variant: string | null;
       metaEventId: string;
+      metaBrowserId?: string;
+      metaClickId?: string;
     }>();
-    expectTypeOf<AnalyticsEventProperties<'catalog_viewed'>>().toEqualTypeOf<{
+    expectTypeOf<AnalyticsEventProperties<'catalog_viewed'>>().branded.toEqualTypeOf<{
       range: string | null;
       variant: string | null;
       metaEventId: string;
+      metaBrowserId?: string;
+      metaClickId?: string;
     }>();
     expectTypeOf<AnalyticsEventProperties<'catalog_filter_changed'>>().toEqualTypeOf<{
       range: string | null;
@@ -73,9 +79,11 @@ describe('analytics event registry', () => {
       platform: 'facebook' | 'instagram' | 'whatsapp';
       placement: 'footer' | 'contact_page';
     }>();
-    expectTypeOf<AnalyticsEventProperties<'contact_submitted'>>().toEqualTypeOf<{
+    expectTypeOf<AnalyticsEventProperties<'contact_submitted'>>().branded.toEqualTypeOf<{
       equipment: string;
       metaEventId: string;
+      metaBrowserId?: string;
+      metaClickId?: string;
     }>();
     expectTypeOf<AnalyticsEventProperties<'email_linked_clicked'>>().toEqualTypeOf<{
       placement: 'contact_page';

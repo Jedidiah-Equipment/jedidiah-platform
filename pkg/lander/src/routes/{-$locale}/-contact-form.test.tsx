@@ -14,6 +14,7 @@ vi.mock('../../lib/analytics.js', () => ({
 }));
 vi.mock('../../lib/meta-pixel.js', () => ({
   createMetaEventId: () => 'meta-lead-123',
+  metaMatchKeys: () => ({ metaBrowserId: 'fb.1.1755000000000.9876543210' }),
   trackMetaLead: vi.fn(),
 }));
 
@@ -88,6 +89,7 @@ describe('EnquiryForm', () => {
     expect(captureEvent).toHaveBeenCalledWith('contact_submitted', {
       equipment: 'Not specified',
       metaEventId: 'meta-lead-123',
+      metaBrowserId: 'fb.1.1755000000000.9876543210',
     });
     expect(trackMetaLead).toHaveBeenCalledWith('meta-lead-123');
   });

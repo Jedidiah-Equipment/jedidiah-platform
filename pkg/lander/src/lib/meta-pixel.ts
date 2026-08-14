@@ -3,6 +3,8 @@ import { resolveMetaPixelId } from './analytics-config.js';
 const META_PIXEL_SCRIPT_URL = 'https://connect.facebook.net/en_US/fbevents.js';
 const META_PIXEL_SCRIPT_SELECTOR = 'script[data-meta-pixel]';
 const META_PIXEL_INITIALIZED_IDS_KEY = '__jedidiahMetaPixelIds';
+const META_BROWSER_ID_COOKIE = '_fbp';
+const META_CLICK_ID_COOKIE = '_fbc';
 
 type MetaPixelFunction = {
   (...args: unknown[]): void;
@@ -130,4 +132,52 @@ export function metaPixelBaseCode(pixelId: string): string {
   const serializedPixelId = JSON.stringify(pixelId).replace(/</g, '\\u003c');
 
   return `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','${META_PIXEL_SCRIPT_URL}');fbq('init',${serializedPixelId});fbq('track','PageView');window.${META_PIXEL_INITIALIZED_IDS_KEY}=(window.${META_PIXEL_INITIALIZED_IDS_KEY}||[]).concat(${serializedPixelId});`;
+}
+
+// Meta's customer-matching identifiers, mapped onto `fbp` and `fbc` by the destination ANALYTICS.md
+// describes. An absent identifier is omitted rather than sent empty so that destination can filter the
+// event out; Meta rejects a server event carrying nothing but a user agent (error_subcode 2804050, #1252).
+export type MetaMatchKeys = { metaBrowserId?: string; metaClickId?: string };
+
+let derivedClickId: string | undefined;
+
+function readCookie(name: string): string | undefined {
+  const prefix = `${name}=`;
+
+  return document.cookie
+    .split(';')
+    .map((entry) => entry.trim())
+    .find((entry) => entry.startsWith(prefix))
+    ?.slice(prefix.length);
+}
+
+function resolveClickId(): string | undefined {
+  const cookie = readCookie(META_CLICK_ID_COOKIE);
+  if (cookie) {
+    return cookie;
+  }
+
+  const fbclid = new URLSearchParams(window.location.search).get('fbclid');
+  if (fbclid) {
+    // fbevents.js writes the same value, but it loads asynchronously and the ad visitor's landing pageview
+    // fires before it lands. Holding the derived value for the loaded document also keeps the identifier
+    // once the visitor navigates to a URL that no longer carries the parameter.
+    derivedClickId ??= `fb.1.${Date.now()}.${fbclid}`;
+  }
+
+  return derivedClickId;
+}
+
+export function metaMatchKeys(pixelId: string | null = resolveMetaPixelId(import.meta.env)): MetaMatchKeys {
+  // An unset Pixel ID keeps unconfigured environments out of the live advertising dataset (ANALYTICS.md).
+  // Without this gate an inbound `fbclid` alone would satisfy the destination filter, so a build with
+  // PostHog configured but no Pixel could still forward conversions to Meta.
+  if (typeof window === 'undefined' || !pixelId) {
+    return {};
+  }
+
+  const metaBrowserId = readCookie(META_BROWSER_ID_COOKIE);
+  const metaClickId = resolveClickId();
+
+  return { ...(metaBrowserId ? { metaBrowserId } : {}), ...(metaClickId ? { metaClickId } : {}) };
 }

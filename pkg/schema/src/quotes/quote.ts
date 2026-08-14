@@ -44,7 +44,7 @@ export const LEGACY_QUOTE_CANCELLATION_REASON =
   'Reason not recorded (cancelled before cancellation reasons were required).';
 
 export { formatQuoteCode, parseQuoteCodeNumber, QuoteCode, QuoteCodeInput } from '../common/public-code.js';
-export { QuoteKind, QuoteWorkTitle } from './quote-shared.js';
+export { QuoteKind, QuoteProductSource, QuoteWorkTitle } from './quote-shared.js';
 
 export type QuoteNotes = z.infer<typeof QuoteNotes>;
 export const QuoteNotes = nullableTrimmedText();

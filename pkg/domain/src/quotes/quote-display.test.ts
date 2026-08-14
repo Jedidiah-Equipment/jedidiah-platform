@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getQuoteOfferingName, getQuoteOfferingSubtitle } from './quote-display.js';
+import { getQuoteOfferingName, getQuoteOfferingSubtitle, quoteProductSourceOf } from './quote-display.js';
 
 describe('quote display helpers', () => {
   it('uses product names for Product Quotes and the standard unresolved fallback', () => {
@@ -45,5 +45,21 @@ describe('quote display helpers', () => {
         workTitle: 'Hydraulic repair',
       }),
     ).toEqual({ mono: false, text: 'Custom work' });
+  });
+});
+
+describe('quoteProductSourceOf', () => {
+  it('reads a Product Quote naming a Unit as From Stock', () => {
+    expect(quoteProductSourceOf({ kind: 'product', productUnitId: '5f1b2c3d-0000-4000-8000-000000000001' })).toBe(
+      'stock',
+    );
+  });
+
+  it('reads a Product Quote with no Unit as From Order', () => {
+    expect(quoteProductSourceOf({ kind: 'product', productUnitId: null })).toBe('order');
+  });
+
+  it('gives a Custom Quote no product source', () => {
+    expect(quoteProductSourceOf({ kind: 'custom', productUnitId: null })).toBeNull();
   });
 });

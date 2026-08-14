@@ -4,6 +4,7 @@ import {
   formatPercent,
   getQuoteOfferingName,
   type QuoteComputedSummary,
+  quoteProductSourceOf,
   quoteWorkItemSummaryRows,
 } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
@@ -13,6 +14,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { OfferingAvatar } from '@/components/OfferingAvatar';
+import { QuoteProductSourceChip } from '@/components/quotes/QuoteProductSourceChip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
@@ -86,12 +88,16 @@ function CustomerCard({ quote }: { quote: QuoteDetail }) {
 function ProductCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'product' }> }) {
   const assemblies = quote.product?.assemblies ?? [];
   const productName = quote.product?.name ?? 'Unavailable product';
+  const productSource = quoteProductSourceOf(quote);
 
   return (
     <SummaryCard>
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
-          <CardLabel>Product</CardLabel>
+          <View className="flex-row items-center gap-2">
+            <CardLabel>Product</CardLabel>
+            {productSource ? <QuoteProductSourceChip productSource={productSource} /> : null}
+          </View>
           <View className="mt-1 flex-row flex-wrap items-center gap-2">
             <Text className="min-w-0 text-[15px] text-foreground" numberOfLines={2} weight="bold">
               {productName}

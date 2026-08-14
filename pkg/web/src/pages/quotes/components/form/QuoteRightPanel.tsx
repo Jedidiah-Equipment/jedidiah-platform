@@ -5,6 +5,7 @@ import {
   formatPercent,
   getQuoteOfferingName,
   type QuoteComputedSummary,
+  quoteProductSourceOf,
   quoteStatusLabels,
   quoteWorkItemSummaryRows,
 } from '@pkg/domain';
@@ -27,6 +28,7 @@ import { Badge } from '@/components/ui/badge.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
+import { QuoteProductSourceBadge } from '../QuoteProductSourceBadge.js';
 import { StartJobLink } from '../StartJobLink.js';
 
 // The summary prices the API-shaped Work Items the form maps into, not the browser shape itself.
@@ -171,11 +173,15 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
   const productModelCode = quote.product?.modelCode ?? '—';
   const productCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const productBuildTimeDays = quote.product ? `${quote.product.buildTimeDays} days` : '—';
+  const productSource = quoteProductSourceOf(quote);
 
   return (
     <Card size="sm">
       <CardHeader>
-        <CardDescription>Product</CardDescription>
+        <CardDescription className="flex items-center gap-2">
+          <span>Product</span>
+          {productSource ? <QuoteProductSourceBadge productSource={productSource} /> : null}
+        </CardDescription>
         <CardTitle className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="block truncate">{productName}</span>

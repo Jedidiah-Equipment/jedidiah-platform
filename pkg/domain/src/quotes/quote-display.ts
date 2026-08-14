@@ -1,4 +1,4 @@
-import type { QuoteKind, QuoteStatus } from '@pkg/schema';
+import type { QuoteKind, QuoteProductSource, QuoteStatus } from '@pkg/schema';
 
 import { cancelledBadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 
@@ -33,6 +33,37 @@ export const quoteKindColorClassNames: Record<QuoteKind, { chip: string; text: s
   custom: statusBadgeColorClassNames.teal,
   product: statusBadgeColorClassNames.yellow,
 };
+
+export const quoteProductSourceLabels: Record<QuoteProductSource, string> = {
+  order: 'From Order',
+  stock: 'From Stock',
+};
+
+/**
+ * From Stock borrows the Stock chip's yellow, because both say the same thing about the same machine:
+ * we already hold it. From Order takes purple, a colour no Quote or Job status uses, so a Product
+ * Source chip can never be misread as a status.
+ */
+export const quoteProductSourceColorClassNames: Record<QuoteProductSource, { chip: string; text: string }> = {
+  order: statusBadgeColorClassNames.purple,
+  stock: statusBadgeColorClassNames.yellow,
+};
+
+/**
+ * Whether a Quote sells a machine we already hold or one still to be built. An Allocation Quote names
+ * a Product Unit, so it reads From Stock; every other Product Quote is built to order. A Custom Quote
+ * sells no Product at all and has no source — callers render nothing for `null`.
+ */
+export function quoteProductSourceOf(quote: {
+  kind: QuoteKind;
+  productUnitId: string | null;
+}): QuoteProductSource | null {
+  if (quote.kind !== 'product') {
+    return null;
+  }
+
+  return quote.productUnitId === null ? 'order' : 'stock';
+}
 
 export type QuoteOfferingDisplaySource = {
   kind: 'product' | 'custom';

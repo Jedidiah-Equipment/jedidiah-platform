@@ -5,6 +5,7 @@ import {
   getQuoteOfferingSubtitle,
   pricePersistedQuote,
   quoteKindLabels,
+  quoteProductSourceOf,
   quoteStatusLabels,
 } from '@pkg/domain';
 import { type PriorityQuote, QuoteInvoicedFilter, QuoteKind, QuoteStatus, type QuoteSummary } from '@pkg/schema';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils.js';
 
 import { QuoteKindBadge } from './QuoteKindBadge.js';
 import { QuoteLinkedJob } from './QuoteLinkedJob.js';
+import { QuoteProductSourceBadge } from './QuoteProductSourceBadge.js';
 import { QuoteStatusBadge } from './QuoteStatusBadge.js';
 
 type FilterOption = {
@@ -164,6 +166,18 @@ export function createQuoteTableColumns({
         filterVariant: 'select',
         headerClassName: 'min-w-60',
       },
+    },
+    {
+      accessorFn: (row) => quoteProductSourceOf(row.quote),
+      cell: ({ row }) => <ProductSourceCell quote={row.original.quote} />,
+      enableColumnFilter: false,
+      enableSorting: false,
+      header: 'Product Source',
+      id: 'productSource',
+      meta: {
+        headerClassName: 'min-w-36',
+      },
+      size: 144,
     },
     {
       accessorFn: (row) => row.quote.invoiceNumber,
@@ -328,6 +342,14 @@ function ProductCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteS
       </div>
     </div>
   );
+}
+
+function ProductSourceCell({ quote }: { quote: QuoteSummary }) {
+  const productSource = quoteProductSourceOf(quote);
+
+  // A Custom Quote sells no Product, so there is nothing to source; the column stays empty rather
+  // than claiming a build.
+  return productSource ? <QuoteProductSourceBadge productSource={productSource} /> : null;
 }
 
 function InvoiceNumberCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {

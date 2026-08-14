@@ -1,0 +1,14 @@
+{
+  "releasedAt": "2026-08-14T11:52:44.122Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "See how each quote is supplied",
+          "description": "Quotes now show whether the sale is fulfilled from stock or supplied to order."
+        }
+      ]
+    }
+  ]
+}

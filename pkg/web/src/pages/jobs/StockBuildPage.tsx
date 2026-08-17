@@ -68,7 +68,7 @@ export const StockBuildPage: React.FC = () => {
 const StockBuildContent: React.FC = () => {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const { invalidateJobs, invalidateProductUnits } = useQueryInvalidation();
+  const { invalidateJobActivity, invalidateJobs, invalidateProductUnits } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
@@ -86,6 +86,7 @@ const StockBuildContent: React.FC = () => {
       onSuccess: async (job) => {
         // Jobs first so the Board and list are fresh on arrival; the Unit it just minted follows.
         await invalidateJobs();
+        await invalidateJobActivity();
         toast.success('Stock Build started');
         await navigate({ search: { job: job.id }, to: '/jobs/list' });
         await invalidateProductUnits();

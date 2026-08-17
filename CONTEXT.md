@@ -176,7 +176,7 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Audit Event** records boundary-visible changes for Customers, Jobs, Job Bays, Product Units, Products, Purchase Orders, Quotes, Suppliers, and Users. Slot create/resize/remove are not audited; Slot reorders are. Feedback is not audited.
 
-**Job Activity** is the cross-Job feed of what has been said and done about Jobs, newest first, read by anyone with `job:read`. An **activity item** is one entry in it. Today the only kind of item is Job General Feedback; the feed's contract is a discriminated union so entity change events can join it without reshaping the surface. It reads existing records and stores none of its own.
+**Job Activity** is the cross-Job feed of what has been said and done about Jobs, newest first, read by anyone with `job:read`. An **activity item** is one entry in it, of one of two sorts. The said sort is Job General Feedback, read from `feedback`. The done sort is a **Change Event**, a curated projection of an Audit Event: `job-created`, `job-description-updated`, `job-completed`, and `job-document-added`. A Change Event carries its actor, its Job, and a named payload only — the raw audit change set never reaches the feed, which is what lets both sorts share the `job:read` gate while raw audit reads stay `audit:read` (ADR 0015). Job cancellation, Ownership Transfers, and catalog Optional Assembly changes are not Change Events today. The feed reads existing records and stores none of its own.
 
 **Dashboard** is the single signed-in landing surface. Widgets are permission-gated registry entries, and Dashboard Metrics are computed live rather than stored in reporting tables.
 

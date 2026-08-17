@@ -61,7 +61,7 @@ export const StartJobPage: React.FC<StartJobPageProps> = ({ quoteId }) => {
 const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const { invalidateJobs, invalidateQuotes } = useQueryInvalidation();
+  const { invalidateJobActivity, invalidateJobs, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
@@ -86,6 +86,7 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
         // Jobs first so the schedule is fresh on arrival; the quote refetch happens
         // after navigation so this page never flashes its not-startable state.
         await invalidateJobs();
+        await invalidateJobActivity();
         toast.success(isRework ? 'Rework Job started' : 'Job started');
         await navigate({ search: { job: job.id }, to: '/jobs' });
         await invalidateQuotes();

@@ -17,5 +17,8 @@ export const auditEvents = pgTable(
   (table) => [
     index('audit_entity_idx').on(table.entityType, table.entityId, table.occurredAt),
     index('audit_actor_idx').on(table.actorUserId, table.occurredAt),
+    // The Job Activity feed asks for every event of a kind by time, which `audit_entity_idx` cannot
+    // serve: it leads with the entity, and the feed names none.
+    index('audit_type_action_occurred_idx').on(table.entityType, table.action, table.occurredAt),
   ],
 );

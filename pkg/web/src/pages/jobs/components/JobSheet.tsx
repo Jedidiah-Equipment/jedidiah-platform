@@ -166,11 +166,12 @@ const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
 const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
   const trpc = useTRPC();
   const canEditJobs = useCan('job:update').can && !isJobCancelled(job);
-  const { invalidateJobs } = useQueryInvalidation();
+  const { invalidateJobActivity, invalidateJobs } = useQueryInvalidation();
   const updateJobMutation = useMutation(
     trpc.jobs.update.mutationOptions({
       onSuccess: async () => {
-        await invalidateJobs();
+        // The description and the completion date are both Job Activity change events.
+        await Promise.all([invalidateJobs(), invalidateJobActivity()]);
       },
     }),
   );
@@ -319,7 +320,7 @@ const JobDocumentsTab: React.FC<{
 }> = ({ documents, jobId, readOnly }) => {
   const trpc = useTRPC();
   const canEditJobs = useCan('job:update').can && !readOnly;
-  const { invalidateJobs } = useQueryInvalidation();
+  const { invalidateJobActivity, invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -332,7 +333,7 @@ const JobDocumentsTab: React.FC<{
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      await invalidateJobs();
+      await Promise.all([invalidateJobs(), invalidateJobActivity()]);
       toast.success('Purchase Order uploaded');
     },
     onError: (error) => {

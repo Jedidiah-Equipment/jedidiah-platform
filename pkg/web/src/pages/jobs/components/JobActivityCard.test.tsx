@@ -1,4 +1,4 @@
-import type { GeneralFeedbackActivityItem } from '@pkg/schema';
+import { type GeneralFeedbackActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { renderWithRouter } from '@/test/router-harness.js';
@@ -46,7 +46,79 @@ describe('JobActivityCard', () => {
 
     expect(html).toContain('line-clamp-4');
   });
+
+  it.each([
+    ['job-created', 'created this Job'],
+    ['job-description-updated', 'changed the Job description'],
+    ['job-completed', 'completed this Job'],
+    ['job-document-added', 'added a document'],
+  ] as const)('says who did what for a %s change event', async (type, sentence) => {
+    const html = await renderWithRouter(<JobActivityCard item={buildChangeItem(type)} />);
+
+    expect(html).toContain('Thabo Mokoena');
+    expect(html).toContain(sentence);
+    expect(html).toContain('JOB-00042');
+  });
+
+  it('names the file a document entry is about', async () => {
+    const html = await renderWithRouter(<JobActivityCard item={buildChangeItem('job-document-added')} />);
+
+    expect(html).toContain('handover.pdf');
+  });
+
+  it('reads a cleared description as cleared rather than as an empty change', async () => {
+    const item = buildChangeItem('job-description-updated', { description: null });
+
+    const html = await renderWithRouter(<JobActivityCard item={item} />);
+
+    expect(html).toContain('cleared the Job description');
+  });
+
+  // The audit row keeps the event after its actor is deleted, so the sentence must survive too.
+  it('keeps the verb when the acting user is gone', async () => {
+    const item = buildChangeItem('job-created', { actor: null });
+
+    const html = await renderWithRouter(<JobActivityCard item={item} />);
+
+    expect(html).toContain('A removed user');
+    expect(html).toContain('created this Job');
+  });
+
+  it('leaves a change event unclamped, since its payload is never a paragraph', async () => {
+    const html = await renderWithRouter(<JobActivityCard item={buildChangeItem('job-created')} />);
+
+    expect(html).not.toContain('line-clamp-4');
+    expect(html).not.toContain('Show more');
+  });
 });
+
+/** Built through the real schema, so a fixture cannot drift from the contract it stands in for. */
+function buildChangeItem(
+  type: JobChangeActivityItem['type'],
+  overrides: Record<string, unknown> = {},
+): JobChangeActivityItem {
+  const payloads: Record<JobChangeActivityItem['type'], Record<string, unknown>> = {
+    'job-completed': { completedOn: '2026-08-10' },
+    'job-created': {},
+    'job-description-updated': { description: 'Fit the heavy-duty boom.' },
+    'job-document-added': { document: { contentType: 'application/pdf', filename: 'handover.pdf' } },
+  };
+
+  return JobChangeActivityItem.parse({
+    id: '20000000-0000-4000-8000-000000000000',
+    occurredAt: '2026-08-10T09:00:00.000Z',
+    job: buildItem().job,
+    actor: {
+      email: 'thabo@example.com',
+      id: 'user-1',
+      name: 'Thabo Mokoena',
+      thumbnailDataUrl: THUMBNAIL_DATA_URL,
+    },
+    ...payloads[type],
+    ...overrides,
+    type,
+  });
+}
 
 function buildItem(
   overrides: { customerCompanyName?: string | null; text?: string } = {},

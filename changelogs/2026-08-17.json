@@ -1,0 +1,31 @@
+{
+  "releasedAt": "2026-08-17T11:49:56.609Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "See product sources at a glance",
+          "description": "Product source details now appear in their own quote summary tile."
+        },
+        {
+          "title": "Read linear part costs clearly",
+          "description": "Linear part costs now stay in their stored unit and retain enough decimal precision to reconcile piece prices, stock values, and revaluations."
+        },
+        {
+          "title": "Search job activity",
+          "description": "The redesigned Job Activity feed is now searchable and includes job creation, description updates, completion, and added documents."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Search job activity",
+          "description": "Browse and search the Job Activity feed on mobile, including key job changes and feedback."
+        }
+      ]
+    }
+  ]
+}

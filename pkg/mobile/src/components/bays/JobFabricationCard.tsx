@@ -63,17 +63,24 @@ type CorrectionFormValues = z.infer<typeof CorrectionFormValues>;
  * today's mobile Job readers do not hold; the stamps are an observation log and move no schedule.
  */
 export function JobFabricationCard({
-  isLocked,
+  isCancelled,
+  isCompleted,
   jobCode,
   jobId,
   timing,
 }: {
-  isLocked: boolean;
+  isCancelled: boolean;
+  isCompleted: boolean;
   jobCode: string;
   jobId: string;
   timing: JobDepartmentTiming;
 }) {
-  const canStamp = useCan('job:update').can && !isLocked;
+  const canUpdate = useCan('job:update').can;
+  // A completed Job still accepts the one stamp that closes an observation already open, mirroring
+  // core and web exactly: the completion sweep latches `completedOn` the day after the last Slot
+  // ends, so an overrunning fabrication run would otherwise have no way to record that it finished.
+  const hasOpenObservation = timing.startedAt !== null && timing.completedAt === null;
+  const canStamp = canUpdate && !isCancelled && (!isCompleted || hasOpenObservation);
 
   return (
     <View className="rounded-2xl border border-border bg-surface p-4">
@@ -81,7 +88,9 @@ export function JobFabricationCard({
         Fabrication
       </Text>
       <Text className="mt-2 text-sm text-surface-foreground">{summarize(timing)}</Text>
-      {canStamp ? <FabricationAction jobCode={jobCode} jobId={jobId} timing={timing} /> : null}
+      {canStamp ? (
+        <FabricationAction isCompleted={isCompleted} jobCode={jobCode} jobId={jobId} timing={timing} />
+      ) : null}
     </View>
   );
 }
@@ -97,10 +106,12 @@ function summarize(timing: JobDepartmentTiming): string {
 }
 
 function FabricationAction({
+  isCompleted,
   jobCode,
   jobId,
   timing,
 }: {
+  isCompleted: boolean;
   jobCode: string;
   jobId: string;
   timing: JobDepartmentTiming;
@@ -145,7 +156,13 @@ function FabricationAction({
       <>
         <ActionButton label="Fabrication done" onPress={() => setOpenDialog('done')} pending={false} />
         {openDialog === 'done' ? (
-          <DoneModal jobCode={jobCode} jobId={jobId} onClose={() => setOpenDialog(null)} timing={timing} />
+          <DoneModal
+            isCompleted={isCompleted}
+            jobCode={jobCode}
+            jobId={jobId}
+            onClose={() => setOpenDialog(null)}
+            timing={timing}
+          />
         ) : null}
       </>
     );
@@ -190,11 +207,13 @@ function ActionButton({
 }
 
 function DoneModal({
+  isCompleted,
   jobCode,
   jobId,
   onClose,
   timing,
 }: {
+  isCompleted: boolean;
   jobCode: string;
   jobId: string;
   onClose: () => void;
@@ -232,7 +251,12 @@ function DoneModal({
     <StampModal
       onClose={onClose}
       onSubmit={() => void form.handleSubmit()}
-      subtitle={`${jobCode} · fabrication done now`}
+      subtitle={
+        // Corrections are refused on a completed Job, so this stamp is frozen the moment it lands.
+        isCompleted
+          ? `${jobCode} · already completed, so this cannot be corrected`
+          : `${jobCode} · fabrication done now`
+      }
       submitLabel="Fabrication done"
       submitting={form.state.isSubmitting}
       submitError={submitError}

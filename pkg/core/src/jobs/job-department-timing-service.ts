@@ -180,7 +180,12 @@ export async function updateDepartmentTiming({
       throw new JobDepartmentTimingInvalidError('Name at least one crew member.');
     }
 
-    const crew = await resolveCrew(tx, input.crewUserIds);
+    // Only newly-named crew are role-checked. Someone already on this record was a Bay Operator when
+    // they were recorded, and the record is the point: re-validating them would make a pure date fix
+    // impossible the day one of them changes role, and the only way to save would be to drop the
+    // person who actually did the work.
+    const recordedCrewIds = await listRecordedCrewIds(tx, input.id, input.department);
+    const crew = await resolveCrew(tx, input.crewUserIds, recordedCrewIds);
 
     await tx
       .insert(jobDepartmentTimings)
@@ -239,20 +244,53 @@ async function findTiming(
   return row;
 }
 
+/**
+ * `alreadyRecorded` names the crew this timing already carries, which are taken as-is; everyone else
+ * is a candidate and must hold the Bay Operator role, exactly as `assignJobBayOperator` demands. A
+ * done-stamp passes no set, because there every crew member is new.
+ */
 async function resolveCrew(
   tx: DatabaseTransaction,
   crewUserIds: readonly AuthId[],
+  alreadyRecorded: ReadonlySet<string> = new Set(),
 ): Promise<{ id: string; name: string }[]> {
   const uniqueIds = [...new Set(crewUserIds)];
   const crew: { id: string; name: string }[] = [];
 
   for (const crewUserId of uniqueIds) {
+    if (alreadyRecorded.has(crewUserId)) {
+      const [recorded] = await tx
+        .select({ id: user.id, name: user.name })
+        .from(user)
+        .where(eq(user.id, crewUserId))
+        .for('update');
+
+      // The crew table's FK to `user` is ON DELETE RESTRICT, so a recorded member always has a row.
+      if (recorded) {
+        crew.push(recorded);
+        continue;
+      }
+    }
+
     const operator = await getAssignableBayOperatorForUpdate(tx, crewUserId);
 
     crew.push({ id: operator.id, name: operator.name });
   }
 
   return crew;
+}
+
+async function listRecordedCrewIds(
+  tx: DatabaseTransaction,
+  jobId: UUID,
+  department: WorkItemDepartment,
+): Promise<ReadonlySet<string>> {
+  const rows = await tx
+    .select({ crewUserId: jobDepartmentCrew.crewUserId })
+    .from(jobDepartmentCrew)
+    .where(and(eq(jobDepartmentCrew.jobId, jobId), eq(jobDepartmentCrew.department, department)));
+
+  return new Set(rows.map((row) => row.crewUserId));
 }
 
 async function replaceCrew(

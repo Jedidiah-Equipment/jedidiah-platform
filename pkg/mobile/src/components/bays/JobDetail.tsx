@@ -336,7 +336,8 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
 
       {fabricationTiming ? (
         <JobFabricationCard
-          isLocked={isCancelled || state.completedOn !== null}
+          isCancelled={isCancelled}
+          isCompleted={state.completedOn !== null}
           jobCode={state.jobCode}
           jobId={jobId}
           timing={fabricationTiming}

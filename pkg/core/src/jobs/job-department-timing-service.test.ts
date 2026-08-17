@@ -285,6 +285,67 @@ describe('updateDepartmentTiming', () => {
     ).rejects.toMatchObject({ code: 'job.department_timing_invalid' });
   });
 
+  // The clients keep a former operator visible so a date-only fix does not silently drop the person
+  // who actually did the work; core has to accept them back or that accommodation is defeated.
+  test('keeps a recorded Fabricator whose role has since changed', async ({ context }) => {
+    await startDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { department: 'fabrication', id: context.job.id },
+    });
+    await completeDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { crewUserIds: ['operator-smith'], department: 'fabrication', id: context.job.id },
+    });
+    await context.db.update(user).set({ role: 'stores' }).where(eq(user.id, 'operator-smith'));
+
+    await updateDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: {
+        completedAt: DateIso.parse('2026-06-04T14:00:00.000Z'),
+        crewUserIds: ['operator-smith'],
+        department: 'fabrication',
+        id: context.job.id,
+        startedAt: DateIso.parse('2026-06-01T06:00:00.000Z'),
+      },
+    });
+
+    const detail = await getJob({ db: context.db, id: context.job.id });
+
+    expect(detail.departmentTimings.find((timing) => timing.department === 'fabrication')?.crew).toEqual([
+      { name: 'J. Smith', userId: 'operator-smith' },
+    ]);
+  });
+
+  test('still refuses a newly named crew member who is not a Bay Operator', async ({ context }) => {
+    await startDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { department: 'fabrication', id: context.job.id },
+    });
+    await completeDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { crewUserIds: ['operator-smith'], department: 'fabrication', id: context.job.id },
+    });
+
+    await expect(
+      updateDepartmentTiming({
+        actorUserId,
+        db: context.db,
+        input: {
+          completedAt: DateIso.parse('2026-06-04T14:00:00.000Z'),
+          crewUserIds: ['operator-smith', actorUserId],
+          department: 'fabrication',
+          id: context.job.id,
+          startedAt: DateIso.parse('2026-06-01T06:00:00.000Z'),
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'job.bay_operator_role_denied' });
+  });
+
   test('refuses a done stamp before its start stamp', async ({ context }) => {
     await expect(
       updateDepartmentTiming({

@@ -69,11 +69,18 @@ type CorrectionFormValues = z.infer<typeof CorrectionFormValues>;
  */
 export const JobFabricationAction: React.FC<{ job: JobDetail }> = ({ job }) => {
   const timing = job.departmentTimings.find((entry) => entry.department === 'fabrication');
-  const canStamp = useCan('job:update').can && !isJobCancelled(job) && job.completedOn === null;
+  const canUpdate = useCan('job:update').can;
 
   if (!timing) {
     return null;
   }
+
+  // A completed Job still accepts the one stamp that closes an observation already open, mirroring
+  // core exactly: the completion sweep latches `completedOn` the day after the last Slot ends, so an
+  // overrunning fabrication run would otherwise be left with no way to record that it finished.
+  // Starting a new observation and correcting a recorded one stay hidden.
+  const hasOpenObservation = timing.startedAt !== null && timing.completedAt === null;
+  const canStamp = canUpdate && !isJobCancelled(job) && (job.completedOn === null || hasOpenObservation);
 
   return (
     <Card>
@@ -230,7 +237,12 @@ const CompleteFabricationButton: React.FC<{ job: JobDetail; timing: JobDepartmen
       </Button>
       <CreateEntityDialog
         defaultValues={{ crewUserIds: timing.suggestedCrew.map((member) => member.userId) }}
-        description={`Record fabrication on ${job.code} as done now, and name the Fabricators who crewed it.`}
+        description={
+          // Corrections are refused on a completed Job, so this stamp is frozen the moment it lands.
+          job.completedOn === null
+            ? `Record fabrication on ${job.code} as done now, and name the Fabricators who crewed it.`
+            : `Record fabrication on ${job.code} as done now, and name the Fabricators who crewed it. ${job.code} is already completed, so this cannot be corrected afterwards — check the names before saving.`
+        }
         key={isOpen ? 'open' : 'closed'}
         onCreate={(values: DoneFormValues) =>
           completeMutation.mutateAsync({ crewUserIds: values.crewUserIds, department: 'fabrication', id: job.id })

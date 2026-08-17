@@ -110,7 +110,15 @@ export const jobsRouter = router({
       mapJobErrors(() => setJobBayDisabled({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
     ),
 
-  listBayOperators: authorizedProcedure('job_bay:update').query(({ ctx }) => listBayOperators({ db: ctx.db })),
+  /**
+   * Any-of: Bay administration names operators against Bays, and Department Timing names them as a
+   * Job's crew. Coupling the crew picker to `job_bay:update` would fail silently if the two roles ever
+   * diverge — the query 403s and the picker just reads empty. Nothing new leaks: a caller holding
+   * `job:update` already sees operator names on every Job sheet and Bay schedule.
+   */
+  listBayOperators: authorizedProcedure(['job_bay:update', 'job:update']).query(({ ctx }) =>
+    listBayOperators({ db: ctx.db }),
+  ),
 
   listBayOperatorAssignmentHistory: authorizedProcedure('job_bay:read')
     .input(JobBayOperatorAssignmentHistoryInput)

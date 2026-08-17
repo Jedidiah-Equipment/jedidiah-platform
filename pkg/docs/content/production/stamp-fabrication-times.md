@@ -37,6 +37,10 @@ Stamps stay editable while the Job is live. Once the Job's **Completed** date is
 section becomes read-only — the done stamp is the fabrication manager stopping that work, while Job
 completion is the factory manager closing the whole Job, and completion freezes what came before it.
 
+One exception: if fabrication was started but never stamped done, **Fabrication done** stays available
+on a completed Job, so a build that ran past its planned dates can still be recorded. That stamp
+cannot be corrected afterwards, so check the Fabricators before saving it.
+
 Cancelled Jobs cannot be stamped at all.
 
 ## Where the averages appear

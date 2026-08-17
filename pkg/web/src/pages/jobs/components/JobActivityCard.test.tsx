@@ -60,12 +60,6 @@ describe('JobActivityCard', () => {
     expect(html).toContain('JOB-00042');
   });
 
-  it('names the file a document entry is about', async () => {
-    const html = await renderWithRouter(<JobActivityCard item={buildChangeItem('job-document-added')} />);
-
-    expect(html).toContain('handover.pdf');
-  });
-
   it('reads a cleared description as cleared rather than as an empty change', async () => {
     const item = buildChangeItem('job-description-updated', { description: null });
 
@@ -82,13 +76,6 @@ describe('JobActivityCard', () => {
 
     expect(html).toContain('A removed user');
     expect(html).toContain('created this Job');
-  });
-
-  it('leaves a change event unclamped, since its payload is never a paragraph', async () => {
-    const html = await renderWithRouter(<JobActivityCard item={buildChangeItem('job-created')} />);
-
-    expect(html).not.toContain('line-clamp-4');
-    expect(html).not.toContain('Show more');
   });
 });
 

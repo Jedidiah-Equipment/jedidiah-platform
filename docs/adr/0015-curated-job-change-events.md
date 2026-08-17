@@ -10,6 +10,7 @@ Two consequences we accepted:
 
 - **Un-completing a Job produces no entry.** The completion predicate tests that `completedOn` was set to a value, not that it changed, so clearing a date is a correction rather than an event. Re-completing writes a fresh entry.
 - **Document entries read their Job out of the creation snapshot, not a join to `documents`.** Documents are hard-deleted; a join would erase "this file was added" from a Job's history the moment the file went, which is the opposite of what a history is for.
+- **The Brochure a Job generates for itself is excluded.** Creating a Job snapshots its Brochure through the same audited document path a person's upload takes, so the plain predicate would report a file nobody added beside every `job-created` entry. The document predicate therefore also requires that the snapshot's `metadata.type` is not `brochure`. The Product documents a Job copies at creation need no such exclusion — they are inserted without an audit event, so they never reach the feed at all.
 
 ## Considered Options
 

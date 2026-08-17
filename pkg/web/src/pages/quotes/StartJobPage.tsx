@@ -85,8 +85,7 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
       onSuccess: async (job) => {
         // Jobs first so the schedule is fresh on arrival; the quote refetch happens
         // after navigation so this page never flashes its not-startable state.
-        await invalidateJobs();
-        await invalidateJobActivity();
+        await Promise.all([invalidateJobs(), invalidateJobActivity()]);
         toast.success(isRework ? 'Rework Job started' : 'Job started');
         await navigate({ search: { job: job.id }, to: '/jobs' });
         await invalidateQuotes();

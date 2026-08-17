@@ -22,6 +22,9 @@ opening each Job in turn.
 Corrective Feedback about a department or a person stays in the Feedback inbox, and feedback
 submitted about a Quote is not shown here. Cancelling a Job does not add an entry.
 
+Only documents someone added show up. The Brochure and the Product documents a Job copies for itself
+when it starts are part of starting the Job, so they do not each get their own entry.
+
 Un-completing a Job does not add an entry either — it reads as a correction rather than something
 that happened. Completing it again does add a new one.
 

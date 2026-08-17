@@ -1,4 +1,9 @@
-import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
+import type {
+  GeneralFeedbackActivityItem,
+  JobActivityActor,
+  JobActivityItem,
+  JobChangeActivityItem,
+} from '@pkg/schema';
 import { IconTimeline } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
@@ -167,7 +172,7 @@ const ActivityCard: React.FC<{ children: React.ReactNode; item: JobActivityItem 
 );
 
 const ActivityHeader: React.FC<{
-  actor: { name: string; thumbnailDataUrl: string | null } | null;
+  actor: JobActivityActor | null;
   item: JobActivityItem;
   name: React.ReactNode;
 }> = ({ actor, item, name }) => (

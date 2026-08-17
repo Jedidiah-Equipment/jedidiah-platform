@@ -44,12 +44,9 @@ export const GeneralFeedbackActivityItem = z.object({
  * actor FK clears rather than cascading, so the event survives the person who caused it.
  */
 export type JobActivityActor = z.infer<typeof JobActivityActor>;
-export const JobActivityActor = z.object({
-  email: z.email(),
-  id: AuthId,
-  name: z.string().trim().min(1),
-  thumbnailDataUrl: NullableThumbnailDataUrl,
-});
+// The same shape a Feedback submitter has, and deliberately the same export: both are just the
+// person an entry attributes itself to, rendered the same way in the same feed.
+export const JobActivityActor = FeedbackSubmitter;
 
 /**
  * What every change event carries. The payload beyond this is curated per type: the raw

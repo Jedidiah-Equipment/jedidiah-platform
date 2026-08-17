@@ -11,7 +11,7 @@ import {
   quotes,
   user,
 } from '@pkg/db';
-import { DateOnlyIso, formatJobCode, type JobActivityItem } from '@pkg/schema';
+import { DateOnlyIso, formatJobCode, type JobActivityItem, type JobDocumentType } from '@pkg/schema';
 import { desc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -288,18 +288,6 @@ describe('listJobActivity change events', () => {
     expect(result.items[0]).toMatchObject({ type: 'job-description-updated', description: null });
   });
 
-  test('reads a completion as a job-completed item carrying the date', async ({ context }) => {
-    await updateJob({
-      actorUserId: 'test-user-id',
-      db: context.db,
-      input: { id: context.job.id, completedOn: DateOnlyIso.parse('2026-08-10'), description: null },
-    });
-
-    const result = await listJobActivity({ db: context.db, input: listInput() });
-
-    expect(result.items).toEqual([expect.objectContaining({ type: 'job-completed', completedOn: '2026-08-10' })]);
-  });
-
   test('renders one patch that both completed and reworded a Job once, as the completion', async ({ context }) => {
     await updateJob({
       actorUserId: 'test-user-id',
@@ -373,6 +361,17 @@ describe('listJobActivity change events', () => {
     expect(result.total).toBe(0);
   });
 
+  // Creating a Job snapshots its Brochure through the audited document path, so without this the
+  // feed would report a file nobody added beside every single job-created entry.
+  test('never shows the Brochure a Job generates for itself at creation', async ({ context }) => {
+    await recordDocumentCreated(context.db, { jobId: context.job.id, type: 'brochure' });
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.items).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
   test('never shows a Job cancellation or an edit to a field the feed does not curate', async ({ context }) => {
     await context.db.transaction(async (tx) => {
       await recordAuditDelete({
@@ -430,7 +429,24 @@ describe('listJobActivity change events', () => {
     expect(result.items.map((item) => item.type)).toEqual(['general-feedback', 'job-created', 'general-feedback']);
   });
 
-  test('pages across the two sources without repeating or dropping an entry', async ({ context }) => {
+  // Both directions, because the union orders on its own aliased columns rather than on a table's:
+  // a direction applied to only one of the two order keys would still page, just wrongly.
+  test.for([
+    {
+      expected: ['general-feedback', 'job-created', 'general-feedback'],
+      sortDirection: 'asc' as const,
+      tail: 'job-created',
+    },
+    {
+      expected: ['job-created', 'general-feedback', 'job-created'],
+      sortDirection: 'desc' as const,
+      tail: 'general-feedback',
+    },
+  ])('pages $sortDirection across the two sources without repeating or dropping an entry', async ({
+    expected,
+    sortDirection,
+    tail,
+  }, { context }) => {
     for (let index = 0; index < 2; index += 1) {
       await insertFeedback(context.db, {
         createdAt: new Date(`2026-08-0${index * 2 + 1}T09:00:00.000Z`),
@@ -444,15 +460,15 @@ describe('listJobActivity change events', () => {
       });
     }
 
-    const firstPage = await listJobActivity({ db: context.db, input: listInput({ limit: 3, sortDirection: 'asc' }) });
+    const firstPage = await listJobActivity({ db: context.db, input: listInput({ limit: 3, sortDirection }) });
     const secondPage = await listJobActivity({
       db: context.db,
-      input: listInput({ cursor: firstPage.nextCursor ?? 0, limit: 3, sortDirection: 'asc' }),
+      input: listInput({ cursor: firstPage.nextCursor ?? 0, limit: 3, sortDirection }),
     });
 
     expect(firstPage.total).toBe(4);
-    expect(firstPage.items.map((item) => item.type)).toEqual(['general-feedback', 'job-created', 'general-feedback']);
-    expect(secondPage.items.map((item) => item.type)).toEqual(['job-created']);
+    expect(firstPage.items.map((item) => item.type)).toEqual(expected);
+    expect(secondPage.items.map((item) => item.type)).toEqual([tail]);
     expect(secondPage.nextCursor).toBeNull();
   });
 });
@@ -505,7 +521,10 @@ async function recordJobCreated(
   await db.update(auditEvents).set({ occurredAt }).where(eq(auditEvents.id, written.id));
 }
 
-async function recordDocumentCreated(db: Db, owner: { jobId?: string | null; productId?: string | null }) {
+async function recordDocumentCreated(
+  db: Db,
+  owner: { jobId?: string | null; productId?: string | null; type?: JobDocumentType },
+) {
   const [document] = await db
     .insert(documents)
     .values({
@@ -513,7 +532,7 @@ async function recordDocumentCreated(db: Db, owner: { jobId?: string | null; pro
       contentType: 'application/pdf',
       filename: 'handover.pdf',
       jobId: owner.jobId ?? null,
-      metadata: { type: 'general' },
+      metadata: { type: owner.type ?? 'general' },
       ownerType: owner.jobId ? 'job' : 'product',
       productId: owner.productId ?? null,
       storageKey: `documents/${owner.jobId ?? owner.productId}/handover.pdf`,

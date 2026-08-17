@@ -85,8 +85,7 @@ const StockBuildContent: React.FC = () => {
     trpc.jobs.create.mutationOptions({
       onSuccess: async (job) => {
         // Jobs first so the Board and list are fresh on arrival; the Unit it just minted follows.
-        await invalidateJobs();
-        await invalidateJobActivity();
+        await Promise.all([invalidateJobs(), invalidateJobActivity()]);
         toast.success('Stock Build started');
         await navigate({ search: { job: job.id }, to: '/jobs/list' });
         await invalidateProductUnits();

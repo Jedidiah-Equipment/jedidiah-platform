@@ -33,18 +33,30 @@ const jobGeneralFeedback = and(eq(feedback.kind, 'general'), eq(feedback.subject
  */
 const jobChangeEvents = or(
   and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'created')),
-  and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'updated'), changeTouches('description')),
-  and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'updated'), changeSetTo('completedOn')),
+  and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'updated'), changeSetNames('description')),
+  and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'updated'), changedFieldIsSet('completedOn')),
   // The owning Job is read out of the snapshot rather than joined to `documents`, because documents
   // are hard-deleted: a join would erase the "added" entry from history the moment the file goes.
-  and(eq(auditEvents.entityType, 'document'), eq(auditEvents.action, 'created'), changeSetTo('jobId')),
+  and(
+    eq(auditEvents.entityType, 'document'),
+    eq(auditEvents.action, 'created'),
+    changedFieldIsSet('jobId'),
+    // Creating a Job generates its own Brochure through the same audited path, and nobody added
+    // that: without this every Job would report a file beside its own `job-created` entry.
+    changedFieldIsNot('metadata', 'type', 'brochure'),
+  ),
 ) as SQL;
 
-function changeTouches(field: string): SQL {
+function changeSetNames(field: string): SQL {
   return sql`jsonb_exists(${auditEvents.changes}, ${field})`;
 }
 
-function changeSetTo(field: string): SQL {
+/** `is distinct from`, so a row whose field or nested key is absent stays in rather than dropping out. */
+function changedFieldIsNot(field: string, key: string, value: string): SQL {
+  return sql`${auditEvents.changes} -> ${field} -> 'to' ->> ${key} is distinct from ${value}`;
+}
+
+function changedFieldIsSet(field: string): SQL {
   return sql`${auditEvents.changes} -> ${field} ->> 'to' is not null`;
 }
 

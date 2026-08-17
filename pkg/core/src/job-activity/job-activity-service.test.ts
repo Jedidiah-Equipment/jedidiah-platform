@@ -286,6 +286,34 @@ describe('listJobActivity search', () => {
     expect(document.items).toEqual([expect.objectContaining({ type: 'job-document-added' })]);
   });
 
+  test('matches every generated Job Event sentence', async ({ context }) => {
+    await recordJobCreated(context.db, context.job);
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { id: context.job.id, description: 'Fit the boom.' },
+    });
+    await updateJob({ actorUserId: 'test-user-id', db: context.db, input: { id: context.job.id, description: null } });
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { id: context.job.id, completedOn: DateOnlyIso.parse('2026-08-10'), description: null },
+    });
+    await recordDocumentCreated(context.db, { jobId: context.job.id });
+
+    for (const [search, type] of [
+      ['created', 'job-created'],
+      ['changed', 'job-description-updated'],
+      ['cleared', 'job-description-updated'],
+      ['completed', 'job-completed'],
+      ['document', 'job-document-added'],
+    ] as const) {
+      const result = await listJobActivity({ db: context.db, input: listInput({ search }) });
+
+      expect(result.items).toEqual([expect.objectContaining({ type })]);
+    }
+  });
+
   test('matches the displayed System and Stock labels', async ({ context }) => {
     const stockJob = await createStockJob(context.db, context.product.id);
 

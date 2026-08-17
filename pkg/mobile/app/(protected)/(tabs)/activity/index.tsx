@@ -17,7 +17,6 @@ import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 import { groupJobActivityByDay } from '@/lib/job-activity';
-import { LIST_PAGE_HEADER_GAP } from '@/lib/list-layout';
 import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
@@ -77,11 +76,7 @@ export default function ActivityRoute() {
       />
       <SectionList
         className="flex-1"
-        contentContainerStyle={{
-          paddingBottom: 32,
-          paddingHorizontal: 16,
-          paddingTop: LIST_PAGE_HEADER_GAP,
-        }}
+        contentContainerClassName="px-4 pb-8 pt-1"
         initialNumToRender={12}
         keyExtractor={activityKey}
         keyboardShouldPersistTaps="handled"
@@ -137,12 +132,13 @@ export default function ActivityRoute() {
         onEndReachedThreshold={0.4}
         refreshControl={<RefreshControl onRefresh={refresh.onRefresh} refreshing={refresh.refreshing} />}
         renderItem={({ index, item, section }) => (
-          <JobActivityEntry first={index === 0} item={item} last={index === section.data.length - 1} />
+          <JobActivityEntry item={item} last={index === section.data.length - 1} />
         )}
         renderSectionHeader={({ section }) => (
           <View
-            className={`mb-3 bg-background ${section.day === sections[0]?.day ? '' : 'border-t border-border'}`}
-            style={section.day === sections[0]?.day ? undefined : { paddingTop: 24 }}
+            className={
+              section.day === sections[0]?.day ? 'mb-3 bg-background' : 'mb-3 border-t border-border bg-background pt-6'
+            }
           >
             <Text className="text-[11px] uppercase tracking-[1.5px] text-foreground" weight="semibold">
               {section.label}

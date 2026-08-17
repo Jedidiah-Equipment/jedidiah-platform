@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, JOB_ACTIVITY_EVENT_SENTENCES } from '@pkg/domain';
 import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { IconCheck, IconFileText, IconPencil, IconPlus, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -200,18 +200,29 @@ type JobChangePresentation = {
 function getJobChangePresentation(item: JobChangeActivityItem): JobChangePresentation {
   switch (item.type) {
     case 'job-created':
-      return { detail: null, icon: IconPlus, sentence: 'created this Job' };
+      return { detail: null, icon: IconPlus, sentence: JOB_ACTIVITY_EVENT_SENTENCES.created };
     case 'job-description-updated':
       return {
         detail: item.description,
         icon: IconPencil,
-        sentence: item.description === null ? 'cleared the Job description' : 'changed the Job description',
+        sentence:
+          item.description === null
+            ? JOB_ACTIVITY_EVENT_SENTENCES.descriptionCleared
+            : JOB_ACTIVITY_EVENT_SENTENCES.descriptionChanged,
       };
     case 'job-completed':
       // A plain date: completedOn carries no time, so a relative renderer would invent one.
-      return { detail: formatDate(item.completedOn), icon: IconCheck, sentence: 'completed this Job' };
+      return {
+        detail: formatDate(item.completedOn),
+        icon: IconCheck,
+        sentence: JOB_ACTIVITY_EVENT_SENTENCES.completed,
+      };
     case 'job-document-added':
-      return { detail: item.document.filename, icon: IconFileText, sentence: 'added a document' };
+      return {
+        detail: item.document.filename,
+        icon: IconFileText,
+        sentence: JOB_ACTIVITY_EVENT_SENTENCES.documentAdded,
+      };
   }
 }
 

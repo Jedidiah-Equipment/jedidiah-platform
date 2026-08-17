@@ -40,6 +40,7 @@ export * from './jobs/bay-working-calendars.js';
 export * from './jobs/board-derivations.js';
 export * from './jobs/board-projection.js';
 export * from './jobs/board-slices.js';
+export * from './jobs/job-activity.js';
 export * from './jobs/job-cfo.js';
 export * from './jobs/job-code.js';
 export * from './jobs/job-customer.js';

@@ -56,12 +56,10 @@ describe('route layout contract', () => {
   });
 
   test('keeps flat and sectioned list toolbars at the same gap below the page header', () => {
-    const listLayout = readFileSync(join(MOBILE_DIR, 'src/lib/list-layout.ts'), 'utf8');
     const catalogList = readFileSync(join(MOBILE_DIR, 'src/components/CatalogList.tsx'), 'utf8');
     const activity = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
 
-    expect(listLayout).toContain('LIST_PAGE_HEADER_GAP = 4');
-    expect(catalogList).toContain('paddingTop: LIST_PAGE_HEADER_GAP');
-    expect(activity).toContain('paddingTop: LIST_PAGE_HEADER_GAP');
+    expect(catalogList).toContain('contentContainerClassName="w-full px-4 pb-8 pt-1"');
+    expect(activity).toContain('contentContainerClassName="px-4 pb-8 pt-1"');
   });
 });

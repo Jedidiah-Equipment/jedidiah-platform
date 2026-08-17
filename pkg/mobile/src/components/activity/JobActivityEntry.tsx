@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, JOB_ACTIVITY_EVENT_SENTENCES } from '@pkg/domain';
 import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { IconCheck, IconFileText, IconPencil, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
@@ -12,7 +12,7 @@ import { OfferingAvatar } from '@/components/OfferingAvatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
-export function JobActivityEntry({ item, last }: { first: boolean; item: JobActivityItem; last: boolean }) {
+export function JobActivityEntry({ item, last }: { item: JobActivityItem; last: boolean }) {
   if (item.type === 'general-feedback') {
     return <FeedbackEntry item={item} last={last} />;
   }
@@ -122,8 +122,8 @@ function ActivityEntryShell({
   who: ReactNode;
 }) {
   return (
-    <View className="relative min-w-0" style={{ paddingBottom: last ? 24 : 14 }}>
-      {last ? null : <View className="absolute -bottom-3 top-3.5 w-px bg-border" style={{ left: 4 }} />}
+    <View className={last ? 'relative min-w-0 pb-6' : 'relative min-w-0 pb-3.5'}>
+      {last ? null : <View className="absolute -bottom-3 top-3.5 left-1 w-px bg-border" />}
       <View className="h-7 flex-row items-center">
         <View className="h-2 w-2 items-center justify-center">{marker}</View>
         <Text className="ml-1.5 text-[11px] text-muted-foreground" mono>
@@ -180,16 +180,27 @@ type JobEventPresentation = {
 function getJobEventPresentation(item: JobChangeActivityItem): JobEventPresentation {
   switch (item.type) {
     case 'job-created':
-      return { detail: null, icon: IconPlus, sentence: 'created this Job' };
+      return { detail: null, icon: IconPlus, sentence: JOB_ACTIVITY_EVENT_SENTENCES.created };
     case 'job-description-updated':
       return {
         detail: item.description,
         icon: IconPencil,
-        sentence: item.description === null ? 'cleared the Job description' : 'changed the Job description',
+        sentence:
+          item.description === null
+            ? JOB_ACTIVITY_EVENT_SENTENCES.descriptionCleared
+            : JOB_ACTIVITY_EVENT_SENTENCES.descriptionChanged,
       };
     case 'job-completed':
-      return { detail: formatDate(item.completedOn), icon: IconCheck, sentence: 'completed this Job' };
+      return {
+        detail: formatDate(item.completedOn),
+        icon: IconCheck,
+        sentence: JOB_ACTIVITY_EVENT_SENTENCES.completed,
+      };
     case 'job-document-added':
-      return { detail: item.document.filename, icon: IconFileText, sentence: 'added a document' };
+      return {
+        detail: item.document.filename,
+        icon: IconFileText,
+        sentence: JOB_ACTIVITY_EVENT_SENTENCES.documentAdded,
+      };
   }
 }

@@ -13,7 +13,13 @@ import {
   user,
   withPagination,
 } from '@pkg/db';
-import { getJobDisplayName, getJobOfferingKind, resolveJobCustomer, resolveNewestOwnershipTransfer } from '@pkg/domain';
+import {
+  getJobDisplayName,
+  getJobOfferingKind,
+  JOB_ACTIVITY_EVENT_SENTENCES,
+  resolveJobCustomer,
+  resolveNewestOwnershipTransfer,
+} from '@pkg/domain';
 import type {
   AuditChanges,
   JobActivityItem,
@@ -45,20 +51,32 @@ const jobGeneralFeedback = and(eq(feedback.kind, 'general'), eq(feedback.subject
  * matches. A cleared `completedOn` is absent for the same reason — un-completing is a correction, not
  * an event, so only a completion date being set reads as one.
  */
-const jobChangeEvents = or(
-  and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'created')),
-  and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'updated'), changeSetNames('description')),
-  and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'updated'), changedFieldIsSet('completedOn')),
+const jobCreatedEvent = and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'created')) as SQL;
+const jobDescriptionUpdatedEvent = and(
+  eq(auditEvents.entityType, 'job'),
+  eq(auditEvents.action, 'updated'),
+  changeSetNames('description'),
+) as SQL;
+const jobCompletedEvent = and(
+  eq(auditEvents.entityType, 'job'),
+  eq(auditEvents.action, 'updated'),
+  changedFieldIsSet('completedOn'),
+) as SQL;
+const jobDocumentAddedEvent = and(
   // The owning Job is read out of the snapshot rather than joined to `documents`, because documents
   // are hard-deleted: a join would erase the "added" entry from history the moment the file goes.
-  and(
-    eq(auditEvents.entityType, 'document'),
-    eq(auditEvents.action, 'created'),
-    changedFieldIsSet('jobId'),
-    // Creating a Job generates its own Brochure through the same audited path, and nobody added
-    // that: without this every Job would report a file beside its own `job-created` entry.
-    changedFieldIsNot('metadata', 'type', 'brochure'),
-  ),
+  eq(auditEvents.entityType, 'document'),
+  eq(auditEvents.action, 'created'),
+  changedFieldIsSet('jobId'),
+  // Creating a Job generates its own Brochure through the same audited path, and nobody added
+  // that: without this every Job would report a file beside its own `job-created` entry.
+  changedFieldIsNot('metadata', 'type', 'brochure'),
+) as SQL;
+const jobChangeEvents = or(
+  jobCreatedEvent,
+  jobDescriptionUpdatedEvent,
+  jobCompletedEvent,
+  jobDocumentAddedEvent,
 ) as SQL;
 
 function changeSetNames(field: string): SQL {
@@ -109,7 +127,7 @@ function jobGeneralFeedbackSearch(search: string): SQL {
 }
 
 function jobChangeEventSearch(search: string): SQL {
-  const displayedSystemMatches = 'system'.includes(search.toLocaleLowerCase());
+  const displayedSystemMatches = visibleTextMatches('System', search);
 
   return or(
     createGlobalSearchCondition(search, [
@@ -123,8 +141,29 @@ function jobChangeEventSearch(search: string): SQL {
         and ${createEscapedContainsSearchCondition(sql`${user.name}`, search)}
     )`,
     displayedSystemMatches ? sql`${auditEvents.actorUserId} is null` : undefined,
+    jobChangeEventSentenceSearch(search),
     jobActivityJobSearch(changeEventJobIdExpression, search),
   ) as SQL;
+}
+
+function jobChangeEventSentenceSearch(search: string): SQL | undefined {
+  const descriptionOnlyEvent = and(jobDescriptionUpdatedEvent, sql`not (${changedFieldIsSet('completedOn')})`);
+
+  return or(
+    visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.created, search) ? jobCreatedEvent : undefined,
+    visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.descriptionChanged, search)
+      ? and(descriptionOnlyEvent, changedFieldIsSet('description'))
+      : undefined,
+    visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.descriptionCleared, search)
+      ? and(descriptionOnlyEvent, sql`${auditEvents.changes} -> 'description' ->> 'to' is null`)
+      : undefined,
+    visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.completed, search) ? jobCompletedEvent : undefined,
+    visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.documentAdded, search) ? jobDocumentAddedEvent : undefined,
+  );
+}
+
+function visibleTextMatches(text: string, search: string): boolean {
+  return text.toLowerCase().includes(search.toLowerCase());
 }
 
 /** The owning Job is direct on Job events and embedded in the curated snapshot for documents. */
@@ -142,7 +181,7 @@ function jobActivityJobSearch(jobIdExpression: SQL, search: string): SQL {
     when ${jobs.productUnitId} is null then ${quotes.customerId}
     else ${currentOwnerCustomerId(jobs.productUnitId)}
   end`;
-  const displayedStockMatches = 'stock'.includes(search.toLocaleLowerCase());
+  const displayedStockMatches = visibleTextMatches('Stock', search);
   const visibleJobFields = createGlobalSearchCondition(search, [
     sql`concat('JOB-', lpad(${jobs.code}::text, 5, '0'))`,
     sql`${products.name}`,

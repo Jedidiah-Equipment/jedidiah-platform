@@ -45,6 +45,7 @@ describe('getRolePermissions', () => {
       'job:update-calendar',
       'job_bay:read',
       'job_bay:update',
+      'job_metrics:read',
       'part:read',
       'part:update',
       'product:create',

@@ -11,6 +11,7 @@ import { ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { JobDetailSections } from '@/components/bays/JobDetailSections';
+import { JobFabricationCard } from '@/components/bays/JobFabricationCard';
 import { JobWorkCard } from '@/components/bays/JobWorkCard';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
 import { SecondaryPageToolbar } from '@/components/TopToolbar';
@@ -295,6 +296,7 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
   const status = isCancelled
     ? { tone: 'cancelled' as const, label: 'CANCELLED' }
     : jobStatus(progress, state.totalCount);
+  const fabricationTiming = state.departmentTimings.find((timing) => timing.department === 'fabrication');
 
   return (
     <View className="gap-4">
@@ -331,6 +333,16 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
       </View>
 
       {isWide ? null : <RoutePane isCancelled={isCancelled} route={state.route} />}
+
+      {fabricationTiming ? (
+        <JobFabricationCard
+          isCancelled={isCancelled}
+          isCompleted={state.completedOn !== null}
+          jobCode={state.jobCode}
+          jobId={jobId}
+          timing={fabricationTiming}
+        />
+      ) : null}
 
       <JobDetailSections
         customerCompanyName={state.customerCompanyName}

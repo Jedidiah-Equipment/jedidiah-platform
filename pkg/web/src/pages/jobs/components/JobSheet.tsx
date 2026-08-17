@@ -48,6 +48,7 @@ import { JobVarianceTab } from '../../inventory/job-variance/components/JobVaria
 import { CustomJobWorkItems } from './CustomJobWorkItems.js';
 import { JobActivityFeed } from './JobActivityFeed.js';
 import { JobCancellationAction } from './JobCancellationAction.js';
+import { JobFabricationAction } from './JobFabricationAction.js';
 import { InfoList, InfoRow } from './JobInfoList.js';
 import { JobStockTab } from './JobStockTab.js';
 import { JobEditFormValues, toJobEditFormValues, toJobUpdateInput } from './job-edit-form.js';
@@ -184,6 +185,7 @@ const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
         <ReadOnlyJobDetails job={job} />
       )}
       <CustomJobWorkItems job={job} />
+      <JobFabricationAction job={job} />
       <Section
         action={
           !isJobCancelled(job) ? (

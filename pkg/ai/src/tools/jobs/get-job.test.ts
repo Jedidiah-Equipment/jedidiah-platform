@@ -20,6 +20,13 @@ const job = JobDetail.parse({
   customerCompanyName: 'Acme Mining',
   customerId: CUSTOMER_ID,
   customerThumbnailDataUrl: 'data:image/webp;base64,YQ==',
+  departmentTimings: ['fabrication', 'paint', 'assembly', 'workshop'].map((department) => ({
+    completedAt: null,
+    crew: [],
+    department,
+    startedAt: null,
+    suggestedCrew: [],
+  })),
   description: 'Repair hydraulic leak',
   documents: [],
   id: JOB_ID,

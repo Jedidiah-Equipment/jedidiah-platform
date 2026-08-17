@@ -5,6 +5,7 @@ export const ProductEditTab = z.enum([
   'bays',
   'assemblies',
   'costing',
+  'build-times',
   'images',
   'documents',
   'translations',

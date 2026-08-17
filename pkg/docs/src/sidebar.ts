@@ -29,6 +29,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { text: 'Catch up on Job Activity', link: '/production/catch-up-on-job-activity' },
       { text: 'Export completed Jobs', link: '/production/export-completed-jobs' },
       { text: 'Export Unit stock', link: '/production/export-unit-stock' },
+      { text: 'Stamp fabrication times', link: '/production/stamp-fabrication-times' },
       { text: 'Open a Bay plan', link: '/production/open-a-bay-plan' },
       { text: 'Delete a Bay', link: '/production/delete-a-bay' },
       { text: 'Remove a Unit', link: '/production/remove-a-unit' },

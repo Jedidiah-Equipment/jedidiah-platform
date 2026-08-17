@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { UserSummary } from '../auth/authorization.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
-import { DEPARTMENTS, Department } from '../common/departments.js';
+import { DEPARTMENTS, Department, WORK_ITEM_DEPARTMENTS, WorkItemDepartment } from '../common/departments.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
@@ -705,8 +705,54 @@ export const JobListInclude = z.object({
   scheduleState: z.boolean().optional(),
 });
 
+export type JobDepartmentCrewMember = z.infer<typeof JobDepartmentCrewMember>;
+export const JobDepartmentCrewMember = z.object({
+  userId: AuthId,
+  name: z.string(),
+});
+
+/**
+ * One work Department's observed stamps on a Job. Every work Department gets an entry whether or not
+ * anyone stamped it, so absent timing reads as nulls rather than a gap the UI has to interpret.
+ */
+export type JobDepartmentTiming = z.infer<typeof JobDepartmentTiming>;
+export const JobDepartmentTiming = z.object({
+  department: WorkItemDepartment,
+  startedAt: DateIso.nullable(),
+  completedAt: DateIso.nullable(),
+  crew: z.array(JobDepartmentCrewMember),
+  /** Open operator assignments on this department's Bays holding this Job's work Slots — the done-dialog's crew prefill. */
+  suggestedCrew: z.array(JobDepartmentCrewMember),
+});
+
+export type JobDepartmentTimingStartInput = z.infer<typeof JobDepartmentTimingStartInput>;
+export const JobDepartmentTimingStartInput = z.object({ id: UUID, department: WorkItemDepartment });
+
+export type JobDepartmentTimingCompleteInput = z.infer<typeof JobDepartmentTimingCompleteInput>;
+export const JobDepartmentTimingCompleteInput = z.object({
+  id: UUID,
+  department: WorkItemDepartment,
+  crewUserIds: z.array(AuthId).min(1, 'Name at least one crew member'),
+});
+
+/**
+ * Full desired state for one department's timing, for corrections while the Job is live: adjust
+ * either stamp's real time, clear a mistaken stamp (null startedAt removes the row), or change the
+ * crew. Core enforces the invariants (done requires started, crew present iff done, no future
+ * stamps, locked once the Job completes).
+ */
+export type JobDepartmentTimingUpdateInput = z.infer<typeof JobDepartmentTimingUpdateInput>;
+export const JobDepartmentTimingUpdateInput = z.object({
+  id: UUID,
+  department: WorkItemDepartment,
+  startedAt: DateIso.nullable(),
+  completedAt: DateIso.nullable(),
+  crewUserIds: z.array(AuthId),
+});
+
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({
+  departmentTimings: z.array(JobDepartmentTiming).length(WORK_ITEM_DEPARTMENTS.length),
   workRows: z.array(JobWorkRow),
   cfo: z.array(
     z.object({

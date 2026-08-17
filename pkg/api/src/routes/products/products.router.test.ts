@@ -316,6 +316,22 @@ describe('products.costEstimate', () => {
   });
 });
 
+describe('products.buildMetrics', () => {
+  test('carries the average for Product readers but names people only behind the metrics gate', async ({ context }) => {
+    const admin = context.createCaller();
+    const created = await createProduct(admin, 'Build Metrics Product', context.rangeId);
+    // The cost gate deliberately does not grant people-metrics, so procurement reads the average alone.
+    const procurement = context.createCaller(mockSession('procurement-manager'));
+
+    await expect(
+      admin.products.buildMetrics({ department: 'fabrication', productId: created.id }),
+    ).resolves.toMatchObject({ averageWorkingDays: null, buildCount: 0, ranking: [] });
+    await expect(
+      procurement.products.buildMetrics({ department: 'fabrication', productId: created.id }),
+    ).resolves.toMatchObject({ buildCount: 0, ranking: null });
+  });
+});
+
 describe('products.read', () => {
   test('lists Range options through Product read access', async ({ context }) => {
     const visibleRange = await createRange(context.db, {

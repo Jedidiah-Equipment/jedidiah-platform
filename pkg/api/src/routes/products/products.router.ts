@@ -3,6 +3,7 @@ import {
   createProduct,
   exportProductAssemblies,
   getProduct,
+  getProductBuildMetrics,
   getProductCostEstimate,
   isProductCoreError,
   listAssemblyNames,
@@ -13,8 +14,15 @@ import {
   removeProduct,
   updateProduct,
 } from '@pkg/core';
-import { catalogTranslationKey } from '@pkg/domain';
-import { ProductCostEstimate, ProductCreateInput, ProductListInput, ProductUpdateInput, UUID } from '@pkg/schema';
+import { catalogTranslationKey, hasPermission } from '@pkg/domain';
+import {
+  ProductBuildMetricsInput,
+  ProductCostEstimate,
+  ProductCreateInput,
+  ProductListInput,
+  ProductUpdateInput,
+  UUID,
+} from '@pkg/schema';
 import { z } from 'zod';
 import { log } from '@/logger.js';
 
@@ -35,6 +43,21 @@ export const productsRouter = router({
     .output(ProductCostEstimate)
     .query(({ ctx, input }) =>
       mapProductErrors(() => getProductCostEstimate({ db: ctx.db, productId: input.productId })),
+    ),
+
+  /**
+   * The average is catalog information under `product:read`; the ranking is performance data about
+   * named people, so it rides the same payload but only for `job_metrics:read` holders. Partial
+   * response rather than a second procedure: one screen, one query, the gate decides one field.
+   */
+  buildMetrics: authorizedProcedure('product:read')
+    .input(ProductBuildMetricsInput)
+    .query(({ ctx, input }) =>
+      getProductBuildMetrics({
+        db: ctx.db,
+        includeRanking: hasPermission(ctx.access, 'job_metrics:read'),
+        input,
+      }),
     ),
 
   rangeOptions: authorizedProcedure('product:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),

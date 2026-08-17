@@ -2442,6 +2442,53 @@ describe('jobs.update', () => {
   });
 });
 
+describe('jobs department timing', () => {
+  test('stamps fabrication start and done under job:update', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await createUser(context.db, {
+      email: 'fabricator@example.com',
+      id: 'fabricator-user-id',
+      name: 'F. Abricator',
+      role: 'bay-operator',
+    });
+
+    await caller.jobs.startDepartmentTiming({ department: 'fabrication', id: job.id });
+    await caller.jobs.completeDepartmentTiming({
+      crewUserIds: ['fabricator-user-id'],
+      department: 'fabrication',
+      id: job.id,
+    });
+
+    const detail = await caller.jobs.get({ id: job.id });
+    const fabrication = detail.departmentTimings.find((timing) => timing.department === 'fabrication');
+
+    expect(fabrication?.crew).toEqual([{ name: 'F. Abricator', userId: 'fabricator-user-id' }]);
+    expect(fabrication?.completedAt).not.toBeNull();
+  });
+
+  test('refuses a job reader who cannot update jobs', async ({ context }) => {
+    const admin = context.createCaller(mockSession('admin'));
+    const job = await admin.jobs.create({ quoteId: context.quote.id });
+    const jobViewer = context.createCaller(mockSession('job-viewer'));
+
+    await expect(jobViewer.jobs.startDepartmentTiming({ department: 'fabrication', id: job.id })).rejects.toMatchObject(
+      { code: 'FORBIDDEN' },
+    );
+  });
+
+  test('maps a stamp on a completed Job to its stable app code', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await caller.jobs.update({ completedOn: toPlantDateOnly(new Date()), id: job.id });
+
+    await expect(caller.jobs.startDepartmentTiming({ department: 'fabrication', id: job.id })).rejects.toMatchObject({
+      appCode: 'job.department_timing_locked',
+      code: 'BAD_REQUEST',
+    });
+  });
+});
+
 describe('jobs.removeSlot', () => {
   test('removes an authorized slot', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));

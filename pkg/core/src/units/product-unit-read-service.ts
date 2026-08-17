@@ -57,6 +57,13 @@ export const productUnitBuildCompletedOn = buildJobColumn<string>(jobs.completed
  */
 export const productUnitBuildJobCode = buildJobColumn<number>(jobs.code);
 
+/**
+ * The Build Job's own id, for readers that need to ask "is *this* Job the build" — build metrics count
+ * only the build, never a rework. Read through the shared column so the predicate cannot be re-derived
+ * somewhere else and drift.
+ */
+export const productUnitBuildJobId = buildJobColumn<string>(jobs.id);
+
 /** One projection for both reads, so the list and the detail can never drift apart. */
 const productUnitSelection = {
   buildCompletedOn: productUnitBuildCompletedOn.as('build_completed_on'),

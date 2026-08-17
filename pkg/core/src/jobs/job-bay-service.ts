@@ -51,7 +51,7 @@ import {
 } from './job-errors.js';
 
 type JobBayRow = typeof jobBays.$inferSelect;
-type BayOperatorRow = Pick<typeof user.$inferSelect, 'email' | 'id' | 'image' | 'name'>;
+export type BayOperatorRow = Pick<typeof user.$inferSelect, 'email' | 'id' | 'image' | 'name'>;
 
 export type OpenOperatorAssignmentsRow = {
   operatorAssignments: { operator: BayOperatorRow }[];
@@ -480,7 +480,12 @@ function mapBayOperator(row: BayOperatorRow): BayOperator {
   });
 }
 
-async function getAssignableBayOperatorForUpdate(
+/**
+ * The one rule for naming a shop-floor person against work: the account must exist and must be a Bay
+ * Operator. Shared with Department Crew so a crew member and an Operator Assignment can never come to
+ * disagree about who is on the floor.
+ */
+export async function getAssignableBayOperatorForUpdate(
   tx: DatabaseTransaction,
   operatorUserId: AuthId,
 ): Promise<BayOperatorRow> {

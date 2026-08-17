@@ -17,6 +17,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { ProductAssembliesTabTrigger } from './components/ProductAssembliesTabTrigger.js';
 import { ProductBaysTabTrigger } from './components/ProductBaysTabTrigger.js';
+import { ProductBuildTimesSection } from './components/ProductBuildTimesSection.js';
 import { ProductCostEstimatePanel } from './components/ProductCostEstimatePanel.js';
 import { ProductDocumentsSection } from './components/ProductDocumentsSection.js';
 import { ProductDocumentsTabTrigger } from './components/ProductDocumentsTabTrigger.js';
@@ -107,6 +108,9 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabC
           <ProductBaysTabTrigger productId={product.id} />
           <ProductAssembliesTabTrigger productId={product.id} />
           <TabsTrigger value="costing">Costing</TabsTrigger>
+          {/* Only `product:read`, which this page already demands: the metrics gate applies to the
+              Fabricator ranking inside the tab, not to the build times themselves. */}
+          <TabsTrigger value="build-times">Build times</TabsTrigger>
           <TabsTrigger value="images">Images</TabsTrigger>
           <ProductDocumentsTabTrigger productId={product.id} />
           <ProductTranslationsTabTrigger productId={product.id} />
@@ -125,6 +129,9 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabC
           onSave={onProductSave}
           product={product}
         />
+        <TabsContent className="pt-4" value="build-times">
+          <ProductBuildTimesSection productId={product.id} />
+        </TabsContent>
         <TabsContent className="pt-4" value="images">
           <ProductImagesSection product={product} />
         </TabsContent>

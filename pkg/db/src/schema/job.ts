@@ -1,8 +1,9 @@
-import type { Department, ProductCostEstimate } from '@pkg/schema';
+import { type Department, type ProductCostEstimate, WORK_ITEM_DEPARTMENTS, type WorkItemDepartment } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
   check,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -270,6 +271,62 @@ export const jobSlots = pgTable(
   ],
 );
 
+const workItemDepartmentSql = WORK_ITEM_DEPARTMENTS.map((department) => `'${department}'`).join(', ');
+
+// When a person said one Department's work began and ended on this Job. An observation log,
+// not workflow state: stamped by hand, never derived from the schedule, and never read by the
+// board or slot-state derivations — the per-job stage rows removed in migration 0037 stay
+// removed. Stamps lock once the Job's completedOn latches. Timestamps, not plant dates: the
+// metrics convert to plant business dates at read time. Row absence means "not started".
+export const jobDepartmentTimings = pgTable(
+  'job_department_timing',
+  {
+    jobId: uuid('job_id')
+      .notNull()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    department: text('department').notNull().$type<WorkItemDepartment>(),
+    startedAt: timestamp('started_at', { mode: 'date', withTimezone: true }).notNull(),
+    completedAt: timestamp('completed_at', { mode: 'date', withTimezone: true }),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.jobId, table.department], name: 'job_department_timing_pkey' }),
+    // Same sql.raw-from-constant pattern as product_labor_hours_department_check.
+    check('job_department_timing_department_check', sql`${table.department} IN (${sql.raw(workItemDepartmentSql)})`),
+    check(
+      'job_department_timing_stamp_order',
+      sql`${table.completedAt} IS NULL OR ${table.completedAt} >= ${table.startedAt}`,
+    ),
+  ],
+);
+
+// The people who crewed one Department's work on a Job, recorded with the done-stamp. Crew
+// exists only while the timing row's completedAt is set — enforced in core, not expressible
+// as a table check. Cascades with its timing row.
+export const jobDepartmentCrew = pgTable(
+  'job_department_crew',
+  {
+    jobId: uuid('job_id').notNull(),
+    department: text('department').notNull().$type<WorkItemDepartment>(),
+    crewUserId: text('crew_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'restrict' }),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.jobId, table.department, table.crewUserId],
+      name: 'job_department_crew_pkey',
+    }),
+    foreignKey({
+      columns: [table.jobId, table.department],
+      foreignColumns: [jobDepartmentTimings.jobId, jobDepartmentTimings.department],
+      name: 'job_department_crew_timing_fk',
+    }).onDelete('cascade'),
+  ],
+);
+
 export const jobBaysRelations = relations(jobBays, ({ many }) => ({
   calendarExceptions: many(jobBayCalendarExceptions),
   operatorAssignments: many(jobBayOperatorAssignments),
@@ -317,11 +374,31 @@ export const jobsRelations = relations(jobs, ({ many, one }) => ({
   }),
   buildSpecAssemblies: many(jobBuildSpecAssemblies),
   cfoAssemblies: many(jobCfoAssemblies),
+  departmentTimings: many(jobDepartmentTimings),
   estimateSnapshot: one(jobEstimateSnapshots, {
     fields: [jobs.id],
     references: [jobEstimateSnapshots.jobId],
   }),
   slots: many(jobSlots),
+}));
+
+export const jobDepartmentTimingsRelations = relations(jobDepartmentTimings, ({ many, one }) => ({
+  job: one(jobs, {
+    fields: [jobDepartmentTimings.jobId],
+    references: [jobs.id],
+  }),
+  crew: many(jobDepartmentCrew),
+}));
+
+export const jobDepartmentCrewRelations = relations(jobDepartmentCrew, ({ one }) => ({
+  timing: one(jobDepartmentTimings, {
+    fields: [jobDepartmentCrew.jobId, jobDepartmentCrew.department],
+    references: [jobDepartmentTimings.jobId, jobDepartmentTimings.department],
+  }),
+  crewUser: one(user, {
+    fields: [jobDepartmentCrew.crewUserId],
+    references: [user.id],
+  }),
 }));
 
 export const jobEstimateSnapshotsRelations = relations(jobEstimateSnapshots, ({ one }) => ({

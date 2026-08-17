@@ -43,6 +43,7 @@ export * from './products/brochure-document.js';
 export * from './products/catalog-translation.js';
 export * from './products/catalog-translation-review.js';
 export * from './products/product.js';
+export * from './products/product-build-metrics.js';
 export * from './products/product-cost-estimate.js';
 export * from './products/product-range.js';
 export * from './purchase-orders/purchase-order.js';

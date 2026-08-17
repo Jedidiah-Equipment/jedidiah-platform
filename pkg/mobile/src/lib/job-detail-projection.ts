@@ -14,7 +14,16 @@ import {
   listNextWorkSlots,
   resolveJobStatusTone,
 } from '@pkg/domain';
-import type { BayOperator, BoardListResult, DateOnlyIso, Department, JobDetail, QuoteKind, UUID } from '@pkg/schema';
+import type {
+  BayOperator,
+  BoardListResult,
+  DateOnlyIso,
+  Department,
+  JobDepartmentTiming,
+  JobDetail,
+  QuoteKind,
+  UUID,
+} from '@pkg/schema';
 
 /** One Bay on the Job's production-route timeline, projected from its Work Slot. */
 export type JobRouteStopCard = JobRouteStop & {
@@ -41,6 +50,8 @@ export type JobDetailReadyState = {
   productThumbnailDataUrl: string | null;
   customerCompanyName: string | null;
   description: string | null;
+  /** One entry per work Department; the screen only surfaces fabrication. */
+  departmentTimings: JobDepartmentTiming[];
   /** The Job's Bays in department-pipeline order, each with its state, dates, and progress. */
   route: JobRouteStopCard[];
   /** Shared days-left + overall-progress projection; `null` once the Job has no unfinished Slot. */
@@ -96,6 +107,7 @@ export function projectJobDetail(job: JobDetail, board: BoardListResult): JobDet
     productSerialNumber: job.productUnit?.productSerialNumber ?? null,
     productThumbnailDataUrl: job.productThumbnailDataUrl,
     customerCompanyName: job.customerCompanyName,
+    departmentTimings: job.departmentTimings,
     description: job.description,
     route,
     progress,

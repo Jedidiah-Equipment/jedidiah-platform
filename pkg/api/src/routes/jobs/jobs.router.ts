@@ -4,6 +4,7 @@ import {
   assignJobBayOperator,
   bookJobSlot,
   cancelJob,
+  completeDepartmentTiming,
   createJob,
   createJobBay,
   deleteJobBay,
@@ -29,8 +30,10 @@ import {
   renameJobBay,
   resizeJobSlot,
   setJobBayDisabled,
+  startDepartmentTiming,
   toggleOffDay,
   unassignJobBayOperator,
+  updateDepartmentTiming,
   updateJob,
 } from '@pkg/core';
 import { hasPermission } from '@pkg/domain';
@@ -52,6 +55,9 @@ import {
   JobCancelInput,
   JobCreateInput,
   JobCustomerOptionListInput,
+  JobDepartmentTimingCompleteInput,
+  JobDepartmentTimingStartInput,
+  JobDepartmentTimingUpdateInput,
   JobListInput,
   JobSalesExportInput,
   JobUpdateInput,
@@ -176,6 +182,28 @@ export const jobsRouter = router({
       mapJobErrors(() => updateJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
+  /**
+   * Department Timing stamps ride `job:update` rather than a gate of their own: recording that
+   * fabrication started is day-to-day Job upkeep, unlike the terminal `job:cancel`.
+   */
+  startDepartmentTiming: authorizedProcedure('job:update')
+    .input(JobDepartmentTimingStartInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => startDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
+  completeDepartmentTiming: authorizedProcedure('job:update')
+    .input(JobDepartmentTimingCompleteInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => completeDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
+  updateDepartmentTiming: authorizedProcedure('job:update')
+    .input(JobDepartmentTimingUpdateInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => updateDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
   /** What the cancel dialog is about to touch. A Job with a Quote is never offered its machine. */
   cancellationPlan: authorizedProcedure('job:read')
     .input(z.object({ id: UUID }))
@@ -294,6 +322,15 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         message: error.message,
       };
     case 'job.completed_on_in_future':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: error.message,
+      };
+    case 'job.department_timing_locked':
+    case 'job.department_timing_already_started':
+    case 'job.department_timing_not_started':
+    case 'job.department_timing_invalid':
       return {
         appCode: error.code,
         code: 'BAD_REQUEST',

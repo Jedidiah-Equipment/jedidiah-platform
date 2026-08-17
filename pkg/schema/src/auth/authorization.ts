@@ -34,6 +34,7 @@ export const APP_PERMISSIONS = [
   'job:cancel',
   'job_bay:read',
   'job_bay:update',
+  'job_metrics:read',
   'inventory:read',
   'inventory:move',
   'inventory:adjust',

@@ -6,9 +6,12 @@ import {
   type Db,
   documents,
   getPaginationQueryOptions,
+  jobBayOperatorAssignments,
   jobBays,
   jobCfoAssemblies,
   jobCfoParts,
+  jobDepartmentCrew,
+  jobDepartmentTimings,
   jobSlots,
   jobs,
   parts,
@@ -36,6 +39,7 @@ import {
 import {
   type BoardListInput,
   type BoardListResult,
+  DateIso,
   type DateOnlyIso,
   getNextCursor,
   type JobCustomerOptionListInput,
@@ -53,6 +57,7 @@ import {
   QuoteCode,
   type SortDirection,
   UUID,
+  WORK_ITEM_DEPARTMENTS,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gte, inArray, isNull, lte, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
@@ -590,20 +595,72 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
     throw new JobNotFoundError(id);
   }
 
-  const [cfo, documents, workRows, schedule] = await Promise.all([
+  const [cfo, documents, workRows, schedule, departmentTimings] = await Promise.all([
     listJobCfo({ db, jobId: row.id }),
     listJobDocumentRows({ db, jobId: row.id }),
     listJobWorkRows(row.quote),
     getJobSchedule({ db, jobId: row.id }),
+    listJobDepartmentTimings({ db, jobId: row.id }),
   ]);
 
   return {
     ...mapJobSummary(row),
     cfo,
+    departmentTimings,
     documents,
     schedule,
     workRows,
   };
+}
+
+/**
+ * One entry per work Department whether or not anyone stamped it, so the Job sheet reads "not started"
+ * off nulls rather than off a missing key. `suggestedCrew` is who is standing at the Bays this Job's
+ * work is booked into right now — a prefill for the done-dialog, never a record of who worked.
+ */
+async function listJobDepartmentTimings({
+  db,
+  jobId,
+}: {
+  db: Db | DatabaseTransaction;
+  jobId: UUID;
+}): Promise<JobDetail['departmentTimings']> {
+  const [timingRows, crewRows, suggestedRows] = await Promise.all([
+    db.select().from(jobDepartmentTimings).where(eq(jobDepartmentTimings.jobId, jobId)),
+    db
+      .select({ department: jobDepartmentCrew.department, name: user.name, userId: user.id })
+      .from(jobDepartmentCrew)
+      .innerJoin(user, eq(user.id, jobDepartmentCrew.crewUserId))
+      .where(eq(jobDepartmentCrew.jobId, jobId))
+      .orderBy(asc(user.name)),
+    db
+      .selectDistinct({ department: jobBays.department, name: user.name, userId: user.id })
+      .from(jobSlots)
+      .innerJoin(jobBays, eq(jobBays.id, jobSlots.bayId))
+      .innerJoin(
+        jobBayOperatorAssignments,
+        and(eq(jobBayOperatorAssignments.bayId, jobBays.id), isNull(jobBayOperatorAssignments.unassignedAt)),
+      )
+      .innerJoin(user, eq(user.id, jobBayOperatorAssignments.operatorUserId))
+      .where(and(eq(jobSlots.jobId, jobId), eq(jobSlots.kind, 'work')))
+      .orderBy(asc(user.name)),
+  ]);
+
+  return WORK_ITEM_DEPARTMENTS.map((department) => {
+    const timing = timingRows.find((timingRow) => timingRow.department === department);
+
+    return {
+      department,
+      startedAt: timing ? DateIso.parse(timing.startedAt) : null,
+      completedAt: timing?.completedAt ? DateIso.parse(timing.completedAt) : null,
+      crew: crewRows.filter((crewRow) => crewRow.department === department).map(toCrewMember),
+      suggestedCrew: suggestedRows.filter((suggested) => suggested.department === department).map(toCrewMember),
+    };
+  });
+}
+
+function toCrewMember(row: { name: string; userId: string }): { name: string; userId: string } {
+  return { name: row.name, userId: row.userId };
 }
 
 /**

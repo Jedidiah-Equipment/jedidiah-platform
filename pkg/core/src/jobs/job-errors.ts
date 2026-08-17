@@ -176,6 +176,54 @@ export class JobCompletedOnInFutureError extends Error {
   }
 }
 
+/**
+ * Job Completion is the factory manager's word that the whole Job is finished, so it freezes the
+ * department observations behind it. Corrections after that point are deliberately not a self-service
+ * edit.
+ */
+export class JobDepartmentTimingLockedError extends Error {
+  readonly code = 'job.department_timing_locked';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super('This job is completed, so its department timings can no longer be changed.');
+    this.name = 'JobDepartmentTimingLockedError';
+    this.metadata = { id };
+  }
+}
+
+export class JobDepartmentTimingAlreadyStartedError extends Error {
+  readonly code = 'job.department_timing_already_started';
+  readonly metadata: { department: string; id: string };
+
+  constructor(id: string, department: string) {
+    super('This department has already been started on this job.');
+    this.name = 'JobDepartmentTimingAlreadyStartedError';
+    this.metadata = { department, id };
+  }
+}
+
+export class JobDepartmentTimingNotStartedError extends Error {
+  readonly code = 'job.department_timing_not_started';
+  readonly metadata: { department: string; id: string };
+
+  constructor(id: string, department: string) {
+    super('This department has not been started on this job.');
+    this.name = 'JobDepartmentTimingNotStartedError';
+    this.metadata = { department, id };
+  }
+}
+
+/** A correction that would leave the stamps or their crew in a shape the done-stamp never produces. */
+export class JobDepartmentTimingInvalidError extends Error {
+  readonly code = 'job.department_timing_invalid';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'JobDepartmentTimingInvalidError';
+  }
+}
+
 export type JobCoreError =
   | JobAlreadyCompletedError
   | JobBayAlreadyAssignedError
@@ -187,6 +235,10 @@ export type JobCoreError =
   | JobBayOperatorRoleDeniedError
   | JobCompletedOnInFutureError
   | JobCreateFromQuoteDeniedError
+  | JobDepartmentTimingAlreadyStartedError
+  | JobDepartmentTimingInvalidError
+  | JobDepartmentTimingLockedError
+  | JobDepartmentTimingNotStartedError
   | JobCancelledError
   | JobNotFoundError
   | JobSlotBookingDeniedError
@@ -206,6 +258,10 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobBayAlreadyAssignedError ||
     error instanceof JobCompletedOnInFutureError ||
     error instanceof JobCreateFromQuoteDeniedError ||
+    error instanceof JobDepartmentTimingAlreadyStartedError ||
+    error instanceof JobDepartmentTimingInvalidError ||
+    error instanceof JobDepartmentTimingLockedError ||
+    error instanceof JobDepartmentTimingNotStartedError ||
     error instanceof JobCancelledError ||
     error instanceof JobNotFoundError ||
     error instanceof JobSlotBookingDeniedError ||

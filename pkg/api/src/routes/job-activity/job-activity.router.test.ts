@@ -1,4 +1,4 @@
-import { customers, type Db, feedback, jobs, products, productUnits, quotes } from '@pkg/db';
+import { auditEvents, customers, type Db, feedback, jobs, products, productUnits, quotes } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { createActorUser } from '@/test/actor-user.js';
@@ -26,6 +26,29 @@ describe('jobActivity.list', () => {
       type: 'general-feedback',
       job: { id: context.job.id },
     });
+  });
+
+  // The load-bearing decision of ADR 0015: change events come from `audit_events`, which a job
+  // viewer may not read raw, and they still reach that viewer here as curated items.
+  test('serves change events to a job viewer who holds no audit read permission', async ({ context }) => {
+    await context.db.insert(auditEvents).values({
+      action: 'created',
+      actorUserId: 'test-user-id',
+      changes: { completedOn: { from: null, to: null }, description: { from: null, to: null } },
+      entityId: context.job.id,
+      entityType: 'job',
+      summary: 'Created job "JOB-00001"',
+    });
+
+    const viewer = context.createCaller(mockSession('job-viewer'));
+
+    await expect(viewer.audit.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    const result = await viewer.jobActivity.list({});
+
+    expect(result.items).toEqual([
+      expect.objectContaining({ type: 'job-created', job: expect.objectContaining({ id: context.job.id }) }),
+    ]);
   });
 
   test('denies the feed to roles without job read access', async ({ context }) => {

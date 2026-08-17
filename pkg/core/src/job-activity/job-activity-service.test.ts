@@ -1,6 +1,8 @@
 import {
+  auditEvents,
   customers,
   type Db,
+  documents,
   feedback,
   jobs,
   products,
@@ -9,9 +11,14 @@ import {
   quotes,
   user,
 } from '@pkg/db';
-import { formatJobCode } from '@pkg/schema';
+import { DateOnlyIso, formatJobCode, type JobActivityItem, type JobDocumentType } from '@pkg/schema';
+import { desc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
+import { recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
+import { documentAuditDescriptor } from '../documents/document-service.js';
+import { jobAuditDescriptor } from '../jobs/job-audit.js';
+import { updateJob } from '../jobs/job-service.js';
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listJobActivity } from './job-activity-service.js';
@@ -158,7 +165,7 @@ describe('listJobActivity', () => {
     const result = await listJobActivity({ db: context.db, input: listInput() });
 
     // Newest first, and the tie broken by descending id so the sort matches the index's own order.
-    expect(result.items.map((item) => item.feedback.text)).toEqual(['Newest.', 'Tied, higher id.', 'Tied, lower id.']);
+    expect(feedbackTexts(result.items)).toEqual(['Newest.', 'Tied, higher id.', 'Tied, lower id.']);
   });
 
   test('pages with a server-computed cursor that terminates on the last page', async ({ context }) => {
@@ -236,7 +243,233 @@ describe('listJobActivity', () => {
 
     const result = await listJobActivity({ db: context.db, input: listInput({ sortDirection: 'asc' }) });
 
-    expect(result.items.map((item) => item.feedback.text)).toEqual(['Older.', 'Newer.']);
+    expect(feedbackTexts(result.items)).toEqual(['Older.', 'Newer.']);
+  });
+});
+
+describe('listJobActivity change events', () => {
+  test('reads a Job creation audit row as a job-created item placed on its Job', async ({ context }) => {
+    await recordJobCreated(context.db, context.job);
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      type: 'job-created',
+      job: { code: formatJobCode(context.job.code), customerCompanyName: 'Activity Customer' },
+      actor: { id: 'test-user-id', name: 'Test User', thumbnailDataUrl: SUBMITTER_THUMBNAIL_DATA_URL },
+    });
+  });
+
+  test('reads a description edit as a job-description-updated item carrying the new text', async ({ context }) => {
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { id: context.job.id, description: 'Fit the heavy-duty boom.' },
+    });
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.items).toEqual([
+      expect.objectContaining({ type: 'job-description-updated', description: 'Fit the heavy-duty boom.' }),
+    ]);
+  });
+
+  test('carries a cleared description as null rather than dropping the edit', async ({ context }) => {
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { id: context.job.id, description: 'Fit the heavy-duty boom.' },
+    });
+    await updateJob({ actorUserId: 'test-user-id', db: context.db, input: { id: context.job.id, description: null } });
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.items[0]).toMatchObject({ type: 'job-description-updated', description: null });
+  });
+
+  test('renders one patch that both completed and reworded a Job once, as the completion', async ({ context }) => {
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: {
+        id: context.job.id,
+        completedOn: DateOnlyIso.parse('2026-08-10'),
+        description: 'Signed off by the foreman.',
+      },
+    });
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.total).toBe(1);
+    expect(result.items).toEqual([expect.objectContaining({ type: 'job-completed', completedOn: '2026-08-10' })]);
+  });
+
+  test('shows nothing for un-completing a Job, and a fresh item for re-completing it', async ({ context }) => {
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { id: context.job.id, completedOn: DateOnlyIso.parse('2026-08-10'), description: null },
+    });
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { id: context.job.id, completedOn: null, description: null },
+    });
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { id: context.job.id, completedOn: DateOnlyIso.parse('2026-08-12'), description: null },
+    });
+
+    const result = await listJobActivity({ db: context.db, input: listInput({ sortDirection: 'asc' }) });
+
+    expect(result.items).toEqual([
+      expect.objectContaining({ type: 'job-completed', completedOn: '2026-08-10' }),
+      expect.objectContaining({ type: 'job-completed', completedOn: '2026-08-12' }),
+    ]);
+  });
+
+  test('reads a document added to a Job as a job-document-added item naming the file', async ({ context }) => {
+    await recordDocumentCreated(context.db, { jobId: context.job.id });
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.items[0]).toMatchObject({
+      type: 'job-document-added',
+      job: { id: context.job.id },
+      document: { contentType: 'application/pdf', filename: 'handover.pdf' },
+    });
+  });
+
+  test('keeps a document entry after the document itself is deleted', async ({ context }) => {
+    const document = await recordDocumentCreated(context.db, { jobId: context.job.id });
+
+    await context.db.delete(documents).where(eq(documents.id, document.id));
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.items[0]).toMatchObject({ type: 'job-document-added', document: { filename: 'handover.pdf' } });
+  });
+
+  test('never shows a document that belongs to no Job', async ({ context }) => {
+    await recordDocumentCreated(context.db, { jobId: null, productId: context.product.id });
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.items).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
+  // Creating a Job snapshots its Brochure through the audited document path, so without this the
+  // feed would report a file nobody added beside every single job-created entry.
+  test('never shows the Brochure a Job generates for itself at creation', async ({ context }) => {
+    await recordDocumentCreated(context.db, { jobId: context.job.id, type: 'brochure' });
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.items).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
+  test('never shows a Job cancellation or an edit to a field the feed does not curate', async ({ context }) => {
+    await context.db.transaction(async (tx) => {
+      await recordAuditDelete({
+        db: tx,
+        descriptor: jobAuditDescriptor,
+        actorUserId: 'test-user-id',
+        input: context.job,
+      });
+    });
+    await context.db.insert(auditEvents).values({
+      action: 'updated',
+      actorUserId: 'test-user-id',
+      changes: { productUnitId: { from: null, to: '00000000-0000-4000-8000-00000000000a' } },
+      entityId: context.job.id,
+      entityType: 'job',
+      summary: 'Updated job "JOB-00001"',
+    });
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.items).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
+  test('leaves the actor null once the acting user is deleted', async ({ context }) => {
+    await createUser(context.db, { id: 'departed-user-id', name: 'Departed User' });
+    await recordJobCreated(context.db, context.job, { actorUserId: 'departed-user-id' });
+    await context.db.delete(user).where(eq(user.id, 'departed-user-id'));
+
+    const result = await listJobActivity({ db: context.db, input: listInput() });
+
+    expect(result.items[0]).toMatchObject({ type: 'job-created', actor: null });
+  });
+
+  test('merges both sources into one stream ordered by when each happened', async ({ context }) => {
+    await insertFeedback(context.db, {
+      createdAt: new Date('2026-08-01T09:00:00.000Z'),
+      jobId: context.job.id,
+      kind: 'general',
+      subjectType: 'job',
+      text: 'Oldest.',
+    });
+    await recordJobCreated(context.db, context.job, { occurredAt: new Date('2026-08-02T09:00:00.000Z') });
+    await insertFeedback(context.db, {
+      createdAt: new Date('2026-08-03T09:00:00.000Z'),
+      jobId: context.job.id,
+      kind: 'general',
+      subjectType: 'job',
+      text: 'Newest.',
+    });
+
+    const result = await listJobActivity({ db: context.db, input: listInput({ sortDirection: 'asc' }) });
+
+    expect(result.total).toBe(3);
+    expect(result.items.map((item) => item.type)).toEqual(['general-feedback', 'job-created', 'general-feedback']);
+  });
+
+  // Both directions, because the union orders on its own aliased columns rather than on a table's:
+  // a direction applied to only one of the two order keys would still page, just wrongly.
+  test.for([
+    {
+      expected: ['general-feedback', 'job-created', 'general-feedback'],
+      sortDirection: 'asc' as const,
+      tail: 'job-created',
+    },
+    {
+      expected: ['job-created', 'general-feedback', 'job-created'],
+      sortDirection: 'desc' as const,
+      tail: 'general-feedback',
+    },
+  ])('pages $sortDirection across the two sources without repeating or dropping an entry', async ({
+    expected,
+    sortDirection,
+    tail,
+  }, { context }) => {
+    for (let index = 0; index < 2; index += 1) {
+      await insertFeedback(context.db, {
+        createdAt: new Date(`2026-08-0${index * 2 + 1}T09:00:00.000Z`),
+        jobId: context.job.id,
+        kind: 'general',
+        subjectType: 'job',
+        text: `Said ${index}`,
+      });
+      await recordJobCreated(context.db, context.job, {
+        occurredAt: new Date(`2026-08-0${index * 2 + 2}T09:00:00.000Z`),
+      });
+    }
+
+    const firstPage = await listJobActivity({ db: context.db, input: listInput({ limit: 3, sortDirection }) });
+    const secondPage = await listJobActivity({
+      db: context.db,
+      input: listInput({ cursor: firstPage.nextCursor ?? 0, limit: 3, sortDirection }),
+    });
+
+    expect(firstPage.total).toBe(4);
+    expect(firstPage.items.map((item) => item.type)).toEqual(expected);
+    expect(secondPage.items.map((item) => item.type)).toEqual([tail]);
+    expect(secondPage.nextCursor).toBeNull();
   });
 });
 
@@ -250,20 +483,93 @@ function listInput(overrides: Partial<Parameters<typeof listJobActivity>[0]['inp
   };
 }
 
+/** Names a leaked change item by its type rather than throwing, so a wrong item reads in the diff. */
+function feedbackTexts(items: JobActivityItem[]): string[] {
+  return items.map((item) => (item.type === 'general-feedback' ? item.feedback.text : item.type));
+}
+
 async function insertFeedback(db: Db, values: Omit<typeof feedback.$inferInsert, 'submitterId'>) {
   await db.insert(feedback).values({ ...values, submitterId: 'test-user-id' });
 }
 
+/** The real descriptor, so the feed's predicate is pinned against the shape the Job service writes. */
+async function recordJobCreated(
+  db: Db,
+  job: typeof jobs.$inferSelect,
+  { actorUserId = 'test-user-id', occurredAt }: { actorUserId?: string; occurredAt?: Date } = {},
+) {
+  await db.transaction(async (tx) => {
+    await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
+  });
+
+  if (!occurredAt) {
+    return;
+  }
+
+  // The row just written is the newest, because every stamp this file sets is a date in the past.
+  const [written] = await db
+    .select({ id: auditEvents.id })
+    .from(auditEvents)
+    .where(eq(auditEvents.entityId, job.id))
+    .orderBy(desc(auditEvents.occurredAt))
+    .limit(1);
+
+  if (!written) {
+    throw new Error('Job created audit event was not written');
+  }
+
+  await db.update(auditEvents).set({ occurredAt }).where(eq(auditEvents.id, written.id));
+}
+
+async function recordDocumentCreated(
+  db: Db,
+  owner: { jobId?: string | null; productId?: string | null; type?: JobDocumentType },
+) {
+  const [document] = await db
+    .insert(documents)
+    .values({
+      byteSize: 1024,
+      contentType: 'application/pdf',
+      filename: 'handover.pdf',
+      jobId: owner.jobId ?? null,
+      metadata: { type: owner.type ?? 'general' },
+      ownerType: owner.jobId ? 'job' : 'product',
+      productId: owner.productId ?? null,
+      storageKey: `documents/${owner.jobId ?? owner.productId}/handover.pdf`,
+      uploaderUserId: 'test-user-id',
+    })
+    .returning();
+
+  if (!document) {
+    throw new Error('Document insert did not return a row');
+  }
+
+  await db.transaction(async (tx) => {
+    await recordAuditCreate({
+      db: tx,
+      descriptor: documentAuditDescriptor,
+      actorUserId: 'test-user-id',
+      input: document,
+    });
+  });
+
+  return document;
+}
+
 async function createSubmitter(db: Db) {
+  await createUser(db, { id: 'test-user-id', name: 'Test User' });
+}
+
+async function createUser(db: Db, { id, name }: { id: string; name: string }) {
   const now = new Date();
 
   await db.insert(user).values({
     createdAt: now,
-    email: 'test@example.com',
+    email: `${id}@example.com`,
     emailVerified: true,
-    id: 'test-user-id',
+    id,
     image: SUBMITTER_THUMBNAIL_DATA_URL,
-    name: 'Test User',
+    name,
     role: 'admin',
     updatedAt: now,
   });

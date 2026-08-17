@@ -40,7 +40,7 @@ export const JobActivityPage: React.FC<{ selectedJobId?: UUID | undefined }> = (
         <ErrorMessage error={activityQuery.error} fallbackMessage="Unable to load job activity." />
         {activityQuery.isPending ? <Skeleton className="h-24" /> : null}
         {activityQuery.isSuccess && items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No general feedback has been submitted on a Job yet.</p>
+          <p className="text-sm text-muted-foreground">Nothing has been said or done on a Job yet.</p>
         ) : null}
         {items.map((item) => (
           <JobActivityCard item={item} key={`${item.type}:${item.id}`} />

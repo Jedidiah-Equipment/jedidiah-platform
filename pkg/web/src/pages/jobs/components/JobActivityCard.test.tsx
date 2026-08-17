@@ -1,4 +1,5 @@
-import type { GeneralFeedbackActivityItem } from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import { type GeneralFeedbackActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { renderWithRouter } from '@/test/router-harness.js';
@@ -46,7 +47,80 @@ describe('JobActivityCard', () => {
 
     expect(html).toContain('line-clamp-4');
   });
+
+  it.each([
+    ['job-created', 'created this Job'],
+    ['job-description-updated', 'changed the Job description'],
+    ['job-completed', 'completed this Job'],
+    ['job-document-added', 'added a document'],
+  ] as const)('says who did what for a %s change event', async (type, sentence) => {
+    const html = await renderWithRouter(<JobActivityCard item={buildChangeItem(type)} />);
+
+    expect(html).toContain('Thabo Mokoena');
+    expect(html).toContain(sentence);
+    expect(html).toContain('JOB-00042');
+  });
+
+  it('reads a cleared description as cleared rather than as an empty change', async () => {
+    const item = buildChangeItem('job-description-updated', { description: null });
+
+    const html = await renderWithRouter(<JobActivityCard item={item} />);
+
+    expect(html).toContain('cleared the Job description');
+  });
+
+  // The nightly completion sweep audits with a null actor deliberately, and a deleted user's row is
+  // nulled by the FK too — indistinguishable, and the Audit table already calls both "System".
+  it('names a change nobody is recorded for System, matching the Audit table', async () => {
+    const item = buildChangeItem('job-completed', { actor: null });
+
+    const html = await renderWithRouter(<JobActivityCard item={item} />);
+
+    expect(html).toContain('System');
+    expect(html).toContain('completed this Job');
+    expect(html).not.toContain('A removed user');
+  });
+
+  // completedOn is date-only, so a relative renderer invents a midnight time and a second age
+  // beside the entry's own timestamp.
+  it('shows the completion date as a plain date, not a time or a relative age', async () => {
+    const item = buildChangeItem('job-completed', { completedOn: '2026-08-10' });
+
+    const html = await renderWithRouter(<JobActivityCard item={item} />);
+
+    // Scoped to the payload: the header's own occurredAt is a real instant and stays relative.
+    expect(html).toContain(`— ${formatDate('2026-08-10')}</span>`);
+    expect(html).not.toContain('00:00');
+  });
 });
+
+/** Built through the real schema, so a fixture cannot drift from the contract it stands in for. */
+function buildChangeItem(
+  type: JobChangeActivityItem['type'],
+  overrides: Record<string, unknown> = {},
+): JobChangeActivityItem {
+  const payloads: Record<JobChangeActivityItem['type'], Record<string, unknown>> = {
+    'job-completed': { completedOn: '2026-08-10' },
+    'job-created': {},
+    'job-description-updated': { description: 'Fit the heavy-duty boom.' },
+    'job-document-added': { document: { contentType: 'application/pdf', filename: 'handover.pdf' } },
+  };
+
+  return JobChangeActivityItem.parse({
+    id: '20000000-0000-4000-8000-000000000000',
+    occurredAt: '2026-08-10T09:00:00.000Z',
+    job: buildItem().job,
+    actor: {
+      email: 'thabo@example.com',
+      id: 'user-1',
+      name: 'Thabo Mokoena',
+      thumbnailDataUrl: THUMBNAIL_DATA_URL,
+    },
+    ...payloads[type],
+    ...overrides,
+    type,
+  });
+}
 
 function buildItem(
   overrides: { customerCompanyName?: string | null; text?: string } = {},

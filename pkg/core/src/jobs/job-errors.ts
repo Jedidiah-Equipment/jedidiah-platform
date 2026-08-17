@@ -214,6 +214,21 @@ export class JobDepartmentTimingNotStartedError extends Error {
   }
 }
 
+/**
+ * A second done-stamp on a department already recorded as done. The correction path owns re-stamping,
+ * so the ordinary verb refuses rather than silently rewriting the duration and who is credited.
+ */
+export class JobDepartmentTimingAlreadyCompletedError extends Error {
+  readonly code = 'job.department_timing_already_completed';
+  readonly metadata: { department: string; id: string };
+
+  constructor(id: string, department: string) {
+    super('This department is already recorded as done on this job. Edit the recorded times instead.');
+    this.name = 'JobDepartmentTimingAlreadyCompletedError';
+    this.metadata = { department, id };
+  }
+}
+
 /** A correction that would leave the stamps or their crew in a shape the done-stamp never produces. */
 export class JobDepartmentTimingInvalidError extends Error {
   readonly code = 'job.department_timing_invalid';
@@ -235,6 +250,7 @@ export type JobCoreError =
   | JobBayOperatorRoleDeniedError
   | JobCompletedOnInFutureError
   | JobCreateFromQuoteDeniedError
+  | JobDepartmentTimingAlreadyCompletedError
   | JobDepartmentTimingAlreadyStartedError
   | JobDepartmentTimingInvalidError
   | JobDepartmentTimingLockedError
@@ -258,6 +274,7 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobBayAlreadyAssignedError ||
     error instanceof JobCompletedOnInFutureError ||
     error instanceof JobCreateFromQuoteDeniedError ||
+    error instanceof JobDepartmentTimingAlreadyCompletedError ||
     error instanceof JobDepartmentTimingAlreadyStartedError ||
     error instanceof JobDepartmentTimingInvalidError ||
     error instanceof JobDepartmentTimingLockedError ||

@@ -328,6 +328,7 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         message: error.message,
       };
     case 'job.department_timing_locked':
+    case 'job.department_timing_already_completed':
     case 'job.department_timing_already_started':
     case 'job.department_timing_not_started':
     case 'job.department_timing_invalid':

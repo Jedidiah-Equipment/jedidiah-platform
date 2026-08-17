@@ -1,4 +1,5 @@
 import { type DatabaseTransaction, type Db, jobDepartmentCrew, jobDepartmentTimings, user } from '@pkg/db';
+import { getPlantDateNow, toPlantDateOnly } from '@pkg/domain';
 import type {
   AuthId,
   JobDepartmentTimingCompleteInput,
@@ -13,6 +14,7 @@ import { recordAuditEvent } from '../audit/audit-service.js';
 import { jobAuditDescriptor } from './job-audit.js';
 import { getAssignableBayOperatorForUpdate } from './job-bay-service.js';
 import {
+  JobDepartmentTimingAlreadyCompletedError,
   JobDepartmentTimingAlreadyStartedError,
   JobDepartmentTimingInvalidError,
   JobDepartmentTimingLockedError,
@@ -74,11 +76,26 @@ export async function completeDepartmentTiming({
   input: JobDepartmentTimingCompleteInput;
 }): Promise<void> {
   await db.transaction(async (tx) => {
-    const job = await lockStampableJob(tx, input.id);
+    // Deliberately not `lockStampableJob`: closing an observation that was already open is the one
+    // stamp a completed Job still accepts. The completion sweep stamps `completedOn` the day after a
+    // Job's last Slot ends, so a fabrication run that overran its Slot would otherwise be locked out
+    // by an automatic write — dropping exactly the late builds the actual-versus-scheduled metric
+    // exists to show. Starting a new observation and correcting a recorded one stay locked.
+    const job = await lockMutableJob(tx, input.id);
     const existing = await findTiming(tx, input.id, input.department);
 
     if (!existing) {
+      if (job.completedOn !== null) {
+        throw new JobDepartmentTimingLockedError(input.id);
+      }
+
       throw new JobDepartmentTimingNotStartedError(input.id, input.department);
+    }
+
+    // The correction path owns re-stamping. Without this, a replayed request or a second manager on a
+    // stale sheet silently rewrites both the recorded duration and who is credited for it.
+    if (existing.completedAt !== null) {
+      throw new JobDepartmentTimingAlreadyCompletedError(input.id, input.department);
     }
 
     const before = await readTimingState(tx, existing);
@@ -196,8 +213,14 @@ async function lockStampableJob(tx: DatabaseTransaction, id: UUID): Promise<JobR
   return job;
 }
 
+/**
+ * Compared as plant business dates, not as instants — the precedent `job.completed_on_in_future` sets.
+ * Both clients send a plant date, which parses to a UTC-midnight instant sitting two hours ahead of
+ * the plant day it names, so an instant comparison rejects a correction to *today* made before 02:00
+ * plant time.
+ */
 function assertNotInFuture(stamp: Date): void {
-  if (stamp.getTime() > Date.now()) {
+  if (toPlantDateOnly(stamp) > getPlantDateNow()) {
     throw new JobDepartmentTimingInvalidError('A timing stamp cannot be in the future.');
   }
 }

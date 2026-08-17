@@ -281,7 +281,9 @@ function CorrectionModal({
       try {
         await updateMutation.mutateAsync({
           completedAt: value.completedOn ? DateIso.parse(value.completedOn) : null,
-          crewUserIds: value.crewUserIds,
+          // Crew only exists against a done stamp, so clearing the dates has to clear the crew with
+          // them — otherwise the dialog's own "removes the stamps" path is refused by core.
+          crewUserIds: value.completedOn ? value.crewUserIds : [],
           department: 'fabrication',
           id: jobId,
           startedAt: value.startedOn ? DateIso.parse(value.startedOn) : null,

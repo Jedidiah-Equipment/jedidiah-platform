@@ -293,7 +293,9 @@ const CorrectFabricationButton: React.FC<{ job: JobDetail; timing: JobDepartment
         onCreate={(values: CorrectionFormValues) =>
           updateMutation.mutateAsync({
             completedAt: values.completedOn ? DateIso.parse(values.completedOn) : null,
-            crewUserIds: values.crewUserIds,
+            // Crew only exists against a done stamp, so clearing the dates has to clear the crew with
+            // them — otherwise the dialog's own "removes the stamps" path is refused by core.
+            crewUserIds: values.completedOn ? values.crewUserIds : [],
             department: 'fabrication',
             id: job.id,
             startedAt: values.startedOn ? DateIso.parse(values.startedOn) : null,
@@ -365,9 +367,14 @@ function useOrgOffDays(): ReadonlySet<string> {
 
 /**
  * The forgotten-start nudge: fabrication was due to be on the floor by now and nobody said it
- * started. Derived from the Job's own projected schedule — nothing about it is stored.
+ * started. Derived from the Job's own projected schedule — nothing about it is stored. A Job that is
+ * cancelled or already completed is nobody's to start, so it gets no nudge.
  */
 function isFabricationOverdueToStart(job: JobDetail): boolean {
+  if (isJobCancelled(job) || job.completedOn !== null) {
+    return false;
+  }
+
   const firstWorkDay = job.schedule
     .filter((department) => department.department === 'fabrication')
     .flatMap((department) => department.bays)

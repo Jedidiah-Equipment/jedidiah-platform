@@ -123,6 +123,60 @@ describe('completeDepartmentTiming', () => {
     ).rejects.toMatchObject({ code: 'job.department_timing_not_started' });
   });
 
+  test('refuses a second done-stamp rather than rewriting the first', async ({ context }) => {
+    await startDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { department: 'fabrication', id: context.job.id },
+    });
+    await completeDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { crewUserIds: ['operator-smith'], department: 'fabrication', id: context.job.id },
+    });
+
+    await expect(
+      completeDepartmentTiming({
+        actorUserId,
+        db: context.db,
+        input: { crewUserIds: ['operator-brown'], department: 'fabrication', id: context.job.id },
+      }),
+    ).rejects.toMatchObject({ code: 'job.department_timing_already_completed' });
+  });
+
+  // The completion sweep stamps completedOn the day after the last Slot ends, so an overrunning
+  // fabrication run would otherwise be locked out of the metric by an automatic write.
+  test('still closes an observation left open when the Job completed', async ({ context }) => {
+    await startDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { department: 'fabrication', id: context.job.id },
+    });
+    await context.db.update(jobs).set({ completedOn: '2026-06-04' }).where(eq(jobs.id, context.job.id));
+
+    await completeDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { crewUserIds: ['operator-smith'], department: 'fabrication', id: context.job.id },
+    });
+
+    const detail = await getJob({ db: context.db, id: context.job.id });
+
+    expect(detail.departmentTimings.find((timing) => timing.department === 'fabrication')?.completedAt).not.toBeNull();
+  });
+
+  test('refuses opening a new observation on a completed Job', async ({ context }) => {
+    await context.db.update(jobs).set({ completedOn: '2026-06-04' }).where(eq(jobs.id, context.job.id));
+
+    await expect(
+      completeDepartmentTiming({
+        actorUserId,
+        db: context.db,
+        input: { crewUserIds: ['operator-smith'], department: 'fabrication', id: context.job.id },
+      }),
+    ).rejects.toMatchObject({ code: 'job.department_timing_locked' });
+  });
+
   test('refuses crew who are not Bay Operators', async ({ context }) => {
     await startDepartmentTiming({
       actorUserId,
@@ -191,6 +245,28 @@ describe('updateDepartmentTiming', () => {
         },
       }),
     ).rejects.toMatchObject({ code: 'job.department_timing_invalid' });
+  });
+
+  // Plant dates, not instants: a stamp dated today arrives as UTC midnight, two hours ahead of the
+  // plant day it names, and must not read as future during the plant's first two hours.
+  test('accepts a stamp dated today during the plant morning', async ({ context }) => {
+    vi.setSystemTime(new Date('2026-06-05T01:10:00.000+02:00'));
+
+    await updateDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: {
+        completedAt: null,
+        crewUserIds: [],
+        department: 'fabrication',
+        id: context.job.id,
+        startedAt: DateIso.parse('2026-06-05'),
+      },
+    });
+
+    const detail = await getJob({ db: context.db, id: context.job.id });
+
+    expect(detail.departmentTimings.find((timing) => timing.department === 'fabrication')?.startedAt).not.toBeNull();
   });
 
   test('refuses a done stamp with no crew', async ({ context }) => {

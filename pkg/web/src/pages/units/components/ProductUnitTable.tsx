@@ -219,7 +219,7 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit, 
       emptyMessage="No units found."
       errorMessage={getApiQueryErrorMessage(unitsQuery.error, 'Unable to load units.')}
       getRowAriaLabel={(unit) => `Open unit ${unit.productSerialNumber}`}
-      globalFilterPlaceholder="Search by serial, vin, owner, or product..."
+      globalFilterPlaceholder="Search by serial, VIN, owner, or product..."
       isLoading={unitsQuery.isPending}
       paginationMode="cursor"
       loadMore={{

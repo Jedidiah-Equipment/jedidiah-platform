@@ -45,7 +45,9 @@ function FeedbackEntry({ item, last }: { item: GeneralFeedbackActivityItem; last
         <View className="overflow-hidden rounded-xl border border-border bg-surface">
           <Text
             className="px-3 py-2.5 text-sm leading-5 text-surface-foreground"
-            {...(expanded ? {} : { numberOfLines: 4 })}
+            // Never clamp without a toggle: short text can still exceed four lines at narrow widths
+            // or with larger accessibility text.
+            {...(expandable && !expanded ? { numberOfLines: 4 } : {})}
           >
             {item.feedback.text}
           </Text>

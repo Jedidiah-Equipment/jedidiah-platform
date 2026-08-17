@@ -1,6 +1,6 @@
 import type { JobActivityFilter, JobActivityItem } from '@pkg/schema';
 import { IconFilter } from '@tabler/icons-react-native';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SectionList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,6 +43,7 @@ export default function ActivityRoute() {
       {
         getNextPageParam: (page) => page.nextCursor,
         initialCursor: 0,
+        placeholderData: keepPreviousData,
         refetchInterval: ACTIVITY_REFETCH_INTERVAL_MS,
       },
     ),

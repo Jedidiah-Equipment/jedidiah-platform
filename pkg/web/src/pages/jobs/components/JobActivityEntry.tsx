@@ -79,6 +79,7 @@ const GeneralFeedbackEntry: React.FC<{ hideDetail: boolean; item: GeneralFeedbac
   return (
     <ActivityRow
       item={item}
+      linkToJob={!hideDetail}
       marker={<span className="size-2.5 rounded-full bg-primary ring-4 ring-background" />}
       who={
         <EntityThumbnail
@@ -160,6 +161,7 @@ const JobChangeEntry: React.FC<{ hideDetail: boolean; item: JobChangeActivityIte
     <ActivityRow
       dense
       item={item}
+      linkToJob={!hideDetail}
       marker={
         <span className="size-2.5 rounded-full border border-muted-foreground/50 bg-background ring-4 ring-background" />
       }
@@ -235,9 +237,10 @@ const ActivityRow: React.FC<{
   children: React.ReactNode;
   dense?: boolean;
   item: JobActivityItem;
+  linkToJob: boolean;
   marker: React.ReactNode;
   who: React.ReactNode;
-}> = ({ children, dense = false, item, marker, who }) => {
+}> = ({ children, dense = false, item, linkToJob, marker, who }) => {
   const head = dense ? 'h-9' : 'h-11';
 
   return (
@@ -274,12 +277,14 @@ const ActivityRow: React.FC<{
         the link it is — focusable, cmd-clickable — and the controls above it stay clickable on their
         own because they sit later in the stacking order, not because a handler swallowed the event.
       */}
-      <Link
-        aria-label={`Open ${formatJobLabel(item.job)}`}
-        className="absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        search={{ job: item.job.id }}
-        to="/jobs/activity"
-      />
+      {linkToJob ? (
+        <Link
+          aria-label={`Open ${formatJobLabel(item.job)}`}
+          className="absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          search={{ job: item.job.id }}
+          to="/jobs/activity"
+        />
+      ) : null}
     </div>
   );
 };

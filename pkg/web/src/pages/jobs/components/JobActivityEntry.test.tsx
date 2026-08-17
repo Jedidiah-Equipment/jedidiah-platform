@@ -41,7 +41,15 @@ describe('JobActivityEntry', () => {
     expect(html).not.toContain('>JOB-00042<');
     expect(html).not.toContain('aria-label="Cane 8 ton"');
     expect(html).not.toContain('Acme Mining');
+    expect(html).not.toContain('href="/jobs/activity?job=30000000-0000-4000-8000-000000000000"');
     expect(html).not.toContain('href="/jobs?job=30000000-0000-4000-8000-000000000000"');
+  });
+
+  it('keeps the submitter discoverable when their avatar has no image', async () => {
+    const html = await renderWithRouter(<JobActivityEntry item={buildItem({ submitterThumbnailDataUrl: null })} />);
+
+    expect(html).toContain('aria-label="Thabo Mokoena"');
+    expect(html).toContain('>TM<');
   });
 
   // The toggle itself is driven by measuring the clamped paragraph, which needs layout — so it is
@@ -86,6 +94,7 @@ describe('JobActivityEntry', () => {
 
     expect(html).toContain('Fit the heavy-duty boom.');
     expect(html).not.toContain('>JOB-00042<');
+    expect(html).not.toContain('href="/jobs/activity?job=30000000-0000-4000-8000-000000000000"');
     expect(html).not.toContain('href="/jobs?job=30000000-0000-4000-8000-000000000000"');
   });
 
@@ -145,7 +154,7 @@ function buildChangeItem(
 }
 
 function buildItem(
-  overrides: { customerCompanyName?: string | null; text?: string } = {},
+  overrides: { customerCompanyName?: string | null; submitterThumbnailDataUrl?: string | null; text?: string } = {},
 ): GeneralFeedbackActivityItem {
   return {
     type: 'general-feedback',
@@ -164,7 +173,8 @@ function buildItem(
         email: 'thabo@example.com',
         id: 'user-1' as GeneralFeedbackActivityItem['feedback']['submitter']['id'],
         name: 'Thabo Mokoena',
-        thumbnailDataUrl: THUMBNAIL_DATA_URL,
+        thumbnailDataUrl:
+          overrides.submitterThumbnailDataUrl === undefined ? THUMBNAIL_DATA_URL : overrides.submitterThumbnailDataUrl,
       },
       text: (overrides.text ??
         'Paint bay handover was missed on this job.') as GeneralFeedbackActivityItem['feedback']['text'],

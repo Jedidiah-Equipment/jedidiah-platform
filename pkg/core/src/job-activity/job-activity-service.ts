@@ -72,6 +72,7 @@ const jobDocumentAddedEvent = and(
   // that: without this every Job would report a file beside its own `job-created` entry.
   changedFieldIsNot('metadata', 'type', 'brochure'),
 ) as SQL;
+const jobDescriptionOnlyEvent = and(jobDescriptionUpdatedEvent, sql`not (${changedFieldIsSet('completedOn')})`) as SQL;
 const jobChangeEvents = or(
   jobCreatedEvent,
   jobDescriptionUpdatedEvent,
@@ -130,10 +131,14 @@ function jobChangeEventSearch(search: string): SQL {
   const displayedSystemMatches = visibleTextMatches('System', search);
 
   return or(
-    createGlobalSearchCondition(search, [
-      sql`${auditEvents.changes} -> 'description' ->> 'to'`,
-      sql`${auditEvents.changes} -> 'filename' ->> 'to'`,
-    ]),
+    and(
+      jobDescriptionOnlyEvent,
+      createEscapedContainsSearchCondition(sql`${auditEvents.changes} -> 'description' ->> 'to'`, search),
+    ),
+    and(
+      jobDocumentAddedEvent,
+      createEscapedContainsSearchCondition(sql`${auditEvents.changes} -> 'filename' ->> 'to'`, search),
+    ),
     sql`exists (
       select 1
       from ${user}
@@ -147,15 +152,13 @@ function jobChangeEventSearch(search: string): SQL {
 }
 
 function jobChangeEventSentenceSearch(search: string): SQL | undefined {
-  const descriptionOnlyEvent = and(jobDescriptionUpdatedEvent, sql`not (${changedFieldIsSet('completedOn')})`);
-
   return or(
     visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.created, search) ? jobCreatedEvent : undefined,
     visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.descriptionChanged, search)
-      ? and(descriptionOnlyEvent, changedFieldIsSet('description'))
+      ? and(jobDescriptionOnlyEvent, changedFieldIsSet('description'))
       : undefined,
     visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.descriptionCleared, search)
-      ? and(descriptionOnlyEvent, sql`${auditEvents.changes} -> 'description' ->> 'to' is null`)
+      ? and(jobDescriptionOnlyEvent, sql`${auditEvents.changes} -> 'description' ->> 'to' is null`)
       : undefined,
     visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.completed, search) ? jobCompletedEvent : undefined,
     visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.documentAdded, search) ? jobDocumentAddedEvent : undefined,

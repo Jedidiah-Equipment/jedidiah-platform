@@ -52,18 +52,31 @@ export const EntityThumbnail: React.FC<EntityThumbnailProps> = ({
     </Avatar>
   );
 
-  if (!thumbnailDataUrl || !preview) {
+  if (!preview) {
     return avatar;
   }
 
   return (
     <HoverCard>
-      <HoverCardTrigger delay={PREVIEW_DELAY_MS} render={<span className="inline-flex">{avatar}</span>} />
+      <HoverCardTrigger
+        aria-label={label}
+        delay={PREVIEW_DELAY_MS}
+        render={<span className="inline-flex">{avatar}</span>}
+      />
       <HoverCardContent className="relative w-auto p-1.5">
-        <img alt={label} className={cn('rounded-md object-cover', PREVIEW_SIZE)} src={thumbnailDataUrl} />
-        <Badge className="absolute right-3 bottom-3 max-w-[calc(100%-1.5rem)] truncate shadow-sm" variant="secondary">
-          {label}
-        </Badge>
+        {thumbnailDataUrl ? (
+          <>
+            <img alt={label} className={cn('rounded-md object-cover', PREVIEW_SIZE)} src={thumbnailDataUrl} />
+            <Badge
+              className="absolute right-3 bottom-3 max-w-[calc(100%-1.5rem)] truncate shadow-sm"
+              variant="secondary"
+            >
+              {label}
+            </Badge>
+          </>
+        ) : (
+          <Badge variant="secondary">{label}</Badge>
+        )}
       </HoverCardContent>
     </HoverCard>
   );

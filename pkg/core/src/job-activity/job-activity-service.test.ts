@@ -286,6 +286,25 @@ describe('listJobActivity search', () => {
     expect(document.items).toEqual([expect.objectContaining({ type: 'job-document-added' })]);
   });
 
+  test('does not match description snapshots on events that render no description', async ({ context }) => {
+    await recordJobCreated(context.db, { ...context.job, description: 'Hidden creation wording.' });
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: {
+        id: context.job.id,
+        completedOn: DateOnlyIso.parse('2026-08-10'),
+        description: 'Hidden completion wording.',
+      },
+    });
+
+    const created = await listJobActivity({ db: context.db, input: listInput({ search: 'creation wording' }) });
+    const completed = await listJobActivity({ db: context.db, input: listInput({ search: 'completion wording' }) });
+
+    expect(created.items).toEqual([]);
+    expect(completed.items).toEqual([]);
+  });
+
   test('matches every generated Job Event sentence', async ({ context }) => {
     await recordJobCreated(context.db, context.job);
     await updateJob({

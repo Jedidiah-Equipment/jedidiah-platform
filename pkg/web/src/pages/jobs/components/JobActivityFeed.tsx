@@ -1,5 +1,5 @@
 import type { JobActivityFilter, UUID } from '@pkg/schema';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 
@@ -26,6 +26,7 @@ export const JobActivityFeed: React.FC<{
       { filter, limit: WEB_LIST_BATCH_SIZE, search, ...(jobId ? { jobId } : {}) },
       {
         ...cursorInfiniteQueryOptions,
+        placeholderData: keepPreviousData,
         refetchInterval: ACTIVITY_REFETCH_INTERVAL_MS,
       },
     ),

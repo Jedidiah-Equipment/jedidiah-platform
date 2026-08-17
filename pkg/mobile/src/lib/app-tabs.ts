@@ -1,12 +1,12 @@
 import { hasPermission } from '@pkg/domain';
 import type { UserAccessSummary } from '@pkg/schema';
 
-export type AppTab = 'jobs' | 'plan' | 'quotes' | 'products' | 'units' | 'stores';
+export type AppTab = 'activity' | 'jobs' | 'plan' | 'quotes' | 'products' | 'units' | 'stores';
 
 export function visibleTabs(access: UserAccessSummary | null | undefined): AppTab[] {
   const tabs: AppTab[] = [];
 
-  if (hasPermission(access, 'job:read')) tabs.push('jobs', 'plan');
+  if (hasPermission(access, 'job:read')) tabs.push('activity', 'jobs', 'plan');
   if (hasPermission(access, 'quote:read')) tabs.push('quotes');
   if (hasPermission(access, 'product:read')) tabs.push('products');
   if (hasPermission(access, 'product_unit:read')) tabs.push('units');
@@ -21,8 +21,11 @@ export function showTabBar(tabs: AppTab[]): boolean {
   return tabs.length > 1;
 }
 
-export function appTabHref(tab: AppTab): '/jobs' | '/plan' | '/products' | '/quotes' | '/stores' | '/units' {
+export function appTabHref(
+  tab: AppTab,
+): '/activity' | '/jobs' | '/plan' | '/products' | '/quotes' | '/stores' | '/units' {
   const hrefs = {
+    activity: '/activity',
     jobs: '/jobs',
     plan: '/plan',
     products: '/products',
@@ -35,6 +38,7 @@ export function appTabHref(tab: AppTab): '/jobs' | '/plan' | '/products' | '/quo
 }
 
 const TAB_LABELS = {
+  activity: 'ACTIVITY',
   jobs: 'JOBS',
   plan: 'PLAN',
   products: 'PRODUCTS',
@@ -49,6 +53,7 @@ export function appTabLabel(tab: AppTab): string {
 
 // The route directly under the `(tabs)` group, so Plan carries its route-group parentheses.
 const TAB_ROUTE_SEGMENTS = {
+  activity: 'activity',
   jobs: 'jobs',
   plan: '(plan)',
   products: 'products',

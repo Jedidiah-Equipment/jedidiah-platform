@@ -1,9 +1,12 @@
+import { useDebouncedValue } from '@mantine/hooks';
 import type { JobActivityFilter, UUID } from '@pkg/schema';
+import { IconSearch } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { jobActivityPageDescription } from '@/utils/page-descriptions.js';
 
@@ -19,15 +22,31 @@ const activityFilterLabels = {
 export const JobActivityPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ selectedJobId }) => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<JobActivityFilter>('all');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search.trim(), 250);
 
   return (
     <PageLayout
-      actions={<JobActivityFilterSelect onValueChange={setFilter} value={filter} />}
+      actions={
+        <>
+          <div className="relative w-56">
+            <IconSearch className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-muted-foreground" />
+            <Input
+              aria-label="Search activity"
+              className="pl-8"
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search by text, user, job, product, or customer..."
+              value={search}
+            />
+          </div>
+          <JobActivityFilterSelect onValueChange={setFilter} value={filter} />
+        </>
+      }
       description={jobActivityPageDescription}
       size="md"
       title="Job Activity"
     >
-      <JobActivityFeed filter={filter} />
+      <JobActivityFeed filter={filter} search={debouncedSearch} />
       {selectedJobId ? (
         <JobSheet
           key={selectedJobId}

@@ -28,6 +28,19 @@ describe('jobActivity.list', () => {
     });
   });
 
+  test('parses and applies a global search without changing the read permission', async ({ context }) => {
+    await createJobGeneralFeedback(context);
+    const viewer = context.createCaller(mockSession('job-viewer'));
+
+    const match = await viewer.jobActivity.list({ search: '  HANDOVER  ' });
+    const miss = await viewer.jobActivity.list({ search: 'unrelated phrase' });
+
+    expect(match.items).toHaveLength(1);
+    expect(match.total).toBe(1);
+    expect(miss.items).toEqual([]);
+    expect(miss.total).toBe(0);
+  });
+
   // The load-bearing decision of ADR 0015: change events come from `audit_events`, which a job
   // viewer may not read raw, and they still reach that viewer here as curated items.
   test('serves change events to a job viewer who holds no audit read permission', async ({ context }) => {

@@ -1,4 +1,18 @@
-import { auditEvents, type Db, feedback, jobs, user, withPagination } from '@pkg/db';
+import {
+  auditEvents,
+  createEscapedContainsSearchCondition,
+  createGlobalSearchCondition,
+  currentOwnerCustomerId,
+  customers,
+  type Db,
+  feedback,
+  jobs,
+  products,
+  productUnits,
+  quotes,
+  user,
+  withPagination,
+} from '@pkg/db';
 import { getJobDisplayName, getJobOfferingKind, resolveJobCustomer, resolveNewestOwnershipTransfer } from '@pkg/domain';
 import type {
   AuditChanges,
@@ -61,21 +75,91 @@ function changedFieldIsSet(field: string): SQL {
 }
 
 function jobGeneralFeedbackFilter(input: JobActivityListInput): SQL {
-  return and(jobGeneralFeedback, input.jobId ? eq(feedback.jobId, input.jobId) : undefined) as SQL;
+  return and(
+    jobGeneralFeedback,
+    input.jobId ? eq(feedback.jobId, input.jobId) : undefined,
+    input.search ? jobGeneralFeedbackSearch(input.search) : undefined,
+  ) as SQL;
 }
 
 function jobChangeEventFilter(input: JobActivityListInput): SQL {
-  if (!input.jobId) {
-    return jobChangeEvents;
-  }
-
   return and(
     jobChangeEvents,
-    or(
-      and(eq(auditEvents.entityType, 'job'), eq(auditEvents.entityId, input.jobId)),
-      and(eq(auditEvents.entityType, 'document'), sql`${auditEvents.changes} -> 'jobId' ->> 'to' = ${input.jobId}`),
-    ),
+    input.jobId
+      ? or(
+          and(eq(auditEvents.entityType, 'job'), eq(auditEvents.entityId, input.jobId)),
+          and(eq(auditEvents.entityType, 'document'), sql`${auditEvents.changes} -> 'jobId' ->> 'to' = ${input.jobId}`),
+        )
+      : undefined,
+    input.search ? jobChangeEventSearch(input.search) : undefined,
   ) as SQL;
+}
+
+function jobGeneralFeedbackSearch(search: string): SQL {
+  return or(
+    createEscapedContainsSearchCondition(sql`${feedback.text}`, search),
+    sql`exists (
+      select 1
+      from ${user}
+      where ${user.id} = ${feedback.submitterId}
+        and ${createEscapedContainsSearchCondition(sql`${user.name}`, search)}
+    )`,
+    jobActivityJobSearch(sql`${feedback.jobId}::text`, search),
+  ) as SQL;
+}
+
+function jobChangeEventSearch(search: string): SQL {
+  const displayedSystemMatches = 'system'.includes(search.toLocaleLowerCase());
+
+  return or(
+    createGlobalSearchCondition(search, [
+      sql`${auditEvents.changes} -> 'description' ->> 'to'`,
+      sql`${auditEvents.changes} -> 'filename' ->> 'to'`,
+    ]),
+    sql`exists (
+      select 1
+      from ${user}
+      where ${user.id} = ${auditEvents.actorUserId}
+        and ${createEscapedContainsSearchCondition(sql`${user.name}`, search)}
+    )`,
+    displayedSystemMatches ? sql`${auditEvents.actorUserId} is null` : undefined,
+    jobActivityJobSearch(changeEventJobIdExpression, search),
+  ) as SQL;
+}
+
+/** The owning Job is direct on Job events and embedded in the curated snapshot for documents. */
+const changeEventJobIdExpression = sql<string>`case
+  when ${auditEvents.entityType} = 'document' then ${auditEvents.changes} -> 'jobId' ->> 'to'
+  else ${auditEvents.entityId}
+end`;
+
+/**
+ * Matches only facts the feed displays. The correlated subquery keeps ownership history from
+ * multiplying Activity rows, which would corrupt the merged stream's totals and offset cursor.
+ */
+function jobActivityJobSearch(jobIdExpression: SQL, search: string): SQL {
+  const currentCustomerId = sql<string | null>`case
+    when ${jobs.productUnitId} is null then ${quotes.customerId}
+    else ${currentOwnerCustomerId(jobs.productUnitId)}
+  end`;
+  const displayedStockMatches = 'stock'.includes(search.toLocaleLowerCase());
+  const visibleJobFields = createGlobalSearchCondition(search, [
+    sql`concat('JOB-', lpad(${jobs.code}::text, 5, '0'))`,
+    sql`${products.name}`,
+    sql`${quotes.workTitle}`,
+    sql`${customers.companyName}`,
+  ]);
+
+  return sql`exists (
+    select 1
+    from ${jobs}
+    left join ${productUnits} on ${productUnits.id} = ${jobs.productUnitId}
+    left join ${products} on ${products.id} = ${productUnits.productId}
+    left join ${quotes} on ${quotes.id} = ${jobs.quoteId}
+    left join ${customers} on ${customers.id} = ${currentCustomerId}
+    where ${jobs.id}::text = ${jobIdExpression}
+      and ${or(visibleJobFields, displayedStockMatches ? sql`${currentCustomerId} is null` : undefined)}
+  )`;
 }
 
 /** The Job facts every item carries, read the same way whichever source the item came from. */

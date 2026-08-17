@@ -135,7 +135,7 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
                         <ComboboxChip key={id}>{partLabels.get(id) ?? id}</ComboboxChip>
                       ))}
                     </ComboboxValue>
-                    <ComboboxChipsInput id="part-label-parts" placeholder="Search Parts…" />
+                    <ComboboxChipsInput id="part-label-parts" placeholder="Search parts…" />
                   </ComboboxChips>
                   <ComboboxContent>
                     <ComboboxEmpty>No Parts found.</ComboboxEmpty>

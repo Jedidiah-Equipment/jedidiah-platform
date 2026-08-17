@@ -35,7 +35,7 @@ describe('Part selector searchability', () => {
 
   it('keeps the Product Assembly Part picker searchable', () => {
     expect(readSource('../products/components/ProductAssembliesEditor.tsx')).toMatch(
-      /<ComboboxInput[\s\S]*?placeholder="Search Parts"/,
+      /<ComboboxInput[\s\S]*?placeholder="Search parts"/,
     );
   });
 

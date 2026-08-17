@@ -15,10 +15,14 @@ export default function AppTabsLayout() {
 
   return (
     <Tabs
-      initialRouteName="jobs"
+      initialRouteName="activity"
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.background } }}
       tabBar={() => <AppTabBar />}
     >
+      <Tabs.Screen
+        name="activity"
+        options={{ href: tabs.includes('activity') ? undefined : null, title: appTabLabel('activity') }}
+      />
       <Tabs.Screen
         name="jobs"
         options={{ href: tabs.includes('jobs') ? undefined : null, title: appTabLabel('jobs') }}

@@ -101,7 +101,7 @@ function PartBomEditor({
                 label: `${part.code} · ${part.name}`,
                 value: part.id,
               }))}
-              placeholder="Search Parts"
+              placeholder="Search parts"
               value={line.componentPartId}
             />
           </Field>

@@ -10,6 +10,7 @@ const PROTECTED_ROUTES_DIR = join(MOBILE_DIR, 'app/(protected)');
 
 const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
   '(tabs)/(plan)/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  '(tabs)/activity/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
   '(tabs)/jobs/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
   '(tabs)/products/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
   '(tabs)/quotes/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
@@ -20,6 +21,7 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 const SIGNED_IN_ROUTE_TOOLBARS = {
   '(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/components/bays/BayQueueScreen.tsx'),
   '(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/(tabs)/(plan)/plan/index.tsx'),
+  '(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/(tabs)/activity/index.tsx'),
   '(tabs)/index.tsx': toolbar('main', 'app/(protected)/(tabs)/index.tsx'),
   '(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/components/bays/JobDetail.tsx'),
   '(tabs)/jobs/index.tsx': toolbar('main', 'app/(protected)/(tabs)/jobs/index.tsx'),

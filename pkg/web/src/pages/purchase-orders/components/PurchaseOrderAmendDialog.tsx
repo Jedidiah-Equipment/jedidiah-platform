@@ -138,7 +138,7 @@ export function PurchaseOrderAmendDialog({
                   emptyMessage="No eligible Parts from this Supplier."
                   label={kind === 'add-line' ? 'Part' : 'Substitute Part'}
                   options={toPartOptions(eligibleParts)}
-                  placeholder={parts.isPending ? 'Loading Parts...' : 'Search Parts'}
+                  placeholder={parts.isPending ? 'Loading parts...' : 'Search parts'}
                 />
               )}
             </form.AppField>

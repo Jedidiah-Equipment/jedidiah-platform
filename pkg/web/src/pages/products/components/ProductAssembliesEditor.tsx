@@ -951,7 +951,7 @@ const AssemblyPartPickerField: React.FC<AssemblyPartPickerFieldProps> = ({
           aria-invalid={isInvalid}
           className="w-full"
           onBlur={field.handleBlur}
-          placeholder="Search Parts"
+          placeholder="Search parts"
         />
         <ComboboxContent>
           <ComboboxEmpty>No Parts found.</ComboboxEmpty>

@@ -1,4 +1,5 @@
 import {
+  IconActivity,
   IconBarcode,
   IconBriefcase2,
   IconBuildingWarehouse,
@@ -23,6 +24,7 @@ import { navigationColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
 const TAB_ICONS = {
+  activity: IconActivity,
   jobs: IconBriefcase2,
   plan: IconCalendar,
   products: IconPackages,

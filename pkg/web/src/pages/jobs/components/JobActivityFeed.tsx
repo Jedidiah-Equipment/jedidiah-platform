@@ -18,11 +18,12 @@ export const JobActivityFeed: React.FC<{
   filter?: JobActivityFilter;
   hideDetail?: boolean;
   jobId?: UUID;
-}> = ({ filter = 'all', hideDetail = false, jobId }) => {
+  search?: string;
+}> = ({ filter = 'all', hideDetail = false, jobId, search = '' }) => {
   const trpc = useTRPC();
   const activityQuery = useInfiniteQuery(
     trpc.jobActivity.list.infiniteQueryOptions(
-      { filter, limit: WEB_LIST_BATCH_SIZE, ...(jobId ? { jobId } : {}) },
+      { filter, limit: WEB_LIST_BATCH_SIZE, search, ...(jobId ? { jobId } : {}) },
       {
         ...cursorInfiniteQueryOptions,
         refetchInterval: ACTIVITY_REFETCH_INTERVAL_MS,
@@ -59,7 +60,7 @@ export const JobActivityFeed: React.FC<{
       {activityQuery.isPending ? <Skeleton className="h-24" /> : null}
       {activityQuery.isSuccess && items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          {getEmptyMessage({ filter, filteredToJob: jobId !== undefined })}
+          {getEmptyMessage({ filter, filteredToJob: jobId !== undefined, searching: search.length > 0 })}
         </p>
       ) : null}
       {items.length > 0 ? <JobActivityTimeline hideDetail={hideDetail} items={items} /> : null}
@@ -68,9 +69,17 @@ export const JobActivityFeed: React.FC<{
   );
 };
 
-function getEmptyMessage({ filter, filteredToJob }: { filter: JobActivityFilter; filteredToJob: boolean }): string {
-  if (filter !== 'all') {
-    return 'No activity matches this filter.';
+function getEmptyMessage({
+  filter,
+  filteredToJob,
+  searching,
+}: {
+  filter: JobActivityFilter;
+  filteredToJob: boolean;
+  searching: boolean;
+}): string {
+  if (searching || filter !== 'all') {
+    return 'No activity matches this search or filter.';
   }
 
   return filteredToJob

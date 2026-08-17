@@ -57,7 +57,7 @@ export function StockRevaluationDialog({
                 emptyMessage="No Parts found."
                 label="Part"
                 options={partSelectOptions(parts)}
-                placeholder="Search Parts"
+                placeholder="Search parts"
               />
             )}
           </form.AppField>

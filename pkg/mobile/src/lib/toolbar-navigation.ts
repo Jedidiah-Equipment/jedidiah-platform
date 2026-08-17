@@ -1,6 +1,7 @@
 import type { Href } from 'expo-router';
 
 export const MAIN_TAB_PARENTS = {
+  activity: { href: '/activity', label: 'Activity' },
   jobs: { href: '/jobs', label: 'Jobs' },
   plan: { href: '/plan', label: 'Plan' },
   products: { href: '/products', label: 'Products' },

@@ -23,7 +23,7 @@ export function StockPartSelect({
           label: `${part.partCode} · ${part.partName}`,
           value: part.partId,
         }))}
-        placeholder="Search Parts"
+        placeholder="Search parts"
         value={value}
       />
     </Field>

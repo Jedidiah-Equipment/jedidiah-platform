@@ -164,9 +164,9 @@ export function StockMovementDialog({
                       field.handleChange(job?.id ?? '');
                     }}
                     options={jobOptions.options}
-                    placeholder="Search Jobs"
+                    placeholder="Search jobs"
                     renderItem={(job) => jobOptionLabel(job)}
-                    searchPlaceholder="Searching Jobs..."
+                    searchPlaceholder="Searching jobs..."
                     value={selectedJob}
                   />
                 </Field>
@@ -184,7 +184,7 @@ export function StockMovementDialog({
                   queueMicrotask(() => void form.validateField('quantity', 'blur'));
                 }}
                 options={partSelectOptions(parts)}
-                placeholder={isLoadingParts ? 'Loading Parts...' : 'Search Parts'}
+                placeholder={isLoadingParts ? 'Loading parts...' : 'Search parts'}
               />
             )}
           </form.AppField>

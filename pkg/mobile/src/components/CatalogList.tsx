@@ -5,6 +5,7 @@ import { Avatar } from '@/components/Avatar';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
+import { LIST_PAGE_HEADER_GAP } from '@/lib/list-layout';
 
 const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
 // The fixed frame prevents the loading list from shifting vertically when the real rows mount.
@@ -146,7 +147,8 @@ export function PaginatedCatalogList<T>({
   return (
     <FlatList
       className="flex-1"
-      contentContainerClassName="w-full px-4 pb-8 pt-4"
+      contentContainerClassName="w-full px-4 pb-8"
+      contentContainerStyle={{ paddingTop: LIST_PAGE_HEADER_GAP }}
       data={rows}
       keyExtractor={(row) => row.key}
       keyboardShouldPersistTaps="handled"

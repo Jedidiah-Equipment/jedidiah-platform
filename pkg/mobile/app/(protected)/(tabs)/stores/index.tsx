@@ -71,7 +71,7 @@ export default function StoresScanHomeRoute() {
               clearScanError();
               setSearch(next);
             }}
-            placeholder="Search by Part code or name"
+            placeholder="Search by part code or name"
             textSize="toolbar"
             value={search}
           />

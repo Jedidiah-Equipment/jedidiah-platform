@@ -247,6 +247,140 @@ describe('listJobActivity', () => {
   });
 });
 
+describe('listJobActivity search', () => {
+  test('matches visible feedback, person, Job, Product, and Customer text case-insensitively', async ({ context }) => {
+    await insertFeedback(context.db, {
+      jobId: context.job.id,
+      kind: 'general',
+      subjectType: 'job',
+      text: 'Hydraulic hoses need rerouting.',
+    });
+    await recordJobCreated(context.db, context.job);
+
+    for (const [search, expectedTypes] of [
+      ['HYDRAULIC', ['general-feedback']],
+      ['test user', ['job-created', 'general-feedback']],
+      [formatJobCode(context.job.code), ['job-created', 'general-feedback']],
+      ['activity test product', ['job-created', 'general-feedback']],
+      ['activity customer', ['job-created', 'general-feedback']],
+    ] as const) {
+      const result = await listJobActivity({ db: context.db, input: listInput({ search }) });
+
+      expect(result.total).toBe(expectedTypes.length);
+      expect(result.items.map((item) => item.type).sort()).toEqual([...expectedTypes].sort());
+    }
+  });
+
+  test('matches the visible description and document filename carried by Job Events', async ({ context }) => {
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { id: context.job.id, description: 'Fit the heavy-duty boom.' },
+    });
+    await recordDocumentCreated(context.db, { jobId: context.job.id });
+
+    const description = await listJobActivity({ db: context.db, input: listInput({ search: 'HEAVY-DUTY' }) });
+    const document = await listJobActivity({ db: context.db, input: listInput({ search: 'HANDOVER.PDF' }) });
+
+    expect(description.items).toEqual([expect.objectContaining({ type: 'job-description-updated' })]);
+    expect(document.items).toEqual([expect.objectContaining({ type: 'job-document-added' })]);
+  });
+
+  test('matches the displayed System and Stock labels', async ({ context }) => {
+    const stockJob = await createStockJob(context.db, context.product.id);
+
+    await insertFeedback(context.db, {
+      jobId: stockJob.id,
+      kind: 'general',
+      subjectType: 'job',
+      text: 'Inventory note.',
+    });
+    await context.db.insert(auditEvents).values({
+      action: 'created',
+      actorUserId: null,
+      changes: { completedOn: { from: null, to: null }, description: { from: null, to: null } },
+      entityId: stockJob.id,
+      entityType: 'job',
+      summary: 'Created a stock Job',
+    });
+
+    const system = await listJobActivity({ db: context.db, input: listInput({ search: 'sys' }) });
+    const stock = await listJobActivity({ db: context.db, input: listInput({ search: 'stock' }) });
+
+    expect(system.items).toEqual([expect.objectContaining({ type: 'job-created', actor: null })]);
+    expect(stock.items.map((item) => item.type).sort()).toEqual(['general-feedback', 'job-created']);
+  });
+
+  test('matches the displayed work title of a Custom Job', async ({ context }) => {
+    const [customQuote] = await context.db
+      .insert(quotes)
+      .values({
+        customerId: context.quote.customerId,
+        kind: 'custom',
+        productId: null,
+        quotedBasePrice: 0,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: 'test-user-id',
+        workTitle: 'Emergency auger rebuild',
+      })
+      .returning();
+
+    if (!customQuote) throw new Error('Custom Quote insert did not return a row');
+
+    const [customJob] = await context.db.insert(jobs).values({ quoteId: customQuote.id }).returning();
+
+    if (!customJob) throw new Error('Custom Job insert did not return a row');
+
+    await insertFeedback(context.db, {
+      jobId: customJob.id,
+      kind: 'general',
+      subjectType: 'job',
+      text: 'Work can start.',
+    });
+
+    const result = await listJobActivity({ db: context.db, input: listInput({ search: 'AUGER' }) });
+
+    expect(result.items).toEqual([
+      expect.objectContaining({ type: 'general-feedback', job: expect.objectContaining({ id: customJob.id }) }),
+    ]);
+  });
+
+  test('keeps filtered totals and cursors aligned with search matches', async ({ context }) => {
+    await insertFeedback(context.db, {
+      jobId: context.job.id,
+      kind: 'general',
+      subjectType: 'job',
+      text: 'A user note.',
+    });
+    await recordJobCreated(context.db, context.job);
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { id: context.job.id, description: 'Fit the boom.' },
+    });
+
+    const firstPage = await listJobActivity({
+      db: context.db,
+      input: listInput({ filter: 'job-events', limit: 1, search: 'activity test product' }),
+    });
+    const secondPage = await listJobActivity({
+      db: context.db,
+      input: listInput({
+        cursor: firstPage.nextCursor ?? 0,
+        filter: 'job-events',
+        limit: 1,
+        search: 'activity test product',
+      }),
+    });
+
+    expect(firstPage.total).toBe(2);
+    expect(firstPage.items).toHaveLength(1);
+    expect(firstPage.nextCursor).toBe(1);
+    expect(secondPage.items).toHaveLength(1);
+    expect(secondPage.nextCursor).toBeNull();
+  });
+});
+
 describe('listJobActivity change events', () => {
   test('reads a Job creation audit row as a job-created item placed on its Job', async ({ context }) => {
     await recordJobCreated(context.db, context.job);
@@ -542,6 +676,7 @@ function listInput(overrides: Partial<Parameters<typeof listJobActivity>[0]['inp
     cursor: 0,
     filter: 'all' as const,
     limit: 25,
+    search: '',
     sortBy: 'occurredAt' as const,
     sortDirection: 'desc' as const,
     ...overrides,

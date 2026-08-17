@@ -114,7 +114,7 @@ export function StockBuildDialog({
                 label: `${part.partCode} · ${part.partName}`,
                 value: part.partId,
               }))}
-              placeholder="Search Parts"
+              placeholder="Search parts"
               value={builtPartId}
             />
           </Field>

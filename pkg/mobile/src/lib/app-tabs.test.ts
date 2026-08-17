@@ -9,10 +9,10 @@ describe('visibleTabs', () => {
     expect(visibleTabs(null)).toEqual([]);
   });
 
-  it('shows Jobs, Plan, and Units to a Job Viewer', () => {
+  it('shows Activity first, then Jobs, Plan, and Units to a Job Viewer', () => {
     const access = createUserAccessSummary({ role: 'job-viewer', userId: 'viewer-1' });
 
-    expect(visibleTabs(access)).toEqual(['jobs', 'plan', 'units']);
+    expect(visibleTabs(access)).toEqual(['activity', 'jobs', 'plan', 'units']);
   });
 
   it('shows Quotes and Units to Sales', () => {
@@ -21,16 +21,16 @@ describe('visibleTabs', () => {
     expect(visibleTabs(access)).toEqual(['quotes', 'units']);
   });
 
-  it('shows Jobs, Plan, Products, and Units to a Procurement Manager', () => {
+  it('shows Activity first, then Jobs, Plan, Products, and Units to a Procurement Manager', () => {
     const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'buyer-1' });
 
-    expect(visibleTabs(access)).toEqual(['jobs', 'plan', 'products', 'units']);
+    expect(visibleTabs(access)).toEqual(['activity', 'jobs', 'plan', 'products', 'units']);
   });
 
   it('shows every tab to an Admin', () => {
     const access = createUserAccessSummary({ role: 'admin', userId: 'admin-1' });
 
-    expect(visibleTabs(access)).toEqual(['jobs', 'plan', 'quotes', 'products', 'units', 'stores']);
+    expect(visibleTabs(access)).toEqual(['activity', 'jobs', 'plan', 'quotes', 'products', 'units', 'stores']);
   });
 
   /**
@@ -73,14 +73,15 @@ describe('showTabBar', () => {
 
 describe('appTabHref', () => {
   it('maps the permission order to each root route', () => {
-    const tabs: AppTab[] = ['jobs', 'plan', 'quotes', 'products', 'units', 'stores'];
+    const tabs: AppTab[] = ['activity', 'jobs', 'plan', 'quotes', 'products', 'units', 'stores'];
 
-    expect(tabs.map(appTabHref)).toEqual(['/jobs', '/plan', '/quotes', '/products', '/units', '/stores']);
+    expect(tabs.map(appTabHref)).toEqual(['/activity', '/jobs', '/plan', '/quotes', '/products', '/units', '/stores']);
   });
 });
 
 describe('activeAppTab', () => {
   it('reads the tab from the segment below the tabs group', () => {
+    expect(activeAppTab(['(protected)', '(tabs)', 'activity'])).toBe('activity');
     expect(activeAppTab(['(protected)', '(tabs)', 'jobs', '[jobId]'])).toBe('jobs');
     expect(activeAppTab(['(protected)', '(tabs)', 'stores', 'parts', '[partCode]', 'checkout'])).toBe('stores');
   });

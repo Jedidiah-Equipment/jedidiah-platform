@@ -63,6 +63,16 @@ describe('formatUnitCost', () => {
   it('leaves a Part counted in whole units at two decimals', () => {
     expect(formatUnitCost(7_955, 'piece')).toBe('R 7 955.00');
     expect(formatUnitCost(33.333_333, 'piece')).toBe('R 33.33');
+    expect(formatUnitCost(0, 'piece')).toBe('R 0.00');
+  });
+
+  it('keeps a cost any unit would otherwise round to nothing, since stock that costs something is not free', () => {
+    expect(formatUnitCost(0.001, 'piece')).toBe('R 0.001');
+  });
+
+  it('bounds a cost finer than the ledger holds instead of printing it as a row of zeros', () => {
+    expect(formatUnitCost(0.000_000_333, 'mm')).toBe('< R 0.000001');
+    expect(formatUnitCost(0.000_000_333, 'piece')).toBe('< R 0.000001');
   });
 });
 

@@ -76,10 +76,23 @@ function purchasePieceLengthMm({ standardPurchaseLengthMm, unitOfMeasure }: Part
 /**
  * A Part's cost in the unit it is counted by. A linear Part's average is per millimetre and sub-cent by
  * design, so the usual two decimals would show R0.038/mm as R0.04/mm — and the per-piece figures derived
- * from it would no longer reconcile with the number on screen.
+ * from it would no longer reconcile with the number on screen. Any unit keeps a cost two decimals would
+ * round away, since R0.00 against stock that carries value reads as free rather than as cheap.
  */
 export function formatUnitCost(value: number, unitOfMeasure: PartUnitOfMeasure): string {
-  return formatCurrency(value, 'ZAR', { decimals: unitOfMeasure === 'mm' ? subCentDecimals(value) : 2 });
+  if (unitOfMeasure !== 'mm' && !roundsToNothing(value, 2)) return formatCurrency(value, 'ZAR', { decimals: 2 });
+
+  // Finer than the ledger itself holds — a bound is the honest reading, where a row of zeros is not.
+  if (roundsToNothing(value, LEDGER_COST_DECIMALS)) {
+    return `< ${formatCurrency(10 ** -LEDGER_COST_DECIMALS, 'ZAR', { decimals: LEDGER_COST_DECIMALS })}`;
+  }
+
+  return formatCurrency(value, 'ZAR', { decimals: subCentDecimals(value) });
+}
+
+/** Whether a cost that is really there renders as nothing at `decimals`. Zero itself is not that claim. */
+function roundsToNothing(value: number, decimals: number): boolean {
+  return value > 0 && Number(value.toFixed(decimals)) === 0;
 }
 
 function subCentDecimals(value: number): number {

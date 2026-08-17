@@ -270,15 +270,62 @@ describe('getProductCostEstimate', () => {
       partsCostFloor: 300,
       totalCostFloor: 31_200,
     });
-    expect(base.materialLines.map((line) => [line.partCode, line.unitCost, line.costFloor])).toEqual([
-      ['CHANNEL', 1_300, 3_900],
-      ['PLATE', 200, 500],
+    expect(
+      base.materialLines.map((line) => [line.partCode, line.unitCost, line.costFloor, line.standardPurchaseLengthMm]),
+    ).toEqual([
+      ['CHANNEL', 1_300, 3_900, 13_000],
+      ['PLATE', 200, 500, null],
     ]);
     expect(base.optionalAssemblies).toEqual([
       expect.objectContaining({ assemblyName: 'Premium', costFloor: 300, partial: true, upgradePrice: 1_000 }),
     ]);
     expect(selected.assemblies.map((assembly) => assembly.assemblyName)).toEqual(['Base', 'Premium']);
     expect(selected.partsCostFloor).toBe(500);
+  });
+
+  test('prices an Assembly line of linear stock by the whole piece, and says which piece', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: {
+        delta: 10,
+        lengthMm: 13_000,
+        note: null,
+        partId: context.channel.id,
+        reason: 'opening-balance',
+        unitCost: 1_300,
+      },
+    });
+    const product = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, {
+        assemblies: [
+          {
+            isPubliclyVisible: false,
+            kind: 'standard',
+            name: 'Harness',
+            parts: [{ partId: context.channel.id, quantity: 8 }],
+          },
+        ],
+        modelCode: 'COST-3',
+        name: 'Linear Assembly Product',
+      }),
+    });
+
+    const estimate = await getProductCostEstimate({ db: context.db, productId: product.id });
+
+    // The average is R0.10/mm; the line is 8 whole 13 m pieces, so the unit cost is a piece's worth.
+    expect(estimate.assemblies.flatMap((assembly) => assembly.parts)).toEqual([
+      expect.objectContaining({
+        costFloor: 10_400,
+        partCode: 'CHANNEL',
+        quantity: 8,
+        standardPurchaseLengthMm: 13_000,
+        unitCost: 1_300,
+        unitOfMeasure: 'mm',
+      }),
+    ]);
   });
 
   test('shows a floor and ignores null cost only for internally fabricated Parts', async ({ context }) => {

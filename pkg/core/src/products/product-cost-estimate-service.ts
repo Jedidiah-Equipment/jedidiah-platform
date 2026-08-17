@@ -82,6 +82,7 @@ export async function getProductCostEstimate({
         partId: part.id,
         partName: part.name,
         quantityPerUnit: line.quantityPerUnit,
+        standardPurchaseLengthMm: part.standardPurchaseLengthMm,
         unitCost,
         unitOfMeasure: part.unitOfMeasure,
       };
@@ -158,6 +159,7 @@ function costAssembly(
       partId: part.id,
       partName: part.name,
       quantity: line.quantity,
+      standardPurchaseLengthMm: part.standardPurchaseLengthMm,
       unitCost,
       unitOfMeasure: part.unitOfMeasure,
     };

@@ -20,7 +20,7 @@ import {
 import { useMemo } from 'react';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
-import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
+import { formatUnitCost, getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 
 type MovementReference = { id: UUID; kind: 'job' | 'purchase-order' | 'stocktake'; label: string };
 
@@ -173,7 +173,7 @@ function createStockMovementHistoryColumns({
       ? [
           {
             accessorKey: 'unitCost',
-            cell: ({ row }) => formatCost(row.original.unitCost),
+            cell: ({ row }) => formatMovementUnitCost(row.original.unitCost, unitOfMeasure),
             header: 'Unit cost',
           } satisfies ColumnDef<StockMovementHistoryRow>,
           {
@@ -237,4 +237,10 @@ function formatLedgerQuantity(quantity: number, unitOfMeasure: PartUnitOfMeasure
 
 function formatCost(value: number | null): string {
   return value === null ? '—' : formatCurrency(value, 'ZAR');
+}
+
+/** A revaluation stamps a linear Part's per-millimetre average verbatim, so this column holds sub-cent
+ * figures the way Stock on hand does — rounded to two decimals the row stops matching the average it set. */
+function formatMovementUnitCost(value: number | null, unitOfMeasure: PartUnitOfMeasure): string {
+  return value === null ? '—' : formatUnitCost(value, unitOfMeasure);
 }

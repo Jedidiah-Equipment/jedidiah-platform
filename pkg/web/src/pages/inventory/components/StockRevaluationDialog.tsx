@@ -8,6 +8,7 @@ import { useTRPC } from '@/lib/trpc.js';
 
 import {
   partSelectOptions,
+  revaluationCostDecimals,
   type StockPartOption,
   type StockRevaluationFormValues,
   StockRevaluationFormValues as StockRevaluationFormValuesSchema,
@@ -64,13 +65,14 @@ export function StockRevaluationDialog({
             {(partId) => {
               // A revaluation sets the average directly, and a linear Part's is per millimetre — which
               // CurrencyField cannot hold, since it truncates typed input to two decimals.
-              const isLinear = parts.find((part) => part.partId === partId)?.unitOfMeasure === 'mm';
+              const selectedPart = parts.find((part) => part.partId === partId);
+              const isLinear = selectedPart?.unitOfMeasure === 'mm';
 
               return (
                 <form.AppField name="unitCost">
                   {(field) => (
                     <field.NumberField
-                      decimals={isLinear ? 6 : 2}
+                      decimals={revaluationCostDecimals(selectedPart)}
                       label={isLinear ? 'New cost per mm' : 'New unit cost'}
                       min={0}
                       step={isLinear ? '0.000001' : '0.01'}

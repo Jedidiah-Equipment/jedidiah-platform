@@ -17,7 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitl
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatPartQuantity } from '@/utils/part-quantity-format.js';
+import { formatPartQuantity, formatUnitCostBasis } from '@/utils/part-quantity-format.js';
 import {
   estimateTermCompleteness,
   formatEstimateCeiling,
@@ -200,6 +200,30 @@ const partIdentityColumn = {
   id: 'part',
 };
 
+/**
+ * A linear Part is costed by the whole piece it is bought as, while its average is held per millimetre
+ * — so the figure needs the piece named under it, or R0.038/mm reads back as a R38.00 unit cost with
+ * nothing to explain the thousandfold.
+ */
+function UnitCostCell({
+  fallback,
+  line,
+}: {
+  fallback: string;
+  line: Pick<ProductCostEstimateMaterialLine, 'standardPurchaseLengthMm' | 'unitCost' | 'unitOfMeasure'>;
+}) {
+  if (line.unitCost === null) return fallback;
+
+  const basis = formatUnitCostBasis(line);
+
+  return (
+    <>
+      <span className="block tabular-nums">{formatCurrency(line.unitCost, 'ZAR')}</span>
+      {basis === null ? null : <span className="text-muted-foreground text-xs">{basis}</span>}
+    </>
+  );
+}
+
 const materialColumns: ColumnDef<ProductCostEstimateMaterialLine>[] = [
   partIdentityColumn,
   {
@@ -209,7 +233,7 @@ const materialColumns: ColumnDef<ProductCostEstimateMaterialLine>[] = [
   },
   {
     accessorKey: 'unitCost',
-    cell: ({ row }) => (row.original.unitCost === null ? 'No cost yet' : formatCurrency(row.original.unitCost, 'ZAR')),
+    cell: ({ row }) => <UnitCostCell fallback="No cost yet" line={row.original} />,
     header: 'Unit cost',
   },
   { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor, 'ZAR'), header: 'Cost' },
@@ -224,12 +248,12 @@ const partColumns: ColumnDef<ProductCostEstimatePartLine>[] = [
   },
   {
     accessorKey: 'unitCost',
-    cell: ({ row }) =>
-      row.original.unitCost !== null
-        ? formatCurrency(row.original.unitCost, 'ZAR')
-        : row.original.isInternallyFabricated
-          ? 'Included via raw materials'
-          : 'No cost yet',
+    cell: ({ row }) => (
+      <UnitCostCell
+        fallback={row.original.isInternallyFabricated ? 'Included via raw materials' : 'No cost yet'}
+        line={row.original}
+      />
+    ),
     header: 'Unit cost',
   },
   { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor, 'ZAR'), header: 'Cost' },

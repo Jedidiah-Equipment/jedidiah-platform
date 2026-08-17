@@ -6,6 +6,7 @@ import {
   deriveStockBuildWarnings,
   partOptionsAllowing,
   partQuantityValidationMessage,
+  revaluationCostDecimals,
   type StockPartOption,
   stockAdjustmentValidator,
   stockJobMovementValidator,
@@ -140,6 +141,13 @@ describe('stock adjustment form', () => {
 });
 
 describe('stock revaluation form', () => {
+  it('keeps a keyed cost whole until a Part says what precision it is counted at', () => {
+    expect(revaluationCostDecimals(undefined)).toBeUndefined();
+    expect(revaluationCostDecimals(linear)).toBe(6);
+    expect(revaluationCostDecimals(piece)).toBe(2);
+    expect(revaluationCostDecimals(measured)).toBe(2);
+  });
+
   it('maps the new cost and normalizes a blank note', () => {
     expect(toRevaluationInput({ note: '  ', partId: piece.partId, unitCost: 25.5 })).toMatchObject({
       note: null,

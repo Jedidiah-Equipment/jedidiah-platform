@@ -4,6 +4,8 @@ import {
   formatLengthBucket,
   formatLengthMetres,
   formatPartQuantity,
+  formatUnitCost,
+  formatUnitCostBasis,
   getPartQuantityUnitDisplay,
 } from './part-quantity-format.js';
 
@@ -44,6 +46,38 @@ describe('formatPartQuantity', () => {
 
   it('normalizes floating-point residue at the supported quantity precision', () => {
     expect(formatPartQuantity(-1e-10, 'mm')).toBe('0 pieces');
+  });
+});
+
+describe('formatUnitCost', () => {
+  it('keeps a linear Part’s sub-cent average, which two decimals would round away', () => {
+    expect(formatUnitCost(0.038, 'mm')).toBe('R 0.038');
+    expect(formatUnitCost(0.0004, 'mm')).toBe('R 0.0004');
+  });
+
+  it('holds two decimals as the floor, so a round figure still reads as money', () => {
+    expect(formatUnitCost(0.1, 'mm')).toBe('R 0.10');
+    expect(formatUnitCost(1_300, 'mm')).toBe('R 1 300.00');
+  });
+
+  it('leaves a Part counted in whole units at two decimals', () => {
+    expect(formatUnitCost(7_955, 'piece')).toBe('R 7 955.00');
+    expect(formatUnitCost(33.333_333, 'piece')).toBe('R 33.33');
+  });
+});
+
+describe('formatUnitCostBasis', () => {
+  it('names the piece a linear Part is costed by, since its average is kept per millimetre', () => {
+    expect(formatUnitCostBasis({ standardPurchaseLengthMm: 13_000, unitOfMeasure: 'mm' })).toBe('per 13000 mm piece');
+  });
+
+  it('leaves a Part counted in its own unit unqualified', () => {
+    expect(formatUnitCostBasis({ standardPurchaseLengthMm: null, unitOfMeasure: 'piece' })).toBeNull();
+    expect(formatUnitCostBasis({ standardPurchaseLengthMm: null, unitOfMeasure: 'kg' })).toBeNull();
+  });
+
+  it('says nothing about a linear Part whose standard length is missing, rather than guessing one', () => {
+    expect(formatUnitCostBasis({ standardPurchaseLengthMm: null, unitOfMeasure: 'mm' })).toBeNull();
   });
 });
 

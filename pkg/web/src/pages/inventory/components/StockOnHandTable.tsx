@@ -13,7 +13,12 @@ import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { formatLengthBucket, formatPartQuantity, getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
+import {
+  formatLengthBucket,
+  formatPartQuantity,
+  formatUnitCost,
+  getPartQuantityUnitDisplay,
+} from '@/utils/part-quantity-format.js';
 
 export function StockOnHandTable({
   errorMessage,
@@ -191,7 +196,7 @@ function formatAverageCost(item: StockOnHandRow): string {
   }
 
   // A linear Part's average is per millimetre, so its suffix is the dimension, not the counting unit.
-  return `${formatCurrency(item.averageUnitCost, 'ZAR')}/${getPartQuantityUnitDisplay(item.unitOfMeasure).suffix}`;
+  return `${formatUnitCost(item.averageUnitCost, item.unitOfMeasure)}/${getPartQuantityUnitDisplay(item.unitOfMeasure).suffix}`;
 }
 
 function formatInventoryValue(value: number | null): string {

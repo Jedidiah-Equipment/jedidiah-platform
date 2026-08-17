@@ -261,6 +261,16 @@ export function toAdjustmentInput(values: StockAdjustmentFormValues, canReadCost
   });
 }
 
+/**
+ * The precision a revaluation is keyed at. Undefined until a Part is chosen: rounding on the discrete
+ * two decimals first would take a per-millimetre cost's decimals before the Part needing them is picked.
+ */
+export function revaluationCostDecimals(part: StockPartOption | undefined): number | undefined {
+  if (part === undefined) return undefined;
+
+  return part.unitOfMeasure === 'mm' ? 6 : 2;
+}
+
 export function toRevaluationInput(values: StockRevaluationFormValues) {
   return PostRevaluationInput.parse(values);
 }

@@ -4,7 +4,7 @@ import { WorkItemDepartment } from '../common/departments.js';
 import { PriceDelta } from '../common/price.js';
 import { UUID } from '../common/uuid.js';
 import { declareInventoryCostFields, InventoryCost, InventoryValue } from '../inventory/inventory-cost.js';
-import { PartUnitOfMeasure } from '../parts/part.js';
+import { PartStandardPurchaseLengthMm, PartUnitOfMeasure } from '../parts/part.js';
 import { AssemblyKind } from './product.js';
 
 export type ProductCostEstimateMissingPart = z.infer<typeof ProductCostEstimateMissingPart>;
@@ -22,6 +22,9 @@ export const ProductCostEstimatePartLine = z.object({
   partId: UUID,
   partName: z.string().trim().min(1),
   quantity: z.number().positive(),
+  // What `unitCost` is per: a linear Part's average is per millimetre, so it is scaled to one whole
+  // standard-length piece here. Job snapshots stamped before the field read it as null.
+  standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable().default(null),
   unitCost: InventoryCost,
   unitOfMeasure: PartUnitOfMeasure,
 });
@@ -51,6 +54,7 @@ export const ProductCostEstimateMaterialLine = z.object({
   partId: UUID,
   partName: z.string().trim().min(1),
   quantityPerUnit: z.number().positive(),
+  standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable().default(null),
   unitCost: InventoryCost,
   unitOfMeasure: PartUnitOfMeasure,
 });

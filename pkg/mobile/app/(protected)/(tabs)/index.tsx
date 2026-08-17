@@ -9,16 +9,18 @@ import { appTabHref, visibleTabs } from '@/lib/app-tabs';
 import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
 import { useAccess } from '@/lib/use-access';
 
-/** Permission-aware signed-in landing; Jobs is first whenever the user can read Jobs. */
+/** Permission-aware signed-in landing; Activity is first whenever the user can read Jobs. */
 export default function SignedInIndexRoute() {
   const access = useAccess();
 
   if (access.isPending) {
-    return <TabAccessLoadingScreen parent={MAIN_TAB_PARENTS.jobs} title="Jobs" />;
+    return <TabAccessLoadingScreen parent={MAIN_TAB_PARENTS.activity} title="Activity" />;
   }
 
   if (access.isLoadingError) {
-    return <TabAccessErrorScreen onRetry={() => void access.refetch()} parent={MAIN_TAB_PARENTS.jobs} title="Jobs" />;
+    return (
+      <TabAccessErrorScreen onRetry={() => void access.refetch()} parent={MAIN_TAB_PARENTS.activity} title="Activity" />
+    );
   }
 
   const [firstTab] = visibleTabs(access.data);
@@ -27,7 +29,7 @@ export default function SignedInIndexRoute() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainTabToolbar
-        assistantParent={MAIN_TAB_PARENTS.jobs}
+        assistantParent={MAIN_TAB_PARENTS.activity}
         subtitle="ACCOUNT HAS NO MOBILE TABS"
         title="No mobile access"
       />
@@ -36,7 +38,7 @@ export default function SignedInIndexRoute() {
           No mobile access
         </Text>
         <Text className="text-sm text-muted-foreground">
-          Your account does not have access to Jobs, Plan, Stores, Quotes, Products, or Units.
+          Your account does not have access to Activity, Jobs, Plan, Stores, Quotes, Products, or Units.
         </Text>
       </View>
     </SafeAreaView>

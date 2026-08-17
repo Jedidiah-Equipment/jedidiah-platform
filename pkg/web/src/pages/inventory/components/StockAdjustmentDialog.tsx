@@ -83,7 +83,7 @@ export function StockAdjustmentDialog({
                   queueMicrotask(() => void form.validateField('delta', 'blur'));
                 }}
                 options={partSelectOptions(parts)}
-                placeholder="Search Parts"
+                placeholder="Search parts"
               />
             )}
           </form.AppField>

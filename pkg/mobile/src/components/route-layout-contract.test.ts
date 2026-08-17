@@ -8,9 +8,10 @@ import { listTsxFiles } from './test-file-utils';
 const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 describe('route layout contract', () => {
-  test('uses the web Jobs icon and a calendar icon for Plan', () => {
+  test('uses distinct Activity, Jobs, and Plan icons', () => {
     const tabBar = readFileSync(join(MOBILE_DIR, 'src/components/AppTabBar.tsx'), 'utf8');
 
+    expect(tabBar).toContain('activity: IconActivity');
     expect(tabBar).toContain('jobs: IconBriefcase2');
     expect(tabBar).toContain('plan: IconCalendar');
     expect(tabBar).not.toContain('IconTimeline');
@@ -31,6 +32,7 @@ describe('route layout contract', () => {
   test('keeps access-query failures distinct from resolved permission denial', () => {
     const accessGates = [
       'app/(protected)/(tabs)/index.tsx',
+      'app/(protected)/(tabs)/activity/_layout.tsx',
       'app/(protected)/(tabs)/jobs/_layout.tsx',
       'app/(protected)/(tabs)/(plan)/_layout.tsx',
     ];
@@ -51,5 +53,25 @@ describe('route layout contract', () => {
     expect(plan).toContain("const total = state.status === 'ready' ? bays.length : null;");
     expect(baySchedule).toContain('helpTopic="plan"');
     expect(baySchedule).not.toContain('helpTopic="jobs"');
+  });
+
+  test('keeps flat and sectioned list toolbars at the same gap below the page header', () => {
+    const catalogList = readFileSync(join(MOBILE_DIR, 'src/components/CatalogList.tsx'), 'utf8');
+    const activity = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
+
+    expect(catalogList).toContain('contentContainerClassName="w-full px-4 pb-8 pt-1"');
+    expect(activity).toContain('contentContainerClassName="px-4 pb-8 pt-1"');
+  });
+
+  test('keeps Activity results visible while a new search or filter loads', () => {
+    const activity = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
+
+    expect(activity).toContain('placeholderData: keepPreviousData');
+  });
+
+  test('never clamps mobile feedback when no expansion control is available', () => {
+    const entry = readFileSync(join(MOBILE_DIR, 'src/components/activity/JobActivityEntry.tsx'), 'utf8');
+
+    expect(entry).toContain('expandable && !expanded ? { numberOfLines: 4 } : {}');
   });
 });

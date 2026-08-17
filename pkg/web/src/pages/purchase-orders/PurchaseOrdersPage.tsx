@@ -91,7 +91,7 @@ export const PurchaseOrderTable: React.FC<{
       emptyMessage="No Purchase Orders found."
       errorMessage={errorMessage}
       getRowAriaLabel={(purchaseOrder) => `Open ${purchaseOrder.code}`}
-      globalFilterPlaceholder="Search Purchase Orders..."
+      globalFilterPlaceholder="Search purchase orders..."
       isLoading={isLoading}
       onRowClick={(purchaseOrder) => onOpen(purchaseOrder.id)}
       paginationMode="complete"

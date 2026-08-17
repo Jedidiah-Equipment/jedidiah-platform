@@ -21,7 +21,7 @@ describe('PurchaseOrderTable', () => {
   it('uses the searchable complete DataTable with whole-row navigation', () => {
     const html = renderToStaticMarkup(<PurchaseOrderTable canReadCosts items={[purchaseOrder]} onOpen={vi.fn()} />);
 
-    expect(html).toContain('placeholder="Search Purchase Orders..."');
+    expect(html).toContain('placeholder="Search purchase orders..."');
     expect(html).toContain('aria-label="Open PO-00001"');
     expect(html).toContain('Bearing &amp; Bolt');
     expect(html).toContain('Restock');

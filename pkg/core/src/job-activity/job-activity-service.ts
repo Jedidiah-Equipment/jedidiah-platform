@@ -1,5 +1,25 @@
-import { auditEvents, type Db, feedback, jobs, user, withPagination } from '@pkg/db';
-import { getJobDisplayName, getJobOfferingKind, resolveJobCustomer, resolveNewestOwnershipTransfer } from '@pkg/domain';
+import {
+  auditEvents,
+  createEscapedContainsSearchCondition,
+  createGlobalSearchCondition,
+  currentOwnerCustomerId,
+  customers,
+  type Db,
+  feedback,
+  jobs,
+  products,
+  productUnits,
+  quotes,
+  user,
+  withPagination,
+} from '@pkg/db';
+import {
+  getJobDisplayName,
+  getJobOfferingKind,
+  JOB_ACTIVITY_EVENT_SENTENCES,
+  resolveJobCustomer,
+  resolveNewestOwnershipTransfer,
+} from '@pkg/domain';
 import type {
   AuditChanges,
   JobActivityItem,
@@ -31,20 +51,33 @@ const jobGeneralFeedback = and(eq(feedback.kind, 'general'), eq(feedback.subject
  * matches. A cleared `completedOn` is absent for the same reason — un-completing is a correction, not
  * an event, so only a completion date being set reads as one.
  */
-const jobChangeEvents = or(
-  and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'created')),
-  and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'updated'), changeSetNames('description')),
-  and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'updated'), changedFieldIsSet('completedOn')),
+const jobCreatedEvent = and(eq(auditEvents.entityType, 'job'), eq(auditEvents.action, 'created')) as SQL;
+const jobDescriptionUpdatedEvent = and(
+  eq(auditEvents.entityType, 'job'),
+  eq(auditEvents.action, 'updated'),
+  changeSetNames('description'),
+) as SQL;
+const jobCompletedEvent = and(
+  eq(auditEvents.entityType, 'job'),
+  eq(auditEvents.action, 'updated'),
+  changedFieldIsSet('completedOn'),
+) as SQL;
+const jobDocumentAddedEvent = and(
   // The owning Job is read out of the snapshot rather than joined to `documents`, because documents
   // are hard-deleted: a join would erase the "added" entry from history the moment the file goes.
-  and(
-    eq(auditEvents.entityType, 'document'),
-    eq(auditEvents.action, 'created'),
-    changedFieldIsSet('jobId'),
-    // Creating a Job generates its own Brochure through the same audited path, and nobody added
-    // that: without this every Job would report a file beside its own `job-created` entry.
-    changedFieldIsNot('metadata', 'type', 'brochure'),
-  ),
+  eq(auditEvents.entityType, 'document'),
+  eq(auditEvents.action, 'created'),
+  changedFieldIsSet('jobId'),
+  // Creating a Job generates its own Brochure through the same audited path, and nobody added
+  // that: without this every Job would report a file beside its own `job-created` entry.
+  changedFieldIsNot('metadata', 'type', 'brochure'),
+) as SQL;
+const jobDescriptionOnlyEvent = and(jobDescriptionUpdatedEvent, sql`not (${changedFieldIsSet('completedOn')})`) as SQL;
+const jobChangeEvents = or(
+  jobCreatedEvent,
+  jobDescriptionUpdatedEvent,
+  jobCompletedEvent,
+  jobDocumentAddedEvent,
 ) as SQL;
 
 function changeSetNames(field: string): SQL {
@@ -58,6 +91,117 @@ function changedFieldIsNot(field: string, key: string, value: string): SQL {
 
 function changedFieldIsSet(field: string): SQL {
   return sql`${auditEvents.changes} -> ${field} ->> 'to' is not null`;
+}
+
+function jobGeneralFeedbackFilter(input: JobActivityListInput): SQL {
+  return and(
+    jobGeneralFeedback,
+    input.jobId ? eq(feedback.jobId, input.jobId) : undefined,
+    input.search ? jobGeneralFeedbackSearch(input.search) : undefined,
+  ) as SQL;
+}
+
+function jobChangeEventFilter(input: JobActivityListInput): SQL {
+  return and(
+    jobChangeEvents,
+    input.jobId
+      ? or(
+          and(eq(auditEvents.entityType, 'job'), eq(auditEvents.entityId, input.jobId)),
+          and(eq(auditEvents.entityType, 'document'), sql`${auditEvents.changes} -> 'jobId' ->> 'to' = ${input.jobId}`),
+        )
+      : undefined,
+    input.search ? jobChangeEventSearch(input.search) : undefined,
+  ) as SQL;
+}
+
+function jobGeneralFeedbackSearch(search: string): SQL {
+  return or(
+    createEscapedContainsSearchCondition(sql`${feedback.text}`, search),
+    sql`exists (
+      select 1
+      from ${user}
+      where ${user.id} = ${feedback.submitterId}
+        and ${createEscapedContainsSearchCondition(sql`${user.name}`, search)}
+    )`,
+    jobActivityJobSearch(sql`${feedback.jobId}::text`, search),
+  ) as SQL;
+}
+
+function jobChangeEventSearch(search: string): SQL {
+  const displayedSystemMatches = visibleTextMatches('System', search);
+
+  return or(
+    and(
+      jobDescriptionOnlyEvent,
+      createEscapedContainsSearchCondition(sql`${auditEvents.changes} -> 'description' ->> 'to'`, search),
+    ),
+    and(
+      jobDocumentAddedEvent,
+      createEscapedContainsSearchCondition(sql`${auditEvents.changes} -> 'filename' ->> 'to'`, search),
+    ),
+    sql`exists (
+      select 1
+      from ${user}
+      where ${user.id} = ${auditEvents.actorUserId}
+        and ${createEscapedContainsSearchCondition(sql`${user.name}`, search)}
+    )`,
+    displayedSystemMatches ? sql`${auditEvents.actorUserId} is null` : undefined,
+    jobChangeEventSentenceSearch(search),
+    jobActivityJobSearch(changeEventJobIdExpression, search),
+  ) as SQL;
+}
+
+function jobChangeEventSentenceSearch(search: string): SQL | undefined {
+  return or(
+    visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.created, search) ? jobCreatedEvent : undefined,
+    visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.descriptionChanged, search)
+      ? and(jobDescriptionOnlyEvent, changedFieldIsSet('description'))
+      : undefined,
+    visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.descriptionCleared, search)
+      ? and(jobDescriptionOnlyEvent, sql`${auditEvents.changes} -> 'description' ->> 'to' is null`)
+      : undefined,
+    visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.completed, search) ? jobCompletedEvent : undefined,
+    visibleTextMatches(JOB_ACTIVITY_EVENT_SENTENCES.documentAdded, search) ? jobDocumentAddedEvent : undefined,
+  );
+}
+
+function visibleTextMatches(text: string, search: string): boolean {
+  return text.toLowerCase().includes(search.toLowerCase());
+}
+
+/** The owning Job is direct on Job events and embedded in the curated snapshot for documents. */
+const changeEventJobIdExpression = sql<string>`case
+  when ${auditEvents.entityType} = 'document' then ${auditEvents.changes} -> 'jobId' ->> 'to'
+  else ${auditEvents.entityId}
+end`;
+
+/**
+ * Matches only facts the feed displays. The correlated subquery keeps ownership history from
+ * multiplying Activity rows, which would corrupt the merged stream's totals and offset cursor.
+ */
+function jobActivityJobSearch(jobIdExpression: SQL, search: string): SQL {
+  const currentCustomerId = sql<string | null>`case
+    when ${jobs.productUnitId} is null then ${quotes.customerId}
+    else ${currentOwnerCustomerId(jobs.productUnitId)}
+  end`;
+  const displayedStockMatches = visibleTextMatches('Stock', search);
+  const visibleJobFields = createGlobalSearchCondition(search, [
+    sql`concat('JOB-', lpad(${jobs.code}::text, 5, '0'))`,
+    sql`${products.name}`,
+    sql`${quotes.workTitle}`,
+    sql`${customers.companyName}`,
+  ]);
+
+  return sql`exists (
+    select 1
+    from ${jobs}
+    left join ${productUnits} on ${productUnits.id} = ${jobs.productUnitId}
+    left join ${products} on ${products.id} = ${productUnits.productId}
+    left join ${quotes} on ${quotes.id} = ${jobs.quoteId}
+    left join ${customers} on ${customers.id} = ${currentCustomerId}
+    where ${jobs.id}::text = ${jobIdExpression}
+      and ${or(visibleJobFields, displayedStockMatches ? sql`${currentCustomerId} is null` : undefined)}
+  )`;
 }
 
 /** The Job facts every item carries, read the same way whichever source the item came from. */
@@ -110,9 +254,11 @@ export async function listJobActivity({
   db: Db;
   input: JobActivityListInput;
 }): Promise<JobActivityListResult> {
+  const includeFeedback = input.filter !== 'job-events';
+  const includeJobEvents = input.filter !== 'user-feedback';
   const [feedbackTotal, auditTotal, keys] = await Promise.all([
-    db.$count(feedback, jobGeneralFeedback),
-    db.$count(auditEvents, jobChangeEvents),
+    includeFeedback ? db.$count(feedback, jobGeneralFeedbackFilter(input)) : Promise.resolve(0),
+    includeJobEvents ? db.$count(auditEvents, jobChangeEventFilter(input)) : Promise.resolve(0),
     findActivityKeys(db, input),
   ]);
   const total = feedbackTotal + auditTotal;
@@ -131,6 +277,8 @@ export async function listJobActivity({
  * Load more behaves exactly as it did when feedback was the only source.
  */
 async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<ActivityKey[]> {
+  const includeFeedback = input.filter !== 'job-events';
+  const includeJobEvents = input.filter !== 'user-feedback';
   const keys = unionAll(
     db
       .select({
@@ -139,7 +287,7 @@ async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<Ac
         source: sql<ActivitySource>`'feedback'::text`.as('source'),
       })
       .from(feedback)
-      .where(jobGeneralFeedback),
+      .where(includeFeedback ? jobGeneralFeedbackFilter(input) : sql`false`),
     db
       .select({
         id: auditEvents.id,
@@ -147,7 +295,7 @@ async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<Ac
         source: sql<ActivitySource>`'audit'::text`.as('source'),
       })
       .from(auditEvents)
-      .where(jobChangeEvents),
+      .where(includeJobEvents ? jobChangeEventFilter(input) : sql`false`),
   ).as('job_activity_keys');
 
   // Tiebreak on id so a row never repeats or vanishes across offset pages when timestamps collide,

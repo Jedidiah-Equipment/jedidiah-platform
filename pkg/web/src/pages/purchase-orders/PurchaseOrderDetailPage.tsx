@@ -456,7 +456,7 @@ const PurchaseOrderLinesDataTable: React.FC<{
                     commit();
                   }}
                   options={options}
-                  placeholder="Search Parts"
+                  placeholder="Search parts"
                 />
               )}
             </form.AppField>
@@ -572,7 +572,7 @@ const PurchaseOrderJobsCard: React.FC<{ commit: () => void; form: DraftForm }> =
               emptyMessage="No Jobs found."
               label={<span className="sr-only">Linked Jobs</span>}
               options={jobOptions}
-              placeholder="Search Jobs to link"
+              placeholder="Search jobs to link"
             />
           )}
         </form.AppField>

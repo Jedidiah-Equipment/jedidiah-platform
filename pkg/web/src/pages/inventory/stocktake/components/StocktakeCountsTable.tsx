@@ -41,7 +41,7 @@ export function StocktakeCountsTable({
   return (
     <DataTable
       emptyMessage="Nothing has been counted in this session yet."
-      globalFilterPlaceholder="Search counted Parts..."
+      globalFilterPlaceholder="Search counted parts..."
       isLoading={isLoading}
       paginationMode="incremental"
       table={table}

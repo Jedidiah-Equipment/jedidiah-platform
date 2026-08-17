@@ -1,6 +1,6 @@
 import { formatDate, getJobDisplayName, getJobDisplaySubtitle, getJobOfferingKind } from '@pkg/domain';
 import type { JobSummary } from '@pkg/schema';
-import { IconCheck, IconPencil, IconTimeline } from '@tabler/icons-react';
+import { IconCheck, IconPencil, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -181,7 +181,7 @@ function JobActionsCell({ canEditJobs, job }: { canEditJobs: boolean; job: JobSu
         size="icon"
         variant="ghost"
       >
-        <IconTimeline />
+        <IconSubtask />
       </Button>
       {canEditJobs ? (
         <Button

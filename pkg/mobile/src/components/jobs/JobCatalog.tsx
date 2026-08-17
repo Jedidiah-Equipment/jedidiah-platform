@@ -46,7 +46,7 @@ export function JobCatalogControls({
         <ListSearchControl
           accessibilityLabel="Search jobs"
           onChangeText={onSearchChange}
-          placeholder="Search by Job code, serial, or work title…"
+          placeholder="Search by job code, serial, or work title…"
           value={search}
         />
       }

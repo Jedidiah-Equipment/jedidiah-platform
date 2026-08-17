@@ -37,7 +37,7 @@ describe('JobStockTable', () => {
 
     const html = renderToStaticMarkup(<JobStockTable items={result.items} />);
 
-    expect(html).toContain('Search Job stock...');
+    expect(html).toContain('Search job stock...');
     expect(html).toContain('1 part');
     expect(html).toContain('rounded-lg border');
     expect(html).not.toContain('aria-label="Filter ');

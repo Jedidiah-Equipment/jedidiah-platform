@@ -1,8 +1,7 @@
 import { z } from 'zod';
 
-import { AuthId } from '../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
-import { createCursorQueryResult, createSortedCursorQueryInput } from '../common/pagination.js';
+import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { JobCode } from '../common/public-code.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
@@ -120,10 +119,16 @@ export type JobActivityType = JobActivityItem['type'];
 export type JobActivitySortBy = z.infer<typeof JobActivitySortBy>;
 export const JobActivitySortBy = z.enum(['occurredAt']);
 
+export type JobActivityFilter = z.infer<typeof JobActivityFilter>;
+export const JobActivityFilter = z.enum(['all', 'user-feedback', 'job-events']);
+
 export type JobActivityListInput = z.infer<typeof JobActivityListInput>;
-export const JobActivityListInput = createSortedCursorQueryInput({
+export const JobActivityListInput = createSearchedSortedCursorQueryInput({
   defaultSortDirection: 'desc',
-  shape: {},
+  shape: {
+    filter: JobActivityFilter.default('all'),
+    jobId: UUID.optional(),
+  },
   sortBy: JobActivitySortBy.default('occurredAt'),
 });
 

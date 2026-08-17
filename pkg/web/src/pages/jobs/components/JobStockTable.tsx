@@ -35,7 +35,7 @@ export function JobStockTable({
   return (
     <DataTable
       emptyMessage="No CFO or stock movements for this Job."
-      globalFilterPlaceholder="Search Job stock..."
+      globalFilterPlaceholder="Search job stock..."
       paginationMode="complete"
       table={table}
       total={total}

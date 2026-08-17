@@ -100,6 +100,11 @@ const navSections = [
         icon: IconBriefcase2,
         children: [
           {
+            title: 'Activity',
+            permission: 'job:read',
+            link: linkOptions({ to: '/jobs/activity' }),
+          },
+          {
             title: 'List',
             permission: 'job:read',
             link: linkOptions({ to: '/jobs/list' }),
@@ -113,11 +118,6 @@ const navSections = [
             title: 'Calendar',
             permission: 'job:read',
             link: linkOptions({ to: '/jobs/calendar' }),
-          },
-          {
-            title: 'Activity',
-            permission: 'job:read',
-            link: linkOptions({ to: '/jobs/activity' }),
           },
         ],
       },

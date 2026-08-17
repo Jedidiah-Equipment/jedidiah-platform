@@ -88,7 +88,7 @@ export const JobPicker = forwardRef<
         autoCapitalize="none"
         autoCorrect={false}
         onChangeText={onSearchChange}
-        placeholder="Search Jobs by code or name"
+        placeholder="Search jobs by code or name"
         textSize="toolbar"
         value={search}
       />

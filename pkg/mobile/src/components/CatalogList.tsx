@@ -146,7 +146,7 @@ export function PaginatedCatalogList<T>({
   return (
     <FlatList
       className="flex-1"
-      contentContainerClassName="w-full px-4 pb-8 pt-4"
+      contentContainerClassName="w-full px-4 pb-8 pt-1"
       data={rows}
       keyExtractor={(row) => row.key}
       keyboardShouldPersistTaps="handled"

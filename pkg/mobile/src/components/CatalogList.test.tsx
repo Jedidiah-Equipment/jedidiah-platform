@@ -129,6 +129,7 @@ describe('PaginatedCatalogList', () => {
     expect(list.type).toBe('FlatList');
     expect(list.props.className).toContain('flex-1');
     expect(list.props.contentContainerClassName).toContain('w-full');
+    expect(list.props.contentContainerClassName).toContain('pt-1');
     expect(list.props.numColumns).toBeUndefined();
     expect(rows.map((row) => [row.kind, row.key])).toEqual([
       ['section-header', 'section:priority'],

@@ -43,7 +43,7 @@ export function JobVarianceReport({ report, showCosts }: { report: JobMaterialVa
       <JobVarianceTotals report={report} showCosts={showCosts} />
       <DataTable
         emptyMessage="No CFO or stock movements for this Job."
-        globalFilterPlaceholder="Search Job variance..."
+        globalFilterPlaceholder="Search job variance..."
         paginationMode="complete"
         table={table}
         total={table.getFilteredRowModel().rows.length}

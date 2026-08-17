@@ -39,7 +39,7 @@ export function PlanCatalogControls({
         <ListSearchControl
           accessibilityLabel="Search Plan"
           onChangeText={onSearchChange}
-          placeholder="Search by Bay, operator, Job, Product, or Customer…"
+          placeholder="Search by bay, operator, job, product, or customer…"
           value={search}
         />
       }

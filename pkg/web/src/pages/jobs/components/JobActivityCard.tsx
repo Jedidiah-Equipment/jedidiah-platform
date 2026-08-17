@@ -1,9 +1,5 @@
-import type {
-  GeneralFeedbackActivityItem,
-  JobActivityActor,
-  JobActivityItem,
-  JobChangeActivityItem,
-} from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { IconTimeline } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
@@ -72,9 +68,8 @@ export const JobActivityCard: React.FC<{ item: JobActivityItem }> = ({ item }) =
       return (
         <JobChangeActivityCard item={item}>
           completed this Job
-          <ChangeDetail>
-            <DateDisplay date={item.completedOn} />
-          </ChangeDetail>
+          {/* A plain date: completedOn carries no time, so a relative renderer would invent one. */}
+          <ChangeDetail>{formatDate(item.completedOn)}</ChangeDetail>
         </JobChangeActivityCard>
       );
     case 'job-document-added':
@@ -97,9 +92,10 @@ export const GeneralFeedbackActivityCard: React.FC<{ item: GeneralFeedbackActivi
   return (
     <ActivityCard item={item}>
       <ActivityHeader
-        actor={item.feedback.submitter}
+        actorName={item.feedback.submitter.name}
         item={item}
         name={<span className="truncate font-medium">{item.feedback.submitter.name}</span>}
+        thumbnailDataUrl={item.feedback.submitter.thumbnailDataUrl}
       />
       <ActivityJobLine job={item.job} />
       <p className={cn('whitespace-pre-wrap text-sm leading-6', !expanded && 'line-clamp-4')} ref={textRef}>
@@ -127,20 +123,22 @@ const JobChangeActivityCard: React.FC<{ children: React.ReactNode; item: JobChan
   children,
   item,
 }) => {
-  // An actor the audit row no longer names — the user was deleted — still leaves an event worth
-  // reading, so the sentence keeps its subject rather than losing the verb with the name.
-  const actorName = item.actor?.name ?? 'A removed user';
+  // No actor means either the completion sweep, which audits with a null actor on purpose, or a
+  // user since deleted, whose id the FK nulled — the same collision the Audit table resolves by
+  // calling both System, so this reads the same way rather than guessing at a person.
+  const actorName = item.actor?.name ?? 'System';
 
   return (
     <ActivityCard item={item}>
       <ActivityHeader
-        actor={item.actor}
+        actorName={actorName}
         item={item}
         name={
           <span className="min-w-0 truncate">
             <span className="font-medium">{actorName}</span> {children}
           </span>
         }
+        thumbnailDataUrl={item.actor?.thumbnailDataUrl ?? null}
       />
       <ActivityJobLine job={item.job} />
     </ActivityCard>
@@ -172,18 +170,14 @@ const ActivityCard: React.FC<{ children: React.ReactNode; item: JobActivityItem 
 );
 
 const ActivityHeader: React.FC<{
-  actor: JobActivityActor | null;
+  actorName: string;
   item: JobActivityItem;
   name: React.ReactNode;
-}> = ({ actor, item, name }) => (
+  thumbnailDataUrl: string | null;
+}> = ({ actorName, item, name, thumbnailDataUrl }) => (
   <div className="flex flex-wrap items-center gap-2">
     <span className="flex min-w-0 items-center gap-2 text-sm">
-      <EntityThumbnail
-        label={actor?.name ?? ''}
-        preview={false}
-        size="sm"
-        thumbnailDataUrl={actor?.thumbnailDataUrl ?? null}
-      />
+      <EntityThumbnail label={actorName} preview={false} size="sm" thumbnailDataUrl={thumbnailDataUrl} />
       {name}
     </span>
     <span className="text-xs text-muted-foreground">

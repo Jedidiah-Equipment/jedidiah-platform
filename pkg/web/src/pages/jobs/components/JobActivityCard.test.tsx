@@ -1,3 +1,4 @@
+import { formatDate } from '@pkg/domain';
 import { type GeneralFeedbackActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
@@ -68,14 +69,28 @@ describe('JobActivityCard', () => {
     expect(html).toContain('cleared the Job description');
   });
 
-  // The audit row keeps the event after its actor is deleted, so the sentence must survive too.
-  it('keeps the verb when the acting user is gone', async () => {
-    const item = buildChangeItem('job-created', { actor: null });
+  // The nightly completion sweep audits with a null actor deliberately, and a deleted user's row is
+  // nulled by the FK too — indistinguishable, and the Audit table already calls both "System".
+  it('names a change nobody is recorded for System, matching the Audit table', async () => {
+    const item = buildChangeItem('job-completed', { actor: null });
 
     const html = await renderWithRouter(<JobActivityCard item={item} />);
 
-    expect(html).toContain('A removed user');
-    expect(html).toContain('created this Job');
+    expect(html).toContain('System');
+    expect(html).toContain('completed this Job');
+    expect(html).not.toContain('A removed user');
+  });
+
+  // completedOn is date-only, so a relative renderer invents a midnight time and a second age
+  // beside the entry's own timestamp.
+  it('shows the completion date as a plain date, not a time or a relative age', async () => {
+    const item = buildChangeItem('job-completed', { completedOn: '2026-08-10' });
+
+    const html = await renderWithRouter(<JobActivityCard item={item} />);
+
+    // Scoped to the payload: the header's own occurredAt is a real instant and stays relative.
+    expect(html).toContain(`— ${formatDate('2026-08-10')}</span>`);
+    expect(html).not.toContain('00:00');
   });
 });
 

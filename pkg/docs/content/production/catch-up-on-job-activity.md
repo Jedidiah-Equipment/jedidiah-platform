@@ -14,22 +14,16 @@ opening each Job in turn.
 ## What appears in the feed
 
 - **General Feedback** someone submitted about a Job.
-- **A Job was started**, whether from a Quote or as a Stock Build.
+- **A Job was created**, whether from a Quote or as a Stock Build.
 - **A Job description was changed** — the entry carries the new wording, or says it was cleared.
-- **A Job was completed**, with the completion date.
-- **A document was added to a Job**, naming the file.
+- **A Job was completed**, with the completion date. An entry named **System** is a Job the plant
+  finished on schedule and nobody stamped by hand.
+- **A document was added to a Job**, naming the file, and the entry stays after the file is deleted.
+  The Brochure and Product documents a Job copies for itself when it starts get no entry.
 
 Corrective Feedback about a department or a person stays in the Feedback inbox, and feedback
-submitted about a Quote is not shown here. Cancelling a Job does not add an entry.
-
-Only documents someone added show up. The Brochure and the Product documents a Job copies for itself
-when it starts are part of starting the Job, so they do not each get their own entry.
-
-Un-completing a Job does not add an entry either — it reads as a correction rather than something
-that happened. Completing it again does add a new one.
-
-A document entry stays in the feed after the document itself is deleted: the feed records that the
-file was added, which remains true.
+submitted about a Quote is not shown here. Cancelling a Job and re-opening a completed Job add no
+entry.
 
 Every entry stays in the feed — it is a record of what was said and done and when, not a queue to
 work through.

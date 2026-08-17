@@ -40,8 +40,10 @@ export const GeneralFeedbackActivityItem = z.object({
 });
 
 /**
- * Who performed a change event. Null when the acting user has since been deleted: the audit row's
- * actor FK clears rather than cascading, so the event survives the person who caused it.
+ * Who performed a change event, when a person did. Null covers two cases the audit row cannot tell
+ * apart — the platform itself acted (the Job completion sweep audits with a null actor on purpose),
+ * or the user who acted has since been deleted and the actor FK nulled their id rather than
+ * cascading the event away. Readers render both as System, as the Audit table already does.
  */
 export type JobActivityActor = z.infer<typeof JobActivityActor>;
 // The same shape a Feedback submitter has, and deliberately the same export: both are just the

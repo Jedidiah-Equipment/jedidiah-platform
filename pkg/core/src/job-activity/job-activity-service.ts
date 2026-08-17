@@ -288,11 +288,22 @@ function mapJobChangeActivityItem(row: AuditActivityRow, job: JobActivityJobRef)
     return JobActivityItemSchema.parse({ ...shared, type: 'job-completed', completedOn });
   }
 
+  // Guarded rather than a fallthrough: a `description` this mapper never saw means a predicate above
+  // now selects a row no branch here claims, and the next one is `job-cancelled`. Failing loudly
+  // beats labelling a cancellation as a description someone cleared.
+  if (!changeSetNamesField(row.changes, 'description')) {
+    throw new Error(`Job activity change event ${row.id} matched a predicate no activity type maps`);
+  }
+
   return JobActivityItemSchema.parse({
     ...shared,
     type: 'job-description-updated',
     description: readChangeTo(row.changes, 'description'),
   });
+}
+
+function changeSetNamesField(changes: unknown, field: string): boolean {
+  return field in ((changes as AuditChanges | null) ?? {});
 }
 
 function mapChangeEventActor(row: AuditActivityRow) {

@@ -1,6 +1,7 @@
 import type React from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js';
+import { Badge } from '@/components/ui/badge.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { cn } from '@/lib/utils.js';
 
@@ -17,6 +18,8 @@ type EntityThumbnailProps = {
   fallbackLabel?: string;
   label: string;
   preview?: boolean;
+  /** Circles read as a person rather than a record — reach for one where a surface says "who". */
+  shape?: 'circle' | 'square';
   thumbnailDataUrl?: string | null | undefined;
   size?: 'sm' | 'default' | 'lg';
 };
@@ -28,15 +31,20 @@ export const EntityThumbnail: React.FC<EntityThumbnailProps> = ({
   fallbackLabel,
   label,
   preview = true,
+  shape = 'square',
   size = 'default',
   thumbnailDataUrl,
 }) => {
+  const rounded = shape === 'circle' ? 'rounded-full' : 'rounded-md';
   const avatar = (
-    <Avatar className={cn('rounded-md after:rounded-md', className)} size={size}>
-      {thumbnailDataUrl ? <AvatarImage alt="" className="rounded-md" src={thumbnailDataUrl} /> : null}
+    <Avatar
+      className={cn(rounded, shape === 'circle' ? 'after:rounded-full' : 'after:rounded-md', className)}
+      size={size}
+    >
+      {thumbnailDataUrl ? <AvatarImage alt="" className={rounded} src={thumbnailDataUrl} /> : null}
       <AvatarFallback
         aria-label={fallback ? fallbackLabel : undefined}
-        className={cn('rounded-md font-medium', fallbackClassName)}
+        className={cn(rounded, 'font-medium', fallbackClassName)}
         role={fallback ? 'img' : undefined}
       >
         {fallback ?? getInitials(label)}
@@ -51,8 +59,11 @@ export const EntityThumbnail: React.FC<EntityThumbnailProps> = ({
   return (
     <HoverCard>
       <HoverCardTrigger delay={PREVIEW_DELAY_MS} render={<span className="inline-flex">{avatar}</span>} />
-      <HoverCardContent className="w-auto p-1.5">
+      <HoverCardContent className="relative w-auto p-1.5">
         <img alt={label} className={cn('rounded-md object-cover', PREVIEW_SIZE)} src={thumbnailDataUrl} />
+        <Badge className="absolute right-3 bottom-3 max-w-[calc(100%-1.5rem)] truncate shadow-sm" variant="secondary">
+          {label}
+        </Badge>
       </HoverCardContent>
     </HoverCard>
   );

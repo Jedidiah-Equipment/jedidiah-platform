@@ -429,6 +429,70 @@ describe('listJobActivity change events', () => {
     expect(result.items.map((item) => item.type)).toEqual(['general-feedback', 'job-created', 'general-feedback']);
   });
 
+  test('filters User Feedback from every non-feedback Job Event type', async ({ context }) => {
+    await insertFeedback(context.db, {
+      jobId: context.job.id,
+      kind: 'general',
+      subjectType: 'job',
+      text: 'A user note.',
+    });
+    await recordJobCreated(context.db, context.job);
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { id: context.job.id, description: 'Fit the heavy-duty boom.' },
+    });
+    await updateJob({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: {
+        id: context.job.id,
+        completedOn: DateOnlyIso.parse('2026-08-10'),
+        description: 'Fit the heavy-duty boom.',
+      },
+    });
+    await recordDocumentCreated(context.db, { jobId: context.job.id });
+
+    const feedbackResult = await listJobActivity({
+      db: context.db,
+      input: listInput({ filter: 'user-feedback' }),
+    });
+    const eventResult = await listJobActivity({ db: context.db, input: listInput({ filter: 'job-events' }) });
+
+    expect(feedbackResult.total).toBe(1);
+    expect(feedbackResult.items.map((item) => item.type)).toEqual(['general-feedback']);
+    expect(eventResult.total).toBe(4);
+    expect(eventResult.items.map((item) => item.type).sort()).toEqual(
+      ['job-completed', 'job-created', 'job-description-updated', 'job-document-added'].sort(),
+    );
+  });
+
+  test('filters feedback and every Job Event source to one Job', async ({ context }) => {
+    const otherJob = await createStockJob(context.db, context.product.id);
+
+    for (const job of [context.job, otherJob]) {
+      await insertFeedback(context.db, {
+        jobId: job.id,
+        kind: 'general',
+        subjectType: 'job',
+        text: `Feedback for ${job.id}`,
+      });
+      await recordJobCreated(context.db, job);
+      await recordDocumentCreated(context.db, { jobId: job.id });
+    }
+
+    const result = await listJobActivity({
+      db: context.db,
+      input: listInput({ jobId: context.job.id }),
+    });
+
+    expect(result.total).toBe(3);
+    expect(result.items.every((item) => item.job.id === context.job.id)).toBe(true);
+    expect(result.items.map((item) => item.type).sort()).toEqual(
+      ['general-feedback', 'job-created', 'job-document-added'].sort(),
+    );
+  });
+
   // Both directions, because the union orders on its own aliased columns rather than on a table's:
   // a direction applied to only one of the two order keys would still page, just wrongly.
   test.for([
@@ -476,6 +540,7 @@ describe('listJobActivity change events', () => {
 function listInput(overrides: Partial<Parameters<typeof listJobActivity>[0]['input']> = {}) {
   return {
     cursor: 0,
+    filter: 'all' as const,
     limit: 25,
     sortBy: 'occurredAt' as const,
     sortDirection: 'desc' as const,

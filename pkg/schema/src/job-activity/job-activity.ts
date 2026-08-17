@@ -120,10 +120,16 @@ export type JobActivityType = JobActivityItem['type'];
 export type JobActivitySortBy = z.infer<typeof JobActivitySortBy>;
 export const JobActivitySortBy = z.enum(['occurredAt']);
 
+export type JobActivityFilter = z.infer<typeof JobActivityFilter>;
+export const JobActivityFilter = z.enum(['all', 'user-feedback', 'job-events']);
+
 export type JobActivityListInput = z.infer<typeof JobActivityListInput>;
 export const JobActivityListInput = createSortedCursorQueryInput({
   defaultSortDirection: 'desc',
-  shape: {},
+  shape: {
+    filter: JobActivityFilter.default('all'),
+    jobId: UUID.optional(),
+  },
   sortBy: JobActivitySortBy.default('occurredAt'),
 });
 

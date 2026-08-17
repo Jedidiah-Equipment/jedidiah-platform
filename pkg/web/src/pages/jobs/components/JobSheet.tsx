@@ -16,7 +16,7 @@ import {
   type JobVisibleDocument,
   type UUID,
 } from '@pkg/schema';
-import { IconInfoCircle, IconLoader2, IconMessageCircle, IconUpload } from '@tabler/icons-react';
+import { IconActivity, IconInfoCircle, IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
@@ -26,7 +26,6 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { StockBadge } from '@/components/common/StockBadge.js';
 import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
 import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton.js';
-import { JobFeedbackList } from '@/components/feedback/JobFeedbackList.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
@@ -47,6 +46,7 @@ import { cn } from '@/lib/utils.js';
 import { JOB_DOCUMENT_ACCEPT, uploadJobPurchaseOrder, validateSelectedFile } from '@/utils/document.js';
 import { JobVarianceTab } from '../../inventory/job-variance/components/JobVarianceTab.js';
 import { CustomJobWorkItems } from './CustomJobWorkItems.js';
+import { JobActivityFeed } from './JobActivityFeed.js';
 import { JobCancellationAction } from './JobCancellationAction.js';
 import { InfoList, InfoRow } from './JobInfoList.js';
 import { JobStockTab } from './JobStockTab.js';
@@ -190,10 +190,10 @@ const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
             <GiveFeedbackButton subject={{ subjectType: 'job', jobId: job.id }} subjectLabel={job.code} />
           ) : undefined
         }
-        icon={<IconMessageCircle />}
-        title="Feedback"
+        icon={<IconActivity />}
+        title="Activity"
       >
-        <JobFeedbackList jobId={job.id} />
+        <JobActivityFeed hideDetail jobId={job.id} />
       </Section>
       <JobCancellationAction job={job} />
     </div>

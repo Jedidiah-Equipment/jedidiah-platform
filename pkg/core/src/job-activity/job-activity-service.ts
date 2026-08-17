@@ -60,6 +60,24 @@ function changedFieldIsSet(field: string): SQL {
   return sql`${auditEvents.changes} -> ${field} ->> 'to' is not null`;
 }
 
+function jobGeneralFeedbackFilter(input: JobActivityListInput): SQL {
+  return and(jobGeneralFeedback, input.jobId ? eq(feedback.jobId, input.jobId) : undefined) as SQL;
+}
+
+function jobChangeEventFilter(input: JobActivityListInput): SQL {
+  if (!input.jobId) {
+    return jobChangeEvents;
+  }
+
+  return and(
+    jobChangeEvents,
+    or(
+      and(eq(auditEvents.entityType, 'job'), eq(auditEvents.entityId, input.jobId)),
+      and(eq(auditEvents.entityType, 'document'), sql`${auditEvents.changes} -> 'jobId' ->> 'to' = ${input.jobId}`),
+    ),
+  ) as SQL;
+}
+
 /** The Job facts every item carries, read the same way whichever source the item came from. */
 const jobActivityJobRead = {
   columns: {
@@ -110,9 +128,11 @@ export async function listJobActivity({
   db: Db;
   input: JobActivityListInput;
 }): Promise<JobActivityListResult> {
+  const includeFeedback = input.filter !== 'job-events';
+  const includeJobEvents = input.filter !== 'user-feedback';
   const [feedbackTotal, auditTotal, keys] = await Promise.all([
-    db.$count(feedback, jobGeneralFeedback),
-    db.$count(auditEvents, jobChangeEvents),
+    includeFeedback ? db.$count(feedback, jobGeneralFeedbackFilter(input)) : Promise.resolve(0),
+    includeJobEvents ? db.$count(auditEvents, jobChangeEventFilter(input)) : Promise.resolve(0),
     findActivityKeys(db, input),
   ]);
   const total = feedbackTotal + auditTotal;
@@ -131,6 +151,8 @@ export async function listJobActivity({
  * Load more behaves exactly as it did when feedback was the only source.
  */
 async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<ActivityKey[]> {
+  const includeFeedback = input.filter !== 'job-events';
+  const includeJobEvents = input.filter !== 'user-feedback';
   const keys = unionAll(
     db
       .select({
@@ -139,7 +161,7 @@ async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<Ac
         source: sql<ActivitySource>`'feedback'::text`.as('source'),
       })
       .from(feedback)
-      .where(jobGeneralFeedback),
+      .where(includeFeedback ? jobGeneralFeedbackFilter(input) : sql`false`),
     db
       .select({
         id: auditEvents.id,
@@ -147,7 +169,7 @@ async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<Ac
         source: sql<ActivitySource>`'audit'::text`.as('source'),
       })
       .from(auditEvents)
-      .where(jobChangeEvents),
+      .where(includeJobEvents ? jobChangeEventFilter(input) : sql`false`),
   ).as('job_activity_keys');
 
   // Tiebreak on id so a row never repeats or vanishes across offset pages when timestamps collide,

@@ -231,7 +231,7 @@ describe('buy-list seeding and late orders', () => {
       admin.purchaseOrders.createFromSelection({ jobId: context.jobId, lines: [{ partId: PART_ID, quantity: 3 }] }),
     ).resolves.toMatchObject({ purchaseOrders: [{ supplierName: 'Router Supplies' }] });
 
-    // Seeded drafts are unpriced, so the cost gate has nothing to hide from a price-blind reader.
+    // This never-costed Part stays unpriced, and the ordinary cost gate still hides the sentinel.
     await expect(stores.purchaseOrders.list({})).resolves.toMatchObject({
       items: [{ jobs: [{ id: context.jobId }], lines: [{ quantity: 3, unitPrice: null }] }],
     });

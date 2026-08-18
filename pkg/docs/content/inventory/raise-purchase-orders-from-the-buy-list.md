@@ -15,9 +15,10 @@ Draft Purchase Orders — one per Supplier — with the quantities already fille
 5. Click **Create Purchase Orders**.
 6. Adjust any quantity in the dialog, untick anything you have changed your mind about, then click
    **Create drafts**.
-
-Each draft opens with its lines and quantities in place and no prices. Open it from **Purchase
-Orders**, key the agreed prices, and send it.
+7. Open each draft from **Purchase Orders**. Its lines and quantities are already in place. A line
+   starts at the Part's current moving average when one exists; otherwise it shows **Not priced**.
+8. Confirm or change each price to what the Supplier agreed.
+9. Click **Mark sent**.
 
 ## Starting from a Job
 

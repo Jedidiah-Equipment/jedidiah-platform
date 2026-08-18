@@ -1,5 +1,5 @@
 import { type Db, parts, supplier } from '@pkg/db';
-import { derivePartStockActions } from '@pkg/domain';
+import { defaultPurchaseOrderUnitPrice, derivePartStockActions } from '@pkg/domain';
 import type { AuthId, PurchaseOrderSelectionInput, PurchaseOrderSelectionResult, UUID } from '@pkg/schema';
 import {
   isWholeUnitQuantity,
@@ -7,7 +7,7 @@ import {
   unitClassFor,
 } from '@pkg/schema';
 import { eq, inArray } from 'drizzle-orm';
-
+import { loadMovingAverages } from '../inventory/ledger.js';
 import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
 import {
   PurchaseOrderInvalidQuantityError,
@@ -28,9 +28,8 @@ type SupplierGroup = {
  * split into orders is arithmetic nobody should have to do by hand. Ticked on a Job, every draft
  * links back to it, so the PDF reaches that Job's documents tab whichever Supplier it went to.
  *
- * Lines are written **unpriced**. The buy list is quantity-only by the cost gate (spec §11), so the
- * price is keyed on the draft afterwards by someone who may read costs — a zero here means "not
- * priced yet", and marking the order sent is what asserts the price was agreed.
+ * Lines start from the current moving average. The draft stays editable because marking the
+ * order sent, not this historical default, is what asserts the Supplier price was agreed.
  *
  * One transaction covers every draft: a selection spanning three Suppliers either becomes three
  * drafts or none, never a partial set the buyer has to reconcile against what they ticked.
@@ -92,6 +91,7 @@ async function groupSelectionBySupplier({
       id: parts.id,
       isInternallyFabricated: parts.isInternallyFabricated,
       stockTrackingMode: parts.stockTrackingMode,
+      standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
       supplierId: parts.supplierId,
       supplierName: supplier.companyName,
       unitOfMeasure: parts.unitOfMeasure,
@@ -105,6 +105,10 @@ async function groupSelectionBySupplier({
       ),
     );
   const partsById = new Map(partRows.map((row) => [row.id, row]));
+  const averages = await loadMovingAverages(
+    db,
+    input.lines.map((line) => line.partId),
+  );
   const bySupplier = new Map<UUID, SupplierGroup>();
 
   for (const line of input.lines) {
@@ -121,7 +125,14 @@ async function groupSelectionBySupplier({
     }
 
     const group = bySupplier.get(part.supplierId) ?? { lines: [], supplierName: part.supplierName };
-    group.lines.push({ partId: line.partId, quantity: line.quantity, unitPrice: 0 });
+    group.lines.push({
+      partId: line.partId,
+      quantity: line.quantity,
+      unitPrice: defaultPurchaseOrderUnitPrice({
+        averageUnitCost: averages.get(line.partId) ?? null,
+        standardPurchaseLengthMm: part.standardPurchaseLengthMm,
+      }),
+    });
     bySupplier.set(part.supplierId, group);
   }
 

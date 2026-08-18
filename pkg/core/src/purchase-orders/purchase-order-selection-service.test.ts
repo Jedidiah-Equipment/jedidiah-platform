@@ -1,11 +1,11 @@
 import { customers, type Db, jobs, parts, purchaseOrders, quotes, supplier, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
-
+import { postAdjustment } from '../inventory/stock-movement-service.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { partValues } from '../test/part-fixtures.js';
 import { createPurchaseOrderDraftsFromSelection } from './purchase-order-selection-service.js';
-import { markPurchaseOrderSent, savePurchaseOrderDraft } from './purchase-order-service.js';
+import { getPurchaseOrder, markPurchaseOrderSent, savePurchaseOrderDraft } from './purchase-order-service.js';
 
 const ACTOR_ID = 'po-seed-test-user';
 const SUPPLIER_A_ID = '00000000-0000-4000-8000-000000000301';
@@ -77,7 +77,7 @@ describe('createPurchaseOrderDraftsFromSelection', () => {
     ]);
   });
 
-  test('prefills quantities and leaves the price for a cost reader to key', async ({ context }) => {
+  test('leaves a never-costed Part unpriced for a cost reader to key', async ({ context }) => {
     const { purchaseOrders: created } = await createPurchaseOrderDraftsFromSelection({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -86,13 +86,64 @@ describe('createPurchaseOrderDraftsFromSelection', () => {
     const [draft] = created;
     if (!draft) throw new Error('Expected a seeded draft');
 
-    const stored = await context.db.query.purchaseOrders.findFirst({
-      where: (row, { eq }) => eq(row.id, draft.id),
-      with: { lines: true },
+    await expect(getPurchaseOrder({ db: context.db, id: draft.id })).resolves.toMatchObject({
+      lines: [{ quantity: 7, unitPrice: 0 }],
+      status: 'draft',
+    });
+  });
+
+  test('prefills a draft line from the Part current moving average', async ({ context }) => {
+    await postAdjustment({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        delta: 10,
+        lengthMm: null,
+        note: null,
+        partId: ALPHA_PART_ID,
+        reason: 'opening-balance',
+        unitCost: 0.3,
+      },
     });
 
-    expect(stored).toMatchObject({ status: 'draft' });
-    expect(stored?.lines).toEqual([expect.objectContaining({ quantity: 7, unitPrice: 0 })]);
+    const { purchaseOrders: created } = await createPurchaseOrderDraftsFromSelection({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { jobId: null, lines: [{ partId: ALPHA_PART_ID, quantity: 7 }] },
+    });
+    const [draft] = created;
+    if (!draft) throw new Error('Expected a seeded draft');
+
+    await expect(getPurchaseOrder({ db: context.db, id: draft.id })).resolves.toMatchObject({
+      lines: [{ quantity: 7, unitPrice: 0.3 }],
+    });
+  });
+
+  test('prefills a linear Part at the cost of one standard purchase length', async ({ context }) => {
+    await postAdjustment({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        delta: 2,
+        lengthMm: 6_000,
+        note: null,
+        partId: ALPHA_LINEAR_PART_ID,
+        reason: 'opening-balance',
+        unitCost: 228.75,
+      },
+    });
+
+    const { purchaseOrders: created } = await createPurchaseOrderDraftsFromSelection({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { jobId: null, lines: [{ partId: ALPHA_LINEAR_PART_ID, quantity: 3 }] },
+    });
+    const [draft] = created;
+    if (!draft) throw new Error('Expected a seeded draft');
+
+    await expect(getPurchaseOrder({ db: context.db, id: draft.id })).resolves.toMatchObject({
+      lines: [{ quantity: 3, unitPrice: 228.75 }],
+    });
   });
 
   test('links every draft back to the Job the selection was seeded from', async ({ context }) => {

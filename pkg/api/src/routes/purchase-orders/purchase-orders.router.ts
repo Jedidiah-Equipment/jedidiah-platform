@@ -359,9 +359,9 @@ export const purchaseOrdersRouter = router({
     }),
 
   /**
-   * A ticked selection becomes one draft per Supplier. Gated on `purchase_order:create` alone: the
-   * lines it writes carry no price, so seeding needs no cost access even though editing the drafts
-   * afterwards does.
+   * A ticked selection becomes one draft per Supplier. Gated on `purchase_order:create` alone: its
+   * inventory-cost defaults are derived server-side and the response exposes no prices; subsequent
+   * reads and draft editing remain behind the ordinary cost gate.
    */
   createFromSelection: authorizedProcedure('purchase_order:create')
     .input(PurchaseOrderSelectionInput)

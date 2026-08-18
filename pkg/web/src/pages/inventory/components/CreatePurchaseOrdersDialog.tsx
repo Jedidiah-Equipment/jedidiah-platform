@@ -42,8 +42,8 @@ type SelectionState = { include: boolean; quantity: string };
  * advice — the buyer knows things the shortfall does not (a pack size, a delivery promised by
  * phone). A row suggesting nothing, because free stock or an open order already covers it, arrives
  * unticked rather than hidden, so it can still be ordered deliberately without blocking the rest of
- * the selection. Prices are absent on purpose: the buy list is quantity-only under the cost gate
- * (spec §11), so the draft is where they get keyed.
+ * the selection. Prices stay out of this quantity decision: the resulting drafts default them from
+ * current moving average, then leave procurement to confirm or change the Supplier agreement.
  */
 export function CreatePurchaseOrdersDialog({
   candidates,
@@ -115,7 +115,7 @@ export function CreatePurchaseOrdersDialog({
         <DialogHeader>
           <DialogTitle>Create draft Purchase Orders</DialogTitle>
           <DialogDescription>
-            The selection splits into one draft per Supplier. Add prices on the drafts before sending them.
+            The selection splits into one draft per Supplier. Confirm prices on the drafts before sending them.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-80">

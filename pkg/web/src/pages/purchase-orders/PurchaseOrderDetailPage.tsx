@@ -1,10 +1,17 @@
-import { createStableRowKeys, formatCurrency, formatDate, hasPermission } from '@pkg/domain';
+import {
+  createStableRowKeys,
+  defaultPurchaseOrderUnitPrice,
+  formatCurrency,
+  formatDate,
+  hasPermission,
+} from '@pkg/domain';
 import type {
   Part,
   PurchaseOrderAmendmentKind,
   PurchaseOrderLineInput,
   PurchaseOrderSaveDraftInput,
   PurchaseOrderView,
+  StockOnHandRow,
   UUID,
 } from '@pkg/schema';
 import { isPurchaseOrderLineUnpriced } from '@pkg/schema';
@@ -368,15 +375,40 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
   form,
   supplierId,
 }) => {
+  const trpc = useTRPC();
   const parts = usePartOptions({ limit: 0, sortBy: 'name', sortDirection: 'asc' });
+  const stockOnHandQuery = useQuery(trpc.inventory.stockOnHand.queryOptions());
+  const averageCostByPart = new Map(
+    (stockOnHandQuery.data?.items ?? []).map((part) => [part.partId, part.averageUnitCost]),
+  );
+  // Do not let a quick click turn a costed Part into an unpriced line while its default is still loading.
+  // A failed query settles and leaves manual pricing available alongside the visible error.
+  const eligibleParts = stockOnHandQuery.isPending
+    ? []
+    : parts.items
+        .filter((part) => part.supplierId === supplierId)
+        .map((part) => ({ ...part, averageUnitCost: averageCostByPart.get(part.id) ?? null }));
 
+  return (
+    <>
+      <ErrorMessage error={stockOnHandQuery.error} fallbackMessage="Unable to load inventory price defaults." />
+      <PurchaseOrderLinesEditor commit={commit} form={form} parts={eligibleParts} />
+    </>
+  );
+};
+
+type PurchaseOrderPartOption = Part & Pick<StockOnHandRow, 'averageUnitCost'>;
+
+export const PurchaseOrderLinesEditor: React.FC<{
+  commit: () => void;
+  form: DraftForm;
+  parts: PurchaseOrderPartOption[];
+}> = ({ commit, form, parts }) => {
   return (
     <form.AppField mode="array" name="lines">
       {(linesField) => {
         const lines = linesField.state.value;
-        // A PO is an order on one Supplier (spec §4), so only that Supplier's Parts can be lined up.
-        const eligibleParts = parts.items.filter((part) => part.supplierId === supplierId);
-        const nextPart = eligibleParts.find((part) => !lines.some((line) => line.partId === part.id));
+        const nextPart = parts.find((part) => !lines.some((line) => line.partId === part.id));
 
         return (
           <Card>
@@ -388,7 +420,11 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
                   disabled={!nextPart}
                   onClick={() => {
                     if (!nextPart) return;
-                    linesField.pushValue({ partId: nextPart.id, quantity: 1, unitPrice: 0 });
+                    linesField.pushValue({
+                      partId: nextPart.id,
+                      quantity: 1,
+                      unitPrice: defaultPurchaseOrderUnitPrice(nextPart),
+                    });
                     commit();
                   }}
                   size="sm"
@@ -402,7 +438,7 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
             <CardContent>
               <PurchaseOrderLinesDataTable
                 commit={commit}
-                eligibleParts={eligibleParts}
+                eligibleParts={parts}
                 form={form}
                 lines={lines}
                 removeLine={(index) => linesField.removeValue(index)}
@@ -426,7 +462,7 @@ type PurchaseOrderLineTableRow = {
 
 const PurchaseOrderLinesDataTable: React.FC<{
   commit: () => void;
-  eligibleParts: Part[];
+  eligibleParts: PurchaseOrderPartOption[];
   form: DraftForm;
   lines: PurchaseOrderLineInput[];
   removeLine: (index: number) => void;
@@ -451,8 +487,16 @@ const PurchaseOrderLinesDataTable: React.FC<{
                   label={<span className="sr-only">Part</span>}
                   onValueCommit={(partId) => {
                     const quantityName = `lines[${index}].quantity` as const;
+                    const unitPriceName = `lines[${index}].unitPrice` as const;
                     const nextPart = eligibleParts.find((candidate) => candidate.id === partId);
                     form.setFieldValue(quantityName, quantityForPart(form.getFieldValue(quantityName), nextPart));
+                    form.setFieldValue(
+                      unitPriceName,
+                      defaultPurchaseOrderUnitPrice({
+                        averageUnitCost: nextPart?.averageUnitCost ?? null,
+                        standardPurchaseLengthMm: nextPart?.standardPurchaseLengthMm ?? null,
+                      }),
+                    );
                     commit();
                   }}
                   options={options}

@@ -271,9 +271,10 @@ Web `/inventory/buy-list`.
 - [ ] **BUY-04 — Built Part never ticked.** Drive a Built Part onto the buy list (negative
   free stock). Expect: it appears but cannot be ticked for purchasing.
 - [ ] **BUY-05 — Create draft POs.** Tick several Parts across two Suppliers, adjust a
-  quantity, **Create Purchase Orders**. Expect: one **Draft** per Supplier, unpriced lines at
-  the chosen quantities; each zero sentinel renders as a blank **Not priced** field and the
-  draft total says **Not priced**, never `R 0.00`; ticking never sends anything.
+  quantity, **Create Purchase Orders**. Expect: one **Draft** per Supplier at the chosen
+  quantities; each costed Part starts at its current moving average, while a never-costed Part
+  renders a blank **Not priced** field and makes the draft total say **Not priced**, never
+  `R 0.00`; ticking never sends anything.
 - [ ] **BUY-06 — Late POs table.** Set a sent PO's expected date in the past (amendment) with
   lines still owed. Expect: it appears in **Late Purchase Orders** (Order / Supplier /
   Expected / Overdue / Still owed). A closed-short PO does not.

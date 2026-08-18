@@ -919,10 +919,9 @@ export async function lockPurchaseOrder(tx: DatabaseTransaction, id: UUID): Prom
 }
 
 /**
- * A zero price on a draft line means "not priced yet" — that is how a line raised from the buy list
- * is written, since that screen is quantity-only under the cost gate. Sending is the assertion the
- * price was agreed (spec §4), and it is the last point before a receipt would stamp that zero onto
- * the ledger as the Part's cost.
+ * A zero price on a draft line means "not priced yet" — the state a never-costed Part still starts
+ * in. Sending is the assertion the price was agreed (spec §4), and it is the last point before a
+ * receipt would stamp that zero onto the ledger as the Part's cost.
  */
 function assertLinesArePriced(purchaseOrder: PurchaseOrder): void {
   const unpriced = purchaseOrder.lines.find((line) => line.unitPrice === 0);

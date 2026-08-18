@@ -28,7 +28,7 @@ import type {
   PartUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { getNextCursor, Part as PartSchema } from '@pkg/schema';
+import { getNextCursor, Part as PartSchema, unitClassFor } from '@pkg/schema';
 import { and, asc, count, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
 
 import {
@@ -452,6 +452,13 @@ export async function bulkImportParts({
 
         const [lockedPart] = await tx.select().from(parts).where(eq(parts.id, existingPart.id)).for('update');
         if (!lockedPart) throw new PartNotFoundError(existingPart.id);
+
+        if (lockedPart.averageUtilizationPercent !== null && unitClassFor(partInput.unitOfMeasure) !== 'discrete') {
+          errors.push(
+            `Line ${row.lineNumber}: clear Average utilization % before changing this Part to a measured or linear unit.`,
+          );
+          continue;
+        }
 
         const after = {
           ...lockedPart,

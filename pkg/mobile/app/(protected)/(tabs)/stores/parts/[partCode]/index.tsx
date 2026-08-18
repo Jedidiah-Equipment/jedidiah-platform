@@ -80,7 +80,7 @@ export default function StoresPartRoute() {
               ESTIMATED ON HAND
             </Text>
             <Text className="text-sm text-surface-foreground" weight="semibold">
-              {formatEstimatedStockOnHand(row.estimatedOnHand)}
+              {formatEstimatedStockOnHand(row.estimatedOnHand, row.unitOfMeasure)}
             </Text>
           </View>
         )}

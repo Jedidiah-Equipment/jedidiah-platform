@@ -1,4 +1,4 @@
-import { type Part, PartUnitOfMeasure, type Supplier, unitClassFor } from '@pkg/schema';
+import { type Part, PartAverageUtilizationPercent, PartUnitOfMeasure, type Supplier, unitClassFor } from '@pkg/schema';
 import { IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
 
@@ -112,8 +112,8 @@ export const PartForm: React.FC<PartFormProps> = ({
                   disabled={stockTrackingMode !== 'periodic' || unitClassFor(unitOfMeasure) !== 'discrete'}
                   inputMode="numeric"
                   label="Average utilization %"
-                  max={100}
-                  min={1}
+                  max={PartAverageUtilizationPercent.maxValue ?? undefined}
+                  min={PartAverageUtilizationPercent.minValue ?? undefined}
                   placeholder="Not set"
                   step={1}
                 />

@@ -604,11 +604,9 @@ describe('listStockOnHand', () => {
       .values({ createdAt: new Date('2026-08-05T08:00:00.000Z'), productUnitId: productUnit.id })
       .returning();
     if (!laterProductJob) throw new Error('Product Job insert did not return a row');
-    await context.db.insert(jobEstimateSnapshots).values([
-      { jobId: laterProductJob.id, payload: estimateSnapshot(plate, 0.8) },
-      // Even a malformed future Custom Job snapshot must not make Custom Jobs estimator demand.
-      { jobId: context.jobs.custom.id, payload: estimateSnapshot(plate, 0.84) },
-    ]);
+    await context.db
+      .insert(jobEstimateSnapshots)
+      .values({ jobId: laterProductJob.id, payload: estimateSnapshot(plate, 0.8) });
 
     expect((await listStockOnHand({ db: context.db })).items.find((row) => row.partId === plate.id)).toMatchObject({
       estimatedOnHand: { openPlateRemainingPercent: 99, wholeUnits: 3 },

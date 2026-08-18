@@ -57,9 +57,12 @@ describe('deriveEstimatedStockOnHand', () => {
 
 describe('formatEstimatedStockOnHand', () => {
   test('names whole plates and the optional open-plate remainder', () => {
-    expect(formatEstimatedStockOnHand({ openPlateRemainingPercent: 94, wholeUnits: 2 })).toBe(
+    expect(formatEstimatedStockOnHand({ openPlateRemainingPercent: 94, wholeUnits: 2 }, 'piece')).toBe(
       '≈ 2 plates + 94% of one.',
     );
-    expect(formatEstimatedStockOnHand({ openPlateRemainingPercent: null, wholeUnits: 1 })).toBe('≈ 1 plate.');
+    expect(formatEstimatedStockOnHand({ openPlateRemainingPercent: null, wholeUnits: 1 }, 'piece')).toBe('≈ 1 plate.');
+    expect(formatEstimatedStockOnHand({ openPlateRemainingPercent: 60, wholeUnits: 2 }, 'box')).toBe(
+      '≈ 2 boxes + 60% of one.',
+    );
   });
 });

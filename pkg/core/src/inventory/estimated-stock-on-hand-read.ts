@@ -1,7 +1,7 @@
 import { type DatabaseTransaction, jobEstimateSnapshots, jobs } from '@pkg/db';
 import { deriveEstimatedStockOnHand } from '@pkg/domain';
 import type { EstimatedStockOnHand, UUID } from '@pkg/schema';
-import { and, eq, gte, isNotNull, lte, or, sql } from 'drizzle-orm';
+import { and, eq, gte, lte, or, sql } from 'drizzle-orm';
 
 export type EstimatedStockRequest = {
   anchorAt: Date | null;
@@ -29,7 +29,8 @@ export async function loadEstimatedStockOnHand(
   const requestedPartIds = [...new Set(requests.map((request) => request.partId))];
   const matchesRequestedPart = or(
     ...requestedPartIds.map(
-      (partId) => sql`${jobEstimateSnapshots.payload} @> ${JSON.stringify({ materialLines: [{ partId }] })}::jsonb`,
+      (partId) =>
+        sql`${jobEstimateSnapshots.payload} @> ${JSON.stringify({ materialLines: [{ partId }], scope: 'build' })}::jsonb`,
     ),
   );
   const snapshotRows = await db
@@ -40,7 +41,6 @@ export async function loadEstimatedStockOnHand(
       and(
         eq(jobs.id, jobEstimateSnapshots.jobId),
         gte(jobs.createdAt, earliestOrigin),
-        isNotNull(jobs.productUnitId),
         lte(jobs.createdAt, latestThrough),
         matchesRequestedPart,
       ),

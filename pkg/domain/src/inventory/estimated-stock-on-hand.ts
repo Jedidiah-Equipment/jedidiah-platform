@@ -1,4 +1,4 @@
-import type { EstimatedStockOnHand } from '@pkg/schema';
+import type { EstimatedStockOnHand, PartUnitOfMeasure } from '@pkg/schema';
 
 export function deriveEstimatedStockOnHand({
   cumulativeDemandAtAnchor,
@@ -22,12 +22,27 @@ export function deriveEstimatedStockOnHand({
   };
 }
 
-export function formatEstimatedStockOnHand(estimate: EstimatedStockOnHand): string {
-  const whole = `${estimate.wholeUnits} ${estimate.wholeUnits === 1 ? 'plate' : 'plates'}`;
+export function formatEstimatedStockOnHand(estimate: EstimatedStockOnHand, unitOfMeasure: PartUnitOfMeasure): string {
+  const whole = `${estimate.wholeUnits} ${estimateUnitNoun(unitOfMeasure, estimate.wholeUnits)}`;
   const remainder =
     estimate.openPlateRemainingPercent === null ? '' : ` + ${estimate.openPlateRemainingPercent}% of one`;
 
   return `≈ ${whole}${remainder}.`;
+}
+
+function estimateUnitNoun(unitOfMeasure: PartUnitOfMeasure, quantity: number): string {
+  switch (unitOfMeasure) {
+    case 'piece':
+      return quantity === 1 ? 'plate' : 'plates';
+    case 'box':
+      return quantity === 1 ? 'box' : 'boxes';
+    case 'pair':
+      return quantity === 1 ? 'pair' : 'pairs';
+    case 'set':
+      return quantity === 1 ? 'set' : 'sets';
+    default:
+      throw new Error(`Estimated Stock on Hand cannot format the ${unitOfMeasure} unit`);
+  }
 }
 
 function platesOpened(demand: number, utilization: number): number {

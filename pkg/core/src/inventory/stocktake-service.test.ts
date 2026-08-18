@@ -420,7 +420,7 @@ describe('the session variance report', () => {
 
     await context.db
       .update(jobs)
-      .set({ cancelledAt: new Date('2026-08-19T08:00:00.000Z') })
+      .set({ cancelledAt: new Date('2026-08-19T08:00:00.000Z'), productUnitId: null })
       .where(eq(jobs.id, job.id));
     expect((await getStocktakeSessionReport({ db: context.db, sessionId: session.id })).counts[0]).toMatchObject({
       estimatedOnHand: { openPlateRemainingPercent: 94, wholeUnits: 2 },

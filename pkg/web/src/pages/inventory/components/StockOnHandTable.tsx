@@ -109,17 +109,18 @@ function createStockOnHandColumns({
     {
       accessorFn: (item) =>
         item.estimatedOnHand === null
-          ? -1
+          ? undefined
           : item.estimatedOnHand.wholeUnits + (item.estimatedOnHand.openPlateRemainingPercent ?? 0) / 100,
       cell: ({ row }) =>
         row.original.estimatedOnHand === null ? (
           <span className="text-muted-foreground">—</span>
         ) : (
-          formatEstimatedStockOnHand(row.original.estimatedOnHand)
+          formatEstimatedStockOnHand(row.original.estimatedOnHand, row.original.unitOfMeasure)
         ),
       header: 'Estimated on hand',
       id: 'estimatedOnHand',
       meta: { cellClassName: 'tabular-nums' },
+      sortUndefined: 'last',
     },
     {
       accessorKey: 'free',

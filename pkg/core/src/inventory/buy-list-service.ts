@@ -19,6 +19,7 @@ import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
 import { loadOpenOrderLines } from '../purchase-orders/purchase-order-service.js';
 import { loadOpenCommitments, type OpenCommitmentRow, sumCommitmentsByPart } from './commitment-read.js';
+import { loadEstimatedStockOnHand } from './estimated-stock-on-hand-read.js';
 
 /**
  * Procurement's radar (spec §3, §12): every Part the shop is short of, why, how much of it is
@@ -38,16 +39,18 @@ export async function listBuyList({
 }): Promise<BuyListResult> {
   // Quantity, commitment and on-order are one procurement fact; a receipt landing mid-read must not
   // let a row claim cover its shortfall was never measured against.
-  return db.transaction((tx) => listBuyListSnapshot(tx, toPlantDateOnly(clock())), {
+  const now = clock();
+  return db.transaction((tx) => listBuyListSnapshot(tx, now, toPlantDateOnly(now)), {
     accessMode: 'read only',
     isolationLevel: 'repeatable read',
   });
 }
 
-async function listBuyListSnapshot(db: DatabaseTransaction, today: DateOnlyIso): Promise<BuyListResult> {
+async function listBuyListSnapshot(db: DatabaseTransaction, now: Date, today: DateOnlyIso): Promise<BuyListResult> {
   const [partRows, commitments, openOrderLines] = await Promise.all([
     db
       .select({
+        averageUtilizationPercent: parts.averageUtilizationPercent,
         isInternallyFabricated: parts.isInternallyFabricated,
         minimumStock: parts.minimumStock,
         partCode: parts.code,
@@ -57,6 +60,14 @@ async function listBuyListSnapshot(db: DatabaseTransaction, today: DateOnlyIso):
         stockTrackingMode: parts.stockTrackingMode,
         // A Part with no ledger at all has never been stocked, so it has not run out (spec §9).
         hasStockHistory: sql<boolean>`count(${stockMovements.id}) > 0`,
+        lastCountAt: sql<
+          string | null
+        >`max(${stockMovements.createdAt}) filter (where ${stockMovements.reason} = 'stock-count')`,
+        // Revaluations do not affect quantity, but they are still ledger movements and therefore
+        // can establish the estimator's demand origin before stock first arrives.
+        originAt: sql<
+          string | null
+        >`(select min(origin_movement.created_at) from stock_movement origin_movement where origin_movement.part_id = ${parts.id})`,
         // A revaluation moves cost, never quantity, so it must not reach a stock-on-hand sum.
         quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
         supplierId: parts.supplierId,
@@ -76,6 +87,24 @@ async function listBuyListSnapshot(db: DatabaseTransaction, today: DateOnlyIso):
   ]);
 
   const committedByPart = sumCommitmentsByPart(commitments);
+  const estimates = await loadEstimatedStockOnHand(
+    db,
+    partRows.flatMap((part) =>
+      part.averageUtilizationPercent === null
+        ? []
+        : [
+            {
+              anchorAt: part.lastCountAt === null ? null : new Date(part.lastCountAt),
+              averageUtilizationPercent: part.averageUtilizationPercent,
+              key: part.partId,
+              originAt: part.originAt === null ? null : new Date(part.originAt),
+              partId: part.partId,
+              recordedOnHand: part.quantity,
+              throughAt: now,
+            },
+          ],
+    ),
+  );
   const onOrderByPart = new Map<string, number>();
   const coveringOrdersByPart = new Map<string, CoveringOrderFacts[]>();
 
@@ -94,17 +123,18 @@ async function listBuyListSnapshot(db: DatabaseTransaction, today: DateOnlyIso):
 
   const signalled = partRows.flatMap((part) => {
     const committed = committedByPart.get(part.partId) ?? 0;
-    const free = part.quantity - committed;
+    const quantity = estimates.get(part.partId)?.wholeUnits ?? part.quantity;
+    const free = quantity - committed;
     const onOrder = onOrderByPart.get(part.partId) ?? 0;
     const signal = deriveBuyListSignal({
       free,
       hasStockHistory: part.hasStockHistory,
       minimumStock: part.minimumStock,
       onOrder,
-      quantity: part.quantity,
+      quantity,
     });
 
-    return signal.reasons.length === 0 ? [] : [{ ...part, ...signal, committed, free, onOrder }];
+    return signal.reasons.length === 0 ? [] : [{ ...part, ...signal, committed, free, onOrder, quantity }];
   });
 
   if (signalled.length === 0) return { items: [] };

@@ -140,6 +140,7 @@ describe('Purchase Order draft lifecycle', () => {
         actorUserId: ACTOR_ID,
         db: context.db,
         input: {
+          averageUtilizationPercent: null,
           category: 'Pipe',
           code: 'P-100',
           description: 'Test Part',
@@ -165,6 +166,7 @@ describe('Purchase Order draft lifecycle', () => {
         actorUserId: ACTOR_ID,
         db: context.db,
         input: {
+          averageUtilizationPercent: null,
           category: 'Pipe',
           code: 'P-100',
           description: 'Test Part',

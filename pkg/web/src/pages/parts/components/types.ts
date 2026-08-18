@@ -2,6 +2,7 @@ import {
   PART_STOCK_TRACKING_MODE_LABELS,
   PART_UNIT_OF_MEASURE_LABELS,
   type Part,
+  PartAverageUtilizationPercent,
   PartCategory,
   PartCode,
   PartCreateInput,
@@ -15,6 +16,7 @@ import {
   PartStorageLocation,
   PartSupplierCode,
   PartUnitOfMeasure,
+  refinePartAverageUtilization,
   refinePartBuiltIsNotLinear,
   refinePartStandardPurchaseLength,
   refinePartSupplier,
@@ -26,6 +28,7 @@ import { z } from 'zod';
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 const PartFormFields = z.object({
+  averageUtilizationPercent: z.union([PartAverageUtilizationPercent, z.nan()]),
   category: PartCategory,
   code: PartCode,
   description: PartDescription,
@@ -44,6 +47,16 @@ const PartFormFields = z.object({
 
 export type PartFormValues = z.infer<typeof PartFormValues>;
 export const PartFormValues = PartFormFields.superRefine((values, context) => {
+  refinePartAverageUtilization(
+    {
+      averageUtilizationPercent: Number.isNaN(values.averageUtilizationPercent)
+        ? null
+        : values.averageUtilizationPercent,
+      stockTrackingMode: values.stockTrackingMode,
+      unitOfMeasure: values.unitOfMeasure,
+    },
+    context,
+  );
   refinePartBuiltIsNotLinear(values, context);
   refinePartStandardPurchaseLength(
     {
@@ -84,6 +97,7 @@ export function toPartFormValues({
   initialPart?: Part | undefined;
 }): PartFormValues {
   return {
+    averageUtilizationPercent: initialPart?.averageUtilizationPercent ?? NaN,
     category: initialPart?.category ?? '',
     code: initialPart?.code ?? '',
     description: initialPart?.description ?? '',
@@ -104,6 +118,7 @@ export function toPartFormValues({
 export function toPartInput(values: PartFormValues): PartCreateInput {
   return PartCreateInput.parse({
     ...values,
+    averageUtilizationPercent: Number.isNaN(values.averageUtilizationPercent) ? null : values.averageUtilizationPercent,
     drawingCode: values.drawingCode || null,
     minimumStock: Number.isNaN(values.minimumStock) ? null : values.minimumStock,
     standardPurchaseLengthMm: Number.isNaN(values.standardPurchaseLengthMm) ? null : values.standardPurchaseLengthMm,

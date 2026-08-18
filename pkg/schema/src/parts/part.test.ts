@@ -32,6 +32,7 @@ describe('PartCreateInput', () => {
         unitOfMeasure: 'mm',
       }),
     ).toEqual({
+      averageUtilizationPercent: null,
       category: 'Bearings',
       code: 'P-100',
       description: 'Main bearing',
@@ -63,6 +64,7 @@ describe('PartCreateInput', () => {
         unitOfMeasure: 'piece',
       }),
     ).toMatchObject({
+      averageUtilizationPercent: null,
       isInternallyFabricated: false,
       minimumStock: null,
       standardPurchaseLengthMm: null,
@@ -108,6 +110,40 @@ describe('PartCreateInput', () => {
         unitOfMeasure: 'mm',
       }),
     ).toMatchObject({ standardPurchaseLengthMm: 6000 });
+  });
+
+  it('accepts Average Utilization % only for discrete periodic Parts', () => {
+    const baseInput = {
+      averageUtilizationPercent: 85,
+      category: 'Plate',
+      code: 'PLATE-001',
+      description: 'Steel plate',
+      drawingCode: null,
+      finish: 'Raw',
+      name: 'Steel plate',
+      stockTrackingMode: 'periodic' as const,
+      supplierCode: 'PLATE-001',
+      supplierId: '00000000-0000-4000-8000-000000000001',
+      unitOfMeasure: 'piece' as const,
+    };
+
+    expect(PartCreateInput.parse(baseInput)).toMatchObject({ averageUtilizationPercent: 85 });
+    expect(() => PartCreateInput.parse({ ...baseInput, averageUtilizationPercent: 0 })).toThrow();
+    expect(() => PartCreateInput.parse({ ...baseInput, averageUtilizationPercent: 101 })).toThrow();
+    expect(() => PartCreateInput.parse({ ...baseInput, stockTrackingMode: 'perpetual' })).toThrow();
+    expect(() =>
+      PartCreateInput.parse({
+        ...baseInput,
+        standardPurchaseLengthMm: 6000,
+        unitOfMeasure: 'mm',
+      }),
+    ).toThrow();
+    expect(() => PartCreateInput.parse({ ...baseInput, unitOfMeasure: 'kg' })).toThrow();
+    expect(PartCreateInput.parse({ ...baseInput, averageUtilizationPercent: null, unitOfMeasure: 'kg' })).toMatchObject(
+      {
+        averageUtilizationPercent: null,
+      },
+    );
   });
 
   it('refuses a built part measured in millimetres, because no build can produce length buckets', () => {

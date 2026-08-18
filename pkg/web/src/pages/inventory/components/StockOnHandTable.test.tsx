@@ -14,6 +14,7 @@ const result = StockOnHandResult.parse({
         { lengthMm: 6_000, quantity: 2, totalValue: 1_200 },
       ],
       committed: 3,
+      estimatedOnHand: null,
       free: 3,
       isInternallyFabricated: false,
       onOrder: 2,
@@ -31,6 +32,7 @@ const result = StockOnHandResult.parse({
       asOfLastCount: null,
       buckets: [{ lengthMm: null, quantity: 4, totalValue: null }],
       committed: 1,
+      estimatedOnHand: { openPlateRemainingPercent: 94, wholeUnits: 3 },
       free: 3,
       isInternallyFabricated: false,
       onOrder: 0,
@@ -39,7 +41,7 @@ const result = StockOnHandResult.parse({
       partName: 'Bearing',
       quantity: 4,
       standardPurchaseLengthMm: null,
-      stockTrackingMode: 'perpetual',
+      stockTrackingMode: 'periodic',
       totalValue: null,
       unitOfMeasure: 'piece',
     },
@@ -63,6 +65,7 @@ describe('StockOnHandTable', () => {
     expect(html).toContain('R 0.10/mm');
     expect(html).toContain('R 1 500.00');
     expect(html).toContain('No cost yet');
+    expect(html).toContain('≈ 3 plates + 94% of one.');
     expect(html).toContain('Free');
     expect(html).toContain('On order');
     expect(html).toContain('2 pieces');
@@ -82,6 +85,7 @@ describe('StockOnHandTable', () => {
             { lengthMm: 3_000, quantity: 2, totalValue: null },
           ],
           committed: 0,
+          estimatedOnHand: null,
           free: -2,
           isInternallyFabricated: false,
           onOrder: 0,
@@ -115,6 +119,7 @@ describe('StockOnHandTable', () => {
           asOfLastCount: null,
           buckets: [{ lengthMm: null, quantity: 4, totalValue: null }],
           committed: 6,
+          estimatedOnHand: null,
           free: -2,
           isInternallyFabricated: false,
           onOrder: 0,

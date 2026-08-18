@@ -1,0 +1,4 @@
+ALTER TABLE "parts" ADD COLUMN "average_utilization_percent" integer;--> statement-breakpoint
+CREATE INDEX "job_estimate_snapshot_payload_gin_idx" ON "job_estimate_snapshot" USING gin ("payload");--> statement-breakpoint
+ALTER TABLE "parts" ADD CONSTRAINT "parts_average_utilization_percent_range" CHECK ("parts"."average_utilization_percent" IS NULL OR "parts"."average_utilization_percent" BETWEEN 1 AND 100);--> statement-breakpoint
+ALTER TABLE "parts" ADD CONSTRAINT "parts_average_utilization_percent_eligibility" CHECK ("parts"."average_utilization_percent" IS NULL OR ("parts"."stock_tracking_mode" = 'periodic' AND "parts"."unit_of_measure" IN ('piece', 'set', 'box', 'pair')));

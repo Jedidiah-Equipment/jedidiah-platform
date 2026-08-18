@@ -12,6 +12,7 @@ describe('part form types', () => {
       unitOfMeasure: 'piece',
     });
     expect(Number.isNaN(toPartFormValues({}).minimumStock)).toBe(true);
+    expect(Number.isNaN(toPartFormValues({}).averageUtilizationPercent)).toBe(true);
     expect(Number.isNaN(toPartFormValues({}).standardPurchaseLengthMm)).toBe(true);
   });
 
@@ -19,6 +20,7 @@ describe('part form types', () => {
     expect(
       toPartFormValues({
         initialPart: {
+          averageUtilizationPercent: null,
           category: 'Hydraulics',
           code: 'HSE-001',
           description: 'Hydraulic hose',
@@ -78,6 +80,7 @@ describe('part form types', () => {
 
   it('maps empty numeric form values to null API fields', () => {
     expect(toPartInput(validPartFormValues())).toMatchObject({
+      averageUtilizationPercent: null,
       minimumStock: null,
       standardPurchaseLengthMm: null,
       storageLocation: null,

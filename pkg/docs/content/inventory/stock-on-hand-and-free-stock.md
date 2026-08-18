@@ -1,6 +1,6 @@
 # Stock on hand, Commitment, and Free Stock
 
-The **Stock on hand** screen shows three quantity columns per Part, and they answer different
+The **Stock on hand** screen shows several quantity columns per Part, and they answer different
 questions.
 
 ## Stock on hand
@@ -12,6 +12,9 @@ are not interchangeable even though both are ten pieces.
 A negative figure is flagged in red. It does not mean less than nothing is on the shelf — it means
 the rack and the ledger disagree, and the rack is almost certainly right. See
 [Warnings are judgments, not blocks](./warnings-are-judgments.md).
+
+For a plate-like periodic Part with **Average utilization %** set, **Estimated on hand** appears
+beside this ledger figure. See [Estimated Stock on Hand](./estimated-stock-on-hand.md).
 
 ## Commitment
 

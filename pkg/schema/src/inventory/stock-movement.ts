@@ -222,12 +222,19 @@ export const StockOnHandBucket = z.object({
 
 export const StockOnHandBucketCostFields = declareInventoryCostFields(StockOnHandBucket, 'totalValue');
 
+export type EstimatedStockOnHand = z.infer<typeof EstimatedStockOnHand>;
+export const EstimatedStockOnHand = z.object({
+  openPlateRemainingPercent: z.int().min(0).max(100).nullable(),
+  wholeUnits: z.int().nonnegative(),
+});
+
 export type StockOnHandRow = z.infer<typeof StockOnHandRow>;
 export const StockOnHandRow = z.object({
   asOfLastCount: DateIso.nullable(),
   averageUnitCost: InventoryCost,
   buckets: z.array(StockOnHandBucket).min(1),
   committed: z.number().finite(),
+  estimatedOnHand: EstimatedStockOnHand.nullable(),
   free: z.number().finite(),
   isInternallyFabricated: z.boolean(),
   onOrder: z.number().finite(),

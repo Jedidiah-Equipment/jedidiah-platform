@@ -20,6 +20,7 @@ type PurchaseOrderPartOption = Part & { averageUnitCost: number | null };
 const supplierId = '762b0045-d030-4897-918d-dc50eea5469c';
 const partId = '4de0e2a1-2b2f-4b2e-9a5f-6a0d0a1b2c3d';
 const part: PurchaseOrderPartOption = {
+  averageUtilizationPercent: null,
   averageUnitCost: 0.3,
   category: 'Fasteners',
   code: 'BN1-0324',

@@ -175,6 +175,57 @@ describe('updatePart', () => {
 });
 
 describe('bulkImportParts', () => {
+  test('leaves Average Utilization % untouched because the Parts CSV does not own it', async ({ context }) => {
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', id: '00000000-0000-4000-8000-000000000001' });
+    const created = await createPart({
+      actorUserId,
+      db: context.db,
+      input: partInput({ averageUtilizationPercent: 85, stockTrackingMode: 'periodic' }),
+    });
+
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ name: 'Updated plate' })] },
+    });
+
+    const [row] = await context.db.select().from(parts).where(eq(parts.id, created.id));
+    expect(row).toMatchObject({ averageUtilizationPercent: 85, name: 'Updated plate' });
+  });
+
+  test('reports an ineligible Unit change per row without rolling back valid CSV rows', async ({ context }) => {
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', id: '00000000-0000-4000-8000-000000000001' });
+    const plate = await createPart({
+      actorUserId,
+      db: context.db,
+      input: partInput({ averageUtilizationPercent: 85, stockTrackingMode: 'periodic' }),
+    });
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({ name: 'Invalid measured plate', unitOfMeasure: 'kg' }),
+          importRow({ code: 'P-200', lineNumber: 3, name: 'Valid bearing', supplierCode: 'SUP-200' }),
+        ],
+      },
+    });
+
+    expect(result).toEqual({
+      errors: ['Line 2: clear Average utilization % before changing this Part to a measured or linear unit.'],
+      importedCount: 1,
+      updatedCount: 0,
+    });
+    await expect(context.db.select().from(parts).where(eq(parts.id, plate.id))).resolves.toEqual([
+      expect.objectContaining({ name: plate.name, unitOfMeasure: 'piece' }),
+    ]);
+  });
+
   test('creates missing suppliers and parts with audit events', async ({ context }) => {
     const result = await bulkImportParts({
       actorUserId,
@@ -667,6 +718,7 @@ async function createActorUser(db: Db) {
 
 function partInput(overrides: Partial<Parameters<typeof createPart>[0]['input']> = {}) {
   return {
+    averageUtilizationPercent: null,
     category: 'Bearings',
     code: 'P-100',
     description: 'Main bearing',

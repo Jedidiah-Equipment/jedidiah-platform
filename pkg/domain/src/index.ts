@@ -26,6 +26,7 @@ export * from './inventory/buy-list.js';
 export * from './inventory/close-out.js';
 export * from './inventory/commitment.js';
 export * from './inventory/draw-cost.js';
+export * from './inventory/estimated-stock-on-hand.js';
 export * from './inventory/invoice-match.js';
 export * from './inventory/invoice-price-correction.js';
 export * from './inventory/movement-warnings.js';

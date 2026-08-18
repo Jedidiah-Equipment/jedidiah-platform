@@ -18,6 +18,8 @@ sitting; stores is counted monthly and may roll over several days.
 1. Scan the bin or the item. You can also tap a Part in **Still to count**.
 2. Key what you can actually see. The tablet does not show you the recorded quantity while you are
    counting — that is deliberate, so the count is yours and not the system's.
+   For a Part with **Average utilization %**, count only complete, untouched plates. Do not count a
+   cut partial plate, even when it still has usable area.
 3. For a linear Part, key the pieces per length. Lengths already on the rack are listed; use **A
    length that is not listed** to add one for an offcut. Key **0** for a length that is finished —
    a count has to say a length is empty, and one left blank that the system still holds stock in is

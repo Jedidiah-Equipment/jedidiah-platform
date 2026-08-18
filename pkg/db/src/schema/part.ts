@@ -18,6 +18,7 @@ import { supplier } from './supplier.js';
 export const parts = pgTable(
   'parts',
   {
+    averageUtilizationPercent: integer('average_utilization_percent'),
     category: text('category').notNull(),
     code: text('code').notNull(),
     description: text('description').notNull(),
@@ -37,6 +38,14 @@ export const parts = pgTable(
     unitOfMeasure: text('unit_of_measure').notNull().$type<PartUnitOfMeasure>(),
   },
   (table) => [
+    check(
+      'parts_average_utilization_percent_range',
+      sql`${table.averageUtilizationPercent} IS NULL OR ${table.averageUtilizationPercent} BETWEEN 1 AND 100`,
+    ),
+    check(
+      'parts_average_utilization_percent_eligibility',
+      sql`${table.averageUtilizationPercent} IS NULL OR (${table.stockTrackingMode} = 'periodic' AND ${table.unitOfMeasure} IN ('piece', 'set', 'box', 'pair'))`,
+    ),
     // A Build posts one row at consumed value ÷ units built and names no length bucket, so a Built
     // Part measured in millimetres is a Part the Build event could never produce.
     check('parts_fabricated_not_linear', sql`NOT (${table.isInternallyFabricated} AND ${table.unitOfMeasure} = 'mm')`),

@@ -52,6 +52,7 @@ import { JobClosedOutError } from './close-out-errors.js';
 import { getJobCloseOutAt } from './close-out-service.js';
 
 import { loadOpenCommitments, sumCommitmentsByPart } from './commitment-read.js';
+import { loadEstimatedStockOnHand } from './estimated-stock-on-hand-read.js';
 import { loadCfoQuantitiesByPart, loadJobStockJob } from './job-stock-facts.js';
 import {
   assertBuiltPartCostIsDerived,
@@ -356,6 +357,7 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): 
   const [bucketRows, movementRows, committedByPart, openOrderLines] = await Promise.all([
     db
       .select({
+        averageUtilizationPercent: parts.averageUtilizationPercent,
         isInternallyFabricated: parts.isInternallyFabricated,
         lengthMm: stockMovements.lengthMm,
         partCode: parts.code,
@@ -409,36 +411,62 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): 
     onOrderByPart.set(line.partId, (onOrderByPart.get(line.partId) ?? 0) + line.outstandingQuantity);
   }
 
-  return StockOnHandResultSchema.parse({
-    // Grouping preserves the query's ordering, so the head bucket carries the Part's own columns.
-    items: [...groupBy(bucketRows, (row) => row.partId).values()].map(([part, ...tailBuckets]) => {
-      const averageUnitCost = deriveMovingAverage(movementsByPart.get(part.partId) ?? []);
-      const buckets = [part, ...tailBuckets].map((bucket) => ({
-        lengthMm: bucket.lengthMm,
-        quantity: bucket.quantity,
-        totalValue: valueStockBucket({ averageUnitCost, lengthMm: bucket.lengthMm, quantity: bucket.quantity }),
-      }));
-      const committed = committedByPart.get(part.partId) ?? 0;
-      const quantity = sumBy(buckets, (bucket) => bucket.quantity);
+  // Grouping preserves the query's ordering, so the head bucket carries the Part's own columns.
+  const items = [...groupBy(bucketRows, (row) => row.partId).values()].map(([part, ...tailBuckets]) => {
+    const averageUnitCost = deriveMovingAverage(movementsByPart.get(part.partId) ?? []);
+    const buckets = [part, ...tailBuckets].map((bucket) => ({
+      lengthMm: bucket.lengthMm,
+      quantity: bucket.quantity,
+      totalValue: valueStockBucket({ averageUnitCost, lengthMm: bucket.lengthMm, quantity: bucket.quantity }),
+    }));
+    const committed = committedByPart.get(part.partId) ?? 0;
+    const quantity = sumBy(buckets, (bucket) => bucket.quantity);
 
-      return {
-        asOfLastCount: part.stockTrackingMode === 'periodic' ? (lastCountByPart.get(part.partId) ?? null) : null,
-        averageUnitCost,
-        buckets,
-        committed,
-        free: quantity - committed,
-        isInternallyFabricated: part.isInternallyFabricated,
-        onOrder: onOrderByPart.get(part.partId) ?? 0,
-        partCode: part.partCode,
-        partId: part.partId,
-        partName: part.partName,
-        quantity,
-        standardPurchaseLengthMm: part.standardPurchaseLengthMm,
-        stockTrackingMode: part.stockTrackingMode,
-        totalValue: sumNullableBy(buckets, (bucket) => bucket.totalValue),
-        unitOfMeasure: part.unitOfMeasure,
-      };
+    return {
+      asOfLastCount: part.stockTrackingMode === 'periodic' ? (lastCountByPart.get(part.partId) ?? null) : null,
+      averageUnitCost,
+      buckets,
+      committed,
+      free: quantity - committed,
+      isInternallyFabricated: part.isInternallyFabricated,
+      onOrder: onOrderByPart.get(part.partId) ?? 0,
+      partCode: part.partCode,
+      partId: part.partId,
+      partName: part.partName,
+      quantity,
+      standardPurchaseLengthMm: part.standardPurchaseLengthMm,
+      stockTrackingMode: part.stockTrackingMode,
+      totalValue: sumNullableBy(buckets, (bucket) => bucket.totalValue),
+      unitOfMeasure: part.unitOfMeasure,
+      averageUtilizationPercent: part.averageUtilizationPercent,
+    };
+  });
+  const throughAt = new Date();
+  const estimates = await loadEstimatedStockOnHand(
+    db,
+    items.flatMap((item) => {
+      if (item.averageUtilizationPercent === null) return [];
+
+      const movementHistory = movementsByPart.get(item.partId) ?? [];
+      return [
+        {
+          anchorAt: lastCountByPart.get(item.partId) ?? null,
+          averageUtilizationPercent: item.averageUtilizationPercent,
+          key: item.partId,
+          originAt: movementHistory[0]?.createdAt ?? null,
+          partId: item.partId,
+          recordedOnHand: item.quantity,
+          throughAt,
+        },
+      ];
     }),
+  );
+
+  return StockOnHandResultSchema.parse({
+    items: items.map(({ averageUtilizationPercent: _averageUtilizationPercent, ...item }) => ({
+      ...item,
+      estimatedOnHand: estimates.get(item.partId) ?? null,
+    })),
   });
 }
 

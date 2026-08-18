@@ -78,9 +78,16 @@ export function JobFactsCard(facts: JobFacts) {
             <FactField label="PRODUCT SERIAL" mono value={facts.productSerialNumber} />
           ) : null}
         </FactRow>
-        <FactCell label="CUSTOMER">
-          <CustomerName className="text-sm" companyName={facts.customerCompanyName} tone="surface" weight="semibold" />
-        </FactCell>
+        {facts.customerCompanyName !== null ? (
+          <FactCell label="CUSTOMER">
+            <CustomerName
+              className="text-sm"
+              companyName={facts.customerCompanyName}
+              tone="surface"
+              weight="semibold"
+            />
+          </FactCell>
+        ) : null}
       </View>
     </FactCard>
   );

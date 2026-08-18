@@ -84,7 +84,7 @@ const GeneralFeedbackEntry: React.FC<{ hideDetail: boolean; item: GeneralFeedbac
       who={
         <EntityThumbnail
           className="z-10"
-          label={item.feedback.submitter.name}
+          label={getFirstName(item.feedback.submitter.name)}
           shape="circle"
           thumbnailDataUrl={item.feedback.submitter.thumbnailDataUrl}
         />

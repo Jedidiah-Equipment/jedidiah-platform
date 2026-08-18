@@ -20,22 +20,21 @@ import {
   resolveJobCustomer,
   resolveNewestOwnershipTransfer,
 } from '@pkg/domain';
-import type {
-  AuditChanges,
-  JobActivityItem,
-  JobActivityJobRef,
-  JobActivityListInput,
-  JobActivityListResult,
-} from '@pkg/schema';
+import type { AuditChanges, AuthId, JobActivityItem, JobActivityJobRef, JobActivityListResult } from '@pkg/schema';
 import {
   DateIso,
   getNextCursor,
   JobActivityItem as JobActivityItemSchema,
   JobActivityJobRef as JobActivityJobRefSchema,
+  JobActivityListInput,
   JobCode,
 } from '@pkg/schema';
 import { and, asc, desc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
+
+import { mutateEntity } from '../audit/mutate-entity.js';
+import { UserNotFoundError } from '../users/user-errors.js';
+import { userAuditDescriptor } from '../users/user-service.js';
 
 /**
  * The said half of the feed. Quote general feedback is still private to the `/feedback` inbox and
@@ -44,33 +43,38 @@ import { unionAll } from 'drizzle-orm/pg-core';
  */
 const jobGeneralFeedback = and(eq(feedback.kind, 'general'), eq(feedback.subjectType, 'job'));
 
-export async function getLastActivitySeen({ db, userId }: { db: Db; userId: string }) {
+export async function getLastActivitySeen({ db, userId }: { db: Db; userId: AuthId }) {
   const [account] = await db.select({ lastActivitySeen: user.lastActivitySeen }).from(user).where(eq(user.id, userId));
 
-  if (!account) throw new Error(`User ${userId} does not exist`);
+  if (!account) throw new UserNotFoundError(userId);
 
   return DateIso.parse(account.lastActivitySeen);
 }
 
-/** Advances the signed-in user's Activity high-water mark using server time, never a client clock. */
-export async function setLastActivitySeen({
-  db,
-  userId,
-  seenAt = new Date(),
-}: {
-  db: Db;
-  userId: string;
-  seenAt?: Date;
-}) {
-  const [account] = await db
-    .update(user)
-    .set({ lastActivitySeen: sql`greatest(${user.lastActivitySeen}, ${seenAt.toISOString()}::timestamptz)` })
-    .where(eq(user.id, userId))
-    .returning({ lastActivitySeen: user.lastActivitySeen });
+/** Advances the signed-in user's Activity View only through the newest feed entry they actually received. */
+export async function setLastActivitySeen({ db, seenAt, userId }: { db: Db; seenAt: DateIso; userId: AuthId }) {
+  const latest = await listJobActivity({ db, input: JobActivityListInput.parse({ limit: 1 }) });
+  const latestActivityAt = latest.items[0]?.occurredAt;
 
-  if (!account) throw new Error(`User ${userId} does not exist`);
+  if (latestActivityAt === undefined) return getLastActivitySeen({ db, userId });
 
-  return DateIso.parse(account.lastActivitySeen);
+  // A caller may acknowledge an older response, but never a future instant that suppresses later entries.
+  const validatedSeenAt = Date.parse(seenAt) <= Date.parse(latestActivityAt) ? seenAt : latestActivityAt;
+  const validatedSeenDate = new Date(validatedSeenAt);
+
+  return mutateEntity({
+    actorUserId: userId,
+    db,
+    descriptor: userAuditDescriptor,
+    id: userId,
+    notFound: () => new UserNotFoundError(userId),
+    project: (_tx, account) => DateIso.parse(account.lastActivitySeen),
+    set: (account) =>
+      account.lastActivitySeen.getTime() >= validatedSeenDate.getTime()
+        ? {}
+        : { lastActivitySeen: validatedSeenDate, updatedAt: new Date() },
+    table: user,
+  });
 }
 
 /**

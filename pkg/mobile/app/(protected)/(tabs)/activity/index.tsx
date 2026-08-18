@@ -72,7 +72,7 @@ export default function ActivityRoute() {
 
   useEffect(() => {
     if (focused && activity.isSuccess && latestActivityAt !== undefined && filter === 'all' && !debouncedSearch) {
-      markActivitySeen();
+      markActivitySeen({ seenAt: latestActivityAt });
     }
   }, [activity.isSuccess, debouncedSearch, filter, focused, latestActivityAt, markActivitySeen]);
 

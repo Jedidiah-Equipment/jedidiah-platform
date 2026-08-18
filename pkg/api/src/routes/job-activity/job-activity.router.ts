@@ -1,5 +1,5 @@
 import { getLastActivitySeen, listJobActivity, setLastActivitySeen } from '@pkg/core';
-import { JobActivityListInput } from '@pkg/schema';
+import { JobActivityListInput, JobActivitySeenInput } from '@pkg/schema';
 
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
@@ -13,7 +13,9 @@ export const jobActivityRouter = router({
   list: authorizedProcedure('job:read')
     .input(JobActivityListInput)
     .query(({ ctx, input }) => listJobActivity({ db: ctx.db, input })),
-  setLastActivitySeen: authorizedProcedure('job:read').mutation(({ ctx }) =>
-    setLastActivitySeen({ db: ctx.db, userId: ctx.session.user.id }),
-  ),
+  setLastActivitySeen: authorizedProcedure('job:read')
+    .input(JobActivitySeenInput)
+    .mutation(({ ctx, input }) =>
+      setLastActivitySeen({ db: ctx.db, seenAt: input.seenAt, userId: ctx.session.user.id }),
+    ),
 });

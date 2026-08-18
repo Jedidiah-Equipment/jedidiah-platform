@@ -1,4 +1,4 @@
-import type { JobActivityFilter, UUID } from '@pkg/schema';
+import type { DateIso, JobActivityFilter, UUID } from '@pkg/schema';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
@@ -18,7 +18,7 @@ export const JobActivityFeed: React.FC<{
   filter?: JobActivityFilter;
   hideDetail?: boolean;
   jobId?: UUID;
-  onGlobalFeedViewed?: () => void;
+  onGlobalFeedViewed?: (seenAt: DateIso) => void;
   search?: string;
 }> = ({ filter = 'all', hideDetail = false, jobId, onGlobalFeedViewed, search = '' }) => {
   const trpc = useTRPC();
@@ -38,7 +38,7 @@ export const JobActivityFeed: React.FC<{
 
   useEffect(() => {
     if (activityQuery.isSuccess && latestActivityAt !== undefined && filter === 'all' && !jobId && !search) {
-      onGlobalFeedViewed?.();
+      onGlobalFeedViewed?.(latestActivityAt);
     }
   }, [activityQuery.isSuccess, filter, jobId, latestActivityAt, onGlobalFeedViewed, search]);
 

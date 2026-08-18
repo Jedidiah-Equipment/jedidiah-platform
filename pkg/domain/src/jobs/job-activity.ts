@@ -1,3 +1,5 @@
+import type { DateIso } from '@pkg/schema';
+
 export const JOB_ACTIVITY_EVENT_SENTENCES = {
   completed: 'completed this Job',
   created: 'created this Job',
@@ -11,8 +13,8 @@ export function hasUnreadActivity({
   lastActivitySeen,
   latestActivityAt,
 }: {
-  lastActivitySeen: string;
-  latestActivityAt: string | null;
+  lastActivitySeen: DateIso;
+  latestActivityAt: DateIso | null;
 }): boolean {
   return latestActivityAt !== null && Date.parse(latestActivityAt) > Date.parse(lastActivitySeen);
 }

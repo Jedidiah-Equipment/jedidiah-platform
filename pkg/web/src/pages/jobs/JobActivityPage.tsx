@@ -56,7 +56,11 @@ export const JobActivityPage: React.FC<{ selectedJobId?: UUID | undefined }> = (
       size="md"
       title="Job Activity"
     >
-      <JobActivityFeed filter={filter} onGlobalFeedViewed={markActivitySeen} search={debouncedSearch} />
+      <JobActivityFeed
+        filter={filter}
+        onGlobalFeedViewed={(seenAt) => markActivitySeen({ seenAt })}
+        search={debouncedSearch}
+      />
       {selectedJobId ? (
         <JobSheet
           key={selectedJobId}

@@ -9,7 +9,8 @@ const NAME_TONE = {
 
 export type CustomerNameTone = keyof typeof NAME_TONE;
 
-export type CustomerNameProps = Omit<AppTextProps, 'children'> & {
+export type CustomerNameProps = Pick<AppTextProps, 'numberOfLines' | 'weight'> & {
+  className?: string;
   companyName: string | null;
   tone?: CustomerNameTone;
 };

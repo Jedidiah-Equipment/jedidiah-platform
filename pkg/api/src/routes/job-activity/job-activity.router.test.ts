@@ -1,4 +1,5 @@
 import { auditEvents, customers, type Db, eq, feedback, jobs, products, productUnits, quotes, user } from '@pkg/db';
+import { DateIso } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { createActorUser } from '@/test/actor-user.js';
@@ -74,35 +75,53 @@ describe('jobActivity.list', () => {
 });
 
 describe('jobActivity last seen', () => {
-  test('gets and advances the signed-in user high-water mark', async ({ context }) => {
-    const initial = new Date(Date.now() - 60_000);
+  test('advances only through the newest activity returned to the viewer', async ({ context }) => {
+    const initial = new Date('2026-08-17T08:00:00.000Z');
+    const viewedAt = DateIso.parse('2026-08-18T08:00:00.000Z');
+    const unseenAt = DateIso.parse('2026-08-18T08:00:01.000Z');
     await context.db.update(user).set({ lastActivitySeen: initial }).where(eq(user.id, 'test-user-id'));
+    await createJobGeneralFeedback(context, { createdAt: viewedAt, text: 'Already loaded by the viewer.' });
     const caller = context.createCaller(mockSession('job-viewer'));
 
     await expect(caller.jobActivity.getLastActivitySeen()).resolves.toBe(initial.toISOString());
 
-    const beforeSet = Date.now();
-    const updated = await caller.jobActivity.setLastActivitySeen();
+    // This arrives after the feed response but before its acknowledgement reaches the server.
+    await createJobGeneralFeedback(context, { createdAt: unseenAt, text: 'Arrived during acknowledgement.' });
+    const updated = await caller.jobActivity.setLastActivitySeen({ seenAt: viewedAt });
 
-    expect(new Date(updated).getTime()).toBeGreaterThanOrEqual(beforeSet);
+    expect(updated).toBe(viewedAt);
     await expect(caller.jobActivity.getLastActivitySeen()).resolves.toBe(updated);
+
+    const activityViewAudits = await context.db
+      .select({ changes: auditEvents.changes })
+      .from(auditEvents)
+      .where(eq(auditEvents.entityId, 'test-user-id'));
+    expect(activityViewAudits).toContainEqual({
+      changes: { lastActivitySeen: { from: initial.toISOString(), to: viewedAt } },
+    });
   });
 
   test('denies both endpoints without job read access', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 
     await expect(caller.jobActivity.getLastActivitySeen()).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(caller.jobActivity.setLastActivitySeen()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      caller.jobActivity.setLastActivitySeen({ seenAt: DateIso.parse('2026-08-18T08:00:00.000Z') }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });
 
-async function createJobGeneralFeedback(context: TesterContext & { db: Db; job: { id: string } }) {
+async function createJobGeneralFeedback(
+  context: TesterContext & { db: Db; job: { id: string } },
+  overrides: { createdAt?: DateIso; text?: string } = {},
+) {
   await context.db.insert(feedback).values({
+    createdAt: overrides.createdAt ? new Date(overrides.createdAt) : undefined,
     jobId: context.job.id,
     kind: 'general',
     subjectType: 'job',
     submitterId: 'test-user-id',
-    text: 'Paint bay handover was missed on this job.',
+    text: overrides.text ?? 'Paint bay handover was missed on this job.',
   });
 }
 

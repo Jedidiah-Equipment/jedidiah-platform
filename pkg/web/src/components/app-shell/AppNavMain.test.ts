@@ -22,7 +22,11 @@ describe('AppNavMain', () => {
     ]);
     expect(inventory?.items.find((item) => item.title === 'Inventory')?.link.activeOptions).toEqual({ exact: true });
     expect(inventory?.items.find((item) => item.title === 'Purchase Orders')?.indicator).toBeDefined();
-    expect(operations?.items.find((item) => item.title === 'Jobs')?.indicator).toBeDefined();
+    expect(
+      operations?.items.find((item) => item.title === 'Jobs')?.children?.find((item) => item.title === 'Activity')
+        ?.indicator,
+    ).toBeDefined();
+    expect(operations?.items.find((item) => item.title === 'Jobs')?.indicator).toBeUndefined();
   });
 
   it('shows the Inventory section when any permitted item is visible', () => {

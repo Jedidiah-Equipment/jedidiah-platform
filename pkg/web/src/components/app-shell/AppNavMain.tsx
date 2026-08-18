@@ -56,6 +56,7 @@ type NavSubItem = {
   title: string;
   permission?: AppPermission;
   link: NavLinkProps;
+  indicator?: React.ComponentType;
 };
 
 type MainNavItem = {
@@ -99,12 +100,12 @@ const navSections = [
         permission: 'job:read',
         link: linkOptions({ to: '/jobs' }),
         icon: IconBriefcase2,
-        indicator: ActivityUnreadNavIndicator,
         children: [
           {
             title: 'Activity',
             permission: 'job:read',
             link: linkOptions({ to: '/jobs/activity' }),
+            indicator: ActivityUnreadNavIndicator,
           },
           {
             title: 'List',
@@ -260,10 +261,9 @@ const activeSubMarkerClass =
 const NavCollapsibleItem: React.FC<{
   title: string;
   icon: TablerIcon;
-  indicator?: React.ComponentType | undefined;
   navLink: NavLinkProps;
-  subItems: ReadonlyArray<{ title: string; link: NavLinkProps }>;
-}> = ({ title, icon: Icon, indicator: Indicator, navLink, subItems }) => {
+  subItems: readonly NavSubItem[];
+}> = ({ title, icon: Icon, navLink, subItems }) => {
   const [open, setOpen] = React.useState(true);
 
   return (
@@ -278,7 +278,6 @@ const NavCollapsibleItem: React.FC<{
           >
             <Icon />
             <span>{title}</span>
-            {Indicator ? <Indicator /> : null}
             <IconChevronRight
               aria-hidden="true"
               className={cn('ml-auto size-4! transition-transform', open && 'rotate-90')}
@@ -288,22 +287,27 @@ const NavCollapsibleItem: React.FC<{
       </Link>
       <CollapsibleContent>
         <SidebarMenuSub>
-          {subItems.map((child) => (
-            <SidebarMenuSubItem key={child.title}>
-              {/* Exact match so a parent route (e.g. /jobs) isn't flagged active on a child route (/jobs/calendar). */}
-              <Link {...child.link} activeOptions={{ exact: true }}>
-                {({ isActive }) => (
-                  <SidebarMenuSubButton
-                    isActive={isActive}
-                    render={<span />}
-                    className={cn(activeSubMarkerClass, !isActive && inactiveItemClass)}
-                  >
-                    <span>{child.title}</span>
-                  </SidebarMenuSubButton>
-                )}
-              </Link>
-            </SidebarMenuSubItem>
-          ))}
+          {subItems.map((child) => {
+            const ChildIndicator = child.indicator;
+
+            return (
+              <SidebarMenuSubItem className="[&_[data-sidebar=menu-badge]]:top-1" key={child.title}>
+                {/* Exact match so a parent route (e.g. /jobs) isn't flagged active on a child route (/jobs/calendar). */}
+                <Link {...child.link} activeOptions={{ exact: true }}>
+                  {({ isActive }) => (
+                    <SidebarMenuSubButton
+                      isActive={isActive}
+                      render={<span />}
+                      className={cn(activeSubMarkerClass, !isActive && inactiveItemClass)}
+                    >
+                      <span>{child.title}</span>
+                      {ChildIndicator ? <ChildIndicator /> : null}
+                    </SidebarMenuSubButton>
+                  )}
+                </Link>
+              </SidebarMenuSubItem>
+            );
+          })}
         </SidebarMenuSub>
       </CollapsibleContent>
     </Collapsible>
@@ -393,7 +397,6 @@ export const AppNavMain: React.FC = () => {
                   key={item.title}
                   title={item.title}
                   icon={item.icon}
-                  indicator={Indicator}
                   navLink={firstChild.link}
                   subItems={subItems}
                 />

@@ -10,4 +10,8 @@ describe('DepartmentIcon', () => {
       expect(renderToStaticMarkup(<DepartmentIcon department={department} />)).toContain('<svg');
     }
   });
+
+  it('uses the hammer as the canonical Fabrication icon', () => {
+    expect(renderToStaticMarkup(<DepartmentIcon department="fabrication" />)).toContain('tabler-icon-hammer');
+  });
 });

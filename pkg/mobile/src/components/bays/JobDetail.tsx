@@ -17,6 +17,7 @@ import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/compon
 import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/lib/use-job-detail';
@@ -150,26 +151,23 @@ const ROUTE_STATE_TONE: Record<JobRouteStopState, StatusTone> = {
   scheduled: 'next',
 };
 
-/** Timeline-only decorations (the soft card, the spine node, the border-only chip) keyed by state. */
-const ROUTE_DECOR: Record<JobRouteStopState, { card: string; chip: string; node: string }> = {
+/** Timeline-only decorations for the soft card and spine node, keyed by state. */
+const ROUTE_DECOR: Record<JobRouteStopState, { card: string; node: string }> = {
   active: {
     card: 'border-status-in-progress/30 bg-status-in-progress/10',
-    chip: 'border-status-in-progress/30',
     node: 'border-status-in-progress bg-status-in-progress',
   },
   scheduled: {
     card: 'border-status-next/30 bg-status-next/10',
-    chip: 'border-status-next/30',
     node: 'border-status-next bg-background',
   },
   done: {
     card: 'border-border bg-surface',
-    chip: 'border-border',
     node: 'border-muted-foreground bg-muted-foreground',
   },
 };
 
-const STATE_LABELS = { active: 'IN PROGRESS', done: 'DONE', scheduled: 'SCHEDULED' } as const;
+const STATE_LABELS = { active: 'In progress', done: 'Done', scheduled: 'Scheduled' } as const;
 
 /** Left pane: the Job's Bays as a vertical timeline, each with its state, dates, and progress. */
 function RoutePane({ isCancelled, route }: { isCancelled: boolean; route: JobRouteStopCard[] }) {
@@ -242,11 +240,7 @@ function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRoute
               </Text>
             </View>
           </View>
-          <View className={`rounded-full border px-2 py-1 ${isCancelled ? tone.chip : decor.chip}`}>
-            <Text className={`text-[9px] tracking-wide ${tone.text}`} weight="semibold">
-              {isCancelled ? 'CANCELLED' : STATE_LABELS[stop.state]}
-            </Text>
-          </View>
+          <StatusBadge classNames={tone} label={isCancelled ? 'Cancelled' : STATE_LABELS[stop.state]} size="compact" />
         </View>
 
         <View className="mt-3 flex-row items-center justify-between">
@@ -294,7 +288,7 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
   const isCancelled = isJobCancelled(state);
   const accent = jobStatusAccentColor(isCancelled ? 'muted' : state.tone, resolved);
   const status = isCancelled
-    ? { tone: 'cancelled' as const, label: 'CANCELLED' }
+    ? { tone: 'cancelled' as const, label: 'Cancelled' }
     : jobStatus(progress, state.totalCount);
   const fabricationTiming = state.departmentTimings.find((timing) => timing.department === 'fabrication');
 
@@ -303,7 +297,7 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
       {isWide ? (
         <View className="flex-row flex-wrap items-center gap-2">
           <StatusChip label={status.label} tone={status.tone} />
-          {!isCancelled && progress ? <DaysLeftChip color={accent} daysLeft={progress.daysLeft} /> : null}
+          {!isCancelled && progress ? <DaysLeftChip daysLeft={progress.daysLeft} tone={status.tone} /> : null}
         </View>
       ) : null}
 
@@ -334,17 +328,18 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
 
       {isWide ? null : <RoutePane isCancelled={isCancelled} route={state.route} />}
 
-      {fabricationTiming ? (
-        <JobFabricationCard
-          isCancelled={isCancelled}
-          isCompleted={state.completedOn !== null}
-          jobCode={state.jobCode}
-          jobId={jobId}
-          timing={fabricationTiming}
-        />
-      ) : null}
-
       <JobDetailSections
+        afterJobFacts={
+          fabricationTiming ? (
+            <JobFabricationCard
+              isCancelled={isCancelled}
+              isCompleted={state.completedOn !== null}
+              jobCode={state.jobCode}
+              jobId={jobId}
+              timing={fabricationTiming}
+            />
+          ) : null
+        }
         customerCompanyName={state.customerCompanyName}
         description={state.description}
         jobCode={state.jobCode}
@@ -358,12 +353,12 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
 }
 
 function jobStatus(progress: JobProgress | null, totalCount: number): { tone: StatusTone; label: string } {
-  if (!progress) return { tone: 'muted', label: totalCount === 0 ? 'UNSCHEDULED' : 'COMPLETE' };
+  if (!progress) return { tone: 'muted', label: totalCount === 0 ? 'Unscheduled' : 'Complete' };
   if (progress.status === 'in-progress') {
-    return { tone: 'in-progress', label: `IN ${progress.currentBayName.toUpperCase()}` };
+    return { tone: 'in-progress', label: `In ${progress.currentBayName}` };
   }
 
-  return { tone: 'next', label: `NEXT · ${progress.currentBayName.toUpperCase()}` };
+  return { tone: 'next', label: `Next · ${progress.currentBayName}` };
 }
 
 /** Header + a single scroll for the non-ready states, mirroring the Bay schedule screen. */

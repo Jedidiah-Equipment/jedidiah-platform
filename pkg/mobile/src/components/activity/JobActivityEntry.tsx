@@ -1,4 +1,4 @@
-import { formatDate, JOB_ACTIVITY_EVENT_SENTENCES } from '@pkg/domain';
+import { formatDate, getFirstName, JOB_ACTIVITY_EVENT_SENTENCES } from '@pkg/domain';
 import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { IconCheck, IconFileText, IconPencil, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
@@ -68,7 +68,7 @@ function FeedbackEntry({ item, last }: { item: GeneralFeedbackActivityItem; last
 function JobEventEntry({ item, last }: { item: JobChangeActivityItem; last: boolean }) {
   const router = useRouter();
   const presentation = getJobEventPresentation(item);
-  const actorName = item.actor?.name ?? 'System';
+  const actorName = item.actor ? getFirstName(item.actor.name) : 'System';
   const EventIcon = presentation.icon;
 
   return (

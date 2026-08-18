@@ -1,4 +1,4 @@
-import { formatDate, jobStatusAccentColor, resolveJobStatusTone } from '@pkg/domain';
+import { formatDate } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { JobDetailSections } from '@/components/bays/JobDetailSections';
@@ -6,7 +6,6 @@ import { JobWorkCard } from '@/components/bays/JobWorkCard';
 import { FactCard, FactField, FactRow } from '@/components/bays/job-facts';
 import { DaysLeftChip, StatusChip } from '@/components/bays/status-chip';
 import type { BaySlotDetail } from '@/lib/use-bay-schedule';
-import { useColorMode } from '@/theme/use-color-mode';
 
 /**
  * The read-only Job Slot detail pane (#520): status chip(s), a product card, the Slot facts,
@@ -16,26 +15,19 @@ import { useColorMode } from '@/theme/use-color-mode';
 export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
   const isActive = slot.status === 'in-progress' && !slot.isCancelled;
   const isDone = slot.status === 'done' && !slot.isCancelled;
-  const { resolved } = useColorMode();
-  const daysLeftColor =
-    slot.remainingWorkDays !== null && slot.status !== 'done'
-      ? jobStatusAccentColor(
-          resolveJobStatusTone({ isNext: slot.isNext, status: isActive ? 'in-progress' : 'scheduled' }),
-          resolved,
-        )
-      : null;
+  const statusTone = slot.isCancelled ? 'cancelled' : isActive ? 'in-progress' : slot.isNext ? 'next' : 'muted';
 
   return (
     <View className="gap-4">
-      {/* Status chip(s): IN PROGRESS / SCHEDULED, plus 'N WORKING DAYS LEFT' while running. The
-          SCHEDULED chip matches its timeline card — green for the 'next' Slot, grey otherwise. */}
+      {/* The immediately-next Slot keeps its brighter timeline accent on the timeline and progress cues;
+          the badge itself follows the shared mobile status treatment. */}
       <View className="flex-row items-center gap-2">
         <StatusChip
-          label={slot.isCancelled ? 'CANCELLED' : isActive ? 'IN PROGRESS' : isDone ? 'DONE' : 'SCHEDULED'}
-          tone={slot.isCancelled ? 'cancelled' : isActive ? 'in-progress' : slot.isNext ? 'next' : 'muted'}
+          label={slot.isCancelled ? 'Cancelled' : isActive ? 'In progress' : isDone ? 'Done' : 'Scheduled'}
+          tone={statusTone}
         />
-        {!slot.isCancelled && slot.remainingWorkDays !== null && daysLeftColor ? (
-          <DaysLeftChip color={daysLeftColor} daysLeft={slot.remainingWorkDays} />
+        {!slot.isCancelled && slot.remainingWorkDays !== null && slot.status !== 'done' ? (
+          <DaysLeftChip daysLeft={slot.remainingWorkDays} tone={statusTone} />
         ) : null}
       </View>
 

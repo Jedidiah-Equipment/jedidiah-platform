@@ -1,3 +1,4 @@
+import { hasUnreadActivity } from '@pkg/domain';
 import { buyListReasonsNotify, STOCKTAKE_SCOPE_LABELS } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -25,6 +26,31 @@ const NavWarningDot: React.FC<{
     </Tooltip>
   </SidebarMenuBadge>
 );
+
+const ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS = 60_000;
+
+export const ActivityUnreadNavIndicator: React.FC = () => {
+  const trpc = useTRPC();
+  const activityAccess = useCan('job:read');
+  const lastSeenQuery = useQuery({
+    ...trpc.jobActivity.getLastActivitySeen.queryOptions(),
+    enabled: activityAccess.can,
+    refetchInterval: ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS,
+  });
+  const latestActivityQuery = useQuery({
+    ...trpc.jobActivity.list.queryOptions({ limit: 1 }),
+    enabled: activityAccess.can,
+    refetchInterval: ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS,
+  });
+  const unread =
+    lastSeenQuery.data !== undefined &&
+    hasUnreadActivity({
+      lastActivitySeen: lastSeenQuery.data,
+      latestActivityAt: latestActivityQuery.data?.items[0]?.occurredAt ?? null,
+    });
+
+  return unread ? <NavWarningDot label="New Job Activity" /> : null;
+};
 
 export const QuotesPriorityNavIndicator: React.FC = () => {
   const trpc = useTRPC();

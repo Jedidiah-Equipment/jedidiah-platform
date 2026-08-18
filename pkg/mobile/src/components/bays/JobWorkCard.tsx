@@ -38,7 +38,9 @@ export function JobWorkCard({
             {productSerialNumber}
           </Text>
         ) : null}
-        <CustomerName className="mt-1 text-sm" companyName={customerCompanyName} numberOfLines={1} tone="surface" />
+        <View className="mt-1 flex-row">
+          <CustomerName className="text-sm" companyName={customerCompanyName} numberOfLines={1} tone="surface" />
+        </View>
       </View>
     </View>
   );

@@ -19,6 +19,7 @@ export function CatalogListCard({
   avatarName,
   avatarUri,
   mainText,
+  metadata,
   monoText,
   onPress,
   subText,
@@ -32,6 +33,7 @@ export function CatalogListCard({
   avatarName: string;
   avatarUri?: string | null;
   mainText: string;
+  metadata?: ReactNode;
   monoText?: string;
   onPress: () => void;
   subText: string;
@@ -59,7 +61,9 @@ export function CatalogListCard({
         <Text className="mt-0.5 text-[11px] text-muted-foreground" numberOfLines={1}>
           {subText}
         </Text>
-        {monoText === undefined ? null : (
+        {metadata !== undefined ? (
+          <View className="mt-0.5 min-w-0 flex-row items-center gap-1">{metadata}</View>
+        ) : monoText === undefined ? null : (
           <Text className="mt-0.5 text-[10px] text-muted-foreground" mono numberOfLines={1}>
             {monoText}
           </Text>

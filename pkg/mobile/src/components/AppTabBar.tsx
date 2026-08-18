@@ -1,3 +1,4 @@
+import { hasUnreadActivity } from '@pkg/domain';
 import {
   IconActivity,
   IconBarcode,
@@ -9,6 +10,7 @@ import {
   IconPackages,
   type Icon as TablerIcon,
 } from '@tabler/icons-react-native';
+import { useQuery } from '@tanstack/react-query';
 import { router, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -18,6 +20,7 @@ import { AnchoredMenu } from '@/components/ui/anchored-menu';
 import { Text } from '@/components/ui/text';
 import { type AppTab, activeAppTab, appTabHref, appTabLabel, showTabBar, visibleTabs } from '@/lib/app-tabs';
 import { fitAppTabs, OVERFLOW_TAB_LABEL } from '@/lib/tab-bar-fit';
+import { useTRPC } from '@/lib/trpc';
 import { useAccess } from '@/lib/use-access';
 import { loadingSpinnerColor } from '@/theme/brand-colors';
 import { navigationColors } from '@/theme/gluestack-config';
@@ -38,6 +41,7 @@ const TAB_BAR_HEIGHT = 66;
 const LABEL_STYLE = { fontSize: 10, letterSpacing: 0.6 } as const;
 // The menu has room the bar does not, so its entries read one step larger.
 const MENU_LABEL_STYLE = { fontSize: 11, letterSpacing: 0.6 } as const;
+const ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS = 60_000;
 
 /**
  * Permission-aware bottom bar. Tabs share the bar evenly, and whichever trailing tabs would have
@@ -46,7 +50,25 @@ const MENU_LABEL_STYLE = { fontSize: 11, letterSpacing: 0.6 } as const;
  */
 export function AppTabBar() {
   const access = useAccess();
+  const trpc = useTRPC();
   const tabs = visibleTabs(access.data);
+  const activityVisible = tabs.includes('activity');
+  const lastSeenQuery = useQuery({
+    ...trpc.jobActivity.getLastActivitySeen.queryOptions(),
+    enabled: activityVisible,
+    refetchInterval: ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS,
+  });
+  const latestActivityQuery = useQuery({
+    ...trpc.jobActivity.list.queryOptions({ limit: 1 }),
+    enabled: activityVisible,
+    refetchInterval: ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS,
+  });
+  const activityUnread =
+    lastSeenQuery.data !== undefined &&
+    hasUnreadActivity({
+      lastActivitySeen: lastSeenQuery.data,
+      latestActivityAt: latestActivityQuery.data?.items[0]?.occurredAt ?? null,
+    });
   const segments = useSegments();
   const active = activeAppTab(segments);
   const { resolved } = useColorMode();
@@ -93,6 +115,7 @@ export function AppTabBar() {
           icon={TAB_ICONS[tab]}
           key={tab}
           label={appTabLabel(tab)}
+          unread={tab === 'activity' && activityUnread}
           onPress={() => openTab(tab)}
           selected={tab === active}
         />
@@ -106,6 +129,7 @@ export function AppTabBar() {
           label={OVERFLOW_TAB_LABEL}
           onPress={() => setMenuOpen(true)}
           selected={menuOpen}
+          unread={overflow.includes('activity') && activityUnread}
         />
       ) : null}
 
@@ -121,13 +145,19 @@ export function AppTabBar() {
 
               return (
                 <Pressable
+                  accessibilityLabel={
+                    tab === 'activity' && activityUnread ? `${appTabLabel(tab)}, unread activity` : appTabLabel(tab)
+                  }
                   accessibilityRole="button"
                   accessibilityState={{ selected: tab === active }}
                   className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
                   key={tab}
                   onPress={() => openTab(tab)}
                 >
-                  <TabIcon color={tintFor(tab)} size={20} strokeWidth={1.8} />
+                  <View>
+                    <TabIcon color={tintFor(tab)} size={20} strokeWidth={1.8} />
+                    {tab === 'activity' && activityUnread ? <UnreadActivityDot /> : null}
+                  </View>
                   <Text mono style={[MENU_LABEL_STYLE, { color: tintFor(tab) }]}>
                     {appTabLabel(tab)}
                   </Text>
@@ -147,26 +177,36 @@ function TabBarSlot({
   label,
   onPress,
   selected,
+  unread = false,
 }: {
   color: string;
   icon: TablerIcon;
   label: string;
   onPress: () => void;
   selected: boolean;
+  unread?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={unread ? `${label}, unread activity` : label}
       accessibilityState={{ selected }}
       onPress={onPress}
       style={{ alignItems: 'center', flex: 1, gap: 4, justifyContent: 'center', paddingHorizontal: 4 }}
     >
-      <TabIcon color={color} size={24} strokeWidth={1.8} />
+      <View>
+        <TabIcon color={color} size={24} strokeWidth={1.8} />
+        {unread ? <UnreadActivityDot /> : null}
+      </View>
       <Text mono numberOfLines={1} style={[LABEL_STYLE, { color }]}>
         {label}
       </Text>
     </Pressable>
   );
+}
+
+function UnreadActivityDot() {
+  return <View className="absolute -right-1 -top-0.5 size-2 rounded-full bg-orange-500" />;
 }
 
 /** Stands in for the default bar's `tabBarHideOnKeyboard`, which only ships with that bar. */

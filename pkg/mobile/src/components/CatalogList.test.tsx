@@ -78,6 +78,27 @@ describe('CatalogListCard', () => {
     expect((card.props.children as unknown[])[2]).toBeNull();
   });
 
+  test('renders structured metadata in place of the plain mono line', () => {
+    const metadata = <ViewMarker kind="stock-metadata" />;
+    const card = asElement(
+      CatalogListCard({
+        accessibilityHint: 'Opens details',
+        accessibilityLabel: 'Catalog item',
+        avatarName: 'Item name',
+        mainText: 'Main',
+        metadata,
+        monoText: 'Fallback metadata',
+        onPress: vi.fn(),
+        subText: 'Sub',
+      }),
+    );
+    const textColumn = asElement((card.props.children as TestElement[])[1]);
+    const metadataRow = asElement((textColumn.props.children as TestElement[])[2]);
+
+    expect(metadataRow.props.className).toContain('flex-row items-center');
+    expect(metadataRow.props.children).toBe(metadata);
+  });
+
   test('keeps skeleton rows at the same fixed height as loaded cards', () => {
     const card = asElement(
       CatalogListCard({

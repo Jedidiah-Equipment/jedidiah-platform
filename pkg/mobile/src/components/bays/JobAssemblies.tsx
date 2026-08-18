@@ -1,16 +1,21 @@
+import { quoteKindColorClassNames, quoteKindLabels, statusBadgeColorClassNames } from '@pkg/domain';
 import { View } from 'react-native';
 import { JobSectionCard } from '@/components/bays/JobSectionCard';
 import { getJobAssemblyAndWorkRows, type JobAssemblyAndWorkRow } from '@/components/bays/job-assembly-and-work-rows';
-import { STATUS_TONE } from '@/components/bays/status-chip';
+import { StatusBadge, type StatusBadgeClassNames } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 
-/** Pill accents per row kind; `standard` reuses the shared muted status tone. */
-const OPTIONAL_TONE = { chip: 'border-primary/30 bg-primary/10', dot: 'bg-primary', text: 'text-primary' };
+const KIND_TONES = {
+  custom: { ...quoteKindColorClassNames.custom, dot: statusBadgeColorClassNames.teal.dot },
+  optional: statusBadgeColorClassNames.yellow,
+  standard: statusBadgeColorClassNames.gray,
+} as const satisfies Record<JobAssemblyAndWorkRow['kind'], StatusBadgeClassNames & { dot: string }>;
 
-function kindTone(kind: JobAssemblyAndWorkRow['kind']) {
-  if (kind === 'custom') return STATUS_TONE.next;
-  return kind === 'optional' ? OPTIONAL_TONE : STATUS_TONE.muted;
-}
+const KIND_LABELS: Record<JobAssemblyAndWorkRow['kind'], string> = {
+  custom: quoteKindLabels.custom,
+  optional: 'Optional',
+  standard: 'Standard',
+};
 
 /**
  * The ASSEMBLIES card shared by Job Slot detail and Job Detail. Job Work Items lead the
@@ -29,7 +34,7 @@ export function JobAssemblies({ jobId }: { jobId: string }) {
 }
 
 function AssemblyAndWorkItemRow({ row }: { row: JobAssemblyAndWorkRow }) {
-  const tone = kindTone(row.kind);
+  const tone = KIND_TONES[row.kind];
 
   return (
     <View className="flex-row items-center gap-2 border-t border-border py-3">
@@ -37,11 +42,7 @@ function AssemblyAndWorkItemRow({ row }: { row: JobAssemblyAndWorkRow }) {
       <Text className="flex-1 text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
         {row.name}
       </Text>
-      <View className={`rounded-full border px-2.5 py-1 ${tone.chip}`}>
-        <Text className={`text-[10px] tracking-wide ${tone.text}`} weight="semibold">
-          {row.kind.toUpperCase()}
-        </Text>
-      </View>
+      <StatusBadge classNames={tone} label={KIND_LABELS[row.kind]} />
     </View>
   );
 }

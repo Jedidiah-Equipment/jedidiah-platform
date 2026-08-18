@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import type { Bay } from '@pkg/schema';
 
 // Operator name when a bay has a current operator, else null.
@@ -17,14 +18,10 @@ export function bayNameWithOperator(bay: Pick<Bay, 'currentOperator' | 'name'>):
 export function bayNameWithOperatorFirstName(bay: Pick<Bay, 'currentOperator' | 'name'>): string {
   const operator = bayOperatorName(bay);
 
-  return withOperatorSuffix(bay.name, operator === null ? null : firstNameOf(operator));
+  return withOperatorSuffix(bay.name, operator === null ? null : getFirstName(operator));
 }
 
 /** The Bay's own name is the whole label while no Operator is assigned. */
 function withOperatorSuffix(name: string, operator: string | null): string {
   return operator === null ? name : `${name} - ${operator}`;
-}
-
-function firstNameOf(name: string): string {
-  return name.trim().split(/\s+/)[0] ?? name;
 }

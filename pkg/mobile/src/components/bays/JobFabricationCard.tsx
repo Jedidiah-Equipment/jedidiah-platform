@@ -1,8 +1,17 @@
-import { formatDate, toPlantDateOnly } from '@pkg/domain';
+import {
+  FABRICATION_TIMING_STATUS,
+  type FabricationTimingState,
+  formatDate,
+  getFabricationTimingPresentation,
+  getFirstName,
+  getPlantDateNow,
+  statusBadgeColorClassNames,
+  toPlantDateOnly,
+} from '@pkg/domain';
 import { AuthId, DateIso, type JobDepartmentTiming } from '@pkg/schema';
 import { IconPencil, IconX } from '@tabler/icons-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,8 +25,11 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { z } from 'zod';
 
+import { Avatar } from '@/components/Avatar';
+import { FactField, FactRow } from '@/components/bays/job-facts';
 import { useAppForm } from '@/components/form';
 import { Icon } from '@/components/ui/icon';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { useTRPC } from '@/lib/trpc';
@@ -76,18 +88,66 @@ export function JobFabricationCard({
   timing: JobDepartmentTiming;
 }) {
   const canUpdate = useCan('job:update').can;
+  const offDays = useOrgOffDays(timing.completedAt !== null);
   // A completed Job still accepts the one stamp that closes an observation already open, mirroring
   // core and web exactly: the completion sweep latches `completedOn` the day after the last Slot
   // ends, so an overrunning fabrication run would otherwise have no way to record that it finished.
   const hasOpenObservation = timing.startedAt !== null && timing.completedAt === null;
   const canStamp = canUpdate && !isCancelled && (!isCompleted || hasOpenObservation);
+  const presentation = getFabricationTimingPresentation({
+    timing,
+    today: getPlantDateNow(),
+    workingCalendar: { orgOffDays: offDays },
+  });
+  const duration = presentation.durationDays;
 
   return (
-    <View className="rounded-2xl border border-border bg-surface p-4">
-      <Text className="text-[11px] uppercase tracking-widest text-muted-foreground" weight="semibold">
-        Fabrication
+    <View className="gap-4 rounded-2xl border border-border bg-surface p-4">
+      <View className="flex-row items-center justify-between gap-3">
+        <Text className="min-w-0 flex-1 text-[11px] uppercase tracking-widest text-muted-foreground" weight="semibold">
+          Fabrication
+        </Text>
+        <FabricationStatusBadge state={presentation.state} />
+      </View>
+
+      <Text className="text-sm leading-5 text-surface-foreground" weight="semibold">
+        {presentation.headline}
       </Text>
-      <Text className="mt-2 text-sm text-surface-foreground">{summarize(timing)}</Text>
+      <View className="-mx-4 h-px bg-border" />
+
+      <FactRow className="gap-0">
+        <FactField className="pr-2" label="STARTED" value={formatDate(timing.startedAt, 'd MMM yyyy', '—')} />
+        <FactField
+          className="border-l border-border px-2"
+          label="FINISHED"
+          value={formatDate(timing.completedAt, 'd MMM yyyy', '—')}
+        />
+        <FactField
+          className="border-l border-border pl-2"
+          label="DURATION"
+          value={duration === null ? '—' : `${duration} ${duration === 1 ? 'day' : 'days'}`}
+        />
+      </FactRow>
+
+      {presentation.state === 'complete' && timing.crew.length > 0 ? (
+        <>
+          <View className="-mx-4 h-px bg-border" />
+          <View className="gap-2.5">
+            <Text className="text-[10px] uppercase tracking-wide text-muted-foreground">CREW</Text>
+            <View className="flex-row flex-wrap gap-x-4 gap-y-2">
+              {timing.crew.map((member) => (
+                <View className="flex-row items-center gap-2" key={member.userId}>
+                  <Avatar className="h-7 w-7 rounded-full" name={member.name} uri={null} />
+                  <Text className="text-sm text-surface-foreground" weight="semibold">
+                    {getFirstName(member.name)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </>
+      ) : null}
+
       {canStamp ? (
         <FabricationAction isCompleted={isCompleted} jobCode={jobCode} jobId={jobId} timing={timing} />
       ) : null}
@@ -95,14 +155,11 @@ export function JobFabricationCard({
   );
 }
 
-function summarize(timing: JobDepartmentTiming): string {
-  if (timing.startedAt === null) return 'Not started';
-  if (timing.completedAt === null) return `Started ${formatDate(timing.startedAt, 'd MMM')}`;
+function FabricationStatusBadge({ state }: { state: FabricationTimingState }) {
+  const status = FABRICATION_TIMING_STATUS[state];
+  const color = statusBadgeColorClassNames[status.color];
 
-  const crew = timing.crew.map((member) => member.name).join(', ');
-  const span = `${formatDate(timing.startedAt, 'd MMM')} – ${formatDate(timing.completedAt, 'd MMM')}`;
-
-  return crew ? `${span} · ${crew}` : span;
+  return <StatusBadge classNames={color} label={status.label} />;
 }
 
 function FabricationAction({
@@ -193,7 +250,7 @@ function ActionButton({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: pending }}
-      className={`mt-3 flex-row items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 ${pending ? 'opacity-60' : 'active:opacity-70'}`}
+      className={`flex-row items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 ${pending ? 'opacity-60' : 'active:opacity-70'}`}
       disabled={pending}
       onPress={onPress}
     >
@@ -449,6 +506,13 @@ function useJobInvalidation() {
   const trpc = useTRPC();
 
   return () => queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() });
+}
+
+function useOrgOffDays(enabled: boolean): ReadonlySet<string> {
+  const trpc = useTRPC();
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled }));
+
+  return useMemo(() => new Set((baysQuery.data?.offDays ?? []).map((offDay) => offDay.date)), [baysQuery.data]);
 }
 
 function toErrorMessage(error: unknown, fallback: string): string {

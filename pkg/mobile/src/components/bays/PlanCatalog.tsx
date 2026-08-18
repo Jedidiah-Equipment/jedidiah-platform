@@ -12,6 +12,7 @@ import {
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
+import { StockBadge } from '@/components/StockBadge';
 import { Text } from '@/components/ui/text';
 import { stripOperatorSuffix } from '@/lib/bay-name';
 import type { BaySort } from '@/lib/bay-sort';
@@ -75,8 +76,8 @@ export function PlanCatalogCard({ bay }: { bay: BayListCard }) {
   const operatorName = bay.operator?.name ?? 'Unassigned';
   const bayName = stripOperatorSuffix({ bayName: bay.name, operatorName: bay.operator?.name ?? null });
   const title = `${operatorName} - ${bayName}`;
-  const activeSummary = bay.active
-    ? `${bay.active.jobDisplayName} · ${bay.active.customerCompanyName ?? 'Stock'}`
+  const activeSummary = bay.active?.customerCompanyName
+    ? `${bay.active.jobDisplayName} · ${bay.active.customerCompanyName}`
     : undefined;
 
   return (
@@ -86,6 +87,16 @@ export function PlanCatalogCard({ bay }: { bay: BayListCard }) {
       avatarName={operatorName}
       avatarUri={bay.operator?.thumbnailDataUrl}
       mainText={title}
+      metadata={
+        bay.active && bay.active.customerCompanyName === null ? (
+          <>
+            <Text className="text-[10px] text-muted-foreground" mono numberOfLines={1}>
+              {bay.active.jobDisplayName} ·
+            </Text>
+            <StockBadge size="compact" />
+          </>
+        ) : undefined
+      }
       monoText={activeSummary}
       onPress={() => router.push({ pathname: '/bays/[bayId]', params: { bayId: bay.id } })}
       subText={bay.active?.jobCode ?? 'NO ACTIVE JOB'}

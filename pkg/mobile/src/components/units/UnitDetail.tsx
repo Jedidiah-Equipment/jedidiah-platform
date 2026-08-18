@@ -4,6 +4,7 @@ import { IconChevronRight } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 
+import { CustomerName } from '@/components/CustomerName';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { UnitBuildStateChip } from '@/components/units/UnitBuildStateChip';
@@ -48,10 +49,13 @@ function UnitFactsCard({ unit }: { unit: ProductUnitDetail }) {
           </Text>
         </DetailFact>
         <DetailFact label="OWNER">
-          <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
-            {/* A Unit with no Owner is one we hold. */}
-            {unit.owner?.companyName ?? 'Stock'}
-          </Text>
+          <CustomerName
+            className="text-sm"
+            companyName={unit.owner?.companyName ?? null}
+            numberOfLines={1}
+            tone="surface"
+            weight="semibold"
+          />
         </DetailFact>
         <DetailFact label="BUILD">
           <View className="flex-row items-start">
@@ -104,9 +108,19 @@ function OwnershipTransferRow({ transfer }: { transfer: ProductUnitOwnershipTran
           {formatDate(transfer.occurredOn, 'd MMM yyyy')}
         </Text>
         {/* A null Customer on either side is us: the machine came from, or returned to, Stock. */}
-        <Text className="min-w-0 flex-1 text-sm text-muted-foreground" numberOfLines={1}>
-          {transfer.fromCustomer?.companyName ?? 'Stock'} → {transfer.toCustomer?.companyName ?? 'Stock'}
-        </Text>
+        <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
+          <CustomerName
+            className="min-w-0 shrink text-sm"
+            companyName={transfer.fromCustomer?.companyName ?? null}
+            numberOfLines={1}
+          />
+          <Text className="text-sm text-muted-foreground">→</Text>
+          <CustomerName
+            className="min-w-0 shrink text-sm"
+            companyName={transfer.toCustomer?.companyName ?? null}
+            numberOfLines={1}
+          />
+        </View>
       </View>
       <View className="flex-row flex-wrap items-center gap-x-3">
         {/* A null actor is the system: the backfill, not a person. */}

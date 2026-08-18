@@ -17,6 +17,17 @@ describe('route layout contract', () => {
     expect(tabBar).not.toContain('IconTimeline');
   });
 
+  test('shows and clears the Activity unread indicator through the shared last-seen endpoints', () => {
+    const tabBar = readFileSync(join(MOBILE_DIR, 'src/components/AppTabBar.tsx'), 'utf8');
+    const activity = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
+
+    expect(tabBar).toContain('trpc.jobActivity.getLastActivitySeen.queryOptions()');
+    expect(tabBar).toContain('<UnreadActivityDot />');
+    expect(tabBar).toContain('bg-orange-500');
+    expect(activity).toContain('trpc.jobActivity.setLastActivitySeen.mutationOptions');
+    expect(activity).toContain('useFocusEffect');
+  });
+
   test('configures each explicit Stack initial route with its full registered child name', () => {
     const planDirectory = join(MOBILE_DIR, 'app/(protected)/(tabs)/(plan)');
     const layout = readFileSync(join(planDirectory, '_layout.tsx'), 'utf8');
@@ -60,7 +71,20 @@ describe('route layout contract', () => {
     const activity = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
 
     expect(catalogList).toContain('contentContainerClassName="w-full px-4 pb-8 pt-1"');
-    expect(activity).toContain('contentContainerClassName="px-4 pb-8 pt-1"');
+    // NativeWind remaps this prop for FlatList but not SectionList, so Activity must use native style.
+    expect(activity).toContain('contentContainerStyle={{');
+    expect(activity).toContain('paddingBottom: 32');
+    expect(activity).toContain('paddingHorizontal: 16');
+    expect(activity).toContain('paddingTop: 4');
+  });
+
+  test('shows Job details before Fabrication on the mobile Job screen', () => {
+    const jobDetail = readFileSync(join(MOBILE_DIR, 'src/components/bays/JobDetail.tsx'), 'utf8');
+    const detailSections = readFileSync(join(MOBILE_DIR, 'src/components/bays/JobDetailSections.tsx'), 'utf8');
+
+    expect(jobDetail).toContain('afterJobFacts={');
+    expect(detailSections.indexOf('<JobFactsCard')).toBeLessThan(detailSections.indexOf('{afterJobFacts}'));
+    expect(detailSections.indexOf('{afterJobFacts}')).toBeLessThan(detailSections.indexOf('<JobFeedbackList'));
   });
 
   test('keeps Activity results visible while a new search or filter loads', () => {

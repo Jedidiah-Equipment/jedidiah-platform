@@ -48,8 +48,9 @@ describe('JobActivityEntry', () => {
   it('keeps the submitter discoverable when their avatar has no image', async () => {
     const html = await renderWithRouter(<JobActivityEntry item={buildItem({ submitterThumbnailDataUrl: null })} />);
 
-    expect(html).toContain('aria-label="Thabo Mokoena"');
-    expect(html).toContain('>TM<');
+    expect(html).toContain('aria-label="Thabo"');
+    expect(html).toContain('>T<');
+    expect(html).not.toContain('Thabo Mokoena');
   });
 
   // The toggle itself is driven by measuring the clamped paragraph, which needs layout — so it is
@@ -74,7 +75,8 @@ describe('JobActivityEntry', () => {
   ] as const)('says who did what for a %s change event', async (type, sentence) => {
     const html = await renderWithRouter(<JobActivityEntry item={buildChangeItem(type)} />);
 
-    expect(html).toContain('Thabo Mokoena');
+    expect(html).toContain('>Thabo<');
+    expect(html).not.toContain('Thabo Mokoena');
     expect(html).toContain(sentence);
     expect(html).toContain('JOB-00042');
   });

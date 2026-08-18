@@ -1,7 +1,8 @@
 import type { JobActivityFilter, JobActivityItem } from '@pkg/schema';
 import { IconFilter } from '@tabler/icons-react-native';
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SectionList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,8 +34,10 @@ const FILTER_OPTIONS: readonly ListControlOption<JobActivityFilter>[] = [
 /** Cross-Job feed. The Activity layout owns the route-level permission gate. */
 export default function ActivityRoute() {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<JobActivityFilter>('all');
   const [search, setSearch] = useState('');
+  const [focused, setFocused] = useState(false);
   const debouncedSearch = useDebouncedSearch(search);
   const refresh = useGlobalRefresh();
   const activity = useInfiniteQuery(
@@ -49,9 +52,29 @@ export default function ActivityRoute() {
     ),
   );
   const items = useMemo(() => activity.data?.pages.flatMap((page) => page.items) ?? [], [activity.data?.pages]);
+  const latestActivityAt = items[0]?.occurredAt;
   const sections = useMemo(() => groupJobActivityByDay(items), [items]);
   const total = activity.data?.pages.at(-1)?.total ?? null;
   const loadMoreRequestedRef = useRef(false);
+  const lastSeenOptions = trpc.jobActivity.getLastActivitySeen.queryOptions();
+  const { mutate: markActivitySeen } = useMutation(
+    trpc.jobActivity.setLastActivitySeen.mutationOptions({
+      onSuccess: (lastActivitySeen) => queryClient.setQueryData(lastSeenOptions.queryKey, lastActivitySeen),
+    }),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+
+  useEffect(() => {
+    if (focused && activity.isSuccess && latestActivityAt !== undefined && filter === 'all' && !debouncedSearch) {
+      markActivitySeen({ seenAt: latestActivityAt });
+    }
+  }, [activity.isSuccess, debouncedSearch, filter, focused, latestActivityAt, markActivitySeen]);
 
   useEffect(() => {
     if (!activity.isFetchingNextPage) loadMoreRequestedRef.current = false;
@@ -77,7 +100,12 @@ export default function ActivityRoute() {
       />
       <SectionList
         className="flex-1"
-        contentContainerClassName="px-4 pb-8 pt-1"
+        // NativeWind does not remap contentContainerClassName for SectionList.
+        contentContainerStyle={{
+          paddingBottom: 32,
+          paddingHorizontal: 16,
+          paddingTop: 4,
+        }}
         initialNumToRender={12}
         keyExtractor={activityKey}
         keyboardShouldPersistTaps="handled"

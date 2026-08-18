@@ -1,8 +1,8 @@
 import { helpUrl } from '@pkg/domain';
-import { IconHelpCircle } from '@tabler/icons-react';
 import { useLocation } from '@tanstack/react-router';
 import type React from 'react';
 
+import { HelpIcon } from '@/components/help/index.js';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar.js';
 import { getClientConfig } from '@/lib/app-config.js';
 import { helpTopicForPath } from '@/lib/help-topics.js';
@@ -30,7 +30,7 @@ export const AppNavHelp: React.FC = () => {
           render={<a href={href} rel="noreferrer" target="_blank" />}
           tooltip="Help"
         >
-          <IconHelpCircle />
+          <HelpIcon />
           <span>Help</span>
         </SidebarMenuButton>
       </SidebarMenuItem>

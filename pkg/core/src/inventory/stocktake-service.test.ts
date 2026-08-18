@@ -15,6 +15,8 @@ import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { getProductCostEstimate } from '../products/product-cost-estimate-service.js';
 import { createTester } from '../test/create-tester.js';
+import { estimateSnapshot } from '../test/inventory-fixtures.js';
+import { partValues as testPartValues } from '../test/part-fixtures.js';
 import { listBuyList } from './buy-list-service.js';
 import { StockMovementDeltaError } from './stock-movement-errors.js';
 import { getStockMovementHistory, listStockOnHand, postAdjustment } from './stock-movement-service.js';
@@ -87,7 +89,7 @@ const test = createTester(async ({ db }) => {
     input: { delta: 9, lengthMm: 13_000, note: null, partId: channel.id, reason: 'opening-balance', unitCost: 6.5 },
   });
 
-  return { boltId: bolt.id, channelId: channel.id, spareId: spare.id };
+  return { boltId: bolt.id, channelId: channel.id, spareId: spare.id, supplierId: createdSupplier.id };
 });
 
 async function openStoresSession(db: Parameters<typeof openStocktakeSession>[0]['db']) {
@@ -355,6 +357,76 @@ describe('postStockCount', () => {
 });
 
 describe('the session variance report', () => {
+  test('shows the plate estimate from immediately before the count re-anchored it', async ({ context }) => {
+    const [plate] = await context.db
+      .insert(parts)
+      .values({
+        ...testPartValues({
+          code: 'PLATE',
+          stockTrackingMode: 'periodic',
+          supplierId: context.supplierId,
+          unitOfMeasure: 'piece',
+        }),
+        averageUtilizationPercent: 85,
+      })
+      .returning();
+    if (!plate) throw new Error('Plate insert did not return a row');
+    const opening = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: { delta: 3, lengthMm: null, note: null, partId: plate.id, reason: 'opening-balance', unitCost: 1_000 },
+    });
+    await context.db
+      .update(stockMovements)
+      .set({ createdAt: new Date('2026-08-01T08:00:00.000Z') })
+      .where(eq(stockMovements.id, opening.id));
+    const [range] = await context.db.insert(productRanges).values({ displayOrder: 0, name: 'Plate range' }).returning();
+    if (!range) throw new Error('Product Range insert did not return a row');
+    const [product] = await context.db
+      .insert(products)
+      .values({ basePrice: 0, buildTimeDays: 1, modelCode: 'PLATE', name: 'Plate product', rangeId: range.id })
+      .returning();
+    if (!product) throw new Error('Product insert did not return a row');
+    const [unit] = await context.db
+      .insert(productUnits)
+      .values({
+        productId: product.id,
+        productSerialNumber: 'PLATE-1',
+        productSerialPrefix: 'PLATE',
+        productSerialSequence: 1,
+        productSerialYear: 26,
+      })
+      .returning();
+    if (!unit) throw new Error('Product Unit insert did not return a row');
+    const [job] = await context.db
+      .insert(jobs)
+      .values({ createdAt: new Date('2026-08-02T08:00:00.000Z'), productUnitId: unit.id })
+      .returning();
+    if (!job) throw new Error('Job insert did not return a row');
+    await context.db.insert(jobEstimateSnapshots).values({ jobId: job.id, payload: estimateSnapshot(plate, 0.06) });
+    const session = await openStocktakeSession({ actorUserId, db: context.db, input: { scope: 'raw-material' } });
+    await postStockCount({
+      actorUserId,
+      db: context.db,
+      input: { buckets: [{ lengthMm: null, observed: 2 }], partId: plate.id, sessionId: session.id },
+    });
+
+    const report = await getStocktakeSessionReport({ db: context.db, sessionId: session.id });
+
+    expect(report.counts[0]).toMatchObject({
+      estimatedOnHand: { openPlateRemainingPercent: 94, wholeUnits: 2 },
+      partCode: 'PLATE',
+    });
+
+    await context.db
+      .update(jobs)
+      .set({ cancelledAt: new Date('2026-08-19T08:00:00.000Z') })
+      .where(eq(jobs.id, job.id));
+    expect((await getStocktakeSessionReport({ db: context.db, sessionId: session.id })).counts[0]).toMatchObject({
+      estimatedOnHand: { openPlateRemainingPercent: 94, wholeUnits: 2 },
+    });
+  });
+
   test('compares raw-material depletion with completed Product Jobs and states the undated-Job floor', async ({
     context,
   }) => {

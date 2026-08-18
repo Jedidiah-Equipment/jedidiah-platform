@@ -1,8 +1,17 @@
-import { jobs, stockMovements } from '@pkg/db';
+import { jobEstimateSnapshots, jobs, parts, stockMovements } from '@pkg/db';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { actorUserId, adjustmentInput, seedSentPurchaseOrder, test } from '../test/inventory-fixtures.js';
+import {
+  actorUserId,
+  adjustmentInput,
+  estimateSnapshot,
+  seedProductUnit,
+  seedSentPurchaseOrder,
+  test,
+} from '../test/inventory-fixtures.js';
+import { partValues } from '../test/part-fixtures.js';
+import { postReceipt } from './receipt-service.js';
 import {
   getStockMovementHistory,
   listJobStock,
@@ -528,6 +537,94 @@ describe('stock movement database constraints', () => {
 });
 
 describe('listStockOnHand', () => {
+  test('derives plate estimates from live Job snapshots across counts, receipts, and cancellation', async ({
+    context,
+  }) => {
+    const [plate] = await context.db
+      .insert(parts)
+      .values({
+        ...partValues({
+          code: 'PLATE',
+          stockTrackingMode: 'periodic',
+          supplierId: context.supplierId,
+          unitOfMeasure: 'piece',
+        }),
+        averageUtilizationPercent: 85,
+      })
+      .returning();
+    if (!plate) throw new Error('Plate insert did not return a row');
+
+    const opening = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(plate.id, { delta: 3, unitCost: 1_000 }),
+    });
+    await context.db
+      .update(stockMovements)
+      .set({ createdAt: new Date('2026-08-01T08:00:00.000Z') })
+      .where(eq(stockMovements.id, opening.id));
+    const productUnit = await seedProductUnit(context.db, 'PLATE-EST');
+    await context.db
+      .update(jobs)
+      .set({ createdAt: new Date('2026-08-02T08:00:00.000Z'), productUnitId: productUnit.id })
+      .where(eq(jobs.id, context.jobs.cfo.id));
+    await context.db.insert(jobEstimateSnapshots).values({
+      jobId: context.jobs.cfo.id,
+      payload: estimateSnapshot(plate, 0.06),
+    });
+
+    expect((await listStockOnHand({ db: context.db })).items.find((row) => row.partId === plate.id)).toMatchObject({
+      estimatedOnHand: { openPlateRemainingPercent: 94, wholeUnits: 2 },
+      quantity: 3,
+    });
+
+    const count = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(plate.id, { delta: -1, note: 'Weekly count', reason: 'stock-count' }),
+    });
+    await context.db
+      .update(stockMovements)
+      .set({ createdAt: new Date('2026-08-03T08:00:00.000Z') })
+      .where(eq(stockMovements.id, count.id));
+    const purchaseOrderId = await seedSentPurchaseOrder(context.db, context.supplierId, [
+      { partId: plate.id, quantity: 2, unitPrice: 1_000 },
+    ]);
+    const receipt = await postReceipt({
+      actorUserId,
+      db: context.db,
+      input: { lengthMm: null, partId: plate.id, purchaseOrderId, quantity: 2, unitCost: null },
+    });
+    await context.db
+      .update(stockMovements)
+      .set({ createdAt: new Date('2026-08-04T08:00:00.000Z') })
+      .where(eq(stockMovements.id, receipt.movement.id));
+    const [laterProductJob] = await context.db
+      .insert(jobs)
+      .values({ createdAt: new Date('2026-08-05T08:00:00.000Z'), productUnitId: productUnit.id })
+      .returning();
+    if (!laterProductJob) throw new Error('Product Job insert did not return a row');
+    await context.db.insert(jobEstimateSnapshots).values([
+      { jobId: laterProductJob.id, payload: estimateSnapshot(plate, 0.8) },
+      // Even a malformed future Custom Job snapshot must not make Custom Jobs estimator demand.
+      { jobId: context.jobs.custom.id, payload: estimateSnapshot(plate, 0.84) },
+    ]);
+
+    expect((await listStockOnHand({ db: context.db })).items.find((row) => row.partId === plate.id)).toMatchObject({
+      estimatedOnHand: { openPlateRemainingPercent: 99, wholeUnits: 3 },
+      quantity: 4,
+    });
+
+    await context.db
+      .update(jobs)
+      .set({ cancelledAt: new Date('2026-08-06T08:00:00.000Z') })
+      .where(eq(jobs.id, laterProductJob.id));
+    expect((await listStockOnHand({ db: context.db })).items.find((row) => row.partId === plate.id)).toMatchObject({
+      estimatedOnHand: { openPlateRemainingPercent: 94, wholeUnits: 4 },
+      quantity: 4,
+    });
+  });
+
   test('reports open sent Purchase Order quantities beside Free Stock', async ({ context }) => {
     await seedSentPurchaseOrder(context.db, context.supplierId, [
       { partId: context.parts.piece.id, quantity: 7, unitPrice: 10 },

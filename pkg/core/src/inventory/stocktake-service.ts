@@ -59,6 +59,7 @@ import {
 } from 'drizzle-orm';
 
 import { createOrgWorkingCalendar, listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
+import { loadEstimatedStockOnHand } from './estimated-stock-on-hand-read.js';
 import { bucketKey, insertMovement, loadBucketQuantities, loadStockPart, toLedgerQuantity } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
 import { groupBy, sumBy, sumNullableBy } from './row-grouping.js';
@@ -281,6 +282,7 @@ async function readStocktakeSessionReport(db: DatabaseTransaction, sessionId: UU
     .select({
       actorName: user.name,
       actorUserId: stockMovements.actorUserId,
+      averageUtilizationPercent: parts.averageUtilizationPercent,
       createdAt: stockMovements.createdAt,
       id: stockMovements.id,
       partCode: parts.code,
@@ -300,6 +302,7 @@ async function readStocktakeSessionReport(db: DatabaseTransaction, sessionId: UU
       ? []
       : await db
           .select({
+            createdAt: stockMovements.createdAt,
             delta: stockMovements.delta,
             id: stockMovements.id,
             lengthMm: stockMovements.lengthMm,
@@ -314,11 +317,12 @@ async function readStocktakeSessionReport(db: DatabaseTransaction, sessionId: UU
           .orderBy(asc(stockMovements.partId), asc(stockMovements.createdAt), asc(stockMovements.id));
 
   const varianceByMovement = deriveSessionVariances(ledgerRows, sessionId);
+  const estimateAnchorsByMovement = deriveEstimateAnchors(ledgerRows);
   // One row per *posting*, not per Part. Counting the same Part twice in a session is legal and
   // documented — the second count corrects against what the first left behind — and rolling both
   // into one row would credit the whole net variance to whoever happened to go first. Every row of
   // one post shares its transaction's timestamp and actor, which is what makes this grouping exact.
-  const counts = [
+  const countFacts = [
     ...groupBy(countRows, (row) => `${row.partId}:${row.createdAt.toISOString()}:${row.actorUserId}`).values(),
   ].map(([head, ...tail]) => {
     const buckets = [head, ...tail].map((row) => {
@@ -341,6 +345,8 @@ async function readStocktakeSessionReport(db: DatabaseTransaction, sessionId: UU
       countedAt: head.createdAt,
       countedByName: head.actorName,
       delta: toLedgerQuantity(sumBy(buckets, (bucket) => bucket.delta)),
+      averageUtilizationPercent: head.averageUtilizationPercent,
+      movementId: head.id,
       partCode: head.partCode,
       partId: head.partId,
       partName: head.partName,
@@ -348,6 +354,31 @@ async function readStocktakeSessionReport(db: DatabaseTransaction, sessionId: UU
       varianceValue: sumNullableBy(buckets, (bucket) => bucket.value),
     };
   });
+  const estimates = await loadEstimatedStockOnHand(
+    db,
+    countFacts.flatMap((count) => {
+      if (count.averageUtilizationPercent === null) return [];
+
+      const anchors = estimateAnchorsByMovement.get(count.movementId);
+      if (!anchors) throw new Error(`Stocktake count ${count.movementId} is missing its estimate anchor`);
+
+      return [
+        {
+          anchorAt: anchors.anchorAt,
+          averageUtilizationPercent: count.averageUtilizationPercent,
+          key: count.movementId,
+          originAt: anchors.originAt,
+          partId: count.partId,
+          recordedOnHand: sumBy(count.buckets, (bucket) => bucket.expected),
+          throughAt: count.countedAt,
+        },
+      ];
+    }),
+  );
+  const counts = countFacts.map(({ averageUtilizationPercent: _averageUtilizationPercent, movementId, ...count }) => ({
+    ...count,
+    estimatedOnHand: estimates.get(movementId) ?? null,
+  }));
   const rawMaterialDrift = await readRawMaterialDrift({ counts, db, session });
 
   return StocktakeSessionReportSchema.parse({
@@ -574,7 +605,33 @@ function isUncountedInSession(sessionId: UUID): SQL {
 
 type SessionVariance = StockCountBucketVariance & { value: number | null };
 
-type LedgerReplayRow = MovingAverageMovement & { id: string; partId: string; stocktakeSessionId: string | null };
+type LedgerReplayRow = MovingAverageMovement & {
+  createdAt: Date;
+  id: string;
+  partId: string;
+  stocktakeSessionId: string | null;
+};
+
+function deriveEstimateAnchors(
+  ledgerRows: readonly LedgerReplayRow[],
+): Map<string, { anchorAt: Date | null; originAt: Date }> {
+  const anchors = new Map<string, { anchorAt: Date | null; originAt: Date }>();
+
+  for (const rows of groupBy(ledgerRows, (row) => row.partId).values()) {
+    const originAt = rows[0]?.createdAt;
+    if (!originAt) continue;
+
+    let lastCountAt: Date | null = null;
+    for (const row of rows) {
+      if (row.reason === 'stock-count') {
+        anchors.set(row.id, { anchorAt: lastCountAt, originAt });
+        lastCountAt = row.createdAt;
+      }
+    }
+  }
+
+  return anchors;
+}
 
 /**
  * Replays each counted Part's ledger once, producing every session row's observed, expected and

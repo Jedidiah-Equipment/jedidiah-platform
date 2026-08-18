@@ -59,6 +59,7 @@ export const partAuditDescriptor = defineAuditDescriptor<PartRow>({
   primaryLabelField: 'name',
   entityId: (row) => row.id,
   toRecord: (row) => ({
+    averageUtilizationPercent: row.averageUtilizationPercent,
     category: row.category,
     code: row.code,
     description: row.description,
@@ -83,6 +84,7 @@ type PartWithSupplierRow = PartRow & {
 
 export function mapPart(row: PartWithSupplierRow): Part {
   return PartSchema.parse({
+    averageUtilizationPercent: row.averageUtilizationPercent,
     category: row.category,
     code: row.code,
     description: row.description,
@@ -304,6 +306,7 @@ export async function updatePart({
       project: (tx, row) => getPart({ db: tx, id: row.id }),
       // `parts` carries no timestamp columns, so there is no `updatedAt` to touch.
       set: () => ({
+        averageUtilizationPercent: input.averageUtilizationPercent,
         category: input.category,
         code: input.code,
         description: input.description,

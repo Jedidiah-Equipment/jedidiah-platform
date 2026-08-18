@@ -16,6 +16,7 @@ function stockRow(overrides: Partial<StockOnHandRow> = {}): StockOnHandRow {
     averageUnitCost: 10,
     buckets: [{ lengthMm: 6_000, quantity: 4, totalValue: 40 }],
     committed: 0,
+    estimatedOnHand: null,
     free: 4,
     isInternallyFabricated: false,
     onOrder: 0,

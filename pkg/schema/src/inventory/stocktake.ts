@@ -5,7 +5,13 @@ import { CursorQueryInput, createCursorQueryResult } from '../common/pagination.
 import { UUID } from '../common/uuid.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
 import { declareInventoryCostFields, InventoryValue } from './inventory-cost.js';
-import { AssertedActorUserId, StockMovement, StockMovementDelta, StockMovementLengthMm } from './stock-movement.js';
+import {
+  AssertedActorUserId,
+  EstimatedStockOnHand,
+  StockMovement,
+  StockMovementDelta,
+  StockMovementLengthMm,
+} from './stock-movement.js';
 import { StocktakeScope } from './stocktake-scope.js';
 
 export * from './stocktake-scope.js';
@@ -116,6 +122,7 @@ export const StocktakeSessionCount = z.object({
   countedAt: DateIso,
   countedByName: z.string(),
   delta: z.number().finite(),
+  estimatedOnHand: EstimatedStockOnHand.nullable(),
   partCode: z.string(),
   partId: UUID,
   partName: z.string(),

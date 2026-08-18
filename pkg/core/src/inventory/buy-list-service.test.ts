@@ -4,11 +4,13 @@ import {
   jobBays,
   jobCfoAssemblies,
   jobCfoParts,
+  jobEstimateSnapshots,
   jobSlots,
   jobs,
   parts,
   purchaseOrders,
   quotes,
+  stockMovements,
   supplier,
   user,
 } from '@pkg/db';
@@ -16,11 +18,11 @@ import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
-import { seedSentPurchaseOrder } from '../test/inventory-fixtures.js';
+import { estimateSnapshot, seedProductUnit, seedSentPurchaseOrder } from '../test/inventory-fixtures.js';
 import { partValues } from '../test/part-fixtures.js';
 import { listBuyList } from './buy-list-service.js';
 import { closeOutJob } from './close-out-service.js';
-import { postAdjustment, postJobMovement } from './stock-movement-service.js';
+import { postAdjustment, postJobMovement, postRevaluation } from './stock-movement-service.js';
 
 const actorUserId = 'buy-list-test-user';
 const clock = () => new Date('2026-08-04T08:00:00.000Z');
@@ -99,6 +101,54 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('listBuyList', () => {
+  test('uses estimated whole plates for an estimator Part without changing its ledger', async ({ context }) => {
+    const [plate] = await context.db
+      .insert(parts)
+      .values({
+        ...partValues({
+          code: 'PLATE',
+          stockTrackingMode: 'periodic',
+          supplierId: context.suppliers.alpha.id,
+          unitOfMeasure: 'piece',
+        }),
+        averageUtilizationPercent: 85,
+        minimumStock: 3,
+      })
+      .returning();
+    if (!plate) throw new Error('Plate insert did not return a row');
+    const revaluation = await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: null, partId: plate.id, unitCost: 1_000 },
+    });
+    await context.db
+      .update(stockMovements)
+      .set({ createdAt: new Date('2026-08-01T08:00:00.000Z') })
+      .where(eq(stockMovements.id, revaluation.id));
+    const opening = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: { delta: 3, lengthMm: null, note: null, partId: plate.id, reason: 'opening-balance', unitCost: 1_000 },
+    });
+    await context.db
+      .update(stockMovements)
+      .set({ createdAt: new Date('2026-08-02T08:00:00.000Z') })
+      .where(eq(stockMovements.id, opening.id));
+    const productUnit = await seedProductUnit(context.db, 'BUY-PLATE');
+    await context.db
+      .update(jobs)
+      .set({ createdAt: new Date('2026-08-01T12:00:00.000Z'), productUnitId: productUnit.id })
+      .where(eq(jobs.id, context.jobs.soon.id));
+    await context.db.insert(jobEstimateSnapshots).values({
+      jobId: context.jobs.soon.id,
+      payload: estimateSnapshot(plate, 0.06),
+    });
+
+    const row = (await listBuyList({ clock, db: context.db })).items.find((item) => item.partId === plate.id);
+
+    expect(row).toMatchObject({ free: 2, quantity: 2, reasons: ['below-minimum'], suggestedQuantity: 1 });
+  });
+
   test('ranks Parts short for Jobs by the earliest driving Slot date', async ({ context }) => {
     const result = await listBuyList({ clock, db: context.db });
     const shortForJobs = result.items.filter((item) => item.reasons.includes('negative-free'));

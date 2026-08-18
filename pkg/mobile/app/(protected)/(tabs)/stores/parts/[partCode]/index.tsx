@@ -1,4 +1,4 @@
-import { derivePartStockActions } from '@pkg/domain';
+import { derivePartStockActions, formatEstimatedStockOnHand } from '@pkg/domain';
 import { IconArrowBackUp, IconArrowDownToArc, IconTruckReturn, IconWheel } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -73,6 +73,17 @@ export default function StoresPartRoute() {
           <Figure label="FREE" value={`${row.free} ${row.unitOfMeasure}`} />
           <Figure label="COMMITTED" value={`${row.committed} ${row.unitOfMeasure}`} />
         </View>
+
+        {row.estimatedOnHand === null ? null : (
+          <View className="border-t border-border pt-3">
+            <Text className="text-[11px] text-muted-foreground" mono>
+              ESTIMATED ON HAND
+            </Text>
+            <Text className="text-sm text-surface-foreground" weight="semibold">
+              {formatEstimatedStockOnHand(row.estimatedOnHand)}
+            </Text>
+          </View>
+        )}
 
         {isLinear ? (
           <View className="gap-2 border-t border-border pt-3">

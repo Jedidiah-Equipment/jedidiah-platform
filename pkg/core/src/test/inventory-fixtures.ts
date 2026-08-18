@@ -5,13 +5,16 @@ import {
   jobCfoParts,
   jobs,
   parts,
+  productRanges,
+  products,
+  productUnits,
   purchaseOrderLines,
   purchaseOrders,
   quotes,
   supplier,
   user,
 } from '@pkg/db';
-import type { PostAdjustmentInput } from '@pkg/schema';
+import type { PostAdjustmentInput, ProductCostEstimate } from '@pkg/schema';
 
 import { createTester } from './create-tester.js';
 import { partValues } from './part-fixtures.js';
@@ -83,6 +86,66 @@ export function adjustmentInput(partId: string, overrides: Partial<PostAdjustmen
     unitCost: null,
     ...overrides,
   };
+}
+
+export function estimateSnapshot(part: typeof parts.$inferSelect, quantityPerUnit: number): ProductCostEstimate {
+  return {
+    assemblies: [],
+    basePrice: 0,
+    complete: true,
+    currencyCode: 'ZAR',
+    estimatedMarginCeiling: 0,
+    laborCostFloor: 0,
+    laborHours: [],
+    materialCostFloor: 0,
+    materialLines: [
+      {
+        costFloor: 0,
+        partCode: part.code,
+        partId: part.id,
+        partName: part.name,
+        quantityPerUnit,
+        standardPurchaseLengthMm: part.standardPurchaseLengthMm,
+        unitCost: null,
+        unitOfMeasure: part.unitOfMeasure,
+      },
+    ],
+    missing: { laborHours: false, materialList: false, unattributedProductTerms: false, uncostedParts: [] },
+    optionalAssemblies: [],
+    partsCostFloor: 0,
+    productId: '00000000-0000-4000-8000-000000000001',
+    scope: 'build',
+    totalCostFloor: 0,
+  };
+}
+
+/** A minimal machine identity that turns an otherwise generic Job fixture into a Product Job. */
+export async function seedProductUnit(db: Db, code = 'ESTIMATE') {
+  const [range] = await db
+    .insert(productRanges)
+    .values({ displayOrder: 0, name: `${code} range` })
+    .returning();
+  if (!range) throw new Error('Product Range insert did not return a row');
+
+  const [product] = await db
+    .insert(products)
+    .values({ basePrice: 0, buildTimeDays: 1, modelCode: code, name: `${code} product`, rangeId: range.id })
+    .returning();
+  if (!product) throw new Error('Product insert did not return a row');
+
+  const [unit] = await db
+    .insert(productUnits)
+    .values({
+      productId: product.id,
+      productSerialNumber: `${code}-1`,
+      productSerialPrefix: code,
+      productSerialSequence: 1,
+      productSerialYear: 26,
+    })
+    .returning();
+  if (!unit) throw new Error('Product Unit insert did not return a row');
+
+  return unit;
 }
 
 /**

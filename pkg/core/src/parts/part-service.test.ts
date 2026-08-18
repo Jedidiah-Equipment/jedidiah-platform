@@ -175,6 +175,26 @@ describe('updatePart', () => {
 });
 
 describe('bulkImportParts', () => {
+  test('leaves Average Utilization % untouched because the Parts CSV does not own it', async ({ context }) => {
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', id: '00000000-0000-4000-8000-000000000001' });
+    const created = await createPart({
+      actorUserId,
+      db: context.db,
+      input: partInput({ averageUtilizationPercent: 85, stockTrackingMode: 'periodic' }),
+    });
+
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ name: 'Updated plate' })] },
+    });
+
+    const [row] = await context.db.select().from(parts).where(eq(parts.id, created.id));
+    expect(row).toMatchObject({ averageUtilizationPercent: 85, name: 'Updated plate' });
+  });
+
   test('creates missing suppliers and parts with audit events', async ({ context }) => {
     const result = await bulkImportParts({
       actorUserId,
@@ -667,6 +687,7 @@ async function createActorUser(db: Db) {
 
 function partInput(overrides: Partial<Parameters<typeof createPart>[0]['input']> = {}) {
   return {
+    averageUtilizationPercent: null,
     category: 'Bearings',
     code: 'P-100',
     description: 'Main bearing',

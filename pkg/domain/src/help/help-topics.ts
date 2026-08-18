@@ -16,6 +16,7 @@ export const HELP_TOPICS = {
   inventory: '/inventory/stock-on-hand-and-free-stock',
   inventoryBuyList: '/inventory/raise-purchase-orders-from-the-buy-list',
   inventoryCloseOut: '/inventory/close-out-a-job',
+  inventoryEstimatedStock: '/inventory/estimated-stock-on-hand',
   inventoryJobVariance: '/inventory/read-a-jobs-material-variance',
   inventoryPriceVariance: '/inventory/cross-check-a-supplier-invoice',
   inventoryStocktake: '/inventory/run-a-stocktake-session',

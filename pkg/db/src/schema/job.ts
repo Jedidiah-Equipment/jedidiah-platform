@@ -181,13 +181,17 @@ export const jobs = pgTable(
   ],
 );
 
-export const jobEstimateSnapshots = pgTable('job_estimate_snapshot', {
-  createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
-  jobId: uuid('job_id')
-    .primaryKey()
-    .references(() => jobs.id, { onDelete: 'cascade' }),
-  payload: jsonb('payload').$type<ProductCostEstimate>().notNull(),
-});
+export const jobEstimateSnapshots = pgTable(
+  'job_estimate_snapshot',
+  {
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    jobId: uuid('job_id')
+      .primaryKey()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    payload: jsonb('payload').$type<ProductCostEstimate>().notNull(),
+  },
+  (table) => [index('job_estimate_snapshot_payload_gin_idx').using('gin', table.payload)],
+);
 
 // A Job's own selection of Optional Assemblies, and the only source its CFO is snapshotted from.
 // It carries no price: pricing stays a Quote concern.

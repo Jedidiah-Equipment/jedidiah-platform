@@ -1,4 +1,4 @@
-import type { Part, Supplier } from '@pkg/schema';
+import { type Part, PartUnitOfMeasure, type Supplier, unitClassFor } from '@pkg/schema';
 import { IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
 
@@ -83,6 +83,9 @@ export const PartForm: React.FC<PartFormProps> = ({
               label="Unit"
               onValueCommit={(unitOfMeasure) => {
                 if (unitOfMeasure !== 'mm') form.setFieldValue('standardPurchaseLengthMm', NaN);
+                if (unitClassFor(PartUnitOfMeasure.parse(unitOfMeasure)) !== 'discrete') {
+                  form.setFieldValue('averageUtilizationPercent', NaN);
+                }
               }}
               options={partUnitOfMeasureOptions}
               placeholder="Select unit"
@@ -93,11 +96,31 @@ export const PartForm: React.FC<PartFormProps> = ({
           {(field) => (
             <field.SelectField
               label="Stock tracking"
+              onValueCommit={(stockTrackingMode) => {
+                if (stockTrackingMode !== 'periodic') form.setFieldValue('averageUtilizationPercent', NaN);
+              }}
               options={partStockTrackingModeOptions}
               placeholder="Select tracking mode"
             />
           )}
         </form.AppField>
+        <form.Subscribe selector={(state) => [state.values.stockTrackingMode, state.values.unitOfMeasure] as const}>
+          {([stockTrackingMode, unitOfMeasure]) => (
+            <form.AppField name="averageUtilizationPercent">
+              {(field) => (
+                <field.NumberField
+                  disabled={stockTrackingMode !== 'periodic' || unitClassFor(unitOfMeasure) !== 'discrete'}
+                  inputMode="numeric"
+                  label="Average utilization %"
+                  max={100}
+                  min={1}
+                  placeholder="Not set"
+                  step={1}
+                />
+              )}
+            </form.AppField>
+          )}
+        </form.Subscribe>
         <form.AppField name="storageLocation">
           {(field) => (
             <field.CreatableComboboxField

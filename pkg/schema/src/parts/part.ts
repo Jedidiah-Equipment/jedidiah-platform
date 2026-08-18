@@ -49,6 +49,9 @@ export const PartStandardPurchaseLengthMm = z.int().positive();
 export type PartMinimumStock = z.infer<typeof PartMinimumStock>;
 export const PartMinimumStock = z.int().nonnegative();
 
+export type PartAverageUtilizationPercent = z.infer<typeof PartAverageUtilizationPercent>;
+export const PartAverageUtilizationPercent = z.int().min(1).max(100);
+
 export type PartUnitOfMeasure = z.infer<typeof PartUnitOfMeasure>;
 export const PartUnitOfMeasure = z.enum(['piece', 'set', 'box', 'pair', 'mm', 'kg', 'litre']);
 
@@ -89,6 +92,7 @@ export function isWholeUnitQuantity(quantity: number, unitClass: PartUnitClass):
 
 export type Part = z.infer<typeof Part>;
 export const Part = z.object({
+  averageUtilizationPercent: PartAverageUtilizationPercent.nullable(),
   category: PartCategory,
   code: PartCode,
   description: PartDescription,
@@ -127,6 +131,7 @@ export const PartColumnFilters = z
   .default({});
 
 const PartInputFields = z.object({
+  averageUtilizationPercent: PartAverageUtilizationPercent.nullable().default(null),
   category: PartCategory,
   code: PartCode,
   description: PartDescription,
@@ -189,6 +194,22 @@ export function refinePartStandardPurchaseLength(
   }
 }
 
+export function refinePartAverageUtilization(
+  input: Pick<z.infer<typeof PartInputFields>, 'averageUtilizationPercent' | 'stockTrackingMode' | 'unitOfMeasure'>,
+  context: z.RefinementCtx,
+): void {
+  if (
+    input.averageUtilizationPercent !== null &&
+    (input.stockTrackingMode !== 'periodic' || unitClassFor(input.unitOfMeasure) !== 'discrete')
+  ) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Average utilization is only valid for discrete periodic Parts',
+      path: ['averageUtilizationPercent'],
+    });
+  }
+}
+
 /** The one wording for the rule, so the entity form and the CSV row agree. */
 export const PART_BUILT_IS_NOT_LINEAR_MESSAGE = 'A built Part cannot be measured in millimetres';
 
@@ -211,6 +232,7 @@ export function refinePartBuiltIsNotLinear(
 }
 
 function refinePartInput(input: z.infer<typeof PartInputFields>, context: z.RefinementCtx): void {
+  refinePartAverageUtilization(input, context);
   refinePartBuiltIsNotLinear(input, context);
   refinePartStandardPurchaseLength(input, context);
   refinePartSupplier(input, context);

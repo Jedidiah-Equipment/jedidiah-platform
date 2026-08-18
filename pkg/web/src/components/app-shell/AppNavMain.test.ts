@@ -26,7 +26,7 @@ describe('AppNavMain', () => {
       operations?.items.find((item) => item.title === 'Jobs')?.children?.find((item) => item.title === 'Activity')
         ?.indicator,
     ).toBeDefined();
-    expect(operations?.items.find((item) => item.title === 'Jobs')?.indicator).toBeUndefined();
+    expect(operations?.items.find((item) => item.title === 'Jobs')?.indicator).toBeDefined();
   });
 
   it('shows the Inventory section when any permitted item is visible', () => {

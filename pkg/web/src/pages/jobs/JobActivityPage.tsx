@@ -1,10 +1,10 @@
 import { useDebouncedValue } from '@mantine/hooks';
-import type { JobActivityFilter, UUID } from '@pkg/schema';
+import type { DateIso, JobActivityFilter, UUID } from '@pkg/schema';
 import { IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Input } from '@/components/ui/input.js';
@@ -34,6 +34,7 @@ export const JobActivityPage: React.FC<{ selectedJobId?: UUID | undefined }> = (
       onSuccess: (lastActivitySeen) => queryClient.setQueryData(lastSeenOptions.queryKey, lastActivitySeen),
     }),
   );
+  const handleGlobalFeedViewed = useCallback((seenAt: DateIso) => markActivitySeen({ seenAt }), [markActivitySeen]);
 
   return (
     <PageLayout
@@ -56,11 +57,7 @@ export const JobActivityPage: React.FC<{ selectedJobId?: UUID | undefined }> = (
       size="md"
       title="Job Activity"
     >
-      <JobActivityFeed
-        filter={filter}
-        onGlobalFeedViewed={(seenAt) => markActivitySeen({ seenAt })}
-        search={debouncedSearch}
-      />
+      <JobActivityFeed filter={filter} onGlobalFeedViewed={handleGlobalFeedViewed} search={debouncedSearch} />
       {selectedJobId ? (
         <JobSheet
           key={selectedJobId}

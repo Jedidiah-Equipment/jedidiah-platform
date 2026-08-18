@@ -38,6 +38,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from '@/components/ui/sidebar.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { cn } from '@/lib/utils.js';
@@ -100,6 +101,7 @@ const navSections = [
         permission: 'job:read',
         link: linkOptions({ to: '/jobs' }),
         icon: IconBriefcase2,
+        indicator: ActivityUnreadNavIndicator,
         children: [
           {
             title: 'Activity',
@@ -261,10 +263,14 @@ const activeSubMarkerClass =
 const NavCollapsibleItem: React.FC<{
   title: string;
   icon: TablerIcon;
+  indicator: React.ComponentType | undefined;
   navLink: NavLinkProps;
   subItems: readonly NavSubItem[];
-}> = ({ title, icon: Icon, navLink, subItems }) => {
+}> = ({ title, icon: Icon, indicator: Indicator, navLink, subItems }) => {
   const [open, setOpen] = React.useState(true);
+  const sidebar = useSidebar();
+  const showCollapsedIndicator = !sidebar.isMobile && sidebar.state === 'collapsed';
+  const showSubIndicators = sidebar.isMobile || sidebar.state === 'expanded';
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} render={<SidebarMenuItem />}>
@@ -282,6 +288,7 @@ const NavCollapsibleItem: React.FC<{
               aria-hidden="true"
               className={cn('ml-auto size-4! transition-transform', open && 'rotate-90')}
             />
+            {showCollapsedIndicator && Indicator ? <Indicator /> : null}
           </SidebarMenuButton>
         )}
       </Link>
@@ -301,7 +308,7 @@ const NavCollapsibleItem: React.FC<{
                       className={cn(activeSubMarkerClass, !isActive && inactiveItemClass)}
                     >
                       <span>{child.title}</span>
-                      {ChildIndicator ? <ChildIndicator /> : null}
+                      {showSubIndicators && ChildIndicator ? <ChildIndicator /> : null}
                     </SidebarMenuSubButton>
                   )}
                 </Link>
@@ -397,6 +404,7 @@ export const AppNavMain: React.FC = () => {
                   key={item.title}
                   title={item.title}
                   icon={item.icon}
+                  indicator={Indicator}
                   navLink={firstChild.link}
                   subItems={subItems}
                 />

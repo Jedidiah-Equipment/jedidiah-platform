@@ -74,7 +74,8 @@ describe('JobActivityEntry', () => {
   ] as const)('says who did what for a %s change event', async (type, sentence) => {
     const html = await renderWithRouter(<JobActivityEntry item={buildChangeItem(type)} />);
 
-    expect(html).toContain('Thabo Mokoena');
+    expect(html).toContain('>Thabo<');
+    expect(html).not.toContain('Thabo Mokoena');
     expect(html).toContain(sentence);
     expect(html).toContain('JOB-00042');
   });

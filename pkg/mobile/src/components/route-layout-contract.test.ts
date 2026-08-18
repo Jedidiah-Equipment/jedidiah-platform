@@ -60,7 +60,11 @@ describe('route layout contract', () => {
     const activity = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
 
     expect(catalogList).toContain('contentContainerClassName="w-full px-4 pb-8 pt-1"');
-    expect(activity).toContain('contentContainerClassName="px-4 pb-8 pt-1"');
+    // NativeWind remaps this prop for FlatList but not SectionList, so Activity must use native style.
+    expect(activity).toContain('contentContainerStyle={{');
+    expect(activity).toContain('paddingBottom: 32');
+    expect(activity).toContain('paddingHorizontal: 16');
+    expect(activity).toContain('paddingTop: 4');
   });
 
   test('keeps Activity results visible while a new search or filter loads', () => {

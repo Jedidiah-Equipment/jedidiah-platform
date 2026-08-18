@@ -1,13 +1,15 @@
-import { formatDate, getPlantDateNow, helpUrl, isJobCancelled, timingWorkingDays, toPlantDateOnly } from '@pkg/domain';
+import { formatDate, getPlantDateNow, isJobCancelled, timingWorkingDays, toPlantDateOnly } from '@pkg/domain';
 import { AuthId, DateIso, type JobDepartmentTiming, type JobDetail } from '@pkg/schema';
-import { IconAlertTriangle, IconExternalLink, IconFlame, IconPencil } from '@tabler/icons-react';
+import { IconAlertTriangle, IconPencil } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { DepartmentIcon } from '@/components/departments/index.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
+import { HelpLink } from '@/components/help/index.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
@@ -24,7 +26,6 @@ import {
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
-import { getClientConfig } from '@/lib/app-config.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 const DoneFormValues = z.object({ crewUserIds: z.array(AuthId).min(1, 'Name at least one fabricator') });
@@ -86,11 +87,9 @@ export const JobFabricationAction: React.FC<{ job: JobDetail }> = ({ job }) => {
     <Card>
       <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto]">
         <CardTitle className="flex min-w-0 items-center gap-2">
-          <span className="text-muted-foreground [&_svg]:size-4">
-            <IconFlame />
-          </span>
+          <DepartmentIcon className="size-4 text-muted-foreground" department="fabrication" />
           <span className="truncate">Fabrication</span>
-          <FabricationHelpLink />
+          <HelpLink label="How to stamp fabrication times" topic="jobFabrication" />
         </CardTitle>
         {canStamp ? (
           <CardAction span="title">
@@ -103,26 +102,6 @@ export const JobFabricationAction: React.FC<{ job: JobDetail }> = ({ job }) => {
         <FabricationSummary job={job} timing={timing} />
       </CardContent>
     </Card>
-  );
-};
-
-const FabricationHelpLink: React.FC = () => {
-  const { docsBaseUrl } = getClientConfig();
-
-  if (!docsBaseUrl) {
-    return null;
-  }
-
-  return (
-    <a
-      aria-label="How to stamp fabrication times"
-      className="text-muted-foreground hover:text-foreground"
-      href={helpUrl(docsBaseUrl, 'jobFabrication')}
-      rel="noreferrer"
-      target="_blank"
-    >
-      <IconExternalLink className="size-4" />
-    </a>
   );
 };
 

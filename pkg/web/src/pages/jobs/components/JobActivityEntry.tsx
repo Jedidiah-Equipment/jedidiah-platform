@@ -1,4 +1,4 @@
-import { formatDate, JOB_ACTIVITY_EVENT_SENTENCES } from '@pkg/domain';
+import { formatDate, getFirstName, JOB_ACTIVITY_EVENT_SENTENCES } from '@pkg/domain';
 import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { IconCheck, IconFileText, IconPencil, IconPlus, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -155,7 +155,7 @@ const JobChangeEntry: React.FC<{ hideDetail: boolean; item: JobChangeActivityIte
   // No actor means either the completion sweep, which audits with a null actor on purpose, or a
   // user since deleted, whose id the FK nulled — the same collision the Audit table resolves by
   // calling both System, so this reads the same way rather than guessing at a person.
-  const actorName = item.actor?.name ?? 'System';
+  const actorName = item.actor ? getFirstName(item.actor.name) : 'System';
 
   return (
     <ActivityRow

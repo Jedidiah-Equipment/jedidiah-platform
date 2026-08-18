@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { toSentenceCase } from './text.js';
+import { getFirstName, toSentenceCase } from './text.js';
+
+describe('getFirstName', () => {
+  it('returns the first name from a display name', () => {
+    expect(getFirstName('  Dean van Niekerk  ')).toBe('Dean');
+    expect(getFirstName('Bonginkosi')).toBe('Bonginkosi');
+  });
+});
 
 describe('toSentenceCase', () => {
   it('capitalizes the first letter and lowercases the rest', () => {

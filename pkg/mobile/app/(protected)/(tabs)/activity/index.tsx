@@ -77,7 +77,12 @@ export default function ActivityRoute() {
       />
       <SectionList
         className="flex-1"
-        contentContainerClassName="px-4 pb-8 pt-1"
+        // NativeWind does not remap contentContainerClassName for SectionList.
+        contentContainerStyle={{
+          paddingBottom: 32,
+          paddingHorizontal: 16,
+          paddingTop: 4,
+        }}
         initialNumToRender={12}
         keyExtractor={activityKey}
         keyboardShouldPersistTaps="handled"

@@ -19,6 +19,14 @@
 - For TanStack Form descendants, use `useTypedAppFormContext` from `src/components/form/use-app-form.ts`.
 - Keep `vite.config.ts` `resolve.dedupe: ['react', 'react-dom']`. `pkg/mobile` pins a different React version than web; without deduping a second React copy leaks into the bundle and breaks hooks ("Invalid hook call" / `useRef` of null). If you still see that error after a branch switch, clear the stale Vite cache (`rm -rf node_modules/.vite`) and restart the dev server.
 
+## Help affordances
+
+- Use `HelpIcon` for every Help affordance. `AppNavHelp` is the persistent, labelled entry point for the
+  current route; use `HelpLink` beside a component heading only when that component has a narrower Help
+  topic than its page. Give an icon-only `HelpLink` a specific accessible label describing what it opens.
+- Help links open the public docs in a new tab and disappear when no docs origin is configured. Keep that
+  behaviour in the shared Help components instead of rebuilding links in features.
+
 ## Entity Forms
 
 - Top-level entities create in a `<CreateEntityDialog>` owned by the list page, then navigate to the edit route.

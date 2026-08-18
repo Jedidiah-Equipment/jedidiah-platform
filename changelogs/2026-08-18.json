@@ -1,0 +1,51 @@
+{
+  "releasedAt": "2026-08-18T11:21:41.734Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Track fabrication time",
+          "description": "Record fabrication start and finish dates, confirm the crew, and correct mistakes from each job. Overdue reminders help ensure completed work is captured."
+        },
+        {
+          "title": "Review product build times",
+          "description": "Compare scheduled and actual fabrication days for each product, with averages across completed builds. Administrators can also review averages by fabricator."
+        },
+        {
+          "title": "Spot new job activity",
+          "description": "The navigation now highlights unread job activity and clears the indicator after you view the main activity feed."
+        },
+        {
+          "title": "Price purchase orders faster",
+          "description": "New lines on draft purchase orders now start with the part’s current average cost, including orders raised from the buy list. Prices remain editable before sending."
+        },
+        {
+          "title": "Estimate plate stock between counts",
+          "description": "Set an average utilization percentage for periodic plate parts to see estimated whole plates and the remaining open plate in stock lists and stocktake reports. These estimates also improve buy-list recommendations."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Track fabrication time",
+          "description": "Start and finish fabrication, confirm the crew, and correct timing details directly from a job."
+        },
+        {
+          "title": "Spot new job activity",
+          "description": "The Activity tab now shows an unread indicator when new job updates arrive and clears it after you view the feed."
+        },
+        {
+          "title": "Scan records more easily",
+          "description": "Jobs, quotes, units, and inventory cards now use clearer Stock labels and more consistent status badges, wording, and spacing."
+        },
+        {
+          "title": "Check estimated plate stock",
+          "description": "Part details now show estimated whole plates and the remaining open plate for periodic stock configured with an average utilization percentage."
+        }
+      ]
+    }
+  ]
+}

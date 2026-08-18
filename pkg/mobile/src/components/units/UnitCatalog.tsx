@@ -6,6 +6,8 @@ import { View } from 'react-native';
 
 import { CatalogListCard } from '@/components/CatalogList';
 import { ListControlRow, ListDropdownControl, ListSearchControl } from '@/components/ListControls';
+import { StockBadge } from '@/components/StockBadge';
+import { Text } from '@/components/ui/text';
 import { UnitBuildStateChip } from '@/components/units/UnitBuildStateChip';
 import {
   UNIT_BUILD_STATE_OPTIONS,
@@ -67,8 +69,7 @@ export function UnitCatalogControls({
 
 export function UnitCatalogCard({ unit }: { unit: ProductUnitSummary }) {
   const router = useRouter();
-  // A null Owner is the domain's representation for a Unit we still hold.
-  const ownerName = unit.owner?.companyName ?? 'Stock';
+  const createdOn = formatDate(unit.createdAt, 'd MMM yyyy');
 
   return (
     <CatalogListCard
@@ -77,7 +78,17 @@ export function UnitCatalogCard({ unit }: { unit: ProductUnitSummary }) {
       avatarName={unit.product.name}
       avatarUri={unit.product.thumbnailDataUrl}
       mainText={unit.productSerialNumber}
-      monoText={`${ownerName} · ${formatDate(unit.createdAt, 'd MMM yyyy')}`}
+      metadata={
+        unit.owner === null ? (
+          <>
+            <StockBadge size="compact" />
+            <Text className="text-[10px] text-muted-foreground" mono numberOfLines={1}>
+              · {createdOn}
+            </Text>
+          </>
+        ) : undefined
+      }
+      monoText={unit.owner ? `${unit.owner.companyName} · ${createdOn}` : undefined}
       onPress={() => router.push({ pathname: '/units/[unitId]', params: { unitId: unit.id } })}
       subText={unit.product.name}
       trailing={<UnitBuildStateChip buildState={unit.buildState} owner={unit.owner} />}

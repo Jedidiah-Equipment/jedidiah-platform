@@ -5,6 +5,7 @@ export * from './demo.js';
 export * from './departments.js';
 export * from './documents/document-policy.js';
 export * from './environment.js';
+export * from './feedback/feedback-display.js';
 export * from './feedback/feedback-visibility.js';
 export * from './files/file-policy.js';
 export * from './fonts.js';

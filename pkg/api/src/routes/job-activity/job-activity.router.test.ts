@@ -1,4 +1,4 @@
-import { auditEvents, customers, type Db, feedback, jobs, products, productUnits, quotes } from '@pkg/db';
+import { auditEvents, customers, type Db, eq, feedback, jobs, products, productUnits, quotes, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { createActorUser } from '@/test/actor-user.js';
@@ -70,6 +70,29 @@ describe('jobActivity.list', () => {
         code: 'FORBIDDEN',
       });
     }
+  });
+});
+
+describe('jobActivity last seen', () => {
+  test('gets and advances the signed-in user high-water mark', async ({ context }) => {
+    const initial = new Date(Date.now() - 60_000);
+    await context.db.update(user).set({ lastActivitySeen: initial }).where(eq(user.id, 'test-user-id'));
+    const caller = context.createCaller(mockSession('job-viewer'));
+
+    await expect(caller.jobActivity.getLastActivitySeen()).resolves.toBe(initial.toISOString());
+
+    const beforeSet = Date.now();
+    const updated = await caller.jobActivity.setLastActivitySeen();
+
+    expect(new Date(updated).getTime()).toBeGreaterThanOrEqual(beforeSet);
+    await expect(caller.jobActivity.getLastActivitySeen()).resolves.toBe(updated);
+  });
+
+  test('denies both endpoints without job read access', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    await expect(caller.jobActivity.getLastActivitySeen()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(caller.jobActivity.setLastActivitySeen()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });
 

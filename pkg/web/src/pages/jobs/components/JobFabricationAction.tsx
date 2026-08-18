@@ -1,4 +1,14 @@
-import { formatDate, getPlantDateNow, isJobCancelled, timingWorkingDays, toPlantDateOnly } from '@pkg/domain';
+import {
+  FABRICATION_TIMING_STATUS,
+  type FabricationTimingState,
+  formatDate,
+  getFabricationTimingPresentation,
+  getFirstName,
+  getPlantDateNow,
+  isJobCancelled,
+  statusBadgeColorClassNames,
+  toPlantDateOnly,
+} from '@pkg/domain';
 import { AuthId, DateIso, type JobDepartmentTiming, type JobDetail } from '@pkg/schema';
 import { IconAlertTriangle, IconPencil } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -10,6 +20,7 @@ import { z } from 'zod';
 import { DepartmentIcon } from '@/components/departments/index.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { HelpLink } from '@/components/help/index.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
@@ -23,10 +34,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
+import { Separator } from '@/components/ui/separator.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
 
 const DoneFormValues = z.object({ crewUserIds: z.array(AuthId).min(1, 'Name at least one fabricator') });
 type DoneFormValues = z.infer<typeof DoneFormValues>;
@@ -71,6 +84,7 @@ type CorrectionFormValues = z.infer<typeof CorrectionFormValues>;
 export const JobFabricationAction: React.FC<{ job: JobDetail }> = ({ job }) => {
   const timing = job.departmentTimings.find((entry) => entry.department === 'fabrication');
   const canUpdate = useCan('job:update').can;
+  const offDays = useOrgOffDays(timing?.completedAt !== null && timing?.completedAt !== undefined);
 
   if (!timing) {
     return null;
@@ -82,62 +96,102 @@ export const JobFabricationAction: React.FC<{ job: JobDetail }> = ({ job }) => {
   // Starting a new observation and correcting a recorded one stay hidden.
   const hasOpenObservation = timing.startedAt !== null && timing.completedAt === null;
   const canStamp = canUpdate && !isJobCancelled(job) && (job.completedOn === null || hasOpenObservation);
+  const presentation = getFabricationTimingPresentation({
+    timing,
+    today: getPlantDateNow(),
+    workingCalendar: { orgOffDays: offDays },
+  });
 
   return (
     <Card>
-      <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto]">
+      <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-1! sm:has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto]!">
         <CardTitle className="flex min-w-0 items-center gap-2">
-          <DepartmentIcon className="size-4 text-muted-foreground" department="fabrication" />
+          <DepartmentIcon className="size-5" department="fabrication" />
           <span className="truncate">Fabrication</span>
           <HelpLink label="How to stamp fabrication times" topic="jobFabrication" />
         </CardTitle>
-        {canStamp ? (
-          <CardAction span="title">
-            <FabricationStampAction job={job} timing={timing} />
-          </CardAction>
-        ) : null}
+        <CardAction
+          className="col-start-1 row-start-2 mt-2 flex flex-wrap items-center gap-2 justify-self-stretch sm:col-start-2 sm:row-start-1 sm:mt-0 sm:justify-self-end"
+          span="title"
+        >
+          <FabricationStatusBadge state={presentation.state} />
+          {canStamp ? <FabricationStampAction job={job} timing={timing} /> : null}
+        </CardAction>
       </CardHeader>
       <CardSeparator />
       <CardContent>
-        <FabricationSummary job={job} timing={timing} />
+        <FabricationSummary job={job} presentation={presentation} timing={timing} />
       </CardContent>
     </Card>
   );
 };
 
-const FabricationSummary: React.FC<{ job: JobDetail; timing: JobDepartmentTiming }> = ({ job, timing }) => {
-  const offDays = useOrgOffDays();
-
-  if (timing.startedAt === null) {
-    return (
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Not started</span>
-        {isFabricationOverdueToStart(job) ? (
+const FabricationSummary: React.FC<{
+  job: JobDetail;
+  presentation: ReturnType<typeof getFabricationTimingPresentation>;
+  timing: JobDepartmentTiming;
+}> = ({ job, presentation, timing }) => {
+  const duration = presentation.durationDays;
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center gap-2 py-1">
+        <h3 className="text-sm leading-normal font-medium">{presentation.headline}</h3>
+        {presentation.state === 'not-started' && isFabricationOverdueToStart(job) ? (
           <Badge variant="outline">
             <IconAlertTriangle data-icon="inline-start" />
             Fabrication not started?
           </Badge>
         ) : null}
       </div>
-    );
-  }
-
-  if (timing.completedAt === null) {
-    return <div className="text-sm">Started {formatDate(timing.startedAt, 'short')}</div>;
-  }
-
-  const workingDays = timingWorkingDays(
-    toPlantDateOnly(new Date(timing.startedAt)),
-    toPlantDateOnly(new Date(timing.completedAt)),
-    { orgOffDays: offDays },
+      <Separator className="-mx-4 w-[calc(100%+2rem)] max-w-none" />
+      <dl className="grid gap-3 sm:grid-cols-3 sm:gap-0">
+        <TimingFact label="Started" value={formatDate(timing.startedAt, 'short', '—')} />
+        <TimingFact
+          className="sm:border-l sm:px-4"
+          label="Finished"
+          value={formatDate(timing.completedAt, 'short', '—')}
+        />
+        <TimingFact
+          className="sm:border-l sm:pl-4"
+          label="Duration"
+          value={duration === null ? '—' : `${duration} ${duration === 1 ? 'day' : 'days'}`}
+        />
+      </dl>
+      {presentation.state === 'complete' && timing.crew.length > 0 ? (
+        <>
+          <Separator className="-mx-4 w-[calc(100%+2rem)] max-w-none" />
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <span className="font-mono text-xs font-medium text-muted-foreground uppercase tracking-wide">Crew</span>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {timing.crew.map((member) => (
+                <div className="flex items-center gap-2" key={member.userId}>
+                  <EntityThumbnail label={member.name} preview={false} shape="circle" size="sm" />
+                  <span className="font-medium">{getFirstName(member.name)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
   );
+};
+
+const TimingFact: React.FC<{ className?: string; label: string; value: string }> = ({ className, label, value }) => (
+  <div className={cn('min-w-0', className)}>
+    <dt className="font-mono text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</dt>
+    <dd className="mt-2 font-medium tabular-nums">{value}</dd>
+  </div>
+);
+
+const FabricationStatusBadge: React.FC<{ state: FabricationTimingState }> = ({ state }) => {
+  const status = FABRICATION_TIMING_STATUS[state];
+  const color = statusBadgeColorClassNames[status.color];
 
   return (
-    <div className="text-sm">
-      {formatDate(timing.startedAt, 'short')} → {formatDate(timing.completedAt, 'short')} ·{' '}
-      {workingDays === 1 ? '1 day' : `${workingDays} days`}
-      {timing.crew.length > 0 ? ` · ${timing.crew.map((member) => member.name).join(', ')}` : null}
-    </div>
+    <Badge className={cn(color.chip, color.text, 'font-mono tracking-wide')} variant="outline">
+      {status.label}
+    </Badge>
   );
 };
 
@@ -271,7 +325,7 @@ const CorrectFabricationButton: React.FC<{ job: JobDetail; timing: JobDepartment
     <>
       <Button onClick={() => setIsOpen(true)} size="sm" type="button" variant="outline">
         <IconPencil data-icon="inline-start" />
-        Edit
+        Edit times
       </Button>
       <CreateEntityDialog
         defaultValues={{
@@ -349,9 +403,9 @@ function useCrewOptions(enabled: boolean, timing: JobDepartmentTiming): { label:
 }
 
 /** The same org Off-Day set the metrics count with, read off the shared Board query. */
-function useOrgOffDays(): ReadonlySet<string> {
+function useOrgOffDays(enabled: boolean): ReadonlySet<string> {
   const trpc = useTRPC();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled }));
 
   return useMemo(() => new Set((baysQuery.data?.offDays ?? []).map((offDay) => offDay.date)), [baysQuery.data]);
 }

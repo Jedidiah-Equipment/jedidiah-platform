@@ -42,6 +42,7 @@ import {
 import { useAccess } from '@/hooks/use-access.js';
 import { cn } from '@/lib/utils.js';
 import {
+  ActivityUnreadNavIndicator,
   BuyListSignalNavIndicator,
   FeedbackOpenNavIndicator,
   QuotesPriorityNavIndicator,
@@ -98,6 +99,7 @@ const navSections = [
         permission: 'job:read',
         link: linkOptions({ to: '/jobs' }),
         icon: IconBriefcase2,
+        indicator: ActivityUnreadNavIndicator,
         children: [
           {
             title: 'Activity',

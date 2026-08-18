@@ -1,8 +1,7 @@
 import { productUnitBuildStateColorClassNames, productUnitBuildStateLabels, toDisplayBuildState } from '@pkg/domain';
 import type { ProductUnitBuildState, ProductUnitOwner } from '@pkg/schema';
-import { View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 export function UnitBuildStateChip({
   buildState,
@@ -14,11 +13,5 @@ export function UnitBuildStateChip({
   const displayState = toDisplayBuildState(buildState, owner);
   const classNames = productUnitBuildStateColorClassNames[displayState];
 
-  return (
-    <View className={`rounded-full border px-2 py-1 ${classNames.chip}`}>
-      <Text className={`text-[10px] tracking-wide ${classNames.text}`} mono weight="semibold">
-        {productUnitBuildStateLabels[displayState]}
-      </Text>
-    </View>
-  );
+  return <StatusBadge classNames={classNames} label={productUnitBuildStateLabels[displayState]} />;
 }

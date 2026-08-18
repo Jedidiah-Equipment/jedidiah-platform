@@ -18,8 +18,9 @@ export const JobActivityFeed: React.FC<{
   filter?: JobActivityFilter;
   hideDetail?: boolean;
   jobId?: UUID;
+  onGlobalFeedViewed?: () => void;
   search?: string;
-}> = ({ filter = 'all', hideDetail = false, jobId, search = '' }) => {
+}> = ({ filter = 'all', hideDetail = false, jobId, onGlobalFeedViewed, search = '' }) => {
   const trpc = useTRPC();
   const activityQuery = useInfiniteQuery(
     trpc.jobActivity.list.infiniteQueryOptions(
@@ -32,7 +33,14 @@ export const JobActivityFeed: React.FC<{
     ),
   );
   const { items } = useCombinedCursorQueryPages(activityQuery.data?.pages);
+  const latestActivityAt = items[0]?.occurredAt;
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activityQuery.isSuccess && latestActivityAt !== undefined && filter === 'all' && !jobId && !search) {
+      onGlobalFeedViewed?.();
+    }
+  }, [activityQuery.isSuccess, filter, jobId, latestActivityAt, onGlobalFeedViewed, search]);
 
   useEffect(() => {
     const loadMore = loadMoreRef.current;

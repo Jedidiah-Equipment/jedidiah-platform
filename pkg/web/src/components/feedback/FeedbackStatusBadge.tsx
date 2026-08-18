@@ -1,3 +1,4 @@
+import { feedbackStatusColorClassNames, feedbackStatusLabels } from '@pkg/domain';
 import type { FeedbackStatus } from '@pkg/schema';
 import type React from 'react';
 
@@ -5,17 +6,14 @@ import { Badge } from '@/components/ui/badge.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
 
-export const feedbackStatusLabels = {
-  closed: 'Closed',
-  open: 'Open',
-  resolved: 'Resolved',
-} as const satisfies Record<FeedbackStatus, string>;
+export { feedbackStatusLabels };
 
-export const feedbackStatusBadgeClassNames = {
-  closed: 'border-gray-400/50 bg-gray-500/10 text-gray-700 dark:text-gray-200',
-  open: 'border-amber-500/50 bg-amber-500/15 text-amber-800 dark:text-amber-200',
-  resolved: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200',
-} as const satisfies Record<FeedbackStatus, string>;
+export const feedbackStatusBadgeClassNames = Object.fromEntries(
+  Object.entries(feedbackStatusColorClassNames).map(([status, classNames]) => [
+    status,
+    `${classNames.chip} ${classNames.text}`,
+  ]),
+) as Record<FeedbackStatus, string>;
 
 const statusOptions = Object.entries(feedbackStatusLabels).map(([value, label]) => ({
   label,

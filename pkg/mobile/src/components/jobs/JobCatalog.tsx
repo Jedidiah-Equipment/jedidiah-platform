@@ -12,7 +12,9 @@ import {
   ListSearchControl,
 } from '@/components/ListControls';
 import { offeringAvatarProps } from '@/components/OfferingAvatar';
+import { StockBadge } from '@/components/StockBadge';
 import { Icon } from '@/components/ui/icon';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { getJobSchedulePresentation, type JobCatalogSort, type JobCompletionFilter } from '@/lib/job-catalog';
 
@@ -79,7 +81,6 @@ export function JobCatalogControls({
 export function JobCatalogCard({ job }: { job: JobSummary }) {
   const router = useRouter();
   const displayName = getJobDisplayName(job);
-  const owner = job.customerCompanyName ?? 'Stock';
   const serial = job.productUnit?.productSerialNumber;
   const avatar = offeringAvatarProps(getJobOfferingKind(job));
 
@@ -92,7 +93,25 @@ export function JobCatalogCard({ job }: { job: JobSummary }) {
       avatarName={displayName}
       avatarUri={job.productThumbnailDataUrl}
       mainText={job.code}
-      monoText={serial ? `${owner} · ${serial}` : owner}
+      metadata={
+        job.customerCompanyName === null ? (
+          <>
+            <StockBadge size="compact" />
+            {serial ? (
+              <Text className="text-[10px] text-muted-foreground" mono numberOfLines={1}>
+                · {serial}
+              </Text>
+            ) : null}
+          </>
+        ) : undefined
+      }
+      monoText={
+        job.customerCompanyName === null
+          ? undefined
+          : serial
+            ? `${job.customerCompanyName} · ${serial}`
+            : job.customerCompanyName
+      }
       onPress={() => router.push({ pathname: '/jobs/[jobId]', params: { jobId: job.id } })}
       subText={displayName}
       trailing={<JobScheduleSummary job={job} />}
@@ -124,10 +143,10 @@ function JobScheduleBadge({ item }: { item: ReturnType<typeof getJobSchedulePres
   const classNames = statusBadgeColorClassNames[item.tone];
 
   return (
-    <View className={`rounded-full border px-2 py-1 ${classNames.chip}`}>
-      <Text className={`text-[10px] tracking-wide ${classNames.text}`} mono numberOfLines={1} weight="semibold">
-        {item.count === null ? item.label : `${item.count} ${item.label}`}
-      </Text>
-    </View>
+    <StatusBadge
+      classNames={classNames}
+      label={item.count === null ? item.label : `${item.count} ${item.label}`}
+      numberOfLines={1}
+    />
   );
 }

@@ -41,6 +41,7 @@ import { PlanCatalogCard } from './bays/PlanCatalog';
 import { JobCatalogCard } from './jobs/JobCatalog';
 import { ProductCatalogCard } from './products/ProductCatalog';
 import { QuoteCatalogCard } from './quotes/QuoteCatalog';
+import { StockBadge } from './StockBadge';
 import { UnitCatalogCard } from './units/UnitCatalog';
 
 type ElementProps = { children?: unknown; [key: string]: unknown };
@@ -120,6 +121,10 @@ describe('catalog card mappings', () => {
     expect(serialized).toContain('IconCheck');
     expect(serialized.match(/5 Aug 2026/g)).toHaveLength(1);
     expect(serialized).not.toContain('COMPLETE');
+    expect(card.props.monoText).toBeUndefined();
+    const stockBadge = ((asElement(card.props.metadata).props.children as TestElement[])[0] ?? null) as TestElement;
+    expect(stockBadge.type).toBe(StockBadge);
+    expect(stockBadge.props.size).toBe('compact');
   });
 
   test('uses the shared Quote-sized status treatment for a not-scheduled badge', () => {
@@ -150,10 +155,11 @@ describe('catalog card mappings', () => {
     const badges = (renderedSummary.props.children as unknown[])[0] as TestElement[];
     const badge = badges[0] as TestElement;
     const renderedBadge = asElement((badge.type as (props: ElementProps) => unknown)(badge.props));
-    const badgeText = asElement(renderedBadge.props.children);
+    const renderedPrimitive = asElement((renderedBadge.type as (props: ElementProps) => unknown)(renderedBadge.props));
+    const badgeText = asElement(renderedPrimitive.props.children);
 
-    expect(renderedBadge.props.className).toContain('px-2 py-1');
-    expect(renderedBadge.props.className).toContain(statusBadgeColorClassNames.orange.chip);
+    expect(renderedPrimitive.props.className).toContain('px-2 py-1');
+    expect(renderedPrimitive.props.className).toContain(statusBadgeColorClassNames.orange.chip);
     expect(badgeText.props.className).toContain('text-[10px] tracking-wide');
     expect(badgeText.props.className).toContain(statusBadgeColorClassNames.orange.text);
     expect(badgeText.props.mono).toBe(true);
@@ -266,9 +272,13 @@ describe('catalog card mappings', () => {
       avatarName: 'Baler',
       avatarUri: 'data:image/png;base64,unit',
       mainText: '260001',
-      monoText: 'Stock · 5 Aug 2026',
+      monoText: undefined,
       subText: 'Baler',
     });
+    const stockBadge = ((asElement(card.props.metadata).props.children as TestElement[])[0] ?? null) as TestElement;
+    expect(stockBadge.type).toBe(StockBadge);
+    expect(stockBadge.props.size).toBe('compact');
+    expect(JSON.stringify(card.props.metadata)).toContain('5 Aug 2026');
     expect(asElement(card.props.trailing).props).toMatchObject({ buildState: 'on-hand', owner: null });
   });
 

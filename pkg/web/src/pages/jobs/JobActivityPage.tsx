@@ -1,6 +1,7 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import type { JobActivityFilter, UUID } from '@pkg/schema';
 import { IconSearch } from '@tabler/icons-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
@@ -8,6 +9,7 @@ import { useState } from 'react';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
+import { useTRPC } from '@/lib/trpc.js';
 import { jobActivityPageDescription } from '@/utils/page-descriptions.js';
 
 import { JobActivityFeed } from './components/JobActivityFeed.js';
@@ -21,9 +23,17 @@ const activityFilterLabels = {
 
 export const JobActivityPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ selectedJobId }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const trpc = useTRPC();
   const [filter, setFilter] = useState<JobActivityFilter>('all');
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search.trim(), 250);
+  const lastSeenOptions = trpc.jobActivity.getLastActivitySeen.queryOptions();
+  const { mutate: markActivitySeen } = useMutation(
+    trpc.jobActivity.setLastActivitySeen.mutationOptions({
+      onSuccess: (lastActivitySeen) => queryClient.setQueryData(lastSeenOptions.queryKey, lastActivitySeen),
+    }),
+  );
 
   return (
     <PageLayout
@@ -46,7 +56,7 @@ export const JobActivityPage: React.FC<{ selectedJobId?: UUID | undefined }> = (
       size="md"
       title="Job Activity"
     >
-      <JobActivityFeed filter={filter} search={debouncedSearch} />
+      <JobActivityFeed filter={filter} onGlobalFeedViewed={markActivitySeen} search={debouncedSearch} />
       {selectedJobId ? (
         <JobSheet
           key={selectedJobId}

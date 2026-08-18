@@ -17,14 +17,14 @@ export function FactCard({ title, children }: { title: string; children: ReactNo
 }
 
 /** A two-column row of fact cells; RN has no CSS grid, so equal-width flex cells stand in. */
-export function FactRow({ children }: { children: ReactNode }) {
-  return <View className="flex-row gap-4">{children}</View>;
+export function FactRow({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <View className={`flex-row gap-4 ${className}`}>{children}</View>;
 }
 
 /** A labelled cell, for values that render as something other than plain text. */
-function FactCell({ label, children }: { label: string; children: ReactNode }) {
+function FactCell({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <View className="min-w-0 flex-1">
+    <View className={`min-w-0 flex-1 ${className}`}>
       <Text className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Text>
       {children}
     </View>
@@ -32,9 +32,19 @@ function FactCell({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** A labelled value cell. */
-export function FactField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+export function FactField({
+  className,
+  label,
+  value,
+  mono = false,
+}: {
+  className?: string;
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
-    <FactCell label={label}>
+    <FactCell className={className} label={label}>
       <Text className="text-sm text-surface-foreground" mono={mono} weight="semibold">
         {value}
       </Text>

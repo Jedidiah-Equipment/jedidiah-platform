@@ -306,27 +306,32 @@ function ActiveHero({
           uri={active.productThumbnailDataUrl}
         />
         <View className="min-w-0 flex-1">
-          <View className="flex-row items-center gap-1.5">
-            <View
-              className={`h-1.5 w-1.5 rounded-full ${active.isCancelled ? STATUS_TONE.cancelled.dot : 'bg-status-in-progress'}`}
-            />
-            <Text
-              className={`text-[10px] tracking-wide ${active.isCancelled ? STATUS_TONE.cancelled.text : 'text-status-in-progress'}`}
-              weight="semibold"
-            >
-              {active.isCancelled ? 'CANCELLED' : 'IN PROGRESS'}
-            </Text>
-          </View>
-          <Text className="mt-1 text-xl text-surface-foreground" mono weight="bold">
+          {active.isCancelled ? (
+            <View className="flex-row items-center gap-1.5">
+              <View className={`h-1.5 w-1.5 rounded-full ${STATUS_TONE.cancelled.dot}`} />
+              <Text className={`text-[10px] tracking-wide ${STATUS_TONE.cancelled.text}`} weight="semibold">
+                Cancelled
+              </Text>
+            </View>
+          ) : null}
+          <Text className={`${active.isCancelled ? 'mt-1 ' : ''}text-xl text-surface-foreground`} mono weight="bold">
             {active.jobCode}
           </Text>
           <Text className="mt-0.5 text-sm text-surface-foreground" numberOfLines={1}>
             {active.jobDisplayName}
           </Text>
-          <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
-            {active.productSerialNumber ? `${active.productSerialNumber} · ` : ''}
-            <CustomerName companyName={active.customerCompanyName} />
-          </Text>
+          <View className="mt-0.5 min-w-0 flex-row items-center gap-1">
+            {active.productSerialNumber ? (
+              <Text className="shrink text-xs text-muted-foreground" numberOfLines={1}>
+                {active.productSerialNumber} ·
+              </Text>
+            ) : null}
+            <CustomerName
+              className="min-w-0 shrink text-xs"
+              companyName={active.customerCompanyName}
+              numberOfLines={1}
+            />
+          </View>
         </View>
       </View>
 

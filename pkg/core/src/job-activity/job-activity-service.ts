@@ -28,6 +28,7 @@ import type {
   JobActivityListResult,
 } from '@pkg/schema';
 import {
+  DateIso,
   getNextCursor,
   JobActivityItem as JobActivityItemSchema,
   JobActivityJobRef as JobActivityJobRefSchema,
@@ -42,6 +43,35 @@ import { unionAll } from 'drizzle-orm/pg-core';
  * by caller — the payload never varies by role.
  */
 const jobGeneralFeedback = and(eq(feedback.kind, 'general'), eq(feedback.subjectType, 'job'));
+
+export async function getLastActivitySeen({ db, userId }: { db: Db; userId: string }) {
+  const [account] = await db.select({ lastActivitySeen: user.lastActivitySeen }).from(user).where(eq(user.id, userId));
+
+  if (!account) throw new Error(`User ${userId} does not exist`);
+
+  return DateIso.parse(account.lastActivitySeen);
+}
+
+/** Advances the signed-in user's Activity high-water mark using server time, never a client clock. */
+export async function setLastActivitySeen({
+  db,
+  userId,
+  seenAt = new Date(),
+}: {
+  db: Db;
+  userId: string;
+  seenAt?: Date;
+}) {
+  const [account] = await db
+    .update(user)
+    .set({ lastActivitySeen: sql`greatest(${user.lastActivitySeen}, ${seenAt.toISOString()}::timestamptz)` })
+    .where(eq(user.id, userId))
+    .returning({ lastActivitySeen: user.lastActivitySeen });
+
+  if (!account) throw new Error(`User ${userId} does not exist`);
+
+  return DateIso.parse(account.lastActivitySeen);
+}
 
 /**
  * The done half: the audit rows this feed curates into change events (ADR 0015). Written nowhere but

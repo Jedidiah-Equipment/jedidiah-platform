@@ -21,6 +21,9 @@ export const user = pgTable(
      */
     isDevice: boolean('is_device').default(false).notNull(),
     assistantEnabled: boolean('assistant_enabled').default(false).notNull(),
+    // Server-owned high-water mark for the cross-Job Activity feed. The default prevents a rollout
+    // or newly created account from treating the complete historical feed as unread.
+    lastActivitySeen: timestamp('last_activity_seen', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     banned: boolean('banned').default(false),
     banReason: text('ban_reason'),
     banExpires: timestamp('ban_expires', { mode: 'date' }),

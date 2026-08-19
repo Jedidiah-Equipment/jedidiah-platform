@@ -39,7 +39,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     text: 'Inventory tasks',
     items: [
       { text: 'Work the stores tablet', link: '/inventory/work-the-stores-tablet' },
-      { text: 'Post a Receipt', link: '/inventory/post-a-receipt' },
+      { text: 'Receive a delivery', link: '/inventory/post-a-receipt' },
       { text: 'Maintain Suppliers', link: '/inventory/maintain-suppliers' },
       { text: 'Add a Supplier', link: '/inventory/add-a-supplier' },
       { text: 'Update a Supplier', link: '/inventory/update-a-supplier' },

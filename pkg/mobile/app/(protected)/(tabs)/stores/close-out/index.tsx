@@ -21,6 +21,7 @@ export default function StoresCloseOutQueueRoute() {
 
   return (
     <StoresScreen
+      helpTopic="inventoryCloseOut"
       onBack={() => router.dismissTo('/stores')}
       parentLabel="Stores"
       subtitle="JOBS WAITING TO BE CLOSED OUT"

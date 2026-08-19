@@ -4,7 +4,7 @@ How to do the work JedidiahOps records — the occasional flows worth reading ra
 
 Inventory is documented first. Start with the task you are in the middle of:
 
-- [Post a Receipt](./inventory/post-a-receipt.md) — stock arriving against a Purchase Order line
+- [Receive a delivery](./inventory/post-a-receipt.md) — checking arriving stock in against a Purchase Order line
 - [Check out Parts to a Job](./inventory/check-out-parts-to-a-job.md) — material leaving the rack
 - [Return to Store](./inventory/return-to-store.md) — putting it back
 - [Build stock](./inventory/build-stock.md) — turning components into a Built Part

@@ -38,6 +38,7 @@ export default function StoresStocktakeRoute() {
 
   return (
     <StoresScreen
+      helpTopic="inventoryStocktake"
       onBack={() => router.dismissTo('/stores')}
       parentLabel="Stores"
       subtitle="COUNT THE SHELF"

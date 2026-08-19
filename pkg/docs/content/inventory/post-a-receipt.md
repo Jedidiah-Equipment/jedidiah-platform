@@ -1,7 +1,8 @@
-# Post a Receipt
+# Receive a delivery
 
-A Receipt is how stock arrives. It attaches to one line of one Purchase Order, and posting it *is*
-the moment the stock exists — there is no separate paper step afterwards.
+Receiving is checking a delivery in against its Purchase Order, and what it posts is a **Receipt**.
+A Receipt attaches to one line of one Purchase Order, and posting it *is* the moment the stock
+exists — there is no separate paper step afterwards.
 
 ## Steps
 
@@ -30,6 +31,9 @@ usually right; suppliers round up to a full box. See
 
 ## Notes
 
+- On the stores tablet, receiving starts from the stock rather than the order: scan the Part label,
+  tap **Receive against an order**, and tap the Purchase Order the delivery belongs to. See
+  [Work the stores tablet](./work-the-stores-tablet.md).
 - Receive against the line the stock actually arrived for. A Receipt is a fact about one line, and
   posting it against a convenient one instead makes both lines wrong.
 - Split deliveries are normal: receive what came, and the line stays open with the rest outstanding.

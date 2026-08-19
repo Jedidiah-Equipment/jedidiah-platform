@@ -96,8 +96,8 @@ export const purchaseOrderAuditDescriptor = defineAuditDescriptor<PurchaseOrderR
   }),
 });
 
-/** A draft is audited as one aggregate: header fields alongside the lines and Job links it carries. */
-const purchaseOrderDraftAuditDescriptor = defineAuditDescriptor<PurchaseOrder>({
+/** Audits the order aggregate: header fields alongside the lines and Job links it carries. */
+export const purchaseOrderAggregateAuditDescriptor = defineAuditDescriptor<PurchaseOrder>({
   entityId: (purchaseOrder) => purchaseOrder.id,
   entityType: 'purchase_order',
   label: (purchaseOrder) => purchaseOrder.code,
@@ -654,9 +654,9 @@ export async function savePurchaseOrderDraftWithin({
   }
 
   const after = await getPurchaseOrder({ db, id: input.id });
-  const changes = diffAuditUpdate(purchaseOrderDraftAuditDescriptor, before, after);
+  const changes = diffAuditUpdate(purchaseOrderAggregateAuditDescriptor, before, after);
   if (changes) {
-    await recordAuditUpdate({ actorUserId, after, changes, db, descriptor: purchaseOrderDraftAuditDescriptor });
+    await recordAuditUpdate({ actorUserId, after, changes, db, descriptor: purchaseOrderAggregateAuditDescriptor });
   }
 
   return after;

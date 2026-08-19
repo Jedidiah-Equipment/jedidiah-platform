@@ -46,11 +46,11 @@ export function JobDetailSections({
         </FactCard>
       ) : null}
 
-      <JobFeedbackList jobCode={jobCode} jobId={jobId} />
-
       <JobDocuments jobId={jobId} />
 
       <JobAssemblies jobId={jobId} />
+
+      <JobFeedbackList jobCode={jobCode} jobId={jobId} />
     </>
   );
 }

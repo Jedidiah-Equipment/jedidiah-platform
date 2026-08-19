@@ -48,7 +48,7 @@ export const TopInventoryAdjustmentsWidget: React.FC = () => {
   return (
     <InventoryKpiQuery>
       {(data) => (
-        <KpiListLink emptyLabel="No adjustments this month">
+        <KpiListLink emptyLabel="No adjustments this month" hasItems={data.adjustments.length > 0}>
           {data.adjustments.map((adjustment) => (
             <KpiListRow
               key={adjustment.reason}
@@ -66,7 +66,7 @@ export const TopScrapItemsWidget: React.FC = () => {
   return (
     <InventoryKpiQuery>
       {(data) => (
-        <KpiListLink emptyLabel="No scrap adjustments this month">
+        <KpiListLink emptyLabel="No scrap adjustments this month" hasItems={data.scrapItems.length > 0}>
           {data.scrapItems.map((item) => (
             <KpiListRow key={item.partId} label={`${item.partName} · ${item.partCode}`} value={item.value} />
           ))}
@@ -89,9 +89,15 @@ function InventoryKpiQuery({ children }: { children: (data: InventoryKpis) => Re
   return children(query.data);
 }
 
-function KpiListLink({ children, emptyLabel }: { children: React.ReactNode; emptyLabel: string }) {
-  const hasItems = Array.isArray(children) && children.length > 0;
-
+function KpiListLink({
+  children,
+  emptyLabel,
+  hasItems,
+}: {
+  children: React.ReactNode;
+  emptyLabel: string;
+  hasItems: boolean;
+}) {
   return (
     <Link className="flex flex-1 flex-col gap-3 hover:underline" to="/inventory">
       {hasItems ? (

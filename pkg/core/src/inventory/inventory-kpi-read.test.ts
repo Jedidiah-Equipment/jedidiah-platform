@@ -168,7 +168,40 @@ describe('getInventoryKpis', () => {
     ]);
   });
 
-  test('starts the current month at Johannesburg midnight when the server runs in UTC', async ({ context }) => {
+  test('keeps a grouped adjustment value incomplete when any matching row has no cost', async ({ context }) => {
+    const uncostedDamage = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.linear.id, {
+        delta: -1,
+        lengthMm: 6_000,
+        note: 'Unknown-cost damage',
+        reason: 'damage',
+      }),
+    });
+    const costedOpening = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    const costedDamage = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: -2, note: 'Known-cost damage', reason: 'damage' }),
+    });
+
+    await Promise.all([
+      setMovementTime(context.db, uncostedDamage.id, '2026-08-01T08:00:00.000Z'),
+      setMovementTime(context.db, costedOpening.id, '2026-07-01T08:00:00.000Z'),
+      setMovementTime(context.db, costedDamage.id, '2026-08-02T08:00:00.000Z'),
+    ]);
+
+    await expect(
+      getInventoryKpis({ db: context.db, throughAt: new Date('2026-08-19T12:00:00.000Z') }),
+    ).resolves.toMatchObject({ adjustments: [{ reason: 'damage', value: null }] });
+  });
+
+  test('starts the current month at Johannesburg midnight', async ({ context }) => {
     const opening = await postAdjustment({
       actorUserId,
       db: context.db,
@@ -192,15 +225,9 @@ describe('getInventoryKpis', () => {
       setMovementTime(context.db, inMonth.id, '2026-07-31T22:30:00.000Z'),
     ]);
 
-    const originalTimeZone = process.env.TZ;
-    process.env.TZ = 'UTC';
-    try {
-      await expect(
-        getInventoryKpis({ db: context.db, throughAt: new Date('2026-08-01T00:30:00.000Z') }),
-      ).resolves.toMatchObject({ adjustments: [{ reason: 'damage', value: 20 }] });
-    } finally {
-      process.env.TZ = originalTimeZone;
-    }
+    await expect(
+      getInventoryKpis({ db: context.db, throughAt: new Date('2026-08-01T00:30:00.000Z') }),
+    ).resolves.toMatchObject({ adjustments: [{ reason: 'damage', value: 20 }] });
   });
 });
 

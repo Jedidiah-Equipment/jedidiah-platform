@@ -83,9 +83,9 @@ async function getInventoryKpisSnapshot(db: DatabaseTransaction, throughAt: Date
   for (const adjustment of adjustmentRows) {
     const reason = StockAdjustmentReason.parse(adjustment.reason);
     const value = priceMagnitudeAtCurrentAverage(adjustment, averages.get(adjustment.partId) ?? null);
-    adjustmentValues.set(reason, addNullable(adjustmentValues.get(reason) ?? 0, value));
+    addToNullableMap(adjustmentValues, reason, value);
     if (reason === 'scrap') {
-      scrapValues.set(adjustment.partId, addNullable(scrapValues.get(adjustment.partId) ?? 0, value));
+      addToNullableMap(scrapValues, adjustment.partId, value);
     }
   }
   const adjustments = [...adjustmentValues]
@@ -130,6 +130,11 @@ function priceMagnitudeAtCurrentAverage(
 
 function addNullable(left: number | null, right: number | null): number | null {
   return left === null || right === null ? null : left + right;
+}
+
+function addToNullableMap<Key>(values: Map<Key, number | null>, key: Key, value: number | null): void {
+  const current = values.get(key);
+  values.set(key, addNullable(current === undefined ? 0 : current, value));
 }
 
 function compareValueDescending<T extends { value: number | null }>(left: T, right: T): number {

@@ -44,7 +44,7 @@ tablet asks the same questions the web app does, so the steps live with each wor
 
 - [Check out Parts to a Job](./check-out-parts-to-a-job.md)
 - [Return to Store](./return-to-store.md)
-- [Post a Receipt](./post-a-receipt.md) — tap the Purchase Order the delivery belongs to; the
+- [Receive a delivery](./post-a-receipt.md) — tap the Purchase Order the delivery belongs to; the
   quantity still due is filled in for you, so correct it when the delivery is short. An order whose
   lines are already full is still listed, marked **Fully received** and filling in nothing: a late
   extra delivery is still a delivery, and it warns rather than refusing you.

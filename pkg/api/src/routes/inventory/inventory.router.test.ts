@@ -76,6 +76,19 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('inventory procedure permissions', () => {
+  test('reserves the management KPI aggregate for inventory cost readers', async ({ context }) => {
+    await expect(context.createAnonCaller().inventory.inventoryKpis()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+    await expect(context.createCaller(mockSession('sales')).inventory.inventoryKpis()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(context.createCaller(mockSession('stores')).inventory.inventoryKpis()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(
+      context.createCaller(mockSession('procurement-manager')).inventory.inventoryKpis(),
+    ).resolves.toMatchObject({ inventoryValue: 0 });
+  });
+
   test('enforces read, adjust, and revalue permissions at their procedure boundaries', async ({ context }) => {
     await expect(context.createAnonCaller().inventory.stockOnHand()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
     await expect(context.createCaller(mockSession('sales')).inventory.stockOnHand()).rejects.toMatchObject({

@@ -9,6 +9,12 @@ vi.mock('./widgets/ActiveJobsWidget.js', () => ({ ActiveJobsWidget: () => null }
 vi.mock('./widgets/AwaitingJobCreationWidget.js', () => ({ AwaitingJobCreationWidget: () => null }));
 vi.mock('./widgets/BayLoadTodayWidget.js', () => ({ BayLoadTodayWidget: () => null }));
 vi.mock('./widgets/BayRunwayWidget.js', () => ({ BayRunwayWidget: () => null }));
+vi.mock('./widgets/InventoryKpiWidgets.js', () => ({
+  InventoryTurnsWidget: () => null,
+  InventoryValueWidget: () => null,
+  TopInventoryAdjustmentsWidget: () => null,
+  TopScrapItemsWidget: () => null,
+}));
 vi.mock('./widgets/ShopFloorTodayWidget.js', () => ({ ShopFloorTodayWidget: () => null }));
 vi.mock('./widgets/QuotesByStatusWidget.js', () => ({ QuotesByStatusWidget: () => null }));
 vi.mock('./widgets/OpenPipelineWidget.js', () => ({ OpenPipelineWidget: () => null }));
@@ -132,6 +138,39 @@ describe('dashboardWidgets', () => {
     ]) {
       expect(widgetIds(dashboardWidgets)).not.toContain(widgetId);
     }
+  });
+
+  it('registers the management inventory KPI tiles behind inventory cost access', () => {
+    expect(
+      dashboardWidgets
+        .filter((widget) =>
+          ['inventory-value', 'inventory-turns', 'top-inventory-adjustments', 'top-scrap-items'].includes(widget.id),
+        )
+        .map(({ id, requires, size, title }) => ({ id, requires, size, title })),
+    ).toEqual([
+      { id: 'inventory-value', requires: 'inventory_cost:read', size: 'xs', title: 'Inventory value' },
+      { id: 'inventory-turns', requires: 'inventory_cost:read', size: 'xs', title: 'Inventory turns' },
+      {
+        id: 'top-inventory-adjustments',
+        requires: 'inventory_cost:read',
+        size: 'sm',
+        title: 'Top adjustments this month',
+      },
+      { id: 'top-scrap-items', requires: 'inventory_cost:read', size: 'sm', title: 'Top scrap this month' },
+    ]);
+
+    const managementIds = widgetIds(
+      filterDashboardWidgets(
+        createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' }),
+        dashboardWidgets,
+      ),
+    );
+    const storesIds = widgetIds(
+      filterDashboardWidgets(createUserAccessSummary({ role: 'stores', userId: 'user-1' }), dashboardWidgets),
+    );
+
+    expect(managementIds).toEqual(expect.arrayContaining(['inventory-value', 'inventory-turns']));
+    expect(storesIds).not.toEqual(expect.arrayContaining(['inventory-value', 'inventory-turns']));
   });
 
   it('registers Recent activity behind audit read access', () => {

@@ -219,15 +219,7 @@ describe('Purchase Order line parts', () => {
 describe('Purchase Order send and cancel', () => {
   test('renders an inline preview for a saved draft without mutating its lifecycle', async ({ context }) => {
     const modifierId = 'po-preview-modifier';
-    await context.db.insert(user).values({
-      createdAt: new Date(),
-      email: 'po-preview-modifier@example.com',
-      emailVerified: true,
-      id: modifierId,
-      name: 'Preview Modifier',
-      role: 'admin',
-      updatedAt: new Date(),
-    });
+    await seedTestUser(context.db, { id: modifierId, name: 'Preview Modifier' });
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -258,15 +250,7 @@ describe('Purchase Order send and cancel', () => {
 
   test('passes a deleted last modifier to the PDF as System', async ({ context }) => {
     const deletedActorId = 'po-deleted-modifier';
-    await context.db.insert(user).values({
-      createdAt: new Date(),
-      email: 'po-deleted-modifier@example.com',
-      emailVerified: true,
-      id: deletedActorId,
-      name: 'Deleted Modifier',
-      role: 'admin',
-      updatedAt: new Date(),
-    });
+    await seedTestUser(context.db, { id: deletedActorId, name: 'Deleted Modifier' });
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -292,15 +276,7 @@ describe('Purchase Order send and cancel', () => {
 
   test('stores one as-sent PDF and projects it onto every linked Job', async ({ context }) => {
     const draftEditorId = 'po-draft-editor';
-    await context.db.insert(user).values({
-      createdAt: new Date(),
-      email: 'po-draft-editor@example.com',
-      emailVerified: true,
-      id: draftEditorId,
-      name: 'Draft Editor',
-      role: 'admin',
-      updatedAt: new Date(),
-    });
+    await seedTestUser(context.db, { id: draftEditorId, name: 'Draft Editor' });
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -331,7 +307,7 @@ describe('Purchase Order send and cancel', () => {
         code: 'PO-00001',
         expectedDeliveryDate: '2026-08-20',
         jobCodes: expect.arrayContaining([expect.stringMatching(/^JOB-/), expect.stringMatching(/^JOB-/)]),
-        lastModified: { actorName: 'PO Test User', occurredAt: expect.any(String) },
+        lastModified: { actorName: 'Draft Editor', occurredAt: expect.any(String) },
         lines: [expect.objectContaining({ partCode: 'P-100', quantity: 4, unitPrice: 125.5 })],
         supplier: expect.objectContaining({ companyName: 'Acme Supplies' }),
       }),
@@ -631,6 +607,18 @@ async function seedCatalog(db: Db): Promise<void> {
     // Supplier XOR BOM: a built Part is made in-house, so it names no Supplier at all.
     partRow({ code: 'P-400', id: BUILT_PART_ID, isInternallyFabricated: true, supplierId: null }),
   ]);
+}
+
+async function seedTestUser(db: Db, input: { id: string; name: string }): Promise<void> {
+  await db.insert(user).values({
+    createdAt: new Date(),
+    email: `${input.id}@example.com`,
+    emailVerified: true,
+    id: input.id,
+    name: input.name,
+    role: 'admin',
+    updatedAt: new Date(),
+  });
 }
 
 function partRow(overrides: Partial<typeof parts.$inferInsert>): typeof parts.$inferInsert {

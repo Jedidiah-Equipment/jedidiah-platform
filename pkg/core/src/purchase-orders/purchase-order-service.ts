@@ -706,6 +706,18 @@ export async function markPurchaseOrderSent({
       assertLinesArePriced(purchaseOrder);
 
       const sentAt = new Date();
+      // Render before the lifecycle-only send event so the footer names the last person who edited
+      // the Supplier-facing order; when nobody edited it, the creation event remains the fallback.
+      uploadedDocumentStorageKey = await storePurchaseOrderPdfRevision({
+        actorUserId,
+        db: tx,
+        issuedAt: sentAt,
+        pdfRenderer,
+        purchaseOrder,
+        revision: 1,
+        storage,
+      });
+
       const [after] = await tx
         .update(purchaseOrders)
         .set({ sentAt, status: 'sent', updatedAt: sentAt })
@@ -716,18 +728,6 @@ export async function markPurchaseOrderSent({
       if (changes) {
         await recordAuditUpdate({ actorUserId, after, changes, db: tx, descriptor: purchaseOrderAuditDescriptor });
       }
-
-      // The sent update must be audited before rendering so the immutable revision names the actor
-      // who actually made it the current order, not the draft editor from the preceding event.
-      uploadedDocumentStorageKey = await storePurchaseOrderPdfRevision({
-        actorUserId,
-        db: tx,
-        issuedAt: sentAt,
-        pdfRenderer,
-        purchaseOrder: await getPurchaseOrder({ db: tx, id }),
-        revision: 1,
-        storage,
-      });
       return getPurchaseOrder({ db: tx, id });
     });
   } catch (error) {

@@ -13,7 +13,7 @@ describe('Purchase Order PDF', () => {
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
   });
 
-  test('prints the PO number, linked Jobs, supplier, expected date, and line details', () => {
+  test('prints the order details without exposing prices', () => {
     const text = collectText(PurchaseOrderPdf({ document: model() }));
 
     expect(text).toEqual(
@@ -25,10 +25,10 @@ describe('Purchase Order PDF', () => {
         '20 August 2026',
         'P-100 - Hydraulic pipe',
         '2 x 6000 mm',
-        'R 900.00',
-        'R 1 800.00',
+        'Please quote PO-00042 on correspondence and invoices.',
       ]),
     );
+    expect(text.join(' ')).not.toMatch(/Unit price|Subtotal|Total|R 900\.00|R 1 800\.00|South African rand/);
   });
 
   test('prints the revision number so the Supplier knows which page supersedes which', () => {
@@ -38,6 +38,20 @@ describe('Purchase Order PDF', () => {
     // Revision 1 is the order as sent, so it says nothing about superseding anything.
     expect(collectText(PurchaseOrderPdf({ document: model() }))).toEqual(expect.arrayContaining(['PO-00042']));
   });
+
+  test('prints who last modified the order and when', () => {
+    const text = collectText(PurchaseOrderPdf({ document: model() }));
+
+    expect(text).toContain('Last modified by Priya Buyer on 5 August 2026');
+  });
+
+  test('names a missing audit actor System', () => {
+    const text = collectText(
+      PurchaseOrderPdf({ document: model({ lastModified: { actorName: null, occurredAt: model().issueDate } }) }),
+    );
+
+    expect(text).toContain('Last modified by System on 2 August 2026');
+  });
 });
 
 function model(overrides: Partial<PurchaseOrderPdfModel> = {}): PurchaseOrderPdfModel {
@@ -46,6 +60,10 @@ function model(overrides: Partial<PurchaseOrderPdfModel> = {}): PurchaseOrderPdf
     expectedDeliveryDate: DateOnlyIso.parse('2026-08-20'),
     issueDate: DateIso.parse('2026-08-02T12:00:00.000Z'),
     jobCodes: ['JOB-00007', 'JOB-00012'].map((code) => modelJobCode(code)),
+    lastModified: {
+      actorName: 'Priya Buyer',
+      occurredAt: DateIso.parse('2026-08-05T12:00:00.000Z'),
+    },
     lines: [
       {
         partCode: 'P-100',

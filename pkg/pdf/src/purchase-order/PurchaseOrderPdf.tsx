@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate } from '@pkg/domain';
+import { formatDate } from '@pkg/domain';
 import { PART_UNIT_OF_MEASURE_LABELS, type PurchaseOrderPdfModel } from '@pkg/schema';
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
@@ -48,25 +48,10 @@ const styles = StyleSheet.create({
   },
   description: { flex: 1 },
   quantity: { textAlign: 'right', width: 92 },
-  money: { textAlign: 'right', width: 82 },
-  total: {
-    alignSelf: 'flex-end',
-    backgroundColor: pdfColors.yellowLight,
-    flexDirection: 'row',
-    fontWeight: 700,
-    marginTop: 12,
-    padding: 10,
-    width: 180,
-  },
-  totalLabel: { flex: 1 },
-  totalValue: { textAlign: 'right' },
-  footer: { bottom: 22, color: pdfColors.muted, fontSize: 7, left: 36, position: 'absolute', right: 36 },
+  footer: { bottom: 22, color: pdfColors.muted, fontSize: 7, gap: 2, left: 36, position: 'absolute', right: 36 },
 });
 
 export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel }) {
-  // The as-sent record always prints real prices: it is rendered from the core read, never the gated view.
-  const total = document.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-
   return (
     <Document title={document.code}>
       <Page size="A4" style={styles.page}>
@@ -108,8 +93,6 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
         <View style={styles.tableHeader} fixed>
           <Text style={styles.description}>Part</Text>
           <Text style={styles.quantity}>Quantity</Text>
-          <Text style={styles.money}>Unit price</Text>
-          <Text style={styles.money}>Subtotal</Text>
         </View>
         {document.lines.map((line) => (
           <View key={line.partId} style={styles.tableRow} wrap={false}>
@@ -118,18 +101,16 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
               {line.supplierCode ? <Text style={styles.line}>Supplier code: {line.supplierCode}</Text> : null}
             </View>
             <Text style={styles.quantity}>{formatLineQuantity(line)}</Text>
-            <Text style={styles.money}>{formatCurrency(line.unitPrice, 'ZAR')}</Text>
-            <Text style={styles.money}>{formatCurrency(line.quantity * line.unitPrice, 'ZAR')}</Text>
           </View>
         ))}
 
-        <View style={styles.total}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>{formatCurrency(total, 'ZAR')}</Text>
+        <View style={styles.footer} fixed>
+          <Text>{`Last modified by ${document.lastModified.actorName ?? 'System'} on ${formatDate(
+            document.lastModified.occurredAt,
+            'd MMMM yyyy',
+          )}`}</Text>
+          <Text>{`Please quote ${document.code} on correspondence and invoices.`}</Text>
         </View>
-        <Text style={styles.footer} fixed>
-          Prices are in South African rand (ZAR). Please quote {document.code} on correspondence and invoices.
-        </Text>
       </Page>
     </Document>
   );

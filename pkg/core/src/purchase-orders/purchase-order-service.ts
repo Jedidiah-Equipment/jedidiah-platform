@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  auditEvents,
   createEscapedContainsSearchCondition,
   type DatabaseTransaction,
   type Db,
@@ -516,7 +517,8 @@ export async function storePurchaseOrderPdfRevision({
   storage: StorageAdapter;
 }): Promise<string> {
   const filename = revision === 1 ? `${purchaseOrder.code}.pdf` : `${purchaseOrder.code} rev ${revision}.pdf`;
-  const bytes = await pdfRenderer({ document: toPdfModel(purchaseOrder, issuedAt, revision), filename });
+  const lastModified = await loadPurchaseOrderLastModified({ db, id: purchaseOrder.id });
+  const bytes = await pdfRenderer({ document: toPdfModel(purchaseOrder, issuedAt, lastModified, revision), filename });
   const storageKey = purchaseOrderDocumentStorageKey(purchaseOrder.id, filename);
 
   await createDocumentRecord({
@@ -672,7 +674,11 @@ export async function renderPurchaseOrderPreview({
   const purchaseOrder = await getPurchaseOrder({ db, id });
   if (purchaseOrder.lines.length === 0) throw new PurchaseOrderEmptyError(id);
   const filename = `${purchaseOrder.code}.pdf`;
-  return { bytes: await pdfRenderer({ document: toPdfModel(purchaseOrder, new Date()), filename }), filename };
+  const lastModified = await loadPurchaseOrderLastModified({ db, id });
+  return {
+    bytes: await pdfRenderer({ document: toPdfModel(purchaseOrder, new Date(), lastModified), filename }),
+    filename,
+  };
 }
 
 export async function markPurchaseOrderSent({
@@ -700,17 +706,6 @@ export async function markPurchaseOrderSent({
       assertLinesArePriced(purchaseOrder);
 
       const sentAt = new Date();
-      // createDocumentRecord compensates its own savepoint failures; from here the outer transaction owns cleanup.
-      uploadedDocumentStorageKey = await storePurchaseOrderPdfRevision({
-        actorUserId,
-        db: tx,
-        issuedAt: sentAt,
-        pdfRenderer,
-        purchaseOrder,
-        revision: 1,
-        storage,
-      });
-
       const [after] = await tx
         .update(purchaseOrders)
         .set({ sentAt, status: 'sent', updatedAt: sentAt })
@@ -721,6 +716,18 @@ export async function markPurchaseOrderSent({
       if (changes) {
         await recordAuditUpdate({ actorUserId, after, changes, db: tx, descriptor: purchaseOrderAuditDescriptor });
       }
+
+      // The sent update must be audited before rendering so the immutable revision names the actor
+      // who actually made it the current order, not the draft editor from the preceding event.
+      uploadedDocumentStorageKey = await storePurchaseOrderPdfRevision({
+        actorUserId,
+        db: tx,
+        issuedAt: sentAt,
+        pdfRenderer,
+        purchaseOrder: await getPurchaseOrder({ db: tx, id }),
+        revision: 1,
+        storage,
+      });
       return getPurchaseOrder({ db: tx, id });
     });
   } catch (error) {
@@ -1002,12 +1009,37 @@ async function assertJobsExist({ db, jobIds }: { db: DatabaseTransaction; jobIds
   }
 }
 
-function toPdfModel(purchaseOrder: PurchaseOrder, issueDate: Date, revision = 1): PurchaseOrderPdfModel {
+async function loadPurchaseOrderLastModified({
+  db,
+  id,
+}: {
+  db: PurchaseOrderDb;
+  id: UUID;
+}): Promise<PurchaseOrderPdfModel['lastModified']> {
+  const [event] = await db
+    .select({ actorName: user.name, occurredAt: auditEvents.occurredAt })
+    .from(auditEvents)
+    .leftJoin(user, eq(auditEvents.actorUserId, user.id))
+    .where(and(eq(auditEvents.entityType, 'purchase_order'), eq(auditEvents.entityId, id)))
+    .orderBy(desc(auditEvents.occurredAt), desc(auditEvents.id))
+    .limit(1);
+  if (!event) throw new Error(`Purchase Order ${id} has no audit history`);
+
+  return { actorName: event.actorName, occurredAt: DateIso.parse(event.occurredAt) };
+}
+
+function toPdfModel(
+  purchaseOrder: PurchaseOrder,
+  issueDate: Date,
+  lastModified: PurchaseOrderPdfModel['lastModified'],
+  revision = 1,
+): PurchaseOrderPdfModel {
   return {
     code: purchaseOrder.code,
     expectedDeliveryDate: purchaseOrder.expectedDeliveryDate,
     issueDate: DateIso.parse(issueDate),
     jobCodes: purchaseOrder.jobs.map((job) => job.code),
+    lastModified,
     lines: purchaseOrder.lines,
     revision,
     supplier: purchaseOrder.supplier,

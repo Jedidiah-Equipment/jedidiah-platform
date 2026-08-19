@@ -46,6 +46,7 @@ export default function StoresJobCloseOutRoute() {
   if (jobStock.isPending) {
     return (
       <StoresScreen
+        helpTopic="inventoryCloseOut"
         onBack={() => router.dismissTo('/stores/close-out')}
         parentLabel="Close-out queue"
         subtitle="LOADING JOB STOCK"
@@ -61,6 +62,7 @@ export default function StoresJobCloseOutRoute() {
   if (jobStock.isError) {
     return (
       <StoresScreen
+        helpTopic="inventoryCloseOut"
         onBack={() => router.dismissTo('/stores/close-out')}
         parentLabel="Close-out queue"
         subtitle="JOB STOCK UNAVAILABLE"
@@ -80,6 +82,7 @@ export default function StoresJobCloseOutRoute() {
 
   return (
     <StoresScreen
+      helpTopic="inventoryCloseOut"
       onBack={() => router.dismissTo('/stores/close-out')}
       parentLabel="Close-out queue"
       subtitle={job.code}

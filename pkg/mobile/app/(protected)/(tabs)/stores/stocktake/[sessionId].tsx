@@ -92,6 +92,7 @@ export default function StoresStocktakeSessionRoute() {
   if (detail.isPending) {
     return (
       <StoresScreen
+        helpTopic="inventoryStocktake"
         onBack={() => router.dismissTo('/stores/stocktake')}
         parentLabel="Stocktake"
         subtitle="LOADING THE SESSION"
@@ -107,6 +108,7 @@ export default function StoresStocktakeSessionRoute() {
   if (detail.isError) {
     return (
       <StoresScreen
+        helpTopic="inventoryStocktake"
         onBack={() => router.dismissTo('/stores/stocktake')}
         parentLabel="Stocktake"
         subtitle="SESSION UNAVAILABLE"
@@ -125,6 +127,7 @@ export default function StoresStocktakeSessionRoute() {
     // screen's own controls — Close this session, below the list — permanently out of reach: every
     // scroll toward them appends rows and pushes them further down.
     <StoresScreen
+      helpTopic="inventoryStocktake"
       onBack={() => router.dismissTo('/stores/stocktake')}
       parentLabel="Stocktake"
       subtitle={`${session.countedPartCount} COUNTED · ${uncountedTotal} TO GO`}

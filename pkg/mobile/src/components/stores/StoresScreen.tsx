@@ -1,3 +1,4 @@
+import type { HelpTopic } from '@pkg/domain';
 import type React from 'react';
 import { useState } from 'react';
 import { ScrollView } from 'react-native';
@@ -19,6 +20,7 @@ import { QuickSwitchModal } from './QuickSwitchModal';
  */
 export function StoresScreen({
   children,
+  helpTopic = 'storesTablet',
   onNearScrollEnd,
   onBack,
   parentLabel,
@@ -26,6 +28,7 @@ export function StoresScreen({
   title,
 }: {
   children: React.ReactNode;
+  helpTopic?: HelpTopic;
   onNearScrollEnd?: () => void;
   onBack: () => void;
   parentLabel: string;
@@ -39,7 +42,7 @@ export function StoresScreen({
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryPageToolbar
-        helpTopic="storesTablet"
+        helpTopic={helpTopic}
         onBack={onBack}
         parentLabel={parentLabel}
         subtitle={subtitle}

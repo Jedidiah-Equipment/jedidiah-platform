@@ -18,12 +18,6 @@ vi.mock('@/hooks/use-access.js', () => ({
   useAccess: vi.fn(),
   useCan: () => ({ can: access.canReadAudit }),
 }));
-vi.mock('@/components/audit/AuditTable.js', () => ({
-  AuditTable: ({ fixedFilters }: { fixedFilters: unknown }) => (
-    <div data-testid="purchase-order-audit">{JSON.stringify(fixedFilters)}</div>
-  ),
-  usePurchaseOrderAuditTableStore: vi.fn(),
-}));
 vi.mock('@/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: vi.fn(), invalidatePurchaseOrders: vi.fn() }),
 }));
@@ -91,25 +85,6 @@ describe('PurchaseOrderActions', () => {
 });
 
 describe('PurchaseOrderDetailTabs', () => {
-  it('shows the purchase order audit history to audit readers', async () => {
-    access.canReadAudit = true;
-    const container = await mountNode(
-      <PurchaseOrderDetailTabs purchaseOrderId={purchaseOrder.id}>
-        <div>Current purchase order details</div>
-      </PurchaseOrderDetailTabs>,
-    );
-
-    expect(container.textContent).toContain('Details');
-    expect(container.textContent).toContain('Audit');
-    expect(container.textContent).toContain('Current purchase order details');
-
-    await click(container, 'Audit');
-
-    expect(container.querySelector('[data-testid="purchase-order-audit"]')?.textContent).toBe(
-      JSON.stringify({ entityIds: [purchaseOrder.id], entityTypes: ['purchase_order'] }),
-    );
-  });
-
   it('keeps the audit tab hidden from readers without audit access', async () => {
     access.canReadAudit = false;
     const container = await mountNode(

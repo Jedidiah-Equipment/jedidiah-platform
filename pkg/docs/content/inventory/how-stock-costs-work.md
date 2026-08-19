@@ -35,6 +35,22 @@ produces the finished Part at consumed value ÷ units built. Nothing is created 
 transaction — the value simply moves from the components to the thing they became. If nothing
 consumed carried a cost, the finished units carry none either.
 
+## How the Dashboard values inventory
+
+The cost-gated Dashboard tiles are live views of the same ledger:
+
+- **Inventory value** prices current Stock on Hand at each Part's current moving average. A negative
+  balance subtracts from the total because it is a real ledger discrepancy, not stock the report may
+  hide. If stocked quantity has no cost yet, the tile says the valuation is incomplete.
+- **Inventory turns** takes net consumption stamped during the trailing 90 days, annualizes it by four,
+  and divides it by current Perpetual stock value. Returns to Store reduce consumption. Periodic Parts
+  stay out of both sides because they record no consumption movements.
+- **Top adjustments** groups this month's adjustment magnitudes by reason. **Top scrap** groups this
+  month's Scrap adjustments by Part. Adjustment rows do not stamp a cost, so both tiles estimate their
+  values at each Part's current moving average rather than claiming a historical price.
+
+Each tile links to **Stock on hand**, where the Part's history explains the movements behind the figure.
+
 ## Why you may not see costs
 
 Cost visibility is gated. Without inventory cost access, every cost field reads as empty on every

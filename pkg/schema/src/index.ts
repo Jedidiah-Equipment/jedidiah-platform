@@ -31,6 +31,7 @@ export * from './inventory/build.js';
 export * from './inventory/buy-list.js';
 export * from './inventory/close-out.js';
 export * from './inventory/inventory-cost.js';
+export * from './inventory/inventory-kpi.js';
 export * from './inventory/part-stock-actions.js';
 export * from './inventory/stock-movement.js';
 export * from './inventory/stocktake.js';

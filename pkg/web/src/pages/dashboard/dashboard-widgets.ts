@@ -3,6 +3,12 @@ import { ActiveJobsWidget } from './widgets/ActiveJobsWidget.js';
 import { AwaitingJobCreationWidget } from './widgets/AwaitingJobCreationWidget.js';
 import { BayLoadTodayWidget } from './widgets/BayLoadTodayWidget.js';
 import { BayRunwayWidget } from './widgets/BayRunwayWidget.js';
+import {
+  InventoryTurnsWidget,
+  InventoryValueWidget,
+  TopInventoryAdjustmentsWidget,
+  TopScrapItemsWidget,
+} from './widgets/InventoryKpiWidgets.js';
 import { OpenPipelineWidget } from './widgets/OpenPipelineWidget.js';
 import { QuoteFlowWidget } from './widgets/QuoteFlowWidget.js';
 import { QuotesByStatusWidget } from './widgets/QuotesByStatusWidget.js';
@@ -89,6 +95,34 @@ export const dashboardWidgets = [
     requires: 'quote:read',
     size: 'sm',
     title: 'Upcoming deliveries',
+  },
+  {
+    Component: InventoryValueWidget,
+    id: 'inventory-value',
+    requires: 'inventory_cost:read',
+    size: 'xs',
+    title: 'Inventory value',
+  },
+  {
+    Component: InventoryTurnsWidget,
+    id: 'inventory-turns',
+    requires: 'inventory_cost:read',
+    size: 'xs',
+    title: 'Inventory turns',
+  },
+  {
+    Component: TopInventoryAdjustmentsWidget,
+    id: 'top-inventory-adjustments',
+    requires: 'inventory_cost:read',
+    size: 'sm',
+    title: 'Top adjustments this month',
+  },
+  {
+    Component: TopScrapItemsWidget,
+    id: 'top-scrap-items',
+    requires: 'inventory_cost:read',
+    size: 'sm',
+    title: 'Top scrap this month',
   },
   {
     Component: RecentActivityWidget,

@@ -16,6 +16,7 @@ export * from './inventory/build-service.js';
 export * from './inventory/buy-list-service.js';
 export * from './inventory/close-out-errors.js';
 export * from './inventory/close-out-service.js';
+export * from './inventory/inventory-kpi-read.js';
 export * from './inventory/job-cost-comparison-read.js';
 export * from './inventory/job-options-read.js';
 export * from './inventory/job-variance-read.js';

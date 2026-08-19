@@ -1,6 +1,7 @@
 import {
   closeOutJob,
   closeStocktakeSession,
+  getInventoryKpis,
   getJobCostComparison,
   getJobMaterialVariance,
   getPartStockByCode,
@@ -33,6 +34,7 @@ import {
   CloseStocktakeSessionInput,
   InventoryJobOptionListInput,
   InventoryJobOptionListResult,
+  InventoryKpis,
   JobCloseOut,
   JobCostComparison,
   JobMaterialVarianceResult,
@@ -104,6 +106,10 @@ export const inventoryRouter = router({
   buyList: authorizedProcedure('inventory:read')
     .output(BuyListResult)
     .query(({ ctx }) => listBuyList({ db: ctx.db })),
+
+  inventoryKpis: authorizedProcedure('inventory_cost:read')
+    .output(InventoryKpis)
+    .query(({ ctx }) => getInventoryKpis({ db: ctx.db })),
 
   stockOnHand: authorizedProcedure('inventory:read')
     .output(StockOnHandResult)

@@ -167,6 +167,41 @@ describe('getInventoryKpis', () => {
       expect.objectContaining({ partCode: 'LINEAR', partId: context.parts.linear.id, value: 600 }),
     ]);
   });
+
+  test('starts the current month at Johannesburg midnight when the server runs in UTC', async ({ context }) => {
+    const opening = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    const beforeMonth = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: -1, note: 'Before midnight', reason: 'correction' }),
+    });
+    const inMonth = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: -2, note: 'After midnight', reason: 'damage' }),
+    });
+
+    await Promise.all([
+      setMovementTime(context.db, opening.id, '2026-07-01T08:00:00.000Z'),
+      // Johannesburg is UTC+2: these straddle local midnight while both still fall on July 31 UTC.
+      setMovementTime(context.db, beforeMonth.id, '2026-07-31T21:30:00.000Z'),
+      setMovementTime(context.db, inMonth.id, '2026-07-31T22:30:00.000Z'),
+    ]);
+
+    const originalTimeZone = process.env.TZ;
+    process.env.TZ = 'UTC';
+    try {
+      await expect(
+        getInventoryKpis({ db: context.db, throughAt: new Date('2026-08-01T00:30:00.000Z') }),
+      ).resolves.toMatchObject({ adjustments: [{ reason: 'damage', value: 20 }] });
+    } finally {
+      process.env.TZ = originalTimeZone;
+    }
+  });
 });
 
 async function setMovementTime(db: Parameters<typeof postAdjustment>[0]['db'], id: string, createdAt: string) {

@@ -1,7 +1,8 @@
 import { type DatabaseTransaction, type Db, parts, stockMovements } from '@pkg/db';
+import { getZonedDateParts, JOHANNESBURG_TIME_ZONE, zonedDateStartToUtcInstant } from '@pkg/domain';
 import type { InventoryKpis, StockAdjustmentReason as StockAdjustmentReasonType } from '@pkg/schema';
 import { InventoryKpis as InventoryKpisSchema, StockAdjustmentReason } from '@pkg/schema';
-import { startOfMonth, subDays } from 'date-fns';
+import { subDays } from 'date-fns';
 import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 
 import { loadBucketQuantities, loadMovingAverages, scaleUnitCost } from './ledger.js';
@@ -38,7 +39,7 @@ async function getInventoryKpisSnapshot(db: DatabaseTransaction, throughAt: Date
       .where(
         and(
           eq(stockMovements.movementType, 'adjustment'),
-          gte(stockMovements.createdAt, startOfMonth(throughAt)),
+          gte(stockMovements.createdAt, getPlantMonthStart(throughAt)),
           lte(stockMovements.createdAt, throughAt),
         ),
       ),
@@ -108,6 +109,13 @@ async function getInventoryKpisSnapshot(db: DatabaseTransaction, throughAt: Date
     scrapItems,
     trailing90DayConsumptionValue,
   });
+}
+
+function getPlantMonthStart(throughAt: Date): Date {
+  const { month, year } = getZonedDateParts(throughAt, JOHANNESBURG_TIME_ZONE);
+  const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+
+  return zonedDateStartToUtcInstant(monthStart, JOHANNESBURG_TIME_ZONE);
 }
 
 function priceMagnitudeAtCurrentAverage(

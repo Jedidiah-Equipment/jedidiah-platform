@@ -1,4 +1,5 @@
 import { formatCurrency } from '@pkg/domain';
+import type { InventoryKpis } from '@pkg/schema';
 import { STOCK_ADJUSTMENT_REASON_LABELS } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -10,84 +11,82 @@ import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCa
 import { StatCard, StatCardSkeleton } from '../StatCard.js';
 
 export const InventoryValueWidget: React.FC = () => {
-  const query = useInventoryKpis();
-
-  if (query.error) return <KpiError error={query.error} />;
-  if (query.isPending) return <StatCardSkeleton />;
-
   return (
-    <Link className="flex flex-1 hover:underline" to="/inventory">
-      <StatCard
-        sublabel={
-          query.data.inventoryValue === null
-            ? 'Uncosted stock prevents a complete valuation'
-            : 'Negative stock balances subtract from value'
-        }
-        value={formatValue(query.data.inventoryValue)}
-      />
-    </Link>
+    <InventoryKpiQuery>
+      {(data) => (
+        <Link className="flex flex-1 hover:underline" to="/inventory">
+          <StatCard
+            sublabel={
+              data.inventoryValue === null
+                ? 'Uncosted stock prevents a complete valuation'
+                : 'Negative stock balances subtract from value'
+            }
+            value={formatValue(data.inventoryValue)}
+          />
+        </Link>
+      )}
+    </InventoryKpiQuery>
   );
 };
 
 export const InventoryTurnsWidget: React.FC = () => {
-  const query = useInventoryKpis();
-
-  if (query.error) return <KpiError error={query.error} />;
-  if (query.isPending) return <StatCardSkeleton />;
-
   return (
-    <Link className="flex flex-1 hover:underline" to="/inventory">
-      <StatCard
-        sublabel="Annualized, trailing 90d, perpetual stock"
-        value={query.data.inventoryTurns === null ? '—' : `${query.data.inventoryTurns.toFixed(2)}×`}
-      />
-    </Link>
+    <InventoryKpiQuery>
+      {(data) => (
+        <Link className="flex flex-1 hover:underline" to="/inventory">
+          <StatCard
+            sublabel="Annualized, trailing 90d, perpetual stock"
+            value={data.inventoryTurns === null ? '—' : `${data.inventoryTurns.toFixed(2)}×`}
+          />
+        </Link>
+      )}
+    </InventoryKpiQuery>
   );
 };
 
 export const TopInventoryAdjustmentsWidget: React.FC = () => {
-  const query = useInventoryKpis();
-
-  if (query.error) return <KpiError error={query.error} />;
-  if (query.isPending) return <StatCardSkeleton />;
-
   return (
-    <KpiListLink emptyLabel="No adjustments this month">
-      {query.data.adjustments.map((adjustment) => (
-        <KpiListRow
-          key={adjustment.reason}
-          label={STOCK_ADJUSTMENT_REASON_LABELS[adjustment.reason]}
-          value={adjustment.value}
-        />
-      ))}
-    </KpiListLink>
+    <InventoryKpiQuery>
+      {(data) => (
+        <KpiListLink emptyLabel="No adjustments this month">
+          {data.adjustments.map((adjustment) => (
+            <KpiListRow
+              key={adjustment.reason}
+              label={STOCK_ADJUSTMENT_REASON_LABELS[adjustment.reason]}
+              value={adjustment.value}
+            />
+          ))}
+        </KpiListLink>
+      )}
+    </InventoryKpiQuery>
   );
 };
 
 export const TopScrapItemsWidget: React.FC = () => {
-  const query = useInventoryKpis();
-
-  if (query.error) return <KpiError error={query.error} />;
-  if (query.isPending) return <StatCardSkeleton />;
-
   return (
-    <KpiListLink emptyLabel="No scrap adjustments this month">
-      {query.data.scrapItems.map((item) => (
-        <KpiListRow key={item.partId} label={`${item.partName} · ${item.partCode}`} value={item.value} />
-      ))}
-    </KpiListLink>
+    <InventoryKpiQuery>
+      {(data) => (
+        <KpiListLink emptyLabel="No scrap adjustments this month">
+          {data.scrapItems.map((item) => (
+            <KpiListRow key={item.partId} label={`${item.partName} · ${item.partCode}`} value={item.value} />
+          ))}
+        </KpiListLink>
+      )}
+    </InventoryKpiQuery>
   );
 };
 
-function useInventoryKpis() {
+function InventoryKpiQuery({ children }: { children: (data: InventoryKpis) => React.ReactNode }) {
   const trpc = useTRPC();
-
   // All four registry entries share this key, so React Query keeps the dashboard to one server read.
-  return useQuery(trpc.inventory.inventoryKpis.queryOptions());
-}
+  const query = useQuery(trpc.inventory.inventoryKpis.queryOptions());
 
-function KpiError({ error }: { error: unknown }) {
-  return <DashboardWidgetError error={error} fallbackMessage="Unable to load inventory KPIs." />;
+  if (query.error) {
+    return <DashboardWidgetError error={query.error} fallbackMessage="Unable to load inventory KPIs." />;
+  }
+  if (query.isPending) return <StatCardSkeleton />;
+
+  return children(query.data);
 }
 
 function KpiListLink({ children, emptyLabel }: { children: React.ReactNode; emptyLabel: string }) {

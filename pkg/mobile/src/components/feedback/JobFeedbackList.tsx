@@ -23,6 +23,7 @@ export function JobFeedbackList({ jobCode, jobId }: { jobCode: string; jobId: st
   return (
     <FactCard title="Feedback">
       <View className="gap-3">
+        <GiveFeedbackButton jobCode={jobCode} jobId={jobId} />
         {feedbackQuery.isPending ? <Pulse className="h-16 w-full rounded-xl" /> : null}
         {feedbackQuery.error ? <Text className="text-sm text-danger">Couldn’t load feedback for this Job.</Text> : null}
         {feedbackQuery.isSuccess && items.length === 0 ? (
@@ -42,7 +43,6 @@ export function JobFeedbackList({ jobCode, jobId }: { jobCode: string; jobId: st
             <Text className="text-sm leading-5 text-surface-foreground">{item.text}</Text>
           </View>
         ))}
-        <GiveFeedbackButton jobCode={jobCode} jobId={jobId} />
       </View>
     </FactCard>
   );

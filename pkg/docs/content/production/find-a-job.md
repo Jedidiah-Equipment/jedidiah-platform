@@ -8,7 +8,7 @@ Use the mobile app's **Jobs** tab to find open or completed production work and 
    Complete** view shows open Jobs only.
 4. Open the sort menu and choose **Schedule** to put unscheduled Jobs first, or **Job Code** for code
    order.
-5. Tap a Job to open its production route, progress, facts, feedback, documents, and assemblies.
+5. Tap a Job to open its production route, progress, facts, documents, assemblies, and feedback.
 
 The schedule badges match the web Job List: **Not scheduled** means the Job has no Work Slots, while
 **Scheduled**, **Active**, and **Done** count its Work Slots in each state. A completed Job keeps those

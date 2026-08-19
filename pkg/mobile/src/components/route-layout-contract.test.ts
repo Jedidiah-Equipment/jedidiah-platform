@@ -84,7 +84,7 @@ describe('route layout contract', () => {
 
     expect(jobDetail).toContain('afterJobFacts={');
     expect(detailSections.indexOf('<JobFactsCard')).toBeLessThan(detailSections.indexOf('{afterJobFacts}'));
-    expect(detailSections.indexOf('{afterJobFacts}')).toBeLessThan(detailSections.indexOf('<JobFeedbackList'));
+    expect(detailSections.indexOf('{afterJobFacts}')).toBeLessThan(detailSections.indexOf('<JobDocuments'));
   });
 
   test('keeps Activity results visible while a new search or filter loads', () => {

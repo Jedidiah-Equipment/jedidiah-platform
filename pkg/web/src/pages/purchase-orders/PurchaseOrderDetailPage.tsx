@@ -22,6 +22,7 @@ import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { AuditTable, usePurchaseOrderAuditTableStore } from '@/components/audit/AuditTable.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
@@ -30,8 +31,9 @@ import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { usePartOptions, useSupplierOptions } from '@/hooks/options/index.js';
-import { useAccess } from '@/hooks/use-access.js';
+import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -161,7 +163,7 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
       title={purchaseOrder.code}
     >
       <ErrorMessage error={queryError} fallbackMessage="Unable to refresh this Purchase Order." />
-      <div className="grid gap-4">
+      <PurchaseOrderDetailTabs purchaseOrderId={purchaseOrder.id}>
         {canEdit ? (
           <form {...formProps} className="grid gap-4">
             <Card>
@@ -213,8 +215,44 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
             <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
           </>
         )}
-      </div>
+      </PurchaseOrderDetailTabs>
     </PageLayout>
+  );
+};
+
+export const PurchaseOrderDetailTabs: React.FC<{ children: React.ReactNode; purchaseOrderId: UUID }> = ({
+  children,
+  purchaseOrderId,
+}) => {
+  const auditAccess = useCan('audit:read');
+  const purchaseOrderAuditFilters = useMemo(
+    () => ({
+      entityIds: [purchaseOrderId],
+      entityTypes: ['purchase_order' as const],
+    }),
+    [purchaseOrderId],
+  );
+
+  return (
+    <Tabs defaultValue="details" size="sm">
+      <TabsList variant="default">
+        <TabsTrigger value="details">Details</TabsTrigger>
+        {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
+      </TabsList>
+      <TabsContent className="pt-4" value="details">
+        <div className="grid gap-4">{children}</div>
+      </TabsContent>
+      {auditAccess.can ? (
+        <TabsContent className="pt-4" value="audit">
+          <AuditTable
+            emptyMessage="No audit events found for this purchase order."
+            fixedFilters={purchaseOrderAuditFilters}
+            showEntityTypeFilter={false}
+            store={usePurchaseOrderAuditTableStore}
+          />
+        </TabsContent>
+      ) : null}
+    </Tabs>
   );
 };
 

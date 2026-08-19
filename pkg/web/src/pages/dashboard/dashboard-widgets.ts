@@ -12,7 +12,6 @@ import {
 import { OpenPipelineWidget } from './widgets/OpenPipelineWidget.js';
 import { QuoteFlowWidget } from './widgets/QuoteFlowWidget.js';
 import { QuotesByStatusWidget } from './widgets/QuotesByStatusWidget.js';
-import { RecentActivityWidget } from './widgets/RecentActivityWidget.js';
 import { ScheduledJobsWidget } from './widgets/ScheduledJobsWidget.js';
 import { ShopFloorTodayWidget } from './widgets/ShopFloorTodayWidget.js';
 import { StaleSentQuotesWidget } from './widgets/StaleSentQuotesWidget.js';
@@ -65,14 +64,14 @@ export const dashboardWidgets = [
     Component: ShopFloorTodayWidget,
     id: 'shop-floor-today',
     requires: 'job:read',
-    size: 'lg',
+    size: 'md',
     title: 'Shop floor today',
   },
   {
     Component: BayRunwayWidget,
     id: 'bay-runway',
     requires: 'job:read',
-    size: 'sm',
+    size: 'md',
     title: 'Bay runway',
   },
   {
@@ -114,21 +113,14 @@ export const dashboardWidgets = [
     Component: TopInventoryAdjustmentsWidget,
     id: 'top-inventory-adjustments',
     requires: 'inventory_cost:read',
-    size: 'sm',
+    size: 'xs',
     title: 'Top adjustments this month',
   },
   {
     Component: TopScrapItemsWidget,
     id: 'top-scrap-items',
     requires: 'inventory_cost:read',
-    size: 'sm',
+    size: 'xs',
     title: 'Top scrap this month',
-  },
-  {
-    Component: RecentActivityWidget,
-    id: 'recent-activity',
-    requires: 'audit:read',
-    size: 'md',
-    title: 'Recent activity',
   },
 ] as const satisfies readonly DashboardWidget[];

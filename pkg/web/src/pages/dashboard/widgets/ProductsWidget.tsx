@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { DashboardList, DashboardListItem } from '../DashboardList.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
 const PRODUCTS_WIDGET_LIST_INPUT = {
@@ -46,20 +47,20 @@ export const ProductsWidget: React.FC = () => {
         <p className="font-semibold text-3xl tabular-nums">{productsQuery.data.total}</p>
         <p className="text-muted-foreground text-sm">Total products</p>
       </div>
-      <ul className="flex flex-col divide-y">
+      <DashboardList>
         {products.map((product) => (
-          <li key={product.id}>
+          <DashboardListItem key={product.id}>
             <ProductRow canUpdateProduct={canUpdateProduct} product={product} />
-          </li>
+          </DashboardListItem>
         ))}
-      </ul>
+      </DashboardList>
     </div>
   );
 };
 
 function ProductRow({ canUpdateProduct, product }: { canUpdateProduct: boolean; product: Product }) {
   const content = <ProductRowContent canUpdateProduct={canUpdateProduct} product={product} />;
-  const className = 'group grid min-w-0 grid-cols-[1fr_auto] gap-x-4 gap-y-1 py-3 text-sm first:pt-0 last:pb-0';
+  const className = 'group grid min-w-0 grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm';
 
   if (!canUpdateProduct) {
     return <div className={className}>{content}</div>;

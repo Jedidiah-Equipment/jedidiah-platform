@@ -21,7 +21,6 @@ vi.mock('./widgets/OpenPipelineWidget.js', () => ({ OpenPipelineWidget: () => nu
 vi.mock('./widgets/ScheduledJobsWidget.js', () => ({ ScheduledJobsWidget: () => null }));
 vi.mock('./widgets/QuoteFlowWidget.js', () => ({ QuoteFlowWidget: () => null }));
 vi.mock('./widgets/StaleSentQuotesWidget.js', () => ({ StaleSentQuotesWidget: () => null }));
-vi.mock('./widgets/RecentActivityWidget.js', () => ({ RecentActivityWidget: () => null }));
 
 const WidgetComponent = () => null;
 
@@ -153,10 +152,10 @@ describe('dashboardWidgets', () => {
       {
         id: 'top-inventory-adjustments',
         requires: 'inventory_cost:read',
-        size: 'sm',
+        size: 'xs',
         title: 'Top adjustments this month',
       },
-      { id: 'top-scrap-items', requires: 'inventory_cost:read', size: 'sm', title: 'Top scrap this month' },
+      { id: 'top-scrap-items', requires: 'inventory_cost:read', size: 'xs', title: 'Top scrap this month' },
     ]);
 
     const managementIds = widgetIds(
@@ -173,14 +172,8 @@ describe('dashboardWidgets', () => {
     expect(storesIds).not.toEqual(expect.arrayContaining(['inventory-value', 'inventory-turns']));
   });
 
-  it('registers Recent activity behind audit read access', () => {
-    const recentActivityWidget = dashboardWidgets.find((widget) => widget.id === 'recent-activity');
-
-    expect(recentActivityWidget).toMatchObject({
-      requires: 'audit:read',
-      size: 'md',
-      title: 'Recent activity',
-    });
+  it('does not register Recent activity', () => {
+    expect(widgetIds(dashboardWidgets)).not.toContain('recent-activity');
   });
 
   it('shows Quotes by status to sales users and hides it from procurement managers', () => {
@@ -212,8 +205,8 @@ describe('dashboardWidgets', () => {
     const bayLoadWidget = dashboardWidgets.find((widget) => widget.id === 'bay-load-today');
     const scheduledJobsWidget = dashboardWidgets.find((widget) => widget.id === 'scheduled-jobs');
 
-    expect(shopFloorWidget).toMatchObject({ requires: 'job:read', size: 'lg', title: 'Shop floor today' });
-    expect(bayRunwayWidget).toMatchObject({ requires: 'job:read', size: 'sm', title: 'Bay runway' });
+    expect(shopFloorWidget).toMatchObject({ requires: 'job:read', size: 'md', title: 'Shop floor today' });
+    expect(bayRunwayWidget).toMatchObject({ requires: 'job:read', size: 'md', title: 'Bay runway' });
     expect(activeJobsWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Active jobs' });
     expect(bayLoadWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Bay load today' });
     expect(scheduledJobsWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Scheduled jobs' });
@@ -234,15 +227,5 @@ describe('dashboardWidgets', () => {
       expect(procurementIds).toContain(widgetId);
       expect(salesIds).not.toContain(widgetId);
     }
-  });
-
-  it('shows Recent activity only to admins', () => {
-    const adminAccess = createUserAccessSummary({ role: 'admin', userId: 'user-1' });
-    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
-
-    expect(widgetIds(filterDashboardWidgets(adminAccess, dashboardWidgets))).toContain('recent-activity');
-    expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).not.toContain('recent-activity');
-    expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain('recent-activity');
   });
 });

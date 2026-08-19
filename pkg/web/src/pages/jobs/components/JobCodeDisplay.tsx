@@ -9,11 +9,13 @@ import { StockBadge } from '@/components/common/StockBadge.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
 
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
 
 type JobCodeDisplayProps = {
   canOpenJob: boolean;
+  className?: string;
   jobCode: JobCode | null;
   jobId: UUID | null;
   withHoverCard?: boolean;
@@ -21,6 +23,7 @@ type JobCodeDisplayProps = {
 
 export const JobCodeDisplay: React.FC<JobCodeDisplayProps> = ({
   canOpenJob,
+  className,
   jobCode,
   jobId,
   withHoverCard = false,
@@ -30,7 +33,11 @@ export const JobCodeDisplay: React.FC<JobCodeDisplayProps> = ({
   }
 
   const codeDisplay =
-    canOpenJob && jobId ? <JobCodeLink jobCode={jobCode} jobId={jobId} /> : <JobCodeText jobCode={jobCode} />;
+    canOpenJob && jobId ? (
+      <JobCodeLink className={className} jobCode={jobCode} jobId={jobId} />
+    ) : (
+      <JobCodeText className={className} jobCode={jobCode} />
+    );
 
   if (!withHoverCard || !canOpenJob || !jobId) {
     return codeDisplay;
@@ -43,13 +50,19 @@ export const JobCodeDisplay: React.FC<JobCodeDisplayProps> = ({
   );
 };
 
-const JobCodeLink: React.FC<{ jobCode: JobCode; jobId: UUID }> = ({ jobCode, jobId }) => (
-  <PrimaryLink className="font-mono" search={{ job: jobId }} to="/jobs">
+const JobCodeLink: React.FC<{ className?: string | undefined; jobCode: JobCode; jobId: UUID }> = ({
+  className,
+  jobCode,
+  jobId,
+}) => (
+  <PrimaryLink className={cn('font-mono', className)} search={{ job: jobId }} to="/jobs">
     {jobCode}
   </PrimaryLink>
 );
 
-const JobCodeText: React.FC<{ jobCode: JobCode }> = ({ jobCode }) => <span className="font-medium">{jobCode}</span>;
+const JobCodeText: React.FC<{ className?: string | undefined; jobCode: JobCode }> = ({ className, jobCode }) => (
+  <span className={cn('font-medium', className)}>{jobCode}</span>
+);
 
 const JobCodeHoverCard: React.FC<{
   children: React.ReactElement;

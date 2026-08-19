@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { DashboardList, DashboardListItem } from '../DashboardList.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
 const RECENT_QUOTES_LIST_INPUT = {
@@ -44,19 +45,19 @@ export const RecentQuotesWidget: React.FC = () => {
   }
 
   return (
-    <ul className="flex flex-col divide-y">
+    <DashboardList>
       {quotes.map((quote) => (
-        <li key={quote.id}>
+        <DashboardListItem key={quote.id}>
           <RecentQuoteRow canUpdateQuote={canUpdateQuote} quote={quote} />
-        </li>
+        </DashboardListItem>
       ))}
-    </ul>
+    </DashboardList>
   );
 };
 
 function RecentQuoteRow({ canUpdateQuote, quote }: { canUpdateQuote: boolean; quote: QuoteSummary }) {
   const content = <RecentQuoteRowContent canUpdateQuote={canUpdateQuote} quote={quote} />;
-  const className = 'group grid min-w-0 grid-cols-[1fr_auto] gap-x-4 gap-y-1 py-3 text-sm first:pt-0 last:pb-0';
+  const className = 'group grid min-w-0 grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm';
 
   if (!canUpdateQuote) {
     return <div className={className}>{content}</div>;

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   byBayDepartmentPipeline,
   computeBayLoadToday,
+  computeBayLoadTodayByDepartment,
   computeBayRunway,
   countActiveJobs,
   findActiveWorkSlot,
@@ -411,7 +412,7 @@ describe('getOffDayLabel', () => {
 });
 
 describe('computeBayRunway', () => {
-  it('splits booked working days into work and idle within the cap', () => {
+  it('splits remaining working days into in-progress and scheduled work', () => {
     const bayId = id('bay-1');
     const bay = buildBay({
       id: 'bay-1',
@@ -423,51 +424,59 @@ describe('computeBayRunway', () => {
           sequence: 1,
           startDate: '2026-06-05',
         }),
-        buildIdleSlot(bayId, {
+        buildWorkSlot(bayId, {
           durationDays: 3,
           endDate: '2026-06-13',
           id: 'slot-b',
           sequence: 2,
           startDate: '2026-06-10',
+          state: 'scheduled',
         }),
       ],
     });
 
     expect(computeBayRunway({ bay, today, workingCalendar: {} })).toEqual({
       bayId,
-      bayName: 'Bay bay-1',
-      idleDays: 3,
+      inProgressWorkDays: 5,
+      label: 'Bay bay-1',
       overflow: false,
-      workDays: 5,
+      scheduledWorkDays: 3,
     });
   });
 
-  it('flags overflow when an idle tail extends beyond the cap window', () => {
+  it('uses the current operator as the chart label', () => {
+    const bay = buildBay({ currentOperator: { name: 'Bonginkosi' }, id: 'bay-1' });
+
+    expect(computeBayRunway({ bay, today, workingCalendar: {} }).label).toBe('Bonginkosi');
+  });
+
+  it('ignores idle time and flags overflow when scheduled work extends beyond the cap window', () => {
     const bayId = id('bay-1');
     const bay = buildBay({
       id: 'bay-1',
       slots: [
-        buildWorkSlot(bayId, {
-          durationDays: 30,
-          endDate: '2026-07-05',
-          id: 'slot-a',
+        buildIdleSlot(bayId, {
+          durationDays: 2,
+          endDate: '2026-06-07',
+          id: 'slot-idle',
           sequence: 1,
           startDate: '2026-06-05',
         }),
-        buildIdleSlot(bayId, {
-          durationDays: 2,
-          endDate: '2026-07-07',
-          id: 'slot-b',
+        buildWorkSlot(bayId, {
+          durationDays: 32,
+          endDate: '2026-07-09',
+          id: 'slot-scheduled',
           sequence: 2,
-          startDate: '2026-07-05',
+          startDate: '2026-06-07',
+          state: 'scheduled',
         }),
       ],
     });
 
     expect(computeBayRunway({ bay, today, workingCalendar: {} })).toMatchObject({
-      idleDays: 0,
+      inProgressWorkDays: 0,
       overflow: true,
-      workDays: 30,
+      scheduledWorkDays: 28,
     });
   });
 
@@ -489,10 +498,10 @@ describe('computeBayRunway', () => {
 
     expect(computeBayRunway({ bay, today, workingCalendar: {} })).toEqual({
       bayId,
-      bayName: 'Bay bay-1',
-      idleDays: 0,
+      inProgressWorkDays: 30,
+      label: 'Bay bay-1',
       overflow: true,
-      workDays: 30,
+      scheduledWorkDays: 0,
     });
   });
 
@@ -512,8 +521,9 @@ describe('computeBayRunway', () => {
     });
 
     expect(computeBayRunway({ bay, today, workingCalendar: {} })).toMatchObject({
+      inProgressWorkDays: 30,
       overflow: false,
-      workDays: 30,
+      scheduledWorkDays: 0,
     });
   });
 
@@ -536,8 +546,8 @@ describe('computeBayRunway', () => {
     const workingCalendar = { orgOffDays: new Set(['2026-06-06', '2026-06-07']) };
 
     expect(computeBayRunway({ bay, capWorkingDays: 4, today, workingCalendar })).toMatchObject({
-      idleDays: 0,
-      workDays: 2,
+      inProgressWorkDays: 2,
+      scheduledWorkDays: 0,
     });
   });
 });
@@ -761,6 +771,58 @@ describe('computeBayLoadToday', () => {
       totalCount: 0,
       workingCount: 0,
     });
+  });
+
+  it('computes load independently for each department in pipeline order', () => {
+    const fabricationWork = buildBay({
+      department: 'fabrication',
+      id: 'fab-work',
+      slots: [
+        buildWorkSlot(id('fab-work'), {
+          durationDays: 1,
+          endDate: '2026-06-06',
+          id: 'slot-work',
+          sequence: 1,
+          startDate: '2026-06-05',
+        }),
+      ],
+    });
+    const fabricationIdle = buildBay({
+      department: 'fabrication',
+      id: 'fab-idle',
+      slots: [
+        buildIdleSlot(id('fab-idle'), {
+          durationDays: 1,
+          endDate: '2026-06-06',
+          id: 'slot-idle',
+          sequence: 1,
+          startDate: '2026-06-05',
+        }),
+      ],
+    });
+    const procurementFree = buildBay({ department: 'procurement', id: 'procurement-free' });
+    const bays = [procurementFree, fabricationIdle, fabricationWork];
+
+    expect(computeBayLoadTodayByDepartment({ bays, today, workingCalendarsByBayId: emptyCalendarsFor(bays) })).toEqual([
+      {
+        department: 'fabrication',
+        freeCount: 0,
+        idleCount: 1,
+        loadPercent: 50,
+        offCount: 0,
+        totalCount: 2,
+        workingCount: 1,
+      },
+      {
+        department: 'procurement',
+        freeCount: 1,
+        idleCount: 0,
+        loadPercent: 0,
+        offCount: 0,
+        totalCount: 1,
+        workingCount: 0,
+      },
+    ]);
   });
 
   it('treats org off-days as off for every bay without an opening exception', () => {

@@ -706,16 +706,31 @@ export const QuoteWeeklyFlowSummary = z.object({
 });
 
 export type StaleSentQuote = z.infer<typeof StaleSentQuote>;
-export const StaleSentQuote = z.object({
+const staleSentQuoteBaseShape = {
   id: UUID,
   code: QuoteCode,
   customerCompanyName: z.string().trim().min(1),
   customerThumbnailDataUrl: NullableThumbnailDataUrl,
   currencyCode: ProductCurrencyCode,
+  job: QuoteLinkedJob.nullable(),
   sentDaysAgo: z.number().int().min(0),
   statusChangedAt: DateIso,
   totalValue: Price,
-});
+};
+export const StaleSentQuote = z.discriminatedUnion('kind', [
+  z.object({
+    ...staleSentQuoteBaseShape,
+    kind: z.literal('product'),
+    product: QuoteProductSummaryFacts,
+    workTitle: z.null(),
+  }),
+  z.object({
+    ...staleSentQuoteBaseShape,
+    kind: z.literal('custom'),
+    product: z.null(),
+    workTitle: QuoteWorkTitle,
+  }),
+]);
 
 export type StaleSentQuoteList = z.infer<typeof StaleSentQuoteList>;
 export const StaleSentQuoteList = z.object({

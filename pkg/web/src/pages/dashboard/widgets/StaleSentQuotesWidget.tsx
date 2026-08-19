@@ -1,71 +1,73 @@
-import { formatCurrency, hasPermission } from '@pkg/domain';
+import { formatCurrency } from '@pkg/domain';
 import type { StaleSentQuote } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import type React from 'react';
 
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { useAccess } from '@/hooks/use-access.js';
+import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { DashboardList, DashboardListItem, DashboardListScrollArea } from '../DashboardList.js';
+import { DashboardQuoteIdentity } from '../DashboardQuoteIdentity.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
 const STALE_SENT_SKELETON_ROWS = ['first', 'second', 'third', 'fourth', 'fifth'] as const;
 
 export const StaleSentQuotesWidget: React.FC = () => {
   const trpc = useTRPC();
-  const accessQuery = useAccess();
+  const jobAccess = useCan('job:read');
   const staleSentQuery = useQuery(trpc.quotes.staleSent.queryOptions());
-  const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const staleQuotes = staleSentQuery.data?.items ?? [];
 
   if (staleSentQuery.error) {
-    return <DashboardWidgetError error={staleSentQuery.error} fallbackMessage="Unable to load stale sent quotes." />;
+    return (
+      <DashboardListScrollArea>
+        <DashboardWidgetError error={staleSentQuery.error} fallbackMessage="Unable to load stale sent quotes." />
+      </DashboardListScrollArea>
+    );
   }
 
   if (staleSentQuery.isPending) {
-    return <StaleSentQuotesWidgetSkeleton />;
+    return (
+      <DashboardListScrollArea>
+        <StaleSentQuotesWidgetSkeleton />
+      </DashboardListScrollArea>
+    );
   }
 
   if (staleQuotes.length === 0) {
-    return <DashboardWidgetEmpty>No sent quotes awaiting a response.</DashboardWidgetEmpty>;
+    return (
+      <DashboardListScrollArea>
+        <DashboardWidgetEmpty>No sent quotes awaiting a response.</DashboardWidgetEmpty>
+      </DashboardListScrollArea>
+    );
   }
 
   return (
-    <ul className="flex flex-col divide-y">
-      {staleQuotes.map((quote) => (
-        <li key={quote.id}>
-          <StaleSentQuoteRow canUpdateQuote={canUpdateQuote} quote={quote} />
-        </li>
-      ))}
-    </ul>
+    <DashboardListScrollArea>
+      <DashboardList className="pr-3">
+        {staleQuotes.map((quote) => (
+          <DashboardListItem key={quote.id}>
+            <StaleSentQuoteRow canOpenJobs={jobAccess.can} quote={quote} />
+          </DashboardListItem>
+        ))}
+      </DashboardList>
+    </DashboardListScrollArea>
   );
 };
 
-function StaleSentQuoteRow({ canUpdateQuote, quote }: { canUpdateQuote: boolean; quote: StaleSentQuote }) {
-  const content = <StaleSentQuoteRowContent canUpdateQuote={canUpdateQuote} quote={quote} />;
-  const className = 'group grid min-w-0 grid-cols-[1fr_auto] gap-x-4 gap-y-1 py-3 text-sm first:pt-0 last:pb-0';
-
-  if (!canUpdateQuote) {
-    return <div className={className}>{content}</div>;
-  }
-
+function StaleSentQuoteRow({ canOpenJobs, quote }: { canOpenJobs: boolean; quote: StaleSentQuote }) {
   return (
-    <Link className={className} params={{ id: quote.id }} to="/quotes/$id/edit">
-      {content}
-    </Link>
+    <div className="grid min-w-0 grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+      <StaleSentQuoteRowContent canOpenJobs={canOpenJobs} quote={quote} />
+    </div>
   );
 }
 
-function StaleSentQuoteRowContent({ canUpdateQuote, quote }: { canUpdateQuote: boolean; quote: StaleSentQuote }) {
+export function StaleSentQuoteRowContent({ canOpenJobs, quote }: { canOpenJobs: boolean; quote: StaleSentQuote }) {
   return (
     <>
-      <span className="min-w-0">
-        <span className={`block truncate font-medium text-foreground ${canUpdateQuote ? 'group-hover:underline' : ''}`}>
-          {quote.customerCompanyName}
-        </span>
-        <span className="block truncate text-muted-foreground">{quote.code}</span>
-      </span>
+      <DashboardQuoteIdentity canOpenJob={canOpenJobs} quote={quote} />
       <span className="text-right">
         <span className="block font-medium tabular-nums">{formatCurrency(quote.totalValue, quote.currencyCode)}</span>
         <span className="block text-muted-foreground text-xs">{formatSentDaysAgo(quote.sentDaysAgo)}</span>
@@ -79,9 +81,12 @@ function StaleSentQuotesWidgetSkeleton() {
     <div className="flex flex-col gap-3">
       {STALE_SENT_SKELETON_ROWS.map((row) => (
         <div key={row} className="grid grid-cols-[1fr_auto] gap-4">
-          <span className="flex min-w-0 flex-col gap-2">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-3 w-24" />
+          <span className="flex min-w-0 items-center gap-2">
+            <Skeleton className="size-8 shrink-0 rounded-md" />
+            <span className="flex min-w-0 flex-col gap-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-24" />
+            </span>
           </span>
           <span className="flex flex-col items-end gap-2">
             <Skeleton className="h-4 w-20" />

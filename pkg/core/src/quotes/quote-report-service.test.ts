@@ -47,6 +47,7 @@ const test = createTester(async ({ db }) => {
       modelCode: 'QUOTE-REPORT-001',
       name: 'Quote Report Product',
       rangeId,
+      thumbnailDataUrl: 'data:image/webp;base64,cHJvZHVjdA==',
     })
     .returning();
 
@@ -356,6 +357,7 @@ describe('listStaleSentQuotes', () => {
       statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
     });
     if (!oldestQuote) throw new Error('Expected oldest sent quote row');
+    const linkedJob = await createJobRow(context.db, { quoteId: oldestQuote.id });
     await createQuoteRows(context.db, {
       customerId: context.customer.id,
       productId: context.product.id,
@@ -369,6 +371,12 @@ describe('listStaleSentQuotes', () => {
     expect(result.items).toHaveLength(2);
     expect(result.items[0]).toMatchObject({
       customerCompanyName: 'Acme Mining',
+      job: { jobId: linkedJob.id },
+      kind: 'product',
+      product: {
+        name: 'Quote Report Product',
+        thumbnailDataUrl: 'data:image/webp;base64,cHJvZHVjdA==',
+      },
       sentDaysAgo: 15,
       totalValue: 3507.5,
     });
@@ -405,8 +413,11 @@ describe('listStaleSentQuotes', () => {
     expect(result.items).toEqual([
       expect.objectContaining({
         id: customQuote.id,
+        kind: 'custom',
+        product: null,
         sentDaysAgo: 15,
         totalValue: 1219,
+        workTitle: 'Stale repair',
       }),
     ]);
   });

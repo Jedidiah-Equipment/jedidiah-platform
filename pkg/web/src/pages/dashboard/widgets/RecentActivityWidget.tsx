@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { DashboardList, DashboardListItem } from '../DashboardList.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
 const RECENT_ACTIVITY_LIST_INPUT = {
@@ -73,9 +74,9 @@ export const RecentActivityWidget: React.FC = () => {
 
   return (
     <ScrollArea className="max-h-80">
-      <ul className="flex flex-col divide-y pr-3">
+      <DashboardList className="pr-3">
         {auditEvents.map((event) => (
-          <li key={event.id} className="flex min-w-0 gap-3 py-3 text-sm first:pt-0 last:pb-0">
+          <DashboardListItem key={event.id} className="flex min-w-0 gap-3 text-sm">
             <EntityThumbnail label={getActorLabel(event)} size="sm" />
             <span className="grid min-w-0 flex-1 gap-1">
               <span className="flex min-w-0 items-center gap-2">
@@ -92,9 +93,9 @@ export const RecentActivityWidget: React.FC = () => {
                 <DateDisplay date={event.occurredAt} />
               </span>
             </span>
-          </li>
+          </DashboardListItem>
         ))}
-      </ul>
+      </DashboardList>
     </ScrollArea>
   );
 };

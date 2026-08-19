@@ -1,4 +1,4 @@
-import { customers, type Db, jobs, quotes } from '@pkg/db';
+import { customers, type Db, jobs, products, quotes } from '@pkg/db';
 import {
   addDateOnlyDays,
   diffDateOnlyDays,
@@ -21,6 +21,7 @@ import { and, asc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 
 import { findBoardBayRows, toProjectedBoard } from '../jobs/board-read.js';
 import { listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
+import { mapQuoteLinkedJob } from './quote-mappers.js';
 import { loadQuoteAssociations } from './quote-read-service.js';
 import { priceReportQuote, type ReportQuotePricingRow } from './quote-report-pricing.js';
 
@@ -230,36 +231,68 @@ export async function listStaleSentQuotes({
       discountPercent: quotes.discountPercent,
       id: quotes.id,
       kind: quotes.kind,
+      productBuildTimeDays: products.buildTimeDays,
+      productCurrencyCode: products.currencyCode,
+      productModelCode: products.modelCode,
+      productName: products.name,
+      productThumbnailDataUrl: products.thumbnailDataUrl,
       quotedBasePrice: quotes.quotedBasePrice,
       quotedCurrencyCode: quotes.quotedCurrencyCode,
       statusChangedAt: quotes.statusChangedAt,
+      workTitle: quotes.workTitle,
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
+    .leftJoin(products, eq(quotes.productId, products.id))
     .where(eq(quotes.status, 'sent'))
     .orderBy(asc(quotes.statusChangedAt), asc(quotes.id))
     .limit(limit);
-  const { selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
+  const { jobByQuoteId, selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
     db,
+    includeJobs: true,
     quoteIds: rows.map((row) => row.id),
   });
   const today = toPlantDateOnly(clock());
 
   return StaleSentQuoteList.parse({
-    items: rows.map((row) => ({
-      code: row.code,
-      currencyCode: row.quotedCurrencyCode,
-      customerCompanyName: row.customerCompanyName,
-      customerThumbnailDataUrl: row.customerThumbnailDataUrl,
-      id: row.id,
-      sentDaysAgo: Math.max(0, diffDateOnlyDays(today, toPlantDateOnly(row.statusChangedAt))),
-      statusChangedAt: row.statusChangedAt.toISOString(),
-      totalValue: priceReportQuote({
-        row,
-        selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
-        workItems: workItemsByQuoteId.get(row.id) ?? [],
-      }).total,
-    })),
+    items: rows.map((row) => {
+      const job = jobByQuoteId.get(row.id);
+      const shared = {
+        code: row.code,
+        currencyCode: row.quotedCurrencyCode,
+        customerCompanyName: row.customerCompanyName,
+        customerThumbnailDataUrl: row.customerThumbnailDataUrl,
+        id: row.id,
+        job: job ? mapQuoteLinkedJob(job) : null,
+        sentDaysAgo: Math.max(0, diffDateOnlyDays(today, toPlantDateOnly(row.statusChangedAt))),
+        statusChangedAt: row.statusChangedAt.toISOString(),
+        totalValue: priceReportQuote({
+          row,
+          selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
+          workItems: workItemsByQuoteId.get(row.id) ?? [],
+        }).total,
+      };
+
+      return row.kind === 'product'
+        ? {
+            ...shared,
+            kind: row.kind,
+            product: {
+              buildTimeDays: row.productBuildTimeDays,
+              currencyCode: row.productCurrencyCode,
+              modelCode: row.productModelCode,
+              name: row.productName,
+              thumbnailDataUrl: row.productThumbnailDataUrl,
+            },
+            workTitle: null,
+          }
+        : {
+            ...shared,
+            kind: row.kind,
+            product: null,
+            workTitle: row.workTitle,
+          };
+    }),
   });
 }
 

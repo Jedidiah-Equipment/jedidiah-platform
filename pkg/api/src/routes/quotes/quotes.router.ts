@@ -8,6 +8,7 @@ import {
   getQuoteProductOption,
   isProductUnitCoreError,
   isQuoteCoreError,
+  listAwaitingJobCreationQuotes,
   listCustomers,
   listPriorityQuotes,
   listProductRangeOptions,
@@ -54,6 +55,10 @@ export const quotesRouter = router({
     .query(({ ctx, input }) =>
       listPriorityQuotes({ ...(input.customerId ? { customerId: input.customerId } : {}), db: ctx.db }),
     ),
+
+  awaitingJobCreation: authorizedProcedure('quote:read').query(({ ctx }) =>
+    listAwaitingJobCreationQuotes({ db: ctx.db }),
+  ),
 
   upcomingDeliveries: authorizedProcedure('quote:read').query(({ ctx }) => listUpcomingDeliveryQuotes({ db: ctx.db })),
 

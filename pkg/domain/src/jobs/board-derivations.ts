@@ -158,11 +158,12 @@ export function getOffDayLabel(offDays: readonly OffDay[], date: DateOnlyIso): s
 
 export type BayRunway = {
   bayId: UUID;
-  bayName: string;
-  idleDays: number;
-  /** Any booked slot — work or idle — extends beyond the cap window. */
+  label: string;
+  /** Remaining working days in the Work Slot that is currently underway. */
+  inProgressWorkDays: number;
+  /** A scheduled Work Slot extends beyond the cap window. */
   overflow: boolean;
-  workDays: number;
+  scheduledWorkDays: number;
 };
 
 export function computeBayRunway({
@@ -178,17 +179,17 @@ export function computeBayRunway({
 }): BayRunway {
   let cursor = today;
   let counted = 0;
-  let workDays = 0;
-  let idleDays = 0;
+  let inProgressWorkDays = 0;
+  let scheduledWorkDays = 0;
 
   while (counted < capWorkingDays) {
     if (isWorkingDay(cursor, workingCalendar)) {
       const slot = findSlotCoveringDate(bay.slots, cursor);
 
-      if (slot?.kind === 'work') {
-        workDays += 1;
-      } else if (slot?.kind === 'idle') {
-        idleDays += 1;
+      if (slot?.kind === 'work' && slot.state === 'active') {
+        inProgressWorkDays += 1;
+      } else if (slot?.kind === 'work' && slot.state === 'scheduled') {
+        scheduledWorkDays += 1;
       }
 
       counted += 1;
@@ -201,10 +202,10 @@ export function computeBayRunway({
   // whose half-open end extends past it still has booked days beyond the window.
   return {
     bayId: bay.id,
-    bayName: bay.name,
-    idleDays,
-    overflow: bay.slots.some((slot) => slot.endDate > cursor),
-    workDays,
+    inProgressWorkDays,
+    label: bay.currentOperator?.name ?? bay.name,
+    overflow: bay.slots.some((slot) => slot.kind === 'work' && slot.state !== 'done' && slot.endDate > cursor),
+    scheduledWorkDays,
   };
 }
 
@@ -340,6 +341,10 @@ export type BayLoadToday = {
   workingCount: number;
 };
 
+export type DepartmentBayLoadToday = BayLoadToday & {
+  department: Department;
+};
+
 export function computeBayLoadToday({
   bays,
   today,
@@ -382,6 +387,21 @@ export function computeBayLoadToday({
     totalCount,
     workingCount,
   };
+}
+
+export function computeBayLoadTodayByDepartment({
+  bays,
+  today,
+  workingCalendarsByBayId,
+}: {
+  bays: readonly ProjectedBayQueue[];
+  today: DateOnlyIso;
+  workingCalendarsByBayId: ReadonlyMap<string, WorkingCalendar>;
+}): DepartmentBayLoadToday[] {
+  return groupBaysByDepartmentPipeline(bays).map(({ bays: departmentBays, department }) => ({
+    ...computeBayLoadToday({ bays: departmentBays, today, workingCalendarsByBayId }),
+    department,
+  }));
 }
 
 function findSlotCoveringDate(slots: readonly ProjectedJobSlot[], date: DateOnlyIso): ProjectedJobSlot | null {

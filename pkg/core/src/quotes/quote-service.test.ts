@@ -36,6 +36,7 @@ import { createProductUnit } from '../units/product-unit-service.js';
 import {
   getQuote,
   getQuoteProductBayAvailability,
+  listAwaitingJobCreationQuotes,
   listPriorityQuotes,
   listQuoteSalespeople,
   listQuotes,
@@ -2025,6 +2026,21 @@ describe('cancelQuote', () => {
 
     const [cancelled] = await context.db.select().from(quotes).where(eq(quotes.id, quote.id));
     expect(cancelled?.status).toBe('cancelled');
+  });
+});
+
+describe('listAwaitingJobCreationQuotes', () => {
+  test('includes an accepted Quote with no Job when delivery dates are blank', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+
+    await expect(listAwaitingJobCreationQuotes({ db: context.db })).resolves.toEqual([
+      expect.objectContaining({ id: quote.id, job: null }),
+    ]);
   });
 });
 

@@ -33,6 +33,7 @@ import {
   type QuoteProductBayAvailabilityInput,
   QuoteProductBayAvailabilityResult,
   type QuoteSortBy,
+  type QuoteSummary,
   UpcomingDeliveryQuotesResult,
   type UserListResult,
   UserSummary,
@@ -182,6 +183,55 @@ export async function listPriorityQuotes({
     mapPriorityQuote(
       row,
       jobByQuoteId.get(row.quote.id) ?? null,
+      selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
+      workItemsByQuoteId.get(row.quote.id) ?? [],
+    ),
+  );
+}
+
+/** The complete work queue; unlike Job Start Alerts, it is not limited to Quotes due soon. */
+export async function listAwaitingJobCreationQuotes({ db }: { db: Db }): Promise<QuoteSummary[]> {
+  const earliestDeliveryDate = getEarliestDeliveryDateExpression();
+  const rows = await db
+    .select({
+      quote: quotes,
+      customerCompanyName: customers.companyName,
+      customerThumbnailDataUrl: customers.thumbnailDataUrl,
+      productBuildTimeDays: products.buildTimeDays,
+      productCurrencyCode: products.currencyCode,
+      productModelCode: products.modelCode,
+      productName: products.name,
+      productThumbnailDataUrl: products.thumbnailDataUrl,
+      salesPersonEmail: user.email,
+      salesPersonName: user.name,
+      salesPersonThumbnailDataUrl: user.image,
+    })
+    .from(quotes)
+    .innerJoin(customers, eq(quotes.customerId, customers.id))
+    .leftJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(user, eq(quotes.salesPersonId, user.id))
+    .where(
+      and(
+        eq(quotes.status, 'accepted'),
+        isNull(quotes.productUnitId),
+        sql`not exists (
+          select 1
+          from ${jobs}
+          where ${jobs.quoteId} = ${quotes.id}
+            and ${jobs.cancelledAt} is null
+        )`,
+      ),
+    )
+    .orderBy(asc(earliestDeliveryDate), asc(quotes.code), asc(quotes.id));
+  const { selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
+    db,
+    quoteIds: rows.map((row) => row.quote.id),
+  });
+
+  return rows.map((row) =>
+    mapQuoteSummary(
+      row,
+      null,
       selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
       workItemsByQuoteId.get(row.quote.id) ?? [],
     ),

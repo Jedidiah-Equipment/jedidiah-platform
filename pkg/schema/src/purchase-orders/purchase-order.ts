@@ -253,6 +253,10 @@ export const PurchaseOrderPdfModel = PurchaseOrder.pick({
 }).extend({
   issueDate: DateIso,
   jobCodes: z.array(JobCode),
+  lastModified: z.object({
+    actorName: z.string().nullable(),
+    occurredAt: DateIso,
+  }),
   // What the order asked for. Neither what has arrived against it nor whether anything has moved
   // belongs on the page the Supplier is sent.
   lines: z.array(PurchaseOrderLine.omit({ hasStockMovements: true, receiptBuckets: true, receivedQuantity: true })),

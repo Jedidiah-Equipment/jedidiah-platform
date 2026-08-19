@@ -38,7 +38,7 @@ import {
   loadLineReceivedQuantity,
   loadNextPurchaseOrderRevision,
   lockPurchaseOrder,
-  purchaseOrderAuditDescriptor,
+  purchaseOrderAggregateAuditDescriptor,
   storePurchaseOrderPdfRevision,
 } from './purchase-order-service.js';
 
@@ -291,7 +291,7 @@ async function applyAmendment(
 
   try {
     return await db.transaction(async (tx) => {
-      const row = await lockPurchaseOrder(tx, id);
+      await lockPurchaseOrder(tx, id);
       const before = await getPurchaseOrder({ db: tx, id });
       // Drafts stay log-free: they are edited whole through the draft save, which is why an empty
       // log reads as "unchanged since it went out" rather than "we did not record anything". And
@@ -305,19 +305,18 @@ async function applyAmendment(
         purchaseOrderId: id,
       });
 
-      const afterRow = await lockPurchaseOrder(tx, id);
-      const auditChanges = diffAuditUpdate(purchaseOrderAuditDescriptor, row, afterRow);
+      const amended = await getPurchaseOrder({ db: tx, id });
+      const auditChanges = diffAuditUpdate(purchaseOrderAggregateAuditDescriptor, before, amended);
       if (auditChanges) {
         await recordAuditUpdate({
           actorUserId,
-          after: afterRow,
+          after: amended,
           changes: auditChanges,
           db: tx,
-          descriptor: purchaseOrderAuditDescriptor,
+          descriptor: purchaseOrderAggregateAuditDescriptor,
         });
       }
 
-      const amended = await getPurchaseOrder({ db: tx, id });
       uploadedDocumentStorageKey = await storePurchaseOrderPdfRevision({
         actorUserId,
         db: tx,

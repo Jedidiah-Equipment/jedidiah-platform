@@ -218,13 +218,15 @@ describe('Purchase Order line parts', () => {
 
 describe('Purchase Order send and cancel', () => {
   test('renders an inline preview for a saved draft without mutating its lifecycle', async ({ context }) => {
+    const modifierId = 'po-preview-modifier';
+    await seedTestUser(context.db, { id: modifierId, name: 'Preview Modifier' });
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,
       db: context.db,
       input: { expectedDeliveryDate: DateOnlyIso.parse('2026-08-20'), supplierId: SUPPLIER_A_ID },
     });
     await savePurchaseOrderDraft({
-      actorUserId: ACTOR_ID,
+      actorUserId: modifierId,
       db: context.db,
       input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]),
     });
@@ -236,6 +238,7 @@ describe('Purchase Order send and cancel', () => {
     expect(render).toHaveBeenCalledWith({
       document: expect.objectContaining({
         code: 'PO-00001',
+        lastModified: { actorName: 'Preview Modifier', occurredAt: expect.any(String) },
         lines: [expect.objectContaining({ partCode: 'P-100', quantity: 4, unitPrice: 125.5 })],
       }),
       filename: 'PO-00001.pdf',
@@ -245,14 +248,42 @@ describe('Purchase Order send and cancel', () => {
     });
   });
 
+  test('passes a deleted last modifier to the PDF as System', async ({ context }) => {
+    const deletedActorId = 'po-deleted-modifier';
+    await seedTestUser(context.db, { id: deletedActorId, name: 'Deleted Modifier' });
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: deletedActorId,
+      db: context.db,
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 1, unitPrice: 125.5 }]),
+    });
+    await context.db.delete(user).where(eq(user.id, deletedActorId));
+    const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => pdfBytes());
+
+    await renderPurchaseOrderPreview({ db: context.db, id: purchaseOrder.id, pdfRenderer: render });
+
+    expect(render).toHaveBeenCalledWith({
+      document: expect.objectContaining({
+        lastModified: { actorName: null, occurredAt: expect.any(String) },
+      }),
+      filename: 'PO-00001.pdf',
+    });
+  });
+
   test('stores one as-sent PDF and projects it onto every linked Job', async ({ context }) => {
+    const draftEditorId = 'po-draft-editor';
+    await seedTestUser(context.db, { id: draftEditorId, name: 'Draft Editor' });
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,
       db: context.db,
       input: { expectedDeliveryDate: DateOnlyIso.parse('2026-08-20'), supplierId: SUPPLIER_A_ID },
     });
     await savePurchaseOrderDraft({
-      actorUserId: ACTOR_ID,
+      actorUserId: draftEditorId,
       db: context.db,
       input: {
         ...draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]),
@@ -276,6 +307,7 @@ describe('Purchase Order send and cancel', () => {
         code: 'PO-00001',
         expectedDeliveryDate: '2026-08-20',
         jobCodes: expect.arrayContaining([expect.stringMatching(/^JOB-/), expect.stringMatching(/^JOB-/)]),
+        lastModified: { actorName: 'Draft Editor', occurredAt: expect.any(String) },
         lines: [expect.objectContaining({ partCode: 'P-100', quantity: 4, unitPrice: 125.5 })],
         supplier: expect.objectContaining({ companyName: 'Acme Supplies' }),
       }),
@@ -575,6 +607,18 @@ async function seedCatalog(db: Db): Promise<void> {
     // Supplier XOR BOM: a built Part is made in-house, so it names no Supplier at all.
     partRow({ code: 'P-400', id: BUILT_PART_ID, isInternallyFabricated: true, supplierId: null }),
   ]);
+}
+
+async function seedTestUser(db: Db, input: { id: string; name: string }): Promise<void> {
+  await db.insert(user).values({
+    createdAt: new Date(),
+    email: `${input.id}@example.com`,
+    emailVerified: true,
+    id: input.id,
+    name: input.name,
+    role: 'admin',
+    updatedAt: new Date(),
+  });
 }
 
 function partRow(overrides: Partial<typeof parts.$inferInsert>): typeof parts.$inferInsert {

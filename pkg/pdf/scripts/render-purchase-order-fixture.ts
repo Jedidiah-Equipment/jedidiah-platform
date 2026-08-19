@@ -12,6 +12,10 @@ const document: PurchaseOrderPdfModel = {
   expectedDeliveryDate: DateOnlyIso.parse('2026-08-20'),
   issueDate: DateIso.parse('2026-08-02T12:00:00.000Z'),
   jobCodes: [JobCode.parse(7), JobCode.parse(12)],
+  lastModified: {
+    actorName: 'Priya Buyer',
+    occurredAt: DateIso.parse('2026-08-05T12:00:00.000Z'),
+  },
   lines: [
     {
       partCode: 'PIPE-100',

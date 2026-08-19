@@ -1,7 +1,7 @@
-import { auditEvents } from '@pkg/db';
-import { DateOnlyIso } from '@pkg/schema';
+import { auditEvents, user } from '@pkg/db';
+import { DateOnlyIso, type PurchaseOrderPdfModel } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
-import { describe, expect } from 'vitest';
+import { describe, expect, vi } from 'vitest';
 
 import { listPurchaseOrderDocuments } from './credit-note-service.js';
 import {
@@ -87,12 +87,23 @@ describe('Purchase Order amendments', () => {
 
   test('moves a line quantity, logs the call that moved it, and files a new PDF revision', async ({ context }) => {
     const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]);
+    const amenderId = 'po-line-amender';
+    await context.db.insert(user).values({
+      createdAt: new Date(),
+      email: 'po-line-amender@example.com',
+      emailVerified: true,
+      id: amenderId,
+      name: 'Line Amender',
+      role: 'admin',
+      updatedAt: new Date(),
+    });
+    const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => renderStubPdf());
 
     const amended = await amendPurchaseOrderQuantity({
-      actorUserId: ACTOR_ID,
+      actorUserId: amenderId,
       db: context.db,
       input: { id: purchaseOrder.id, note: 'Supplier can only send 6', partId: PIECE_PART_ID, quantity: 6 },
-      pdfRenderer: renderStubPdf,
+      pdfRenderer: render,
       storage: context.storage,
     });
     const amendments = await listPurchaseOrderAmendments({ db: context.db, purchaseOrderId: purchaseOrder.id });
@@ -101,7 +112,7 @@ describe('Purchase Order amendments', () => {
     expect(amended.lines).toMatchObject([{ partId: PIECE_PART_ID, quantity: 6, unitPrice: 125.5 }]);
     expect(amendments.items).toMatchObject([
       {
-        actorName: 'Amendment Tester',
+        actorName: 'Line Amender',
         kind: 'quantity-change',
         newPartId: null,
         newQuantity: 6,
@@ -117,6 +128,15 @@ describe('Purchase Order amendments', () => {
     ]);
     // The current PDF the order points at is the newest revision.
     expect(amended.documentId).toBe(documents.items[0]?.id);
+    expect(render).toHaveBeenCalledWith({
+      document: expect.objectContaining({
+        lastModified: {
+          actorName: 'Line Amender',
+          occurredAt: amendments.items[0]?.createdAt,
+        },
+      }),
+      filename: 'PO-00001 rev 2.pdf',
+    });
   });
 
   test('lowers a quantity, but never below what has already turned up', async ({ context }) => {

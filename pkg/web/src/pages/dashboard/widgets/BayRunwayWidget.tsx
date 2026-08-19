@@ -63,7 +63,7 @@ export const BayRunwayWidget: React.FC = () => {
   }
 
   if (bays.enabledBays.length === 0) {
-    return <DashboardWidgetEmpty>No enabled Bays.</DashboardWidgetEmpty>;
+    return <BayRunwayEmpty>No enabled Bays.</BayRunwayEmpty>;
   }
 
   // Recharts spreads data entries onto SVG shape elements, so keys must not collide with
@@ -75,7 +75,7 @@ export const BayRunwayWidget: React.FC = () => {
   }).filter(hasBayRunwayScheduling);
 
   if (chartData.length === 0) {
-    return <DashboardWidgetEmpty>No scheduled work.</DashboardWidgetEmpty>;
+    return <BayRunwayEmpty>No scheduled work.</BayRunwayEmpty>;
   }
 
   const departmentGroups = groupBaysByDepartmentPipeline(chartData);
@@ -102,9 +102,12 @@ export function getBayRunwayChartHeight(rowCount: number): number {
 }
 
 export function hasBayRunwayScheduling(
-  runway: Pick<ReturnType<typeof computeBayRunway>, 'inProgressWorkDays' | 'overflow' | 'scheduledWorkDays'>,
+  runway: Pick<
+    ReturnType<typeof buildBayRunwayChartData>[number],
+    'inProgressWorkDays' | 'overflowLabel' | 'scheduledWorkDays'
+  >,
 ): boolean {
-  return runway.inProgressWorkDays > 0 || runway.scheduledWorkDays > 0 || runway.overflow;
+  return runway.inProgressWorkDays > 0 || runway.scheduledWorkDays > 0 || runway.overflowLabel !== '';
 }
 
 function BayRunwayAxisTick({ payload, x = 0, y = 0 }: { payload?: { value?: unknown }; x?: number; y?: number }) {
@@ -196,11 +199,21 @@ export function buildBayRunwayChartData({
     });
 
     return {
-      ...runway,
       department: bay.department,
+      inProgressWorkDays: runway.inProgressWorkDays,
+      label: runway.label,
       overflowLabel: runway.overflow ? `${BAY_RUNWAY_CAP_WORKING_DAYS}+` : '',
+      scheduledWorkDays: runway.scheduledWorkDays,
     };
   });
+}
+
+function BayRunwayEmpty({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ height: SHOP_FLOOR_BAND_HEIGHT_PX }}>
+      <DashboardWidgetEmpty>{children}</DashboardWidgetEmpty>
+    </div>
+  );
 }
 
 function BayRunwayWidgetSkeleton() {

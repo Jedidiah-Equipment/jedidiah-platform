@@ -5,6 +5,7 @@ import {
   JOB_DEPARTMENT_PIPELINE,
   statusBadgeColorClassNames,
 } from '@pkg/domain';
+import type { Department } from '@pkg/schema';
 import type React from 'react';
 import { Label, PolarAngleAxis, PolarRadiusAxis, RadialBar, RadialBarChart } from 'recharts';
 
@@ -25,7 +26,7 @@ export const BAY_LOAD_CHART_CONFIG = {
   },
 } satisfies ChartConfig;
 
-export const BAY_LOAD_DEPARTMENTS: ReadonlySet<string> = new Set(['fabrication', 'paint']);
+export const BAY_LOAD_DEPARTMENTS: ReadonlySet<Department> = new Set(['fabrication', 'paint']);
 export const BAY_LOAD_CHART_HEIGHT_PX = 80;
 
 export const BayLoadTodayWidget: React.FC = () => {
@@ -39,15 +40,15 @@ export const BayLoadTodayWidget: React.FC = () => {
     return <BayLoadTodayWidgetSkeleton />;
   }
 
-  if (bays.enabledBays.length === 0) {
-    return <DashboardWidgetEmpty>No enabled Bays.</DashboardWidgetEmpty>;
-  }
-
   const departmentLoads = computeBayLoadTodayByDepartment({
     bays: bays.enabledBays,
     today: bays.today,
     workingCalendarsByBayId: bays.workingCalendarsByBayId,
   }).filter(({ department }) => BAY_LOAD_DEPARTMENTS.has(department));
+
+  if (departmentLoads.length === 0) {
+    return <DashboardWidgetEmpty>No enabled Fabrication or Paint Bays.</DashboardWidgetEmpty>;
+  }
 
   return (
     <div className="flex flex-col gap-4">

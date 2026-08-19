@@ -42,8 +42,8 @@ describe('StaleSentQuoteRowContent', () => {
       expect(getDashboardQuoteThumbnailDataUrl(quote)).toBe('data:image/webp;base64,cHJvZHVjdA==');
     } else {
       expect(getDashboardQuoteThumbnailDataUrl(quote)).toBeNull();
-      expect(html).toContain(expectedIcon);
     }
+    expect(html).toContain(expectedIcon);
     expect(html).not.toContain(otherIcon);
     expect(html.indexOf('Tim Gibson')).toBeLessThan(html.indexOf('QUO-00034'));
     expect(html.match(/href="\/quotes\/10000000-0000-4000-8000-000000000000\/edit"/g)).toHaveLength(2);

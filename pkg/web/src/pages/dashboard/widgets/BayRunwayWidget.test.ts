@@ -63,6 +63,9 @@ describe('BayRunwayWidget', () => {
       inProgressWorkDays: 2,
       scheduledWorkDays: 3,
     });
+    expect(buildBayRunwayChartData({ bays: [bay], today, workingCalendarsByBayId: new Map() })[0]).not.toHaveProperty(
+      'overflow',
+    );
     expect(BAY_RUNWAY_CHART_CONFIG.inProgressWorkDays.label).toBe('In progress days');
     expect(BAY_RUNWAY_CHART_CONFIG.scheduledWorkDays.label).toBe('Scheduled days');
     expect(BAY_RUNWAY_BAR_CLASS_NAMES).toEqual({
@@ -90,10 +93,10 @@ describe('BayRunwayWidget', () => {
   });
 
   it('hides rows without scheduling but keeps work beyond the runway window', () => {
-    expect(hasBayRunwayScheduling({ inProgressWorkDays: 0, overflow: false, scheduledWorkDays: 0 })).toBe(false);
-    expect(hasBayRunwayScheduling({ inProgressWorkDays: 1, overflow: false, scheduledWorkDays: 0 })).toBe(true);
-    expect(hasBayRunwayScheduling({ inProgressWorkDays: 0, overflow: false, scheduledWorkDays: 1 })).toBe(true);
-    expect(hasBayRunwayScheduling({ inProgressWorkDays: 0, overflow: true, scheduledWorkDays: 0 })).toBe(true);
+    expect(hasBayRunwayScheduling({ inProgressWorkDays: 0, overflowLabel: '', scheduledWorkDays: 0 })).toBe(false);
+    expect(hasBayRunwayScheduling({ inProgressWorkDays: 1, overflowLabel: '', scheduledWorkDays: 0 })).toBe(true);
+    expect(hasBayRunwayScheduling({ inProgressWorkDays: 0, overflowLabel: '', scheduledWorkDays: 1 })).toBe(true);
+    expect(hasBayRunwayScheduling({ inProgressWorkDays: 0, overflowLabel: '30+', scheduledWorkDays: 0 })).toBe(true);
   });
 });
 

@@ -21,7 +21,6 @@ vi.mock('./widgets/OpenPipelineWidget.js', () => ({ OpenPipelineWidget: () => nu
 vi.mock('./widgets/ScheduledJobsWidget.js', () => ({ ScheduledJobsWidget: () => null }));
 vi.mock('./widgets/QuoteFlowWidget.js', () => ({ QuoteFlowWidget: () => null }));
 vi.mock('./widgets/StaleSentQuotesWidget.js', () => ({ StaleSentQuotesWidget: () => null }));
-vi.mock('./widgets/RecentActivityWidget.js', () => ({ RecentActivityWidget: () => null }));
 
 const WidgetComponent = () => null;
 

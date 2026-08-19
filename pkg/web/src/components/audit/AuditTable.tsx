@@ -85,6 +85,11 @@ export const useQuoteAuditTableStore = createPersistedDataTableStore({
   persistName: 'quote-audit-table',
 });
 
+export const usePurchaseOrderAuditTableStore = createPersistedDataTableStore({
+  initialState: auditTableInitialState,
+  persistName: 'purchase-order-audit-table',
+});
+
 export const useProductAuditTableStore = createPersistedDataTableStore({
   initialState: auditTableInitialState,
   persistName: 'product-audit-table',

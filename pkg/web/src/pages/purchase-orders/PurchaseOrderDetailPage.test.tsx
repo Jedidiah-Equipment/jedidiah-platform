@@ -2,17 +2,28 @@
 
 import type { PurchaseOrderView } from '@pkg/schema';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act } from 'react';
+import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const showMutationError = vi.fn();
+const access = vi.hoisted(() => ({ canReadAudit: true }));
 /** What the server answers a draft whose line still carries the not-priced-yet zero. */
 const refusal = Object.assign(new Error('Set a unit price for ATR-0021 before sending this Purchase Order.'), {
   data: { appCode: 'purchase_order.line_not_priced', code: 'BAD_REQUEST' },
 });
 
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => showMutationError }));
+vi.mock('@/hooks/use-access.js', () => ({
+  useAccess: vi.fn(),
+  useCan: () => ({ can: access.canReadAudit }),
+}));
+vi.mock('@/components/audit/AuditTable.js', () => ({
+  AuditTable: ({ fixedFilters }: { fixedFilters: unknown }) => (
+    <div data-testid="purchase-order-audit">{JSON.stringify(fixedFilters)}</div>
+  ),
+  usePurchaseOrderAuditTableStore: vi.fn(),
+}));
 vi.mock('@/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: vi.fn(), invalidatePurchaseOrders: vi.fn() }),
 }));
@@ -33,7 +44,7 @@ vi.mock('@/lib/trpc.js', () => {
   };
 });
 
-import { PurchaseOrderActions } from './PurchaseOrderDetailPage.js';
+import { PurchaseOrderActions, PurchaseOrderDetailTabs } from './PurchaseOrderDetailPage.js';
 
 const purchaseOrder = {
   code: 'PO-00024',
@@ -79,7 +90,62 @@ describe('PurchaseOrderActions', () => {
   });
 });
 
+describe('PurchaseOrderDetailTabs', () => {
+  it('shows the purchase order audit history to audit readers', async () => {
+    access.canReadAudit = true;
+    const container = await mountNode(
+      <PurchaseOrderDetailTabs purchaseOrderId={purchaseOrder.id}>
+        <div>Current purchase order details</div>
+      </PurchaseOrderDetailTabs>,
+    );
+
+    expect(container.textContent).toContain('Details');
+    expect(container.textContent).toContain('Audit');
+    expect(container.textContent).toContain('Current purchase order details');
+
+    await click(container, 'Audit');
+
+    expect(container.querySelector('[data-testid="purchase-order-audit"]')?.textContent).toBe(
+      JSON.stringify({ entityIds: [purchaseOrder.id], entityTypes: ['purchase_order'] }),
+    );
+  });
+
+  it('keeps the audit tab hidden from readers without audit access', async () => {
+    access.canReadAudit = false;
+    const container = await mountNode(
+      <PurchaseOrderDetailTabs purchaseOrderId={purchaseOrder.id}>
+        <div>Current purchase order details</div>
+      </PurchaseOrderDetailTabs>,
+    );
+
+    expect(container.textContent).toContain('Details');
+    expect(container.textContent).toContain('Current purchase order details');
+    expect(container.textContent).not.toContain('Audit');
+  });
+});
+
 async function mount(): Promise<HTMLDivElement> {
+  return mountNode(
+    <QueryClientProvider client={new QueryClient()}>
+      <PurchaseOrderActions
+        canCancel
+        canCloseShort
+        canEdit={false}
+        canReadCosts={false}
+        canSend
+        isPending={false}
+        purchaseOrder={purchaseOrder}
+        // The page flushes the draft first; every failure this test cares about is the action's own.
+        runAfterSave={async (action) => {
+          await action();
+          return true;
+        }}
+      />
+    </QueryClientProvider>,
+  );
+}
+
+async function mountNode(node: ReactNode): Promise<HTMLDivElement> {
   const container = document.createElement('div');
   document.body.append(container);
   mountedContainers.push(container);
@@ -87,24 +153,7 @@ async function mount(): Promise<HTMLDivElement> {
   mountedRoots.push(root);
 
   await act(async () => {
-    root.render(
-      <QueryClientProvider client={new QueryClient()}>
-        <PurchaseOrderActions
-          canCancel
-          canCloseShort
-          canEdit={false}
-          canReadCosts={false}
-          canSend
-          isPending={false}
-          purchaseOrder={purchaseOrder}
-          // The page flushes the draft first; every failure this test cares about is the action's own.
-          runAfterSave={async (action) => {
-            await action();
-            return true;
-          }}
-        />
-      </QueryClientProvider>,
-    );
+    root.render(node);
   });
 
   return container;

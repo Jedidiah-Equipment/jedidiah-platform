@@ -1,0 +1,31 @@
+{
+  "releasedAt": "2026-08-19T12:13:08.071Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Track inventory performance",
+          "description": "Authorized managers can now monitor inventory value, annualized stock turns, top adjustments, and top scrap items from the dashboard."
+        },
+        {
+          "title": "See operations at a glance",
+          "description": "Refreshed dashboard widgets make bay utilization, workload runway, operator assignments, scheduled work, quote follow-ups, and upcoming deliveries easier to scan."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Keep job details tidy",
+          "description": "Job fact cards no longer show an empty customer field when no customer is attached."
+        },
+        {
+          "title": "Open the right stores Help",
+          "description": "Stocktake and close-out screens now open their task-specific guidance, while delivery receiving instructions are easier to find."
+        }
+      ]
+    }
+  ]
+}

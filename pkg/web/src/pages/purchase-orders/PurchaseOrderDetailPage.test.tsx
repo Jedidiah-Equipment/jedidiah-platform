@@ -59,6 +59,7 @@ afterEach(() => {
   mountedRoots.length = 0;
   for (const container of mountedContainers) container.remove();
   mountedContainers.length = 0;
+  access.canReadAudit = true;
   showMutationError.mockClear();
 });
 

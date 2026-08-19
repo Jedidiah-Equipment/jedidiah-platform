@@ -40,6 +40,10 @@ export const DOCS_SECTIONS: DocsSection[] = [
     items: [
       { text: 'Work the stores tablet', link: '/inventory/work-the-stores-tablet' },
       { text: 'Receive a delivery', link: '/inventory/post-a-receipt' },
+      {
+        text: "Inspect a Purchase Order's Audit history",
+        link: '/inventory/inspect-a-purchase-orders-audit-history',
+      },
       { text: 'Maintain Suppliers', link: '/inventory/maintain-suppliers' },
       { text: 'Add a Supplier', link: '/inventory/add-a-supplier' },
       { text: 'Update a Supplier', link: '/inventory/update-a-supplier' },

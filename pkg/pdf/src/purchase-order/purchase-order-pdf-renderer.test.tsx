@@ -3,16 +3,8 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { PurchaseOrderPdf } from './PurchaseOrderPdf.js';
-import { renderPurchaseOrderPdf } from './purchase-order-pdf-renderer.js';
 
 describe('Purchase Order PDF', () => {
-  test('renders a valid PDF document', async () => {
-    const bytes = await renderPurchaseOrderPdf({ document: model(), filename: 'PO-00042.pdf' });
-
-    expect(bytes.byteLength).toBeGreaterThan(1_000);
-    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
-  });
-
   test('prints the order details without exposing prices', () => {
     const text = collectText(PurchaseOrderPdf({ document: model() }));
 

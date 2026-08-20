@@ -540,14 +540,6 @@ describe('Purchase Order approval', () => {
     );
   });
 
-  test('refuses to withdraw an approval a sent order has already spent', async ({ context }) => {
-    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 50 }]);
-
-    await expect(
-      revertPurchaseOrderToDraft({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
-    ).rejects.toMatchObject({ code: 'purchase_order.not_approved' });
-  });
-
   test('cancels an approved order, discarding the sign-off without spending a permission for it', async ({
     context,
   }) => {

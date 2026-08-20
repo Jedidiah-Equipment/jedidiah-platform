@@ -1,0 +1,39 @@
+{
+  "releasedAt": "2026-08-20T09:25:11.585Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Review purchase order history",
+          "description": "Open the new Audit tab on an order to see its changes and activity."
+        },
+        {
+          "title": "Share price-free supplier PDFs",
+          "description": "Purchase order PDFs for suppliers no longer display pricing."
+        },
+        {
+          "title": "Approve orders before sending",
+          "description": "Purchase orders now require administrator approval before they can be sent, with approved orders protected from further editing unless returned to draft."
+        },
+        {
+          "title": "Navigate jobs more naturally",
+          "description": "Job navigation now follows the order Planning, List, Activity, and Calendar."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Reach job resources sooner",
+          "description": "Job resources now appear above feedback on job details."
+        },
+        {
+          "title": "Scan job details more easily",
+          "description": "Job detail cards start collapsed while keeping useful counts and statuses visible. Tap the full heading area to expand a card."
+        }
+      ]
+    }
+  ]
+}

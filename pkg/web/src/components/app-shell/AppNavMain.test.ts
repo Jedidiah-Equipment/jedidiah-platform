@@ -22,6 +22,12 @@ describe('AppNavMain', () => {
     ]);
     expect(inventory?.items.find((item) => item.title === 'Inventory')?.link.activeOptions).toEqual({ exact: true });
     expect(inventory?.items.find((item) => item.title === 'Purchase Orders')?.indicator).toBeDefined();
+    expect(operations?.items.find((item) => item.title === 'Jobs')?.children?.map((child) => child.title)).toEqual([
+      'Planning',
+      'List',
+      'Activity',
+      'Calendar',
+    ]);
     expect(
       operations?.items.find((item) => item.title === 'Jobs')?.children?.find((item) => item.title === 'Activity')
         ?.indicator,

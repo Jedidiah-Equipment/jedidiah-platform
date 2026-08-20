@@ -104,10 +104,9 @@ const navSections = [
         indicator: ActivityUnreadNavIndicator,
         children: [
           {
-            title: 'Activity',
+            title: 'Planning',
             permission: 'job:read',
-            link: linkOptions({ to: '/jobs/activity' }),
-            indicator: ActivityUnreadNavIndicator,
+            link: linkOptions({ to: '/jobs' }),
           },
           {
             title: 'List',
@@ -115,9 +114,10 @@ const navSections = [
             link: linkOptions({ to: '/jobs/list' }),
           },
           {
-            title: 'Planning',
+            title: 'Activity',
             permission: 'job:read',
-            link: linkOptions({ to: '/jobs' }),
+            link: linkOptions({ to: '/jobs/activity' }),
+            indicator: ActivityUnreadNavIndicator,
           },
           {
             title: 'Calendar',

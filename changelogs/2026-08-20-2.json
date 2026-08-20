@@ -1,0 +1,14 @@
+{
+  "releasedAt": "2026-08-20T11:31:26.719Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Preview files consistently",
+          "description": "Every file now opens in the same streamlined preview panel for a more consistent experience."
+        }
+      ]
+    }
+  ]
+}

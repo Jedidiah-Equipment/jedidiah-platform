@@ -64,11 +64,12 @@ export type JobFacts = {
 /**
  * The JOB DETAILS facts card (job code, quote code, work name, serial, customer) shared by the Bay Slot
  * detail pane (#520) and Job Detail (#615), so the two surfaces show the Job's reference details
- * identically. It collapses, since the toolbar already names the job the page is about.
+ * identically. It collapses where the toolbar already names the Job, and opens where nothing else on
+ * screen carries the Job code — the wide Bay Queue keeps its toolbar on the Bay.
  */
-export function JobFactsCard(facts: JobFacts) {
+export function JobFactsCard({ defaultOpen = false, ...facts }: JobFacts & { defaultOpen?: boolean }) {
   return (
-    <CardCollapse title="Job Details">
+    <CardCollapse defaultOpen={defaultOpen} title="Job Details">
       <View className="gap-4">
         <FactRow>
           <FactField label="JOB CODE" mono value={facts.jobCode} />

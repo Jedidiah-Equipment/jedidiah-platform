@@ -12,24 +12,27 @@ import { Text } from '@/components/ui/text';
  */
 export function CardCollapse({
   children,
+  defaultOpen = false,
   headerAccessory,
   title,
 }: {
   children: ReactNode;
+  /** Open a card on arrival when nothing else on that screen carries what it holds. */
+  defaultOpen?: boolean;
   /** Rendered between the heading and the chevron — for a status that has to survive collapsing. */
   headerAccessory?: ReactNode;
-  /** Card heading, rendered uppercase; carry any count in it, e.g. `Assemblies · 14`. */
+  /** Card heading, rendered uppercase by the heading style; carry any count in it. */
   title: string;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <View className="rounded-2xl border border-border bg-surface p-4">
+    <View className="rounded-2xl border border-border bg-surface">
       <Pressable
         accessibilityHint={isOpen ? 'Hides this card’s content' : 'Shows this card’s content'}
         accessibilityRole="button"
         accessibilityState={{ expanded: isOpen }}
-        className="flex-row items-center gap-3 active:opacity-70"
+        className="flex-row items-center gap-3 p-4 active:opacity-70"
         onPress={() => setIsOpen((open) => !open)}
       >
         <Text className="min-w-0 flex-1 text-[11px] uppercase tracking-widest text-muted-foreground" weight="semibold">
@@ -38,7 +41,7 @@ export function CardCollapse({
         {headerAccessory}
         <Icon className="text-muted-foreground" icon={isOpen ? IconChevronUp : IconChevronDown} size={18} />
       </Pressable>
-      {isOpen ? <View className="mt-3">{children}</View> : null}
+      {isOpen ? <View className="px-4 pb-4">{children}</View> : null}
     </View>
   );
 }

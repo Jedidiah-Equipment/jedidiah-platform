@@ -11,6 +11,8 @@ type JobDetailSectionsProps = {
   customerCompanyName: string | null;
   description: string | null;
   jobCode: string;
+  /** Open JOB DETAILS on arrival, for a surface whose toolbar names something other than the Job. */
+  jobFactsDefaultOpen?: boolean;
   jobId: string;
   productSerialNumber: string | null;
   quoteCode: string;
@@ -23,6 +25,7 @@ export function JobDetailSections({
   customerCompanyName,
   description,
   jobCode,
+  jobFactsDefaultOpen = false,
   jobId,
   productSerialNumber,
   quoteCode,
@@ -32,6 +35,7 @@ export function JobDetailSections({
     <>
       <JobFactsCard
         customerCompanyName={customerCompanyName}
+        defaultOpen={jobFactsDefaultOpen}
         jobCode={jobCode}
         workName={workName}
         productSerialNumber={productSerialNumber}

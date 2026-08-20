@@ -7,9 +7,8 @@ the Job.
 ## Stamp the start
 
 1. Open the Job and stay on the **Details** tab. On mobile, open the Job from the **Jobs** tab.
-2. In the **Fabrication** section, choose **Start fabrication**. On mobile the section starts
-   collapsed — tap its heading to open it. The heading carries the status, so you can see whether a
-   Job needs a stamp without opening anything.
+2. In the **Fabrication** section, choose **Start fabrication**. On mobile, tap the section's heading
+   to open it first.
 3. Confirm. The start time is now — there is nothing to type.
 
 If fabrication was due to be on the floor and nobody has stamped a start, the section shows

@@ -206,7 +206,7 @@ function Ready({
             style={isWide ? { flex: 3 } : { flex: 1 }}
           >
             {selected ? (
-              <SlotDetailPane slot={selected} />
+              <SlotDetailPane jobFactsDefaultOpen={!onDetail} slot={selected} />
             ) : (
               <View className="rounded-2xl border border-dashed border-border px-4 py-10">
                 <Text className="text-center text-sm text-muted-foreground">Select a slot to see its details.</Text>

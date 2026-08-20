@@ -69,6 +69,28 @@ describe('CardCollapse', () => {
     expect(renderer.root.findByType('Text' as never).props.children).toBe('ASSEMBLIES · 14');
   });
 
+  test('makes the whole heading band the touch target, not just the text', () => {
+    // The card's padding lives on the Pressable so a thumb landing above or below the heading text
+    // still opens the card; on the outer View it left a ~18pt strip (PR #1283 review).
+    const renderer = render(
+      <CardCollapse title="ASSEMBLIES · 14">
+        <Body />
+      </CardCollapse>,
+    );
+
+    expect(heading(renderer).props.className).toContain('p-4');
+  });
+
+  test('opens on arrival for a screen that names the card’s contents nowhere else', () => {
+    const renderer = render(
+      <CardCollapse defaultOpen title="JOB DETAILS">
+        <Body />
+      </CardCollapse>,
+    );
+
+    expect(renderer.root.findAllByType(Body)).toHaveLength(1);
+  });
+
   test('keeps a header accessory visible while collapsed', () => {
     const renderer = render(
       <CardCollapse headerAccessory={<Badge />} title="FABRICATION">

@@ -12,7 +12,14 @@ import type { BaySlotDetail } from '@/lib/use-bay-schedule';
  * and the shared Job detail sections. Slot + Job fields ride the Board join via
  * {@link BaySlotDetail}; documents/assemblies fetch their own `jobs.get` detail.
  */
-export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
+export function SlotDetailPane({
+  jobFactsDefaultOpen = false,
+  slot,
+}: {
+  /** Passed through to JOB DETAILS; the Bay Queue knows whether its toolbar is naming the Job. */
+  jobFactsDefaultOpen?: boolean;
+  slot: BaySlotDetail;
+}) {
   const isActive = slot.status === 'in-progress' && !slot.isCancelled;
   const isDone = slot.status === 'done' && !slot.isCancelled;
   const statusTone = slot.isCancelled ? 'cancelled' : isActive ? 'in-progress' : slot.isNext ? 'next' : 'muted';
@@ -57,6 +64,7 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
         customerCompanyName={slot.customerCompanyName}
         description={slot.description}
         jobCode={slot.jobCode}
+        jobFactsDefaultOpen={jobFactsDefaultOpen}
         jobId={slot.jobId}
         workName={slot.jobDisplayName}
         productSerialNumber={slot.productSerialNumber}

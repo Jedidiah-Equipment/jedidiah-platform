@@ -9,7 +9,7 @@ import {
   toPlantDateOnly,
 } from '@pkg/domain';
 import { AuthId, DateIso, type JobDepartmentTiming } from '@pkg/schema';
-import { IconPencil, IconX } from '@tabler/icons-react-native';
+import { IconCircleCheck, IconPencil, IconPlayerPlay, IconX } from '@tabler/icons-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {
@@ -28,6 +28,8 @@ import { z } from 'zod';
 import { Avatar } from '@/components/Avatar';
 import { FactField, FactRow } from '@/components/bays/job-facts';
 import { useAppForm } from '@/components/form';
+import { AccentButton } from '@/components/ui/accent-button';
+import { CardCollapse } from '@/components/ui/card-collapse';
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
@@ -102,56 +104,51 @@ export function JobFabricationCard({
   const duration = presentation.durationDays;
 
   return (
-    <View className="gap-4 rounded-2xl border border-border bg-surface p-4">
-      <View className="flex-row items-center justify-between gap-3">
-        <Text className="min-w-0 flex-1 text-[11px] uppercase tracking-widest text-muted-foreground" weight="semibold">
-          Fabrication
+    <CardCollapse headerAccessory={<FabricationStatusBadge state={presentation.state} />} title="Fabrication">
+      <View className="gap-4">
+        <Text className="text-sm leading-5 text-surface-foreground" weight="semibold">
+          {presentation.headline}
         </Text>
-        <FabricationStatusBadge state={presentation.state} />
-      </View>
+        <View className="-mx-4 h-px bg-border" />
 
-      <Text className="text-sm leading-5 text-surface-foreground" weight="semibold">
-        {presentation.headline}
-      </Text>
-      <View className="-mx-4 h-px bg-border" />
+        <FactRow className="gap-0">
+          <FactField className="pr-2" label="STARTED" value={formatDate(timing.startedAt, 'd MMM yyyy', '—')} />
+          <FactField
+            className="border-l border-border px-2"
+            label="FINISHED"
+            value={formatDate(timing.completedAt, 'd MMM yyyy', '—')}
+          />
+          <FactField
+            className="border-l border-border pl-2"
+            label="DURATION"
+            value={duration === null ? '—' : `${duration} ${duration === 1 ? 'day' : 'days'}`}
+          />
+        </FactRow>
 
-      <FactRow className="gap-0">
-        <FactField className="pr-2" label="STARTED" value={formatDate(timing.startedAt, 'd MMM yyyy', '—')} />
-        <FactField
-          className="border-l border-border px-2"
-          label="FINISHED"
-          value={formatDate(timing.completedAt, 'd MMM yyyy', '—')}
-        />
-        <FactField
-          className="border-l border-border pl-2"
-          label="DURATION"
-          value={duration === null ? '—' : `${duration} ${duration === 1 ? 'day' : 'days'}`}
-        />
-      </FactRow>
-
-      {presentation.state === 'complete' && timing.crew.length > 0 ? (
-        <>
-          <View className="-mx-4 h-px bg-border" />
-          <View className="gap-2.5">
-            <Text className="text-[10px] uppercase tracking-wide text-muted-foreground">CREW</Text>
-            <View className="flex-row flex-wrap gap-x-4 gap-y-2">
-              {timing.crew.map((member) => (
-                <View className="flex-row items-center gap-2" key={member.userId}>
-                  <Avatar className="h-7 w-7 rounded-full" name={member.name} uri={null} />
-                  <Text className="text-sm text-surface-foreground" weight="semibold">
-                    {getFirstName(member.name)}
-                  </Text>
-                </View>
-              ))}
+        {presentation.state === 'complete' && timing.crew.length > 0 ? (
+          <>
+            <View className="-mx-4 h-px bg-border" />
+            <View className="gap-2.5">
+              <Text className="text-[10px] uppercase tracking-wide text-muted-foreground">CREW</Text>
+              <View className="flex-row flex-wrap gap-x-4 gap-y-2">
+                {timing.crew.map((member) => (
+                  <View className="flex-row items-center gap-2" key={member.userId}>
+                    <Avatar className="h-7 w-7 rounded-full" name={member.name} uri={null} />
+                    <Text className="text-sm text-surface-foreground" weight="semibold">
+                      {getFirstName(member.name)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        </>
-      ) : null}
+          </>
+        ) : null}
 
-      {canStamp ? (
-        <FabricationAction isCompleted={isCompleted} jobCode={jobCode} jobId={jobId} timing={timing} />
-      ) : null}
-    </View>
+        {canStamp ? (
+          <FabricationAction isCompleted={isCompleted} jobCode={jobCode} jobId={jobId} timing={timing} />
+        ) : null}
+      </View>
+    </CardCollapse>
   );
 }
 
@@ -181,7 +178,8 @@ function FabricationAction({
 
   if (timing.startedAt === null) {
     return (
-      <ActionButton
+      <AccentButton
+        icon={IconPlayerPlay}
         label="Start fabrication"
         onPress={() =>
           Alert.alert('Start fabrication', `Record that fabrication on ${jobCode} started now?`, [
@@ -211,7 +209,7 @@ function FabricationAction({
   if (timing.completedAt === null) {
     return (
       <>
-        <ActionButton label="Fabrication done" onPress={() => setOpenDialog('done')} pending={false} />
+        <AccentButton icon={IconCircleCheck} label="Fabrication done" onPress={() => setOpenDialog('done')} />
         {openDialog === 'done' ? (
           <DoneModal
             isCompleted={isCompleted}
@@ -227,39 +225,11 @@ function FabricationAction({
 
   return (
     <>
-      <ActionButton icon label="Edit times" onPress={() => setOpenDialog('edit')} pending={false} />
+      <AccentButton icon={IconPencil} label="Edit times" onPress={() => setOpenDialog('edit')} />
       {openDialog === 'edit' ? (
         <CorrectionModal jobCode={jobCode} jobId={jobId} onClose={() => setOpenDialog(null)} timing={timing} />
       ) : null}
     </>
-  );
-}
-
-function ActionButton({
-  icon,
-  label,
-  onPress,
-  pending,
-}: {
-  icon?: boolean;
-  label: string;
-  onPress: () => void;
-  pending: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: pending }}
-      className={`flex-row items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 ${pending ? 'opacity-60' : 'active:opacity-70'}`}
-      disabled={pending}
-      onPress={onPress}
-    >
-      {pending ? <ActivityIndicator size="small" /> : null}
-      {icon ? <Icon className="text-muted-foreground" icon={IconPencil} size={16} /> : null}
-      <Text className="text-sm text-foreground" weight="semibold">
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 

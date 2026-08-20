@@ -8,6 +8,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, Sc
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppForm } from '@/components/form';
+import { AccentButton } from '@/components/ui/accent-button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
@@ -27,49 +28,16 @@ const DEPARTMENT_OPTIONS = DEPARTMENTS.map((department) => ({
   value: department,
 }));
 
-const LIGHT_PRIMARY_ACTION = '#806700';
-
-const FEEDBACK_BUTTON_CHROME = {
-  light: {
-    button: 'bg-primary/10 active:bg-primary/15',
-  },
-  dark: {
-    button: 'border-primary/60 bg-primary/10 active:bg-primary/15',
-    text: 'text-primary',
-  },
-} as const;
-
 /**
  * Mirror of web's `GiveFeedbackButton`, scoped to a Job: a trigger that opens a
  * full-screen form to submit feedback about this Job.
  */
 export function GiveFeedbackButton({ jobCode, jobId }: { jobCode: string; jobId: string }) {
   const [open, setOpen] = useState(false);
-  const { resolved } = useColorMode();
-  const chrome = FEEDBACK_BUTTON_CHROME[resolved];
-  const lightAccentStyle = resolved === 'light' ? { color: LIGHT_PRIMARY_ACTION } : undefined;
 
   return (
     <>
-      <Pressable
-        accessibilityRole="button"
-        className={`flex-row items-center justify-center gap-2 rounded-xl border px-4 py-3.5 ${chrome.button}`}
-        onPress={() => setOpen(true)}
-        style={resolved === 'light' ? { borderColor: LIGHT_PRIMARY_ACTION } : undefined}
-      >
-        {resolved === 'light' ? (
-          <IconMessagePlus color={LIGHT_PRIMARY_ACTION} size={18} />
-        ) : (
-          <Icon className={FEEDBACK_BUTTON_CHROME.dark.text} icon={IconMessagePlus} size={18} />
-        )}
-        <Text
-          className={`text-sm ${resolved === 'dark' ? FEEDBACK_BUTTON_CHROME.dark.text : ''}`}
-          style={lightAccentStyle}
-          weight="semibold"
-        >
-          Send Feedback
-        </Text>
-      </Pressable>
+      <AccentButton icon={IconMessagePlus} label="Send Feedback" onPress={() => setOpen(true)} />
       {/* Mount fresh each open so the form starts from defaults, mirroring web's remount-on-open. */}
       {open ? <FeedbackModal jobCode={jobCode} jobId={jobId} onClose={() => setOpen(false)} /> : null}
     </>

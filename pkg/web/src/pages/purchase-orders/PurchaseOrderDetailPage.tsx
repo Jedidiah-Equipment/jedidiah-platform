@@ -14,7 +14,7 @@ import type {
   StockOnHandRow,
   UUID,
 } from '@pkg/schema';
-import { isPurchaseOrderLineUnpriced } from '@pkg/schema';
+import { isPurchaseOrderLineUnpriced, purchaseOrderHasUnpricedLines } from '@pkg/schema';
 import {
   IconArrowBackUp,
   IconBan,
@@ -819,7 +819,7 @@ const ReadOnlyLinesCard: React.FC<{
       {canReadCosts ? (
         <div className="border-t px-4 pt-4 text-right font-medium">
           Total{' '}
-          {purchaseOrder.status === 'draft' && purchaseOrder.lines.some(isPurchaseOrderLineUnpriced)
+          {purchaseOrderHasUnpricedLines(purchaseOrder)
             ? 'Not priced'
             : formatCurrency(lineTotal(purchaseOrder.lines), 'ZAR')}
         </div>

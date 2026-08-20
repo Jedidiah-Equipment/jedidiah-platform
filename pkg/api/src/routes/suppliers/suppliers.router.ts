@@ -63,7 +63,7 @@ const supplierErrorMappings = {
   'supplier.has_draft_purchase_orders': {
     appCode: 'supplier.has_draft_purchase_orders',
     code: 'CONFLICT',
-    message: 'This supplier cannot be removed while it has draft Purchase Orders.',
+    message: 'This supplier cannot be removed while it has Purchase Orders that have not been sent.',
   },
 } satisfies {
   [TCode in SupplierCoreError['code']]: CoreErrorMapping<TCode>;

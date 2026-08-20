@@ -25,7 +25,7 @@ export class SupplierHasDraftPurchaseOrdersError extends Error {
   readonly metadata: { id: string };
 
   constructor(id: string) {
-    super(`Supplier has draft Purchase Orders: ${id}`);
+    super(`Supplier has unsent Purchase Orders: ${id}`);
     this.name = 'SupplierHasDraftPurchaseOrdersError';
     this.metadata = { id };
   }

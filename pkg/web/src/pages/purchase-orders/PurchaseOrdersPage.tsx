@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
-import { isPurchaseOrderLineUnpriced, type PurchaseOrderView } from '@pkg/schema';
+import { type PurchaseOrderView, purchaseOrderHasUnpricedLines } from '@pkg/schema';
 import { IconCheck, IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -160,8 +160,4 @@ function createPurchaseOrderColumns(canReadCosts: boolean): ColumnDef<PurchaseOr
 
 function totalFor(purchaseOrder: PurchaseOrderView): number {
   return purchaseOrder.lines.reduce((total, line) => total + line.quantity * (line.unitPrice ?? 0), 0);
-}
-
-function purchaseOrderHasUnpricedLines(purchaseOrder: PurchaseOrderView): boolean {
-  return purchaseOrder.status === 'draft' && purchaseOrder.lines.some(isPurchaseOrderLineUnpriced);
 }

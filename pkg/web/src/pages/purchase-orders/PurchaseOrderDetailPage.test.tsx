@@ -31,6 +31,12 @@ vi.mock('@/lib/trpc.js', () => {
     useTRPC: () => ({
       purchaseOrders: {
         approve: { mutationOptions: refusingMutationOptions },
+        documents: {
+          queryOptions: (input: unknown) => ({
+            queryFn: () => Promise.resolve({ items: [] }),
+            queryKey: ['purchase-order-documents', input],
+          }),
+        },
         cancel: { mutationOptions: refusingMutationOptions },
         closeShort: { mutationOptions: refusingMutationOptions },
         markSent: { mutationOptions: refusingMutationOptions },

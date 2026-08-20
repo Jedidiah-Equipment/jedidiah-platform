@@ -1,4 +1,4 @@
-import { downloadFile } from './download-file.js';
+import { downloadFile } from './download.js';
 
 /**
  * The two rules every priced CSV this app hands to a spreadsheet obeys. Both reports read the same

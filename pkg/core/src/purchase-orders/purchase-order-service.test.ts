@@ -250,6 +250,45 @@ describe('Purchase Order send and cancel', () => {
     });
   });
 
+  test('names the last editor of this order, not the newest edit anywhere', async ({ context }) => {
+    const ourEditorId = 'po-our-editor';
+    const otherEditorId = 'po-other-editor';
+    await seedTestUser(context.db, { id: ourEditorId, name: 'Our Editor' });
+    await seedTestUser(context.db, { id: otherEditorId, name: 'Other Editor' });
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: ourEditorId,
+      db: context.db,
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]),
+    });
+    // A second order edited afterwards leaves the newest audit row in the table. The footer names
+    // who touched *this* order, so that row has to stay out of the lookup entirely.
+    const otherOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: otherEditorId,
+      db: context.db,
+      input: draftInput(otherOrder.id, [{ partId: PIECE_PART_ID, quantity: 1, unitPrice: 10 }]),
+    });
+    const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => pdfBytes());
+
+    await renderPurchaseOrderPreview({ db: context.db, id: purchaseOrder.id, pdfRenderer: render });
+
+    expect(render).toHaveBeenCalledWith({
+      document: expect.objectContaining({
+        lastModified: { actorName: 'Our Editor', occurredAt: expect.any(String) },
+      }),
+      filename: 'PO-00001.pdf',
+    });
+  });
+
   test('passes a deleted last modifier to the PDF as System', async ({ context }) => {
     const deletedActorId = 'po-deleted-modifier';
     await seedTestUser(context.db, { id: deletedActorId, name: 'Deleted Modifier' });

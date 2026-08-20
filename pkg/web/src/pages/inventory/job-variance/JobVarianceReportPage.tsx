@@ -16,7 +16,7 @@ export function JobVarianceReportPage({ jobId }: { jobId: UUID }) {
 
   if (query.isPending) {
     return (
-      <PageLayout size="lg" title="Material variance">
+      <PageLayout title="Material variance">
         <Skeleton className="h-40 w-full" />
       </PageLayout>
     );
@@ -24,7 +24,7 @@ export function JobVarianceReportPage({ jobId }: { jobId: UUID }) {
 
   if (query.error) {
     return (
-      <PageLayout size="lg" title="Material variance">
+      <PageLayout title="Material variance">
         <p className="text-destructive text-sm">Unable to load this Job’s variance.</p>
       </PageLayout>
     );
@@ -33,7 +33,6 @@ export function JobVarianceReportPage({ jobId }: { jobId: UUID }) {
   return (
     <PageLayout
       description={describeVarianceJob(query.data.job)}
-      size="lg"
       title={`Material variance · ${query.data.job.displayName}`}
     >
       <JobVarianceReport report={query.data} showCosts={showCosts} />

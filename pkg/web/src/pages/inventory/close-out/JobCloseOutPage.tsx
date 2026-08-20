@@ -42,7 +42,7 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
 
   if (jobStockQuery.isPending) {
     return (
-      <PageLayout size="lg" title="Close out Job stock">
+      <PageLayout title="Close out Job stock">
         <Skeleton className="h-40 w-full" />
       </PageLayout>
     );
@@ -50,7 +50,7 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
 
   if (jobStockQuery.error) {
     return (
-      <PageLayout size="lg" title="Close out Job stock">
+      <PageLayout title="Close out Job stock">
         <p className="text-destructive text-sm">Unable to load this Job’s stock.</p>
       </PageLayout>
     );
@@ -90,7 +90,6 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
         </div>
       }
       description={describeJob(job)}
-      size="lg"
       title={`Close out ${job.displayName}`}
     >
       {items.length === 0 ? (

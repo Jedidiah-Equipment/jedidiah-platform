@@ -19,7 +19,6 @@ import {
   IconArrowBackUp,
   IconBan,
   IconCircleCheck,
-  IconDownload,
   IconEye,
   IconFlagCheck,
   IconPlus,
@@ -35,6 +34,8 @@ import { toast } from 'sonner';
 import { AuditTable, usePurchaseOrderAuditTableStore } from '@/components/audit/AuditTable.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { FilePreviewSheet } from '@/components/documents/FilePreviewSheet.js';
+import { useFilePreview } from '@/components/documents/use-file-preview.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
@@ -47,6 +48,7 @@ import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { fetchDocumentPreviewBlob } from '@/utils/document.js';
 import { formatPurchaseUnitLabel } from '@/utils/part-quantity-format.js';
 import { allJobsInput } from '../jobs/components/all-jobs-input.js';
 import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.js';
@@ -56,11 +58,7 @@ import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderIn
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderReturnsCard } from './components/PurchaseOrderReturnsCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
-import {
-  ensurePurchaseOrderPreview,
-  purchaseOrderDocumentDownloadUrl,
-  purchaseOrderPreviewUrl,
-} from './components/purchase-order-pdf.js';
+import { fetchPurchaseOrderPreviewBlob } from './components/purchase-order-pdf.js';
 import {
   type PurchaseOrderDraftFormValues,
   PurchaseOrderDraftFormValues as PurchaseOrderDraftFormValuesSchema,
@@ -274,6 +272,51 @@ export const PurchaseOrderDetailTabs: React.FC<{ children: React.ReactNode; purc
 
 type DraftForm = ReturnType<typeof useAutosaveForm<PurchaseOrderDraftFormValues, unknown>>['form'];
 
+/**
+ * The as-sent PDF, previewed in the same sheet every other filed document uses. The document row is
+ * only fetched when the sheet opens: until it lands the order's own code names the file, so the
+ * button never sits disabled behind a request the buyer cannot see.
+ */
+const PurchaseOrderSentPdfButton: React.FC<{
+  code: PurchaseOrderView['code'];
+  documentId: UUID;
+  purchaseOrderId: UUID;
+}> = ({ code, documentId, purchaseOrderId }) => {
+  const trpc = useTRPC();
+  const preview = useFilePreview();
+  const owner = useMemo(() => ({ id: purchaseOrderId, type: 'purchase_order' }) as const, [purchaseOrderId]);
+  const documentsQuery = useQuery({
+    ...trpc.purchaseOrders.documents.queryOptions({ purchaseOrderId }),
+    enabled: preview.isOpen,
+  });
+  // An amended order files further revisions, so only the row knows whether this is `rev 2`.
+  const filename = documentsQuery.data?.items.find((item) => item.id === documentId)?.filename ?? `${code}.pdf`;
+  const fetchBlob = useCallback(
+    ({ signal }: { signal: AbortSignal }) => fetchDocumentPreviewBlob({ document: { id: documentId }, owner, signal }),
+    [documentId, owner],
+  );
+
+  return (
+    <>
+      <Button onClick={() => preview.open()} variant="outline">
+        <IconEye data-icon="inline-start" /> View PDF
+      </Button>
+      <FilePreviewSheet
+        description="Filed PDF"
+        downloadFilename={filename}
+        fetchBlob={fetchBlob}
+        kind="pdf"
+        onOpenChange={preview.onOpenChange}
+        open={preview.isOpen}
+        queryKey={['purchase-order-document', purchaseOrderId, documentId]}
+        staleTime={Infinity}
+        subject="Purchase Order"
+        title={filename}
+      />
+    </>
+  );
+};
+
 const SupplierField: React.FC<{ commit: () => void; form: DraftForm }> = ({ commit, form }) => {
   const suppliers = useSupplierOptions({ limit: 0 });
 
@@ -318,6 +361,7 @@ export const PurchaseOrderActions: React.FC<{
 }) => {
   const trpc = useTRPC();
   const { invalidatePurchaseOrders } = useQueryInvalidation();
+  const preview = useFilePreview();
   // Every lifecycle refusal the server can raise is a state rule the buyer can act on — an unpriced
   // line names its Part, a cancellation names its receipts. Without this the click just does nothing.
   const showMutationError = useApiMutationErrorToast();
@@ -374,48 +418,45 @@ export const PurchaseOrderActions: React.FC<{
     cancelMutation.isPending ||
     closeShortMutation.isPending;
 
-  const handlePreview = () => {
-    // Reserve the tab during the click gesture so browsers do not treat the post-save navigation as a popup.
-    const previewWindow = window.open('', '_blank');
-    if (previewWindow) previewWindow.opener = null;
+  const fetchPreviewBlob = useCallback(
+    ({ signal }: { signal: AbortSignal }) =>
+      fetchPurchaseOrderPreviewBlob({ purchaseOrderId: purchaseOrder.id, signal }),
+    [purchaseOrder.id],
+  );
 
+  // The preview renders the *saved* order, so the draft flushes before the sheet asks for it.
+  const handlePreview = () => {
     void runAfterSave(async () => {
-      const url = purchaseOrderPreviewUrl(purchaseOrder.id);
-      const toastId = `purchase-order-preview-${purchaseOrder.id}`;
-      toast.loading('Preparing PDF preview...', { id: toastId });
-      try {
-        await ensurePurchaseOrderPreview(url);
-      } catch (error) {
-        toast.error('Unable to open the PDF preview.', { id: toastId });
-        throw error;
-      }
-      toast.success('PDF preview opened', { id: toastId });
-      // Navigate to the server response so the PDF viewer retains the PO filename from Content-Disposition.
-      if (previewWindow) previewWindow.location.href = url;
-      else window.location.assign(url);
-    }, 'Save all Purchase Order changes before previewing the PDF.')
-      .then((didRun) => {
-        if (!didRun) previewWindow?.close();
-      })
-      .catch(() => {
-        previewWindow?.close();
-      });
+      preview.open();
+    }, 'Save all Purchase Order changes before previewing the PDF.').catch(() => undefined);
   };
 
   return (
     <div className="flex flex-wrap gap-2">
       {canEdit ? (
-        <Button disabled={disabled} onClick={handlePreview} variant="outline">
-          <IconEye data-icon="inline-start" /> Preview PDF
-        </Button>
+        <>
+          <Button disabled={disabled} onClick={handlePreview} variant="outline">
+            <IconEye data-icon="inline-start" /> Preview PDF
+          </Button>
+          <FilePreviewSheet
+            description="Generated PDF"
+            downloadFilename={`${purchaseOrder.code}.pdf`}
+            fetchBlob={fetchPreviewBlob}
+            kind="pdf"
+            onOpenChange={preview.onOpenChange}
+            open={preview.isOpen}
+            queryKey={['purchase-order-preview', purchaseOrder.id, preview.request]}
+            subject="Purchase Order"
+            title={`${purchaseOrder.code}.pdf`}
+          />
+        </>
       ) : null}
       {canReadCosts && purchaseOrder.documentId ? (
-        <Button
-          render={<a href={purchaseOrderDocumentDownloadUrl(purchaseOrder.id, purchaseOrder.documentId)} />}
-          variant="outline"
-        >
-          <IconDownload data-icon="inline-start" /> Download PDF
-        </Button>
+        <PurchaseOrderSentPdfButton
+          code={purchaseOrder.code}
+          documentId={purchaseOrder.documentId}
+          purchaseOrderId={purchaseOrder.id}
+        />
       ) : null}
       {canRevertToDraft ? (
         <Button

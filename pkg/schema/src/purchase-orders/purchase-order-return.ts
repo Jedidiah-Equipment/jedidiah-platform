@@ -4,7 +4,7 @@ import { DateIso, DateOnlyIso } from '../common/date.js';
 import { PurchaseOrderCode } from '../common/public-code.js';
 import { nullableTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
-import { PurchaseOrderDocumentType } from '../documents/document.js';
+import { DocumentContentType, PurchaseOrderDocumentType } from '../documents/document.js';
 import { declareInventoryCostFields, InventoryValue } from '../inventory/inventory-cost.js';
 import { StockMovementLengthMm, StockReturnToSupplierReason } from '../inventory/stock-movement.js';
 import { SupplierCompanyName } from '../suppliers/supplier.js';
@@ -92,6 +92,8 @@ export const CreditNoteSettlementInput = z
 export type PurchaseOrderDocumentRow = z.infer<typeof PurchaseOrderDocumentRow>;
 export const PurchaseOrderDocumentRow = z.object({
   byteSize: z.int().min(0),
+  /** What the reader can do with the bytes: the desk previews a PDF or an image inline. */
+  contentType: DocumentContentType,
   createdAt: DateIso,
   filename: z.string(),
   id: UUID,

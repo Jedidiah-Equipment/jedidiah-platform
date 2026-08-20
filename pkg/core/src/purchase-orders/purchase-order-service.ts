@@ -1097,8 +1097,10 @@ async function loadPurchaseOrderLastModified({
         eq(auditEvents.entityType, 'purchase_order'),
         eq(auditEvents.entityId, id),
         // Only lifecycle *updates* are skipped. Creation always survives as the floor, so an order
-        // whose lines arrived with it still has someone to name.
-        sql`${auditEvents.action} <> 'updated' OR NOT coalesce(${auditEvents.changes} ? 'status', false)`,
+        // whose lines arrived with it still has someone to name. The parentheses are load-bearing:
+        // `and()` brackets the group, not each condition, so a bare `OR` here would bind looser than
+        // the entity filters and match every non-status event in the table.
+        sql`(${auditEvents.action} <> 'updated' OR NOT coalesce(${auditEvents.changes} ? 'status', false))`,
       ),
     )
     .orderBy(desc(auditEvents.occurredAt), desc(auditEvents.id))

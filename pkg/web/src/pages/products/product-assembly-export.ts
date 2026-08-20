@@ -2,7 +2,7 @@ import { formatDate } from '@pkg/domain';
 import type { AssemblyKind } from '@pkg/schema';
 import Papa from 'papaparse';
 
-import { downloadFile } from '@/utils/download-file.js';
+import { downloadFile } from '@/utils/download.js';
 
 export type ProductAssemblyExportRow = {
   productModelCode: string;

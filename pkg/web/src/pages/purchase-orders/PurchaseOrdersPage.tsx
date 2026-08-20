@@ -51,7 +51,6 @@ export const PurchaseOrdersPage: React.FC = () => {
           ) : null
         }
         description={purchaseOrdersPageDescription}
-        size="lg"
         title="Purchase Orders"
       >
         <PurchaseOrderTable

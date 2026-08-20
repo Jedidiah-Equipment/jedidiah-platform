@@ -25,7 +25,6 @@ export function StocktakeSessionsPage() {
   return (
     <PageLayout
       description="Counting walks, their variance, and what each one skipped. Counts are posted from the stores tablet."
-      size="lg"
       title="Stocktake"
     >
       <div className="grid gap-3 sm:grid-cols-2">

@@ -19,6 +19,7 @@ import type React from 'react';
 import { useMemo, useState } from 'react';
 import { DataTableLoadMore } from '@/components/data-table/components/DataTableLoadMore.js';
 import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
+import { useFilePreview } from '@/components/documents/use-file-preview.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import {
@@ -88,7 +89,7 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
   owner,
   rightSection,
 }: DocumentCardListProps<TDocument>) {
-  const [previewDocument, setPreviewDocument] = useState<TDocument | null>(null);
+  const preview = useFilePreview<TDocument>();
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<DocumentCardSortValue>(defaultSort);
   const { ref: listRef, width } = useElementSize();
@@ -152,7 +153,7 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
                   key={document.id}
                   metadata={metadata.render(document)}
                   compact={isCompact}
-                  onPreviewDocument={setPreviewDocument}
+                  onPreviewDocument={preview.open}
                   owner={owner}
                   {...(onDelete ? { onDelete } : {})}
                 />
@@ -178,13 +179,9 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
         </CardContent>
       </Card>
       <DocumentPreviewSheet
-        document={previewDocument}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPreviewDocument(null);
-          }
-        }}
-        open={Boolean(previewDocument)}
+        document={preview.file}
+        onOpenChange={preview.onOpenChange}
+        open={preview.isOpen}
         owner={owner}
       />
     </section>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveLoadingSpinnerColor, resolvePrimaryColorTriplets } from './brand-palette';
+import { resolveAccentActionColor, resolveLoadingSpinnerColor, resolvePrimaryColorTriplets } from './brand-palette';
 
 describe('resolvePrimaryColorTriplets', () => {
   it('keeps the current yellow primary colors outside staging', () => {
@@ -22,5 +22,12 @@ describe('resolveLoadingSpinnerColor', () => {
   it('follows the dark primary color for the loading spinner', () => {
     expect(resolveLoadingSpinnerColor(false)).toBe('#fff000');
     expect(resolveLoadingSpinnerColor(true)).toBe('#ff6bbf');
+  });
+});
+
+describe('resolveAccentActionColor', () => {
+  it('darkens each brand primary for light-mode accent text', () => {
+    expect(resolveAccentActionColor(false)).toBe('#806700');
+    expect(resolveAccentActionColor(true)).toBe('#9d174d');
   });
 });

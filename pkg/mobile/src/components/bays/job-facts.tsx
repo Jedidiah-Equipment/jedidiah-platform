@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { CustomerName } from '@/components/CustomerName';
+import { CardCollapse } from '@/components/ui/card-collapse';
 import { Text } from '@/components/ui/text';
 
 /** A titled detail card, matching the Bay slot and Job detail panes. */
@@ -61,12 +62,13 @@ export type JobFacts = {
 };
 
 /**
- * The JOB facts card (job code, quote code, work name, serial, customer) shared by the Bay Slot detail
- * pane (#520) and Job Detail (#615), so the two surfaces show the Job's reference details identically.
+ * The JOB DETAILS facts card (job code, quote code, work name, serial, customer) shared by the Bay Slot
+ * detail pane (#520) and Job Detail (#615), so the two surfaces show the Job's reference details
+ * identically. It collapses, since the toolbar already names the job the page is about.
  */
 export function JobFactsCard(facts: JobFacts) {
   return (
-    <FactCard title="Job">
+    <CardCollapse title="Job Details">
       <View className="gap-4">
         <FactRow>
           <FactField label="JOB CODE" mono value={facts.jobCode} />
@@ -89,6 +91,6 @@ export function JobFactsCard(facts: JobFacts) {
           </FactCell>
         ) : null}
       </View>
-    </FactCard>
+    </CardCollapse>
   );
 }

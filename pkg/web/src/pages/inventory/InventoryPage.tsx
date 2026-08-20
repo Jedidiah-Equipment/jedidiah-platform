@@ -34,7 +34,6 @@ export function InventoryPage() {
         />
       }
       description={inventoryPageDescription}
-      size="lg"
       title="Stock on hand"
     >
       <StockOnHandTable

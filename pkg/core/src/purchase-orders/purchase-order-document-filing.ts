@@ -62,6 +62,7 @@ export async function filePurchaseOrderDocument({
 
       return PurchaseOrderDocumentRowSchema.parse({
         byteSize: document.byteSize,
+        contentType: document.contentType,
         createdAt: document.createdAt.toISOString(),
         filename: document.filename,
         id: document.id,

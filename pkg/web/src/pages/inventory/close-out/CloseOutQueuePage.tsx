@@ -13,7 +13,6 @@ export function CloseOutQueuePage() {
   return (
     <PageLayout
       description="Completed Jobs still holding drawn stock or open commitment. A Job leaves only once it is closed out."
-      size="lg"
       title="Close-out queue"
     >
       <CloseOutQueueTable

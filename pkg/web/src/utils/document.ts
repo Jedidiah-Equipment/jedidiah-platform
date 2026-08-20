@@ -11,14 +11,18 @@ import {
 import { toast } from 'sonner';
 
 import { getClientConfig } from '@/lib/app-config.js';
+import { saveBlobAsFile } from '@/utils/download.js';
 
 export const PRODUCT_DOCUMENT_ACCEPT = [...getDocumentPolicy('product').allowedContentTypes, '.zip'].join(',');
 export const JOB_DOCUMENT_ACCEPT = getDocumentPolicy('job').allowedContentTypes.join(',');
 
 export type DocumentPreviewOwner = {
   id: UUID;
-  type: 'job' | 'product' | 'quote';
+  type: DocumentOwnerType;
 };
+
+/** All a preview needs of a filed document — the Purchase Order's own row shape satisfies it too. */
+export type PreviewableDocument = Pick<DocumentSummary, 'byteSize' | 'contentType' | 'filename' | 'id'>;
 
 export type DocumentPreviewKind = 'image' | 'pdf';
 
@@ -181,7 +185,7 @@ export async function fetchDocumentPreviewBlob({
   owner,
   signal,
 }: {
-  document: DocumentSummary;
+  document: Pick<PreviewableDocument, 'id'>;
   owner: DocumentPreviewOwner;
   signal?: AbortSignal;
 }): Promise<Blob> {
@@ -202,7 +206,7 @@ export function getDocumentDownloadUrl({
   document,
   owner,
 }: {
-  document: DocumentSummary;
+  document: Pick<PreviewableDocument, 'id'>;
   owner: DocumentPreviewOwner;
 }): string {
   return `${getClientConfig().apiBaseUrl}${createDocumentDownloadPath({ document, owner })}`;
@@ -212,7 +216,7 @@ export function createDocumentDownloadPath({
   document,
   owner,
 }: {
-  document: DocumentSummary;
+  document: Pick<PreviewableDocument, 'id'>;
   owner: DocumentPreviewOwner;
 }): string {
   const encodedOwnerId = encodeURIComponent(owner.id);
@@ -224,6 +228,10 @@ export function createDocumentDownloadPath({
 
   if (owner.type === 'job') {
     return `/api/jobs/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
+  }
+
+  if (owner.type === 'purchase_order') {
+    return `/api/purchase-orders/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
   }
 
   return `/api/quotes/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
@@ -256,13 +264,7 @@ async function downloadDocumentResponse({
     throw new Error(await readApiErrorMessage(response, fallback));
   }
 
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const link = window.document.createElement('a');
-  link.href = url;
-  link.download = document.filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  saveBlobAsFile({ blob: await response.blob(), filename: document.filename });
 }
 
 export async function readApiErrorMessage(response: Response, fallback: string): Promise<string> {

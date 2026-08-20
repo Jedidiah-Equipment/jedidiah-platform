@@ -50,7 +50,6 @@ export function BuyListPage() {
         ) : null
       }
       description={buyListPageDescription}
-      size="lg"
       title="Buy list"
     >
       <div className="grid gap-8">

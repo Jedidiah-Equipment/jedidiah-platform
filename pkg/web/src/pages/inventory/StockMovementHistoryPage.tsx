@@ -22,7 +22,6 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
   return (
     <PageLayout
       description={part ? `${part.code} · Complete append-only movement ledger` : undefined}
-      size="lg"
       title={part ? `${part.name} history` : undefined}
     >
       {historyQuery.isPending ? <HistorySkeleton /> : null}

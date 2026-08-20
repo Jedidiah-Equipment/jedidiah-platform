@@ -34,7 +34,6 @@ export const SuppliersPage: React.FC = () => {
           ) : null
         }
         description={suppliersPageDescription}
-        size="lg"
         title="Suppliers"
       >
         <SupplierTable

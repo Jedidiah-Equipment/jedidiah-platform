@@ -102,7 +102,7 @@ export function PriceVarianceReportPage() {
   });
 
   return (
-    <PageLayout description={priceVariancePageDescription} size="lg" title="PO vs invoiced">
+    <PageLayout description={priceVariancePageDescription} title="PO vs invoiced">
       <DataTable
         emptyMessage="No Supplier has billed against an agreed price."
         errorMessage={getApiQueryErrorMessage(query.error, 'Unable to load the price variance report.')}

@@ -100,6 +100,7 @@ export async function listPurchaseOrderDocuments({
   const rows = await db
     .select({
       byteSize: documents.byteSize,
+      contentType: documents.contentType,
       createdAt: documents.createdAt,
       filename: documents.filename,
       id: documents.id,
@@ -124,6 +125,7 @@ export async function listPurchaseOrderDocuments({
 
       return {
         byteSize: row.byteSize,
+        contentType: row.contentType,
         createdAt: row.createdAt,
         filename: row.filename,
         id: row.id,

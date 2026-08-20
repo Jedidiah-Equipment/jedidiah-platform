@@ -50,7 +50,6 @@ export const ProductsPage: React.FC = () => {
           </div>
         }
         description={productsPageDescription}
-        size="lg"
         title="Products"
       >
         <ProductTable

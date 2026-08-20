@@ -46,9 +46,10 @@ delivery. Change the quantity instead, or send the wrong item back — see
 ## Send the amended order
 
 Every amendment files a new revision in the **Documents** card, named `PO-00042 rev 2.pdf` and up.
-Download the newest one and send it: it prints its revision number and says it supersedes the
-earlier ones, so the Supplier knows which page to work from. The order as originally sent is never
-replaced — it stays in the collection as what was first agreed.
+Click **Preview** on the newest one and download it from the panel that opens, then send it: it
+prints its revision number and says it supersedes the earlier ones, so the Supplier knows which page
+to work from. The order as originally sent is never replaced — it stays in the collection as what
+was first agreed.
 
 ## Notes
 

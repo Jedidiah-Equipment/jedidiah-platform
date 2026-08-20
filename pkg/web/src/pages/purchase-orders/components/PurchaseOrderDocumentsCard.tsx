@@ -1,16 +1,17 @@
 import { formatBytes, formatDate } from '@pkg/domain';
 import { PURCHASE_ORDER_DOCUMENT_TYPE_LABELS, type PurchaseOrderDocumentRow, type UUID } from '@pkg/schema';
-import { IconDownload } from '@tabler/icons-react';
+import { IconEye } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useMemo } from 'react';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
+import { useFilePreview } from '@/components/documents/use-file-preview.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { purchaseOrderDocumentDownloadUrl } from './purchase-order-pdf.js';
 
 /**
  * The order's whole paper trail: the as-sent PDF, every revision an amendment filed after it, and
@@ -28,6 +29,7 @@ export function PurchaseOrderDocumentsCard({
   const trpc = useTRPC();
   const query = useQuery(trpc.purchaseOrders.documents.queryOptions({ purchaseOrderId }));
   const items = query.data?.items ?? [];
+  const preview = useFilePreview<PurchaseOrderDocumentRow>();
   const columns = useMemo<ColumnDef<PurchaseOrderDocumentRow>[]>(
     () => [
       {
@@ -72,22 +74,24 @@ export function PurchaseOrderDocumentsCard({
               cell: ({ row }) => (
                 <div className="flex justify-end">
                   <Button
-                    render={<a href={purchaseOrderDocumentDownloadUrl(purchaseOrderId, row.original.id)} />}
+                    aria-label={`Preview ${row.original.filename}`}
+                    onClick={() => preview.open(row.original)}
                     size="sm"
+                    type="button"
                     variant="ghost"
                   >
-                    <IconDownload data-icon="inline-start" /> Download
+                    <IconEye data-icon="inline-start" /> Preview
                   </Button>
                 </div>
               ),
               enableSorting: false,
-              header: () => <span className="sr-only">Download</span>,
-              id: 'download',
+              header: () => <span className="sr-only">Preview</span>,
+              id: 'preview',
             } satisfies ColumnDef<PurchaseOrderDocumentRow>,
           ]
         : []),
     ],
-    [canReadCosts, purchaseOrderId],
+    [canReadCosts, preview.open],
   );
   const table = useReactTable({
     columns,
@@ -101,21 +105,29 @@ export function PurchaseOrderDocumentsCard({
   if (items.length === 0) return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Documents</CardTitle>
-        <CardDescription>Every revision of this order, and the paperwork filed against it.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <DataTable
-          emptyMessage="No documents filed."
-          hideGlobalFilter
-          paginationMode="complete"
-          table={table}
-          total={items.length}
-          totalLabel={(value) => `${value} ${value === 1 ? 'document' : 'documents'}`}
-        />
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Documents</CardTitle>
+          <CardDescription>Every revision of this order, and the paperwork filed against it.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            emptyMessage="No documents filed."
+            hideGlobalFilter
+            paginationMode="complete"
+            table={table}
+            total={items.length}
+            totalLabel={(value) => `${value} ${value === 1 ? 'document' : 'documents'}`}
+          />
+        </CardContent>
+      </Card>
+      <DocumentPreviewSheet
+        document={preview.file}
+        onOpenChange={preview.onOpenChange}
+        open={preview.isOpen}
+        owner={{ id: purchaseOrderId, type: 'purchase_order' }}
+      />
+    </>
   );
 }

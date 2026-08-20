@@ -24,16 +24,6 @@ export async function fetchProductBrochurePreviewBlob({
   return response.blob();
 }
 
-export async function downloadProductBrochure(productId: UUID): Promise<void> {
-  const blob = await fetchProductBrochurePreviewBlob({ productId });
-  const url = URL.createObjectURL(blob);
-  const link = window.document.createElement('a');
-  link.href = url;
-  link.download = 'brochure.pdf';
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
 function brochurePreviewUrl(productId: UUID): string {
   return `${getClientConfig().apiBaseUrl}/api/products/${encodeURIComponent(productId)}/brochure-preview`;
 }

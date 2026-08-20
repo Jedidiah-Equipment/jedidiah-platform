@@ -24,7 +24,7 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
 
   if (reportQuery.isPending) {
     return (
-      <PageLayout size="lg" title="Stocktake session">
+      <PageLayout title="Stocktake session">
         <Skeleton className="h-40 w-full" />
       </PageLayout>
     );
@@ -32,7 +32,7 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
 
   if (reportQuery.error) {
     return (
-      <PageLayout size="lg" title="Stocktake session">
+      <PageLayout title="Stocktake session">
         <p className="text-destructive text-sm">Unable to load this stocktake session.</p>
       </PageLayout>
     );
@@ -45,7 +45,6 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
     <PageLayout
       actions={<StocktakeSessionStatusBadge size="lg" status={stocktakeSessionStatusOf(session)} />}
       description={describeSession(session)}
-      size="lg"
       title={`${STOCKTAKE_SCOPE_LABELS[session.scope]} stocktake`}
     >
       <section className="space-y-2">

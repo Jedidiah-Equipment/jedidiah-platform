@@ -1,6 +1,7 @@
 import type { UUID } from '@pkg/schema';
 
 import { getClientConfig } from '@/lib/app-config.js';
+import { readApiErrorMessage } from '@/utils/document.js';
 
 /**
  * Both PO PDFs are served by the API, not by the origin serving the app, so they carry the API base
@@ -11,16 +12,31 @@ export function purchaseOrderPreviewUrl(purchaseOrderId: UUID): string {
   return `${purchaseOrderApiUrl(purchaseOrderId)}/preview`;
 }
 
-export function purchaseOrderDocumentDownloadUrl(purchaseOrderId: UUID, documentId: UUID): string {
-  return `${purchaseOrderApiUrl(purchaseOrderId)}/documents/${encodeURIComponent(documentId)}/download`;
-}
-
 function purchaseOrderApiUrl(purchaseOrderId: UUID): string {
   return `${getClientConfig().apiBaseUrl}/api/purchase-orders/${encodeURIComponent(purchaseOrderId)}`;
 }
 
-export async function ensurePurchaseOrderPreview(url: string, fetcher: typeof fetch = fetch): Promise<void> {
-  // Cross-origin now, so the session cookie only rides along when the request asks for it.
-  const response = await fetcher(url, { credentials: 'include' });
-  if (!response.ok) throw new Error(`Purchase Order preview failed with status ${response.status}`);
+/**
+ * The preview is rendered per request and never filed as a document, so the sheet holds the bytes
+ * itself rather than pointing an iframe at the route a second time.
+ */
+export async function fetchPurchaseOrderPreviewBlob({
+  purchaseOrderId,
+  signal,
+}: {
+  purchaseOrderId: UUID;
+  signal?: AbortSignal;
+}): Promise<Blob> {
+  const requestInit: RequestInit = {
+    // Cross-origin now, so the session cookie only rides along when the request asks for it.
+    credentials: 'include',
+    ...(signal ? { signal } : {}),
+  };
+  const response = await fetch(purchaseOrderPreviewUrl(purchaseOrderId), requestInit);
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, 'Unable to generate the PDF preview.'));
+  }
+
+  return response.blob();
 }

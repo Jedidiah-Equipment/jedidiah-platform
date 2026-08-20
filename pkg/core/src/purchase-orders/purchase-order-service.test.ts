@@ -294,7 +294,10 @@ describe('Purchase Order send and cancel', () => {
       },
     });
     const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => pdfBytes());
-    // A different actor signs it off; the footer still has to name the Draft Editor who wrote it.
+    // A different actor signs it off, withdraws it, and signs it off again. None of those touch what
+    // the Supplier is looking at, so the footer still has to name the Draft Editor who wrote it.
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
+    await revertPurchaseOrderToDraft({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
     await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
 
     const sent = await markPurchaseOrderSent({

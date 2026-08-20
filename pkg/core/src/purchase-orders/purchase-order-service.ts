@@ -1096,7 +1096,9 @@ async function loadPurchaseOrderLastModified({
       and(
         eq(auditEvents.entityType, 'purchase_order'),
         eq(auditEvents.entityId, id),
-        sql`NOT coalesce(${auditEvents.changes} ? 'status', false)`,
+        // Only lifecycle *updates* are skipped. Creation always survives as the floor, so an order
+        // whose lines arrived with it still has someone to name.
+        sql`${auditEvents.action} <> 'updated' OR NOT coalesce(${auditEvents.changes} ? 'status', false)`,
       ),
     )
     .orderBy(desc(auditEvents.occurredAt), desc(auditEvents.id))

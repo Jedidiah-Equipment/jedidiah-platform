@@ -8,9 +8,8 @@ it, and only then can it be marked sent. Approving locks the order the same way 
 1. Open **Purchase Orders** and select the Draft you are signing off.
 2. Check the Supplier, the expected delivery date, the lines, and the price on each line. **Preview
    PDF** shows the buyer's view of what is about to go out.
-3. Click **Approve**. The Status badge changes to **Approved** and the order can no longer be edited.
-4. Click **Mark sent** once the order has gone to the Supplier. The badge stays **Approved** and the
-   **Sent** column on the Purchase Orders list gets a tick.
+3. Click **Approve**. The order can no longer be edited.
+4. Click **Mark sent** once the order has gone to the Supplier.
 
 Approving needs **Approve purchase orders**, which only administrators hold. Procurement can draft,
 send, amend, receive, and close an order, but never approve one.

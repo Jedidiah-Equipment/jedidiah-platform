@@ -100,10 +100,11 @@ describe('purchaseOrders router', () => {
     });
   });
 
-  test('sends a populated draft and cancels a zero-receipt draft through their named permissions', async ({
+  test('approves and sends a populated draft and cancels a zero-receipt draft through their named permissions', async ({
     context,
   }) => {
     const admin = context.createCaller();
+    const procurement = context.createCaller(mockSession('procurement-manager'));
     const sendable = await admin.purchaseOrders.create({ supplierId: SUPPLIER_ID });
     await admin.purchaseOrders.saveDraft({
       expectedDeliveryDate: null,
@@ -113,7 +114,21 @@ describe('purchaseOrders router', () => {
       supplierId: SUPPLIER_ID,
     });
 
-    await expect(admin.purchaseOrders.markSent({ id: sendable.id })).resolves.toMatchObject({ status: 'sent' });
+    // Procurement drafts and sends but never signs off, which is the whole point of the gate.
+    await expect(procurement.purchaseOrders.approve({ id: sendable.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(procurement.purchaseOrders.markSent({ id: sendable.id })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: expect.stringContaining('approved'),
+    });
+
+    await expect(admin.purchaseOrders.approve({ id: sendable.id })).resolves.toMatchObject({
+      derivedStatus: 'approved',
+      status: 'approved',
+    });
+    await expect(procurement.purchaseOrders.revertToDraft({ id: sendable.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(procurement.purchaseOrders.markSent({ id: sendable.id })).resolves.toMatchObject({ status: 'sent' });
     await expect(admin.jobs.get({ id: context.jobId })).resolves.toMatchObject({
       documents: [expect.objectContaining({ ownerType: 'purchase_order' })],
     });
@@ -314,10 +329,10 @@ describe('amendments, returns, and credit notes', () => {
       reason: 'defective',
     });
 
-    // The Supplier owes all four again, so the order reads as freshly sent — but its rows are real,
-    // and cancelling would disown them. Close short has to be the way out.
+    // The Supplier owes all four again, so the order reads as it did before anything arrived — but
+    // its rows are real, and cancelling would disown them. Close short has to be the way out.
     await expect(admin.purchaseOrders.get({ id: purchaseOrder.id })).resolves.toMatchObject({
-      derivedStatus: 'sent',
+      derivedStatus: 'approved',
       lines: [{ hasStockMovements: true, receivedQuantity: 0 }],
     });
     await expect(admin.purchaseOrders.cancel({ id: purchaseOrder.id })).rejects.toMatchObject({
@@ -495,6 +510,7 @@ async function sendOrder(admin: AppRouterCaller, quantity: number) {
     lines: [{ partId: PART_ID, quantity, unitPrice: 150 }],
     supplierId: SUPPLIER_ID,
   });
+  await admin.purchaseOrders.approve({ id: purchaseOrder.id });
 
   return admin.purchaseOrders.markSent({ id: purchaseOrder.id });
 }

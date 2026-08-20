@@ -26,7 +26,7 @@ export const HELP_TOPICS = {
   parts: '/inventory/export-and-import-parts',
   plan: '/production/open-a-bay-plan',
   products: '/inventory/maintain-a-product-cost-estimate',
-  purchaseOrders: '/inventory/inspect-a-purchase-orders-audit-history',
+  purchaseOrders: '/inventory/approve-a-purchase-order',
   quotes: '/sales/cancel-a-quote',
   storesTablet: '/inventory/work-the-stores-tablet',
   suppliers: '/inventory/maintain-suppliers',

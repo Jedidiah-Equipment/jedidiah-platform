@@ -4,7 +4,12 @@ import type { PurchaseOrder } from '@pkg/schema';
 import { postReceipt } from '../inventory/receipt-service.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
-import { createPurchaseOrder, markPurchaseOrderSent, savePurchaseOrderDraft } from './purchase-order-service.js';
+import {
+  approvePurchaseOrder,
+  createPurchaseOrder,
+  markPurchaseOrderSent,
+  savePurchaseOrderDraft,
+} from './purchase-order-service.js';
 
 /**
  * One sent order on one Supplier, with a Part of each shape an amendment or a return has to cope
@@ -62,6 +67,9 @@ export async function sendOrder(
     db: context.db,
     input: { expectedDeliveryDate: null, id: purchaseOrder.id, jobIds: [], lines, supplierId: SUPPLIER_ID },
   });
+
+  // Sending now asserts an admin signed the draft off first; every order's afterlife starts here.
+  await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
 
   return markPurchaseOrderSent({
     actorUserId: ACTOR_ID,

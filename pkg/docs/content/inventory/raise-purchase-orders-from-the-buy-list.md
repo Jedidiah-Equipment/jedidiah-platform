@@ -18,7 +18,8 @@ Draft Purchase Orders — one per Supplier — with the quantities already fille
 7. Open each draft from **Purchase Orders**. Its lines and quantities are already in place. A line
    starts at the Part's current moving average when one exists; otherwise it shows **Not priced**.
 8. Confirm or change each price to what the Supplier agreed.
-9. Click **Mark sent**.
+9. Have an administrator **Approve** the order, then click **Mark sent** — see
+   [Approve a Purchase Order](./approve-a-purchase-order.md).
 
 ## Starting from a Job
 

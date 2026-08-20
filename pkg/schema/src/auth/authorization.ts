@@ -57,6 +57,7 @@ export const APP_PERMISSIONS = [
   'product_unit:remove',
   'purchase_order:read',
   'purchase_order:create',
+  'purchase_order:approve',
   'purchase_order:send',
   'purchase_order:amend',
   'purchase_order:receive',

@@ -143,7 +143,7 @@ describe('document HTTP routes', () => {
     if (!poSupplier) throw new Error('Supplier fixture was not created');
     const [purchaseOrder] = await context.db
       .insert(purchaseOrders)
-      .values({ sentAt: new Date(), status: 'sent', supplierId: poSupplier.id })
+      .values({ approvedAt: new Date(), sentAt: new Date(), status: 'sent', supplierId: poSupplier.id })
       .returning({ id: purchaseOrders.id });
     if (!purchaseOrder) throw new Error('Purchase Order fixture was not created');
     await context.db.insert(purchaseOrderJobLinks).values({ jobId: job.id, purchaseOrderId: purchaseOrder.id });
@@ -509,7 +509,7 @@ describe('document HTTP routes', () => {
     if (!part) throw new Error('Part fixture was not created');
     const [purchaseOrder] = await context.db
       .insert(purchaseOrders)
-      .values({ sentAt: new Date(), status: 'sent', supplierId: poSupplier.id })
+      .values({ approvedAt: new Date(), sentAt: new Date(), status: 'sent', supplierId: poSupplier.id })
       .returning({ id: purchaseOrders.id });
     if (!purchaseOrder) throw new Error('Purchase Order fixture was not created');
     await context.db
@@ -581,7 +581,7 @@ describe('document HTTP routes', () => {
     if (!poSupplier) throw new Error('Supplier fixture was not created');
     const [purchaseOrder] = await context.db
       .insert(purchaseOrders)
-      .values({ sentAt: new Date(), status: 'sent', supplierId: poSupplier.id })
+      .values({ approvedAt: new Date(), sentAt: new Date(), status: 'sent', supplierId: poSupplier.id })
       .returning({ id: purchaseOrders.id });
     if (!purchaseOrder) throw new Error('Purchase Order fixture was not created');
     const app = await createDocumentApp(storage, {

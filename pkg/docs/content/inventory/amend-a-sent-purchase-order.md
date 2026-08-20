@@ -8,7 +8,7 @@ There are four amendments, and no others. Anything wider than these is a new ord
 
 ## Change the expected delivery date
 
-1. Open **Purchase Orders** and select the Sent order.
+1. Open **Purchase Orders** and select the order, which the **Sent** column shows has gone out.
 2. On **Order details**, click **Change expected date**.
 3. Choose the Supplier's new **Expected delivery date**.
 4. Record the **Note** and click **Change expected date**.
@@ -18,7 +18,7 @@ makes an order with outstanding lines appear under **Late Purchase Orders**.
 
 ## Change a quantity
 
-1. Open **Purchase Orders** and select the Sent order.
+1. Open **Purchase Orders** and select the order, which the **Sent** column shows has gone out.
 2. On the **Parts** card, click **Change quantity** on the line.
 3. Enter the new **Quantity**. It can go up or down.
 4. In **Note**, record who agreed the change and why.

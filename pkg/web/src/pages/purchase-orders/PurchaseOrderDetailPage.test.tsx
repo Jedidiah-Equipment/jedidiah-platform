@@ -30,9 +30,11 @@ vi.mock('@/lib/trpc.js', () => {
   return {
     useTRPC: () => ({
       purchaseOrders: {
+        approve: { mutationOptions: refusingMutationOptions },
         cancel: { mutationOptions: refusingMutationOptions },
         closeShort: { mutationOptions: refusingMutationOptions },
         markSent: { mutationOptions: refusingMutationOptions },
+        revertToDraft: { mutationOptions: refusingMutationOptions },
       },
     }),
   };
@@ -51,7 +53,7 @@ const purchaseOrder = {
 const mountedRoots: Array<ReturnType<typeof createRoot>> = [];
 const mountedContainers: HTMLDivElement[] = [];
 
-// Cancel and Close short both ask before they post, and jsdom has no confirm to answer with.
+// Cancel, Close short and Revert to draft all ask before they post, and jsdom has no confirm to answer with.
 vi.stubGlobal('confirm', () => true);
 
 afterEach(() => {
@@ -65,6 +67,8 @@ afterEach(() => {
 
 /** Every lifecycle button, and the message the buyer gets when the server refuses that one. */
 const LIFECYCLE_ACTIONS = [
+  { failureMessage: 'Unable to approve this Purchase Order.', label: 'Approve' },
+  { failureMessage: 'Unable to revert this Purchase Order to draft.', label: 'Revert to draft' },
   { failureMessage: 'Unable to mark this Purchase Order sent.', label: 'Mark sent' },
   { failureMessage: 'Unable to cancel this Purchase Order.', label: 'Cancel' },
   { failureMessage: 'Unable to close this Purchase Order short.', label: 'Close short' },
@@ -104,10 +108,12 @@ async function mount(): Promise<HTMLDivElement> {
   return mountNode(
     <QueryClientProvider client={new QueryClient()}>
       <PurchaseOrderActions
+        canApprove
         canCancel
         canCloseShort
         canEdit={false}
         canReadCosts={false}
+        canRevertToDraft
         canSend
         isPending={false}
         purchaseOrder={purchaseOrder}

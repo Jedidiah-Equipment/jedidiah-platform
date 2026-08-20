@@ -12,17 +12,21 @@ import { PartStandardPurchaseLengthMm, PartUnitOfMeasure } from '../parts/part.j
 export { formatPurchaseOrderCode, PurchaseOrderCode } from '../common/public-code.js';
 
 export type PurchaseOrderStatus = z.infer<typeof PurchaseOrderStatus>;
-export const PurchaseOrderStatus = z.enum(['draft', 'sent', 'cancelled']);
+export const PurchaseOrderStatus = z.enum(['draft', 'approved', 'sent', 'cancelled']);
 
 /** How far a sent order's receipts have got. Computed from the ledger, never stored or toggled. */
 export type PurchaseOrderProgress = z.infer<typeof PurchaseOrderProgress>;
 export const PurchaseOrderProgress = z.enum(['sent', 'partially-received', 'received']);
 
-/** The stored status widened by receipts and the close-short assertion — what every reader sees. */
+/**
+ * The stored status widened by receipts and the close-short assertion — what every reader sees.
+ * `sent` is deliberately absent: a sent order with nothing received yet wears the `approved` badge
+ * and the list's own Sent tick carries whether it has gone out.
+ */
 export type PurchaseOrderDerivedStatus = z.infer<typeof PurchaseOrderDerivedStatus>;
 export const PurchaseOrderDerivedStatus = z.enum([
   'draft',
-  'sent',
+  'approved',
   'partially-received',
   'received',
   'closed-short',
@@ -114,6 +118,7 @@ export const PurchaseOrderActionBlockedReason = z.enum([
   'empty',
   'fully-received',
   'has-movements',
+  'not-approved',
   'not-draft',
   'not-sent',
   'nothing-received',
@@ -135,6 +140,7 @@ export const PurchaseOrderActionVerdict = z.discriminatedUnion('allowed', [
 export type PurchaseOrderActions = z.infer<typeof PurchaseOrderActions>;
 export const PurchaseOrderActions = z.object({
   amend: PurchaseOrderActionVerdict,
+  approve: PurchaseOrderActionVerdict,
   cancel: PurchaseOrderActionVerdict,
   closeShort: PurchaseOrderActionVerdict,
   edit: PurchaseOrderActionVerdict,
@@ -142,12 +148,15 @@ export const PurchaseOrderActions = z.object({
   fileDocuments: PurchaseOrderActionVerdict,
   receive: PurchaseOrderActionVerdict,
   returnToSupplier: PurchaseOrderActionVerdict,
+  /** The audited un-approve: approval locks the order, and this is the one way back to editing. */
+  revertToDraft: PurchaseOrderActionVerdict,
   send: PurchaseOrderActionVerdict,
 });
 
 export type PurchaseOrder = z.infer<typeof PurchaseOrder>;
 export const PurchaseOrder = z.object({
   actions: PurchaseOrderActions,
+  approvedAt: DateIso.nullable(),
   closedShortAt: DateIso.nullable(),
   code: PurchaseOrderCode,
   createdAt: DateIso,
@@ -192,9 +201,27 @@ function uniqueValues(values: readonly string[]): boolean {
 
 export const PURCHASE_ORDER_DUPLICATE_PART_MESSAGE = 'A Part can appear only once on a Purchase Order';
 
-/** Zero is the Draft-only sentinel for a line whose Supplier price has not been keyed yet. */
+/**
+ * Zero is the sentinel for a line whose Supplier price has not been keyed yet. It survives approval
+ * — approving judges the order, and it is sending that asserts every line carries an agreed price —
+ * so it can still be sitting on an approved order.
+ */
 export function isPurchaseOrderLineUnpriced(line: { unitPrice: number | null }): boolean {
   return line.unitPrice === 0;
+}
+
+/**
+ * Whether a money total for this order would be a lie. True only while a line can still be unpriced:
+ * once the order is sent, `assertLinesArePriced` has guaranteed every line has a price, so any zero
+ * on it is a real agreed zero rather than a blank.
+ */
+export function purchaseOrderHasUnpricedLines(purchaseOrder: {
+  lines: readonly { unitPrice: number | null }[];
+  status: PurchaseOrderStatus;
+}): boolean {
+  const isPendingSend = purchaseOrder.status === 'draft' || purchaseOrder.status === 'approved';
+
+  return isPendingSend && purchaseOrder.lines.some(isPurchaseOrderLineUnpriced);
 }
 
 /** Shared with the draft form so a duplicate reads as a field error, not a rejected save. */

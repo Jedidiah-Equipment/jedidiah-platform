@@ -4,6 +4,7 @@ import {
   amendPurchaseOrderQuantity,
   amendPurchaseOrderSubstitutePart,
   applyInvoicePrice,
+  approvePurchaseOrder,
   cancelPurchaseOrder,
   closePurchaseOrderShort,
   createPurchaseOrder,
@@ -22,6 +23,7 @@ import {
   markPurchaseOrderSent,
   postReceipt,
   postReturnToSupplier,
+  revertPurchaseOrderToDraft,
   savePurchaseOrderDraft,
 } from '@pkg/core';
 import { renderPurchaseOrderPdf } from '@pkg/pdf';
@@ -325,6 +327,21 @@ export const purchaseOrdersRouter = router({
     .output(LatePurchaseOrderResult)
     .query(({ ctx }) => listLatePurchaseOrders({ db: ctx.db })),
 
+  /**
+   * The admin sign-off `markSent` now depends on. Reverting is deliberately the same right: only
+   * someone who could approve the order may withdraw the approval.
+   */
+  approve: authorizedProcedure('purchase_order:approve')
+    .input(PurchaseOrderActionInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
+        approvePurchaseOrder({ actorUserId: ctx.session.user.id, db: ctx.db, id: input.id }),
+      );
+
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
+
   markSent: authorizedProcedure('purchase_order:send')
     .input(PurchaseOrderActionInput)
     .output(PurchaseOrderView)
@@ -337,6 +354,17 @@ export const purchaseOrdersRouter = router({
           pdfRenderer: renderPurchaseOrderPdf,
           storage: ctx.storage,
         }),
+      );
+
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
+
+  revertToDraft: authorizedProcedure('purchase_order:approve')
+    .input(PurchaseOrderActionInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
+        revertPurchaseOrderToDraft({ actorUserId: ctx.session.user.id, db: ctx.db, id: input.id }),
       );
 
       return toPurchaseOrderView(purchaseOrder, ctx.access);

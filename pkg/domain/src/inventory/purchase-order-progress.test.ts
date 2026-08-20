@@ -57,6 +57,18 @@ describe('derivePurchaseOrderStatus', () => {
     ).toBe('draft');
   });
 
+  it('passes an approved order through untouched — it has not gone out to be received against', () => {
+    expect(
+      derivePurchaseOrderStatus({ closedShortAt: null, lines, receivedByPartId: new Map(), status: 'approved' }),
+    ).toBe('approved');
+  });
+
+  it('reads a sent order nothing has arrived against as approved — the Sent tick carries the rest', () => {
+    expect(derivePurchaseOrderStatus({ closedShortAt: null, lines, receivedByPartId: new Map(), status: 'sent' })).toBe(
+      'approved',
+    );
+  });
+
   it('passes a cancelled order through untouched', () => {
     expect(
       derivePurchaseOrderStatus({ closedShortAt: null, lines, receivedByPartId: new Map(), status: 'cancelled' }),

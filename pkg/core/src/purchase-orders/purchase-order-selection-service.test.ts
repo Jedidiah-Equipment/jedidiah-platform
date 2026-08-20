@@ -5,7 +5,13 @@ import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { partValues } from '../test/part-fixtures.js';
 import { createPurchaseOrderDraftsFromSelection } from './purchase-order-selection-service.js';
-import { getPurchaseOrder, markPurchaseOrderSent, savePurchaseOrderDraft } from './purchase-order-service.js';
+import {
+  approvePurchaseOrder,
+  getPurchaseOrder,
+  markPurchaseOrderSent,
+  revertPurchaseOrderToDraft,
+  savePurchaseOrderDraft,
+} from './purchase-order-service.js';
 
 const ACTOR_ID = 'po-seed-test-user';
 const SUPPLIER_A_ID = '00000000-0000-4000-8000-000000000301';
@@ -238,7 +244,10 @@ describe('sending a Purchase Order raised from a selection', () => {
     const [draft] = created;
     if (!draft) throw new Error('Expected a seeded draft');
 
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: draft.id });
+
     // A receipt against a zero-priced line would stamp that zero onto the ledger as the Part's cost.
+    // Approval judges the order, so the price is still caught by the write that reads the lines.
     await expect(
       markPurchaseOrderSent({
         actorUserId: ACTOR_ID,
@@ -249,6 +258,8 @@ describe('sending a Purchase Order raised from a selection', () => {
       }),
     ).rejects.toMatchObject({ code: 'purchase_order.line_not_priced' });
 
+    // Approval locked the order, so fixing the price goes back through the audited revert.
+    await revertPurchaseOrderToDraft({ actorUserId: ACTOR_ID, db: context.db, id: draft.id });
     await savePurchaseOrderDraft({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -260,6 +271,7 @@ describe('sending a Purchase Order raised from a selection', () => {
         supplierId: SUPPLIER_A_ID,
       },
     });
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: draft.id });
 
     await expect(
       markPurchaseOrderSent({

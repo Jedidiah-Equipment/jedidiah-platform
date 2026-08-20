@@ -29,8 +29,9 @@ export function derivePurchaseOrderProgress({
 }
 
 /**
- * The one projection every surface reads. `status` stays the narrow stored fact (`draft`/`sent`/
- * `cancelled`); receipts and the close-short assertion widen it here rather than in the column.
+ * The one projection every surface reads. `status` stays the narrow stored fact
+ * (`draft`/`approved`/`sent`/`cancelled`); receipts and the close-short assertion widen it here
+ * rather than in the column.
  */
 export function derivePurchaseOrderStatus({
   closedShortAt,
@@ -44,6 +45,9 @@ export function derivePurchaseOrderStatus({
 }): PurchaseOrderDerivedStatus {
   if (status !== 'sent') return status;
   if (closedShortAt !== null) return 'closed-short';
+  // A sent order with nothing received yet still wears the `approved` badge: the list's Sent tick
+  // carries whether it has gone out, so the badge only ever names the highest level reached.
+  const progress = derivePurchaseOrderProgress({ lines, receivedByPartId });
 
-  return derivePurchaseOrderProgress({ lines, receivedByPartId });
+  return progress === 'sent' ? 'approved' : progress;
 }

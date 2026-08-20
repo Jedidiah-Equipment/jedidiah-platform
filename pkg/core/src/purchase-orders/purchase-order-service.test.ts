@@ -11,6 +11,7 @@ import { removeSupplier } from '../suppliers/supplier-service.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import {
+  approvePurchaseOrder,
   cancelPurchaseOrder,
   closePurchaseOrderShort,
   createPurchaseOrder,
@@ -18,6 +19,7 @@ import {
   listPurchaseOrders,
   markPurchaseOrderSent,
   renderPurchaseOrderPreview,
+  revertPurchaseOrderToDraft,
   savePurchaseOrderDraft,
 } from './purchase-order-service.js';
 
@@ -292,6 +294,11 @@ describe('Purchase Order send and cancel', () => {
       },
     });
     const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => pdfBytes());
+    // A different actor signs it off, withdraws it, and signs it off again. None of those touch what
+    // the Supplier is looking at, so the footer still has to name the Draft Editor who wrote it.
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
+    await revertPurchaseOrderToDraft({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
 
     const sent = await markPurchaseOrderSent({
       actorUserId: ACTOR_ID,
@@ -326,7 +333,7 @@ describe('Purchase Order send and cancel', () => {
     ).rejects.toMatchObject({ code: 'purchase_order.not_draft' });
   });
 
-  test('refuses to send an empty draft and allows a zero-receipt cancellation', async ({ context }) => {
+  test('refuses to approve an empty draft and allows a zero-receipt cancellation', async ({ context }) => {
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -334,18 +341,12 @@ describe('Purchase Order send and cancel', () => {
     });
 
     await expect(
-      markPurchaseOrderSent({
-        actorUserId: ACTOR_ID,
-        db: context.db,
-        id: purchaseOrder.id,
-        pdfRenderer: async () => pdfBytes(),
-        storage: context.storage,
-      }),
+      approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
     ).rejects.toMatchObject({ code: 'purchase_order.empty' });
 
     await expect(
       cancelPurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
-    ).resolves.toMatchObject({ sentAt: null, status: 'cancelled' });
+    ).resolves.toMatchObject({ approvedAt: null, sentAt: null, status: 'cancelled' });
   });
 
   test('refuses to send a draft whose line still carries the not-priced-yet zero', async ({ context }) => {
@@ -359,6 +360,7 @@ describe('Purchase Order send and cancel', () => {
       db: context.db,
       input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 0 }]),
     });
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
 
     // The message names the Part, which is the only thing that tells the buyer where to go.
     await expect(
@@ -384,6 +386,7 @@ describe('Purchase Order send and cancel', () => {
       db: context.db,
       input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 1, unitPrice: 10 }]),
     });
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
     await context.db.execute(sql`
       create function fail_purchase_order_send() returns trigger language plpgsql as $$
       begin
@@ -410,8 +413,151 @@ describe('Purchase Order send and cancel', () => {
     expect(context.storage.objects.size).toBe(0);
     await expect(context.db.select().from(documents)).resolves.toHaveLength(0);
     await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
-      status: 'draft',
+      status: 'approved',
     });
+  });
+});
+
+describe('Purchase Order approval', () => {
+  test('signs a draft off, locks it, and lets it go to the Supplier', async ({ context }) => {
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 50 }]),
+    });
+
+    const approved = await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
+
+    expect(approved).toMatchObject({
+      approvedAt: expect.any(String),
+      derivedStatus: 'approved',
+      sentAt: null,
+      status: 'approved',
+    });
+    // Approval locks the order the way sending does, so the draft aggregate can no longer be saved.
+    await expect(
+      savePurchaseOrderDraft({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 3, unitPrice: 50 }]),
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.not_draft' });
+    // Locked is not gone: the order still has not reached the Supplier, so removing that Supplier
+    // would strand it exactly as it would a draft.
+    await expect(removeSupplier({ actorUserId: ACTOR_ID, db: context.db, id: SUPPLIER_A_ID })).rejects.toMatchObject({
+      code: 'supplier.has_draft_purchase_orders',
+    });
+
+    const sent = await markPurchaseOrderSent({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      id: purchaseOrder.id,
+      pdfRenderer: async () => pdfBytes(),
+      storage: context.storage,
+    });
+
+    // Sending keeps the sign-off standing, and the badge still names the highest level reached.
+    expect(sent).toMatchObject({
+      approvedAt: approved.approvedAt,
+      derivedStatus: 'approved',
+      sentAt: expect.any(String),
+      status: 'sent',
+    });
+  });
+
+  test('refuses to send a draft nobody has approved', async ({ context }) => {
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 50 }]),
+    });
+
+    await expect(
+      markPurchaseOrderSent({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        id: purchaseOrder.id,
+        pdfRenderer: async () => pdfBytes(),
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.not_approved' });
+    expect(context.storage.objects.size).toBe(0);
+  });
+
+  test('withdraws an approval back to an editable draft, and records both moves in the audit trail', async ({
+    context,
+  }) => {
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 50 }]),
+    });
+    const approved = await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
+
+    const reverted = await revertPurchaseOrderToDraft({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
+
+    expect(reverted).toMatchObject({ approvedAt: null, derivedStatus: 'draft', status: 'draft' });
+    await expect(
+      savePurchaseOrderDraft({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 3, unitPrice: 50 }]),
+      }),
+    ).resolves.toMatchObject({ status: 'draft' });
+    // The withdrawn sign-off survives as history even though the timestamp is gone.
+    await expect(
+      context.db.select().from(auditEvents).where(eq(auditEvents.entityId, purchaseOrder.id)),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          changes: expect.objectContaining({
+            approvedAt: { from: null, to: approved.approvedAt },
+            status: { from: 'draft', to: 'approved' },
+          }),
+        }),
+        expect.objectContaining({
+          changes: expect.objectContaining({
+            approvedAt: { from: approved.approvedAt, to: null },
+            status: { from: 'approved', to: 'draft' },
+          }),
+        }),
+      ]),
+    );
+  });
+
+  test('cancels an approved order, discarding the sign-off without spending a permission for it', async ({
+    context,
+  }) => {
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 50 }]),
+    });
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
+
+    await expect(
+      cancelPurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
+    ).resolves.toMatchObject({ derivedStatus: 'cancelled', sentAt: null, status: 'cancelled' });
   });
 });
 
@@ -422,9 +568,10 @@ describe('Purchase Order receiving progress', () => {
       { partId: LINEAR_PART_ID, quantity: 2, unitPrice: 900 },
     ]);
 
+    // Nothing has arrived yet, so the badge is still the level the order reached before it went out.
     expect(purchaseOrder).toMatchObject({
       closedShortAt: null,
-      derivedStatus: 'sent',
+      derivedStatus: 'approved',
       lines: [{ receivedQuantity: 0 }, { receivedQuantity: 0 }],
     });
 
@@ -524,7 +671,7 @@ describe('Purchase Order receiving progress', () => {
     // the two gates below assert on, so no surface can offer the one that would be refused.
     await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
       actions: { cancel: { allowed: false, reason: 'has-movements' }, closeShort: { allowed: true } },
-      derivedStatus: 'sent',
+      derivedStatus: 'approved',
       lines: [{ receivedQuantity: 0 }],
     });
     // Cancel stays shut: the ledger rows are real history and cancelling would disown them.
@@ -562,6 +709,8 @@ async function sendOrder(
     db: context.db,
     input: draftInput(purchaseOrder.id, lines),
   });
+  // Sending asserts an admin signed the draft off first, so every sent-order fixture goes through it.
+  await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
 
   return markPurchaseOrderSent({
     actorUserId: ACTOR_ID,

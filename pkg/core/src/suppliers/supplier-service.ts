@@ -18,7 +18,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { getNextCursor, Supplier as SupplierSchema } from '@pkg/schema';
-import { and, asc, eq, isNull, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
@@ -205,12 +205,14 @@ export async function removeSupplier({
       throw new SupplierNotFoundError(id);
     }
 
-    const [draftPurchaseOrder] = await tx
+    // Approved counts alongside draft: the order has not gone out, so removing its Supplier would
+    // strand one that is cleared to be sent. Sent and cancelled orders keep their Supplier as history.
+    const [unsentPurchaseOrder] = await tx
       .select({ id: purchaseOrders.id })
       .from(purchaseOrders)
-      .where(and(eq(purchaseOrders.supplierId, id), eq(purchaseOrders.status, 'draft')))
+      .where(and(eq(purchaseOrders.supplierId, id), inArray(purchaseOrders.status, ['draft', 'approved'])))
       .limit(1);
-    if (draftPurchaseOrder) throw new SupplierHasDraftPurchaseOrdersError(id);
+    if (unsentPurchaseOrder) throw new SupplierHasDraftPurchaseOrdersError(id);
 
     const now = new Date();
     await tx.update(supplier).set({ deletedAt: now, updatedAt: now }).where(eq(supplier.id, id));

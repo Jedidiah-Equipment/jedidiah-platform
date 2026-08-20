@@ -40,14 +40,14 @@ block: the stock physically left the building, and refusing the row would only h
 The reason is not just a label — it decides whether the order is still waiting on the goods.
 
 - **Wrong item** and **Defective** mean a replacement is coming. The line re-opens: its **Received**
-  count drops back, the order goes back to **Partially received** — or to plain **Sent**, if
+  count drops back, the order goes back to **Partially received** — or to **Approved**, if
   everything the line took in went back — the shortfall counts as **On order** again, and the
   replacement delivery is received without an over-receipt warning.
 - **Order error** means we asked for the wrong thing and want nothing in its place. The line stays as
   received; close the order short if there is an unrelated remainder nobody is waiting on.
 
 If the replacement never comes and you no longer want it, **close the order short**. That works even
-when everything received went back and the order reads **Sent** again: its receipts are real history,
+when everything received went back and the order reads **Approved** again: its receipts are real history,
 so it is closed short rather than cancelled, and the released remainder stops counting as **On
 order**.
 

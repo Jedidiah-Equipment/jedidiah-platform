@@ -33,23 +33,31 @@ describe('derivePurchaseOrderActions', () => {
   describe('a draft', () => {
     const draft = facts({ status: 'draft' });
 
-    it('is edited and sent, and never received against', () => {
+    it('is edited and approved, and never received against', () => {
       const actions = derivePurchaseOrderActions(draft);
 
       expect(actions.edit).toEqual({ allowed: true });
-      expect(actions.send).toEqual({ allowed: true });
+      expect(actions.approve).toEqual({ allowed: true });
       expect(actions.receive).toEqual({ allowed: false, reason: 'not-sent' });
       expect(actions.amend).toEqual({ allowed: false, reason: 'not-sent' });
       expect(actions.returnToSupplier).toEqual({ allowed: false, reason: 'not-sent' });
       expect(actions.fileDocuments).toEqual({ allowed: false, reason: 'not-sent' });
     });
 
+    it('cannot go to the Supplier before an admin has signed it off', () => {
+      expect(derivePurchaseOrderActions(draft).send).toEqual({ allowed: false, reason: 'not-approved' });
+    });
+
+    it('has no approval to withdraw', () => {
+      expect(derivePurchaseOrderActions(draft).revertToDraft).toEqual({ allowed: false, reason: 'not-approved' });
+    });
+
     it('is cancelled while nothing has moved against it', () => {
       expect(derivePurchaseOrderActions(draft).cancel).toEqual({ allowed: true });
     });
 
-    it('refuses to be sent with no lines on it', () => {
-      expect(derivePurchaseOrderActions(facts({ isEmpty: true, status: 'draft' })).send).toEqual({
+    it('refuses to be approved with no lines on it', () => {
+      expect(derivePurchaseOrderActions(facts({ isEmpty: true, status: 'draft' })).approve).toEqual({
         allowed: false,
         reason: 'empty',
       });
@@ -57,6 +65,31 @@ describe('derivePurchaseOrderActions', () => {
 
     it('has no remainder to close short of', () => {
       expect(derivePurchaseOrderActions(draft).closeShort).toEqual({ allowed: false, reason: 'not-sent' });
+    });
+  });
+
+  describe('an approved order', () => {
+    const approved = facts({ status: 'approved' });
+
+    it('goes to the Supplier and is withdrawn back to draft, but is no longer edited or re-approved', () => {
+      const actions = derivePurchaseOrderActions(approved);
+
+      expect(actions.send).toEqual({ allowed: true });
+      expect(actions.revertToDraft).toEqual({ allowed: true });
+      expect(actions.edit).toEqual({ allowed: false, reason: 'not-draft' });
+      expect(actions.approve).toEqual({ allowed: false, reason: 'not-draft' });
+    });
+
+    it('is still cancellable — the sign-off it discards survives in the audit trail', () => {
+      expect(derivePurchaseOrderActions(approved).cancel).toEqual({ allowed: true });
+    });
+
+    it('is nothing the dock can act on yet', () => {
+      const actions = derivePurchaseOrderActions(approved);
+
+      expect(actions.receive).toEqual({ allowed: false, reason: 'not-sent' });
+      expect(actions.amend).toEqual({ allowed: false, reason: 'not-sent' });
+      expect(actions.closeShort).toEqual({ allowed: false, reason: 'not-sent' });
     });
   });
 
@@ -70,11 +103,13 @@ describe('derivePurchaseOrderActions', () => {
       expect(actions.fileDocuments).toEqual({ allowed: true });
     });
 
-    it('is no longer edited or sent again', () => {
+    it('is no longer edited, approved, sent again, or withdrawn to draft', () => {
       const actions = derivePurchaseOrderActions(partiallyReceived);
 
       expect(actions.edit).toEqual({ allowed: false, reason: 'not-draft' });
-      expect(actions.send).toEqual({ allowed: false, reason: 'not-draft' });
+      expect(actions.approve).toEqual({ allowed: false, reason: 'not-draft' });
+      expect(actions.send).toEqual({ allowed: false, reason: 'not-approved' });
+      expect(actions.revertToDraft).toEqual({ allowed: false, reason: 'not-approved' });
     });
 
     it('is closed short once it has history and something is still owed', () => {
@@ -176,7 +211,9 @@ describe('derivePurchaseOrderActions', () => {
 
       expect(actions.cancel).toEqual({ allowed: false, reason: 'cancelled' });
       expect(actions.edit).toEqual({ allowed: false, reason: 'not-draft' });
-      expect(actions.send).toEqual({ allowed: false, reason: 'not-draft' });
+      expect(actions.approve).toEqual({ allowed: false, reason: 'not-draft' });
+      expect(actions.send).toEqual({ allowed: false, reason: 'not-approved' });
+      expect(actions.revertToDraft).toEqual({ allowed: false, reason: 'not-approved' });
       expect(actions.receive).toEqual({ allowed: false, reason: 'not-sent' });
       expect(actions.closeShort).toEqual({ allowed: false, reason: 'not-sent' });
       expect(actions.returnToSupplier).toEqual({ allowed: false, reason: 'not-sent' });

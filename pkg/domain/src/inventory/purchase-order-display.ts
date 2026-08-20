@@ -3,12 +3,12 @@ import type { PurchaseOrderDerivedStatus } from '@pkg/schema';
 import { statusBadgeColorClassNames } from '../theme/status-badge.js';
 
 export const purchaseOrderStatusLabels: Record<PurchaseOrderDerivedStatus, string> = {
+  approved: 'Approved',
   cancelled: 'Cancelled',
   'closed-short': 'Closed short',
   draft: 'Draft',
   'partially-received': 'Partially received',
   received: 'Received',
-  sent: 'Sent',
 };
 
 /**
@@ -17,11 +17,12 @@ export const purchaseOrderStatusLabels: Record<PurchaseOrderDerivedStatus, strin
  * never a call to action, so none of these reach for the brand colour.
  */
 export const purchaseOrderStatusColorClassNames: Record<PurchaseOrderDerivedStatus, { chip: string; text: string }> = {
+  // Cleared to go, and not yet the green of stock that has actually landed.
+  approved: statusBadgeColorClassNames.teal,
   cancelled: statusBadgeColorClassNames.red,
   // Ended deliberately with stock still outstanding — settled, so it reads as neutral as Draft.
   'closed-short': statusBadgeColorClassNames.gray,
   draft: statusBadgeColorClassNames.gray,
   'partially-received': statusBadgeColorClassNames.orange,
   received: statusBadgeColorClassNames.green,
-  sent: statusBadgeColorClassNames.blue,
 };

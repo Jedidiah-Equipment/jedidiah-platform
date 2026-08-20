@@ -49,6 +49,7 @@ export function derivePurchaseOrderActions(facts: PurchaseOrderActionFacts): Pur
 
   return {
     amend: whileSentAndOpen(),
+    approve: status !== 'draft' ? blocked('not-draft') : isEmpty ? blocked('empty') : ALLOWED,
     // Cancel and close-short read the same history fact from opposite sides, so no live order can
     // refuse both for want of it: an order with rows is closed short, one without is cancelled.
     cancel: status === 'cancelled' ? blocked('cancelled') : hasAnyMovement ? blocked('has-movements') : ALLOWED,
@@ -61,7 +62,12 @@ export function derivePurchaseOrderActions(facts: PurchaseOrderActionFacts): Pur
     // Deliberately outlives close-short: releasing a remainder says nothing more is coming, not that
     // what already arrived can never go back.
     returnToSupplier: isSent ? ALLOWED : blocked('not-sent'),
-    send: status !== 'draft' ? blocked('not-draft') : isEmpty ? blocked('empty') : ALLOWED,
+    // Approval locked the draft, so this audited un-approve is the one route back into editing —
+    // an edit never silently revokes a sign-off.
+    revertToDraft: status === 'approved' ? ALLOWED : blocked('not-approved'),
+    // Approval is what a send now asserts; the emptiness check survives because an approved order
+    // can be reverted, emptied, and re-approved only through a draft that has lines.
+    send: status !== 'approved' ? blocked('not-approved') : isEmpty ? blocked('empty') : ALLOWED,
   };
 
   function deriveCloseShort(): PurchaseOrderActionVerdict {

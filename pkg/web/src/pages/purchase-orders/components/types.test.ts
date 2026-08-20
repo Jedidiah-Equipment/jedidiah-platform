@@ -63,6 +63,7 @@ const purchaseOrder = PurchaseOrderView.parse({
     progress: 'partially-received',
     status: 'draft',
   }),
+  approvedAt: null,
   closedShortAt: null,
   code: 'PO-00001',
   createdAt: '2026-08-02T08:00:00.000Z',

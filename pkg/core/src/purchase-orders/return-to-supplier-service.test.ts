@@ -189,7 +189,8 @@ describe('postReturnToSupplier', () => {
     });
 
     await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
-      derivedStatus: 'sent',
+      // Everything it took in went back, so it is owed the lot again — no receipt state to show.
+      derivedStatus: 'approved',
       lines: [{ hasStockMovements: true, quantity: 10, receivedQuantity: 0 }],
     });
   });

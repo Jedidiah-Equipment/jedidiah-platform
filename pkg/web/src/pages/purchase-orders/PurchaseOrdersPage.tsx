@@ -1,6 +1,6 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
 import { isPurchaseOrderLineUnpriced, type PurchaseOrderView } from '@pkg/schema';
-import { IconPlus } from '@tabler/icons-react';
+import { IconCheck, IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
@@ -146,6 +146,14 @@ function createPurchaseOrderColumns(canReadCosts: boolean): ColumnDef<PurchaseOr
       accessorKey: 'derivedStatus',
       cell: ({ row }) => <PurchaseOrderStatusBadge status={row.original.derivedStatus} />,
       header: 'Status',
+    },
+    // Sent left the status ladder: the badge names the highest level the order reached, and whether
+    // it has actually gone to the Supplier is this tick.
+    {
+      accessorFn: (purchaseOrder) => purchaseOrder.sentAt !== null,
+      cell: ({ row }) => (row.original.sentAt ? <IconCheck aria-label="Sent" className="size-4" /> : null),
+      header: 'Sent',
+      id: 'sent',
     },
   ];
 }

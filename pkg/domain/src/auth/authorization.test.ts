@@ -59,6 +59,7 @@ describe('getRolePermissions', () => {
       'product_unit:transfer',
       'product_unit:update',
       'purchase_order:amend',
+      'purchase_order:approve',
       'purchase_order:close',
       'purchase_order:create',
       'purchase_order:read',
@@ -119,6 +120,17 @@ describe('getRolePermissions', () => {
 
     expect(getRolePermissions('admin')).toContain('product_unit:remove');
     expect(getRolePermissions('super-admin')).toContain('product_unit:remove');
+  });
+
+  // The whole point of the approval step: the role that drafts and sends Purchase Orders is not the
+  // role that signs them off, so procurement-manager holds every other Purchase Order right but this one.
+  it('lets only administrators approve a Purchase Order', () => {
+    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'stores', 'bay-operator'] as const) {
+      expect(getRolePermissions(role), `role ${role}`).not.toContain('purchase_order:approve');
+    }
+
+    expect(getRolePermissions('admin')).toContain('purchase_order:approve');
+    expect(getRolePermissions('super-admin')).toContain('purchase_order:approve');
   });
 
   it('grants procurement permissions to procurement managers', () => {

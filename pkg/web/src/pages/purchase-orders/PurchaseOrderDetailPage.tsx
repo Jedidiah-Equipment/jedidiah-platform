@@ -15,7 +15,17 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { isPurchaseOrderLineUnpriced } from '@pkg/schema';
-import { IconBan, IconDownload, IconEye, IconFlagCheck, IconPlus, IconSend, IconTrash } from '@tabler/icons-react';
+import {
+  IconArrowBackUp,
+  IconBan,
+  IconCircleCheck,
+  IconDownload,
+  IconEye,
+  IconFlagCheck,
+  IconPlus,
+  IconSend,
+  IconTrash,
+} from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
@@ -90,6 +100,10 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
   const { actions } = purchaseOrder;
   // Line prices are part of the draft, so editing needs the cost gate open as well as create rights.
   const canEdit = actions.edit.allowed && canReadCosts && hasPermission(accessQuery.data, 'purchase_order:create');
+  // Approving and withdrawing an approval are the same right: only someone who could sign the order
+  // off may un-sign it, which is what keeps the revert an audited step rather than a way around the gate.
+  const canApprove = actions.approve.allowed && hasPermission(accessQuery.data, 'purchase_order:approve');
+  const canRevertToDraft = actions.revertToDraft.allowed && hasPermission(accessQuery.data, 'purchase_order:approve');
   const canSend = actions.send.allowed && hasPermission(accessQuery.data, 'purchase_order:send');
   const canCancel = actions.cancel.allowed && hasPermission(accessQuery.data, 'purchase_order:close');
   const canCloseShort = actions.closeShort.allowed && hasPermission(accessQuery.data, 'purchase_order:close');
@@ -146,10 +160,12 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
       actions={
         <div className="flex flex-wrap items-center justify-end gap-2">
           <PurchaseOrderActions
+            canApprove={canApprove}
             canCancel={canCancel}
             canCloseShort={canCloseShort}
             canEdit={canEdit}
             canReadCosts={canReadCosts}
+            canRevertToDraft={canRevertToDraft}
             canSend={canSend}
             isPending={isLifecycleActionPending}
             purchaseOrder={purchaseOrder}
@@ -278,20 +294,51 @@ const SupplierField: React.FC<{ commit: () => void; form: DraftForm }> = ({ comm
 };
 
 export const PurchaseOrderActions: React.FC<{
+  canApprove: boolean;
   canCancel: boolean;
   canCloseShort: boolean;
   canEdit: boolean;
   canReadCosts: boolean;
+  canRevertToDraft: boolean;
   canSend: boolean;
   isPending: boolean;
   purchaseOrder: PurchaseOrderView;
   runAfterSave: (action: () => Promise<void>, failureMessage: string) => Promise<boolean>;
-}> = ({ canCancel, canCloseShort, canEdit, canReadCosts, canSend, isPending, purchaseOrder, runAfterSave }) => {
+}> = ({
+  canApprove,
+  canCancel,
+  canCloseShort,
+  canEdit,
+  canReadCosts,
+  canRevertToDraft,
+  canSend,
+  isPending,
+  purchaseOrder,
+  runAfterSave,
+}) => {
   const trpc = useTRPC();
   const { invalidatePurchaseOrders } = useQueryInvalidation();
   // Every lifecycle refusal the server can raise is a state rule the buyer can act on — an unpriced
   // line names its Part, a cancellation names its receipts. Without this the click just does nothing.
   const showMutationError = useApiMutationErrorToast();
+  const approveMutation = useMutation(
+    trpc.purchaseOrders.approve.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to approve this Purchase Order.'),
+      onSuccess: async () => {
+        await invalidatePurchaseOrders();
+        toast.success('Purchase Order approved');
+      },
+    }),
+  );
+  const revertToDraftMutation = useMutation(
+    trpc.purchaseOrders.revertToDraft.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to revert this Purchase Order to draft.'),
+      onSuccess: async () => {
+        await invalidatePurchaseOrders();
+        toast.success('Purchase Order reverted to draft');
+      },
+    }),
+  );
   const markSentMutation = useMutation(
     trpc.purchaseOrders.markSent.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to mark this Purchase Order sent.'),
@@ -319,7 +366,13 @@ export const PurchaseOrderActions: React.FC<{
       },
     }),
   );
-  const disabled = isPending || markSentMutation.isPending || cancelMutation.isPending || closeShortMutation.isPending;
+  const disabled =
+    isPending ||
+    approveMutation.isPending ||
+    revertToDraftMutation.isPending ||
+    markSentMutation.isPending ||
+    cancelMutation.isPending ||
+    closeShortMutation.isPending;
 
   const handlePreview = () => {
     // Reserve the tab during the click gesture so browsers do not treat the post-save navigation as a popup.
@@ -362,6 +415,30 @@ export const PurchaseOrderActions: React.FC<{
           variant="outline"
         >
           <IconDownload data-icon="inline-start" /> Download PDF
+        </Button>
+      ) : null}
+      {canRevertToDraft ? (
+        <Button
+          disabled={disabled}
+          onClick={() => {
+            if (!window.confirm(`Revert ${purchaseOrder.code} to draft? Its approval will be withdrawn.`)) return;
+            void revertToDraftMutation.mutateAsync({ id: purchaseOrder.id }).catch(() => undefined);
+          }}
+          variant="outline"
+        >
+          <IconArrowBackUp data-icon="inline-start" /> Revert to draft
+        </Button>
+      ) : null}
+      {canApprove ? (
+        <Button
+          disabled={disabled}
+          onClick={() => {
+            void runAfterSave(async () => {
+              await approveMutation.mutateAsync({ id: purchaseOrder.id });
+            }, 'Save all Purchase Order changes before approving it.').catch(() => undefined);
+          }}
+        >
+          <IconCircleCheck data-icon="inline-start" /> Approve
         </Button>
       ) : null}
       {canSend ? (
@@ -909,5 +986,6 @@ function statusDescription(purchaseOrder: PurchaseOrderView): string {
   if (purchaseOrder.status === 'cancelled') return 'Cancelled';
   if (purchaseOrder.closedShortAt) return `Closed short ${formatDate(purchaseOrder.closedShortAt)}`;
   if (purchaseOrder.sentAt) return `Sent ${formatDate(purchaseOrder.sentAt)}`;
+  if (purchaseOrder.approvedAt) return `Approved ${formatDate(purchaseOrder.approvedAt)}`;
   return 'Draft';
 }

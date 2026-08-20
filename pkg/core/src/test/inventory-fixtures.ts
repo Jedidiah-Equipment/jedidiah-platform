@@ -162,11 +162,15 @@ export async function seedSentPurchaseOrder(
     status = 'sent',
   }: { expectedDeliveryDate?: string | null; status?: 'draft' | 'sent' } = {},
 ): Promise<string> {
+  const sentAt = status === 'sent' ? new Date('2026-08-02T08:00:00.000Z') : null;
   const [purchaseOrder] = await db
     .insert(purchaseOrders)
     .values({
+      // Sent implies approved, which the DB shape check enforces — the same invariant the migration
+      // backfilled onto history.
+      approvedAt: sentAt,
       expectedDeliveryDate,
-      sentAt: status === 'sent' ? new Date('2026-08-02T08:00:00.000Z') : null,
+      sentAt,
       status,
       supplierId,
     })

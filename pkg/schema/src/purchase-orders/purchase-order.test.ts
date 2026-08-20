@@ -40,7 +40,7 @@ describe('Purchase Order contracts', () => {
       expectedDeliveryDate: null,
       supplierId: ID_A,
     });
-    expect(PurchaseOrderStatus.options).toEqual(['draft', 'sent', 'cancelled']);
+    expect(PurchaseOrderStatus.options).toEqual(['draft', 'approved', 'sent', 'cancelled']);
   });
 
   test('keeps the stored line price, and nulls it only on the gated view', () => {

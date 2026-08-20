@@ -87,6 +87,7 @@ export const purchaseOrderAuditDescriptor = defineAuditDescriptor<PurchaseOrderR
   noun: 'Purchase Order',
   primaryLabelField: 'code',
   toRecord: (row) => ({
+    approvedAt: row.approvedAt?.toISOString() ?? null,
     closedShortAt: row.closedShortAt?.toISOString() ?? null,
     code: formatPurchaseOrderCode(row.code),
     expectedDeliveryDate: row.expectedDeliveryDate,
@@ -706,8 +707,8 @@ export async function markPurchaseOrderSent({
       assertLinesArePriced(purchaseOrder);
 
       const sentAt = new Date();
-      // Render before the lifecycle-only send event so the footer names the last person who edited
-      // the Supplier-facing order; when nobody edited it, the creation event remains the fallback.
+      // The footer names the last person who edited the Supplier-facing order — approving and
+      // sending are lifecycle moves the last-modified read skips — falling back to whoever created it.
       uploadedDocumentStorageKey = await storePurchaseOrderPdfRevision({
         actorUserId,
         db: tx,
@@ -740,6 +741,70 @@ export async function markPurchaseOrderSent({
     }
     throw error;
   }
+}
+
+/**
+ * The admin sign-off that clears a draft for sending. It locks the order the way sending does —
+ * editing is draft-only — so the escape hatch is `revertPurchaseOrderToDraft` rather than a silent
+ * revocation on edit. Who approved lives in the audit event, not in a column of its own.
+ */
+export async function approvePurchaseOrder({
+  actorUserId,
+  db,
+  id,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  id: UUID;
+}): Promise<PurchaseOrder> {
+  return mutateEntity({
+    actorUserId,
+    assert: async (tx, before) => {
+      const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row: before }));
+      assertPurchaseOrderAction(actions.approve, id);
+    },
+    db,
+    descriptor: purchaseOrderAuditDescriptor,
+    id,
+    notFound: () => new PurchaseOrderNotFoundError(id),
+    project: (tx, row) => getPurchaseOrder({ db: tx, id: row.id }),
+    set: () => {
+      const approvedAt = new Date();
+
+      return { approvedAt, status: 'approved' as const, updatedAt: approvedAt };
+    },
+    table: purchaseOrders,
+  });
+}
+
+/**
+ * Un-approves an order that never went out, reopening it for editing. Gated by the same right as
+ * approving — only someone who could sign it off may withdraw the signature — and audited, so the
+ * withdrawn approval survives as history rather than disappearing with the timestamp.
+ */
+export async function revertPurchaseOrderToDraft({
+  actorUserId,
+  db,
+  id,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  id: UUID;
+}): Promise<PurchaseOrder> {
+  return mutateEntity({
+    actorUserId,
+    assert: async (tx, before) => {
+      const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row: before }));
+      assertPurchaseOrderAction(actions.revertToDraft, id);
+    },
+    db,
+    descriptor: purchaseOrderAuditDescriptor,
+    id,
+    notFound: () => new PurchaseOrderNotFoundError(id),
+    project: (tx, row) => getPurchaseOrder({ db: tx, id: row.id }),
+    set: () => ({ approvedAt: null, status: 'draft' as const, updatedAt: new Date() }),
+    table: purchaseOrders,
+  });
 }
 
 export async function cancelPurchaseOrder({
@@ -859,6 +924,7 @@ function mapPurchaseOrder(
       progress: derivePurchaseOrderProgress({ lines: row.lines, receivedByPartId }),
       status: row.status,
     }),
+    approvedAt: row.approvedAt,
     closedShortAt: row.closedShortAt,
     code: row.code,
     createdAt: row.createdAt,
@@ -1009,6 +1075,12 @@ async function assertJobsExist({ db, jobIds }: { db: DatabaseTransaction; jobIds
   }
 }
 
+/**
+ * Who last changed what the Supplier is looking at. Lifecycle moves are skipped: approving, sending,
+ * reverting and cancelling all record a `status` change and nothing the printed page shows, so the
+ * footer keeps naming the last person who actually edited the order — falling back to whoever
+ * created it when nobody has. Sending relies on this rather than on rendering before its own event.
+ */
 async function loadPurchaseOrderLastModified({
   db,
   id,
@@ -1020,7 +1092,13 @@ async function loadPurchaseOrderLastModified({
     .select({ actorName: user.name, occurredAt: auditEvents.occurredAt })
     .from(auditEvents)
     .leftJoin(user, eq(auditEvents.actorUserId, user.id))
-    .where(and(eq(auditEvents.entityType, 'purchase_order'), eq(auditEvents.entityId, id)))
+    .where(
+      and(
+        eq(auditEvents.entityType, 'purchase_order'),
+        eq(auditEvents.entityId, id),
+        sql`NOT coalesce(${auditEvents.changes} ? 'status', false)`,
+      ),
+    )
     .orderBy(desc(auditEvents.occurredAt), desc(auditEvents.id))
     .limit(1);
   if (!event) throw new Error(`Purchase Order ${id} has no audit history`);

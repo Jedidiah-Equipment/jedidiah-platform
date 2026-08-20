@@ -12,7 +12,7 @@ export class PurchaseOrderNotDraftError extends Error {
   readonly code = 'purchase_order.not_draft' as const;
 
   constructor(readonly id: UUID) {
-    super('Only a draft Purchase Order can be edited or sent.');
+    super('Only a draft Purchase Order can be edited or approved.');
   }
 }
 
@@ -92,6 +92,18 @@ export class PurchaseOrderEmptyError extends Error {
 
   constructor(readonly id: UUID) {
     super('Add at least one line before marking this Purchase Order sent.');
+  }
+}
+
+/**
+ * An order goes to the Supplier only once an admin has signed the draft off, and it is reopened for
+ * editing only while that sign-off stands — so the one state fact answers both refusals.
+ */
+export class PurchaseOrderNotApprovedError extends Error {
+  readonly code = 'purchase_order.not_approved' as const;
+
+  constructor(readonly id: UUID) {
+    super('Only an approved Purchase Order can be sent or reverted to draft.');
   }
 }
 
@@ -216,6 +228,8 @@ export function assertPurchaseOrderAction(verdict: PurchaseOrderActionVerdict, i
       throw new PurchaseOrderFullyReceivedError(id);
     case 'has-movements':
       throw new PurchaseOrderHasReceiptsError(id);
+    case 'not-approved':
+      throw new PurchaseOrderNotApprovedError(id);
     case 'not-draft':
       throw new PurchaseOrderNotDraftError(id);
     case 'not-sent':
@@ -238,6 +252,7 @@ export type PurchaseOrderCoreError =
   | PurchaseOrderLineNotFoundError
   | PurchaseOrderLineNotPricedError
   | PurchaseOrderNoReceiptsError
+  | PurchaseOrderNotApprovedError
   | PurchaseOrderNotDraftError
   | PurchaseOrderNotFoundError
   | PurchaseOrderNotSentError
@@ -261,6 +276,7 @@ export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrder
     error instanceof PurchaseOrderLineNotFoundError ||
     error instanceof PurchaseOrderLineNotPricedError ||
     error instanceof PurchaseOrderNoReceiptsError ||
+    error instanceof PurchaseOrderNotApprovedError ||
     error instanceof PurchaseOrderNotDraftError ||
     error instanceof PurchaseOrderNotFoundError ||
     error instanceof PurchaseOrderNotSentError ||

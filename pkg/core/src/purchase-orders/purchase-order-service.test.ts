@@ -444,6 +444,11 @@ describe('Purchase Order approval', () => {
         input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 3, unitPrice: 50 }]),
       }),
     ).rejects.toMatchObject({ code: 'purchase_order.not_draft' });
+    // Locked is not gone: the order still has not reached the Supplier, so removing that Supplier
+    // would strand it exactly as it would a draft.
+    await expect(removeSupplier({ actorUserId: ACTOR_ID, db: context.db, id: SUPPLIER_A_ID })).rejects.toMatchObject({
+      code: 'supplier.has_draft_purchase_orders',
+    });
 
     const sent = await markPurchaseOrderSent({
       actorUserId: ACTOR_ID,

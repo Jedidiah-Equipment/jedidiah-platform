@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 
-import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { act, useMemo } from 'react';
+import {
+  type CellContext,
+  type ColumnDef,
+  type ColumnFiltersState,
+  getCoreRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
+import { act, memo, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -19,7 +25,7 @@ const columns: ColumnDef<TestRow>[] = [
     header: 'Name',
   },
 ];
-const editableRows: TestRow[] = [{ name: 'Acme Steel' }];
+const MemoizedCell = memo(({ row }: CellContext<TestRow, unknown>) => <output>{row.original.name}</output>);
 
 const mountedRoots: Array<ReturnType<typeof createRoot>> = [];
 const mountedContainers: HTMLDivElement[] = [];
@@ -61,7 +67,7 @@ describe('DataTable reset filters control', () => {
 });
 
 describe('DataTable interactive cells', () => {
-  it('keeps a focused input mounted when refreshed column data changes', async () => {
+  it('keeps a focused input mounted and supports memoized cells when column data refreshes', async () => {
     const container = document.createElement('div');
     document.body.append(container);
     mountedContainers.push(container);
@@ -83,6 +89,7 @@ describe('DataTable interactive cells', () => {
     expect(container.querySelector('input')).toBe(input);
     expect(input?.dataset.optionLabel).toBe('Loaded');
     expect(document.activeElement).toBe(input);
+    expect(container.querySelector('output')?.textContent).toBe('Loaded');
   });
 });
 
@@ -140,12 +147,17 @@ function EditableTestDataTable({ optionLabel }: { optionLabel: string }) {
         header: 'Quantity',
         id: 'quantity',
       },
+      {
+        cell: MemoizedCell,
+        header: 'Memoized',
+        id: 'memoized',
+      },
     ],
     [optionLabel],
   );
   const table = useReactTable({
     columns: editableColumns,
-    data: editableRows,
+    data: useMemo(() => [{ name: optionLabel }], [optionLabel]),
     getCoreRowModel: getCoreRowModel(),
   });
 

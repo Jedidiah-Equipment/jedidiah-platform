@@ -1,4 +1,5 @@
-import type { Cell, Column, Row, RowData, Table as TanStackTable } from '@tanstack/react-table';
+import type { Cell, CellContext, Column, Row, RowData, Table as TanStackTable } from '@tanstack/react-table';
+import { flexRender } from '@tanstack/react-table';
 import * as React from 'react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area.js';
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
@@ -253,20 +254,30 @@ function DataTableRow<TData>({
 }
 
 function DataTableCellContent<TData>({ cell }: { cell: Cell<TData, unknown> }) {
-  const rendererRef = React.useRef(cell.column.columnDef.cell);
+  const rendererRef = React.useRef<CellRenderer<TData>>(undefined);
   rendererRef.current = cell.column.columnDef.cell;
-
-  const StableCellRenderer = React.useMemo(
-    () => (context: ReturnType<typeof cell.getContext>) => {
-      const renderer = rendererRef.current;
-      return typeof renderer === 'function' ? renderer(context) : (renderer ?? null);
-    },
-    [],
-  );
 
   // TanStack's flexRender uses the callback itself as the React component type. Callers often rebuild
   // columns when async options arrive, so keeping this adapter stable prevents editable cells remounting.
-  return <StableCellRenderer {...cell.getContext()} />;
+  return <StableCellRenderer {...cell.getContext()} rendererRef={rendererRef} />;
+}
+
+type CellRenderer<TData> = Cell<TData, unknown>['column']['columnDef']['cell'];
+
+function StableCellRenderer<TData>({
+  rendererRef,
+  ...context
+}: CellContext<TData, unknown> & { rendererRef: React.RefObject<CellRenderer<TData>> }) {
+  const renderer = rendererRef.current;
+  const isClassComponent =
+    typeof renderer === 'function' &&
+    Boolean((renderer as { prototype?: { isReactComponent?: unknown } }).prototype?.isReactComponent);
+
+  if (typeof renderer === 'function' && !isClassComponent) {
+    return renderer(context);
+  }
+
+  return flexRender(renderer, context);
 }
 
 function getPinnedColumnClassName<TData>(column: Column<TData, unknown>, kind: 'cell' | 'header') {

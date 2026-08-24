@@ -66,6 +66,7 @@ export * from './quotes/quote-display.js';
 export * from './quotes/quote-document-policy.js';
 export * from './quotes/quote-lock.js';
 export * from './quotes/quote-pricing.js';
+export * from './quotes/quote-salesperson.js';
 export * from './quotes/quote-start-job.js';
 export * from './quotes/quote-summary.js';
 export * from './quotes/quote-work-item-form.js';

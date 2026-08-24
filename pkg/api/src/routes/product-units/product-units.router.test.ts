@@ -56,7 +56,7 @@ describe('productUnits.stockExport', () => {
     // Completing the Build Job is what makes the machine On Hand, so the report has a row at all.
     await caller.jobs.update({ completedOn: '2026-06-04', id: context.seed.buildJobId });
 
-    const expectedRow = [
+    const expectedRows = [
       expect.objectContaining({
         buildCompletedOn: '2026-06-04',
         costExVat: 0,
@@ -67,13 +67,13 @@ describe('productUnits.stockExport', () => {
       }),
     ];
 
-    await expect(caller.productUnits.stockExport({ columnFilters: {}, search: '' })).resolves.toEqual(expectedRow);
+    await expect(caller.productUnits.stockExport({ columnFilters: {}, search: '' })).resolves.toEqual(expectedRows);
     // Procurement holds all four gates now that it reads Quotes, so the valuation opens to it too.
     await expect(
       context
         .createCaller(mockSession('procurement-manager'))
         .productUnits.stockExport({ columnFilters: {}, search: '' }),
-    ).resolves.toEqual(expectedRow);
+    ).resolves.toEqual(expectedRows);
   });
 
   // A Unit reader short of any one gate is still refused the valuation rather than handed a hollowed-out

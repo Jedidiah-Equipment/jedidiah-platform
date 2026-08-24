@@ -1,4 +1,4 @@
-import { quoteStatusLabels } from '@pkg/domain';
+import { isQuoteSalespersonRole, quoteStatusLabels } from '@pkg/domain';
 import { IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -63,7 +63,9 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
   useEffect(() => {
-    const defaultSalesPersonId = currentUser.data?.id ?? '';
+    // Only a salesperson is prefilled as one: procurement may raise a Quote, but its Salesperson has
+    // to come off the roster, and prefilling an id the picker never offers fails on submit.
+    const defaultSalesPersonId = isQuoteSalespersonRole(currentUser.data?.role) ? (currentUser.data?.id ?? '') : '';
     if (!salesPersonId && defaultSalesPersonId) form.setFieldValue('salesPersonId', defaultSalesPersonId);
   }, [currentUser.data, form, salesPersonId]);
 

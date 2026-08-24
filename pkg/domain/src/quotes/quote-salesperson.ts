@@ -7,7 +7,9 @@ import type { AppRole } from '@pkg/schema';
  */
 export const QUOTE_SALESPERSON_ROLES = ['super-admin', 'admin', 'sales'] as const satisfies readonly AppRole[];
 
-/** Takes the loose role Better Auth hands the clients; a User has one App Role, so anything else misses. */
+/** Takes the loose role Better Auth hands the clients, resolving an array form the way `parseBetterAuthRole` does. */
 export function isQuoteSalespersonRole(role: string | string[] | null | undefined): boolean {
-  return QUOTE_SALESPERSON_ROLES.some((salespersonRole) => salespersonRole === role);
+  const appRole = Array.isArray(role) ? role[0] : role;
+
+  return QUOTE_SALESPERSON_ROLES.some((salespersonRole) => salespersonRole === appRole);
 }

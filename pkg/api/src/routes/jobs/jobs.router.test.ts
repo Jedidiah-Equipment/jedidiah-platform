@@ -1364,9 +1364,18 @@ describe('jobs.salesExport', () => {
     await expect(
       context.createCaller(mockSession('job-viewer')).jobs.salesExport({ columnFilters: {}, search: '' }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(
-      context.createCaller(mockSession('procurement-manager')).jobs.salesExport({ columnFilters: {}, search: '' }),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    // No role holds cost and Job reads without Quotes any more, so the second half of the gate is
+    // pinned with a synthetic permission set rather than a role.
+    const costReaderWithoutQuotes = context.createCaller(mockSession('procurement-manager'), {
+      access: {
+        permissions: ['inventory_cost:read', 'job:read'],
+        role: 'procurement-manager',
+        userId: 'test-user-id',
+      },
+    });
+    await expect(costReaderWithoutQuotes.jobs.salesExport({ columnFilters: {}, search: '' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
   });
 });
 

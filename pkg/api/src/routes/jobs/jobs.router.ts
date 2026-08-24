@@ -147,9 +147,9 @@ export const jobsRouter = router({
   /**
    * One row of this report crosses three gates at once — the ledger's cost, the Job, and the Quote's
    * Customer, invoice number and price — so it demands all three rather than any of them. An any-of
-   * gate would hand `procurement-manager`, which reads costs and Jobs but no Quotes, a spreadsheet
-   * of commercial facts it can reach on no other screen. Gated whole rather than field by field: a
-   * caller who cannot read cost would be downloading the report with its point cut out of it.
+   * gate would hand a caller holding just one of the three a spreadsheet of facts it can reach on no
+   * other screen. Gated whole rather than field by field: a caller who cannot read cost would be
+   * downloading the report with its point cut out of it.
    */
   salesExport: fullyAuthorizedProcedure(['inventory_cost:read', 'job:read', 'quote:read'])
     .input(JobSalesExportInput)

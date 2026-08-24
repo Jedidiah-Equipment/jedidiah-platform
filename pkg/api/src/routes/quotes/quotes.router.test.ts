@@ -380,6 +380,36 @@ describe('quotes.create', () => {
     await expect(salesCaller.quotes.get({ id: quote.id })).resolves.toMatchObject({ status: 'cancelled' });
   });
 
+  test('lets a procurement manager create, read, and update Quotes', async ({ context }) => {
+    const procurementCaller = context.createCaller(mockSession('procurement-manager'));
+    const created = await procurementCaller.quotes.create({
+      customer: { type: 'inline', companyName: 'Procurement Quote Customer' },
+      notes: null,
+      documentNotes: null,
+      offering: productOffering(context.product.id),
+      salesPersonId: 'test-user-id',
+      status: 'draft',
+      validUntil: null,
+    });
+
+    await expect(
+      procurementCaller.quotes.list({
+        cursor: 0,
+        filters: { statuses: [] },
+        limit: 10,
+        search: 'Procurement Quote Customer',
+        sortBy: 'createdAt',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: created.id })],
+      total: 1,
+    });
+    await expect(
+      procurementCaller.quotes.update({ ...toUpdateInput(created), notes: 'Priced off supplier quotes' }),
+    ).resolves.toMatchObject({ id: created.id, notes: 'Priced off supplier quotes' });
+  });
+
   test('rejects a crafted cancellation from a user without quote cancellation permission', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const quote = await salesCaller.quotes.create({
@@ -1083,7 +1113,7 @@ describe('quotes.products', () => {
     const rangeId = await createProductRangeFixture(context.db, 'Quote Filter Range');
     const adminCaller = context.createCaller(mockSession('admin'));
     const salesCaller = context.createCaller(mockSession('sales'));
-    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
 
     await expect(salesCaller.products.rangeOptions()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(salesCaller.quotes.rangeOptions()).resolves.toMatchObject({
@@ -1092,7 +1122,7 @@ describe('quotes.products', () => {
     await expect(adminCaller.quotes.rangeOptions()).resolves.toMatchObject({
       ranges: expect.arrayContaining([{ id: rangeId, name: 'Quote Filter Range' }]),
     });
-    await expect(productEditorCaller.quotes.rangeOptions()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(jobViewerCaller.quotes.rangeOptions()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   test('keeps removed Products out of active options but resolves them for selected quote filters', async ({
@@ -1672,13 +1702,13 @@ describe('quotes.upcomingDeliveries', () => {
   }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const adminCaller = context.createCaller(mockSession('admin'));
-    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
 
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-06-11T10:00:00.000+02:00'));
 
     try {
-      await expect(productEditorCaller.quotes.upcomingDeliveries()).rejects.toMatchObject({
+      await expect(jobViewerCaller.quotes.upcomingDeliveries()).rejects.toMatchObject({
         code: 'FORBIDDEN',
       });
 
@@ -1779,9 +1809,9 @@ describe('quotes.upcomingDeliveries', () => {
 describe('quotes.summaryByStatus', () => {
   test('requires quote read access and returns a zero-filled status summary', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
 
-    await expect(productEditorCaller.quotes.summaryByStatus()).rejects.toMatchObject({
+    await expect(jobViewerCaller.quotes.summaryByStatus()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
     await expect(salesCaller.quotes.summaryByStatus()).resolves.toEqual({
@@ -1799,9 +1829,9 @@ describe('quotes.summaryByStatus', () => {
 describe('quotes.pipelineSummary', () => {
   test('requires quote read access and aggregates sent pipeline value with decision counts', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
 
-    await expect(productEditorCaller.quotes.pipelineSummary()).rejects.toMatchObject({
+    await expect(jobViewerCaller.quotes.pipelineSummary()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
 
@@ -1863,9 +1893,9 @@ describe('quotes.pipelineSummary', () => {
 describe('quotes.weeklyFlow', () => {
   test('requires quote read access and returns created and accepted weekly series', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
 
-    await expect(productEditorCaller.quotes.weeklyFlow()).rejects.toMatchObject({
+    await expect(jobViewerCaller.quotes.weeklyFlow()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
 
@@ -1895,9 +1925,9 @@ describe('quotes.weeklyFlow', () => {
 describe('quotes.staleSent', () => {
   test('requires quote read access and lists sent quotes oldest-first with staleness', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
 
-    await expect(productEditorCaller.quotes.staleSent()).rejects.toMatchObject({
+    await expect(jobViewerCaller.quotes.staleSent()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
 
@@ -2014,11 +2044,11 @@ describe('quotes.productBayAvailability', () => {
 describe('quotes.generateDocument', () => {
   test('requires quote update access and returns the created Quote Document', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
     const created = await createReadyQuote(salesCaller, context.product.id);
 
     await expect(
-      productEditorCaller.quotes.generateDocument({
+      jobViewerCaller.quotes.generateDocument({
         leadTime: '14 working days',
         quoteId: created.id,
       }),

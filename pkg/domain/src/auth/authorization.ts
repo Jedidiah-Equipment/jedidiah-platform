@@ -19,7 +19,7 @@ export const roleDescriptions = {
   'bay-operator': 'Shop-floor personnel record for Bay assignment; this role is not enabled for sign-in.',
   'job-manager': 'View and update production Jobs.',
   'job-viewer': 'Read-only access to production Jobs.',
-  'procurement-manager': 'Manage procurement records and view production Jobs.',
+  'procurement-manager': 'Manage procurement records and sales Quotes, and view production Jobs.',
   sales: 'Create, read, and update sales Quotes, and send assistant-authored email.',
   stores: 'Run physical stock flows without access to inventory costs.',
 } as const satisfies Record<AppRole, string>;
@@ -220,6 +220,9 @@ export const appRoleAccess = {
     // No `approve`: procurement drafts and sends, an admin signs off in between. Handing the
     // approval right to the role that drafts would be the gate approving itself.
     purchase_order: ['read', 'create', 'send', 'amend', 'receive', 'close'],
+    // The same Quote set sales holds, and no `cancel`: unwinding a Locked Quote's sale or build stays
+    // with the roles that own the cascade.
+    quote: ['read', 'create', 'update'],
     supplier: ['read', 'update'],
   },
   'job-viewer': {

@@ -1,4 +1,4 @@
-import { quoteStatusLabels } from '@pkg/domain';
+import { isQuoteSalespersonRole, quoteStatusLabels } from '@pkg/domain';
 import type { Quote } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -44,7 +44,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
 
     return {
       ...QUOTE_CREATE_DEFAULT_VALUES,
-      salesPersonId: currentUser?.role === 'admin' || currentUser?.role === 'sales' ? currentUser.id : '',
+      salesPersonId: isQuoteSalespersonRole(currentUser?.role) ? (currentUser?.id ?? '') : '',
     };
   }, [currentUserQuery.data]);
 

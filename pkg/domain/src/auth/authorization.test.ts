@@ -158,6 +158,9 @@ describe('getRolePermissions', () => {
       'purchase_order:read',
       'purchase_order:receive',
       'purchase_order:send',
+      'quote:create',
+      'quote:read',
+      'quote:update',
       'supplier:read',
       'supplier:update',
     ]);

@@ -18,6 +18,7 @@ import {
   addDateOnlyDays,
   parseDateOnlyParts,
   parseJobCodeSearch,
+  QUOTE_SALESPERSON_ROLES,
   selectReworkBuildSpec,
   toPlantDateOnly,
 } from '@pkg/domain';
@@ -496,7 +497,7 @@ export async function getQuoteProductBayAvailability({
 
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserListResult> {
   const rows = await db.query.user.findMany({
-    where: inArray(user.role, ['super-admin', 'admin', 'sales']),
+    where: inArray(user.role, [...QUOTE_SALESPERSON_ROLES]),
     orderBy: [asc(user.name), asc(user.id)],
   });
 

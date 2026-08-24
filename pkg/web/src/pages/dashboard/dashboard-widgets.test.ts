@@ -72,7 +72,7 @@ describe('filterDashboardWidgets', () => {
   it('keeps role-visible widgets in registry order for procurement managers', () => {
     const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
 
-    expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual(['welcome', 'products']);
+    expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual(['welcome', 'quotes', 'products']);
   });
 
   it('keeps all registered widgets for admins without reordering them', () => {
@@ -176,25 +176,30 @@ describe('dashboardWidgets', () => {
     expect(widgetIds(dashboardWidgets)).not.toContain('recent-activity');
   });
 
-  it('shows Quotes by status to sales users and hides it from procurement managers', () => {
+  it('shows Quotes by status to quote readers and hides it from job viewers', () => {
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
+    const procurementAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
+    const jobViewerAccess = createUserAccessSummary({ role: 'job-viewer', userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('quotes-by-status');
-    expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain('quotes-by-status');
+    expect(widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets))).toContain('quotes-by-status');
+    expect(widgetIds(filterDashboardWidgets(jobViewerAccess, dashboardWidgets))).not.toContain('quotes-by-status');
   });
 
-  it('shows the sales metrics widgets to sales users and hides them from procurement managers', () => {
+  it('shows the sales metrics widgets to quote readers and hides them from job viewers', () => {
     const salesMetricsWidgetIds = ['open-pipeline', 'quote-flow', 'stale-sent-quotes', 'awaiting-job-creation'];
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
+    const procurementAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
+    const jobViewerAccess = createUserAccessSummary({ role: 'job-viewer', userId: 'user-1' });
 
     const salesIds = widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets));
-    const productEditorIds = widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets));
+    const procurementIds = widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets));
+    const jobViewerIds = widgetIds(filterDashboardWidgets(jobViewerAccess, dashboardWidgets));
 
     for (const widgetId of salesMetricsWidgetIds) {
       expect(salesIds).toContain(widgetId);
-      expect(productEditorIds).not.toContain(widgetId);
+      expect(procurementIds).toContain(widgetId);
+      expect(jobViewerIds).not.toContain(widgetId);
     }
   });
 

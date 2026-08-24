@@ -1,5 +1,11 @@
 import { customers, type DatabaseTransaction, type Db, jobs, notRemoved, products, quotes, user } from '@pkg/db';
-import { assertQuoteEditable, getPlantDateNow, isQuoteLocked, validateDiscount } from '@pkg/domain';
+import {
+  assertQuoteEditable,
+  getPlantDateNow,
+  isQuoteLocked,
+  QUOTE_SALESPERSON_ROLES,
+  validateDiscount,
+} from '@pkg/domain';
 import {
   type AuditChanges,
   type AuthId,
@@ -797,7 +803,7 @@ async function assertQuoteSalesPerson({
       id: user.id,
     })
     .from(user)
-    .where(and(eq(user.id, salesPersonId), inArray(user.role, ['super-admin', 'admin', 'sales'])));
+    .where(and(eq(user.id, salesPersonId), inArray(user.role, [...QUOTE_SALESPERSON_ROLES])));
 
   if (!salesPerson) {
     throw new QuoteInvalidReferenceError('Quote salesperson must be a sales, admin, or super-admin user.');

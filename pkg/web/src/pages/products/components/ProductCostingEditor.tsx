@@ -111,7 +111,7 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
 
             return (
               <div
-                className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto]"
+                className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_18rem_auto]"
                 key={line.partId}
               >
                 <div>
@@ -192,7 +192,7 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
           ) : null}
           {laborHoursField.state.value.map((line, index) => (
             <div
-              className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto]"
+              className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_18rem_auto]"
               key={line.department}
             >
               <p className="self-center font-medium text-sm">{departmentLabels[line.department]}</p>

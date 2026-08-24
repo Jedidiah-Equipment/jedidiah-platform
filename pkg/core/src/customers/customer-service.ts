@@ -82,9 +82,13 @@ function buildCustomerListWhere(input: CustomerListInput): SQL | undefined {
 
   if (input.search) {
     const globalSearchWhere = createGlobalSearchCondition(input.search, [
+      sql`${customers.address}`,
       sql`${customers.companyName}`,
+      sql`${customers.contactPerson}`,
       sql`${customers.email}`,
       sql`${customers.id}::text`,
+      sql`${customers.notes}`,
+      sql`${customers.phone}`,
       sql`${customers.vatNumber}`,
     ]);
 

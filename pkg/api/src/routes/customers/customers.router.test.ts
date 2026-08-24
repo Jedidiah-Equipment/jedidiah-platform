@@ -174,20 +174,35 @@ describe('customers.list', () => {
     expect(result.total).toBe(3);
   });
 
-  test('searches customer company names, emails, VAT numbers, and IDs globally', async ({ context }) => {
+  test('searches customer text fields and identifiers globally', async ({ context }) => {
     const caller = context.createCaller();
-    const acme = await createCustomer(caller, 'Acme Mining', { email: 'sales@acme.example', vatNumber: 'VAT-ACME' });
+    const acme = await createCustomer(caller, 'Acme Mining', {
+      address: '42 Rietvlei Road',
+      contactPerson: 'Jack Borrowdale',
+      email: 'sales@acme.example',
+      notes: 'Prefers deliveries before noon',
+      phone: '+27 82 555 0199',
+      vatNumber: 'VAT-ACME',
+    });
     const beta = await createCustomer(caller, 'Beta Quarries', { email: 'procurement@beta.example' });
     await createCustomer(caller, 'Cargo Works', { email: 'hello@cargo.example' });
 
     const nameResult = await caller.customers.list({ search: 'acme' });
+    const contactResult = await caller.customers.list({ search: 'borrowdale' });
+    const phoneResult = await caller.customers.list({ search: '82 555' });
     const emailResult = await caller.customers.list({ search: 'procurement' });
     const vatResult = await caller.customers.list({ search: 'VAT-ACME' });
+    const addressResult = await caller.customers.list({ search: 'rietvlei' });
+    const notesResult = await caller.customers.list({ search: 'before noon' });
     const idResult = await caller.customers.list({ search: beta.id.slice(0, 8) });
 
     expect(nameResult.items.map((customer) => customer.id)).toEqual([acme.id]);
+    expect(contactResult.items.map((customer) => customer.id)).toEqual([acme.id]);
+    expect(phoneResult.items.map((customer) => customer.id)).toEqual([acme.id]);
     expect(emailResult.items.map((customer) => customer.id)).toEqual([beta.id]);
     expect(vatResult.items.map((customer) => customer.id)).toEqual([acme.id]);
+    expect(addressResult.items.map((customer) => customer.id)).toEqual([acme.id]);
+    expect(notesResult.items.map((customer) => customer.id)).toEqual([acme.id]);
     expect(idResult.items.map((customer) => customer.id)).toEqual([beta.id]);
   });
 

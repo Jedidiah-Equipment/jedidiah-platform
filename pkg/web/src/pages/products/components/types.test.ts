@@ -4,11 +4,13 @@ import { describe, expect, it } from 'vitest';
 import {
   getEligibleAssemblyNames,
   getEligibleAssemblyParts,
+  rawMaterialPlaceholder,
   toProductAssemblyInputs,
   toProductBayInputs,
   toProductCreateInput,
   toProductFormValues,
   toProductMinimalCreateInput,
+  toProductRawMaterialOptions,
   toProductUpdateInput,
 } from './types.js';
 
@@ -18,6 +20,9 @@ const OPTIONAL_ID = '550e8400-e29b-41d4-a716-446655440002';
 const BAY_ID = '550e8400-e29b-41d4-a716-446655440003';
 const RANGE_ID = '550e8400-e29b-41d4-a716-446655440004';
 const VARIANT_ID = '550e8400-e29b-41d4-a716-446655440005';
+const PART_A_ID = '550e8400-e29b-41d4-a716-446655440006';
+const PART_B_ID = '550e8400-e29b-41d4-a716-446655440007';
+const PART_C_ID = '550e8400-e29b-41d4-a716-446655440008';
 
 function buildProduct(overrides: Record<string, unknown> = {}): Product {
   return {
@@ -367,5 +372,55 @@ describe('toProductUpdateInput', () => {
       rangeId: RANGE_ID,
       variantId: VARIANT_ID,
     });
+  });
+});
+
+describe('toProductRawMaterialOptions', () => {
+  const PLATE = {
+    code: 'SP1-005',
+    id: PART_A_ID,
+    name: '10Mm Mild Steel Plate',
+    stockTrackingMode: 'periodic',
+  } as const;
+  const TUBE = { code: 'RM-100', id: PART_B_ID, name: '100x4.5 Square tube', stockTrackingMode: 'periodic' } as const;
+  const BOLT = { code: 'BLT-1', id: PART_C_ID, name: 'M12 Bolt', stockTrackingMode: 'perpetual' } as const;
+
+  it('labels an option with the code and the name so the picker never shows a bare id', () => {
+    expect(toProductRawMaterialOptions([PLATE], [])).toEqual([
+      { label: 'SP1-005 · 10Mm Mild Steel Plate', value: PART_A_ID },
+    ]);
+  });
+
+  it('offers only periodic-stock Parts', () => {
+    expect(toProductRawMaterialOptions([PLATE, BOLT], []).map((option) => option.value)).toEqual([PART_A_ID]);
+  });
+
+  it('drops the Parts the material list already holds', () => {
+    expect(toProductRawMaterialOptions([PLATE, TUBE], [{ partId: PART_A_ID }]).map((option) => option.value)).toEqual([
+      PART_B_ID,
+    ]);
+  });
+});
+
+describe('rawMaterialPlaceholder', () => {
+  const READY = { hasAvailableParts: true, hasPeriodicParts: true, isError: false, isLoading: false };
+
+  it('invites a search once Parts are pickable', () => {
+    expect(rawMaterialPlaceholder(READY)).toBe('Search raw materials');
+  });
+
+  it('reports loading ahead of every other state', () => {
+    expect(rawMaterialPlaceholder({ ...READY, isError: true, isLoading: true })).toBe('Loading Parts...');
+  });
+
+  it('reports a failed load', () => {
+    expect(rawMaterialPlaceholder({ ...READY, isError: true })).toBe('Unable to load Parts');
+  });
+
+  it('distinguishes no eligible Parts from all of them already added', () => {
+    expect(rawMaterialPlaceholder({ ...READY, hasAvailableParts: false, hasPeriodicParts: false })).toBe(
+      'No periodic-stock Parts available',
+    );
+    expect(rawMaterialPlaceholder({ ...READY, hasAvailableParts: false })).toBe('All periodic-stock Parts added');
   });
 });

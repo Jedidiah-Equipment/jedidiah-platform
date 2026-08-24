@@ -1,10 +1,11 @@
 import { formatNumber } from '@pkg/domain';
 import * as React from 'react';
 
-import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { Field, FieldDescription, FieldError } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
+import { type FieldHelp, FieldLabelRow } from './FieldLabelRow.js';
 
 const INTL_MAX_FRACTION_DIGITS = 100;
 
@@ -19,6 +20,7 @@ export type NumberFieldProps = {
   description?: React.ReactNode;
   emptyValue?: number;
   fieldClassName?: string;
+  help?: FieldHelp;
   label: React.ReactNode;
   orientation?: React.ComponentProps<typeof Field>['orientation'];
 } & NumberFieldInputProps;
@@ -28,6 +30,7 @@ export function NumberField({
   description,
   emptyValue = NaN,
   fieldClassName,
+  help,
   inputMode = 'decimal',
   label,
   orientation,
@@ -69,7 +72,9 @@ export function NumberField({
       orientation={orientation}
       className={fieldClassName}
     >
-      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <FieldLabelRow help={help} htmlFor={field.name}>
+        {label}
+      </FieldLabelRow>
       <Input
         aria-invalid={isInvalid}
         id={field.name}

@@ -110,6 +110,7 @@ export const PartForm: React.FC<PartFormProps> = ({
               {(field) => (
                 <field.NumberField
                   disabled={stockTrackingMode !== 'periodic' || unitClassFor(unitOfMeasure) !== 'discrete'}
+                  help={{ label: 'How Estimated Stock on Hand works', topic: 'inventoryEstimatedStock' }}
                   inputMode="numeric"
                   label="Average utilization %"
                   max={PartAverageUtilizationPercent.maxValue ?? undefined}

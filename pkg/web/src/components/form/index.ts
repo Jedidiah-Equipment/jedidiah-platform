@@ -5,6 +5,7 @@ export { ComboboxField, type ComboboxFieldProps } from './fields/ComboboxField.j
 export { CreatableComboboxField, type CreatableComboboxFieldProps } from './fields/CreatableComboboxField.js';
 export { CurrencyField, type CurrencyFieldProps } from './fields/CurrencyField.js';
 export { DatePickerField, type DatePickerFieldProps } from './fields/DatePickerField.js';
+export { type FieldHelp, FieldLabelRow } from './fields/FieldLabelRow.js';
 export { ImageField, type ImageFieldProps } from './fields/ImageField.js';
 export {
   MultiComboboxField,

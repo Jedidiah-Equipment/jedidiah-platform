@@ -1,3 +1,4 @@
+import { getTableColumns } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -99,6 +100,16 @@ describe('snapshot table registry', () => {
       'feedback_department.json',
       'feedback_user.json',
     ]);
+  });
+
+  it('revives every schema timestamp that uses Date mode', () => {
+    for (const config of snapshotTables) {
+      const schemaTimestampColumns = Object.entries(getTableColumns(config.table))
+        .filter(([, column]) => column.columnType === 'PgTimestamp')
+        .map(([columnName]) => columnName);
+
+      expect(config.timestampColumns, config.tableName).toEqual(expect.arrayContaining(schemaTimestampColumns));
+    }
   });
 
   it('backfills rollout quote fields when loading snapshots captured before they existed', () => {

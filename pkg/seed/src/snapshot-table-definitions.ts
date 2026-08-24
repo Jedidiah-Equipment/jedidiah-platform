@@ -81,7 +81,7 @@ export const snapshotTableDefinitions = [
     // from role so seed:read remains compatible across that deployment boundary.
     fileName: 'user.json',
     tableName: 'user',
-    timestampColumns: authTimestampColumns,
+    timestampColumns: ['lastActivitySeen', ...authTimestampColumns],
     omitReadColumns: ['assistantEnabled'],
     seedRowDefaults: (row) => ({ assistantEnabled: row.role === 'admin' || row.role === 'super-admin' }),
   },

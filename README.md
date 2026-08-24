@@ -119,7 +119,8 @@ strings; app-owned tables use UUID primary keys with database defaults unless th
 plugin enabled), tRPC at `/trpc/*`, `POST /ai/chat` for the authenticated assistant stream, and
 authenticated document/file routes for uploads and downloads.
 
-App roles are `admin`, `super-admin`, `procurement-manager`, `job-viewer`, `sales`, and `bay-operator`.
+App roles are `admin`, `super-admin`, `procurement-manager`, `job-manager`, `job-viewer`, `sales`, `stores`,
+and `bay-operator`.
 Role-to-permission mapping lives in `@pkg/domain/auth/authorization` and is shared by the Better Auth admin
 plugin, server procedures, and the web access hooks. Server procedures use `authorizedProcedure(permission)`
 in [pkg/api/src/trpc/init.ts](pkg/api/src/trpc/init.ts); the browser uses `useAccess` / `canAccess` in

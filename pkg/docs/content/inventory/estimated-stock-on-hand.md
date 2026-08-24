@@ -20,6 +20,12 @@ A Product's material-line quantity is **part area ÷ plate area**, with no waste
 of `0.060` means the unit's parts occupy 6% of the plate's total area. Average Utilization % accounts
 for the waste; including waste in the material line would count it twice.
 
+Those quantities are the Product Material List, kept under **Raw materials per unit**; see [Maintain a
+Product cost estimate](./maintain-a-product-cost-estimate.md). That list sits beside, not inside,
+Assemblies: a fabricated Part in an Assembly carries its raw material through the Product Material
+List, and an Assembly's own Part quantities are whole counted Parts. So a plate reaches the estimate
+only through the Product Material List, never through an Assembly.
+
 Demand is taken from the estimate snapshot frozen when a Product Job is created. Cancelled Jobs do
 not contribute. Rework and Custom Jobs carry no qualifying material lines.
 

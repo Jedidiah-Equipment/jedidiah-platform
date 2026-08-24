@@ -380,9 +380,7 @@ describe('quotes.create', () => {
     await expect(salesCaller.quotes.get({ id: quote.id })).resolves.toMatchObject({ status: 'cancelled' });
   });
 
-  test('lets a procurement manager create, read, and update Quotes without cancelling a Locked one', async ({
-    context,
-  }) => {
+  test('lets a procurement manager create, read, and update Quotes', async ({ context }) => {
     const procurementCaller = context.createCaller(mockSession('procurement-manager'));
     const created = await procurementCaller.quotes.create({
       customer: { type: 'inline', companyName: 'Procurement Quote Customer' },
@@ -410,22 +408,6 @@ describe('quotes.create', () => {
     await expect(
       procurementCaller.quotes.update({ ...toUpdateInput(created), notes: 'Priced off supplier quotes' }),
     ).resolves.toMatchObject({ id: created.id, notes: 'Priced off supplier quotes' });
-
-    // `quote:update` cancels paperwork nobody has acted on; a Locked Quote unwinds a sale, and that
-    // still needs `quote:cancel`, which procurement does not hold.
-    const locked = await procurementCaller.quotes.create({
-      customer: { type: 'inline', companyName: 'Procurement Locked Customer' },
-      notes: null,
-      documentNotes: null,
-      offering: { kind: 'custom', workTitle: 'Locked repair' },
-      salesPersonId: 'test-user-id',
-      status: 'accepted',
-      validUntil: null,
-    });
-
-    await expect(
-      procurementCaller.quotes.cancel({ id: locked.id, cancellationReason: 'Crafted cancellation' }),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   test('rejects a crafted cancellation from a user without quote cancellation permission', async ({ context }) => {

@@ -1,6 +1,10 @@
+// @vitest-environment jsdom
+
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { act, useMemo } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { DataTable } from './DataTable.js';
 
@@ -15,6 +19,23 @@ const columns: ColumnDef<TestRow>[] = [
     header: 'Name',
   },
 ];
+const editableRows: TestRow[] = [{ name: 'Acme Steel' }];
+
+const mountedRoots: Array<ReturnType<typeof createRoot>> = [];
+const mountedContainers: HTMLDivElement[] = [];
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+afterEach(() => {
+  for (const root of mountedRoots) {
+    act(() => root.unmount());
+  }
+  mountedRoots.length = 0;
+  for (const container of mountedContainers) {
+    container.remove();
+  }
+  mountedContainers.length = 0;
+});
 
 describe('DataTable reset filters control', () => {
   it('shows the reset control when global search is active', () => {
@@ -36,6 +57,32 @@ describe('DataTable reset filters control', () => {
     const html = renderTestTable();
 
     expect(html).not.toContain('Reset filters');
+  });
+});
+
+describe('DataTable interactive cells', () => {
+  it('keeps a focused input mounted when refreshed column data changes', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    mountedContainers.push(container);
+    const root = createRoot(container);
+    mountedRoots.push(root);
+
+    await act(async () => {
+      root.render(<EditableTestDataTable optionLabel="Loading" />);
+    });
+
+    const input = container.querySelector('input');
+    expect(input).not.toBeNull();
+    act(() => input?.focus());
+
+    await act(async () => {
+      root.render(<EditableTestDataTable optionLabel="Loaded" />);
+    });
+
+    expect(container.querySelector('input')).toBe(input);
+    expect(input?.dataset.optionLabel).toBe('Loaded');
+    expect(document.activeElement).toBe(input);
   });
 });
 
@@ -83,4 +130,24 @@ function TestDataTable({
       total={1}
     />
   );
+}
+
+function EditableTestDataTable({ optionLabel }: { optionLabel: string }) {
+  const editableColumns = useMemo<ColumnDef<TestRow>[]>(
+    () => [
+      {
+        cell: () => <input aria-label="Quantity" data-option-label={optionLabel} defaultValue="5" />,
+        header: 'Quantity',
+        id: 'quantity',
+      },
+    ],
+    [optionLabel],
+  );
+  const table = useReactTable({
+    columns: editableColumns,
+    data: editableRows,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  return <DataTable emptyMessage="No rows found." hideGlobalFilter paginationMode="complete" table={table} total={1} />;
 }

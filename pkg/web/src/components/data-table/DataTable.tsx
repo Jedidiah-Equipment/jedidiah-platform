@@ -1,4 +1,4 @@
-import { type Column, flexRender, type Row, type RowData, type Table as TanStackTable } from '@tanstack/react-table';
+import type { Cell, Column, Row, RowData, Table as TanStackTable } from '@tanstack/react-table';
 import * as React from 'react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area.js';
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
@@ -245,11 +245,28 @@ function DataTableRow<TData>({
           key={cell.id}
           style={getPinnedColumnStyle(cell.column)}
         >
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          <DataTableCellContent cell={cell} />
         </TableCell>
       ))}
     </TableRow>
   );
+}
+
+function DataTableCellContent<TData>({ cell }: { cell: Cell<TData, unknown> }) {
+  const rendererRef = React.useRef(cell.column.columnDef.cell);
+  rendererRef.current = cell.column.columnDef.cell;
+
+  const StableCellRenderer = React.useMemo(
+    () => (context: ReturnType<typeof cell.getContext>) => {
+      const renderer = rendererRef.current;
+      return typeof renderer === 'function' ? renderer(context) : (renderer ?? null);
+    },
+    [],
+  );
+
+  // TanStack's flexRender uses the callback itself as the React component type. Callers often rebuild
+  // columns when async options arrive, so keeping this adapter stable prevents editable cells remounting.
+  return <StableCellRenderer {...cell.getContext()} />;
 }
 
 function getPinnedColumnClassName<TData>(column: Column<TData, unknown>, kind: 'cell' | 'header') {

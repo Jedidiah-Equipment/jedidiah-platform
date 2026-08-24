@@ -165,6 +165,10 @@ describe('getRolePermissions', () => {
     expect(getRolePermissions('job-viewer')).toEqual(['job:read', 'product_unit:read']);
   });
 
+  it('grants Job reads and updates to job managers', () => {
+    expect(getRolePermissions('job-manager')).toEqual(['job:read', 'job:update', 'product_unit:read']);
+  });
+
   it('grants Quote and email permissions to sales', () => {
     expect(getRolePermissions('sales')).toEqual([
       'email:send',

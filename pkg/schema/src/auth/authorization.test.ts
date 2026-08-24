@@ -22,6 +22,7 @@ describe('AppRole', () => {
     expect(AppRole.parse('admin')).toBe('admin');
     expect(AppRole.parse('super-admin')).toBe('super-admin');
     expect(AppRole.parse('procurement-manager')).toBe('procurement-manager');
+    expect(AppRole.parse('job-manager')).toBe('job-manager');
     expect(AppRole.parse('job-viewer')).toBe('job-viewer');
     expect(AppRole.parse('sales')).toBe('sales');
     expect(AppRole.parse('stores')).toBe('stores');

@@ -33,6 +33,7 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
+import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 // Form representation of an assembly: like the API `AssemblyInput` but without its coercion
@@ -251,4 +252,44 @@ export function getEligibleAssemblyParts<TPart extends { id: string }>(
   );
 
   return parts.filter((part) => !taken.has(part.id));
+}
+
+/**
+ * Raw materials pickable on the Costing tab: the periodic-stock Parts the material list does not
+ * already hold, since a Product may hold a Part once (`refineProductMaterialLines`). The label
+ * carries the code as well as the name because plate names repeat across thicknesses, and it is what
+ * the picker shows once a Part is chosen.
+ */
+export function toProductRawMaterialOptions<
+  TPart extends { code: string; id: string; name: string; stockTrackingMode: string },
+>(parts: readonly TPart[], materialLines: readonly { partId: string }[]): SearchableComboboxOption[] {
+  const taken = new Set(materialLines.map((line) => line.partId));
+
+  return parts
+    .filter((part) => part.stockTrackingMode === 'periodic' && !taken.has(part.id))
+    .map((part) => ({ label: `${part.code} · ${part.name}`, value: part.id }));
+}
+
+/**
+ * What the raw-material picker says before anything is chosen. An empty list has two unrelated
+ * causes the user acts on differently — no Part is periodic-stock yet, or every eligible Part is
+ * already on the list — so they never collapse into one message.
+ */
+export function rawMaterialPlaceholder({
+  hasAvailableParts,
+  hasPeriodicParts,
+  isError,
+  isLoading,
+}: {
+  hasAvailableParts: boolean;
+  hasPeriodicParts: boolean;
+  isError: boolean;
+  isLoading: boolean;
+}): string {
+  if (isLoading) return 'Loading Parts...';
+  if (isError) return 'Unable to load Parts';
+  if (!hasPeriodicParts) return 'No periodic-stock Parts available';
+  if (!hasAvailableParts) return 'All periodic-stock Parts added';
+
+  return 'Search raw materials';
 }

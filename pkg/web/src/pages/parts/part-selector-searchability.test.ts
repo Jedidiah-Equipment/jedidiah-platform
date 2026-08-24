@@ -11,6 +11,7 @@ const simpleFormPartSelectors = [
 const controlledPartSelectors = [
   '../inventory/components/StockPartSelect.tsx',
   '../inventory/components/StockBuildDialog.tsx',
+  '../products/components/ProductCostingEditor.tsx',
   './components/PartBomTab.tsx',
 ] as const;
 

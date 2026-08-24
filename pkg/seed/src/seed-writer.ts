@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import './load-write-env.js';
 import { createDatabaseClient, type DatabaseTransaction, type Db, getDatabaseUrl, sql } from '@pkg/db';
 import { hashPassword } from 'better-auth/crypto';
+import { assertLocalSeedStorageTarget, assertLocalSeedTarget } from './seed-target-guards.js';
 import { deserializeSnapshotRows } from './snapshot-json.js';
 import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
 import {
@@ -14,27 +15,20 @@ import {
   snapshotCleanupTables,
   snapshotTables,
 } from './snapshot-tables.js';
-import { createStorageFromEnv, type SeedStorage, uploadObject } from './storage.js';
+import { createStorageFromEnv, readSeedStorageConfig, type SeedStorage, uploadObject } from './storage.js';
 
-type SnapshotWithRows = { config: SnapshotTableConfig; rows: SnapshotRow[] };
+export type SnapshotWithRows = { config: SnapshotTableConfig; rows: SnapshotRow[] };
+
+type ReplaceSeedSnapshotOptions = {
+  clearAllPublicTables?: boolean;
+  logPrefix?: string;
+};
 
 const insertBatchSize = 500;
 
 // Shared local login for every snapshot-seeded user. Staging password hashes are never dumped (see the
 // account config); the seeder fills credential accounts with this on insert so any seeded user can log in.
 export const SEED_USER_PASSWORD = 'test123';
-
-function assertLocalDatabaseIsNotStaging(localDatabaseUrl: string): void {
-  const stagingDatabaseUrl = process.env.STAGING_DATABASE_URL;
-
-  if (stagingDatabaseUrl && normalizeDatabaseUrl(localDatabaseUrl) === normalizeDatabaseUrl(stagingDatabaseUrl)) {
-    throw new Error('Refusing to write seed snapshot because DATABASE_URL matches STAGING_DATABASE_URL.');
-  }
-}
-
-function normalizeDatabaseUrl(databaseUrl: string): string {
-  return new URL(databaseUrl).href;
-}
 
 async function readSnapshotFile(config: SnapshotTableConfig): Promise<SnapshotRow[]> {
   const snapshotFile = new URL(config.fileName, snapshotDirectory);
@@ -56,15 +50,17 @@ async function readSnapshotFile(config: SnapshotTableConfig): Promise<SnapshotRo
 
 export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
   const localDatabaseUrl = getDatabaseUrl();
-  assertLocalDatabaseIsNotStaging(localDatabaseUrl);
+  assertLocalSeedTarget(localDatabaseUrl);
+
+  if (!database) {
+    assertLocalSeedStorageTarget(readSeedStorageConfig(''));
+  }
 
   const snapshots = await Promise.all(
     snapshotTables.map(async (config) => ({
       config,
       // Add rollout defaults beneath captured values, then normalize legacy values for the current schema.
-      rows: (await readSnapshotFile(config)).map((row, index) =>
-        prepareSnapshotRow(config, projectWritableRow(config, row), index),
-      ),
+      rows: prepareRowsForSeed(config, await readSnapshotFile(config)),
     })),
   );
   const localClient = database ? null : createDatabaseClient(localDatabaseUrl);
@@ -74,21 +70,8 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
     throw new Error('Unable to create local seed database client.');
   }
 
-  const seedPasswordHash = await hashPassword(SEED_USER_PASSWORD);
-
   try {
-    await writableDb.transaction(async (tx) => {
-      await clearSnapshotTables(tx);
-
-      for (const { config, rows } of snapshots) {
-        const seedRows = (config as SnapshotTableConfig).seedCredentialPassword
-          ? withSeedPassword(rows, seedPasswordHash)
-          : rows;
-        await insertSnapshotRows(tx, config, seedRows);
-        await resetSnapshotSequence(tx, config);
-        console.info(`[db:seed] Imported ${seedRows.length} ${config.tableName} row(s)`);
-      }
-    });
+    await replaceDatabaseWithSeedSnapshot(writableDb, snapshots);
 
     // Objects are copied to the local store only when seeding a real local database (not the in-process
     // `database` handle used by tests, which has no doc-store creds). S3 is non-transactional, so this
@@ -99,6 +82,33 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
   } finally {
     await localClient?.close();
   }
+}
+
+export function prepareRowsForSeed(config: SnapshotTableConfig, rows: readonly SnapshotRow[]): SnapshotRow[] {
+  return rows.map((row, index) => prepareSnapshotRow(config, projectWritableRow(config, row), index));
+}
+
+export async function replaceDatabaseWithSeedSnapshot(
+  database: Db,
+  snapshots: readonly SnapshotWithRows[],
+  { clearAllPublicTables = false, logPrefix = 'db:seed' }: ReplaceSeedSnapshotOptions = {},
+): Promise<void> {
+  const seedPasswordHash = await hashPassword(SEED_USER_PASSWORD);
+
+  await database.transaction(async (tx) => {
+    if (clearAllPublicTables) {
+      await clearAllPublicTablesForStaging(tx);
+    } else {
+      await clearSnapshotTables(tx);
+    }
+
+    for (const { config, rows } of snapshots) {
+      const seedRows = config.seedCredentialPassword ? withSeedPassword(rows, seedPasswordHash) : rows;
+      await insertSnapshotRows(tx, config, seedRows);
+      await resetSnapshotSequence(tx, config);
+      console.info(`[${logPrefix}] Imported ${seedRows.length} ${config.tableName} row(s)`);
+    }
+  });
 }
 
 // Uploads every snapshotted object referenced by the seeded rows into the local doc store, reading the
@@ -151,6 +161,27 @@ async function clearSnapshotTables(tx: DatabaseTransaction): Promise<void> {
   for (const config of snapshotCleanupTables) {
     await tx.delete(config.table);
   }
+}
+
+async function clearAllPublicTablesForStaging(tx: DatabaseTransaction): Promise<void> {
+  // Staging may contain rows in newer/non-snapshotted tables that restrict deletion of snapshot parents.
+  // The dynamic list also keeps this destructive path current as new public tables are added.
+  await tx.execute(sql`
+    DO $$
+    DECLARE
+      public_tables text;
+    BEGIN
+      SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
+      INTO public_tables
+      FROM pg_tables
+      WHERE schemaname = 'public';
+
+      IF public_tables IS NOT NULL THEN
+        EXECUTE 'TRUNCATE TABLE ' || public_tables || ' RESTART IDENTITY CASCADE';
+      END IF;
+    END
+    $$;
+  `);
 }
 
 // Advance a code sequence past the seeded rows so the next app-created row gets a fresh, non-colliding

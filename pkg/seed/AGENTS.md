@@ -11,9 +11,17 @@
   `load-read-env.ts` and read a **remote** DB + doc store. `seed:read` defaults to production
   (`PRODUCTION_DATABASE_URL` + `PRODUCTION_DOCUMENT_STORAGE_*`); use `seed:read:staging`
   (`STAGING_*`) when staging is intentionally the source.
-- Write commands (`seed:write`, `seed:users`, `reset-remote`) load `pkg/seed/.env` via `load-write-env.ts`
-  and target the **local** DB + doc store (`DATABASE_URL`, `DOCUMENT_STORAGE_*`). In a parallel checkout,
+- Write commands load `pkg/seed/.env` via `load-write-env.ts`; `seed:write` and `seed:users` target the
+  **local** DB + doc store (`DATABASE_URL`, `DOCUMENT_STORAGE_*`). In a parallel checkout,
   the generated root `.env.dev` ports retarget those defaults to the assigned slot.
+- `reset-remote` loads remote config too and targets `STAGING_DATABASE_URL` directly. It requires
+  `APP_ENV=staging`, `CONFIRM_DB_RESET=staging`, and a distinct `PRODUCTION_DATABASE_URL`; it never uses
+  generic `DATABASE_URL` as the remote destination.
+- `seed:write:staging` reads the current local DB + doc store directly and replaces all staging DB data,
+  then gives credential users the shared `test123` password. It requires `APP_ENV=staging`,
+  `CONFIRM_STAGING_SEED=replace-staging`, and complete `STAGING_*` plus `PRODUCTION_*` targets; production
+  config is mandatory so the command can prove the staging DB and bucket do not match production before
+  writing. It syncs referenced objects but intentionally leaves unreferenced staging objects alone.
 - Both loaders run without `override`, so externally provided env still wins. Keep the loader import above
   the `@pkg/db` import so env is set before `@pkg/db` reads it.
 

@@ -103,6 +103,13 @@ pnpm parallel:up     # claim an isolated Docker slot for this checkout
 pnpm parallel:down
 ```
 
+`db:seed:staging` replaces staging's database contents with the current local seed tables and copies their
+referenced document-store objects. Local defaults come from `pkg/seed/.env`; configure complete `STAGING_*`
+and `PRODUCTION_*` counterparts in gitignored `pkg/seed/.env.dev`. The production values are required so the
+command can refuse matching production database or object-store targets. Each invocation also requires
+`APP_ENV=staging` and `CONFIRM_STAGING_SEED=replace-staging`. All imported credential users receive the
+staging seed password `test123`.
+
 ## Database
 
 Local Postgres uses `postgres:postgres`. The app database is `jedidiah`; `jedidiah_template` is the stable

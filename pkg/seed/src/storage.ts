@@ -47,8 +47,10 @@ export function readSeedStorageConfig(
 
 // `prefix` selects which env block to read: '' for LOCAL, or the explicit remote read/promote source.
 export function createStorageFromEnv(prefix: SeedStoragePrefix): SeedStorage {
-  const config = readSeedStorageConfig(prefix);
+  return createStorage(readSeedStorageConfig(prefix));
+}
 
+export function createStorage(config: SeedStorageConfig): SeedStorage {
   return {
     bucket: config.bucket,
     client: new S3Client({

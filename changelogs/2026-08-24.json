@@ -1,0 +1,43 @@
+{
+  "releasedAt": "2026-08-24T14:14:34.874Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find customers using more details",
+          "description": "Search customers by company, contact, phone, email, VAT number, address, notes, or ID."
+        },
+        {
+          "title": "Keep editing while tables refresh",
+          "description": "Focused fields now remain active when table data updates, preventing interrupted typing."
+        },
+        {
+          "title": "Manage production with focused access",
+          "description": "The new Job Manager role lets users view and update production jobs without broader administrative access."
+        },
+        {
+          "title": "Add costing materials more easily",
+          "description": "Search the raw-material catalogue and see readable Part and Department labels. Loading states, missing-Part details, field spacing, and guidance for average utilization are also clearer."
+        },
+        {
+          "title": "Work with quotes as a procurement manager",
+          "description": "Procurement managers can now view, create, and update quotes, with quote dashboards available alongside their existing procurement tools."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Manage production with focused access",
+          "description": "Users assigned the new Job Manager role can view and update production jobs without broader administrative access."
+        },
+        {
+          "title": "Work with quotes as a procurement manager",
+          "description": "Procurement managers can now access the Quotes tab and create or update quotes while assigning the appropriate salesperson."
+        }
+      ]
+    }
+  ]
+}

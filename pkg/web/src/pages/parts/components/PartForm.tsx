@@ -3,7 +3,6 @@ import { IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
 
 import { useAppForm } from '@/components/form/index.js';
-import { HelpLink } from '@/components/help/index.js';
 import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { usePartCategoryOptions, usePartStorageLocationOptions, useSupplierOptions } from '@/hooks/options/index.js';
@@ -110,17 +109,8 @@ export const PartForm: React.FC<PartFormProps> = ({
             <form.AppField name="averageUtilizationPercent">
               {(field) => (
                 <field.NumberField
-                  description={
-                    <>
-                      The usable yield of one plate, not what any one Product consumes.{' '}
-                      <HelpLink
-                        className="inline-flex align-text-bottom"
-                        label="How Estimated Stock on Hand works"
-                        topic="inventoryEstimatedStock"
-                      />
-                    </>
-                  }
                   disabled={stockTrackingMode !== 'periodic' || unitClassFor(unitOfMeasure) !== 'discrete'}
+                  help={{ label: 'How Estimated Stock on Hand works', topic: 'inventoryEstimatedStock' }}
                   inputMode="numeric"
                   label="Average utilization %"
                   max={PartAverageUtilizationPercent.maxValue ?? undefined}

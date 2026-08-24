@@ -12,6 +12,8 @@ import {
   roleLabels,
 } from './authorization.js';
 
+const nonAdminRoles = APP_ROLES.filter((role) => role !== 'admin' && role !== 'super-admin');
+
 describe('getRolePermissions', () => {
   it('grants Customer removal to exactly the roles that can update Customers', () => {
     for (const role of APP_ROLES) {
@@ -92,7 +94,7 @@ describe('getRolePermissions', () => {
   // Editing a machine's VIN rewrites the identity every later Job, document, and sale inherits, so it
   // stays with the roles that own Unit identity rather than the ones that merely read Units.
   it('lets only administrators edit a Product Unit', () => {
-    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'stores', 'bay-operator'] as const) {
+    for (const role of nonAdminRoles) {
       expect(getRolePermissions(role), `role ${role}`).not.toContain('product_unit:update');
     }
 
@@ -103,7 +105,7 @@ describe('getRolePermissions', () => {
   // A hand-recorded Transfer claims who owns a machine with no Quote, price, or salesperson behind it,
   // so it stays with administrators rather than the roles that merely read Units.
   it('lets only administrators record an Ownership Transfer by hand', () => {
-    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'stores', 'bay-operator'] as const) {
+    for (const role of nonAdminRoles) {
       expect(getRolePermissions(role), `role ${role}`).not.toContain('product_unit:transfer');
     }
 
@@ -114,7 +116,7 @@ describe('getRolePermissions', () => {
   // Removing a Unit destroys the record of a minted serial, so it stays with administrators rather than
   // the roles that read Units or merely start the Jobs that mint them.
   it('lets only administrators remove a Product Unit', () => {
-    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'stores', 'bay-operator'] as const) {
+    for (const role of nonAdminRoles) {
       expect(getRolePermissions(role), `role ${role}`).not.toContain('product_unit:remove');
     }
 
@@ -125,7 +127,7 @@ describe('getRolePermissions', () => {
   // The whole point of the approval step: the role that drafts and sends Purchase Orders is not the
   // role that signs them off, so procurement-manager holds every other Purchase Order right but this one.
   it('lets only administrators approve a Purchase Order', () => {
-    for (const role of ['procurement-manager', 'job-viewer', 'sales', 'stores', 'bay-operator'] as const) {
+    for (const role of nonAdminRoles) {
       expect(getRolePermissions(role), `role ${role}`).not.toContain('purchase_order:approve');
     }
 
@@ -163,6 +165,10 @@ describe('getRolePermissions', () => {
 
   it('grants read-only job permissions to job viewers', () => {
     expect(getRolePermissions('job-viewer')).toEqual(['job:read', 'product_unit:read']);
+  });
+
+  it('grants Job reads and updates to job managers', () => {
+    expect(getRolePermissions('job-manager')).toEqual(['job:read', 'job:update', 'product_unit:read']);
   });
 
   it('grants Quote and email permissions to sales', () => {
@@ -267,10 +273,12 @@ describe('job authorization policy', () => {
     const sales = createUserAccessSummary({ role: 'sales', userId: 'user_123' });
 
     expect(hasPermission(admin, 'job:schedule')).toBe(true);
+    expect(getRolePermissions('super-admin')).toContain('job:schedule');
+    for (const role of nonAdminRoles) {
+      expect(getRolePermissions(role), role).not.toContain('job:schedule');
+    }
     expect(hasPermission(viewer, 'job:read')).toBe(true);
-    expect(hasPermission(viewer, 'job:schedule')).toBe(false);
     expect(hasPermission(sales, 'job:read')).toBe(false);
-    expect(hasPermission(sales, 'job:schedule')).toBe(false);
   });
 });
 
@@ -279,7 +287,7 @@ describe('quote cancellation authorization policy', () => {
     expect(getRolePermissions('admin')).toContain('quote:cancel');
     expect(getRolePermissions('super-admin')).toContain('quote:cancel');
 
-    for (const role of ['sales', 'procurement-manager', 'job-viewer', 'stores', 'bay-operator'] as const) {
+    for (const role of nonAdminRoles) {
       expect(getRolePermissions(role), role).not.toContain('quote:cancel');
     }
   });
@@ -290,7 +298,7 @@ describe('job cancellation authorization policy', () => {
     expect(getRolePermissions('admin')).toContain('job:cancel');
     expect(getRolePermissions('super-admin')).toContain('job:cancel');
 
-    for (const role of ['sales', 'procurement-manager', 'job-viewer', 'stores', 'bay-operator'] as const) {
+    for (const role of nonAdminRoles) {
       expect(getRolePermissions(role), role).not.toContain('job:cancel');
     }
   });

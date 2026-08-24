@@ -6,6 +6,7 @@ export const roleLabels = {
   admin: 'Administrator',
   'super-admin': 'Super Administrator',
   'bay-operator': 'Bay Operator',
+  'job-manager': 'Job Manager',
   'job-viewer': 'Job Viewer',
   'procurement-manager': 'Procurement manager',
   sales: 'Sales',
@@ -16,6 +17,7 @@ export const roleDescriptions = {
   admin: 'Full workspace administration, including user management and cross-functional operations.',
   'super-admin': 'Administrator access plus exclusive Corrective Feedback review permissions.',
   'bay-operator': 'Shop-floor personnel record for Bay assignment; this role is not enabled for sign-in.',
+  'job-manager': 'View and update production Jobs.',
   'job-viewer': 'Read-only access to production Jobs.',
   'procurement-manager': 'Manage procurement records and view production Jobs.',
   sales: 'Create, read, and update sales Quotes, and send assistant-authored email.',
@@ -222,6 +224,10 @@ export const appRoleAccess = {
   },
   'job-viewer': {
     job: ['read'],
+    product_unit: ['read'],
+  },
+  'job-manager': {
+    job: ['read', 'update'],
     product_unit: ['read'],
   },
   sales: {

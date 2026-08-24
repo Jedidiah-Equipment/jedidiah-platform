@@ -8,6 +8,7 @@ export const APP_ROLES = [
   'admin',
   'super-admin',
   'procurement-manager',
+  'job-manager',
   'job-viewer',
   'sales',
   'stores',

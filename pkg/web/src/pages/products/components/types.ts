@@ -3,6 +3,7 @@ import {
   AssemblyPart,
   AssemblyPubliclyVisible,
   NullableThumbnailDataUrl,
+  type PartStockTrackingMode as PartStockTrackingModeValue,
   Price,
   PriceDelta,
   type Product,
@@ -261,7 +262,7 @@ export function getEligibleAssemblyParts<TPart extends { id: string }>(
  * the picker shows once a Part is chosen.
  */
 export function toProductRawMaterialOptions<
-  TPart extends { code: string; id: string; name: string; stockTrackingMode: string },
+  TPart extends { code: string; id: string; name: string; stockTrackingMode: PartStockTrackingModeValue },
 >(parts: readonly TPart[], materialLines: readonly { partId: string }[]): SearchableComboboxOption[] {
   const taken = new Set(materialLines.map((line) => line.partId));
 

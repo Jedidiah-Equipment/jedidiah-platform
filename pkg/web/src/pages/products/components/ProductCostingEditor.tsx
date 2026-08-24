@@ -65,6 +65,9 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
           </CardDescription>
           <CardAction className="flex gap-2">
             <div className="w-64 max-w-full">
+              <label className="sr-only" htmlFor="product-costing-raw-material">
+                Raw material to add
+              </label>
               <SearchableCombobox
                 disabled={partOptions.isLoading || partOptions.query.isError || availableParts.length === 0}
                 emptyMessage="No raw materials found."
@@ -115,8 +118,10 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
                 key={line.partId}
               >
                 <div>
-                  <p className="font-medium text-sm">{part?.name ?? 'Unavailable Part'}</p>
-                  <p className="text-muted-foreground text-xs">{part?.code ?? '–'}</p>
+                  <p className="font-medium text-sm">
+                    {part?.name ?? (partOptions.isLoading ? 'Loading Part…' : 'Unavailable Part')}
+                  </p>
+                  <p className="text-muted-foreground text-xs">{part?.code ?? line.partId}</p>
                 </div>
                 <form.AppField name={`materialLines[${index}].quantityPerUnit`}>
                   {(field) => (

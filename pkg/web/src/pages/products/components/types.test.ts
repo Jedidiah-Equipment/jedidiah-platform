@@ -376,9 +376,14 @@ describe('toProductUpdateInput', () => {
 });
 
 describe('toProductRawMaterialOptions', () => {
-  const PLATE = { code: 'SP1-005', id: PART_A_ID, name: '10Mm Mild Steel Plate', stockTrackingMode: 'periodic' };
-  const TUBE = { code: 'RM-100', id: PART_B_ID, name: '100x4.5 Square tube', stockTrackingMode: 'periodic' };
-  const BOLT = { code: 'BLT-1', id: PART_C_ID, name: 'M12 Bolt', stockTrackingMode: 'perpetual' };
+  const PLATE = {
+    code: 'SP1-005',
+    id: PART_A_ID,
+    name: '10Mm Mild Steel Plate',
+    stockTrackingMode: 'periodic',
+  } as const;
+  const TUBE = { code: 'RM-100', id: PART_B_ID, name: '100x4.5 Square tube', stockTrackingMode: 'periodic' } as const;
+  const BOLT = { code: 'BLT-1', id: PART_C_ID, name: 'M12 Bolt', stockTrackingMode: 'perpetual' } as const;
 
   it('labels an option with the code and the name so the picker never shows a bare id', () => {
     expect(toProductRawMaterialOptions([PLATE], [])).toEqual([

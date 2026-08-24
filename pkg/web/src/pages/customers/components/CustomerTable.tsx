@@ -141,7 +141,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
       emptyMessage="No customers found."
       errorMessage={getApiQueryErrorMessage(customersQuery.error, 'Unable to load customers.')}
       getRowAriaLabel={(customer) => `Edit ${customer.companyName}`}
-      globalFilterPlaceholder="Search customers..."
+      globalFilterPlaceholder="Search by company, contact, phone, email, VAT, address, notes, or ID…"
       isLoading={customersQuery.isPending}
       paginationMode="cursor"
       loadMore={{

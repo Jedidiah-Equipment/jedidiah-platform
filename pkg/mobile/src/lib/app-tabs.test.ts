@@ -21,10 +21,10 @@ describe('visibleTabs', () => {
     expect(visibleTabs(access)).toEqual(['quotes', 'units']);
   });
 
-  it('shows Activity first, then Jobs, Plan, Products, and Units to a Procurement Manager', () => {
+  it('shows Activity first, then Jobs, Plan, Quotes, Products, and Units to a Procurement Manager', () => {
     const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'buyer-1' });
 
-    expect(visibleTabs(access)).toEqual(['activity', 'jobs', 'plan', 'products', 'units']);
+    expect(visibleTabs(access)).toEqual(['activity', 'jobs', 'plan', 'quotes', 'products', 'units']);
   });
 
   it('shows every tab to an Admin', () => {

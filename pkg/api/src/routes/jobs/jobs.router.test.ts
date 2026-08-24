@@ -1364,9 +1364,16 @@ describe('jobs.salesExport', () => {
     await expect(
       context.createCaller(mockSession('job-viewer')).jobs.salesExport({ columnFilters: {}, search: '' }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(
-      context.createCaller(mockSession('procurement-manager')).jobs.salesExport({ columnFilters: {}, search: '' }),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    const costReaderWithoutQuotes = context.createCaller(mockSession('procurement-manager'), {
+      access: {
+        permissions: ['inventory_cost:read', 'job:read'],
+        role: 'procurement-manager',
+        userId: 'test-user-id',
+      },
+    });
+    await expect(costReaderWithoutQuotes.jobs.salesExport({ columnFilters: {}, search: '' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
   });
 });
 

@@ -147,7 +147,7 @@ describe('documents.listByQuote', () => {
   });
 
   test('requires quote read permission', async ({ context }) => {
-    const caller = context.createCaller(mockSession('procurement-manager'));
+    const caller = context.createCaller(mockSession('job-viewer'));
     const quote = await createQuote(context.db, context.product.id);
 
     await expect(caller.documents.listByQuote({ quoteId: quote.id })).rejects.toThrow(

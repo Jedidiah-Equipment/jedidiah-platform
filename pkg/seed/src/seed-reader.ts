@@ -29,7 +29,7 @@ export async function readSeedSnapshot(sourceArgument?: string): Promise<void> {
     const configs: readonly SnapshotTableConfig[] = snapshotTables;
 
     for (const config of configs) {
-      const rows = await readSnapshotRows(client.db, config);
+      const rows = await readSnapshotTableRows(client.db, config);
       const destination = new URL(config.fileName, snapshotDirectory);
 
       await writeFile(destination, serializeSnapshotRows(rows));
@@ -51,11 +51,17 @@ export async function readSeedSnapshot(sourceArgument?: string): Promise<void> {
 
 // Reads a table's rows for the snapshot. Optional rollout columns are retried without when the source
 // still has the preceding schema; defaults fill that gap without overwriting values once deployed.
-async function readSnapshotRows(db: Db, config: SnapshotTableConfig): Promise<SnapshotRow[]> {
+type ReadSnapshotTableOptions = { currentSchema?: boolean };
+
+export async function readSnapshotTableRows(
+  db: Db,
+  config: SnapshotTableConfig,
+  options: ReadSnapshotTableOptions = {},
+): Promise<SnapshotRow[]> {
   try {
-    return await readExistingSnapshotTable(db, config);
+    return await readExistingSnapshotTable(db, config, options);
   } catch (error) {
-    if (config.optionalReadTable && hasPostgresErrorCode(error, '42P01')) {
+    if (!options.currentSchema && config.optionalReadTable && hasPostgresErrorCode(error, '42P01')) {
       return [];
     }
 
@@ -63,22 +69,30 @@ async function readSnapshotRows(db: Db, config: SnapshotTableConfig): Promise<Sn
   }
 }
 
-export async function readExistingSnapshotTable(db: Db, config: SnapshotTableConfig): Promise<SnapshotRow[]> {
-  if (!config.omitReadColumns && !config.optionalReadColumns && !config.readOrderColumn && !config.seedRowDefaults) {
+export async function readExistingSnapshotTable(
+  db: Db,
+  config: SnapshotTableConfig,
+  { currentSchema = false }: ReadSnapshotTableOptions = {},
+): Promise<SnapshotRow[]> {
+  // Local-to-staging promotion reads the current schema exactly. Password remains the sole omission so
+  // staging still receives the shared seed password instead of copying a developer's credential hash.
+  const omitReadColumns = currentSchema ? (config.seedCredentialPassword ? ['password'] : []) : config.omitReadColumns;
+  const optionalReadColumns = currentSchema ? [] : (config.optionalReadColumns ?? []);
+
+  if (!omitReadColumns?.length && !optionalReadColumns.length && !config.readOrderColumn && !config.seedRowDefaults) {
     return (await db.select().from(config.table)) as SnapshotRow[];
   }
 
   const columns = getTableColumns(config.table);
   const orderColumn = config.readOrderColumn ? columns[config.readOrderColumn] : undefined;
   const readRows = async (additionalOmissions: readonly string[] = []): Promise<SnapshotRow[]> => {
-    const omit = new Set([...(config.omitReadColumns ?? []), ...additionalOmissions]);
+    const omit = new Set([...(omitReadColumns ?? []), ...additionalOmissions]);
     const projection = Object.fromEntries(Object.entries(columns).filter(([name]) => !omit.has(name)));
     const query = db.select(projection).from(config.table);
 
     return (await (orderColumn ? query.orderBy(asc(orderColumn)) : query)) as SnapshotRow[];
   };
 
-  const optionalReadColumns = config.optionalReadColumns ?? [];
   let rows: SnapshotRow[] | undefined;
 
   // Rollout columns are newest-first. Retry by progressively omitting them so a source that only lacks

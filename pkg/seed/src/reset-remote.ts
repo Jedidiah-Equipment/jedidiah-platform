@@ -1,26 +1,14 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import './load-write-env.js';
-import { closeDatabaseConnection, db } from '@pkg/db';
+import './load-read-env.js';
+import { createDatabaseClient, type Db } from '@pkg/db';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import { resolveStagingResetDatabaseUrl } from './seed-target-guards.js';
 import { seedDemoUsers } from './seed-users.js';
 
-const stagingResetConfirmation = 'staging';
-
-function assertRemoteResetIsConfirmed(): void {
-  if (process.env.APP_ENV !== 'staging') {
-    throw new Error('Remote database reset requires APP_ENV=staging.');
-  }
-
-  if (process.env.CONFIRM_DB_RESET !== stagingResetConfirmation) {
-    throw new Error(`Remote database reset requires CONFIRM_DB_RESET=${stagingResetConfirmation}.`);
-  }
-}
-
-async function resetRemoteDatabase(): Promise<void> {
-  assertRemoteResetIsConfirmed();
-
-  await db.execute(sql`
+export async function resetRemoteDatabase(database: Db): Promise<void> {
+  await database.execute(sql`
     DROP SCHEMA IF EXISTS drizzle CASCADE;
     DROP SCHEMA public CASCADE;
     CREATE SCHEMA public;
@@ -28,17 +16,19 @@ async function resetRemoteDatabase(): Promise<void> {
     GRANT ALL ON SCHEMA public TO CURRENT_USER;
   `);
 
-  await migrate(db, {
+  await migrate(database, {
     migrationsFolder: fileURLToPath(new URL('../../db/migrations', import.meta.url)),
   });
 
-  await seedDemoUsers(db);
+  await seedDemoUsers(database);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  const client = createDatabaseClient(resolveStagingResetDatabaseUrl());
+
   try {
-    await resetRemoteDatabase();
+    await resetRemoteDatabase(client.db);
   } finally {
-    await closeDatabaseConnection();
+    await client.close();
   }
 }

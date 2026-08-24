@@ -1,9 +1,10 @@
 import { pathToFileURL } from 'node:url';
 import './load-write-env.js';
-import { account, closeDatabaseConnection, type Db, db, user, userDepartment } from '@pkg/db';
+import { account, closeDatabaseConnection, type Db, db, getDatabaseUrl, user, userDepartment } from '@pkg/db';
 import { demoUsers } from '@pkg/domain';
 import { hashPassword } from 'better-auth/crypto';
 import { eq, or } from 'drizzle-orm';
+import { assertLocalSeedTarget } from './seed-target-guards.js';
 
 export async function seedDemoUsers(database?: Db): Promise<void> {
   const activeDb = database ?? db;
@@ -71,6 +72,7 @@ export async function seedDemoUsers(database?: Db): Promise<void> {
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   try {
+    assertLocalSeedTarget(getDatabaseUrl());
     await seedDemoUsers();
   } finally {
     await closeDatabaseConnection();

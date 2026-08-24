@@ -29,6 +29,26 @@ describe('readExistingSnapshotTable', () => {
     expect(select.mock.calls[1]?.[0]).not.toHaveProperty('cancellationReason');
     expect(rows).toEqual([{ cancellationReason: null, kind: 'custom', status: 'draft' }]);
   });
+
+  it('reads current local columns while continuing to omit credential password hashes', async () => {
+    const userConfig = snapshotTables.find((config) => config.tableName === 'user');
+    const accountConfig = snapshotTables.find((config) => config.tableName === 'account');
+    if (!userConfig || !accountConfig) throw new Error('Missing auth snapshot config');
+
+    const projections: Record<string, unknown>[] = [];
+    const database = {
+      select: (projection: Record<string, unknown>) => {
+        projections.push(projection);
+        return { from: async () => [{ assistantEnabled: false, providerId: 'credential' }] };
+      },
+    } as unknown as Db;
+
+    await readExistingSnapshotTable(database, userConfig, { currentSchema: true });
+    await readExistingSnapshotTable(database, accountConfig, { currentSchema: true });
+
+    expect(projections[0]).toHaveProperty('assistantEnabled');
+    expect(projections[1]).not.toHaveProperty('password');
+  });
 });
 
 describe('downloadSnapshotObjectIfMissing', () => {

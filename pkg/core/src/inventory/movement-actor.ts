@@ -1,6 +1,6 @@
 import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import type { AuthId } from '@pkg/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 
 import {
   AssertedActorDisabledError,

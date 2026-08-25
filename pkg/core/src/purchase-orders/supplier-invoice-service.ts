@@ -22,7 +22,7 @@ import {
   InvoiceFlagResolution as InvoiceFlagResolutionSchema,
   SupplierInvoiceReviewResult as SupplierInvoiceReviewResultSchema,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import { assertDocumentAcceptable } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';

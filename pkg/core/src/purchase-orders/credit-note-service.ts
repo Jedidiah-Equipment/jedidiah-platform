@@ -26,7 +26,7 @@ import {
   PurchaseOrderReturnListResult as PurchaseOrderReturnListResultSchema,
   ReturnsAwaitingCreditResult as ReturnsAwaitingCreditResultSchema,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { CreditNoteAlreadySettledError, CreditNoteReturnNotFoundError } from './credit-note-errors.js';

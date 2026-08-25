@@ -41,16 +41,19 @@ function ComboboxInput({
   className,
   children,
   disabled = false,
+  inputClassName,
   showTrigger = true,
   showClear = false,
   ...props
 }: ComboboxPrimitive.Input.Props & {
+  /** Styles the field itself; `className` dresses the group the addons sit in. */
+  inputClassName?: string;
   showTrigger?: boolean;
   showClear?: boolean;
 }) {
   return (
     <InputGroup className={cn('w-auto', className)}>
-      <ComboboxPrimitive.Input render={<InputGroupInput disabled={disabled} />} {...props} />
+      <ComboboxPrimitive.Input render={<InputGroupInput className={inputClassName} disabled={disabled} />} {...props} />
       <InputGroupAddon align="inline-end">
         {showTrigger && (
           <InputGroupButton

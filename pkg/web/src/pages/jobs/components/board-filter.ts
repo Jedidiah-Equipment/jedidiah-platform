@@ -74,6 +74,41 @@ export function slotMatchesBoardFilter({
   return true;
 }
 
+/**
+ * The Bay lanes a filtered Board still draws: those holding at least one matching slot. A filter
+ * answers "where is this work", and a lane with nothing matching is noise between the answers —
+ * the Board can run to forty lanes, so the two that match are otherwise pages apart. Lanes that
+ * survive are drawn whole, dimmed neighbours included, because a Bay's queue is what makes the
+ * match legible: when the slot runs, and what it sits between.
+ */
+export function selectBaysWithBoardFilterMatches<
+  TBay extends { department: Department; id: UUID; slots: ReadonlyArray<FilterableSlot> },
+>({
+  bays,
+  filter,
+  jobsById,
+}: {
+  bays: readonly TBay[];
+  filter: BoardFilter;
+  jobsById: ReadonlyMap<UUID, FilterableJob>;
+}): TBay[] {
+  if (!hasActiveBoardFilter(filter)) {
+    return [...bays];
+  }
+
+  return bays.filter((bay) =>
+    bay.slots.some((slot) =>
+      slotMatchesBoardFilter({
+        bayDepartment: bay.department,
+        bayId: bay.id,
+        filter,
+        jobsById,
+        slot,
+      }),
+    ),
+  );
+}
+
 export function countBoardFilterMatches({
   bays,
   filter,

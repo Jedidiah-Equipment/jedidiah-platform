@@ -104,18 +104,15 @@ describe('resolveLocalePreferenceRequest', () => {
       expectedCookie: 'af',
       expectedRedirect: null,
     },
-  ])('resolves first visit $entry with Accept-Language $acceptLanguage', ({
-    entry,
-    acceptLanguage,
-    routeLocale,
-    expectedCookie,
-    expectedRedirect,
-  }) => {
-    expect(resolveLocalePreferenceRequest(localeRequest(entry, acceptLanguage), routeLocale)).toEqual({
-      cookie: expectedCookie,
-      redirectHref: expectedRedirect,
-    });
-  });
+  ])(
+    'resolves first visit $entry with Accept-Language $acceptLanguage',
+    ({ entry, acceptLanguage, routeLocale, expectedCookie, expectedRedirect }) => {
+      expect(resolveLocalePreferenceRequest(localeRequest(entry, acceptLanguage), routeLocale)).toEqual({
+        cookie: expectedCookie,
+        redirectHref: expectedRedirect,
+      });
+    },
+  );
 
   test('lets a stored preference win over the entered URL and preserves the query string', () => {
     // The legacy `.explicit` suffix still parses; new cookies store the bare locale.

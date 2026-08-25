@@ -44,6 +44,7 @@ import {
   emptyBoardFilter,
   getEarliestBoardFilterMatchStart,
   hasActiveBoardFilter,
+  selectBaysWithBoardFilterMatches,
   slotMatchesBoardFilter,
 } from './board-filter.js';
 import {
@@ -179,9 +180,15 @@ export const BoardGantt: React.FC<{
         : null,
     [ghostPreviewQuery.data, ghostPreviewRequest, visibleBays],
   );
-  const renderedBays: ProjectedBayQueue[] = ghostDerivation?.bays ?? visibleBays;
-  const ganttLayout = useMemo(() => createBoardGanttLayout(renderedBays), [renderedBays]);
+  const boardBays: ProjectedBayQueue[] = ghostDerivation?.bays ?? visibleBays;
   const isFilterActive = hasActiveBoardFilter(filter);
+  // A filter drops the lanes it found nothing in. Ghosts never collide with this: they belong to
+  // the embedded Board, which renders no filter bar, so the filter there is permanently empty.
+  const filteredBays = useMemo(
+    () => selectBaysWithBoardFilterMatches({ bays: boardBays, filter, jobsById }),
+    [boardBays, filter, jobsById],
+  );
+  const ganttLayout = useMemo(() => createBoardGanttLayout(filteredBays), [filteredBays]);
   const filterMatchCount = useMemo(
     () => (isFilterActive ? countBoardFilterMatches({ bays: displayedBays, filter, jobsById }) : 0),
     [displayedBays, filter, isFilterActive, jobsById],
@@ -322,7 +329,7 @@ export const BoardGantt: React.FC<{
     return <ErrorMessage error={baysQuery.error} fallbackMessage="Unable to load bay schedule." />;
   }
 
-  if (renderedBays.length === 0 || !plantToday) {
+  if (boardBays.length === 0 || !plantToday) {
     return null;
   }
 
@@ -382,7 +389,7 @@ export const BoardGantt: React.FC<{
               <BayLaneRows layout={ganttLayout} />
               <BaySlotBars
                 bayTopById={ganttLayout.bayTopById}
-                bays={renderedBays}
+                bays={filteredBays}
                 canEditScheduleByBayId={schedulableBayIds}
                 today={plantToday}
                 filter={filter}
@@ -398,7 +405,7 @@ export const BoardGantt: React.FC<{
               />
               {ghostDerivation && ghostDerivation.ghosts.length > 0 ? (
                 <BoardGhostBars
-                  bays={renderedBays}
+                  bays={boardBays}
                   bayTopById={ganttLayout.bayTopById}
                   ghosts={ghostDerivation.ghosts}
                   label={ghostLabel ?? 'New Job'}

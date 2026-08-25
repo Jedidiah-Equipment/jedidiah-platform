@@ -52,6 +52,7 @@ export async function listInventoryJobOptions({
       customerCompanyName: customers.companyName,
       id: jobs.id,
       productName: products.name,
+      productThumbnailDataUrl: products.thumbnailDataUrl,
       quoteKind: quotes.kind,
       updatedAt: jobs.updatedAt,
       workTitle: quotes.workTitle,

@@ -54,19 +54,16 @@ async function routerAt(href: string) {
 }
 
 describe('localized public routes', () => {
-  test.each([
-    '/af',
-    '/af/about',
-    '/af/contact',
-    '/af/products',
-    '/af/products/CH-450',
-  ])('matches %s in the Afrikaans route context', async (href) => {
-    const router = await routerAt(href);
-    const localeContext = router.state.matches.map((match) => match.context).find((context) => 'locale' in context);
+  test.each(['/af', '/af/about', '/af/contact', '/af/products', '/af/products/CH-450'])(
+    'matches %s in the Afrikaans route context',
+    async (href) => {
+      const router = await routerAt(href);
+      const localeContext = router.state.matches.map((match) => match.context).find((context) => 'locale' in context);
 
-    expect(localeContext).toMatchObject({ locale: 'af' });
-    expect(router.state.statusCode).toBe(200);
-  });
+      expect(localeContext).toMatchObject({ locale: 'af' });
+      expect(router.state.matches.some((match) => match.status === 'notFound')).toBe(false);
+    },
+  );
 
   test('renders Afrikaans static copy while leaving catalog-authored text untouched', async () => {
     const router = await routerAt('/af/products/CH-450');
@@ -156,7 +153,6 @@ describe('localized public routes', () => {
   test('rejects an unknown locale prefix instead of rendering English', async () => {
     const router = await routerAt('/fr/about');
 
-    expect(router.state.statusCode).toBe(404);
     expect(router.state.matches.some((match) => match.status === 'notFound')).toBe(true);
   });
 

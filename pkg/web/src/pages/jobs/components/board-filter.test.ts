@@ -8,6 +8,7 @@ import {
   getEarliestBoardFilterMatchStart,
   hasActiveBoardFilter,
   slotMatchesBoardFilter as rawSlotMatchesBoardFilter,
+  selectBaysWithBoardFilterMatches,
 } from './board-filter.js';
 
 const id = (value: string) => value as UUID;
@@ -195,6 +196,35 @@ describe('countBoardFilterMatches', () => {
         jobsById,
       }),
     ).toBe(0);
+  });
+});
+
+describe('selectBaysWithBoardFilterMatches', () => {
+  const bays = [
+    { department: fabrication, id: bay1, slots: [{ jobId: job1 }, { jobId: null }] },
+    { department: paint, id: bay2, slots: [{ jobId: job2 }] },
+  ];
+  const laneIds = (filter: BoardFilter) =>
+    selectBaysWithBoardFilterMatches({ bays, filter, jobsById }).map((bay) => bay.id);
+
+  it('keeps every lane while no filter is active', () => {
+    expect(laneIds(emptyBoardFilter)).toEqual([bay1, bay2]);
+  });
+
+  it('drops the lanes the filter found nothing in', () => {
+    expect(laneIds(filterWith({ jobId: job2 }))).toEqual([bay2]);
+    expect(laneIds(filterWith({ customerId: customerA }))).toEqual([bay1]);
+    expect(laneIds(filterWith({ department: paint }))).toEqual([bay2]);
+  });
+
+  it('keeps a surviving lane whole, so a match still reads against its queue', () => {
+    const [lane] = selectBaysWithBoardFilterMatches({ bays, filter: filterWith({ jobId: job1 }), jobsById });
+
+    expect(lane?.slots).toHaveLength(2);
+  });
+
+  it('drops every lane when nothing matches, rather than falling back to all of them', () => {
+    expect(laneIds(filterWith({ bayId: bay2, customerId: customerA }))).toEqual([]);
   });
 });
 

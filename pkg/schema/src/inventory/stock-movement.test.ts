@@ -86,16 +86,14 @@ describe('stock movement inputs', () => {
     );
   });
 
-  it.each([
-    'stock-count',
-    'damage',
-    'scrap',
-    'correction',
-  ] as const)('requires a note for a %s adjustment', (reason) => {
-    expect(() => PostAdjustmentInput.parse({ delta: -1, partId, reason })).toThrow(
-      'A note is required for this adjustment reason',
-    );
-  });
+  it.each(['stock-count', 'damage', 'scrap', 'correction'] as const)(
+    'requires a note for a %s adjustment',
+    (reason) => {
+      expect(() => PostAdjustmentInput.parse({ delta: -1, partId, reason })).toThrow(
+        'A note is required for this adjustment reason',
+      );
+    },
+  );
 
   it('allows opening balance without a note and rejects unit cost on other adjustments', () => {
     expect(PostAdjustmentInput.parse({ delta: 4, partId, reason: 'opening-balance', unitCost: 15 })).toMatchObject({

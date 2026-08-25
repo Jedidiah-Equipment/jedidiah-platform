@@ -81,18 +81,18 @@ const LIFECYCLE_ACTIONS = [
 ] as const;
 
 describe('PurchaseOrderActions', () => {
-  it.each(LIFECYCLE_ACTIONS)('$label reports a refusal instead of leaving the click looking ignored', async ({
-    failureMessage,
-    label,
-  }) => {
-    const container = await mount();
+  it.each(LIFECYCLE_ACTIONS)(
+    '$label reports a refusal instead of leaving the click looking ignored',
+    async ({ failureMessage, label }) => {
+      const container = await mount();
 
-    await click(container, label);
+      await click(container, label);
 
-    await vi.waitFor(() => {
-      expect(showMutationError).toHaveBeenCalledWith(refusal, failureMessage);
-    });
-  });
+      await vi.waitFor(() => {
+        expect(showMutationError).toHaveBeenCalledWith(refusal, failureMessage);
+      });
+    },
+  );
 });
 
 describe('PurchaseOrderDetailTabs', () => {

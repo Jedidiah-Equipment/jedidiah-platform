@@ -24,7 +24,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "tsc-alias": "^1.9.0",
-    "vitest": "^4.1.10"
+    "tsc-alias": "^1.9.2",
+    "vitest": "^4.1.11"
   }
 }

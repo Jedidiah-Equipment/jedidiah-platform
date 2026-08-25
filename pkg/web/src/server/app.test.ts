@@ -182,20 +182,20 @@ describe('web server', () => {
     await app.close();
   });
 
-  it.each([
-    'development',
-    'production',
-  ] as const)('keeps %s HTML on the default favicon without a staging attribute', async (appEnv) => {
-    const app = await buildAppWithEnv(appEnv);
+  it.each(['development', 'production'] as const)(
+    'keeps %s HTML on the default favicon without a staging attribute',
+    async (appEnv) => {
+      const app = await buildAppWithEnv(appEnv);
 
-    const response = await app.inject('/jobs');
+      const response = await app.inject('/jobs');
 
-    expect(response.statusCode).toBe(200);
-    expect(response.body).not.toContain('data-app-env=');
-    expect(response.body).toContain('/favicon-yellow.png');
-    expect(response.body).not.toContain('/favicon-pink.png');
-    await app.close();
-  });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).not.toContain('data-app-env=');
+      expect(response.body).toContain('/favicon-yellow.png');
+      expect(response.body).not.toContain('/favicon-pink.png');
+      await app.close();
+    },
+  );
 
   // Google had indexed this app. Only the Lander belongs in search results.
   describe('search indexing', () => {

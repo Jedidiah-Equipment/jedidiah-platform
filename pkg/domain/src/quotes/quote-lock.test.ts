@@ -175,22 +175,23 @@ describe('assertQuoteEditable', () => {
     ).toEqual({ allowed: true });
   });
 
-  it.each(
-    lockedFields.filter((field) => field !== 'discountPercent'),
-  )('still rejects %s on an accepted stock sale', (field) => {
-    expect(
-      assertQuoteEditable({
-        changedFields: [field],
-        hasEverSourcedJob: false,
-        hasProductUnit: true,
-        kind: 'product',
-        status: 'accepted',
-      }),
-    ).toEqual({
-      allowed: false,
-      reason: `Quote is locked because it has been accepted; ${field} cannot be changed.`,
-    });
-  });
+  it.each(lockedFields.filter((field) => field !== 'discountPercent'))(
+    'still rejects %s on an accepted stock sale',
+    (field) => {
+      expect(
+        assertQuoteEditable({
+          changedFields: [field],
+          hasEverSourcedJob: false,
+          hasProductUnit: true,
+          kind: 'product',
+          status: 'accepted',
+        }),
+      ).toEqual({
+        allowed: false,
+        reason: `Quote is locked because it has been accepted; ${field} cannot be changed.`,
+      });
+    },
+  );
 
   it('rejects a discount change on a cancelled stock sale', () => {
     expect(

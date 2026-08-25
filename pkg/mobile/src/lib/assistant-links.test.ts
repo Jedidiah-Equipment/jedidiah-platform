@@ -30,13 +30,12 @@ describe('resolveAssistantLink', () => {
     expect(push).toHaveBeenCalledWith(expectedRoute);
   });
 
-  test.each([
-    '/customers/c1/edit',
-    '/quotes/q1',
-    'https://example.com/quotes/q1/edit',
-  ])('leaves unsupported or unrecognized hrefs as plain text: %s', (href) => {
-    const router = { push: vi.fn() } as unknown as AssistantRouter;
+  test.each(['/customers/c1/edit', '/quotes/q1', 'https://example.com/quotes/q1/edit'])(
+    'leaves unsupported or unrecognized hrefs as plain text: %s',
+    (href) => {
+      const router = { push: vi.fn() } as unknown as AssistantRouter;
 
-    expect(resolveAssistantLink(href, router)).toBeNull();
-  });
+      expect(resolveAssistantLink(href, router)).toBeNull();
+    },
+  );
 });

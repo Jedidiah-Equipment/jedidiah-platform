@@ -19,33 +19,18 @@ allowBuilds:
   msw: false
 
 overrides:
-  esbuild: 0.28.1
+  # better-auth 1.7 refuses a password that its own `hashPassword` had just produced, failing
+  # sign-in for every seeded account — and existing hashes were written by 1.6. Held here rather
+  # than by pinning four manifests, because `^1.6.23` happily resolves 1.7 and silently would.
+  better-auth: 1.6.23
+  # A peer of the adapter and expo packages, so it floats to 1.7 on its own if left out.
+  "@better-auth/core": 1.6.23
+  "@better-auth/drizzle-adapter": 1.6.23
+  "@better-auth/expo": 1.6.23
+  # One esbuild for the whole tree. Without this, drizzle-kit, tsx and Vite each bring their
+  # own — four copies, four platform binaries — and every consumer accepts this one.
+  esbuild: 0.28.2
+  # patch-package asks for ^0.0.33, from long before tmp closed its symlink escape.
   tmp: 0.2.7
+  # xcode asks for ^7.
   uuid: 11.1.1
-
-minimumReleaseAgeExclude:
-  - '@expo/cli@56.1.21'
-  - '@expo/config-plugins@56.0.14'
-  - '@expo/config@56.0.13'
-  - '@expo/fingerprint@0.19.9'
-  - '@expo/image-utils@0.10.4'
-  - '@expo/metro-config@56.0.18'
-  - '@expo/prebuild-config@56.0.21'
-  - '@expo/require-utils@56.1.6'
-  - '@expo/router-server@56.0.17'
-  - babel-preset-expo@56.0.18
-  - expo-asset@56.0.21
-  - expo-constants@56.0.22
-  - expo-modules-autolinking@56.0.21
-  - expo-modules-core@56.0.22
-  - expo@56.0.17
-  - '@expo/metro-runtime@56.0.18'
-  - '@expo/ui@56.0.23'
-  - expo-dev-client@56.0.24
-  - expo-dev-launcher@56.0.25
-  - expo-dev-menu@56.0.21
-  - expo-linking@56.0.16
-  - expo-router@56.2.16
-  - expo-sharing@56.0.23
-  - expo-updates@56.0.23
-  - expo-web-browser@56.0.6

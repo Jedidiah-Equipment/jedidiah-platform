@@ -687,35 +687,34 @@ describe('listJobActivity change events', () => {
       sortDirection: 'desc' as const,
       tail: 'general-feedback',
     },
-  ])('pages $sortDirection across the two sources without repeating or dropping an entry', async ({
-    expected,
-    sortDirection,
-    tail,
-  }, { context }) => {
-    for (let index = 0; index < 2; index += 1) {
-      await insertFeedback(context.db, {
-        createdAt: new Date(`2026-08-0${index * 2 + 1}T09:00:00.000Z`),
-        jobId: context.job.id,
-        kind: 'general',
-        subjectType: 'job',
-        text: `Said ${index}`,
-      });
-      await recordJobCreated(context.db, context.job, {
-        occurredAt: new Date(`2026-08-0${index * 2 + 2}T09:00:00.000Z`),
-      });
-    }
+  ])(
+    'pages $sortDirection across the two sources without repeating or dropping an entry',
+    async ({ expected, sortDirection, tail }, { context }) => {
+      for (let index = 0; index < 2; index += 1) {
+        await insertFeedback(context.db, {
+          createdAt: new Date(`2026-08-0${index * 2 + 1}T09:00:00.000Z`),
+          jobId: context.job.id,
+          kind: 'general',
+          subjectType: 'job',
+          text: `Said ${index}`,
+        });
+        await recordJobCreated(context.db, context.job, {
+          occurredAt: new Date(`2026-08-0${index * 2 + 2}T09:00:00.000Z`),
+        });
+      }
 
-    const firstPage = await listJobActivity({ db: context.db, input: listInput({ limit: 3, sortDirection }) });
-    const secondPage = await listJobActivity({
-      db: context.db,
-      input: listInput({ cursor: firstPage.nextCursor ?? 0, limit: 3, sortDirection }),
-    });
+      const firstPage = await listJobActivity({ db: context.db, input: listInput({ limit: 3, sortDirection }) });
+      const secondPage = await listJobActivity({
+        db: context.db,
+        input: listInput({ cursor: firstPage.nextCursor ?? 0, limit: 3, sortDirection }),
+      });
 
-    expect(firstPage.total).toBe(4);
-    expect(firstPage.items.map((item) => item.type)).toEqual(expected);
-    expect(secondPage.items.map((item) => item.type)).toEqual([tail]);
-    expect(secondPage.nextCursor).toBeNull();
-  });
+      expect(firstPage.total).toBe(4);
+      expect(firstPage.items.map((item) => item.type)).toEqual(expected);
+      expect(secondPage.items.map((item) => item.type)).toEqual([tail]);
+      expect(secondPage.nextCursor).toBeNull();
+    },
+  );
 });
 
 function listInput(overrides: Partial<Parameters<typeof listJobActivity>[0]['input']> = {}) {

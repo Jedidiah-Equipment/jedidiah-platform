@@ -40,6 +40,7 @@
   "dependencies": {
     "@ai-sdk/react": "3.0.223",
     "@better-auth/expo": "1.6.23",
+    "@expo/dom-webview": "~57.0.1",
     "@expo/metro-runtime": "~57.0.13",
     "@gluestack-ui/nativewind-utils": "1.0.28",
     "@gluestack-ui/overlay": "0.1.22",

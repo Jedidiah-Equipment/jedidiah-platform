@@ -1,0 +1,31 @@
+{
+  "releasedAt": "2026-08-25T10:41:39.532Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find jobs faster",
+          "description": "Choose jobs from recent, newly created, or incomplete lists, or search by job code, product, work title, or customer wherever jobs are selected."
+        },
+        {
+          "title": "Focus the schedule board",
+          "description": "Filtering now hides bays without matches while keeping each matching bay’s queue visible, making relevant work easier to find."
+        },
+        {
+          "title": "Recognize scheduled work at a glance",
+          "description": "Job photos, titles, and customers now appear in picker rows and schedule details. Narrow slots preserve more room for job codes, with removal still available from the details card."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Start signed-in sessions reliably",
+          "description": "The app now waits for account details to finish loading before routing or retrieving user data, preventing incorrect sign-in redirects and stale cached content during startup."
+        }
+      ]
+    }
+  ]
+}

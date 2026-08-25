@@ -172,7 +172,9 @@ function EstimateDataTable<T extends RowData>({
   emptyMessage: string;
   totalLabel: string;
 }) {
-  const table = useDataTable({ columns, data });
+  // Columns here are numeric or pre-formatted for display, not written for client-side sorting or
+  // filtering: 'auto' would range-parse a typed string per character and sort formatted numbers as text.
+  const table = useDataTable({ columns, data, enableColumnFilters: false, enableSorting: false });
 
   return (
     <DataTable

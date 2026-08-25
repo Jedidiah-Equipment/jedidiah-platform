@@ -100,6 +100,7 @@ const BuildBreakdownCard: React.FC<{ builds: Build[] }> = ({ builds }) => {
     columns,
     data: builds,
     enableColumnFilters: false,
+    enableSorting: false,
     getRowId: (build) => build.jobId,
   });
 
@@ -145,6 +146,7 @@ const FabricatorRankingCard: React.FC<{ ranking: RankingRow[] }> = ({ ranking })
     columns,
     data: ranking,
     enableColumnFilters: false,
+    enableSorting: false,
     getRowId: (row) => row.userId,
   });
 

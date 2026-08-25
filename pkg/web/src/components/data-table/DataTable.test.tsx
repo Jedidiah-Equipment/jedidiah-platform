@@ -59,7 +59,7 @@ describe('DataTable live controls', () => {
       data: [{ name: 'item2' }, { name: 'item10' }, { name: 'item1' }],
     });
 
-    await type('input[placeholder="Search..."]', 'item1');
+    await type('input[placeholder="Search..."]', 'item1', (names) => names.length === 2);
     expect(readRowNames(container)).toEqual(['item10', 'item1']);
   });
 
@@ -195,15 +195,25 @@ async function mountTable({
         element.click();
       });
     },
-    type: async (selector: string, value: string) => {
+    type: async (selector: string, value: string, settled: (names: string[]) => boolean) => {
       const input = find(selector) as HTMLInputElement;
       await act(async () => {
         setInputValue(input, value);
       });
-      // The search box debounces before it writes the table's global filter.
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 5));
-      });
+
+      // The search box debounces before it writes the table's global filter. Wait for the row set it
+      // produces rather than a fixed delay, so a loaded machine cannot outrun the sleep.
+      for (let attempt = 0; attempt < 100; attempt++) {
+        if (settled(readRowNames(container))) {
+          return;
+        }
+
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        });
+      }
+
+      throw new Error(`Rows never settled after typing ${value}`);
     },
   };
 }

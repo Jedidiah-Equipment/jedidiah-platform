@@ -42,7 +42,14 @@ const columns: DataTableColumnDef<RawMaterialDriftRow>[] = [
 ];
 
 export function RawMaterialDriftTable({ report }: { report: RawMaterialDriftReport }) {
-  const table = useDataTable({ columns, data: report.items });
+  // Columns here are numeric or pre-formatted for display, not written for client-side sorting or
+  // filtering: 'auto' would range-parse a typed string per character and sort formatted numbers as text.
+  const table = useDataTable({
+    columns,
+    data: report.items,
+    enableColumnFilters: false,
+    enableSorting: false,
+  });
 
   return (
     <div className="grid gap-2">

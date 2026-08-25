@@ -73,6 +73,8 @@ export const PermissionMatrix: React.FC = () => {
   const table = useDataTable({
     columns,
     data: permissionRows,
+    // Rows are a permission against a grid of role icons; only the shared search reads them.
+    enableSorting: false,
     globalFilterFn: permissionGlobalFilter,
     onGlobalFilterChange: setGlobalFilter,
     state: { globalFilter },

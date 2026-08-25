@@ -7,13 +7,13 @@ import {
 } from '@pkg/schema';
 import { IconDownload, IconLoader2 } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo } from 'react';
-
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -100,7 +100,7 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit, 
     [filterOptionsQuery.data?.products],
   );
 
-  const columns = useMemo<ColumnDef<ProductUnitSummary>[]>(
+  const columns = useMemo<DataTableColumnDef<ProductUnitSummary>[]>(
     () => [
       {
         accessorFn: (unit) => unit.productSerialNumber,
@@ -181,11 +181,10 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit, 
     [ownerOptions, productOptions],
   );
 
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: units,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,

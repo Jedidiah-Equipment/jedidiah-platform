@@ -3,17 +3,10 @@ import { type PurchaseOrderView, purchaseOrderHasUnpricedLines } from '@pkg/sche
 import { IconCheck, IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo, useState } from 'react';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -74,14 +67,11 @@ export const PurchaseOrderTable: React.FC<{
   onOpen: (id: PurchaseOrderView['id']) => void;
 }> = ({ canReadCosts, errorMessage, isLoading = false, items, onOpen }) => {
   const columns = useMemo(() => createPurchaseOrderColumns(canReadCosts), [canReadCosts]);
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
   const total = table.getFilteredRowModel().rows.length;
 
@@ -101,7 +91,7 @@ export const PurchaseOrderTable: React.FC<{
   );
 };
 
-function createPurchaseOrderColumns(canReadCosts: boolean): ColumnDef<PurchaseOrderView>[] {
+function createPurchaseOrderColumns(canReadCosts: boolean): DataTableColumnDef<PurchaseOrderView>[] {
   return [
     {
       accessorKey: 'code',
@@ -138,7 +128,7 @@ function createPurchaseOrderColumns(canReadCosts: boolean): ColumnDef<PurchaseOr
               cellClassName: 'text-right tabular-nums',
               headerClassName: 'text-right',
             },
-          } satisfies ColumnDef<PurchaseOrderView>,
+          } satisfies DataTableColumnDef<PurchaseOrderView>,
         ]
       : []),
     {

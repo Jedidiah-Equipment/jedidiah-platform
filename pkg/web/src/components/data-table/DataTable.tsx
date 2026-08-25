@@ -1,4 +1,4 @@
-import type { Cell, CellContext, Column, Row, RowData, Table as TanStackTable } from '@tanstack/react-table';
+import type { CellData, RowData, TableFeatures } from '@tanstack/react-table';
 import { flexRender } from '@tanstack/react-table';
 import * as React from 'react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area.js';
@@ -8,10 +8,21 @@ import { DataTableHeader } from './components/DataTableHeader.js';
 import { DataTableLoadMore } from './components/DataTableLoadMore.js';
 import { DataTableSearch } from './components/DataTableSearch.js';
 import { DataTableSkeletonRows } from './components/DataTableSkeletonRows.js';
+import type {
+  DataTableCellContext,
+  DataTableCellInstance,
+  DataTableColumnInstance,
+  DataTableInstance,
+  DataTableRowInstance,
+} from './features.js';
 import { getCellClassName, hasActiveFilterValue } from './utils.js';
 
 declare module '@tanstack/react-table' {
-  interface ColumnMeta<TData extends RowData, TValue> {
+  interface ColumnMeta<
+    in out TFeatures extends TableFeatures,
+    in out TData extends RowData,
+    TValue extends CellData = CellData,
+  > {
     cellClassName?: string;
     filterOptions?: { label: string; value: string }[];
     filterVariant?: 'date-range' | 'multi-select' | 'select' | 'text';
@@ -26,7 +37,7 @@ type DataTableLoadMoreProps = {
   onLoadMore: () => void;
 };
 
-type DataTableProps<TData> = {
+type DataTableProps<TData extends RowData> = {
   emptyMessage: string;
   errorMessage?: string | undefined;
   filterDebounceMs?: number;
@@ -40,7 +51,7 @@ type DataTableProps<TData> = {
   onRowClick?: ((item: TData) => void) | undefined;
   rightSection?: React.ReactNode;
   tableClassName?: string;
-  table: TanStackTable<TData>;
+  table: DataTableInstance<TData>;
   total: number;
   totalLabel?: (total: number) => React.ReactNode;
 } & (
@@ -64,7 +75,7 @@ type DataTableProps<TData> = {
 
 const DEFAULT_INCREMENTAL_PAGE_SIZE = 25;
 
-export function DataTable<TData>({
+export function DataTable<TData extends RowData>({
   emptyMessage,
   errorMessage,
   filterDebounceMs = 250,
@@ -86,7 +97,7 @@ export function DataTable<TData>({
   totalLabel = (value) => `${value} ${value === 1 ? 'row' : 'rows'}`,
 }: DataTableProps<TData>) {
   const visibleColumns = table.getVisibleLeafColumns();
-  const tableState = table.getState();
+  const tableState = table.state;
   const hasActiveFilters =
     hasActiveFilterValue(tableState.globalFilter) ||
     tableState.columnFilters.some((filter) => hasActiveFilterValue(filter.value));
@@ -203,7 +214,7 @@ export function DataTable<TData>({
   );
 }
 
-function DataTableRow<TData>({
+function DataTableRow<TData extends RowData>({
   getRowAriaLabel,
   getRowClassName,
   getRowState,
@@ -214,7 +225,7 @@ function DataTableRow<TData>({
   getRowClassName?: ((item: TData) => string | undefined) | undefined;
   getRowState?: ((item: TData) => 'selected' | undefined) | undefined;
   onRowClick?: ((item: TData) => void) | undefined;
-  row: Row<TData>;
+  row: DataTableRowInstance<TData>;
 }) {
   return (
     <TableRow
@@ -253,7 +264,7 @@ function DataTableRow<TData>({
   );
 }
 
-function DataTableCellContent<TData>({ cell }: { cell: Cell<TData, unknown> }) {
+function DataTableCellContent<TData extends RowData>({ cell }: { cell: DataTableCellInstance<TData> }) {
   const rendererRef = React.useRef<CellRenderer<TData>>(undefined);
   rendererRef.current = cell.column.columnDef.cell;
 
@@ -262,12 +273,12 @@ function DataTableCellContent<TData>({ cell }: { cell: Cell<TData, unknown> }) {
   return <StableCellRenderer {...cell.getContext()} rendererRef={rendererRef} />;
 }
 
-type CellRenderer<TData> = Cell<TData, unknown>['column']['columnDef']['cell'];
+type CellRenderer<TData extends RowData> = DataTableCellInstance<TData>['column']['columnDef']['cell'];
 
-function StableCellRenderer<TData>({
+function StableCellRenderer<TData extends RowData>({
   rendererRef,
   ...context
-}: CellContext<TData, unknown> & { rendererRef: React.RefObject<CellRenderer<TData>> }) {
+}: DataTableCellContext<TData> & { rendererRef: React.RefObject<CellRenderer<TData>> }) {
   const renderer = rendererRef.current;
   const isClassComponent =
     typeof renderer === 'function' &&
@@ -280,7 +291,10 @@ function StableCellRenderer<TData>({
   return flexRender(renderer, context);
 }
 
-function getPinnedColumnClassName<TData>(column: Column<TData, unknown>, kind: 'cell' | 'header') {
+function getPinnedColumnClassName<TData extends RowData>(
+  column: DataTableColumnInstance<TData>,
+  kind: 'cell' | 'header',
+) {
   const pinned = column.getIsPinned();
 
   if (!pinned) {
@@ -292,16 +306,18 @@ function getPinnedColumnClassName<TData>(column: Column<TData, unknown>, kind: '
   return cn(
     'sticky bg-inherit',
     kind === 'header' ? 'z-30' : 'z-20',
-    pinned === 'left' &&
-      column.getIsLastColumn('left') &&
-      'after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border/80 after:content-[""] before:absolute before:inset-y-0 before:right-0 before:w-6 before:translate-x-full before:bg-gradient-to-r before:from-black/30 before:to-transparent before:content-[""]',
-    pinned === 'right' &&
-      column.getIsFirstColumn('right') &&
-      'after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-border/80 after:content-[""] before:absolute before:inset-y-0 before:left-0 before:w-6 before:-translate-x-full before:bg-gradient-to-l before:from-black/30 before:to-transparent before:content-[""]',
+    pinned === 'start' &&
+      column.getIsLastColumn('start') &&
+      'after:absolute after:inset-y-0 after:end-0 after:w-px after:bg-border/80 after:content-[""] before:absolute before:inset-y-0 before:end-0 before:w-6 before:translate-x-full before:bg-gradient-to-r before:from-black/30 before:to-transparent before:content-[""]',
+    pinned === 'end' &&
+      column.getIsFirstColumn('end') &&
+      'after:absolute after:inset-y-0 after:start-0 after:w-px after:bg-border/80 after:content-[""] before:absolute before:inset-y-0 before:start-0 before:w-6 before:-translate-x-full before:bg-gradient-to-l before:from-black/30 before:to-transparent before:content-[""]',
   );
 }
 
-function getPinnedColumnStyle<TData>(column: Column<TData, unknown>): React.CSSProperties | undefined {
+function getPinnedColumnStyle<TData extends RowData>(
+  column: DataTableColumnInstance<TData>,
+): React.CSSProperties | undefined {
   const pinned = column.getIsPinned();
 
   if (!pinned) {
@@ -309,10 +325,10 @@ function getPinnedColumnStyle<TData>(column: Column<TData, unknown>): React.CSSP
   }
 
   return {
-    left: pinned === 'left' ? `${column.getStart('left')}px` : undefined,
+    insetInlineStart: pinned === 'start' ? `${column.getStart('start')}px` : undefined,
+    insetInlineEnd: pinned === 'end' ? `${column.getAfter('end')}px` : undefined,
     maxWidth: `${column.getSize()}px`,
     minWidth: `${column.getSize()}px`,
-    right: pinned === 'right' ? `${column.getAfter('right')}px` : undefined,
     width: `${column.getSize()}px`,
   };
 }

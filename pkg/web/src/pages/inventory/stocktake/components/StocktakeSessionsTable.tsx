@@ -1,19 +1,12 @@
 import { formatDate, stocktakeSessionStatusOf } from '@pkg/domain';
 import { STOCKTAKE_SCOPE_LABELS, type StocktakeSession } from '@pkg/schema';
 import { Link, useNavigate } from '@tanstack/react-router';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 
 import { StocktakeSessionStatusBadge } from './StocktakeSessionStatusBadge.js';
 
-const sessionColumns: ColumnDef<StocktakeSession>[] = [
+const sessionColumns: DataTableColumnDef<StocktakeSession>[] = [
   {
     accessorFn: (item) => STOCKTAKE_SCOPE_LABELS[item.scope],
     cell: ({ row }) => (
@@ -68,14 +61,11 @@ export function StocktakeSessionsTable({
   items: StocktakeSession[];
 }) {
   const navigate = useNavigate();
-  const table = useReactTable({
+  const table = useDataTable({
     columns: sessionColumns,
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     initialState: { sorting: [{ desc: true, id: 'openedAt' }] },
   });
   const total = table.getFilteredRowModel().rows.length;

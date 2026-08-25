@@ -1,18 +1,11 @@
 import { formatDate } from '@pkg/domain';
 import type { LatePurchaseOrderRow } from '@pkg/schema';
 import { useNavigate } from '@tanstack/react-router';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 
-const lateColumns: ColumnDef<LatePurchaseOrderRow>[] = [
+const lateColumns: DataTableColumnDef<LatePurchaseOrderRow>[] = [
   {
     accessorKey: 'code',
     cell: ({ row }) => <span className="font-medium font-mono">{row.original.code}</span>,
@@ -54,14 +47,11 @@ export function LatePurchaseOrdersTable({
   items: LatePurchaseOrderRow[];
 }) {
   const navigate = useNavigate();
-  const table = useReactTable({
+  const table = useDataTable({
     columns: lateColumns,
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     initialState: { sorting: [{ desc: true, id: 'daysLate' }] },
   });
 

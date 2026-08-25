@@ -1,12 +1,11 @@
 import { PART_UNIT_OF_MEASURE_LABELS, type Supplier } from '@pkg/schema';
 import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button, type ButtonSize } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
@@ -223,7 +222,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
 
 type PartBulkImportPreviewRow = ParsePartBulkImportCsvResult['rows'][number];
 
-const previewColumns: ColumnDef<PartBulkImportPreviewRow>[] = [
+const previewColumns: DataTableColumnDef<PartBulkImportPreviewRow>[] = [
   { accessorKey: 'lineNumber', header: 'Line' },
   { accessorKey: 'code', header: 'Code' },
   { accessorKey: 'name', header: 'Name' },
@@ -241,12 +240,11 @@ const previewColumns: ColumnDef<PartBulkImportPreviewRow>[] = [
 ];
 
 function PartBulkImportPreviewTable({ items, total }: { items: PartBulkImportPreviewRow[]; total: number }) {
-  const table = useReactTable({
+  const table = useDataTable({
     columns: previewColumns,
     data: items,
     enableColumnFilters: false,
     enableSorting: false,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => `${row.lineNumber}-${row.code}`,
   });
 

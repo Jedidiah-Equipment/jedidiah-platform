@@ -1,9 +1,8 @@
 import type { PurchaseOrderView } from '@pkg/schema';
 import { IconTruckDelivery } from '@tabler/icons-react';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { PartLabelPrintButton } from '../../parts/PartLabelPrintButton.js';
@@ -23,7 +22,7 @@ export function PurchaseOrderReceivingCard({
 }) {
   const [receivingPartId, setReceivingPartId] = useState<string | null>(null);
   const receivingLine = purchaseOrder.lines.find((line) => line.partId === receivingPartId) ?? null;
-  const columns = useMemo<ColumnDef<PurchaseOrderView['lines'][number]>[]>(
+  const columns = useMemo<DataTableColumnDef<PurchaseOrderView['lines'][number]>[]>(
     () => [
       {
         accessorFn: (line) => `${line.partCode} ${line.partName}`,
@@ -64,12 +63,11 @@ export function PurchaseOrderReceivingCard({
     ],
     [],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: purchaseOrder.lines,
     enableColumnFilters: false,
     enableSorting: false,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (line) => line.partId,
   });
 

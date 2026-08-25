@@ -9,20 +9,13 @@ import {
 } from '@pkg/schema';
 import { keepPreviousData, skipToken, useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-  type ColumnDef,
-  type ColumnFiltersState,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  type SortingState,
-  useReactTable,
-} from '@tanstack/react-table';
+import type { ColumnFiltersState, SortingState } from '@tanstack/react-table';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import {
   FeedbackStatusBadge,
   FeedbackStatusSelect,
@@ -43,7 +36,7 @@ const feedbackKindLabels = {
   'corrective-feedback-user': 'Corrective user',
 } as const satisfies Record<FeedbackKind, string>;
 
-export const feedbackTablePinnedRightColumns = ['status'];
+export const feedbackTablePinnedEndColumns = ['status'];
 
 type FeedbackTriageFormValues = z.infer<typeof FeedbackTriageFormValues>;
 const FeedbackTriageFormValues = z.object({
@@ -106,19 +99,17 @@ function FeedbackInboxList({
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([{ desc: true, id: 'createdAt' }]);
 
-  const columns = useMemo<ColumnDef<FeedbackListItem>[]>(() => createFeedbackInboxColumns(), []);
+  const columns = useMemo<DataTableColumnDef<FeedbackListItem>[]>(() => createFeedbackInboxColumns(), []);
 
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: feedback,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     globalFilterFn: feedbackGlobalFilter,
     initialState: {
       columnPinning: {
-        right: feedbackTablePinnedRightColumns,
+        start: [],
+        end: feedbackTablePinnedEndColumns,
       },
     },
     onColumnFiltersChange: setColumnFilters,
@@ -163,7 +154,7 @@ function FeedbackInboxList({
   );
 }
 
-export function createFeedbackInboxColumns(): ColumnDef<FeedbackListItem>[] {
+export function createFeedbackInboxColumns(): DataTableColumnDef<FeedbackListItem>[] {
   return [
     {
       accessorFn: (item) => `${item.submitter.name} ${item.submitter.email}`,

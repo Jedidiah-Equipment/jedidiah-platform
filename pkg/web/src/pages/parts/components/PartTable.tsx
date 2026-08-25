@@ -7,11 +7,12 @@ import {
   type UUID,
 } from '@pkg/schema';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
-import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo } from 'react';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -70,8 +71,8 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
   const storageLocationOptions = usePartStorageLocationOptions();
   const { items: parts, total } = useCombinedCursorQueryPages(partsQuery.data?.pages);
 
-  const columns = useMemo<ColumnDef<Part>[]>(() => {
-    const tableColumns: ColumnDef<Part>[] = [
+  const columns = useMemo<DataTableColumnDef<Part>[]>(() => {
+    const tableColumns: DataTableColumnDef<Part>[] = [
       {
         accessorKey: 'code',
         cell: ({ row }) => <span className="font-mono text-sm">{row.original.code}</span>,
@@ -108,7 +109,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
               enableSorting: true,
               header: 'Supplier',
               id: 'supplierName',
-            } satisfies ColumnDef<Part>,
+            } satisfies DataTableColumnDef<Part>,
           ]
         : []),
       {
@@ -179,11 +180,10 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
     return tableColumns;
   }, [categoryOptions.selectOptions, storageLocationOptions.selectOptions, supplierId]);
 
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: parts,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,
@@ -219,7 +219,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
   );
 };
 
-export function createPartLabelActionColumn(): ColumnDef<Part> {
+export function createPartLabelActionColumn(): DataTableColumnDef<Part> {
   return {
     cell: ({ row }) => (
       <div className="flex justify-end">

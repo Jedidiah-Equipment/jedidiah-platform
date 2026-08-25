@@ -1,7 +1,8 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import { formatDate } from '@pkg/domain';
 import { IconArrowDown, IconArrowsSort, IconArrowUp, IconCalendar, IconFilter, IconX } from '@tabler/icons-react';
-import { type Column, flexRender, type Header } from '@tanstack/react-table';
+import type { RowData } from '@tanstack/react-table';
+import { flexRender } from '@tanstack/react-table';
 import { useEffect, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button.js';
@@ -21,14 +22,15 @@ import { Input } from '@/components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
+import type { DataTableColumnInstance, DataTableHeaderInstance } from '../features.js';
 import { getColumnLabel, hasActiveFilterValue } from '../utils.js';
 
-type DataTableHeaderProps<TData> = {
+type DataTableHeaderProps<TData extends RowData> = {
   debounceMs: number;
-  header: Header<TData, unknown>;
+  header: DataTableHeaderInstance<TData>;
 };
 
-export function DataTableHeader<TData>({ debounceMs, header }: DataTableHeaderProps<TData>) {
+export function DataTableHeader<TData extends RowData>({ debounceMs, header }: DataTableHeaderProps<TData>) {
   const content = flexRender(header.column.columnDef.header, header.getContext());
 
   return (
@@ -40,11 +42,11 @@ export function DataTableHeader<TData>({ debounceMs, header }: DataTableHeaderPr
   );
 }
 
-type DataTableSortButtonProps<TData> = {
-  column: Column<TData, unknown>;
+type DataTableSortButtonProps<TData extends RowData> = {
+  column: DataTableColumnInstance<TData>;
 };
 
-function DataTableSortButton<TData>({ column }: DataTableSortButtonProps<TData>) {
+function DataTableSortButton<TData extends RowData>({ column }: DataTableSortButtonProps<TData>) {
   const sorted = column.getIsSorted();
   const Icon = sorted === false ? IconArrowsSort : sorted === 'asc' ? IconArrowUp : IconArrowDown;
   const label = getColumnLabel(column);
@@ -63,12 +65,12 @@ function DataTableSortButton<TData>({ column }: DataTableSortButtonProps<TData>)
   );
 }
 
-type DataTableFilterButtonProps<TData> = {
-  column: Column<TData, unknown>;
+type DataTableFilterButtonProps<TData extends RowData> = {
+  column: DataTableColumnInstance<TData>;
   debounceMs: number;
 };
 
-function DataTableFilterButton<TData>({ column, debounceMs }: DataTableFilterButtonProps<TData>) {
+function DataTableFilterButton<TData extends RowData>({ column, debounceMs }: DataTableFilterButtonProps<TData>) {
   const label = getColumnLabel(column);
   const filterValue = column.getFilterValue();
   const hasFilterValue = hasActiveFilterValue(filterValue);
@@ -98,13 +100,17 @@ function DataTableFilterButton<TData>({ column, debounceMs }: DataTableFilterBut
   );
 }
 
-type DataTableFilterControlProps<TData> = {
-  column: Column<TData, unknown>;
+type DataTableFilterControlProps<TData extends RowData> = {
+  column: DataTableColumnInstance<TData>;
   debounceMs: number;
   label: string;
 };
 
-function DataTableFilterControl<TData>({ column, debounceMs, label }: DataTableFilterControlProps<TData>) {
+function DataTableFilterControl<TData extends RowData>({
+  column,
+  debounceMs,
+  label,
+}: DataTableFilterControlProps<TData>) {
   const variant = column.columnDef.meta?.filterVariant ?? 'text';
 
   if (variant === 'select') {
@@ -122,7 +128,7 @@ function DataTableFilterControl<TData>({ column, debounceMs, label }: DataTableF
   return <DataTableTextFilter column={column} debounceMs={debounceMs} label={label} />;
 }
 
-function getFilterPopoverClassName<TData>(column: Column<TData, unknown>): string {
+function getFilterPopoverClassName<TData extends RowData>(column: DataTableColumnInstance<TData>): string {
   if (column.columnDef.meta?.filterVariant === 'multi-select') {
     return 'w-80 p-2';
   }
@@ -134,7 +140,7 @@ function getFilterPopoverClassName<TData>(column: Column<TData, unknown>): strin
   return 'w-56 p-2';
 }
 
-function DataTableTextFilter<TData>({ column, debounceMs, label }: DataTableFilterControlProps<TData>) {
+function DataTableTextFilter<TData extends RowData>({ column, debounceMs, label }: DataTableFilterControlProps<TData>) {
   const filterValue = String(column.getFilterValue() ?? '');
   const [filterDraft, setFilterDraft] = useState(filterValue);
   const [debouncedFilter] = useDebouncedValue(filterDraft, debounceMs);
@@ -170,7 +176,10 @@ function DataTableTextFilter<TData>({ column, debounceMs, label }: DataTableFilt
   );
 }
 
-function DataTableSelectFilter<TData>({ column, label }: Pick<DataTableFilterControlProps<TData>, 'column' | 'label'>) {
+function DataTableSelectFilter<TData extends RowData>({
+  column,
+  label,
+}: Pick<DataTableFilterControlProps<TData>, 'column' | 'label'>) {
   const options = column.columnDef.meta?.filterOptions ?? [];
   const filterValue = typeof column.getFilterValue() === 'string' ? column.getFilterValue() : '';
   const selectedOption = options.find((option) => option.value === filterValue);
@@ -196,7 +205,7 @@ function DataTableSelectFilter<TData>({ column, label }: Pick<DataTableFilterCon
   );
 }
 
-function DataTableMultiSelectFilter<TData>({
+function DataTableMultiSelectFilter<TData extends RowData>({
   column,
   label,
 }: Pick<DataTableFilterControlProps<TData>, 'column' | 'label'>) {
@@ -243,7 +252,7 @@ function DataTableMultiSelectFilter<TData>({
   );
 }
 
-function DataTableDateRangeFilter<TData>({
+function DataTableDateRangeFilter<TData extends RowData>({
   column,
   label,
 }: Pick<DataTableFilterControlProps<TData>, 'column' | 'label'>) {
@@ -377,6 +386,6 @@ function getFilterValueFromDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function isRightAligned<TData>(header: Header<TData, unknown>): boolean {
+function isRightAligned<TData extends RowData>(header: DataTableHeaderInstance<TData>): boolean {
   return header.column.columnDef.meta?.headerClassName?.includes('text-right') ?? false;
 }

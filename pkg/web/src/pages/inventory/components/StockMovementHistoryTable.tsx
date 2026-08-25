@@ -10,16 +10,9 @@ import {
   type StockReturnToSupplierReason,
 } from '@pkg/schema';
 import { Link } from '@tanstack/react-router';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
 import { useMemo } from 'react';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { formatUnitCost, getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 
 type MovementReference = { id: UUID; kind: 'job' | 'purchase-order' | 'stocktake'; label: string };
@@ -98,14 +91,11 @@ export function StockMovementHistoryTable({
     [canReadJobs, showCosts, unitOfMeasure],
   );
   const data = useMemo(() => [...items], [items]);
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
   const total = table.getFilteredRowModel().rows.length;
 
@@ -129,7 +119,7 @@ function createStockMovementHistoryColumns({
   canReadJobs: boolean;
   showCosts: boolean;
   unitOfMeasure: PartUnitOfMeasure;
-}): ColumnDef<StockMovementHistoryRow>[] {
+}): DataTableColumnDef<StockMovementHistoryRow>[] {
   return [
     {
       accessorKey: 'createdAt',
@@ -175,12 +165,12 @@ function createStockMovementHistoryColumns({
             accessorKey: 'unitCost',
             cell: ({ row }) => formatMovementUnitCost(row.original.unitCost, unitOfMeasure),
             header: 'Unit cost',
-          } satisfies ColumnDef<StockMovementHistoryRow>,
+          } satisfies DataTableColumnDef<StockMovementHistoryRow>,
           {
             accessorKey: 'movementValue',
             cell: ({ row }) => formatCost(row.original.movementValue),
             header: 'Movement value',
-          } satisfies ColumnDef<StockMovementHistoryRow>,
+          } satisfies DataTableColumnDef<StockMovementHistoryRow>,
         ]
       : []),
   ];

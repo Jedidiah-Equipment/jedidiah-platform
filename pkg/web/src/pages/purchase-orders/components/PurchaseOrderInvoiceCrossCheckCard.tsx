@@ -8,11 +8,10 @@ import {
 } from '@pkg/schema';
 import { IconFileInvoice, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -120,7 +119,7 @@ function SupplierInvoicePanel({
   const outstanding = invoice.rows.flatMap((row) =>
     row.flags.filter((flag) => !invoice.resolutions[flag.key]).map((flag) => flag),
   );
-  const columns = useMemo<ColumnDef<SupplierInvoiceMatchRow>[]>(
+  const columns = useMemo<DataTableColumnDef<SupplierInvoiceMatchRow>[]>(
     () => [
       {
         cell: ({ row }) => (
@@ -178,12 +177,11 @@ function SupplierInvoicePanel({
     ],
     [applyPrice, canApplyPrices, dismissFlag, invoice, isPending, purchaseOrderId],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: invoice.rows,
     enableColumnFilters: false,
     enableSorting: false,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (row, index) => row.partId ?? `invoice-line-${index}`,
   });
 

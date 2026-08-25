@@ -6,10 +6,9 @@ import {
 } from '@pkg/schema';
 import { IconArrowBackUp, IconReceipt2 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -44,7 +43,7 @@ export function PurchaseOrderReturnsCard({
   // Only a line something actually arrived against can send anything back.
   const returnableLines = purchaseOrder.lines.filter((line) => line.receivedQuantity > 0);
   const unsettledReturns = returns.filter((row) => row.settledByDocumentId === null);
-  const columns = useMemo<ColumnDef<PurchaseOrderReturnRow>[]>(
+  const columns = useMemo<DataTableColumnDef<PurchaseOrderReturnRow>[]>(
     () => [
       {
         accessorKey: 'createdAt',
@@ -79,7 +78,7 @@ export function PurchaseOrderReturnsCard({
               cell: ({ row }) => (row.original.value === null ? '—' : formatCurrency(row.original.value, 'ZAR')),
               header: 'Value reversed',
               meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
-            } satisfies ColumnDef<PurchaseOrderReturnRow>,
+            } satisfies DataTableColumnDef<PurchaseOrderReturnRow>,
           ]
         : []),
       {
@@ -95,12 +94,11 @@ export function PurchaseOrderReturnsCard({
     ],
     [canReadCosts],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: returns,
     enableColumnFilters: false,
     enableSorting: false,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => row.id,
   });
 

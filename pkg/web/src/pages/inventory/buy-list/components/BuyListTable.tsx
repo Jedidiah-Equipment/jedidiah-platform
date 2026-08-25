@@ -1,15 +1,8 @@
 import { compareNullableDateOnly, derivePartStockActions, formatDate } from '@pkg/domain';
 import { BUY_LIST_REASONS, type BuyListReason, type BuyListRow } from '@pkg/schema';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  type RowSelectionState,
-  useReactTable,
-} from '@tanstack/react-table';
-
+import type { RowSelectionState } from '@tanstack/react-table';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
@@ -28,7 +21,7 @@ function reasonBadgeVariant(reason: BuyListReason) {
   return BUY_LIST_REASONS[reason].notifies ? 'destructive' : 'secondary';
 }
 
-const buyListColumns: ColumnDef<BuyListRow>[] = [
+const buyListColumns: DataTableColumnDef<BuyListRow>[] = [
   {
     cell: ({ row }) => (
       <Checkbox
@@ -92,7 +85,7 @@ const buyListColumns: ColumnDef<BuyListRow>[] = [
     // The server's ranking rule, applied to the client sort so the two cannot disagree. A column
     // option cannot do it: `sortUndefined` tests strict `undefined`, and this column holds `null`,
     // which the default alphanumeric fn stringifies to '' — sorting the unscheduled rows first.
-    sortingFn: (left, right) =>
+    sortFn: (left, right) =>
       compareNullableDateOnly(left.original.earliestDemandDate, right.original.earliestDemandDate),
   },
   {
@@ -158,16 +151,13 @@ export function BuyListTable({
   onRowSelectionChange,
   rowSelection,
 }: BuyListTableProps) {
-  const table = useReactTable({
+  const table = useDataTable({
     columns: canSelect ? buyListColumns : buyListColumns.filter((column) => column.id !== 'select'),
     data: items,
     enableColumnFilters: false,
     enableRowSelection: (row) => derivePartStockActions(row.original).purchase.allowed,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getRowId: (item) => item.partId,
-    getSortedRowModel: getSortedRowModel(),
     onRowSelectionChange: (updater) =>
       onRowSelectionChange(typeof updater === 'function' ? updater(rowSelection) : updater),
     state: { rowSelection },

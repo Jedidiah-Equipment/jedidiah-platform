@@ -1,15 +1,8 @@
 import { formatDate } from '@pkg/domain';
 import type { CloseOutQueueRow } from '@pkg/schema';
 import { Link, useNavigate } from '@tanstack/react-router';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 
 type CloseOutQueueTableProps = {
@@ -18,7 +11,7 @@ type CloseOutQueueTableProps = {
   items: CloseOutQueueRow[];
 };
 
-const closeOutQueueColumns: ColumnDef<CloseOutQueueRow>[] = [
+const closeOutQueueColumns: DataTableColumnDef<CloseOutQueueRow>[] = [
   {
     accessorFn: (item) => `${item.displayName} ${item.code}`,
     cell: ({ row }) => (
@@ -67,14 +60,11 @@ const closeOutQueueColumns: ColumnDef<CloseOutQueueRow>[] = [
 
 export function CloseOutQueueTable({ errorMessage, isLoading, items }: CloseOutQueueTableProps) {
   const navigate = useNavigate();
-  const table = useReactTable({
+  const table = useDataTable({
     columns: closeOutQueueColumns,
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     initialState: {
       sorting: [{ desc: false, id: 'completedOn' }],
     },

@@ -1,13 +1,13 @@
 import { AuditChanges, AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
 import { IconEye } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore, type DataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -147,7 +147,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     [items],
   );
 
-  const columns = useMemo<ColumnDef<AuditEvent>[]>(
+  const columns = useMemo<DataTableColumnDef<AuditEvent>[]>(
     () => [
       {
         accessorKey: 'occurredAt',
@@ -187,7 +187,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                 filterVariant: 'multi-select',
                 headerClassName: 'w-44 min-w-44',
               },
-            } satisfies ColumnDef<AuditEvent>,
+            } satisfies DataTableColumnDef<AuditEvent>,
           ]
         : []),
       {
@@ -225,11 +225,10 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     [showEntityTypeFilter, userOptions.selectOptions],
   );
 
-  const table = useReactTable<AuditEvent>({
+  const table = useDataTable<AuditEvent>({
     columns,
     data: auditEvents,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,

@@ -2,9 +2,8 @@ import { formatDate, getJobDisplayName, getJobDisplaySubtitle, getJobOfferingKin
 import type { JobSummary } from '@pkg/schema';
 import { IconCheck, IconPencil, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import type { ColumnDef } from '@tanstack/react-table';
-
 import { StockBadge } from '@/components/common/StockBadge.js';
+import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Button } from '@/components/ui/button.js';
@@ -12,8 +11,8 @@ import { Button } from '@/components/ui/button.js';
 import { JobCodeDisplay } from './JobCodeDisplay.js';
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
 
-export const jobTablePinnedLeftColumns = ['code'];
-export const jobTablePinnedRightColumns = ['actions'];
+export const jobTablePinnedStartColumns = ['code'];
+export const jobTablePinnedEndColumns = ['actions'];
 
 type JobListColumnOption = {
   label: string;
@@ -38,7 +37,7 @@ export function createJobListColumns({
   canOpenJobs: boolean;
   customerOptions: JobListColumnOption[];
   showCustomerColumn: boolean;
-}): ColumnDef<JobSummary>[] {
+}): DataTableColumnDef<JobSummary>[] {
   return [
     {
       accessorFn: (job) => job.code,
@@ -69,7 +68,7 @@ export function createJobListColumns({
               filterVariant: 'select',
               headerClassName: 'min-w-44',
             },
-          } satisfies ColumnDef<JobSummary>,
+          } satisfies DataTableColumnDef<JobSummary>,
         ]
       : []),
     {
@@ -166,7 +165,7 @@ export function createJobListColumns({
               cellClassName: 'w-[88px]',
             },
             size: 88,
-          } satisfies ColumnDef<JobSummary>,
+          } satisfies DataTableColumnDef<JobSummary>,
         ]
       : []),
   ];

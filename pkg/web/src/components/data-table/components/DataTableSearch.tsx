@@ -1,20 +1,21 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconSearch } from '@tabler/icons-react';
-import type { Table } from '@tanstack/react-table';
+import type { RowData } from '@tanstack/react-table';
 import { useEffect, useState } from 'react';
 import { ResetFiltersButton } from '@/components/common/ResetFiltersButton.js';
 import { Input } from '@/components/ui/input.js';
+import type { DataTableInstance } from '../features.js';
 
-type DataTableSearchProps<TData> = {
+type DataTableSearchProps<TData extends RowData> = {
   debounceMs: number;
   placeholder: string;
   rightSection?: React.ReactNode;
   showResetFilters?: boolean;
   showSearch?: boolean;
-  table: Table<TData>;
+  table: DataTableInstance<TData>;
 };
 
-export function DataTableSearch<TData>({
+export function DataTableSearch<TData extends RowData>({
   debounceMs,
   placeholder,
   rightSection,
@@ -22,7 +23,7 @@ export function DataTableSearch<TData>({
   showSearch = true,
   table,
 }: DataTableSearchProps<TData>) {
-  const globalFilter = String(table.getState().globalFilter ?? '');
+  const globalFilter = String(table.state.globalFilter ?? '');
   const [globalFilterDraft, setGlobalFilterDraft] = useState(globalFilter);
   const [debouncedGlobalFilter] = useDebouncedValue(globalFilterDraft, debounceMs);
   const showResetButton = showResetFilters || (showSearch && globalFilterDraft.length > 0);

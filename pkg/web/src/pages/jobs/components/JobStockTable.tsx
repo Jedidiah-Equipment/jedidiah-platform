@@ -1,14 +1,7 @@
 import type { JobStockRow } from '@pkg/schema';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
 import { useMemo } from 'react';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
 import { formatLengthBucket, formatPartQuantity } from '@/utils/part-quantity-format.js';
 
@@ -20,15 +13,12 @@ export function JobStockTable({
   items: JobStockRow[];
   onReturn?: ((partId: string) => void) | undefined;
 }) {
-  const columns = useMemo<ColumnDef<JobStockRow>[]>(() => createJobStockColumns(onReturn), [onReturn]);
-  const table = useReactTable({
+  const columns = useMemo<DataTableColumnDef<JobStockRow>[]>(() => createJobStockColumns(onReturn), [onReturn]);
+  const table = useDataTable({
     columns,
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
   const total = table.getFilteredRowModel().rows.length;
 
@@ -44,7 +34,7 @@ export function JobStockTable({
   );
 }
 
-function createJobStockColumns(onReturn: ((partId: string) => void) | undefined): ColumnDef<JobStockRow>[] {
+function createJobStockColumns(onReturn: ((partId: string) => void) | undefined): DataTableColumnDef<JobStockRow>[] {
   return [
     {
       accessorFn: (item) => `${item.partName} ${item.partCode}`,
@@ -127,7 +117,7 @@ function createJobStockColumns(onReturn: ((partId: string) => void) | undefined)
             meta: {
               cellClassName: 'text-right',
             },
-          } satisfies ColumnDef<JobStockRow>,
+          } satisfies DataTableColumnDef<JobStockRow>,
         ]
       : []),
   ];

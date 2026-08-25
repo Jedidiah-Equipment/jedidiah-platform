@@ -1,10 +1,9 @@
 import type { StocktakeUncountedPart, UUID } from '@pkg/schema';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
@@ -12,7 +11,7 @@ import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 /** A page of the scope, not the scope. The list is as long as the Parts the walk has to cover. */
 const UNCOUNTED_PAGE_SIZE = 25;
 
-const uncountedColumns: ColumnDef<StocktakeUncountedPart>[] = [
+const uncountedColumns: DataTableColumnDef<StocktakeUncountedPart>[] = [
   {
     accessorFn: (item) => `${item.partName} ${item.partCode}`,
     cell: ({ row }) => (
@@ -52,12 +51,11 @@ export function StocktakeUncountedTable({ isClosed, sessionId }: { isClosed: boo
     ),
   );
   const { items, total } = useCombinedCursorQueryPages(uncountedQuery.data?.pages);
-  const table = useReactTable({
+  const table = useDataTable({
     columns: uncountedColumns,
     data: items,
     enableColumnFilters: false,
     enableSorting: false,
-    getCoreRowModel: getCoreRowModel(),
   });
 
   return (

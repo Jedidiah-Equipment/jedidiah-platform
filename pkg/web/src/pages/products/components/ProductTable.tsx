@@ -1,19 +1,13 @@
 import { formatCurrency } from '@pkg/domain';
 import { type Product, type ProductListInput, ProductSortBy, type UUID } from '@pkg/schema';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
-import {
-  type ColumnDef,
-  type ColumnFiltersState,
-  functionalUpdate,
-  getCoreRowModel,
-  type Updater,
-  useReactTable,
-} from '@tanstack/react-table';
+import { type ColumnFiltersState, functionalUpdate, type Updater } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -84,8 +78,8 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
   );
   const { items: products, total } = useCombinedCursorQueryPages(productsQuery.data?.pages);
 
-  const columns = useMemo<ColumnDef<Product>[]>(() => {
-    const tableColumns: ColumnDef<Product>[] = [
+  const columns = useMemo<DataTableColumnDef<Product>[]>(() => {
+    const tableColumns: DataTableColumnDef<Product>[] = [
       {
         accessorKey: 'name',
         cell: ({ row }) => (
@@ -167,11 +161,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     return tableColumns;
   }, [productRangeOptions.selectOptions, productRangeVariantOptions.selectOptions, selectedRangeId]);
 
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: products,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
     manualSorting: true,
     onColumnFiltersChange: setProductColumnFilters,

@@ -1,11 +1,10 @@
 import { formatDate } from '@pkg/domain';
 import type { RawMaterialDriftReport, RawMaterialDriftRow } from '@pkg/schema';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 
-const columns: ColumnDef<RawMaterialDriftRow>[] = [
+const columns: DataTableColumnDef<RawMaterialDriftRow>[] = [
   {
     accessorFn: (row) => `${row.partName} ${row.partCode}`,
     cell: ({ row }) => (
@@ -43,7 +42,7 @@ const columns: ColumnDef<RawMaterialDriftRow>[] = [
 ];
 
 export function RawMaterialDriftTable({ report }: { report: RawMaterialDriftReport }) {
-  const table = useReactTable({ columns, data: report.items, getCoreRowModel: getCoreRowModel() });
+  const table = useDataTable({ columns, data: report.items });
 
   return (
     <div className="grid gap-2">

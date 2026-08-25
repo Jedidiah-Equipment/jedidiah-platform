@@ -1,21 +1,14 @@
 import type { CatalogTranslationNeedsReviewItem } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
 import type React from 'react';
-
 import {
   PRODUCT_RANGE_TRANSLATION_FIELD_LABELS,
   PRODUCT_RANGE_VARIANT_TRANSLATION_FIELD_LABELS,
   PRODUCT_TRANSLATION_FIELD_LABELS,
 } from '@/components/catalog-translations/catalog-translation-labels.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -44,15 +37,12 @@ export const CatalogTranslationNeedsReviewContent: React.FC<CatalogTranslationNe
   isLoading,
   items,
 }) => {
-  const table = useReactTable({
+  const table = useDataTable({
     columns: needsReviewColumns,
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getRowId: (item) => `${item.kind}:${item.id}`,
-    getSortedRowModel: getSortedRowModel(),
   });
 
   return (
@@ -83,7 +73,7 @@ const ENTITY_KIND_LABELS = {
   variant: 'Variant',
 } satisfies Record<CatalogTranslationNeedsReviewItem['kind'], string>;
 
-const needsReviewColumns: ColumnDef<CatalogTranslationNeedsReviewItem>[] = [
+const needsReviewColumns: DataTableColumnDef<CatalogTranslationNeedsReviewItem>[] = [
   {
     accessorFn: (item) => ENTITY_KIND_LABELS[item.kind],
     header: 'Entity kind',

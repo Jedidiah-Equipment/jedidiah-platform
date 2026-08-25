@@ -3,11 +3,12 @@ import { DateOnlyIso, type JobListInput, JobSortBy, type UUID } from '@pkg/schem
 import { IconDownload, IconLoader2, IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -23,8 +24,8 @@ import { jobListPageDescription } from '@/utils/page-descriptions.js';
 
 import {
   createJobListColumns,
-  jobTablePinnedLeftColumns,
-  jobTablePinnedRightColumns,
+  jobTablePinnedEndColumns,
+  jobTablePinnedStartColumns,
 } from './components/JobListTableColumns.js';
 import { JobSheet } from './components/JobSheet.js';
 import { downloadJobSalesExport } from './job-sales-export.js';
@@ -190,17 +191,16 @@ export const JobListTable: React.FC<JobListTableProps> = ({ customerId, render }
   );
   const columnPinning = useMemo(
     () => ({
-      left: jobTablePinnedLeftColumns,
-      right: canOpenJobs ? jobTablePinnedRightColumns : [],
+      start: jobTablePinnedStartColumns,
+      end: canOpenJobs ? jobTablePinnedEndColumns : [],
     }),
     [canOpenJobs],
   );
 
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: jobs,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,

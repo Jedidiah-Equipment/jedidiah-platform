@@ -1,7 +1,7 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import type { JobPickerTab, JobStockMovementType } from '@pkg/schema';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import type { JobPickerController } from '@/components/job-picker/index.js';
@@ -37,12 +37,21 @@ export function useInventoryJobPicker({
   );
   const { items, total } = useCombinedCursorQueryPages(query.data?.pages);
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  // Which tab the rows on screen actually came from. `keepPreviousData` holds the last page while
+  // the next request runs — right for a search, where it stops the list flickering under the caret,
+  // but wrong across a tab press: a list of completed Jobs under a tab that says Not complete reads
+  // as the answer rather than as the previous one.
+  const renderedTab = useRef(activeTab);
+  useEffect(() => {
+    if (!query.isPlaceholderData) renderedTab.current = activeTab;
+  }, [activeTab, query.isPlaceholderData]);
+  const isSwitchingTab = query.isPlaceholderData && renderedTab.current !== activeTab;
 
   return {
     activeTab,
     error: query.error,
     hasMore: hasNextPage,
-    isLoading: query.isPending,
+    isLoading: query.isPending || isSwitchingTab,
     isLoadingMore: isFetchingNextPage,
     onLoadMore: useCallback(() => {
       if (hasNextPage && !isFetchingNextPage) void fetchNextPage();

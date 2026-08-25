@@ -16,9 +16,9 @@ cost that Job is still carrying, rather than at whatever the average has drifted
 2. Click **Return to store**.
 3. Click **Select Job** and choose the Job.
    The picker opens on **Last updated**; **Last created** and **Not complete** are the other two
-   lists. Search reaches every Job — returns are never refused for lifecycle state — by Job code,
-   Product, work title, or Customer. The footer says how many of the matching Jobs it has loaded;
-   use **Load more** to reach the rest.
+   lists. Search narrows the list you are on, by Job code, Product, work title, or Customer. Returns
+   are never refused for lifecycle state, so **Last updated** reaches every Job. The footer says how
+   many of the matching Jobs it has loaded; use **Load more** to reach the rest.
 4. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
 5. Click **Return stock**.
 

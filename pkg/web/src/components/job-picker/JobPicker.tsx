@@ -199,9 +199,7 @@ function JobPickerPopup({
         </div>
       ) : (
         <>
-          <ComboboxEmpty>
-            {controller.search.trim() ? `No Jobs match “${controller.search.trim()}”.` : nothingPickableMessage}
-          </ComboboxEmpty>
+          <ComboboxEmpty>{emptyMessage(controller, nothingPickableMessage)}</ComboboxEmpty>
           <ComboboxList>
             {(job: JobPickerOption) => (
               <ComboboxItem className="items-center rounded-lg py-1.5" key={job.id} value={job}>
@@ -221,6 +219,20 @@ function JobPickerPopup({
       )}
     </ComboboxContent>
   );
+}
+
+/**
+ * What an empty list says. A search narrows the tab rather than escaping it, so a search that finds
+ * nothing under Not complete names that constraint — otherwise a completed Job that is still pickable
+ * one tab over reads as a Job that does not exist.
+ */
+function emptyMessage(controller: JobPickerController, nothingPickableMessage: string): string {
+  const search = controller.search.trim();
+  if (!search) return nothingPickableMessage;
+
+  return controller.activeTab === 'incomplete'
+    ? `No Jobs match “${search}” that are not complete. Try Last updated or Last created.`
+    : `No Jobs match “${search}”.`;
 }
 
 /**
@@ -254,11 +266,23 @@ function JobPickerTabs({ controller, disabled }: { controller: JobPickerControll
     >
       <TabsList aria-label="Job list" className="w-full">
         {JOB_PICKER_TABS.map(({ label, tab }) => (
-          <TabsTrigger className="text-xs" disabled={disabled} key={tab} value={tab}>
+          <TabsTrigger className="text-xs" disabled={disabled} key={tab} onPointerDown={keepCaretInSearch} value={tab}>
             {label}
           </TabsTrigger>
         ))}
       </TabsList>
     </Tabs>
   );
+}
+
+/**
+ * Changing lists must not cost the reader their place in the search field — they are usually
+ * mid-search when they reach for another tab. `EntityComboboxLoadMore` swallows the same press for
+ * the same reason, but on `mousedown`, which is too late here: a Base UI tab takes focus on
+ * `pointerdown`, and the combobox answers the input's `focusout` by pulling focus out to the
+ * trigger. Swallowing the pointer press leaves the caret where it was; the tab still activates on
+ * the click that follows.
+ */
+function keepCaretInSearch(event: React.PointerEvent<HTMLButtonElement>): void {
+  event.preventDefault();
 }

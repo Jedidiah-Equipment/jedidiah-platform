@@ -769,20 +769,28 @@ const PurchaseOrderJobsCard: React.FC<{ commit: () => void; form: DraftForm }> =
       </CardHeader>
       <CardContent onBlur={commit}>
         <form.AppField name="jobIds">
-          {(field) => (
-            <Field>
-              <FieldLabel className="sr-only" htmlFor={field.name}>
-                Linked Jobs
-              </FieldLabel>
-              <JobMultiPicker
-                controller={jobPicker}
-                disabled={jobsQuery.isPending}
-                id={field.name}
-                onChange={(selected) => field.handleChange(selected.map((job) => job.id))}
-                value={jobs.filter((job) => field.state.value.includes(job.id))}
-              />
-            </Field>
-          )}
+          {(field) => {
+            const linked = jobs.filter((job) => field.state.value.includes(job.id));
+            // `jobs.list` never returns a cancelled Job, so a link to one has nothing here to
+            // resolve against. Its id rides through every edit rather than being dropped by the
+            // first change the reader makes — the link is the Job's id, not what this list can show.
+            const unreachableJobIds = field.state.value.filter((id) => !linked.some((job) => job.id === id));
+
+            return (
+              <Field>
+                <FieldLabel className="sr-only" htmlFor={field.name}>
+                  Linked Jobs
+                </FieldLabel>
+                <JobMultiPicker
+                  controller={jobPicker}
+                  disabled={jobsQuery.isPending}
+                  id={field.name}
+                  onChange={(selected) => field.handleChange([...unreachableJobIds, ...selected.map((job) => job.id)])}
+                  value={linked}
+                />
+              </Field>
+            );
+          }}
         </form.AppField>
       </CardContent>
     </Card>

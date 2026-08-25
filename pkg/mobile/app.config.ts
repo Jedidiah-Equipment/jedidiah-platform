@@ -44,6 +44,10 @@ export default ({ config }: ConfigContext): AppConfig => {
       ],
       '@config-plugins/react-native-pdf',
       '@config-plugins/react-native-blob-util',
+      'expo-secure-store',
+      'expo-sharing',
+      'expo-status-bar',
+      'expo-web-browser',
     ],
     experiments: {
       typedRoutes: true,

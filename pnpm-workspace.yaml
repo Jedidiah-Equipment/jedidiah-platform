@@ -4,16 +4,13 @@ packages:
 packageExtensions:
   "@config-plugins/react-native-pdf@*":
     dependencies:
-      "@expo/config-plugins": "^56"
-  # The worklets Babel plugin imports these packages but 0.8.3 does not declare them. Pinned to the
-  # 7.29.7 that @babel/core anchors for the whole Expo SDK 56 toolchain — metro, babel-preset-expo
-  # and the RN codegen plugin all sit on it, which is why the lock carries a second 7.29.8 set for
-  # everything outside mobile. Both keys are version-scoped, so they lapse when the SDK moves.
-  "react-native-worklets@0.8.3":
+      "@expo/config-plugins": "^57"
+  # The worklets Babel plugin imports these packages but 0.10.1 does not declare them. Keep the key
+  # version-scoped so an SDK move forces us to re-check upstream rather than preserve a stale patch.
+  "react-native-worklets@0.10.1":
     dependencies:
       "@babel/generator": "7.29.7"
       "@babel/traverse": "7.29.7"
-      "@babel/types": "7.29.7"
 
 allowBuilds:
   "@posthog/cli": true

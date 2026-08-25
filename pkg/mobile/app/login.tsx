@@ -16,6 +16,7 @@ import { BrandHeader } from '@/components/BrandHeader';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { signIn, useSession } from '@/lib/auth';
+import { isHydratedSession } from '@/lib/session-state';
 
 export default function LoginScreen() {
   const { data: session } = useSession();
@@ -56,7 +57,7 @@ export default function LoginScreen() {
   }
 
   // Already signed in (including right after a successful sign-in): leave /login.
-  if (session) {
+  if (isHydratedSession(session)) {
     return <Redirect href="/" />;
   }
 

@@ -6,6 +6,7 @@ import { AssistantProvider } from '@/components/assistant/AssistantProvider';
 import { useSession } from '@/lib/auth';
 import { AuthSessionProvider } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
+import { isHydratedSession } from '@/lib/session-state';
 
 /**
  * Owns auth for the whole protected route tree in one place: show a loading
@@ -20,6 +21,7 @@ import { useIsOffline } from '@/lib/connectivity';
 export default function ProtectedLayout() {
   const { data: session, isPending, refetch } = useSession();
   const isOffline = useIsOffline();
+  const hasSession = isHydratedSession(session);
 
   // Track offline→online transitions in render-safe state (not a ref-in-effect) so the hold
   // below engages on the very render that would otherwise fall through to <Redirect>: an effect
@@ -29,7 +31,7 @@ export default function ProtectedLayout() {
   if (prevOffline !== isOffline) {
     setPrevOffline(isOffline);
     // Back online without a resolved session: hold and refetch instead of bouncing to /login.
-    if (prevOffline && !isOffline && !session) setReconnecting(true);
+    if (prevOffline && !isOffline && !hasSession) setReconnecting(true);
   }
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function ProtectedLayout() {
 
   // Still resolving, offline with no resolved session, or reconnecting after coming back online:
   // hold (behind the OfflineScreen cover) rather than redirecting on a session we can't yet trust.
-  if (isPending || reconnecting || (!session && isOffline)) {
+  if (isPending || reconnecting || (!hasSession && isOffline)) {
     return (
       <SafeAreaView className="flex-1" style={{ backgroundColor: '#0a0a0b' }}>
         <View className="flex-1 items-center justify-center px-7 py-10">
@@ -64,7 +66,7 @@ export default function ProtectedLayout() {
     );
   }
 
-  if (!session) {
+  if (!hasSession) {
     return <Redirect href="/login" />;
   }
 

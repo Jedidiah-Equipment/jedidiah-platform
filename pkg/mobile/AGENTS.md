@@ -33,4 +33,10 @@
   `react-native-pdf`; web fetches authed blobs for iframe/download behavior.
 - Root `pnpm verify` covers lint/typecheck/test. Expo release checks are explicit package commands
   such as `pnpm --filter @pkg/mobile doctor` and the Android EAS scripts.
+- Upgrade Expo one SDK at a time: bump `expo`, run
+  `APP_VARIANT=staging pnpm --filter @pkg/mobile exec expo install --fix`, then keep the resulting
+  React version aligned with `@pkg/pdf`. Re-check the version-scoped Worklets extension and keep
+  Tailwind 3 and Babel 7 unless their mobile peers support the next majors. The `expo.install.exclude`
+  list records packages intentionally tested ahead of Expo's bundled-version metadata; review each
+  exception on every SDK move.
 - Native Android launch requires a local Android SDK and Java runtime.

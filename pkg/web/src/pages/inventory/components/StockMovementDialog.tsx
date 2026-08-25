@@ -1,7 +1,6 @@
-import { useDebouncedValue } from '@mantine/hooks';
 import { deriveMovementWarnings, type JobMovementFacts } from '@pkg/domain';
 import type {
-  InventoryJobOption,
+  JobPickerOption,
   JobStockMovementType,
   JobStockRow,
   StockMovementWarningCode,
@@ -11,10 +10,10 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { EntityCombobox } from '@/components/common/EntityCombobox.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
+import { JobPicker, JobPickerTrigger } from '@/components/job-picker/index.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
-import { useInventoryJobOptions } from '@/hooks/options/index.js';
+import { useInventoryJobPicker } from '@/hooks/options/index.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useMovementWarnings } from '@/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
@@ -56,20 +55,14 @@ export function StockMovementDialog({
   const trpc = useTRPC();
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const [jobSearch, setJobSearch] = useState('');
-  const [debouncedJobSearch] = useDebouncedValue(jobSearch, 250);
-  const [selectedJob, setSelectedJob] = useState<InventoryJobOption | null>(null);
+  const [isJobPickerOpen, setJobPickerOpen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<JobPickerOption | null>(null);
   const movementWarningsOutcome = useMovementWarnings();
   const validator = useMemo(() => stockJobMovementValidator(parts), [parts]);
   const verb = type === 'checkout' ? 'Check out' : 'Return';
   const jobId = fixedJob?.id ?? selectedJob?.id ?? '';
 
-  const jobOptions = useInventoryJobOptions({
-    enabled: fixedJob === undefined,
-    movementType: type,
-    search: debouncedJobSearch,
-    selected: selectedJob,
-  });
+  const jobPicker = useInventoryJobPicker({ enabled: fixedJob === undefined, movementType: type });
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }, { enabled: jobId !== '' }));
   const mutation = useMutation(
     (type === 'checkout' ? trpc.inventory.postCheckout : trpc.inventory.postReturnToStore).mutationOptions({
@@ -146,29 +139,24 @@ export function StockMovementDialog({
               {(field) => (
                 <Field data-invalid={field.state.meta.errors.length > 0}>
                   <FieldLabel htmlFor="inventory-job-movement-job">Job</FieldLabel>
-                  <EntityCombobox
-                    disabled={false}
-                    emptyMessage="No Jobs found"
-                    inputId="inventory-job-movement-job"
-                    inputValue={jobSearch}
-                    isFetching={jobOptions.isFetching}
-                    itemToLabel={jobOptionLabel}
-                    loadMore={{
-                      ...jobOptions.pagination,
-                      totalLabel: (total) => `${total} ${total === 1 ? 'Job' : 'Jobs'}`,
-                    }}
-                    onInputValueChange={setJobSearch}
-                    onSelected={(job) => {
+                  <JobPicker
+                    controller={jobPicker}
+                    nothingPickableMessage="No Jobs are available for this movement."
+                    onOpenChange={setJobPickerOpen}
+                    onSelect={(job) => {
                       setSelectedJob(job);
-                      setJobSearch('');
-                      field.handleChange(job?.id ?? '');
+                      field.handleChange(job.id);
                     }}
-                    options={jobOptions.options}
-                    placeholder="Search jobs"
-                    renderItem={(job) => jobOptionLabel(job)}
-                    searchPlaceholder="Searching jobs..."
+                    open={isJobPickerOpen}
                     value={selectedJob}
-                  />
+                  >
+                    <JobPickerTrigger
+                      className="w-full"
+                      id="inventory-job-movement-job"
+                      placeholder="Select Job"
+                      value={selectedJob}
+                    />
+                  </JobPicker>
                 </Field>
               )}
             </form.AppField>
@@ -229,8 +217,4 @@ export function StockMovementDialog({
       )}
     </CreateEntityDialog>
   );
-}
-
-function jobOptionLabel(job: InventoryJobOption): string {
-  return `${job.code} · ${job.displayName}`;
 }

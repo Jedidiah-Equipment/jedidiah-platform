@@ -37,10 +37,12 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { FilePreviewSheet } from '@/components/documents/FilePreviewSheet.js';
 import { useFilePreview } from '@/components/documents/use-file-preview.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
+import { JobMultiPicker, useJobPicker } from '@/components/job-picker/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { usePartOptions, useSupplierOptions } from '@/hooks/options/index.js';
@@ -756,7 +758,8 @@ const PurchaseOrderLinesDataTable: React.FC<{
 const PurchaseOrderJobsCard: React.FC<{ commit: () => void; form: DraftForm }> = ({ commit, form }) => {
   const trpc = useTRPC();
   const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
-  const jobOptions = (jobsQuery.data?.items ?? []).map((job) => ({ label: job.code, value: job.id }));
+  const jobs = useMemo(() => jobsQuery.data?.items ?? [], [jobsQuery.data]);
+  const jobPicker = useJobPicker({ isLoading: jobsQuery.isPending, options: jobs });
 
   return (
     <Card>
@@ -767,13 +770,18 @@ const PurchaseOrderJobsCard: React.FC<{ commit: () => void; form: DraftForm }> =
       <CardContent onBlur={commit}>
         <form.AppField name="jobIds">
           {(field) => (
-            <field.MultiComboboxField
-              disabled={jobsQuery.isPending}
-              emptyMessage="No Jobs found."
-              label={<span className="sr-only">Linked Jobs</span>}
-              options={jobOptions}
-              placeholder="Search jobs to link"
-            />
+            <Field>
+              <FieldLabel className="sr-only" htmlFor={field.name}>
+                Linked Jobs
+              </FieldLabel>
+              <JobMultiPicker
+                controller={jobPicker}
+                disabled={jobsQuery.isPending}
+                id={field.name}
+                onChange={(selected) => field.handleChange(selected.map((job) => job.id))}
+                value={jobs.filter((job) => field.state.value.includes(job.id))}
+              />
+            </Field>
           )}
         </form.AppField>
       </CardContent>

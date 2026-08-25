@@ -1,4 +1,4 @@
-import { formatDate, getJobOptionHint, hasPermission } from '@pkg/domain';
+import { formatDate, hasPermission } from '@pkg/domain';
 import { IconAlertTriangle, IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { bayOperatorName } from '@/components/bays/bay-label.js';
 import { DatePicker } from '@/components/common/DatePicker.js';
+import { JobPicker, JobPickerTrigger, useJobPicker } from '@/components/job-picker/index.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
@@ -50,6 +51,7 @@ export const BookSlotDialog: React.FC = () => {
   const jobs = jobsQuery.data?.items ?? [];
 
   const [open, setOpen] = useState(false);
+  const [isJobPickerOpen, setJobPickerOpen] = useState(false);
   const [selectedBayId, setSelectedBayId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [jobFilter, setJobFilter] = useState<BookSlotJobFilter>('active');
@@ -59,6 +61,9 @@ export const BookSlotDialog: React.FC = () => {
   const selectedBay = schedulableBays.find((bay) => bay.id === selectedBayId) ?? null;
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
   const filteredJobs = useMemo(() => filterBookSlotJobs(jobs, jobFilter), [jobFilter, jobs]);
+  // The picker searches and orders whatever the schedule filter above it left standing: the two ask
+  // different questions — which Jobs are bookable, and which of those is the one in hand.
+  const jobPicker = useJobPicker({ isLoading: jobsQuery.isLoading, options: filteredJobs });
 
   const bayCalendars = useBayCalendars();
   const selectedBayCalendar = selectedBay ? (bayCalendars?.workingCalendarsByBayId.get(selectedBay.id) ?? {}) : {};
@@ -234,40 +239,23 @@ export const BookSlotDialog: React.FC = () => {
               />
               <Field>
                 <FieldLabel htmlFor="book-slot-job">Job</FieldLabel>
-                <Select
+                <JobPicker
+                  controller={jobPicker}
                   disabled={isPending || jobsQuery.isLoading}
-                  onValueChange={(value) => handleJobSelect(String(value))}
-                  value={selectedJob?.id ?? ''}
+                  nothingPickableMessage="No Jobs match the Jobs shown filter."
+                  onOpenChange={setJobPickerOpen}
+                  onSelect={(job) => handleJobSelect(job.id)}
+                  open={isJobPickerOpen}
+                  value={selectedJob}
                 >
-                  <SelectTrigger id="book-slot-job" className="w-full">
-                    <SelectValue
-                      placeholder={
-                        jobsQuery.isLoading
-                          ? 'Loading jobs'
-                          : filteredJobs.length === 0
-                            ? 'No matching jobs'
-                            : 'Select job'
-                      }
-                    >
-                      {selectedJob ? (
-                        <>
-                          <span className="truncate">{selectedJob.code}</span>
-                          <span className="shrink-0 text-muted-foreground">{getJobOptionHint(selectedJob)}</span>
-                        </>
-                      ) : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent align="start">
-                    <SelectGroup>
-                      {filteredJobs.map((job) => (
-                        <SelectItem key={job.id} value={job.id}>
-                          {job.code}
-                          <span className="text-muted-foreground">{getJobOptionHint(job)}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                  <JobPickerTrigger
+                    className="w-full"
+                    disabled={isPending || jobsQuery.isLoading}
+                    id="book-slot-job"
+                    placeholder={jobsQuery.isLoading ? 'Loading Jobs' : 'Select Job'}
+                    value={selectedJob}
+                  />
+                </JobPicker>
               </Field>
               <Field>
                 <FieldLabel htmlFor="book-slot-duration">Days</FieldLabel>

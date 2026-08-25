@@ -1,4 +1,5 @@
-import type { InventoryJobOption, JobStockMovementType } from '@pkg/schema';
+import { getJobDisplayName } from '@pkg/domain';
+import type { JobPickerOption, JobStockMovementType } from '@pkg/schema';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
@@ -24,16 +25,24 @@ export const JobPicker = forwardRef<
   {
     movementType: JobStockMovementType;
     onSearchChange: (value: string) => void;
-    onSelect: (job: InventoryJobOption | null) => void;
+    onSelect: (job: JobPickerOption | null) => void;
     search: string;
-    selected: InventoryJobOption | null;
+    selected: JobPickerOption | null;
   }
 >(function JobPicker({ movementType, onSearchChange, onSelect, search, selected }, ref) {
   const trpc = useTRPC();
   const debouncedSearch = useDebouncedSearch(search);
   const jobs = useInfiniteQuery(
     trpc.inventory.jobOptions.infiniteQueryOptions(
-      { limit: JOB_PAGE_SIZE, movementType, search: debouncedSearch },
+      // The tablet has no tab strip, so it asks for the one list it has always shown: open work for
+      // a Checkout, and — once the reader searches — every eligible Job, so a late posting still
+      // reaches a finished one.
+      {
+        limit: JOB_PAGE_SIZE,
+        movementType,
+        search: debouncedSearch,
+        tab: movementType === 'checkout' && !debouncedSearch ? 'incomplete' : 'updated',
+      },
       {
         enabled: selected === null,
         getNextPageParam: (page) => page.nextCursor,
@@ -57,7 +66,7 @@ export const JobPicker = forwardRef<
         </Text>
         <Pressable
           accessibilityHint="Choose a different Job"
-          accessibilityLabel={`Job ${selected.code}, ${selected.displayName}`}
+          accessibilityLabel={`Job ${selected.code}, ${getJobDisplayName(selected)}`}
           accessibilityRole="button"
           className="flex-row items-center justify-between rounded-xl border border-border bg-surface px-3 py-3"
           onPress={() => onSelect(null)}
@@ -67,7 +76,7 @@ export const JobPicker = forwardRef<
               {selected.code}
             </Text>
             <Text className="mt-0.5 text-sm text-muted-foreground" numberOfLines={1}>
-              {selected.displayName}
+              {getJobDisplayName(selected)}
             </Text>
           </View>
           <Text className="shrink-0 text-sm text-muted-foreground" weight="semibold">
@@ -106,7 +115,7 @@ export const JobPicker = forwardRef<
         <View className="gap-2">
           {items.map((job) => (
             <Pressable
-              accessibilityLabel={`${job.code} ${job.displayName}`}
+              accessibilityLabel={`${job.code} ${getJobDisplayName(job)}`}
               accessibilityRole="button"
               className="rounded-xl border border-border bg-surface px-3 py-3"
               key={job.id}
@@ -123,7 +132,7 @@ export const JobPicker = forwardRef<
                 )}
               </View>
               <Text className="mt-0.5 text-sm text-muted-foreground" numberOfLines={1}>
-                {job.displayName}
+                {getJobDisplayName(job)}
               </Text>
             </Pressable>
           ))}

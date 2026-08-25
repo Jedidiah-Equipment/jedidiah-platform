@@ -1,10 +1,11 @@
-import { departmentLabels, getJobOptionHint, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
-import type { Bay, Department, JobSummary, UUID } from '@pkg/schema';
+import { departmentLabels, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
+import type { Bay, Department, JobPickerOption, JobSummary, UUID } from '@pkg/schema';
 import { IconFilterOff } from '@tabler/icons-react';
 import type React from 'react';
 import type { ReactNode } from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { bayOperatorName } from '@/components/bays/bay-label.js';
+import { JobPicker, JobPickerTrigger, useJobPicker } from '@/components/job-picker/index.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Combobox,
@@ -19,7 +20,6 @@ import { type BoardFilter, emptyBoardFilter, hasActiveBoardFilter } from './boar
 type FilterOption<TId extends string> = {
   id: TId;
   label: string;
-  hint?: string;
 };
 
 type BoardFilterBarProps = {
@@ -28,7 +28,16 @@ type BoardFilterBarProps = {
   jobs: ReadonlyArray<
     Pick<
       JobSummary,
-      'id' | 'code' | 'customerCompanyName' | 'customerId' | 'productName' | 'productUnit' | 'quoteKind' | 'workTitle'
+      | 'id'
+      | 'code'
+      | 'completedOn'
+      | 'createdAt'
+      | 'customerCompanyName'
+      | 'customerId'
+      | 'productName'
+      | 'quoteKind'
+      | 'updatedAt'
+      | 'workTitle'
     >
   >;
   noMatches: boolean;
@@ -44,10 +53,6 @@ export const BoardFilterBar: React.FC<BoardFilterBarProps> = ({
   onFilterChange,
   trailingContent,
 }) => {
-  const jobOptions = useMemo<FilterOption<UUID>[]>(
-    () => jobs.map((job) => ({ hint: getJobOptionHint(job), id: job.id, label: job.code })),
-    [jobs],
-  );
   const customerOptions = useMemo<FilterOption<UUID>[]>(() => {
     const labelsByCustomerId = new Map<UUID, string>();
 
@@ -79,13 +84,7 @@ export const BoardFilterBar: React.FC<BoardFilterBarProps> = ({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <FilterCombobox
-        inputId="board-filter-job"
-        onChange={(jobId) => onFilterChange({ ...filter, jobId })}
-        options={jobOptions}
-        placeholder="Filter by job"
-        value={filter.jobId}
-      />
+      <BoardJobFilter jobs={jobs} onChange={(jobId) => onFilterChange({ ...filter, jobId })} value={filter.jobId} />
       <FilterCombobox
         inputId="board-filter-customer"
         onChange={(customerId) => onFilterChange({ ...filter, customerId })}
@@ -149,11 +148,49 @@ function FilterCombobox<TId extends string>({
           {(option: FilterOption<TId>) => (
             <ComboboxItem key={option.id} value={option}>
               <span className="min-w-0 truncate">{option.label}</span>
-              {option.hint ? <span className="shrink-0 text-muted-foreground text-xs">{option.hint}</span> : null}
             </ComboboxItem>
           )}
         </ComboboxList>
       </ComboboxContent>
     </Combobox>
+  );
+}
+
+/**
+ * The Board's Job filter. It picks from the Jobs the Board is showing rather than every Job there
+ * is: this narrows what is already on screen, and a Job with no Slot in view would filter the Board
+ * down to nothing while reading as a legitimate choice.
+ */
+function BoardJobFilter({
+  jobs,
+  onChange,
+  value,
+}: {
+  jobs: readonly JobPickerOption[];
+  onChange: (jobId: UUID | null) => void;
+  value: UUID | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const controller = useJobPicker({ options: jobs });
+  const selected = jobs.find((job) => job.id === value) ?? null;
+
+  return (
+    <JobPicker
+      controller={controller}
+      nothingPickableMessage="No Jobs are on the Board."
+      onOpenChange={setOpen}
+      onSelect={(job) => onChange(job.id)}
+      open={open}
+      value={selected}
+    >
+      <JobPickerTrigger
+        className="w-64"
+        clearLabel="Clear Job filter"
+        id="board-filter-job"
+        onClear={() => onChange(null)}
+        placeholder="Filter by Job"
+        value={selected}
+      />
+    </JobPicker>
   );
 }

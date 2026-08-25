@@ -864,3 +864,30 @@ export const JobListInput = createSearchedSortedCursorQueryInput({
 
 export type JobListResult = z.infer<typeof JobListResult>;
 export const JobListResult = createCursorQueryResult(JobSummary);
+
+/**
+ * The three lists the Job Picker offers. They are recency views rather than filters that compose:
+ * a reader looking for one Job among hundreds recognises it faster by when it last moved than by
+ * any attribute they would have to name first.
+ */
+export type JobPickerTab = z.infer<typeof JobPickerTab>;
+export const JobPickerTab = z.enum(['updated', 'created', 'incomplete']);
+
+/**
+ * A Job as the Job Picker shows it: the offering kind and its display facts for the row, the two
+ * dates the tabs order by, and the Customer the global search matches on. Deliberately a subset of
+ * `JobSummary` so a caller that already holds Jobs can feed the picker without a second read.
+ */
+export type JobPickerOption = z.infer<typeof JobPickerOption>;
+export const JobPickerOption = z.object({
+  code: JobCode,
+  completedOn: JobCompletedOn,
+  createdAt: DateIso,
+  /** Null on a Job whose machine we hold, which reads as Stock rather than as a Customer's. */
+  customerCompanyName: z.string().trim().min(1).nullable(),
+  id: UUID,
+  productName: z.string().trim().min(1).nullable(),
+  quoteKind: QuoteKind.nullable(),
+  updatedAt: DateIso,
+  workTitle: QuoteWorkTitle.nullable(),
+});

@@ -165,51 +165,55 @@ describe('inventory procedure permissions', () => {
     await expect(
       context
         .createCaller(mockSession('stores'))
-        .inventory.jobOptions({ movementType: 'checkout', search: String(context.job.code) }),
+        .inventory.jobOptions({ movementType: 'checkout', search: String(context.job.code), tab: 'updated' }),
     ).resolves.toMatchObject({
-      items: [{ code: 'JOB-00001', completedOn: null, displayName: 'Inventory repair', id: context.job.id }],
+      items: [{ code: 'JOB-00001', completedOn: null, id: context.job.id, workTitle: 'Inventory repair' }],
     });
 
     await expect(
       context
         .createCaller(mockSession('sales'))
-        .inventory.jobOptions({ movementType: 'checkout', search: String(context.job.code) }),
+        .inventory.jobOptions({ movementType: 'checkout', search: String(context.job.code), tab: 'updated' }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   test('offers Jobs according to the stock movement direction and inventory lifecycle', async ({ context }) => {
     const caller = context.createCaller(mockSession('stores'));
 
-    await expect(caller.inventory.jobOptions({ movementType: 'checkout' })).resolves.toMatchObject({
+    await expect(caller.inventory.jobOptions({ movementType: 'checkout', tab: 'incomplete' })).resolves.toMatchObject({
       items: [{ id: context.job.id }],
     });
 
     await context.db.update(jobs).set({ cancelledAt: new Date() }).where(eq(jobs.id, context.job.id));
-    await expect(caller.inventory.jobOptions({ movementType: 'return-to-store' })).resolves.toMatchObject({
-      items: [{ id: context.job.id }],
-    });
+    await expect(
+      caller.inventory.jobOptions({ movementType: 'return-to-store', tab: 'updated' }),
+    ).resolves.toMatchObject({ items: [{ id: context.job.id }] });
 
     await context.db
       .update(jobs)
       .set({ cancelledAt: null, completedOn: '2026-08-01' })
       .where(eq(jobs.id, context.job.id));
 
-    await expect(caller.inventory.jobOptions({ movementType: 'checkout' })).resolves.toMatchObject({ items: [] });
-    await expect(
-      caller.inventory.jobOptions({ movementType: 'checkout', search: String(context.job.code) }),
-    ).resolves.toMatchObject({ items: [{ completedOn: '2026-08-01', id: context.job.id }] });
+    // Completion is the Non-complete tab's business, not Checkout's: a late posting still reaches
+    // a finished Job from the recency tabs, right up until its stock is closed out.
+    await expect(caller.inventory.jobOptions({ movementType: 'checkout', tab: 'incomplete' })).resolves.toMatchObject({
+      items: [],
+    });
+    await expect(caller.inventory.jobOptions({ movementType: 'checkout', tab: 'updated' })).resolves.toMatchObject({
+      items: [{ completedOn: '2026-08-01', id: context.job.id }],
+    });
 
     await context.db
       .insert(jobStockCloseOuts)
       .values({ actorUserId: 'test-user-id', jobId: context.job.id, note: null });
 
-    await expect(
-      caller.inventory.jobOptions({ movementType: 'checkout', search: String(context.job.code) }),
-    ).resolves.toMatchObject({ items: [] });
-
-    await expect(caller.inventory.jobOptions({ movementType: 'return-to-store' })).resolves.toMatchObject({
-      items: [{ id: context.job.id }],
+    await expect(caller.inventory.jobOptions({ movementType: 'checkout', tab: 'updated' })).resolves.toMatchObject({
+      items: [],
     });
+
+    await expect(
+      caller.inventory.jobOptions({ movementType: 'return-to-store', tab: 'updated' }),
+    ).resolves.toMatchObject({ items: [{ id: context.job.id }] });
   });
 
   test('pages the Job options, so a picker can reach the Jobs past its first page', async ({ context }) => {
@@ -234,13 +238,19 @@ describe('inventory procedure permissions', () => {
 
     await context.db.insert(jobs).values(extraQuotes.map((quote) => ({ quoteId: quote.id })));
 
-    const firstPage = await caller.inventory.jobOptions({ cursor: 0, limit: 2, movementType: 'checkout' });
+    const firstPage = await caller.inventory.jobOptions({
+      cursor: 0,
+      limit: 2,
+      movementType: 'checkout',
+      tab: 'updated',
+    });
     expect(firstPage).toMatchObject({ nextCursor: 2, total: 3 });
 
     const secondPage = await caller.inventory.jobOptions({
       cursor: firstPage.nextCursor ?? 0,
       limit: 2,
       movementType: 'checkout',
+      tab: 'updated',
     });
 
     expect(secondPage).toMatchObject({ nextCursor: null, total: 3 });

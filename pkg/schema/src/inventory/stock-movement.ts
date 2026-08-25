@@ -7,6 +7,7 @@ import { JobCode, PurchaseOrderCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, SearchText } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
+import { JobPickerOption, JobPickerTab } from '../jobs/job.js';
 import { PartCode, PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
 import { SupplierCompanyName } from '../suppliers/supplier.js';
 import { declareInventoryCostFields, InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
@@ -360,18 +361,16 @@ export type InventoryJobOptionListInput = z.infer<typeof InventoryJobOptionListI
 export const InventoryJobOptionListInput = CursorQueryInput.extend({
   movementType: JobStockMovementType,
   search: SearchText,
+  /** Which of the Job Picker's three lists to read; eligibility for the movement still applies on top. */
+  tab: JobPickerTab,
 });
 
-export type InventoryJobOption = z.infer<typeof InventoryJobOption>;
-export const InventoryJobOption = z.object({
-  code: z.string(),
-  completedOn: DateOnlyIso.nullable(),
-  displayName: z.string(),
-  id: UUID,
-});
-
+/**
+ * The stores picker reads the same rows every other Job Picker does, so a Job that is recognised by
+ * its Product on the Board is recognised the same way here.
+ */
 export type InventoryJobOptionListResult = z.infer<typeof InventoryJobOptionListResult>;
-export const InventoryJobOptionListResult = createCursorQueryResult(InventoryJobOption);
+export const InventoryJobOptionListResult = createCursorQueryResult(JobPickerOption);
 
 /**
  * What a scanned Part label resolves to. The code is matched exactly — a Code 128 read is all-or-

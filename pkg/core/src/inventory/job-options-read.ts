@@ -1,5 +1,7 @@
 import {
-  createEscapedContainsSearchCondition,
+  createGlobalSearchCondition,
+  currentOwnerCustomerId,
+  customers,
   type Db,
   jobs,
   products,
@@ -8,7 +10,7 @@ import {
   withPagination,
 } from '@pkg/db';
 import { parseJobCodeSearch } from '@pkg/domain';
-import type { InventoryJobOptionListInput, InventoryJobOptionListResult } from '@pkg/schema';
+import type { InventoryJobOptionListInput, InventoryJobOptionListResult, JobPickerTab } from '@pkg/schema';
 import {
   formatJobCode,
   getNextCursor,
@@ -16,13 +18,23 @@ import {
 } from '@pkg/schema';
 import { and, asc, count, desc, eq, isNull, or, type SQL, sql } from 'drizzle-orm';
 
-import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { jobIsNotClosedOut } from './close-out-service.js';
 
 /**
+ * Which Customer a Job counts as, in SQL — a Unit-bound Job resolves to whoever holds the machine
+ * now and to `NULL` when we hold it; only a Custom Job falls back to its Quote. The same rule the
+ * Job List filters by, so a Job found here by Customer is the one that Customer sees elsewhere.
+ */
+const jobCustomerId = sql<string | null>`case
+  when ${jobs.productUnitId} is null then ${quotes.customerId}
+  else ${currentOwnerCustomerId(jobs.productUnitId)}
+end`;
+
+/**
  * Jobs eligible for the stores movement picker, whose rules deliberately differ by direction.
- * Checkout starts with open work and lets an explicit search reach completed work until inventory
- * close-out. Return stays broad because recovered stock must not be stranded by lifecycle state.
+ * Checkout excludes work whose stock life has ended — cancelled or closed out — while Return stays
+ * broad, because recovered stock must not be stranded by lifecycle state. Which of those eligible
+ * Jobs the reader is shown, and in what order, is the picker tab's question rather than this one's.
  */
 export async function listInventoryJobOptions({
   db,
@@ -32,20 +44,25 @@ export async function listInventoryJobOptions({
   input: InventoryJobOptionListInput;
 }): Promise<InventoryJobOptionListResult> {
   const where = buildJobOptionWhere(input);
-  const openFirst = input.movementType === 'checkout' && input.search.length > 0;
   const page = db
     .select({
-      ...jobDisplaySelection,
+      code: jobs.code,
       completedOn: jobs.completedOn,
       createdAt: jobs.createdAt,
+      customerCompanyName: customers.companyName,
       id: jobs.id,
+      productName: products.name,
+      quoteKind: quotes.kind,
+      updatedAt: jobs.updatedAt,
+      workTitle: quotes.workTitle,
     })
     .from(jobs)
     .leftJoin(productUnits, eq(productUnits.id, jobs.productUnitId))
     .leftJoin(products, eq(products.id, productUnits.productId))
     .leftJoin(quotes, eq(quotes.id, jobs.quoteId))
+    .leftJoin(customers, eq(customers.id, jobCustomerId))
     .where(where)
-    .orderBy(...(openFirst ? [asc(sql`${jobs.completedOn} is not null`)] : []), desc(jobs.createdAt), asc(jobs.id))
+    .orderBy(...jobOptionOrderBy(input.tab))
     .$dynamic();
   const countQuery = db
     .select({ value: count() })
@@ -53,20 +70,21 @@ export async function listInventoryJobOptions({
     .leftJoin(productUnits, eq(productUnits.id, jobs.productUnitId))
     .leftJoin(products, eq(products.id, productUnits.productId))
     .leftJoin(quotes, eq(quotes.id, jobs.quoteId))
+    .leftJoin(customers, eq(customers.id, jobCustomerId))
     .where(where);
   const [rows, [totalRow]] = await Promise.all([withPagination(page, input), countQuery]);
   const total = totalRow?.value ?? 0;
 
   return InventoryJobOptionListResultSchema.parse({
-    items: rows.map((row) => ({
-      code: formatJobCode(row.code),
-      completedOn: row.completedOn,
-      displayName: jobDisplayNameOf(row),
-      id: row.id,
-    })),
+    items: rows.map((row) => ({ ...row, code: formatJobCode(row.code) })),
     nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }),
     total,
   });
+}
+
+/** Newest first on the tab's own date, with the Job id breaking ties so paging cannot repeat a row. */
+function jobOptionOrderBy(tab: JobPickerTab): SQL[] {
+  return [desc(tab === 'created' ? jobs.createdAt : jobs.updatedAt), asc(jobs.id)];
 }
 
 function buildJobOptionWhere(input: InventoryJobOptionListInput): SQL | undefined {
@@ -74,18 +92,22 @@ function buildJobOptionWhere(input: InventoryJobOptionListInput): SQL | undefine
 
   if (input.movementType === 'checkout') {
     conditions.push(isNull(jobs.cancelledAt), jobIsNotClosedOut(jobs.id));
+  }
 
-    // Completion is searchable for late postings, but it should not crowd current work by default.
-    if (!input.search) conditions.push(isNull(jobs.completedOn));
+  if (input.tab === 'incomplete') {
+    conditions.push(isNull(jobs.completedOn));
   }
 
   if (input.search) {
     const code = parseJobCodeSearch(input.search);
     conditions.push(
       or(
-        createEscapedContainsSearchCondition(sql`concat('JOB-', lpad(${jobs.code}::text, 5, '0'))`, input.search),
-        createEscapedContainsSearchCondition(sql`${products.name}`, input.search),
-        createEscapedContainsSearchCondition(sql`${quotes.workTitle}`, input.search),
+        createGlobalSearchCondition(input.search, [
+          sql`concat('JOB-', lpad(${jobs.code}::text, 5, '0'))`,
+          sql`${products.name}`,
+          sql`${quotes.workTitle}`,
+          sql`${customers.companyName}`,
+        ]),
         code === undefined ? undefined : eq(jobs.code, code),
       ) as SQL,
     );

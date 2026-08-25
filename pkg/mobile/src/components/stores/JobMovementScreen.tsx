@@ -1,4 +1,4 @@
-import type { InventoryJobOption, JobStockMovementType, StockOnHandRow } from '@pkg/schema';
+import type { JobPickerOption, JobStockMovementType, StockOnHandRow } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type RefObject, useRef, useState } from 'react';
 import { previewJobMovementWarnings } from '@/lib/movement-preview';
@@ -60,7 +60,7 @@ function JobMovementForm({
 }) {
   const trpc = useTRPC();
   const actorUserId = useMovementActorUserId();
-  const [job, setJob] = useState<InventoryJobOption | null>(null);
+  const [job, setJob] = useState<JobPickerOption | null>(null);
   const [jobSearch, setJobSearch] = useState('');
   const [quantity, setQuantity] = useState('');
   // Null means "nobody has touched the length yet", which is what lets the standard purchase length

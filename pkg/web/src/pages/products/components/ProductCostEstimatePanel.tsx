@@ -7,10 +7,11 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
+import type { RowData } from '@tanstack/react-table';
 import type React from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
-import { type DataTableColumnDef, type RowData, useDataTable } from '@/components/data-table/features.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';

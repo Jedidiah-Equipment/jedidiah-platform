@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && tsx scripts/verify-server-bundle.ts",
+    "build": "vite build && pnpm verify:server-bundle",
     "assets:optimize": "tsx scripts/optimize-assets.ts",
     "start": "srvx --prod dist/server/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify:server-bundle": "tsx scripts/verify-server-bundle.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1116.0",

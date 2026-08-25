@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && tsx scripts/verify-server-bundle.ts",
     "assets:optimize": "tsx scripts/optimize-assets.ts",
     "start": "srvx --prod dist/server/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",

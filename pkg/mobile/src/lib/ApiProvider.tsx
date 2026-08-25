@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { useSession } from './auth';
 import { createQueryClient } from './query-client';
+import { sessionUserId } from './session-state';
 import { createTrpcClient, TRPCProvider } from './trpc';
 
 /** Wires React Query + the typed tRPC client for the whole app (mounted in app/_layout.tsx). */
@@ -15,7 +16,7 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   // (e.g. a sales user without `job:read`) could briefly render the previous user's
   // cached query under the same key before its refetch 403s.
   const { data: session } = useSession();
-  const userId = session?.user.id ?? null;
+  const userId = sessionUserId(session);
   const previousUserId = useRef(userId);
   useEffect(() => {
     if (previousUserId.current === userId) return;

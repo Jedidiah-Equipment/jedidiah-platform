@@ -44,6 +44,7 @@ export default ({ config }: ConfigContext): AppConfig => {
       ],
       '@config-plugins/react-native-pdf',
       '@config-plugins/react-native-blob-util',
+      ['expo-secure-store', { faceIDPermission: false }],
     ],
     experiments: {
       typedRoutes: true,

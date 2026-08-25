@@ -24,7 +24,7 @@
     "@react-pdf/renderer": "^4.8.1",
     "bwip-js": "4.11.4",
     "pdf-lib": "^1.17.1",
-    "react": "19.2.3"
+    "react": "19.2.8"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",

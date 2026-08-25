@@ -2,22 +2,15 @@ import { formatCurrency, formatNumber } from '@pkg/domain';
 import type { InvoicePriceVarianceRow } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { priceVariancePageDescription } from '@/utils/page-descriptions.js';
 
-const columns: ColumnDef<InvoicePriceVarianceRow>[] = [
+const columns: DataTableColumnDef<InvoicePriceVarianceRow>[] = [
   {
     accessorKey: 'purchaseOrderCode',
     cell: ({ row }) => <span className="font-medium font-mono">{row.original.purchaseOrderCode}</span>,
@@ -90,14 +83,11 @@ export function PriceVarianceReportPage() {
   const navigate = useNavigate();
   const query = useQuery(trpc.purchaseOrders.invoicePriceVariance.queryOptions());
   const items = query.data?.items ?? [];
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getRowId: (row) => `${row.documentId}:${row.partId}`,
   });
 

@@ -1,21 +1,20 @@
 import type { JobSummary } from '@pkg/schema';
-import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { useDataTable } from '@/components/data-table/features.js';
 import { buildJobSummary } from '@/test/job-fixtures.js';
 
-import { createJobListColumns, jobTablePinnedLeftColumns, jobTablePinnedRightColumns } from './JobListTableColumns.js';
+import { createJobListColumns, jobTablePinnedEndColumns, jobTablePinnedStartColumns } from './JobListTableColumns.js';
 
 const customerOptions = [{ label: 'Acme Mining', value: '10000000-0000-4000-8000-000000000000' }];
 
 describe('Job List table columns', () => {
-  it('pins job code left and actions right', () => {
+  it('pins job code to the start and actions to the end', () => {
     const html = renderJobListRows([], { canEditJobs: true, canOpenJobs: true });
 
-    expect(html).toContain('left:0px');
-    expect(html).toContain('right:0px');
+    expect(html).toContain('inset-inline-start:0px');
+    expect(html).toContain('inset-inline-end:0px');
     expect(html).toContain('width:112px');
     expect(html).toContain('width:88px');
     expect(html).toContain('bg-inherit');
@@ -180,7 +179,7 @@ function renderJobListRows(
 }
 
 function TestJobListTable({ permissions, rows }: { permissions: TestColumnOptions; rows: JobSummary[] }) {
-  const table = useReactTable({
+  const table = useDataTable({
     columns: createJobListColumns({
       canFilterCompletedOn: false,
       ...permissions,
@@ -188,11 +187,10 @@ function TestJobListTable({ permissions, rows }: { permissions: TestColumnOption
       showCustomerColumn: true,
     }),
     data: rows,
-    getCoreRowModel: getCoreRowModel(),
     state: {
       columnPinning: {
-        left: jobTablePinnedLeftColumns,
-        right: permissions.canOpenJobs ? jobTablePinnedRightColumns : [],
+        start: jobTablePinnedStartColumns,
+        end: permissions.canOpenJobs ? jobTablePinnedEndColumns : [],
       },
     },
   });

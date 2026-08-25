@@ -10,9 +10,8 @@ import {
 } from '@pkg/domain';
 import { type PriorityQuote, QuoteInvoicedFilter, QuoteKind, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import type { ColumnDef } from '@tanstack/react-table';
-
 import { DateDisplay } from '@/components/common/DateDisplay.js';
+import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
@@ -57,8 +56,8 @@ export const quoteInvoicedFilterOptions = QuoteInvoicedFilter.options.map((invoi
   value: invoiced,
 }));
 
-export const quoteTablePinnedLeftColumns = ['code'];
-export const quoteTablePinnedRightColumns = ['status', 'job'];
+export const quoteTablePinnedStartColumns = ['code'];
+export const quoteTablePinnedEndColumns = ['status', 'job'];
 
 export function createQuoteTableRow(quote: QuoteSummary): QuoteTableRow {
   return {
@@ -92,7 +91,7 @@ export function createQuoteTableColumns({
   productOptions: FilterOption[];
   salespersonOptions: FilterOption[];
   showCustomerColumn: boolean;
-}): ColumnDef<QuoteTableRow>[] {
+}): DataTableColumnDef<QuoteTableRow>[] {
   return [
     {
       accessorFn: (row) => row.quote.code,
@@ -138,7 +137,7 @@ export function createQuoteTableColumns({
               headerClassName: 'min-w-40 max-w-44',
             },
             size: 176,
-          } satisfies ColumnDef<QuoteTableRow>,
+          } satisfies DataTableColumnDef<QuoteTableRow>,
         ]
       : []),
     {

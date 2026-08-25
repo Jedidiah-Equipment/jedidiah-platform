@@ -1,12 +1,13 @@
 import { type Customer, type CustomerListInput, CustomerSortBy } from '@pkg/schema';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
-import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo } from 'react';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -54,7 +55,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
   );
   const { items: customers, total } = useCombinedCursorQueryPages(customersQuery.data?.pages);
 
-  const columns = useMemo<ColumnDef<Customer>[]>(
+  const columns = useMemo<DataTableColumnDef<Customer>[]>(
     () => [
       {
         accessorKey: 'companyName',
@@ -119,11 +120,10 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
     [],
   );
 
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: customers,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,

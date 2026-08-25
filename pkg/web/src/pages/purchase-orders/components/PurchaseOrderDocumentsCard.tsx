@@ -2,10 +2,9 @@ import { formatBytes, formatDate } from '@pkg/domain';
 import { PURCHASE_ORDER_DOCUMENT_TYPE_LABELS, type PurchaseOrderDocumentRow, type UUID } from '@pkg/schema';
 import { IconEye } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useMemo } from 'react';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
 import { useFilePreview } from '@/components/documents/use-file-preview.js';
 import { Badge } from '@/components/ui/badge.js';
@@ -30,7 +29,7 @@ export function PurchaseOrderDocumentsCard({
   const query = useQuery(trpc.purchaseOrders.documents.queryOptions({ purchaseOrderId }));
   const items = query.data?.items ?? [];
   const preview = useFilePreview<PurchaseOrderDocumentRow>();
-  const columns = useMemo<ColumnDef<PurchaseOrderDocumentRow>[]>(
+  const columns = useMemo<DataTableColumnDef<PurchaseOrderDocumentRow>[]>(
     () => [
       {
         cell: ({ row }) => (
@@ -87,18 +86,17 @@ export function PurchaseOrderDocumentsCard({
               enableSorting: false,
               header: () => <span className="sr-only">Preview</span>,
               id: 'preview',
-            } satisfies ColumnDef<PurchaseOrderDocumentRow>,
+            } satisfies DataTableColumnDef<PurchaseOrderDocumentRow>,
           ]
         : []),
     ],
     [canReadCosts, preview.open],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: items,
     enableColumnFilters: false,
     enableSorting: false,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (document) => document.id,
   });
 

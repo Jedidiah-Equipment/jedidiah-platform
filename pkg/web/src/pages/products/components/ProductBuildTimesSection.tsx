@@ -3,11 +3,10 @@ import type { ProductBuildMetrics, UUID } from '@pkg/schema';
 import { formatJobCode } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useMemo } from 'react';
-
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -70,7 +69,7 @@ const BuildTimeHeadline: React.FC<{ metrics: ProductBuildMetrics }> = ({ metrics
 };
 
 const BuildBreakdownCard: React.FC<{ builds: Build[] }> = ({ builds }) => {
-  const columns = useMemo<ColumnDef<Build>[]>(
+  const columns = useMemo<DataTableColumnDef<Build>[]>(
     () => [
       {
         cell: ({ row }) => (
@@ -97,11 +96,11 @@ const BuildBreakdownCard: React.FC<{ builds: Build[] }> = ({ builds }) => {
     ],
     [],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: builds,
     enableColumnFilters: false,
-    getCoreRowModel: getCoreRowModel(),
+    enableSorting: false,
     getRowId: (build) => build.jobId,
   });
 
@@ -126,7 +125,7 @@ const BuildBreakdownCard: React.FC<{ builds: Build[] }> = ({ builds }) => {
 };
 
 const FabricatorRankingCard: React.FC<{ ranking: RankingRow[] }> = ({ ranking }) => {
-  const columns = useMemo<ColumnDef<RankingRow>[]>(
+  const columns = useMemo<DataTableColumnDef<RankingRow>[]>(
     () => [
       { accessorKey: 'name', header: 'Fabricator' },
       {
@@ -143,11 +142,11 @@ const FabricatorRankingCard: React.FC<{ ranking: RankingRow[] }> = ({ ranking })
     ],
     [],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: ranking,
     enableColumnFilters: false,
-    getCoreRowModel: getCoreRowModel(),
+    enableSorting: false,
     getRowId: (row) => row.userId,
   });
 

@@ -3,11 +3,12 @@ import { type QuoteListInput, QuoteSortBy, type UUID } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
@@ -24,8 +25,8 @@ import {
   createQuoteTableRow,
   getQuoteTableRowClassName,
   type QuoteTableRow,
-  quoteTablePinnedLeftColumns,
-  quoteTablePinnedRightColumns,
+  quoteTablePinnedEndColumns,
+  quoteTablePinnedStartColumns,
 } from './components/QuoteTableColumns.js';
 import { getQuoteIdFilterValue, getQuoteListInputExtras } from './components/quote-table-input.js';
 import { QuoteCreateDialog } from './QuoteCreateDialog.js';
@@ -136,15 +137,14 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
     ],
   );
 
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: tableRows,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
     initialState: {
       columnPinning: {
-        left: quoteTablePinnedLeftColumns,
-        right: quoteTablePinnedRightColumns,
+        start: quoteTablePinnedStartColumns,
+        end: quoteTablePinnedEndColumns,
       },
     },
     manualFiltering: true,

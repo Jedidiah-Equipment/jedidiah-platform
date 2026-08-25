@@ -1,11 +1,10 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
 import { PriorityQuote, type PriorityQuote as PriorityQuoteType } from '@pkg/schema';
-import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { addDays, format as formatDateFns } from 'date-fns';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { useDataTable } from '@/components/data-table/features.js';
 
 import {
   createPriorityQuoteTableRow,
@@ -13,8 +12,8 @@ import {
   createQuoteTableRow,
   getQuoteTableRowClassName,
   type QuoteTableRow,
-  quoteTablePinnedLeftColumns,
-  quoteTablePinnedRightColumns,
+  quoteTablePinnedEndColumns,
+  quoteTablePinnedStartColumns,
 } from './components/QuoteTableColumns.js';
 
 describe('Quote table priority rows', () => {
@@ -63,15 +62,15 @@ describe('Quote table priority rows', () => {
     expect(html.match(/>QUO-00001</g)).toHaveLength(2);
   });
 
-  it('renders quote code left-pinned and status/job right-pinned', () => {
+  it('renders quote code start-pinned and status/job end-pinned', () => {
     const html = renderQuoteTableRows([
       createPriorityQuoteTableRow(buildPriorityQuote({ job: null })),
       createQuoteTableRow(buildPriorityQuote({ job: null })),
     ]);
 
-    expect(html).toContain('left:0px');
-    expect(html).toContain('right:144px');
-    expect(html).toContain('right:0px');
+    expect(html).toContain('inset-inline-start:0px');
+    expect(html).toContain('inset-inline-end:144px');
+    expect(html).toContain('inset-inline-end:0px');
     expect(html).toContain('[--table-row-bg:var(--warning-surface)]');
     expect(html).toContain('bg-inherit');
     expect(html.match(/sticky/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
@@ -112,7 +111,7 @@ function renderQuoteTableRows(rows: QuoteTableRow[]) {
 }
 
 function TestQuoteTable({ rows }: { rows: QuoteTableRow[] }) {
-  const table = useReactTable({
+  const table = useDataTable({
     columns: createQuoteTableColumns({
       canOpenJobs: false,
       customerOptions: [],
@@ -121,11 +120,10 @@ function TestQuoteTable({ rows }: { rows: QuoteTableRow[] }) {
       showCustomerColumn: true,
     }),
     data: rows,
-    getCoreRowModel: getCoreRowModel(),
     initialState: {
       columnPinning: {
-        left: quoteTablePinnedLeftColumns,
-        right: quoteTablePinnedRightColumns,
+        start: quoteTablePinnedStartColumns,
+        end: quoteTablePinnedEndColumns,
       },
     },
   });

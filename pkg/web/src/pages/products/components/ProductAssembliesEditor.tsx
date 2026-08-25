@@ -4,10 +4,10 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { createStableRowKeys, formatCurrency, getFormIssuesForField, hasFormIssuesWithin } from '@pkg/domain';
 import { AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash, IconWorld } from '@tabler/icons-react';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import React, { useMemo } from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
 import {
   CreatableComboboxField,
@@ -737,7 +737,7 @@ const AssemblyPartsDataTable: React.FC<AssemblyPartsDataTableProps> = ({
   parentIndex,
   partOptions,
 }) => {
-  const columns = useMemo<ColumnDef<AssemblyPartTableRow>[]>(
+  const columns = useMemo<DataTableColumnDef<AssemblyPartTableRow>[]>(
     () => [
       {
         cell: ({ row }) => (
@@ -788,12 +788,11 @@ const AssemblyPartsDataTable: React.FC<AssemblyPartsDataTableProps> = ({
     ],
     [categories, onRemove, onStructuralChange, parentIndex, partOptions],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: items,
     enableColumnFilters: false,
     enableSorting: false,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => row.key,
   });
 

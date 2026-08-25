@@ -1,16 +1,9 @@
 import { formatCurrency, formatDate, formatEstimatedStockOnHand } from '@pkg/domain';
 import type { StockOnHandRow, UUID } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
 import { useMemo } from 'react';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import {
@@ -33,18 +26,15 @@ export function StockOnHandTable({
   onOpenHistory: (partId: UUID) => void;
   showCosts: boolean;
 }) {
-  const columns = useMemo<ColumnDef<StockOnHandRow>[]>(
+  const columns = useMemo<DataTableColumnDef<StockOnHandRow>[]>(
     () => createStockOnHandColumns({ onOpenHistory, showCosts }),
     [onOpenHistory, showCosts],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
   const total = table.getFilteredRowModel().rows.length;
 
@@ -68,7 +58,7 @@ function createStockOnHandColumns({
 }: {
   onOpenHistory: (partId: UUID) => void;
   showCosts: boolean;
-}): ColumnDef<StockOnHandRow>[] {
+}): DataTableColumnDef<StockOnHandRow>[] {
   return [
     {
       accessorFn: (item) => `${item.partName} ${item.partCode}`,
@@ -149,12 +139,12 @@ function createStockOnHandColumns({
             accessorKey: 'averageUnitCost',
             cell: ({ row }) => formatAverageCost(row.original),
             header: 'Average cost',
-          } satisfies ColumnDef<StockOnHandRow>,
+          } satisfies DataTableColumnDef<StockOnHandRow>,
           {
             accessorKey: 'totalValue',
             cell: ({ row }) => formatInventoryValue(row.original.totalValue),
             header: 'Value',
-          } satisfies ColumnDef<StockOnHandRow>,
+          } satisfies DataTableColumnDef<StockOnHandRow>,
         ]
       : []),
     {

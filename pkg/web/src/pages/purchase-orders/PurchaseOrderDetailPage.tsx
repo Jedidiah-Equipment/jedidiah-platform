@@ -26,14 +26,13 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-
 import { AuditTable, usePurchaseOrderAuditTableStore } from '@/components/audit/AuditTable.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { FilePreviewSheet } from '@/components/documents/FilePreviewSheet.js';
 import { useFilePreview } from '@/components/documents/use-file-preview.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
@@ -626,7 +625,7 @@ const PurchaseOrderLinesDataTable: React.FC<{
   removeLine: (index: number) => void;
 }> = ({ commit, eligibleParts, form, lines, removeLine }) => {
   const data = useMemo(() => lines.map((line, index) => ({ index, key: getLineKey(line), line })), [lines]);
-  const columns = useMemo<ColumnDef<PurchaseOrderLineTableRow>[]>(
+  const columns = useMemo<DataTableColumnDef<PurchaseOrderLineTableRow>[]>(
     () => [
       {
         cell: ({ row }) => {
@@ -734,12 +733,11 @@ const PurchaseOrderLinesDataTable: React.FC<{
     ],
     [commit, eligibleParts, form, lines, removeLine],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data,
     enableColumnFilters: false,
     enableSorting: false,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => row.key,
   });
 
@@ -900,7 +898,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
   /** Absent when the reader may not amend, which is what drops the actions column entirely. */
   onAmend: ((kind: PurchaseOrderAmendmentKind, partId: string) => void) | null;
 }> = ({ canReadCosts, items, onAmend }) => {
-  const columns = useMemo<ColumnDef<PurchaseOrderView['lines'][number]>[]>(
+  const columns = useMemo<DataTableColumnDef<PurchaseOrderView['lines'][number]>[]>(
     () => [
       {
         accessorFn: (line) => `${line.partCode} ${line.partName}`,
@@ -931,7 +929,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
                 row.original.unitPrice === null ? '—' : formatCurrency(row.original.unitPrice, 'ZAR'),
               header: 'Unit price',
               meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
-            } satisfies ColumnDef<PurchaseOrderView['lines'][number]>,
+            } satisfies DataTableColumnDef<PurchaseOrderView['lines'][number]>,
             {
               accessorFn: (line) => (line.unitPrice === null ? null : line.quantity * line.unitPrice),
               cell: ({ getValue }) => {
@@ -941,7 +939,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
               header: 'Amount',
               id: 'amount',
               meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
-            } satisfies ColumnDef<PurchaseOrderView['lines'][number]>,
+            } satisfies DataTableColumnDef<PurchaseOrderView['lines'][number]>,
           ]
         : []),
       ...(onAmend
@@ -979,18 +977,17 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
               enableSorting: false,
               header: () => <span className="sr-only">Amend</span>,
               id: 'amend',
-            } satisfies ColumnDef<PurchaseOrderView['lines'][number]>,
+            } satisfies DataTableColumnDef<PurchaseOrderView['lines'][number]>,
           ]
         : []),
     ],
     [canReadCosts, onAmend],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: items,
     enableColumnFilters: false,
     enableSorting: false,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (line) => line.partId,
   });
 

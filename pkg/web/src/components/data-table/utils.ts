@@ -1,10 +1,11 @@
-import type { Cell, Column } from '@tanstack/react-table';
+import type { RowData } from '@tanstack/react-table';
+import type { DataTableCellInstance, DataTableColumnInstance } from './features.js';
 
-export function getCellClassName<TData>(cell: Cell<TData, unknown>): string | undefined {
+export function getCellClassName<TData extends RowData>(cell: DataTableCellInstance<TData>): string | undefined {
   return cell.column.columnDef.meta?.cellClassName;
 }
 
-export function getColumnLabel<TData>(column: Column<TData, unknown>): string {
+export function getColumnLabel<TData extends RowData>(column: DataTableColumnInstance<TData>): string {
   return typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id;
 }
 

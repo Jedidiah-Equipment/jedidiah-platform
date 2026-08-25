@@ -1,9 +1,8 @@
 import type { Part, PartLabelBatchSelection, UUID } from '@pkg/schema';
-import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { useDataTable } from '@/components/data-table/features.js';
 import { createPartLabelActionColumn } from './components/PartTable.js';
 import { PartLabelPrintButton } from './PartLabelPrintButton.js';
 import { partLabelBatchModeLabels, partLabelBatchUrl, partLabelUrl } from './part-label.js';
@@ -61,10 +60,9 @@ describe('Part label actions', () => {
 });
 
 function PartLabelActionTable() {
-  const table = useReactTable({
+  const table = useDataTable({
     columns: [createPartLabelActionColumn()],
     data: [{ id: PART_ID } as Part],
-    getCoreRowModel: getCoreRowModel(),
   });
 
   return <DataTable emptyMessage="No parts" hideGlobalFilter paginationMode="complete" table={table} total={1} />;

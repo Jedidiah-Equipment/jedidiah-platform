@@ -1,18 +1,11 @@
 import { departmentLabels, roleLabels } from '@pkg/domain';
 import { type AuthId, UserSortBy, type UserSummary } from '@pkg/schema';
 import { IconDeviceTablet } from '@tabler/icons-react';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { constrainSorting, type SortOptions } from '@/components/data-table/table-state.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
@@ -61,8 +54,8 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
       sorting: state.sorting,
     })),
   );
-  const columns = useMemo<ColumnDef<UserSummary>[]>(() => {
-    const tableColumns: ColumnDef<UserSummary>[] = [
+  const columns = useMemo<DataTableColumnDef<UserSummary>[]>(() => {
+    const tableColumns: DataTableColumnDef<UserSummary>[] = [
       {
         accessorKey: 'name',
         cell: ({ row }) => (
@@ -108,13 +101,10 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
 
   const constrainedSorting = useMemo(() => constrainSorting(sorting, userSortOptions), [sorting]);
 
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: users,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     globalFilterFn: userGlobalFilter,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,

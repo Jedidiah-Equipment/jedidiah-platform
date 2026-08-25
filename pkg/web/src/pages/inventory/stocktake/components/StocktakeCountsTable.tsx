@@ -1,15 +1,8 @@
 import { formatCurrency, formatDate, formatEstimatedStockOnHand } from '@pkg/domain';
 import type { StocktakeSessionCount } from '@pkg/schema';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
 import { useMemo } from 'react';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { formatLengthBucket, formatPartQuantity } from '@/utils/part-quantity-format.js';
 
 /**
@@ -27,14 +20,11 @@ export function StocktakeCountsTable({
   showCosts: boolean;
 }) {
   const columns = useMemo(() => createCountColumns(showCosts), [showCosts]);
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
   const total = table.getFilteredRowModel().rows.length;
 
@@ -51,7 +41,7 @@ export function StocktakeCountsTable({
   );
 }
 
-function createCountColumns(showCosts: boolean): ColumnDef<StocktakeSessionCount>[] {
+function createCountColumns(showCosts: boolean): DataTableColumnDef<StocktakeSessionCount>[] {
   return [
     {
       accessorFn: (item) => `${item.partName} ${item.partCode}`,
@@ -121,7 +111,7 @@ function createCountColumns(showCosts: boolean): ColumnDef<StocktakeSessionCount
             header: 'Value',
             id: 'varianceValue',
             meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
-          } satisfies ColumnDef<StocktakeSessionCount>,
+          } satisfies DataTableColumnDef<StocktakeSessionCount>,
         ]
       : []),
     {

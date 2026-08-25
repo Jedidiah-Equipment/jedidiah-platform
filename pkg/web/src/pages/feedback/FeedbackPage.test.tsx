@@ -1,17 +1,16 @@
 import { FeedbackListItem, type FeedbackListItem as FeedbackListItemType } from '@pkg/schema';
-import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { useDataTable } from '@/components/data-table/features.js';
 
-import { createFeedbackInboxColumns, feedbackTablePinnedRightColumns } from './FeedbackPage.js';
+import { createFeedbackInboxColumns, feedbackTablePinnedEndColumns } from './FeedbackPage.js';
 
 describe('Feedback table', () => {
-  it('renders status as a right-pinned column', () => {
+  it('renders status as an end-pinned column', () => {
     const html = renderFeedbackTableRows([buildFeedbackItem()]);
 
-    expect(html).toContain('right:0px');
+    expect(html).toContain('inset-inline-end:0px');
     expect(html).toContain('bg-inherit');
     expect(html.match(/sticky/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
@@ -37,13 +36,13 @@ function TestFeedbackTable({
   rows: FeedbackListItemType[];
   selectedFeedbackId: string | null;
 }) {
-  const table = useReactTable({
+  const table = useDataTable({
     columns: createFeedbackInboxColumns(),
     data: rows,
-    getCoreRowModel: getCoreRowModel(),
     initialState: {
       columnPinning: {
-        right: feedbackTablePinnedRightColumns,
+        start: [],
+        end: feedbackTablePinnedEndColumns,
       },
     },
   });

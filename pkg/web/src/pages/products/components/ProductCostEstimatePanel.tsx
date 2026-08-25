@@ -7,11 +7,11 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import type { RowData } from '@tanstack/react-table';
 import type React from 'react';
-
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
@@ -162,18 +162,20 @@ function AssemblyEstimate({ assembly }: { assembly: ProductCostEstimateAssembly 
   );
 }
 
-function EstimateDataTable<T>({
+function EstimateDataTable<T extends RowData>({
   columns,
   data,
   emptyMessage,
   totalLabel,
 }: {
-  columns: ColumnDef<T>[];
+  columns: DataTableColumnDef<T>[];
   data: T[];
   emptyMessage: string;
   totalLabel: string;
 }) {
-  const table = useReactTable({ columns, data, getCoreRowModel: getCoreRowModel() });
+  // Columns here are numeric or pre-formatted for display, not written for client-side sorting or
+  // filtering: 'auto' would range-parse a typed string per character and sort formatted numbers as text.
+  const table = useDataTable({ columns, data, enableColumnFilters: false, enableSorting: false });
 
   return (
     <DataTable
@@ -224,7 +226,7 @@ function UnitCostCell({
   );
 }
 
-const materialColumns: ColumnDef<ProductCostEstimateMaterialLine>[] = [
+const materialColumns: DataTableColumnDef<ProductCostEstimateMaterialLine>[] = [
   partIdentityColumn,
   {
     accessorKey: 'quantityPerUnit',
@@ -239,7 +241,7 @@ const materialColumns: ColumnDef<ProductCostEstimateMaterialLine>[] = [
   { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor, 'ZAR'), header: 'Cost' },
 ];
 
-const partColumns: ColumnDef<ProductCostEstimatePartLine>[] = [
+const partColumns: DataTableColumnDef<ProductCostEstimatePartLine>[] = [
   partIdentityColumn,
   {
     accessorKey: 'quantity',
@@ -259,7 +261,7 @@ const partColumns: ColumnDef<ProductCostEstimatePartLine>[] = [
   { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor, 'ZAR'), header: 'Cost' },
 ];
 
-const laborColumns: ColumnDef<ProductCostEstimateLaborLine>[] = [
+const laborColumns: DataTableColumnDef<ProductCostEstimateLaborLine>[] = [
   { accessorKey: 'department', cell: ({ row }) => departmentLabels[row.original.department], header: 'Department' },
   { accessorKey: 'hours', header: 'Hours per unit' },
   { accessorKey: 'hourlyRate', cell: ({ row }) => formatCurrency(row.original.hourlyRate, 'ZAR'), header: 'Rate' },

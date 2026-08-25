@@ -1,11 +1,10 @@
 import { formatDate } from '@pkg/domain';
 import type { RawMaterialDriftReport, RawMaterialDriftRow } from '@pkg/schema';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 
-const columns: ColumnDef<RawMaterialDriftRow>[] = [
+const columns: DataTableColumnDef<RawMaterialDriftRow>[] = [
   {
     accessorFn: (row) => `${row.partName} ${row.partCode}`,
     cell: ({ row }) => (
@@ -43,7 +42,14 @@ const columns: ColumnDef<RawMaterialDriftRow>[] = [
 ];
 
 export function RawMaterialDriftTable({ report }: { report: RawMaterialDriftReport }) {
-  const table = useReactTable({ columns, data: report.items, getCoreRowModel: getCoreRowModel() });
+  // Columns here are numeric or pre-formatted for display, not written for client-side sorting or
+  // filtering: 'auto' would range-parse a typed string per character and sort formatted numbers as text.
+  const table = useDataTable({
+    columns,
+    data: report.items,
+    enableColumnFilters: false,
+    enableSorting: false,
+  });
 
   return (
     <div className="grid gap-2">

@@ -1,10 +1,9 @@
 import { formatDate, formatNumber } from '@pkg/domain';
 import { PURCHASE_ORDER_AMENDMENT_KIND_LABELS, type PurchaseOrderAmendment, type UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useMemo } from 'react';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -17,7 +16,7 @@ export function PurchaseOrderAmendmentsCard({ purchaseOrderId }: { purchaseOrder
   const trpc = useTRPC();
   const query = useQuery(trpc.purchaseOrders.amendments.queryOptions({ purchaseOrderId }));
   const items = query.data?.items ?? [];
-  const columns = useMemo<ColumnDef<PurchaseOrderAmendment>[]>(
+  const columns = useMemo<DataTableColumnDef<PurchaseOrderAmendment>[]>(
     () => [
       {
         accessorKey: 'createdAt',
@@ -43,12 +42,11 @@ export function PurchaseOrderAmendmentsCard({ purchaseOrderId }: { purchaseOrder
     ],
     [],
   );
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: items,
     enableColumnFilters: false,
     enableSorting: false,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (amendment) => amendment.id,
   });
 

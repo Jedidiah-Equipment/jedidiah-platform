@@ -7,12 +7,11 @@ import {
 } from '@pkg/domain';
 import { APP_PERMISSIONS, APP_ROLES, type AppPermission, type AppRole } from '@pkg/schema';
 import { IconCheck, IconMinus } from '@tabler/icons-react';
-import { type ColumnDef, getCoreRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 
@@ -40,7 +39,7 @@ export const PermissionMatrix: React.FC = () => {
     })),
   );
 
-  const columns = useMemo<ColumnDef<PermissionRow>[]>(
+  const columns = useMemo<DataTableColumnDef<PermissionRow>[]>(
     () => [
       {
         accessorKey: 'permission',
@@ -50,7 +49,7 @@ export const PermissionMatrix: React.FC = () => {
         header: 'Permission',
         meta: { headerClassName: 'min-w-80' },
       },
-      ...APP_ROLES.map<ColumnDef<PermissionRow>>((role) => ({
+      ...APP_ROLES.map<DataTableColumnDef<PermissionRow>>((role) => ({
         cell: ({ row }) => {
           const granted = permissionsByRole.get(role)?.has(row.original.permission) ?? false;
           const label = `${roleLabels[role]}: ${permissionLabels[row.original.permission]} ${granted ? 'granted' : 'not granted'}`;
@@ -71,11 +70,11 @@ export const PermissionMatrix: React.FC = () => {
     [],
   );
 
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: permissionRows,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    // Rows are a permission against a grid of role icons; only the shared search reads them.
+    enableSorting: false,
     globalFilterFn: permissionGlobalFilter,
     onGlobalFilterChange: setGlobalFilter,
     state: { globalFilter },

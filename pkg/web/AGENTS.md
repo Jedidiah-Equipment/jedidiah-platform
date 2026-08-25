@@ -6,8 +6,13 @@
 - Route all React Query invalidation through `src/hooks/use-query-invalidation.ts`; invalidate whole affected tRPC root paths.
 - Use shared UI primitives for standard surfaces: `Card` composition from `src/components/ui/card.tsx` and `ScrollArea` for page/panel scrolling.
 - Whenever the UI presents tabular data, render it through `src/components/data-table/DataTable.tsx`;
-  feature and page code must not compose `src/components/ui/table.tsx` directly. `DataTable` supports
-  three list shapes, all configured by building the TanStack table in the feature and passing it in:
+  feature and page code must not compose `src/components/ui/table.tsx` directly. Build the table with
+  `useDataTable` and type its columns with `DataTableColumnDef`, both from
+  `src/components/data-table/features.ts` — never `useReactTable`/`ColumnDef` from the library. TanStack
+  Table v9 only exposes an API when its feature is registered, and `dataTableFeatures` is the one
+  registration every table and `DataTable` itself share; a table built any other way is missing the
+  features the primitive calls. `DataTable` supports three list shapes, all configured by building the
+  table in the feature and passing it in:
   - `paginationMode="cursor"` — the API owns filtering, sorting, and pagination. Follow
     `src/pages/products/components/ProductTable.tsx`.
   - `paginationMode="complete"` — the browser owns them and every row renders. Follow

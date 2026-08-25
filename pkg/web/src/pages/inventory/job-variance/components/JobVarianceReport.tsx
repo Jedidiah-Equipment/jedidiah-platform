@@ -1,15 +1,8 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
 import { isOffCfo, type JobMaterialVarianceResult, type JobMaterialVarianceRow } from '@pkg/schema';
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
 import { useMemo } from 'react';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 
@@ -24,14 +17,11 @@ import { formatPartQuantity } from '@/utils/part-quantity-format.js';
  */
 export function JobVarianceReport({ report, showCosts }: { report: JobMaterialVarianceResult; showCosts: boolean }) {
   const columns = useMemo(() => createVarianceColumns(showCosts), [showCosts]);
-  const table = useReactTable({
+  const table = useDataTable({
     columns,
     data: report.items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
 
   if (report.items.length === 0) {
@@ -103,7 +93,7 @@ export function describeVarianceJob(job: JobMaterialVarianceResult['job']): stri
   return `${job.code} · still running`;
 }
 
-function createVarianceColumns(showCosts: boolean): ColumnDef<JobMaterialVarianceRow>[] {
+function createVarianceColumns(showCosts: boolean): DataTableColumnDef<JobMaterialVarianceRow>[] {
   return [
     {
       accessorFn: (item) => `${item.partName} ${item.partCode}`,
@@ -156,7 +146,7 @@ function createVarianceColumns(showCosts: boolean): ColumnDef<JobMaterialVarianc
             header: 'Actual cost',
             id: 'actualCost',
             meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
-          } satisfies ColumnDef<JobMaterialVarianceRow>,
+          } satisfies DataTableColumnDef<JobMaterialVarianceRow>,
         ]
       : []),
   ];

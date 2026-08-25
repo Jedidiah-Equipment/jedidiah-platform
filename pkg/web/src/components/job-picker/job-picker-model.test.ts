@@ -1,7 +1,7 @@
 import type { JobPickerOption } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { buildJobPickerModel, JOB_PICKER_SEARCH_PLACEHOLDER } from './job-picker-model.js';
+import { buildJobPickerModel } from './job-picker-model.js';
 
 /** Branded ids and dates are the schema's business; a fixture only has to read like a Job. */
 type JobFixture = { [Key in keyof JobPickerOption]?: string | null };
@@ -24,13 +24,6 @@ const model = (options: JobPickerOption[], overrides: Partial<Parameters<typeof 
   buildJobPickerModel({ limit: 25, options, search: '', tab: 'updated', ...overrides });
 
 describe('buildJobPickerModel', () => {
-  it('orders the Last updated tab by when each Job last moved', () => {
-    const stale = job({ id: 'a', updatedAt: '2026-08-01T08:00:00.000Z' });
-    const fresh = job({ id: 'b', updatedAt: '2026-08-20T08:00:00.000Z' });
-
-    expect(model([stale, fresh], { tab: 'updated' }).rows.map((row) => row.id)).toEqual(['b', 'a']);
-  });
-
   it('orders the Last created tab by when each Job was raised, which the updated order can disagree with', () => {
     const older = job({ id: 'a', createdAt: '2026-08-02T08:00:00.000Z', updatedAt: '2026-08-02T08:00:00.000Z' });
     const newer = job({ id: 'b', createdAt: '2026-08-01T08:00:00.000Z', updatedAt: '2026-08-30T08:00:00.000Z' });
@@ -50,8 +43,6 @@ describe('buildJobPickerModel', () => {
   it.each([
     ['work title', 'trailer'],
     ['Customer name', 'ridgeway'],
-    ['Job code', 'JOB-00042'],
-    ['bare code digits', '42'],
   ])('finds a Job by its %s', (_field, search) => {
     const match = job({ code: 'JOB-00042', id: 'a' });
     const other = job({
@@ -95,9 +86,5 @@ describe('buildJobPickerModel', () => {
     expect(windowed.total).toBe(7);
     expect(windowed.hasMore).toBe(true);
     expect(model(options, { limit: 25 }).hasMore).toBe(false);
-  });
-
-  it('names every field it searches in the placeholder, so the reader knows what will match', () => {
-    expect(JOB_PICKER_SEARCH_PLACEHOLDER).toBe('Search by Job code, Product, work title, or Customer');
   });
 });

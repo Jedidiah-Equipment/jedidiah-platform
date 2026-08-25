@@ -225,10 +225,9 @@ function JobPickerPopup({
 
 /**
  * One Job as the picker draws it: what kind of work it is, the code that names it, and the Product
- * or work title a person actually recognises. Exported bare of the combobox so the row can be read
- * without opening a popup.
+ * or work title a person actually recognises.
  */
-export function JobPickerOptionRow({ job }: { job: JobPickerOption }) {
+function JobPickerOptionRow({ job }: { job: JobPickerOption }) {
   const displayName = getJobDisplayName(job);
 
   return (

@@ -185,6 +185,9 @@ function JobPickerPopup({
       {withSearchInput ? (
         <ComboboxInput
           disabled={disabled}
+          // The placeholder names all four fields the search reaches, which is longer than the
+          // popup at its narrowest; ellipsis says it is cut off rather than that it ends there.
+          inputClassName="text-ellipsis"
           placeholder={JOB_PICKER_SEARCH_PLACEHOLDER}
           showClear={false}
           showTrigger={false}
@@ -244,7 +247,13 @@ function JobPickerOptionRow({ job }: { job: JobPickerOption }) {
 
   return (
     <>
-      <OfferingThumbnail kind={getJobOfferingKind(job)} label={displayName} preview={false} size="sm" />
+      <OfferingThumbnail
+        kind={getJobOfferingKind(job)}
+        label={displayName}
+        preview={false}
+        size="sm"
+        thumbnailDataUrl={job.productThumbnailDataUrl}
+      />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate font-mono text-xs">{job.code}</span>
         <span className="truncate text-muted-foreground text-xs">{displayName}</span>

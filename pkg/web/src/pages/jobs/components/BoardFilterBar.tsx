@@ -1,12 +1,11 @@
 import { departmentLabels, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
 import type { Bay, Department, JobPickerOption, JobSummary, UUID } from '@pkg/schema';
-import { IconFilterOff } from '@tabler/icons-react';
 import type React from 'react';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { bayOperatorName } from '@/components/bays/bay-label.js';
+import { ResetFiltersButton } from '@/components/common/ResetFiltersButton.js';
 import { JobPicker, JobPickerTrigger, useJobPicker } from '@/components/job-picker/index.js';
-import { Button } from '@/components/ui/button.js';
 import {
   Combobox,
   ComboboxContent,
@@ -35,6 +34,7 @@ type BoardFilterBarProps = {
       | 'customerCompanyName'
       | 'customerId'
       | 'productName'
+      | 'productThumbnailDataUrl'
       | 'quoteKind'
       | 'updatedAt'
       | 'workTitle'
@@ -106,12 +106,7 @@ export const BoardFilterBar: React.FC<BoardFilterBarProps> = ({
         placeholder="Filter by department"
         value={filter.department}
       />
-      {isActive ? (
-        <Button onClick={() => onFilterChange(emptyBoardFilter)} size="sm" type="button" variant="ghost">
-          <IconFilterOff data-icon="inline-start" />
-          Clear filters
-        </Button>
-      ) : null}
+      {isActive ? <ResetFiltersButton label="Clear filters" onReset={() => onFilterChange(emptyBoardFilter)} /> : null}
       {noMatches ? <span className="text-muted-foreground text-xs">No slots match the current filters.</span> : null}
       {trailingContent ? <div className="ml-auto flex items-center gap-1.5">{trailingContent}</div> : null}
     </div>

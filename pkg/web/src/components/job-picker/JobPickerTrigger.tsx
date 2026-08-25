@@ -36,7 +36,16 @@ export function JobPickerTrigger({
         aria-label={placeholder}
         disabled={disabled}
         id={id}
-        render={<Button className="min-w-0 flex-1 justify-between font-normal" type="button" variant="outline" />}
+        render={
+          // Transparent rather than the outline variant's `bg-background`, which is a shade darker
+          // than `--card` in light mode: the trigger stands beside plain comboboxes, and those take
+          // the surface they sit on. Dark mode already agreed — both land on `bg-input/30` there.
+          <Button
+            className="min-w-0 flex-1 justify-between bg-transparent font-normal"
+            type="button"
+            variant="outline"
+          />
+        }
       >
         {value ? (
           <span className="flex min-w-0 items-center gap-2">
@@ -46,6 +55,7 @@ export function JobPickerTrigger({
               label={getJobDisplayName(value)}
               preview={false}
               size="sm"
+              thumbnailDataUrl={value.productThumbnailDataUrl}
             />
             {/* The code never truncates — it is what names the Job. The display name gives way. */}
             <span className="shrink-0 font-mono text-xs">{value.code}</span>

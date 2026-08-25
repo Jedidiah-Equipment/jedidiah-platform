@@ -44,6 +44,7 @@ import {
   emptyBoardFilter,
   getEarliestBoardFilterMatchStart,
   hasActiveBoardFilter,
+  selectBaysWithBoardFilterMatches,
   slotMatchesBoardFilter,
 } from './board-filter.js';
 import {
@@ -180,8 +181,14 @@ export const BoardGantt: React.FC<{
     [ghostPreviewQuery.data, ghostPreviewRequest, visibleBays],
   );
   const renderedBays: ProjectedBayQueue[] = ghostDerivation?.bays ?? visibleBays;
-  const ganttLayout = useMemo(() => createBoardGanttLayout(renderedBays), [renderedBays]);
   const isFilterActive = hasActiveBoardFilter(filter);
+  // A filter drops the lanes it found nothing in. Ghosts never collide with this: they belong to
+  // the embedded Board, which renders no filter bar, so the filter there is permanently empty.
+  const filteredBays = useMemo(
+    () => selectBaysWithBoardFilterMatches({ bays: renderedBays, filter, jobsById }),
+    [filter, jobsById, renderedBays],
+  );
+  const ganttLayout = useMemo(() => createBoardGanttLayout(filteredBays), [filteredBays]);
   const filterMatchCount = useMemo(
     () => (isFilterActive ? countBoardFilterMatches({ bays: displayedBays, filter, jobsById }) : 0),
     [displayedBays, filter, isFilterActive, jobsById],
@@ -382,7 +389,7 @@ export const BoardGantt: React.FC<{
               <BayLaneRows layout={ganttLayout} />
               <BaySlotBars
                 bayTopById={ganttLayout.bayTopById}
-                bays={renderedBays}
+                bays={filteredBays}
                 canEditScheduleByBayId={schedulableBayIds}
                 today={plantToday}
                 filter={filter}

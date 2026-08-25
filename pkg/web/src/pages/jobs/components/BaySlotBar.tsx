@@ -1,5 +1,7 @@
 import {
   addJobSlotDuration,
+  getJobDisplayName,
+  getJobOfferingKind,
   isJobCancelled,
   labelWorkDays,
   type SlotCalendarDays,
@@ -18,7 +20,9 @@ import type {
 import { IconArrowLeft, IconArrowRight, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
+import { StockBadge } from '@/components/common/StockBadge.js';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
+import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import {
   ContextMenu,
@@ -35,13 +39,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { cn } from '@/lib/utils.js';
 import { BaySlotDayHatch, BaySlotJobCard } from './BaySlotJobCard.js';
 import { getSlotLabel } from './board-summary.js';
-import { InfoList, SlotDayBreakdownRows } from './JobInfoList.js';
+import { InfoList, InfoRow, SlotDayBreakdownRows } from './JobInfoList.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { scheduleBarToneClass, scheduleResizeHandleToneClass } from './schedule-state-tone.js';
 
@@ -50,6 +53,12 @@ export const SLOT_CARD_HEIGHT = 60;
 // Trim each slot's width so contiguous slots leave a hairline gap instead of their
 // borders/rings butting into (and visually overlapping) the next slot.
 const SLOT_GAP = 3;
+// The width at which the inline remove button stops costing more than it buys, from what the slot
+// actually spends: 20px of padding, 56px reserved for the button (`pr-14`), then the 40px offering
+// avatar and its 10px gap — 126px before a character is drawn. The Job code is what names a slot
+// and runs ~76px in mono at this size, so under ~200px the button is truncating the one thing the
+// reader came for. Narrower slots hand that width back to the label and remove via the hover card.
+const SLOT_INLINE_REMOVE_MIN_WIDTH = 200;
 const IDLE_SLOT_HATCH_BACKGROUND =
   'repeating-linear-gradient(45deg, rgb(113 113 122 / 0.18) 0 5px, transparent 5px 10px)';
 
@@ -136,6 +145,10 @@ export const BaySlotBar: React.FC<{
   const isIdle = slot.kind === 'idle';
   const isCancelled = !isIdle && isJobCancelled(job);
   const canReplanSlot = canEditSchedule && !isCancelled;
+  const showInlineRemove = canEditSchedule && width >= SLOT_INLINE_REMOVE_MIN_WIDTH;
+  // The label clears whichever controls actually sit on top of it: both, the resize handle alone,
+  // or neither.
+  const contentPaddingClass = showInlineRemove ? 'pr-14' : canReplanSlot ? 'pr-3.5' : undefined;
   // During resize preview the server has not seen `previewEndDate`, so that one path still
   // classifies locally; resting slots read the Board builder's shipped state.
   const isActive =
@@ -232,170 +245,210 @@ export const BaySlotBar: React.FC<{
   };
 
   return (
-    <HoverCard>
-      <ContextMenu>
-        <ContextMenuTrigger
-          render={
-            <HoverCardTrigger
-              render={
-                <div
-                  data-gantt-drag-scroll-ignore
-                  data-cancelled={isCancelled || undefined}
-                  className={cn(
-                    'pointer-events-auto absolute cursor-default overflow-hidden text-xs shadow-sm transition-opacity duration-200',
-                    isIdle
-                      ? cn('rounded-sm border-2 bg-card px-2 py-1 text-muted-foreground', slotBorderClass)
-                      : cn('rounded-lg border-2 px-2.5 py-1.5 text-card-foreground', slotFillClass, slotBorderClass),
-                    // Filtered-out slots fade back but stay interactive; hover restores them.
-                    isDimmed && 'opacity-20 hover:opacity-100',
-                  )}
-                  style={{
-                    height,
-                    left,
-                    top,
-                    width,
-                  }}
-                />
-              }
-            />
-          }
-        >
-          {isIdle ? (
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{ backgroundImage: IDLE_SLOT_HATCH_BACKGROUND }}
-            />
+    <>
+      <HoverCard>
+        <ContextMenu>
+          <ContextMenuTrigger
+            render={
+              <HoverCardTrigger
+                render={
+                  <div
+                    data-gantt-drag-scroll-ignore
+                    data-cancelled={isCancelled || undefined}
+                    className={cn(
+                      'pointer-events-auto absolute cursor-default overflow-hidden text-xs shadow-sm transition-opacity duration-200',
+                      isIdle
+                        ? cn('rounded-sm border-2 bg-card px-2 py-1 text-muted-foreground', slotBorderClass)
+                        : cn('rounded-lg border-2 px-2.5 py-1.5 text-card-foreground', slotFillClass, slotBorderClass),
+                      // Filtered-out slots fade back but stay interactive; hover restores them.
+                      isDimmed && 'opacity-20 hover:opacity-100',
+                    )}
+                    style={{
+                      height,
+                      left,
+                      top,
+                      width,
+                    }}
+                  />
+                }
+              />
+            }
+          >
+            {isIdle ? (
+              <div
+                className="pointer-events-none absolute inset-0"
+                style={{ backgroundImage: IDLE_SLOT_HATCH_BACKGROUND }}
+              />
+            ) : (
+              <BaySlotDayHatch segments={daySegments} slotStart={startDate} />
+            )}
+            {isIdle ? (
+              <span className={cn('relative z-10 flex h-full items-center gap-1.5', contentPaddingClass)}>
+                <span className="min-w-0 truncate font-medium">{label}</span>
+                <span className="shrink-0 text-[0.65rem] tabular-nums opacity-80">{daySummary}</span>
+              </span>
+            ) : (
+              <button
+                className={cn(
+                  'relative z-10 block h-full w-full cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  contentPaddingClass,
+                )}
+                disabled={!job || slot.previewSplit !== undefined}
+                onClick={() => {
+                  if (job) {
+                    onSelectSlot?.(job.id);
+                  }
+                }}
+                type="button"
+              >
+                <BaySlotJobCard dayBreakdown={dayBreakdown} job={job} jobCode={label} />
+              </button>
+            )}
+            {canEditSchedule ? (
+              <>
+                {showInlineRemove ? (
+                  <button
+                    aria-label={`Remove ${label}`}
+                    className={cn(
+                      'absolute top-1/2 right-4 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                      'hover:bg-destructive hover:text-white focus-visible:ring-ring',
+                    )}
+                    disabled={isScheduleMutationPending || isRemoving}
+                    onClick={() => setIsRemoveDialogOpen(true)}
+                    type="button"
+                  >
+                    <IconTrash className="size-3.5" />
+                  </button>
+                ) : null}
+                {canReplanSlot ? (
+                  <button
+                    aria-label={`Resize ${label}`}
+                    className={cn(
+                      'absolute top-0 right-0 z-30 h-full w-3 cursor-ew-resize border-r-2 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                      resizeHandleToneClass,
+                    )}
+                    disabled={isScheduleMutationPending || isRemoving}
+                    onPointerCancel={cancelResize}
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={finishResize}
+                    type="button"
+                  />
+                ) : null}
+              </>
+            ) : null}
+          </ContextMenuTrigger>
+          {canReplanSlot ? (
+            <ContextMenuContent>
+              <ContextMenuGroup>
+                <ContextMenuItem
+                  disabled={isScheduleMutationPending || slotIndex === 0}
+                  onClick={() => moveSlot('left')}
+                >
+                  <IconArrowLeft />
+                  Move slot left
+                </ContextMenuItem>
+                <ContextMenuItem
+                  disabled={isScheduleMutationPending || slotIndex === slotCount - 1}
+                  onClick={() => moveSlot('right')}
+                >
+                  <IconArrowRight />
+                  Move slot right
+                </ContextMenuItem>
+                <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'before')}>
+                  <IconClockPlus />
+                  Add idle slot before
+                </ContextMenuItem>
+                <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'after')}>
+                  <IconClockPlus />
+                  Add idle slot after
+                </ContextMenuItem>
+              </ContextMenuGroup>
+            </ContextMenuContent>
+          ) : null}
+        </ContextMenu>
+        <HoverCardContent align="start" className="flex w-64 flex-col gap-2" side="top">
+          {/* An idle Slot is a gap in the queue rather than work, so it has nothing to picture and
+              nobody to name — it keeps the label alone. */}
+          {job ? (
+            <div className="flex min-w-0 items-center gap-2.5">
+              <OfferingThumbnail
+                kind={getJobOfferingKind(job)}
+                label={getJobDisplayName(job)}
+                preview={false}
+                thumbnailDataUrl={job.productThumbnailDataUrl}
+              />
+              <div className="flex min-w-0 flex-col leading-tight">
+                <p className="truncate font-mono font-semibold">{label}</p>
+                {/* Wraps rather than truncates: the bar above already clipped this, and reading the
+                    whole title is most of why the reader hovered. */}
+                <p className="text-muted-foreground text-xs">{getJobDisplayName(job)}</p>
+              </div>
+            </div>
           ) : (
-            <BaySlotDayHatch segments={daySegments} slotStart={startDate} />
+            <p className="font-mono font-semibold">{label}</p>
           )}
-          {isIdle ? (
-            <span className={cn('relative z-10 flex h-full items-center gap-1.5', canEditSchedule && 'pr-14')}>
-              <span className="min-w-0 truncate font-medium">{label}</span>
-              <span className="shrink-0 text-[0.65rem] tabular-nums opacity-80">{daySummary}</span>
-            </span>
-          ) : (
-            <button
-              className={cn(
-                'relative z-10 block h-full w-full cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                canEditSchedule && 'pr-14',
-              )}
-              disabled={!job || slot.previewSplit !== undefined}
-              onClick={() => {
-                if (job) {
-                  onSelectSlot?.(job.id);
+          <InfoList>
+            {job ? <InfoRow label="Customer" value={job.customerCompanyName ?? <StockBadge />} /> : null}
+            <SlotDayBreakdownRows
+              dayBreakdown={dayBreakdown}
+              firstWorkDay={labelDays.firstWorkDay}
+              lastWorkDay={labelDays.lastWorkDay}
+            />
+          </InfoList>
+          {/* The only Remove a narrow slot has, and a second one everywhere else — a slot narrow
+              enough to lose the inline button is exactly the one hardest to hit accurately. */}
+          {canEditSchedule ? (
+            <Button
+              className="w-full"
+              disabled={isScheduleMutationPending || isRemoving}
+              onClick={() => setIsRemoveDialogOpen(true)}
+              size="xs"
+              type="button"
+              variant="destructive"
+            >
+              <IconTrash data-icon="inline-start" />
+              Remove slot
+            </Button>
+          ) : null}
+        </HoverCardContent>
+      </HoverCard>
+      {/* State-driven and owned out here rather than hung off a trigger: two controls open the same
+          confirmation now, and one nested in the hover card would be torn down the moment the
+          pointer left it — taking the open dialog with it. */}
+      <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove slot</DialogTitle>
+            <DialogDescription>
+              Remove {label} from the Bay schedule. Later Slots will move up to close the gap.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button disabled={isRemoving} type="button" variant="outline" />}>Cancel</DialogClose>
+            <Button
+              disabled={isRemoving}
+              onClick={async () => {
+                setIsRemoving(true);
+                try {
+                  await onRemove(slot.id);
+                  setIsRemoveDialogOpen(false);
+                } catch {
+                  // The mutation hook owns the user-facing error toast.
+                } finally {
+                  setIsRemoving(false);
                 }
               }}
               type="button"
+              variant="destructive"
             >
-              <BaySlotJobCard dayBreakdown={dayBreakdown} job={job} jobCode={label} />
-            </button>
-          )}
-          {canEditSchedule ? (
-            <>
-              <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
-                <DialogTrigger
-                  render={
-                    <button
-                      aria-label={`Remove ${label}`}
-                      className={cn(
-                        'absolute top-1/2 right-4 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
-                        'hover:bg-destructive hover:text-white focus-visible:ring-ring',
-                      )}
-                      disabled={isScheduleMutationPending || isRemoving}
-                      type="button"
-                    />
-                  }
-                >
-                  <IconTrash className="size-3.5" />
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Remove slot</DialogTitle>
-                    <DialogDescription>
-                      Remove {label} from the Bay schedule. Later Slots will move up to close the gap.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <DialogClose render={<Button disabled={isRemoving} type="button" variant="outline" />}>
-                      Cancel
-                    </DialogClose>
-                    <Button
-                      disabled={isRemoving}
-                      onClick={async () => {
-                        setIsRemoving(true);
-                        try {
-                          await onRemove(slot.id);
-                          setIsRemoveDialogOpen(false);
-                        } catch {
-                          // The mutation hook owns the user-facing error toast.
-                        } finally {
-                          setIsRemoving(false);
-                        }
-                      }}
-                      type="button"
-                      variant="destructive"
-                    >
-                      {isRemoving ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
-                      Remove
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              {canReplanSlot ? (
-                <button
-                  aria-label={`Resize ${label}`}
-                  className={cn(
-                    'absolute top-0 right-0 z-30 h-full w-3 cursor-ew-resize border-r-2 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
-                    resizeHandleToneClass,
-                  )}
-                  disabled={isScheduleMutationPending || isRemoving}
-                  onPointerCancel={cancelResize}
-                  onPointerDown={handlePointerDown}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={finishResize}
-                  type="button"
-                />
-              ) : null}
-            </>
-          ) : null}
-        </ContextMenuTrigger>
-        {canReplanSlot ? (
-          <ContextMenuContent>
-            <ContextMenuGroup>
-              <ContextMenuItem disabled={isScheduleMutationPending || slotIndex === 0} onClick={() => moveSlot('left')}>
-                <IconArrowLeft />
-                Move slot left
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={isScheduleMutationPending || slotIndex === slotCount - 1}
-                onClick={() => moveSlot('right')}
-              >
-                <IconArrowRight />
-                Move slot right
-              </ContextMenuItem>
-              <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'before')}>
-                <IconClockPlus />
-                Add idle slot before
-              </ContextMenuItem>
-              <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'after')}>
-                <IconClockPlus />
-                Add idle slot after
-              </ContextMenuItem>
-            </ContextMenuGroup>
-          </ContextMenuContent>
-        ) : null}
-      </ContextMenu>
-      <HoverCardContent align="start" className="flex w-64 flex-col gap-2" side="top">
-        <p className="font-mono font-semibold">{label}</p>
-        <InfoList>
-          <SlotDayBreakdownRows
-            dayBreakdown={dayBreakdown}
-            firstWorkDay={labelDays.firstWorkDay}
-            lastWorkDay={labelDays.lastWorkDay}
-          />
-        </InfoList>
-      </HoverCardContent>
-    </HoverCard>
+              {isRemoving ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

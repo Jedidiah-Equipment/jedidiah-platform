@@ -16,26 +16,19 @@ export const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ l
   </div>
 );
 
-// Slot Start/End plus its calendar-day breakdown, shared by the Job Sheet and Bay slot hover card.
-// Start/End label the Slot's working days; the breakdown below them accounts for the whole span,
-// so a Slot opening on an off-day shows a later Start than its leading closure days imply.
+// When a Slot runs and how much work it holds. Start and End label its working days, and Working
+// days counts them — the calendar span between the two is longer whenever a closure falls inside,
+// which the Slot's own hatching already shows. Overtime is the one exception worth a row: it is
+// work bought outside the calendar rather than a gap in it, and it only appears when there is some.
 export const SlotDayBreakdownRows: React.FC<{
   dayBreakdown: SlotCalendarDays;
   firstWorkDay: DateOnlyIso;
   lastWorkDay: DateOnlyIso;
-}> = ({ dayBreakdown, firstWorkDay, lastWorkDay }) => {
-  const totalDays = dayBreakdown.workingDays + dayBreakdown.closureDays;
-
-  return (
-    <>
-      <InfoRow label="Start" value={formatDate(firstWorkDay, 'short')} />
-      <InfoRow label="End" value={formatDate(lastWorkDay, 'short')} />
-      <InfoRow label="Total days" value={`${totalDays} (incl. off)`} />
-      <InfoRow label="Working days" value={dayBreakdown.workingDays} />
-      {dayBreakdown.overtimeDays > 0 ? (
-        <InfoRow label="Overtime" value={`${dayBreakdown.overtimeDays} day(s)`} />
-      ) : null}
-      {dayBreakdown.closureDays > 0 ? <InfoRow label="Closure" value={`${dayBreakdown.closureDays} day(s)`} /> : null}
-    </>
-  );
-};
+}> = ({ dayBreakdown, firstWorkDay, lastWorkDay }) => (
+  <>
+    <InfoRow label="Start" value={formatDate(firstWorkDay, 'short')} />
+    <InfoRow label="End" value={formatDate(lastWorkDay, 'short')} />
+    <InfoRow label="Working days" value={dayBreakdown.workingDays} />
+    {dayBreakdown.overtimeDays > 0 ? <InfoRow label="Overtime" value={`${dayBreakdown.overtimeDays} day(s)`} /> : null}
+  </>
+);

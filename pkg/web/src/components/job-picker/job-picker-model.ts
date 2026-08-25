@@ -13,7 +13,7 @@ export const DEFAULT_JOB_PICKER_TAB: JobPickerTab = 'updated';
  * What the search matches, said out loud. A reader who cannot see which fields a search reaches
  * types the one thing they remember and reads an empty list as "no such Job".
  */
-export const JOB_PICKER_SEARCH_PLACEHOLDER = 'Search by Job code, Product, work title, or Customer';
+export const JOB_PICKER_SEARCH_PLACEHOLDER = 'Search by job code, product, work title, or customer';
 
 /** How many rows a tab paints before the reader asks for more. */
 export const JOB_PICKER_PAGE_SIZE = 25;

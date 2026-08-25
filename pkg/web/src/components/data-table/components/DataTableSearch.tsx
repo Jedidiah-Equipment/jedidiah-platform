@@ -1,8 +1,8 @@
 import { useDebouncedValue } from '@mantine/hooks';
-import { IconFilterOff, IconSearch } from '@tabler/icons-react';
+import { IconSearch } from '@tabler/icons-react';
 import type { Table } from '@tanstack/react-table';
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button.js';
+import { ResetFiltersButton } from '@/components/common/ResetFiltersButton.js';
 import { Input } from '@/components/ui/input.js';
 
 type DataTableSearchProps<TData> = {
@@ -59,18 +59,7 @@ export function DataTableSearch<TData>({
       ) : null}
       {showRightSection ? (
         <div className="flex items-center justify-end gap-2 sm:ml-auto">
-          {showResetButton ? (
-            <Button
-              className="border-primary/50 text-primary hover:border-primary hover:bg-primary/10 hover:text-primary"
-              onClick={handleResetFilters}
-              size="xs"
-              type="button"
-              variant="outline"
-            >
-              <IconFilterOff data-icon="inline-start" />
-              Reset filters
-            </Button>
-          ) : null}
+          {showResetButton ? <ResetFiltersButton onReset={handleResetFilters} /> : null}
           {rightSection}
         </div>
       ) : null}

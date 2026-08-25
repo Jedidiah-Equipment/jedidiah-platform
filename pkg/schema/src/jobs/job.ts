@@ -887,6 +887,7 @@ export const JobPickerOption = z.object({
   customerCompanyName: z.string().trim().min(1).nullable(),
   id: UUID,
   productName: z.string().trim().min(1).nullable(),
+  productThumbnailDataUrl: NullableThumbnailDataUrl,
   quoteKind: QuoteKind.nullable(),
   updatedAt: DateIso,
   workTitle: QuoteWorkTitle.nullable(),

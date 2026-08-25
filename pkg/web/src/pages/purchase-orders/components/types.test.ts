@@ -1,6 +1,6 @@
 import { derivePurchaseOrderActions } from '@pkg/domain';
-import { PurchaseOrderView, type StockMovementWarningCode } from '@pkg/schema';
-import { describe, expect, it, vi } from 'vitest';
+import { PurchaseOrderView } from '@pkg/schema';
+import { describe, expect, it } from 'vitest';
 
 import {
   outstandingQuantity,

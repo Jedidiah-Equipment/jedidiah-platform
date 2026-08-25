@@ -146,8 +146,6 @@ export const BaySlotBar: React.FC<{
   const isCancelled = !isIdle && isJobCancelled(job);
   const canReplanSlot = canEditSchedule && !isCancelled;
   const showInlineRemove = canEditSchedule && width >= SLOT_INLINE_REMOVE_MIN_WIDTH;
-  // The label clears whichever controls actually sit on top of it: both, the resize handle alone,
-  // or neither.
   const contentPaddingClass = showInlineRemove ? 'pr-14' : canReplanSlot ? 'pr-3.5' : undefined;
   // During resize preview the server has not seen `previewEndDate`, so that one path still
   // classifies locally; resting slots read the Board builder's shipped state.

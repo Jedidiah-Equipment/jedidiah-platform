@@ -180,13 +180,13 @@ export const BoardGantt: React.FC<{
         : null,
     [ghostPreviewQuery.data, ghostPreviewRequest, visibleBays],
   );
-  const renderedBays: ProjectedBayQueue[] = ghostDerivation?.bays ?? visibleBays;
+  const boardBays: ProjectedBayQueue[] = ghostDerivation?.bays ?? visibleBays;
   const isFilterActive = hasActiveBoardFilter(filter);
   // A filter drops the lanes it found nothing in. Ghosts never collide with this: they belong to
   // the embedded Board, which renders no filter bar, so the filter there is permanently empty.
   const filteredBays = useMemo(
-    () => selectBaysWithBoardFilterMatches({ bays: renderedBays, filter, jobsById }),
-    [filter, jobsById, renderedBays],
+    () => selectBaysWithBoardFilterMatches({ bays: boardBays, filter, jobsById }),
+    [boardBays, filter, jobsById],
   );
   const ganttLayout = useMemo(() => createBoardGanttLayout(filteredBays), [filteredBays]);
   const filterMatchCount = useMemo(
@@ -329,7 +329,7 @@ export const BoardGantt: React.FC<{
     return <ErrorMessage error={baysQuery.error} fallbackMessage="Unable to load bay schedule." />;
   }
 
-  if (renderedBays.length === 0 || !plantToday) {
+  if (boardBays.length === 0 || !plantToday) {
     return null;
   }
 
@@ -405,7 +405,7 @@ export const BoardGantt: React.FC<{
               />
               {ghostDerivation && ghostDerivation.ghosts.length > 0 ? (
                 <BoardGhostBars
-                  bays={renderedBays}
+                  bays={boardBays}
                   bayTopById={ganttLayout.bayTopById}
                   ghosts={ghostDerivation.ghosts}
                   label={ghostLabel ?? 'New Job'}

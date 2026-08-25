@@ -9,31 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as Char123LocaleChar125RouteImport } from './routes/{-$locale}'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as HealthRouteImport } from './routes/health'
-import { Route as Char123LocaleChar125IndexRouteImport } from './routes/{-$locale}/index'
-import { Route as Char123LocaleChar125ContactRouteImport } from './routes/{-$locale}/contact'
-import { Route as Char123LocaleChar125AboutRouteImport } from './routes/{-$locale}/about'
-import { Route as LocaleLocaleRouteImport } from './routes/locale/$locale'
-import { Route as InfoSplatRouteImport } from './routes/info/$'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as Char123LocaleChar125RouteImport } from './routes/{-$locale}'
 import { Route as ApiContactRouteImport } from './routes/api/contact'
+import { Route as InfoSplatRouteImport } from './routes/info/$'
+import { Route as LocaleLocaleRouteImport } from './routes/locale/$locale'
+import { Route as Char123LocaleChar125IndexRouteImport } from './routes/{-$locale}/index'
+import { Route as Char123LocaleChar125AboutRouteImport } from './routes/{-$locale}/about'
+import { Route as Char123LocaleChar125ContactRouteImport } from './routes/{-$locale}/contact'
+import { Route as ImagesProductsProductIdRouteImport } from './routes/images/products/$productId'
+import { Route as ImagesRangesRangeIdRouteImport } from './routes/images/ranges/$rangeId'
+import { Route as InfoStaticSplatRouteImport } from './routes/info/static/$'
 import { Route as Char123LocaleChar125ProductsIndexRouteImport } from './routes/{-$locale}/products/index'
 import { Route as Char123LocaleChar125ProductsModelCodeRouteImport } from './routes/{-$locale}/products/$modelCode'
-import { Route as InfoStaticSplatRouteImport } from './routes/info/static/$'
-import { Route as ImagesRangesRangeIdRouteImport } from './routes/images/ranges/$rangeId'
-import { Route as ImagesProductsProductIdRouteImport } from './routes/images/products/$productId'
 import { Route as DownloadsProductsProductIdBrochureRouteImport } from './routes/downloads/products/$productId/brochure'
 
-const Char123LocaleChar125Route = Char123LocaleChar125RouteImport.update({
-  id: '/{-$locale}',
-  path: '/{-$locale}',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
@@ -41,9 +36,29 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
   path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HealthRoute = HealthRouteImport.update({
-  id: '/health',
-  path: '/health',
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char123LocaleChar125Route = Char123LocaleChar125RouteImport.update({
+  id: '/{-$locale}',
+  path: '/{-$locale}',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiContactRoute = ApiContactRouteImport.update({
+  id: '/api/contact',
+  path: '/api/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InfoSplatRoute = InfoSplatRouteImport.update({
+  id: '/info/$',
+  path: '/info/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocaleLocaleRoute = LocaleLocaleRouteImport.update({
+  id: '/locale/$locale',
+  path: '/locale/$locale',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char123LocaleChar125IndexRoute =
@@ -52,31 +67,31 @@ const Char123LocaleChar125IndexRoute =
     path: '/',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
-const Char123LocaleChar125ContactRoute =
-  Char123LocaleChar125ContactRouteImport.update({
-    id: '/contact',
-    path: '/contact',
-    getParentRoute: () => Char123LocaleChar125Route,
-  } as any)
 const Char123LocaleChar125AboutRoute =
   Char123LocaleChar125AboutRouteImport.update({
     id: '/about',
     path: '/about',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
-const LocaleLocaleRoute = LocaleLocaleRouteImport.update({
-  id: '/locale/$locale',
-  path: '/locale/$locale',
+const Char123LocaleChar125ContactRoute =
+  Char123LocaleChar125ContactRouteImport.update({
+    id: '/contact',
+    path: '/contact',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const ImagesProductsProductIdRoute = ImagesProductsProductIdRouteImport.update({
+  id: '/images/products/$productId',
+  path: '/images/products/$productId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InfoSplatRoute = InfoSplatRouteImport.update({
-  id: '/info/$',
-  path: '/info/$',
+const ImagesRangesRangeIdRoute = ImagesRangesRangeIdRouteImport.update({
+  id: '/images/ranges/$rangeId',
+  path: '/images/ranges/$rangeId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiContactRoute = ApiContactRouteImport.update({
-  id: '/api/contact',
-  path: '/api/contact',
+const InfoStaticSplatRoute = InfoStaticSplatRouteImport.update({
+  id: '/info/static/$',
+  path: '/info/static/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char123LocaleChar125ProductsIndexRoute =
@@ -91,21 +106,6 @@ const Char123LocaleChar125ProductsModelCodeRoute =
     path: '/products/$modelCode',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
-const InfoStaticSplatRoute = InfoStaticSplatRouteImport.update({
-  id: '/info/static/$',
-  path: '/info/static/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ImagesRangesRangeIdRoute = ImagesRangesRangeIdRouteImport.update({
-  id: '/images/ranges/$rangeId',
-  path: '/images/ranges/$rangeId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ImagesProductsProductIdRoute = ImagesProductsProductIdRouteImport.update({
-  id: '/images/products/$productId',
-  path: '/images/products/$productId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DownloadsProductsProductIdBrochureRoute =
   DownloadsProductsProductIdBrochureRouteImport.update({
     id: '/downloads/products/$productId/brochure',
@@ -239,18 +239,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/{-$locale}': {
-      id: '/{-$locale}'
-      path: '/{-$locale}'
-      fullPath: '/{-$locale}'
-      preLoaderRoute: typeof Char123LocaleChar125RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/robots.txt': {
@@ -260,39 +253,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/health': {
-      id: '/health'
-      path: '/health'
-      fullPath: '/health'
-      preLoaderRoute: typeof HealthRouteImport
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/{-$locale}/': {
-      id: '/{-$locale}/'
-      path: '/'
-      fullPath: '/{-$locale}/'
-      preLoaderRoute: typeof Char123LocaleChar125IndexRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
+    '/{-$locale}': {
+      id: '/{-$locale}'
+      path: '/{-$locale}'
+      fullPath: '/{-$locale}'
+      preLoaderRoute: typeof Char123LocaleChar125RouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/{-$locale}/contact': {
-      id: '/{-$locale}/contact'
-      path: '/contact'
-      fullPath: '/{-$locale}/contact'
-      preLoaderRoute: typeof Char123LocaleChar125ContactRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
-    }
-    '/{-$locale}/about': {
-      id: '/{-$locale}/about'
-      path: '/about'
-      fullPath: '/{-$locale}/about'
-      preLoaderRoute: typeof Char123LocaleChar125AboutRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
-    }
-    '/locale/$locale': {
-      id: '/locale/$locale'
-      path: '/locale/$locale'
-      fullPath: '/locale/$locale'
-      preLoaderRoute: typeof LocaleLocaleRouteImport
+    '/api/contact': {
+      id: '/api/contact'
+      path: '/api/contact'
+      fullPath: '/api/contact'
+      preLoaderRoute: typeof ApiContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/info/$': {
@@ -302,11 +281,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InfoSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/contact': {
-      id: '/api/contact'
-      path: '/api/contact'
-      fullPath: '/api/contact'
-      preLoaderRoute: typeof ApiContactRouteImport
+    '/locale/$locale': {
+      id: '/locale/$locale'
+      path: '/locale/$locale'
+      fullPath: '/locale/$locale'
+      preLoaderRoute: typeof LocaleLocaleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/{-$locale}/': {
+      id: '/{-$locale}/'
+      path: '/'
+      fullPath: '/{-$locale}/'
+      preLoaderRoute: typeof Char123LocaleChar125IndexRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/about': {
+      id: '/{-$locale}/about'
+      path: '/about'
+      fullPath: '/{-$locale}/about'
+      preLoaderRoute: typeof Char123LocaleChar125AboutRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/contact': {
+      id: '/{-$locale}/contact'
+      path: '/contact'
+      fullPath: '/{-$locale}/contact'
+      preLoaderRoute: typeof Char123LocaleChar125ContactRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/images/products/$productId': {
+      id: '/images/products/$productId'
+      path: '/images/products/$productId'
+      fullPath: '/images/products/$productId'
+      preLoaderRoute: typeof ImagesProductsProductIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/images/ranges/$rangeId': {
+      id: '/images/ranges/$rangeId'
+      path: '/images/ranges/$rangeId'
+      fullPath: '/images/ranges/$rangeId'
+      preLoaderRoute: typeof ImagesRangesRangeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/info/static/$': {
+      id: '/info/static/$'
+      path: '/info/static/$'
+      fullPath: '/info/static/$'
+      preLoaderRoute: typeof InfoStaticSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/{-$locale}/products/': {
@@ -322,27 +343,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$locale}/products/$modelCode'
       preLoaderRoute: typeof Char123LocaleChar125ProductsModelCodeRouteImport
       parentRoute: typeof Char123LocaleChar125Route
-    }
-    '/info/static/$': {
-      id: '/info/static/$'
-      path: '/info/static/$'
-      fullPath: '/info/static/$'
-      preLoaderRoute: typeof InfoStaticSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/images/ranges/$rangeId': {
-      id: '/images/ranges/$rangeId'
-      path: '/images/ranges/$rangeId'
-      fullPath: '/images/ranges/$rangeId'
-      preLoaderRoute: typeof ImagesRangesRangeIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/images/products/$productId': {
-      id: '/images/products/$productId'
-      path: '/images/products/$productId'
-      fullPath: '/images/products/$productId'
-      preLoaderRoute: typeof ImagesProductsProductIdRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/downloads/products/$productId/brochure': {
       id: '/downloads/products/$productId/brochure'

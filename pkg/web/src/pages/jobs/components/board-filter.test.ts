@@ -7,8 +7,8 @@ import {
   emptyBoardFilter,
   getEarliestBoardFilterMatchStart,
   hasActiveBoardFilter,
-  selectBaysWithBoardFilterMatches,
   slotMatchesBoardFilter as rawSlotMatchesBoardFilter,
+  selectBaysWithBoardFilterMatches,
 } from './board-filter.js';
 
 const id = (value: string) => value as UUID;

@@ -27,7 +27,7 @@ export const OTHER_SUPPLIER_PART_ID = '00000000-0000-4000-8000-000000000914';
 
 export type AmendmentTestContext = { db: Db; storage: InMemoryStorageAdapter };
 
-export const test = createTester(async ({ db }) => {
+export const test = createTester<AmendmentTestContext>(async ({ db }) => {
   await db.insert(user).values({
     createdAt: new Date(),
     email: 'po-amendment@example.com',

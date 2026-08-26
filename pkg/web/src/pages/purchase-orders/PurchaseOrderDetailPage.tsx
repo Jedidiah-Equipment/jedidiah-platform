@@ -548,12 +548,14 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
 
   return (
     <>
+      <ErrorMessage error={parts.query.error} fallbackMessage="Unable to load Parts." />
       <ErrorMessage error={stockOnHandQuery.error} fallbackMessage="Unable to load inventory price defaults." />
       <PurchaseOrderLinesEditor
         commit={commit}
         form={form}
         isLoading={parts.isPending || stockOnHandQuery.isPending}
         parts={eligibleParts}
+        partsLoadFailed={Boolean(parts.query.error)}
       />
     </>
   );
@@ -566,7 +568,8 @@ export const PurchaseOrderLinesEditor: React.FC<{
   form: DraftForm;
   isLoading: boolean;
   parts: PurchaseOrderPartOption[];
-}> = ({ commit, form, isLoading, parts }) => {
+  partsLoadFailed: boolean;
+}> = ({ commit, form, isLoading, parts, partsLoadFailed }) => {
   const disabledReasonId = useId();
 
   return (
@@ -576,6 +579,8 @@ export const PurchaseOrderLinesEditor: React.FC<{
         const nextPart = parts.find((part) => !lines.some((line) => line.partId === part.id));
         let disabledReason: string | null = null;
         if (isLoading) disabledReason = 'Loading available Parts...';
+        else if (!nextPart && parts.length === 0 && partsLoadFailed)
+          disabledReason = 'Parts could not be loaded. Try again.';
         else if (!nextPart && parts.length === 0) disabledReason = 'Add a Part for this Supplier before adding a line.';
         else if (!nextPart) disabledReason = 'All Parts for this Supplier are already on the order.';
 

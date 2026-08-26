@@ -68,7 +68,15 @@ it('seeds a manually added line from the Part current moving average', async () 
     });
     readLines = () => form.state.values.lines;
 
-    return <PurchaseOrderLinesEditor commit={vi.fn()} form={form as never} isLoading={false} parts={[part]} />;
+    return (
+      <PurchaseOrderLinesEditor
+        commit={vi.fn()}
+        form={form as never}
+        isLoading={false}
+        parts={[part]}
+        partsLoadFailed={false}
+      />
+    );
   };
 
   const container = document.createElement('div');
@@ -92,7 +100,15 @@ it('explains why a line cannot be added when the Supplier has no available Parts
       defaultValues: { expectedDeliveryDate: '', jobIds: [], lines: [], supplierId },
     });
 
-    return <PurchaseOrderLinesEditor commit={vi.fn()} form={form as never} isLoading={false} parts={[]} />;
+    return (
+      <PurchaseOrderLinesEditor
+        commit={vi.fn()}
+        form={form as never}
+        isLoading={false}
+        parts={[]}
+        partsLoadFailed={false}
+      />
+    );
   };
 
   const container = document.createElement('div');
@@ -106,6 +122,29 @@ it('explains why a line cannot be added when the Supplier has no available Parts
   const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Add line'));
   expect(addLine?.disabled).toBe(true);
   expect(container.textContent).toContain('Add a Part for this Supplier before adding a line.');
+});
+
+it('reports a Part loading failure instead of claiming the Supplier has no Parts', async () => {
+  const Harness = () => {
+    const form = useAppForm({
+      defaultValues: { expectedDeliveryDate: '', jobIds: [], lines: [], supplierId },
+    });
+
+    return (
+      <PurchaseOrderLinesEditor commit={vi.fn()} form={form as never} isLoading={false} parts={[]} partsLoadFailed />
+    );
+  };
+
+  const container = document.createElement('div');
+  document.body.append(container);
+  containers.push(container);
+  const root = createRoot(container);
+  roots.push(root);
+
+  await act(async () => root.render(<Harness />));
+
+  expect(container.textContent).toContain('Parts could not be loaded. Try again.');
+  expect(container.textContent).not.toContain('Add a Part for this Supplier before adding a line.');
 });
 
 it('re-seeds the default when a draft line changes to another Part', async () => {
@@ -127,6 +166,7 @@ it('re-seeds the default when a draft line changes to another Part', async () =>
         form={form as never}
         isLoading={false}
         parts={[part, replacementPart]}
+        partsLoadFailed={false}
       />
     );
   };

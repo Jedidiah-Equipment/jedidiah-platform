@@ -70,6 +70,7 @@ export const APP_PERMISSIONS = [
   'supplier:read',
   'supplier:update',
   'supplier:remove',
+  'supplier:merge',
   'user:list',
   'user:create',
   'user:update',

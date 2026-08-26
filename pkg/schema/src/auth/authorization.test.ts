@@ -50,6 +50,7 @@ describe('AppPermission', () => {
     expect(AppPermission.parse('quote:cancel')).toBe('quote:cancel');
     expect(AppPermission.parse('supplier:read')).toBe('supplier:read');
     expect(AppPermission.parse('supplier:update')).toBe('supplier:update');
+    expect(AppPermission.parse('supplier:merge')).toBe('supplier:merge');
     expect(AppPermission.parse('feedback:read')).toBe('feedback:read');
     expect(AppPermission.parse('feedback:update')).toBe('feedback:update');
     expect(AppPermission.parse('purchase_order:receive')).toBe('purchase_order:receive');

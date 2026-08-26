@@ -1,13 +1,15 @@
 import {
   createSupplier,
   getSupplier,
+  getSupplierMergePreview,
   isSupplierCoreError,
   listSuppliers,
+  mergeSupplier,
   removeSupplier,
   type SupplierCoreError,
   updateSupplier,
 } from '@pkg/core';
-import { SupplierCreateInput, SupplierListInput, SupplierUpdateInput, UUID } from '@pkg/schema';
+import { SupplierCreateInput, SupplierListInput, SupplierMergeInput, SupplierUpdateInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
@@ -32,6 +34,18 @@ export const suppliersRouter = router({
     .input(SupplierUpdateInput)
     .mutation(({ ctx, input }) =>
       mapSupplierErrors(() => updateSupplier({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+    ),
+
+  mergePreview: authorizedProcedure('supplier:merge')
+    .input(z.object({ sourceId: UUID }))
+    .query(({ ctx, input }) =>
+      mapSupplierErrors(() => getSupplierMergePreview({ db: ctx.db, sourceId: input.sourceId })),
+    ),
+
+  merge: authorizedProcedure('supplier:merge')
+    .input(SupplierMergeInput)
+    .mutation(({ ctx, input }) =>
+      mapSupplierErrors(() => mergeSupplier({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
   remove: authorizedProcedure('supplier:remove')
@@ -59,6 +73,11 @@ const supplierErrorMappings = {
     appCode: 'supplier.not_found',
     code: 'NOT_FOUND',
     message: 'Supplier not found.',
+  },
+  'supplier.merge_self': {
+    appCode: 'supplier.merge_self',
+    code: 'BAD_REQUEST',
+    message: 'A supplier cannot be merged into itself.',
   },
   'supplier.has_draft_purchase_orders': {
     appCode: 'supplier.has_draft_purchase_orders',

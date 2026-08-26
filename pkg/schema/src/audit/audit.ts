@@ -6,7 +6,7 @@ import { createCursorQueryResult, createSortedCursorQueryInput } from '../common
 import { UUID } from '../common/uuid.js';
 
 export type AuditAction = z.infer<typeof AuditAction>;
-export const AuditAction = z.enum(['created', 'updated', 'deleted']);
+export const AuditAction = z.enum(['created', 'updated', 'deleted', 'merged']);
 
 export type AuditEntityType = z.infer<typeof AuditEntityType>;
 export const AuditEntityType = z.enum([

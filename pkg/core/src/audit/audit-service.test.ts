@@ -233,6 +233,10 @@ describe('buildAuditSummary', () => {
     expect(buildAuditSummary(widgetDescriptor, 'deleted', null, 'Wheel Loader')).toBe('Deleted widget "Wheel Loader"');
   });
 
+  it('summarizes merges when no explicit summary is supplied', () => {
+    expect(buildAuditSummary(widgetDescriptor, 'merged', null, 'Wheel Loader')).toBe('Merged widget "Wheel Loader"');
+  });
+
   it('summarizes primary-label changes as renames', () => {
     expect(
       buildAuditSummary(

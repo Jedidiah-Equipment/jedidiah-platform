@@ -73,6 +73,18 @@ export const SupplierUpdateInput = SupplierCreateInput.extend({
   id: UUID,
 });
 
+export type SupplierMergeInput = z.infer<typeof SupplierMergeInput>;
+export const SupplierMergeInput = z.object({
+  sourceId: UUID,
+  targetId: UUID,
+});
+
+export type SupplierMergePreview = z.infer<typeof SupplierMergePreview>;
+export const SupplierMergePreview = z.object({
+  partCount: z.number().int().nonnegative(),
+  purchaseOrderCount: z.number().int().nonnegative(),
+});
+
 export type SupplierListInput = z.infer<typeof SupplierListInput>;
 export const SupplierListInput = createSearchedSortedCursorQueryInput({
   shape: {

@@ -1008,7 +1008,7 @@ async function assertSupplierExists({ db, supplierId }: { db: PurchaseOrderDb; s
     .where(and(eq(supplier.id, supplierId), isNull(supplier.deletedAt)))
     .limit(1)
     // Pair with removeSupplier's row lock so a supplier cannot be retired between validation and insertion.
-    .for('key share');
+    .for('share');
   if (!row) throw new PurchaseOrderSupplierNotFoundError(supplierId);
 }
 

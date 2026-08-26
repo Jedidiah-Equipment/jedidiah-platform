@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { Supplier, SupplierCreateInput } from './supplier.js';
+import { Supplier, SupplierCreateInput, SupplierMergeInput, SupplierMergePreview } from './supplier.js';
 
 describe('SupplierCreateInput', () => {
   it('normalizes supplier values', () => {
@@ -86,5 +86,23 @@ describe('SupplierCreateInput', () => {
 describe('Supplier', () => {
   it('can be represented as JSON Schema', () => {
     expect(() => z.toJSONSchema(Supplier)).not.toThrow();
+  });
+});
+
+describe('supplier merge schemas', () => {
+  it('accepts distinct merge ids and non-negative preview counts', () => {
+    expect(
+      SupplierMergeInput.parse({
+        sourceId: '00000000-0000-4000-8000-000000000001',
+        targetId: '00000000-0000-4000-8000-000000000002',
+      }),
+    ).toEqual({
+      sourceId: '00000000-0000-4000-8000-000000000001',
+      targetId: '00000000-0000-4000-8000-000000000002',
+    });
+    expect(SupplierMergePreview.parse({ partCount: 14, purchaseOrderCount: 3 })).toEqual({
+      partCount: 14,
+      purchaseOrderCount: 3,
+    });
   });
 });

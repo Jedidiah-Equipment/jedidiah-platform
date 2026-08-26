@@ -49,12 +49,14 @@ const auditEntityTypeLabels = {
 const auditActionLabels = {
   created: 'Created',
   deleted: 'Deleted',
+  merged: 'Merged',
   updated: 'Updated',
 } as const satisfies Record<AuditEvent['action'], string>;
 
 const auditActionColorClassNames = {
   created: 'border-blue-500/50 bg-blue-500/15 text-blue-800 dark:text-blue-200',
   deleted: 'border-red-500/50 bg-red-500/15 text-red-800 dark:text-red-200',
+  merged: 'border-violet-500/50 bg-violet-500/15 text-violet-800 dark:text-violet-200',
   updated: 'border-orange-500/50 bg-orange-500/15 text-orange-800 dark:text-orange-200',
 } as const satisfies Record<AuditEvent['action'], string>;
 

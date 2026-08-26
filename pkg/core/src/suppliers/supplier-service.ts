@@ -5,6 +5,7 @@ import {
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
+  parts,
   purchaseOrders,
   supplier,
 } from '@pkg/db';
@@ -14,21 +15,33 @@ import type {
   SupplierCreateInput,
   SupplierListInput,
   SupplierListResult,
+  SupplierMergeInput,
+  SupplierMergePreview,
   SupplierUpdateInput,
   UUID,
 } from '@pkg/schema';
 import { getNextCursor, Supplier as SupplierSchema } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
 
-import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
+import {
+  defineAuditDescriptor,
+  diffAuditUpdate,
+  recordAuditCreate,
+  recordAuditDelete,
+  recordAuditEvent,
+  recordAuditUpdate,
+} from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
 import {
   DuplicateSupplierNameError,
   SupplierHasDraftPurchaseOrdersError,
+  SupplierMergeSelfError,
   SupplierNotFoundError,
 } from './supplier-errors.js';
 
 type SupplierRow = typeof supplier.$inferSelect;
+
+const FILL_EMPTY_FIELDS = ['address', 'contactPerson', 'email', 'notes', 'phone', 'thumbnailDataUrl'] as const;
 
 export const supplierAuditDescriptor = defineAuditDescriptor<SupplierRow>({
   entityType: 'supplier',
@@ -219,6 +232,122 @@ export async function removeSupplier({
 
     await recordAuditDelete({ db: tx, descriptor: supplierAuditDescriptor, actorUserId, input: before });
   });
+}
+
+export async function getSupplierMergePreview({
+  db,
+  sourceId,
+}: {
+  db: Db;
+  sourceId: UUID;
+}): Promise<SupplierMergePreview> {
+  await getSupplier({ db, id: sourceId });
+
+  const [partCount, purchaseOrderCount] = await Promise.all([
+    db.$count(parts, eq(parts.supplierId, sourceId)),
+    db.$count(purchaseOrders, eq(purchaseOrders.supplierId, sourceId)),
+  ]);
+
+  return { partCount, purchaseOrderCount };
+}
+
+export async function mergeSupplier({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: SupplierMergeInput;
+}): Promise<Supplier> {
+  const { sourceId, targetId } = input;
+  if (sourceId === targetId) throw new SupplierMergeSelfError(sourceId);
+
+  return db.transaction(async (tx) => {
+    // Lock both suppliers in one statement so concurrent merges cannot disagree on lock order.
+    const rows = await tx
+      .select()
+      .from(supplier)
+      .where(and(inArray(supplier.id, [sourceId, targetId]), isNull(supplier.deletedAt)))
+      .for('update');
+    const source = rows.find((row) => row.id === sourceId);
+    const target = rows.find((row) => row.id === targetId);
+    if (!source) throw new SupplierNotFoundError(sourceId);
+    if (!target) throw new SupplierNotFoundError(targetId);
+
+    const movedParts = await tx
+      .update(parts)
+      .set({ supplierId: targetId })
+      .where(eq(parts.supplierId, sourceId))
+      .returning({ id: parts.id });
+    const now = new Date();
+    const movedOrders = await tx
+      .update(purchaseOrders)
+      .set({ supplierId: targetId, updatedAt: now })
+      .where(eq(purchaseOrders.supplierId, sourceId))
+      .returning({ id: purchaseOrders.id });
+
+    const fillPatch: Partial<SupplierRow> = {};
+    for (const field of FILL_EMPTY_FIELDS) {
+      if (isEmptySupplierField(target[field]) && !isEmptySupplierField(source[field])) {
+        fillPatch[field] = source[field];
+      }
+    }
+
+    let mergedTarget = target;
+    if (Object.keys(fillPatch).length > 0) {
+      const [updated] = await tx
+        .update(supplier)
+        .set({ ...fillPatch, updatedAt: now })
+        .where(eq(supplier.id, targetId))
+        .returning();
+      if (!updated) throw new Error('Supplier merge fill update did not return a row');
+      mergedTarget = updated;
+      const changes = diffAuditUpdate(supplierAuditDescriptor, target, updated);
+      if (changes) {
+        await recordAuditUpdate({ db: tx, descriptor: supplierAuditDescriptor, actorUserId, after: updated, changes });
+      }
+    }
+
+    await tx.update(supplier).set({ deletedAt: now, updatedAt: now }).where(eq(supplier.id, sourceId));
+
+    const counts = {
+      movedParts: { from: null, to: movedParts.length },
+      movedPurchaseOrders: { from: null, to: movedOrders.length },
+    };
+    await recordAuditEvent({
+      db: tx,
+      descriptor: supplierAuditDescriptor,
+      action: 'merged',
+      actorUserId,
+      entityId: sourceId,
+      changes: {
+        mergedIntoSupplier: { from: source.companyName, to: target.companyName },
+        ...counts,
+      },
+      record: supplierAuditDescriptor.toRecord(source),
+      summary: `Merged supplier '${source.companyName}' into '${target.companyName}'`,
+    });
+    await recordAuditEvent({
+      db: tx,
+      descriptor: supplierAuditDescriptor,
+      action: 'merged',
+      actorUserId,
+      entityId: targetId,
+      changes: {
+        absorbedSupplier: { from: source.companyName, to: target.companyName },
+        ...counts,
+      },
+      record: supplierAuditDescriptor.toRecord(mergedTarget),
+      summary: `Absorbed supplier '${source.companyName}' (${movedParts.length} parts, ${movedOrders.length} purchase orders)`,
+    });
+
+    return mapSupplier(mergedTarget);
+  });
+}
+
+function isEmptySupplierField(value: string | null): boolean {
+  return value === null || value.trim() === '';
 }
 
 function getSupplierSortColumn(sortBy: SupplierListInput['sortBy']) {

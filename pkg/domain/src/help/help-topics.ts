@@ -30,6 +30,7 @@ export const HELP_TOPICS = {
   quotes: '/sales/cancel-a-quote',
   storesTablet: '/inventory/work-the-stores-tablet',
   suppliers: '/inventory/maintain-suppliers',
+  supplierMerge: '/inventory/merge-duplicate-suppliers',
   units: '/production/remove-a-unit',
 } as const satisfies Record<string, string>;
 

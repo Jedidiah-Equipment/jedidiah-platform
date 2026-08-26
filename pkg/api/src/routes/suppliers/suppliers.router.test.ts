@@ -557,6 +557,48 @@ describe('suppliers.remove', () => {
   });
 });
 
+describe('suppliers.merge', () => {
+  test('allows procurement managers to preview and merge suppliers', async ({ context }) => {
+    const adminCaller = context.createCaller();
+    const source = await createSupplier(adminCaller, 'Night Wolves');
+    const target = await createSupplier(adminCaller, 'Nightwolves');
+    const procurementCaller = context.createCaller(mockSession('procurement-manager'));
+
+    await expect(procurementCaller.suppliers.mergePreview({ sourceId: source.id })).resolves.toEqual({
+      partCount: 0,
+      purchaseOrderCount: 0,
+    });
+    await expect(
+      procurementCaller.suppliers.merge({ sourceId: source.id, targetId: target.id }),
+    ).resolves.toMatchObject({ id: target.id });
+    await expect(procurementCaller.suppliers.remove({ id: target.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('rejects anonymous and unpermitted supplier merges', async ({ context }) => {
+    const sourceId = '00000000-0000-4000-8000-000000000001';
+    const targetId = '00000000-0000-4000-8000-000000000002';
+
+    await expect(context.createAnonCaller().suppliers.merge({ sourceId, targetId })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+    await expect(
+      context.createCaller(mockSession('sales')).suppliers.merge({ sourceId, targetId }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('maps self-merge errors to a stable bad-request response', async ({ context }) => {
+    const source = await createSupplier(context.createCaller(), 'Self Merge Supplier');
+
+    await expect(
+      context.createCaller().suppliers.merge({ sourceId: source.id, targetId: source.id }),
+    ).rejects.toMatchObject({
+      appCode: 'supplier.merge_self',
+      code: 'BAD_REQUEST',
+      message: 'A supplier cannot be merged into itself.',
+    });
+  });
+});
+
 async function listAuditEvents(db: Db) {
   return db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
 }

@@ -303,7 +303,7 @@ describe('bulkImportParts', () => {
       db: context.db,
       input: { rows: [importRow({ supplierName: 'ACME Supplies' })] },
     });
-    const suppliers = await context.db.select().from(supplier);
+    const suppliers = await context.db.select().from(supplier).orderBy(supplier.companyName);
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
     expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
@@ -322,7 +322,7 @@ describe('bulkImportParts', () => {
         ],
       },
     });
-    const suppliers = await context.db.select().from(supplier);
+    const suppliers = await context.db.select().from(supplier).orderBy(supplier.companyName);
 
     expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
     expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies']);
@@ -343,7 +343,8 @@ describe('bulkImportParts', () => {
   });
 
   test('resolves to the oldest of two live suppliers sharing a lookup name', async ({ context }) => {
-    // The newer row is stored first, so an unordered read would hand back the wrong one.
+    // The newer row is stored first, so an unordered read would hand back the wrong one, and
+    // neither spelling is the row's own, so nothing but age can decide it.
     await context.db
       .insert(supplier)
       .values({ companyName: 'ACME  SUPPLIES', createdAt: new Date('2024-01-01T00:00:00Z') });
@@ -356,13 +357,64 @@ describe('bulkImportParts', () => {
       actorUserId,
       db: context.db,
       input: {
-        rows: [importRow(), importRow({ code: 'P-200', lineNumber: 3, supplierCode: 'SUP-200' })],
+        rows: [
+          importRow({ supplierName: 'acme supplies' }),
+          importRow({ code: 'P-200', lineNumber: 3, supplierCode: 'SUP-200', supplierName: 'acme supplies' }),
+        ],
       },
     });
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
     expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
     expect(importedParts.items.map((part) => part.supplierId)).toEqual([older?.id, older?.id]);
+  });
+
+  test('re-imports a Part attached to the newer of two colliding suppliers as a no-op', async ({ context }) => {
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', createdAt: new Date('2020-01-01T00:00:00Z') });
+    const [newer] = await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme  Supplies', createdAt: new Date('2024-01-01T00:00:00Z') })
+      .returning();
+    if (!newer) throw new Error('Expected the newer Supplier to have been inserted');
+
+    await createPart({
+      actorUserId,
+      db: context.db,
+      input: partInput({ code: 'P-500', supplierId: newer.id }),
+    });
+
+    // Exactly what a global export writes for that Part: the Supplier it is actually attached to.
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ code: 'P-500', supplierName: 'Acme  Supplies' })] },
+    });
+    const [reimported] = await context.db.select().from(parts).where(eq(parts.code, 'P-500'));
+
+    expect(result.errors).toEqual([]);
+    expect(reimported?.supplierId).toBe(newer.id);
+  });
+
+  test('gives a new Part to the colliding supplier the row spelled, not the oldest', async ({ context }) => {
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', createdAt: new Date('2020-01-01T00:00:00Z') });
+    const [spelled] = await context.db
+      .insert(supplier)
+      .values({ companyName: 'ACME  SUPPLIES', createdAt: new Date('2024-01-01T00:00:00Z') })
+      .returning();
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ supplierName: 'ACME  SUPPLIES' })] },
+    });
+    const [imported] = await context.db.select().from(parts).where(eq(parts.code, 'P-100'));
+
+    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
+    expect(imported?.supplierId).toBe(spelled?.id);
   });
 
   test('ignores a soft-deleted supplier when matching a name', async ({ context }) => {
@@ -373,7 +425,11 @@ describe('bulkImportParts', () => {
       db: context.db,
       input: { rows: [importRow()] },
     });
-    const liveSuppliers = await context.db.select().from(supplier).where(isNull(supplier.deletedAt));
+    const liveSuppliers = await context.db
+      .select()
+      .from(supplier)
+      .where(isNull(supplier.deletedAt))
+      .orderBy(supplier.companyName);
 
     expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
     expect(liveSuppliers.map((row) => row.companyName)).toEqual(['Acme Supplies']);

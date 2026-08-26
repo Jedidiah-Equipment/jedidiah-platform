@@ -109,7 +109,7 @@ function QuoteJobCard({
           <div className="grid grid-cols-2 gap-2">
             <Button type="button" variant="outline" onClick={onOpenJob}>
               <IconFileDescription data-icon="inline-start" />
-              Open sheet
+              Open
             </Button>
             <Button render={<Link search={{ job: job.jobId }} to="/jobs" />} variant="outline">
               <IconSubtask data-icon="inline-start" />

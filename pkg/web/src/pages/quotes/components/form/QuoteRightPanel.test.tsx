@@ -145,7 +145,7 @@ test('opens a linked Job from the quote aside or locates it on the planner', asy
   expect(html).toContain('1 Done');
   expect(html).toContain('1 Active');
   expect(html).toContain('2 Scheduled');
-  expect(html).toContain('Open sheet');
+  expect(html).toContain('>Open</button>');
   expect(html).not.toContain('/jobs/list');
   expect(html).toContain('href="/jobs?job=420e8400-e29b-41d4-a716-446655440000"');
 });

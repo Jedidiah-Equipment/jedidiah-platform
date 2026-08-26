@@ -251,15 +251,17 @@ BEGIN
 		RAISE EXCEPTION 'Issue #1287 found % conflicting Product Material row(s)', conflicting_target_count;
 	END IF;
 
-	-- Changing a purchase length changes the meaning of every stored quantity for that Part. The
-	-- reviewed rows must remain its only references until this repair runs.
+	-- Changing a purchase length changes the meaning of every stored quantity for that Part. While a
+	-- reviewed channel still needs that change, its references must remain limited to the reviewed set.
 	SELECT count(*) INTO invalid_count
 	FROM issue_1287_part_config config
+	INNER JOIN "parts" part ON part."id" = config.part_id
 	INNER JOIN "assembly_parts" source ON source."part_id" = config.part_id
 	LEFT JOIN issue_1287_material_repair repair
 		ON repair.assembly_id = source."assembly_id"
 		AND repair.part_id = source."part_id"
 	WHERE config.previous_purchase_length_mm IS NOT NULL
+		AND part."standard_purchase_length_mm" = config.previous_purchase_length_mm
 		AND repair.review_id IS NULL;
 
 	IF invalid_count > 0 THEN
@@ -268,11 +270,13 @@ BEGIN
 
 	SELECT count(*) INTO invalid_count
 	FROM issue_1287_part_config config
+	INNER JOIN "parts" part ON part."id" = config.part_id
 	INNER JOIN "product_material_line" target ON target."part_id" = config.part_id
 	LEFT JOIN issue_1287_material_repair repair
 		ON repair.product_id = target."product_id"
 		AND repair.part_id = target."part_id"
 	WHERE config.previous_purchase_length_mm IS NOT NULL
+		AND part."standard_purchase_length_mm" = config.previous_purchase_length_mm
 		AND repair.review_id IS NULL;
 
 	IF invalid_count > 0 THEN

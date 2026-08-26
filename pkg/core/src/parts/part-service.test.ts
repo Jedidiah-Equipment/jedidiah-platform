@@ -342,6 +342,29 @@ describe('bulkImportParts', () => {
     expect(importedParts.items[0]?.supplierId).toBe(scoped?.id);
   });
 
+  test('resolves to the oldest of two live suppliers sharing a lookup name', async ({ context }) => {
+    // The newer row is stored first, so an unordered read would hand back the wrong one.
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'ACME  SUPPLIES', createdAt: new Date('2024-01-01T00:00:00Z') });
+    const [older] = await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', createdAt: new Date('2020-01-01T00:00:00Z') })
+      .returning();
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [importRow(), importRow({ code: 'P-200', lineNumber: 3, supplierCode: 'SUP-200' })],
+      },
+    });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
+
+    expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
+    expect(importedParts.items.map((part) => part.supplierId)).toEqual([older?.id, older?.id]);
+  });
+
   test('ignores a soft-deleted supplier when matching a name', async ({ context }) => {
     await context.db.insert(supplier).values({ companyName: 'Acme  Supplies', deletedAt: new Date() });
 

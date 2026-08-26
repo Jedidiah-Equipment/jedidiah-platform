@@ -707,13 +707,21 @@ async function loadImportSuppliersByLookupName({
  * whitespace are noise, everything else is identity. It never touches what is stored — a matched
  * Supplier keeps its own spelling, and a created one is stored as the row wrote it. Anything looser
  * than this ("Night Wolves" against "Nightwolves") is a merge somebody has to decide on.
+ *
+ * The class is spelled out rather than written `\s` because this rule is applied twice, once here and
+ * once in the database, and the two languages disagree about what `\s` means: a non-breaking space is
+ * whitespace to JavaScript and is not to Postgres. Only the characters both agree on are noise, and
+ * `trim` is spelled out for the same reason — it would strip more than `btrim` does.
  */
 function supplierLookupName(companyName: string): string {
-  return companyName.toLowerCase().replaceAll(/\s+/g, ' ').trim();
+  return companyName
+    .toLowerCase()
+    .replaceAll(/[ \t\n\r\f\v]+/g, ' ')
+    .replaceAll(/^ | $/g, '');
 }
 
-/** The database's side of {@link supplierLookupName}, so the two agree on every stored name. */
-const supplierLookupNameSql = sql<string>`btrim(regexp_replace(lower(${supplier.companyName}), '\\s+', ' ', 'g'))`;
+/** The database's side of {@link supplierLookupName}, character for character. */
+const supplierLookupNameSql = sql<string>`btrim(regexp_replace(lower(${supplier.companyName}), '[ \\t\\n\\r\\f\\v]+', ' ', 'g'))`;
 
 async function loadImportPartsByCode({
   db,

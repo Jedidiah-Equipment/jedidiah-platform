@@ -15,7 +15,8 @@ import { getPlantDateNow } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
+import { QuoteLockedError } from '../quotes/quote-errors.js';
+import { cancelQuote, patchQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { reassignProductUnitToQuote } from './product-unit-reassignment.js';
@@ -452,6 +453,83 @@ describe('reassignProductUnitToQuote refusals', () => {
   });
 });
 
+// Reassignment empties the deal it takes the machine from. Everything that reads "this Quote sourced
+// production" has to keep reading true, and everything that acts on "this Quote's machine" has to stop.
+describe('the vacated deal', () => {
+  // Decision 8: the source Quote stays accepted and Locked. The lock is derived, and re-pointing the
+  // Job away removes the last `job.quote_id` row that derivation was reading.
+  test('stays Locked against commercial edits after its build moves away', async ({ context }) => {
+    const { db, seed } = context;
+    const greg = await createBuildToOrderDeal(db, seed, seed.gregId);
+    const receiving = await createQuote(db, { customerId: seed.palmietId, productId: seed.productId });
+    await db
+      .insert(quoteSelectedAssemblies)
+      .values({ productAssemblyId: null, quotedName: 'Toolbox', quotedPrice: 500, quoteId: greg.quoteId });
+
+    await reassignProductUnitToQuote({
+      actorUserId: ACTOR_USER_ID,
+      db,
+      input: { note: null, productUnitId: greg.unitId, toQuoteId: receiving },
+    });
+
+    // Dropping a sold Assembly is a commercial edit, which a Quote that has sourced production refuses.
+    await expect(
+      patchQuote({ actorUserId: ACTOR_USER_ID, db, input: { id: greg.quoteId, selectedAssemblies: [] } }),
+    ).rejects.toBeInstanceOf(QuoteLockedError);
+  });
+
+  // The machine now builds for someone else, so cancelling the deal it left must not reach for it.
+  test('cancelling it leaves the receiving deal holding its machine', async ({ context }) => {
+    const { db, seed } = context;
+    const source = await createBuildToOrderDeal(db, seed, seed.gregId);
+    // Same Customer on both deals, so reassignment writes no Transfer and the newest ownership row
+    // still names the vacated Quote as the sale that placed the machine.
+    const receiving = await createQuote(db, { customerId: seed.gregId, productId: seed.productId });
+
+    await reassignProductUnitToQuote({
+      actorUserId: ACTOR_USER_ID,
+      db,
+      input: { note: null, productUnitId: source.unitId, toQuoteId: receiving },
+    });
+    await cancelQuote({
+      actorUserId: ACTOR_USER_ID,
+      cancellationReason: 'Customer took the other trailer instead',
+      db,
+      id: source.quoteId,
+      mayCancelLockedQuote: true,
+    });
+
+    await expect(readJobQuoteId(db, source.jobId)).resolves.toBe(receiving);
+    await expect(readCurrentOwnerId(db, source.unitId)).resolves.toBe(seed.gregId);
+  });
+
+  // Across Customers the reversal cannot even find a coherent origin, so it used to refuse the
+  // cancellation outright rather than leave the vacated deal alone.
+  test('cancelling it is not blocked by the machine having moved to another Customer', async ({ context }) => {
+    const { db, seed } = context;
+    const source = await createBuildToOrderDeal(db, seed, seed.gregId);
+    const receiving = await createQuote(db, { customerId: seed.palmietId, productId: seed.productId });
+
+    await reassignProductUnitToQuote({
+      actorUserId: ACTOR_USER_ID,
+      db,
+      input: { note: null, productUnitId: source.unitId, toQuoteId: receiving },
+    });
+
+    await cancelQuote({
+      actorUserId: ACTOR_USER_ID,
+      cancellationReason: 'Customer walked away',
+      db,
+      id: source.quoteId,
+      mayCancelLockedQuote: true,
+    });
+
+    await expect(readQuoteStatus(db, source.quoteId)).resolves.toBe('cancelled');
+    await expect(readCurrentOwnerId(db, source.unitId)).resolves.toBe(seed.palmietId);
+    await expect(readJobQuoteId(db, source.jobId)).resolves.toBe(receiving);
+  });
+});
+
 describe('listReassignCandidates', () => {
   test('offers same-Product movable Units and leaves out the ones that cannot move', async ({ context }) => {
     const { db, seed } = context;
@@ -511,6 +589,18 @@ async function readJobQuoteId(db: Db, jobId: string): Promise<string | null> {
   const [job] = await db.select({ quoteId: jobs.quoteId }).from(jobs).where(eq(jobs.id, jobId));
 
   return job?.quoteId ?? null;
+}
+
+async function readQuoteStatus(db: Db, quoteId: string): Promise<string | null> {
+  const [quote] = await db.select({ status: quotes.status }).from(quotes).where(eq(quotes.id, quoteId));
+
+  return quote?.status ?? null;
+}
+
+async function readCurrentOwnerId(db: Db, productUnitId: string): Promise<string | null> {
+  const transfers = await readTransfers(db, productUnitId);
+
+  return transfers.at(-1)?.toCustomerId ?? null;
 }
 
 async function readQuoteProductUnitId(db: Db, quoteId: string): Promise<string | null> {

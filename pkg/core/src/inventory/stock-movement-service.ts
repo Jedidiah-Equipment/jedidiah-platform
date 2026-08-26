@@ -18,6 +18,7 @@ import {
   deriveMovingAverageTimeline,
   deriveOutstandingDrawUnitCost,
   derivePartStockActions,
+  groupBy,
   type JobMovementFacts,
   valueStockBucket,
   valueStockMovement,
@@ -66,7 +67,7 @@ import {
 } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
 import { assertPartStockAction } from './part-stock-action-errors.js';
-import { groupBy, sumBy, sumNullableBy } from './row-grouping.js';
+import { sumBy, sumNullableBy } from './row-grouping.js';
 import {
   PeriodicStockMovementError,
   ScannedPartNotFoundError,

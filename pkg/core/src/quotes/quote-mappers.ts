@@ -47,6 +47,8 @@ export type PriorityQuoteRow = QuoteListRow & {
 };
 
 export type QuoteDetailRow = QuoteRow & {
+  /** Durable proof this deal sourced production even after Reassignment took its Job away. */
+  everPlacedAUnit: boolean;
   customer: Pick<
     typeof customers.$inferSelect,
     'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'thumbnailDataUrl' | 'vatNumber'
@@ -155,7 +157,7 @@ export function mapQuoteDetail(
     customerPhone: row.customer.phone,
     customerThumbnailDataUrl: row.customer.thumbnailDataUrl,
     customerVatNumber: row.customer.vatNumber,
-    hasEverSourcedJob: row.jobs.length > 0,
+    hasEverSourcedJob: row.jobs.length > 0 || row.everPlacedAUnit,
     job: liveJob
       ? mapQuoteLinkedJob({
           jobCode: liveJob.code,

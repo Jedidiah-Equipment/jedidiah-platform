@@ -7,7 +7,7 @@ import {
   quoteSelectedAssemblies,
   quotes,
 } from '@pkg/db';
-import { resolveNewestOwnershipTransfer } from '@pkg/domain';
+import { groupBy, resolveNewestOwnershipTransfer } from '@pkg/domain';
 import {
   ProductUnitReassignCandidate,
   ProductUnitReassignPreview,
@@ -15,7 +15,6 @@ import {
   type UUID,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
-import { groupBy } from '../inventory/row-grouping.js';
 import { QuoteNotFoundError } from '../quotes/quote-errors.js';
 import { loadAsBuiltSpec } from './product-unit-as-built.js';
 import { ProductUnitNotFoundError } from './product-unit-errors.js';

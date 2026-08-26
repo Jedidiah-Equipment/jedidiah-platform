@@ -34,6 +34,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useCan } from '@/hooks/use-access.js';
+import { JobSheet } from '@/pages/jobs/components/JobSheet.js';
 import { QuoteCancellationDialog } from '../QuoteCancellationAction.js';
 import { getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput, toQuoteWorkItemInput } from '../types.js';
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
@@ -66,8 +67,11 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
   const catalogAssemblies = quote.product?.assemblies ?? [];
   const salespeopleOptions = useSalesPersonOptions();
   const auditAccess = useCan('audit:read');
+  const jobReadAccess = useCan('job:read');
+  const jobUpdateAccess = useCan('job:update');
   const [generationWarnings, setGenerationWarnings] = useState<QuoteDocumentGenerationWarning[]>([]);
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
+  const [jobSheetOpen, setJobSheetOpen] = useState(false);
   const quoteAuditFilters = useMemo(
     () => ({
       entityIds: [quote.id],
@@ -349,7 +353,14 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                 })
               }
             >
-              {(summary) => <QuoteRightPanel quote={quote} summary={summary} />}
+              {(summary) => (
+                <QuoteRightPanel
+                  canOpenJobs={jobReadAccess.can || jobUpdateAccess.can}
+                  onOpenJob={() => setJobSheetOpen(true)}
+                  quote={quote}
+                  summary={summary}
+                />
+              )}
             </form.Subscribe>
           </div>
         </FieldGroup>
@@ -357,6 +368,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
       {/* Cancelling settles the Job and the machine too, so the status field hands the whole act to
           the one mutation that knows how rather than autosaving a status change. */}
       <QuoteCancellationDialog onOpenChange={setCancellationDialogOpen} open={cancellationDialogOpen} quote={quote} />
+      {jobSheetOpen && quote.job ? <JobSheet jobId={quote.job.jobId} onClose={() => setJobSheetOpen(false)} /> : null}
     </form.AppForm>
   );
 };

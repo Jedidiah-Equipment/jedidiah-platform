@@ -1,0 +1,51 @@
+{
+  "releasedAt": "2026-08-26T11:16:26.109Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Merge duplicate suppliers",
+          "description": "Move all linked Parts and Purchase Orders into the supplier you want to keep. Blank contact details are filled automatically, and the merge is recorded in the audit history."
+        },
+        {
+          "title": "Match suppliers reliably during Parts imports",
+          "description": "Supplier names now match regardless of capitalisation or extra whitespace, preventing accidental duplicate suppliers while keeping existing Part relationships intact."
+        },
+        {
+          "title": "Connect Quotes and Jobs",
+          "description": "Open a linked Job from its Quote, jump directly to it in the planner, and return to the Quote from the Job. Quotes also show the Job’s current schedule state."
+        },
+        {
+          "title": "Reassign Units between deals",
+          "description": "Move an eligible un-invoiced Unit and its build Job to another accepted deal after reviewing specification differences. Any displaced Unit returns to Stock, and each transfer is recorded."
+        },
+        {
+          "title": "Track Job work-time changes",
+          "description": "The Activity feed now shows when departmental work starts, completes, is corrected, or is cleared, including relevant dates and crew members. Refined styling makes Job events easier to scan without repeating unnecessary dates."
+        },
+        {
+          "title": "Keep Quote notes with pricing",
+          "description": "Quote PDFs now place notes at the end of the pricing table, keeping them beside the quoted items and improving page flow."
+        },
+        {
+          "title": "Use corrected linear material quantities",
+          "description": "Affected legacy products now list length-based Parts in their material lists using the correct purchase-length quantities, improving material planning and purchasing accuracy."
+        },
+        {
+          "title": "Read Quote details more clearly",
+          "description": "Long pricing labels now wrap cleanly, and actions for starting or reassigning a Job are grouped with the Job details where they are easier to find."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Track Job work-time changes",
+          "description": "The Activity feed now shows when departmental work starts, completes, is corrected, or is cleared, including relevant dates and crew members. Updated event colours, thumbnails, and spacing make the timeline easier to scan."
+        }
+      ]
+    }
+  ]
+}

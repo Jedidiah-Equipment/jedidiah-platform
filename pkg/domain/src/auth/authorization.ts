@@ -61,6 +61,7 @@ export const permissionLabels = {
   'product_unit:read': 'View product units',
   'product_unit:update': 'Update product unit identity',
   'product_unit:transfer': 'Record product unit ownership transfers',
+  'product_unit:reassign': 'Reassign product units between deals',
   'product_unit:remove': 'Remove product units',
   'purchase_order:read': 'View purchase orders',
   'purchase_order:create': 'Create purchase orders',
@@ -124,6 +125,8 @@ export const permissionDescriptions = {
   'product_unit:update': "Edit a Product Unit's VIN, which identifies the machine for its whole life.",
   'product_unit:transfer':
     'Record an Ownership Transfer by hand, asserting who holds a machine with no Quote behind it.',
+  'product_unit:reassign':
+    "Move an un-invoiced Unit and its build Job to another accepted deal, displacing that deal's current Unit back to Stock.",
   'product_unit:remove':
     'Delete a Product Unit that was never built, once every Job on it is cancelled and nobody owns it.',
   'purchase_order:read': 'View supplier Purchase Orders.',
@@ -164,7 +167,7 @@ export const authorizationStatement = {
   product_range: ['read', 'create', 'update'],
   // No create action: Units are born from Job creation, never on their own. Removal is the one way out,
   // and it only ever reaches a machine that never came to exist.
-  product_unit: ['read', 'update', 'transfer', 'remove'],
+  product_unit: ['read', 'update', 'transfer', 'reassign', 'remove'],
   purchase_order: ['read', 'create', 'approve', 'send', 'amend', 'receive', 'close'],
   quote: ['read', 'create', 'update', 'cancel'],
   supplier: ['read', 'update', 'remove', 'merge'],
@@ -189,7 +192,7 @@ const adminAccess = {
   part: ['read', 'update'],
   product: ['read', 'create', 'update'],
   product_range: ['read', 'create', 'update'],
-  product_unit: ['read', 'update', 'transfer', 'remove'],
+  product_unit: ['read', 'update', 'transfer', 'reassign', 'remove'],
   purchase_order: ['read', 'create', 'approve', 'send', 'amend', 'receive', 'close'],
   quote: ['read', 'create', 'update', 'cancel'],
   supplier: ['read', 'update', 'remove', 'merge'],

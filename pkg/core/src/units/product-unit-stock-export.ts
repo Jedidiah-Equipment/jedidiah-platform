@@ -1,10 +1,10 @@
 import { type Db, jobs, products, productUnitOwnershipTransfers, productUnits } from '@pkg/db';
-import { computeQuoteVatAmount, resolveNewestOwnershipTransfer } from '@pkg/domain';
+import { computeQuoteVatAmount, groupBy, resolveNewestOwnershipTransfer } from '@pkg/domain';
 import { type ProductUnitStockExportInput, ProductUnitStockExportRow, UUID } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { readJobDrawnCost, sumJobDrawnCosts } from '../inventory/job-cost-read.js';
-import { groupBy, sumNullableBy } from '../inventory/row-grouping.js';
+import { sumNullableBy } from '../inventory/row-grouping.js';
 import {
   buildProductUnitListWhere,
   productUnitBuildCompletedOn,

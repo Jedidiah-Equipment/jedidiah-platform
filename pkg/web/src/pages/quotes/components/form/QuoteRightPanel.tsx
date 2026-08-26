@@ -34,6 +34,7 @@ import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
 import { JobScheduleStateBadges } from '@/pages/jobs/components/JobScheduleStateBadges.js';
 import { QuoteProductSourceBadge } from '../QuoteProductSourceBadge.js';
+import { ReassignUnitDialog } from '../ReassignUnitDialog.js';
 import { StartJobLink } from '../StartJobLink.js';
 
 // The summary prices the API-shaped Work Items the form maps into, not the browser shape itself.
@@ -67,12 +68,43 @@ export function QuoteRightPanel({
           canOpenJobs={canOpenJobs}
           job={quote.job}
           onOpenJob={onOpenJob}
+          quote={quote}
           scheduleError={jobScheduleError}
           scheduleState={jobScheduleState}
         />
-      ) : null}
+      ) : (
+        <QuoteNoJobCard quote={quote} />
+      )}
       <QuoteTotalCard quote={quote} summary={summary} />
     </aside>
+  );
+}
+
+/**
+ * An accepted build-to-order deal with no live Job is a gap someone has to close — a build was never
+ * started, or reassignment took its machine to another deal — so the card renders the absence rather
+ * than disappearing and leaving the panel silent about it.
+ *
+ * Only that shape. An Allocation Quote is already showing its machine in the card above and can source
+ * nothing but a Rework Job, and a Custom Quote never builds a machine at all: on either, a card headed
+ * "No live Job" would name a gap that is not one.
+ */
+function QuoteNoJobCard({ quote }: { quote: QuoteDetail }) {
+  if (quote.kind !== 'product' || quote.status !== 'accepted' || quote.productUnitId !== null) {
+    return null;
+  }
+
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardDescription>Job</CardDescription>
+        <CardTitle>No live Job</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <p className="text-muted-foreground">This deal is accepted but nothing is being built for it.</p>
+        <ReassignUnitDialog quote={quote} />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -80,12 +112,14 @@ function QuoteJobCard({
   canOpenJobs,
   job,
   onOpenJob,
+  quote,
   scheduleError,
   scheduleState,
 }: {
   canOpenJobs: boolean;
   job: NonNullable<QuoteDetail['job']>;
   onOpenJob: () => void;
+  quote: QuoteDetail;
   scheduleError: unknown;
   scheduleState: JobScheduleState | null;
 }) {
@@ -117,6 +151,7 @@ function QuoteJobCard({
             </Button>
           </div>
         ) : null}
+        <ReassignUnitDialog quote={quote} />
       </CardContent>
     </Card>
   );

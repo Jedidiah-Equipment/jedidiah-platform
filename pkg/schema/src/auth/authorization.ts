@@ -55,6 +55,7 @@ export const APP_PERMISSIONS = [
   'product_unit:read',
   'product_unit:update',
   'product_unit:transfer',
+  'product_unit:reassign',
   'product_unit:remove',
   'purchase_order:read',
   'purchase_order:create',

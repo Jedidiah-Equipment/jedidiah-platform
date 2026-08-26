@@ -45,6 +45,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { listProductBays } from '../products/product-service.js';
+import { quoteEverPlacedAUnit } from '../units/product-unit-service.js';
 import {
   QuoteInvalidReferenceError,
   QuoteNotFoundError,
@@ -366,22 +367,32 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
   }
 
   const offering = narrowQuoteOffering(row);
-  const [assemblies, productBaysForQuote, competingAllocationQuotes, reworkRequired] = await Promise.all([
-    offering.kind === 'product' ? listAssemblies({ tx: db, productId: offering.productId }) : Promise.resolve([]),
-    offering.kind === 'product' ? listProductBays({ db, productId: offering.productId }) : Promise.resolve([]),
-    offering.kind === 'product' && offering.productUnitId
-      ? listCompetingAllocationQuotes({ db, quoteId: row.id, productUnitId: offering.productUnitId })
-      : Promise.resolve([]),
-    offering.kind === 'product' && offering.productUnitId
-      ? allocationQuoteRequiresRework({
-          db,
-          productUnitId: offering.productUnitId,
-          selectedAssemblies: row.selectedAssemblies,
-        })
-      : Promise.resolve(false),
-  ]);
+  const [assemblies, productBaysForQuote, competingAllocationQuotes, reworkRequired, everPlacedAUnit] =
+    await Promise.all([
+      offering.kind === 'product' ? listAssemblies({ tx: db, productId: offering.productId }) : Promise.resolve([]),
+      offering.kind === 'product' ? listProductBays({ db, productId: offering.productId }) : Promise.resolve([]),
+      offering.kind === 'product' && offering.productUnitId
+        ? listCompetingAllocationQuotes({ db, quoteId: row.id, productUnitId: offering.productUnitId })
+        : Promise.resolve([]),
+      offering.kind === 'product' && offering.productUnitId
+        ? allocationQuoteRequiresRework({
+            db,
+            productUnitId: offering.productUnitId,
+            selectedAssemblies: row.selectedAssemblies,
+          })
+        : Promise.resolve(false),
+      // Durable proof this deal sourced production: Reassignment moves its build Job away, and the
+      // Locked derivation must keep reading true afterwards. See `quoteEverPlacedAUnit`.
+      quoteEverPlacedAUnit({ db, quoteId: row.id }),
+    ]);
 
-  return mapQuoteDetail(row, assemblies, productBaysForQuote, competingAllocationQuotes, reworkRequired);
+  return mapQuoteDetail(
+    { ...row, everPlacedAUnit },
+    assemblies,
+    productBaysForQuote,
+    competingAllocationQuotes,
+    reworkRequired,
+  );
 }
 
 async function allocationQuoteRequiresRework({

@@ -387,6 +387,36 @@ async function appendOwnershipTransfer({
   return transfer;
 }
 
+/**
+ * Whether a Quote ever placed a machine with a Customer.
+ *
+ * A Quote is Locked once it has sourced production, and the everyday evidence is a `job.quote_id` row —
+ * a cancelled Job keeps its Quote, so cancellation cannot unlock a deal. Reassignment is the one
+ * operation that takes that row away, moving the build Job to another Quote entirely, and the vacated
+ * deal must stay Locked all the same. The Ownership Transfer it wrote is the durable proof: append-only,
+ * and `sourceQuoteId` says exactly which deal put the machine where it went.
+ *
+ * A plain lookup rather than a correlated subquery on purpose. Drizzle qualifies an interpolated column
+ * with its table only in some query shapes, and the relational builder renames the table besides, so a
+ * shared `exists (...)` fragment silently compares the wrong two columns in whichever context it was
+ * not written for. This reads the same in every caller.
+ */
+export async function quoteEverPlacedAUnit({
+  db,
+  quoteId,
+}: {
+  db: Db | DatabaseTransaction;
+  quoteId: string;
+}): Promise<boolean> {
+  const [transfer] = await db
+    .select({ id: productUnitOwnershipTransfers.id })
+    .from(productUnitOwnershipTransfers)
+    .where(eq(productUnitOwnershipTransfers.sourceQuoteId, quoteId))
+    .limit(1);
+
+  return Boolean(transfer);
+}
+
 export async function updateProductUnit({
   actorUserId,
   db,

@@ -21,11 +21,10 @@ import {
   type UUID,
 } from '@pkg/schema';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { cancelJobForQuote } from '../jobs/job-service.js';
-import { removeProductUnitWithin } from '../units/product-unit-service.js';
+import { quoteEverPlacedAUnit, removeProductUnitWithin } from '../units/product-unit-service.js';
 import {
   mergeAllocationSeed,
   resolveAllocationQuoteSeed,
@@ -158,7 +157,14 @@ export async function cancelQuote({
     // An Allocation Quote sold a machine that already existed, so the sale dying hands it back whatever
     // becomes of any Job. A build-to-order Unit belongs to the Job that minted it and returns once no
     // live build is left — otherwise that build would be owing a machine we had taken back.
-    if (before.productUnitId !== null || !liveJobRemains) {
+    //
+    // Unless Reassignment already took that Job to another deal, which leaves this Quote holding no Job
+    // row at all. The machine is then someone else's live build, and reaching for it here would either
+    // strand that build on a Stock-owned machine or refuse this cancellation over an Owner that is
+    // no longer any of this deal's business.
+    const holdsItsMachine = before.productUnitId !== null || (await quoteHoldsAnyJobRow({ quoteId: before.id, tx }));
+
+    if (holdsItsMachine && (before.productUnitId !== null || !liveJobRemains)) {
       await returnQuoteProductUnitToStock({
         actorUserId,
         customerId: before.customerId,
@@ -839,7 +845,29 @@ async function quoteHasLiveJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTra
   return Boolean(job);
 }
 
+/**
+ * Whether this Quote has ever sourced production, and so is Locked.
+ *
+ * A `job.quote_id` row is the everyday evidence and survives cancellation, which is why cancelling a
+ * Job cannot unlock its Quote. Reassignment takes that row away — the build Job moves to another deal
+ * outright — so the Ownership Transfer the Quote wrote when it placed the machine stands in for it.
+ * Either is proof; a deal that has put metal in a Bay does not become editable again.
+ */
 async function quoteHasEverSourcedJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {
+  if (await quoteHoldsAnyJobRow({ quoteId, tx })) {
+    return true;
+  }
+
+  return quoteEverPlacedAUnit({ db: tx, quoteId });
+}
+
+/**
+ * Whether any Job — live or cancelled — still names this Quote. This is the Quote's *claim* on a
+ * machine, which reassignment genuinely does remove: once the build Job belongs to another deal, this
+ * one has no machine to settle. Distinct from {@link quoteHasEverSourcedJob}, which asks about history
+ * and must stay true forever.
+ */
+async function quoteHoldsAnyJobRow({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {
   const [job] = await tx
     .select({
       id: jobs.id,

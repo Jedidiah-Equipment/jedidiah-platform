@@ -11,7 +11,13 @@ import {
   withPagination,
 } from '@pkg/db';
 import type { MovingAverageMovement } from '@pkg/domain';
-import { deriveMovingAverageTimeline, deriveStocktakeOverdue, toPlantDateOnly, valueStockMovement } from '@pkg/domain';
+import {
+  deriveMovingAverageTimeline,
+  deriveStocktakeOverdue,
+  groupBy,
+  toPlantDateOnly,
+  valueStockMovement,
+} from '@pkg/domain';
 import type {
   AuthId,
   CloseStocktakeSessionInput,
@@ -62,7 +68,7 @@ import { createOrgWorkingCalendar, listWorkingCalendarOffDays } from '../jobs/wo
 import { loadEstimatedStockOnHand } from './estimated-stock-on-hand-read.js';
 import { bucketKey, insertMovement, loadBucketQuantities, loadStockPart, toLedgerQuantity } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
-import { groupBy, sumBy, sumNullableBy } from './row-grouping.js';
+import { sumBy, sumNullableBy } from './row-grouping.js';
 import {
   StocktakePartOutOfScopeError,
   StocktakeSessionAlreadyOpenError,

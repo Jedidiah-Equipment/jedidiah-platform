@@ -31,6 +31,7 @@ export const HELP_TOPICS = {
   storesTablet: '/inventory/work-the-stores-tablet',
   suppliers: '/inventory/maintain-suppliers',
   supplierMerge: '/inventory/merge-duplicate-suppliers',
+  unitReassignment: '/sales/reassign-a-unit',
   units: '/production/remove-a-unit',
 } as const satisfies Record<string, string>;
 

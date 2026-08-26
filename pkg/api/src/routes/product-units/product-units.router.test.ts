@@ -204,6 +204,68 @@ describe('productUnits.transfer', () => {
   });
 });
 
+describe('productUnits.reassign', () => {
+  test('moves the Unit and its build Job onto the receiving deal', async ({ context }) => {
+    const toQuoteId = await seedReceivingQuote(context.db, context.seed, context.seed.hilltopId);
+
+    const result = await context
+      .createCaller(mockSession('admin'))
+      .productUnits.reassign({ note: null, productUnitId: context.seed.unitId, toQuoteId });
+
+    expect(result).toMatchObject({ jobId: context.seed.buildJobId, unit: { id: context.seed.unitId } });
+  });
+
+  // Reassignment crosses deals, so it stays with the roles that already hold every other Unit power.
+  test('rejects every role that may read Units but not reassign them', async ({ context }) => {
+    const toQuoteId = await seedReceivingQuote(context.db, context.seed, context.seed.hilltopId);
+
+    for (const role of ['sales', 'procurement-manager', 'job-viewer'] as const) {
+      await expect(
+        context
+          .createCaller(mockSession(role))
+          .productUnits.reassign({ note: null, productUnitId: context.seed.unitId, toQuoteId }),
+        `role ${role}`,
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(
+        context.createCaller(mockSession(role)).productUnits.reassignCandidates({ quoteId: toQuoteId }),
+        `role ${role}`,
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(
+        context
+          .createCaller(mockSession(role))
+          .productUnits.reassignPreview({ productUnitId: context.seed.unitId, quoteId: toQuoteId }),
+        `role ${role}`,
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+  });
+
+  test('surfaces a deal that cannot receive a machine as a conflict carrying its appCode', async ({ context }) => {
+    const toQuoteId = await seedReceivingQuote(context.db, context.seed, context.seed.hilltopId);
+    await context.db.update(quotes).set({ invoiceNumber: 'INV-3' }).where(eq(quotes.id, toQuoteId));
+
+    await expect(
+      context
+        .createCaller(mockSession('admin'))
+        .productUnits.reassign({ note: null, productUnitId: context.seed.unitId, toQuoteId }),
+    ).rejects.toMatchObject({
+      code: 'CONFLICT',
+      message: 'This Quote has been invoiced, so its machine can no longer change.',
+    });
+  });
+
+  test('offers the movable machines and previews what the move would do', async ({ context }) => {
+    const toQuoteId = await seedReceivingQuote(context.db, context.seed, context.seed.hilltopId);
+    const caller = context.createCaller(mockSession('admin'));
+
+    await expect(caller.productUnits.reassignCandidates({ quoteId: toQuoteId })).resolves.toMatchObject([
+      { id: context.seed.unitId, owner: { companyName: 'Riverside Farm' } },
+    ]);
+    await expect(
+      caller.productUnits.reassignPreview({ productUnitId: context.seed.unitId, quoteId: toQuoteId }),
+    ).resolves.toMatchObject({ displaced: null, incoming: { id: context.seed.unitId } });
+  });
+});
+
 describe('productUnits.remove', () => {
   test('deletes a machine whose build was cancelled before it was ever made', async ({ context }) => {
     await abandonSeededBuild(context.db, context.seed);
@@ -348,7 +410,27 @@ async function seedUnit(db: Db) {
     buildJobCode: formatJobCode(job.code),
     buildJobId: job.id,
     hilltopId: hilltop.id,
+    productId: range.id,
+    quoteId: quote.id,
     riversideId: customer.id,
     unitId: unit.id,
   };
+}
+
+/** A second accepted deal for the same Product, waiting for a machine. */
+async function seedReceivingQuote(db: Db, seed: Awaited<ReturnType<typeof seedUnit>>, customerId: string) {
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId,
+      productId: seed.productId,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: ACTOR_USER_ID,
+      status: 'accepted',
+    })
+    .returning();
+  if (!quote) throw new Error('Receiving Quote insert did not return a row');
+
+  return quote.id;
 }

@@ -375,7 +375,7 @@ describe('bulkImportParts', () => {
       .values({ companyName: 'Acme Supplies', createdAt: new Date('2020-01-01T00:00:00Z') });
     const [newer] = await context.db
       .insert(supplier)
-      .values({ companyName: 'Acme  Supplies', createdAt: new Date('2024-01-01T00:00:00Z') })
+      .values({ companyName: 'ACME  SUPPLIES', createdAt: new Date('2024-01-01T00:00:00Z') })
       .returning();
     if (!newer) throw new Error('Expected the newer Supplier to have been inserted');
 
@@ -385,7 +385,8 @@ describe('bulkImportParts', () => {
       input: partInput({ code: 'P-500', supplierId: newer.id }),
     });
 
-    // Exactly what a global export writes for that Part: the Supplier it is actually attached to.
+    // What a round trip actually puts back: the export writes the attached Supplier's stored name,
+    // and the CSV reader title-cases the cell, so it comes back matching neither spelling exactly.
     const result = await bulkImportParts({
       actorUserId,
       db: context.db,

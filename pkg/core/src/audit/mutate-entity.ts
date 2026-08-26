@@ -20,6 +20,8 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  * - Part bulk import — one transaction over many rows, its own per-row lock, skip is `continue`.
  * - Purchase Order draft save and send — child collections and the stored PDF are changed inside the
  *   same transaction before the aggregate audit diff is recorded.
+ * - Supplier merge — Parts and Purchase Orders move in the same transaction before the survivor's
+ *   fill-forward diff and both merge events are recorded.
  * - The Job completion sweep — the order is inverted: it writes first (`WHERE completedOn IS NULL` is
  *   the additive latch), diffs after, with a null system actor.
  */

@@ -383,6 +383,9 @@ export async function bulkImportParts({
       const errors: string[] = [];
       let importedCount = 0;
       let updatedCount = 0;
+      // Supplier retirement takes child locks before Supplier locks. Keep the import in that order
+      // too, or a merge and an import of the same Part can each wait on the other's row.
+      const partsByCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
       const scopedSupplier = input.supplierId
         ? await getImportSupplierById({ db: tx, supplierId: input.supplierId })
         : undefined;
@@ -394,7 +397,6 @@ export async function bulkImportParts({
       const suppliersByLookupName = scopedSupplier
         ? new Map<string, SupplierRow[]>()
         : await loadImportSuppliersByLookupName({ db: tx, rows: input.rows });
-      const partsByCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
 
       for (const row of input.rows) {
         const partByCode = partsByCode.get(row.code);
@@ -716,7 +718,9 @@ async function loadImportSuppliersByLookupName({
     .where(and(inArray(supplierLookupNameSql, lookupNames), isNull(supplier.deletedAt)))
     // Two live Suppliers can share a lookup name — the unique index covers the exact stored spelling
     // only — so they are collected oldest first and each row picks between them for itself.
-    .orderBy(supplier.createdAt, supplier.id);
+    .orderBy(supplier.createdAt, supplier.id)
+    // Pair with Supplier retirement so an import cannot attach a Part after the merge has swept children.
+    .for('share');
 
   for (const supplierRow of supplierRows) {
     // Keyed by the value the database computed, so a Supplier the filter matched can never miss the
@@ -793,13 +797,12 @@ async function getImportSupplierById({
   db: DatabaseTransaction;
   supplierId: UUID;
 }): Promise<SupplierRow> {
-  const row = await db.query.supplier.findFirst({
-    columns: {
-      companyName: true,
-      id: true,
-    },
-    where: and(eq(supplier.id, supplierId), isNull(supplier.deletedAt)),
-  });
+  const [row] = await db
+    .select({ companyName: supplier.companyName, id: supplier.id })
+    .from(supplier)
+    .where(and(eq(supplier.id, supplierId), isNull(supplier.deletedAt)))
+    .limit(1)
+    .for('share');
 
   if (!row) {
     throw new PartSupplierNotFoundError(supplierId);
@@ -841,12 +844,13 @@ async function assertSupplierExists({
 }): Promise<void> {
   if (supplierId === null) return;
 
-  const row = await db.query.supplier.findFirst({
-    columns: {
-      id: true,
-    },
-    where: and(eq(supplier.id, supplierId), isNull(supplier.deletedAt)),
-  });
+  const [row] = await db
+    .select({ id: supplier.id })
+    .from(supplier)
+    .where(and(eq(supplier.id, supplierId), isNull(supplier.deletedAt)))
+    .limit(1)
+    // Pair with Supplier retirement so validation and the following Part write stay one unit.
+    .for('share');
 
   if (!row) {
     throw new PartSupplierNotFoundError(supplierId);

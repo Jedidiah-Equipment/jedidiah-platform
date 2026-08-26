@@ -196,6 +196,10 @@ export function buildAuditSummary(
     return `Deleted ${descriptor.noun} ${quoteLabel(formatEntityLabel(descriptor, label ?? 'Unknown'))}`;
   }
 
+  if (action === 'merged') {
+    return `Merged ${descriptor.noun} ${quoteLabel(formatEntityLabel(descriptor, label ?? 'Unknown'))}`;
+  }
+
   const primaryFieldChange = changes?.[descriptor.primaryLabelField];
   if (primaryFieldChange) {
     return `Renamed ${descriptor.noun} ${quoteLabel(formatEntityLabel(descriptor, primaryFieldChange.from))} to ${quoteLabel(formatEntityLabel(descriptor, primaryFieldChange.to))}`;
@@ -218,6 +222,7 @@ async function insertAuditRow({
   entityId,
   changes,
   label,
+  summary,
 }: {
   db: DatabaseTransaction;
   descriptor: AuditSummaryDescriptor;
@@ -226,6 +231,7 @@ async function insertAuditRow({
   entityId: string;
   changes: AuditChanges | null;
   label: unknown;
+  summary?: string;
 }): Promise<void> {
   await db.insert(auditEvents).values({
     action,
@@ -233,7 +239,7 @@ async function insertAuditRow({
     changes,
     entityId,
     entityType: descriptor.entityType,
-    summary: buildAuditSummary(descriptor, action, changes, label),
+    summary: summary ?? buildAuditSummary(descriptor, action, changes, label),
   });
 }
 
@@ -249,6 +255,7 @@ export async function recordAuditEvent({
   entityId,
   changes,
   record,
+  summary,
 }: {
   db: DatabaseTransaction;
   descriptor: AuditSummaryDescriptor;
@@ -257,6 +264,7 @@ export async function recordAuditEvent({
   entityId: string;
   changes: AuditChanges | null;
   record: AuditRecord;
+  summary?: string;
 }): Promise<void> {
   await insertAuditRow({
     db,
@@ -266,6 +274,7 @@ export async function recordAuditEvent({
     entityId,
     changes,
     label: record[descriptor.primaryLabelField],
+    ...(summary === undefined ? {} : { summary }),
   });
 }
 
@@ -327,8 +336,8 @@ export async function recordAuditDelete<TInput>({
  * Emit the update event. `mutateEntity` (`./mutate-entity.ts`) is the standard audited-write path and
  * calls this itself; reach for the raw {@link diffAuditUpdate} + `recordAuditUpdate` pair only when the
  * path must run its own control flow between the diff and the write — the Quote paths, whose Locked
- * Quote gate reads the changed field set before deciding, and the Job completion sweep, which writes
- * first and diffs after.
+ * Quote gate reads the changed field set before deciding; Supplier merge, which moves dependent rows
+ * in the same transaction; and the Job completion sweep, which writes first and diffs after.
  */
 export async function recordAuditUpdate<TInput>({
   db,

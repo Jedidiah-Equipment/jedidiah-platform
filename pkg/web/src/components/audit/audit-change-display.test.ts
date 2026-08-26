@@ -176,6 +176,30 @@ describe('audit change display helpers', () => {
     ]);
   });
 
+  it('formats Supplier merge counts as totals rather than value transitions', () => {
+    expect(
+      getAuditChangeDisplays({
+        movedParts: { from: null, to: 4 },
+        movedPurchaseOrders: { from: null, to: 3 },
+      }),
+    ).toEqual([
+      {
+        field: 'Parts moved',
+        from: '—',
+        key: 'movedParts',
+        preview: 'Parts moved: 4',
+        to: '4',
+      },
+      {
+        field: 'Purchase orders moved',
+        from: '—',
+        key: 'movedPurchaseOrders',
+        preview: 'Purchase orders moved: 3',
+        to: '3',
+      },
+    ]);
+  });
+
   it('collapses long text and object values in row previews', () => {
     expect(
       getAuditChangeDisplays({

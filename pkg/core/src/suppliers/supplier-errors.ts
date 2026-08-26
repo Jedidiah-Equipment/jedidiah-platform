@@ -31,15 +31,28 @@ export class SupplierHasDraftPurchaseOrdersError extends Error {
   }
 }
 
+export class SupplierMergeSelfError extends Error {
+  readonly code = 'supplier.merge_self';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super(`Supplier cannot be merged into itself: ${id}`);
+    this.name = 'SupplierMergeSelfError';
+    this.metadata = { id };
+  }
+}
+
 export type SupplierCoreError =
   | DuplicateSupplierNameError
   | SupplierHasDraftPurchaseOrdersError
+  | SupplierMergeSelfError
   | SupplierNotFoundError;
 
 export function isSupplierCoreError(error: unknown): error is SupplierCoreError {
   return (
     error instanceof DuplicateSupplierNameError ||
     error instanceof SupplierHasDraftPurchaseOrdersError ||
+    error instanceof SupplierMergeSelfError ||
     error instanceof SupplierNotFoundError
   );
 }

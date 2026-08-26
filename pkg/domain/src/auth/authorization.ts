@@ -76,6 +76,7 @@ export const permissionLabels = {
   'supplier:read': 'View suppliers',
   'supplier:update': 'Manage suppliers',
   'supplier:remove': 'Remove suppliers',
+  'supplier:merge': 'Merge suppliers',
   'user:create': 'Add users',
   'user:list': 'View users',
   'user:set-email': 'Change user emails',
@@ -139,6 +140,7 @@ export const permissionDescriptions = {
   'supplier:read': 'View supplier records.',
   'supplier:update': 'Create and edit supplier records.',
   'supplier:remove': 'Soft-delete supplier records.',
+  'supplier:merge': 'Merge a duplicate supplier into another, moving its parts and purchase orders.',
   'user:create': 'Add new application users.',
   'user:list': 'View application users.',
   'user:set-email': 'Change application user email addresses and verification state.',
@@ -165,7 +167,7 @@ export const authorizationStatement = {
   product_unit: ['read', 'update', 'transfer', 'remove'],
   purchase_order: ['read', 'create', 'approve', 'send', 'amend', 'receive', 'close'],
   quote: ['read', 'create', 'update', 'cancel'],
-  supplier: ['read', 'update', 'remove'],
+  supplier: ['read', 'update', 'remove', 'merge'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const;
 
@@ -190,7 +192,7 @@ const adminAccess = {
   product_unit: ['read', 'update', 'transfer', 'remove'],
   purchase_order: ['read', 'create', 'approve', 'send', 'amend', 'receive', 'close'],
   quote: ['read', 'create', 'update', 'cancel'],
-  supplier: ['read', 'update', 'remove'],
+  supplier: ['read', 'update', 'remove', 'merge'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const satisfies RoleAccess;
 
@@ -223,7 +225,7 @@ export const appRoleAccess = {
     // The same Quote set sales holds, and no `cancel`: unwinding a Locked Quote's sale or build stays
     // with the roles that own the cascade.
     quote: ['read', 'create', 'update'],
-    supplier: ['read', 'update'],
+    supplier: ['read', 'update', 'merge'],
   },
   'job-viewer': {
     job: ['read'],

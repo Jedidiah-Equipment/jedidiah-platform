@@ -24,6 +24,23 @@ describe('AuditEvent', () => {
       }),
     ).toMatchObject({ entityType: 'job_bay' });
   });
+
+  it('accepts merged audit events', () => {
+    expect(
+      AuditEvent.parse({
+        action: 'merged',
+        actorEmail: 'admin@example.com',
+        actorName: 'Admin',
+        actorUserId: 'admin-user',
+        changes: null,
+        entityId: '00000000-0000-4000-8000-000000000001',
+        entityType: 'supplier',
+        id: '00000000-0000-4000-8000-000000000002',
+        occurredAt: '2026-08-26T00:00:00.000Z',
+        summary: 'Merged supplier "Night Wolves"',
+      }),
+    ).toMatchObject({ action: 'merged' });
+  });
 });
 
 describe('AuditListInput', () => {

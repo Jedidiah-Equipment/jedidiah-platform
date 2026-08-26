@@ -71,6 +71,7 @@ describe('getRolePermissions', () => {
       'quote:create',
       'quote:read',
       'quote:update',
+      'supplier:merge',
       'supplier:read',
       'supplier:remove',
       'supplier:update',
@@ -161,6 +162,7 @@ describe('getRolePermissions', () => {
       'quote:create',
       'quote:read',
       'quote:update',
+      'supplier:merge',
       'supplier:read',
       'supplier:update',
     ]);

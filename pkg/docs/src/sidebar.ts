@@ -48,6 +48,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { text: 'Maintain Suppliers', link: '/inventory/maintain-suppliers' },
       { text: 'Add a Supplier', link: '/inventory/add-a-supplier' },
       { text: 'Update a Supplier', link: '/inventory/update-a-supplier' },
+      { text: 'Merge duplicate Suppliers', link: '/inventory/merge-duplicate-suppliers' },
       { text: 'Remove a Supplier', link: '/inventory/remove-a-supplier' },
       { text: 'Check out Parts to a Job', link: '/inventory/check-out-parts-to-a-job' },
       { text: 'Return to Store', link: '/inventory/return-to-store' },

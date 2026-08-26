@@ -19,6 +19,7 @@ import { PartBulkImportDialog } from '../parts/PartBulkImportDialog.js';
 import { PartCreateDialog } from '../parts/PartCreateDialog.js';
 import { PartEditDialog } from '../parts/PartEditDialog.js';
 import { SupplierForm } from './components/SupplierForm.js';
+import { MergeSupplierDialog } from './MergeSupplierDialog.js';
 
 type SupplierEditPageProps = {
   supplierId: UUID;
@@ -59,6 +60,7 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
   const canReadPart = useCan('part:read').can;
   const canUpdatePart = useCan('part:update').can;
   const canRemoveSupplier = useCan('supplier:remove').can;
+  const canMergeSupplier = useCan('supplier:merge').can;
   const auditAccess = useCan('audit:read');
   const [editingPart, setEditingPart] = useState<Part | null>(null);
   const supplierAuditFilters = useMemo(
@@ -78,9 +80,12 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
       </TabsList>
       <TabsContent className="pt-4" value="supplier">
         <SupplierForm key={supplier.id} onSave={onSupplierSave} supplier={supplier} />
-        {canRemoveSupplier ? (
+        {canMergeSupplier || canRemoveSupplier ? (
           <div className="mt-8 flex justify-end border-t pt-4">
-            <RemoveSupplierButton supplier={supplier} />
+            <div className="flex gap-2">
+              {canMergeSupplier ? <MergeSupplierDialog supplier={supplier} /> : null}
+              {canRemoveSupplier ? <RemoveSupplierButton supplier={supplier} /> : null}
+            </div>
           </div>
         ) : null}
       </TabsContent>

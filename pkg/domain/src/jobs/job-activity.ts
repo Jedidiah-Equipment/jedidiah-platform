@@ -1,7 +1,6 @@
 import type { DateIso, JobWorkTimeActivityAction, JobWorkTimeActivityState, WorkItemDepartment } from '@pkg/schema';
 
 import { departmentLabels } from '../departments.js';
-import { formatDate } from '../formatting/date.js';
 
 export const JOB_ACTIVITY_EVENT_SENTENCES = {
   completed: 'completed this Job',
@@ -32,13 +31,9 @@ export function jobWorkTimeActivitySentence({
   }
 }
 
-/** The observed span and crew carried by a Work Time event, independent of its audit timestamp. */
+/** Crew context that adds information beyond the activity timeline's own date and event sentence. */
 export function jobWorkTimeActivityDetail(timing: JobWorkTimeActivityState | null): string | null {
-  if (timing === null) return null;
-
-  const span = `${formatDate(timing.startedAt)} → ${formatDate(timing.completedAt, 'short', 'In progress')}`;
-
-  return timing.crew.length === 0 ? span : `${span} · ${timing.crew.join(', ')}`;
+  return timing && timing.crew.length > 0 ? timing.crew.join(', ') : null;
 }
 
 /** Whether the newest feed entry lies beyond the user's Activity high-water mark. */

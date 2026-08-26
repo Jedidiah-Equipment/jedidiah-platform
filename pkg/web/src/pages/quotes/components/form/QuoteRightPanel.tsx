@@ -36,6 +36,7 @@ import { JobScheduleStateBadges } from '@/pages/jobs/components/JobScheduleState
 import { QuoteProductSourceBadge } from '../QuoteProductSourceBadge.js';
 import { ReassignUnitDialog } from '../ReassignUnitDialog.js';
 import { StartJobLink } from '../StartJobLink.js';
+import { canStartJobFromQuote } from '../start-job-eligibility.js';
 
 // The summary prices the API-shaped Work Items the form maps into, not the browser shape itself.
 type QuoteWorkItemFormInput = QuoteComputedSummary['workItems'][number];
@@ -80,19 +81,12 @@ export function QuoteRightPanel({
   );
 }
 
-/**
- * An accepted build-to-order deal with no live Job is a gap someone has to close — a build was never
- * started, or reassignment took its machine to another deal — so the card renders the absence rather
- * than disappearing and leaving the panel silent about it.
- *
- * Only that shape. An Allocation Quote is already showing its machine in the card above and can source
- * nothing but a Rework Job, and a Custom Quote never builds a machine at all: on either, a card headed
- * "No live Job" would name a gap that is not one.
- */
 function QuoteNoJobCard({ quote }: { quote: QuoteDetail }) {
-  if (quote.kind !== 'product' || quote.status !== 'accepted' || quote.productUnitId !== null) {
+  if (!canStartJobFromQuote(quote)) {
     return null;
   }
+
+  const isUnstartedBuild = quote.kind === 'product' && quote.productUnitId === null;
 
   return (
     <Card size="sm">
@@ -101,7 +95,10 @@ function QuoteNoJobCard({ quote }: { quote: QuoteDetail }) {
         <CardTitle>No live Job</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-3">
-        <p className="text-muted-foreground">This deal is accepted but nothing is being built for it.</p>
+        {isUnstartedBuild ? (
+          <p className="text-muted-foreground">This deal is accepted but nothing is being built for it.</p>
+        ) : null}
+        <StartJobLink className="w-full" quote={quote} />
         <ReassignUnitDialog quote={quote} />
       </CardContent>
     </Card>
@@ -431,7 +428,6 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
           <span>Total</span>
           <span>{formatCurrency(summary.total, summary.currencyCode)}</span>
         </div>
-        <StartJobLink className="mt-2 w-full" quote={quote} />
       </CardContent>
     </Card>
   );
@@ -492,9 +488,9 @@ type QuoteSummaryRowProps = {
 
 function QuoteSummaryRow({ className, label, value, valueClassName }: QuoteSummaryRowProps) {
   return (
-    <div className={cn('flex items-center justify-between gap-3 text-muted-foreground', className)}>
-      <span className="min-w-0 truncate">{label}</span>
-      <span className={cn('shrink-0 text-foreground', valueClassName)}>{value}</span>
+    <div className={cn('flex items-start justify-between gap-3 text-muted-foreground', className)}>
+      <span className="min-w-0 flex-1 break-words">{label}</span>
+      <span className={cn('shrink-0 text-right text-foreground', valueClassName)}>{value}</span>
     </div>
   );
 }
@@ -504,14 +500,14 @@ function QuoteSummaryChargeRow({ charge, currencyCode }: { charge: QuoteWorkItem
     charge.kind === 'labour' ? `${formatNumber(charge.quantity, { decimals: 2 })} h` : formatNumber(charge.quantity);
 
   return (
-    <div className="flex items-center justify-between gap-3 text-xs">
-      <span className="min-w-0">
-        <span className="block truncate text-muted-foreground">{charge.label}</span>
+    <div className="flex items-start justify-between gap-3 text-xs">
+      <span className="min-w-0 flex-1">
+        <span className="block break-words text-muted-foreground">{charge.label}</span>
         <span className="block whitespace-nowrap text-[11px] text-muted-foreground/80">
           {`${quantity} × ${formatCurrency(charge.unitPrice, currencyCode)}`}
         </span>
       </span>
-      <span className="shrink-0 text-muted-foreground">{formatCurrency(charge.amount, currencyCode)}</span>
+      <span className="shrink-0 text-right text-muted-foreground">{formatCurrency(charge.amount, currencyCode)}</span>
     </div>
   );
 }

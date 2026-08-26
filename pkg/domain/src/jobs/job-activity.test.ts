@@ -1,7 +1,25 @@
 import { DateIso } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
-import { hasUnreadActivity } from './job-activity.js';
+import { hasUnreadActivity, jobWorkTimeActivityDetail } from './job-activity.js';
+
+describe('jobWorkTimeActivityDetail', () => {
+  const startedAt = DateIso.parse('2026-08-18T08:00:00.000Z');
+  const completedAt = DateIso.parse('2026-08-18T12:00:00.000Z');
+
+  test('keeps crew context without repeating timeline dates or Work Time state', () => {
+    expect(jobWorkTimeActivityDetail({ completedAt: null, crew: [], startedAt })).toBeNull();
+    expect(jobWorkTimeActivityDetail({ completedAt, crew: ['Fiona Fabricator'], startedAt })).toBe('Fiona Fabricator');
+    expect(jobWorkTimeActivityDetail({ completedAt: null, crew: ['Fiona Fabricator'], startedAt })).toBe(
+      'Fiona Fabricator',
+    );
+  });
+
+  test('omits detail when dates were the only additional facts', () => {
+    expect(jobWorkTimeActivityDetail({ completedAt, crew: [], startedAt })).toBeNull();
+    expect(jobWorkTimeActivityDetail(null)).toBeNull();
+  });
+});
 
 describe('hasUnreadActivity', () => {
   const lastActivitySeen = DateIso.parse('2026-08-18T08:00:00.000Z');

@@ -4,6 +4,7 @@ import {
   JOB_ACTIVITY_EVENT_SENTENCES,
   jobWorkTimeActivityDetail,
   jobWorkTimeActivitySentence,
+  statusBadgeColorClassNames,
 } from '@pkg/domain';
 import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { IconCheck, IconClock, IconFileText, IconPencil, IconPlus, IconSubtask } from '@tabler/icons-react';
@@ -162,6 +163,8 @@ const JobChangeEntry: React.FC<{ hideDetail: boolean; item: JobChangeActivityIte
   // user since deleted, whose id the FK nulled — the same collision the Audit table resolves by
   // calling both System, so this reads the same way rather than guessing at a person.
   const actorName = item.actor ? getFirstName(item.actor.name) : 'System';
+  const iconTone =
+    item.type === 'job-work-time-updated' ? statusBadgeColorClassNames.blue : statusBadgeColorClassNames.purple;
 
   return (
     <ActivityRow
@@ -172,18 +175,30 @@ const JobChangeEntry: React.FC<{ hideDetail: boolean; item: JobChangeActivityIte
         <span className="size-2.5 rounded-full border border-muted-foreground/50 bg-background ring-4 ring-background" />
       }
       who={
-        <span className="flex size-8 items-center justify-center rounded-full border border-border bg-muted/50 text-muted-foreground">
+        <span
+          className={cn('flex size-8 items-center justify-center rounded-full border', iconTone.chip, iconTone.text)}
+        >
           <Icon aria-hidden className="size-3.5" />
         </span>
       }
     >
-      <div className="min-w-0 pt-1.5">
+      <div className="min-w-0">
         <p className="truncate text-sm leading-6">
-          <span className="font-medium">{actorName}</span> {sentence}
+          <span className="font-medium text-sm">{actorName}</span> {sentence}
         </p>
         {!hideDetail || detail !== null ? (
           <p className="flex min-w-0 items-center gap-x-2 text-sm leading-6 text-muted-foreground">
-            {hideDetail ? null : <JobLabel job={item.job} />}
+            {hideDetail ? null : (
+              <OfferingThumbnail
+                className="size-5"
+                kind={item.job.offeringKind}
+                label={item.job.displayName}
+                preview={false}
+                size="sm"
+                thumbnailDataUrl={item.job.thumbnailDataUrl}
+              />
+            )}
+            {hideDetail ? null : <JobLabel className="text-sm" job={item.job} />}
             {detail === null ? null : (
               <>
                 {hideDetail ? null : <span aria-hidden>•</span>}
@@ -219,9 +234,8 @@ function getJobChangePresentation(item: JobChangeActivityItem): JobChangePresent
             : JOB_ACTIVITY_EVENT_SENTENCES.descriptionChanged,
       };
     case 'job-completed':
-      // A plain date: completedOn carries no time, so a relative renderer would invent one.
       return {
-        detail: formatDate(item.completedOn),
+        detail: null,
         icon: IconCheck,
         sentence: JOB_ACTIVITY_EVENT_SENTENCES.completed,
       };
@@ -267,7 +281,7 @@ const ActivityRow: React.FC<{
         aria-hidden
         className={cn(
           // Half the gap either side, so one entry's line meets the next one's in the middle of it.
-          'absolute -top-2 -bottom-2 left-3 w-px -translate-x-1/2 bg-border',
+          'absolute -top-2.5 -bottom-2.5 left-3 w-px -translate-x-1/2 bg-border',
           dense
             ? 'group-first:top-[1.125rem] group-last:bottom-[calc(100%-1.125rem)]'
             : 'group-first:top-[1.375rem] group-last:bottom-[calc(100%-1.375rem)]',
@@ -302,10 +316,10 @@ const ActivityRow: React.FC<{
 };
 
 /** Which Job an entry is about: its code, then what is being built. */
-const JobLabel: React.FC<{ job: JobActivityItem['job'] }> = ({ job }) => (
+const JobLabel: React.FC<{ className?: string; job: JobActivityItem['job'] }> = ({ className, job }) => (
   <>
-    <span className="shrink-0 font-mono font-medium text-muted-foreground">{job.code}</span>
-    <span className="min-w-0 truncate text-muted-foreground">{job.displayName}</span>
+    <span className={cn('shrink-0 font-mono font-medium text-muted-foreground', className)}>{job.code}</span>
+    <span className={cn('min-w-0 truncate text-muted-foreground', className)}>{job.displayName}</span>
   </>
 );
 

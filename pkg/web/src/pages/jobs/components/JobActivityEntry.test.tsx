@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, statusBadgeColorClassNames } from '@pkg/domain';
 import { type GeneralFeedbackActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
@@ -81,6 +81,52 @@ describe('JobActivityEntry', () => {
     expect(html).toContain('JOB-00042');
   });
 
+  it('uses the Product visual for a non-feedback event', async () => {
+    const html = await renderWithRouter(<JobActivityEntry item={buildChangeItem('job-completed')} />);
+
+    expect(html).toContain('aria-label="Cane 8 ton"');
+    expect(html).toContain('tabler-icon-package');
+    expect(html).toContain('tabler-icon-check');
+    expect(html).toContain('font-mono font-medium text-muted-foreground text-sm">JOB-00042');
+  });
+
+  it('uses the custom-work icon for a non-feedback event without a thumbnail', async () => {
+    const item = buildChangeItem('job-created', {
+      job: { ...buildItem().job, displayName: 'Hydraulic repair', offeringKind: 'custom', thumbnailDataUrl: null },
+    });
+
+    const html = await renderWithRouter(<JobActivityEntry item={item} />);
+
+    expect(html).toContain('aria-label="Hydraulic repair"');
+    expect(html).toContain('tabler-icon-tools');
+    expect(html).toContain('tabler-icon-plus');
+  });
+
+  it('uses standard category colors for Job events and Work Times', async () => {
+    const jobEventHtml = await renderWithRouter(<JobActivityEntry item={buildChangeItem('job-completed')} />);
+    const workTimeHtml = await renderWithRouter(<JobActivityEntry item={buildChangeItem('job-work-time-updated')} />);
+
+    expect(jobEventHtml).toContain(statusBadgeColorClassNames.purple.chip);
+    expect(jobEventHtml).toContain(statusBadgeColorClassNames.purple.text);
+    expect(workTimeHtml).toContain(statusBadgeColorClassNames.blue.chip);
+    expect(workTimeHtml).toContain(statusBadgeColorClassNames.blue.text);
+  });
+
+  it('top-aligns a non-feedback title with its activity icon', async () => {
+    const html = await renderWithRouter(<JobActivityEntry item={buildChangeItem('job-completed')} />);
+
+    expect(html).not.toContain('min-w-0 pt-1.5');
+    expect(html).toContain('truncate text-sm leading-6');
+    expect(html).toContain('font-medium text-sm">Thabo');
+  });
+
+  it('keeps the feedback Job footer one size below non-feedback text', async () => {
+    const html = await renderWithRouter(<JobActivityEntry item={buildItem()} />);
+
+    expect(html).toContain('border-t border-border/70 bg-muted/40 py-1 pe-1.5 ps-3 text-xs');
+    expect(html).not.toContain('font-mono font-medium text-muted-foreground text-sm">JOB-00042');
+  });
+
   it('reads a cleared description as cleared rather than as an empty change', async () => {
     const item = buildChangeItem('job-description-updated', { description: null });
 
@@ -112,24 +158,19 @@ describe('JobActivityEntry', () => {
     expect(html).not.toContain('A removed user');
   });
 
-  // completedOn is date-only, so a relative renderer invents a midnight time and a second age
-  // beside the entry's own timestamp.
-  it('shows the completion date as a plain date, not a time or a relative age', async () => {
+  it('does not repeat a Job completion date already represented by the timeline', async () => {
     const item = buildChangeItem('job-completed', { completedOn: '2026-08-10' });
 
     const html = await renderWithRouter(<JobActivityEntry item={item} />);
-    // Read as text: the entry's own occurredAt is a real instant, and its ISO attribute would
-    // otherwise answer for the payload here.
     const text = html.replaceAll(/<[^>]*>/g, ' ');
 
-    expect(text).toContain(formatDate('2026-08-10'));
-    expect(text).not.toContain('00:00');
+    expect(text).not.toContain(formatDate('2026-08-10'));
   });
 
   it.each([
-    ['started', 'started Fabrication work', 'Aug 1, 2026 → In progress'],
-    ['completed', 'completed Fabrication work', 'Aug 1, 2026 → Aug 4, 2026 · Fiona Fabricator'],
-    ['corrected', 'corrected Fabrication work times', 'Aug 1, 2026 → Aug 4, 2026 · Fiona Fabricator'],
+    ['started', 'started Fabrication work', null],
+    ['completed', 'completed Fabrication work', 'Fiona Fabricator'],
+    ['corrected', 'corrected Fabrication work times', 'Fiona Fabricator'],
     ['cleared', 'cleared Fabrication work times', null],
   ] as const)('describes a %s work-time change from its curated state', async (action, sentence, detail) => {
     const item = buildChangeItem('job-work-time-updated', {

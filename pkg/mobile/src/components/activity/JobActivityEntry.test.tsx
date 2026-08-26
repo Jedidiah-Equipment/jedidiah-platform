@@ -66,6 +66,14 @@ describe('JobActivityEntry', () => {
 
     expect(JSON.stringify(renderer.toJSON())).not.toContain('In progress');
   });
+
+  test('shows a backdated Job completion date beneath the Job row', async () => {
+    const renderer = await renderEntry(
+      buildChangeItem('job-completed', { completedOn: '2026-08-09', occurredAt: '2026-08-10T09:00:00.000Z' }),
+    );
+
+    expect(JSON.stringify(renderer.toJSON())).toContain('Aug 9, 2026');
+  });
 });
 
 async function renderEntry(item: JobChangeActivityItem): Promise<ReactTestRenderer> {
@@ -76,7 +84,10 @@ async function renderEntry(item: JobChangeActivityItem): Promise<ReactTestRender
   return renderer;
 }
 
-function buildChangeItem(type: 'job-completed' | 'job-work-time-updated'): JobChangeActivityItem {
+function buildChangeItem(
+  type: 'job-completed' | 'job-work-time-updated',
+  overrides: Record<string, unknown> = {},
+): JobChangeActivityItem {
   return JobChangeActivityItem.parse({
     actor: null,
     id: '20000000-0000-4000-8000-000000000000',
@@ -96,6 +107,7 @@ function buildChangeItem(type: 'job-completed' | 'job-work-time-updated'): JobCh
           department: 'fabrication',
           timing: { completedAt: null, crew: [], startedAt: '2026-08-10T09:00:00.000Z' },
         }),
+    ...overrides,
     type,
   });
 }

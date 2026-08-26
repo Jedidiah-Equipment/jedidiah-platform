@@ -18,12 +18,13 @@ done across every Job, newest first, without opening each Job in turn.
 - **General Feedback** someone submitted about a Job.
 - **A Job was created**, whether from a Quote or as a Stock Build.
 - **A Job description was changed** — the entry carries the new wording, or says it was cleared.
-- **A Job was completed**, with the completion date. An entry named **System** is a Job the plant
-  finished on schedule and nobody stamped by hand.
+- **A Job was completed**. Its completion date appears when it differs from the timeline day. An
+  entry named **System** is a Job the plant finished on schedule and nobody stamped by hand.
 - **A document was added to a Job**, naming the file, and the entry stays after the file is deleted.
   The Brochure and Product documents a Job copies for itself when it starts get no entry.
 - **A Department's Work Times changed** — starting or completing work, correcting either stamp or
-  the crew, or clearing a mistaken record. The entry shows the resulting dates and the recorded crew.
+  the crew, or clearing a mistaken record. Corrections show the resulting dates; every entry shows
+  the recorded crew when present.
 
 Corrective Feedback about a department or a person stays in the Feedback inbox, and feedback
 submitted about a Quote is not shown here. Cancelling a Job and re-opening a completed Job add no

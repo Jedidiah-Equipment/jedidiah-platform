@@ -1,5 +1,6 @@
 import type {
   DateIso,
+  DateOnlyIso,
   JobChangeActivityItem,
   JobWorkTimeActivityAction,
   JobWorkTimeActivityState,
@@ -7,6 +8,7 @@ import type {
 } from '@pkg/schema';
 
 import { departmentLabels } from '../departments.js';
+import { formatDate, toPlantDateOnly } from '../formatting/date.js';
 import type { StatusBadgeColor } from '../theme/status-badge.js';
 
 export const JOB_ACTIVITY_EVENT_SENTENCES = {
@@ -47,9 +49,35 @@ export function jobWorkTimeActivitySentence({
   }
 }
 
-/** Crew context that adds information beyond the activity timeline's own date and event sentence. */
-export function jobWorkTimeActivityDetail(timing: JobWorkTimeActivityState | null): string | null {
-  return timing && timing.crew.length > 0 ? timing.crew.join(', ') : null;
+/** A backdated completion remains visible; the usual same-day date stays on the timeline only. */
+export function jobCompletionActivityDetail({
+  completedOn,
+  occurredAt,
+}: {
+  completedOn: DateOnlyIso;
+  occurredAt: DateIso;
+}): string | null {
+  return completedOn === toPlantDateOnly(new Date(occurredAt)) ? null : formatDate(completedOn);
+}
+
+/** Non-redundant Work Time context beyond the activity timeline's own date and event sentence. */
+export function jobWorkTimeActivityDetail({
+  action,
+  timing,
+}: {
+  action: JobWorkTimeActivityAction;
+  timing: JobWorkTimeActivityState | null;
+}): string | null {
+  if (timing === null) return null;
+
+  const crew = timing.crew.join(', ');
+  if (action !== 'corrected') return crew || null;
+
+  const span = timing.completedAt
+    ? `${formatDate(timing.startedAt)} → ${formatDate(timing.completedAt)}`
+    : formatDate(timing.startedAt);
+
+  return crew ? `${span} · ${crew}` : span;
 }
 
 /** Whether the newest feed entry lies beyond the user's Activity high-water mark. */

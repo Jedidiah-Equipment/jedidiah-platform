@@ -3,6 +3,7 @@ import {
   getFirstName,
   JOB_ACTIVITY_EVENT_SENTENCES,
   jobActivityEventTone,
+  jobCompletionActivityDetail,
   jobWorkTimeActivityDetail,
   jobWorkTimeActivitySentence,
   statusBadgeColorClassNames,
@@ -235,7 +236,7 @@ function getJobChangePresentation(item: JobChangeActivityItem): JobChangePresent
       };
     case 'job-completed':
       return {
-        detail: null,
+        detail: jobCompletionActivityDetail(item),
         icon: IconCheck,
         sentence: JOB_ACTIVITY_EVENT_SENTENCES.completed,
       };
@@ -247,7 +248,7 @@ function getJobChangePresentation(item: JobChangeActivityItem): JobChangePresent
       };
     case 'job-work-time-updated':
       return {
-        detail: jobWorkTimeActivityDetail(item.timing),
+        detail: jobWorkTimeActivityDetail(item),
         icon: IconClock,
         sentence: jobWorkTimeActivitySentence(item),
       };

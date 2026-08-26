@@ -167,10 +167,21 @@ describe('JobActivityEntry', () => {
     expect(text).not.toContain(formatDate('2026-08-10'));
   });
 
+  it('shows a Job completion date when it differs from the audit timeline day', async () => {
+    const item = buildChangeItem('job-completed', {
+      completedOn: '2026-08-09',
+      occurredAt: '2026-08-10T09:00:00.000Z',
+    });
+
+    const html = await renderWithRouter(<JobActivityEntry item={item} />);
+
+    expect(html).toContain(formatDate('2026-08-09'));
+  });
+
   it.each([
     ['started', 'started Fabrication work', null],
     ['completed', 'completed Fabrication work', 'Fiona Fabricator'],
-    ['corrected', 'corrected Fabrication work times', 'Fiona Fabricator'],
+    ['corrected', 'corrected Fabrication work times', `${formatDate('2026-08-01')} → ${formatDate('2026-08-04')}`],
     ['cleared', 'cleared Fabrication work times', null],
   ] as const)('describes a %s work-time change from its curated state', async (action, sentence, detail) => {
     const item = buildChangeItem('job-work-time-updated', {

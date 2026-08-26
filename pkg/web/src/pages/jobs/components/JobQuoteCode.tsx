@@ -9,6 +9,7 @@ export const JobQuoteCode: React.FC<{
   quoteId: UUID | null;
 }> = ({ canOpenQuote, onOpenQuote, quoteCode, quoteId }) => {
   if (!quoteCode || !quoteId) {
+    // A Stock Build has no sale behind it, so there is no Quote to name or open.
     return <>Stock Build</>;
   }
 

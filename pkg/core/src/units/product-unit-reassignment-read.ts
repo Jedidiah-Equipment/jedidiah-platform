@@ -18,7 +18,12 @@ import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { QuoteNotFoundError } from '../quotes/quote-errors.js';
 import { loadAsBuiltSpec } from './product-unit-as-built.js';
 import { ProductUnitNotFoundError } from './product-unit-errors.js';
-import { assertQuoteCanReceive, isReworkJob } from './product-unit-reassignment.js';
+import {
+  assertQuoteCanReceive,
+  isReworkJob,
+  loadReassignSourceQuotes,
+  resolveReassignUnitIneligibility,
+} from './product-unit-reassignment.js';
 
 type ReceivingQuoteFacts = {
   id: string;
@@ -65,7 +70,7 @@ export async function previewReassignment({
 }): Promise<ProductUnitReassignPreview> {
   const quote = await loadReceivingQuote(db, quoteId);
   const currentUnitId = await loadQuoteBuildUnitId(db, quote.id);
-  const facts = await loadCandidateFacts(db, quote.productId, { includeUnitId: productUnitId });
+  const facts = await loadCandidateFacts(db, quote.productId);
   const incoming = facts.find((candidate) => candidate.id === productUnitId);
 
   if (!incoming) {
@@ -123,14 +128,10 @@ type CandidateFacts = {
 
 /**
  * Every Unit built as this Product, with the facts the picker shows and the verdict on whether it may
- * move. `includeUnitId` keeps one named Unit in the result even when it is ineligible, so the preview
- * can still describe the machine the Quote is currently building.
+ * move. The verdict comes from `resolveReassignUnitIneligibility` — the same rules the write path runs
+ * under its locks — so the picker cannot offer a machine the mutation would refuse.
  */
-async function loadCandidateFacts(
-  db: Db,
-  productId: string,
-  options: { includeUnitId?: string } = {},
-): Promise<CandidateFacts[]> {
+async function loadCandidateFacts(db: Db, productId: string): Promise<CandidateFacts[]> {
   const units = await db
     .select({
       id: productUnits.id,
@@ -176,10 +177,10 @@ async function loadCandidateFacts(
   const newestByUnit = new Map(
     [...transfersByUnit].map(([unitId, rows]) => [unitId, resolveNewestOwnershipTransfer(rows)]),
   );
-  const sellingQuotes = await loadSellingQuotes(
-    db,
-    [...newestByUnit.values()].flatMap((transfer) => (transfer?.sourceQuoteId ? [transfer.sourceQuoteId] : [])),
-  );
+  const relatedQuotes = await loadReassignSourceQuotes(db, [
+    ...[...newestByUnit.values()].map((transfer) => transfer?.sourceQuoteId ?? null),
+    ...jobRows.map((row) => row.quoteId),
+  ]);
   const owners = await loadOwnerNames(
     db,
     [...newestByUnit.values()].flatMap((transfer) => (transfer?.toCustomerId ? [transfer.toCustomerId] : [])),
@@ -188,13 +189,20 @@ async function loadCandidateFacts(
   return units.map((unit) => {
     const newest = newestByUnit.get(unit.id) ?? null;
     const ownerId = newest?.toCustomerId ?? null;
-    const unitJobs = jobsByUnit.get(unit.id) ?? [];
-    const hasLiveRework = unitJobs.some(isReworkJob);
-    // Display always names the build, even on a machine under rework; eligibility is stricter.
-    const buildJob = unitJobs.find((job) => !isReworkJob(job)) ?? null;
-    const sellingQuote = newest?.sourceQuoteId ? sellingQuotes.get(newest.sourceQuoteId) : undefined;
-    const ownershipAllowsMove = ownerId === null || (sellingQuote !== undefined && sellingQuote.invoiceNumber === null);
-    const eligible = ownershipAllowsMove && !hasLiveRework && buildJob !== null;
+    const liveJobs = jobsByUnit.get(unit.id) ?? [];
+    // Display always names the build, even on a machine the rules refuse; the verdict is stricter.
+    const buildJob = liveJobs.find((job) => !isReworkJob(job)) ?? null;
+    const sourceQuoteId = ownerId === null ? null : (newest?.sourceQuoteId ?? null);
+    const reason = resolveReassignUnitIneligibility(
+      {
+        buildJobQuote: buildJob?.quoteId ? (relatedQuotes.get(buildJob.quoteId) ?? null) : null,
+        liveJobs,
+        ownerId,
+        productId,
+        sellingQuote: sourceQuoteId ? (relatedQuotes.get(sourceQuoteId) ?? null) : null,
+      },
+      productId,
+    );
 
     return {
       candidate: ProductUnitReassignCandidate.parse({
@@ -205,26 +213,10 @@ async function loadCandidateFacts(
         productSerialNumber: unit.productSerialNumber,
         vinNumber: unit.vinNumber,
       }),
-      eligible: eligible || unit.id === options.includeUnitId,
+      eligible: reason === null,
       id: unit.id,
     };
   });
-}
-
-async function loadSellingQuotes(
-  db: Db,
-  quoteIds: readonly string[],
-): Promise<Map<string, { invoiceNumber: string | null }>> {
-  const ids = [...new Set(quoteIds)];
-
-  if (ids.length === 0) return new Map();
-
-  const rows = await db
-    .select({ id: quotes.id, invoiceNumber: quotes.invoiceNumber })
-    .from(quotes)
-    .where(inArray(quotes.id, ids));
-
-  return new Map(rows.map((row) => [row.id, { invoiceNumber: row.invoiceNumber }]));
 }
 
 async function loadOwnerNames(

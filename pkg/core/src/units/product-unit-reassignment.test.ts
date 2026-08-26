@@ -221,6 +221,26 @@ describe('reassignProductUnitToQuote refusals', () => {
     ).rejects.toMatchObject({ metadata: { reason: 'wrong-product' } });
   });
 
+  // The wall is the deal the build Job is leaving, not only the ownership log: handing the machine
+  // back by hand does not un-bill an invoice, and detaching a billed deal's Job would leave its
+  // paperwork describing a machine that is no longer coming.
+  test('refuses a Stock Unit whose build Job still hangs off an invoiced deal', async ({ context }) => {
+    const { db, seed } = context;
+    const greg = await createBuildToOrderDeal(db, seed, seed.gregId);
+    await db.update(quotes).set({ invoiceNumber: 'INV-8' }).where(eq(quotes.id, greg.quoteId));
+    await sellUnit(db, { customerId: null, productUnitId: greg.unitId, sourceQuoteId: null });
+    const quoteId = await createQuote(db, { customerId: seed.palmietId, productId: seed.productId });
+
+    await expect(
+      reassignProductUnitToQuote({
+        actorUserId: ACTOR_USER_ID,
+        db,
+        input: { note: null, productUnitId: greg.unitId, toQuoteId: quoteId },
+      }),
+    ).rejects.toMatchObject({ metadata: { reason: 'selling-quote-invoiced' } });
+    await expect(listReassignCandidates({ db, quoteId })).resolves.toEqual([]);
+  });
+
   test('refuses a Unit whose selling Quote has been invoiced', async ({ context }) => {
     const { db, seed } = context;
     const greg = await createBuildToOrderDeal(db, seed, seed.gregId);

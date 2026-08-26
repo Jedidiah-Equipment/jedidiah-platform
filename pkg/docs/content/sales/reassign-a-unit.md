@@ -3,7 +3,7 @@
 Administrators and Super Administrators can move a Product Unit — and the Job building it — from wherever it sits to a different accepted Quote. Use this when one Customer needs a machine sooner than their own build will be ready, or when two deals should swap machines.
 
 1. Open the Quote that should receive the machine.
-2. In the Job card, click **Reassign Unit…**.
+2. Click **Reassign Unit…**.
 3. Search for and select the Unit, then click **Continue**.
 4. Read what the move will do, add a reason if it helps, then click **Reassign Unit**.
 

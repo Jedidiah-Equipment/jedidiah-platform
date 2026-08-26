@@ -8,7 +8,7 @@ import {
   type ProductUnitReassignResult,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../audit/audit-service.js';
 import { jobAuditDescriptor } from '../jobs/job-audit.js';
@@ -21,12 +21,12 @@ import {
   ProductUnitReassignDisplacedOwnerError,
   ProductUnitReassignQuoteIneligibleError,
   ProductUnitReassignUnitIneligibleError,
+  type ProductUnitReassignUnitIneligibleReason,
 } from './product-unit-reassignment-errors.js';
 import { lockUnitForOwnership, type UnitOwnershipHandle } from './product-unit-service.js';
 
 /** The receiving Quote's facts, read under its row lock. */
 export type ReceivingQuoteRow = {
-  code: number;
   customerId: string;
   id: string;
   productId: string;
@@ -48,18 +48,61 @@ export function isReworkJob(job: ClassifiableJob): boolean {
   return job.quoteId !== null && job.quoteProductUnitId !== null;
 }
 
-type MovingJobRow = {
+/** A deal, as the eligibility rules read it: only whether it has been billed, and what it names. */
+export type ReassignSourceQuote = {
+  invoiceNumber: string | null;
+  productUnitId: string | null;
+};
+
+/** Everything the eligibility rules ask about one candidate machine. */
+export type ReassignUnitFacts = {
+  /** The deal the machine's build Job hangs off, or `null` for a Stock Build that hangs off none. */
+  buildJobQuote: ReassignSourceQuote | null;
+  /** The machine's live Jobs, earliest first. */
+  liveJobs: readonly ClassifiableJob[];
+  /** The Customer holding the machine now; `null` is Stock. */
+  ownerId: string | null;
+  productId: string;
+  /** The deal that placed the machine with its Owner, or `null` when no readable deal did. */
+  sellingQuote: ReassignSourceQuote | null;
+};
+
+/**
+ * Why this machine may not move onto a deal selling `receivingProductId`, or `null` when it may. One
+ * rule set, called under the write's locks and again by the picker, so what is offered and what is
+ * accepted cannot drift apart.
+ *
+ * Invoicing is the wall on both sides, and the selling side has two doors. The deal the build Job is
+ * *leaving* is one of them whoever owns the machine today — a hand-recorded return to Stock does not
+ * un-bill an invoice, and detaching a billed deal's Job would leave the paperwork describing a machine
+ * that is no longer coming. The deal that placed the machine with its current Owner is the other.
+ *
+ * A Unit held by a Customer with no sourcing Quote behind it was moved by hand: our records attribute
+ * the machine to a third party outside any deal of ours, and reassigning it would overwrite that.
+ */
+export function resolveReassignUnitIneligibility(
+  facts: ReassignUnitFacts,
+  receivingProductId: string,
+): ProductUnitReassignUnitIneligibleReason | null {
+  if (facts.productId !== receivingProductId) return 'wrong-product';
+  if (facts.liveJobs.some(isReworkJob)) return 'live-rework';
+  if (facts.liveJobs.length === 0) return 'no-live-build-job';
+  if (facts.buildJobQuote && facts.buildJobQuote.invoiceNumber !== null) return 'selling-quote-invoiced';
+  if (facts.ownerId === null) return null;
+  if (!facts.sellingQuote) return 'owned-outside-deal';
+  if (facts.sellingQuote.invoiceNumber !== null) return 'selling-quote-invoiced';
+
+  return null;
+}
+
+/** The Job facts every re-point needs: the row to update, and the code its audit event names. */
+type AuditedJobRow = {
   code: number;
   id: string;
   quoteId: string | null;
 };
 
-type DisplacedJobRow = {
-  code: number;
-  id: string;
-  productUnitId: string | null;
-  quoteId: string | null;
-};
+type DisplacedJobRow = AuditedJobRow & { productUnitId: string | null };
 
 /**
  * Moves an un-invoiced Product Unit — together with its build Job — onto a different accepted Product
@@ -94,7 +137,7 @@ export async function reassignProductUnitToQuote({
       throw new ProductUnitReassignUnitIneligibleError(input.productUnitId, 'already-on-quote');
     }
 
-    const movingJob = await lockBuildJobForUnit(tx, input.productUnitId);
+    const liveJobs = await lockLiveJobsForUnit(tx, input.productUnitId);
     const handles = await lockUnitsSorted(tx, [input.productUnitId, displacedJob?.productUnitId ?? null]);
     const moving = handles.get(input.productUnitId);
 
@@ -102,7 +145,9 @@ export async function reassignProductUnitToQuote({
       throw new ProductUnitNotFoundError(input.productUnitId);
     }
 
-    const sourceAllocationQuoteId = await assertUnitEligible({ moving, quote, tx });
+    const sourceAllocationQuoteId = await assertUnitEligible({ liveJobs, moving, quote, tx });
+    // Eligibility has already refused an empty list and any live rework, so the earliest Job is the build.
+    const movingJob = liveJobs[0] as AuditedJobRow;
 
     let displacedProductSerialNumber: ProductSerialNumber | null = null;
 
@@ -190,7 +235,6 @@ export function assertQuoteCanReceive<TQuote extends ReceiverCandidateQuote>(
 async function lockReceivingQuote(tx: DatabaseTransaction, quoteId: UUID): Promise<ReceivingQuoteRow> {
   const [quote] = await tx
     .select({
-      code: quotes.code,
       customerId: quotes.customerId,
       id: quotes.id,
       invoiceNumber: quotes.invoiceNumber,
@@ -209,7 +253,7 @@ async function lockReceivingQuote(tx: DatabaseTransaction, quoteId: UUID): Promi
 
   assertQuoteCanReceive(quote);
 
-  return { code: quote.code, customerId: quote.customerId, id: quote.id, productId: quote.productId };
+  return { customerId: quote.customerId, id: quote.id, productId: quote.productId };
 }
 
 /**
@@ -235,12 +279,15 @@ async function lockLiveJobForQuote(tx: DatabaseTransaction, quoteId: string): Pr
 }
 
 /**
- * The machine's build Job, which is what actually moves. A live Rework Job means the machine is
- * undergoing work specified for whoever owns it now, so the Unit is refused outright rather than
- * dragged onto a deal that never asked for that work.
+ * The machine's live Jobs under their row locks, earliest first, each carrying the one Quote fact that
+ * says whether it is a build or a rework. Classifying them is `resolveReassignUnitIneligibility`'s job,
+ * not this one's — locking and judging stay apart so the picker can judge without locking anything.
  */
-async function lockBuildJobForUnit(tx: DatabaseTransaction, productUnitId: UUID): Promise<MovingJobRow> {
-  const rows = await tx
+async function lockLiveJobsForUnit(
+  tx: DatabaseTransaction,
+  productUnitId: UUID,
+): Promise<(AuditedJobRow & ClassifiableJob)[]> {
+  return tx
     .select({
       code: jobs.code,
       id: jobs.id,
@@ -252,18 +299,6 @@ async function lockBuildJobForUnit(tx: DatabaseTransaction, productUnitId: UUID)
     .where(and(eq(jobs.productUnitId, productUnitId), isNull(jobs.cancelledAt)))
     .orderBy(asc(jobs.createdAt), asc(jobs.id))
     .for('update', { of: jobs });
-
-  if (rows.some(isReworkJob)) {
-    throw new ProductUnitReassignUnitIneligibleError(productUnitId, 'live-rework');
-  }
-
-  const buildJob = rows[0];
-
-  if (!buildJob) {
-    throw new ProductUnitReassignUnitIneligibleError(productUnitId, 'no-live-build-job');
-  }
-
-  return buildJob;
 }
 
 /**
@@ -291,50 +326,57 @@ async function lockUnitsSorted(
 }
 
 /**
- * Whether this machine may move onto that deal, and — when the sale that placed it was an Allocation
- * Quote — the id of that Quote, whose `productUnitId` the caller must clear.
- *
- * A Unit held by a Customer with no sourcing Quote behind it was moved by hand: our records attribute
- * the machine to a third party outside any deal of ours, and reassigning it would quietly overwrite
- * that assertion.
+ * Runs the shared eligibility rules against the locked state, and returns the Allocation Quote that
+ * sold this machine — whose `productUnitId` the caller must clear — when one did.
  */
 async function assertUnitEligible({
+  liveJobs,
   moving,
   quote,
   tx,
 }: {
+  liveJobs: readonly (AuditedJobRow & ClassifiableJob)[];
   moving: UnitOwnershipHandle;
   quote: ReceivingQuoteRow;
   tx: DatabaseTransaction;
 }): Promise<string | null> {
-  if (moving.unit.productId !== quote.productId) {
-    throw new ProductUnitReassignUnitIneligibleError(moving.unit.id, 'wrong-product');
+  const sourceQuoteId = moving.currentOwnerId === null ? null : (moving.latest?.sourceQuoteId ?? null);
+  const buildJobQuoteId = liveJobs.find((job) => !isReworkJob(job))?.quoteId ?? null;
+  const relatedQuotes = await loadReassignSourceQuotes(tx, [sourceQuoteId, buildJobQuoteId]);
+  const sellingQuote = sourceQuoteId ? (relatedQuotes.get(sourceQuoteId) ?? null) : null;
+  const reason = resolveReassignUnitIneligibility(
+    {
+      buildJobQuote: buildJobQuoteId ? (relatedQuotes.get(buildJobQuoteId) ?? null) : null,
+      liveJobs,
+      ownerId: moving.currentOwnerId,
+      productId: moving.unit.productId,
+      sellingQuote,
+    },
+    quote.productId,
+  );
+
+  if (reason) {
+    throw new ProductUnitReassignUnitIneligibleError(moving.unit.id, reason);
   }
 
-  if (moving.currentOwnerId === null) {
-    return null;
-  }
+  return sellingQuote?.productUnitId === moving.unit.id ? sourceQuoteId : null;
+}
 
-  const sourceQuoteId = moving.latest?.sourceQuoteId ?? null;
+/** The deals the eligibility rules need to read, in one statement. */
+export async function loadReassignSourceQuotes(
+  db: Db | DatabaseTransaction,
+  quoteIds: readonly (string | null)[],
+): Promise<Map<string, ReassignSourceQuote>> {
+  const ids = [...new Set(quoteIds.filter((id): id is string => id !== null))];
 
-  if (!sourceQuoteId) {
-    throw new ProductUnitReassignUnitIneligibleError(moving.unit.id, 'owned-outside-deal');
-  }
+  if (ids.length === 0) return new Map();
 
-  const [sourceQuote] = await tx
-    .select({ invoiceNumber: quotes.invoiceNumber, productUnitId: quotes.productUnitId })
+  const rows = await db
+    .select({ id: quotes.id, invoiceNumber: quotes.invoiceNumber, productUnitId: quotes.productUnitId })
     .from(quotes)
-    .where(eq(quotes.id, sourceQuoteId));
+    .where(inArray(quotes.id, ids));
 
-  if (!sourceQuote) {
-    throw new ProductUnitReassignUnitIneligibleError(moving.unit.id, 'owned-outside-deal');
-  }
-
-  if (sourceQuote.invoiceNumber !== null) {
-    throw new ProductUnitReassignUnitIneligibleError(moving.unit.id, 'selling-quote-invoiced');
-  }
-
-  return sourceQuote.productUnitId === moving.unit.id ? sourceQuoteId : null;
+  return new Map(rows.map((row) => [row.id, { invoiceNumber: row.invoiceNumber, productUnitId: row.productUnitId }]));
 }
 
 /**
@@ -381,7 +423,7 @@ async function repointJobQuote({
   tx,
 }: {
   actorUserId: AuthId;
-  job: { code: number; id: string; quoteId: string | null };
+  job: AuditedJobRow;
   toQuoteId: string | null;
   tx: DatabaseTransaction;
 }): Promise<void> {

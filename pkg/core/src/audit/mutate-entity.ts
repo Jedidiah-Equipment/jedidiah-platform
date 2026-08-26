@@ -22,6 +22,8 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  *   same transaction before the aggregate audit diff is recorded.
  * - Supplier merge — Parts and Purchase Orders move in the same transaction before the survivor's
  *   fill-forward diff and both merge events are recorded.
+ * - Unit Reassignment — two Jobs and a vacated Allocation Quote re-point in one transaction, each with
+ *   a single known before/after value, so there is no per-entity diff for the pair to compute.
  * - The Job completion sweep — the order is inverted: it writes first (`WHERE completedOn IS NULL` is
  *   the additive latch), diffs after, with a null system actor.
  */

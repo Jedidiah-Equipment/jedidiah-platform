@@ -2,6 +2,7 @@ import type { QuoteComputedSummary } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test, vi } from 'vitest';
+import { renderWithRouter } from '@/test/router-harness.js';
 
 import { QuoteRightPanel } from './QuoteRightPanel.js';
 
@@ -55,7 +56,16 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
     workItemTotal: 5_200,
   };
 
-  const html = renderToStaticMarkup(<QuoteRightPanel quote={quote} summary={summary} />);
+  const html = renderToStaticMarkup(
+    <QuoteRightPanel
+      canOpenJobs
+      jobScheduleError={null}
+      jobScheduleState={null}
+      quote={quote}
+      summary={summary}
+      onOpenJob={() => undefined}
+    />,
+  );
 
   expect(html).toContain('aria-label="Hydraulic pump overhaul"');
   expect(html).not.toContain('>Custom<');
@@ -69,4 +79,73 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
   expect(html).toContain('R 2 000.00');
   expect(html).toContain('Seal kit');
   expect(html).toContain('R 1 500.00');
+});
+
+test('opens a linked Job from the quote aside or locates it on the planner', async () => {
+  const quote = {
+    code: 'QUO-00033',
+    customerAddress: null,
+    customerCompanyName: 'Acme Hydraulics',
+    customerContactPerson: null,
+    customerEmail: null,
+    customerPhone: null,
+    customerThumbnailDataUrl: null,
+    customerVatNumber: null,
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    job: {
+      jobCode: 'JOB-00042',
+      jobDescription: 'Build hydraulic power pack',
+      jobId: '420e8400-e29b-41d4-a716-446655440000',
+    },
+    kind: 'custom',
+    product: null,
+    quotedBasePrice: 0,
+    quotedCurrencyCode: 'ZAR',
+    status: 'accepted',
+    workItems: [],
+    workTitle: 'Hydraulic power pack',
+  } as unknown as QuoteDetail;
+  const summary = {
+    basePrice: 0,
+    currencyCode: 'ZAR',
+    deliveryIncluded: true,
+    deliveryPrice: 0,
+    discountAmount: 0,
+    discountPercent: 0,
+    selectedAssemblies: [],
+    selectedAssemblyTotal: 0,
+    subtotal: 0,
+    total: 0,
+    vatAmount: 0,
+    vatPercent: 15,
+    workItems: [],
+    workItemTotal: 0,
+  } satisfies QuoteComputedSummary;
+
+  const html = await renderWithRouter(
+    <QuoteRightPanel
+      canOpenJobs
+      jobScheduleError={null}
+      jobScheduleState={{
+        active: 1,
+        done: 1,
+        firstWorkDay: null,
+        lastWorkDay: null,
+        scheduled: 2,
+        total: 4,
+      }}
+      quote={quote}
+      summary={summary}
+      onOpenJob={() => undefined}
+    />,
+  );
+
+  expect(html).toContain('JOB-00042');
+  expect(html).toContain('Build hydraulic power pack');
+  expect(html).toContain('1 Done');
+  expect(html).toContain('1 Active');
+  expect(html).toContain('2 Scheduled');
+  expect(html).toContain('>Open</button>');
+  expect(html).not.toContain('/jobs/list');
+  expect(html).toContain('href="/jobs?job=420e8400-e29b-41d4-a716-446655440000"');
 });

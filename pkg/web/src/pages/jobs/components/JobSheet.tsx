@@ -50,6 +50,7 @@ import { JobActivityFeed } from './JobActivityFeed.js';
 import { JobCancellationAction } from './JobCancellationAction.js';
 import { JobFabricationAction } from './JobFabricationAction.js';
 import { InfoList, InfoRow } from './JobInfoList.js';
+import { JobQuoteCode } from './JobQuoteCode.js';
 import { JobStockTab } from './JobStockTab.js';
 import { JobEditFormValues, toJobEditFormValues, toJobUpdateInput } from './job-edit-form.js';
 import { scheduleBadgeToneClass, scheduleBarToneClass, scheduleDotToneClass } from './schedule-state-tone.js';
@@ -70,6 +71,7 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
   const trpc = useTRPC();
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const canReadInventory = useCan('inventory:read').can;
+  const canReadQuotes = useCan('quote:read').can;
   const [tab, setTab] = useState<JobSheetTab>('details');
 
   return (
@@ -85,7 +87,7 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
         className="gap-0 p-0 data-[side=right]:!w-[min(100vw,56rem)] data-[side=right]:!max-w-[56rem]"
         side="right"
       >
-        <JobSheetHeader job={jobQuery.data} />
+        <JobSheetHeader canOpenQuote={canReadQuotes} job={jobQuery.data} onOpenQuote={onClose} />
         <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
         {jobQuery.isPending ? <JobSheetSkeleton /> : null}
         {jobQuery.data ? (
@@ -101,7 +103,12 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
             </div>
             <ScrollArea className="min-h-0 flex-1">
               <TabsContent className="p-4" value="details">
-                <JobDetailsTab key={jobQuery.data.id} job={jobQuery.data} />
+                <JobDetailsTab
+                  canOpenQuote={canReadQuotes}
+                  key={jobQuery.data.id}
+                  job={jobQuery.data}
+                  onOpenQuote={onClose}
+                />
               </TabsContent>
               <TabsContent className="p-4" value="documents">
                 <JobDocumentsTab
@@ -134,7 +141,11 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
   );
 };
 
-const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
+const JobSheetHeader: React.FC<{
+  canOpenQuote: boolean;
+  job: JobDetail | undefined;
+  onOpenQuote: () => void;
+}> = ({ canOpenQuote, job, onOpenQuote }) => (
   <SheetHeader className="border-b pr-12">
     <div className="flex min-w-0 items-center gap-3">
       <OfferingThumbnail
@@ -157,22 +168,35 @@ const JobSheetHeader: React.FC<{ job: JobDetail | undefined }> = ({ job }) => (
           ) : null}
         </div>
         <SheetDescription className="truncate font-mono">
-          {job ? (job.quoteCode ?? 'Stock Build') : 'Loading job...'}
+          {job ? (
+            <JobQuoteCode
+              canOpenQuote={canOpenQuote}
+              onOpenQuote={onOpenQuote}
+              quoteCode={job.quoteCode}
+              quoteId={job.quoteId}
+            />
+          ) : (
+            'Loading job...'
+          )}
         </SheetDescription>
       </div>
     </div>
   </SheetHeader>
 );
 
-const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
+const JobDetailsTab: React.FC<{ canOpenQuote: boolean; job: JobDetail; onOpenQuote: () => void }> = ({
+  canOpenQuote,
+  job,
+  onOpenQuote,
+}) => {
   const trpc = useTRPC();
   const canEditJobs = useCan('job:update').can && !isJobCancelled(job);
-  const { invalidateJobActivity, invalidateJobs } = useQueryInvalidation();
+  const { invalidateJobActivity, invalidateJobs, invalidateQuotes } = useQueryInvalidation();
   const updateJobMutation = useMutation(
     trpc.jobs.update.mutationOptions({
       onSuccess: async () => {
         // The description and the completion date are both Job Activity change events.
-        await Promise.all([invalidateJobs(), invalidateJobActivity()]);
+        await Promise.all([invalidateJobs(), invalidateJobActivity(), invalidateQuotes()]);
       },
     }),
   );
@@ -180,9 +204,14 @@ const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
   return (
     <div className="grid gap-5">
       {canEditJobs ? (
-        <EditableJobDetails job={job} onSave={(value) => updateJobMutation.mutateAsync(value)} />
+        <EditableJobDetails
+          canOpenQuote={canOpenQuote}
+          job={job}
+          onOpenQuote={onOpenQuote}
+          onSave={(value) => updateJobMutation.mutateAsync(value)}
+        />
       ) : (
-        <ReadOnlyJobDetails job={job} />
+        <ReadOnlyJobDetails canOpenQuote={canOpenQuote} job={job} onOpenQuote={onOpenQuote} />
       )}
       <CustomJobWorkItems job={job} />
       <JobFabricationAction job={job} />
@@ -203,9 +232,11 @@ const JobDetailsTab: React.FC<{ job: JobDetail }> = ({ job }) => {
 };
 
 const EditableJobDetails: React.FC<{
+  canOpenQuote: boolean;
   job: JobDetail;
+  onOpenQuote: () => void;
   onSave: (value: JobUpdateInput) => Promise<unknown>;
-}> = ({ job, onSave }) => {
+}> = ({ canOpenQuote, job, onOpenQuote, onSave }) => {
   const { autosave, form, formProps } = useAutosaveForm({
     defaultValues: toJobEditFormValues(job),
     failureMessage: 'Unable to update job.',
@@ -223,7 +254,7 @@ const EditableJobDetails: React.FC<{
         title="Details"
       >
         <InfoList className="rounded-none border-0">
-          <ImmutableJobRows job={job} />
+          <ImmutableJobRows canOpenQuote={canOpenQuote} job={job} onOpenQuote={onOpenQuote} />
           <EditableInfoRow label="Description">
             <form.AppField name="description">
               {(field) => (
@@ -255,10 +286,14 @@ const EditableJobDetails: React.FC<{
   );
 };
 
-const ReadOnlyJobDetails: React.FC<{ job: JobDetail }> = ({ job }) => (
+const ReadOnlyJobDetails: React.FC<{ canOpenQuote: boolean; job: JobDetail; onOpenQuote: () => void }> = ({
+  canOpenQuote,
+  job,
+  onOpenQuote,
+}) => (
   <Section contentClassName="p-0" icon={<IconInfoCircle />} title="Details">
     <InfoList className="rounded-none border-0">
-      <ImmutableJobRows job={job} />
+      <ImmutableJobRows canOpenQuote={canOpenQuote} job={job} onOpenQuote={onOpenQuote} />
       <InfoRow label="Completed" value={job.completedOn ? formatDate(job.completedOn, 'short') : 'Not completed'} />
       {/* Only a direct cancel records one — a Job cancelled through its Quote keeps the reason there. */}
       {job.cancellationReason ? (
@@ -281,13 +316,26 @@ const ReadOnlyJobDetails: React.FC<{ job: JobDetail }> = ({ job }) => (
   </Section>
 );
 
-const ImmutableJobRows: React.FC<{ job: JobDetail }> = ({ job }) => {
+const ImmutableJobRows: React.FC<{ canOpenQuote: boolean; job: JobDetail; onOpenQuote: () => void }> = ({
+  canOpenQuote,
+  job,
+  onOpenQuote,
+}) => {
   const displayName = getJobDisplayName(job);
 
   return (
     <>
-      {/* A Stock Build has no sale behind it, so it has no Quote to name. */}
-      <InfoRow label="Quote code" value={job.quoteCode ?? 'Stock Build'} />
+      <InfoRow
+        label="Quote code"
+        value={
+          <JobQuoteCode
+            canOpenQuote={canOpenQuote}
+            onOpenQuote={onOpenQuote}
+            quoteCode={job.quoteCode}
+            quoteId={job.quoteId}
+          />
+        }
+      />
       <InfoRow label="Job code" value={job.code} />
       {job.productUnit ? (
         <InfoRow

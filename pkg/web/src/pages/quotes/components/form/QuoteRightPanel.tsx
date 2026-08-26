@@ -9,25 +9,30 @@ import {
   quoteStatusLabels,
   quoteWorkItemSummaryRows,
 } from '@pkg/domain';
-import type { QuoteDetail, QuoteWorkItemCharge } from '@pkg/schema';
+import type { JobScheduleState, QuoteDetail, QuoteWorkItemCharge } from '@pkg/schema';
 import {
   IconBuildingWarehouse,
   IconClock,
+  IconFileDescription,
   IconMail,
   IconMapPin,
   IconPackage,
   IconPhone,
   IconReceipt2,
+  IconSubtask,
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
+import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
+import { JobScheduleStateBadges } from '@/pages/jobs/components/JobScheduleStateBadges.js';
 import { QuoteProductSourceBadge } from '../QuoteProductSourceBadge.js';
 import { StartJobLink } from '../StartJobLink.js';
 
@@ -37,14 +42,83 @@ const getSummaryWorkItemKey = createStableRowKeys<QuoteWorkItemFormInput>('quote
 const getSummaryWorkItemPartKey =
   createStableRowKeys<QuoteWorkItemFormInput['parts'][number]>('quote-summary-work-item-part');
 
-export function QuoteRightPanel({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
+export function QuoteRightPanel({
+  canOpenJobs,
+  jobScheduleError,
+  jobScheduleState,
+  onOpenJob,
+  quote,
+  summary,
+}: {
+  canOpenJobs: boolean;
+  jobScheduleError: unknown;
+  jobScheduleState: JobScheduleState | null;
+  onOpenJob: () => void;
+  quote: QuoteDetail;
+  summary: QuoteComputedSummary;
+}) {
   return (
     <aside className="order-first grid h-fit gap-4 border-b pb-5 text-sm xl:sticky xl:top-4 xl:order-0 xl:border-b-0 xl:pb-0 xl:pl-5">
       <QuoteCustomerCard quote={quote} />
       <QuoteProductCard quote={quote} />
       {quote.kind === 'product' && quote.productUnit ? <QuoteAllocationCard quote={quote} /> : null}
+      {quote.job ? (
+        <QuoteJobCard
+          canOpenJobs={canOpenJobs}
+          job={quote.job}
+          onOpenJob={onOpenJob}
+          scheduleError={jobScheduleError}
+          scheduleState={jobScheduleState}
+        />
+      ) : null}
       <QuoteTotalCard quote={quote} summary={summary} />
     </aside>
+  );
+}
+
+function QuoteJobCard({
+  canOpenJobs,
+  job,
+  onOpenJob,
+  scheduleError,
+  scheduleState,
+}: {
+  canOpenJobs: boolean;
+  job: NonNullable<QuoteDetail['job']>;
+  onOpenJob: () => void;
+  scheduleError: unknown;
+  scheduleState: JobScheduleState | null;
+}) {
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardDescription>Job</CardDescription>
+        <CardTitle className="font-mono">{job.jobCode}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <p className={cn('whitespace-pre-wrap', job.jobDescription ? '' : 'text-muted-foreground')}>
+          {job.jobDescription ?? 'No description captured.'}
+        </p>
+        {scheduleState ? (
+          <div className="flex flex-wrap gap-1.5">
+            <JobScheduleStateBadges scheduleState={scheduleState} />
+          </div>
+        ) : null}
+        <ErrorMessage error={scheduleError} fallbackMessage="Unable to load Job schedule." />
+        {canOpenJobs ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" variant="outline" onClick={onOpenJob}>
+              <IconFileDescription data-icon="inline-start" />
+              Open
+            </Button>
+            <Button render={<Link search={{ job: job.jobId }} to="/jobs" />} variant="outline">
+              <IconSubtask data-icon="inline-start" />
+              Planner
+            </Button>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 

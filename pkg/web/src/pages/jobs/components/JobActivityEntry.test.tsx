@@ -125,6 +125,32 @@ describe('JobActivityEntry', () => {
     expect(text).toContain(formatDate('2026-08-10'));
     expect(text).not.toContain('00:00');
   });
+
+  it.each([
+    ['started', 'started Fabrication work', 'Aug 1, 2026 → In progress'],
+    ['completed', 'completed Fabrication work', 'Aug 1, 2026 → Aug 4, 2026 · Fiona Fabricator'],
+    ['corrected', 'corrected Fabrication work times', 'Aug 1, 2026 → Aug 4, 2026 · Fiona Fabricator'],
+    ['cleared', 'cleared Fabrication work times', null],
+  ] as const)('describes a %s work-time change from its curated state', async (action, sentence, detail) => {
+    const item = buildChangeItem('job-work-time-updated', {
+      action,
+      timing:
+        action === 'cleared'
+          ? null
+          : {
+              completedAt: action === 'started' ? null : '2026-08-04T15:00:00.000Z',
+              crew: action === 'started' ? [] : ['Fiona Fabricator'],
+              startedAt: '2026-08-01T09:00:00.000Z',
+            },
+    });
+
+    const html = await renderWithRouter(<JobActivityEntry item={item} />);
+    const text = html.replaceAll(/<[^>]*>/g, ' ');
+
+    expect(text).toContain(sentence);
+    if (detail === null) expect(text).not.toContain('In progress');
+    else expect(text).toContain(detail);
+  });
 });
 
 /** Built through the real schema, so a fixture cannot drift from the contract it stands in for. */
@@ -137,6 +163,11 @@ function buildChangeItem(
     'job-created': {},
     'job-description-updated': { description: 'Fit the heavy-duty boom.' },
     'job-document-added': { document: { contentType: 'application/pdf', filename: 'handover.pdf' } },
+    'job-work-time-updated': {
+      action: 'started',
+      department: 'fabrication',
+      timing: { completedAt: null, crew: [], startedAt: '2026-08-01T09:00:00.000Z' },
+    },
   };
 
   return JobChangeActivityItem.parse({

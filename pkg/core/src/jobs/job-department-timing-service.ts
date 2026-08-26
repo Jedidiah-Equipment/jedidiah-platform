@@ -324,7 +324,8 @@ async function readTimingState(tx: DatabaseTransaction, row: TimingRow): Promise
 /**
  * Audited as a Job update under one `departmentTiming:<department>` field: the Job is what a reader is
  * looking at, and the whole stamp state reads as one change rather than three columns of a table
- * nobody browses. The Job Activity feed selects named fields, so this stays out of it by construction.
+ * nobody browses. The stable field name is also the Job Activity projection boundary: only the four
+ * work Departments are curated into Work Time entries, never the surrounding raw audit change set.
  */
 async function recordTimingAudit({
   actorUserId,

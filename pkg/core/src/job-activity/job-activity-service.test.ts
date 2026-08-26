@@ -11,13 +11,18 @@ import {
   quotes,
   user,
 } from '@pkg/db';
-import { DateOnlyIso, formatJobCode, type JobActivityItem, type JobDocumentType } from '@pkg/schema';
+import { DateIso, DateOnlyIso, formatJobCode, type JobActivityItem, type JobDocumentType } from '@pkg/schema';
 import { desc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
 import { documentAuditDescriptor } from '../documents/document-service.js';
 import { jobAuditDescriptor } from '../jobs/job-audit.js';
+import {
+  completeDepartmentTiming,
+  startDepartmentTiming,
+  updateDepartmentTiming,
+} from '../jobs/job-department-timing-service.js';
 import { updateJob } from '../jobs/job-service.js';
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
@@ -456,6 +461,107 @@ describe('listJobActivity change events', () => {
     ]);
   });
 
+  test('projects each work-time change and isolates it behind the Work Times filter', async ({ context }) => {
+    await createUser(context.db, { id: 'fabricator-id', name: 'Fiona Fabricator', role: 'bay-operator' });
+    await startDepartmentTiming({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { department: 'fabrication', id: context.job.id },
+    });
+    await updateDepartmentTiming({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: {
+        completedAt: null,
+        crewUserIds: [],
+        department: 'fabrication',
+        id: context.job.id,
+        startedAt: DateIso.parse('2026-08-01T09:00:00.000Z'),
+      },
+    });
+    await completeDepartmentTiming({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { crewUserIds: ['fabricator-id'], department: 'fabrication', id: context.job.id },
+    });
+    await updateDepartmentTiming({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: {
+        completedAt: null,
+        crewUserIds: [],
+        department: 'fabrication',
+        id: context.job.id,
+        startedAt: null,
+      },
+    });
+
+    const all = await listJobActivity({ db: context.db, input: listInput() });
+    const workTimes = await listJobActivity({ db: context.db, input: listInput({ filter: 'work-times' }) });
+    const jobEvents = await listJobActivity({ db: context.db, input: listInput({ filter: 'job-events' }) });
+
+    expect(all.total).toBe(4);
+    expect(workTimes.total).toBe(4);
+    expect(workTimes.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'started',
+          department: 'fabrication',
+          timing: expect.objectContaining({ completedAt: null, crew: [] }),
+          type: 'job-work-time-updated',
+        }),
+        expect.objectContaining({
+          action: 'corrected',
+          department: 'fabrication',
+          timing: expect.objectContaining({ startedAt: '2026-08-01T09:00:00.000Z' }),
+          type: 'job-work-time-updated',
+        }),
+        expect.objectContaining({
+          action: 'completed',
+          department: 'fabrication',
+          timing: expect.objectContaining({ crew: ['Fiona Fabricator'] }),
+          type: 'job-work-time-updated',
+        }),
+        expect.objectContaining({
+          action: 'cleared',
+          department: 'fabrication',
+          timing: null,
+          type: 'job-work-time-updated',
+        }),
+      ]),
+    );
+    expect(jobEvents.items).toEqual([]);
+  });
+
+  test('searches the Work Time wording, department, and snapshotted crew names', async ({ context }) => {
+    await createUser(context.db, { id: 'fabricator-id', name: 'Fiona Fabricator', role: 'bay-operator' });
+    await startDepartmentTiming({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { department: 'fabrication', id: context.job.id },
+    });
+    await completeDepartmentTiming({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { crewUserIds: ['fabricator-id'], department: 'fabrication', id: context.job.id },
+    });
+
+    for (const [search, expectedActions] of [
+      ['FABRICATION', ['completed', 'started']],
+      ['completed fabrication work', ['completed']],
+      ['fiona fabricator', ['completed']],
+    ] as const) {
+      const result = await listJobActivity({
+        db: context.db,
+        input: listInput({ filter: 'work-times', search }),
+      });
+
+      expect(
+        result.items.map((item) => (item.type === 'job-work-time-updated' ? item.action : item.type)).sort(),
+      ).toEqual([...expectedActions].sort());
+    }
+  });
+
   test('carries a cleared description as null rather than dropping the edit', async ({ context }) => {
     await updateJob({
       actorUserId: 'test-user-id',
@@ -806,7 +912,10 @@ async function createSubmitter(db: Db) {
   await createUser(db, { id: 'test-user-id', name: 'Test User' });
 }
 
-async function createUser(db: Db, { id, name }: { id: string; name: string }) {
+async function createUser(
+  db: Db,
+  { id, name, role = 'admin' }: { id: string; name: string; role?: typeof user.$inferInsert.role },
+) {
   const now = new Date();
 
   await db.insert(user).values({
@@ -816,7 +925,7 @@ async function createUser(db: Db, { id, name }: { id: string; name: string }) {
     id,
     image: SUBMITTER_THUMBNAIL_DATA_URL,
     name,
-    role: 'admin',
+    role,
     updatedAt: now,
   });
 }

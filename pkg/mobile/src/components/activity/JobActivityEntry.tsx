@@ -1,6 +1,19 @@
-import { formatDate, getFirstName, JOB_ACTIVITY_EVENT_SENTENCES } from '@pkg/domain';
+import {
+  formatDate,
+  getFirstName,
+  JOB_ACTIVITY_EVENT_SENTENCES,
+  jobWorkTimeActivityDetail,
+  jobWorkTimeActivitySentence,
+} from '@pkg/domain';
 import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
-import { IconCheck, IconFileText, IconPencil, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
+import {
+  IconCheck,
+  IconClock,
+  IconFileText,
+  IconPencil,
+  IconPlus,
+  type Icon as TablerIcon,
+} from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -203,6 +216,12 @@ function getJobEventPresentation(item: JobChangeActivityItem): JobEventPresentat
         detail: item.document.filename,
         icon: IconFileText,
         sentence: JOB_ACTIVITY_EVENT_SENTENCES.documentAdded,
+      };
+    case 'job-work-time-updated':
+      return {
+        detail: jobWorkTimeActivityDetail(item.timing),
+        icon: IconClock,
+        sentence: jobWorkTimeActivitySentence(item),
       };
   }
 }

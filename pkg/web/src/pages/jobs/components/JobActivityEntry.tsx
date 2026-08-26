@@ -1,6 +1,12 @@
-import { formatDate, getFirstName, JOB_ACTIVITY_EVENT_SENTENCES } from '@pkg/domain';
+import {
+  formatDate,
+  getFirstName,
+  JOB_ACTIVITY_EVENT_SENTENCES,
+  jobWorkTimeActivityDetail,
+  jobWorkTimeActivitySentence,
+} from '@pkg/domain';
 import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
-import { IconCheck, IconFileText, IconPencil, IconPlus, IconSubtask } from '@tabler/icons-react';
+import { IconCheck, IconClock, IconFileText, IconPencil, IconPlus, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -147,7 +153,7 @@ const GeneralFeedbackEntry: React.FC<{ hideDetail: boolean; item: GeneralFeedbac
 
 /**
  * What was done, in two flat lines beside a hollow node: who did what, then which Job it happened
- * to. No bubble and no clamp — a change event carries a filename or a date, never a paragraph, and
+ * to. No bubble and no clamp — a change event carries compact facts, never a paragraph, and
  * the quieter shape is what lets a reader skim past a run of them to the next thing someone said.
  */
 const JobChangeEntry: React.FC<{ hideDetail: boolean; item: JobChangeActivityItem }> = ({ hideDetail, item }) => {
@@ -224,6 +230,12 @@ function getJobChangePresentation(item: JobChangeActivityItem): JobChangePresent
         detail: item.document.filename,
         icon: IconFileText,
         sentence: JOB_ACTIVITY_EVENT_SENTENCES.documentAdded,
+      };
+    case 'job-work-time-updated':
+      return {
+        detail: jobWorkTimeActivityDetail(item.timing),
+        icon: IconClock,
+        sentence: jobWorkTimeActivitySentence(item),
       };
   }
 }

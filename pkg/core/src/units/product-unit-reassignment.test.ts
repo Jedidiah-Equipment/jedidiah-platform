@@ -13,7 +13,7 @@ import {
 } from '@pkg/db';
 import { getPlantDateNow } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
@@ -337,6 +337,76 @@ describe('reassignProductUnitToQuote refusals', () => {
       }),
     ).rejects.toBeInstanceOf(ProductUnitReassignDisplacedOwnerError);
     await expect(readJobQuoteId(db, greg.jobId)).resolves.toBe(greg.quoteId);
+  });
+
+  // Both legs of a swap fired at once reach for the same two Jobs from opposite ends. Unless every Job
+  // is locked in one ordered statement they deadlock on `job`, and Postgres 40P01 surfaces as a 500.
+  //
+  // Holding one Job first is what makes the race land: both legs pile up behind it, so releasing it
+  // sets them going against each other rather than letting the first finish before the second starts.
+  // Which leg wins the released lock is still the scheduler's choice, and only one of the two orders
+  // closes a cycle, so the swap runs repeatedly. Twenty-five attempts was measured against the
+  // two-statement implementation this replaced: red on every run, and green on every run of this one.
+  test('does not deadlock when both legs of a swap run concurrently', async ({ context }) => {
+    const { db, seed } = context;
+    const legOne = createDatabaseClient(context.databaseUrl, { max: 1 });
+    const legTwo = createDatabaseClient(context.databaseUrl, { max: 1 });
+
+    try {
+      for (let attempt = 0; attempt < 25; attempt++) {
+        const palmiet = await createBuildToOrderDeal(db, seed, seed.palmietId);
+        const greg = await createBuildToOrderDeal(db, seed, seed.gregId);
+        let releaseHeldJob = () => {};
+        const heldJobReleased = new Promise<void>((resolve) => {
+          releaseHeldJob = resolve;
+        });
+        let signalJobHeld = () => {};
+        const jobHeld = new Promise<void>((resolve) => {
+          signalJobHeld = resolve;
+        });
+
+        const holder = db.transaction(async (tx) => {
+          await tx.select({ id: jobs.id }).from(jobs).where(eq(jobs.id, greg.jobId)).for('update');
+          signalJobHeld();
+          await heldJobReleased;
+        });
+        await jobHeld;
+
+        const swap = Promise.allSettled([
+          reassignProductUnitToQuote({
+            actorUserId: ACTOR_USER_ID,
+            db: legOne.db,
+            input: { note: null, productUnitId: greg.unitId, toQuoteId: palmiet.quoteId },
+          }),
+          reassignProductUnitToQuote({
+            actorUserId: ACTOR_USER_ID,
+            db: legTwo.db,
+            input: { note: null, productUnitId: palmiet.unitId, toQuoteId: greg.quoteId },
+          }),
+        ]);
+        // Both legs must be queued behind the held Job before it goes, or the first would simply finish.
+        await expect
+          .poll(async () => {
+            const result = await db.execute<{ count: number }>(sql`
+              select count(*)::int as count
+              from pg_stat_activity
+              where datname = current_database() and wait_event_type = 'Lock'
+            `);
+            return Number(result[0]?.count ?? 0);
+          })
+          .toBeGreaterThan(1);
+        releaseHeldJob();
+        await holder;
+
+        const results = await swap;
+        const deadlocked = results.filter(
+          (result) => result.status === 'rejected' && (result.reason as { code?: string } | null)?.code === '40P01',
+        );
+        expect(deadlocked, `attempt ${attempt}: a swap must serialize on the Job locks, not deadlock`).toEqual([]);
+      }
+    } finally {
+      await Promise.all([legOne.close(), legTwo.close()]);
+    }
   });
 
   // Two operators reaching for the same machine must serialize on its row lock, so the loser reads the

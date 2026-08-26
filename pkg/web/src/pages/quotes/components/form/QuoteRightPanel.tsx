@@ -81,12 +81,16 @@ export function QuoteRightPanel({
 }
 
 /**
- * An accepted deal with no live Job is a gap someone has to close — a build was never started, or
- * reassignment took its machine to another deal — so the card renders the absence rather than
- * disappearing and leaving the panel silent about it.
+ * An accepted build-to-order deal with no live Job is a gap someone has to close — a build was never
+ * started, or reassignment took its machine to another deal — so the card renders the absence rather
+ * than disappearing and leaving the panel silent about it.
+ *
+ * Only that shape. An Allocation Quote is already showing its machine in the card above and can source
+ * nothing but a Rework Job, and a Custom Quote never builds a machine at all: on either, a card headed
+ * "No live Job" would name a gap that is not one.
  */
 function QuoteNoJobCard({ quote }: { quote: QuoteDetail }) {
-  if (quote.status !== 'accepted') {
+  if (quote.kind !== 'product' || quote.status !== 'accepted' || quote.productUnitId !== null) {
     return null;
   }
 
@@ -97,9 +101,7 @@ function QuoteNoJobCard({ quote }: { quote: QuoteDetail }) {
         <CardTitle>No live Job</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-3">
-        <p className="text-muted-foreground">
-          This deal is accepted but nothing is being built for it. Start a Job, or move an existing machine here.
-        </p>
+        <p className="text-muted-foreground">This deal is accepted but nothing is being built for it.</p>
         <ReassignUnitDialog quote={quote} />
       </CardContent>
     </Card>

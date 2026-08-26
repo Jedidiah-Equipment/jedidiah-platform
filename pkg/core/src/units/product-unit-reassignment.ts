@@ -8,7 +8,7 @@ import {
   type ProductUnitReassignResult,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../audit/audit-service.js';
 import { jobAuditDescriptor } from '../jobs/job-audit.js';
@@ -131,13 +131,15 @@ export async function reassignProductUnitToQuote({
   return db.transaction(async (tx) => {
     const plantToday = getPlantDateNow();
     const quote = await lockReceivingQuote(tx, input.toQuoteId);
-    const displacedJob = await lockLiveJobForQuote(tx, quote.id);
+    const { displacedJob, liveJobs } = await lockJobsForReassignment(tx, {
+      productUnitId: input.productUnitId,
+      quoteId: quote.id,
+    });
 
     if (displacedJob?.productUnitId === input.productUnitId) {
       throw new ProductUnitReassignUnitIneligibleError(input.productUnitId, 'already-on-quote');
     }
 
-    const liveJobs = await lockLiveJobsForUnit(tx, input.productUnitId);
     const handles = await lockUnitsSorted(tx, [input.productUnitId, displacedJob?.productUnitId ?? null]);
     const moving = handles.get(input.productUnitId);
 
@@ -256,49 +258,60 @@ async function lockReceivingQuote(tx: DatabaseTransaction, quoteId: UUID): Promi
   return { customerId: quote.customerId, id: quote.id, productId: quote.productId };
 }
 
-/**
- * The Quote's live Job, if it has one. A Job that has lost its machine to Unit Removal cannot be
- * displaced — there is nothing to send back to Stock — so it is refused rather than silently detached.
- */
-async function lockLiveJobForQuote(tx: DatabaseTransaction, quoteId: string): Promise<DisplacedJobRow | null> {
-  const [job] = await tx
-    .select({ code: jobs.code, id: jobs.id, productUnitId: jobs.productUnitId, quoteId: jobs.quoteId })
-    .from(jobs)
-    .where(and(eq(jobs.quoteId, quoteId), isNull(jobs.cancelledAt)))
-    .for('update');
-
-  if (!job) {
-    return null;
-  }
-
-  if (job.productUnitId === null) {
-    throw new ProductUnitReassignDeadJobError(job.id, formatJobCode(job.code));
-  }
-
-  return job;
-}
+type LockedReassignJobs = {
+  /** The receiving Quote's live Job, which displacement sends back to Stock. */
+  displacedJob: DisplacedJobRow | null;
+  /** The moving machine's live Jobs, earliest first, for the eligibility rules to classify. */
+  liveJobs: (AuditedJobRow & ClassifiableJob)[];
+};
 
 /**
- * The machine's live Jobs under their row locks, earliest first, each carrying the one Quote fact that
- * says whether it is a build or a rework. Classifying them is `resolveReassignUnitIneligibility`'s job,
- * not this one's — locking and judging stay apart so the picker can judge without locking anything.
+ * Every Job this reassignment may touch, locked in one statement in ascending id order.
+ *
+ * The order is the whole point, and one statement is how it is guaranteed. Both legs of a swap fired
+ * at once reach for the same two Jobs from opposite ends — leg 1 holds the receiving deal's Job and
+ * wants the moving machine's, leg 2 the reverse — so two separate locking reads deadlock on `job` and
+ * surface an unmapped `40P01` as a 500. Sorted, they serialize instead. This mirrors the Unit lock
+ * discipline in `lockUnitsSorted`; the Jobs need it for exactly the same reason.
+ *
+ * A live Job that has lost its machine to Unit Removal cannot be displaced — there is nothing to send
+ * back to Stock — so it is refused rather than silently detached.
  */
-async function lockLiveJobsForUnit(
+async function lockJobsForReassignment(
   tx: DatabaseTransaction,
-  productUnitId: UUID,
-): Promise<(AuditedJobRow & ClassifiableJob)[]> {
-  return tx
+  { productUnitId, quoteId }: { productUnitId: UUID; quoteId: string },
+): Promise<LockedReassignJobs> {
+  const rows = await tx
     .select({
       code: jobs.code,
+      createdAt: jobs.createdAt,
       id: jobs.id,
+      productUnitId: jobs.productUnitId,
       quoteId: jobs.quoteId,
       quoteProductUnitId: quotes.productUnitId,
     })
     .from(jobs)
     .leftJoin(quotes, eq(quotes.id, jobs.quoteId))
-    .where(and(eq(jobs.productUnitId, productUnitId), isNull(jobs.cancelledAt)))
-    .orderBy(asc(jobs.createdAt), asc(jobs.id))
+    .where(and(isNull(jobs.cancelledAt), or(eq(jobs.quoteId, quoteId), eq(jobs.productUnitId, productUnitId))))
+    .orderBy(asc(jobs.id))
     .for('update', { of: jobs });
+
+  // `job_quote_id_live_unique` makes this at most one row.
+  const displacedJob = rows.find((row) => row.quoteId === quoteId) ?? null;
+
+  if (displacedJob && displacedJob.productUnitId === null) {
+    throw new ProductUnitReassignDeadJobError(displacedJob.id, formatJobCode(displacedJob.code));
+  }
+
+  return {
+    displacedJob,
+    // Locked by id, read back by age: a rework can only follow a build, so the earliest is the build.
+    liveJobs: rows
+      .filter((row) => row.productUnitId === productUnitId)
+      .toSorted(
+        (left, right) => left.createdAt.getTime() - right.createdAt.getTime() || left.id.localeCompare(right.id),
+      ),
+  };
 }
 
 /**

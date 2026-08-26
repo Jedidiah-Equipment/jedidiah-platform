@@ -177,8 +177,10 @@ function ReassignUnitDialogContent({ quote }: { quote: QuoteDetail }) {
                   />
                 </Field>
               </>
+            ) : previewQuery.error ? (
+              <ErrorMessage error={previewQuery.error} fallbackMessage="Unable to work out what this move would do." />
             ) : (
-              <ErrorMessage error={previewQuery.error} fallbackMessage="Loading what this move would do…" />
+              <p className="text-muted-foreground">Working out what this move would do…</p>
             )}
           </div>
         ) : (

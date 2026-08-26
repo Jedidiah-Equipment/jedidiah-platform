@@ -15,6 +15,7 @@ import {
   type UUID,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { groupBy } from '../inventory/row-grouping.js';
 import { QuoteNotFoundError } from '../quotes/quote-errors.js';
 import { loadAsBuiltSpec } from './product-unit-as-built.js';
 import { ProductUnitNotFoundError } from './product-unit-errors.js';
@@ -266,39 +267,23 @@ async function loadSpecDiff({
   );
 
   return {
-    fittedNotQuoted: dedupe(
-      asBuilt
-        .filter((assembly) => !quotedKeys.has(assemblyKey(assembly.productAssemblyId, assembly.name)))
-        .map((assembly) => assembly.name),
-    ),
-    quotedNotFitted: dedupe(
-      selections
-        .filter((selection) => !fittedKeys.has(assemblyKey(selection.productAssemblyId, selection.quotedName)))
-        .map((selection) => selection.quotedName),
-    ),
+    fittedNotQuoted: [
+      ...new Set(
+        asBuilt
+          .filter((assembly) => !quotedKeys.has(assemblyKey(assembly.productAssemblyId, assembly.name)))
+          .map((assembly) => assembly.name),
+      ),
+    ],
+    quotedNotFitted: [
+      ...new Set(
+        selections
+          .filter((selection) => !fittedKeys.has(assemblyKey(selection.productAssemblyId, selection.quotedName)))
+          .map((selection) => selection.quotedName),
+      ),
+    ],
   };
 }
 
 function assemblyKey(productAssemblyId: string | null, name: string): string {
   return productAssemblyId ? `id:${productAssemblyId}` : `name:${name.trim().toLowerCase()}`;
-}
-
-function dedupe(values: readonly string[]): string[] {
-  return [...new Set(values)];
-}
-
-function groupBy<T>(rows: readonly T[], key: (row: T) => string): Map<string, T[]> {
-  const groups = new Map<string, T[]>();
-
-  for (const row of rows) {
-    const group = groups.get(key(row));
-
-    if (group) {
-      group.push(row);
-    } else {
-      groups.set(key(row), [row]);
-    }
-  }
-
-  return groups;
 }

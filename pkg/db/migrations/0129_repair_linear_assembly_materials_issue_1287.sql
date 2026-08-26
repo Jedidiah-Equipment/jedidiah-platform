@@ -33,6 +33,20 @@ BEGIN
 		set_periodic boolean NOT NULL
 	) ON COMMIT DROP;
 
+	CREATE TEMP TABLE issue_1287_product_audit_change (
+		product_id uuid NOT NULL,
+		assembly_id uuid,
+		change_key text NOT NULL,
+		change jsonb NOT NULL,
+		PRIMARY KEY (product_id, change_key)
+	) ON COMMIT DROP;
+
+	CREATE TEMP TABLE issue_1287_part_audit_change (
+		part_id uuid PRIMARY KEY,
+		part_name text NOT NULL,
+		changes jsonb NOT NULL
+	) ON COMMIT DROP;
+
 	INSERT INTO issue_1287_material_repair
 		(review_id, product_id, assembly_id, part_id, original_quantity, material_quantity)
 	VALUES
@@ -102,12 +116,23 @@ BEGIN
 
 	INSERT INTO issue_1287_part_config
 		(part_id, previous_purchase_length_mm, desired_purchase_length_mm, set_periodic)
-	VALUES
-		('cb61fef6-e462-4f8c-a3e5-cbdd92bbb583', NULL, 1000, true),
-		('5ab268c0-bbc2-45b0-8a85-848e6ef312ca', NULL, 6000, true),
-		('8e1c24dd-988a-4f09-9026-8f710f836762', 6000, 13000, false),
-		('729b8776-d67f-4498-8992-12020af494d8', 6000, 13000, false),
-		('a4ed7e67-8989-4a41-b9e6-0f876dafa293', 6000, 13000, false);
+	SELECT DISTINCT part_id, NULL::integer, 6000, true
+	FROM issue_1287_material_repair;
+
+	-- Product confirmed that Booster Pipe is purchased per metre, while these three channel Parts
+	-- changed from the legacy 6 m assumption to their actual 13 m purchase length.
+	UPDATE issue_1287_part_config
+	SET desired_purchase_length_mm = 1000
+	WHERE part_id = 'cb61fef6-e462-4f8c-a3e5-cbdd92bbb583';
+
+	UPDATE issue_1287_part_config
+	SET previous_purchase_length_mm = 6000,
+		desired_purchase_length_mm = 13000
+	WHERE part_id IN (
+		'8e1c24dd-988a-4f09-9026-8f710f836762',
+		'729b8776-d67f-4498-8992-12020af494d8',
+		'a4ed7e67-8989-4a41-b9e6-0f876dafa293'
+	);
 
 	SELECT count(*) INTO reviewed_count FROM issue_1287_material_repair;
 	SELECT count(*) INTO reviewed_config_count FROM issue_1287_part_config;
@@ -226,6 +251,34 @@ BEGIN
 		RAISE EXCEPTION 'Issue #1287 found % conflicting Product Material row(s)', conflicting_target_count;
 	END IF;
 
+	-- Changing a purchase length changes the meaning of every stored quantity for that Part. The
+	-- reviewed rows must remain its only references until this repair runs.
+	SELECT count(*) INTO invalid_count
+	FROM issue_1287_part_config config
+	INNER JOIN "assembly_parts" source ON source."part_id" = config.part_id
+	LEFT JOIN issue_1287_material_repair repair
+		ON repair.assembly_id = source."assembly_id"
+		AND repair.part_id = source."part_id"
+	WHERE config.previous_purchase_length_mm IS NOT NULL
+		AND repair.review_id IS NULL;
+
+	IF invalid_count > 0 THEN
+		RAISE EXCEPTION 'Issue #1287 found % unreviewed Assembly reference(s) to a channel Part changing purchase length', invalid_count;
+	END IF;
+
+	SELECT count(*) INTO invalid_count
+	FROM issue_1287_part_config config
+	INNER JOIN "product_material_line" target ON target."part_id" = config.part_id
+	LEFT JOIN issue_1287_material_repair repair
+		ON repair.product_id = target."product_id"
+		AND repair.part_id = target."part_id"
+	WHERE config.previous_purchase_length_mm IS NOT NULL
+		AND repair.review_id IS NULL;
+
+	IF invalid_count > 0 THEN
+		RAISE EXCEPTION 'Issue #1287 found % unreviewed Product Material reference(s) to a channel Part changing purchase length', invalid_count;
+	END IF;
+
 	SELECT reviewed_config_count - count(*) INTO invalid_count
 	FROM issue_1287_part_config config
 	INNER JOIN "parts" part
@@ -242,8 +295,10 @@ BEGIN
 
 	SELECT count(*) INTO invalid_count
 	FROM issue_1287_part_config config
+	INNER JOIN "parts" part ON part."id" = config.part_id
 	INNER JOIN "stock_movement" movement ON movement."part_id" = config.part_id
 	WHERE config.set_periodic
+		AND part."stock_tracking_mode" <> 'periodic'
 		AND movement."delta" <> 0;
 
 	IF invalid_count > 0 THEN
@@ -259,20 +314,52 @@ BEGIN
 		AND movement."delta" <> 0;
 
 	IF invalid_count > 0 THEN
-		RAISE EXCEPTION 'Issue #1287 cannot replace the 6000 mm channel length after % physical stock movement(s)', invalid_count;
+		RAISE EXCEPTION 'Issue #1287 cannot change a reviewed channel purchase length after % physical stock movement(s)', invalid_count;
 	END IF;
+
+	INSERT INTO issue_1287_part_audit_change (part_id, part_name, changes)
+	SELECT part."id", part."name",
+		CASE
+			WHEN part."standard_purchase_length_mm" <> config.desired_purchase_length_mm
+			THEN jsonb_build_object(
+				'standardPurchaseLengthMm',
+				jsonb_build_object(
+					'from', part."standard_purchase_length_mm",
+					'to', config.desired_purchase_length_mm
+				)
+			)
+			ELSE '{}'::jsonb
+		END
+		|| CASE
+			WHEN config.set_periodic AND part."stock_tracking_mode" <> 'periodic'
+			THEN jsonb_build_object(
+				'stockTrackingMode',
+				jsonb_build_object('from', part."stock_tracking_mode", 'to', 'periodic')
+			)
+			ELSE '{}'::jsonb
+		END
+	FROM issue_1287_part_config config
+	INNER JOIN "parts" part ON part."id" = config.part_id
+	WHERE part."standard_purchase_length_mm" <> config.desired_purchase_length_mm
+		OR (config.set_periodic AND part."stock_tracking_mode" <> 'periodic');
 
 	UPDATE "parts" part
 	SET "standard_purchase_length_mm" = config.desired_purchase_length_mm
 	FROM issue_1287_part_config config
 	WHERE part."id" = config.part_id
-		AND config.previous_purchase_length_mm IS NOT NULL;
+		AND config.previous_purchase_length_mm IS NOT NULL
+		AND part."standard_purchase_length_mm" <> config.desired_purchase_length_mm;
 
 	UPDATE "parts" part
 	SET "stock_tracking_mode" = 'periodic'
 	FROM issue_1287_part_config config
 	WHERE part."id" = config.part_id
-		AND config.set_periodic;
+		AND config.set_periodic
+		AND part."stock_tracking_mode" <> 'periodic';
+
+	INSERT INTO "audit_events" ("entity_type", "entity_id", "action", "summary", "changes")
+	SELECT 'part', change.part_id::text, 'updated', 'Updated part "' || change.part_name || '"', change.changes
+	FROM issue_1287_part_audit_change change;
 
 	SELECT reviewed_config_count - count(*) INTO invalid_count
 	FROM issue_1287_part_config config
@@ -284,6 +371,37 @@ BEGIN
 	IF invalid_count <> 0 THEN
 		RAISE EXCEPTION 'Issue #1287 failed to apply % reviewed Part configuration(s)', invalid_count;
 	END IF;
+
+	-- This migration writes around the Product service, so build the same boundary-visible history
+	-- before replacing the child rows. Matching targets (GG1216's existing channel line) are not
+	-- falsely reported as additions.
+	INSERT INTO issue_1287_product_audit_change (product_id, assembly_id, change_key, change)
+	SELECT repair.product_id, repair.assembly_id,
+		'assemblyPart:' || assembly."name" || ' / ' || part."code",
+		jsonb_build_object(
+			'from', jsonb_build_object('partId', repair.part_id, 'quantity', repair.original_quantity),
+			'to', NULL
+		)
+	FROM issue_1287_material_repair repair
+	INNER JOIN "assembly_parts" source
+		ON source."assembly_id" = repair.assembly_id
+		AND source."part_id" = repair.part_id
+	INNER JOIN "product_assemblies" assembly ON assembly."id" = repair.assembly_id
+	INNER JOIN "parts" part ON part."id" = repair.part_id;
+
+	INSERT INTO issue_1287_product_audit_change (product_id, change_key, change)
+	SELECT repair.product_id,
+		'materialLine:' || part."code",
+		jsonb_build_object(
+			'from', NULL,
+			'to', jsonb_build_object('partId', repair.part_id, 'quantityPerUnit', repair.material_quantity)
+		)
+	FROM issue_1287_material_repair repair
+	INNER JOIN "parts" part ON part."id" = repair.part_id
+	LEFT JOIN "product_material_line" target
+		ON target."product_id" = repair.product_id
+		AND target."part_id" = repair.part_id
+	WHERE target."product_id" IS NULL;
 
 	INSERT INTO "product_material_line" ("product_id", "part_id", "quantity_per_unit")
 	SELECT product_id, part_id, material_quantity
@@ -297,13 +415,24 @@ BEGIN
 
 	UPDATE "product_assemblies" assembly
 	SET "updated_at" = now()
-	WHERE assembly."id" IN (SELECT DISTINCT assembly_id FROM issue_1287_material_repair);
+	WHERE assembly."id" IN (
+		SELECT DISTINCT assembly_id
+		FROM issue_1287_product_audit_change
+		WHERE assembly_id IS NOT NULL
+	);
 
 	-- Product children are replaced as one revision by the application, so preserve that revision
 	-- boundary when repairing the same children directly.
 	UPDATE "products" product
 	SET "updated_at" = now()
-	WHERE product."id" IN (SELECT DISTINCT product_id FROM issue_1287_material_repair);
+	WHERE product."id" IN (SELECT DISTINCT product_id FROM issue_1287_product_audit_change);
+
+	INSERT INTO "audit_events" ("entity_type", "entity_id", "action", "summary", "changes")
+	SELECT 'product', product."id"::text, 'updated', 'Updated product "' || product."name" || '"',
+		jsonb_object_agg(change.change_key, change.change ORDER BY change.change_key)
+	FROM issue_1287_product_audit_change change
+	INNER JOIN "products" product ON product."id" = change.product_id
+	GROUP BY product."id", product."name";
 
 	SELECT reviewed_count - count(*) INTO invalid_count
 	FROM issue_1287_material_repair repair

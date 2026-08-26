@@ -174,6 +174,11 @@ export const snapshotTableDefinitions = [
         .filter(isStorageFile),
   },
   {
+    fileName: 'product_material_line.json',
+    tableName: 'product_material_line',
+    timestampColumns: [],
+  },
+  {
     fileName: 'product_bay.json',
     tableName: 'product_bay',
     timestampColumns: ['createdAt', 'updatedAt'],

@@ -19,6 +19,7 @@ const activityFilterLabels = {
   all: 'All',
   'user-feedback': 'User Feedback',
   'job-events': 'Job Events',
+  'work-times': 'Work Times',
 } as const satisfies Record<JobActivityFilter, string>;
 
 export const JobActivityPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ selectedJobId }) => {

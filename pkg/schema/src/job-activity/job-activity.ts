@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { DateIso, DateOnlyIso } from '../common/date.js';
+import { WorkItemDepartment } from '../common/departments.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { JobCode } from '../common/public-code.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
@@ -92,18 +93,41 @@ export const JobDocumentAddedActivityItem = z.object({
   }),
 });
 
+export type JobWorkTimeActivityAction = z.infer<typeof JobWorkTimeActivityAction>;
+export const JobWorkTimeActivityAction = z.enum(['started', 'completed', 'corrected', 'cleared']);
+
+export type JobWorkTimeActivityState = z.infer<typeof JobWorkTimeActivityState>;
+export const JobWorkTimeActivityState = z.object({
+  startedAt: DateIso,
+  completedAt: DateIso.nullable(),
+  // Names are snapshotted into the audit event so the activity remains historically truthful when
+  // a crew member is renamed or removed later.
+  crew: z.array(z.string().trim().min(1)),
+});
+
+export type JobWorkTimeUpdatedActivityItem = z.infer<typeof JobWorkTimeUpdatedActivityItem>;
+export const JobWorkTimeUpdatedActivityItem = z.object({
+  type: z.literal('job-work-time-updated'),
+  ...jobChangeActivityShape,
+  action: JobWorkTimeActivityAction,
+  department: WorkItemDepartment,
+  /** Null only when a mistaken timing record was cleared. */
+  timing: JobWorkTimeActivityState.nullable(),
+});
+
 export type JobChangeActivityItem = z.infer<typeof JobChangeActivityItem>;
 export const JobChangeActivityItem = z.discriminatedUnion('type', [
   JobCreatedActivityItem,
   JobDescriptionUpdatedActivityItem,
   JobCompletedActivityItem,
   JobDocumentAddedActivityItem,
+  JobWorkTimeUpdatedActivityItem,
 ]);
 
 /**
- * One entry in the Job Activity feed: what was said about a Job (General Feedback) or what was done
- * to it (a change event). The two come from different tables — `feedback` and `audit_events` — and
- * meet only here, merged by when they occurred.
+ * One entry in the Job Activity feed: what was said about a Job (General Feedback), a curated Job
+ * Event, or a curated Work Time change. The sources — `feedback` and `audit_events` — meet only here,
+ * merged by when they occurred.
  */
 export type JobActivityItem = z.infer<typeof JobActivityItem>;
 export const JobActivityItem = z.discriminatedUnion('type', [
@@ -112,6 +136,7 @@ export const JobActivityItem = z.discriminatedUnion('type', [
   JobDescriptionUpdatedActivityItem,
   JobCompletedActivityItem,
   JobDocumentAddedActivityItem,
+  JobWorkTimeUpdatedActivityItem,
 ]);
 
 export type JobActivityType = JobActivityItem['type'];
@@ -120,7 +145,7 @@ export type JobActivitySortBy = z.infer<typeof JobActivitySortBy>;
 export const JobActivitySortBy = z.enum(['occurredAt']);
 
 export type JobActivityFilter = z.infer<typeof JobActivityFilter>;
-export const JobActivityFilter = z.enum(['all', 'user-feedback', 'job-events']);
+export const JobActivityFilter = z.enum(['all', 'user-feedback', 'job-events', 'work-times']);
 
 export type JobActivitySeenInput = z.infer<typeof JobActivitySeenInput>;
 export const JobActivitySeenInput = z.object({

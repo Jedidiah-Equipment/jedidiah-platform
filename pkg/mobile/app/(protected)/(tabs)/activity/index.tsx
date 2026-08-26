@@ -29,6 +29,7 @@ const FILTER_OPTIONS: readonly ListControlOption<JobActivityFilter>[] = [
   { label: 'All', value: 'all' },
   { label: 'User Feedback', value: 'user-feedback' },
   { label: 'Job Events', value: 'job-events' },
+  { label: 'Work Times', value: 'work-times' },
 ];
 
 /** Cross-Job feed. The Activity layout owns the route-level permission gate. */

@@ -5,7 +5,7 @@ done across every Job, newest first, without opening each Job in turn.
 
 1. On the web, choose **Jobs**, then **Activity**. On mobile, choose the **Activity** tab.
 2. Search the visible activity text, person, Job, Product or Customer, or use the filter to show
-   **All**, **User Feedback**, or **Job Events**.
+   **All**, **User Feedback**, **Job Events**, or **Work Times**.
 3. Read down the feed. Each entry names who it was, when it happened, and the Job it is about.
 4. Choose **Show more** on a long piece of feedback to read the rest of it.
 5. Choose an entry to open that Job, where you can read its full feedback and submit your own with
@@ -22,6 +22,8 @@ done across every Job, newest first, without opening each Job in turn.
   finished on schedule and nobody stamped by hand.
 - **A document was added to a Job**, naming the file, and the entry stays after the file is deleted.
   The Brochure and Product documents a Job copies for itself when it starts get no entry.
+- **A Department's Work Times changed** — starting or completing work, correcting either stamp or
+  the crew, or clearing a mistaken record. The entry shows the resulting dates and the recorded crew.
 
 Corrective Feedback about a department or a person stays in the Feedback inbox, and feedback
 submitted about a Quote is not shown here. Cancelling a Job and re-opening a completed Job add no

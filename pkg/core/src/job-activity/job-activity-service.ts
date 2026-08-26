@@ -14,13 +14,24 @@ import {
   withPagination,
 } from '@pkg/db';
 import {
+  departmentLabels,
   getJobDisplayName,
   getJobOfferingKind,
   JOB_ACTIVITY_EVENT_SENTENCES,
+  jobWorkTimeActivitySentence,
   resolveJobCustomer,
   resolveNewestOwnershipTransfer,
 } from '@pkg/domain';
-import type { AuditChanges, AuthId, JobActivityItem, JobActivityJobRef, JobActivityListResult } from '@pkg/schema';
+import type {
+  AuditChanges,
+  AuthId,
+  JobActivityItem,
+  JobActivityJobRef,
+  JobActivityListResult,
+  JobWorkTimeActivityAction,
+  JobWorkTimeActivityState,
+  WorkItemDepartment,
+} from '@pkg/schema';
 import {
   DateIso,
   getNextCursor,
@@ -28,6 +39,9 @@ import {
   JobActivityJobRef as JobActivityJobRefSchema,
   JobActivityListInput,
   JobCode,
+  JobWorkTimeActivityState as JobWorkTimeActivityStateSchema,
+  WORK_ITEM_DEPARTMENTS,
+  WorkItemDepartment as WorkItemDepartmentSchema,
 } from '@pkg/schema';
 import { and, asc, desc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
@@ -106,13 +120,18 @@ const jobDocumentAddedEvent = and(
   // that: without this every Job would report a file beside its own `job-created` entry.
   changedFieldIsNot('metadata', 'type', 'brochure'),
 ) as SQL;
-const jobDescriptionOnlyEvent = and(jobDescriptionUpdatedEvent, sql`not (${changedFieldIsSet('completedOn')})`) as SQL;
-const jobChangeEvents = or(
-  jobCreatedEvent,
-  jobDescriptionUpdatedEvent,
-  jobCompletedEvent,
-  jobDocumentAddedEvent,
+const jobWorkTimeEvent = and(
+  eq(auditEvents.entityType, 'job'),
+  eq(auditEvents.action, 'updated'),
+  or(...WORK_ITEM_DEPARTMENTS.map((department) => changeSetNames(workTimeField(department)))),
 ) as SQL;
+const jobDescriptionOnlyEvent = and(jobDescriptionUpdatedEvent, sql`not (${changedFieldIsSet('completedOn')})`) as SQL;
+const jobEvents = or(jobCreatedEvent, jobDescriptionUpdatedEvent, jobCompletedEvent, jobDocumentAddedEvent) as SQL;
+const jobChangeEvents = or(jobEvents, jobWorkTimeEvent) as SQL;
+
+function workTimeField(department: WorkItemDepartment): string {
+  return `departmentTiming:${department}`;
+}
 
 function changeSetNames(field: string): SQL {
   return sql`jsonb_exists(${auditEvents.changes}, ${field})`;
@@ -137,7 +156,7 @@ function jobGeneralFeedbackFilter(input: JobActivityListInput): SQL {
 
 function jobChangeEventFilter(input: JobActivityListInput): SQL {
   return and(
-    jobChangeEvents,
+    input.filter === 'job-events' ? jobEvents : input.filter === 'work-times' ? jobWorkTimeEvent : jobChangeEvents,
     input.jobId
       ? or(
           and(eq(auditEvents.entityType, 'job'), eq(auditEvents.entityId, input.jobId)),
@@ -173,6 +192,7 @@ function jobChangeEventSearch(search: string): SQL {
       jobDocumentAddedEvent,
       createEscapedContainsSearchCondition(sql`${auditEvents.changes} -> 'filename' ->> 'to'`, search),
     ),
+    jobWorkTimeEventSearch(search),
     sql`exists (
       select 1
       from ${user}
@@ -183,6 +203,58 @@ function jobChangeEventSearch(search: string): SQL {
     jobChangeEventSentenceSearch(search),
     jobActivityJobSearch(changeEventJobIdExpression, search),
   ) as SQL;
+}
+
+function jobWorkTimeEventSearch(search: string): SQL | undefined {
+  return or(
+    ...WORK_ITEM_DEPARTMENTS.flatMap((department) => {
+      const field = workTimeField(department);
+
+      return [
+        visibleTextMatches(departmentLabels[department], search) ? changeSetNames(field) : undefined,
+        workTimeCrewSearch(field, search),
+        ...(['started', 'completed', 'corrected', 'cleared'] as const).map((action) =>
+          visibleTextMatches(jobWorkTimeActivitySentence({ action, department }), search)
+            ? workTimeActionEvent(field, action)
+            : undefined,
+        ),
+      ];
+    }),
+  );
+}
+
+function workTimeCrewSearch(field: string, search: string): SQL {
+  return sql`exists (
+    select 1
+    from jsonb_array_elements_text(
+      coalesce(${auditEvents.changes} -> ${field} -> 'to' -> 'crew', '[]'::jsonb)
+    ) as work_time_crew(name)
+    where ${createEscapedContainsSearchCondition(sql`work_time_crew.name`, search)}
+  )`;
+}
+
+function workTimeActionEvent(field: string, action: JobWorkTimeActivityAction): SQL {
+  // This is the SQL form of `workTimeAction`: search must classify before pagination, while
+  // hydration classifies parsed states. The service tests pin both paths to the same four actions.
+  const hasFrom = sql`${auditEvents.changes} -> ${field} ->> 'from' is not null`;
+  const hasTo = sql`${auditEvents.changes} -> ${field} ->> 'to' is not null`;
+  const fromIsOpen = sql`${auditEvents.changes} -> ${field} -> 'from' ->> 'completedAt' is null`;
+  const toIsOpen = sql`${auditEvents.changes} -> ${field} -> 'to' ->> 'completedAt' is null`;
+  const toIsCompleted = sql`${auditEvents.changes} -> ${field} -> 'to' ->> 'completedAt' is not null`;
+  const started = and(changeSetNames(field), sql`not (${hasFrom})`, hasTo, toIsOpen) as SQL;
+  const completed = and(changeSetNames(field), hasFrom, fromIsOpen, hasTo, toIsCompleted) as SQL;
+  const cleared = and(changeSetNames(field), hasFrom, sql`not (${hasTo})`) as SQL;
+
+  switch (action) {
+    case 'started':
+      return started;
+    case 'completed':
+      return completed;
+    case 'cleared':
+      return cleared;
+    case 'corrected':
+      return and(changeSetNames(field), sql`not (${or(started, completed, cleared)})`) as SQL;
+  }
 }
 
 function jobChangeEventSentenceSearch(search: string): SQL | undefined {
@@ -288,11 +360,10 @@ export async function listJobActivity({
   db: Db;
   input: JobActivityListInput;
 }): Promise<JobActivityListResult> {
-  const includeFeedback = input.filter !== 'job-events';
-  const includeJobEvents = input.filter !== 'user-feedback';
+  const { includeAudit, includeFeedback } = activitySources(input.filter);
   const [feedbackTotal, auditTotal, keys] = await Promise.all([
     includeFeedback ? db.$count(feedback, jobGeneralFeedbackFilter(input)) : Promise.resolve(0),
-    includeJobEvents ? db.$count(auditEvents, jobChangeEventFilter(input)) : Promise.resolve(0),
+    includeAudit ? db.$count(auditEvents, jobChangeEventFilter(input)) : Promise.resolve(0),
     findActivityKeys(db, input),
   ]);
   const total = feedbackTotal + auditTotal;
@@ -311,8 +382,7 @@ export async function listJobActivity({
  * Load more behaves exactly as it did when feedback was the only source.
  */
 async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<ActivityKey[]> {
-  const includeFeedback = input.filter !== 'job-events';
-  const includeJobEvents = input.filter !== 'user-feedback';
+  const { includeAudit, includeFeedback } = activitySources(input.filter);
   const keys = unionAll(
     db
       .select({
@@ -329,7 +399,7 @@ async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<Ac
         source: sql<ActivitySource>`'audit'::text`.as('source'),
       })
       .from(auditEvents)
-      .where(includeJobEvents ? jobChangeEventFilter(input) : sql`false`),
+      .where(includeAudit ? jobChangeEventFilter(input) : sql`false`),
   ).as('job_activity_keys');
 
   // Tiebreak on id so a row never repeats or vanishes across offset pages when timestamps collide,
@@ -345,6 +415,16 @@ async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<Ac
       .$dynamic(),
     input,
   );
+}
+
+function activitySources(filter: JobActivityListInput['filter']): {
+  includeAudit: boolean;
+  includeFeedback: boolean;
+} {
+  return {
+    includeAudit: filter !== 'user-feedback',
+    includeFeedback: filter === 'all' || filter === 'user-feedback',
+  };
 }
 
 /** Reads both sources for the page, then reassembles them in the merged order the keys fixed. */
@@ -458,6 +538,18 @@ function mapJobChangeActivityItem(row: AuditActivityRow, job: JobActivityJobRef)
     });
   }
 
+  const workTime = readWorkTimeChange(row.changes);
+
+  if (workTime) {
+    return JobActivityItemSchema.parse({
+      ...shared,
+      type: 'job-work-time-updated',
+      action: workTime.action,
+      department: workTime.department,
+      timing: workTime.to,
+    });
+  }
+
   if (row.action === 'created') {
     return JobActivityItemSchema.parse({ ...shared, type: 'job-created' });
   }
@@ -482,6 +574,36 @@ function mapJobChangeActivityItem(row: AuditActivityRow, job: JobActivityJobRef)
     type: 'job-description-updated',
     description: readChangeTo(row.changes, 'description'),
   });
+}
+
+function readWorkTimeChange(changes: unknown): {
+  action: JobWorkTimeActivityAction;
+  department: WorkItemDepartment;
+  to: JobWorkTimeActivityState | null;
+} | null {
+  const changeSet = (changes as AuditChanges | null) ?? {};
+
+  for (const [field, change] of Object.entries(changeSet)) {
+    if (!field.startsWith('departmentTiming:')) continue;
+
+    const department = WorkItemDepartmentSchema.parse(field.slice('departmentTiming:'.length));
+    const from = JobWorkTimeActivityStateSchema.nullable().parse(change.from);
+    const to = JobWorkTimeActivityStateSchema.nullable().parse(change.to);
+
+    return { action: workTimeAction(from, to), department, to };
+  }
+
+  return null;
+}
+
+function workTimeAction(
+  from: JobWorkTimeActivityState | null,
+  to: JobWorkTimeActivityState | null,
+): JobWorkTimeActivityAction {
+  if (to === null) return 'cleared';
+  if (from === null && to.completedAt === null) return 'started';
+  if (from?.completedAt === null && to.completedAt !== null) return 'completed';
+  return 'corrected';
 }
 
 function changeSetNamesField(changes: unknown, field: string): boolean {

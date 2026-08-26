@@ -1,7 +1,15 @@
-import type { DateIso, JobWorkTimeActivityAction, JobWorkTimeActivityState, WorkItemDepartment } from '@pkg/schema';
+import type {
+  DateIso,
+  DateOnlyIso,
+  JobChangeActivityItem,
+  JobWorkTimeActivityAction,
+  JobWorkTimeActivityState,
+  WorkItemDepartment,
+} from '@pkg/schema';
 
 import { departmentLabels } from '../departments.js';
-import { formatDate } from '../formatting/date.js';
+import { formatDate, toPlantDateOnly } from '../formatting/date.js';
+import type { StatusBadgeColor } from '../theme/status-badge.js';
 
 export const JOB_ACTIVITY_EVENT_SENTENCES = {
   completed: 'completed this Job',
@@ -10,6 +18,15 @@ export const JOB_ACTIVITY_EVENT_SENTENCES = {
   descriptionCleared: 'cleared the Job description',
   documentAdded: 'added a document',
 } as const;
+
+/** One category tone across web and mobile; event-specific icons carry the finer distinction. */
+export const jobActivityEventTone = {
+  'job-completed': 'purple',
+  'job-created': 'purple',
+  'job-description-updated': 'purple',
+  'job-document-added': 'purple',
+  'job-work-time-updated': 'blue',
+} as const satisfies Record<JobChangeActivityItem['type'], StatusBadgeColor>;
 
 export function jobWorkTimeActivitySentence({
   action,
@@ -32,13 +49,35 @@ export function jobWorkTimeActivitySentence({
   }
 }
 
-/** The observed span and crew carried by a Work Time event, independent of its audit timestamp. */
-export function jobWorkTimeActivityDetail(timing: JobWorkTimeActivityState | null): string | null {
+/** A backdated completion remains visible; the usual same-day date stays on the timeline only. */
+export function jobCompletionActivityDetail({
+  completedOn,
+  occurredAt,
+}: {
+  completedOn: DateOnlyIso;
+  occurredAt: DateIso;
+}): string | null {
+  return completedOn === toPlantDateOnly(new Date(occurredAt)) ? null : formatDate(completedOn);
+}
+
+/** Non-redundant Work Time context beyond the activity timeline's own date and event sentence. */
+export function jobWorkTimeActivityDetail({
+  action,
+  timing,
+}: {
+  action: JobWorkTimeActivityAction;
+  timing: JobWorkTimeActivityState | null;
+}): string | null {
   if (timing === null) return null;
 
-  const span = `${formatDate(timing.startedAt)} → ${formatDate(timing.completedAt, 'short', 'In progress')}`;
+  const crew = timing.crew.join(', ');
+  if (action !== 'corrected') return crew || null;
 
-  return timing.crew.length === 0 ? span : `${span} · ${timing.crew.join(', ')}`;
+  const span = timing.completedAt
+    ? `${formatDate(timing.startedAt)} → ${formatDate(timing.completedAt)}`
+    : formatDate(timing.startedAt);
+
+  return crew ? `${span} · ${crew}` : span;
 }
 
 /** Whether the newest feed entry lies beyond the user's Activity high-water mark. */

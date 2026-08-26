@@ -2,8 +2,11 @@ import {
   formatDate,
   getFirstName,
   JOB_ACTIVITY_EVENT_SENTENCES,
+  jobActivityEventTone,
+  jobCompletionActivityDetail,
   jobWorkTimeActivityDetail,
   jobWorkTimeActivitySentence,
+  statusBadgeColorClassNames,
 } from '@pkg/domain';
 import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import {
@@ -83,6 +86,7 @@ function JobEventEntry({ item, last }: { item: JobChangeActivityItem; last: bool
   const presentation = getJobEventPresentation(item);
   const actorName = item.actor ? getFirstName(item.actor.name) : 'System';
   const EventIcon = presentation.icon;
+  const iconTone = statusBadgeColorClassNames[jobActivityEventTone[item.type]];
 
   return (
     <ActivityEntryShell
@@ -90,8 +94,8 @@ function JobEventEntry({ item, last }: { item: JobChangeActivityItem; last: bool
       marker={<View className="h-2 w-2 rounded-full border border-muted-foreground bg-background" />}
       occurredAt={item.occurredAt}
       who={
-        <View className="h-7 w-7 items-center justify-center rounded-full border border-border bg-muted">
-          <Icon className="text-muted-foreground" icon={EventIcon} size={13} strokeWidth={1.8} />
+        <View className={`h-7 w-7 items-center justify-center rounded-full border ${iconTone.chip}`}>
+          <Icon className={iconTone.text} icon={EventIcon} size={13} strokeWidth={1.8} />
         </View>
       }
     >
@@ -99,17 +103,24 @@ function JobEventEntry({ item, last }: { item: JobChangeActivityItem; last: bool
         accessibilityHint="Opens Job details"
         accessibilityLabel={`${actorName} ${presentation.sentence} on ${item.job.code}`}
         accessibilityRole="button"
-        className="min-w-0 flex-1 rounded-lg px-1 py-0.5 active:bg-muted"
+        className="min-w-0 flex-1 rounded-lg px-1 active:bg-muted"
         onPress={() => router.push({ pathname: '/jobs/[jobId]', params: { jobId: item.job.id } })}
       >
         <Text className="text-sm leading-5 text-foreground" numberOfLines={2}>
           <Text weight="semibold">{actorName}</Text> {presentation.sentence}
         </Text>
         <View className="mt-0.5 min-w-0 flex-row items-center gap-1.5">
-          <Text className="shrink-0 text-xs text-muted-foreground" mono>
+          <OfferingAvatar
+            className="h-5 w-5 rounded-md"
+            iconSize={11}
+            kind={item.job.offeringKind}
+            name={item.job.displayName}
+            uri={item.job.thumbnailDataUrl}
+          />
+          <Text className="shrink-0 text-sm text-muted-foreground" mono>
             {item.job.code}
           </Text>
-          <Text className="min-w-0 flex-1 text-xs text-muted-foreground" numberOfLines={1}>
+          <Text className="min-w-0 flex-1 text-sm text-muted-foreground" numberOfLines={1}>
             {item.job.displayName}
           </Text>
         </View>
@@ -207,7 +218,7 @@ function getJobEventPresentation(item: JobChangeActivityItem): JobEventPresentat
       };
     case 'job-completed':
       return {
-        detail: formatDate(item.completedOn),
+        detail: jobCompletionActivityDetail(item),
         icon: IconCheck,
         sentence: JOB_ACTIVITY_EVENT_SENTENCES.completed,
       };
@@ -219,7 +230,7 @@ function getJobEventPresentation(item: JobChangeActivityItem): JobEventPresentat
       };
     case 'job-work-time-updated':
       return {
-        detail: jobWorkTimeActivityDetail(item.timing),
+        detail: jobWorkTimeActivityDetail(item),
         icon: IconClock,
         sentence: jobWorkTimeActivitySentence(item),
       };

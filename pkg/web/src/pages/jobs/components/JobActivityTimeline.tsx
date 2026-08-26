@@ -21,7 +21,7 @@ export const JobActivityTimeline: React.FC<{ hideDetail?: boolean; items: JobAct
       <section className={cn('grid gap-3', index > 0 && 'border-t border-border/70 pt-6')} key={group.day}>
         <h2 className="font-medium text-xs tracking-[0.18em] uppercase">{group.label}</h2>
         {/* Entries only — each draws the spine down to the next, and the last one draws none. */}
-        <div className="grid gap-4">
+        <div className="grid gap-5">
           {group.items.map((item) => (
             <JobActivityEntry hideDetail={hideDetail} item={item} key={`${item.type}:${item.id}`} />
           ))}

@@ -6,7 +6,9 @@ import { renderWithRouter } from '@/test/router-harness.js';
 
 import { QuoteRightPanel } from './QuoteRightPanel.js';
 
-vi.mock('../StartJobLink.js', () => ({ StartJobLink: () => null }));
+vi.mock('../StartJobLink.js', () => ({
+  StartJobLink: ({ className }: { className?: string }) => <span className={className} data-start-job-link />,
+}));
 vi.mock('../ReassignUnitDialog.js', () => ({ ReassignUnitDialog: () => null }));
 
 test('shows labour and Parts beneath each Work Item so the aside breakdown adds up', () => {
@@ -34,6 +36,7 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
     job: null,
     kind: 'custom',
     product: null,
+    productUnitId: null,
     quotedBasePrice: 0,
     quotedCurrencyCode: 'ZAR',
     status: 'sent',
@@ -80,6 +83,12 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
   expect(html).toContain('R 2 000.00');
   expect(html).toContain('Seal kit');
   expect(html).toContain('R 1 500.00');
+  expect(html).toContain('min-w-0 flex-1 break-words');
+
+  const startJobLinkIndex = html.indexOf('data-start-job-link');
+  const quoteTotalIndex = html.indexOf('Quote total');
+  expect(startJobLinkIndex).toBeGreaterThan(-1);
+  expect(startJobLinkIndex).toBeLessThan(quoteTotalIndex);
 });
 
 test('opens a linked Job from the quote aside or locates it on the planner', async () => {

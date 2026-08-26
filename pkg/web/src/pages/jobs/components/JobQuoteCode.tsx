@@ -1,6 +1,8 @@
 import type { QuoteCode, UUID } from '@pkg/schema';
-import { Link } from '@tanstack/react-router';
+import { IconExternalLink } from '@tabler/icons-react';
 import type React from 'react';
+
+import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 
 export const JobQuoteCode: React.FC<{
   canOpenQuote: boolean;
@@ -18,13 +20,14 @@ export const JobQuoteCode: React.FC<{
   }
 
   return (
-    <Link
-      className="underline-offset-4 hover:underline"
+    <PrimaryLink
+      className="inline-flex items-center gap-1"
       onClick={onOpenQuote}
       params={{ id: quoteId }}
       to="/quotes/$id/edit"
     >
       {quoteCode}
-    </Link>
+      <IconExternalLink aria-hidden size={16} />
+    </PrimaryLink>
   );
 };

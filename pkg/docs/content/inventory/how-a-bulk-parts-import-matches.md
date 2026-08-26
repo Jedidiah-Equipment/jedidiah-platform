@@ -37,8 +37,9 @@ forgiven — `Nightwolves` and `Night Wolves` are two different Suppliers to an 
 them up is a merge somebody has to decide on.
 
 Where a Supplier was already duplicated that way, a Part stays with the one it is attached to, so
-exporting and re-importing it changes nothing. A row for a *new* Part goes to whichever of them it
-spelled exactly, and to the oldest if it spelled neither.
+exporting and re-importing it changes nothing. A row for a *new* Part goes to the older of them —
+which of the two duplicates a CSV meant is not something the file can say, so tidying them up is the
+merge, not the import.
 
 ## What the CSV does not carry
 

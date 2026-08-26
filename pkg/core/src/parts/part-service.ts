@@ -605,7 +605,6 @@ function resolveRowSupplier({
   const existing = pickRowSupplier({
     candidates: suppliersByLookupName.get(supplierLookupName(row.supplierName)) ?? [],
     storedPart,
-    supplierName: row.supplierName,
   });
 
   return existing ? { kind: 'existing', supplier: existing } : { kind: 'new', companyName: row.supplierName };
@@ -615,26 +614,21 @@ function resolveRowSupplier({
  * Which of several live Suppliers a row means, once the lookup stopped distinguishing them by casing
  * and spacing. A Part already attached to one of them stays attached to it: the loosened lookup is
  * there to stop duplicates being created, never to move a Part between the duplicates that already
- * exist, and re-importing an untouched export of such a Part has to stay the no-op it was. Failing
- * that the row's own spelling decides, and failing that the oldest does, so the answer never depends
- * on the order the database happened to return.
+ * exist, and re-importing an untouched export of such a Part has to stay the no-op it was.
+ *
+ * Anything else takes the oldest. A row cannot ask for one of the duplicates by spelling it exactly,
+ * because by the time a name reaches here the CSV reader has already title-cased the Supplier cell —
+ * so a rule reading the row's own spelling would fire for a Part typed against the API and not for
+ * the same Part imported through the app, which is worse than not having the rule.
  */
 function pickRowSupplier({
   candidates,
   storedPart,
-  supplierName,
 }: {
   candidates: readonly SupplierRow[];
   storedPart: Pick<PartRow, 'supplierId'> | undefined;
-  supplierName: string;
 }): SupplierRow | undefined {
-  if (candidates.length <= 1) return candidates[0];
-
-  return (
-    candidates.find((candidate) => candidate.id === storedPart?.supplierId) ??
-    candidates.find((candidate) => candidate.companyName === supplierName) ??
-    candidates[0]
-  );
+  return candidates.find((candidate) => candidate.id === storedPart?.supplierId) ?? candidates[0];
 }
 
 /**

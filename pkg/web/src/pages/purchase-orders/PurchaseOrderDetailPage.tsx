@@ -27,7 +27,7 @@ import {
 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AuditTable, usePurchaseOrderAuditTableStore } from '@/components/audit/AuditTable.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -549,7 +549,12 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
   return (
     <>
       <ErrorMessage error={stockOnHandQuery.error} fallbackMessage="Unable to load inventory price defaults." />
-      <PurchaseOrderLinesEditor commit={commit} form={form} parts={eligibleParts} />
+      <PurchaseOrderLinesEditor
+        commit={commit}
+        form={form}
+        isLoading={parts.isPending || stockOnHandQuery.isPending}
+        parts={eligibleParts}
+      />
     </>
   );
 };
@@ -559,22 +564,35 @@ type PurchaseOrderPartOption = Part & Pick<StockOnHandRow, 'averageUnitCost'>;
 export const PurchaseOrderLinesEditor: React.FC<{
   commit: () => void;
   form: DraftForm;
+  isLoading: boolean;
   parts: PurchaseOrderPartOption[];
-}> = ({ commit, form, parts }) => {
+}> = ({ commit, form, isLoading, parts }) => {
+  const disabledReasonId = useId();
+
   return (
     <form.AppField mode="array" name="lines">
       {(linesField) => {
         const lines = linesField.state.value;
         const nextPart = parts.find((part) => !lines.some((line) => line.partId === part.id));
+        let disabledReason: string | null = null;
+        if (isLoading) disabledReason = 'Loading available Parts...';
+        else if (!nextPart && parts.length === 0) disabledReason = 'Add a Part for this Supplier before adding a line.';
+        else if (!nextPart) disabledReason = 'All Parts for this Supplier are already on the order.';
 
         return (
           <Card>
             <CardHeader>
               <CardTitle>Parts</CardTitle>
               <CardDescription>Quantities are ordered in the Part's purchasing unit.</CardDescription>
-              <CardAction>
+              <CardAction className="flex items-center gap-2">
+                {disabledReason ? (
+                  <span className="text-muted-foreground text-xs" id={disabledReasonId}>
+                    {disabledReason}
+                  </span>
+                ) : null}
                 <Button
-                  disabled={!nextPart}
+                  aria-describedby={disabledReason ? disabledReasonId : undefined}
+                  disabled={Boolean(disabledReason)}
                   onClick={() => {
                     if (!nextPart) return;
                     linesField.pushValue({

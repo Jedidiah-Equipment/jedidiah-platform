@@ -68,7 +68,7 @@ it('seeds a manually added line from the Part current moving average', async () 
     });
     readLines = () => form.state.values.lines;
 
-    return <PurchaseOrderLinesEditor commit={vi.fn()} form={form as never} parts={[part]} />;
+    return <PurchaseOrderLinesEditor commit={vi.fn()} form={form as never} isLoading={false} parts={[part]} />;
   };
 
   const container = document.createElement('div');
@@ -86,6 +86,28 @@ it('seeds a manually added line from the Part current moving average', async () 
   expect(readLines()).toEqual([{ partId, quantity: 1, unitPrice: 0.3 }]);
 });
 
+it('explains why a line cannot be added when the Supplier has no available Parts', async () => {
+  const Harness = () => {
+    const form = useAppForm({
+      defaultValues: { expectedDeliveryDate: '', jobIds: [], lines: [], supplierId },
+    });
+
+    return <PurchaseOrderLinesEditor commit={vi.fn()} form={form as never} isLoading={false} parts={[]} />;
+  };
+
+  const container = document.createElement('div');
+  document.body.append(container);
+  containers.push(container);
+  const root = createRoot(container);
+  roots.push(root);
+
+  await act(async () => root.render(<Harness />));
+
+  const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Add line'));
+  expect(addLine?.disabled).toBe(true);
+  expect(container.textContent).toContain('Add a Part for this Supplier before adding a line.');
+});
+
 it('re-seeds the default when a draft line changes to another Part', async () => {
   let readLines = (): Array<{ partId: string; quantity: number; unitPrice: number }> => [];
   const Harness = () => {
@@ -99,7 +121,14 @@ it('re-seeds the default when a draft line changes to another Part', async () =>
     });
     readLines = () => form.state.values.lines;
 
-    return <PurchaseOrderLinesEditor commit={vi.fn()} form={form as never} parts={[part, replacementPart]} />;
+    return (
+      <PurchaseOrderLinesEditor
+        commit={vi.fn()}
+        form={form as never}
+        isLoading={false}
+        parts={[part, replacementPart]}
+      />
+    );
   };
 
   const container = document.createElement('div');

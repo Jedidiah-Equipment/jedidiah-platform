@@ -138,6 +138,17 @@ describe('renderQuoteDocumentPdf', () => {
     expect(renderedText.filter((value) => value === 'Sundries')).toHaveLength(1);
   });
 
+  test('prints Quote notes as the pricing table’s final row without amounts', () => {
+    const document: QuoteDocumentModel = {
+      ...testQuoteDocument(),
+      notes: ['6mm decking with no lights'],
+      pricingRows: [],
+    };
+    const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
+
+    expect(renderedText).toEqual(['Description', 'Qty', 'Unit Price', 'Subtotal', '6mm decking with no lights']);
+  });
+
   test('repeats the column headings on every page the pricing table spans, and only those', async () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),

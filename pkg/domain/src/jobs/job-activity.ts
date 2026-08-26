@@ -1,6 +1,13 @@
-import type { DateIso, JobWorkTimeActivityAction, JobWorkTimeActivityState, WorkItemDepartment } from '@pkg/schema';
+import type {
+  DateIso,
+  JobChangeActivityItem,
+  JobWorkTimeActivityAction,
+  JobWorkTimeActivityState,
+  WorkItemDepartment,
+} from '@pkg/schema';
 
 import { departmentLabels } from '../departments.js';
+import type { StatusBadgeColor } from '../theme/status-badge.js';
 
 export const JOB_ACTIVITY_EVENT_SENTENCES = {
   completed: 'completed this Job',
@@ -9,6 +16,15 @@ export const JOB_ACTIVITY_EVENT_SENTENCES = {
   descriptionCleared: 'cleared the Job description',
   documentAdded: 'added a document',
 } as const;
+
+/** One category tone across web and mobile; event-specific icons carry the finer distinction. */
+export const jobActivityEventTone = {
+  'job-completed': 'purple',
+  'job-created': 'purple',
+  'job-description-updated': 'purple',
+  'job-document-added': 'purple',
+  'job-work-time-updated': 'blue',
+} as const satisfies Record<JobChangeActivityItem['type'], StatusBadgeColor>;
 
 export function jobWorkTimeActivitySentence({
   action,

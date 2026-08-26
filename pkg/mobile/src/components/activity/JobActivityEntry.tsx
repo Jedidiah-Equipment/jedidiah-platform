@@ -2,6 +2,7 @@ import {
   formatDate,
   getFirstName,
   JOB_ACTIVITY_EVENT_SENTENCES,
+  jobActivityEventTone,
   jobWorkTimeActivityDetail,
   jobWorkTimeActivitySentence,
   statusBadgeColorClassNames,
@@ -84,8 +85,7 @@ function JobEventEntry({ item, last }: { item: JobChangeActivityItem; last: bool
   const presentation = getJobEventPresentation(item);
   const actorName = item.actor ? getFirstName(item.actor.name) : 'System';
   const EventIcon = presentation.icon;
-  const iconTone =
-    item.type === 'job-work-time-updated' ? statusBadgeColorClassNames.blue : statusBadgeColorClassNames.purple;
+  const iconTone = statusBadgeColorClassNames[jobActivityEventTone[item.type]];
 
   return (
     <ActivityEntryShell

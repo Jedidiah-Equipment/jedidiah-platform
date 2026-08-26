@@ -2,6 +2,7 @@ import {
   formatDate,
   getFirstName,
   JOB_ACTIVITY_EVENT_SENTENCES,
+  jobActivityEventTone,
   jobWorkTimeActivityDetail,
   jobWorkTimeActivitySentence,
   statusBadgeColorClassNames,
@@ -163,8 +164,7 @@ const JobChangeEntry: React.FC<{ hideDetail: boolean; item: JobChangeActivityIte
   // user since deleted, whose id the FK nulled — the same collision the Audit table resolves by
   // calling both System, so this reads the same way rather than guessing at a person.
   const actorName = item.actor ? getFirstName(item.actor.name) : 'System';
-  const iconTone =
-    item.type === 'job-work-time-updated' ? statusBadgeColorClassNames.blue : statusBadgeColorClassNames.purple;
+  const iconTone = statusBadgeColorClassNames[jobActivityEventTone[item.type]];
 
   return (
     <ActivityRow

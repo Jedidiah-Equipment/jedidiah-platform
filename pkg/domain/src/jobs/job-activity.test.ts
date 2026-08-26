@@ -1,7 +1,17 @@
 import { DateIso } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
-import { hasUnreadActivity, jobWorkTimeActivityDetail } from './job-activity.js';
+import { hasUnreadActivity, jobActivityEventTone, jobWorkTimeActivityDetail } from './job-activity.js';
+
+test('keeps Job Event and Work Time tones consistent across clients', () => {
+  expect(jobActivityEventTone).toEqual({
+    'job-completed': 'purple',
+    'job-created': 'purple',
+    'job-description-updated': 'purple',
+    'job-document-added': 'purple',
+    'job-work-time-updated': 'blue',
+  });
+});
 
 describe('jobWorkTimeActivityDetail', () => {
   const startedAt = DateIso.parse('2026-08-18T08:00:00.000Z');

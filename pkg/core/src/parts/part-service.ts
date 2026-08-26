@@ -383,6 +383,9 @@ export async function bulkImportParts({
       const errors: string[] = [];
       let importedCount = 0;
       let updatedCount = 0;
+      // Supplier retirement takes child locks before Supplier locks. Keep the import in that order
+      // too, or a merge and an import of the same Part can each wait on the other's row.
+      const partsByCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
       const scopedSupplier = input.supplierId
         ? await getImportSupplierById({ db: tx, supplierId: input.supplierId })
         : undefined;
@@ -394,7 +397,6 @@ export async function bulkImportParts({
       const suppliersByLookupName = scopedSupplier
         ? new Map<string, SupplierRow[]>()
         : await loadImportSuppliersByLookupName({ db: tx, rows: input.rows });
-      const partsByCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
 
       for (const row of input.rows) {
         const partByCode = partsByCode.get(row.code);

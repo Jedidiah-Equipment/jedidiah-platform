@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
+import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
@@ -75,7 +76,10 @@ export const MergeSupplierDialog: React.FC<{ supplier: Supplier }> = ({ supplier
       <DialogTrigger render={<Button type="button" variant="outline" />}>Merge into…</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{confirming ? 'Confirm supplier merge' : 'Merge supplier'}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {confirming ? 'Confirm supplier merge' : 'Merge supplier'}
+            <HelpLink label="How to merge duplicate Suppliers" topic="supplierMerge" />
+          </DialogTitle>
           <DialogDescription>
             {confirming
               ? 'Review what will move before permanently retiring this duplicate.'

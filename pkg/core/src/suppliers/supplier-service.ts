@@ -264,6 +264,16 @@ export async function mergeSupplier({
   if (sourceId === targetId) throw new SupplierMergeSelfError(sourceId);
 
   return db.transaction(async (tx) => {
+    // Draft saves lock the order before their line Parts, and Part edits start at the Part. Mirror
+    // both paths before taking Supplier locks so the merge cannot close a deadlock cycle with either.
+    await tx
+      .select({ id: purchaseOrders.id })
+      .from(purchaseOrders)
+      .where(eq(purchaseOrders.supplierId, sourceId))
+      .orderBy(purchaseOrders.id)
+      .for('update');
+    await tx.select({ id: parts.id }).from(parts).where(eq(parts.supplierId, sourceId)).orderBy(parts.id).for('update');
+
     // Lock both suppliers in one statement so concurrent merges cannot disagree on lock order.
     const rows = await tx
       .select()

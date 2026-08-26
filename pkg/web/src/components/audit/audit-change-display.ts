@@ -39,6 +39,8 @@ const auditFieldLabels: Record<string, string> = {
   keyFeatures: 'Key features',
   member: 'Department membership',
   modelCode: 'Model code',
+  movedParts: 'Parts moved',
+  movedPurchaseOrders: 'Purchase orders moved',
   name: 'Name',
   notes: 'Notes',
   ownerCustomerId: 'Owner',
@@ -87,6 +89,7 @@ const dateFields = new Set([
   'validUntil',
 ]);
 const percentFields = new Set(['depositPercent', 'discountPercent']);
+const terminalCountFields = new Set(['movedParts', 'movedPurchaseOrders']);
 
 export function getAuditChangeDisplays(changes: AuditChangeMap | null): AuditChangeDisplay[] {
   if (!changes) {
@@ -95,7 +98,7 @@ export function getAuditChangeDisplays(changes: AuditChangeMap | null): AuditCha
 
   return Object.entries(changes).map(([key, change]) => ({
     field: getAuditFieldLabel(key),
-    from: formatAuditChangeValue(key, change.from),
+    from: terminalCountFields.has(key) && change.from === null ? '—' : formatAuditChangeValue(key, change.from),
     key,
     preview: formatAuditChangePreview(key, change),
     to: formatAuditChangeValue(key, change.to),
@@ -163,6 +166,10 @@ function formatAuditChangePreview(field: string, change: AuditChange): string {
   const label = getAuditFieldLabel(field);
   const from = formatAuditChangeValue(field, change.from);
   const to = formatAuditChangeValue(field, change.to);
+
+  if (terminalCountFields.has(field) && typeof change.to === 'number') {
+    return `${label}: ${to}`;
+  }
 
   if (shouldCollapsePreview(change.from) || shouldCollapsePreview(change.to) || from.length + to.length > 42) {
     return `${label} changed`;

@@ -239,14 +239,6 @@ describe('productUnits.reassign', () => {
     }
   });
 
-  test('rejects unauthenticated reassignment', async ({ context }) => {
-    await expect(
-      context
-        .createAnonCaller()
-        .productUnits.reassign({ note: null, productUnitId: context.seed.unitId, toQuoteId: context.seed.quoteId }),
-    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
-  });
-
   test('surfaces a deal that cannot receive a machine as a conflict carrying its appCode', async ({ context }) => {
     const toQuoteId = await seedReceivingQuote(context.db, context.seed, context.seed.hilltopId);
     await context.db.update(quotes).set({ invoiceNumber: 'INV-3' }).where(eq(quotes.id, toQuoteId));

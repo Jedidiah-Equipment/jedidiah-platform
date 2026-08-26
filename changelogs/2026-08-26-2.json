@@ -1,0 +1,14 @@
+{
+  "releasedAt": "2026-08-26T11:32:49.309Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "See why a purchase order line can’t be added",
+          "description": "The Add line action now explains whether Parts are loading, unavailable, already on the order, or could not be loaded."
+        }
+      ]
+    }
+  ]
+}

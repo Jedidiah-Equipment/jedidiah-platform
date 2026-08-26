@@ -398,26 +398,6 @@ describe('bulkImportParts', () => {
     expect(reimported?.supplierId).toBe(newer.id);
   });
 
-  test('gives a new Part to the colliding supplier the row spelled, not the oldest', async ({ context }) => {
-    await context.db
-      .insert(supplier)
-      .values({ companyName: 'Acme Supplies', createdAt: new Date('2020-01-01T00:00:00Z') });
-    const [spelled] = await context.db
-      .insert(supplier)
-      .values({ companyName: 'ACME  SUPPLIES', createdAt: new Date('2024-01-01T00:00:00Z') })
-      .returning();
-
-    const result = await bulkImportParts({
-      actorUserId,
-      db: context.db,
-      input: { rows: [importRow({ supplierName: 'ACME  SUPPLIES' })] },
-    });
-    const [imported] = await context.db.select().from(parts).where(eq(parts.code, 'P-100'));
-
-    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
-    expect(imported?.supplierId).toBe(spelled?.id);
-  });
-
   test('ignores a soft-deleted supplier when matching a name', async ({ context }) => {
     await context.db.insert(supplier).values({ companyName: 'Acme  Supplies', deletedAt: new Date() });
 

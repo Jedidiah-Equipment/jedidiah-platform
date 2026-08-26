@@ -9,7 +9,7 @@ import {
   quoteStatusLabels,
   quoteWorkItemSummaryRows,
 } from '@pkg/domain';
-import type { QuoteDetail, QuoteWorkItemCharge } from '@pkg/schema';
+import type { JobScheduleState, QuoteDetail, QuoteWorkItemCharge } from '@pkg/schema';
 import {
   IconBuildingWarehouse,
   IconClock,
@@ -24,6 +24,7 @@ import {
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
@@ -31,6 +32,7 @@ import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
+import { JobScheduleStateBadges } from '@/pages/jobs/components/JobScheduleStateBadges.js';
 import { QuoteProductSourceBadge } from '../QuoteProductSourceBadge.js';
 import { StartJobLink } from '../StartJobLink.js';
 
@@ -42,11 +44,15 @@ const getSummaryWorkItemPartKey =
 
 export function QuoteRightPanel({
   canOpenJobs,
+  jobScheduleError,
+  jobScheduleState,
   onOpenJob,
   quote,
   summary,
 }: {
   canOpenJobs: boolean;
+  jobScheduleError: unknown;
+  jobScheduleState: JobScheduleState | null;
   onOpenJob: () => void;
   quote: QuoteDetail;
   summary: QuoteComputedSummary;
@@ -56,7 +62,15 @@ export function QuoteRightPanel({
       <QuoteCustomerCard quote={quote} />
       <QuoteProductCard quote={quote} />
       {quote.kind === 'product' && quote.productUnit ? <QuoteAllocationCard quote={quote} /> : null}
-      {quote.job ? <QuoteJobCard canOpenJobs={canOpenJobs} job={quote.job} onOpenJob={onOpenJob} /> : null}
+      {quote.job ? (
+        <QuoteJobCard
+          canOpenJobs={canOpenJobs}
+          job={quote.job}
+          onOpenJob={onOpenJob}
+          scheduleError={jobScheduleError}
+          scheduleState={jobScheduleState}
+        />
+      ) : null}
       <QuoteTotalCard quote={quote} summary={summary} />
     </aside>
   );
@@ -66,10 +80,14 @@ function QuoteJobCard({
   canOpenJobs,
   job,
   onOpenJob,
+  scheduleError,
+  scheduleState,
 }: {
   canOpenJobs: boolean;
   job: NonNullable<QuoteDetail['job']>;
   onOpenJob: () => void;
+  scheduleError: unknown;
+  scheduleState: JobScheduleState | null;
 }) {
   return (
     <Card size="sm">
@@ -81,6 +99,12 @@ function QuoteJobCard({
         <p className={cn('whitespace-pre-wrap', job.jobDescription ? '' : 'text-muted-foreground')}>
           {job.jobDescription ?? 'No description captured.'}
         </p>
+        {scheduleState ? (
+          <div className="flex flex-wrap gap-1.5">
+            <JobScheduleStateBadges scheduleState={scheduleState} />
+          </div>
+        ) : null}
+        <ErrorMessage error={scheduleError} fallbackMessage="Unable to load Job schedule." />
         {canOpenJobs ? (
           <div className="grid grid-cols-2 gap-2">
             <Button type="button" variant="outline" onClick={onOpenJob}>

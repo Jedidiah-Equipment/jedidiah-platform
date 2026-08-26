@@ -4,9 +4,10 @@ import type React from 'react';
 
 export const JobQuoteCode: React.FC<{
   canOpenQuote: boolean;
+  onOpenQuote: () => void;
   quoteCode: QuoteCode | null;
   quoteId: UUID | null;
-}> = ({ canOpenQuote, quoteCode, quoteId }) => {
+}> = ({ canOpenQuote, onOpenQuote, quoteCode, quoteId }) => {
   if (!quoteCode || !quoteId) {
     return <>Stock Build</>;
   }
@@ -16,7 +17,12 @@ export const JobQuoteCode: React.FC<{
   }
 
   return (
-    <Link className="underline-offset-4 hover:underline" params={{ id: quoteId }} to="/quotes/$id/edit">
+    <Link
+      className="underline-offset-4 hover:underline"
+      onClick={onOpenQuote}
+      params={{ id: quoteId }}
+      to="/quotes/$id/edit"
+    >
       {quoteCode}
     </Link>
   );

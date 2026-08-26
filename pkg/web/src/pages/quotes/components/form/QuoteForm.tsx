@@ -6,6 +6,7 @@ import {
   quoteStatusLabels,
 } from '@pkg/domain';
 import {
+  type JobListInput,
   type PriorityQuote,
   type QuoteDetail,
   type QuoteDocumentGenerationWarning,
@@ -21,6 +22,7 @@ import {
   IconSettings,
   IconTruckDelivery,
 } from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
@@ -34,6 +36,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useCan } from '@/hooks/use-access.js';
+import { useTRPC } from '@/lib/trpc.js';
 import { JobSheet } from '@/pages/jobs/components/JobSheet.js';
 import { QuoteCancellationDialog } from '../QuoteCancellationAction.js';
 import { getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput, toQuoteWorkItemInput } from '../types.js';
@@ -68,7 +71,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
   const salespeopleOptions = useSalesPersonOptions();
   const auditAccess = useCan('audit:read');
   const jobReadAccess = useCan('job:read');
-  const jobUpdateAccess = useCan('job:update');
+  const canOpenJobs = jobReadAccess.can;
+  const trpc = useTRPC();
   const [generationWarnings, setGenerationWarnings] = useState<QuoteDocumentGenerationWarning[]>([]);
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [jobSheetOpen, setJobSheetOpen] = useState(false);
@@ -78,6 +82,25 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
       entityTypes: ['quote' as const],
     }),
     [quote.id],
+  );
+  const linkedJobInput = useMemo(
+    () =>
+      ({
+        columnFilters: {},
+        filters: quote.job ? { jobId: quote.job.jobId } : {},
+        include: { scheduleState: true },
+        cursor: 0,
+        limit: 1,
+        search: '',
+        sortBy: 'createdAt',
+        sortDirection: 'asc',
+      }) satisfies JobListInput,
+    [quote.job],
+  );
+  const linkedJobQuery = useQuery(
+    trpc.jobs.list.queryOptions(linkedJobInput, {
+      enabled: canOpenJobs && quote.job !== null,
+    }),
   );
 
   const { autosave, form, formProps } = useAutosaveForm({
@@ -355,7 +378,9 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
             >
               {(summary) => (
                 <QuoteRightPanel
-                  canOpenJobs={jobReadAccess.can || jobUpdateAccess.can}
+                  canOpenJobs={canOpenJobs}
+                  jobScheduleError={linkedJobQuery.error}
+                  jobScheduleState={linkedJobQuery.data?.items[0]?.scheduleState ?? null}
                   onOpenJob={() => setJobSheetOpen(true)}
                   quote={quote}
                   summary={summary}

@@ -57,7 +57,14 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
   };
 
   const html = renderToStaticMarkup(
-    <QuoteRightPanel canOpenJobs quote={quote} summary={summary} onOpenJob={() => undefined} />,
+    <QuoteRightPanel
+      canOpenJobs
+      jobScheduleError={null}
+      jobScheduleState={null}
+      quote={quote}
+      summary={summary}
+      onOpenJob={() => undefined}
+    />,
   );
 
   expect(html).toContain('aria-label="Hydraulic pump overhaul"');
@@ -116,11 +123,28 @@ test('opens a linked Job from the quote aside or locates it on the planner', asy
   } satisfies QuoteComputedSummary;
 
   const html = await renderWithRouter(
-    <QuoteRightPanel canOpenJobs quote={quote} summary={summary} onOpenJob={() => undefined} />,
+    <QuoteRightPanel
+      canOpenJobs
+      jobScheduleError={null}
+      jobScheduleState={{
+        active: 1,
+        done: 1,
+        firstWorkDay: null,
+        lastWorkDay: null,
+        scheduled: 2,
+        total: 4,
+      }}
+      quote={quote}
+      summary={summary}
+      onOpenJob={() => undefined}
+    />,
   );
 
   expect(html).toContain('JOB-00042');
   expect(html).toContain('Build hydraulic power pack');
+  expect(html).toContain('1 Done');
+  expect(html).toContain('1 Active');
+  expect(html).toContain('2 Scheduled');
   expect(html).toContain('Open sheet');
   expect(html).not.toContain('/jobs/list');
   expect(html).toContain('href="/jobs?job=420e8400-e29b-41d4-a716-446655440000"');

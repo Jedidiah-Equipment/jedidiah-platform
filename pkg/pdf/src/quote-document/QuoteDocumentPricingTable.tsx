@@ -107,6 +107,7 @@ export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTabl
           ))}
         </View>
       ) : null}
+      {document.notes.length > 0 ? <QuoteNotesRow notes={document.notes} /> : null}
     </View>
   );
 }
@@ -237,6 +238,23 @@ function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDoc
       >
         {subtotal}
       </Text>
+    </View>
+  );
+}
+
+function QuoteNotesRow({ notes }: { notes: string[] }) {
+  return (
+    <View style={pdfStyles.flexRow}>
+      <View style={[pdfStyles.flex1, styles.tableCell]}>
+        {notes.map((note) => (
+          <Text key={note} style={[pdfStyles.fontMedium, pdfStyles.textBody]}>
+            {note}
+          </Text>
+        ))}
+      </View>
+      <Text style={[styles.tableCell, styles.qtyCol]} />
+      <Text style={[styles.tableCell, styles.priceCol]} />
+      <Text style={[styles.tableCell, styles.subtotalCol, styles.noRightBorder]} />
     </View>
   );
 }

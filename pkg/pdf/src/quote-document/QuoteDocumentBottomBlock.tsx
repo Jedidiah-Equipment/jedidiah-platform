@@ -2,7 +2,7 @@ import { formatCurrency } from '@pkg/domain';
 import type { QuoteDocumentModel } from '@pkg/schema';
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
 import { pdfStyles } from './pdf-styles.js';
-import { pdfBorder, pdfColors, pdfLineHeight, pdfSpacing } from './pdf-theme.js';
+import { pdfBorder, pdfColors, pdfSpacing } from './pdf-theme.js';
 
 type QuoteDocumentBottomBlockProps = {
   document: QuoteDocumentModel;
@@ -20,14 +20,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginTop: 'auto',
     paddingTop: 16,
-  },
-  notesBox: {
-    marginBottom: 8,
-    paddingHorizontal: pdfSpacing.summaryCellX,
-    paddingVertical: pdfSpacing.tableCellY,
-  },
-  notesText: {
-    lineHeight: pdfLineHeight.body,
   },
   terms: {
     borderTopColor: pdfColors.border,
@@ -70,7 +62,6 @@ export function QuoteDocumentBottomBlock({ document }: QuoteDocumentBottomBlockP
   return (
     <View style={[pdfStyles.flexRow, styles.bottomGrid]} wrap={false}>
       <View style={pdfStyles.flex1}>
-        {document.notes.length > 0 ? <NotesBox notes={document.notes} /> : null}
         <View style={styles.terms}>
           <TermsRow label="Payment Terms:" value={document.paymentTerms} />
           <TermsRow label="Transport:" value={document.transport} />
@@ -82,18 +73,6 @@ export function QuoteDocumentBottomBlock({ document }: QuoteDocumentBottomBlockP
         <SummaryRow label="VAT" value={formatCurrency(document.vatAmount)} />
         <SummaryRow label="Total" total value={formatCurrency(document.total, document.currencyCode)} />
       </View>
-    </View>
-  );
-}
-
-function NotesBox({ notes }: { notes: string[] }) {
-  return (
-    <View style={[pdfStyles.bgPanel, styles.notesBox]}>
-      {notes.map((note) => (
-        <Text key={note} style={[pdfStyles.fontMedium, pdfStyles.textBody, styles.notesText]}>
-          {note}
-        </Text>
-      ))}
     </View>
   );
 }

@@ -545,11 +545,36 @@ describe('listJobActivity change events', () => {
       db: context.db,
       input: { crewUserIds: ['fabricator-id'], department: 'fabrication', id: context.job.id },
     });
+    await updateDepartmentTiming({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: {
+        completedAt: DateIso.parse('2026-08-04T15:00:00.000Z'),
+        crewUserIds: ['fabricator-id'],
+        department: 'fabrication',
+        id: context.job.id,
+        startedAt: DateIso.parse('2026-08-01T09:00:00.000Z'),
+      },
+    });
+    await updateDepartmentTiming({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: {
+        completedAt: null,
+        crewUserIds: [],
+        department: 'fabrication',
+        id: context.job.id,
+        startedAt: null,
+      },
+    });
 
     for (const [search, expectedActions] of [
-      ['FABRICATION', ['completed', 'started']],
+      ['FABRICATION', ['cleared', 'completed', 'corrected', 'started']],
       ['completed fabrication work', ['completed']],
-      ['fiona fabricator', ['completed']],
+      ['corrected fabrication work times', ['corrected']],
+      ['cleared fabrication work times', ['cleared']],
+      ['fiona fabricator', ['completed', 'corrected']],
+      ['[', []],
     ] as const) {
       const result = await listJobActivity({
         db: context.db,

@@ -187,6 +187,17 @@ export async function updateDepartmentTiming({
     const recordedCrewIds = await listRecordedCrewIds(tx, input.id, input.department);
     const crew = await resolveCrew(tx, input.crewUserIds, recordedCrewIds);
 
+    // Audit-backed activity makes an identical save visible to every Job reader, so stop before
+    // rewriting either the timing row or its crew when the desired state already exists.
+    if (
+      existing &&
+      existing.startedAt.getTime() === startedAt.getTime() &&
+      existing.completedAt?.getTime() === completedAt?.getTime() &&
+      sameMembers(recordedCrewIds, new Set(crew.map((member) => member.id)))
+    ) {
+      return;
+    }
+
     await tx
       .insert(jobDepartmentTimings)
       .values({ completedAt, department: input.department, jobId: input.id, startedAt })
@@ -205,6 +216,10 @@ export async function updateDepartmentTiming({
       tx,
     });
   });
+}
+
+function sameMembers(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
+  return left.size === right.size && [...left].every((member) => right.has(member));
 }
 
 /** Cancelled Jobs are refused by the shared guard; a completed Job latches its observations shut. */

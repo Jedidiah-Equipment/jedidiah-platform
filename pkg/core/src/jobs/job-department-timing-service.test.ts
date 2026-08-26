@@ -1,4 +1,5 @@
 import {
+  auditEvents,
   type Db,
   jobBayOperatorAssignments,
   jobBays,
@@ -393,6 +394,27 @@ describe('updateDepartmentTiming', () => {
       crew: [{ name: 'T. Brown', userId: 'operator-brown' }],
       startedAt: DateIso.parse('2026-06-01T06:00:00.000Z'),
     });
+  });
+
+  test('does not audit an unchanged timing state, including a reordered crew set', async ({ context }) => {
+    const input = {
+      completedAt: DateIso.parse('2026-06-04T14:00:00.000Z'),
+      crewUserIds: ['operator-smith', 'operator-brown'],
+      department: 'fabrication' as const,
+      id: context.job.id,
+      startedAt: DateIso.parse('2026-06-01T06:00:00.000Z'),
+    };
+
+    await updateDepartmentTiming({ actorUserId, db: context.db, input });
+    const auditCount = await context.db.$count(auditEvents);
+
+    await updateDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { ...input, crewUserIds: [...input.crewUserIds].reverse() },
+    });
+
+    await expect(context.db.$count(auditEvents)).resolves.toBe(auditCount);
   });
 
   test('refuses any correction once the Job is completed', async ({ context }) => {

@@ -212,7 +212,7 @@ function jobWorkTimeEventSearch(search: string): SQL | undefined {
 
       return [
         visibleTextMatches(departmentLabels[department], search) ? changeSetNames(field) : undefined,
-        createEscapedContainsSearchCondition(sql`(${auditEvents.changes} -> ${field} -> 'to' -> 'crew')::text`, search),
+        workTimeCrewSearch(field, search),
         ...(['started', 'completed', 'corrected', 'cleared'] as const).map((action) =>
           visibleTextMatches(jobWorkTimeActivitySentence({ action, department }), search)
             ? workTimeActionEvent(field, action)
@@ -221,6 +221,16 @@ function jobWorkTimeEventSearch(search: string): SQL | undefined {
       ];
     }),
   );
+}
+
+function workTimeCrewSearch(field: string, search: string): SQL {
+  return sql`exists (
+    select 1
+    from jsonb_array_elements_text(
+      coalesce(${auditEvents.changes} -> ${field} -> 'to' -> 'crew', '[]'::jsonb)
+    ) as work_time_crew(name)
+    where ${createEscapedContainsSearchCondition(sql`work_time_crew.name`, search)}
+  )`;
 }
 
 function workTimeActionEvent(field: string, action: JobWorkTimeActivityAction): SQL {

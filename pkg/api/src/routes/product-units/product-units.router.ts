@@ -3,16 +3,24 @@ import {
   getProductUnit,
   isCustomerCoreError,
   isProductUnitCoreError,
+  isProductUnitReassignError,
+  isQuoteCoreError,
   listOnHandProductUnitStock,
   listProductUnitFilterOptions,
   listProductUnits,
+  listReassignCandidates,
   type ProductUnitCoreError,
+  type ProductUnitReassignError,
+  previewReassignment,
+  type QuoteCoreError,
+  reassignProductUnitToQuote,
   removeProductUnit,
   transferProductUnitOwnership,
   updateProductUnit,
 } from '@pkg/core';
 import {
   ProductUnitListInput,
+  ProductUnitReassignInput,
   ProductUnitStockExportInput,
   ProductUnitTransferInput,
   ProductUnitUpdateInput,
@@ -60,6 +68,28 @@ export const productUnitsRouter = router({
       mapTransferErrors(() => transferProductUnitOwnership({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
+  /**
+   * The receiving deal is the subject of all three, so they are gated on the reassignment permission
+   * alone: an operator who may move a machine onto a Quote may read what is movable onto it.
+   */
+  reassignCandidates: authorizedProcedure('product_unit:reassign')
+    .input(z.object({ quoteId: UUID }))
+    .query(({ ctx, input }) => mapReassignErrors(() => listReassignCandidates({ db: ctx.db, quoteId: input.quoteId }))),
+
+  reassignPreview: authorizedProcedure('product_unit:reassign')
+    .input(z.object({ productUnitId: UUID, quoteId: UUID }))
+    .query(({ ctx, input }) =>
+      mapReassignErrors(() =>
+        previewReassignment({ db: ctx.db, productUnitId: input.productUnitId, quoteId: input.quoteId }),
+      ),
+    ),
+
+  reassign: authorizedProcedure('product_unit:reassign')
+    .input(ProductUnitReassignInput)
+    .mutation(({ ctx, input }) =>
+      mapReassignErrors(() => reassignProductUnitToQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
   remove: authorizedProcedure('product_unit:remove')
     .input(z.object({ id: UUID }))
     .mutation(({ ctx, input }) =>
@@ -69,6 +99,38 @@ export const productUnitsRouter = router({
 
 async function mapProductUnitErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapKnownCoreError(action, isProductUnitCoreError, mapProductUnitCoreError);
+}
+
+/**
+ * Reassignment crosses three records, so all three families can refuse it: the Unit, the Quote it is
+ * moving to, and the reassignment rules that only exist between them.
+ */
+async function mapReassignErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapProductUnitErrors(() =>
+    mapKnownCoreError(
+      () => mapKnownCoreError(action, isProductUnitReassignError, mapProductUnitReassignError),
+      isQuoteCoreError,
+      mapReassignQuoteCoreError,
+    ),
+  );
+}
+
+function mapProductUnitReassignError(
+  error: ProductUnitReassignError,
+): CoreErrorMapping<ProductUnitReassignError['code']> {
+  return {
+    appCode: error.code,
+    code: 'CONFLICT',
+    message: error.message,
+  };
+}
+
+function mapReassignQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreError['code']> {
+  return {
+    appCode: error.code,
+    code: error.code === 'quote.not_found' ? 'NOT_FOUND' : 'BAD_REQUEST',
+    message: error.message,
+  };
 }
 
 // A transfer names its destination Customer, so a Customer invariant can surface here too.

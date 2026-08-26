@@ -7,6 +7,7 @@ import { renderWithRouter } from '@/test/router-harness.js';
 import { QuoteRightPanel } from './QuoteRightPanel.js';
 
 vi.mock('../StartJobLink.js', () => ({ StartJobLink: () => null }));
+vi.mock('../ReassignUnitDialog.js', () => ({ ReassignUnitDialog: () => null }));
 
 test('shows labour and Parts beneath each Work Item so the aside breakdown adds up', () => {
   const workItem = {

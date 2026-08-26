@@ -153,3 +153,58 @@ export type ProductUnitTransferResult = z.infer<typeof ProductUnitTransferResult
 export const ProductUnitTransferResult = z.object({
   unit: ProductUnitDetail,
 });
+
+/**
+ * Reassignment moves an un-invoiced Unit and its build Job onto another accepted Product Quote. There
+ * is no date: the move is recorded as having happened today, because it is a paperwork correction made
+ * at the moment someone notices, not a historical fact being entered late.
+ */
+export type ProductUnitReassignInput = z.infer<typeof ProductUnitReassignInput>;
+export const ProductUnitReassignInput = z
+  .object({
+    note: nullableTrimmedTextInput(),
+    productUnitId: UUID,
+    toQuoteId: UUID,
+  })
+  .strict();
+
+/** A machine offered to a receiving Quote, with the facts an operator picks it by. */
+export type ProductUnitReassignCandidate = z.infer<typeof ProductUnitReassignCandidate>;
+export const ProductUnitReassignCandidate = z.object({
+  id: UUID,
+  buildJobCode: JobCode.nullable(),
+  buildState: ProductUnitBuildState,
+  /** `null` means Stock: we hold the machine. */
+  owner: ProductUnitOwner.nullable(),
+  productSerialNumber: ProductSerialNumber,
+  vinNumber: ProductUnitVinNumber,
+});
+
+/**
+ * What the receiving Quote sold against what the incoming machine actually carries. Informational: a
+ * real difference is a human quote-amendment decision, so nothing here ever blocks the move.
+ */
+export type ProductUnitReassignSpecDiff = z.infer<typeof ProductUnitReassignSpecDiff>;
+export const ProductUnitReassignSpecDiff = z.object({
+  /** Fitted to the machine but not sold on this Quote. */
+  fittedNotQuoted: z.array(z.string().trim().min(1)),
+  /** Sold on this Quote but not fitted to the machine. */
+  quotedNotFitted: z.array(z.string().trim().min(1)),
+});
+
+export type ProductUnitReassignPreview = z.infer<typeof ProductUnitReassignPreview>;
+export const ProductUnitReassignPreview = z.object({
+  /** The Unit this Quote holds today, which the move returns to Stock. `null` when it holds none. */
+  displaced: ProductUnitReassignCandidate.nullable(),
+  incoming: ProductUnitReassignCandidate,
+  specDiff: ProductUnitReassignSpecDiff,
+});
+
+export type ProductUnitReassignResult = z.infer<typeof ProductUnitReassignResult>;
+export const ProductUnitReassignResult = z.object({
+  /** The Serial of the machine sent back to Stock, or `null` when the Quote held none. */
+  displacedProductSerialNumber: ProductSerialNumber.nullable(),
+  /** The build Job that now hangs off the receiving Quote. */
+  jobId: UUID,
+  unit: ProductUnitDetail,
+});

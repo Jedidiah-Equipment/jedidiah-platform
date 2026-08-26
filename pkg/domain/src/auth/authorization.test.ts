@@ -57,6 +57,7 @@ describe('getRolePermissions', () => {
       'product_range:read',
       'product_range:update',
       'product_unit:read',
+      'product_unit:reassign',
       'product_unit:remove',
       'product_unit:transfer',
       'product_unit:update',

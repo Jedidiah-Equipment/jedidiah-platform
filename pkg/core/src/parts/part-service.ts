@@ -391,16 +391,16 @@ export async function bulkImportParts({
       // queries per row, so importing thousands of rows stays a constant number of round trips.
       // Suppliers/parts created mid-loop are folded back into these maps so later rows referencing
       // the same name or code resolve them without re-querying.
-      const suppliersByName = scopedSupplier
+      const suppliersByLookupName = scopedSupplier
         ? new Map<string, SupplierRow>()
-        : await loadImportSuppliersByName({ db: tx, rows: input.rows });
+        : await loadImportSuppliersByLookupName({ db: tx, rows: input.rows });
       const partsByCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
 
       for (const row of input.rows) {
         // Whether this row names a Supplier is settled once, here. Everything below reads the one
         // resolved value, so a built Part — made in-house and bought from nobody — takes the same
         // path as a bought one rather than branching at every step.
-        const rowSupplier = resolveRowSupplier({ row, scopedSupplier, suppliersByName });
+        const rowSupplier = resolveRowSupplier({ row, scopedSupplier, suppliersByLookupName });
         if ('error' in rowSupplier) {
           errors.push(rowSupplier.error);
           continue;
@@ -419,7 +419,7 @@ export async function bulkImportParts({
         }
 
         // Created only now, so a row rejected above never leaves a stray Supplier behind.
-        const supplierId = await ensureImportSupplierId({ actorUserId, db: tx, rowSupplier, suppliersByName });
+        const supplierId = await ensureImportSupplierId({ actorUserId, db: tx, rowSupplier, suppliersByLookupName });
 
         // Bulk CSV owns catalog identity; stock policy/location/minimum default on create and survive updates.
         const partInput = {
@@ -586,21 +586,21 @@ type RowSupplier =
 function resolveRowSupplier({
   row,
   scopedSupplier,
-  suppliersByName,
+  suppliersByLookupName,
 }: {
   row: PartBulkImportInput['rows'][number];
   scopedSupplier: SupplierRow | undefined;
-  suppliersByName: ReadonlyMap<string, SupplierRow>;
+  suppliersByLookupName: ReadonlyMap<string, SupplierRow>;
 }): RowSupplier | { error: string } {
   if (row.supplierName === null) return { kind: 'none' };
 
   if (scopedSupplier) {
-    return row.supplierName.toLowerCase() === scopedSupplier.companyName.toLowerCase()
+    return supplierLookupName(row.supplierName) === supplierLookupName(scopedSupplier.companyName)
       ? { kind: 'existing', supplier: scopedSupplier }
       : { error: `Line ${row.lineNumber}: Supplier ${row.supplierName} does not match ${scopedSupplier.companyName}.` };
   }
 
-  const existing = suppliersByName.get(row.supplierName.toLowerCase());
+  const existing = suppliersByLookupName.get(supplierLookupName(row.supplierName));
 
   return existing ? { kind: 'existing', supplier: existing } : { kind: 'new', companyName: row.supplierName };
 }
@@ -619,19 +619,19 @@ async function ensureImportSupplierId({
   actorUserId,
   db,
   rowSupplier,
-  suppliersByName,
+  suppliersByLookupName,
 }: {
   actorUserId: AuthId;
   db: DatabaseTransaction;
   rowSupplier: RowSupplier;
-  suppliersByName: Map<string, SupplierRow>;
+  suppliersByLookupName: Map<string, SupplierRow>;
 }): Promise<string | null> {
   if (rowSupplier.kind === 'none') return null;
   if (rowSupplier.kind === 'existing') return rowSupplier.supplier.id;
 
   const created = await createImportSupplier({ actorUserId, companyName: rowSupplier.companyName, db });
   // Folded back so a later row naming the same Supplier resolves it without creating a second one.
-  suppliersByName.set(created.companyName.toLowerCase(), created);
+  suppliersByLookupName.set(supplierLookupName(created.companyName), created);
 
   return created.id;
 }
@@ -663,34 +663,57 @@ async function formatBulkImportIdentityConflict({
   return `Line ${row.lineNumber}: Part code ${existingPart.code} already exists with supplier ${existingIdentity}; CSV row has ${importIdentity}.`;
 }
 
-async function loadImportSuppliersByName({
+async function loadImportSuppliersByLookupName({
   db,
   rows,
 }: {
   db: DatabaseTransaction;
   rows: PartBulkImportInput['rows'];
 }): Promise<Map<string, SupplierRow>> {
-  const byName = new Map<string, SupplierRow>();
-  const lowerNames = [...new Set(rows.flatMap((row) => (row.supplierName ? [row.supplierName.toLowerCase()] : [])))];
+  const byLookupName = new Map<string, SupplierRow>();
+  const lookupNames = [
+    ...new Set(rows.flatMap((row) => (row.supplierName ? [supplierLookupName(row.supplierName)] : []))),
+  ];
 
-  if (lowerNames.length === 0) {
-    return byName;
+  if (lookupNames.length === 0) {
+    return byLookupName;
   }
 
   const supplierRows = await db
     .select({
       companyName: supplier.companyName,
       id: supplier.id,
+      lookupName: supplierLookupNameSql,
     })
     .from(supplier)
-    .where(and(inArray(sql`lower(${supplier.companyName})`, lowerNames), isNull(supplier.deletedAt)));
+    .where(and(inArray(supplierLookupNameSql, lookupNames), isNull(supplier.deletedAt)))
+    // Two live Suppliers can share a lookup name — the unique index covers the exact stored spelling
+    // only — so the oldest wins and every row of the import resolves to the same one.
+    .orderBy(supplier.createdAt, supplier.id);
 
   for (const supplierRow of supplierRows) {
-    byName.set(supplierRow.companyName.toLowerCase(), supplierRow);
+    // Keyed by the value the database computed, so a Supplier the filter matched can never miss the
+    // map through the two normalizers disagreeing.
+    if (!byLookupName.has(supplierRow.lookupName)) {
+      byLookupName.set(supplierRow.lookupName, { companyName: supplierRow.companyName, id: supplierRow.id });
+    }
   }
 
-  return byName;
+  return byLookupName;
 }
+
+/**
+ * How an import decides that a CSV cell and a stored Supplier name the same Supplier: casing and
+ * whitespace are noise, everything else is identity. It never touches what is stored — a matched
+ * Supplier keeps its own spelling, and a created one is stored as the row wrote it. Anything looser
+ * than this ("Night Wolves" against "Nightwolves") is a merge somebody has to decide on.
+ */
+function supplierLookupName(companyName: string): string {
+  return companyName.toLowerCase().replaceAll(/\s+/g, ' ').trim();
+}
+
+/** The database's side of {@link supplierLookupName}, so the two agree on every stored name. */
+const supplierLookupNameSql = sql<string>`btrim(regexp_replace(lower(${supplier.companyName}), '\\s+', ' ', 'g'))`;
 
 async function loadImportPartsByCode({
   db,

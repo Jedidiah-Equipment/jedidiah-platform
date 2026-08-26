@@ -30,9 +30,10 @@ the Supplier cell of an existing Part is an **error rather than a new Supplier**
 before any Supplier is created. A misspelling only creates a stray Supplier when that row's Code is
 new as well, because then there is no stored Part for it to contradict.
 
-Suppliers are matched by name, ignoring capitalisation, and the name already on file is the one kept
-— importing `acme supplies` against a stored `Acme Supplies` resolves to it and leaves its spelling
-alone.
+Suppliers are matched by name, ignoring capitalisation and spacing, and the name already on file is
+the one kept — importing `acme  supplies` against a stored `Acme Supplies` resolves to it and leaves
+its spelling alone. Only spacing and case are forgiven: `Nightwolves` and `Night Wolves` are two
+different Suppliers to an import, and joining them up is a merge somebody has to decide on.
 
 ## What the CSV does not carry
 

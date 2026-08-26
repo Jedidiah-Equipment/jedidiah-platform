@@ -1,6 +1,6 @@
 import { auditEvents, type Db, partBom, parts, stockMovements, supplier, user } from '@pkg/db';
 import { type PartBulkImportRow, PartListInput } from '@pkg/schema';
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
@@ -291,6 +291,69 @@ describe('bulkImportParts', () => {
 
     expect(result).toEqual({ errors: [], importedCount: 0, updatedCount: 0 });
     expect(events).toHaveLength(2);
+  });
+
+  test('matches an existing supplier whose stored name differs by whitespace, keeping its spelling', async ({
+    context,
+  }) => {
+    await context.db.insert(supplier).values({ companyName: ' Acme  Supplies ' });
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ supplierName: 'ACME Supplies' })] },
+    });
+    const suppliers = await context.db.select().from(supplier);
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
+
+    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
+    expect(suppliers.map((row) => row.companyName)).toEqual([' Acme  Supplies ']);
+    expect(importedParts.items[0]?.supplierId).toBe(suppliers[0]?.id);
+  });
+
+  test('creates one supplier for rows in the same file whose names differ only by whitespace', async ({ context }) => {
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow(),
+          importRow({ code: 'P-200', lineNumber: 3, supplierCode: 'SUP-200', supplierName: 'Acme   Supplies' }),
+        ],
+      },
+    });
+    const suppliers = await context.db.select().from(supplier);
+
+    expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
+    expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies']);
+  });
+
+  test('accepts a scoped supplier named with different whitespace', async ({ context }) => {
+    const [scoped] = await context.db.insert(supplier).values({ companyName: 'Acme Supplies' }).returning();
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ supplierName: 'Acme  Supplies' })], supplierId: scoped?.id },
+    });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
+
+    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
+    expect(importedParts.items[0]?.supplierId).toBe(scoped?.id);
+  });
+
+  test('ignores a soft-deleted supplier when matching a name', async ({ context }) => {
+    await context.db.insert(supplier).values({ companyName: 'Acme  Supplies', deletedAt: new Date() });
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow()] },
+    });
+    const liveSuppliers = await context.db.select().from(supplier).where(isNull(supplier.deletedAt));
+
+    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
+    expect(liveSuppliers.map((row) => row.companyName)).toEqual(['Acme Supplies']);
   });
 
   test('matches existing suppliers case-insensitively without treating supplier code as identity', async ({

@@ -1,6 +1,8 @@
 # mobile (@pkg/mobile)
 
 - Expo managed app using Expo Router and `expo-dev-client`.
+- For every change set that modifies `pkg/mobile`, run
+  `pnpm --filter @pkg/mobile version:bump minor` exactly once.
 - `APP_VARIANT` is required. Variant identity lives in `src/lib/app-variant.ts`; keep
   `app.config.ts` thin and keep its explicit `.ts` resolver import.
 - Routes live under `app/`; all other source lives under `src/` and imports through `@/*`.

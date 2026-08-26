@@ -142,11 +142,11 @@ describe('renderQuoteDocumentPdf', () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),
       notes: ['6mm decking with no lights'],
+      pricingRows: [],
     };
     const renderedText = collectRenderedText(QuoteDocumentPricingTable({ document }));
 
-    expect(renderedText.at(-1)).toBe('6mm decking with no lights');
-    expect(renderedText).not.toContain('0.00');
+    expect(renderedText).toEqual(['Description', 'Qty', 'Unit Price', 'Subtotal', '6mm decking with no lights']);
   });
 
   test('repeats the column headings on every page the pricing table spans, and only those', async () => {

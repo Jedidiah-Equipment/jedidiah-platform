@@ -1,4 +1,4 @@
-import { MockLanguageModelV3 } from 'ai/test';
+import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, test } from 'vitest';
 
 import { translateCatalogSourceToAfrikaans } from './catalog-translation.js';
@@ -19,7 +19,7 @@ function generatedJson(value: unknown) {
 
 describe('Afrikaans catalog translation', () => {
   test('translates one product bundle with its ordered arrays and assemblies', async () => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () =>
         generatedJson({
           name: 'Kuilvoer-sleepwa',
@@ -68,7 +68,7 @@ describe('Afrikaans catalog translation', () => {
       keyFeatures: ['Sterk'],
       assemblies: [{ id: ASSEMBLY_ID, name: 'Raam' }],
     };
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () => {
         call += 1;
         return generatedJson(
@@ -97,10 +97,10 @@ describe('Afrikaans catalog translation', () => {
   });
 
   test('translates ranges and variants with their own schemas', async () => {
-    const rangeModel = new MockLanguageModelV3({
+    const rangeModel = new MockLanguageModelV4({
       doGenerate: async () => generatedJson({ name: 'Kuilvoerwaens', description: 'Waens vir die oes.' }),
     });
-    const variantModel = new MockLanguageModelV3({
+    const variantModel = new MockLanguageModelV4({
       doGenerate: async () => generatedJson({ name: 'Swaardiens' }),
     });
 

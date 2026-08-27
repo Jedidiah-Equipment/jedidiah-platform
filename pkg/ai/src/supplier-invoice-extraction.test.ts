@@ -1,4 +1,4 @@
-import { MockLanguageModelV3 } from 'ai/test';
+import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, test } from 'vitest';
 
 import { extractSupplierInvoice } from './supplier-invoice-extraction.js';
@@ -17,13 +17,13 @@ function generatedJson(value: unknown) {
   };
 }
 
-function extract(model: MockLanguageModelV3) {
+function extract(model: MockLanguageModelV4) {
   return extractSupplierInvoice({ bytes: PDF_BYTES, contentType: 'application/pdf', model });
 }
 
 describe('supplier invoice extraction', () => {
   test('reads the invoice header, its lines, and the Job codes the Supplier echoed', async () => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () =>
         generatedJson({
           invoiceDate: '2026-08-04',
@@ -60,7 +60,7 @@ describe('supplier invoice extraction', () => {
   });
 
   test('sends the PDF itself as a file part alongside the transcribe-only instruction', async () => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () => generatedJson({ invoiceDate: null, invoiceNumber: null, jobCodes: [], lines: [] }),
     });
 
@@ -71,7 +71,11 @@ describe('supplier invoice extraction', () => {
     expect(call?.prompt).toContainEqual(
       expect.objectContaining({
         content: expect.arrayContaining([
-          expect.objectContaining({ data: PDF_BYTES, mediaType: 'application/pdf', type: 'file' }),
+          expect.objectContaining({
+            data: { data: PDF_BYTES, type: 'data' },
+            mediaType: 'application/pdf',
+            type: 'file',
+          }),
         ]),
         role: 'user',
       }),
@@ -79,7 +83,7 @@ describe('supplier invoice extraction', () => {
   });
 
   test('keeps a line whose numbers the invoice never printed, rather than guessing them', async () => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () =>
         generatedJson({
           invoiceDate: null,
@@ -97,7 +101,7 @@ describe('supplier invoice extraction', () => {
   });
 
   test('rejects output that does not fit the contract, so the caller can report an unreadable invoice', async () => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () => generatedJson({ lines: 'not a list' }),
     });
 
@@ -105,7 +109,7 @@ describe('supplier invoice extraction', () => {
   });
 
   test('does not retry a provider that has already refused the document', async () => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () => {
         throw new Error('provider refused');
       },
@@ -122,7 +126,7 @@ describe('supplier invoice extraction', () => {
    * for every document regardless of what it says. This asserts the request as sent.
    */
   test('asks for a schema strict structured outputs will accept', async () => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () => generatedJson({ invoiceDate: null, invoiceNumber: null, jobCodes: [], lines: [] }),
     });
 
@@ -140,7 +144,7 @@ describe('supplier invoice extraction', () => {
   });
 
   test('normalises a messy transcription instead of losing the lines that came back clean', async () => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () =>
         generatedJson({
           // The formats a real invoice provokes: a date the model rewrote, a blank code, an empty
@@ -163,7 +167,7 @@ describe('supplier invoice extraction', () => {
   });
 
   test('drops a date that is shaped right but is not a day, keeping the lines', async () => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () =>
         generatedJson({
           // ISO-shaped and not a date. Checking the shape rather than the rule would let this reach

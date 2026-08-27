@@ -53,7 +53,7 @@ export function createAiSdkTools(ctx: AiContext): ToolSet {
   for (const definition of AI_TOOL_DEFINITIONS) {
     if (!hasAnyToolPermission(ctx.access, definition.anyOfPermissions)) continue;
 
-    tools[definition.name] = createAiSdkTool<unknown, unknown>({
+    tools[definition.name] = createAiSdkTool<unknown, unknown, Record<string, never>>({
       description: definition.description,
       inputSchema: definition.inputSchema,
       outputSchema: definition.outputSchema,

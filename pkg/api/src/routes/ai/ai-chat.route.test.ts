@@ -1,8 +1,8 @@
-import type { LanguageModelV3FinishReason, LanguageModelV3StreamPart, LanguageModelV3Usage } from '@ai-sdk/provider';
+import type { LanguageModelV4FinishReason, LanguageModelV4StreamPart, LanguageModelV4Usage } from '@ai-sdk/provider';
 import fastifyCors from '@fastify/cors';
 import type { AiContext } from '@pkg/ai';
 import { createUserAccessSummary } from '@pkg/domain';
-import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
+import { convertArrayToReadableStream, MockLanguageModelV4 } from 'ai/test';
 import Fastify from 'fastify';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -82,80 +82,67 @@ function createChatContext(session: ReturnType<typeof mockSession> | null = mock
   };
 }
 
-const STEP_USAGE: LanguageModelV3Usage = {
+const STEP_USAGE: LanguageModelV4Usage = {
   inputTokens: { total: 12, noCache: 12, cacheRead: 0, cacheWrite: 0 },
   outputTokens: { total: 6, text: 6, reasoning: 0 },
 };
 
-function finishPart(unified: LanguageModelV3FinishReason['unified']): LanguageModelV3StreamPart {
+function finishPart(unified: LanguageModelV4FinishReason['unified']): LanguageModelV4StreamPart {
   return { type: 'finish', finishReason: { unified, raw: unified }, usage: STEP_USAGE };
 }
 
-function streamResult(parts: LanguageModelV3StreamPart[]) {
+function streamResult(parts: LanguageModelV4StreamPart[]) {
   return { stream: convertArrayToReadableStream(parts) };
 }
 
 // Step 1 asks for the tool; step 2 answers with text. `stepCountIs` drives the loop between them.
-// Driven by an explicit call counter rather than a doStream array: MockLanguageModelV3 records the
-// call before indexing, so an array is effectively 1-based and would skip the first step.
-function createTwoStepModel(): MockLanguageModelV3 {
-  let call = 0;
-  return new MockLanguageModelV3({
-    doStream: async () => {
-      call += 1;
-      return call === 1
-        ? streamResult([
-            { type: 'stream-start', warnings: [] },
-            { type: 'tool-call', toolCallId: 'call-1', toolName: 'findProducts', input: JSON.stringify({}) },
-            finishPart('tool-calls'),
-          ])
-        : streamResult([
-            { type: 'stream-start', warnings: [] },
-            { type: 'text-start', id: 't1' },
-            { type: 'text-delta', id: 't1', delta: 'You have 1 Product' },
-            { type: 'text-delta', id: 't1', delta: ': Compact Loader.' },
-            { type: 'text-end', id: 't1' },
-            finishPart('stop'),
-          ]);
-    },
+// Unlike the v3 mock, MockLanguageModelV4 consumes response arrays from index 0.
+function createTwoStepModel(): MockLanguageModelV4 {
+  return new MockLanguageModelV4({
+    doStream: [
+      streamResult([
+        { type: 'stream-start', warnings: [] },
+        { type: 'tool-call', toolCallId: 'call-1', toolName: 'findProducts', input: JSON.stringify({}) },
+        finishPart('tool-calls'),
+      ]),
+      streamResult([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'You have 1 Product' },
+        { type: 'text-delta', id: 't1', delta: ': Compact Loader.' },
+        { type: 'text-end', id: 't1' },
+        finishPart('stop'),
+      ]),
+    ],
   });
 }
 
-function createFindThenGetModel(): MockLanguageModelV3 {
-  let call = 0;
-  return new MockLanguageModelV3({
-    doStream: async () => {
-      call += 1;
-
-      if (call === 1) {
-        return streamResult([
-          { type: 'stream-start', warnings: [] },
-          { type: 'tool-call', toolCallId: 'find-1', toolName: 'findProducts', input: JSON.stringify({}) },
-          finishPart('tool-calls'),
-        ]);
-      }
-
-      if (call === 2) {
-        return streamResult([
-          { type: 'stream-start', warnings: [] },
-          {
-            type: 'tool-call',
-            toolCallId: 'get-1',
-            toolName: 'getProduct',
-            input: JSON.stringify({ id: PRODUCT_ID }),
-          },
-          finishPart('tool-calls'),
-        ]);
-      }
-
-      return streamResult([
+function createFindThenGetModel(): MockLanguageModelV4 {
+  return new MockLanguageModelV4({
+    doStream: [
+      streamResult([
+        { type: 'stream-start', warnings: [] },
+        { type: 'tool-call', toolCallId: 'find-1', toolName: 'findProducts', input: JSON.stringify({}) },
+        finishPart('tool-calls'),
+      ]),
+      streamResult([
+        { type: 'stream-start', warnings: [] },
+        {
+          type: 'tool-call',
+          toolCallId: 'get-1',
+          toolName: 'getProduct',
+          input: JSON.stringify({ id: PRODUCT_ID }),
+        },
+        finishPart('tool-calls'),
+      ]),
+      streamResult([
         { type: 'stream-start', warnings: [] },
         { type: 'text-start', id: 't1' },
         { type: 'text-delta', id: 't1', delta: 'The Compact Loader costs R 1 000.00.' },
         { type: 'text-end', id: 't1' },
         finishPart('stop'),
-      ]);
-    },
+      ]),
+    ],
   });
 }
 
@@ -293,9 +280,9 @@ describe('POST /ai/chat', () => {
     const app = Fastify();
     // A stream that only completes once streamText aborts it — the route's timeout is the sole path
     // to termination here.
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doStream: async ({ abortSignal }) => ({
-        stream: new ReadableStream<LanguageModelV3StreamPart>({
+        stream: new ReadableStream<LanguageModelV4StreamPart>({
           start(controller) {
             controller.enqueue({ type: 'stream-start', warnings: [] });
             controller.enqueue({ type: 'text-start', id: 't1' });

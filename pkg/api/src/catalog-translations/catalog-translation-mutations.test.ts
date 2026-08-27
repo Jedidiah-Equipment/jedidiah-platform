@@ -1,7 +1,7 @@
-import type { LanguageModelV3CallOptions, LanguageModelV3GenerateResult } from '@ai-sdk/provider';
+import type { LanguageModelV4CallOptions, LanguageModelV4GenerateResult } from '@ai-sdk/provider';
 import { type Db, eq, productRanges, productRangeVariants, products, user } from '@pkg/db';
 import type { Product } from '@pkg/schema';
-import { MockLanguageModelV3 } from 'ai/test';
+import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
@@ -11,7 +11,7 @@ import { createCatalogTranslationRunner } from './catalog-translation-runner.js'
 import { TranslationScheduler } from './translation-scheduler.js';
 import { generatedJson, ManualTimers, waitForModelCalls, waitForTurns } from './translation-test-utils.js';
 
-type DoGenerate = (options: LanguageModelV3CallOptions) => PromiseLike<LanguageModelV3GenerateResult>;
+type DoGenerate = (options: LanguageModelV4CallOptions) => PromiseLike<LanguageModelV4GenerateResult>;
 
 const test = createTester(async ({ cleanup, db }) => {
   await createActorUser(db);
@@ -19,7 +19,7 @@ const test = createTester(async ({ cleanup, db }) => {
   let generate: DoGenerate = async () => {
     throw new Error('Translation response not configured');
   };
-  const model = new MockLanguageModelV3({ doGenerate: (options) => generate(options) });
+  const model = new MockLanguageModelV4({ doGenerate: (options) => generate(options) });
   const run = createCatalogTranslationRunner({ db, model });
   const timers = new ManualTimers();
   const catalogTranslationScheduler = new TranslationScheduler({
@@ -114,8 +114,8 @@ describe('catalog mutation translation triggers', () => {
   });
 
   test('runs once more with the latest Product content when an edit lands mid-translation', async ({ context }) => {
-    let finishFirst: ((result: LanguageModelV3GenerateResult) => void) | undefined;
-    const firstResponse = new Promise<LanguageModelV3GenerateResult>((resolve) => {
+    let finishFirst: ((result: LanguageModelV4GenerateResult) => void) | undefined;
+    const firstResponse = new Promise<LanguageModelV4GenerateResult>((resolve) => {
       finishFirst = resolve;
     });
     let call = 0;

@@ -15,12 +15,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-sdk/openai": "3.0.82",
+    "@ai-sdk/openai": "4.0.46",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "ai": "6.0.221",
+    "ai": "7.0.77",
     "zod": "^4.4.3"
   },
   "devDependencies": {

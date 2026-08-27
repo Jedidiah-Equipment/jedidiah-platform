@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 import { beforeAll, describe, expect, test } from 'vitest';
 
-import { cacheControlFor, createStaticAssetServer, isPrecompressed } from './static-assets.js';
+import { cacheControlFor, createStaticAssetServer } from './static-assets.js';
 
 describe('cacheControlFor', () => {
   test('pins content-hashed build output for a year', () => {
@@ -41,10 +41,13 @@ describe('createStaticAssetServer', () => {
   beforeAll(async () => {
     const dir = await mkdtemp(join(tmpdir(), 'lander-static-'));
     await mkdir(join(dir, 'assets'));
-    await writeFile(join(dir, 'assets', 'app-abc123.css'), 'body{color:red}');
+    // Over srvx's 1 KiB compression floor, which is what a real Vite chunk looks like.
+    await writeFile(join(dir, 'assets', 'app-abc123.css'), `body{color:red}\n${'/* pad */\n'.repeat(200)}`);
     // Real WebP header bytes, so nothing downstream can mistake this for text.
     await writeFile(join(dir, 'assets', 'hero-abc123.webp'), Buffer.from('RIFF____WEBPVP8 ', 'ascii'));
     await writeFile(join(dir, 'robots.txt'), 'User-agent: *');
+    await mkdir(join(dir, '.vite'));
+    await writeFile(join(dir, '.vite', 'manifest.json'), '{}');
 
     serve = createStaticAssetServer(pathToFileURL(`${dir}/`));
   });
@@ -80,6 +83,20 @@ describe('createStaticAssetServer', () => {
   test('refuses to walk out of the build directory', async () => {
     expect(await get('/assets/../../../../etc/passwd.png')).toBeNull();
     expect(await get('/assets/%2e%2e%2f%2e%2e%2fsecret.webp')).toBeNull();
+  });
+
+  // srvx rejects a malformed percent-escape before it looks at the filesystem, so left alone it would
+  // answer for the whole route tree — including in dev, where this directory does not exist and Vite owns
+  // the path. The SSR handler renders the localized 404 instead.
+  test('leaves a malformed percent-escape to the router', async () => {
+    expect(await get('/kontak%')).toBeNull();
+    expect(await get('/assets/bad%zz.css')).toBeNull();
+  });
+
+  // srvx 0.11 served whatever was on disk. 0.12 withholds a dot segment, which is what keeps a build
+  // manifest or a stray `.env` out of the build output's public surface.
+  test('does not serve a dot directory', async () => {
+    expect(await get('/.vite/manifest.json')).toBeNull();
   });
 
   test('gives an unhashed static file the shorter window', async () => {
@@ -131,6 +148,17 @@ describe('createStaticAssetServer', () => {
 
       expect(response?.status).toBe(416);
       expect(response?.headers.get('content-range')).toBe('bytes */16');
+      // An error is not a representation, so it carries no freshness window a cache could hold it by.
+      expect(response?.headers.get('cache-control')).toBeNull();
+    });
+
+    // Compressing a range is not expressible, so a range request wins and the identity bytes are served.
+    test('serves a range over a compressible file uncompressed', async () => {
+      const response = await get('/assets/app-abc123.css', { range: 'bytes=0-9', 'accept-encoding': 'gzip, br' });
+
+      expect(response?.status).toBe(206);
+      expect(response?.headers.get('content-encoding')).toBeNull();
+      expect(await response?.text()).toBe('body{color');
     });
 
     // A client resuming an interrupted download sends the validator it started with. If the file was
@@ -143,17 +171,10 @@ describe('createStaticAssetServer', () => {
         const etag = (await get('/assets/hero-abc123.webp'))?.headers.get('etag') ?? '';
         const response = await withIfRange(etag);
 
-        // Our validator is weak, which cannot satisfy the strong comparison this requires — so even our own
+        // The validator is weak, which cannot satisfy the strong comparison this requires — so even the
         // current tag correctly declines to authorise a partial response.
         expect(response?.status).toBe(200);
         expect(response?.headers.get('content-range')).toBeNull();
-        expect(await response?.text()).toBe('RIFF____WEBPVP8 ');
-      });
-
-      test('serves the whole file for a stale strong entity-tag', async () => {
-        const response = await withIfRange('"something-else"');
-
-        expect(response?.status).toBe(200);
         expect(await response?.text()).toBe('RIFF____WEBPVP8 ');
       });
 
@@ -184,7 +205,7 @@ describe('createStaticAssetServer', () => {
     });
 
     test('falls back to the whole file for a form it does not parse', async () => {
-      for (const value of ['bytes=0-1,4-5', 'items=0-1', 'bytes=-', 'nonsense']) {
+      for (const value of ['bytes=0-1,4-5', 'items=0-1', 'bytes=-', 'bytes=10-5', 'nonsense']) {
         const response = await range(value);
 
         expect(response?.status, value).toBe(200);
@@ -220,6 +241,18 @@ describe('createStaticAssetServer', () => {
       expect(response?.status).toBe(304);
     });
 
+    // Every encoding of one URL needs its own tag, or a cache keyed on `Vary` can hand a brotli body to a
+    // client that asked for gzip.
+    test('varies the validator by content-encoding', async () => {
+      const [brotli, identity] = await Promise.all([
+        get('/assets/app-abc123.css', { 'accept-encoding': 'br' }),
+        get('/assets/app-abc123.css', { 'accept-encoding': 'identity' }),
+      ]);
+
+      expect(brotli?.headers.get('etag')).not.toBe(identity?.headers.get('etag'));
+      expect(brotli?.headers.get('vary')).toBe('Accept-Encoding');
+    });
+
     test('sends a HEAD the full length without a body', async () => {
       const response = await serve(new Request('https://example.test/assets/hero-abc123.webp', { method: 'HEAD' }));
 
@@ -227,19 +260,5 @@ describe('createStaticAssetServer', () => {
       expect(response?.headers.get('content-length')).toBe('16');
       expect(await response?.text()).toBe('');
     });
-  });
-});
-
-describe('isPrecompressed', () => {
-  test('recognises formats that carry their own compression', () => {
-    for (const path of ['/a.webp', '/a.WEBP', '/a.png', '/a.jpg', '/a.woff2', '/a.pdf', '/a.avif']) {
-      expect(isPrecompressed(path), path).toBe(true);
-    }
-  });
-
-  test('leaves text formats to be compressed on the wire', () => {
-    for (const path of ['/a.css', '/a.js', '/a.html', '/a.svg', '/a.json', '/a.txt', '/a.xml']) {
-      expect(isPrecompressed(path), path).toBe(false);
-    }
   });
 });

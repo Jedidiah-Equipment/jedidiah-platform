@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@tanstack/react-query', () => ({ useMutation: () => ({ mutateAsync: vi.fn() }) }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
 vi.mock('@/hooks/options/index.js', () => ({
+  usePartCategoryOptions: () => ({ isPending: false, items: ['Bright bar', 'Raw material'] }),
   useSupplierOptions: () => ({ isPending: false, selectOptions: [] }),
 }));
 vi.mock('@/hooks/use-query-invalidation.js', () => ({
@@ -21,6 +22,9 @@ vi.mock('@/components/form/index.js', () => ({
     const field = {
       CheckboxField: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
       ComboboxField: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
+      CreatableComboboxField: ({ label, options }: { label: React.ReactNode; options: readonly string[] }) => (
+        <span data-options={options.join('|')}>{label}</span>
+      ),
       NumberField: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
       SelectField: ({ label, onValueCommit }: { label: React.ReactNode; onValueCommit?: (value: string) => void }) => {
         if (onValueCommit) commitUnitOfMeasure = onValueCommit;
@@ -70,6 +74,13 @@ describe('PartListCreateDialog', () => {
     ]) {
       expect(html).toContain(`data-field="${name}"`);
     }
+  });
+
+  it('offers the categories already in the catalog', () => {
+    const html = renderToStaticMarkup(<PartListCreateDialog onCreated={vi.fn()} onOpenChange={vi.fn()} open={true} />);
+    const categoryField = html.match(/data-field="category">(.*?)<\/div>/)?.[1] ?? '';
+
+    expect(categoryField).toContain('data-options="Bright bar|Raw material"');
   });
 
   it('drops a length stranded by a move off millimetres, which would fail submit on a hidden field', () => {

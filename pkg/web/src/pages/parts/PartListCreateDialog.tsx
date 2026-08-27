@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { useSupplierOptions } from '@/hooks/options/index.js';
+import { usePartCategoryOptions, useSupplierOptions } from '@/hooks/options/index.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -26,6 +26,7 @@ export function PartListCreateDialog({
 }) {
   const trpc = useTRPC();
   const suppliers = useSupplierOptions({ enabled: open, limit: 0 });
+  const categories = usePartCategoryOptions({ enabled: open });
   const { invalidateParts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const mutation = useMutation(
@@ -58,7 +59,15 @@ export function PartListCreateDialog({
           <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
           <form.AppField name="code">{(field) => <field.TextField autoComplete="off" label="Code" />}</form.AppField>
           <form.AppField name="category">
-            {(field) => <field.TextField autoComplete="off" label="Category" />}
+            {(field) => (
+              <field.CreatableComboboxField
+                disabled={categories.isPending}
+                emptyMessage="No categories found."
+                label="Category"
+                options={categories.items}
+                placeholder={categories.isPending ? 'Loading categories...' : 'Select or create category'}
+              />
+            )}
           </form.AppField>
           <form.AppField name="finish">
             {(field) => <field.TextField autoComplete="off" label="Finish" />}

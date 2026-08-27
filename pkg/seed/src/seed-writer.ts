@@ -13,6 +13,7 @@ import {
   type SnapshotRow,
   type SnapshotTableConfig,
   snapshotCleanupTables,
+  snapshotTableNames,
   snapshotTables,
 } from './snapshot-tables.js';
 import { createStorageFromEnv, readSeedStorageConfig, type SeedStorage, uploadObject } from './storage.js';
@@ -157,10 +158,39 @@ function withSeedPassword(rows: readonly SnapshotRow[], passwordHash: string): S
   return rows.map((row) => (row.providerId === 'credential' ? { ...row, password: passwordHash } : row));
 }
 
-async function clearSnapshotTables(tx: DatabaseTransaction): Promise<void> {
+export async function clearSnapshotTables(tx: DatabaseTransaction): Promise<void> {
+  await clearUnsnapshottedPublicTables(tx);
+
   for (const config of snapshotCleanupTables) {
     await tx.delete(config.table);
   }
+}
+
+// A local database also holds rows the snapshot never captures — Purchase Orders, the stock ledger,
+// Documents, department stamps — and several of those reference snapshot parents with ON DELETE
+// RESTRICT, so leaving them in place fails the next re-seed. Registering each new table here by hand
+// only defers the same failure, so the sweep is derived from the catalog: everything in `public` that
+// the snapshot does not own is truncated before the ordered snapshot cleanup runs.
+async function clearUnsnapshottedPublicTables(tx: DatabaseTransaction): Promise<void> {
+  const publicTables = await tx.execute<{ tablename: string }>(
+    sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
+  );
+  const snapshotted = new Set<string>(snapshotTableNames);
+  const tableNames = [...publicTables]
+    .map((row) => row.tablename)
+    .filter((tableName) => !snapshotted.has(tableName))
+    .sort();
+
+  if (tableNames.length === 0) {
+    return;
+  }
+
+  const identifiers = sql.join(
+    tableNames.map((tableName) => sql.identifier(tableName)),
+    sql`, `,
+  );
+
+  await tx.execute(sql`TRUNCATE TABLE ${identifiers} CASCADE`);
 }
 
 async function clearAllPublicTablesForStaging(tx: DatabaseTransaction): Promise<void> {

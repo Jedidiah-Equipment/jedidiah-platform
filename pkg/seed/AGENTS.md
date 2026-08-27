@@ -35,6 +35,11 @@
   `readOrderColumn` / `seedRowDefaults` — needed when the local schema has columns the source lacks, such
   as a not-yet-deployed migration. Keep `snapshotTables` ordered parents-first so inserts and the reversed
   cleanup stay FK-safe.
+- The snapshot does not cover every table. Before the reversed cleanup runs, `seed-writer.ts` truncates
+  every `public` table missing from `snapshotTableNames` — read out of `pg_tables`, not a hand-kept list —
+  so locally created rows that reference a snapshot parent with `ON DELETE RESTRICT` (Purchase Orders,
+  the stock ledger, Documents) cannot block a re-seed. A new table needs a snapshot entry only when its
+  rows should be captured and restored; leaving it out costs nothing but its local data.
 - Remote password hashes are never dumped: `seed-reader.ts` omits `account.password` and `seed-writer.ts`
   fills it on insert with `SEED_USER_PASSWORD` (`test123`), so every seeded user signs in locally with
   `test123`.

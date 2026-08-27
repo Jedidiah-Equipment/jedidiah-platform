@@ -63,7 +63,7 @@ export function toFindJobsResponse(result: JobListResult, access: UserAccessSumm
 export const findJobsDefinition = {
   name: 'findJobs',
   description: [
-    `Search for Product Jobs or ${quoteKindLabels.custom} Jobs by Job Code, Product serial number, ${quoteKindLabels.custom} title, or UUID.`,
+    `Search for Product Jobs or ${quoteKindLabels.custom} Jobs by Job Code, Product serial number, Work Title for ${quoteKindLabels.custom}, or UUID.`,
     'Returns lightweight identity and relationship matches with code-owned app links.',
     'Call getJob with the selected id when full Job details are needed.',
   ].join('\n'),

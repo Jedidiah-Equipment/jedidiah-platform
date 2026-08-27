@@ -1,4 +1,4 @@
-import type { QuoteComputedSummary } from '@pkg/domain';
+import { type QuoteComputedSummary, quoteKindLabels } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test, vi } from 'vitest';
@@ -72,7 +72,7 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
   );
 
   expect(html).toContain('aria-label="Hydraulic pump overhaul"');
-  expect(html).not.toContain('>Custom<');
+  expect(html.split(`>${quoteKindLabels.custom}<`)).toHaveLength(2);
   // A departmental Work Item is labelled by the shop's quoting wording for its Department.
   expect(html).toContain('Fabrication');
   expect(html).toContain('Labour');

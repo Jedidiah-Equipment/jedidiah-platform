@@ -3,7 +3,7 @@
 Use the mobile app's **Jobs** tab to find open or completed production work and open its full detail.
 
 1. Tap **Jobs** in the bottom tab bar.
-2. Type a Job code, Product Unit serial number, or Custom Job work title in the search field.
+2. Type a Job code, Product Unit serial number, or Service Work Job's Work Title in the search field.
 3. To include finished work, open the filter and tap **Include Complete**. The default **Exclude
    Complete** view shows open Jobs only.
 4. Open the sort menu and choose **Schedule** to put unscheduled Jobs first, or **Job Code** for code

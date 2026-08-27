@@ -23,7 +23,7 @@ Sheets.
   billed. Reconcile against a Supplier invoice on the ex-VAT column.
 - A cost cell is **blank**, not zero, when the Job still holds material nobody has priced yet. A Job
   that drew nothing at all costs zero.
-- Retail comes from the Job's Quote and is the whole sale, delivery and custom work included.
+- Retail comes from the Job's Quote and is the whole sale, delivery and Service Work included.
 - A Stock Build has no Quote, so its retail cells are blank while its cost still reports — a total
   of the cost column therefore includes machines nobody has bought yet.
 - **Export Completed** appears only if you can read inventory costs, Jobs, and Quotes.

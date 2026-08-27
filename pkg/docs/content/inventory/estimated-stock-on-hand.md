@@ -27,7 +27,7 @@ List, and an Assembly's own Part quantities are whole counted Parts. So a plate 
 only through the Product Material List, never through an Assembly.
 
 Demand is taken from the estimate snapshot frozen when a Product Job is created. Cancelled Jobs do
-not contribute. Rework and Custom Jobs carry no qualifying material lines.
+not contribute. Rework and Service Work Jobs carry no qualifying material lines.
 
 ## What the estimate means
 

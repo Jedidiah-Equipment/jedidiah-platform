@@ -33,7 +33,7 @@ export type StreamAiChatOptions = {
   reasoningEffort: AiReasoningEffort;
 };
 
-// AI SDK v6 chat turn: authorized tool set → `streamText` with a bounded multi-step tool loop →
+// AI SDK v7 chat turn: authorized tool set → `streamText` with a bounded multi-step tool loop →
 // a UI-message-stream `Response`. Owns assistant orchestration only; the caller (the Fastify
 // route) bridges the returned web `Response` onto the Node reply.
 export async function streamAiChat({

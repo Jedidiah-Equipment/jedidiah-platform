@@ -1,6 +1,6 @@
 import { eq, productAssemblies, productRanges, products } from '@pkg/db';
 import { catalogSourceHashes } from '@pkg/domain';
-import { MockLanguageModelV3 } from 'ai/test';
+import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, vi } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
@@ -39,7 +39,7 @@ const test = createTester(async ({ db }) => {
 
 describe('catalog translation runner', () => {
   test('translates a stale Product once and skips it when its source hash matches', async ({ context }) => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () =>
         generatedJson({
           name: 'Kuilvoer-sleepwa',
@@ -92,7 +92,7 @@ describe('catalog translation runner', () => {
         },
       })
       .where(eq(productRanges.id, context.rangeId));
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () => generatedJson({ description: 'AI-inhoud.', name: 'AI-reeks' }),
     });
     const run = createCatalogTranslationRunner({ db: context.db, model });
@@ -102,7 +102,7 @@ describe('catalog translation runner', () => {
   });
 
   test('backfill translates the stale set and excludes healthy entities from later sweeps', async ({ context }) => {
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async ({ prompt }) => {
         const request = JSON.stringify(prompt);
         return request.includes('assemblies')

@@ -1,10 +1,10 @@
-import type { LanguageModelV3GenerateResult } from '@ai-sdk/provider';
+import type { LanguageModelV4GenerateResult } from '@ai-sdk/provider';
 import { type CatalogSourceHashes, catalogSourceHashes } from '@pkg/domain';
 import type { CatalogTranslationEnvelope } from '@pkg/schema';
-import type { MockLanguageModelV3 } from 'ai/test';
+import type { MockLanguageModelV4 } from 'ai/test';
 import { expect } from 'vitest';
 
-export function generatedJson(value: unknown): LanguageModelV3GenerateResult {
+export function generatedJson(value: unknown): LanguageModelV4GenerateResult {
   return {
     content: [{ type: 'text', text: JSON.stringify(value) }],
     finishReason: { unified: 'stop', raw: 'stop' },
@@ -37,7 +37,7 @@ export function translationEnvelopes<Canonical extends object>(
 }
 
 /** Resolves once the call is recorded — the run still has to persist, so poll for DB effects. */
-export async function waitForModelCalls(model: MockLanguageModelV3, count: number): Promise<void> {
+export async function waitForModelCalls(model: MockLanguageModelV4, count: number): Promise<void> {
   for (let attempt = 0; attempt < 200 && model.doGenerateCalls.length < count; attempt += 1) {
     await new Promise<void>((resolve) => setTimeout(resolve, 5));
   }

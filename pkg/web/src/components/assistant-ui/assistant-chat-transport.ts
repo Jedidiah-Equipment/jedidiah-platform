@@ -2,7 +2,7 @@ import { AssistantChatTransport } from '@assistant-ui/react-ai-sdk';
 
 import { getClientConfig } from '@/lib/app-config.js';
 
-// The new AI SDK v6 chat route. The web app and API run on different ports, so requests must carry
+// The AI SDK v7 chat route. The web app and API run on different ports, so requests must carry
 // the session cookie cross-origin (`credentials: 'include'`) or the route answers 401.
 export function getAiChatEndpoint(apiBaseUrl: string): string {
   return `${apiBaseUrl}/ai/chat`;

@@ -1,7 +1,7 @@
-import type { LanguageModelV3CallOptions, LanguageModelV3GenerateResult } from '@ai-sdk/provider';
+import type { LanguageModelV4CallOptions, LanguageModelV4GenerateResult } from '@ai-sdk/provider';
 import { type Db, productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db';
 import { catalogSourceHashes } from '@pkg/domain';
-import { MockLanguageModelV3 } from 'ai/test';
+import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
@@ -17,13 +17,13 @@ import {
   waitForTurns,
 } from './translation-test-utils.js';
 
-type DoGenerate = (options: LanguageModelV3CallOptions) => PromiseLike<LanguageModelV3GenerateResult>;
+type DoGenerate = (options: LanguageModelV4CallOptions) => PromiseLike<LanguageModelV4GenerateResult>;
 
 const test = createTester(({ cleanup, db }) => {
   let generate: DoGenerate = async () => {
     throw new Error('Translation response not configured');
   };
-  const model = new MockLanguageModelV3({ doGenerate: (options) => generate(options) });
+  const model = new MockLanguageModelV4({ doGenerate: (options) => generate(options) });
   const timers = new ManualTimers();
   const catalogTranslationScheduler = new TranslationScheduler({
     clearTimer: (timer) => timers.clear(timer),

@@ -12,7 +12,8 @@ const HASHED_ASSET_PREFIX = '/assets/';
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 // Everything else in the build output keeps its filename across deploys — `robots.txt`, the favicon, and
 // anything dropped into `public/`. It gets a day of freshness with a week of stale-while-revalidate, so a
-// replacement propagates without a visitor ever blocking on the check.
+// replacement propagates without a visitor ever blocking on the check. An extensionless drop-in is the
+// exception: it is indistinguishable from a page route here, so it revalidates as a document instead.
 const STATIC_CACHE_CONTROL = 'public, max-age=86400, stale-while-revalidate=604800';
 // A document is the one thing that must never be held: it is what carries a deploy's new asset URLs.
 const DOCUMENT_CACHE_CONTROL = 'no-cache';
@@ -51,14 +52,18 @@ export function createStaticAssetServer(clientDirUrl: URL): (request: Request) =
       return new Response(null, { status: 404 });
     });
 
-    if (!matched) {
+    // srvx rejects a malformed percent-escape with a 400 of its own, before it looks at the filesystem at
+    // all. That would answer for the whole route tree rather than this directory — and in dev, where the
+    // directory does not exist, it would answer for a Vite path. A URL that decodes to nothing names no
+    // file here, which is the same miss as any other.
+    if (!matched || response.status === 400) {
       return null;
     }
 
-    // srvx answers a malformed percent-escape with a 400 and an out-of-bounds `Range` with a 416. Neither
-    // is a representation of anything, so neither takes a freshness window — a cache told to hold one for
-    // a year would answer that URL from the error long after it stopped being the truth.
-    if (response.status >= 400) {
+    // An out-of-bounds `Range` is a 416, which is not a representation of anything and so takes no
+    // freshness window: a cache told to hold one for a year would answer that URL from the error long
+    // after it stopped being the truth.
+    if (response.status === 416) {
       return response;
     }
 

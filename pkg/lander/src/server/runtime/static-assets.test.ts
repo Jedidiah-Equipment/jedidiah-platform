@@ -85,6 +85,14 @@ describe('createStaticAssetServer', () => {
     expect(await get('/assets/%2e%2e%2f%2e%2e%2fsecret.webp')).toBeNull();
   });
 
+  // srvx rejects a malformed percent-escape before it looks at the filesystem, so left alone it would
+  // answer for the whole route tree — including in dev, where this directory does not exist and Vite owns
+  // the path. The SSR handler renders the localized 404 instead.
+  test('leaves a malformed percent-escape to the router', async () => {
+    expect(await get('/kontak%')).toBeNull();
+    expect(await get('/assets/bad%zz.css')).toBeNull();
+  });
+
   // srvx 0.11 served whatever was on disk. 0.12 withholds a dot segment, which is what keeps a build
   // manifest or a stray `.env` out of the build output's public surface.
   test('does not serve a dot directory', async () => {

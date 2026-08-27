@@ -52,6 +52,10 @@ import {
 
 type PartRow = typeof parts.$inferSelect;
 type SupplierRow = Pick<typeof supplier.$inferSelect, 'companyName' | 'id'>;
+const unitOfMeasureLockedSql = sql<boolean>`exists(
+  select 1 from ${stockMovements}
+  where ${stockMovements.partId} = ${parts.id}
+)`;
 
 export const partAuditDescriptor = defineAuditDescriptor<PartRow>({
   entityType: 'part',
@@ -80,6 +84,7 @@ export const partAuditDescriptor = defineAuditDescriptor<PartRow>({
 type PartWithSupplierRow = PartRow & {
   /** Null on a Built Part, which is made in-house and bought from nobody. */
   supplier: SupplierRow | null;
+  unitOfMeasureLocked: boolean;
 };
 
 export function mapPart(row: PartWithSupplierRow): Part {
@@ -101,6 +106,7 @@ export function mapPart(row: PartWithSupplierRow): Part {
     supplierCode: row.supplierCode,
     supplierId: row.supplierId,
     unitOfMeasure: row.unitOfMeasure,
+    unitOfMeasureLocked: row.unitOfMeasureLocked,
   });
 }
 
@@ -116,6 +122,7 @@ export async function listParts({ db, input }: { db: Db; input: PartListInput })
           id: supplier.id,
           companyName: supplier.companyName,
         },
+        unitOfMeasureLocked: unitOfMeasureLockedSql,
       })
       .from(parts)
       .leftJoin(supplier, eq(parts.supplierId, supplier.id))
@@ -131,7 +138,9 @@ export async function listParts({ db, input }: { db: Db; input: PartListInput })
     .where(where);
   const [rows, totalRows] = await Promise.all([rowsQuery, totalQuery]);
   const total = totalRows[0]?.value ?? 0;
-  const items = rows.map((row) => mapPart({ ...row.part, supplier: row.supplier }));
+  const items = rows.map((row) =>
+    mapPart({ ...row.part, supplier: row.supplier, unitOfMeasureLocked: row.unitOfMeasureLocked }),
+  );
 
   return {
     items,
@@ -234,23 +243,25 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
 }
 
 export async function getPart({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<Part> {
-  const row = await db.query.parts.findFirst({
-    where: eq(parts.id, id),
-    with: {
+  const [row] = await db
+    .select({
+      part: parts,
       supplier: {
-        columns: {
-          id: true,
-          companyName: true,
-        },
+        companyName: supplier.companyName,
+        id: supplier.id,
       },
-    },
-  });
+      unitOfMeasureLocked: unitOfMeasureLockedSql,
+    })
+    .from(parts)
+    .leftJoin(supplier, eq(parts.supplierId, supplier.id))
+    .where(eq(parts.id, id))
+    .limit(1);
 
   if (!row) {
     throw new PartNotFoundError(id);
   }
 
-  return mapPart(row);
+  return mapPart({ ...row.part, supplier: row.supplier, unitOfMeasureLocked: row.unitOfMeasureLocked });
 }
 
 export async function createPart({
@@ -472,16 +483,24 @@ export async function bulkImportParts({
           continue;
         }
 
-        await assertUnitOfMeasureMutable({
-          before: lockedPart,
-          db: tx,
-          nextUnitOfMeasure: partInput.unitOfMeasure,
-        });
-        await assertSupplierMutable({
-          before: lockedPart,
-          db: tx,
-          nextSupplierId: partInput.supplierId,
-        });
+        try {
+          await assertUnitOfMeasureMutable({
+            before: lockedPart,
+            db: tx,
+            nextUnitOfMeasure: partInput.unitOfMeasure,
+          });
+          await assertSupplierMutable({
+            before: lockedPart,
+            db: tx,
+            nextSupplierId: partInput.supplierId,
+          });
+        } catch (error) {
+          const rowError = formatBulkImportLockError(error, row.lineNumber);
+          if (!rowError) throw error;
+
+          errors.push(rowError);
+          continue;
+        }
 
         const [updated] = await tx.update(parts).set(partInput).where(eq(parts.id, existingPart.id)).returning();
 
@@ -548,6 +567,18 @@ async function assertSupplierMutable({
     .limit(1);
 
   if (purchaseOrderLine) throw new PartSupplierLockedByPurchaseOrderError(before.id);
+}
+
+function formatBulkImportLockError(error: unknown, lineNumber: number): string | undefined {
+  if (error instanceof PartUnitOfMeasureLockedError) {
+    return `Line ${lineNumber}: Unit of Measure is locked because this Part has stock history.`;
+  }
+
+  if (error instanceof PartSupplierLockedByPurchaseOrderError) {
+    return `Line ${lineNumber}: Supplier is locked because this Part appears on a Purchase Order.`;
+  }
+
+  return undefined;
 }
 
 /**

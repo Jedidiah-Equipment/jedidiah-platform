@@ -40,6 +40,7 @@ describe('part form types', () => {
           supplierCode: 'SUP-001',
           supplierId: '00000000-0000-4000-8000-000000000001',
           unitOfMeasure: 'mm',
+          unitOfMeasureLocked: false,
         },
       }),
     ).toMatchObject({

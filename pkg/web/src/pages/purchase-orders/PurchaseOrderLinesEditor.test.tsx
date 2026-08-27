@@ -38,6 +38,7 @@ const part: PurchaseOrderPartOption = {
   supplierCode: 'M12-FW',
   supplierId,
   unitOfMeasure: 'piece',
+  unitOfMeasureLocked: false,
 };
 const replacementPart: PurchaseOrderPartOption = {
   ...part,

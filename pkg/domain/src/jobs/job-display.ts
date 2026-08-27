@@ -1,3 +1,5 @@
+import { quoteKindLabels } from '../quotes/quote-display.js';
+
 export type JobDisplaySource = {
   code: string;
   productName: string | null;
@@ -32,7 +34,7 @@ export function getJobDisplayNameWithModel(job: JobDisplaySubtitleSource): strin
 
 export function getJobDisplaySubtitle(job: JobDisplaySubtitleSource): JobDisplaySubtitle | null {
   if (job.quoteKind === 'custom') {
-    return { mono: false, text: 'Custom work' };
+    return { mono: false, text: quoteKindLabels.custom };
   }
 
   return job.productModelCode ? { mono: true, text: job.productModelCode } : null;

@@ -1,4 +1,5 @@
 import * as jobsCore from '@pkg/core';
+import { quoteKindLabels } from '@pkg/domain';
 import {
   BayOperator,
   DEPARTMENTS,
@@ -66,7 +67,7 @@ export function toGetJobResponse(job: JobDetail, access: UserAccessSummary | nul
 export const getJobDefinition = {
   name: 'getJob',
   description: [
-    'Get the full details for one Product Job or Custom Job by UUID.',
+    `Get the full details for one Product Job or ${quoteKindLabels.custom} Job by UUID.`,
     'Use after findJobs identifies the Job the user means.',
     'Returns identifiers, Customer and Quote facts, schedule, CFO parts, documents, timestamps, and relationship links without thumbnail data.',
   ].join('\n'),

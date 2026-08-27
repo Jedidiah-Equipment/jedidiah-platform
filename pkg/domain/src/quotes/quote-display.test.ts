@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { getQuoteOfferingName, getQuoteOfferingSubtitle, quoteProductSourceOf } from './quote-display.js';
+import {
+  getQuoteOfferingName,
+  getQuoteOfferingSubtitle,
+  quoteKindLabels,
+  quoteProductSourceOf,
+} from './quote-display.js';
+
+describe('quote kind presentation', () => {
+  it('presents the custom kind as Service Work', () => {
+    expect(quoteKindLabels.custom).toBe('Service Work');
+  });
+});
 
 describe('quote display helpers', () => {
   it('uses product names for Product Quotes and the standard unresolved fallback', () => {
@@ -28,6 +39,13 @@ describe('quote display helpers', () => {
         workTitle: 'Hydraulic repair',
       }),
     ).toBe('Hydraulic repair');
+    expect(
+      getQuoteOfferingName({
+        kind: 'custom',
+        product: null,
+        workTitle: null,
+      }),
+    ).toBe('Service Work');
   });
 
   it('returns product and custom subtitles from one policy', () => {
@@ -44,7 +62,7 @@ describe('quote display helpers', () => {
         product: null,
         workTitle: 'Hydraulic repair',
       }),
-    ).toEqual({ mono: false, text: 'Custom work' });
+    ).toEqual({ mono: false, text: 'Service Work' });
   });
 });
 

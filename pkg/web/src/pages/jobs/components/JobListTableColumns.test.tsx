@@ -140,7 +140,7 @@ describe('Job List table columns', () => {
     ]);
 
     expect(html).toContain('Pump skid rebuild');
-    expect(html).toContain('Custom work');
+    expect(html).toContain('Service Work');
     expect(html).not.toContain('SN-2026-0001');
   });
 

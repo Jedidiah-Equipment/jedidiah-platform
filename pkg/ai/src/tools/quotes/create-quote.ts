@@ -1,4 +1,5 @@
 import * as quotesCore from '@pkg/core';
+import { quoteKindLabels } from '@pkg/domain';
 import {
   AuthId,
   type AuthId as AuthIdType,
@@ -73,7 +74,7 @@ export const CreateQuoteInput = z
     documentNotes: QuoteDocumentNotes.default(null),
     notes: QuoteNotes.default(null),
     offering: CreateQuoteOfferingInput.describe(
-      'A Product offering requires a Product UUID from findProducts. A Custom offering requires only a Work Title; its price comes from Work Items added afterwards.',
+      `A Product offering requires a Product UUID from findProducts. A ${quoteKindLabels.custom} offering requires only a Work Title; its price comes from Work Items added afterwards.`,
     ),
     plannedDeliveryDate: DateOnlyIsoString.nullable().default(null),
     preferredDeliveryDate: DateOnlyIsoString.nullable().default(null),
@@ -118,7 +119,7 @@ export function toCreateQuoteResponse(quote: QuoteDetail, access: UserAccessSumm
 export const createQuoteDefinition = {
   name: 'createQuote',
   description: [
-    'Create one Product Quote or Custom Quote when the user explicitly asks for it.',
+    `Create one Product Quote or ${quoteKindLabels.custom} Quote when the user explicitly asks for it.`,
     'Use findProducts to resolve a Product Quote productId and findCustomers to resolve an existing Customer; use an inline Customer when the company is new.',
     'Omit salesPersonId to assign the acting user. Do not choose another salesperson unless the user explicitly requests it.',
     'A cancelled Quote always requires cancellationReason; omit it for every other status.',

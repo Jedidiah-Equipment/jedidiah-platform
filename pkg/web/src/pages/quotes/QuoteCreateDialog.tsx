@@ -1,4 +1,4 @@
-import { isQuoteSalespersonRole, quoteStatusLabels } from '@pkg/domain';
+import { isQuoteSalespersonRole, quoteKindLabels, quoteStatusLabels } from '@pkg/domain';
 import type { Quote } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -128,8 +128,8 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
               <field.SelectField
                 label="Kind"
                 options={[
-                  { label: 'Product', value: 'product' },
-                  { label: 'Custom', value: 'custom' },
+                  { label: quoteKindLabels.product, value: 'product' },
+                  { label: quoteKindLabels.custom, value: 'custom' },
                 ]}
               />
             )}

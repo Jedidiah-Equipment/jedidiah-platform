@@ -4,6 +4,7 @@ import {
   getPlantDateNow,
   isQuoteLocked,
   QUOTE_SALESPERSON_ROLES,
+  quoteKindLabels,
   validateDiscount,
 } from '@pkg/domain';
 import {
@@ -780,7 +781,7 @@ function assertNoCustomSelectedAssemblies(
   input: Pick<QuoteCreateInput | QuotePatchInput | QuoteUpdateInput, 'selectedAssemblies'>,
 ): void {
   if ((input.selectedAssemblies?.length ?? 0) > 0) {
-    throw new QuoteCustomSelectedAssembliesError('Custom Quotes cannot have Selected Assemblies.');
+    throw new QuoteCustomSelectedAssembliesError(`${quoteKindLabels.custom} Quotes cannot have Selected Assemblies.`);
   }
 }
 

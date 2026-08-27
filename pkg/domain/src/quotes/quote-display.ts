@@ -20,12 +20,12 @@ export const quoteStatusColorClassNames: Record<QuoteStatus, { chip: string; tex
 };
 
 export const quoteKindLabels: Record<QuoteKind, string> = {
-  custom: 'Custom',
+  custom: 'Service Work',
   product: 'Product',
 };
 
 /**
- * The one colour language for what a Quote or Job is selling: teal for Custom work, brand-adjacent
+ * The one colour language for what a Quote or Job is selling: teal for Service Work, brand-adjacent
  * yellow for a Product build. Deliberately not the `primary` token — web's staging theme repaints
  * that pink, and the offering kind must not follow brand chrome.
  */
@@ -81,12 +81,12 @@ export type QuoteOfferingSubtitle = {
 };
 
 export function getQuoteOfferingName(quote: QuoteOfferingDisplaySource): string {
-  return quote.kind === 'custom' ? (quote.workTitle ?? 'Custom work') : (quote.product?.name ?? '—');
+  return quote.kind === 'custom' ? (quote.workTitle ?? quoteKindLabels.custom) : (quote.product?.name ?? '—');
 }
 
 export function getQuoteOfferingSubtitle(quote: QuoteOfferingDisplaySource): QuoteOfferingSubtitle | null {
   if (quote.kind === 'custom') {
-    return { mono: false, text: 'Custom work' };
+    return { mono: false, text: quoteKindLabels.custom };
   }
 
   const modelCode = quote.product?.modelCode ?? '—';

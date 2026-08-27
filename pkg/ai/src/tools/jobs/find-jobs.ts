@@ -1,4 +1,5 @@
 import * as jobsCore from '@pkg/core';
+import { quoteKindLabels } from '@pkg/domain';
 import { JobListInput, type JobListResult, JobSummary, type UserAccessSummary } from '@pkg/schema';
 import { z } from 'zod';
 
@@ -62,7 +63,7 @@ export function toFindJobsResponse(result: JobListResult, access: UserAccessSumm
 export const findJobsDefinition = {
   name: 'findJobs',
   description: [
-    'Search for Product Jobs or Custom Jobs by Job Code, Product serial number, Custom Work Title, or UUID.',
+    `Search for Product Jobs or ${quoteKindLabels.custom} Jobs by Job Code, Product serial number, Work Title for ${quoteKindLabels.custom}, or UUID.`,
     'Returns lightweight identity and relationship matches with code-owned app links.',
     'Call getJob with the selected id when full Job details are needed.',
   ].join('\n'),

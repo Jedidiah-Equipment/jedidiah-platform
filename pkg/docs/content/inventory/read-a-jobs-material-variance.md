@@ -11,7 +11,7 @@ those draws cost. It reads the same whether the Job is still running, completed,
 3. Read **Planned** against **Drawn** per Part. **Variance** is the difference: a plus is material
    the Job took beyond its plan, a minus is planned material it never drew.
 4. Read **Over plan** and **Off CFO** above the table. **Off CFO** counts the Parts drawn against the
-   Job with nothing in its plan asking for them — on a Custom Job that is every Part, and it is the
+   Job with nothing in its plan asking for them — on a Service Work Job that is every Part, and it is the
    unplanned material the report exists to surface.
 5. If you may read costs, read **Actual cost** per Part, plus **Drawn cost** and **Off-CFO cost**
    above the table.
@@ -28,7 +28,7 @@ those draws cost. It reads the same whether the Job is still running, completed,
   never moves a number here.
 - A Rework Job's estimate covers only the Optional Assembly Parts being fitted. Product-level raw
   material and labor cannot be attributed to that Rework, so its estimate remains an incomplete floor.
-- A Custom Job has no Product Cost Estimate snapshot, so it has no estimate-vs-actual comparison.
+- A Service Work Job has no Product Cost Estimate snapshot, so it has no estimate-vs-actual comparison.
 - A Part drawn in two lengths reports as one row. The variance is on the Part, not on a length.
 - A total reads **not priced** as soon as one drawn Part has no cost yet, rather than quietly
   reporting a smaller number.

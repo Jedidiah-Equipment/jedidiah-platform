@@ -1,4 +1,4 @@
-import { quoteStatusLabels, toQuoteWorkItemFormState } from '@pkg/domain';
+import { quoteKindLabels, quoteStatusLabels, toQuoteWorkItemFormState } from '@pkg/domain';
 import {
   AuthId,
   DateIsoString,
@@ -76,7 +76,7 @@ type QuoteMetaFacts =
     };
 
 export function quoteMetaLine(quote: QuoteMetaFacts): string {
-  if (quote.kind === 'custom') return 'Custom work';
+  if (quote.kind === 'custom') return quoteKindLabels.custom;
 
   const liveOptionCount = quote.selectedAssemblies.filter((selection) => selection.productAssemblyId !== null).length;
   const optionSuffix = liveOptionCount === 0 ? '' : ` · ${liveOptionCount} option${liveOptionCount === 1 ? '' : 's'}`;

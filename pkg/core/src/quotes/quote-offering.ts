@@ -1,3 +1,4 @@
+import { quoteKindLabels } from '@pkg/domain';
 import type { QuoteKind, QuoteOffering } from '@pkg/schema';
 
 import { QuoteOfferingInvariantError } from './quote-errors.js';
@@ -24,7 +25,7 @@ export function narrowQuoteOffering(row: {
   }
 
   if (row.workTitle === null) {
-    throw new QuoteOfferingInvariantError('Custom Quote is missing its Work Title.');
+    throw new QuoteOfferingInvariantError(`${quoteKindLabels.custom} Quote is missing its Work Title.`);
   }
 
   return { kind: 'custom', productId: null, productUnitId: null, workTitle: row.workTitle };

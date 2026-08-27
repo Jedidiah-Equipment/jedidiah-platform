@@ -4,6 +4,7 @@ import {
   formatPercent,
   getQuoteOfferingName,
   type QuoteComputedSummary,
+  quoteKindLabels,
   quoteProductSourceOf,
   quoteWorkItemSummaryRows,
 } from '@pkg/domain';
@@ -149,7 +150,7 @@ function CustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'custom
     <SummaryCard>
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
-          <CardLabel>Custom work</CardLabel>
+          <CardLabel>{quoteKindLabels.custom}</CardLabel>
           <Text className="mt-1 text-[15px] text-foreground" numberOfLines={2} weight="bold">
             {workTitle}
           </Text>

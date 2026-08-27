@@ -822,7 +822,7 @@ describe('custom quotes', () => {
           status: 'draft',
         }),
       }),
-    ).rejects.toThrow('Custom Quotes cannot have Selected Assemblies.');
+    ).rejects.toThrow('Service Work Quotes cannot have Selected Assemblies.');
 
     const customQuote = await createQuoteService({
       actorUserId: context.salesPerson.id,
@@ -843,7 +843,7 @@ describe('custom quotes', () => {
           selectedAssemblies: [{ type: 'catalog', productAssemblyId: '00000000-0000-4000-8000-000000000901' }],
         }),
       }),
-    ).rejects.toThrow('Custom Quotes cannot have Selected Assemblies.');
+    ).rejects.toThrow('Service Work Quotes cannot have Selected Assemblies.');
   });
 
   test('keeps custom commercial fields editable before acceptance even when a job exists', async ({ context }) => {

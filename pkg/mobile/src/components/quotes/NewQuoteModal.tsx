@@ -1,4 +1,4 @@
-import { isQuoteSalespersonRole, quoteStatusLabels } from '@pkg/domain';
+import { isQuoteSalespersonRole, quoteKindLabels, quoteStatusLabels } from '@pkg/domain';
 import { IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -25,8 +25,8 @@ import {
 import { useTRPC } from '@/lib/trpc';
 
 const KIND_OPTIONS = [
-  { label: 'Product', value: 'product' },
-  { label: 'Custom', value: 'custom' },
+  { label: quoteKindLabels.product, value: 'product' },
+  { label: quoteKindLabels.custom, value: 'custom' },
 ] as const;
 
 export function NewQuoteModal({ onClose }: { onClose: () => void }) {

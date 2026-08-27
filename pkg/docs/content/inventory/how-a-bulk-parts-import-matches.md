@@ -49,7 +49,7 @@ periodic setting are not columns in it, and an import leaves them exactly as it 
 Two catalog facts are only conditionally yours to edit:
 
 - Once a Part has Stock Movements, its **Unit of Measure** cannot be changed. Any import attempting
-  to change it fails without importing any rows.
+  to change it reports and skips that row while the rest of the file imports.
 - **Standard Purchase Length** belongs to a Part measured in `mm`, and only to such a Part.
 
 A **Built Part** is made in-house and bought from nobody, so it leaves the Supplier cell blank and

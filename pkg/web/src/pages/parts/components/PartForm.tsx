@@ -80,6 +80,8 @@ export const PartForm: React.FC<PartFormProps> = ({
         <form.AppField name="unitOfMeasure">
           {(field) => (
             <field.SelectField
+              description={initialPart?.unitOfMeasureLocked ? 'locked — this Part has stock history' : undefined}
+              disabled={initialPart?.unitOfMeasureLocked ?? false}
               label="Unit"
               onValueCommit={(unitOfMeasure) => {
                 if (unitOfMeasure !== 'mm') form.setFieldValue('standardPurchaseLengthMm', NaN);

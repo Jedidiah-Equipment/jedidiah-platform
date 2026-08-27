@@ -1,6 +1,6 @@
 import type * as React from 'react';
 
-import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
@@ -13,6 +13,7 @@ type SelectFieldOption = {
 const EMPTY_SELECT_VALUE = '__empty__';
 
 export type SelectFieldProps = {
+  description?: React.ReactNode;
   disabled?: boolean;
   emptyLabel?: React.ReactNode;
   label: React.ReactNode;
@@ -23,6 +24,7 @@ export type SelectFieldProps = {
 };
 
 export function SelectField({
+  description,
   disabled = false,
   emptyLabel,
   label,
@@ -39,7 +41,7 @@ export function SelectField({
   const selectedLabel = emptyLabel && field.state.value === '' ? emptyLabel : selectedOption?.label;
 
   return (
-    <Field data-invalid={isInvalid}>
+    <Field data-disabled={disabled} data-invalid={isInvalid}>
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
       <Select
         disabled={disabled}
@@ -66,6 +68,7 @@ export function SelectField({
           </SelectGroup>
         </SelectContent>
       </Select>
+      {description ? <FieldDescription>{description}</FieldDescription> : null}
       <FieldError errors={fieldErrors} />
     </Field>
   );

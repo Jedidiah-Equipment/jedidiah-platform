@@ -40,6 +40,27 @@ function importRow(overrides: Partial<PartBulkImportRow> = {}): PartBulkImportRo
 }
 
 describe('listParts', () => {
+  test('reports when stock history locks a Part Unit of Measure', async ({ context }) => {
+    await bulkImportParts({ actorUserId, db: context.db, input: { rows: [importRow()] } });
+    const [part] = await context.db.select().from(parts);
+
+    if (!part) {
+      throw new Error('Imported Part was not returned');
+    }
+
+    await context.db.insert(stockMovements).values({
+      actorUserId,
+      delta: 0,
+      movementType: 'revaluation',
+      partId: part.id,
+      unitCost: 100,
+    });
+
+    const result = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
+
+    expect(result.items).toEqual([expect.objectContaining({ code: 'P-100', unitOfMeasureLocked: true })]);
+  });
+
   test('filters parts by unit of measure', async ({ context }) => {
     await bulkImportParts({
       actorUserId,
@@ -498,7 +519,7 @@ describe('bulkImportParts', () => {
     });
   });
 
-  test('does not let a CSV update reinterpret an existing stock ledger', async ({ context }) => {
+  test('skips a locked Unit change and imports remaining rows', async ({ context }) => {
     await bulkImportParts({ actorUserId, db: context.db, input: { rows: [importRow()] } });
     const [part] = await context.db.select().from(parts);
 
@@ -514,15 +535,25 @@ describe('bulkImportParts', () => {
       reason: 'opening-balance',
     });
 
-    await expect(
-      bulkImportParts({
-        actorUserId,
-        db: context.db,
-        input: {
-          rows: [importRow({ standardPurchaseLengthMm: 6_000, unitOfMeasure: 'mm' })],
-        },
-      }),
-    ).rejects.toMatchObject({ code: 'part.unit_of_measure_locked' });
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({ lineNumber: 4, standardPurchaseLengthMm: 6_000, unitOfMeasure: 'mm' }),
+          importRow({ code: 'P-200', lineNumber: 5, name: 'Bolt', supplierCode: 'SUP-200' }),
+        ],
+      },
+    });
+
+    const importedParts = await context.db.select().from(parts);
+    expect(result).toEqual({
+      errors: ['Line 4: Unit of Measure is locked because this Part has stock history.'],
+      importedCount: 1,
+      updatedCount: 0,
+    });
+    expect(importedParts.map((row) => row.code).sort()).toEqual(['P-100', 'P-200']);
+    expect(importedParts.find((row) => row.code === 'P-100')?.unitOfMeasure).toBe('piece');
   });
 
   test('creates a distinct part when only supplier code matches', async ({ context }) => {

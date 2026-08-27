@@ -20,9 +20,9 @@ and the import refuses a row naming anyone else.
 
 ## Notes
 
-- Bad rows do not stop good ones. Every row issue is reported against its line number and the rest of
-  the file imports. The exception is an attempt to change a Part's **Unit of Measure** after it has
-  Stock Movements: that stops the whole import, and nothing is written.
+- Bad rows do not stop good ones. Every row issue — including an attempt to change a Part's **Unit of
+  Measure** after it has Stock Movements — is reported against its line number, that row is skipped,
+  and the rest of the file imports.
 - Cutting rows out of the file is safe. An import only ever creates and updates, so a Part you delete
   from the CSV is left alone rather than removed.
 - Headers are matched loosely: spacing, punctuation, and case are ignored, and `Category` is accepted

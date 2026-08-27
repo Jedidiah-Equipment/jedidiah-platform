@@ -110,6 +110,7 @@ export const Part = z.object({
   supplierCode: PartSupplierCode,
   supplierId: UUID.nullable(),
   unitOfMeasure: PartUnitOfMeasure,
+  unitOfMeasureLocked: z.boolean(),
 });
 
 export type PartSortBy = z.infer<typeof PartSortBy>;

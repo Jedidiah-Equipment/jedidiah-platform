@@ -28,9 +28,9 @@ export function readableAssistantChatError(status: number, bodyError?: string): 
 
 export async function assistantChatFetch(
   input: RequestInfo | URL,
-  init?: RequestInit,
+  init: RequestInit | undefined,
+  cookie: string | null,
   fetchImpl: FetchLike = expoFetch as FetchLike,
-  cookie: string | null = sessionCookieHeader(),
 ): Promise<Response> {
   const response = await fetchImpl(input, withSessionCookie(init, cookie));
   if (!response.ok) {
@@ -43,7 +43,8 @@ export async function assistantChatFetch(
 export function createAssistantTransport() {
   return new DefaultChatTransport({
     api: getAssistantChatEndpoint(apiBaseUrl),
-    fetch: assistantChatFetch,
+    fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
+      assistantChatFetch(input, init, await sessionCookieHeader()),
   });
 }
 

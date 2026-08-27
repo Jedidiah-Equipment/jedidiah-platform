@@ -1,4 +1,4 @@
-import { account, type Db, user } from '@pkg/db';
+import { account, CREDENTIAL_ACCOUNT_ISSUER, type Db, user } from '@pkg/db';
 import { DEFAULT_DEMO_USER_PASSWORD } from '@pkg/domain';
 import type { AppRole } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
@@ -8,6 +8,14 @@ import { clearMockEmailMessages, getMockEmailMessages } from '@/email/mock-email
 import { createTester } from '@/test/create-tester.js';
 
 const test = createTester(({ auth, db }) => ({ auth, db }));
+
+// A real scrypt hash of DEFAULT_DEMO_USER_PASSWORD, produced by better-auth 1.6.23 — the version every
+// production and staging credential row was written under. 1.7 pins the same `@better-auth/utils`, so
+// this is expected to keep verifying; if a future bump ever does change the format, this fails here
+// instead of locking every existing user out of sign-in, where the error is indistinguishable from a
+// mistyped password.
+const LEGACY_1_6_PASSWORD_HASH =
+  '669e41d043b9aee8ba5ee688b6f59dbe:e391e0d0fc3c0566252168b2409995f8acfaee710b4657bdcfe47d3d8621b0ce5a33dd21634e24df78bf1699070718589e623509b711a2b2b614036540f2493c';
 
 describe('public sign-up is disabled', () => {
   test('rejects direct email/password sign-up', async ({ context }) => {
@@ -116,6 +124,24 @@ describe('email verification callback', () => {
   });
 });
 
+describe('credential accounts written by better-auth 1.6', () => {
+  test('signs in with a hash produced before the 1.7 upgrade', async ({ context }) => {
+    await createUserWithCredential(context.db, {
+      email: 'legacy-hash@example.com',
+      id: '00000000-0000-4000-8000-000000000050',
+      name: 'Legacy Hash User',
+      passwordHash: LEGACY_1_6_PASSWORD_HASH,
+    });
+
+    await expect(
+      context.auth.api.signInEmail({
+        body: { email: 'legacy-hash@example.com', password: DEFAULT_DEMO_USER_PASSWORD },
+        asResponse: false,
+      }),
+    ).resolves.toMatchObject({ user: { email: 'legacy-hash@example.com' } });
+  });
+});
+
 async function createUserWithCredential(
   db: Db,
   input: {
@@ -123,9 +149,8 @@ async function createUserWithCredential(
     emailVerified?: boolean;
     id: string;
     name: string;
-    password: string;
     role?: AppRole;
-  },
+  } & ({ password: string; passwordHash?: never } | { password?: never; passwordHash: string }),
 ) {
   const now = new Date();
 
@@ -148,7 +173,8 @@ async function createUserWithCredential(
       accountId: input.id,
       createdAt: now,
       id: `${input.id}-credential-account`,
-      password: await hashPassword(input.password),
+      issuer: CREDENTIAL_ACCOUNT_ISSUER,
+      password: 'passwordHash' in input ? input.passwordHash : await hashPassword(input.password),
       providerId: 'credential',
       updatedAt: now,
       userId: input.id,

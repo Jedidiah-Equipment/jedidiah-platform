@@ -6,6 +6,7 @@ import { createTRPCContext } from '@trpc/tanstack-react-query';
 
 import { apiBaseUrl } from './api-base-url';
 import { sessionCookieHeader } from './auth';
+import { withSessionCookie } from './authed-fetch';
 
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 
@@ -16,17 +17,8 @@ export function createTrpcClient() {
     links: [
       httpBatchLink({
         url: `${apiBaseUrl}/trpc`,
-        fetch(url, options) {
-          // Native has no cookie jar, so forward the better-auth session cookie
-          // (stored in SecureStore) on every request. `credentials: 'include'`
-          // covers react-native-web, where the browser owns the cookie instead.
-          const cookie = sessionCookieHeader();
-          const headers = new Headers(options?.headers);
-          if (cookie) {
-            headers.set('Cookie', cookie);
-          }
-
-          return fetch(url, { ...options, credentials: 'include', headers });
+        async fetch(url, options) {
+          return fetch(url, withSessionCookie(options, await sessionCookieHeader()));
         },
       }),
     ],

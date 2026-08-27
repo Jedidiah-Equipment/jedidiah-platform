@@ -20,14 +20,6 @@ allowBuilds:
   msw: false
 
 overrides:
-  # better-auth 1.7 refuses a password that its own `hashPassword` had just produced, failing
-  # sign-in for every seeded account — and existing hashes were written by 1.6. Held here rather
-  # than by pinning four manifests, because `^1.6.23` happily resolves 1.7 and silently would.
-  better-auth: 1.6.23
-  # A peer of the adapter and expo packages, so it floats to 1.7 on its own if left out.
-  "@better-auth/core": 1.6.23
-  "@better-auth/drizzle-adapter": 1.6.23
-  "@better-auth/expo": 1.6.23
   # One esbuild for the whole tree. Without this, drizzle-kit, tsx and Vite each bring their
   # own — four copies, four platform binaries — and every consumer accepts this one.
   esbuild: 0.28.2

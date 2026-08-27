@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@ai-sdk/react": "3.0.223",
-    "@better-auth/expo": "1.6.23",
+    "@better-auth/expo": "1.7.1",
     "@expo/dom-webview": "~57.0.1",
     "@expo/metro-runtime": "~57.0.13",
     "@gluestack-ui/nativewind-utils": "1.0.28",
@@ -57,7 +57,7 @@
     "@trpc/client": "11.18.0",
     "@trpc/tanstack-react-query": "11.18.0",
     "ai": "6.0.221",
-    "better-auth": "^1.6.23",
+    "better-auth": "1.7.1",
     "expo": "~57.0.16",
     "expo-camera": "~57.0.4",
     "expo-clipboard": "~57.0.1",

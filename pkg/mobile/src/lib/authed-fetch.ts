@@ -5,7 +5,7 @@ import { sessionCookieHeader } from './auth';
 // Attaches the same better-auth session cookie that the tRPC client uses.
 // Native has no cookie jar, so the SecureStore cookie rides a header;
 // `credentials: 'include'` covers react-native-web, where the browser owns the cookie.
-export function withSessionCookie(init?: RequestInit, cookie: string | null = sessionCookieHeader()): RequestInit {
+export function withSessionCookie(init: RequestInit | undefined, cookie: string | null): RequestInit {
   const headers = new Headers(init?.headers);
   if (cookie) {
     headers.set('Cookie', cookie);
@@ -18,7 +18,7 @@ export function withSessionCookie(init?: RequestInit, cookie: string | null = se
 // tRPC's batch link can't stream binary bodies, so documents go over plain HTTP.
 export async function authedFetch(path: string, init?: RequestInit): Promise<Response> {
   const url = path.startsWith('http') ? path : `${apiBaseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
-  return fetch(url, withSessionCookie(init));
+  return fetch(url, withSessionCookie(init, await sessionCookieHeader()));
 }
 
 /** URL of a job document's authed download route, consumed by the PDF viewer (#521). */

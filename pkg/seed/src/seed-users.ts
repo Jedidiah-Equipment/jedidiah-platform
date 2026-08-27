@@ -1,6 +1,15 @@
 import { pathToFileURL } from 'node:url';
 import './load-write-env.js';
-import { account, closeDatabaseConnection, type Db, db, getDatabaseUrl, user, userDepartment } from '@pkg/db';
+import {
+  account,
+  CREDENTIAL_ACCOUNT_ISSUER,
+  closeDatabaseConnection,
+  type Db,
+  db,
+  getDatabaseUrl,
+  user,
+  userDepartment,
+} from '@pkg/db';
 import { demoUsers } from '@pkg/domain';
 import { hashPassword } from 'better-auth/crypto';
 import { eq, or } from 'drizzle-orm';
@@ -54,6 +63,7 @@ export async function seedDemoUsers(database?: Db): Promise<void> {
         userId: demoUser.id,
         accountId: demoUser.id,
         providerId: 'credential',
+        issuer: CREDENTIAL_ACCOUNT_ISSUER,
         accessToken: null,
         refreshToken: null,
         accessTokenExpiresAt: null,

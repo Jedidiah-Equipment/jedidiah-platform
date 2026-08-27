@@ -41,16 +41,17 @@ export const useSession = authClient.useSession;
 
 /**
  * Session cookie value for a manual `Cookie` header on native, where there is no
- * cookie jar. Returns null on web: the browser attaches the cookie itself (via
- * `credentials: 'include'`), and better-auth's SecureStore-backed `getCookie()`
- * reads storage synchronously, which `react-native-web` does not support.
+ * cookie jar. Returns null on web: the browser attaches the cookie itself via
+ * `credentials: 'include'`, and SecureStore has no web backing store to read.
+ *
+ * Async since better-auth 1.7 — the Expo client moved to SecureStore's async API.
  */
-export function sessionCookieHeader(): string | null {
+export async function sessionCookieHeader(): Promise<string | null> {
   if (Platform.OS === 'web') {
     return null;
   }
 
-  return authClient.getCookie() || null;
+  return (await authClient.getCookie()) || null;
 }
 
 /** A resolved (non-null) session, as guaranteed inside the protected route tree. */

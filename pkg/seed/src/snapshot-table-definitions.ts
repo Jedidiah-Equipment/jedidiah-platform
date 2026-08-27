@@ -1,3 +1,4 @@
+import { CREDENTIAL_ACCOUNT_ISSUER } from '@pkg/db';
 import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema';
 import type { PgTable } from 'drizzle-orm/pg-core';
 
@@ -119,7 +120,10 @@ export const snapshotTableDefinitions = [
     tableName: 'account',
     timestampColumns: authTimestampColumns,
     omitReadColumns: ['password'],
-    seedRowDefaults: () => ({ password: null }),
+    // `issuer` arrived with better-auth 1.7; a source still on the preceding schema reads without it
+    // and takes the credential default, which is what every row in this snapshot is.
+    optionalReadColumns: ['issuer'],
+    seedRowDefaults: () => ({ password: null, issuer: CREDENTIAL_ACCOUNT_ISSUER }),
     seedCredentialPassword: true,
   },
   {

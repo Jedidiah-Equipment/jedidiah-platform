@@ -911,6 +911,13 @@
       "when": 1787726257153,
       "tag": "0129_repair_linear_assembly_materials_issue_1287",
       "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1787822186953,
+      "tag": "0130_fancy_goblin_queen",
+      "breakpoints": true
     }
   ]
 }

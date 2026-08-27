@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 
 vi.mock('expo/fetch', () => ({ fetch: globalThis.fetch }));
 vi.mock('./api-base-url', () => ({ apiBaseUrl: 'https://api.jedidiah.test' }));
-vi.mock('./auth', () => ({ sessionCookieHeader: () => null }));
+vi.mock('./auth', () => ({ sessionCookieHeader: async () => null }));
 
 import { assistantChatFetch, getAssistantChatEndpoint, readableAssistantChatError } from './assistant-chat';
 
@@ -28,8 +28,8 @@ describe('Assistant chat transport', () => {
     await assistantChatFetch(
       'https://api.jedidiah.test/ai/chat',
       { headers: { Accept: 'text/event-stream' }, method: 'POST' },
-      fetchImpl,
       'better-auth.session_token=secret',
+      fetchImpl,
     );
 
     const init = fetchImpl.mock.calls[0]?.[1];
@@ -45,7 +45,7 @@ describe('Assistant chat transport', () => {
         new Response(JSON.stringify({ error: 'Assistant is not enabled for this account' }), { status: 403 }),
     );
 
-    await expect(assistantChatFetch('https://api.jedidiah.test/ai/chat', {}, fetchImpl, null)).rejects.toThrow(
+    await expect(assistantChatFetch('https://api.jedidiah.test/ai/chat', {}, null, fetchImpl)).rejects.toThrow(
       /not enabled/i,
     );
   });

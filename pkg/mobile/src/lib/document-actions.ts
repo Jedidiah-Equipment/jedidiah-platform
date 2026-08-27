@@ -30,7 +30,7 @@ const safeCacheSegment = (value: string) => value.replace(/[^a-zA-Z0-9._-]+/g, '
 
 // Fetch the document to the app cache with the session cookie, returning its file:// URI.
 export async function downloadDocumentToCache({ path, filename, cacheKey }: DocumentAction): Promise<string> {
-  const cookie = sessionCookieHeader();
+  const cookie = await sessionCookieHeader();
   const cacheName = cacheKey
     ? `${safeCacheSegment(cacheKey)}-${safeCacheSegment(filename)}`
     : safeCacheSegment(filename);

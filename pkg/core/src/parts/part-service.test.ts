@@ -553,6 +553,7 @@ describe('bulkImportParts', () => {
       updatedCount: 0,
     });
     expect(importedParts.map((row) => row.code).sort()).toEqual(['P-100', 'P-200']);
+    expect(importedParts.find((row) => row.code === 'P-100')?.unitOfMeasure).toBe('piece');
   });
 
   test('creates a distinct part when only supplier code matches', async ({ context }) => {

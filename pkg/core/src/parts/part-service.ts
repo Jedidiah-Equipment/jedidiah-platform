@@ -575,6 +575,8 @@ function formatBulkImportLockError(error: unknown, lineNumber: number): string |
   }
 
   if (error instanceof PartSupplierLockedByPurchaseOrderError) {
+    // Supplier identity conflicts skip earlier today; keep this paired with the assertion so a
+    // future bulk-update path cannot accidentally turn its expected lock into a transaction abort.
     return `Line ${lineNumber}: Supplier is locked because this Part appears on a Purchase Order.`;
   }
 

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@tanstack/react-query', () => ({ useMutation: () => ({ mutateAsync: vi.fn() }) }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
 vi.mock('@/hooks/options/index.js', () => ({
+  usePartCategoryOptions: () => ({ isPending: false, items: [] }),
   useSupplierOptions: () => ({ isPending: false, selectOptions: [] }),
 }));
 vi.mock('@/hooks/use-query-invalidation.js', () => ({
@@ -21,6 +22,7 @@ vi.mock('@/components/form/index.js', () => ({
     const field = {
       CheckboxField: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
       ComboboxField: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
+      CreatableComboboxField: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
       NumberField: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
       SelectField: ({ label, onValueCommit }: { label: React.ReactNode; onValueCommit?: (value: string) => void }) => {
         if (onValueCommit) commitUnitOfMeasure = onValueCommit;

@@ -5,6 +5,7 @@ import {
   formatPercent,
   getQuoteOfferingName,
   type QuoteComputedSummary,
+  quoteKindLabels,
   quoteProductSourceOf,
   quoteStatusLabels,
   quoteWorkItemSummaryRows,
@@ -336,7 +337,7 @@ function QuoteCustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'c
   return (
     <Card size="sm">
       <CardHeader>
-        <CardDescription>Custom work</CardDescription>
+        <CardDescription>{quoteKindLabels.custom}</CardDescription>
         <CardTitle className="min-w-0 truncate">{workTitle}</CardTitle>
         <CardAction>
           <OfferingThumbnail className="size-10" kind="custom" label={workTitle} size="lg" thumbnailDataUrl={null} />

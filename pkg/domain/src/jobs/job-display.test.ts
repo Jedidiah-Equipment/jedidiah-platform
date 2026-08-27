@@ -61,7 +61,7 @@ describe('job display helpers', () => {
         quoteKind: 'custom',
         workTitle: 'Pump skid rebuild',
       }),
-    ).toEqual({ mono: false, text: 'Custom work' });
+    ).toEqual({ mono: false, text: 'Service Work' });
   });
 
   it('formats option hints and preview labels from one policy', () => {

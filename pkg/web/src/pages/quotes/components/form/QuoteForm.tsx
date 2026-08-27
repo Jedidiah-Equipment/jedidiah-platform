@@ -3,6 +3,7 @@ import {
   editableLockedQuoteFields,
   formatDate,
   isQuoteLocked,
+  quoteKindLabels,
   quoteStatusLabels,
 } from '@pkg/domain';
 import {
@@ -405,10 +406,11 @@ const QuotePriorityAlert: React.FC<{
     return (
       <Alert className="border-warning/45 bg-warning/10 text-warning-foreground">
         <IconAlertTriangle className="text-warning" />
-        <AlertTitle>Accepted custom quote</AlertTitle>
+        <AlertTitle>Accepted {quoteKindLabels.custom} quote</AlertTitle>
         <AlertDescription className="text-warning-foreground/85">
-          This custom quote is accepted and not linked to a Job. {describeDeliveryDates(priorityQuote)} Keep the
-          delivery commitment visible for {formatQuoteDate(priorityQuote.earliestDeliveryDate)}.
+          This {quoteKindLabels.custom} quote is accepted and not linked to a Job.{' '}
+          {describeDeliveryDates(priorityQuote)} Keep the delivery commitment visible for{' '}
+          {formatQuoteDate(priorityQuote.earliestDeliveryDate)}.
         </AlertDescription>
       </Alert>
     );

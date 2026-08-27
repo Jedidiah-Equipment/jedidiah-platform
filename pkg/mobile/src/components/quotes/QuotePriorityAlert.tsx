@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, quoteKindLabels } from '@pkg/domain';
 import type { PriorityQuote } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react-native';
 import { View } from 'react-native';
@@ -9,10 +9,10 @@ import { Text } from '@/components/ui/text';
 export function QuotePriorityAlert({ quote }: { quote: PriorityQuote }) {
   const deliveryCopy = describeDeliveryDates(quote);
   const date = formatDate(quote.earliestDeliveryDate, 'd MMM yyyy');
-  const title = quote.kind === 'custom' ? 'Accepted custom quote' : 'Needs job';
+  const title = quote.kind === 'custom' ? `Accepted ${quoteKindLabels.custom} quote` : 'Needs job';
   const message =
     quote.kind === 'custom'
-      ? `This custom quote is accepted and not linked to a Job. ${deliveryCopy} Keep the delivery commitment visible for ${date}.`
+      ? `This ${quoteKindLabels.custom} quote is accepted and not linked to a Job. ${deliveryCopy} Keep the delivery commitment visible for ${date}.`
       : `This quote is accepted but no Job has been started. ${deliveryCopy} The ${quote.product?.name ?? 'product'} takes ${quote.product?.buildTimeDays ?? 0} working days to build, so start a Job soon to reserve Bay capacity in time for ${date}.`;
 
   return (

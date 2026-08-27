@@ -1,4 +1,4 @@
-import { computeAdditionalDeliveryPrice, toQuoteWorkItemFormState } from '@pkg/domain';
+import { computeAdditionalDeliveryPrice, quoteKindLabels, toQuoteWorkItemFormState } from '@pkg/domain';
 import {
   AuthId,
   CustomerCompanyName,
@@ -129,7 +129,7 @@ export function getQuoteFormValuesValidator(kind: QuoteKind) {
     if (kind === 'product' && value.workItems.length > 0) {
       context.addIssue({
         code: 'custom',
-        message: 'Work items are only allowed on Custom Quotes',
+        message: `Work items are only allowed on ${quoteKindLabels.custom} Quotes`,
         path: ['workItems'],
       });
     }

@@ -150,7 +150,7 @@ async function createUserWithCredential(
     id: string;
     name: string;
     role?: AppRole;
-  } & ({ password: string } | { passwordHash: string }),
+  } & ({ password: string; passwordHash?: never } | { password?: never; passwordHash: string }),
 ) {
   const now = new Date();
 

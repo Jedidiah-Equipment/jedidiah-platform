@@ -120,10 +120,14 @@ export const snapshotTableDefinitions = [
     tableName: 'account',
     timestampColumns: authTimestampColumns,
     omitReadColumns: ['password'],
-    // `issuer` arrived with better-auth 1.7; a source still on the preceding schema reads without it
-    // and takes the credential default, which is what every row in this snapshot is.
+    // `issuer` arrived with better-auth 1.7; a source still on the preceding schema reads without it.
+    // Defaulted only for `credential`, the same stance migration 0130 takes: an OAuth row would need
+    // `local:oauth:<encoded providerId>`, so leaving it unset fails the insert rather than guessing.
     optionalReadColumns: ['issuer'],
-    seedRowDefaults: () => ({ password: null, issuer: CREDENTIAL_ACCOUNT_ISSUER }),
+    seedRowDefaults: (row) => ({
+      password: null,
+      ...(row.providerId === 'credential' ? { issuer: CREDENTIAL_ACCOUNT_ISSUER } : {}),
+    }),
     seedCredentialPassword: true,
   },
   {

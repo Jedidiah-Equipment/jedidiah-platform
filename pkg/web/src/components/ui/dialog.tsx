@@ -41,13 +41,17 @@ function DialogContent({
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean;
 }) {
+  // A tall dialog on a short viewport has to scroll rather than overflow the screen, so the popup caps
+  // its height and becomes its own scrollport. `scrollbar-none` is load-bearing: a space-taking
+  // scrollbar is carved out of the padding box that `DialogFooter` bleeds into, so the footer's border
+  // and rounded corner would stop short of the popup edge and leave a bare strip down to the corner.
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+          'fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain scrollbar-none rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
           className,
         )}
         {...props}
@@ -79,11 +83,16 @@ function DialogFooter({
 }: React.ComponentProps<'div'> & {
   showCloseButton?: boolean;
 }) {
+  // The popup scrolls once it outgrows a short viewport, so the footer sticks to keep Cancel and the
+  // primary action reachable. `-bottom-4` cancels the `-mb-4` bleed: sticky pins the margin box, so
+  // pinning at 0 would push the border box a padding step past the popup's bottom edge. The background
+  // is `--dialog-footer-bg` rather than `bg-muted/50` for the same reason — it has to be opaque, because
+  // scrolled content passes underneath it.
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        '-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end',
+        'sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-(--dialog-footer-bg) p-4 sm:flex-row sm:justify-end',
         className,
       )}
       {...props}
